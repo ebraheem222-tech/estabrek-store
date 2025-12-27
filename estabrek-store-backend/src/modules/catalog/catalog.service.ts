@@ -1,0 +1,746 @@
+// src/modules/catalog/catalog.service.ts
+import { prisma } from "../../lib/prisma.js";
+import type { Prisma } from "@prisma/client";
+import { annotateLinesWithDiscount } from "../../utils/money.js";
+
+function parseCsv(v?: string | null): string[] | undefined {
+  if (!v) return undefined;
+  const arr = String(v)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return arr.length ? Array.from(new Set(arr)) : undefined;
+}
+
+function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string }): Prisma.ProductWhereInput {
+  const and: Prisma.ProductWhereInput[] = [{ isActive: true }];
+
+  if (input.q) {
+    and.push({
+      OR: [
+        { title: { contains: input.q, mode: "insensitive" } },
+        { description: { contains: input.q, mode: "insensitive" } },
+        { slug: { contains: input.q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (input.categoryId) {
+    and.push({ categoryId: input.categoryId });
+  } else if (input.category) {
+    and.push({ category: { slug: input.category } });
+  }
+
+  return and.length ? { AND: and } : {};
+}
+
+function buildItemWhere(input: {
+  colors?: string[];
+  sizeIds?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+}): Prisma.ProductItemWhereInput {
+  const and: Prisma.ProductItemWhereInput[] = [{ isActive: true }];
+
+  if (input.colors?.length) {
+    and.push({
+      OR: input.colors.map((c) => ({ colorName: { equals: c, mode: "insensitive" } })),
+    });
+  }
+
+  // Build a single variants.some filter so one variant satisfies ALL constraints
+  const variantSome: Prisma.ProductVariantWhereInput = {};
+
+  if (input.sizeIds?.length) {
+    variantSome.sizeId = { in: input.sizeIds };
+  }
+
+  if (input.minPrice != null || input.maxPrice != null) {
+    const price: Prisma.DecimalFilter<"ProductVariant"> = {};
+    if (input.minPrice != null) price.gte = input.minPrice;
+    if (input.maxPrice != null) price.lte = input.maxPrice;
+    variantSome.price = price as any;
+  }
+
+  if (input.inStock) {
+    variantSome.stock = { gt: 0 };
+  }
+
+  if (Object.keys(variantSome).length) {
+    and.push({ variants: { some: variantSome } });
+  }
+
+  return and.length === 1 ? { isActive: true } : { AND: and };
+}
+
+/**
+ * Product filters + item-level filters.
+ * NOTE: When both color + size are provided, the SAME ProductItem must satisfy them.
+ */
+function buildProductsWhere(input: {
+  q?: string;
+  category?: string; // category slug
+  categoryId?: string;
+  inStock?: boolean;
+
+  // legacy single
+  color?: string;
+  sizeId?: string;
+
+  // multi-select (comma separated)
+  colors?: string;
+  sizeIds?: string;
+
+  minPrice?: number;
+  maxPrice?: number;
+}) {
+  const baseProductWhere = buildBaseProductWhere({ q: input.q, category: input.category, categoryId: input.categoryId });
+
+  const colorsArr = parseCsv(input.colors ?? input.color);
+  const sizeArr = parseCsv(input.sizeIds ?? input.sizeId);
+
+  const itemWhereFull = buildItemWhere({
+    colors: colorsArr,
+    sizeIds: sizeArr,
+    minPrice: input.minPrice,
+    maxPrice: input.maxPrice,
+    inStock: input.inStock,
+  });
+
+  const hasItemFilters = !!(colorsArr?.length || sizeArr?.length || input.minPrice != null || input.maxPrice != null || input.inStock);
+
+  const productWhere: Prisma.ProductWhereInput = hasItemFilters
+    ? { AND: [baseProductWhere, { items: { some: itemWhereFull } }] }
+    : baseProductWhere;
+
+  // facets helpers (apply all filters EXCEPT the facet itself)
+  const itemWhereNoColor = buildItemWhere({
+    colors: undefined,
+    sizeIds: sizeArr,
+    minPrice: input.minPrice,
+    maxPrice: input.maxPrice,
+    inStock: input.inStock,
+  });
+  const itemWhereNoSize = buildItemWhere({
+    colors: colorsArr,
+    sizeIds: undefined,
+    minPrice: input.minPrice,
+    maxPrice: input.maxPrice,
+    inStock: input.inStock,
+  });
+
+  return { productWhere, baseProductWhere, itemWhereFull, itemWhereNoColor, itemWhereNoSize, colorsArr, sizeArr };
+}
+
+export async function listProducts(params: {
+  q?: string;
+  category?: string;
+  categoryId?: string;
+  inStock?: boolean;
+  // legacy
+  color?: string;
+  sizeId?: string;
+  // multi-select
+  colors?: string;
+  sizeIds?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc";
+  page: number;
+  pageSize: number;
+  limit?: number;
+}) {
+  const {
+    productWhere,
+    baseProductWhere,
+    itemWhereNoColor,
+    itemWhereNoSize,
+    colorsArr,
+    sizeArr,
+  } = buildProductsWhere(params);
+
+  const pageSize: number = params.limit ?? params.pageSize;
+  const orderBy: Prisma.ProductOrderByWithRelationInput =
+    params.sort === "title_asc"
+      ? { title: "asc" }
+      : params.sort === "title_desc"
+      ? { title: "desc" }
+      : { createdAt: "desc" };
+
+  const skip = (params.page - 1) * pageSize;
+  const [total, products] = await Promise.all([
+    prisma.product.count({ where: productWhere }),
+    prisma.product.findMany({
+      where: productWhere,
+      orderBy,
+      skip,
+      take: pageSize,
+      include: {
+        category: true,
+        items: {
+          where: { isActive: true },
+          include: {
+            // two images per item (primary first)
+            images: {
+              orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+              take: 2,
+            },
+            variants: {
+              include: { size: true },
+              orderBy: { size: { order: "asc" } },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  // compute a min price per product (from items/variants)
+  const items = products.map((p) => {
+    let minPrice: number | null = null;
+    for (const it of p.items) {
+      for (const v of it.variants) {
+        const price = Number(v.price);
+        if (minPrice == null || price < minPrice) minPrice = price;
+      }
+    }
+    return { ...p, minPrice };
+  });
+
+  // Optional in-page price sorting (minPrice is computed above)
+  const sortedItems =
+    params.sort === "price_asc"
+      ? [...items].sort((a, b) => (a.minPrice ?? 0) - (b.minPrice ?? 0) || a.title.localeCompare(b.title))
+      : params.sort === "price_desc"
+      ? [...items].sort((a, b) => (b.minPrice ?? 0) - (a.minPrice ?? 0) || a.title.localeCompare(b.title))
+      : items;
+
+
+  return {
+    items: sortedItems,
+    total,
+    page: params.page,
+    pageSize: pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    facets: await (async () => {
+      // COLORS facets (ignore selected colors, keep size + price)
+      const colorRows = await prisma.productItem.groupBy({
+        by: ["colorName", "colorHex"],
+        where: {
+          AND: [
+            itemWhereNoColor,
+            { product: baseProductWhere },
+          ],
+        },
+        _count: { _all: true },
+      });
+
+      // SIZES facets (ignore selected sizes, keep color + price)
+      const price: Prisma.DecimalFilter<"ProductVariant"> = {};
+      if (params.minPrice != null) price.gte = params.minPrice;
+      if (params.maxPrice != null) price.lte = params.maxPrice;
+      const hasPrice = params.minPrice != null || params.maxPrice != null;
+
+      const sizeRows = await prisma.productVariant.groupBy({
+        by: ["sizeId"],
+        where: {
+          ...(hasPrice ? { price } : {}),
+          item: {
+            AND: [
+              itemWhereNoSize,
+              { product: baseProductWhere },
+            ],
+          },
+        },
+        _count: { _all: true },
+      });
+      const sizeIds = sizeRows.map((r) => r.sizeId);
+      const sizes = sizeIds.length
+        ? await prisma.size.findMany({
+            where: { id: { in: sizeIds }, active: true },
+            select: { id: true, name: true, order: true },
+          })
+        : [];
+      const sizeById = new Map(sizes.map((s) => [s.id, s]));
+
+      return {
+        colors: colorRows
+          .map((r) => ({
+            name: r.colorName,
+            colorHex: r.colorHex,
+            count: r._count._all,
+          }))
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+        sizes: sizeRows
+          .map((r) => ({
+            id: r.sizeId,
+            name: sizeById.get(r.sizeId)?.name ?? r.sizeId,
+            order: sizeById.get(r.sizeId)?.order ?? 0,
+            count: r._count._all,
+          }))
+          .sort((a, b) => b.count - a.count || a.order - b.order || a.name.localeCompare(b.name)),
+        selected: {
+          colors: colorsArr ?? [],
+          sizeIds: sizeArr ?? [],
+        },
+      };
+    })(),
+  };
+}
+
+export function getProductById(id: string) {
+  // `findUnique` cannot include extra filters; use findFirst for id + isActive.
+  return prisma.product.findFirst({
+    where: { id, isActive: true },
+    include: {
+      category: true,
+      items: {
+        include: {
+          images: { orderBy: { position: "asc" } },
+          variants: { include: { size: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      reviews: true,
+      comments: true,
+    },
+  });
+}
+
+export function getProductBySlug(slug: string) {
+  return prisma.product.findFirst({
+    where: { slug, isActive: true },
+    include: {
+      category: true,
+      items: {
+        include: {
+          images: { orderBy: { position: "asc" } },
+          variants: { include: { size: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      reviews: true,
+      comments: true,
+    },
+  });
+}
+
+export async function getCategoriesTree() {
+  const all = await prisma.category.findMany({ orderBy: [{ parentId: "asc" }, { name: "asc" }] });
+  const byParent = new Map<string | null, typeof all>();
+  for (const c of all) {
+    const key = c.parentId ?? null;
+    const arr = byParent.get(key) ?? [];
+    arr.push(c);
+    byParent.set(key, arr);
+  }
+  function build(parentId: string | null): any[] {
+    return (byParent.get(parentId) ?? []).map((c) => ({
+      ...c,
+      children: build(c.id),
+    }));
+  }
+  return build(null);
+}
+
+export function listSizes() {
+  return prisma.size.findMany({ where: { active: true }, orderBy: [{ order: "asc" }, { name: "asc" }] });
+}
+
+export function listProductItems(productId: string) {
+  return prisma.productItem.findMany({
+    where: { productId, isActive: true },
+    include: {
+      images: { orderBy: { position: "asc" } },
+      variants: { include: { size: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export function getVariant(id: string) {
+  return prisma.productVariant.findUnique({
+    where: { id },
+    include: { item: { include: { product: true, images: true } }, size: true },
+  });
+}
+
+export function listProductImages(productId: string) {
+  return prisma.productItemImage.findMany({
+    where: { item: { productId } },
+    orderBy: [{ isPrimary: "desc" }, { position: "asc" }, { createdAt: "asc" }],
+  });
+}
+
+export function createReview(productId: string, data: { rating: number; title?: string; body: string; userId?: string }) {
+  return prisma.review.create({
+    data: {
+      productId,
+      userId: data.userId ?? null,
+      rating: data.rating,
+      title: data.title,
+      body: data.body,
+      // status default PENDING per schema
+    },
+  });
+}
+
+export function createComment(productId: string, data: { body: string; userId?: string }) {
+  return prisma.productComment.create({
+    data: {
+      productId,
+      userId: data.userId ?? null,
+      body: data.body,
+      // status default PENDING per schema
+    },
+  });
+}
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+function httpError(code: string, message?: string, statusCode = 400, meta?: any) {
+  const err: any = new Error(message ?? code);
+  err.statusCode = statusCode;
+  err.code = code;
+  if (meta !== undefined) err.meta = meta;
+  return err;
+}
+
+async function getCurrencyCode() {
+  const s = await prisma.siteSettings.findFirst({ select: { currencyCode: true } });
+  return s?.currencyCode ?? "ILS";
+}
+
+async function computeCouponDiscount(args: { code: string; subtotal: number }) {
+  // kept for non-transactional callers (quote endpoints)
+  return computeCouponDiscountWithClient(prisma, args);
+}
+
+async function computeCouponDiscountWithClient(
+  db: typeof prisma,
+  args: { code: string; subtotal: number }
+) {
+  const code = args.code.toUpperCase().trim();
+  const coupon = await db.coupon.findUnique({ where: { code } });
+  if (!coupon) {
+    throw httpError("COUPON_NOT_FOUND", "Coupon not found", 400);
+  }
+  if (!coupon.isActive) {
+    throw httpError("COUPON_INACTIVE", "Coupon is inactive", 400);
+  }
+  const now = new Date();
+  if (coupon.startsAt && now < coupon.startsAt) {
+    throw httpError("COUPON_NOT_ACTIVE_YET", "Coupon not active yet", 400);
+  }
+  if (coupon.endsAt && now > coupon.endsAt) {
+    throw httpError("COUPON_EXPIRED", "Coupon expired", 400);
+  }
+  const minCart = coupon.minCart != null ? Number(coupon.minCart) : null;
+  if (minCart != null && args.subtotal < minCart) {
+    throw httpError("COUPON_MIN_CART", "Minimum cart not met", 400, { minCart });
+  }
+
+  // Do NOT check usageLimit here (quote should not fail just because of a race).
+  // We check usageLimit during submit inside a transaction.
+
+  let discount = 0;
+  const discountValue = Number(coupon.discountValue ?? 0);
+
+  if (coupon.discountType === "PERCENT") {
+    discount = round2((args.subtotal * discountValue) / 100);
+    const maxDiscount = coupon.maxDiscount != null ? Number(coupon.maxDiscount) : null;
+    if (maxDiscount != null) discount = Math.min(discount, maxDiscount);
+  } else {
+    discount = round2(discountValue);
+  }
+
+  if (discount < 0) discount = 0;
+  if (discount > args.subtotal) discount = args.subtotal;
+
+  return { coupon, discount };
+}
+
+type CartItemInput = { variantId: string; quantity: number };
+
+function normalizeCartItems(items: CartItemInput[]): CartItemInput[] {
+  const map = new Map<string, number>();
+  for (const it of items) {
+    const id = it.variantId;
+    const q = Math.max(1, Math.floor(it.quantity || 1));
+    map.set(id, (map.get(id) ?? 0) + q);
+  }
+  return Array.from(map.entries()).map(([variantId, quantity]) => ({ variantId, quantity }));
+}
+
+type CartLine = {
+  variantId: string;
+  quantity: number;
+  unitPrice: number;
+  lineSubtotal: number;
+  productId: string;
+  productTitle: string;
+  productSlug?: string | null;
+  itemId?: string | null;
+  colorName?: string | null;
+  colorHex?: string | null;
+  sizeId?: string | null;
+  sizeName?: string | null;
+  sku?: string | null;
+  imageUrl?: string | null;
+};
+
+async function loadLinesForItems(
+  db: typeof prisma,
+  items: CartItemInput[]
+): Promise<CartLine[]> {
+  const normalized = normalizeCartItems(items);
+  const ids = normalized.map((x) => x.variantId);
+
+  const variants = await db.productVariant.findMany({
+    where: { id: { in: ids } },
+    include: {
+      item: {
+        include: {
+          product: true,
+          images: { orderBy: { position: "asc" } },
+        },
+      },
+      size: true,
+    },
+  });
+
+  const byId = new Map(variants.map((v) => [v.id, v]));
+  const out: CartLine[] = [];
+
+  for (const it of normalized) {
+    const v = byId.get(it.variantId);
+    if (!v || !v.item?.isActive || !v.item?.product?.isActive) {
+      throw httpError("VARIANT_NOT_AVAILABLE", "Variant not available", 400, { variantId: it.variantId });
+    }
+
+    const unitPrice = Number(v.price);
+    const lineSubtotal = round2(unitPrice * it.quantity);
+
+    const imgs = (v.item as any).images ?? [];
+    const primary = imgs.find((x: any) => x.isPrimary) ?? imgs[0];
+    const imageUrl = primary?.url ?? null;
+
+    out.push({
+      variantId: v.id,
+      quantity: it.quantity,
+      unitPrice,
+      lineSubtotal,
+      productId: v.item.productId,
+      productTitle: v.item.product.title,
+      productSlug: v.item.product.slug,
+      itemId: v.productItemId,
+      colorName: v.item.colorName,
+      colorHex: v.item.colorHex,
+      sizeId: v.sizeId,
+      sizeName: v.size?.name ?? null,
+      sku: v.sku,
+      imageUrl,
+    });
+  }
+
+  return out;
+}
+
+export async function quoteCart(data: { items: CartItemInput[]; couponCode?: string }) {
+  const lines = await loadLinesForItems(prisma, data.items);
+  const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
+
+  let discountAmount = 0;
+  let applied: any = null;
+
+  if (data.couponCode) {
+    const { coupon, discount } = await computeCouponDiscount({ code: data.couponCode, subtotal });
+    discountAmount = discount;
+    applied = {
+      code: coupon.code,
+      discountType: coupon.discountType,
+      discountValue: Number(coupon.discountValue ?? 0),
+      maxDiscount: coupon.maxDiscount != null ? Number(coupon.maxDiscount) : null,
+      minCart: coupon.minCart != null ? Number(coupon.minCart) : null,
+    };
+  }
+
+  const total = round2(subtotal - discountAmount);
+  const currencyCode = await getCurrencyCode();
+
+  return {
+    currencyCode,
+    subtotal,
+    discountAmount,
+    total,
+    coupon: applied,
+    lines: annotateLinesWithDiscount(lines, discountAmount),
+  };
+}
+
+export async function quoteOrderRequest(data: { variantId: string; quantity: number; couponCode?: string }) {
+  const out = await quoteCart({
+    items: [{ variantId: data.variantId, quantity: data.quantity }],
+    couponCode: data.couponCode,
+  });
+
+  const line = out.lines[0];
+  return {
+    variantId: data.variantId,
+    quantity: data.quantity,
+    currencyCode: out.currencyCode,
+    unitPrice: line.unitPrice,
+    subtotal: out.subtotal,
+    discountAmount: out.discountAmount,
+    total: out.total,
+    coupon: out.coupon,
+  };
+}
+
+export async function submitOrderRequest(data: {
+  items?: CartItemInput[];
+  variantId?: string;
+  quantity?: number;
+  customerName: string;
+  phone: string;
+  whatsapp?: string;
+  country?: string;
+  city?: string;
+  address?: string;
+  note?: string;
+  couponCode?: string;
+  source?: string;
+}) {
+  const now = new Date();
+
+  const items: CartItemInput[] =
+    Array.isArray(data.items) && data.items.length
+      ? data.items
+      : [{ variantId: data.variantId as string, quantity: data.quantity ?? 1 }];
+
+  const normalized = normalizeCartItems(items);
+
+  const req = await prisma.$transaction(async (tx) => {
+    const lines = await loadLinesForItems(tx as any, normalized);
+    const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
+    const currencyCode = (await tx.siteSettings.findFirst({ select: { currencyCode: true } }))?.currencyCode ?? "ILS";
+
+    let couponId: string | null = null;
+    let couponCode: string | null = null;
+    let discountAmount = 0;
+    let couponRow: any = null;
+
+    if (data.couponCode) {
+      const code = data.couponCode.toUpperCase().trim();
+      couponRow = await tx.coupon.findUnique({ where: { code } });
+      if (!couponRow) throw httpError("COUPON_NOT_FOUND", "Coupon not found", 400);
+      if (!couponRow.isActive) throw httpError("COUPON_INACTIVE", "Coupon is inactive", 400);
+      if (couponRow.startsAt && now < couponRow.startsAt) throw httpError("COUPON_NOT_ACTIVE_YET", "Coupon not active yet", 400);
+      if (couponRow.endsAt && now > couponRow.endsAt) throw httpError("COUPON_EXPIRED", "Coupon expired", 400);
+
+      const minCart = couponRow.minCart != null ? Number(couponRow.minCart) : null;
+      if (minCart != null && subtotal < minCart) throw httpError("COUPON_MIN_CART", "Minimum cart not met", 400, { minCart });
+
+      if (couponRow.usageLimit != null && couponRow.usedCount >= couponRow.usageLimit) {
+        throw httpError("COUPON_USAGE_LIMIT_REACHED", "Coupon usage limit reached", 400);
+      }
+
+      const discountValue = Number(couponRow.discountValue ?? 0);
+      if (couponRow.discountType === "PERCENT") {
+        discountAmount = round2((subtotal * discountValue) / 100);
+        const maxDiscount = couponRow.maxDiscount != null ? Number(couponRow.maxDiscount) : null;
+        if (maxDiscount != null) discountAmount = Math.min(discountAmount, maxDiscount);
+      } else {
+        discountAmount = round2(discountValue);
+      }
+
+      if (discountAmount < 0) discountAmount = 0;
+      if (discountAmount > subtotal) discountAmount = subtotal;
+
+      couponId = couponRow.id;
+      couponCode = couponRow.code;
+    }
+
+    const total = round2(subtotal - discountAmount);
+
+    const first = lines[0];
+
+    const created = await tx.orderRequest.create({
+      data: {
+        // keep legacy fields populated for compatibility
+        variantId: first.variantId,
+        quantity: first.quantity,
+
+        customerName: data.customerName,
+        phone: data.phone,
+        whatsapp: data.whatsapp,
+        country: data.country,
+        city: data.city,
+        address: data.address,
+        note: data.note,
+        source: data.source ?? "storefront",
+
+        currencyCode,
+
+        // pricing snapshot (on the whole request)
+        unitPrice: first.unitPrice,
+        subtotal,
+        discountAmount,
+        total,
+
+        couponId,
+        couponCode,
+
+        items: {
+          create: lines.map((l) => ({
+            variantId: l.variantId,
+            quantity: l.quantity,
+            unitPrice: l.unitPrice,
+            lineSubtotal: l.lineSubtotal,
+            productId: l.productId,
+            productTitle: l.productTitle,
+            productSlug: l.productSlug ?? null,
+            itemId: l.itemId ?? null,
+            colorName: l.colorName ?? null,
+            colorHex: l.colorHex ?? null,
+            sizeId: l.sizeId ?? null,
+            sizeName: l.sizeName ?? null,
+            sku: l.sku ?? null,
+            imageUrl: l.imageUrl ?? null,
+          })),
+        },
+      },
+    });
+
+    await tx.orderRequestHistory.create({
+      data: { orderRequestId: created.id, fromStatus: null, toStatus: "NEW", note: "Submitted from storefront" },
+    });
+
+    if (couponRow) {
+      if (couponRow.usageLimit != null) {
+        const upd = await tx.coupon.updateMany({
+          where: { id: couponRow.id, usedCount: { lt: couponRow.usageLimit } },
+          data: { usedCount: { increment: 1 } },
+        });
+        if (upd.count === 0) throw httpError("COUPON_USAGE_LIMIT_REACHED", "Coupon usage limit reached", 400);
+      } else {
+        await tx.coupon.update({ where: { id: couponRow.id }, data: { usedCount: { increment: 1 } } });
+      }
+
+      await tx.couponRedemption.create({
+        data: {
+          couponId: couponRow.id,
+          orderRequestId: created.id,
+          phone: data.phone,
+        },
+      });
+    }
+
+    return created;
+  });
+
+  return req;
+}
