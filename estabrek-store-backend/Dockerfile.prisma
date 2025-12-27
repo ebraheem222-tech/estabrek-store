@@ -1,0 +1,23 @@
+# Dockerfile.prisma
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Needed for Prisma engines on Alpine
+RUN apk add --no-cache openssl libc6-compat
+
+# Copy only manifest/lock files first for better layer caching
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+
+# Install deps (try npm ci; fall back to npm i if no lockfile)
+RUN npm ci --no-audit --no-fund || npm i --no-audit --no-fund
+
+# Copy just the Prisma schema/migrations
+COPY prisma ./prisma
+
+# Generate Prisma Client in node_modules/@prisma/client
+RUN npx prisma generate
+
+# Default command can be overridden by docker compose
+# e.g., for migrations: `command: ["npx","prisma","migrate","deploy"]`
+CMD ["node", "-e", "console.log('Prisma helper image ready. Override CMD in compose to run Prisma commands.')"]
