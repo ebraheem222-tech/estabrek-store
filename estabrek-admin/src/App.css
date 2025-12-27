@@ -1,0 +1,139 @@
+
+
+/* === CMS animation presets (Tailwind-presets compatible) === */
+@keyframes cmsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cmsFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes cmsFadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes cmsFadeLeft {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes cmsFadeRight {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes cmsZoomIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes cmsZoomOut {
+  from { opacity: 0; transform: scale(1.04); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes cmsSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes cmsSlideDown {
+  from { opacity: 0; transform: translateY(-24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes cmsSlideLeft {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes cmsSlideRight {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes cmsScaleIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes cmsScaleUp {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes cmsRotateIn {
+  from { opacity: 0; transform: rotate(-6deg) scale(0.98); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
+}
+@keyframes cmsFlipUp {
+  from { opacity: 0; transform: perspective(800px) rotateX(16deg); }
+  to { opacity: 1; transform: perspective(800px) rotateX(0); }
+}
+@keyframes cmsFlipLeft {
+  from { opacity: 0; transform: perspective(800px) rotateY(-16deg); }
+  to { opacity: 1; transform: perspective(800px) rotateY(0); }
+}
+@keyframes cmsBounceIn {
+  0% { opacity: 0; transform: scale(0.9); }
+  60% { opacity: 1; transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes cmsElasticIn {
+  0% { opacity: 0; transform: scale(0.85); }
+  70% { opacity: 1; transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+@keyframes cmsBlurIn {
+  from { opacity: 0; filter: blur(12px); transform: translateY(8px); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+@keyframes cmsRevealUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes cmsRevealLeft {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes cmsFloat {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
+.animate-cms-fade-in { animation-name: cmsFadeIn; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-fade-up { animation-name: cmsFadeUp; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-fade-down { animation-name: cmsFadeDown; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-fade-left { animation-name: cmsFadeLeft; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-fade-right { animation-name: cmsFadeRight; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-zoom-in { animation-name: cmsZoomIn; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-zoom-out { animation-name: cmsZoomOut; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-slide-up { animation-name: cmsSlideUp; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-slide-down { animation-name: cmsSlideDown; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-slide-left { animation-name: cmsSlideLeft; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-slide-right { animation-name: cmsSlideRight; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-scale-in { animation-name: cmsScaleIn; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-scale-up { animation-name: cmsScaleUp; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-rotate-in { animation-name: cmsRotateIn; animation-duration: 700ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-flip-up { animation-name: cmsFlipUp; animation-duration: 700ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-flip-left { animation-name: cmsFlipLeft; animation-duration: 700ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-bounce-in { animation-name: cmsBounceIn; animation-duration: 700ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-elastic-in { animation-name: cmsElasticIn; animation-duration: 800ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-blur-in { animation-name: cmsBlurIn; animation-duration: 700ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-reveal-up { animation-name: cmsRevealUp; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-reveal-left { animation-name: cmsRevealLeft; animation-duration: 600ms; animation-timing-function: ease-out; animation-fill-mode: both; }
+.animate-cms-float { animation-name: cmsFloat; animation-duration: 3s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; animation-fill-mode: both; }
+
+/* Make Tailwind delay-/duration- utilities apply to animation too */
+.delay-0 { animation-delay: 0ms; }
+.delay-75 { animation-delay: 75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-700 { animation-delay: 700ms; }
+.delay-1000 { animation-delay: 1000ms; }
+
+.duration-150 { animation-duration: 150ms; }
+.duration-200 { animation-duration: 200ms; }
+.duration-300 { animation-duration: 300ms; }
+.duration-400 { animation-duration: 400ms; }
+.duration-500 { animation-duration: 500ms; }
+.duration-600 { animation-duration: 600ms; }
+.duration-800 { animation-duration: 800ms; }
+.duration-1000 { animation-duration: 1000ms; }
+.duration-\[1500ms\] { animation-duration: 1500ms; }
+.duration-\[2000ms\] { animation-duration: 2000ms; }
