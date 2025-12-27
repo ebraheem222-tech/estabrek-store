@@ -1,0 +1,84 @@
+
+// ------------------------------
+// BUTTON / INPUT / FORM
+// ------------------------------
+
+export const CmsButtonDataZ = z
+  .object({
+    label: zText(120),
+    href: zText(2048),
+    variant: zOptText(40),
+    align: AlignZ.optional(),
+    fullWidth: z.preprocess(asBool, z.boolean()).optional(),
+    ui: UiTailwindZ.optional(),
+  })
+  .passthrough()
+  .transform((v) => ({
+    label: v.label ?? "",
+    href: v.href ?? "",
+    variant: v.variant ?? "primary",
+    align: v.align ?? "left",
+    fullWidth: v.fullWidth ?? false,
+    ui: v.ui ?? { sectionClass: "", containerClass: "" },
+  }));
+
+export const CmsInputDataZ = z
+  .object({
+    label: zText(120),
+    name: zText(120),
+    placeholder: zOptText(200),
+    type: zOptText(40),
+    required: z.preprocess(asBool, z.boolean()).optional(),
+    disabled: z.preprocess(asBool, z.boolean()).optional(),
+    ui: UiTailwindZ.optional(),
+  })
+  .passthrough()
+  .transform((v) => ({
+    label: v.label ?? "",
+    name: v.name ?? "",
+    placeholder: v.placeholder ?? "",
+    type: v.type ?? "text",
+    required: v.required ?? false,
+    disabled: v.disabled ?? false,
+    ui: v.ui ?? { sectionClass: "", containerClass: "" },
+  }));
+
+const FormFieldTypeZ = z.enum(["text", "email", "tel", "textarea"]);
+
+export const CmsFormDataZ = z
+  .object({
+    title: zOptText(200),
+    description: zOptText(500),
+    submitLabel: zOptText(80),
+    action: z
+      .object({
+        mode: z.enum(["WHATSAPP", "EMAIL"]).default("WHATSAPP"),
+        whatsappNumber: zOptText(64),
+        email: zOptText(200),
+      })
+      .passthrough()
+      .optional(),
+    fields: z
+      .array(
+        z
+          .object({
+            label: zText(120),
+            name: zText(120),
+            type: FormFieldTypeZ.default("text"),
+            placeholder: zOptText(200),
+            required: z.preprocess(asBool, z.boolean()).optional(),
+          })
+          .passthrough()
+      )
+      .default([]),
+    ui: UiTailwindZ.optional(),
+  })
+  .passthrough()
+  .transform((v) => ({
+    title: v.title ?? "",
+    description: v.description ?? "",
+    submitLabel: v.submitLabel ?? "إرسال",
+    action: v.action ?? { mode: "WHATSAPP", whatsappNumber: "", email: "" },
+    fields: Array.isArray(v.fields) ? v.fields : [],
+    ui: v.ui ?? { sectionClass: "", containerClass: "" },
+  }));

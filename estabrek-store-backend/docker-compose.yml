@@ -1,0 +1,81 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: estabrak-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:16-alpine
+    container_name: estabrek-backend-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-estabrak_store}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-estabrak_store}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      # If you already have Postgres on your machine, set DB_PORT=5433 (or any free port)
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.prisma
+    container_name: estabrak-migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-lc", "npx prisma migrate deploy && npx prisma generate"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: estabrak-api
+    environment:
+      PORT: ${PORT:-4000}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.prisma
+    container_name: estabrak-studio
+    command: sh -lc "npx prisma generate && npx prisma studio --browser none --port 5555 --hostname 0.0.0.0"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "5555:5555"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

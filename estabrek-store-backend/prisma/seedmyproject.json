@@ -1,0 +1,1283 @@
+{
+  "meta": {
+    "exportedAt": "2025-12-27T19:18:30.121Z",
+    "mode": "core"
+  },
+  "adminUsers": [
+    {
+      "id": "cmjmyzeex0000l36dwjnrotw0",
+      "email": "admin@estabrak.local",
+      "name": "Super Admin",
+      "passwordHash": "$argon2id$v=19$m=65536,t=3,p=4$YorTy/TOkNzsOnwuOAYz8g$cjwJm0sHASoAX5Djm4UXe/pakgld1uWSPHkiInBYpL8",
+      "role": "SUPERADMIN",
+      "emailVerifiedAt": null,
+      "phone": null,
+      "phoneVerifiedAt": null,
+      "secondEmail": null,
+      "secondPhone": null,
+      "twoFactorEnabled": false,
+      "default2FADeviceId": null,
+      "failedLoginCount": 0,
+      "lockedUntil": null,
+      "lastLoginAt": "2025-12-27T19:14:04.211Z",
+      "lastIp": "172.18.0.1",
+      "createdAt": "2025-12-26T14:31:28.954Z",
+      "updatedAt": "2025-12-27T19:14:04.213Z"
+    }
+  ],
+  "admin2FADevices": [],
+  "admin2FARecoveryCodes": [],
+  "siteSettings": [
+    {
+      "id": "cmjmz3zkh0000ry01ixdcx55y",
+      "siteName": "متجر استبرق",
+      "currencyCode": "ILS",
+      "logoUrl": "http://localhost:4000/uploads/images/1766853098183-5a5da17f56e52.jpeg",
+      "faviconUrl": null,
+      "announcementIsActive": false,
+      "announcementText": null,
+      "announcementLinkUrl": null,
+      "header": {
+        "cta": {
+          "href": "",
+          "label": "",
+          "enabled": false
+        },
+        "theme": {
+          "mode": "light",
+          "accent": "emerald",
+          "radius": "2xl",
+          "surface": "glass",
+          "presetId": "estabrak_soft_gold",
+          "customThemes": []
+        },
+        "cmsNav": {
+          "mode": "dropdown",
+          "items": [],
+          "enabled": false,
+          "gradient": "none",
+          "showIcons": true
+        },
+        "preset": "classic",
+        "sticky": true,
+        "topbar": {
+          "href": "",
+          "text": "",
+          "enabled": false,
+          "bgPreset": "glass",
+          "template": "info",
+          "buttonText": "",
+          "showOnMobile": true
+        },
+        "showCart": true,
+        "cartStyle": "iconBadge",
+        "showSearch": true,
+        "searchStyle": "input",
+        "showAccount": true,
+        "announcement": {
+          "href": "",
+          "text": "",
+          "enabled": false,
+          "buttonText": ""
+        },
+        "heightMobile": "compact",
+        "heightDesktop": "normal"
+      },
+      "footer": {
+        "about": {
+          "text": "",
+          "title": ""
+        },
+        "bottom": {
+          "enabled": true,
+          "copyright": "",
+          "policyLinks": []
+        },
+        "social": {
+          "x": "",
+          "tiktok": "",
+          "youtube": "",
+          "facebook": "",
+          "whatsapp": "",
+          "instagram": ""
+        },
+        "columns": [],
+        "enabled": true,
+        "bgPreset": "solid",
+        "template": "minimal",
+        "newsletter": {
+          "title": "",
+          "enabled": false,
+          "buttonLabel": "اشتراك",
+          "placeholder": ""
+        }
+      },
+      "newsletterIsActive": false,
+      "newsletterTitle": null,
+      "newsletterText": null,
+      "newsletterSuccess": null,
+      "primaryNavId": "cmjmzn2ve0007su1lp643cfsm",
+      "footerNavId": "cmjmzn2w20008su1lp7p3y8m1",
+      "scriptsHead": [],
+      "scriptsBody": [],
+      "customCss": "",
+      "contactEmail": "ebraheemmiary586@gmail.com",
+      "contactPhone": "05455367383",
+      "createdAt": "2025-12-26T14:35:02.993Z",
+      "updatedAt": "2025-12-27T16:31:46.485Z"
+    }
+  ],
+  "navigationMenus": [
+    {
+      "id": "cmjmzn2ve0007su1lp643cfsm",
+      "name": "Primary",
+      "location": "HEADER",
+      "isDefault": true,
+      "createdAt": "2025-12-26T14:49:53.738Z",
+      "updatedAt": "2025-12-26T14:49:53.738Z"
+    },
+    {
+      "id": "cmjmzn2w20008su1lp7p3y8m1",
+      "name": "Footer",
+      "location": "FOOTER",
+      "isDefault": true,
+      "createdAt": "2025-12-26T14:49:53.762Z",
+      "updatedAt": "2025-12-26T14:49:53.762Z"
+    }
+  ],
+  "navigationItems": [
+    {
+      "id": "cmjmzn2wu000csu1lbhjnrgf5",
+      "menuId": "cmjmzn2w20008su1lp7p3y8m1",
+      "parentId": null,
+      "label": "About",
+      "href": "/about",
+      "target": null,
+      "icon": null,
+      "order": 0,
+      "isActive": true,
+      "isExternal": false,
+      "createdAt": "2025-12-26T14:49:53.790Z",
+      "updatedAt": "2025-12-26T14:49:53.790Z"
+    },
+    {
+      "id": "cmjmzn2wu000dsu1lv4wnva5p",
+      "menuId": "cmjmzn2w20008su1lp7p3y8m1",
+      "parentId": null,
+      "label": "Support",
+      "href": "/support",
+      "target": null,
+      "icon": null,
+      "order": 1,
+      "isActive": true,
+      "isExternal": false,
+      "createdAt": "2025-12-26T14:49:53.790Z",
+      "updatedAt": "2025-12-26T14:49:53.790Z"
+    },
+    {
+      "id": "cmjmzn2wu000esu1lubh05xnb",
+      "menuId": "cmjmzn2w20008su1lp7p3y8m1",
+      "parentId": null,
+      "label": "Contact",
+      "href": "/contact",
+      "target": null,
+      "icon": null,
+      "order": 2,
+      "isActive": true,
+      "isExternal": false,
+      "createdAt": "2025-12-26T14:49:53.790Z",
+      "updatedAt": "2025-12-26T14:49:53.790Z"
+    },
+    {
+      "id": "cmjmzn2wh0009su1l63ehpj7b",
+      "menuId": "cmjmzn2ve0007su1lp643cfsm",
+      "parentId": null,
+      "label": "بيت",
+      "href": "/",
+      "target": null,
+      "icon": null,
+      "order": 0,
+      "isActive": true,
+      "isExternal": false,
+      "createdAt": "2025-12-26T14:49:53.777Z",
+      "updatedAt": "2025-12-27T15:58:54.833Z"
+    },
+    {
+      "id": "cmjmzn2wh000asu1l9fzk6x2j",
+      "menuId": "cmjmzn2ve0007su1lp643cfsm",
+      "parentId": null,
+      "label": "شراء",
+      "href": "/shop",
+      "target": null,
+      "icon": null,
+      "order": 1,
+      "isActive": true,
+      "isExternal": false,
+      "createdAt": "2025-12-26T14:49:53.777Z",
+      "updatedAt": "2025-12-27T15:59:02.643Z"
+    },
+    {
+      "id": "cmjmzn2wh000bsu1lsf32fkql",
+      "menuId": "cmjmzn2ve0007su1lp643cfsm",
+      "parentId": null,
+      "label": "منتوجات جديدة",
+      "href": "/shop/new",
+      "target": null,
+      "icon": null,
+      "order": 2,
+      "isActive": true,
+      "isExternal": false,
+      "createdAt": "2025-12-26T14:49:53.777Z",
+      "updatedAt": "2025-12-27T15:59:15.057Z"
+    },
+    {
+      "id": "cmjojyp6d002qsu01dvqx020x",
+      "menuId": "cmjmzn2ve0007su1lp643cfsm",
+      "parentId": "cmjmzn2wh000bsu1lsf32fkql",
+      "label": "تواصل",
+      "href": "/contact",
+      "target": null,
+      "icon": null,
+      "order": 3,
+      "isActive": true,
+      "isExternal": false,
+      "createdAt": "2025-12-27T17:06:34.343Z",
+      "updatedAt": "2025-12-27T17:17:05.831Z"
+    }
+  ],
+  "mediaFolders": [],
+  "mediaAssets": [
+    {
+      "id": "cmjn72fba0000su01poix9xpu",
+      "kind": "IMAGE",
+      "filename": "1766332676486-611b8f30b9747.jpg",
+      "displayName": "1766332676486-611b8f30b9747.jpg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 51590,
+      "width": null,
+      "height": null,
+      "createdAt": "2025-12-25T16:05:40.000Z",
+      "updatedAt": "2025-12-26T18:17:46.972Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjn72fbd0001su01fi958lso",
+      "kind": "IMAGE",
+      "filename": "1766336235646-b272030425fa1.jpg",
+      "displayName": "1766336235646-b272030425fa1.jpg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 33500,
+      "width": null,
+      "height": null,
+      "createdAt": "2025-12-25T16:05:40.000Z",
+      "updatedAt": "2025-12-26T18:17:46.972Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjn72fbd0002su01m8s8ltk1",
+      "kind": "IMAGE",
+      "filename": "1766336293113-302309c695d8d.jpg",
+      "displayName": "1766336293113-302309c695d8d.jpg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 22335,
+      "width": null,
+      "height": null,
+      "createdAt": "2025-12-25T16:05:40.000Z",
+      "updatedAt": "2025-12-26T18:17:46.972Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjn72fbd0003su01n1v03vm5",
+      "kind": "IMAGE",
+      "filename": "1766703451109-f5f74756f4e2e.jpg",
+      "displayName": "1766703451109-f5f74756f4e2e.jpg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 43522,
+      "width": null,
+      "height": null,
+      "createdAt": "2025-12-25T22:57:31.386Z",
+      "updatedAt": "2025-12-26T18:17:46.972Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoips4w001csu01aqj8wtu7",
+      "kind": "IMAGE",
+      "filename": "1766853098183-5a5da17f56e52.jpeg",
+      "displayName": "WhatsApp Image 2025-12-24 at 13.07.03.jpeg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 52978,
+      "width": 1600,
+      "height": 1600,
+      "createdAt": "2025-12-27T16:31:38.671Z",
+      "updatedAt": "2025-12-27T16:31:38.671Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoiv134001jsu01me0l4rhx",
+      "kind": "IMAGE",
+      "filename": "1766853343073-9a4267ff7be76.jpeg",
+      "displayName": "WhatsApp Image 2025-12-27 at 18.28.23 (1).jpeg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 166944,
+      "width": 1152,
+      "height": 2048,
+      "createdAt": "2025-12-27T16:35:43.538Z",
+      "updatedAt": "2025-12-27T16:35:43.538Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoiv4me001ksu01jtbf96oi",
+      "kind": "IMAGE",
+      "filename": "1766853347766-57d8012f8f4f.jpeg",
+      "displayName": "WhatsApp Image 2025-12-27 at 18.28.23.jpeg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 135319,
+      "width": 1152,
+      "height": 2048,
+      "createdAt": "2025-12-27T16:35:48.133Z",
+      "updatedAt": "2025-12-27T16:35:48.133Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoiv9ru001lsu016mrxpspx",
+      "kind": "IMAGE",
+      "filename": "1766853354383-c372961dd12c2.jpeg",
+      "displayName": "WhatsApp Image 2025-12-27 at 18.28.24 (3).jpeg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 214766,
+      "width": 1152,
+      "height": 2048,
+      "createdAt": "2025-12-27T16:35:54.810Z",
+      "updatedAt": "2025-12-27T16:35:54.810Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoiva3s001msu01qsclngk4",
+      "kind": "IMAGE",
+      "filename": "1766853354391-6a956bfc7f6d5.jpeg",
+      "displayName": "WhatsApp Image 2025-12-27 at 18.28.24 (2).jpeg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 254433,
+      "width": 1152,
+      "height": 2048,
+      "createdAt": "2025-12-27T16:35:55.240Z",
+      "updatedAt": "2025-12-27T16:35:55.240Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoivafh001nsu01t36x93j2",
+      "kind": "IMAGE",
+      "filename": "1766853354404-d69c26fef71fe.jpeg",
+      "displayName": "WhatsApp Image 2025-12-27 at 18.28.24 (1).jpeg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 206490,
+      "width": 1152,
+      "height": 2048,
+      "createdAt": "2025-12-27T16:35:55.661Z",
+      "updatedAt": "2025-12-27T16:35:55.661Z",
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoivaqr001osu01umh8h499",
+      "kind": "IMAGE",
+      "filename": "1766853354422-9034a2587b62d.jpeg",
+      "displayName": "WhatsApp Image 2025-12-27 at 18.28.24.jpeg",
+      "folder": null,
+      "tags": [],
+      "mime": "image/jpeg",
+      "size": 253226,
+      "width": 1152,
+      "height": 2048,
+      "createdAt": "2025-12-27T16:35:56.067Z",
+      "updatedAt": "2025-12-27T16:35:56.067Z",
+      "dominantColorHex": null,
+      "palette": null
+    }
+  ],
+  "pages": [
+    {
+      "id": "cmjmzn33f0021su1lxaxsz1s1",
+      "name": "البيت",
+      "slug": "/",
+      "status": "PUBLISHED",
+      "headScripts": "",
+      "bodyScripts": "",
+      "customCss": "",
+      "canonicalUrl": "",
+      "seoTitle": "Estabrak Store",
+      "seoDescription": "New drops, timeless essentials.",
+      "ogImageUrl": null,
+      "noIndex": false,
+      "createdAt": "2025-12-26T14:49:54.028Z",
+      "updatedAt": "2025-12-27T16:00:30.485Z"
+    },
+    {
+      "id": "cmjojzyqf002rsu01froojfb4",
+      "name": "تواصل",
+      "slug": "/contact",
+      "status": "PUBLISHED",
+      "headScripts": "",
+      "bodyScripts": "",
+      "customCss": "",
+      "canonicalUrl": "",
+      "seoTitle": null,
+      "seoDescription": null,
+      "ogImageUrl": null,
+      "noIndex": false,
+      "createdAt": "2025-12-27T17:07:33.399Z",
+      "updatedAt": "2025-12-27T17:16:12.987Z"
+    }
+  ],
+  "pageSections": [
+    {
+      "id": "cmjn7bld6000dsu0192o4mawn",
+      "pageId": "cmjmzn33f0021su1lxaxsz1s1",
+      "type": "FAQ",
+      "data": {
+        "items": [
+          {
+            "answer": "اختر المنتج واللون والمقاس ثم أكمل الطلب.",
+            "question": "كيف أطلب؟"
+          },
+          {
+            "answer": "نرسل بسرعة حسب منطقتك.",
+            "question": "كم مدة الشحن؟"
+          }
+        ],
+        "title": "الأسئلة الشائعة"
+      },
+      "order": 3,
+      "isVisible": true,
+      "createdAt": "2025-12-26T18:24:54.763Z",
+      "updatedAt": "2025-12-26T21:38:17.520Z"
+    },
+    {
+      "id": "cmjn7blb3000bsu016dx9cgfl",
+      "pageId": "cmjmzn33f0021su1lxaxsz1s1",
+      "type": "FEATURED_PRODUCTS",
+      "data": {
+        "limit": 8,
+        "title": "منتجات مميزة"
+      },
+      "order": 2,
+      "isVisible": true,
+      "createdAt": "2025-12-26T18:24:54.687Z",
+      "updatedAt": "2025-12-26T21:38:17.513Z"
+    },
+    {
+      "id": "cmjn7ble6000fsu0164qyk74s",
+      "pageId": "cmjmzn33f0021su1lxaxsz1s1",
+      "type": "CTA",
+      "data": {
+        "text": "أرسل رسالة وسنرد عليك بسرعة",
+        "title": "تحتاج مساعدة؟",
+        "button": {
+          "href": "/contact",
+          "label": "تواصل"
+        }
+      },
+      "order": 4,
+      "isVisible": true,
+      "createdAt": "2025-12-26T18:24:54.798Z",
+      "updatedAt": "2025-12-26T21:38:17.522Z"
+    },
+    {
+      "id": "cmjn7bl6v0007su01hsncgxw1",
+      "pageId": "cmjmzn33f0021su1lxaxsz1s1",
+      "type": "NEW_ARRIVALS_SLIDER",
+      "data": {
+        "ui": {
+          "sectionClass": "",
+          "containerClass": ""
+        },
+        "limit": 11,
+        "title": "وصل حديثاً",
+        "twTokens": {
+          "style": {
+            "bg": "solid-gold",
+            "radius": "lg",
+            "borderWidth": "2"
+          },
+          "motion": {
+            "anim": "scale-in",
+            "once": false,
+            "delay": 0.1,
+            "easing": "sine.out",
+            "preset": "scale-in"
+          }
+        }
+      },
+      "order": 1,
+      "isVisible": true,
+      "createdAt": "2025-12-26T18:24:54.535Z",
+      "updatedAt": "2025-12-27T16:22:20.096Z"
+    },
+    {
+      "id": "cmjn7bl8x0009su01263e10zh",
+      "pageId": "cmjmzn33f0021su1lxaxsz1s1",
+      "type": "BANNER",
+      "data": {
+        "text": "شحن ",
+        "variant": "warning",
+        "twTokens": {
+          "decor": {
+            "after": {
+              "blur": "md",
+              "size": "xs",
+              "color": "neon",
+              "flipX": true,
+              "shape": "none",
+              "opacity": "80",
+              "placement": "background"
+            },
+            "before": {
+              "blur": "md",
+              "size": "sm",
+              "color": "neon",
+              "flipX": false,
+              "flipY": false,
+              "shape": "none",
+              "opacity": "50",
+              "placement": "background"
+            }
+          },
+          "style": {
+            "bg": "solid-gold",
+            "shadow": "md",
+            "borderWidth": "1"
+          },
+          "motion": {
+            "anim": "blur-in",
+            "once": false,
+            "delay": 0,
+            "easing": "elastic.out(1, 0.3)",
+            "preset": "blur-in",
+            "duration": 1.5,
+            "threshold": 0.3
+          },
+          "spacing": {
+            "paddingY": "lg"
+          }
+        },
+        "components": []
+      },
+      "order": 0,
+      "isVisible": true,
+      "createdAt": "2025-12-26T18:24:54.609Z",
+      "updatedAt": "2025-12-27T18:13:24.025Z"
+    }
+  ],
+  "pageTranslations": [],
+  "pageSectionTranslations": [],
+  "categories": [
+    {
+      "id": "cmjmzn2xg000fsu1l1tl4xew4",
+      "name": "Men",
+      "slug": "men",
+      "parentId": null,
+      "createdAt": "2025-12-26T14:49:53.812Z",
+      "updatedAt": "2025-12-26T14:49:53.812Z"
+    },
+    {
+      "id": "cmjmzn2xu000gsu1l4x5dujqt",
+      "name": "Women",
+      "slug": "women",
+      "parentId": null,
+      "createdAt": "2025-12-26T14:49:53.827Z",
+      "updatedAt": "2025-12-26T14:49:53.827Z"
+    },
+    {
+      "id": "cmjmzn2y1000hsu1l2nhkcrwf",
+      "name": "Accessories",
+      "slug": "accessories",
+      "parentId": null,
+      "createdAt": "2025-12-26T14:49:53.833Z",
+      "updatedAt": "2025-12-26T14:49:53.833Z"
+    }
+  ],
+  "sizes": [
+    {
+      "id": "cmjmzn2u40001su1lol50ntp0",
+      "name": "XS",
+      "order": 0,
+      "active": true
+    },
+    {
+      "id": "cmjmzn2ud0002su1lphkzazk4",
+      "name": "S",
+      "order": 1,
+      "active": true
+    },
+    {
+      "id": "cmjmzn2ul0003su1lt7b6mt56",
+      "name": "M",
+      "order": 2,
+      "active": true
+    },
+    {
+      "id": "cmjmzn2uu0004su1luks32x9p",
+      "name": "L",
+      "order": 3,
+      "active": true
+    },
+    {
+      "id": "cmjmzn2uz0005su1lfcseqvdk",
+      "name": "XL",
+      "order": 4,
+      "active": true
+    },
+    {
+      "id": "cmjmzn2v40006su1lcbum8whc",
+      "name": "XXL",
+      "order": 5,
+      "active": true
+    },
+    {
+      "id": "cmjoj2bxp002bsu013f7i94zl",
+      "name": "one Size",
+      "order": 6,
+      "active": true
+    }
+  ],
+  "products": [
+    {
+      "id": "cmjmzn2yf000jsu1lmxl9245n",
+      "title": "Classic Tee",
+      "slug": "classic-tee",
+      "description": "Breathable cotton crew neck with a tailored fit.",
+      "isActive": true,
+      "categoryId": "cmjmzn2xg000fsu1l1tl4xew4",
+      "createdAt": "2025-12-26T14:49:53.845Z",
+      "updatedAt": "2025-12-26T14:49:53.845Z"
+    },
+    {
+      "id": "cmjoit01n001esu01jfjd3pby",
+      "title": "فستيان صوف",
+      "slug": "-",
+      "description": "فستيان رائع",
+      "isActive": true,
+      "categoryId": "cmjmzn2xu000gsu1l4x5dujqt",
+      "createdAt": "2025-12-27T16:34:08.891Z",
+      "updatedAt": "2025-12-27T19:04:32.706Z"
+    },
+    {
+      "id": "cmjmzn3180015su1l7quj2dw4",
+      "title": "Everyday Hoodie",
+      "slug": "everyday-hoodie",
+      "description": "Soft fleece hoodie with a relaxed drop-shoulder cut.",
+      "isActive": true,
+      "categoryId": "cmjmzn2xu000gsu1l4x5dujqt",
+      "createdAt": "2025-12-26T14:49:53.948Z",
+      "updatedAt": "2025-12-27T12:36:25.005Z"
+    },
+    {
+      "id": "cmjmzn32j001qsu1lvwmqcrv4",
+      "title": "Minimal Sneakers",
+      "slug": "minimal-sneakers",
+      "description": "Low-profile leather sneakers for daily wear.",
+      "isActive": true,
+      "categoryId": "cmjmzn2y1000hsu1l2nhkcrwf",
+      "createdAt": "2025-12-26T14:49:53.995Z",
+      "updatedAt": "2025-12-27T16:26:22.471Z"
+    }
+  ],
+  "productItems": [
+    {
+      "id": "cmjmzn2yw000lsu1laqnv735f",
+      "productId": "cmjmzn2yf000jsu1lmxl9245n",
+      "colorName": "Black",
+      "colorHex": "#111111",
+      "suggestedColors": null,
+      "skuBase": "TEE-BLK",
+      "isActive": true,
+      "createdAt": "2025-12-26T14:49:53.864Z",
+      "updatedAt": "2025-12-26T14:49:53.864Z"
+    },
+    {
+      "id": "cmjmzn30d000vsu1lafpsza58",
+      "productId": "cmjmzn2yf000jsu1lmxl9245n",
+      "colorName": "White",
+      "colorHex": "#f5f5f5",
+      "suggestedColors": null,
+      "skuBase": "TEE-WHT",
+      "isActive": true,
+      "createdAt": "2025-12-26T14:49:53.918Z",
+      "updatedAt": "2025-12-26T14:49:53.918Z"
+    },
+    {
+      "id": "cmjmzn31g0017su1l23dxa812",
+      "productId": "cmjmzn3180015su1l7quj2dw4",
+      "colorName": "Heather Gray",
+      "colorHex": "#9ca3af",
+      "suggestedColors": null,
+      "skuBase": "HD-GRY",
+      "isActive": true,
+      "createdAt": "2025-12-26T14:49:53.956Z",
+      "updatedAt": "2025-12-27T12:36:25.014Z"
+    },
+    {
+      "id": "cmjmzn31w001hsu1lqcghonq2",
+      "productId": "cmjmzn3180015su1l7quj2dw4",
+      "colorName": "Olive",
+      "colorHex": "#4b5320",
+      "suggestedColors": null,
+      "skuBase": "HD-OLV",
+      "isActive": true,
+      "createdAt": "2025-12-26T14:49:53.973Z",
+      "updatedAt": "2025-12-27T12:36:25.083Z"
+    },
+    {
+      "id": "cmjmzn32p001ssu1lk7w7bt4j",
+      "productId": "cmjmzn32j001qsu1lvwmqcrv4",
+      "colorName": "Sand",
+      "colorHex": "#feb800",
+      "suggestedColors": null,
+      "skuBase": "SNK-SND",
+      "isActive": true,
+      "createdAt": "2025-12-26T14:49:54.001Z",
+      "updatedAt": "2025-12-27T16:26:22.473Z"
+    },
+    {
+      "id": "cmjoit020001gsu01k20765r2",
+      "productId": "cmjoit01n001esu01jfjd3pby",
+      "colorName": "Default",
+      "colorHex": "#805848",
+      "suggestedColors": null,
+      "skuBase": "PRODUCT-DEFAULT",
+      "isActive": true,
+      "createdAt": "2025-12-27T16:34:08.904Z",
+      "updatedAt": "2025-12-27T19:04:32.708Z"
+    },
+    {
+      "id": "cmjoixngp001qsu01744jl2q4",
+      "productId": "cmjoit01n001esu01jfjd3pby",
+      "colorName": "#000000",
+      "colorHex": "#000000",
+      "suggestedColors": null,
+      "skuBase": "فستيان اسود",
+      "isActive": true,
+      "createdAt": "2025-12-27T16:37:45.865Z",
+      "updatedAt": "2025-12-27T19:04:32.723Z"
+    },
+    {
+      "id": "cmjoj04rw0024su01j79ir79v",
+      "productId": "cmjoit01n001esu01jfjd3pby",
+      "colorName": "#55312a",
+      "colorHex": "#55312a",
+      "suggestedColors": [
+        "#d8d8d8",
+        "#684838",
+        "#482828",
+        "#686868",
+        "#b8b8b8",
+        "#885848"
+      ],
+      "skuBase": "فستيان بني",
+      "isActive": true,
+      "createdAt": "2025-12-27T16:39:41.612Z",
+      "updatedAt": "2025-12-27T19:04:32.732Z"
+    },
+    {
+      "id": "cmjokh84s0031su01qem3ybp5",
+      "productId": "cmjoit01n001esu01jfjd3pby",
+      "colorName": "رمادي",
+      "colorHex": "#a1aebb",
+      "suggestedColors": null,
+      "skuBase": "PRODUCT-GRAY",
+      "isActive": true,
+      "createdAt": "2025-12-27T17:20:58.732Z",
+      "updatedAt": "2025-12-27T19:04:32.740Z"
+    }
+  ],
+  "productVariants": [
+    {
+      "id": "cmjmzn2zo000psu1lw9u2yu80",
+      "productItemId": "cmjmzn2yw000lsu1laqnv735f",
+      "sizeId": "cmjmzn2ud0002su1lphkzazk4",
+      "sku": "TEE-BLK-S",
+      "price": "89",
+      "compareAt": "119",
+      "stock": 12,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.892Z",
+      "updatedAt": "2025-12-26T14:49:53.892Z"
+    },
+    {
+      "id": "cmjmzn2zz000rsu1lvd2p5xom",
+      "productItemId": "cmjmzn2yw000lsu1laqnv735f",
+      "sizeId": "cmjmzn2ul0003su1lt7b6mt56",
+      "sku": "TEE-BLK-M",
+      "price": "89",
+      "compareAt": "119",
+      "stock": 16,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.903Z",
+      "updatedAt": "2025-12-26T14:49:53.903Z"
+    },
+    {
+      "id": "cmjmzn307000tsu1lliqcsetq",
+      "productItemId": "cmjmzn2yw000lsu1laqnv735f",
+      "sizeId": "cmjmzn2uu0004su1luks32x9p",
+      "sku": "TEE-BLK-L",
+      "price": "89",
+      "compareAt": "119",
+      "stock": 10,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.911Z",
+      "updatedAt": "2025-12-26T14:49:53.911Z"
+    },
+    {
+      "id": "cmjmzn30p000zsu1lagxbd3z5",
+      "productItemId": "cmjmzn30d000vsu1lafpsza58",
+      "sizeId": "cmjmzn2ud0002su1lphkzazk4",
+      "sku": "TEE-WHT-S",
+      "price": "89",
+      "compareAt": null,
+      "stock": 8,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.929Z",
+      "updatedAt": "2025-12-26T14:49:53.929Z"
+    },
+    {
+      "id": "cmjmzn30v0011su1lph4bzp3f",
+      "productItemId": "cmjmzn30d000vsu1lafpsza58",
+      "sizeId": "cmjmzn2ul0003su1lt7b6mt56",
+      "sku": "TEE-WHT-M",
+      "price": "89",
+      "compareAt": null,
+      "stock": 14,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.935Z",
+      "updatedAt": "2025-12-26T14:49:53.935Z"
+    },
+    {
+      "id": "cmjmzn3110013su1lu9b916r8",
+      "productItemId": "cmjmzn30d000vsu1lafpsza58",
+      "sizeId": "cmjmzn2uu0004su1luks32x9p",
+      "sku": "TEE-WHT-L",
+      "price": "89",
+      "compareAt": null,
+      "stock": 9,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.941Z",
+      "updatedAt": "2025-12-26T14:49:53.941Z"
+    },
+    {
+      "id": "cmjmzn336001ysu1l2yhv2u8w",
+      "productItemId": "cmjmzn32p001ssu1lk7w7bt4j",
+      "sizeId": "cmjmzn2uu0004su1luks32x9p",
+      "sku": "SNK-SND-L",
+      "price": "299",
+      "compareAt": null,
+      "stock": 6,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:54.019Z",
+      "updatedAt": "2025-12-27T16:26:22.478Z"
+    },
+    {
+      "id": "cmjmzn33b0020su1lqqx9uc1m",
+      "productItemId": "cmjmzn32p001ssu1lk7w7bt4j",
+      "sizeId": "cmjmzn2uz0005su1lfcseqvdk",
+      "sku": "SNK-SND-XL",
+      "price": "299",
+      "compareAt": null,
+      "stock": 3,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:54.023Z",
+      "updatedAt": "2025-12-27T16:26:22.480Z"
+    },
+    {
+      "id": "cmjmzn332001wsu1lfvw044mq",
+      "productItemId": "cmjmzn32p001ssu1lk7w7bt4j",
+      "sizeId": "cmjmzn2ul0003su1lt7b6mt56",
+      "sku": "SNK-SND-M",
+      "price": "299",
+      "compareAt": null,
+      "stock": 4,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:54.015Z",
+      "updatedAt": "2025-12-27T16:26:22.482Z"
+    },
+    {
+      "id": "cmjmzn31l001bsu1looahpnvj",
+      "productItemId": "cmjmzn31g0017su1l23dxa812",
+      "sizeId": "cmjmzn2ud0002su1lphkzazk4",
+      "sku": "HD-GRY-S",
+      "price": "149",
+      "compareAt": "179",
+      "stock": 6,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.962Z",
+      "updatedAt": "2025-12-27T12:36:25.038Z"
+    },
+    {
+      "id": "cmjmzn31p001dsu1le3dfwxkr",
+      "productItemId": "cmjmzn31g0017su1l23dxa812",
+      "sizeId": "cmjmzn2ul0003su1lt7b6mt56",
+      "sku": "HD-GRY-M",
+      "price": "149",
+      "compareAt": "179",
+      "stock": 10,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.965Z",
+      "updatedAt": "2025-12-27T12:36:25.055Z"
+    },
+    {
+      "id": "cmjmzn31t001fsu1loos8fshb",
+      "productItemId": "cmjmzn31g0017su1l23dxa812",
+      "sizeId": "cmjmzn2uu0004su1luks32x9p",
+      "sku": "HD-GRY-L",
+      "price": "149",
+      "compareAt": "179",
+      "stock": 7,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.970Z",
+      "updatedAt": "2025-12-27T12:36:25.063Z"
+    },
+    {
+      "id": "cmjmzn32b001msu1lw6impsp7",
+      "productItemId": "cmjmzn31w001hsu1lqcghonq2",
+      "sizeId": "cmjmzn2ul0003su1lt7b6mt56",
+      "sku": "HD-OLV-M",
+      "price": "149",
+      "compareAt": null,
+      "stock": 9,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.987Z",
+      "updatedAt": "2025-12-27T12:36:25.097Z"
+    },
+    {
+      "id": "cmjmzn32e001osu1li04ssbpe",
+      "productItemId": "cmjmzn31w001hsu1lqcghonq2",
+      "sizeId": "cmjmzn2uu0004su1luks32x9p",
+      "sku": "HD-OLV-L",
+      "price": "149",
+      "compareAt": null,
+      "stock": 5,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.990Z",
+      "updatedAt": "2025-12-27T12:36:25.106Z"
+    },
+    {
+      "id": "cmjmzn326001ksu1l219d86d5",
+      "productItemId": "cmjmzn31w001hsu1lqcghonq2",
+      "sizeId": "cmjmzn2ud0002su1lphkzazk4",
+      "sku": "HD-OLV-S",
+      "price": "149",
+      "compareAt": null,
+      "stock": 5,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-26T14:49:53.982Z",
+      "updatedAt": "2025-12-27T12:36:25.114Z"
+    },
+    {
+      "id": "cmjoit026001isu01403tfdww",
+      "productItemId": "cmjoit020001gsu01k20765r2",
+      "sizeId": "cmjoj2bxp002bsu013f7i94zl",
+      "sku": "PRODUCT-DEFAULT-XS",
+      "price": "160",
+      "compareAt": null,
+      "stock": 2,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-27T16:34:08.911Z",
+      "updatedAt": "2025-12-27T19:04:32.718Z"
+    },
+    {
+      "id": "cmjoixngu001wsu0153cazxmx",
+      "productItemId": "cmjoixngp001qsu01744jl2q4",
+      "sizeId": "cmjoj2bxp002bsu013f7i94zl",
+      "sku": "فستيان اسود",
+      "price": "160",
+      "compareAt": null,
+      "stock": 3,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-27T16:37:45.870Z",
+      "updatedAt": "2025-12-27T19:04:32.730Z"
+    },
+    {
+      "id": "cmjoj0reh002asu01kugwkcyl",
+      "productItemId": "cmjoj04rw0024su01j79ir79v",
+      "sizeId": "cmjoj2bxp002bsu013f7i94zl",
+      "sku": "فستيان بني",
+      "price": "160",
+      "compareAt": null,
+      "stock": 3,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-27T16:40:10.937Z",
+      "updatedAt": "2025-12-27T19:04:32.738Z"
+    },
+    {
+      "id": "cmjokidl70035su01q0azkqkf",
+      "productItemId": "cmjokh84s0031su01qem3ybp5",
+      "sizeId": "cmjoj2bxp002bsu013f7i94zl",
+      "sku": "فستان ازرق",
+      "price": "20",
+      "compareAt": null,
+      "stock": 1,
+      "lowStockThreshold": 0,
+      "weightGrams": null,
+      "createdAt": "2025-12-27T17:21:52.459Z",
+      "updatedAt": "2025-12-27T19:04:32.743Z"
+    }
+  ],
+  "productItemImages": [
+    {
+      "id": "cmjmzn2zd000msu1l6x2jrc3d",
+      "productItemId": "cmjmzn2yw000lsu1laqnv735f",
+      "url": "https://picsum.photos/seed/estabrak-tee-black-1/1000/1000",
+      "alt": "Black Classic Tee 1",
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-26T14:49:53.881Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn2zd000nsu1lugi8f6up",
+      "productItemId": "cmjmzn2yw000lsu1laqnv735f",
+      "url": "https://picsum.photos/seed/estabrak-tee-black-2/1000/1000",
+      "alt": "Black Classic Tee 2",
+      "position": 1,
+      "isPrimary": false,
+      "createdAt": "2025-12-26T14:49:53.881Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn30j000wsu1lyyi8xkga",
+      "productItemId": "cmjmzn30d000vsu1lafpsza58",
+      "url": "https://picsum.photos/seed/estabrak-tee-white-1/1000/1000",
+      "alt": "White Classic Tee 1",
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-26T14:49:53.923Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn30j000xsu1lr3ddexni",
+      "productItemId": "cmjmzn30d000vsu1lafpsza58",
+      "url": "https://picsum.photos/seed/estabrak-tee-white-2/1000/1000",
+      "alt": "White Classic Tee 2",
+      "position": 1,
+      "isPrimary": false,
+      "createdAt": "2025-12-26T14:49:53.923Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoiy49k001ysu019kj83nfa",
+      "productItemId": "cmjoit020001gsu01k20765r2",
+      "url": "http://localhost:4000/uploads/images/1766853354422-9034a2587b62d.jpeg",
+      "alt": null,
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-27T16:38:07.640Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoiy49o0020su01rbzr9y2l",
+      "productItemId": "cmjoit020001gsu01k20765r2",
+      "url": "http://localhost:4000/uploads/images/1766853354404-d69c26fef71fe.jpeg",
+      "alt": null,
+      "position": 1,
+      "isPrimary": false,
+      "createdAt": "2025-12-27T16:38:07.644Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoixngq001ssu01estu1joy",
+      "productItemId": "cmjoixngp001qsu01744jl2q4",
+      "url": "http://localhost:4000/uploads/images/1766853347766-57d8012f8f4f.jpeg",
+      "alt": null,
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-27T16:37:45.867Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoixngs001usu01uv1jnc54",
+      "productItemId": "cmjoixngp001qsu01744jl2q4",
+      "url": "http://localhost:4000/uploads/images/1766853343073-9a4267ff7be76.jpeg",
+      "alt": null,
+      "position": 1,
+      "isPrimary": false,
+      "createdAt": "2025-12-27T16:37:45.869Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoj04s20026su01eyrcjqlu",
+      "productItemId": "cmjoj04rw0024su01j79ir79v",
+      "url": "http://localhost:4000/uploads/images/1766853354391-6a956bfc7f6d5.jpeg",
+      "alt": null,
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-27T16:39:41.617Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjoj04s80028su01nub87fap",
+      "productItemId": "cmjoj04rw0024su01j79ir79v",
+      "url": "http://localhost:4000/uploads/images/1766853354383-c372961dd12c2.jpeg",
+      "alt": null,
+      "position": 1,
+      "isPrimary": false,
+      "createdAt": "2025-12-27T16:39:41.624Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn32w001tsu1lwekyx9e8",
+      "productItemId": "cmjmzn32p001ssu1lk7w7bt4j",
+      "url": "https://picsum.photos/seed/estabrak-sneaker-sand-1/1000/1000",
+      "alt": "Sand Minimal Sneakers 1",
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-26T14:49:54.008Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn32w001usu1l28kzfi10",
+      "productItemId": "cmjmzn32p001ssu1lk7w7bt4j",
+      "url": "https://picsum.photos/seed/estabrak-sneaker-sand-2/1000/1000",
+      "alt": "Sand Minimal Sneakers 2",
+      "position": 1,
+      "isPrimary": false,
+      "createdAt": "2025-12-26T14:49:54.008Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjokhogi0033su01opd6uvkq",
+      "productItemId": "cmjokh84s0031su01qem3ybp5",
+      "url": "http://localhost:4000/uploads/images/1766703451109-f5f74756f4e2e.jpg",
+      "alt": null,
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-27T17:21:19.890Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn31j0018su1lhnr4hpya",
+      "productItemId": "cmjmzn31g0017su1l23dxa812",
+      "url": "https://picsum.photos/seed/estabrak-hoodie-gray-1/1000/1000",
+      "alt": "Heather Gray Everyday Hoodie 1",
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-26T14:49:53.959Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn31j0019su1lsalkgmqo",
+      "productItemId": "cmjmzn31g0017su1l23dxa812",
+      "url": "https://picsum.photos/seed/estabrak-hoodie-gray-2/1000/1000",
+      "alt": "Heather Gray Everyday Hoodie 2",
+      "position": 1,
+      "isPrimary": false,
+      "createdAt": "2025-12-26T14:49:53.959Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    },
+    {
+      "id": "cmjmzn321001isu1ltp7568nh",
+      "productItemId": "cmjmzn31w001hsu1lqcghonq2",
+      "url": "https://picsum.photos/seed/estabrak-hoodie-olive-1/1000/1000",
+      "alt": "Olive Everyday Hoodie 1",
+      "position": 0,
+      "isPrimary": true,
+      "createdAt": "2025-12-26T14:49:53.977Z",
+      "view": null,
+      "dominantColorHex": null,
+      "palette": null
+    }
+  ],
+  "coupons": [
+    {
+      "id": "cmjo6m1t3000nsu010rluxf3y",
+      "code": "WELCOME10",
+      "usageLimit": null,
+      "usedCount": 1,
+      "discountType": "PERCENT",
+      "discountValue": "10",
+      "maxDiscount": null,
+      "minCart": null,
+      "isActive": true,
+      "startsAt": null,
+      "endsAt": null,
+      "note": null,
+      "createdAt": "2025-12-27T10:52:49.186Z",
+      "updatedAt": "2025-12-27T10:55:35.382Z"
+    }
+  ]
+}

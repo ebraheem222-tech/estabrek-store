@@ -1,0 +1,828 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * ===================== Enums =====================
+ */
+enum Locale {
+  ar
+  he
+  en
+}
+
+enum Role {
+  SUPERADMIN
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderReqStatus {
+  NEW
+  CONTACTED
+  ACCEPTED
+  REJECTED
+  SHIPPED
+  CLOSED
+}
+
+enum Channel {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+enum OutboxStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NavLocation {
+  HEADER
+  FOOTER
+  SECONDARY
+  CUSTOM
+}
+
+enum PageSectionType {
+  HERO
+  RICH_TEXT
+  CUSTOM_HTML
+  GRID
+  BANNER
+  FEATURED_CATEGORIES
+  COLLECTIONS_GRID
+  BEST_SELLERS_SLIDER
+  NEW_ARRIVALS_SLIDER
+  BRANDS_SLIDER
+  FEATURED_PRODUCTS
+  IMAGE_GALLERY
+  FAQ
+  TESTIMONIALS
+  CTA
+  CARDS
+  VIDEO
+  NEWSLETTER
+}
+
+enum TwoFactorMethod {
+  TOTP
+  SMS
+  EMAIL
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  MFA_CHALLENGE_SUCCESS
+  MFA_CHALLENGE_FAILURE
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
+  EMAIL_CHANGE_REQUESTED
+  EMAIL_CHANGED
+  PHONE_CHANGED
+  SESSION_CREATED
+  SESSION_REVOKED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+}
+
+
+
+enum AdminOtpPurpose {
+  MFA_SMS
+  PHONE_LOGIN
+  ENABLE_SMS_2FA
+  PHONE_VERIFY
+}
+
+
+enum CouponDiscountType {
+  PERCENT
+  FIXED
+}
+/**
+ * ============ Single Admin + Security/Auth ============
+ */
+model AdminUser {
+  id           String @id @default(cuid())
+  email        String @unique
+  name         String
+  passwordHash String
+  role         Role   @default(SUPERADMIN)
+
+  emailVerifiedAt DateTime?
+  phone           String?
+  phoneVerifiedAt DateTime?
+  secondEmail     String?
+  secondPhone     String?
+
+  twoFactorEnabled Boolean @default(false)
+
+  // one-to-one pointer to the default 2FA device
+  default2FADeviceId String?         @unique
+  default2FADevice   Admin2FADevice? @relation("AdminUserDefault2FA", fields: [default2FADeviceId], references: [id], onDelete: SetNull)
+
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  lastIp           String?
+
+  // other relations
+  sessions       AdminSession[]
+  twoFADevices   Admin2FADevice[]
+  recoveryCodes  Admin2FARecoveryCode[]
+  securityEvents AdminSecurityEvent[]
+  passwordResets AdminPasswordReset[]
+  emailChanges   AdminEmailChange[]
+  otpChallenges  AdminOtpChallenge[]
+
+  inventoryAdjustments InventoryAdjustment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([role])
+}
+
+model AdminSession {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String?       @unique
+  ip               String?
+  userAgent        String?
+  status           SessionStatus @default(ACTIVE)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  revocationReason String?
+
+  @@index([adminUserId, status])
+  @@index([expiresAt])
+}
+
+model AdminPasswordReset {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  // Reset token is sent as "tokenId.secret" (we store only a hash of the secret)
+  tokenId   String @unique
+  tokenHash String
+
+  expiresAt   DateTime
+  usedAt      DateTime?
+  requesterIp String?
+  requesterUa String?
+  createdAt   DateTime @default(now())
+
+  @@index([adminUserId, expiresAt])
+  @@index([tokenId, expiresAt])
+}
+
+model AdminOtpChallenge {
+  id          String     @id @default(cuid())
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  purpose AdminOtpPurpose
+  channel Channel @default(SMS)
+  to      String
+
+  codeHash     String
+  expiresAt    DateTime
+  usedAt       DateTime?
+  attempts     Int      @default(0)
+  requesterIp  String?
+  requesterUa  String?
+  createdAt    DateTime @default(now())
+
+  @@index([adminUserId, purpose, expiresAt])
+  @@index([to, purpose, expiresAt])
+}
+
+model AdminEmailChange {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  newEmail  String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([adminUserId, newEmail])
+}
+
+model Admin2FADevice {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  // ⬇️ back-relation for the named one-to-one above
+  defaultFor AdminUser? @relation("AdminUserDefault2FA")
+
+  label         String?
+  method        TwoFactorMethod
+  totpSecretEnc String?
+  targetPhone   String?
+  targetEmail   String?
+
+  enabled    Boolean   @default(true)
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([adminUserId, method])
+}
+
+model Admin2FARecoveryCode {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([adminUserId])
+}
+
+model AdminSecurityEvent {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  type      SecurityEventType
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  at        DateTime          @default(now())
+
+  @@index([adminUserId, type, at])
+}
+
+/**
+ * ============ Site Settings / Menus / Pages ============
+ */
+model SiteSettings {
+  id         String  @id @default(cuid())
+  siteName   String  @default("My Store")
+  currencyCode String @default("ILS")
+  logoUrl    String?
+  faviconUrl String?
+
+  // Global announcement bar (Top Bar)
+  announcementIsActive Boolean @default(false)
+  announcementText     String?
+  announcementLinkUrl  String?
+
+  header Json?
+  footer Json?
+
+  // Newsletter
+  newsletterIsActive Boolean @default(false)
+  newsletterTitle    String?
+  newsletterText     String?
+  newsletterSuccess  String?
+
+  primaryNavId String?
+  primaryNav   NavigationMenu? @relation("PrimaryNav", fields: [primaryNavId], references: [id], onDelete: SetNull)
+
+  footerNavId String?
+  footerNav   NavigationMenu? @relation("FooterNav", fields: [footerNavId], references: [id], onDelete: SetNull)
+
+  scriptsHead Json?
+  scriptsBody Json?
+  customCss   String?
+
+  contactEmail String?
+  contactPhone String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NavigationMenu {
+  id        String      @id @default(cuid())
+  name      String
+  location  NavLocation @default(CUSTOM)
+  isDefault Boolean     @default(false)
+
+  items NavigationItem[]
+
+  // back-relations for the named relations above:
+  usedAsPrimary SiteSettings[] @relation("PrimaryNav")
+  usedAsFooter  SiteSettings[] @relation("FooterNav")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, location])
+}
+
+model NavigationItem {
+  id     String         @id @default(cuid())
+  menuId String
+  menu   NavigationMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   NavigationItem?  @relation("NavItemChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children NavigationItem[] @relation("NavItemChildren")
+
+  label      String
+  href       String
+  target     String?
+  icon       String?
+  order      Int     @default(0)
+  isActive   Boolean @default(true)
+  isExternal Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([menuId, parentId, order])
+}
+
+model Page {
+  id     String     @id @default(cuid())
+  name   String
+  slug   String     @unique // "/", "/about", etc.
+  status PageStatus @default(DRAFT)
+
+  sections PageSection[]
+  translations PageTranslation[]
+
+  headScripts Json?
+  bodyScripts Json?
+  customCss   String?
+  canonicalUrl String?
+
+  // SEO
+  seoTitle       String?
+  seoDescription String?
+  ogImageUrl     String?
+  noIndex        Boolean    @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ====================== Media Library ======================
+ */
+model MediaAsset {
+
+  id          String   @id @default(cuid())
+  kind        String   @default("IMAGE")
+
+  /** stored filename on disk (uploads/images/<filename>) */
+  filename    String   @unique
+
+  /** user-friendly name shown in admin UI (renaming doesn't break URLs) */
+  displayName String?
+
+  /** optional folder name for organization (e.g. "home", "products", "hero") */
+  folder      String?
+
+  /** free-form tags */
+  tags        String[] @default([])
+
+  mime        String
+  size        Int
+  width       Int?
+  height      Int?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+/** dominant color extracted for UX grouping / swatches */
+dominantColorHex String?
+/** palette extracted (array of hex strings) */
+palette          Json?
+  @@index([folder])
+}
+
+model MediaFolder {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PageSection {
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  type      PageSectionType
+  data      Json
+  order     Int             @default(0)
+  isVisible Boolean         @default(true)
+
+  translations PageSectionTranslation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId, order])
+}
+
+/**
+ * ================== Storefront Users ==================
+ */
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviews  Review[]
+  comments ProductComment[]
+}
+
+/**
+ * ====================== Catalog ======================
+ */
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  parentId  String?
+  parent    Category?  @relation("CategoryToChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryToChildren")
+  products  Product[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([parentId])
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String           @unique
+  description String?
+  isActive    Boolean          @default(true)
+  categoryId  String
+  category    Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  items       ProductItem[]
+  reviews     Review[]
+  comments    ProductComment[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([categoryId])
+}
+
+model ProductItem {
+  id        String             @id @default(cuid())
+  productId String
+  product   Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorName String
+  colorHex  String?
+  // Palette extracted / suggested for UI swatches (array of hex strings)
+  suggestedColors Json?
+  skuBase   String
+  isActive  Boolean            @default(true)
+  images    ProductItemImage[]
+  variants  ProductVariant[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([productId, colorName])
+}
+
+model Size {
+  id       String           @id @default(cuid())
+  name     String           @unique
+  order    Int              @default(0)
+  active   Boolean          @default(true)
+  variants ProductVariant[]
+}
+
+model ProductVariant {
+  id            String      @id @default(cuid())
+  productItemId String
+  item          ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+  sizeId        String
+  size          Size        @relation(fields: [sizeId], references: [id], onDelete: Restrict)
+  sku           String      @unique
+  price         Decimal     @db.Decimal(10, 2)
+  compareAt     Decimal?    @db.Decimal(10, 2)
+  stock         Int         @default(0)
+  lowStockThreshold Int     @default(0)
+  weightGrams   Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  inventoryAdjustments InventoryAdjustment[]
+  orderRequests OrderRequest[]
+  orderRequestItems OrderRequestItem[]
+  @@unique([productItemId, sizeId])
+}
+model InventoryAdjustment {
+  id          String        @id @default(cuid())
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  delta       Int
+  beforeStock Int
+  afterStock  Int
+  reason      String?
+
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+
+  @@index([variantId])
+  @@index([adminUserId])
+  @@index([createdAt])
+}
+
+model ProductItemImage {
+
+  id            String      @id @default(cuid())
+  productItemId String
+  item          ProductItem @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+  url           String
+  alt           String?
+  position      Int         @default(0)
+  isPrimary     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+
+/** optional view role e.g. front/back/side/detail */
+view             String?
+/** dominant color extracted at upload time */
+dominantColorHex String?
+/** palette extracted (array of hex strings) */
+palette          Json?
+  @@index([productItemId])
+}
+
+/**
+ * ====================== UGC ======================
+ */
+model Review {
+  id        String       @id @default(cuid())
+  productId String
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  rating    Int
+  title     String?
+  body      String
+  status    ReviewStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([productId])
+}
+
+model ProductComment {
+  id        String        @id @default(cuid())
+  productId String
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  body      String
+  status    CommentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+
+  @@index([productId])
+}
+
+/**
+ * =========== Order Requests + Outbox/History ===========
+ */
+model OrderRequest {
+  id           String         @id @default(cuid())
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  quantity     Int            @default(1)
+
+  // snapshot pricing at request time (helps reporting + coupons)
+  unitPrice      Decimal? @db.Decimal(10, 2)
+  subtotal       Decimal? @db.Decimal(10, 2)
+  discountAmount Decimal? @db.Decimal(10, 2)
+  total          Decimal? @db.Decimal(10, 2)
+
+  currencyCode   String   @default("ILS")
+
+  items          OrderRequestItem[]
+
+  couponId   String?
+  coupon     Coupon?  @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode String?
+  couponRedemption CouponRedemption?
+
+  customerName String
+  phone        String
+  whatsapp     String?
+  country      String?
+  city         String?
+  address      String?
+  note         String?
+  status       OrderReqStatus @default(NEW)
+  source       String?
+  contactedAt  DateTime?
+  acceptedAt   DateTime?
+  rejectedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  messages OutboxMessage[]
+  history  OrderRequestHistory[]
+
+  @@index([status])
+}
+
+model OutboxMessage {
+  id             String        @id @default(cuid())
+  channel        Channel
+  to             String
+  template       String?
+  payloadJson    Json?
+  status         OutboxStatus  @default(QUEUED)
+  lastError      String?
+  orderRequestId String?
+  orderRequest   OrderRequest? @relation(fields: [orderRequestId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status])
+}
+
+model OrderRequestHistory {
+  id             String          @id @default(cuid())
+  orderRequestId String
+  orderRequest   OrderRequest    @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+  fromStatus     OrderReqStatus?
+  toStatus       OrderReqStatus
+  note           String?
+  at             DateTime        @default(now())
+
+  @@index([orderRequestId])
+}
+
+model OrderRequestItem {
+  id             String         @id @default(cuid())
+  orderRequestId String
+  orderRequest   OrderRequest   @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  quantity     Int     @default(1)
+
+  // snapshot pricing at request time
+  unitPrice    Decimal @db.Decimal(10, 2)
+  lineSubtotal Decimal @db.Decimal(10, 2)
+
+  // snapshot product context (for stable order viewing even if catalog changes)
+  productId    String
+  productTitle String
+  productSlug  String?
+  itemId       String?
+  colorName    String?
+  colorHex     String?
+  sizeId       String?
+  sizeName     String?
+  sku          String?
+  imageUrl     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderRequestId])
+  @@index([variantId])
+}
+
+/**
+ * =========== Coupons ==========
+ * Admin-only for now (CRUD). Apply logic can be added later in storefront/checkout.
+ */
+model Coupon {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  usageLimit Int?
+  usedCount  Int      @default(0)
+
+  // discount definition
+  discountType  CouponDiscountType @default(PERCENT)
+  discountValue Decimal            @db.Decimal(10, 2) @default(0)
+  // for percent discounts, optionally cap
+  maxDiscount   Decimal?           @db.Decimal(10, 2)
+  minCart    Decimal? @db.Decimal(10, 2)
+  isActive   Boolean  @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  note       String?
+
+  // relations
+  orderRequests OrderRequest[]
+  redemptions   CouponRedemption[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([code])
+}
+
+
+model CouponRedemption {
+  id             String       @id @default(cuid())
+  couponId       String
+  coupon         Coupon       @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  orderRequestId String       @unique
+  orderRequest   OrderRequest @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+  phone          String?
+  redeemedAt     DateTime     @default(now())
+
+  @@index([couponId])
+  @@index([redeemedAt])
+}
+
+
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String?  // e.g. "footer", "newsletter_section"
+  createdAt DateTime @default(now())
+}
+
+
+model PageTranslation {
+  id      String @id @default(cuid())
+  pageId  String
+  page    Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  locale Locale
+
+  // SEO overrides per locale
+  seoTitle       String?
+  seoDescription String?
+  ogImageUrl     String?
+  canonicalUrl   String?
+  noIndex        Boolean?
+
+  // Optional per-locale scripts/styles
+  headScripts Json?
+  bodyScripts Json?
+  customCss   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pageId, locale])
+}
+
+model PageSectionTranslation {
+  id        String @id @default(cuid())
+  sectionId String
+  section   PageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  locale Locale
+  data   Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sectionId, locale])
+}
