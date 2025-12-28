@@ -11,6 +11,7 @@ export type CatalogFilters = {
   q?: string;
   inStock?: boolean;
   categoryId?: string;
+  lm?: 1 | true;
 };
 
 function getFirst(sp: Record<string, string | string[] | undefined>, key: string): string | undefined {
@@ -60,6 +61,8 @@ export function normalizeFiltersFromSearchParams(sp: Record<string, string | str
   const categoryId = getFirst(sp, "categoryId") ?? undefined;
   const pageStr = getFirst(sp, "page");
   const page = pageStr ? Math.max(1, Number(pageStr) || 1) : undefined;
+  const lmStr = getFirst(sp, "lm");
+  const lm = lmStr === "1" || lmStr === "true" ? 1 : undefined;
 
   let out: CatalogFilters = { colors, sizeIds };
   if (Number.isFinite(minPrice as any)) out.minPrice = minPrice;
@@ -74,6 +77,7 @@ export function normalizeFiltersFromSearchParams(sp: Record<string, string | str
   if (inStock) out.inStock = true;
   if (categoryId) out.categoryId = categoryId;
   if (page && page > 1) out.page = page;
+  if (lm) out.lm = lm;
   return out;
 }
 
@@ -90,9 +94,10 @@ export function buildCanonicalQuery(filters: CatalogFilters): string {
   if (filters.q) usp.set("q", filters.q);
   if (filters.inStock) usp.set("inStock", "1");
   if (filters.categoryId) usp.set("categoryId", filters.categoryId);
+  if (filters.lm) usp.set("lm", "1");
 
   // stable key ordering
-  const orderedKeys = ["q", "categoryId", "inStock", "colors", "sizeIds", "minPrice", "maxPrice", "sort", "page"];
+  const orderedKeys = ["q", "categoryId", "inStock", "colors", "sizeIds", "minPrice", "maxPrice", "sort", "page", "lm"];
   const ordered = new URLSearchParams();
   for (const k of orderedKeys) {
     const v = usp.get(k);
