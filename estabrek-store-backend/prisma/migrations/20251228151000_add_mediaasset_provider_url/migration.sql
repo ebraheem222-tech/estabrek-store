@@ -1,0 +1,4 @@
+-- Add Cloudinary fields to MediaAsset
+ALTER TABLE "MediaAsset" ADD COLUMN IF NOT EXISTS "url" TEXT;
+ALTER TABLE "MediaAsset" ADD COLUMN IF NOT EXISTS "provider" TEXT NOT NULL DEFAULT 'LOCAL';
+ALTER TABLE "MediaAsset" ADD COLUMN IF NOT EXISTS "providerId" TEXT;

@@ -411,6 +411,15 @@ model MediaAsset {
   /** stored filename on disk (uploads/images/<filename>) */
   filename    String   @unique
 
+  /** absolute public URL (e.g. Cloudinary secure_url). Optional for local-disk provider. */
+  url         String?
+
+  /** storage provider (LOCAL | CLOUDINARY) */
+  provider    String   @default("LOCAL")
+
+  /** provider identifier (e.g. Cloudinary public_id). Optional. */
+  providerId  String?
+
   /** user-friendly name shown in admin UI (renaming doesn't break URLs) */
   displayName String?
 
