@@ -98,7 +98,7 @@ function ComponentNode({ component, depth = 0 }: { component: CmsComponent; dept
 
   switch (component.kind) {
     case "text": {
-      const As = (props.as ?? "p") as keyof JSX.IntrinsicElements;
+      const As = (props.as ?? "p") as React.ElementType;
       return <As className={className} style={inlineStyle}>{props.text ?? ""}</As>;
     }
     case "badge":

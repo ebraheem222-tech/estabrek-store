@@ -306,6 +306,7 @@ export type TwTokens = {
   
   style?: {
     bg?: BgPreset;
+    bgColor?: string;
     bgCustom?: string;
     bgOpacity?: OpacityPreset;
     radius?: RadiusPreset;

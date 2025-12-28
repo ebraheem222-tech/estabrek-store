@@ -15,13 +15,13 @@ type HeaderConfig = {
   showCart?: boolean;
   showAccount?: boolean;
   announcement?: {
-    enabled: boolean;
+    enabled?: boolean;
     text?: string;
     href?: string;
     buttonText?: string;
   };
   cta?: {
-    enabled: boolean;
+    enabled?: boolean;
     label?: string;
     href?: string;
   };
@@ -44,15 +44,35 @@ type HeaderConfig = {
   theme?: {
     mode?: "dark" | "light";
     // Step 2 (Theme Engine): presetId
-    presetId?: "estabrak_soft_gold" | "luxury_gold" | "clean_tech" | "street_dark" | "soft_pastel" | "earth_minimal" | "ocean_mist" | "desert_sand" | "plum_night";
+    presetId?: ThemePresetId;
     primary?: string;
     secondary?: string;
     // legacy fields (kept for backwards compatibility)
     accent?: "rose" | "orange" | "emerald" | "blue" | "violet" | "gold";
     radius?: "md" | "xl" | "2xl";
     surface?: "classic" | "glass";
+    customThemes?: CustomTheme[];
   };
 
+};
+
+type ThemePresetId =
+  | "estabrak_soft_gold"
+  | "luxury_gold"
+  | "clean_tech"
+  | "street_dark"
+  | "soft_pastel"
+  | "earth_minimal"
+  | "ocean_mist"
+  | "desert_sand"
+  | "plum_night";
+
+type CustomTheme = {
+  id: string;
+  name: string;
+  bg: string;
+  text: string;
+  accent: string;
 };
 
 type FooterLink = { id: string; label: string; href: string; icon?: string };
@@ -94,8 +114,12 @@ type CmsNavConfig = {
 };
 
 const safeObj = (v: any) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+const cryptoId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+};
 
-const THEME_PRESETS: Array<{ id: NonNullable<HeaderConfig["theme"]>["presetId"]; label: string }> = [
+const THEME_PRESETS: Array<{ id: ThemePresetId; label: string }> = [
   { id: "estabrak_soft_gold", label: "Estabrak Soft (Teal + Gold)" },
   { id: "luxury_gold", label: "Luxury Paper (Black + Gold)" },
   { id: "clean_tech", label: "Clean Tech (Blue)" },
@@ -107,23 +131,16 @@ const THEME_PRESETS: Array<{ id: NonNullable<HeaderConfig["theme"]>["presetId"];
   { id: "plum_night", label: "Plum Night (Purple)" },
 ];
 
+const THEME_PRESET_IDS = THEME_PRESETS.map((p) => p.id);
+
+const isThemePresetId = (value: unknown): value is ThemePresetId =>
+  typeof value === "string" && THEME_PRESET_IDS.includes(value as ThemePresetId);
+
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
   const o = safeObj(v);
   return {
     mode: o.mode === "light" ? "light" : "dark",
-    presetId: ([
-      "estabrak_soft_gold",
-      "luxury_gold",
-      "clean_tech",
-      "street_dark",
-      "soft_pastel",
-      "earth_minimal",
-      "ocean_mist",
-      "desert_sand",
-      "plum_night",
-    ].includes(o.presetId)
-      ? o.presetId
-      : "estabrak_soft_gold"),
+    presetId: isThemePresetId(o.presetId) ? o.presetId : "estabrak_soft_gold",
     primary: typeof o.primary === "string" && o.primary.trim() ? o.primary : undefined,
     secondary: typeof o.secondary === "string" && o.secondary.trim() ? o.secondary : undefined,
     accent: (o.accent === "rose" || o.accent === "orange" || o.accent === "emerald" || o.accent === "violet" || o.accent === "gold" || o.accent === "blue")
@@ -136,7 +153,7 @@ function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
 }
 
 
-const THEME_PRESET_CARDS = [
+const THEME_PRESET_CARDS: CustomTheme[] = [
   { id: "estabrak_soft_gold", name: "Estabrak Soft", bg: "#F7F4E9", text: "#1A1A1A", accent: "#6FA6A1" },
   { id: "luxury_gold", name: "Luxury Paper", bg: "#F7F4E9", text: "#0B0B0B", accent: "#C6A75E" },
   { id: "clean_tech", name: "Clean Tech", bg: "#F6F8FC", text: "#0F172A", accent: "#2563EB" },

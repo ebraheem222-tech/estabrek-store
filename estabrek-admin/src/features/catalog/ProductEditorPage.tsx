@@ -1351,7 +1351,7 @@ export default function ProductEditorPage() {
                   label="حد التنبيه (اختياري)"
                   value={vThreshold}
                   onChange={(e) => setVThreshold(e.target.value)}
-                  helper="0 يعني تعطيل تنبيهات المخزون لهذا الـVariant"
+                  hint="0 يعني تعطيل تنبيهات المخزون لهذا الـVariant"
                 />
               </div>
               <Input label="weightGrams (اختياري)" value={vWeight} onChange={(e) => setVWeight(e.target.value)} />
@@ -1407,13 +1407,13 @@ export default function ProductEditorPage() {
                   label="حد التنبيه (اختياري)"
                   value={bulkThreshold}
                   onChange={(e) => setBulkThreshold(e.target.value)}
-                  helper="0 يعني تعطيل تنبيهات المخزون"
+                  hint="0 يعني تعطيل تنبيهات المخزون"
                 />
                 <Input
                   label="weightGrams (اختياري)"
                   value={bulkWeight}
                   onChange={(e) => setBulkWeight(e.target.value)}
-                  helper="إذا تركته فارغ، ما منبعث وزن."
+                  hint="إذا تركته فارغ، ما منبعث وزن."
                 />
               </div>
 

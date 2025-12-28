@@ -1,5 +1,5 @@
 // src/features/outbox/CancelOutboxModal.tsx
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Modal } from "../../components/ui/Modal";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
@@ -20,11 +20,15 @@ export default function CancelOutboxModal({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    if (!open) return;
+  const resetForm = () => {
     setReason("");
     setError(undefined);
-  }, [open]);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const onCancel = async () => {
     if (!messageId) return;
@@ -38,7 +42,7 @@ export default function CancelOutboxModal({
     setError(undefined);
     try {
       await cancel.mutateAsync({ id: messageId, reason: reason.trim() || undefined });
-      onClose();
+      handleClose();
     } catch {
       // toast موجود بالهوك
     }
@@ -48,7 +52,7 @@ export default function CancelOutboxModal({
     <Modal
       open={open}
       title="إلغاء الرسالة"
-      onClose={onClose}
+      onClose={handleClose}
       widthClassName="max-w-md"
       footer={
         <div className="flex items-center gap-2">

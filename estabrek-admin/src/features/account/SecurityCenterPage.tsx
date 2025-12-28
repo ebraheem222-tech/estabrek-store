@@ -308,7 +308,7 @@ export default function SecurityCenterPage() {
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">لا يوجد جلسات.</div>
                 )}
                 {sessionRows.map((s) => {
-                  const isCurrent = currentSessionId && s.id === currentSessionId;
+                  const isCurrent = !!currentSessionId && s.id === currentSessionId;
                   return (
                     <div key={s.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <div className="flex items-center justify-between gap-2">
@@ -359,7 +359,7 @@ export default function SecurityCenterPage() {
                       </TR>
                     )}
                     {sessionRows.map((s) => {
-                      const isCurrent = currentSessionId && s.id === currentSessionId;
+                      const isCurrent = !!currentSessionId && s.id === currentSessionId;
                       return (
                         <TR key={s.id}>
                           <TD>

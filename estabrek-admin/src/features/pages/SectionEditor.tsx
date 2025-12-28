@@ -335,6 +335,7 @@ export type CardsData = {
   };
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function defaultDataForType(type: PageSectionType): any {
   switch (type) {
     case "HERO":
@@ -504,6 +505,7 @@ export type SectionTemplate = {
 };
 
 // Templates جاهزة لتسريع بناء الصفحات (بدون ما تكتب من الصفر)
+// eslint-disable-next-line react-refresh/only-export-components
 export function templatesForType(type: PageSectionType): SectionTemplate[] {
   switch (type) {
     case "HERO":
@@ -779,7 +781,7 @@ function TextArea({
   placeholder,
   rows = 6,
 }: {
-  label: string;
+  label?: string;
   value: string;
   onChange: (v: string) => void;
   error?: string;
@@ -789,7 +791,7 @@ function TextArea({
 }) {
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-white/80">{label}</label>
+      {label ? <label className="block text-sm font-medium text-white/80">{label}</label> : null}
       <textarea
         className={
           "w-full rounded-xl border bg-white/[0.03] p-3 text-sm text-white placeholder:text-white/30 outline-none transition-all " +
@@ -1131,7 +1133,11 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
             value={s.primaryButton?.label ?? ""}
             onChange={(v) => {
               const pb = { ...(s.primaryButton ?? { label: "", href: "" }), label: v };
-              isSlider ? updateSlide(activeSlide, { primaryButton: pb }) : onChange({ ...value, primaryButton: pb });
+              if (isSlider) {
+                updateSlide(activeSlide, { primaryButton: pb });
+              } else {
+                onChange({ ...value, primaryButton: pb });
+              }
             }}
           />
           <Input
@@ -1139,7 +1145,11 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
             value={s.primaryButton?.href ?? ""}
             onChange={(v) => {
               const pb = { ...(s.primaryButton ?? { label: "", href: "" }), href: v };
-              isSlider ? updateSlide(activeSlide, { primaryButton: pb }) : onChange({ ...value, primaryButton: pb });
+              if (isSlider) {
+                updateSlide(activeSlide, { primaryButton: pb });
+              } else {
+                onChange({ ...value, primaryButton: pb });
+              }
             }}
             dir="ltr"
           />
@@ -1148,7 +1158,11 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
             value={s.secondaryButton?.label ?? ""}
             onChange={(v) => {
               const sb = { ...(s.secondaryButton ?? { label: "", href: "" }), label: v };
-              isSlider ? updateSlide(activeSlide, { secondaryButton: sb }) : onChange({ ...value, secondaryButton: sb });
+              if (isSlider) {
+                updateSlide(activeSlide, { secondaryButton: sb });
+              } else {
+                onChange({ ...value, secondaryButton: sb });
+              }
             }}
           />
           <Input
@@ -1156,7 +1170,11 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
             value={s.secondaryButton?.href ?? ""}
             onChange={(v) => {
               const sb = { ...(s.secondaryButton ?? { label: "", href: "" }), href: v };
-              isSlider ? updateSlide(activeSlide, { secondaryButton: sb }) : onChange({ ...value, secondaryButton: sb });
+              if (isSlider) {
+                updateSlide(activeSlide, { secondaryButton: sb });
+              } else {
+                onChange({ ...value, secondaryButton: sb });
+              }
             }}
             dir="ltr"
           />
@@ -1183,6 +1201,7 @@ function HtmlWysiwyg({
   const [mode, setMode] = useState<"wysiwyg" | "html">("wysiwyg");
   const [draft, setDraft] = useState<string>(value ?? "");
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     setDraft(value ?? "");
     if (mode === "wysiwyg" && ref.current && (ref.current.innerHTML ?? "") !== (value ?? "")) {
@@ -1836,13 +1855,12 @@ function TestimonialsEditor({ value, onChange, errors }: { value: TestimonialsDa
 
 function useCategoriesList() {
   const [cats, setCats] = useState<CatalogCategory[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    setError(null);
     listCategories()
       .then((d) => {
         if (!mounted) return;
@@ -2506,3 +2524,4 @@ export function SectionEditor({
     </div>
   );
 }
+

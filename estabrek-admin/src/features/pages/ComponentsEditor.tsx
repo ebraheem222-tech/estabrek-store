@@ -50,10 +50,6 @@ function getChildren(c: CmsComponent): CmsComponent[] {
   return Array.isArray(arr) ? (arr as CmsComponent[]) : [];
 }
 
-function setChildren(c: CmsComponent, children: CmsComponent[]): CmsComponent {
-  return { ...c, props: { ...(c.props ?? {}), children } };
-}
-
 function makeId(prefix = "cmp"): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -992,7 +988,7 @@ export function ComponentsEditor({
                                 ...(selected.twTokens ?? defaultTokensBase()),
                                 layout: {
                                   ...((selected.twTokens ?? defaultTokensBase()).layout ?? {}),
-                                  grid: { ...(((selected.twTokens ?? defaultTokensBase()).layout?.grid ?? {})), cols: Number(v) },
+                                  grid: { ...(((selected.twTokens ?? defaultTokensBase()).layout?.grid ?? {})), cols: Number(v) as any },
                                 },
                               },
                             })

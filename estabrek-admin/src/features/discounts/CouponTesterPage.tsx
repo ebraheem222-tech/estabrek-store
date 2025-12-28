@@ -181,7 +181,7 @@ export default function CouponTesterPage() {
           <Button onClick={runQuote} disabled={loading}>
             {loading ? "..." : "احسب (Quote)"}
           </Button>
-          <Button variant="outline" onClick={submitOrder} disabled={loading}>
+          <Button variant="secondary" onClick={submitOrder} disabled={loading}>
             {loading ? "..." : "أنشئ طلب OrderRequest"}
           </Button>
         </div>

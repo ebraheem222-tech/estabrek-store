@@ -121,8 +121,14 @@ export function tokensToClassName(tokens?: TwTokens): string {
   // motion
   const motionAnim = tokens.motion?.anim ?? tokens.motion?.preset;
   if (motionAnim) parts.push(animMap[motionAnim]);
-  if (tokens.motion?.delay !== undefined) parts.push(delayMap[tokens.motion.delay]);
-  if (tokens.motion?.duration) parts.push(durationMap[tokens.motion.duration]);
+  if (tokens.motion?.delay !== undefined) {
+    const delayClass = delayMap[tokens.motion.delay as keyof typeof delayMap];
+    if (delayClass) parts.push(delayClass);
+  }
+  if (tokens.motion?.duration !== undefined) {
+    const durationClass = durationMap[tokens.motion.duration as keyof typeof durationMap];
+    if (durationClass) parts.push(durationClass);
+  }
 
   // custom colors (inline vars)
   const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);

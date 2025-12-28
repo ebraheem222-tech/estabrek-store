@@ -199,11 +199,7 @@ function HeroPreview({ data }: { data: HeroData }) {
   const [activeSlide, setActiveSlide] = useState(0);
   const autoplayMs = safeNum((data as any).autoplayMs, 0);
   const showDots = (data as any).showDots ?? true;
-
-  useEffect(() => {
-    if (!hasSlides) return;
-    setActiveSlide((idx) => Math.min(idx, slides.length - 1));
-  }, [hasSlides, slides.length]);
+  const activeIndex = hasSlides ? Math.min(activeSlide, slides.length - 1) : 0;
 
   useEffect(() => {
     if (!hasSlides || !autoplayMs || autoplayMs <= 0) return;
@@ -213,7 +209,7 @@ function HeroPreview({ data }: { data: HeroData }) {
     return () => clearInterval(id);
   }, [autoplayMs, hasSlides, slides.length]);
 
-  const s = hasSlides ? slides[activeSlide] ?? slides[0] : data;
+  const s = hasSlides ? slides[activeIndex] ?? slides[0] : data;
   const overlay = Math.min(1, Math.max(0, safeNum((s as any).overlay ?? data.overlay, 0.35)));
   const align = ((s as any).align ?? data.align ?? "center") as any;
   const justify = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
@@ -227,8 +223,8 @@ function HeroPreview({ data }: { data: HeroData }) {
   const contentDelay = safeNum((data as any).contentDelay, 0);
   const slideAnimClass = heroAnimClass(slideAnim, slideDuration, 0);
   const contentAnimClass = heroAnimClass(contentAnim, contentDuration, contentDelay);
-  const slideKey = `${activeSlide}-${slideAnim}-${slideDuration}`;
-  const contentKey = `${activeSlide}-${contentAnim}-${contentDuration}-${contentDelay}`;
+  const slideKey = `${activeIndex}-${slideAnim}-${slideDuration}`;
+  const contentKey = `${activeIndex}-${contentAnim}-${contentDuration}-${contentDelay}`;
 
   return (
     <SectionShell data={data} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
@@ -267,11 +263,11 @@ function HeroPreview({ data }: { data: HeroData }) {
             ) : null}
             {secondaryButton?.label ? (
               secondaryButton?.href ? (
-                <a href={secondaryButton.href} className="inline-flex items-center rounded-xl border border-white/20 px-3 py-1 text-xs font-semibold">
+                <a href={secondaryButton.href} className="inline-flex items-center px-3 py-1 text-xs font-semibold border rounded-xl border-white/20">
                   {secondaryButton.label}
                 </a>
               ) : (
-                <span className="inline-flex items-center rounded-xl border border-white/20 px-3 py-1 text-xs font-semibold">
+                <span className="inline-flex items-center px-3 py-1 text-xs font-semibold border rounded-xl border-white/20">
                   {secondaryButton.label}
                 </span>
               )
@@ -280,7 +276,7 @@ function HeroPreview({ data }: { data: HeroData }) {
         </div>
         </SectionTextScope>
         {showDots && slides.length > 1 ? (
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
+          <div className="absolute flex items-center gap-2 -translate-x-1/2 bottom-3 left-1/2">
             {slides.map((_: any, idx: number) => (
               <button
                 key={idx}
@@ -289,7 +285,7 @@ function HeroPreview({ data }: { data: HeroData }) {
                 aria-label={`Slide ${idx + 1}`}
                 className={cls(
                   "h-2 w-2 rounded-full transition",
-                  idx === activeSlide ? "bg-white" : "bg-white/40 hover:bg-white/70"
+                  idx === activeIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
                 )}
               />
             ))}
@@ -335,7 +331,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
       <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <SectionTextScope data={d}>
         <div className="mb-2 text-sm font-semibold">Custom HTML</div>
-        <div className="text-xs opacity-60 mb-3">(المعاينة بتعمل sanitize - بالستورهونت ممكن يكون نفس الشي أو حسب إعداداتك)</div>
+        <div className="mb-3 text-xs opacity-60">(المعاينة بتعمل sanitize - بالستورهونت ممكن يكون نفس الشي أو حسب إعداداتك)</div>
         <div
           className="text-sm leading-6 opacity-90 [&_a]:underline"
           dangerouslySetInnerHTML={{ __html: safe || "<p class='opacity-60'>(HTML)</p>" }}
@@ -358,8 +354,8 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           {items.length ? (
             items.slice(0, 6).map((it, i) => (
               <details key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                <summary className="cursor-pointer text-sm font-medium">{it.question || "(سؤال)"}</summary>
-                <div className="mt-2 text-sm opacity-80 whitespace-pre-wrap">{it.answer || ""}</div>
+                <summary className="text-sm font-medium cursor-pointer">{it.question || "(سؤال)"}</summary>
+                <div className="mt-2 text-sm whitespace-pre-wrap opacity-80">{it.answer || ""}</div>
               </details>
             ))
           ) : (
@@ -387,9 +383,9 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           {items.length ? (
             items.slice(0, 8).map((it, i) => (
               <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                {it.imageUrl ? <img src={it.imageUrl} alt="" className="mb-2 h-20 w-full rounded-lg object-cover" /> : null}
+                {it.imageUrl ? <img src={it.imageUrl} alt="" className="object-cover w-full h-20 mb-2 rounded-lg" /> : null}
                 <div className="text-sm font-medium">{it.title || "(عنوان)"}</div>
-                {it.text ? <div className="mt-1 text-xs opacity-80 whitespace-pre-wrap">{it.text}</div> : null}
+                {it.text ? <div className="mt-1 text-xs whitespace-pre-wrap opacity-80">{it.text}</div> : null}
                 {it.href ? <div className="mt-2 text-[11px] opacity-60">{it.href}</div> : null}
               </div>
             ))
@@ -419,8 +415,8 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
               </div>
               {showArrows ? (
                 <div className="flex items-center gap-2">
-                  <button type="button" className="h-7 w-7 rounded-full border border-white/10 bg-white/5 text-xs text-white/70">‹</button>
-                  <button type="button" className="h-7 w-7 rounded-full border border-white/10 bg-white/5 text-xs text-white/70">›</button>
+                  <button type="button" className="text-xs border rounded-full h-7 w-7 border-white/10 bg-white/5 text-white/70">‹</button>
+                  <button type="button" className="text-xs border rounded-full h-7 w-7 border-white/10 bg-white/5 text-white/70">›</button>
                 </div>
               ) : null}
             </div>
@@ -429,7 +425,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
             {items.length ? (
               items.slice(0, 6).map((it, i) => (
                 <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                  {it.imageUrl ? <img src={it.imageUrl} alt="" className="mb-2 h-16 w-full rounded-lg object-cover" /> : null}
+                  {it.imageUrl ? <img src={it.imageUrl} alt="" className="object-cover w-full h-16 mb-2 rounded-lg" /> : null}
                   <div className="text-sm font-medium">{it.label || "Category"}</div>
                   {it.href ? <div className="mt-1 text-[11px] opacity-60">{it.href}</div> : null}
                 </div>
@@ -460,7 +456,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           {items.length ? (
             items.slice(0, 8).map((it, i) => (
               <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                {it.imageUrl ? <img src={it.imageUrl} alt="" className="mb-2 h-16 w-full rounded-lg object-cover" /> : null}
+                {it.imageUrl ? <img src={it.imageUrl} alt="" className="object-cover w-full h-16 mb-2 rounded-lg" /> : null}
                 <div className="text-sm font-medium">{it.label || "Collection"}</div>
                 {it.href ? <div className="mt-1 text-[11px] opacity-60">{it.href}</div> : null}
               </div>
@@ -539,8 +535,8 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           <div className={cls("grid gap-2", gridCols)}>
             {images.slice(0, 12).map((im, i) => (
               <div key={i} className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02]">
-                {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                <img src={im.url} alt={im.alt ?? ""} className="h-20 w-full object-cover" />
+                {}
+                <img src={im.url} alt={im.alt ?? ""} className="object-cover w-full h-20" />
               </div>
             ))}
           </div>
@@ -634,9 +630,9 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                   <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
                     <div className="flex items-center gap-2">
                       {it.avatarUrl ? (
-                        <img src={it.avatarUrl} alt={it.name ?? "Avatar"} className="h-8 w-8 rounded-full border border-white/10 object-cover" />
+                        <img src={it.avatarUrl} alt={it.name ?? "Avatar"} className="object-cover w-8 h-8 border rounded-full border-white/10" />
                       ) : (
-                        <div className="h-8 w-8 rounded-full bg-white/10" />
+                        <div className="w-8 h-8 rounded-full bg-white/10" />
                       )}
                       <div className="text-xs opacity-70">
                         <div>{it.name || "(Name)"}</div>
@@ -692,9 +688,9 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
       <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <SectionTextScope data={d}>
         {d.title ? <div className="mb-2 text-sm font-semibold">{d.title}</div> : null}
-        {d.text ? <div className="text-sm opacity-80 mb-2">{d.text}</div> : <div className="text-xs opacity-60">(لا يوجد نص)</div>}
+        {d.text ? <div className="mb-2 text-sm opacity-80">{d.text}</div> : <div className="text-xs opacity-60">(لا يوجد نص)</div>}
         {d.ctaLabel ? (
-          <div className="inline-flex items-center rounded-xl bg-white text-black px-3 py-1 text-xs font-semibold">
+          <div className="inline-flex items-center px-3 py-1 text-xs font-semibold text-black bg-white rounded-xl">
             {d.ctaLabel}
             {d.ctaHref ? <span className="ms-2 text-[11px] text-black/60">{d.ctaHref}</span> : null}
           </div>
@@ -743,8 +739,8 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                   />
                 ) : null}
 
-                <div className="mt-3 flex items-start justify-between gap-2">
-                  {c.title ? <div className="text-white font-semibold">{c.title}</div> : <div />}
+                <div className="flex items-start justify-between gap-2 mt-3">
+                  {c.title ? <div className="font-semibold text-white">{c.title}</div> : <div />}
                   {c.badge ? (
                     <div className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80">
                       {c.badge}
@@ -757,7 +753,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 {c.buttonLabel && c.buttonHref ? (
                   <a
                     href={c.buttonHref}
-                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15"
+                    className="inline-flex items-center justify-center px-3 py-2 mt-4 text-sm text-white rounded-xl bg-white/10 hover:bg-white/15"
                   >
                     {c.buttonLabel}
                   </a>
