@@ -20,7 +20,6 @@ function pick(sp: SP, key: string): string | undefined {
 
 export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
   const f = normalizeFiltersFromSearchParams(searchParams);
-  const categories = await listCategories();
   const qs = buildCanonicalQuery(f);
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const canonical = new URL(qs ? `/shop?${qs}` : "/shop", base).toString();
@@ -43,26 +42,27 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   )
     ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
     : undefined;
-  const categories = await listCategories();
   const lm = pick(searchParams, "lm") === "1";
-
-  const out = await listProducts({
-    page: f.page ?? 1,
-    pageSize: 24,
-    cursorMode: lm,
-    take: 24,
-    sort,
-    q: f.q,
-    inStock: f.inStock,
-    categoryId: f.categoryId,
-    colors: f.colors.length ? f.colors.join(",") : undefined,
-    sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
-    minPrice: f.minPrice,
-    maxPrice: f.maxPrice,
-    // legacy support
-    color: pick(searchParams, "color"),
-    sizeId: pick(searchParams, "sizeId"),
-  });
+  const [categories, out] = await Promise.all([
+    listCategories(),
+    listProducts({
+      page: f.page ?? 1,
+      pageSize: 24,
+      cursorMode: lm,
+      take: 24,
+      sort,
+      q: f.q,
+      inStock: f.inStock,
+      categoryId: f.categoryId,
+      colors: f.colors.length ? f.colors.join(",") : undefined,
+      sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      // legacy support
+      color: pick(searchParams, "color"),
+      sizeId: pick(searchParams, "sizeId"),
+    }),
+  ]);
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
