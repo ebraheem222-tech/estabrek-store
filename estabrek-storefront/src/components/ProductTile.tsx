@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { CatalogProduct } from "@/lib/catalog";
-import { getProductPrimaryImage } from "@/lib/catalog";
+import { formatMoney, getProductPrimaryImage } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { cldUrl } from "@/lib/cloudinary";
 import { prefetchProductQuickAdd } from "@/lib/apiClient";
@@ -104,7 +104,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
               </div>
             </div>
             <div className="shrink-0 text-sm font-semibold">
-              {product.minPrice != null ? `$${product.minPrice}` : "—"}
+              {product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "-"}
             </div>
           </div>
 
