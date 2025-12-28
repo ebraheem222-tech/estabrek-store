@@ -16,22 +16,22 @@ function normalizeHex(v?: string | null): string | null {
 }
 
 function getCardImages(p: CatalogProduct): { primary?: string; secondary?: string } {
-  const productImages = (p as any).images as Array<{ url?: string; isPrimary?: boolean }> | undefined;
+  const productImages = ((p as any).images ?? []) as Array<{ url?: string | null; isPrimary?: boolean }>;
 
   if (p.primaryImageUrl || p.secondaryImageUrl) {
     return { primary: p.primaryImageUrl ?? undefined, secondary: p.secondaryImageUrl ?? undefined };
   }
 
-  if (Array.isArray(productImages) && productImages.length) {
-    const primary = productImages.find((im) => im.isPrimary)?.url ?? productImages[0]?.url;
-    const secondary = productImages[1]?.url;
+  if (productImages.length) {
+    const primary = (productImages.find((im) => im.isPrimary)?.url ?? productImages[0]?.url) ?? undefined;
+    const secondary = productImages[1]?.url ?? undefined;
     if (primary || secondary) return { primary, secondary };
   }
 
   // Prefer the first visible item
   const it = p.items?.[0];
-  const primary = it?.primaryImageUrl ?? it?.images?.[0]?.url ?? getProductPrimaryImage(p);
-  const secondary = it?.secondaryImageUrl ?? it?.images?.[1]?.url;
+  const primary = (it?.primaryImageUrl ?? it?.images?.[0]?.url ?? getProductPrimaryImage(p)) ?? undefined;
+  const secondary = (it?.secondaryImageUrl ?? it?.images?.[1]?.url) ?? undefined;
   return { primary, secondary };
 }
 
