@@ -8,8 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY package.json package-lock.json ./
 
-# Print logs so Railway doesn't think it's stuck + add cache for faster rebuilds
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm \
   npm config set registry https://registry.npmjs.org/ \
   && npm config set fetch-timeout 300000 \
   && npm config set fetch-retries 8 \
@@ -28,8 +27,6 @@ COPY . .
 
 RUN npx prisma generate
 RUN npm run build
-
-# Optional: shrink runtime deps
 RUN npm prune --omit=dev
 
 
