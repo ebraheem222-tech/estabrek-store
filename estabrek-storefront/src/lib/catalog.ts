@@ -67,6 +67,21 @@ export type CatalogProductsList = {
 
 function num(v: any): number | null {
   if (v == null) return null;
+
+  // Prisma Decimal / Decimal.js / objects with toString()
+  if (typeof v === "object") {
+    if (typeof v.toNumber === "function") {
+      const n = v.toNumber();
+      return Number.isFinite(n) ? n : null;
+    }
+    if (typeof v.toString === "function") {
+      const s = v.toString();
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }
+
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
 }
