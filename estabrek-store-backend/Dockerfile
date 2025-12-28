@@ -12,7 +12,7 @@ RUN apk add --no-cache \
     g++
 
 # Copy lockfiles
-COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+COPY package.json package-lock.json ./
 
 # Force public npm registry + increase retries to avoid CI/Railway timeouts
 RUN npm config set registry https://registry.npmjs.org/ \
