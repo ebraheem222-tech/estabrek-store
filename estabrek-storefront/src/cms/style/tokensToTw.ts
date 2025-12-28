@@ -136,8 +136,16 @@ export function tokensToClassName(tokens?: TwTokens): string {
   // motion
   const motionAnim = tokens.motion?.anim ?? tokens.motion?.preset;
   if (motionAnim) parts.push(animMap[motionAnim]);
-  if (tokens.motion?.delay !== undefined) parts.push(delayMap[tokens.motion.delay]);
-  if (tokens.motion?.duration) parts.push(durationMap[tokens.motion.duration]);
+  if (tokens.motion?.delay !== undefined) {
+    const delayKey = tokens.motion.delay as keyof typeof delayMap;
+    const delayClass = delayMap[delayKey];
+    if (delayClass) parts.push(delayClass);
+  }
+  if (tokens.motion?.duration !== undefined) {
+    const durationKey = tokens.motion.duration as keyof typeof durationMap;
+    const durationClass = durationMap[durationKey];
+    if (durationClass) parts.push(durationClass);
+  }
 
   // effects
   if (tokens.effects?.opacity) parts.push(opacityMap[tokens.effects.opacity]);
@@ -150,7 +158,8 @@ export function tokensToClassName(tokens?: TwTokens): string {
   if (tokens.effects?.mixBlend) parts.push(`mix-blend-${tokens.effects.mixBlend}`);
 
   // custom colors (inline vars)
-  const customBg = resolveCustomColor(tokens.style?.bgCustom ?? tokens.style?.bgColor ?? tokens.style?.bg);
+  const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string }) | undefined;
+  const customBg = resolveCustomColor(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const customText = resolveCustomColor(tokens.typography?.colorCustom ?? tokens.typography?.color);
   if (customBg) parts.push("cms-inline-bg");
   if (customText) parts.push("cms-inline-text");
