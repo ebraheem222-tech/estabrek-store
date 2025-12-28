@@ -9,9 +9,7 @@ export default function ShareButton({ title }: { title?: string }) {
     const url = typeof window !== "undefined" ? window.location.href : "";
     try {
       // Prefer native share when available
-      // @ts-expect-error - navigator.share is not always typed in older libs
       if (navigator?.share) {
-        // @ts-expect-error
         await navigator.share({ title: title || "", url });
         setMsg("تمت المشاركة ✅");
         window.setTimeout(() => setMsg(null), 1500);
