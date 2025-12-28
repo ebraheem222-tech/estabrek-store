@@ -1,4 +1,4 @@
-import { listProducts } from "@/lib/api";
+import { listCategories, listProducts } from "@/lib/api";
 import { ProductTile } from "@/components/ProductTile";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import NormalizeFilters from "@/components/NormalizeFilters";
@@ -28,18 +28,21 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 export default async function SearchPage({ searchParams }: { searchParams: SP }) {
   const f = normalizeFiltersFromSearchParams(searchParams);
 
-  const out = await listProducts({
-    page: f.page ?? 1,
-    limit: 24,
-    q: f.q,
-    sort: (f.sort as any) ?? undefined,
-    colors: f.colors.length ? f.colors.join(",") : undefined,
-    sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
-    minPrice: f.minPrice,
-    maxPrice: f.maxPrice,
-    categoryId: f.categoryId,
-    inStock: f.inStock,
-  });
+  const [cats, out] = await Promise.all([
+    listCategories(),
+    listProducts({
+      page: f.page ?? 1,
+      limit: 24,
+      q: f.q,
+      sort: (f.sort as any) ?? undefined,
+      colors: f.colors.length ? f.colors.join(",") : undefined,
+      sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      categoryId: f.categoryId,
+      inStock: f.inStock,
+    }),
+  ]);
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
@@ -53,7 +56,11 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
         <div className="text-sm text-zinc-500 dark:text-zinc-300">{out.total} products</div>
       </div>
 
-      <ProductFiltersBar colors={out.facets?.colors ?? []} sizes={out.facets?.sizes ?? []} />
+      <ProductFiltersBar
+        colors={out.facets?.colors ?? []}
+        sizes={out.facets?.sizes ?? []}
+        categories={Array.isArray(cats) ? cats : []}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(out.items ?? []).map((p) => (
