@@ -48,7 +48,6 @@ export type CmsPage = {
   // SEO
   metaTitle?: string | null;
   metaDescription?: string | null;
-  ogImageUrl?: string | null;
   robotsNoIndex?: boolean;
   robotsNoFollow?: boolean;
   jsonLd?: any;
