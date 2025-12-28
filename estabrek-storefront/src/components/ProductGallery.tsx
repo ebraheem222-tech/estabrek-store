@@ -36,9 +36,9 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const item = itemsWithKeys.find((it) => it.__key === itemId) ?? itemsWithKeys[0];
 
   const images = useMemo(() => {
-    const imgs = item?.images ?? [];
+    const imgs = (item?.images ?? []) as Array<{ id?: string | null; url?: string | null; isPrimary?: boolean }>;
     // Ensure primary first when backend already sends it (isPrimary desc), otherwise keep order.
-    const primaryIdx = imgs.findIndex((im) => im.isPrimary);
+    const primaryIdx = imgs.findIndex((im: { isPrimary?: boolean }) => im.isPrimary);
     if (primaryIdx > 0) {
       const copy = [...imgs];
       const [p] = copy.splice(primaryIdx, 1);
