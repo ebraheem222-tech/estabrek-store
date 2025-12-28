@@ -14,9 +14,13 @@ const getCategoriesCached = unstable_cache(async () => {
   return await listCategories();
 }, ["sitemap-categories"], { revalidate: 60 * 60 });
 
-const getProductsPageCached = unstable_cache(async (page: number) => {
-  return await listProducts({ page, pageSize: 500 });
-}, ["sitemap-products-page"], { revalidate: 60 * 60 });
+function getProductsPageCached(page: number, pageSize: number) {
+  return unstable_cache(
+    async () => listProducts({ page, pageSize }),
+    ["sitemap-products-page", String(page), String(pageSize)],
+    { revalidate: 60 * 60 }
+  )();
+}
 
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -40,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Categories
-  const cats = await listCategories().catch(() => []);
+  const cats = await getCategoriesCached().catch(() => []);
   const walk = (arr: any[]) => {
     for (const c of arr || []) {
       if (c?.slug) {
@@ -57,11 +61,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   walk(cats as any[]);
 
   // Products (first N pages to avoid huge sitemap)
-  const pageSize = 200;
-  const maxPages = 25; // up to 5000 urls
-  for (let page = 1; page <= maxPages; page++) {
-    const res = await listProducts({ page, pageSize }).catch(() => null);
-    const items = (res as any)?.items || [];
+  const pageSize = 50;
+  const maxPages = 25; // up to 1250 urls
+
+  const pushProducts = (items: any[]) => {
     for (const p of items) {
       if (!p?.slug) continue;
       out.push({
@@ -71,8 +74,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       });
     }
-    const totalPages = Number((res as any)?.totalPages || 1);
-    if (page >= totalPages) break;
+  };
+
+  const first = await getProductsPageCached(1, pageSize).catch(() => null);
+  pushProducts((first as any)?.items || []);
+  const totalPages = Math.min(maxPages, Number((first as any)?.totalPages || 1));
+
+  if (totalPages > 1) {
+    const pages: number[] = [];
+    for (let page = 2; page <= totalPages; page++) pages.push(page);
+
+    const batchSize = 4;
+    for (let i = 0; i < pages.length; i += batchSize) {
+      const batch = pages.slice(i, i + batchSize);
+      const results = await Promise.all(
+        batch.map((page) => getProductsPageCached(page, pageSize).catch(() => null))
+      );
+      for (const res of results) {
+        pushProducts((res as any)?.items || []);
+      }
+    }
   }
 
   return out;
