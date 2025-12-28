@@ -18,6 +18,39 @@ function isCloudinaryUrl(url: string): boolean {
   }
 }
 
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
+function getPublicOrigin(): string | null {
+  const raw =
+    process.env.NEXT_PUBLIC_MEDIA_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "";
+  if (!raw) return null;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw.replace(/\/+$/, "").replace(/\/v1$/, "");
+  }
+}
+
+function normalizePublicUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("data:")) return url;
+  const origin = getPublicOrigin();
+  if (origin && url.startsWith("/")) return `${origin}${url}`;
+  if (!origin) return url;
+  try {
+    const u = new URL(url);
+    if (LOCAL_HOSTS.has(u.hostname)) {
+      return `${origin}${u.pathname}${u.search}${u.hash}`;
+    }
+  } catch {
+    // keep original
+  }
+  return url;
+}
+
 /**
  * Injects Cloudinary transformations into an existing Cloudinary URL.
  * If the URL is not Cloudinary, returns it unchanged.
@@ -26,12 +59,13 @@ function isCloudinaryUrl(url: string): boolean {
  */
 export function cldUrl(url: string, t: CloudinaryTransform = {}): string {
   if (!url) return url;
-  if (!isCloudinaryUrl(url)) return url;
+  const normalized = normalizePublicUrl(url);
+  if (!isCloudinaryUrl(normalized)) return normalized;
 
   // If caller already provided a fully transformed url, do not double-inject.
   // We detect this by checking for "/upload/<something>/" where <something> contains "f_" or "q_".
-  const alreadyTransformed = /\/upload\/[^/]*(f_|q_)/.test(url);
-  if (alreadyTransformed) return url;
+  const alreadyTransformed = /\/upload\/[^/]*(f_|q_)/.test(normalized);
+  if (alreadyTransformed) return normalized;
 
   const parts: string[] = ["f_auto", "q_auto"];
 
@@ -44,5 +78,5 @@ export function cldUrl(url: string, t: CloudinaryTransform = {}): string {
   const insert = parts.join(",");
 
   // Insert right after "/upload/"
-  return url.replace("/upload/", `/upload/${insert}/`);
+  return normalized.replace("/upload/", `/upload/${insert}/`);
 }
