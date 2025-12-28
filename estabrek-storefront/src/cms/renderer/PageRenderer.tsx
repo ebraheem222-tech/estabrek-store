@@ -739,7 +739,7 @@ if (type === "FORM") {
 
           {ids.length ? (
             <div className={cls("grid gap-4", gridClass)}>
-              {ids.map((id) => (
+              {ids.map((id: string) => (
                 <div key={id}>
                   {renderProductCard ? (
                     renderProductCard(id)
