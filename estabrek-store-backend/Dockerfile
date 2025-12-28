@@ -45,8 +45,7 @@ ENV NODE_ENV=production
 
 # Runtime deps + ClamAV (as you had it)
 RUN apk add --no-cache libc6-compat openssl ca-certificates clamav \
-  && sed -i '/^Example/d' /etc/clamav/freshclam.conf \
-  && freshclam
+  && sed -i '/^Example/d' /etc/clamav/freshclam.conf
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
