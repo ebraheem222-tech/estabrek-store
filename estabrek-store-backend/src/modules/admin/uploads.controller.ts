@@ -7,6 +7,7 @@ import sharp from "sharp";
 
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
+import { deleteFromCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
 
 const r = Router();
 
@@ -132,6 +133,8 @@ async function optimizeImageInPlace(filePath: string) {
 }
 
 async function syncDiskImagesToDb() {
+  // If Cloudinary is enabled, disk uploads are not the source of truth.
+  if (isCloudinaryEnabled()) return;
   await fs.mkdir(IMAGES_DIR, { recursive: true });
   const names = (await fs.readdir(IMAGES_DIR)).filter((n) => /\.(png|jpe?g|webp)$/i.test(n));
   if (!names.length) return;
@@ -305,7 +308,8 @@ function makeCursor(createdAt: Date, id: string) {
 r.get("/images", async (req, res) => {
   try {
     // Keep DB in sync with disk (best-effort)
-    if (!req.query.cursor) {
+    // When using Cloudinary, there's no local disk to sync.
+    if (!isCloudinaryEnabled() && !req.query.cursor) {
       await syncDiskImagesToDb();
     }
 
@@ -356,10 +360,11 @@ r.get("/images", async (req, res) => {
 
     const items = page.map((r) => {
       const rel = `/uploads/images/${r.filename}`;
+      const url = r.url ? r.url : makePublicUrl(req, rel);
       return {
         id: r.id,
-        url: makePublicUrl(req, rel),
-        path: rel,
+        url,
+        path: r.url ? r.url : rel,
         filename: r.filename,
         displayName: r.displayName,
         folder: r.folder,
@@ -370,6 +375,8 @@ r.get("/images", async (req, res) => {
         height: r.height,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
+        provider: r.provider,
+        providerId: r.providerId,
       };
     });
 
@@ -512,10 +519,11 @@ r.patch("/images/:id", async (req, res) => {
     const updated = await prisma.mediaAsset.update({ where: { id }, data });
 
     const rel = `/uploads/images/${updated.filename}`;
+    const url = updated.url ? updated.url : makePublicUrl(req, rel);
     res.json({
       id: updated.id,
-      url: makePublicUrl(req, rel),
-      path: rel,
+      url,
+      path: updated.url ? updated.url : rel,
       filename: updated.filename,
       displayName: updated.displayName,
       folder: updated.folder,
@@ -526,6 +534,8 @@ r.patch("/images/:id", async (req, res) => {
       height: updated.height,
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
+      provider: updated.provider,
+      providerId: updated.providerId,
     });
   } catch (e: any) {
     res.status(400).json({ error: "UPDATE_MEDIA_FAILED", message: e?.message ?? String(e) });
@@ -583,7 +593,10 @@ r.delete("/images/bulk", async (req, res) => {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids.map((x: any) => String(x)) : [];
     if (!ids.length) return res.status(400).json({ error: "NO_IDS" });
 
-    const rows = await prisma.mediaAsset.findMany({ where: { id: { in: ids }, kind: "IMAGE" }, select: { id: true, filename: true } });
+    const rows = await prisma.mediaAsset.findMany({
+      where: { id: { in: ids }, kind: "IMAGE" },
+      select: { id: true, filename: true, provider: true, providerId: true },
+    });
     const usageById: Record<string, MediaUsage[]> = {};
 
     for (const row of rows) {
@@ -594,14 +607,14 @@ r.delete("/images/bulk", async (req, res) => {
       return res.status(409).json({ error: "MEDIA_IN_USE", usageById });
     }
 
-    // delete files from disk best-effort
+    // delete files best-effort
     for (const row of rows) {
-      const fp = path.join(IMAGES_DIR, row.filename);
-      try {
-        await fs.unlink(fp);
-      } catch {
-        // ignore
+      if (row.provider === "CLOUDINARY" && row.providerId) {
+        await deleteFromCloudinary(row.providerId).catch(() => undefined);
+        continue;
       }
+      const fp = path.join(IMAGES_DIR, row.filename);
+      await fs.unlink(fp).catch(() => undefined);
     }
 
     await prisma.mediaAsset.deleteMany({ where: { id: { in: ids } } });
@@ -636,11 +649,15 @@ r.delete("/images/:id", async (req, res) => {
       return res.status(409).json({ error: "MEDIA_IN_USE", usage });
     }
 
-    const fp = path.join(IMAGES_DIR, row.filename);
-    try {
-      await fs.unlink(fp);
-    } catch {
-      // ignore
+    if (row.provider === "CLOUDINARY" && row.providerId) {
+      await deleteFromCloudinary(row.providerId).catch(() => undefined);
+    } else {
+      const fp = path.join(IMAGES_DIR, row.filename);
+      try {
+        await fs.unlink(fp);
+      } catch {
+        // ignore
+      }
     }
 
     await prisma.mediaAsset.delete({ where: { id } });
@@ -722,36 +739,87 @@ r.post("/images", (req, res) => {
       }
 
       for (const { file, opt } of processed) {
-        const created = await prisma.mediaAsset.create({
-          data: {
-            kind: "IMAGE",
-            filename: file.filename,
-            displayName: file.originalname || file.filename,
-            folder,
-            tags,
-            mime: file.mimetype || guessMimeFromExt(file.filename),
-            size: opt.size || file.size,
-            width: opt.width,
-            height: opt.height,
-          },
-        });
+        const fullPath = path.join(IMAGES_DIR, file.filename);
 
-        const rel = `/uploads/images/${file.filename}`;
-        out.push({
-          id: created.id,
-          url: makePublicUrl(req, rel),
-          path: rel,
-          filename: created.filename,
-          displayName: created.displayName,
-          folder: created.folder,
-          tags: created.tags,
-          mimetype: created.mime,
-          size: created.size,
-          width: created.width,
-          height: created.height,
-          createdAt: created.createdAt,
-          updatedAt: created.updatedAt,
-        });
+        if (isCloudinaryEnabled()) {
+          const uploaded = await uploadImageToCloudinary({
+            filePath: fullPath,
+            folder,
+            displayName: file.originalname || file.filename,
+            tags,
+          });
+
+          // Remove temp local file after upload
+          await fs.unlink(fullPath).catch(() => undefined);
+
+          const created = await prisma.mediaAsset.create({
+            data: {
+              kind: "IMAGE",
+              filename: uploaded.publicId,
+              url: uploaded.url,
+              provider: "CLOUDINARY",
+              providerId: uploaded.publicId,
+              displayName: file.originalname || uploaded.publicId,
+              folder,
+              tags,
+              mime: file.mimetype || guessMimeFromExt(file.filename),
+              size: uploaded.bytes || opt.size || file.size,
+              width: uploaded.width ?? opt.width,
+              height: uploaded.height ?? opt.height,
+            },
+          });
+
+          out.push({
+            id: created.id,
+            url: created.url,
+            path: created.url,
+            filename: created.filename,
+            displayName: created.displayName,
+            folder: created.folder,
+            tags: created.tags,
+            mimetype: created.mime,
+            size: created.size,
+            width: created.width,
+            height: created.height,
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt,
+            provider: created.provider,
+            providerId: created.providerId,
+          });
+        } else {
+          const created = await prisma.mediaAsset.create({
+            data: {
+              kind: "IMAGE",
+              filename: file.filename,
+              displayName: file.originalname || file.filename,
+              folder,
+              tags,
+              mime: file.mimetype || guessMimeFromExt(file.filename),
+              size: opt.size || file.size,
+              width: opt.width,
+              height: opt.height,
+            },
+          });
+
+          const rel = `/uploads/images/${file.filename}`;
+          out.push({
+            id: created.id,
+            url: makePublicUrl(req, rel),
+            path: rel,
+            filename: created.filename,
+            displayName: created.displayName,
+            folder: created.folder,
+            tags: created.tags,
+            mimetype: created.mime,
+            size: created.size,
+            width: created.width,
+            height: created.height,
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt,
+            provider: created.provider,
+            providerId: created.providerId,
+          });
+        }
       }
 
       return res.status(201).json({ files: out });
