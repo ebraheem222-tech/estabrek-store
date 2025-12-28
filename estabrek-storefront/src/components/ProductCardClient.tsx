@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
-import { getProductPrimaryImage } from "@/lib/catalog";
+import { formatMoney, getProductPrimaryImage } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
 
@@ -172,7 +172,9 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
               <div className="mt-0.5 text-xs text-black/60">{(product as any).category?.name ?? "—"}</div>
             </div>
             <div className="shrink-0 text-sm font-semibold text-[color:var(--accent-2)]">
-              {(product as any).minPrice != null ? `$${(product as any).minPrice}` : "—"}
+              {(product as any).minPrice != null
+                ? formatMoney((product as any).minPrice, (product as any).currencyCode ?? null)
+                : "—"}
             </div>
           </div>
 
