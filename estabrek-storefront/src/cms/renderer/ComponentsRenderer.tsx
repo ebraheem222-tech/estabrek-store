@@ -84,7 +84,7 @@ function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before")
     primary: ["#22c55e", "#06b6d4", "#3b82f6"],
   } as const;
 
-  const solidClass = {
+  const solidClassMap = {
     muted: "text-black/10 dark:text-white/10",
     white: "text-white/20",
     black: "text-black/15",
@@ -92,7 +92,10 @@ function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before")
     sunset: "",
     ocean: "",
     neon: "",
-  }[color as any] ?? "text-black/10 dark:text-white/10";
+  } as const;
+  const solidClass =
+    solidClassMap[color as keyof typeof solidClassMap] ??
+    "text-black/10 dark:text-white/10";
 
   const gradientId = `${kind}-grad-${Math.random().toString(36).slice(2,8)}`;
 
