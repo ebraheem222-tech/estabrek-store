@@ -13,9 +13,11 @@ export type MotionPreset = "none" | "reveal" | "stagger" | "parallax" | "pin";
 // ANIMATION FROM/TO DEFINITIONS
 // ============================================================
 
+type TweenVars = Record<string, any>;
+
 export type AnimationFromTo = {
-  from: gsap.TweenVars;
-  to: gsap.TweenVars;
+  from: TweenVars;
+  to: TweenVars;
 };
 
 export const ANIMATION_PRESETS: Record<AnimPreset, AnimationFromTo> = {
@@ -259,7 +261,7 @@ export function createScrollAnimation(
   config: AnimationConfig,
   gsap: any,
   ScrollTrigger: any
-): gsap.core.Tween | gsap.core.Timeline | null {
+): any | null {
   if (!element || !gsap || !ScrollTrigger || config.preset === "none") {
     return null;
   }

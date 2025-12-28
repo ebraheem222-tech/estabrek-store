@@ -2,7 +2,7 @@
 import React, { forwardRef } from "react";
 import { cn } from "./cn";
 
-type Props = React.InputHTMLAttributes<HTMLInputElement> & {
+type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
   label?: string;
   error?: string;
   hint?: string;
@@ -10,6 +10,11 @@ type Props = React.InputHTMLAttributes<HTMLInputElement> & {
   rightIcon?: React.ReactNode;
   /** Convenience helper when you only need the string value. */
   onValueChange?: (value: string) => void;
+  /**
+   * Accepts either the raw string value or the original event.
+   * This keeps older usages working without forcing refactors.
+   */
+  onChange?: (value: any) => void;
 };
 
 export const Input = forwardRef<HTMLInputElement, Props>(

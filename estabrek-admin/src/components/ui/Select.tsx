@@ -4,7 +4,7 @@ import { cn } from "./cn";
 
 type Option = { value: string; label: string };
 
-type Props = React.SelectHTMLAttributes<HTMLSelectElement> & {
+type Props = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange"> & {
   label?: string;
   error?: string;
   /**
@@ -15,6 +15,11 @@ type Props = React.SelectHTMLAttributes<HTMLSelectElement> & {
   placeholder?: string;
   /** Convenience helper when you only need the selected value. */
   onValueChange?: (value: string) => void;
+  /**
+   * Accepts either the raw string value or the original event.
+   * This keeps older usages working without forcing refactors.
+   */
+  onChange?: (value: any) => void;
 };
 
 export const Select = forwardRef<HTMLSelectElement, Props>(

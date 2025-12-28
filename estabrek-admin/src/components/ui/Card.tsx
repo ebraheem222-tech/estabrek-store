@@ -33,18 +33,20 @@ export function Card({ children, className, hover = false, padding = "md" }: Car
 
 type CardHeaderProps = {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
+  subtitle?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
 };
 
-export function CardHeader({ title, description, action, className }: CardHeaderProps) {
+export function CardHeader({ title, description, subtitle, action, className }: CardHeaderProps) {
+  const detail = description ?? subtitle;
   return (
     <div className={cn("flex items-start justify-between gap-4", className)}>
       <div>
         <h3 className="text-base font-semibold text-white">{title}</h3>
-        {description && (
-          <p className="mt-0.5 text-sm text-white/50">{description}</p>
+        {detail && (
+          <p className="mt-0.5 text-sm text-white/50">{detail}</p>
         )}
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}
