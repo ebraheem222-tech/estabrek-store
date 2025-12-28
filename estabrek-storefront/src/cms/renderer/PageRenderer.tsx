@@ -24,7 +24,7 @@ import type {
   VideoData,
 } from "../sectionTypes";
 import { SectionDecorations } from "@/cms/decorations/DecorationLayer";
-import type { TwTokens } from "@/cms/style/tokens";
+import type { DecorLayer, TwTokens } from "@/cms/style/tokens";
 import { DECOR_PRESETS } from "@/cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 
@@ -92,10 +92,12 @@ function uiContainerClass(data: any) {
   return typeof ui?.containerClass === "string" ? ui.containerClass : "";
 }
 
+type DecorPresetValue = { before?: DecorLayer; after?: DecorLayer };
+
 function sectionDecorations(tokens?: TwTokens) {
   const decor = tokens?.decor;
   if (!decor) return null;
-  const preset = decor.preset ? DECOR_PRESETS[decor.preset] : undefined;
+  const preset = decor.preset ? (DECOR_PRESETS[decor.preset] as DecorPresetValue) : undefined;
   const before = decor.before ?? preset?.before;
   const after = decor.after ?? preset?.after;
   const hasBefore = !!before?.shape && before.shape !== "none";
