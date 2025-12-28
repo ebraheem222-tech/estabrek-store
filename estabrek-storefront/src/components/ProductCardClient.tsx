@@ -8,6 +8,10 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { formatMoney, getProductPrimaryImage } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
+import { formatMoney, getProductMinPrice } from "@/lib/catalog";
+
+
+const minPrice = useMemo(() => getProductMinPrice(product), [product]);
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -172,10 +176,8 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
               <div className="mt-0.5 text-xs text-black/60">{(product as any).category?.name ?? "—"}</div>
             </div>
             <div className="shrink-0 text-sm font-semibold text-[color:var(--accent-2)]">
-              {(product as any).minPrice != null
-                ? formatMoney((product as any).minPrice, (product as any).currencyCode ?? null)
-                : "—"}
-            </div>
+  {minPrice != null ? formatMoney(minPrice, "ILS") : "—"}
+</div>
           </div>
 
           {/* gold underline accent */}
