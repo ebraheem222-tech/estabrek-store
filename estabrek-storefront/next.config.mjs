@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  staticPageGenerationTimeout: 180,
   images: {
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost' },
@@ -10,3 +11,4 @@ const nextConfig = {
 };
 
 export default nextConfig;
+;
