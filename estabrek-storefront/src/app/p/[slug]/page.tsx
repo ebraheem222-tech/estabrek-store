@@ -15,16 +15,25 @@ export const revalidate = 120;
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const product = await getProductBySlug(params.slug);
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const slug = encodeURIComponent((product as any)?.slug ?? params.slug);
+  const canonical = new URL(`/p/${slug}`, base).toString();
 
   if (!product) {
-    return { title: "Product", robots: { index: false, follow: false } };
+    return {
+      title: "Product",
+      alternates: { canonical },
+      robots: { index: false, follow: false },
+    };
   }
 
-  const canonical = new URL(`/p/${encodeURIComponent(product.slug ?? params.slug)}`, base).toString();
   const title = (product as any).seoTitle ?? (product as any).title ?? "Product";
   const description = (product as any).seoDescription ?? (product as any).description ?? "View product";
-  const ogImage = new URL(`/api/og/product?slug=${encodeURIComponent(product.slug)}`, base).toString();
-  const images = [{ url: ogImage, width: 1200, height: 630 }];
+  const productImageUrl = (product as any).images?.[0]?.url;
+  const fallbackOgUrl = new URL(`/api/og/product?slug=${slug}`, base).toString();
+  const openGraphImages = productImageUrl
+    ? [{ url: productImageUrl }]
+    : [{ url: fallbackOgUrl, width: 1200, height: 630 }];
+  const twitterImages = [productImageUrl ?? fallbackOgUrl];
 
   return {
     title,
@@ -35,13 +44,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       description,
       url: canonical,
       type: "website",
-      images,
+      images: openGraphImages,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [ogImage],
+      images: twitterImages,
     },
     robots: { index: true, follow: true },
   };
