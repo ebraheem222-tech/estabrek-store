@@ -108,7 +108,14 @@ export function getProductMinPrice(p: CatalogProduct): number | null {
 
 export function formatMoney(amount: number | null, currencyCode?: string | null): string {
   if (amount == null) return "";
-  // Lightweight symbol mapping; extend as needed.
-  const sym = currencyCode === "USD" ? "$" : currencyCode === "EUR" ? "€" : "₪";
-  return `${sym}${amount.toFixed(2)}`;
+  const n = typeof amount === "number" ? amount : Number(amount);
+  if (!Number.isFinite(n)) return "";
+  const code = currencyCode || "ILS";
+  try {
+    return new Intl.NumberFormat("ar", { style: "currency", currency: code }).format(n);
+  } catch {
+    // Lightweight symbol mapping fallback.
+    const sym = code === "USD" ? "$" : code === "EUR" ? "€" : "₪";
+    return `${sym}${n.toFixed(2)}`;
+  }
 }
