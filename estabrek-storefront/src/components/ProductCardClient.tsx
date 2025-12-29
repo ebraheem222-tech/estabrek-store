@@ -5,13 +5,9 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
-import { formatMoney, getProductPrimaryImage } from "@/lib/catalog";
+import { formatMoney, getProductPrimaryImage, getProductMinPrice } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
-import { formatMoney, getProductMinPrice } from "@/lib/catalog";
-
-
-const minPrice = useMemo(() => getProductMinPrice(product), [product]);
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -69,6 +65,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   const { primary, secondary } = useMemo(() => getCardImages(product), [product]);
   const swatches = useMemo(() => buildSwatches(product), [product]);
   const [hoverImg, setHoverImg] = useState<string | null>(null);
+  const minPrice = useMemo(() => getProductMinPrice(product), [product]);
 
   const badge = useMemo(() => {
     const items = (product.items ?? []) as any[];

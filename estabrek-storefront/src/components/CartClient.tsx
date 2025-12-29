@@ -43,7 +43,7 @@ function apiBase() {
 }
 
 function formatAmount(value: string | number | null | undefined, currencyCode?: string | null) {
-  if (value == null || value === "") return "-";
+  if (value == null || value === "") return "—";
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
   if (currencyCode) {
@@ -53,7 +53,7 @@ function formatAmount(value: string | number | null | undefined, currencyCode?: 
       // fall back to a simple numeric format
     }
   }
-  return n.toFixed(2);
+  return `₪${n.toFixed(2)}`;
 }
 
 export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE" | null; whatsappNumber?: string | null; ordersEmail?: string | null }) {
@@ -148,7 +148,10 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                 const metaParts = [line?.colorName, line?.sizeName].filter(Boolean) as string[];
                 if (line?.sku) metaParts.push(`SKU ${line.sku}`);
                 const meta = metaParts.join(" | ");
-                const total = line ? formatAmount(line.lineTotal ?? line.lineSubtotal, currencyCode) : null;
+                // Try multiple field names for line total
+                const lineAmount = line?.lineTotal ?? line?.lineSubtotal ?? line?.total ?? line?.subtotal ?? 
+                  (line?.unitPrice != null && it.quantity ? Number(line.unitPrice) * it.quantity : null);
+                const total = line ? formatAmount(lineAmount, currencyCode) : null;
                 return (
                   <div
                     key={it.variantId}

@@ -52,23 +52,24 @@ export function MobileFiltersDrawer({
 
           <div
             className={
-              "absolute right-0 top-0 h-full w-[92%] max-w-sm overflow-auto bg-white p-4 shadow-2xl " +
+              "absolute right-0 top-0 h-full w-[92%] max-w-sm overflow-auto bg-white dark:bg-zinc-900 p-4 shadow-2xl " +
               "transition-transform duration-200 will-change-transform " +
               (closing ? "translate-x-full" : "translate-x-0")
             }
-            style={{ background: "#FFFFFF" }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <div className="text-base font-semibold">الفلاتر</div>
+              <div className="text-base font-semibold text-zinc-900 dark:text-white">الفلاتر</div>
               <button
                 type="button"
                 onClick={close}
-                className="text-sm opacity-70 hover:opacity-100"
+                className="text-sm text-zinc-600 dark:text-zinc-300 hover:opacity-100"
               >
                 إغلاق
               </button>
             </div>
-            {children}
+            <div className="text-zinc-900 dark:text-white">
+              {children}
+            </div>
           </div>
         </div>
       ) : null}

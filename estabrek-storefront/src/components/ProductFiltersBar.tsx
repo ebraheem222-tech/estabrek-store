@@ -180,7 +180,7 @@ export function ProductFiltersBar({
   return (
     <div className={["space-y-3", className ?? ""].join(" ")}>
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold">Filters</div>
+        <div className="text-sm font-semibold text-zinc-900 dark:text-white">Filters</div>
         {hasAny ? (
           <button
             type="button"
@@ -195,9 +195,9 @@ export function ProductFiltersBar({
 
       <div className="grid gap-3 sm:grid-cols-3">
   <div className="space-y-1 sm:col-span-1">
-    <div className="text-xs opacity-70">بحث</div>
+    <div className="text-xs text-zinc-600 dark:text-zinc-300">بحث</div>
     <input
-      className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+      className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
       value={qParam}
       onChange={(e) => setSimple("q", e.target.value)}
       placeholder="ابحث عن منتج..."
@@ -205,9 +205,9 @@ export function ProductFiltersBar({
   </div>
 
   <div className="space-y-1 sm:col-span-1">
-    <div className="text-xs opacity-70">التصنيف</div>
+    <div className="text-xs text-zinc-600 dark:text-zinc-300">التصنيف</div>
     <select
-      className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+      className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
       value={categoryIdParam}
       onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
     >
@@ -223,15 +223,15 @@ export function ProductFiltersBar({
   </div>
 
   <div className="space-y-1 sm:col-span-1">
-    <div className="text-xs opacity-70">المتوفر فقط</div>
+    <div className="text-xs text-zinc-600 dark:text-zinc-300">المتوفر فقط</div>
     <button
       type="button"
       onClick={() => setSimple("inStock", inStockParam ? undefined : "1")}
       className={[
         "h-10 w-full rounded-xl border px-3 text-sm text-start",
         inStockParam
-          ? "border-zinc-900 bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-900"
-          : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900",
+          ? "border-zinc-900 bg-zinc-100 text-zinc-900 dark:border-zinc-100 dark:bg-zinc-800 dark:text-white"
+          : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700",
       ].join(" ")}
     >
       {inStockParam ? "مفعل" : "غير مفعل"}
@@ -242,9 +242,9 @@ export function ProductFiltersBar({
 <div className="grid gap-3 sm:grid-cols-3">
 
         <div className="space-y-1">
-          <div className="text-xs opacity-70">Sort</div>
+          <div className="text-xs text-zinc-600 dark:text-zinc-300">Sort</div>
           <select
-            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
             value={sortParam}
             onChange={(e) => setSimple("sort", e.target.value)}
           >
@@ -257,9 +257,9 @@ export function ProductFiltersBar({
         </div>
 
         <div className="space-y-1">
-          <div className="text-xs opacity-70">Min price</div>
+          <div className="text-xs text-zinc-600 dark:text-zinc-300">Min price</div>
           <input
-            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
             value={minPriceParam}
             onChange={(e) => setSimple("minPrice", e.target.value)}
             inputMode="numeric"
@@ -268,9 +268,9 @@ export function ProductFiltersBar({
         </div>
 
         <div className="space-y-1">
-          <div className="text-xs opacity-70">Max price</div>
+          <div className="text-xs text-zinc-600 dark:text-zinc-300">Max price</div>
           <input
-            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+            className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
             value={maxPriceParam}
             onChange={(e) => setSimple("maxPrice", e.target.value)}
             inputMode="numeric"
