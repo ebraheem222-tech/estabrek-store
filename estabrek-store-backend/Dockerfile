@@ -33,15 +33,6 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
-EXPOSE 4000
+# Railway uses PORT env variable
+EXPOSE ${PORT:-4000}
 CMD ["node", "dist/server.js"]
-```
-
-**Also important** - add a `.dockerignore` file to your repo root:
-```
-node_modules
-dist
-.git
-.env*
-*.log
-.DS_Store
