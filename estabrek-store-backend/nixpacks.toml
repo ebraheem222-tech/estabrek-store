@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "openssl", "vips", "python3", "gcc", "pkg-config"]
+nixPkgs = ["nodejs_20", "npm", "openssl", "vips", "python3", "gcc", "gnumake", "pkg-config", "libc"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci --legacy-peer-deps"]
 
 [phases.build]
 cmds = ["npx prisma generate", "npm run build"]
 
 [start]
-cmd = "node dist/server.js"
+cmd = "npx prisma migrate deploy && node dist/server.js"
