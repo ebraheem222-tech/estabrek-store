@@ -1,0 +1,219 @@
+/* ============================================================
+   ESTABREK CMS - TEXT & CARD EFFECTS CSS
+   ============================================================ */
+
+/* ============================================================
+   GRADIENT TEXT EFFECTS
+   ============================================================ */
+.text-gradient { background: linear-gradient(135deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-gold { background: linear-gradient(135deg, #E6D8A8, #C6A75E, #A88C3E); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-sunset { background: linear-gradient(135deg, #F59E0B, #EF4444, #DC2626); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-ocean { background: linear-gradient(135deg, #06B6D4, #3B82F6, #1D4ED8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-neon { background: linear-gradient(135deg, #00FFFF, #FF00FF, #FFFF00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-rainbow { background: linear-gradient(90deg, #FF0000, #FF7F00, #FFFF00, #00FF00, #0000FF, #4B0082, #9400D3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-holographic { background: linear-gradient(135deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4, #FFEAA7, #DDA0DD); background-size: 300% 300%; animation: holographic 3s ease infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+/* ============================================================
+   GLOW TEXT EFFECTS
+   ============================================================ */
+.text-glow { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+.text-glow-accent { text-shadow: 0 0 10px var(--color-accent), 0 0 20px var(--color-accent), 0 0 30px var(--color-accent); }
+.text-glow-gold { text-shadow: 0 0 10px var(--color-gold), 0 0 20px var(--color-gold), 0 0 30px var(--color-gold); }
+.text-glow-neon { text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px var(--color-accent), 0 0 35px var(--color-accent); }
+.text-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+
+/* ============================================================
+   3D TEXT EFFECTS
+   ============================================================ */
+.text-3d { text-shadow: 1px 1px 0 #ccc, 2px 2px 0 #c9c9c9, 3px 3px 0 #bbb, 4px 4px 0 #b9b9b9, 5px 5px 0 #aaa, 6px 6px 1px rgba(0,0,0,.1); }
+.text-3d-shadow { text-shadow: 0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25), 0 10px 10px rgba(0,0,0,.2), 0 20px 20px rgba(0,0,0,.15); }
+.text-3d-emboss { text-shadow: 0 1px 0 rgba(255,255,255,.3), 0 -1px 0 rgba(0,0,0,.7); }
+.text-3d-extrude { text-shadow: 0 1px 0 #999, 0 2px 0 #888, 0 3px 0 #777, 0 4px 0 #666, 0 5px 0 #555, 0 6px 0 #444, 0 7px 0 #333, 0 8px 7px rgba(0,0,0,.4); }
+.text-3d-chrome { background: linear-gradient(180deg, #fff 0%, #d4d4d4 50%, #fff 51%, #fafafa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(2px 2px 1px rgba(0,0,0,.3)); }
+
+/* ============================================================
+   ANIMATED TEXT EFFECTS
+   ============================================================ */
+.text-shimmer { background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.8) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 2s linear infinite; -webkit-background-clip: text; }
+.text-wave span { display: inline-block; animation: wave 1s ease-in-out infinite; }
+.text-glitch { position: relative; animation: glitch 1s linear infinite; }
+.text-typewriter { overflow: hidden; border-right: 2px solid; white-space: nowrap; animation: typewriter 3s steps(40) 1s forwards, blink 0.5s step-end infinite alternate; }
+.text-bounce span { display: inline-block; animation: bounce 0.5s ease infinite; }
+
+/* ============================================================
+   KEYFRAME ANIMATIONS
+   ============================================================ */
+@keyframes holographic { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes glow-pulse { 0%, 100% { text-shadow: 0 0 10px currentColor; } 50% { text-shadow: 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes wave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes glitch { 0%, 100% { transform: translate(0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(-2px, -2px); } 60% { transform: translate(2px, 2px); } 80% { transform: translate(2px, -2px); } }
+@keyframes typewriter { from { width: 0; } to { width: 100%; } }
+@keyframes blink { 50% { border-color: transparent; } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes neon-flicker { 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; } 20%, 24%, 55% { opacity: 0.4; } }
+
+/* ============================================================
+   CARD EFFECTS - GAMING
+   ============================================================ */
+.card-gaming { position: relative; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid #e94560; border-radius: 1rem; overflow: hidden; }
+.card-gaming::before { content: ''; position: absolute; inset: 0; background: linear-gradient(45deg, transparent 40%, rgba(233,69,96,0.1) 50%, transparent 60%); animation: card-shine 3s ease-in-out infinite; }
+.card-gaming.rarity-common { border-color: #808080; }
+.card-gaming.rarity-uncommon { border-color: #1eff00; box-shadow: 0 0 20px rgba(30,255,0,0.3); }
+.card-gaming.rarity-rare { border-color: #0070dd; box-shadow: 0 0 20px rgba(0,112,221,0.3); }
+.card-gaming.rarity-epic { border-color: #a335ee; box-shadow: 0 0 25px rgba(163,53,238,0.4); }
+.card-gaming.rarity-legendary { border-color: #ff8000; box-shadow: 0 0 30px rgba(255,128,0,0.5); animation: legendary-pulse 2s ease-in-out infinite; }
+
+/* ============================================================
+   CARD EFFECTS - GLASS
+   ============================================================ */
+.card-glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 1rem; }
+.card-glass-frost { background: rgba(255,255,255,0.25); backdrop-filter: blur(20px) saturate(180%); }
+.card-glass-dark { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-color: rgba(255,255,255,0.1); }
+.card-glass-aurora { background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); backdrop-filter: blur(10px); }
+
+/* ============================================================
+   CARD EFFECTS - NEON
+   ============================================================ */
+.card-neon { background: #0a0a0a; border: 2px solid; border-radius: 1rem; position: relative; }
+.card-neon-cyan { border-color: #00ffff; box-shadow: 0 0 10px #00ffff, inset 0 0 10px rgba(0,255,255,0.1); }
+.card-neon-pink { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff, inset 0 0 10px rgba(255,0,255,0.1); }
+.card-neon-green { border-color: #39ff14; box-shadow: 0 0 10px #39ff14, inset 0 0 10px rgba(57,255,20,0.1); }
+.card-neon::before { content: ''; position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; border: 1px solid currentColor; border-radius: 0.75rem; opacity: 0.5; }
+
+/* ============================================================
+   CARD EFFECTS - 3D
+   ============================================================ */
+.card-3d { transform-style: preserve-3d; transition: transform 0.3s ease; }
+.card-3d:hover { transform: translateY(-10px) rotateX(5deg) rotateY(-5deg); }
+.card-3d-shadow { box-shadow: 0 10px 30px -10px rgba(0,0,0,0.3), 0 20px 50px -20px rgba(0,0,0,0.2); }
+
+/* ============================================================
+   CARD EFFECTS - HOLOGRAPHIC
+   ============================================================ */
+.card-holographic { position: relative; overflow: hidden; }
+.card-holographic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,107,107,0.3), rgba(78,205,196,0.3), rgba(69,183,209,0.3), rgba(150,206,180,0.3), rgba(255,234,167,0.3)); background-size: 400% 400%; animation: holographic 3s ease infinite; opacity: 0.5; pointer-events: none; }
+
+/* ============================================================
+   CARD EFFECTS - ANIMATED BORDER
+   ============================================================ */
+.card-animated-border { position: relative; background: var(--color-surface); }
+.card-animated-border::before { content: ''; position: absolute; inset: -2px; background: linear-gradient(90deg, var(--color-accent), var(--color-gold), var(--color-accent)); background-size: 200% 100%; animation: border-rotate 3s linear infinite; border-radius: inherit; z-index: -1; }
+@keyframes border-rotate { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+@keyframes card-shine { 0%, 100% { transform: translateX(-100%); } 50% { transform: translateX(100%); } }
+@keyframes legendary-pulse { 0%, 100% { box-shadow: 0 0 30px rgba(255,128,0,0.5); } 50% { box-shadow: 0 0 50px rgba(255,128,0,0.8); } }
+
+/* ============================================================
+   HOVER EFFECTS
+   ============================================================ */
+.hover-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.hover-lift:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.hover-glow { transition: box-shadow 0.3s ease; }
+.hover-glow:hover { box-shadow: 0 0 30px var(--color-accent); }
+.hover-scale { transition: transform 0.3s ease; }
+.hover-scale:hover { transform: scale(1.05); }
+.hover-rotate-3d { transition: transform 0.3s ease; transform-style: preserve-3d; }
+.hover-rotate-3d:hover { transform: rotateX(10deg) rotateY(-10deg); }
+
+/* ============================================================
+   LOADER ANIMATIONS
+   ============================================================ */
+.loader-spinner { width: 40px; height: 40px; border: 3px solid var(--color-border); border-top-color: var(--color-accent); border-radius: 50%; animation: spin 1s linear infinite; }
+.loader-dots { display: flex; gap: 8px; }
+.loader-dots span { width: 12px; height: 12px; background: var(--color-accent); border-radius: 50%; animation: bounce 0.6s ease-in-out infinite; }
+.loader-dots span:nth-child(2) { animation-delay: 0.1s; }
+.loader-dots span:nth-child(3) { animation-delay: 0.2s; }
+.loader-pulse { width: 40px; height: 40px; background: var(--color-accent); border-radius: 50%; animation: pulse 1s ease-in-out infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.5; } }
+
+/* ============================================================
+   TYPEWRITER & COUNTER ANIMATIONS
+   ============================================================ */
+
+/* Cursor blink animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Typewriter cursor variants */
+.cursor-block { 
+  display: inline-block;
+  width: 0.5em;
+  height: 1.1em;
+  background: currentColor;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+.cursor-underline {
+  display: inline-block;
+  width: 0.6em;
+  height: 2px;
+  background: currentColor;
+  vertical-align: baseline;
+  animation: blink 1s step-end infinite;
+}
+
+/* Counter scroll animation */
+@keyframes countUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-count-up {
+  animation: countUp 0.5s ease-out forwards;
+}
+
+/* Typewriter reveal animation */
+@keyframes typeReveal {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.animate-type-reveal {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typeReveal 2s steps(30) forwards;
+}
+
+/* Glowing text for typewriter */
+.typewriter-glow {
+  text-shadow: 
+    0 0 5px currentColor,
+    0 0 10px currentColor,
+    0 0 20px currentColor;
+}
+
+/* Gradient text for typewriter */
+.typewriter-gradient {
+  background: linear-gradient(90deg, var(--color-accent), var(--color-gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Neon text for typewriter */
+.typewriter-neon {
+  color: #00FFFF;
+  text-shadow: 
+    0 0 5px #00FFFF,
+    0 0 10px #00FFFF,
+    0 0 20px #00FFFF,
+    0 0 40px #00FFFF;
+}
+
+/* TYPEWRITER ANIMATIONS */
+@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.animate-blink { animation: blink 1s step-end infinite; }
+.cursor-block { display: inline-block; width: 0.5em; height: 1.1em; background: currentColor; animation: blink 1s step-end infinite; }
+.typewriter-glow { text-shadow: 0 0 5px currentColor, 0 0 10px currentColor, 0 0 20px currentColor; }
+.typewriter-gradient { background: linear-gradient(90deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.typewriter-neon { color: #00FFFF; text-shadow: 0 0 5px #00FFFF, 0 0 10px #00FFFF, 0 0 20px #00FFFF; }
