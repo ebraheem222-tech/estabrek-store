@@ -37,6 +37,30 @@ function cls(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
+
+function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
+  if (!text || !effect || !SPLIT_TEXT_EFFECTS.has(effect)) {
+    return { content: text };
+  }
+  const delayStep = effect === "wave" ? 0.06 : 0.04;
+  const letters = Array.from(text);
+  const content = letters.map((ch, idx) => (
+    <span key={`${idx}-${ch}`} aria-hidden="true" style={{ animationDelay: `${idx * delayStep}s` }}>
+      {ch === " " ? "\u00a0" : ch}
+    </span>
+  ));
+  return { content, ariaLabel: text };
+}
+
+function textEffectClass(tokens?: any) {
+  return tokensToClassName({ textEffect: tokens?.textEffect } as any);
+}
+
+function cardEffectClass(tokens?: any) {
+  return tokensToClassName({ cardTemplate: tokens?.cardTemplate, hoverExtended: tokens?.hoverExtended, state: tokens?.state } as any);
+}
+
 const HERO_ANIM_CLASS: Record<string, string> = {
   "fade-up": "anim-fade-up",
   "zoom-in": "anim-zoom-in",
@@ -713,22 +737,38 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const cards: any[] = Array.isArray((d as any).cards) ? ((d as any).cards as any[]) : [];
     const componentsBlock = renderComponentsBlock(d);
     const sectionClass = ui.sectionClass || "py-8";
-    const tokenClass = tokensToClassName((d as any)?.twTokens);
+    const sectionTokens = (d as any)?.twTokens;
+    const tokenClass = tokensToClassName(sectionTokens);
+    const textEffects = textEffectClass(sectionTokens);
+    const cardEffects = cardEffectClass(sectionTokens);
+    const titleSplit = splitTextWithEffect(String(d.title ?? ""), sectionTokens?.textEffect);
+    const subtitleSplit = splitTextWithEffect(String(d.subtitle ?? ""), sectionTokens?.textEffect);
 
     return wrapPreview(d, (
       <section className={cls(sectionClass, tokenClass)} style={uiSectionStyle(d)}>
         <div className={ui.containerClass || "mx-auto max-w-5xl px-4"}>
           <SectionTextScope data={d}>
-          {d.title ? <h2 className="text-2xl font-semibold text-white">{d.title}</h2> : null}
-          {d.subtitle ? <p className="mt-1 text-white/70">{d.subtitle}</p> : null}
+          {d.title ? (
+            <h2 className={cls("text-2xl font-semibold text-white", textEffects)} aria-label={titleSplit.ariaLabel}>
+              {titleSplit.content}
+            </h2>
+          ) : null}
+          {d.subtitle ? (
+            <p className={cls("mt-1 text-white/70", textEffects)} aria-label={subtitleSplit.ariaLabel}>
+              {subtitleSplit.content}
+            </p>
+          ) : null}
 
           <div className={ui.cardsClass || "mt-6 flex flex-wrap gap-4"}>
             {cards.map((c, idx) => (
               <div
                 key={idx}
                 className={
-                  ui.cardClass ||
-                  "w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.67rem)] rounded-2xl border border-white/10 bg-white/5 p-4"
+                  cls(
+                    ui.cardClass ||
+                      "w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.67rem)] rounded-2xl border border-white/10 bg-white/5 p-4",
+                    cardEffects
+                  )
                 }
               >
                 {c.imageUrl ? (
@@ -740,22 +780,42 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 ) : null}
 
                 <div className="flex items-start justify-between gap-2 mt-3">
-                  {c.title ? <div className="font-semibold text-white">{c.title}</div> : <div />}
+                  {c.title ? (() => {
+                    const split = splitTextWithEffect(String(c.title ?? ""), sectionTokens?.textEffect);
+                    return (
+                      <div className={cls("font-semibold text-white", textEffects)} aria-label={split.ariaLabel}>
+                        {split.content}
+                      </div>
+                    );
+                  })() : <div />}
                   {c.badge ? (
-                    <div className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80">
-                      {c.badge}
-                    </div>
+                    (() => {
+                      const split = splitTextWithEffect(String(c.badge ?? ""), sectionTokens?.textEffect);
+                      return (
+                        <div className={cls("shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80", textEffects)} aria-label={split.ariaLabel}>
+                          {split.content}
+                        </div>
+                      );
+                    })()
                   ) : null}
                 </div>
 
-                {c.text ? <div className="mt-2 text-sm text-white/70">{c.text}</div> : null}
+                {c.text ? (() => {
+                  const split = splitTextWithEffect(String(c.text ?? ""), sectionTokens?.textEffect);
+                  return (
+                    <div className={cls("mt-2 text-sm text-white/70", textEffects)} aria-label={split.ariaLabel}>
+                      {split.content}
+                    </div>
+                  );
+                })() : null}
 
                 {c.buttonLabel && c.buttonHref ? (
                   <a
                     href={c.buttonHref}
-                    className="inline-flex items-center justify-center px-3 py-2 mt-4 text-sm text-white rounded-xl bg-white/10 hover:bg-white/15"
+                    className={cls("inline-flex items-center justify-center px-3 py-2 mt-4 text-sm text-white rounded-xl bg-white/10 hover:bg-white/15", textEffects)}
+                    aria-label={splitTextWithEffect(String(c.buttonLabel ?? ""), sectionTokens?.textEffect).ariaLabel}
                   >
-                    {c.buttonLabel}
+                    {splitTextWithEffect(String(c.buttonLabel ?? ""), sectionTokens?.textEffect).content}
                   </a>
                 ) : null}
               </div>
