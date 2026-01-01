@@ -11,6 +11,31 @@ function cn(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+function getChildren(component: CmsComponent): CmsComponent[] {
+  const fromProps = (component.props as any)?.children;
+  if (Array.isArray(fromProps)) return fromProps as CmsComponent[];
+  const fromRoot = (component as any)?.children;
+  if (Array.isArray(fromRoot)) return fromRoot as CmsComponent[];
+  return [];
+}
+
+function getLegacyTokens(component: CmsComponent): any | undefined {
+  const legacy = (component as any)?.tw;
+  if (!legacy || typeof legacy !== "object") return undefined;
+  const copy = { ...legacy } as any;
+  if ("className" in copy) delete copy.className;
+  return Object.keys(copy).length ? copy : undefined;
+}
+
+function resolveTokens(component: CmsComponent): any | undefined {
+  return (component as any).twTokens ?? getLegacyTokens(component);
+}
+
+function getLegacyClassName(component: CmsComponent): string {
+  const v = (component as any)?.tw?.className;
+  return typeof v === "string" ? v : "";
+}
+
 function baseButtonClasses(variant?: string): string {
   const v = variant ?? "primary";
   switch (v) {
@@ -144,7 +169,9 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
     const nextDepth = depth + 1;
 
     // Layout components support nesting: props.children = CmsComponent[]
-    const children = Array.isArray((c.props as any)?.children) ? ((c.props as any).children as CmsComponent[]) : [];
+    const tokens = resolveTokens(c);
+    const legacyClassName = getLegacyClassName(c);
+    const children = getChildren(c);
 
     const gridColsMap: Record<number, string> = {
       2: "grid-cols-1 md:grid-cols-2",
@@ -163,7 +190,7 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
     switch (c.kind) {
       case "container": {
         return (
-          <RenderBox key={c.id} tokens={c.twTokens} className="mx-auto w-full">
+          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "mx-auto w-full")}>
             {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
           </RenderBox>
         );
@@ -171,7 +198,7 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
 
       case "stack": {
         return (
-          <RenderBox key={c.id} tokens={c.twTokens} className="flex flex-col">
+          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-col")}>
             {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
           </RenderBox>
         );
@@ -179,7 +206,7 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
 
       case "row": {
         return (
-          <RenderBox key={c.id} tokens={c.twTokens} className="flex flex-row flex-wrap">
+          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-row flex-wrap")}>
             {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
           </RenderBox>
         );
@@ -189,7 +216,7 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
         const cols = Math.min(6, Math.max(2, Number(c.props?.cols ?? 2)));
         const cls = cn("grid", gridColsMap[cols] ?? gridColsMap[2]);
         return (
-          <RenderBox key={c.id} tokens={c.twTokens} className={cls}>
+          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
             {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
           </RenderBox>
         );
@@ -199,7 +226,7 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
         const cols = Math.min(4, Math.max(2, Number(c.props?.cols ?? 2)));
         const cls = cn("grid", columnsColsMap[cols] ?? columnsColsMap[2]);
         return (
-          <RenderBox key={c.id} tokens={c.twTokens} className={cls}>
+          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
             {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
           </RenderBox>
         );
@@ -264,7 +291,7 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
             }
 
             return (
-              <RenderBox key={c.id} tokens={c.twTokens} className="w-full">
+              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
                 <nav className="relative">
                   <ul className="flex flex-wrap items-center gap-2">
                     {items.map((it: any) => {
@@ -327,7 +354,7 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
 case "text": {
             const As = (c.props?.as ?? "p") as any;
             return (
-              <RenderBox key={c.id} tokens={c.twTokens}>
+              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}>
                 <As >
                 {c.props?.text ?? ""}
                 </As>
@@ -337,7 +364,7 @@ case "text": {
 
           case "badge": {
             return (
-              <RenderBox key={c.id} tokens={c.twTokens}><span className={"inline-flex items-center rounded-full border border-black/10 dark:border-white/15"}>
+              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><span className={"inline-flex items-center rounded-full border border-black/10 dark:border-white/15"}>
                 {c.props?.text ?? "Badge"}
               </span></RenderBox>
             );
@@ -348,7 +375,7 @@ case "text": {
             const label = c.props?.label ?? "Button";
             const variant = c.props?.variant ?? "primary";
             return (
-              <RenderBox key={c.id} tokens={c.twTokens}><a href={href} className={baseButtonClasses(variant)}>
+              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><a href={href} className={baseButtonClasses(variant)}>
                 {label}
               </a></RenderBox>
             );
@@ -361,7 +388,7 @@ case "text": {
             const buttonHref = c.props?.buttonHref ?? "#";
             const buttonVariant = c.props?.buttonVariant ?? "secondary";
             return (
-              <RenderBox key={c.id} tokens={c.twTokens}><div className="rounded-2xl border border-black/10 bg-white dark:bg-white/5 dark:border-white/15">
+              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><div className="rounded-2xl border border-black/10 bg-white dark:bg-white/5 dark:border-white/15">
                 <div className="space-y-2">
                   <div className="text-lg font-semibold">{title}</div>
                   {text ? <div className="text-sm opacity-80">{text}</div> : null}
@@ -379,11 +406,11 @@ case "text": {
             const ordered = !!c.props?.ordered;
             const items: string[] = Array.isArray(c.props?.items) ? c.props.items : [];
             return ordered ? (
-              <RenderBox key={c.id} tokens={c.twTokens}><ol className="list-decimal ps-6">
+              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><ol className="list-decimal ps-6">
                 {items.map((it, i) => <li key={i}>{it}</li>)}
               </ol></RenderBox>
             ) : (
-              <RenderBox key={c.id} tokens={c.twTokens}><ul className="list-disc ps-6">
+              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><ul className="list-disc ps-6">
                 {items.map((it, i) => <li key={i}>{it}</li>)}
               </ul></RenderBox>
             );
@@ -392,7 +419,7 @@ case "text": {
           case "image": {
             const src = c.props?.src;
             if (!src) return null;
-            return (<RenderBox key={c.id} tokens={c.twTokens}><img src={src} alt={c.props?.alt ?? ""} className="max-w-full rounded-xl" /></RenderBox>);
+            return (<RenderBox key={c.id} tokens={tokens} className={legacyClassName}><img src={src} alt={c.props?.alt ?? ""} className="max-w-full rounded-xl" /></RenderBox>);
           }
 
           case "icon": {
@@ -400,17 +427,17 @@ case "text": {
             if (!d) return null;
             const viewBox = c.props?.viewBox ?? "0 0 24 24";
             return (
-              <RenderBox key={c.id} tokens={c.twTokens}><svg viewBox={viewBox} className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><svg viewBox={viewBox} className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d={d} />
               </svg></RenderBox>
             );
           }
 
           case "divider":
-            return (<RenderBox key={c.id} tokens={c.twTokens}><hr className="border-black/10 dark:border-white/15" /></RenderBox>);
+            return (<RenderBox key={c.id} tokens={tokens} className={legacyClassName}><hr className="border-black/10 dark:border-white/15" /></RenderBox>);
 
           case "spacer":
-            return (<RenderBox key={c.id} tokens={c.twTokens}><div className={spacerClass(c.props?.h)} /></RenderBox>);
+            return (<RenderBox key={c.id} tokens={tokens} className={legacyClassName}><div className={spacerClass(c.props?.h)} /></RenderBox>);
 
           
           case "productGrid": {
@@ -424,7 +451,7 @@ case "text": {
               filters: CatalogFilters;
             };
             return (
-              <RenderBox key={c.id} tokens={c.twTokens} className="w-full">
+              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
                 {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
                 <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===3?"grid-cols-3":cols===5?"grid-cols-5":cols===6?"grid-cols-6":"grid-cols-4")}>
                   {ids.map((id) => (<ProductCard key={id} productId={id} />))}
@@ -463,7 +490,7 @@ case "text": {
             const ids: string[] = Array.isArray(c.props?.productIds) ? c.props.productIds : [];
             const title = c.props?.title ?? "";
             return (
-              <RenderBox key={c.id} tokens={c.twTokens} className="w-full">
+              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
                 {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
                 <div className="flex gap-4 overflow-x-auto pb-2">
                   {ids.map((id) => (
@@ -481,7 +508,7 @@ case "text": {
             const cols = c.props?.cols ?? 3;
             const title = c.props?.title ?? "";
             return (
-              <RenderBox key={c.id} tokens={c.twTokens} className="w-full">
+              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
                 {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
                 <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===4?"grid-cols-4":"grid-cols-3")}>
                   {items.map((it, idx2) => (
@@ -525,7 +552,7 @@ case "text": {
             // If facets aren't provided, show a small hint.
             if (!colors.length && !sizes.length && !categories.length) {
               return (
-                <RenderBox key={c.id} tokens={c.twTokens} className="w-full">
+                <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
                   <div className="rounded-2xl border border-black/10 dark:border-white/15 p-3 text-sm opacity-80">
                     FiltersBar (needs facets)
                   </div>
@@ -533,7 +560,7 @@ case "text": {
               );
             }
             return (
-              <RenderBox key={c.id} tokens={c.twTokens} className="w-full">
+              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
                 <ProductFiltersBar colors={colors} sizes={sizes} categories={categories} />
               </RenderBox>
             );
