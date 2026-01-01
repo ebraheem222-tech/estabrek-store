@@ -2,6 +2,7 @@ import type {
   BgPreset,
   DisplayPreset,
   PositionPreset,
+  OverflowPreset,
   RadiusPreset,
   ShadowPreset,
   HoverPreset,
@@ -13,11 +14,16 @@ import type {
   MarginPreset,
   TextSizePreset,
   TextAlignPreset,
+  FontFamilyPreset,
   FontWeightPreset,
   TextColorPreset,
+  LineHeightPreset,
+  LetterSpacingPreset,
   BorderWidthPreset,
   BorderStylePreset,
   MaxWidthPreset,
+  OpacityPreset,
+  BlurPreset,
   FlexDirPreset,
   FlexWrapPreset,
   JustifyPreset,
@@ -46,6 +52,13 @@ export const positionMap: Record<PositionPreset, string> = {
   sticky: "sticky top-0",
 };
 
+export const overflowMap: Record<OverflowPreset, string> = {
+  auto: "overflow-auto",
+  hidden: "overflow-hidden",
+  visible: "overflow-visible",
+  scroll: "overflow-scroll",
+};
+
 // Flex presets
 export const flexDirMap: Record<FlexDirPreset, string> = {
   row: "flex-row",
@@ -67,6 +80,15 @@ export const justifyMap: Record<JustifyPreset, string> = {
   between: "justify-between",
   around: "justify-around",
   evenly: "justify-evenly",
+};
+
+export const contentMap: Record<JustifyPreset, string> = {
+  start: "content-start",
+  center: "content-center",
+  end: "content-end",
+  between: "content-between",
+  around: "content-around",
+  evenly: "content-evenly",
 };
 
 export const itemsMap: Record<ItemsPreset, string> = {
@@ -110,6 +132,14 @@ export const placeItemsMap: Record<PlaceItemsPreset, string> = {
   center: "place-items-center",
   end: "place-items-end",
   stretch: "place-items-stretch",
+};
+
+export const gridFlowMap: Record<"row" | "col" | "dense" | "row-dense" | "col-dense", string> = {
+  row: "grid-flow-row",
+  col: "grid-flow-col",
+  dense: "grid-flow-dense",
+  "row-dense": "grid-flow-row-dense",
+  "col-dense": "grid-flow-col-dense",
 };
 
 // Radius / shadow
@@ -293,6 +323,14 @@ export const fontWeightMap: Record<FontWeightPreset, string> = {
   black: "font-black",
 };
 
+export const fontFamilyMap: Record<FontFamilyPreset, string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  mono: "font-mono",
+  arabic: "font-arabic",
+  display: "font-display",
+};
+
 export const textColorMap: Record<TextColorPreset, string> = {
   default: "text-[var(--color-text,#1A1A1A)] dark:text-[var(--color-text,#F7F4E9)]",
   muted: "text-[var(--color-text-muted,#5A5A5A)] dark:text-[var(--color-text-muted,#B8B5A8)]",
@@ -308,6 +346,24 @@ export const textColorMap: Record<TextColorPreset, string> = {
   info: "text-[var(--color-info,#0EA5E9)]",
   white: "text-white",
   black: "text-black",
+};
+
+export const lineHeightMap: Record<LineHeightPreset, string> = {
+  none: "leading-none",
+  tight: "leading-tight",
+  snug: "leading-snug",
+  normal: "leading-normal",
+  relaxed: "leading-relaxed",
+  loose: "leading-loose",
+};
+
+export const letterSpacingMap: Record<LetterSpacingPreset, string> = {
+  tighter: "tracking-tighter",
+  tight: "tracking-tight",
+  normal: "tracking-normal",
+  wide: "tracking-wide",
+  wider: "tracking-wider",
+  widest: "tracking-widest",
 };
 
 // Border presets
@@ -360,4 +416,42 @@ export const maxWMap: Record<MaxWidthPreset, string> = {
   "7xl": "max-w-7xl",
   prose: "prose dark:prose-invert",
   full: "max-w-full",
+};
+
+export const opacityMap: Record<OpacityPreset, string> = {
+  "0": "opacity-0",
+  "5": "opacity-5",
+  "10": "opacity-10",
+  "20": "opacity-20",
+  "25": "opacity-25",
+  "30": "opacity-30",
+  "40": "opacity-40",
+  "50": "opacity-50",
+  "60": "opacity-60",
+  "70": "opacity-70",
+  "75": "opacity-75",
+  "80": "opacity-80",
+  "90": "opacity-90",
+  "95": "opacity-95",
+  "100": "opacity-100",
+};
+
+export const blurMap: Record<BlurPreset, string> = {
+  none: "blur-none",
+  sm: "blur-sm",
+  md: "blur-md",
+  lg: "blur-lg",
+  xl: "blur-xl",
+  "2xl": "blur-2xl",
+  "3xl": "blur-3xl",
+};
+
+export const backdropBlurMap: Record<BlurPreset, string> = {
+  none: "backdrop-blur-none",
+  sm: "backdrop-blur-sm",
+  md: "backdrop-blur-md",
+  lg: "backdrop-blur-lg",
+  xl: "backdrop-blur-xl",
+  "2xl": "backdrop-blur-2xl",
+  "3xl": "backdrop-blur-3xl",
 };
