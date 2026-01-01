@@ -1,9 +1,11 @@
 import type { CSSProperties } from "react";
 import type { TwTokens } from "./tokens";
+import type { CardTemplatePreset, HoverPresetExtended, TextEffectPreset, TwTokensExtended } from "./tokens-extended";
 import {
   bgMap,
   displayMap,
   positionMap,
+  overflowMap,
   radiusMap,
   shadowMap,
   hoverMap,
@@ -15,20 +17,28 @@ import {
   marginMap,
   textSizeMap,
   textAlignMap,
+  fontFamilyMap,
   fontWeightMap,
   textColorMap,
+  lineHeightMap,
+  letterSpacingMap,
   borderWidthMap,
   borderStyleMap,
   borderColorMap,
   maxWMap,
+  opacityMap,
+  blurMap,
+  backdropBlurMap,
   flexDirMap,
   flexWrapMap,
   justifyMap,
+  contentMap,
   itemsMap,
   gridColsMap,
   gridRowsMap,
   justifyItemsMap,
   placeItemsMap,
+  gridFlowMap,
 } from "./twMaps";
 
 export function resolveCustomColor(value?: string): string | undefined {
@@ -54,15 +64,61 @@ export function resolveCustomBackground(value?: string):
   return color ? { type: "color", value: color } : undefined;
 }
 
-export function tokensToClassName(tokens?: TwTokens): string {
+type CmsTokens = TwTokens & TwTokensExtended;
+
+function textEffectClass(effect?: TextEffectPreset): string {
+  if (!effect || effect === "none") return "";
+  return `text-${effect}`;
+}
+
+function cardTemplateClass(preset?: CardTemplatePreset): string {
+  if (!preset || preset === "default") return "";
+  if (preset === "gaming") return "card-gaming";
+  if (preset.startsWith("gaming-")) {
+    return `card-gaming rarity-${preset.replace("gaming-", "")}`;
+  }
+  if (preset === "neon") return "card-neon";
+  if (preset.startsWith("neon-")) return `card-neon card-${preset}`;
+  if (preset.startsWith("glass-")) {
+    if (preset === "glass-light" || preset === "glass-colored") return "card-glass";
+    if (preset === "glass-rainbow") return "card-glass-aurora";
+    return `card-${preset}`;
+  }
+  if (preset.startsWith("3d")) return "card-3d card-3d-shadow";
+  if (preset === "gradient-border" || preset === "animated-border") return "card-animated-border";
+  if (preset === "holographic") return "card-holographic";
+  return `card-${preset}`;
+}
+
+function hoverExtendedClass(preset?: HoverPresetExtended): string {
+  if (!preset || preset === "none") return "";
+  switch (preset) {
+    case "lift":
+      return "hover-lift";
+    case "glow":
+      return "hover-glow";
+    case "underline":
+      return "hover-underline";
+    case "scale":
+      return "hover-scale";
+    case "brighten":
+      return "hover-brighten";
+    case "darken":
+      return "hover-darken";
+    case "rotate-3d":
+      return "hover-rotate-3d";
+    default:
+      return `hover-${preset}`;
+  }
+}
+
+export function tokensToClassName(tokens?: CmsTokens): string {
   if (!tokens) return "";
   const parts: string[] = [];
-  const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string }) | undefined;
 
   // layout
   if (tokens.layout?.display) parts.push(displayMap[tokens.layout.display]);
 
-  // advanced flex/grid settings
   const display = tokens.layout?.display;
   if (display === "flex" || display === "inline-flex") {
     const fx = tokens.layout?.flex;
@@ -70,6 +126,7 @@ export function tokensToClassName(tokens?: TwTokens): string {
     if (fx?.wrap) parts.push(flexWrapMap[fx.wrap]);
     if (fx?.justify) parts.push(justifyMap[fx.justify]);
     if (fx?.items) parts.push(itemsMap[fx.items]);
+    if (fx?.content) parts.push(contentMap[fx.content]);
   }
 
   if (display === "grid") {
@@ -78,10 +135,14 @@ export function tokensToClassName(tokens?: TwTokens): string {
     if (gr?.rows) parts.push(gridRowsMap[gr.rows]);
     if (gr?.justifyItems) parts.push(justifyItemsMap[gr.justifyItems]);
     if (gr?.placeItems) parts.push(placeItemsMap[gr.placeItems]);
+    if (gr?.flow) parts.push(gridFlowMap[gr.flow]);
   }
 
   if (tokens.layout?.position) parts.push(positionMap[tokens.layout.position]);
   if (tokens.layout?.zIndex) parts.push(tokens.layout.zIndex === "auto" ? "z-auto" : `z-${tokens.layout.zIndex}`);
+  if (tokens.layout?.overflow) parts.push(overflowMap[tokens.layout.overflow]);
+  if (tokens.layout?.overflowX) parts.push(overflowMap[tokens.layout.overflowX].replace(/^overflow-/, "overflow-x-"));
+  if (tokens.layout?.overflowY) parts.push(overflowMap[tokens.layout.overflowY].replace(/^overflow-/, "overflow-y-"));
 
   // size
   if (tokens.size?.maxW) parts.push(maxWMap[tokens.size.maxW]);
@@ -102,35 +163,75 @@ export function tokensToClassName(tokens?: TwTokens): string {
   if (tokens.spacing?.marginBottom) parts.push(marginMap[tokens.spacing.marginBottom].replace(/^m-/, "mb-"));
 
   // typography
+  if (tokens.typography?.family) parts.push(fontFamilyMap[tokens.typography.family]);
   if (tokens.typography?.size) parts.push(textSizeMap[tokens.typography.size]);
   if (tokens.typography?.align) parts.push(textAlignMap[tokens.typography.align]);
   if (tokens.typography?.weight) parts.push(fontWeightMap[tokens.typography.weight]);
   if (tokens.typography?.color) parts.push(textColorMap[tokens.typography.color]);
+  if (tokens.typography?.lineHeight) parts.push(lineHeightMap[tokens.typography.lineHeight]);
+  if (tokens.typography?.letterSpacing) parts.push(letterSpacingMap[tokens.typography.letterSpacing]);
+  if (tokens.typography?.decoration) {
+    if (tokens.typography.decoration === "underline") parts.push("underline");
+    else if (tokens.typography.decoration === "overline") parts.push("overline");
+    else if (tokens.typography.decoration === "line-through") parts.push("line-through");
+    else if (tokens.typography.decoration === "none") parts.push("no-underline");
+  }
+  if (tokens.typography?.transform) {
+    if (tokens.typography.transform === "uppercase") parts.push("uppercase");
+    else if (tokens.typography.transform === "lowercase") parts.push("lowercase");
+    else if (tokens.typography.transform === "capitalize") parts.push("capitalize");
+    else if (tokens.typography.transform === "normal-case") parts.push("normal-case");
+  }
+  if (tokens.typography?.truncate) parts.push("truncate");
+  if (tokens.typography?.lineClamp) parts.push(`line-clamp-${tokens.typography.lineClamp}`);
 
   // style
   if (tokens.style?.bg) parts.push(bgMap[tokens.style.bg]);
+  if (tokens.style?.bgOpacity) parts.push(opacityMap[tokens.style.bgOpacity].replace(/^opacity-/, "bg-opacity-"));
   if (tokens.style?.radius) parts.push(radiusMap[tokens.style.radius]);
   if (tokens.style?.shadow) parts.push(shadowMap[tokens.style.shadow]);
   if (tokens.style?.borderWidth) parts.push(borderWidthMap[tokens.style.borderWidth]);
   if (tokens.style?.borderStyle) parts.push(borderStyleMap[tokens.style.borderStyle]);
   if (tokens.style?.borderColor) parts.push(borderColorMap[tokens.style.borderColor]);
 
-  // state
-  if (tokens.state?.hover) parts.push(hoverMap[tokens.state.hover]);
-
   // motion
   const motionAnim = tokens.motion?.anim ?? tokens.motion?.preset;
   if (motionAnim) parts.push(animMap[motionAnim]);
   if (tokens.motion?.delay !== undefined) {
-    const delayClass = delayMap[tokens.motion.delay as keyof typeof delayMap];
+    const delayKey = tokens.motion.delay as keyof typeof delayMap;
+    const delayClass = delayMap[delayKey];
     if (delayClass) parts.push(delayClass);
   }
   if (tokens.motion?.duration !== undefined) {
-    const durationClass = durationMap[tokens.motion.duration as keyof typeof durationMap];
+    const durationKey = tokens.motion.duration as keyof typeof durationMap;
+    const durationClass = durationMap[durationKey];
     if (durationClass) parts.push(durationClass);
   }
 
+  // effects
+  if (tokens.effects?.opacity) parts.push(opacityMap[tokens.effects.opacity]);
+  if (tokens.effects?.blur) parts.push(blurMap[tokens.effects.blur]);
+  if (tokens.effects?.backdropBlur) parts.push(backdropBlurMap[tokens.effects.backdropBlur]);
+  if (tokens.effects?.backdropBrightness) parts.push(`backdrop-brightness-${tokens.effects.backdropBrightness}`);
+  if (tokens.effects?.grayscale) parts.push("grayscale");
+  if (tokens.effects?.invert) parts.push("invert");
+  if (tokens.effects?.sepia) parts.push("sepia");
+  if (tokens.effects?.mixBlend) parts.push(`mix-blend-${tokens.effects.mixBlend}`);
+
+  // extended effects
+  const textEffectCls = textEffectClass(tokens.textEffect);
+  if (textEffectCls) {
+    parts.push(textEffectCls);
+    parts.push("cms-text-effects");
+  }
+  const cardTemplateCls = cardTemplateClass(tokens.cardTemplate);
+  if (cardTemplateCls) parts.push(cardTemplateCls);
+  const hoverExtendedCls = hoverExtendedClass(tokens.hoverExtended);
+  if (hoverExtendedCls) parts.push(hoverExtendedCls);
+  if (!hoverExtendedCls && tokens.state?.hover) parts.push(hoverMap[tokens.state.hover]);
+
   // custom colors (inline vars)
+  const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string }) | undefined;
   const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const customText = resolveCustomColor(tokens.typography?.colorCustom ?? tokens.typography?.color);
   if (customBg?.type === "color") parts.push("cms-inline-bg");
@@ -139,7 +240,7 @@ export function tokensToClassName(tokens?: TwTokens): string {
   return parts.filter(Boolean).join(" ").trim();
 }
 
-export function tokensToInlineStyle(tokens?: TwTokens): CSSProperties | undefined {
+export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefined {
   if (!tokens) return undefined;
   const style: CSSProperties = {};
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string; borderCustomColor?: string }) | undefined;
@@ -171,6 +272,11 @@ export function tokensToInlineStyle(tokens?: TwTokens): CSSProperties | undefine
   }
   if (typeof motionTokens?.delay === "number" && Number.isFinite(motionTokens.delay)) {
     style.animationDelay = motionTokens.delay >= 10 ? `${motionTokens.delay}ms` : `${motionTokens.delay}s`;
+  }
+  if (tokens.sticky?.enabled) {
+    style.position = "sticky";
+    style.top = tokens.sticky?.top ?? "0";
+    if (typeof tokens.sticky?.zIndex === "number") style.zIndex = tokens.sticky.zIndex;
   }
   return Object.keys(style).length ? style : undefined;
 }
