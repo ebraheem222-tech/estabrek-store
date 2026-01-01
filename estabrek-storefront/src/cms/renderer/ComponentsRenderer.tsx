@@ -107,6 +107,22 @@ function isInlineTag(tag: any, tokens?: any): boolean {
   ]).has(tag);
 }
 
+const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
+
+function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
+  if (!text || !effect || !SPLIT_TEXT_EFFECTS.has(effect)) {
+    return { content: text };
+  }
+  const delayStep = effect === "wave" ? 0.06 : 0.04;
+  const letters = Array.from(text);
+  const content = letters.map((ch, idx) => (
+    <span key={`${idx}-${ch}`} aria-hidden="true" style={{ animationDelay: `${idx * delayStep}s` }}>
+      {ch === " " ? "\u00a0" : ch}
+    </span>
+  ));
+  return { content, ariaLabel: text };
+}
+
 
 function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before") {
   if (!layer || !layer.shape || layer.shape === "none") return null;
@@ -403,14 +419,24 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
 
       case "text": {
         const As = (c.props?.as ?? "p") as any;
-        const node = <As className={tokenClass} style={tokenStyle}>{c.props?.text ?? ""}</As>;
+        const rawText = c.props?.text ?? "";
+        const textValue = typeof rawText === "string" ? rawText : String(rawText);
+        const split = splitTextWithEffect(textValue, tokens?.textEffect);
+        const node = (
+          <As className={tokenClass} style={tokenStyle} aria-label={split.ariaLabel}>
+            {split.content}
+          </As>
+        );
         return wrapWithDecor(tokens, node, isInlineTag(As, tokens), c.id);
       }
 
       case "badge": {
+        const rawText = c.props?.text ?? "Badge";
+        const textValue = typeof rawText === "string" ? rawText : String(rawText);
+        const split = splitTextWithEffect(textValue, tokens?.textEffect);
         const node = (
-          <span className={cn("inline-flex items-center rounded-full border border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle}>
-            {c.props?.text ?? "Badge"}
+          <span className={cn("inline-flex items-center rounded-full border border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} aria-label={split.ariaLabel}>
+            {split.content}
           </span>
         );
         return wrapWithDecor(tokens, node, true, c.id);
@@ -418,11 +444,13 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
 
       case "button": {
         const href = c.props?.href ?? "#";
-        const label = c.props?.label ?? "Button";
+        const rawLabel = c.props?.label ?? "Button";
+        const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
         const variant = c.props?.variant ?? "primary";
+        const split = splitTextWithEffect(label, tokens?.textEffect);
         const node = (
-          <a href={href} className={cn(baseButtonClasses(variant), tokenClass)} style={tokenStyle}>
-            {label}
+          <a href={href} className={cn(baseButtonClasses(variant), tokenClass)} style={tokenStyle} aria-label={split.ariaLabel}>
+            {split.content}
           </a>
         );
         return wrapWithDecor(tokens, node, true, c.id);
