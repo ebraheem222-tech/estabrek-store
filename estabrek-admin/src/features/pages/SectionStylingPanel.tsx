@@ -937,5 +937,7 @@ export function SectionStylingPanelExtended({
   );
 }
 
+export const SectionStylingPanel = SectionStylingPanelExtended;
+
 export default SectionStylingPanel;
 
