@@ -1,39 +1,30 @@
 import React from "react";
-import type { CmsComponent } from "@/cms/types";
-import type { DecorLayer } from "@/cms/style/tokens";
-import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
-import { SHAPES } from "@/cms/shapes/shapeRegistry";
-import ProductCard from "@/components/ProductCard";
-import { buildCanonicalQuery, type CatalogFilters } from "@/lib/filtersUrl";
-import { ProductFiltersBar } from "@/components/ProductFiltersBar";
+import type { CmsComponent } from "../types";
+import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
 
-function cn(...parts: Array<string | undefined | null | false>) {
+type CmsComponentsRendererProps = {
+  components?: CmsComponent[];
+  className?: string;
+};
+
+function cx(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
-function hasDecorLayers(tokens?: any): boolean {
-  const before = tokens?.decor?.before?.shape;
-  const after = tokens?.decor?.after?.shape;
-  return !!((before && before !== "none") || (after && after !== "none"));
-}
+const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
 
-function wrapWithDecor(
-  tokens: any,
-  content: React.ReactElement,
-  inline = false,
-  key?: React.Key
-): React.ReactNode {
-  if (!hasDecorLayers(tokens)) {
-    return React.cloneElement(content, { key });
+function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
+  if (!text || !effect || !SPLIT_TEXT_EFFECTS.has(effect)) {
+    return { content: text };
   }
-  const Wrapper: React.ElementType = inline ? "span" : "div";
-  return (
-    <Wrapper key={key} className={cn("relative", inline ? "inline-block" : undefined)}>
-      {renderDecorLayer(tokens?.decor?.before, "before")}
-      {content}
-      {renderDecorLayer(tokens?.decor?.after, "after")}
-    </Wrapper>
-  );
+  const delayStep = effect === "wave" ? 0.06 : 0.04;
+  const letters = Array.from(text);
+  const content = letters.map((ch, idx) => (
+    <span key={`${idx}-${ch}`} aria-hidden="true" style={{ animationDelay: `${idx * delayStep}s` }}>
+      {ch === " " ? "\u00a0" : ch}
+    </span>
+  ));
+  return { content, ariaLabel: text };
 }
 
 function getChildren(component: CmsComponent): CmsComponent[] {
@@ -53,605 +44,327 @@ function getLegacyTokens(component: CmsComponent): any | undefined {
 }
 
 function resolveTokens(component: CmsComponent): any | undefined {
-  return (component as any).twTokens ?? getLegacyTokens(component);
+  return component.twTokens ?? getLegacyTokens(component);
 }
 
-function getLegacyClassName(component: CmsComponent): string {
-  const v = (component as any)?.tw?.className;
-  return typeof v === "string" ? v : "";
+function componentClasses(component: CmsComponent): string {
+  const tokens = resolveTokens(component);
+  const tokenClass = tokensToClassName(tokens);
+  const legacyClassName = typeof (component as any)?.tw?.className === "string" ? (component as any).tw.className : "";
+  return cx(tokenClass, legacyClassName);
+}
+
+function componentInlineStyle(component: CmsComponent): React.CSSProperties | undefined {
+  const tokens = resolveTokens(component) as any;
+  return tokensToInlineStyle(tokens);
+}
+
+function textEffectClass(tokens?: any) {
+  if (!tokens?.textEffect) return "";
+  return tokensToClassName({ textEffect: tokens.textEffect } as any);
 }
 
 function baseButtonClasses(variant?: string): string {
   const v = variant ?? "primary";
   switch (v) {
     case "secondary":
-      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] hover:bg-[color:var(--surface-2)]";
+      return "border border-black/10 bg-white text-black hover:bg-black/5 dark:border-white/15 dark:bg-white/10 dark:text-white";
     case "ghost":
-      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-transparent text-[color:var(--text)] hover:bg-[color:var(--surface-2)]";
+      return "border border-transparent hover:bg-black/5 dark:hover:bg-white/10 dark:text-white";
     default:
-      return "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-[color:var(--accent-2)] text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95";
+      return "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black";
   }
 }
 
 function spacerClass(h?: string): string {
   switch (h) {
-    case "xs": return "h-2";
-    case "sm": return "h-4";
-    case "md": return "h-8";
-    case "lg": return "h-12";
-    case "xl": return "h-20";
-    default: return "h-8";
+    case "xs":
+      return "h-2";
+    case "sm":
+      return "h-4";
+    case "md":
+      return "h-8";
+    case "lg":
+      return "h-12";
+    case "xl":
+      return "h-20";
+    default:
+      return "h-8";
   }
 }
 
-function isInlineTag(tag: any, tokens?: any): boolean {
-  const display = tokens?.layout?.display;
-  if (display === "inline" || display === "inline-flex") return true;
-  if (typeof tag !== "string") return false;
-  return new Set([
-    "span",
-    "small",
-    "strong",
-    "em",
-    "b",
-    "i",
-    "u",
-    "s",
-    "a",
-    "button",
-    "label",
-    "code",
-    "kbd",
-    "sup",
-    "sub",
-  ]).has(tag);
+function gridColsClass(cols?: number): string {
+  const n = Math.min(6, Math.max(1, Number(cols) || 1));
+  if (n === 1) return "grid-cols-1";
+  if (n === 2) return "grid-cols-1 sm:grid-cols-2";
+  if (n === 3) return "grid-cols-1 sm:grid-cols-3";
+  if (n === 4) return "grid-cols-1 sm:grid-cols-4";
+  if (n === 5) return "grid-cols-1 sm:grid-cols-5";
+  return "grid-cols-1 sm:grid-cols-6";
 }
 
-const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
+function ComponentNode({ component, depth = 0 }: { component: CmsComponent; depth?: number }) {
+  const props = (component.props ?? {}) as any;
+  const tokens = resolveTokens(component) as any;
+  const legacyClassName = typeof (component as any)?.tw?.className === "string" ? (component as any).tw.className : "";
+  const className = componentClasses(component);
+  const inlineStyle = componentInlineStyle(component);
+  const children = getChildren(component);
+  const safeDepth = Math.min(depth, 6);
 
-function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
-  if (!text || !effect || !SPLIT_TEXT_EFFECTS.has(effect)) {
-    return { content: text };
-  }
-  const delayStep = effect === "wave" ? 0.06 : 0.04;
-  const letters = Array.from(text);
-  const content = letters.map((ch, idx) => (
-    <span key={`${idx}-${ch}`} aria-hidden="true" style={{ animationDelay: `${idx * delayStep}s` }}>
-      {ch === " " ? "\u00a0" : ch}
-    </span>
-  ));
-  return { content, ariaLabel: text };
-}
+  const renderChildren = () => {
+    if (!children.length || safeDepth >= 6) return null;
+    return children.map((child, idx) => (
+      <ComponentNode key={child.id ?? `${component.id}-${idx}`} component={child} depth={safeDepth + 1} />
+    ));
+  };
 
-
-function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before") {
-  if (!layer || !layer.shape || layer.shape === "none") return null;
-
-  const placement = (layer.placement ?? "bottom") as "top"|"bottom"|"left"|"right";
-  const size = layer.size ?? "md";
-  const opacity = layer.opacity ?? "20";
-  const color = layer.color ?? "muted";
-  const fill = layer.fill ?? (color === "sunset" || color === "ocean" || color === "neon" ? "gradient" : "solid");
-  const blur = layer.blur ?? "0";
-  const flipX = !!layer.flipX;
-  const flipY = !!layer.flipY;
-
-  const sizeMapH: Record<string, string> = { xs: "h-8", sm: "h-12", md: "h-20", lg: "h-28", xl: "h-36" };
-  const sizeMapW: Record<string, string> = { xs: "w-8", sm: "w-12", md: "w-20", lg: "w-28", xl: "w-36" };
-
-  const isHorizontal = placement === "top" || placement === "bottom";
-  const wrapSize = isHorizontal ? (sizeMapH[size] ?? "h-20") : (sizeMapW[size] ?? "w-20");
-
-  const posClass =
-    placement === "top" ? "top-0 left-0 right-0" :
-    placement === "bottom" ? "bottom-0 left-0 right-0" :
-    placement === "left" ? "left-0 top-0 bottom-0" :
-    "right-0 top-0 bottom-0";
-
-  const blurClass = blur === "md" ? "blur-md" : blur === "sm" ? "blur-sm" : undefined;
-  const rotateClass = placement === "left" ? "-rotate-90" : placement === "right" ? "rotate-90" : undefined;
-  const flipXClass = flipX ? "-scale-x-100" : undefined;
-  const flipYClass = flipY ? "-scale-y-100" : undefined;
-
-  const opacityValue = Math.max(0, Math.min(100, Number(opacity))) / 100;
-  const baseWrap = cn(
-    "pointer-events-none absolute overflow-hidden",
-    posClass,
-    wrapSize,
-    kind === "before" ? "-z-10" : "-z-10",
-    blurClass,
-    rotateClass,
-    flipXClass,
-    flipYClass
-  );
-
-  // Solid color via currentColor; gradients via defs.
-  const gradStops = {
-    sunset: ["#fb7185", "#f97316", "#fbbf24"],
-    ocean: ["#06b6d4", "#3b82f6", "#6366f1"],
-    neon: ["#d946ef", "#8b5cf6", "#3b82f6"],
-    primary: ["#22c55e", "#06b6d4", "#3b82f6"],
-  } as const;
-
-  const solidClassMap = {
-    muted: "text-black/10 dark:text-white/10",
-    white: "text-white/20",
-    black: "text-black/15",
-    primary: "text-black/25 dark:text-white/20",
-    sunset: "",
-    ocean: "",
-    neon: "",
-  } as const;
-  const solidClass =
-    solidClassMap[color as keyof typeof solidClassMap] ??
-    "text-black/10 dark:text-white/10";
-
-  const gradientId = `${kind}-grad-${Math.random().toString(36).slice(2,8)}`;
-
-  const def = SHAPES[layer.shape] ?? SHAPES.wave;
-
-  return (
-    <div className={baseWrap} style={{ opacity: Number.isFinite(opacityValue) ? opacityValue : undefined }} aria-hidden="true">
-      <svg className={cn("w-full h-full", fill === "glass" ? "opacity-60" : undefined, solidClass)} viewBox={def.viewBox} preserveAspectRatio="none">
-        {fill === "gradient" ? (
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={(gradStops as any)[color]?.[0] ?? gradStops.sunset[0]} stopOpacity={0.85} />
-              <stop offset="50%" stopColor={(gradStops as any)[color]?.[1] ?? gradStops.sunset[1]} stopOpacity={0.85} />
-              <stop offset="100%" stopColor={(gradStops as any)[color]?.[2] ?? gradStops.sunset[2]} stopOpacity={0.85} />
-            </linearGradient>
-          </defs>
-        ) : null}
-        <path d={def.d} fill={fill === "gradient" ? `url(#${gradientId})` : "currentColor"} />
-      </svg>
-    </div>
-  );
-}
-
-
-function RenderBox({ tokens, className, children }: { tokens?: any; className?: string; children: React.ReactNode }) {
-  const cls = cn(tokensToClassName(tokens), className);
-  const inlineStyle = tokensToInlineStyle(tokens);
-  const hasDecor = hasDecorLayers(tokens);
-  return (
-    <div className={cn(hasDecor ? "relative" : undefined, cls)} style={inlineStyle}>
-      {hasDecor ? renderDecorLayer(tokens?.decor?.before, "before") : null}
-      {children}
-      {hasDecor ? renderDecorLayer(tokens?.decor?.after, "after") : null}
-    </div>
-  );
-}
-
-export function ComponentsRenderer({ components, productLookup }: { components?: CmsComponent[]; productLookup?: Record<string, any> }) {
-  if (!components?.length) return null;
-
-  const renderOne = (c: CmsComponent, stack = new Set<CmsComponent>(), depth = 0): React.ReactNode => {
-    if (depth > 100) return null; // safety guard against runaway nesting
-    if (stack.has(c)) return null; // guard against accidental cycles in CMS data
-    const nextStack = new Set(stack);
-    nextStack.add(c);
-    const nextDepth = depth + 1;
-
-    // Layout components support nesting: props.children = CmsComponent[]
-    const tokens = resolveTokens(c);
-    const legacyClassName = getLegacyClassName(c);
-    const children = getChildren(c);
-
-    const gridColsMap: Record<number, string> = {
-      2: "grid-cols-1 md:grid-cols-2",
-      3: "grid-cols-1 md:grid-cols-3",
-      4: "grid-cols-1 md:grid-cols-4",
-      5: "grid-cols-1 md:grid-cols-5",
-      6: "grid-cols-1 md:grid-cols-6",
-    };
-
-    const columnsColsMap: Record<number, string> = {
-      2: "grid-cols-1 md:grid-cols-2",
-      3: "grid-cols-1 md:grid-cols-3",
-      4: "grid-cols-1 md:grid-cols-4",
-    };
-
-    switch (c.kind) {
-      case "container": {
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "mx-auto w-full")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
-          </RenderBox>
-        );
-      }
-
-      case "stack": {
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-col")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
-          </RenderBox>
-        );
-      }
-
-      case "row": {
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-row flex-wrap")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
-          </RenderBox>
-        );
-      }
-
-      case "grid": {
-        const cols = Math.min(6, Math.max(2, Number(c.props?.cols ?? 2)));
-        const cls = cn("grid", gridColsMap[cols] ?? gridColsMap[2]);
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
-          </RenderBox>
-        );
-      }
-
-      case "columns": {
-        const cols = Math.min(4, Math.max(2, Number(c.props?.cols ?? 2)));
-        const cls = cn("grid", columnsColsMap[cols] ?? columnsColsMap[2]);
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
-          </RenderBox>
-        );
-      }
-
-      default:
-        break;
+  switch (component.kind) {
+    case "text": {
+      const As = (props.as ?? "p") as React.ElementType;
+      const rawText = props.text ?? "";
+      const textValue = typeof rawText === "string" ? rawText : String(rawText);
+      const split = splitTextWithEffect(textValue, tokens?.textEffect);
+      return (
+        <As className={className} style={inlineStyle} aria-label={split.ariaLabel}>
+          {split.content}
+        </As>
+      );
     }
-
-    // Non-layout leaf components
-    const tokenClass = cn(tokensToClassName(tokens), legacyClassName);
-    const tokenStyle = tokensToInlineStyle(tokens);
-
-    switch (c.kind) {
-      case "nav_menu": {
-        const props = c.props ?? {};
-        const items = Array.isArray(props.items) ? props.items : [];
-        const mode = (props.mode ?? "dropdown") as "dropdown" | "mega";
-        const gradient = (props.gradient ?? "none") as "none" | "sunset" | "ocean" | "neon";
-        const showIcons = !!(props.showIcons ?? true);
-
-        const iconPaths: Record<string, string> = {
-          home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
-          shop: "M4 7h16l-1.5 14H5.5L4 7Zm3-4h10l1 4H6l1-4Z",
-          phone: "M6 2h3l2 5-2 1c1 3 3 5 6 6l1-2 5 2v3c0 1-1 2-2 2C10 19 5 14 4 6c0-1 1-2 2-2Z",
-          star: "M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7l3-7Z",
-          sparkle: "M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2Z",
-          chev: "M9 6l6 6-6 6",
-        };
-
-        function Icon({ name }: { name?: string }) {
-          if (!showIcons) return null;
-          const key = (name ?? "none") as string;
-          const d = iconPaths[key];
-          if (!d) return null;
-          return (
-            <svg viewBox="0 0 24 24" className="h-4 w-4 opacity-90" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d={d} strokeLinejoin="round" strokeLinecap="round" />
-            </svg>
-          );
-        }
-
-        const gradStops: Record<string, string[]> = {
-          sunset: ["#fb7185", "#f97316", "#fbbf24"],
-          ocean: ["#06b6d4", "#3b82f6", "#6366f1"],
-          neon: ["#d946ef", "#8b5cf6", "#3b82f6"],
-        };
-        function GradientBg() {
-          if (gradient === "none") return null;
-          const id = `nav-grad-${c.id}`;
-          const stops = gradStops[gradient] ?? gradStops.sunset;
-          return (
-            <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full">
-              <defs>
-                <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-                  {stops.map((s, i) => (
-                    <stop key={s} offset={`${(i / (stops.length - 1)) * 100}%`} stopColor={s} />
-                  ))}
-                </linearGradient>
-              </defs>
-              <rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} opacity="0.22" />
-            </svg>
-          );
-        }
-
-        const node = (
-          <nav className={cn("relative", "w-full", tokenClass)} style={tokenStyle}>
-            <ul className="flex flex-wrap items-center gap-2">
-              {items.map((it: any) => {
-                const children = Array.isArray(it.children) ? it.children : [];
-                const hasChildren = children.length > 0;
-                return (
-                  <li key={it.id ?? it.href ?? it.label} className="relative group">
-                    <a
-                      href={it.href ?? "#"}
-                      className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-white/[0.06]"
-                    >
-                      <Icon name={it.icon} />
-                      <span>{it.label ?? "Item"}</span>
-                      {hasChildren ? <Icon name="chev" /> : null}
-                    </a>
-
-                    {hasChildren ? (
-                      <div className="absolute left-0 top-full z-50 mt-2 hidden min-w-[220px] group-hover:block">
-                        <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur p-3">
-                          <GradientBg />
-                          {mode === "mega" ? (
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {children.map((ch: any) => (
-                                <a
-                                  key={ch.id ?? ch.href ?? ch.label}
-                                  href={ch.href ?? "#"}
-                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
-                                >
-                                  <Icon name={ch.icon} />
-                                  <span>{ch.label ?? "Child"}</span>
-                                </a>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="grid gap-1">
-                              {children.map((ch: any) => (
-                                <a
-                                  key={ch.id ?? ch.href ?? ch.label}
-                                  href={ch.href ?? "#"}
-                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
-                                >
-                                  <Icon name={ch.icon} />
-                                  <span>{ch.label ?? "Child"}</span>
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        );
-
-        return wrapWithDecor(tokens, node, false, c.id);
-      }
-
-      case "text": {
-        const As = (c.props?.as ?? "p") as any;
-        const rawText = c.props?.text ?? "";
+    case "badge":
+      {
+        const rawText = props.text ?? "Badge";
         const textValue = typeof rawText === "string" ? rawText : String(rawText);
         const split = splitTextWithEffect(textValue, tokens?.textEffect);
-        const node = (
-          <As className={tokenClass} style={tokenStyle} aria-label={split.ariaLabel}>
-            {split.content}
-          </As>
-        );
-        return wrapWithDecor(tokens, node, isInlineTag(As, tokens), c.id);
-      }
-
-      case "badge": {
-        const rawText = c.props?.text ?? "Badge";
-        const textValue = typeof rawText === "string" ? rawText : String(rawText);
-        const split = splitTextWithEffect(textValue, tokens?.textEffect);
-        const node = (
-          <span className={cn("inline-flex items-center rounded-full border border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} aria-label={split.ariaLabel}>
+        return (
+          <span className={cx("border border-white/10", className)} style={inlineStyle} aria-label={split.ariaLabel}>
             {split.content}
           </span>
         );
-        return wrapWithDecor(tokens, node, true, c.id);
       }
-
-      case "button": {
-        const href = c.props?.href ?? "#";
-        const rawLabel = c.props?.label ?? "Button";
-        const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
-        const variant = c.props?.variant ?? "primary";
-        const split = splitTextWithEffect(label, tokens?.textEffect);
-        const node = (
-          <a href={href} className={cn(baseButtonClasses(variant), tokenClass)} style={tokenStyle} aria-label={split.ariaLabel}>
+    case "button": {
+      const rawLabel = props.label ?? "Button";
+      const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
+      const split = splitTextWithEffect(label, tokens?.textEffect);
+      if (props.href) {
+        return (
+          <a href={props.href} className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle} aria-label={split.ariaLabel}>
             {split.content}
           </a>
         );
-        return wrapWithDecor(tokens, node, true, c.id);
       }
-
-      case "card": {
-        const title = c.props?.title ?? "Card title";
-        const text = c.props?.text ?? "";
-        const buttonLabel = c.props?.buttonLabel;
-        const buttonHref = c.props?.buttonHref ?? "#";
-        const buttonVariant = c.props?.buttonVariant ?? "secondary";
-        const node = (
-          <div className={cn("rounded-2xl border border-black/10 bg-white dark:bg-white/5 dark:border-white/15", tokenClass)} style={tokenStyle}>
+      return (
+        <button type="button" className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle} aria-label={split.ariaLabel}>
+          {split.content}
+        </button>
+      );
+    }
+    case "card":
+      {
+        const title = props.title ?? "Card";
+        const text = props.text ?? "";
+        const titleValue = typeof title === "string" ? title : String(title);
+        const textValue = typeof text === "string" ? text : String(text);
+        const titleSplit = splitTextWithEffect(titleValue, tokens?.textEffect);
+        const textSplit = splitTextWithEffect(textValue, tokens?.textEffect);
+        const buttonLabel = props.buttonLabel ?? "";
+        const buttonLabelValue = typeof buttonLabel === "string" ? buttonLabel : String(buttonLabel);
+        const buttonSplit = splitTextWithEffect(buttonLabelValue, tokens?.textEffect);
+        const textEffects = textEffectClass(tokens);
+        const cardClassName = tokens?.textEffect
+          ? cx(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName)
+          : className;
+        return (
+          <div className={cx("border border-white/10", cardClassName)} style={inlineStyle}>
             <div className="space-y-2">
-              <div className="text-lg font-semibold">{title}</div>
-              {text ? <div className="text-sm opacity-80">{text}</div> : null}
-              {buttonLabel ? (
-                <a href={buttonHref} className={cn(baseButtonClasses(buttonVariant), "mt-2 inline-flex")}>
-                  {buttonLabel}
-                </a>
+              {titleValue ? (
+                <div className={cx("font-semibold", textEffects)} aria-label={titleSplit.ariaLabel}>
+                  {titleSplit.content}
+                </div>
+              ) : (
+                <div className="font-semibold">Card</div>
+              )}
+              {textValue ? (
+                <div className={cx("opacity-80", textEffects)} aria-label={textSplit.ariaLabel}>
+                  {textSplit.content}
+                </div>
+              ) : null}
+              {props.buttonLabel ? (
+                props.buttonHref ? (
+                  <a
+                    href={props.buttonHref}
+                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", textEffects)}
+                    aria-label={buttonSplit.ariaLabel}
+                  >
+                    {buttonSplit.content}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", textEffects)}
+                    aria-label={buttonSplit.ariaLabel}
+                  >
+                    {buttonSplit.content}
+                  </button>
+                )
               ) : null}
             </div>
           </div>
         );
-        return wrapWithDecor(tokens, node, false, c.id);
       }
-
-      case "list": {
-        const ordered = !!c.props?.ordered;
-        const items: string[] = Array.isArray(c.props?.items) ? c.props.items : [];
-        const node = ordered ? (
-          <ol className={cn("list-decimal ps-6", tokenClass)} style={tokenStyle}>
-            {items.map((it, i) => <li key={i}>{it}</li>)}
+    case "list": {
+      const items = Array.isArray(props.items) ? props.items : [];
+      if (props.ordered) {
+        return (
+          <ol className={cx("list-decimal ps-6", className)} style={inlineStyle}>
+            {items.map((it: string, idx: number) => (
+              <li key={idx}>{it}</li>
+            ))}
           </ol>
-        ) : (
-          <ul className={cn("list-disc ps-6", tokenClass)} style={tokenStyle}>
-            {items.map((it, i) => <li key={i}>{it}</li>)}
-          </ul>
         );
-        return wrapWithDecor(tokens, node, false, c.id);
       }
-
-      case "image": {
-        const src = c.props?.src;
-        if (!src) return null;
-        const node = <img src={src} alt={c.props?.alt ?? ""} className={cn("max-w-full rounded-xl", tokenClass)} style={tokenStyle} />;
-        return wrapWithDecor(tokens, node, true, c.id);
-      }
-
-      case "icon": {
-        const d = c.props?.d;
-        if (!d) return null;
-        const viewBox = c.props?.viewBox ?? "0 0 24 24";
-        const node = (
-          <svg viewBox={viewBox} className={cn("h-6 w-6", tokenClass)} style={tokenStyle} fill="none" stroke="currentColor" strokeWidth="2">
-            <path d={d} />
-          </svg>
-        );
-        return wrapWithDecor(tokens, node, true, c.id);
-      }
-
-      case "divider": {
-        const node = <hr className={cn("border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} />;
-        return wrapWithDecor(tokens, node, false, c.id);
-      }
-
-      case "spacer": {
-        const node = <div className={cn(spacerClass(c.props?.h), tokenClass)} style={tokenStyle} />;
-        return wrapWithDecor(tokens, node, false, c.id);
-      }
-
-      case "productGrid": {
-        const ids: string[] = Array.isArray(c.props?.productIds) ? c.props.productIds : [];
-        const cols = c.props?.cols ?? 4;
-        const title = c.props?.title ?? "";
-        const pagination = c.props?.pagination as undefined | {
-          basePath: string;
-          page: number;
-          totalPages: number;
-          filters: CatalogFilters;
-        };
-        const node = (
-          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
-            {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
-            <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===3?"grid-cols-3":cols===5?"grid-cols-5":cols===6?"grid-cols-6":"grid-cols-4")}>
-              {ids.map((id) => (<ProductCard key={id} productId={id} />))}
-            </div>
-
-            {pagination && pagination.totalPages > 1 ? (
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                  .slice(0, 9)
-                  .map((p) => {
-                    const q = buildCanonicalQuery({ ...(pagination.filters ?? { colors: [], sizeIds: [] }), page: p });
-                    const href = q ? `${pagination.basePath}?${q}` : pagination.basePath;
-                    const active = p === (pagination.page ?? 1);
-                    return (
-                      <a
-                        key={p}
-                        href={href}
-                        className={[
-                          "h-10 min-w-[40px] rounded-xl px-3 inline-flex items-center justify-center border text-sm transition",
-                          active
-                            ? "border-[#0B0B0B] bg-[#0B0B0B] text-[#F7F4E9]"
-                            : "border-black/10 bg-white/70 hover:bg-white",
-                        ].join(" ")}
-                      >
-                        {p}
-                      </a>
-                    );
-                  })}
-              </div>
-            ) : null}
-          </div>
-        );
-        return wrapWithDecor(tokens, node, false, c.id);
-      }
-
-      case "productSlider": {
-        const ids: string[] = Array.isArray(c.props?.productIds) ? c.props.productIds : [];
-        const title = c.props?.title ?? "";
-        const node = (
-          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
-            {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {ids.map((id) => (
-                <div key={id} className="min-w-[220px] max-w-[260px] flex-shrink-0">
-                  <ProductCard productId={id} />
+      return (
+        <ul className={cx("list-disc ps-6", className)} style={inlineStyle}>
+          {items.map((it: string, idx: number) => (
+            <li key={idx}>{it}</li>
+          ))}
+        </ul>
+      );
+    }
+    case "image":
+      return props.src ? (
+        <img src={props.src} alt={props.alt ?? ""} className={cx("max-w-full", className)} style={inlineStyle} />
+      ) : (
+        <div className={cx("border border-dashed border-white/20 p-6 text-xs opacity-70", className)} style={inlineStyle}>Image</div>
+      );
+    case "icon":
+      return props.d ? (
+        <svg viewBox={props.viewBox ?? "0 0 24 24"} className={cx("h-6 w-6", className)} style={inlineStyle} fill="none" stroke="currentColor" strokeWidth="2">
+          <path d={props.d} />
+        </svg>
+      ) : (
+        <div className={cx("h-6 w-6 rounded-md border border-dashed border-white/20", className)} style={inlineStyle} />
+      );
+    case "divider":
+      return <hr className={cx("border-white/10", className)} style={inlineStyle} />;
+    case "spacer":
+      return <div className={cx(spacerClass(props.h), className)} style={inlineStyle} />;
+    case "container":
+      return <div className={cx("mx-auto w-full", className)} style={inlineStyle}>{renderChildren()}</div>;
+    case "stack":
+      return <div className={className} style={inlineStyle}>{renderChildren()}</div>;
+    case "row":
+      return <div className={className} style={inlineStyle}>{renderChildren()}</div>;
+    case "grid":
+      return <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>;
+    case "columns":
+      return <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>;
+    case "nav_menu": {
+      const items = Array.isArray(props.items) ? props.items : [];
+      return (
+        <nav className={cx("border border-white/10", className)} style={inlineStyle}>
+          {!items.length ? (
+            <div className="text-xs opacity-60">No menu items.</div>
+          ) : (
+            <ul className="space-y-2">
+              {items.map((it: any, idx: number) => (
+                <li key={it.id ?? idx}>
+                  <a href={it.href ?? "#"} className="underline-offset-4 hover:underline">
+                    {it.label ?? "Item"}
+                  </a>
+                  {Array.isArray(it.children) && it.children.length ? (
+                    <ul className="mt-1 space-y-1 ps-4">
+                      {it.children.map((ch: any, cidx: number) => (
+                        <li key={ch.id ?? cidx}>
+                          <a href={ch.href ?? "#"} className="opacity-80 underline-offset-4 hover:underline">
+                            {ch.label ?? "Child"}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </nav>
+      );
+    }
+    case "productGrid": {
+      const ids = Array.isArray(props.productIds) ? props.productIds : [];
+      return (
+        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
+          <div className="text-sm font-semibold">{props.title ?? "Product Grid"}</div>
+          <div className={cx("mt-3 grid gap-3", gridColsClass(props.cols ?? 3))}>
+            {ids.length ? (
+              ids.map((id: string, idx: number) => (
+                <div key={`${id}-${idx}`} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+                  {id}
                 </div>
-              ))}
-            </div>
-          </div>
-        );
-        return wrapWithDecor(tokens, node, false, c.id);
-      }
-
-      case "categoryTiles": {
-        const items: any[] = Array.isArray(c.props?.items) ? c.props.items : [];
-        const cols = c.props?.cols ?? 3;
-        const title = c.props?.title ?? "";
-        const node = (
-          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
-            {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
-            <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===4?"grid-cols-4":"grid-cols-3")}>
-              {items.map((it, idx2) => (
-                <a
-                  key={it.href ?? idx2}
-                  href={it.href ?? "#"}
-                  className={
-                    "group relative overflow-hidden rounded-2xl border border-black/10 bg-white/70 shadow-sm transition " +
-                    "hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-[color:var(--accent-2)]"
-                  }
-                >
-                  <div className="relative aspect-[16/9] bg-black/[0.04]">
-                    {it.imageUrl ? (
-                      <img
-                        src={it.imageUrl}
-                        alt={it.title ?? "Category"}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                      />
-                    ) : null}
-
-                    {/* gradient wash */}
-                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-70" />
-                  </div>
-
-                  <div className="p-4">
-                    <div className="text-sm font-semibold text-[#0B0B0B]">{it.title ?? "Category"}</div>
-                    <div className="mt-2 h-px w-0 bg-[color:var(--accent-2)] transition-all duration-300 group-hover:w-full" />
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        );
-        return wrapWithDecor(tokens, node, false, c.id);
-      }
-
-      case "filtersBar": {
-        const colors = Array.isArray(c.props?.colors) ? c.props.colors : [];
-        const sizes = Array.isArray(c.props?.sizes) ? c.props.sizes : [];
-        const categories = Array.isArray(c.props?.categories) ? c.props.categories : [];
-        const hasFacets = !!(colors.length || sizes.length || categories.length);
-        const node = (
-          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
-            {!hasFacets ? (
-              <div className="rounded-2xl border border-black/10 dark:border-white/15 p-3 text-sm opacity-80">
-                FiltersBar (needs facets)
-              </div>
+              ))
             ) : (
-              <ProductFiltersBar colors={colors} sizes={sizes} categories={categories} />
+              <div className="text-xs opacity-60">No products yet.</div>
             )}
           </div>
-        );
-        return wrapWithDecor(tokens, node, false, c.id);
-      }
-
-      default:
-        return null;
+        </div>
+      );
     }
-  };
+    case "productSlider": {
+      return (
+        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
+          <div className="text-sm font-semibold">{props.title ?? "Products"}</div>
+          <div className="mt-3 text-xs opacity-60">(Slider placeholder)</div>
+        </div>
+      );
+    }
+    case "categoryTiles": {
+      const items = Array.isArray(props.items) ? props.items : [];
+      return (
+        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
+          <div className="text-sm font-semibold">{props.title ?? "Categories"}</div>
+          <div className={cx("mt-3 grid gap-3", gridColsClass(props.cols ?? 3))}>
+            {items.length ? (
+              items.map((it: any, idx: number) => (
+                <div key={it.id ?? idx} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+                  {it.title ?? it.label ?? "Category"}
+                </div>
+              ))
+            ) : (
+              <div className="text-xs opacity-60">No categories yet.</div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    case "filtersBar":
+      return (
+        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs", className)} style={inlineStyle}>
+          Filters bar
+        </div>
+      );
+    case "data":
+      return (
+        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs", className)} style={inlineStyle}>
+          Data component
+        </div>
+      );
+    default:
+      return (
+        <div className={cx("rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs opacity-70", className)} style={inlineStyle}>
+          {component.kind}
+        </div>
+      );
+  }
+}
 
-  return <div className="space-y-4">{components.map((c) => renderOne(c))}</div>;
+export function CmsComponentsRenderer({ components, className }: CmsComponentsRendererProps) {
+  const list = Array.isArray(components) ? components : [];
+  if (!list.length) return null;
+  return (
+    <div className={className}>
+      {list.map((component, idx) => (
+        <ComponentNode key={component.id ?? `cmp-${idx}`} component={component} />
+      ))}
+    </div>
+  );
 }
