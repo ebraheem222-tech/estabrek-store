@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { getThemePreset, type ThemePreset } from "@/theme/presets";
+import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/presets";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
@@ -114,6 +114,7 @@ export function ThemeWrap({ theme, children }: { theme?: ThemeCfg | null; childr
 
   const preset = getThemePreset(presetId ?? null, customPresets);
   const vars = mode === "dark" ? preset.dark : preset.light;
+  const themeVars = useMemo(() => generateThemeCssVars(preset, mode), [preset, mode]);
 
   const r: NonNullable<ThemeCfg["radius"]> = t.radius === "md" || t.radius === "xl" || t.radius === "2xl" ? t.radius : "2xl";
   const surface: "classic" | "glass" = t.surface === "classic" ? "classic" : "glass";
@@ -136,12 +137,19 @@ export function ThemeWrap({ theme, children }: { theme?: ThemeCfg | null; childr
       style={
         {
           ...vars,
+          ...themeVars,
           "--accent": accent,
           "--accent-soft": accentSoft,
           "--accent-hover": accentHover,
           "--accent-1": a1,
           "--accent-2": a2,
           "--accent-3": a3,
+          "--color-accent": accent,
+          "--color-accent-soft": accentSoft ?? accent,
+          "--color-accent-hover": accentHover ?? accent,
+          "--color-gold": accentSoft ?? (themeVars["--color-gold"] as string),
+          "--color-gold-light": a1,
+          "--color-gold-dark": a3,
           "--primary": accent,
           "--secondary": accentSoft ?? accent,
           "--radius": radiusMap[r],
