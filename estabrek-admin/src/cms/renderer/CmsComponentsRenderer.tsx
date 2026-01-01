@@ -59,6 +59,11 @@ function componentInlineStyle(component: CmsComponent): React.CSSProperties | un
   return tokensToInlineStyle(tokens);
 }
 
+function textEffectClass(tokens?: any) {
+  if (!tokens?.textEffect) return "";
+  return tokensToClassName({ textEffect: tokens.textEffect } as any);
+}
+
 function baseButtonClasses(variant?: string): string {
   const v = variant ?? "primary";
   switch (v) {
@@ -101,6 +106,7 @@ function gridColsClass(cols?: number): string {
 function ComponentNode({ component, depth = 0 }: { component: CmsComponent; depth?: number }) {
   const props = (component.props ?? {}) as any;
   const tokens = resolveTokens(component) as any;
+  const legacyClassName = typeof (component as any)?.tw?.className === "string" ? (component as any).tw.className : "";
   const className = componentClasses(component);
   const inlineStyle = componentInlineStyle(component);
   const children = getChildren(component);
@@ -164,28 +170,40 @@ function ComponentNode({ component, depth = 0 }: { component: CmsComponent; dept
         const buttonLabel = props.buttonLabel ?? "";
         const buttonLabelValue = typeof buttonLabel === "string" ? buttonLabel : String(buttonLabel);
         const buttonSplit = splitTextWithEffect(buttonLabelValue, tokens?.textEffect);
+        const textEffects = textEffectClass(tokens);
+        const cardClassName = tokens?.textEffect
+          ? cx(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName)
+          : className;
         return (
-          <div className={cx("border border-white/10", className)} style={inlineStyle}>
+          <div className={cx("border border-white/10", cardClassName)} style={inlineStyle}>
             <div className="space-y-2">
               {titleValue ? (
-                <div className="font-semibold" aria-label={titleSplit.ariaLabel}>
+                <div className={cx("font-semibold", textEffects)} aria-label={titleSplit.ariaLabel}>
                   {titleSplit.content}
                 </div>
               ) : (
                 <div className="font-semibold">Card</div>
               )}
               {textValue ? (
-                <div className="opacity-80" aria-label={textSplit.ariaLabel}>
+                <div className={cx("opacity-80", textEffects)} aria-label={textSplit.ariaLabel}>
                   {textSplit.content}
                 </div>
               ) : null}
               {props.buttonLabel ? (
                 props.buttonHref ? (
-                  <a href={props.buttonHref} className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex")} aria-label={buttonSplit.ariaLabel}>
+                  <a
+                    href={props.buttonHref}
+                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", textEffects)}
+                    aria-label={buttonSplit.ariaLabel}
+                  >
                     {buttonSplit.content}
                   </a>
                 ) : (
-                  <button type="button" className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex")} aria-label={buttonSplit.ariaLabel}>
+                  <button
+                    type="button"
+                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", textEffects)}
+                    aria-label={buttonSplit.ariaLabel}
+                  >
                     {buttonSplit.content}
                   </button>
                 )
