@@ -20,7 +20,12 @@ function walkComponents(list: any[] | undefined, visit: (c: any) => void, seen =
     if (seen.has(c)) continue; // avoid cycles
     seen.add(c);
     visit(c);
-    if (Array.isArray((c as any).children)) walkComponents((c as any).children, visit, seen);
+    const children = Array.isArray((c as any)?.props?.children)
+      ? (c as any).props.children
+      : Array.isArray((c as any)?.children)
+      ? (c as any).children
+      : [];
+    if (children.length) walkComponents(children, visit, seen);
   }
 }
 
@@ -54,6 +59,7 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
   const queryTasks: Array<{ comp: any; categoryId?: string; limit: number; kind: "grid" | "slider" }> = [];
   let hasFiltersBar = false;
   const autoProductSections: Array<{ sec: any; kind: "new" | "best"; limit: number }> = [];
+  const autoProductComponents: Array<{ comp: any; kind: "new" | "best"; limit: number }> = [];
   const slugSections: Array<{ sec: any; slugs: string[] }> = [];
 
   const sections = ((page as any).sections ?? []) as any[];
@@ -111,11 +117,14 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
         const source = (comp.props as any)?.source ?? "manual";
         const limit = Math.max(1, Math.min(50, Number((comp.props as any)?.limit ?? 12)));
         const categoryId = typeof (comp.props as any)?.categoryId === "string" ? (comp.props as any).categoryId.trim() : "";
+        const existingIds = Array.isArray((comp.props as any)?.productIds) ? (comp.props as any).productIds : [];
 
         // For queryable sources we resolve IDs via listProducts using URL filters.
         // manual source uses productIds as-is.
         if (source === "category" || source === "all") {
           queryTasks.push({ comp, categoryId: categoryId || undefined, limit, kind: comp.kind === "productGrid" ? "grid" : "slider" });
+        } else if ((source === "bestSellers" || source === "newArrivals") && existingIds.length === 0) {
+          autoProductComponents.push({ comp, kind: source === "bestSellers" ? "best" : "new", limit });
         }
       }
     });
@@ -130,6 +139,19 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
           sec.data = { ...(sec.data ?? {}), productIds: ids };
         } catch {
           // ignore errors; renderer will show fallback text
+        }
+      })
+    );
+  }
+
+  if (autoProductComponents.length) {
+    await Promise.all(
+      autoProductComponents.map(async ({ comp, kind, limit }) => {
+        try {
+          const ids = kind === "new" ? await getNewArrivalsIds(limit) : await getBestSellersIds(limit);
+          comp.props = { ...(comp.props ?? {}), productIds: ids };
+        } catch {
+          // ignore errors; CMS will render empty grid/slider
         }
       })
     );
