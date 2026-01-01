@@ -58,14 +58,14 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
 
   return (
     <div
-      className="group overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950"
+      className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm transition hover:shadow-md"
       onMouseEnter={() => {
         // Hovering the whole card should prime quick-add data
         prefetchProductQuickAdd({ slug: product.slug, id: product.id });
       }}
     >
       <Link href={`/p/${product.slug}`} className="block relative">
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
           {primary ? (
             <>
               <Image
@@ -89,7 +89,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
               ) : null}
             </>
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-zinc-500">
+            <div className="flex h-full w-full items-center justify-center text-xs text-[var(--muted)]">
               No image
             </div>
           )}
@@ -98,12 +98,12 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
         <div className="space-y-2 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">{product.title}</div>
-              <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-300">
+              <div className="truncate text-sm font-semibold text-[var(--text)]">{product.title}</div>
+              <div className="mt-0.5 text-xs text-[var(--muted)]">
                 {product.category?.name ?? "—"}
               </div>
             </div>
-            <div className="shrink-0 text-sm font-semibold">
+            <div className="shrink-0 text-sm font-semibold text-[var(--text)]">
               {product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "-"}
             </div>
           </div>
@@ -113,13 +113,13 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
               {swatches.map((hex) => (
                 <span
                   key={hex}
-                  className="h-4 w-4 rounded-full border border-zinc-200 dark:border-zinc-800"
+                  className="h-4 w-4 rounded-full border border-[var(--border)]"
                   style={{ background: hex }}
                   title={hex}
                 />
               ))}
               {product.items && product.items.length > swatches.length ? (
-                <span className="ml-1 text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="ml-1 text-xs text-[var(--muted)]">
                   +{product.items.length - swatches.length}
                 </span>
               ) : null}

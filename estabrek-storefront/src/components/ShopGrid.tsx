@@ -18,7 +18,9 @@ function DensityButton({
       onClick={onClick}
       className={[
         "h-9 rounded-xl border px-3 text-sm transition",
-        active ? "border-zinc-900 bg-zinc-100 dark:border-zinc-100 dark:bg-zinc-900" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900",
+        active
+          ? "border-[var(--accent)] bg-[var(--surface-2)] text-[var(--text)]"
+          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]",
       ].join(" ")}
     >
       {children}
@@ -40,7 +42,7 @@ export function ShopGrid({
   return (
     <div className={["space-y-4", className ?? ""].join(" ")}>
       <div className="flex items-center justify-end gap-2">
-        <div className="text-xs opacity-70 me-2">الكثافة</div>
+        <div className="text-xs text-[var(--muted)] me-2">الكثافة</div>
         <DensityButton active={density === "compact"} onClick={set("compact")}>
           مضغوط
         </DensityButton>

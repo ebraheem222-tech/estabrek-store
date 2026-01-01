@@ -35,7 +35,7 @@ export function MobileFiltersDrawer({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="h-10 rounded-xl border border-zinc-200 bg-white px-4 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+        className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] hover:bg-[var(--surface-2)]"
       >
         {buttonLabel}
       </button>
@@ -52,22 +52,22 @@ export function MobileFiltersDrawer({
 
           <div
             className={
-              "absolute right-0 top-0 h-full w-[92%] max-w-sm overflow-auto bg-white dark:bg-zinc-900 p-4 shadow-2xl " +
+              "absolute right-0 top-0 h-full w-[92%] max-w-sm overflow-auto bg-[var(--surface)] p-4 text-[var(--text)] shadow-2xl " +
               "transition-transform duration-200 will-change-transform " +
               (closing ? "translate-x-full" : "translate-x-0")
             }
           >
             <div className="mb-4 flex items-center justify-between">
-              <div className="text-base font-semibold text-zinc-900 dark:text-white">الفلاتر</div>
+              <div className="text-base font-semibold text-[var(--text)]">الفلاتر</div>
               <button
                 type="button"
                 onClick={close}
-                className="text-sm text-zinc-600 dark:text-zinc-300 hover:opacity-100"
+                className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
               >
                 إغلاق
               </button>
             </div>
-            <div className="text-zinc-900 dark:text-white">
+            <div className="text-[var(--text)]">
               {children}
             </div>
           </div>
