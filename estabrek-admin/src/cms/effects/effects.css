@@ -12,6 +12,13 @@
 .text-gradient-neon { background: linear-gradient(135deg, #00FFFF, #FF00FF, #FFFF00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .text-gradient-rainbow { background: linear-gradient(90deg, #FF0000, #FF7F00, #FFFF00, #00FF00, #0000FF, #4B0082, #9400D3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .text-gradient-holographic { background: linear-gradient(135deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4, #FFEAA7, #DDA0DD); background-size: 300% 300%; animation: holographic 3s ease infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-forest { background: linear-gradient(135deg, #166534, #22C55E, #86EFAC); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-fire { background: linear-gradient(135deg, #F97316, #EF4444, #B91C1C); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-ice { background: linear-gradient(135deg, #E0F2FE, #38BDF8, #1D4ED8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-aurora { background: linear-gradient(135deg, #34D399, #60A5FA, #A78BFA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-cosmic { background: linear-gradient(135deg, #7C3AED, #4C1D95, #0EA5E9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-candy { background: linear-gradient(135deg, #FB7185, #F472B6, #FCD34D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-metal { background: linear-gradient(135deg, #F3F4F6, #9CA3AF, #6B7280); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
 /* ============================================================
    GLOW TEXT EFFECTS
@@ -23,22 +30,73 @@
 .text-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
 
 /* ============================================================
+   NEON & OUTLINE TEXT EFFECTS
+   ============================================================ */
+.text-neon { color: #00FFFF; text-shadow: 0 0 5px #00FFFF, 0 0 15px #00FFFF, 0 0 30px #00FFFF; }
+.text-neon-blue { color: #60A5FA; text-shadow: 0 0 5px #60A5FA, 0 0 15px #60A5FA, 0 0 30px #3B82F6; }
+.text-neon-pink { color: #F472B6; text-shadow: 0 0 5px #F472B6, 0 0 15px #F472B6, 0 0 30px #EC4899; }
+.text-neon-green { color: #34D399; text-shadow: 0 0 5px #34D399, 0 0 15px #34D399, 0 0 30px #10B981; }
+.text-neon-purple { color: #A78BFA; text-shadow: 0 0 5px #A78BFA, 0 0 15px #A78BFA, 0 0 30px #7C3AED; }
+.text-neon-multi { background: linear-gradient(90deg, #00FFFF, #FF00FF, #FFFF00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+.text-outline { -webkit-text-stroke: 1px currentColor; color: transparent; }
+.text-outline-thick { -webkit-text-stroke: 2px currentColor; color: transparent; }
+.text-outline-double { -webkit-text-stroke: 1px currentColor; color: transparent; text-shadow: 0 0 6px currentColor; }
+.text-outline-gradient { background: linear-gradient(90deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1px transparent; }
+.text-outline-neon { -webkit-text-stroke: 1px #00FFFF; color: transparent; text-shadow: 0 0 10px #00FFFF; }
+
+/* ============================================================
    3D TEXT EFFECTS
    ============================================================ */
 .text-3d { text-shadow: 1px 1px 0 #ccc, 2px 2px 0 #c9c9c9, 3px 3px 0 #bbb, 4px 4px 0 #b9b9b9, 5px 5px 0 #aaa, 6px 6px 1px rgba(0,0,0,.1); }
 .text-3d-shadow { text-shadow: 0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25), 0 10px 10px rgba(0,0,0,.2), 0 20px 20px rgba(0,0,0,.15); }
 .text-3d-emboss { text-shadow: 0 1px 0 rgba(255,255,255,.3), 0 -1px 0 rgba(0,0,0,.7); }
+.text-3d-deboss { text-shadow: 0 -1px 0 rgba(255,255,255,.5), 0 1px 0 rgba(0,0,0,.6); }
 .text-3d-extrude { text-shadow: 0 1px 0 #999, 0 2px 0 #888, 0 3px 0 #777, 0 4px 0 #666, 0 5px 0 #555, 0 6px 0 #444, 0 7px 0 #333, 0 8px 7px rgba(0,0,0,.4); }
+.text-3d-stack { text-shadow: 0 1px 0 #bbb, 0 2px 0 #aaa, 0 3px 0 #999, 0 4px 0 #888; }
+.text-3d-pop { text-shadow: 0 2px 0 #999, 0 4px 0 #777, 0 6px 8px rgba(0,0,0,.25); }
+.text-3d-float { text-shadow: 0 12px 20px rgba(0,0,0,.35); }
+.text-3d-retro { text-shadow: 2px 2px 0 #ff6b6b, 4px 4px 0 #4ecdc4; }
+.text-3d-gold { text-shadow: 1px 1px 0 #C6A75E, 2px 2px 0 #A88C3E, 3px 3px 0 rgba(0,0,0,.2); }
 .text-3d-chrome { background: linear-gradient(180deg, #fff 0%, #d4d4d4 50%, #fff 51%, #fafafa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(2px 2px 1px rgba(0,0,0,.3)); }
 
 /* ============================================================
    ANIMATED TEXT EFFECTS
    ============================================================ */
 .text-shimmer { background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.8) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 2s linear infinite; -webkit-background-clip: text; }
+.text-shimmer-gold { background: linear-gradient(90deg, transparent 0%, var(--color-gold) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 2s linear infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .text-wave span { display: inline-block; animation: wave 1s ease-in-out infinite; }
 .text-glitch { position: relative; animation: glitch 1s linear infinite; }
 .text-typewriter { overflow: hidden; border-right: 2px solid; white-space: nowrap; animation: typewriter 3s steps(40) 1s forwards, blink 0.5s step-end infinite alternate; }
 .text-bounce span { display: inline-block; animation: bounce 0.5s ease infinite; }
+.text-pulse { animation: text-pulse 1.6s ease-in-out infinite; }
+.text-reveal { animation: text-reveal 0.7s ease-out both; }
+.text-slide-up { animation: text-slide-up 0.6s ease-out both; }
+.text-fade-in { animation: text-fade-in 0.6s ease-out both; }
+.text-blur-in { animation: text-blur-in 0.7s ease-out both; }
+.text-scale-in { animation: text-scale-in 0.6s ease-out both; }
+
+/* ============================================================
+   SPECIAL TEXT EFFECTS
+   ============================================================ */
+.text-glass { color: rgba(255,255,255,0.85); text-shadow: 0 2px 10px rgba(255,255,255,0.15); }
+.text-frosted { color: rgba(255,255,255,0.8); text-shadow: 0 1px 8px rgba(255,255,255,0.2); }
+.text-blur-bg { background: rgba(255,255,255,0.08); padding: 0 0.2em; border-radius: 0.25em; backdrop-filter: blur(6px); }
+.text-highlight { background: linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05)); box-decoration-break: clone; padding: 0 0.2em; }
+.text-underline-animated { background-image: linear-gradient(90deg, currentColor, currentColor); background-size: 0% 2px; background-position: 0 100%; background-repeat: no-repeat; animation: underline-grow 0.6s ease forwards; }
+.text-strikethrough { text-decoration: line-through; text-decoration-thickness: 2px; }
+.text-split { letter-spacing: 0.12em; text-transform: uppercase; }
+.text-masked { background: linear-gradient(135deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.text-clip-text { background: linear-gradient(135deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.cms-text-effects :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div) {
+  color: inherit;
+  text-shadow: inherit;
+  background: inherit;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: inherit;
+  -webkit-text-stroke: inherit;
+}
 
 /* ============================================================
    KEYFRAME ANIMATIONS
@@ -53,6 +111,16 @@
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes neon-flicker { 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; } 20%, 24%, 55% { opacity: 0.4; } }
+@keyframes text-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.03); opacity: 0.8; } }
+@keyframes text-reveal { from { opacity: 0; clip-path: inset(0 0 100% 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+@keyframes text-slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes text-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes text-blur-in { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: blur(0); } }
+@keyframes text-scale-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes underline-grow { from { background-size: 0% 2px; } to { background-size: 100% 2px; } }
+@keyframes hover-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-2px); } 40%, 80% { transform: translateX(2px); } }
+@keyframes hover-swing { 0% { transform: rotate(0deg); } 20% { transform: rotate(4deg); } 40% { transform: rotate(-4deg); } 60% { transform: rotate(3deg); } 80% { transform: rotate(-3deg); } 100% { transform: rotate(0deg); } }
+@keyframes hover-wobble { 0% { transform: translateX(0); } 15% { transform: translateX(-3px) rotate(-1deg); } 30% { transform: translateX(3px) rotate(1deg); } 45% { transform: translateX(-2px) rotate(-1deg); } 60% { transform: translateX(2px) rotate(1deg); } 75% { transform: translateX(-1px) rotate(0deg); } 100% { transform: translateX(0); } }
 
 /* ============================================================
    CARD EFFECTS - GAMING
@@ -80,6 +148,9 @@
 .card-neon-cyan { border-color: #00ffff; box-shadow: 0 0 10px #00ffff, inset 0 0 10px rgba(0,255,255,0.1); }
 .card-neon-pink { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff, inset 0 0 10px rgba(255,0,255,0.1); }
 .card-neon-green { border-color: #39ff14; box-shadow: 0 0 10px #39ff14, inset 0 0 10px rgba(57,255,20,0.1); }
+.card-neon-purple { border-color: #a855f7; box-shadow: 0 0 10px #a855f7, inset 0 0 10px rgba(168,85,247,0.1); }
+.card-neon-orange { border-color: #f97316; box-shadow: 0 0 10px #f97316, inset 0 0 10px rgba(249,115,22,0.1); }
+.card-neon-multi { border-color: #00ffff; box-shadow: 0 0 10px #00ffff, 0 0 20px #ff00ff, 0 0 30px #ffff00; }
 .card-neon::before { content: ''; position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; border: 1px solid currentColor; border-radius: 0.75rem; opacity: 0.5; }
 
 /* ============================================================
@@ -105,6 +176,34 @@
 @keyframes legendary-pulse { 0%, 100% { box-shadow: 0 0 30px rgba(255,128,0,0.5); } 50% { box-shadow: 0 0 50px rgba(255,128,0,0.8); } }
 
 /* ============================================================
+   CARD EFFECTS - RETRO / NEUMORPHIC / SPECIAL
+   ============================================================ */
+.card-retro { background: linear-gradient(135deg, #111827, #0f172a); border: 2px solid #f97316; box-shadow: 0 6px 0 #000; }
+.card-retro-terminal { background: #0b0f0a; border: 1px solid #22c55e; box-shadow: 0 0 12px rgba(34,197,94,0.35); color: #22c55e; }
+.card-retro-gameboy { background: #d9e3b6; border: 2px solid #6b7280; box-shadow: inset 0 2px 0 rgba(255,255,255,0.4); }
+.card-retro-arcade { background: #111827; border: 2px solid #ec4899; box-shadow: 0 0 18px rgba(236,72,153,0.4); }
+
+.card-neumorphic { background: var(--color-surface); box-shadow: 8px 8px 16px rgba(0,0,0,0.25), -8px -8px 16px rgba(255,255,255,0.06); }
+.card-neumorphic-raised { background: var(--color-surface); box-shadow: 12px 12px 24px rgba(0,0,0,0.28), -12px -12px 24px rgba(255,255,255,0.08); }
+.card-neumorphic-pressed { background: var(--color-surface); box-shadow: inset 8px 8px 16px rgba(0,0,0,0.25), inset -8px -8px 16px rgba(255,255,255,0.06); }
+.card-neumorphic-flat { background: var(--color-surface); box-shadow: none; }
+
+.card-flip { transition: transform 0.6s ease; transform-style: preserve-3d; }
+.card-flip:hover { transform: rotateY(12deg); }
+.card-tilt { transition: transform 0.4s ease; transform-style: preserve-3d; }
+.card-tilt:hover { transform: rotateX(6deg) rotateY(-6deg); }
+.card-spotlight { position: relative; overflow: hidden; }
+.card-spotlight::before { content: ''; position: absolute; inset: -40%; background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 60%); opacity: 0; transition: opacity 0.3s ease; }
+.card-spotlight:hover::before { opacity: 1; }
+.card-morphing { transition: border-radius 0.6s ease; }
+.card-morphing:hover { border-radius: 2.5rem; }
+.card-layered { box-shadow: 0 6px 0 rgba(0,0,0,0.2), 0 12px 20px rgba(0,0,0,0.2); }
+
+.card-pricing { background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+.card-testimonial { background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+.card-stat { background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 8px 22px rgba(0,0,0,0.2); }
+
+/* ============================================================
    HOVER EFFECTS
    ============================================================ */
 .hover-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
@@ -115,6 +214,57 @@
 .hover-scale:hover { transform: scale(1.05); }
 .hover-rotate-3d { transition: transform 0.3s ease; transform-style: preserve-3d; }
 .hover-rotate-3d:hover { transform: rotateX(10deg) rotateY(-10deg); }
+.hover-underline { text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.hover-underline:hover { text-decoration: underline; }
+.hover-brighten { transition: filter 0.3s ease; }
+.hover-brighten:hover { filter: brightness(1.1); }
+.hover-darken { transition: filter 0.3s ease; }
+.hover-darken:hover { filter: brightness(0.9); }
+.hover-float { transition: transform 0.3s ease; }
+.hover-float:hover { transform: translateY(-6px); }
+.hover-bounce:hover { animation: bounce 0.6s ease; }
+.hover-shake:hover { animation: hover-shake 0.5s ease; }
+.hover-pulse:hover { animation: text-pulse 0.9s ease; }
+.hover-swing:hover { animation: hover-swing 0.7s ease; transform-origin: top center; }
+.hover-wobble:hover { animation: hover-wobble 0.7s ease; }
+.hover-flip-x { transition: transform 0.3s ease; transform-style: preserve-3d; }
+.hover-flip-x:hover { transform: rotateX(15deg); }
+.hover-flip-y { transition: transform 0.3s ease; transform-style: preserve-3d; }
+.hover-flip-y:hover { transform: rotateY(15deg); }
+.hover-skew { transition: transform 0.3s ease; }
+.hover-skew:hover { transform: skewY(-3deg); }
+
+.hover-glow-accent:hover { box-shadow: 0 0 24px var(--color-accent); }
+.hover-glow-gold:hover { box-shadow: 0 0 24px var(--color-gold); }
+.hover-glow-neon:hover { box-shadow: 0 0 24px #00FFFF; }
+
+.hover-shadow-lift:hover { box-shadow: 0 16px 32px rgba(0,0,0,0.25); }
+.hover-shadow-glow:hover { box-shadow: 0 0 30px rgba(255,255,255,0.12), 0 0 20px var(--color-accent); }
+
+.hover-border-accent:hover { border-color: var(--color-accent); }
+.hover-border-gold:hover { border-color: var(--color-gold); }
+.hover-border-gradient:hover { border-image: linear-gradient(90deg, var(--color-accent), var(--color-gold)) 1; }
+.hover-border-animate:hover { border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(0,0,0,0.02), 0 0 12px var(--color-accent); }
+
+.hover-bg-accent:hover { background-color: var(--color-accent); color: #fff; }
+.hover-bg-gold:hover { background-color: var(--color-gold); color: #0B0B0B; }
+.hover-bg-gradient:hover { background-image: linear-gradient(135deg, var(--color-accent), var(--color-gold)); color: #0B0B0B; }
+.hover-bg-glass:hover { background-color: rgba(255,255,255,0.08); backdrop-filter: blur(8px); }
+
+.hover-text-accent:hover { color: var(--color-accent); }
+.hover-text-gold:hover { color: var(--color-gold); }
+.hover-text-gradient:hover { background: linear-gradient(90deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.hover-card-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.hover-card-lift:hover { transform: translateY(-6px); box-shadow: 0 16px 36px rgba(0,0,0,0.25); }
+.hover-card-glow { transition: box-shadow 0.3s ease; }
+.hover-card-glow:hover { box-shadow: 0 0 24px rgba(255,255,255,0.08), 0 0 20px var(--color-accent); }
+.hover-card-3d { transition: transform 0.3s ease, box-shadow 0.3s ease; transform-style: preserve-3d; }
+.hover-card-3d:hover { transform: translateY(-8px) rotateX(6deg) rotateY(-6deg); box-shadow: 0 18px 40px rgba(0,0,0,0.3); }
+
+.hover-button-pop { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.hover-button-pop:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+.hover-link-underline:hover { text-decoration: underline; text-underline-offset: 4px; }
 
 /* ============================================================
    LOADER ANIMATIONS
