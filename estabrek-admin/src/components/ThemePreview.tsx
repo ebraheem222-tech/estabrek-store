@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { cn } from "./ui/cn";
-import { getThemePreset } from "../theme/presets";
+import { generateThemeCssVars, getThemePreset } from "../theme/presets";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
@@ -69,6 +69,7 @@ export function ThemePreview({
   const mode: "dark" | "light" = t.mode === "light" ? "light" : "dark";
   const preset = useMemo(() => getThemePreset(t.presetId ?? null), [t.presetId]);
   const baseVars = mode === "dark" ? preset.dark : preset.light;
+  const themeVars = useMemo(() => generateThemeCssVars(preset, mode), [preset, mode]);
   const primary = resolveCustomColor(t.primary);
   const secondary = resolveCustomColor(t.secondary);
   const accent = primary ?? baseVars["--accent"];
@@ -90,12 +91,19 @@ export function ThemePreview({
       style={
         {
           ...baseVars,
+          ...themeVars,
           "--accent": accent,
           "--accent-soft": accentSoft,
           "--accent-hover": accentHover,
           "--accent-1": accentStops[0],
           "--accent-2": accentStops[1],
           "--accent-3": accentStops[2],
+          "--color-accent": accent,
+          "--color-accent-soft": accentSoft ?? accent,
+          "--color-accent-hover": accentHover ?? accent,
+          "--color-gold": accentSoft ?? themeVars["--color-gold"],
+          "--color-gold-light": accentStops[0],
+          "--color-gold-dark": accentStops[2],
           "--primary": accent,
           "--secondary": accentSoft ?? accent,
           "--radius": radiusMap[radius],
