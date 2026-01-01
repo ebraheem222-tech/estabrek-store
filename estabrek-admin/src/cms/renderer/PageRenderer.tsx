@@ -86,7 +86,7 @@ function renderComponentsBlock(data: any, className?: string) {
   if (!components.length) return null;
   return (
     <div className={cls("mt-6", className)}>
-      <CmsComponentsRenderer components={components} />
+      <CmsComponentsRenderer components={components} inheritTokens={data?.twTokens} />
     </div>
   );
 }

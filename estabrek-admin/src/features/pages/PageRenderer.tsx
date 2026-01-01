@@ -22,6 +22,7 @@ import type {
   VideoData,
 } from "./SectionEditor";
 import { CmsComponentsRenderer } from "./CmsComponentsRenderer";
+import { TypewriterText } from "../../components/effects/TypewriterText";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import type { TwTokens } from "../../cms/style/tokens";
 import { resolveCustomColor, tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
@@ -65,6 +66,41 @@ function textEffectClass(tokens?: any) {
 
 function cardEffectClass(tokens?: any) {
   return tokensToClassName({ cardTemplate: tokens?.cardTemplate, hoverExtended: tokens?.hoverExtended, state: tokens?.state } as any);
+}
+
+function textContent(text: string, tokens?: any) {
+  const value = typeof text === "string" ? text : String(text ?? "");
+  const effect = tokens?.textEffect;
+  const typewriter = tokens?.typewriter;
+  const typewriterTexts = Array.isArray(typewriter?.texts) && typewriter.texts.length
+    ? typewriter.texts
+    : value
+      ? [value]
+      : [];
+  const useTypewriter = !!(typewriter?.enabled && typewriterTexts.length);
+
+  if (useTypewriter) {
+    const allowEffect = effect && effect !== "none" && !SPLIT_TEXT_EFFECTS.has(effect) && effect !== "typewriter";
+    const typewriterClass = allowEffect ? textEffectClass(tokens) : "";
+    return {
+      useTypewriter: true,
+      ariaLabel: undefined as string | undefined,
+      className: "",
+      content: (
+        <TypewriterText
+          texts={typewriterTexts}
+          typeSpeed={typewriter?.speed}
+          deleteSpeed={typewriter?.deleteSpeed}
+          pauseTime={typewriter?.pauseTime}
+          loop={typewriter?.loop ?? true}
+          textClassName={typewriterClass || undefined}
+        />
+      ),
+    };
+  }
+
+  const split = splitTextWithEffect(value, effect);
+  return { useTypewriter: false, ariaLabel: split.ariaLabel, className: textEffectClass(tokens), content: split.content };
 }
 
 function heroAnimClass(anim?: string, duration?: number, delay?: number) {
@@ -134,7 +170,7 @@ function renderComponentsBlock(data: any, className?: string) {
   if (!components.length) return null;
   return (
     <div className={cls("mt-6", className)}>
-      <CmsComponentsRenderer components={components} />
+      <CmsComponentsRenderer components={components} inheritTokens={data?.twTokens} />
     </div>
   );
 }
@@ -166,6 +202,13 @@ function HeroSection({ data }: { data: HeroData }) {
   const componentsBlock = renderComponentsBlock(data);
   const primaryButton = (s as any).primaryButton;
   const secondaryButton = (s as any).secondaryButton;
+  const sectionTokens = (data as any)?.twTokens;
+  const titleValue = (s as any).title || "";
+  const titleData = textContent(String(titleValue), sectionTokens);
+  const subtitleValue = (s as any).subtitle;
+  const subtitleData = subtitleValue ? textContent(String(subtitleValue), sectionTokens) : null;
+  const primaryLabelData = primaryButton?.label ? textContent(String(primaryButton.label), sectionTokens) : null;
+  const secondaryLabelData = secondaryButton?.label ? textContent(String(secondaryButton.label), sectionTokens) : null;
   const slideAnim = (data as any).slideAnim ?? "none";
   const slideDuration = safeNum((data as any).slideDuration, 600);
   const contentAnim = (data as any).contentAnim ?? "fade-up";
@@ -194,24 +237,38 @@ function HeroSection({ data }: { data: HeroData }) {
         <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
         <SectionTextScope data={data}>
           <div key={contentKey} className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify, contentAnimClass)}>
-            <h2 className="text-2xl font-bold">{(s as any).title}</h2>
-            {(s as any).subtitle ? <p className="max-w-[60ch] text-sm opacity-90">{(s as any).subtitle}</p> : null}
+            <h2 className={cls("text-2xl font-bold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </h2>
+            {subtitleData ? (
+              <p className={cls("max-w-[60ch] text-sm opacity-90", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                {subtitleData.content}
+              </p>
+            ) : null}
             <div className="mt-2 flex flex-wrap gap-2">
               {primaryButton?.label ? (
                 primaryButton?.href ? (
                   <a
                     href={primaryButton.href}
-                    className="rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95"
+                    className={cls(
+                      "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
+                      primaryLabelData?.className
+                    )}
                     style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
+                    aria-label={primaryLabelData?.ariaLabel}
                   >
-                    {primaryButton.label}
+                    {primaryLabelData?.content ?? primaryButton.label}
                   </a>
                 ) : (
                   <span
-                    className="rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90"
+                    className={cls(
+                      "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
+                      primaryLabelData?.className
+                    )}
                     style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
+                    aria-label={primaryLabelData?.ariaLabel}
                   >
-                    {primaryButton.label}
+                    {primaryLabelData?.content ?? primaryButton.label}
                   </span>
                 )
               ) : null}
@@ -219,13 +276,23 @@ function HeroSection({ data }: { data: HeroData }) {
                 secondaryButton?.href ? (
                   <a
                     href={secondaryButton.href}
-                    className="rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]"
+                    className={cls(
+                      "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]",
+                      secondaryLabelData?.className
+                    )}
+                    aria-label={secondaryLabelData?.ariaLabel}
                   >
-                    {secondaryButton.label}
+                    {secondaryLabelData?.content ?? secondaryButton.label}
                   </a>
                 ) : (
-                  <span className="rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90">
-                    {secondaryButton.label}
+                  <span
+                    className={cls(
+                      "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90",
+                      secondaryLabelData?.className
+                    )}
+                    aria-label={secondaryLabelData?.ariaLabel}
+                  >
+                    {secondaryLabelData?.content ?? secondaryButton.label}
                   </span>
                 )
               ) : null}
@@ -297,13 +364,20 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
   if (type === "RICH_TEXT") {
     const d = data as RichTextData;
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const htmlEffectClass = textEffectClass(sectionTokens);
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-3 text-lg font-semibold">{d.title}</h3> : null}
+            {titleData ? (
+              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
             <div
-              className="prose prose-invert max-w-none"
+              className={cls("prose prose-invert max-w-none", htmlEffectClass)}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(d.html ?? "") }}
             />
           </SectionTextScope>
@@ -316,11 +390,13 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
   if (type === "CUSTOM_HTML") {
     const d = data as CustomHtmlData;
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const htmlEffectClass = textEffectClass(sectionTokens);
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-4xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(d.html ?? "") }} />
+            <div className={cls("prose prose-invert max-w-none", htmlEffectClass)} dangerouslySetInnerHTML={{ __html: sanitizeHtml(d.html ?? "") }} />
           </SectionTextScope>
           {componentsBlock}
         </div>
@@ -341,14 +417,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
             : "border-sky-500/30 bg-sky-500/10";
 
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const textData = textContent(String(d.text ?? ""), sectionTokens);
+    const linkValue = d.linkLabel || d.linkHref || "";
+    const linkData = d.linkHref ? textContent(String(linkValue), sectionTokens) : null;
     return (
       <section className={cls("rounded-3xl border p-5", color, uiSectionClass(d))} style={uiSectionStyle(d)}>
         <SectionTextScope data={d}>
           <div className={cls("flex flex-col gap-2 md:flex-row md:items-center md:justify-between", uiContainerClass(d))}>
-            <div className="text-sm opacity-90">{d.text}</div>
+            <div className={cls("text-sm opacity-90", textData.className)} aria-label={textData.ariaLabel}>
+              {textData.content}
+            </div>
             {d.linkLabel && d.linkHref ? (
-              <a className="text-sm font-semibold underline decoration-white/30 underline-offset-4 hover:decoration-white/60" href={d.linkHref}>
-                {d.linkLabel}
+              <a
+                className={cls(
+                  "text-sm font-semibold underline decoration-white/30 underline-offset-4 hover:decoration-white/60",
+                  linkData?.className
+                )}
+                href={d.linkHref}
+                aria-label={linkData?.ariaLabel}
+              >
+                {linkData?.content ?? d.linkLabel}
               </a>
             ) : null}
           </div>
@@ -364,6 +453,10 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const justify = align === "left" ? "text-left items-start" : align === "right" ? "text-right items-end" : "text-center items-center";
     const imageAlign = align === "left" ? "self-start" : align === "right" ? "self-end" : "self-center";
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    const buttonData = d.buttonLabel ? textContent(String(d.buttonLabel), sectionTokens) : null;
 
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
@@ -377,23 +470,39 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   className={cls("h-40 w-full max-w-xl rounded-2xl border border-white/10 object-cover", imageAlign)}
                 />
               ) : null}
-              <div className="text-xl font-semibold">{d.title}</div>
-              {d.subtitle ? <div className="text-sm opacity-80">{d.subtitle}</div> : null}
+              {titleData ? (
+                <div className={cls("text-xl font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                  {titleData.content}
+                </div>
+              ) : null}
+              {subtitleData ? (
+                <div className={cls("text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                  {subtitleData.content}
+                </div>
+              ) : null}
               {d.buttonLabel ? (
                 d.buttonHref ? (
                   <a
                     href={d.buttonHref}
-                    className="mt-2 inline-flex w-fit rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95"
+                    className={cls(
+                      "mt-2 inline-flex w-fit rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
+                      buttonData?.className
+                    )}
                     style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
+                    aria-label={buttonData?.ariaLabel}
                   >
-                    {d.buttonLabel}
+                    {buttonData?.content ?? d.buttonLabel}
                   </a>
                 ) : (
                   <span
-                    className="mt-2 inline-flex w-fit rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90"
+                    className={cls(
+                      "mt-2 inline-flex w-fit rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
+                      buttonData?.className
+                    )}
                     style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
+                    aria-label={buttonData?.ariaLabel}
                   >
-                    {d.buttonLabel}
+                    {buttonData?.content ?? d.buttonLabel}
                   </span>
                 )
               ) : null}
@@ -408,16 +517,36 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
   if (type === "FAQ") {
     const d = data as FaqData;
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-3 text-lg font-semibold">{d.title}</h3> : null}
+            {titleData ? (
+              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
             <div className="space-y-3">
               {(d.items ?? []).map((it, idx) => (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                  <div className="text-sm font-semibold">{it.question}</div>
-                  <div className="mt-1 text-sm opacity-80">{it.answer}</div>
+                  {(() => {
+                    const questionData = textContent(String(it.question ?? ""), sectionTokens);
+                    return (
+                      <div className={cls("text-sm font-semibold", questionData.className)} aria-label={questionData.ariaLabel}>
+                        {questionData.content}
+                      </div>
+                    );
+                  })()}
+                  {it.answer ? (() => {
+                    const answerData = textContent(String(it.answer ?? ""), sectionTokens);
+                    return (
+                      <div className={cls("mt-1 text-sm opacity-80", answerData.className)} aria-label={answerData.ariaLabel}>
+                        {answerData.content}
+                      </div>
+                    );
+                  })() : null}
                 </div>
               ))}
             </div>
@@ -432,18 +561,38 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const d = data as GridData;
     const columns = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
 
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
+            {titleData ? (
+              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
             <div className={cls("grid gap-4", columns === 2 ? "md:grid-cols-2" : columns === 3 ? "md:grid-cols-3" : "md:grid-cols-4")}>
               {(d.items ?? []).map((it, idx) => (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                   {it.imageUrl ? <img src={it.imageUrl} alt={it.title} className="mb-3 h-28 w-full rounded-xl object-cover" /> : null}
-                  <div className="text-sm font-semibold">{it.title}</div>
-                  {it.text ? <div className="mt-1 text-sm opacity-80">{it.text}</div> : null}
+                  {(() => {
+                    const itemTitleData = textContent(String(it.title ?? ""), sectionTokens);
+                    return (
+                      <div className={cls("text-sm font-semibold", itemTitleData.className)} aria-label={itemTitleData.ariaLabel}>
+                        {itemTitleData.content}
+                      </div>
+                    );
+                  })()}
+                  {it.text ? (() => {
+                    const itemTextData = textContent(String(it.text), sectionTokens);
+                    return (
+                      <div className={cls("mt-1 text-sm opacity-80", itemTextData.className)} aria-label={itemTextData.ariaLabel}>
+                        {itemTextData.content}
+                      </div>
+                    );
+                  })() : null}
                 </div>
               ))}
             </div>
@@ -459,6 +608,9 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const items = Array.isArray(d.items) ? d.items : [];
     const showArrows = !!d.showArrows;
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
@@ -466,8 +618,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
             {(d.title || d.subtitle || showArrows) ? (
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  {d.title ? <h3 className="text-lg font-semibold">{d.title}</h3> : null}
-                  {d.subtitle ? <div className="mt-1 text-sm opacity-80">{d.subtitle}</div> : null}
+                  {titleData ? (
+                    <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                      {titleData.content}
+                    </h3>
+                  ) : null}
+                  {subtitleData ? (
+                    <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                      {subtitleData.content}
+                    </div>
+                  ) : null}
                 </div>
                 {showArrows ? (
                   <div className="flex items-center gap-2">
@@ -482,8 +642,22 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 items.slice(0, 6).map((it, idx) => (
                   <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                     {it.imageUrl ? <img src={it.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
-                    <div className="text-sm font-semibold">{it.label ?? "Category"}</div>
-                    {it.href ? <div className="mt-1 text-xs opacity-70">{it.href}</div> : null}
+                    {(() => {
+                      const labelData = textContent(String(it.label ?? "Category"), sectionTokens);
+                      return (
+                        <div className={cls("text-sm font-semibold", labelData.className)} aria-label={labelData.ariaLabel}>
+                          {labelData.content}
+                        </div>
+                      );
+                    })()}
+                    {it.href ? (() => {
+                      const hrefData = textContent(String(it.href), sectionTokens);
+                      return (
+                        <div className={cls("mt-1 text-xs opacity-70", hrefData.className)} aria-label={hrefData.ariaLabel}>
+                          {hrefData.content}
+                        </div>
+                      );
+                    })() : null}
                   </div>
                 ))
               ) : (
@@ -504,19 +678,44 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const clsCols =
       cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : cols === 4 ? "md:grid-cols-4" : cols === 5 ? "md:grid-cols-5" : "md:grid-cols-6";
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-2 text-lg font-semibold">{d.title}</h3> : null}
-            {d.subtitle ? <div className="mb-4 text-sm opacity-80">{d.subtitle}</div> : null}
+            {titleData ? (
+              <h3 className={cls("mb-2 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            {subtitleData ? (
+              <div className={cls("mb-4 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                {subtitleData.content}
+              </div>
+            ) : null}
             <div className={cls("grid gap-4", clsCols)}>
               {items.length ? (
                 items.slice(0, 8).map((it, idx) => (
                   <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                     {it.imageUrl ? <img src={it.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
-                    <div className="text-sm font-semibold">{it.label ?? "Collection"}</div>
-                    {it.href ? <div className="mt-1 text-xs opacity-70">{it.href}</div> : null}
+                    {(() => {
+                      const labelData = textContent(String(it.label ?? "Collection"), sectionTokens);
+                      return (
+                        <div className={cls("text-sm font-semibold", labelData.className)} aria-label={labelData.ariaLabel}>
+                          {labelData.content}
+                        </div>
+                      );
+                    })()}
+                    {it.href ? (() => {
+                      const hrefData = textContent(String(it.href), sectionTokens);
+                      return (
+                        <div className={cls("mt-1 text-xs opacity-70", hrefData.className)} aria-label={hrefData.ariaLabel}>
+                          {hrefData.content}
+                        </div>
+                      );
+                    })() : null}
                   </div>
                 ))
               ) : (
@@ -534,11 +733,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const d = data as ProductsSliderData;
     const limit = Math.min(8, Math.max(1, safeNum(d.limit, 6)));
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleValue = d.title || (type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers");
+    const titleData = textContent(String(titleValue), sectionTokens);
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            <h3 className="mb-4 text-lg font-semibold">{d.title || (type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers")}</h3>
+            <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </h3>
             <div className="grid gap-4 md:grid-cols-4">
               {Array.from({ length: limit }).map((_, idx) => (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-xs opacity-70">
@@ -557,18 +761,38 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const d = data as BrandsSliderData;
     const items = Array.isArray(d.items) ? d.items : [];
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
+            {titleData ? (
+              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
             <div className="grid gap-4 md:grid-cols-4">
               {items.length ? (
                 items.slice(0, 8).map((it, idx) => (
                   <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm">
-                    <div className="font-semibold">{it.name ?? "Brand"}</div>
+                    {(() => {
+                      const nameData = textContent(String(it.name ?? "Brand"), sectionTokens);
+                      return (
+                        <div className={cls("font-semibold", nameData.className)} aria-label={nameData.ariaLabel}>
+                          {nameData.content}
+                        </div>
+                      );
+                    })()}
                     {it.logoUrl ? <div className="mt-1 text-xs opacity-70">logo: {it.logoUrl}</div> : null}
-                    {it.href ? <div className="mt-1 text-xs opacity-70">{it.href}</div> : null}
+                    {it.href ? (() => {
+                      const hrefData = textContent(String(it.href), sectionTokens);
+                      return (
+                        <div className={cls("mt-1 text-xs opacity-70", hrefData.className)} aria-label={hrefData.ariaLabel}>
+                          {hrefData.content}
+                        </div>
+                      );
+                    })() : null}
                   </div>
                 ))
               ) : (
@@ -585,20 +809,39 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
   if (type === "NEWSLETTER") {
     const d = data as NewsletterData;
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const textData = d.text ? textContent(String(d.text), sectionTokens) : null;
+    const ctaData = d.ctaLabel ? textContent(String(d.ctaLabel), sectionTokens) : null;
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-4xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-2 text-lg font-semibold">{d.title}</h3> : null}
-            {d.text ? <p className="mb-4 text-sm opacity-80">{d.text}</p> : null}
+            {titleData ? (
+              <h3 className={cls("mb-2 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            {textData ? (
+              <p className={cls("mb-4 text-sm opacity-80", textData.className)} aria-label={textData.ariaLabel}>
+                {textData.content}
+              </p>
+            ) : null}
             {d.ctaLabel ? (
               d.ctaHref ? (
-                <a href={d.ctaHref} className="inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:opacity-90">
-                  {d.ctaLabel}
+                <a
+                  href={d.ctaHref}
+                  className={cls("inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:opacity-90", ctaData?.className)}
+                  aria-label={ctaData?.ariaLabel}
+                >
+                  {ctaData?.content ?? d.ctaLabel}
                 </a>
               ) : (
-                <span className="inline-flex items-center rounded-xl bg-white/80 px-4 py-2 text-sm font-semibold text-black/80">
-                  {d.ctaLabel}
+                <span
+                  className={cls("inline-flex items-center rounded-xl bg-white/80 px-4 py-2 text-sm font-semibold text-black/80", ctaData?.className)}
+                  aria-label={ctaData?.ariaLabel}
+                >
+                  {ctaData?.content ?? d.ctaLabel}
                 </span>
               )
             ) : null}
@@ -614,12 +857,18 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const columns = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const clsCols = columns <= 2 ? "md:grid-cols-2" : columns === 3 ? "md:grid-cols-3" : columns === 4 ? "md:grid-cols-4" : columns === 5 ? "md:grid-cols-5" : "md:grid-cols-6";
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
 
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
+            {titleData ? (
+              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
             <div className={cls("grid gap-3", clsCols)}>
               {(d.images ?? []).map((im, idx) => (
                 <img key={idx} src={im.url} alt={im.alt ?? ""} className="h-40 w-full rounded-2xl object-cover" />
@@ -635,11 +884,17 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
   if (type === "TESTIMONIALS") {
     const d = data as TestimonialsData;
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
+            {titleData ? (
+              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
             <div className="grid gap-4 md:grid-cols-3">
               {(d.items ?? []).map((t, idx) => (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
@@ -650,11 +905,32 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       <div className="h-10 w-10 rounded-full bg-white/10" />
                     )}
                     <div>
-                      <div className="text-sm font-semibold">{t.name}</div>
-                      {t.role ? <div className="text-xs opacity-70">{t.role}</div> : null}
+                      {(() => {
+                        const nameData = textContent(String(t.name ?? ""), sectionTokens);
+                        return (
+                          <div className={cls("text-sm font-semibold", nameData.className)} aria-label={nameData.ariaLabel}>
+                            {nameData.content}
+                          </div>
+                        );
+                      })()}
+                      {t.role ? (() => {
+                        const roleData = textContent(String(t.role), sectionTokens);
+                        return (
+                          <div className={cls("text-xs opacity-70", roleData.className)} aria-label={roleData.ariaLabel}>
+                            {roleData.content}
+                          </div>
+                        );
+                      })() : null}
                     </div>
                   </div>
-                  <div className="mt-3 text-sm opacity-90">"{t.quote}"</div>
+                  {t.quote ? (() => {
+                    const quoteData = textContent(String(t.quote), sectionTokens);
+                    return (
+                      <div className={cls("mt-3 text-sm opacity-90", quoteData.className)} aria-label={quoteData.ariaLabel}>
+                        "{quoteData.content}"
+                      </div>
+                    );
+                  })() : null}
                 </div>
               ))}
             </div>
@@ -670,19 +946,32 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const cols = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
     const ids = Array.isArray(d.productSlugs) ? d.productSlugs.filter(Boolean) : Array.isArray(d.productIds) ? d.productIds.filter(Boolean) : [];
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
 
     return (
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-          {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
+          {titleData ? (
+            <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </h3>
+          ) : null}
           <div className={cls("grid gap-4", cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-4")}>
             {ids.length ? (
               ids.slice(0, 8).map((id) => (
-                <div key={id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                  <div className="text-xs opacity-70">Product</div>
-                  <div className="mt-1 font-mono text-xs">{id}</div>
-                </div>
+                (() => {
+                  const idData = textContent(String(id), sectionTokens);
+                  return (
+                    <div key={id} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+                      <div className="text-xs opacity-70">Product</div>
+                      <div className={cls("mt-1 font-mono text-xs", idData.className)} aria-label={idData.ariaLabel}>
+                        {idData.content}
+                      </div>
+                    </div>
+                  );
+                })()
               ))
             ) : (
               <div className="text-sm opacity-70">(حدد productIds لعرض المنتجات)</div>
@@ -708,22 +997,21 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionClass = ui.sectionClass || "py-8";
     const sectionTokens = (d as any)?.twTokens;
     const tokenClass = tokensToClassName(sectionTokens);
-    const textEffects = textEffectClass(sectionTokens);
     const cardEffects = cardEffectClass(sectionTokens);
-    const titleSplit = splitTextWithEffect(String(d.title ?? ""), sectionTokens?.textEffect);
-    const subtitleSplit = splitTextWithEffect(String(d.subtitle ?? ""), sectionTokens?.textEffect);
+    const titleData = d.title ? textContent(String(d.title ?? ""), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle ?? ""), sectionTokens) : null;
     return (
       <section className={cls(sectionClass, tokenClass)} style={uiSectionStyle(d)}>
         <div className={ui.containerClass || "mx-auto max-w-5xl px-4"}>
           <SectionTextScope data={d}>
-          {d.title ? (
-            <h2 className={cls("text-2xl font-semibold text-white", textEffects)} aria-label={titleSplit.ariaLabel}>
-              {titleSplit.content}
+          {titleData ? (
+            <h2 className={cls("text-2xl font-semibold text-white", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
             </h2>
           ) : null}
-          {d.subtitle ? (
-            <p className={cls("mt-1 text-white/70", textEffects)} aria-label={subtitleSplit.ariaLabel}>
-              {subtitleSplit.content}
+          {subtitleData ? (
+            <p className={cls("mt-1 text-white/70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+              {subtitleData.content}
             </p>
           ) : null}
 
@@ -749,19 +1037,19 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
 
                 <div className="mt-3 flex items-start justify-between gap-2">
                   {c.title ? (() => {
-                    const split = splitTextWithEffect(String(c.title ?? ""), sectionTokens?.textEffect);
+                    const cardTitleData = textContent(String(c.title ?? ""), sectionTokens);
                     return (
-                      <div className={cls("text-white font-semibold", textEffects)} aria-label={split.ariaLabel}>
-                        {split.content}
+                      <div className={cls("text-white font-semibold", cardTitleData.className)} aria-label={cardTitleData.ariaLabel}>
+                        {cardTitleData.content}
                       </div>
                     );
                   })() : <div />}
                   {c.badge ? (
                     (() => {
-                      const split = splitTextWithEffect(String(c.badge ?? ""), sectionTokens?.textEffect);
+                      const badgeData = textContent(String(c.badge ?? ""), sectionTokens);
                       return (
-                        <div className={cls("shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80", textEffects)} aria-label={split.ariaLabel}>
-                          {split.content}
+                        <div className={cls("shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80", badgeData.className)} aria-label={badgeData.ariaLabel}>
+                          {badgeData.content}
                         </div>
                       );
                     })()
@@ -769,22 +1057,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 </div>
 
                 {c.text ? (() => {
-                  const split = splitTextWithEffect(String(c.text ?? ""), sectionTokens?.textEffect);
+                  const cardTextData = textContent(String(c.text ?? ""), sectionTokens);
                   return (
-                    <div className={cls("mt-2 text-sm text-white/70", textEffects)} aria-label={split.ariaLabel}>
-                      {split.content}
+                    <div className={cls("mt-2 text-sm text-white/70", cardTextData.className)} aria-label={cardTextData.ariaLabel}>
+                      {cardTextData.content}
                     </div>
                   );
                 })() : null}
 
                 {c.buttonLabel && c.buttonHref ? (
-                  <a
-                    href={c.buttonHref}
-                    className={cls("mt-4 inline-flex items-center justify-center rounded-xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15", textEffects)}
-                    aria-label={splitTextWithEffect(String(c.buttonLabel ?? ""), sectionTokens?.textEffect).ariaLabel}
-                  >
-                    {splitTextWithEffect(String(c.buttonLabel ?? ""), sectionTokens?.textEffect).content}
-                  </a>
+                  (() => {
+                    const buttonData = textContent(String(c.buttonLabel ?? ""), sectionTokens);
+                    return (
+                      <a
+                        href={c.buttonHref}
+                        className={cls("mt-4 inline-flex items-center justify-center rounded-xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15", buttonData.className)}
+                        aria-label={buttonData.ariaLabel}
+                      >
+                        {buttonData.content}
+                      </a>
+                    );
+                  })()
                 ) : null}
               </div>
             ))}
@@ -800,6 +1093,10 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const aspect = d.aspect ?? "16/9";
     const aspectClass = aspect === "9/16" ? "aspect-[9/16]" : aspect === "1/1" ? "aspect-square" : aspect === "4/3" ? "aspect-[4/3]" : "aspect-video";
     const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    const placeholderData = textContent("(ضع رابط الفيديو)", sectionTokens);
 
     const yt = d.url ? youtubeId(d.url) : null;
     const vm = d.url ? vimeoId(d.url) : null;
@@ -808,8 +1105,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-          {d.title ? <h3 className="mb-2 text-lg font-semibold">{d.title}</h3> : null}
-          {d.subtitle ? <div className="mb-4 text-sm opacity-80">{d.subtitle}</div> : null}
+          {titleData ? (
+            <h3 className={cls("mb-2 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </h3>
+          ) : null}
+          {subtitleData ? (
+            <div className={cls("mb-4 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+              {subtitleData.content}
+            </div>
+          ) : null}
 
           <div className={cls("overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40", aspectClass)}>
             {yt ? (
@@ -839,7 +1144,9 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 loop={!!d.loop}
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-sm opacity-70">(ضع رابط الفيديو)</div>
+              <div className={cls("flex h-full w-full items-center justify-center text-sm opacity-70", placeholderData.className)} aria-label={placeholderData.ariaLabel}>
+                {placeholderData.content}
+              </div>
             )}
           </div>
           </SectionTextScope>
@@ -854,7 +1161,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     return (
       <section className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6">
         <div className="mx-auto max-w-6xl">
-          <CmsComponentsRenderer components={fallbackComponents} />
+          <CmsComponentsRenderer components={fallbackComponents} inheritTokens={(data as any)?.twTokens} />
         </div>
       </section>
     );

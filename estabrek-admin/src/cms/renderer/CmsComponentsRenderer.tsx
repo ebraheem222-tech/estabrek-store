@@ -1,10 +1,12 @@
 import React from "react";
 import type { CmsComponent } from "../types";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
+import { TypewriterText } from "../../components/effects/TypewriterText";
 
 type CmsComponentsRendererProps = {
   components?: CmsComponent[];
   className?: string;
+  inheritTokens?: any;
 };
 
 function cx(...parts: Array<string | undefined | null | false>) {
@@ -47,21 +49,51 @@ function resolveTokens(component: CmsComponent): any | undefined {
   return component.twTokens ?? getLegacyTokens(component);
 }
 
-function componentClasses(component: CmsComponent): string {
-  const tokens = resolveTokens(component);
-  const tokenClass = tokensToClassName(tokens);
-  const legacyClassName = typeof (component as any)?.tw?.className === "string" ? (component as any).tw.className : "";
-  return cx(tokenClass, legacyClassName);
-}
-
-function componentInlineStyle(component: CmsComponent): React.CSSProperties | undefined {
-  const tokens = resolveTokens(component) as any;
-  return tokensToInlineStyle(tokens);
-}
-
 function textEffectClass(tokens?: any) {
   if (!tokens?.textEffect) return "";
   return tokensToClassName({ textEffect: tokens.textEffect } as any);
+}
+
+function mergeEffectTokens(tokens?: any, inheritTokens?: any): any | undefined {
+  if (!inheritTokens) return tokens;
+  const next = { ...(tokens ?? {}) } as any;
+  if (next.textEffect == null && inheritTokens?.textEffect != null) next.textEffect = inheritTokens.textEffect;
+  if (next.typewriter == null && inheritTokens?.typewriter != null) next.typewriter = inheritTokens.typewriter;
+  return next;
+}
+
+function textContent(text: string, tokens?: any) {
+  const value = typeof text === "string" ? text : String(text ?? "");
+  const effect = tokens?.textEffect;
+  const typewriter = tokens?.typewriter;
+  const typewriterTexts = Array.isArray(typewriter?.texts) && typewriter.texts.length
+    ? typewriter.texts
+    : value
+      ? [value]
+      : [];
+  const useTypewriter = !!(typewriter?.enabled && typewriterTexts.length);
+
+  if (useTypewriter) {
+    const allowEffect = effect && effect !== "none" && !SPLIT_TEXT_EFFECTS.has(effect) && effect !== "typewriter";
+    const typewriterClass = allowEffect ? textEffectClass(tokens) : "";
+    return {
+      useTypewriter: true,
+      ariaLabel: undefined as string | undefined,
+      content: (
+        <TypewriterText
+          texts={typewriterTexts}
+          typeSpeed={typewriter?.speed}
+          deleteSpeed={typewriter?.deleteSpeed}
+          pauseTime={typewriter?.pauseTime}
+          loop={typewriter?.loop ?? true}
+          textClassName={typewriterClass || undefined}
+        />
+      ),
+    };
+  }
+
+  const split = splitTextWithEffect(value, effect);
+  return { useTypewriter: false, ariaLabel: split.ariaLabel, content: split.content };
 }
 
 function baseButtonClasses(variant?: string): string {
@@ -103,19 +135,36 @@ function gridColsClass(cols?: number): string {
   return "grid-cols-1 sm:grid-cols-6";
 }
 
-function ComponentNode({ component, depth = 0 }: { component: CmsComponent; depth?: number }) {
+function ComponentNode({
+  component,
+  depth = 0,
+  inheritTokens,
+}: {
+  component: CmsComponent;
+  depth?: number;
+  inheritTokens?: any;
+}) {
   const props = (component.props ?? {}) as any;
-  const tokens = resolveTokens(component) as any;
+  const baseTokens = resolveTokens(component) as any;
+  const tokens = mergeEffectTokens(baseTokens, inheritTokens) as any;
   const legacyClassName = typeof (component as any)?.tw?.className === "string" ? (component as any).tw.className : "";
-  const className = componentClasses(component);
-  const inlineStyle = componentInlineStyle(component);
+  const className = cx(tokensToClassName(tokens), legacyClassName);
+  const classNameNoTextEffect = tokens?.textEffect
+    ? cx(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName)
+    : className;
+  const inlineStyle = tokensToInlineStyle(tokens);
   const children = getChildren(component);
   const safeDepth = Math.min(depth, 6);
 
   const renderChildren = () => {
     if (!children.length || safeDepth >= 6) return null;
     return children.map((child, idx) => (
-      <ComponentNode key={child.id ?? `${component.id}-${idx}`} component={child} depth={safeDepth + 1} />
+      <ComponentNode
+        key={child.id ?? `${component.id}-${idx}`}
+        component={child}
+        depth={safeDepth + 1}
+        inheritTokens={inheritTokens}
+      />
     ));
   };
 
@@ -124,10 +173,10 @@ function ComponentNode({ component, depth = 0 }: { component: CmsComponent; dept
       const As = (props.as ?? "p") as React.ElementType;
       const rawText = props.text ?? "";
       const textValue = typeof rawText === "string" ? rawText : String(rawText);
-      const split = splitTextWithEffect(textValue, tokens?.textEffect);
+      const textData = textContent(textValue, tokens);
       return (
-        <As className={className} style={inlineStyle} aria-label={split.ariaLabel}>
-          {split.content}
+        <As className={textData.useTypewriter ? classNameNoTextEffect : className} style={inlineStyle} aria-label={textData.ariaLabel}>
+          {textData.content}
         </As>
       );
     }
@@ -135,27 +184,41 @@ function ComponentNode({ component, depth = 0 }: { component: CmsComponent; dept
       {
         const rawText = props.text ?? "Badge";
         const textValue = typeof rawText === "string" ? rawText : String(rawText);
-        const split = splitTextWithEffect(textValue, tokens?.textEffect);
+        const textData = textContent(textValue, tokens);
         return (
-          <span className={cx("border border-white/10", className)} style={inlineStyle} aria-label={split.ariaLabel}>
-            {split.content}
+          <span
+            className={cx("border border-white/10", textData.useTypewriter ? classNameNoTextEffect : className)}
+            style={inlineStyle}
+            aria-label={textData.ariaLabel}
+          >
+            {textData.content}
           </span>
         );
       }
     case "button": {
       const rawLabel = props.label ?? "Button";
       const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
-      const split = splitTextWithEffect(label, tokens?.textEffect);
+      const textData = textContent(label, tokens);
       if (props.href) {
         return (
-          <a href={props.href} className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle} aria-label={split.ariaLabel}>
-            {split.content}
+          <a
+            href={props.href}
+            className={cx(baseButtonClasses(props.variant), textData.useTypewriter ? classNameNoTextEffect : className)}
+            style={inlineStyle}
+            aria-label={textData.ariaLabel}
+          >
+            {textData.content}
           </a>
         );
       }
       return (
-        <button type="button" className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle} aria-label={split.ariaLabel}>
-          {split.content}
+        <button
+          type="button"
+          className={cx(baseButtonClasses(props.variant), textData.useTypewriter ? classNameNoTextEffect : className)}
+          style={inlineStyle}
+          aria-label={textData.ariaLabel}
+        >
+          {textData.content}
         </button>
       );
     }
@@ -165,46 +228,47 @@ function ComponentNode({ component, depth = 0 }: { component: CmsComponent; dept
         const text = props.text ?? "";
         const titleValue = typeof title === "string" ? title : String(title);
         const textValue = typeof text === "string" ? text : String(text);
-        const titleSplit = splitTextWithEffect(titleValue, tokens?.textEffect);
-        const textSplit = splitTextWithEffect(textValue, tokens?.textEffect);
         const buttonLabel = props.buttonLabel ?? "";
         const buttonLabelValue = typeof buttonLabel === "string" ? buttonLabel : String(buttonLabel);
-        const buttonSplit = splitTextWithEffect(buttonLabelValue, tokens?.textEffect);
         const textEffects = textEffectClass(tokens);
-        const cardClassName = tokens?.textEffect
-          ? cx(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName)
-          : className;
+        const cardClassName = classNameNoTextEffect;
+        const titleData = textContent(titleValue, tokens);
+        const textData = textContent(textValue, tokens);
+        const buttonData = textContent(buttonLabelValue, tokens);
         return (
           <div className={cx("border border-white/10", cardClassName)} style={inlineStyle}>
             <div className="space-y-2">
               {titleValue ? (
-                <div className={cx("font-semibold", textEffects)} aria-label={titleSplit.ariaLabel}>
-                  {titleSplit.content}
+                <div
+                  className={cx("font-semibold", titleData.useTypewriter ? undefined : textEffects)}
+                  aria-label={titleData.ariaLabel}
+                >
+                  {titleData.content}
                 </div>
               ) : (
                 <div className="font-semibold">Card</div>
               )}
               {textValue ? (
-                <div className={cx("opacity-80", textEffects)} aria-label={textSplit.ariaLabel}>
-                  {textSplit.content}
+                <div className={cx("opacity-80", textData.useTypewriter ? undefined : textEffects)} aria-label={textData.ariaLabel}>
+                  {textData.content}
                 </div>
               ) : null}
               {props.buttonLabel ? (
                 props.buttonHref ? (
                   <a
                     href={props.buttonHref}
-                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", textEffects)}
-                    aria-label={buttonSplit.ariaLabel}
+                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", buttonData.useTypewriter ? undefined : textEffects)}
+                    aria-label={buttonData.ariaLabel}
                   >
-                    {buttonSplit.content}
+                    {buttonData.content}
                   </a>
                 ) : (
                   <button
                     type="button"
-                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", textEffects)}
-                    aria-label={buttonSplit.ariaLabel}
+                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", buttonData.useTypewriter ? undefined : textEffects)}
+                    aria-label={buttonData.ariaLabel}
                   >
-                    {buttonSplit.content}
+                    {buttonData.content}
                   </button>
                 )
               ) : null}
@@ -357,13 +421,13 @@ function ComponentNode({ component, depth = 0 }: { component: CmsComponent; dept
   }
 }
 
-export function CmsComponentsRenderer({ components, className }: CmsComponentsRendererProps) {
+export function CmsComponentsRenderer({ components, className, inheritTokens }: CmsComponentsRendererProps) {
   const list = Array.isArray(components) ? components : [];
   if (!list.length) return null;
   return (
     <div className={className}>
       {list.map((component, idx) => (
-        <ComponentNode key={component.id ?? `cmp-${idx}`} component={component} />
+        <ComponentNode key={component.id ?? `cmp-${idx}`} component={component} inheritTokens={inheritTokens} />
       ))}
     </div>
   );
