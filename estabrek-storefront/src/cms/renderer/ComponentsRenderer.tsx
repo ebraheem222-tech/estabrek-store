@@ -11,6 +11,31 @@ function cn(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+function hasDecorLayers(tokens?: any): boolean {
+  const before = tokens?.decor?.before?.shape;
+  const after = tokens?.decor?.after?.shape;
+  return !!((before && before !== "none") || (after && after !== "none"));
+}
+
+function wrapWithDecor(
+  tokens: any,
+  content: React.ReactElement,
+  inline = false,
+  key?: React.Key
+): React.ReactNode {
+  if (!hasDecorLayers(tokens)) {
+    return React.cloneElement(content, { key });
+  }
+  const Wrapper: React.ElementType = inline ? "span" : "div";
+  return (
+    <Wrapper key={key} className={cn("relative", inline ? "inline-block" : undefined)}>
+      {renderDecorLayer(tokens?.decor?.before, "before")}
+      {content}
+      {renderDecorLayer(tokens?.decor?.after, "after")}
+    </Wrapper>
+  );
+}
+
 function getChildren(component: CmsComponent): CmsComponent[] {
   const fromProps = (component.props as any)?.children;
   if (Array.isArray(fromProps)) return fromProps as CmsComponent[];
@@ -57,6 +82,29 @@ function spacerClass(h?: string): string {
     case "xl": return "h-20";
     default: return "h-8";
   }
+}
+
+function isInlineTag(tag: any, tokens?: any): boolean {
+  const display = tokens?.layout?.display;
+  if (display === "inline" || display === "inline-flex") return true;
+  if (typeof tag !== "string") return false;
+  return new Set([
+    "span",
+    "small",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "u",
+    "s",
+    "a",
+    "button",
+    "label",
+    "code",
+    "kbd",
+    "sup",
+    "sub",
+  ]).has(tag);
 }
 
 
@@ -148,7 +196,7 @@ function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before")
 function RenderBox({ tokens, className, children }: { tokens?: any; className?: string; children: React.ReactNode }) {
   const cls = cn(tokensToClassName(tokens), className);
   const inlineStyle = tokensToInlineStyle(tokens);
-  const hasDecor = tokens?.decor?.before?.shape && tokens.decor.before.shape !== "none" || tokens?.decor?.after?.shape && tokens.decor.after.shape !== "none";
+  const hasDecor = hasDecorLayers(tokens);
   return (
     <div className={cn(hasDecor ? "relative" : undefined, cls)} style={inlineStyle}>
       {hasDecor ? renderDecorLayer(tokens?.decor?.before, "before") : null}
@@ -237,338 +285,344 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
     }
 
     // Non-layout leaf components
+    const tokenClass = cn(tokensToClassName(tokens), legacyClassName);
+    const tokenStyle = tokensToInlineStyle(tokens);
+
     switch (c.kind) {
-          
-          case "nav_menu": {
-            const props = c.props ?? {};
-            const items = Array.isArray(props.items) ? props.items : [];
-            const mode = (props.mode ?? "dropdown") as "dropdown" | "mega";
-            const gradient = (props.gradient ?? "none") as "none" | "sunset" | "ocean" | "neon";
-            const showIcons = !!(props.showIcons ?? true);
+      case "nav_menu": {
+        const props = c.props ?? {};
+        const items = Array.isArray(props.items) ? props.items : [];
+        const mode = (props.mode ?? "dropdown") as "dropdown" | "mega";
+        const gradient = (props.gradient ?? "none") as "none" | "sunset" | "ocean" | "neon";
+        const showIcons = !!(props.showIcons ?? true);
 
-            const iconPaths: Record<string, string> = {
-              home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
-              shop: "M4 7h16l-1.5 14H5.5L4 7Zm3-4h10l1 4H6l1-4Z",
-              phone: "M6 2h3l2 5-2 1c1 3 3 5 6 6l1-2 5 2v3c0 1-1 2-2 2C10 19 5 14 4 6c0-1 1-2 2-2Z",
-              star: "M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7l3-7Z",
-              sparkle: "M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2Z",
-              chev: "M9 6l6 6-6 6",
-            };
+        const iconPaths: Record<string, string> = {
+          home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
+          shop: "M4 7h16l-1.5 14H5.5L4 7Zm3-4h10l1 4H6l1-4Z",
+          phone: "M6 2h3l2 5-2 1c1 3 3 5 6 6l1-2 5 2v3c0 1-1 2-2 2C10 19 5 14 4 6c0-1 1-2 2-2Z",
+          star: "M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7l3-7Z",
+          sparkle: "M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2Z",
+          chev: "M9 6l6 6-6 6",
+        };
 
-            function Icon({ name }: { name?: string }) {
-              if (!showIcons) return null;
-              const key = (name ?? "none") as string;
-              const d = iconPaths[key];
-              if (!d) return null;
-              return (
-                <svg viewBox="0 0 24 24" className="h-4 w-4 opacity-90" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d={d} strokeLinejoin="round" strokeLinecap="round" />
-                </svg>
-              );
-            }
-
-            const gradStops: Record<string, string[]> = {
-              sunset: ["#fb7185", "#f97316", "#fbbf24"],
-              ocean: ["#06b6d4", "#3b82f6", "#6366f1"],
-              neon: ["#d946ef", "#8b5cf6", "#3b82f6"],
-            };
-            function GradientBg() {
-              if (gradient === "none") return null;
-              const id = `nav-grad-${c.id}`;
-              const stops = gradStops[gradient] ?? gradStops.sunset;
-              return (
-                <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full">
-                  <defs>
-                    <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-                      {stops.map((s, i) => (
-                        <stop key={s} offset={`${(i / (stops.length - 1)) * 100}%`} stopColor={s} />
-                      ))}
-                    </linearGradient>
-                  </defs>
-                  <rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} opacity="0.22" />
-                </svg>
-              );
-            }
-
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
-                <nav className="relative">
-                  <ul className="flex flex-wrap items-center gap-2">
-                    {items.map((it: any) => {
-                      const children = Array.isArray(it.children) ? it.children : [];
-                      const hasChildren = children.length > 0;
-                      return (
-                        <li key={it.id ?? it.href ?? it.label} className="relative group">
-                          <a
-                            href={it.href ?? "#"}
-                            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-white/[0.06]"
-                          >
-                            <Icon name={it.icon} />
-                            <span>{it.label ?? "Item"}</span>
-                            {hasChildren ? <Icon name="chev" /> : null}
-                          </a>
-
-                          {hasChildren ? (
-                            <div className="absolute left-0 top-full z-50 mt-2 hidden min-w-[220px] group-hover:block">
-                              <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur p-3">
-                                <GradientBg />
-                                {mode === "mega" ? (
-                                  <div className="grid gap-2 sm:grid-cols-2">
-                                    {children.map((ch: any) => (
-                                      <a
-                                        key={ch.id ?? ch.href ?? ch.label}
-                                        href={ch.href ?? "#"}
-                                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
-                                      >
-                                        <Icon name={ch.icon} />
-                                        <span>{ch.label ?? "Child"}</span>
-                                      </a>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="grid gap-1">
-                                    {children.map((ch: any) => (
-                                      <a
-                                        key={ch.id ?? ch.href ?? ch.label}
-                                        href={ch.href ?? "#"}
-                                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
-                                      >
-                                        <Icon name={ch.icon} />
-                                        <span>{ch.label ?? "Child"}</span>
-                                      </a>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </nav>
-              </RenderBox>
-            );
-          }
-
-case "text": {
-            const As = (c.props?.as ?? "p") as any;
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}>
-                <As >
-                {c.props?.text ?? ""}
-                </As>
-              </RenderBox>
-            );
-          }
-
-          case "badge": {
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><span className={"inline-flex items-center rounded-full border border-black/10 dark:border-white/15"}>
-                {c.props?.text ?? "Badge"}
-              </span></RenderBox>
-            );
-          }
-
-          case "button": {
-            const href = c.props?.href ?? "#";
-            const label = c.props?.label ?? "Button";
-            const variant = c.props?.variant ?? "primary";
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><a href={href} className={baseButtonClasses(variant)}>
-                {label}
-              </a></RenderBox>
-            );
-          }
-
-          case "card": {
-            const title = c.props?.title ?? "Card title";
-            const text = c.props?.text ?? "";
-            const buttonLabel = c.props?.buttonLabel;
-            const buttonHref = c.props?.buttonHref ?? "#";
-            const buttonVariant = c.props?.buttonVariant ?? "secondary";
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><div className="rounded-2xl border border-black/10 bg-white dark:bg-white/5 dark:border-white/15">
-                <div className="space-y-2">
-                  <div className="text-lg font-semibold">{title}</div>
-                  {text ? <div className="text-sm opacity-80">{text}</div> : null}
-                  {buttonLabel ? (
-                    <a href={buttonHref} className={cn(baseButtonClasses(buttonVariant), "mt-2 inline-flex")}>
-                      {buttonLabel}
-                    </a>
-                  ) : null}
-                </div>
-              </div></RenderBox>
-            );
-          }
-
-          case "list": {
-            const ordered = !!c.props?.ordered;
-            const items: string[] = Array.isArray(c.props?.items) ? c.props.items : [];
-            return ordered ? (
-              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><ol className="list-decimal ps-6">
-                {items.map((it, i) => <li key={i}>{it}</li>)}
-              </ol></RenderBox>
-            ) : (
-              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><ul className="list-disc ps-6">
-                {items.map((it, i) => <li key={i}>{it}</li>)}
-              </ul></RenderBox>
-            );
-          }
-
-          case "image": {
-            const src = c.props?.src;
-            if (!src) return null;
-            return (<RenderBox key={c.id} tokens={tokens} className={legacyClassName}><img src={src} alt={c.props?.alt ?? ""} className="max-w-full rounded-xl" /></RenderBox>);
-          }
-
-          case "icon": {
-            const d = c.props?.d;
-            if (!d) return null;
-            const viewBox = c.props?.viewBox ?? "0 0 24 24";
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={legacyClassName}><svg viewBox={viewBox} className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d={d} />
-              </svg></RenderBox>
-            );
-          }
-
-          case "divider":
-            return (<RenderBox key={c.id} tokens={tokens} className={legacyClassName}><hr className="border-black/10 dark:border-white/15" /></RenderBox>);
-
-          case "spacer":
-            return (<RenderBox key={c.id} tokens={tokens} className={legacyClassName}><div className={spacerClass(c.props?.h)} /></RenderBox>);
-
-          
-          case "productGrid": {
-            const ids: string[] = Array.isArray(c.props?.productIds) ? c.props.productIds : [];
-            const cols = c.props?.cols ?? 4;
-            const title = c.props?.title ?? "";
-            const pagination = c.props?.pagination as undefined | {
-              basePath: string;
-              page: number;
-              totalPages: number;
-              filters: CatalogFilters;
-            };
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
-                {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
-                <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===3?"grid-cols-3":cols===5?"grid-cols-5":cols===6?"grid-cols-6":"grid-cols-4")}>
-                  {ids.map((id) => (<ProductCard key={id} productId={id} />))}
-                </div>
-
-                {pagination && pagination.totalPages > 1 ? (
-                  <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                    {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                      .slice(0, 9)
-                      .map((p) => {
-                        const q = buildCanonicalQuery({ ...(pagination.filters ?? { colors: [], sizeIds: [] }), page: p });
-                        const href = q ? `${pagination.basePath}?${q}` : pagination.basePath;
-                        const active = p === (pagination.page ?? 1);
-                        return (
-                          <a
-                            key={p}
-                            href={href}
-                            className={[
-                              "h-10 min-w-[40px] rounded-xl px-3 inline-flex items-center justify-center border text-sm transition",
-                              active
-                                ? "border-[#0B0B0B] bg-[#0B0B0B] text-[#F7F4E9]"
-                                : "border-black/10 bg-white/70 hover:bg-white",
-                            ].join(" ")}
-                          >
-                            {p}
-                          </a>
-                        );
-                      })}
-                  </div>
-                ) : null}
-              </RenderBox>
-            );
-          }
-
-          case "productSlider": {
-            const ids: string[] = Array.isArray(c.props?.productIds) ? c.props.productIds : [];
-            const title = c.props?.title ?? "";
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
-                {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
-                <div className="flex gap-4 overflow-x-auto pb-2">
-                  {ids.map((id) => (
-                    <div key={id} className="min-w-[220px] max-w-[260px] flex-shrink-0">
-                      <ProductCard productId={id} />
-                    </div>
-                  ))}
-                </div>
-              </RenderBox>
-            );
-          }
-
-          case "categoryTiles": {
-            const items: any[] = Array.isArray(c.props?.items) ? c.props.items : [];
-            const cols = c.props?.cols ?? 3;
-            const title = c.props?.title ?? "";
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
-                {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
-                <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===4?"grid-cols-4":"grid-cols-3")}>
-                  {items.map((it, idx2) => (
-                    <a
-                      key={it.href ?? idx2}
-                      href={it.href ?? "#"}
-                      className={
-                        "group relative overflow-hidden rounded-2xl border border-black/10 bg-white/70 shadow-sm transition " +
-                        "hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-[color:var(--accent-2)]"
-                      }
-                    >
-                      <div className="relative aspect-[16/9] bg-black/[0.04]">
-                        {it.imageUrl ? (
-                          <img
-                            src={it.imageUrl}
-                            alt={it.title ?? "Category"}
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                          />
-                        ) : null}
-
-                        {/* gradient wash */}
-                        <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-70" />
-                      </div>
-
-                      <div className="p-4">
-                        <div className="text-sm font-semibold text-[#0B0B0B]">{it.title ?? "Category"}</div>
-                        <div className="mt-2 h-px w-0 bg-[color:var(--accent-2)] transition-all duration-300 group-hover:w-full" />
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </RenderBox>
-            );
-          }
-
-          case "filtersBar": {
-            const colors = Array.isArray(c.props?.colors) ? c.props.colors : [];
-            const sizes = Array.isArray(c.props?.sizes) ? c.props.sizes : [];
-            const categories = Array.isArray(c.props?.categories) ? c.props.categories : [];
-            // Reuse the Shop page filters UI (it updates URL search params).
-            // If facets aren't provided, show a small hint.
-            if (!colors.length && !sizes.length && !categories.length) {
-              return (
-                <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
-                  <div className="rounded-2xl border border-black/10 dark:border-white/15 p-3 text-sm opacity-80">
-                    FiltersBar (needs facets)
-                  </div>
-                </RenderBox>
-              );
-            }
-            return (
-              <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "w-full")}>
-                <ProductFiltersBar colors={colors} sizes={sizes} categories={categories} />
-              </RenderBox>
-            );
-          }
-
-          default:
-            return null;
+        function Icon({ name }: { name?: string }) {
+          if (!showIcons) return null;
+          const key = (name ?? "none") as string;
+          const d = iconPaths[key];
+          if (!d) return null;
+          return (
+            <svg viewBox="0 0 24 24" className="h-4 w-4 opacity-90" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d={d} strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+          );
         }
+
+        const gradStops: Record<string, string[]> = {
+          sunset: ["#fb7185", "#f97316", "#fbbf24"],
+          ocean: ["#06b6d4", "#3b82f6", "#6366f1"],
+          neon: ["#d946ef", "#8b5cf6", "#3b82f6"],
+        };
+        function GradientBg() {
+          if (gradient === "none") return null;
+          const id = `nav-grad-${c.id}`;
+          const stops = gradStops[gradient] ?? gradStops.sunset;
+          return (
+            <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full">
+              <defs>
+                <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+                  {stops.map((s, i) => (
+                    <stop key={s} offset={`${(i / (stops.length - 1)) * 100}%`} stopColor={s} />
+                  ))}
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} opacity="0.22" />
+            </svg>
+          );
+        }
+
+        const node = (
+          <nav className={cn("relative", "w-full", tokenClass)} style={tokenStyle}>
+            <ul className="flex flex-wrap items-center gap-2">
+              {items.map((it: any) => {
+                const children = Array.isArray(it.children) ? it.children : [];
+                const hasChildren = children.length > 0;
+                return (
+                  <li key={it.id ?? it.href ?? it.label} className="relative group">
+                    <a
+                      href={it.href ?? "#"}
+                      className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-white/[0.06]"
+                    >
+                      <Icon name={it.icon} />
+                      <span>{it.label ?? "Item"}</span>
+                      {hasChildren ? <Icon name="chev" /> : null}
+                    </a>
+
+                    {hasChildren ? (
+                      <div className="absolute left-0 top-full z-50 mt-2 hidden min-w-[220px] group-hover:block">
+                        <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur p-3">
+                          <GradientBg />
+                          {mode === "mega" ? (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {children.map((ch: any) => (
+                                <a
+                                  key={ch.id ?? ch.href ?? ch.label}
+                                  href={ch.href ?? "#"}
+                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
+                                >
+                                  <Icon name={ch.icon} />
+                                  <span>{ch.label ?? "Child"}</span>
+                                </a>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="grid gap-1">
+                              {children.map((ch: any) => (
+                                <a
+                                  key={ch.id ?? ch.href ?? ch.label}
+                                  href={ch.href ?? "#"}
+                                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/[0.06]"
+                                >
+                                  <Icon name={ch.icon} />
+                                  <span>{ch.label ?? "Child"}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        );
+
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "text": {
+        const As = (c.props?.as ?? "p") as any;
+        const node = <As className={tokenClass} style={tokenStyle}>{c.props?.text ?? ""}</As>;
+        return wrapWithDecor(tokens, node, isInlineTag(As, tokens), c.id);
+      }
+
+      case "badge": {
+        const node = (
+          <span className={cn("inline-flex items-center rounded-full border border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle}>
+            {c.props?.text ?? "Badge"}
+          </span>
+        );
+        return wrapWithDecor(tokens, node, true, c.id);
+      }
+
+      case "button": {
+        const href = c.props?.href ?? "#";
+        const label = c.props?.label ?? "Button";
+        const variant = c.props?.variant ?? "primary";
+        const node = (
+          <a href={href} className={cn(baseButtonClasses(variant), tokenClass)} style={tokenStyle}>
+            {label}
+          </a>
+        );
+        return wrapWithDecor(tokens, node, true, c.id);
+      }
+
+      case "card": {
+        const title = c.props?.title ?? "Card title";
+        const text = c.props?.text ?? "";
+        const buttonLabel = c.props?.buttonLabel;
+        const buttonHref = c.props?.buttonHref ?? "#";
+        const buttonVariant = c.props?.buttonVariant ?? "secondary";
+        const node = (
+          <div className={cn("rounded-2xl border border-black/10 bg-white dark:bg-white/5 dark:border-white/15", tokenClass)} style={tokenStyle}>
+            <div className="space-y-2">
+              <div className="text-lg font-semibold">{title}</div>
+              {text ? <div className="text-sm opacity-80">{text}</div> : null}
+              {buttonLabel ? (
+                <a href={buttonHref} className={cn(baseButtonClasses(buttonVariant), "mt-2 inline-flex")}>
+                  {buttonLabel}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "list": {
+        const ordered = !!c.props?.ordered;
+        const items: string[] = Array.isArray(c.props?.items) ? c.props.items : [];
+        const node = ordered ? (
+          <ol className={cn("list-decimal ps-6", tokenClass)} style={tokenStyle}>
+            {items.map((it, i) => <li key={i}>{it}</li>)}
+          </ol>
+        ) : (
+          <ul className={cn("list-disc ps-6", tokenClass)} style={tokenStyle}>
+            {items.map((it, i) => <li key={i}>{it}</li>)}
+          </ul>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "image": {
+        const src = c.props?.src;
+        if (!src) return null;
+        const node = <img src={src} alt={c.props?.alt ?? ""} className={cn("max-w-full rounded-xl", tokenClass)} style={tokenStyle} />;
+        return wrapWithDecor(tokens, node, true, c.id);
+      }
+
+      case "icon": {
+        const d = c.props?.d;
+        if (!d) return null;
+        const viewBox = c.props?.viewBox ?? "0 0 24 24";
+        const node = (
+          <svg viewBox={viewBox} className={cn("h-6 w-6", tokenClass)} style={tokenStyle} fill="none" stroke="currentColor" strokeWidth="2">
+            <path d={d} />
+          </svg>
+        );
+        return wrapWithDecor(tokens, node, true, c.id);
+      }
+
+      case "divider": {
+        const node = <hr className={cn("border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} />;
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "spacer": {
+        const node = <div className={cn(spacerClass(c.props?.h), tokenClass)} style={tokenStyle} />;
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "productGrid": {
+        const ids: string[] = Array.isArray(c.props?.productIds) ? c.props.productIds : [];
+        const cols = c.props?.cols ?? 4;
+        const title = c.props?.title ?? "";
+        const pagination = c.props?.pagination as undefined | {
+          basePath: string;
+          page: number;
+          totalPages: number;
+          filters: CatalogFilters;
+        };
+        const node = (
+          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
+            {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
+            <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===3?"grid-cols-3":cols===5?"grid-cols-5":cols===6?"grid-cols-6":"grid-cols-4")}>
+              {ids.map((id) => (<ProductCard key={id} productId={id} />))}
+            </div>
+
+            {pagination && pagination.totalPages > 1 ? (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                  .slice(0, 9)
+                  .map((p) => {
+                    const q = buildCanonicalQuery({ ...(pagination.filters ?? { colors: [], sizeIds: [] }), page: p });
+                    const href = q ? `${pagination.basePath}?${q}` : pagination.basePath;
+                    const active = p === (pagination.page ?? 1);
+                    return (
+                      <a
+                        key={p}
+                        href={href}
+                        className={[
+                          "h-10 min-w-[40px] rounded-xl px-3 inline-flex items-center justify-center border text-sm transition",
+                          active
+                            ? "border-[#0B0B0B] bg-[#0B0B0B] text-[#F7F4E9]"
+                            : "border-black/10 bg-white/70 hover:bg-white",
+                        ].join(" ")}
+                      >
+                        {p}
+                      </a>
+                    );
+                  })}
+              </div>
+            ) : null}
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "productSlider": {
+        const ids: string[] = Array.isArray(c.props?.productIds) ? c.props.productIds : [];
+        const title = c.props?.title ?? "";
+        const node = (
+          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
+            {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {ids.map((id) => (
+                <div key={id} className="min-w-[220px] max-w-[260px] flex-shrink-0">
+                  <ProductCard productId={id} />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "categoryTiles": {
+        const items: any[] = Array.isArray(c.props?.items) ? c.props.items : [];
+        const cols = c.props?.cols ?? 3;
+        const title = c.props?.title ?? "";
+        const node = (
+          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
+            {title ? <div className="mb-3 text-sm font-semibold">{title}</div> : null}
+            <div className={cn("grid gap-4", cols===2?"grid-cols-2":cols===4?"grid-cols-4":"grid-cols-3")}>
+              {items.map((it, idx2) => (
+                <a
+                  key={it.href ?? idx2}
+                  href={it.href ?? "#"}
+                  className={
+                    "group relative overflow-hidden rounded-2xl border border-black/10 bg-white/70 shadow-sm transition " +
+                    "hover:-translate-y-0.5 hover:shadow-lg hover:ring-1 hover:ring-[color:var(--accent-2)]"
+                  }
+                >
+                  <div className="relative aspect-[16/9] bg-black/[0.04]">
+                    {it.imageUrl ? (
+                      <img
+                        src={it.imageUrl}
+                        alt={it.title ?? "Category"}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                      />
+                    ) : null}
+
+                    {/* gradient wash */}
+                    <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-70" />
+                  </div>
+
+                  <div className="p-4">
+                    <div className="text-sm font-semibold text-[#0B0B0B]">{it.title ?? "Category"}</div>
+                    <div className="mt-2 h-px w-0 bg-[color:var(--accent-2)] transition-all duration-300 group-hover:w-full" />
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "filtersBar": {
+        const colors = Array.isArray(c.props?.colors) ? c.props.colors : [];
+        const sizes = Array.isArray(c.props?.sizes) ? c.props.sizes : [];
+        const categories = Array.isArray(c.props?.categories) ? c.props.categories : [];
+        const hasFacets = !!(colors.length || sizes.length || categories.length);
+        const node = (
+          <div className={cn("w-full", tokenClass)} style={tokenStyle}>
+            {!hasFacets ? (
+              <div className="rounded-2xl border border-black/10 dark:border-white/15 p-3 text-sm opacity-80">
+                FiltersBar (needs facets)
+              </div>
+            ) : (
+              <ProductFiltersBar colors={colors} sizes={sizes} categories={categories} />
+            )}
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      default:
+        return null;
+    }
   };
 
   return <div className="space-y-4">{components.map((c) => renderOne(c))}</div>;

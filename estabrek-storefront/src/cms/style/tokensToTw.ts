@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { TwTokens } from "./tokens";
+import type { CardTemplatePreset, HoverPresetExtended, TextEffectPreset, TwTokensExtended } from "./tokens-extended";
 import {
   bgMap,
   displayMap,
@@ -46,17 +47,78 @@ export function resolveCustomColor(value?: string): string | undefined {
   if (!v) return undefined;
   if (/^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(v)) return v;
   if (/^(rgb|rgba|hsl|hsla)\(/i.test(v)) return v;
-  if (/^var\\(--.+\\)$/.test(v)) return v;
+  if (/^var\(--.+\)$/.test(v)) return v;
   if (v === "transparent" || v === "currentColor") return v;
   return undefined;
 }
 
-export function tokensToClassName(tokens?: TwTokens): string {
+export function resolveCustomBackground(value?: string):
+  | { type: "color"; value: string }
+  | { type: "gradient"; value: string }
+  | undefined {
+  if (!value || typeof value !== "string") return undefined;
+  const v = value.trim();
+  if (!v) return undefined;
+  if (/gradient\(/i.test(v)) return { type: "gradient", value: v };
+  const color = resolveCustomColor(v);
+  return color ? { type: "color", value: color } : undefined;
+}
+
+type CmsTokens = TwTokens & TwTokensExtended;
+
+function textEffectClass(effect?: TextEffectPreset): string {
+  if (!effect || effect === "none") return "";
+  return `text-${effect}`;
+}
+
+function cardTemplateClass(preset?: CardTemplatePreset): string {
+  if (!preset || preset === "default") return "";
+  if (preset === "gaming") return "card-gaming";
+  if (preset.startsWith("gaming-")) {
+    return `card-gaming rarity-${preset.replace("gaming-", "")}`;
+  }
+  if (preset === "neon") return "card-neon";
+  if (preset.startsWith("neon-")) return `card-neon card-${preset}`;
+  if (preset.startsWith("glass-")) {
+    if (preset === "glass-light" || preset === "glass-colored") return "card-glass";
+    if (preset === "glass-rainbow") return "card-glass-aurora";
+    return `card-${preset}`;
+  }
+  if (preset.startsWith("3d")) return "card-3d card-3d-shadow";
+  if (preset === "gradient-border" || preset === "animated-border") return "card-animated-border";
+  if (preset === "holographic") return "card-holographic";
+  return `card-${preset}`;
+}
+
+function hoverExtendedClass(preset?: HoverPresetExtended): string {
+  if (!preset || preset === "none") return "";
+  switch (preset) {
+    case "lift":
+      return "hover-lift";
+    case "glow":
+      return "hover-glow";
+    case "underline":
+      return "hover-underline";
+    case "scale":
+      return "hover-scale";
+    case "brighten":
+      return "hover-brighten";
+    case "darken":
+      return "hover-darken";
+    case "rotate-3d":
+      return "hover-rotate-3d";
+    default:
+      return `hover-${preset}`;
+  }
+}
+
+export function tokensToClassName(tokens?: CmsTokens): string {
   if (!tokens) return "";
   const parts: string[] = [];
 
   // layout
   if (tokens.layout?.display) parts.push(displayMap[tokens.layout.display]);
+
   const display = tokens.layout?.display;
   if (display === "flex" || display === "inline-flex") {
     const fx = tokens.layout?.flex;
@@ -66,6 +128,7 @@ export function tokensToClassName(tokens?: TwTokens): string {
     if (fx?.items) parts.push(itemsMap[fx.items]);
     if (fx?.content) parts.push(contentMap[fx.content]);
   }
+
   if (display === "grid") {
     const gr = tokens.layout?.grid;
     if (gr?.cols) parts.push(gridColsMap[gr.cols]);
@@ -74,6 +137,7 @@ export function tokensToClassName(tokens?: TwTokens): string {
     if (gr?.placeItems) parts.push(placeItemsMap[gr.placeItems]);
     if (gr?.flow) parts.push(gridFlowMap[gr.flow]);
   }
+
   if (tokens.layout?.position) parts.push(positionMap[tokens.layout.position]);
   if (tokens.layout?.zIndex) parts.push(tokens.layout.zIndex === "auto" ? "z-auto" : `z-${tokens.layout.zIndex}`);
   if (tokens.layout?.overflow) parts.push(overflowMap[tokens.layout.overflow]);
@@ -130,9 +194,6 @@ export function tokensToClassName(tokens?: TwTokens): string {
   if (tokens.style?.borderStyle) parts.push(borderStyleMap[tokens.style.borderStyle]);
   if (tokens.style?.borderColor) parts.push(borderColorMap[tokens.style.borderColor]);
 
-  // state
-  if (tokens.state?.hover) parts.push(hoverMap[tokens.state.hover]);
-
   // motion
   const motionAnim = tokens.motion?.anim ?? tokens.motion?.preset;
   if (motionAnim) parts.push(animMap[motionAnim]);
@@ -157,30 +218,46 @@ export function tokensToClassName(tokens?: TwTokens): string {
   if (tokens.effects?.sepia) parts.push("sepia");
   if (tokens.effects?.mixBlend) parts.push(`mix-blend-${tokens.effects.mixBlend}`);
 
+  // extended effects
+  const textEffectCls = textEffectClass(tokens.textEffect);
+  if (textEffectCls) {
+    parts.push(textEffectCls);
+    parts.push("cms-text-effects");
+  }
+  const cardTemplateCls = cardTemplateClass(tokens.cardTemplate);
+  if (cardTemplateCls) parts.push(cardTemplateCls);
+  const hoverExtendedCls = hoverExtendedClass(tokens.hoverExtended);
+  if (hoverExtendedCls) parts.push(hoverExtendedCls);
+  if (!hoverExtendedCls && tokens.state?.hover) parts.push(hoverMap[tokens.state.hover]);
+
   // custom colors (inline vars)
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string }) | undefined;
-  const customBg = resolveCustomColor(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
+  const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const customText = resolveCustomColor(tokens.typography?.colorCustom ?? tokens.typography?.color);
-  if (customBg) parts.push("cms-inline-bg");
+  if (customBg?.type === "color") parts.push("cms-inline-bg");
   if (customText) parts.push("cms-inline-text");
 
   return parts.filter(Boolean).join(" ").trim();
 }
 
-export function tokensToInlineStyle(tokens?: TwTokens): CSSProperties | undefined {
+export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefined {
   if (!tokens) return undefined;
   const style: CSSProperties = {};
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string; borderCustomColor?: string }) | undefined;
   const textTokens = tokens.typography as (TwTokens["typography"] & { colorCustom?: string }) | undefined;
   const motionTokens = tokens.motion;
-  const bgColor = resolveCustomColor(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
+  const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const textColor = resolveCustomColor(textTokens?.colorCustom ?? textTokens?.color);
   const borderColor = resolveCustomColor(styleTokens?.borderCustomColor ?? styleTokens?.borderColor);
 
-  if (bgColor) {
-    style.backgroundColor = bgColor;
+  if (customBg?.type === "gradient") {
+    style.backgroundImage = customBg.value;
+    style.backgroundColor = "transparent";
+    (style as Record<string, string>)["--cms-bg-gradient"] = customBg.value;
+  } else if (customBg?.type === "color") {
+    style.backgroundColor = customBg.value;
     style.backgroundImage = "none";
-    (style as Record<string, string>)["--cms-bg-color"] = bgColor;
+    (style as Record<string, string>)["--cms-bg-color"] = customBg.value;
   }
   if (textColor) {
     style.color = textColor;
@@ -195,6 +272,11 @@ export function tokensToInlineStyle(tokens?: TwTokens): CSSProperties | undefine
   }
   if (typeof motionTokens?.delay === "number" && Number.isFinite(motionTokens.delay)) {
     style.animationDelay = motionTokens.delay >= 10 ? `${motionTokens.delay}ms` : `${motionTokens.delay}s`;
+  }
+  if (tokens.sticky?.enabled) {
+    style.position = "sticky";
+    style.top = tokens.sticky?.top ?? "0";
+    if (typeof tokens.sticky?.zIndex === "number") style.zIndex = tokens.sticky.zIndex;
   }
   return Object.keys(style).length ? style : undefined;
 }
