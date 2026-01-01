@@ -11,6 +11,22 @@ function cx(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
+
+function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
+  if (!text || !effect || !SPLIT_TEXT_EFFECTS.has(effect)) {
+    return { content: text };
+  }
+  const delayStep = effect === "wave" ? 0.06 : 0.04;
+  const letters = Array.from(text);
+  const content = letters.map((ch, idx) => (
+    <span key={`${idx}-${ch}`} aria-hidden="true" style={{ animationDelay: `${idx * delayStep}s` }}>
+      {ch === " " ? "\u00a0" : ch}
+    </span>
+  ));
+  return { content, ariaLabel: text };
+}
+
 function getChildren(component: CmsComponent): CmsComponent[] {
   const fromProps = (component.props as any)?.children;
   if (Array.isArray(fromProps)) return fromProps as CmsComponent[];
@@ -84,6 +100,7 @@ function gridColsClass(cols?: number): string {
 
 function ComponentNode({ component, depth = 0 }: { component: CmsComponent; depth?: number }) {
   const props = (component.props ?? {}) as any;
+  const tokens = resolveTokens(component) as any;
   const className = componentClasses(component);
   const inlineStyle = componentInlineStyle(component);
   const children = getChildren(component);
@@ -99,49 +116,84 @@ function ComponentNode({ component, depth = 0 }: { component: CmsComponent; dept
   switch (component.kind) {
     case "text": {
       const As = (props.as ?? "p") as React.ElementType;
-      return <As className={className} style={inlineStyle}>{props.text ?? ""}</As>;
+      const rawText = props.text ?? "";
+      const textValue = typeof rawText === "string" ? rawText : String(rawText);
+      const split = splitTextWithEffect(textValue, tokens?.textEffect);
+      return (
+        <As className={className} style={inlineStyle} aria-label={split.ariaLabel}>
+          {split.content}
+        </As>
+      );
     }
     case "badge":
-      return (
-        <span className={cx("border border-white/10", className)} style={inlineStyle}>
-          {props.text ?? "Badge"}
-        </span>
-      );
+      {
+        const rawText = props.text ?? "Badge";
+        const textValue = typeof rawText === "string" ? rawText : String(rawText);
+        const split = splitTextWithEffect(textValue, tokens?.textEffect);
+        return (
+          <span className={cx("border border-white/10", className)} style={inlineStyle} aria-label={split.ariaLabel}>
+            {split.content}
+          </span>
+        );
+      }
     case "button": {
-      const label = props.label ?? "Button";
+      const rawLabel = props.label ?? "Button";
+      const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
+      const split = splitTextWithEffect(label, tokens?.textEffect);
       if (props.href) {
         return (
-          <a href={props.href} className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle}>
-            {label}
+          <a href={props.href} className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle} aria-label={split.ariaLabel}>
+            {split.content}
           </a>
         );
       }
       return (
-        <button type="button" className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle}>
-          {label}
+        <button type="button" className={cx(baseButtonClasses(props.variant), className)} style={inlineStyle} aria-label={split.ariaLabel}>
+          {split.content}
         </button>
       );
     }
     case "card":
-      return (
-        <div className={cx("border border-white/10", className)} style={inlineStyle}>
-          <div className="space-y-2">
-            {props.title ? <div className="font-semibold">{props.title}</div> : <div className="font-semibold">Card</div>}
-            {props.text ? <div className="opacity-80">{props.text}</div> : null}
-            {props.buttonLabel ? (
-              props.buttonHref ? (
-                <a href={props.buttonHref} className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex")}>
-                  {props.buttonLabel}
-                </a>
+      {
+        const title = props.title ?? "Card";
+        const text = props.text ?? "";
+        const titleValue = typeof title === "string" ? title : String(title);
+        const textValue = typeof text === "string" ? text : String(text);
+        const titleSplit = splitTextWithEffect(titleValue, tokens?.textEffect);
+        const textSplit = splitTextWithEffect(textValue, tokens?.textEffect);
+        const buttonLabel = props.buttonLabel ?? "";
+        const buttonLabelValue = typeof buttonLabel === "string" ? buttonLabel : String(buttonLabel);
+        const buttonSplit = splitTextWithEffect(buttonLabelValue, tokens?.textEffect);
+        return (
+          <div className={cx("border border-white/10", className)} style={inlineStyle}>
+            <div className="space-y-2">
+              {titleValue ? (
+                <div className="font-semibold" aria-label={titleSplit.ariaLabel}>
+                  {titleSplit.content}
+                </div>
               ) : (
-                <button type="button" className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex")}>
-                  {props.buttonLabel}
-                </button>
-              )
-            ) : null}
+                <div className="font-semibold">Card</div>
+              )}
+              {textValue ? (
+                <div className="opacity-80" aria-label={textSplit.ariaLabel}>
+                  {textSplit.content}
+                </div>
+              ) : null}
+              {props.buttonLabel ? (
+                props.buttonHref ? (
+                  <a href={props.buttonHref} className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex")} aria-label={buttonSplit.ariaLabel}>
+                    {buttonSplit.content}
+                  </a>
+                ) : (
+                  <button type="button" className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex")} aria-label={buttonSplit.ariaLabel}>
+                    {buttonSplit.content}
+                  </button>
+                )
+              ) : null}
+            </div>
           </div>
-        </div>
-      );
+        );
+      }
     case "list": {
       const items = Array.isArray(props.items) ? props.items : [];
       if (props.ordered) {
