@@ -3,7 +3,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { cn } from "../../components/ui/cn";
-import { resolveCustomColor, tokensToClassName } from "../../cms/style/tokensToTw";
+import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
 import {
   BG_PRESETS,
   HOVER_PRESETS,
@@ -46,8 +46,10 @@ function isChildCapable(kind: CmsComponentKind): kind is ChildCapableKind {
 }
 
 function getChildren(c: CmsComponent): CmsComponent[] {
-  const arr = (c.props as any)?.children;
-  return Array.isArray(arr) ? (arr as CmsComponent[]) : [];
+  const fromProps = (c.props as any)?.children;
+  if (Array.isArray(fromProps)) return fromProps as CmsComponent[];
+  const fromRoot = (c as any)?.children;
+  return Array.isArray(fromRoot) ? (fromRoot as CmsComponent[]) : [];
 }
 
 function makeId(prefix = "cmp"): string {
@@ -298,28 +300,6 @@ function ColorField({
   );
 }
 
-function tokensToInlineStyle(tokens?: TwTokens): React.CSSProperties | undefined {
-  if (!tokens) return undefined;
-  const style: React.CSSProperties = {};
-  const bgColor = resolveCustomColor(tokens.style?.bgCustom ?? tokens.style?.bgColor ?? tokens.style?.bg);
-  const textColor = resolveCustomColor(tokens.typography?.colorCustom ?? tokens.typography?.color);
-  const borderColor = resolveCustomColor(tokens.style?.borderCustomColor ?? tokens.style?.borderColor);
-  if (bgColor) {
-    style.backgroundColor = bgColor;
-    style.backgroundImage = "none";
-    (style as Record<string, string>)["--cms-bg-color"] = bgColor;
-  }
-  if (textColor) {
-    style.color = textColor;
-    (style as Record<string, string>)["--cms-text-color"] = textColor;
-  }
-  if (borderColor) {
-    style.borderColor = borderColor;
-    (style as Record<string, string>)["--cms-border-color"] = borderColor;
-  }
-  return Object.keys(style).length ? style : undefined;
-}
-
 function spacerClass(h?: string): string {
   switch (h) {
     case "xs": return "h-2";
@@ -361,7 +341,11 @@ export function ComponentsEditor({
   const [selectedId, setSelectedId] = useState<string | null>(components[0]?.id ?? null);
 
   const selected = components.find((c) => c.id === selectedId) ?? null;
-  const previewStyle = tokensToInlineStyle(selected?.twTokens);
+  const previewTokens = (selected as any)?.twTokens ?? (selected as any)?.tw;
+  const previewStyle = tokensToInlineStyle(previewTokens);
+  const previewLegacyClassName = typeof (selected as any)?.tw?.className === "string" ? (selected as any).tw.className : "";
+  const previewClassName = cn(tokensToClassName(previewTokens), previewLegacyClassName);
+  const selectedSource = (selected as any)?.props?.source ?? "manual";
 
   function updateComponents(next: CmsComponent[]) {
     onChange(setComponents(data, next));
@@ -421,6 +405,10 @@ export function ComponentsEditor({
             { value: "grid", label: "Grid" },
             { value: "columns", label: "Columns" },
             { value: "nav_menu", label: "Navigation Menu" },
+            { value: "productGrid", label: "E-commerce: Product Grid" },
+            { value: "productSlider", label: "E-commerce: Product Slider" },
+            { value: "categoryTiles", label: "E-commerce: Category Tiles" },
+            { value: "filtersBar", label: "E-commerce: Filters Bar" },
           ]}
           onValueChange={(v) => setKindToAdd(v as CmsComponentKind)}
         />
@@ -759,20 +747,24 @@ export function ComponentsEditor({
                       />
                       <Select
                         label="Source"
-                        value={selected.props?.source ?? "manual"}
+                        value={selectedSource}
                         options={[
                           { value: "manual", label: "manual" },
                           { value: "category", label: "category" },
                           { value: "all", label: "all" },
+                          { value: "bestSellers", label: "bestSellers" },
+                          { value: "newArrivals", label: "newArrivals" },
                         ]}
                         onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), source: v } })}
                       />
 
-                      <Input
-                        label="Category ID (optional)"
-                        value={selected.props?.categoryId ?? ""}
-                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), categoryId: v } })}
-                      />
+                      {selectedSource === "category" && (
+                        <Input
+                          label="Category ID (optional)"
+                          value={selected.props?.categoryId ?? ""}
+                          onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), categoryId: v } })}
+                        />
+                      )}
 
                       <Input
                         label="Limit"
@@ -790,7 +782,7 @@ export function ComponentsEditor({
                         />
                       ) : null}
 
-                      {selected.props?.source === "manual" ? (
+                      {selectedSource === "manual" ? (
                         <Input
                           label="Product IDs (comma separated)"
                           value={Array.isArray(selected.props?.productIds) ? selected.props.productIds.join(", ") : ""}
@@ -806,13 +798,96 @@ export function ComponentsEditor({
                             })
                           }
                         />
-                      ) : (
+                      ) : selectedSource === "category" || selectedSource === "all" ? (
                         <div className="text-sm text-white/60 md:col-span-2">
                           This component will be populated from the Storefront using URL filters (Search/Sort/Price/Colors/Sizes).
+                        </div>
+                      ) : (
+                        <div className="text-sm text-white/60 md:col-span-2">
+                          This component auto-loads products from the Storefront ({selectedSource === "bestSellers" ? "best sellers" : "new arrivals"}).
                         </div>
                       )}
                     </div>
                   )}
+
+                  {selected.kind === "categoryTiles" && (() => {
+                    const props = selected.props ?? {};
+                    const items = Array.isArray(props.items) ? props.items : [];
+                    const colsValue = String(props.cols ?? 3);
+                    const updateItems = (next: any[]) => patchSelected({ props: { ...props, items: next } });
+                    const updateItem = (index: number, patch: any) => {
+                      updateItems(items.map((it: any, i: number) => (i === index ? { ...it, ...patch } : it)));
+                    };
+                    const removeItem = (index: number) => {
+                      updateItems(items.filter((_: any, i: number) => i !== index));
+                    };
+                    const addItem = () => {
+                      updateItems([
+                        ...items,
+                        { id: makeId("cat"), title: "Category", href: "/c/slug", imageUrl: "" },
+                      ]);
+                    };
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <Input
+                            label="Title"
+                            value={props.title ?? ""}
+                            onValueChange={(v) => patchSelected({ props: { ...props, title: v } })}
+                          />
+                          <Select
+                            label="Columns"
+                            value={colsValue}
+                            options={[2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))}
+                            onValueChange={(v: any) => patchSelected({ props: { ...props, cols: Number(v) } })}
+                          />
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-white/[0.015] p-3">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="text-xs font-semibold text-white/70">Items</div>
+                            <Button size="sm" variant="ghost" onClick={addItem}>
+                              Add item
+                            </Button>
+                          </div>
+                          {items.length ? (
+                            <div className="space-y-3">
+                              {items.map((item: any, idx: number) => (
+                                <div key={item.id ?? idx} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-xs text-white/60">Item {idx + 1}</div>
+                                    <Button size="sm" variant="ghost" onClick={() => removeItem(idx)}>
+                                      Remove
+                                    </Button>
+                                  </div>
+                                  <div className="grid gap-3 md:grid-cols-3">
+                                    <Input
+                                      label="Title"
+                                      value={item.title ?? ""}
+                                      onValueChange={(v) => updateItem(idx, { title: v })}
+                                    />
+                                    <Input
+                                      label="Href"
+                                      value={item.href ?? ""}
+                                      onValueChange={(v) => updateItem(idx, { href: v })}
+                                    />
+                                    <Input
+                                      label="Image URL"
+                                      value={item.imageUrl ?? ""}
+                                      onValueChange={(v) => updateItem(idx, { imageUrl: v })}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-white/60">No categories yet.</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {selected.kind === "filtersBar" && (
                     <div className="text-sm text-white/60">
@@ -1626,7 +1701,7 @@ export function ComponentsEditor({
                           }
                         })();
 
-                        const wrapCls = cn("rounded-xl border border-white/10", tokensToClassName(selected.twTokens));
+                        const wrapCls = cn("rounded-xl border border-white/10", previewClassName);
 
                         return (
                           <div className={wrapCls} style={previewStyle}>
@@ -1645,20 +1720,20 @@ export function ComponentsEditor({
 
                       {selected.kind === "text" && (() => {
                         const As = (selected.props?.as ?? "p") as any;
-                        return <As className={tokensToClassName(selected.twTokens)} style={previewStyle}>{selected.props?.text ?? ""}</As>;
+                        return <As className={previewClassName} style={previewStyle}>{selected.props?.text ?? ""}</As>;
                       })()}
                       {selected.kind === "badge" && (
-                        <span className={cn("border border-black/10 dark:border-white/15", tokensToClassName(selected.twTokens))} style={previewStyle}>
+                        <span className={cn("border border-black/10 dark:border-white/15", previewClassName)} style={previewStyle}>
                           {selected.props?.text ?? "Badge"}
                         </span>
                       )}
                       {selected.kind === "button" && (
-                        <a href={selected.props?.href ?? "#"} className={cn(baseButtonClasses(selected.props?.variant), tokensToClassName(selected.twTokens))} style={previewStyle}>
+                        <a href={selected.props?.href ?? "#"} className={cn(baseButtonClasses(selected.props?.variant), previewClassName)} style={previewStyle}>
                           {selected.props?.label ?? "Button"}
                         </a>
                       )}
                       {selected.kind === "card" && (
-                        <div className={cn("border border-black/10 dark:border-white/15", tokensToClassName(selected.twTokens))} style={previewStyle}>
+                        <div className={cn("border border-black/10 dark:border-white/15", previewClassName)} style={previewStyle}>
                           <div className="space-y-2">
                             <div className="font-semibold">{selected.props?.title ?? "Card title"}</div>
                             <div className="opacity-80">{selected.props?.text ?? ""}</div>
@@ -1672,20 +1747,20 @@ export function ComponentsEditor({
                       )}
                       {selected.kind === "list" && (
                         (selected.props?.ordered ? (
-                          <ol className={cn("list-decimal ps-6", tokensToClassName(selected.twTokens))} style={previewStyle}>
+                          <ol className={cn("list-decimal ps-6", previewClassName)} style={previewStyle}>
                             {(selected.props?.items ?? []).map((it: string, i: number) => <li key={i}>{it}</li>)}
                           </ol>
                         ) : (
-                          <ul className={cn("list-disc ps-6", tokensToClassName(selected.twTokens))} style={previewStyle}>
+                          <ul className={cn("list-disc ps-6", previewClassName)} style={previewStyle}>
                             {(selected.props?.items ?? []).map((it: string, i: number) => <li key={i}>{it}</li>)}
                           </ul>
                         ))
                       )}
                       {selected.kind === "image" && selected.props?.src && (
-                        <img src={selected.props?.src} alt={selected.props?.alt ?? ""} className={cn("max-w-full", tokensToClassName(selected.twTokens))} style={previewStyle} />
+                        <img src={selected.props?.src} alt={selected.props?.alt ?? ""} className={cn("max-w-full", previewClassName)} style={previewStyle} />
                       )}
                       {selected.kind === "icon" && selected.props?.d && (
-                        <svg viewBox={selected.props?.viewBox ?? "0 0 24 24"} className={cn("h-6 w-6", tokensToClassName(selected.twTokens))} style={previewStyle} fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg viewBox={selected.props?.viewBox ?? "0 0 24 24"} className={cn("h-6 w-6", previewClassName)} style={previewStyle} fill="none" stroke="currentColor" strokeWidth="2">
                           <path d={selected.props?.d} />
                         </svg>
                       )}
@@ -1693,7 +1768,7 @@ export function ComponentsEditor({
                       {selected.kind === "spacer" && <div className={spacerClass(selected.props?.h)} style={previewStyle} />}
 
                       {selected && isChildCapable(selected.kind) && (
-                        <div className={cn("rounded-2xl border border-white/10", tokensToClassName(selected.twTokens))} style={previewStyle}>
+                        <div className={cn("rounded-2xl border border-white/10", previewClassName)} style={previewStyle}>
                           <div className="text-xs text-white/60 mb-2">{selected.kind} ({getChildren(selected).length} children)</div>
                           <div className={cn(selected.kind === "stack" ? "flex flex-col" : selected.kind === "row" ? "flex flex-row flex-wrap" : selected.kind === "grid" || selected.kind === "columns" ? "grid" : "block", "gap-3")}>
                             {getChildren(selected).slice(0, 4).map((ch) => (
