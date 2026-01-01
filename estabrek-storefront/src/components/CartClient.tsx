@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/store/cart";
@@ -149,7 +149,9 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                 if (line?.sku) metaParts.push(`SKU ${line.sku}`);
                 const meta = metaParts.join(" | ");
                 // Try multiple field names for line total
-                const lineAmount = line?.lineTotal ?? line?.lineSubtotal ?? line?.total ?? line?.subtotal ?? 
+                const lineAmount =
+                  line?.lineTotal ??
+                  line?.lineSubtotal ??
                   (line?.unitPrice != null && it.quantity ? Number(line.unitPrice) * it.quantity : null);
                 const total = line ? formatAmount(lineAmount, currencyCode) : null;
                 return (
@@ -506,6 +508,5 @@ function Row({
     </div>
   );
 }
-
 
 
