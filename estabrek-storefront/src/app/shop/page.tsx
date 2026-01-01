@@ -69,7 +69,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
       <NormalizeFilters basePath="/shop" />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-2xl font-bold">Shop</h1>
-        <div className="text-sm text-black/60">{out.total} products</div>
+        <div className="text-sm text-[var(--muted)]">{out.total} products</div>
       </div>
 
       <div className="lg:grid lg:grid-cols-[280px,1fr] lg:gap-8">
