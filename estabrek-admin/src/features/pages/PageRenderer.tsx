@@ -68,7 +68,15 @@ function cardEffectClass(tokens?: any) {
 }
 
 function resolveFieldTokens<T>(fieldTokens: T | undefined | null, fallback?: T): T | undefined {
-  return fieldTokens === undefined || fieldTokens === null ? fallback : fieldTokens;
+  if (fieldTokens === undefined || fieldTokens === null) return fallback;
+  if (!fallback || typeof fieldTokens !== "object" || typeof fallback !== "object") return fieldTokens;
+  const baseTypography = (fallback as any).typography;
+  if (!baseTypography || typeof baseTypography !== "object") return fieldTokens;
+  const fieldTypography = (fieldTokens as any).typography;
+  return {
+    ...(fieldTokens as any),
+    typography: { ...baseTypography, ...(fieldTypography ?? {}) },
+  } as T;
 }
 
 function stripTextEffectTokens(tokens?: any) {

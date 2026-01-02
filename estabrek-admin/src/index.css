@@ -217,7 +217,7 @@
     color: var(--cms-text-color) !important;
   }
 
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button) {
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-override) {
     color: inherit !important;
     font-size: inherit !important;
     font-weight: inherit !important;
