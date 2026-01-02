@@ -74,6 +74,21 @@ function getPositionStyles(placement: DecorPlacementPreset): React.CSSProperties
   }
 }
 
+function resolveOffsetValue(value?: number | string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
+  if (typeof value !== "string") return undefined;
+  const v = value.trim();
+  if (!v) return undefined;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return `${v}px`;
+  return v;
+}
+
+function isGradientValue(value?: string): boolean {
+  if (!value) return false;
+  return /gradient\(/i.test(value);
+}
+
 interface DecorationLayerProps {
   config: DecorLayer;
   className?: string;
@@ -93,17 +108,39 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
   const colorPreset = (config.color || "accent") as DecorColorPreset;
   const opacity = config.opacity || "100";
   const blur = (config.blur || "0") as DecorBlurPreset;
+  const fillMode = config.fill;
   const flipX = config.flipX ?? false;
   const flipY = config.flipY ?? false;
   const zIndex = config.zIndex ?? 0;
+  const offsetX = resolveOffsetValue(config.offsetX);
+  const offsetY = resolveOffsetValue(config.offsetY);
+  const rotate = Number.isFinite(config.rotate as number) ? `rotate(${Number(config.rotate)}deg)` : undefined;
+  const scale = Number.isFinite(config.scale as number) ? `scale(${Number(config.scale)})` : undefined;
 
   const height = DECOR_SIZE_HEIGHTS[size] || 100;
 
-  let fill = config.customColor || DECOR_COLOR_TO_CSS[colorPreset] || DECOR_COLOR_TO_CSS.accent;
-  const isGradient = fill.startsWith("linear-gradient") || fill.startsWith("radial-gradient");
+  const customColor = typeof config.customColor === "string" ? config.customColor.trim() : "";
+  const baseColor =
+    customColor ||
+    (colorPreset === "custom" ? "" : DECOR_COLOR_TO_CSS[colorPreset]) ||
+    DECOR_COLOR_TO_CSS.accent;
+  const resolvedColor = baseColor || DECOR_COLOR_TO_CSS.accent;
+  const baseIsGradient = isGradientValue(resolvedColor);
+  const resolvedFillMode = fillMode ?? (baseIsGradient ? "gradient" : "solid");
+  const wantsGradient = resolvedFillMode === "gradient";
+  const gradientValue = wantsGradient
+    ? baseIsGradient
+      ? resolvedColor
+      : `linear-gradient(135deg, ${resolvedColor}, ${resolvedColor})`
+    : "";
+  const solidColor = baseIsGradient ? parseGradientColor(resolvedColor, 0) : resolvedColor;
+  const isGradient = wantsGradient && isGradientValue(gradientValue);
   const gradientId = isGradient ? `gradient-${config.shape}-${placement}` : null;
 
   const positionStyles = getPositionStyles(placement);
+  const baseTransform = positionStyles.transform as string | undefined;
+  const translate = offsetX || offsetY ? `translate(${offsetX ?? "0px"}, ${offsetY ?? "0px"})` : undefined;
+  const combinedTransform = [baseTransform, translate, rotate, scale].filter(Boolean).join(" ");
 
   const transforms: string[] = [];
   if (flipX) transforms.push("scaleX(-1)");
@@ -112,17 +149,25 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
 
   const blurValue = DECOR_BLUR_VALUES[blur] || "0";
   const filterStyle = blurValue !== "0" ? `blur(${blurValue})` : undefined;
+  const opacityValue = Math.max(0, Math.min(100, Number(opacity))) / 100;
+  const layerOpacity = opacityValue * (resolvedFillMode === "glass" ? 0.6 : 1);
+
+  const baseStyle: React.CSSProperties = {
+    ...positionStyles,
+    transform: combinedTransform || undefined,
+  };
 
   if (config.shape === "noise") {
+    const noiseTransform = [combinedTransform, flipTransform].filter(Boolean).join(" ");
     return (
       <div
         className={`pointer-events-none ${className}`}
         style={{
-          ...positionStyles,
+          ...baseStyle,
+          transform: noiseTransform || undefined,
           zIndex,
-          opacity: Number(opacity) / 100,
+          opacity: layerOpacity,
           filter: filterStyle,
-          transform: flipTransform,
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
           backgroundSize: "200px 200px",
@@ -145,15 +190,17 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
             ? "to right"
             : "to left";
 
+    const fadeTransform = [combinedTransform, flipTransform].filter(Boolean).join(" ");
     return (
       <div
         className={`pointer-events-none ${className}`}
         style={{
-          ...positionStyles,
+          ...baseStyle,
+          transform: fadeTransform || undefined,
           height: placement === "top" || placement === "bottom" ? height : "100%",
           width: placement === "left" || placement === "right" ? height : "100%",
           zIndex,
-          opacity: Number(opacity) / 100,
+          opacity: layerOpacity,
           filter: filterStyle,
           background: `linear-gradient(${direction}, rgba(${gradientColor}, 0) 0%, rgba(${gradientColor}, 1) 100%)`,
         }}
@@ -170,10 +217,10 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
     <div
       className={`pointer-events-none overflow-hidden ${className}`}
       style={{
-        ...positionStyles,
+        ...baseStyle,
         height: placement === "background" ? "100%" : svgHeight,
         zIndex,
-        opacity: Number(opacity) / 100,
+        opacity: layerOpacity,
         filter: filterStyle,
       }}
       aria-hidden="true"
@@ -191,12 +238,12 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
         {isGradient && gradientId && (
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={parseGradientColor(fill, 0)} />
-              <stop offset="100%" stopColor={parseGradientColor(fill, 1)} />
+              <stop offset="0%" stopColor={parseGradientColor(gradientValue, 0)} />
+              <stop offset="100%" stopColor={parseGradientColor(gradientValue, 1)} />
             </linearGradient>
           </defs>
         )}
-        <path d={shape.d} fill={isGradient && gradientId ? `url(#${gradientId})` : fill} />
+        <path d={shape.d} fill={isGradient && gradientId ? `url(#${gradientId})` : solidColor} />
       </svg>
     </div>
   );

@@ -1,5 +1,6 @@
 // Shared CMS section data shapes.
 // This file is intentionally framework-agnostic (works in Admin preview and Storefront).
+import type { PageSectionType } from "./types";
 
 export type UiTailwind = {
   /** Tailwind classes applied to the outer <section> */
@@ -65,9 +66,75 @@ export type BannerData = {
 };
 
 export type GridData = {
+  mode?: "grid" | "container";
   title?: string;
   columns?: number; // 2..4
   items: Array<{ title: string; text?: string; imageUrl?: string; href?: string }>;
+  blocks?: Array<{ type: PageSectionType; data: any; isVisible?: boolean }>;
+  ui?: UiTailwind;
+};
+
+export type FeaturesData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  items: Array<{ title: string; text?: string; icon?: string; iconUrl?: string; href?: string }>;
+  ui?: UiTailwind;
+};
+
+export type StatsData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  items: Array<{ value: string; label?: string; subtext?: string; icon?: string }>;
+  ui?: UiTailwind;
+};
+
+export type TeamData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  members: Array<{
+    name: string;
+    role?: string;
+    bio?: string;
+    avatarUrl?: string;
+    socials?: Array<{ label?: string; href?: string }>;
+  }>;
+  ui?: UiTailwind;
+};
+
+export type PricingData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  plans: Array<{
+    name: string;
+    price?: string;
+    period?: string;
+    description?: string;
+    badge?: string;
+    highlight?: boolean;
+    features?: string[];
+    ctaLabel?: string;
+    ctaHref?: string;
+  }>;
+  ui?: UiTailwind;
+};
+
+export type ContactData = {
+  title?: string;
+  subtitle?: string;
+  items?: Array<{ label?: string; value?: string; href?: string; icon?: string }>;
+  mapEmbedUrl?: string;
+  form?: {
+    title?: string;
+    subtitle?: string;
+    action?: string;
+    method?: "POST" | "GET";
+    submitLabel?: string;
+    fields?: Array<{ label?: string; name: string; type?: "text" | "email" | "tel" | "textarea"; placeholder?: string; required?: boolean }>;
+  };
   ui?: UiTailwind;
 };
 
