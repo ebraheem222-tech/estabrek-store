@@ -54,11 +54,44 @@ function textEffectClass(tokens?: any) {
   return tokensToClassName({ textEffect: tokens.textEffect } as any);
 }
 
+function hasTypographyOverrides(typography?: any) {
+  if (!typography) return false;
+  if (typography.family) return true;
+  if (typography.size && typography.size !== "base") return true;
+  if (typography.align && typography.align !== "left") return true;
+  if (typography.weight && typography.weight !== "normal") return true;
+  if (typography.color && typography.color !== "default") return true;
+  if (typography.lineHeight) return true;
+  if (typography.letterSpacing) return true;
+  if (typography.decoration) return true;
+  if (typography.transform) return true;
+  if (typography.truncate) return true;
+  if (typography.lineClamp) return true;
+  if (typography.colorCustom) return true;
+  return false;
+}
+
 function mergeEffectTokens(tokens?: any, inheritTokens?: any): any | undefined {
   if (!inheritTokens) return tokens;
   const next = { ...(tokens ?? {}) } as any;
   if (next.textEffect == null && inheritTokens?.textEffect != null) next.textEffect = inheritTokens.textEffect;
   if (next.typewriter == null && inheritTokens?.typewriter != null) next.typewriter = inheritTokens.typewriter;
+  if (inheritTokens?.typography) {
+    next.typography = { ...(inheritTokens.typography ?? {}), ...(next.typography ?? {}) };
+  }
+  return next;
+}
+
+function combineInheritTokens(parentInherit?: any, parentTokens?: any) {
+  if (!parentInherit && !parentTokens) return undefined;
+  const next = { ...(parentInherit ?? {}) } as any;
+  if (parentTokens) {
+    if (parentTokens.textEffect !== undefined) next.textEffect = parentTokens.textEffect;
+    if (parentTokens.typewriter !== undefined) next.typewriter = parentTokens.typewriter;
+    if (parentTokens.typography) {
+      next.typography = { ...(next.typography ?? {}), ...(parentTokens.typography ?? {}) };
+    }
+  }
   return next;
 }
 
@@ -148,13 +181,15 @@ function ComponentNode({
   const baseTokens = resolveTokens(component) as any;
   const tokens = mergeEffectTokens(baseTokens, inheritTokens) as any;
   const legacyClassName = typeof (component as any)?.tw?.className === "string" ? (component as any).tw.className : "";
-  const className = cx(tokensToClassName(tokens), legacyClassName);
+  const textScopeClass = hasTypographyOverrides(tokens?.typography) ? "cms-section-text" : "";
+  const className = cx(tokensToClassName(tokens), legacyClassName, textScopeClass);
   const classNameNoTextEffect = tokens?.textEffect
-    ? cx(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName)
+    ? cx(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName, textScopeClass)
     : className;
   const inlineStyle = tokensToInlineStyle(tokens);
   const children = getChildren(component);
   const safeDepth = Math.min(depth, 6);
+  const childInheritTokens = combineInheritTokens(inheritTokens, tokens);
 
   const renderChildren = () => {
     if (!children.length || safeDepth >= 6) return null;
@@ -163,7 +198,7 @@ function ComponentNode({
         key={child.id ?? `${component.id}-${idx}`}
         component={child}
         depth={safeDepth + 1}
-        inheritTokens={inheritTokens}
+        inheritTokens={childInheritTokens}
       />
     ));
   };
