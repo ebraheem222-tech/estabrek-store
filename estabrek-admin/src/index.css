@@ -219,6 +219,14 @@
 
   .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div) {
     color: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    line-height: inherit !important;
+    letter-spacing: inherit !important;
+    text-align: inherit !important;
+    font-family: inherit !important;
+    text-transform: inherit !important;
+    text-decoration: inherit !important;
   }
 
   /* Animation delay presets (ms) */

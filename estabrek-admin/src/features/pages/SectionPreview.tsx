@@ -26,8 +26,7 @@ import { TypewriterText } from "../../components/effects/TypewriterText";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import { DECOR_SIZE_HEIGHTS } from "../../cms/shapes/shapeRegistry";
 import type { TwTokens } from "../../cms/style/tokens";
-import { resolveCustomColor, tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
-import { textColorMap } from "../../cms/style/twMaps";
+import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -130,13 +129,11 @@ function uiContainerClass(data: any) {
 
 function sectionTextScopeProps(data: any) {
   const tokens = data?.twTokens;
-  const rawColor = tokens?.typography?.colorCustom ?? tokens?.typography?.color;
-  const customColor = resolveCustomColor(rawColor);
-  const preset = !customColor ? (tokens?.typography?.color as keyof typeof textColorMap | undefined) : undefined;
-  if (!customColor && !preset) return null;
+  const typography = tokens?.typography;
+  if (!typography) return null;
   return {
-    className: cls("cms-section-text", !customColor && preset ? textColorMap[preset] : undefined),
-    style: customColor ? { color: customColor } : undefined,
+    className: cls("cms-section-text", tokensToClassName({ typography } as any)),
+    style: tokensToInlineStyle({ typography } as any),
   };
 }
 
