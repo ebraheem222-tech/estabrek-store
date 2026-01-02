@@ -244,6 +244,72 @@ function renderComponentsBlock(data: any, productLookup?: Record<string, Product
   );
 }
 
+type SectionLayoutMode = "stack" | "row" | "grid";
+
+type SectionLayoutConfig = {
+  mode: SectionLayoutMode;
+  group?: string;
+  columns: number;
+  span: number;
+};
+
+type SectionGroup = {
+  key: string;
+  groupKey?: string;
+  mode: SectionLayoutMode;
+  columns: number;
+  sections: CmsSection[];
+};
+
+const SECTION_GRID_COLS: Record<number, string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-1 md:grid-cols-2",
+  3: "grid-cols-1 md:grid-cols-3",
+  4: "grid-cols-1 md:grid-cols-4",
+  5: "grid-cols-1 md:grid-cols-5",
+  6: "grid-cols-1 md:grid-cols-6",
+};
+
+const SECTION_COL_SPAN: Record<number, string> = {
+  1: "col-span-1",
+  2: "col-span-2",
+  3: "col-span-3",
+  4: "col-span-4",
+  5: "col-span-5",
+  6: "col-span-6",
+};
+
+function clampInt(value: unknown, min: number, max: number, fallback: number) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function normalizeSectionLayout(raw: any): SectionLayoutConfig {
+  const layout = raw && typeof raw === "object" ? raw : {};
+  const mode = layout.mode === "row" || layout.mode === "grid" ? layout.mode : "stack";
+  const group = typeof layout.group === "string" ? layout.group.trim() : "";
+  const columns = clampInt(layout.columns, 1, 6, 2);
+  const span = clampInt(layout.span, 1, columns, 1);
+  return { mode, group: group || undefined, columns, span };
+}
+
+function buildSectionGroups(sections: CmsSection[]): SectionGroup[] {
+  const groups: SectionGroup[] = [];
+  for (const sec of sections) {
+    const layout = normalizeSectionLayout((sec as any)?.data?.layout);
+    const groupKey = layout.mode !== "stack" && layout.group ? `${layout.mode}:${layout.group}` : "";
+    const last = groups[groups.length - 1];
+    if (groupKey && last && last.groupKey === groupKey) {
+      last.sections.push(sec);
+    } else {
+      const key = groupKey ? `${groupKey}:${sec.id}` : `${layout.mode}:${sec.id}`;
+      groups.push({ key, groupKey: groupKey || undefined, mode: layout.mode, columns: layout.columns, sections: [sec] });
+    }
+  }
+  return groups;
+}
+
 function youtubeId(url: string): string | null {
   try {
     const u = new URL(url);
@@ -1489,25 +1555,54 @@ export function CmsPageRenderer({
 }) {
   const sorted = (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const seen = new Set<any>();
+  const groups = buildSectionGroups(sorted);
 
   return (
     <div className={cls("space-y-5", className)}>
-      {sorted.map((sec) => {
-        const decorations = sectionDecorations((sec as any)?.data?.twTokens);
-        const hasDecorations = !!decorations;
-        return (
-          <div key={sec.id} className={hasDecorations ? "relative" : undefined}>
-            {hasDecorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
-            <div className={hasDecorations ? "relative z-10" : undefined}>
-              <Section
-                section={sec as any}
-                renderProductCard={renderProductCard}
-                renderQuickAdd={renderQuickAdd}
-                productLookup={productLookup}
-                depth={0}
-                seen={seen}
-              />
+      {groups.flatMap((group) => {
+        const renderSectionItem = (sec: CmsSection) => {
+          const decorations = sectionDecorations((sec as any)?.data?.twTokens);
+          const hasDecorations = !!decorations;
+          const layout = normalizeSectionLayout((sec as any)?.data?.layout);
+          const span = clampInt(layout.span, 1, group.columns, 1);
+          const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
+          const rowStyle =
+            group.mode === "row" && group.columns > 0
+              ? {
+                  flex: `0 0 ${(span / group.columns) * 100}%`,
+                  maxWidth: `${(span / group.columns) * 100}%`,
+                }
+              : undefined;
+
+          return (
+            <div key={sec.id} className={cls(hasDecorations ? "relative" : undefined, colSpanClass)} style={rowStyle}>
+              {hasDecorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
+              <div className={hasDecorations ? "relative z-10" : undefined}>
+                <Section
+                  section={sec as any}
+                  renderProductCard={renderProductCard}
+                  renderQuickAdd={renderQuickAdd}
+                  productLookup={productLookup}
+                  depth={0}
+                  seen={seen}
+                />
+              </div>
             </div>
+          );
+        };
+
+        if (group.mode === "stack") {
+          return group.sections.map(renderSectionItem);
+        }
+
+        const groupClass =
+          group.mode === "row"
+            ? "flex flex-wrap items-stretch gap-5"
+            : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
+
+        return (
+          <div key={group.key} className={groupClass}>
+            {group.sections.map(renderSectionItem)}
           </div>
         );
       })}
