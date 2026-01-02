@@ -836,12 +836,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const titleTokens = resolveFieldTokens((it as any).titleTokens, baseItemTokens);
                   const textTokens = resolveFieldTokens((it as any).textTokens, baseItemTokens);
                   const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
-                  return (
-                    <div
-                      key={idx}
-                      className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
-                      style={tokensStyle(itemTokens)}
-                    >
+                  const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
+                  const wrapperClass = cls(
+                    "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                    tokensClass(itemTokens),
+                    it.href ? tokensClass(linkTokens) : undefined
+                  );
+                  const wrapperStyle = { ...(tokensStyle(itemTokens) ?? {}), ...(it.href ? (tokensStyle(linkTokens) ?? {}) : {}) };
+                  const content = (
+                    <>
                       <div className="flex items-center gap-2">
                         {it.iconUrl ? (
                           <img src={it.iconUrl} alt="" className={cls("h-8 w-8 rounded-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)} />
@@ -865,7 +868,18 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           </div>
                         );
                       })() : null}
-                    </div>
+                    </>
+                  );
+                  return (
+                    it.href ? (
+                      <a key={idx} href={it.href} className={wrapperClass} style={wrapperStyle}>
+                        {content}
+                      </a>
+                    ) : (
+                      <div key={idx} className={wrapperClass} style={wrapperStyle}>
+                        {content}
+                      </div>
+                    )
                   );
                 })
               ) : (
@@ -911,13 +925,19 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const baseItemTokens = itemTokens ?? sectionTokens;
                   const valueTokens = resolveFieldTokens((it as any).valueTokens, baseItemTokens);
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
+                  const subtextTokens = resolveFieldTokens((it as any).subtextTokens, baseItemTokens);
+                  const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
                   return (
                     <div
                       key={idx}
                       className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-center", tokensClass(itemTokens))}
                       style={tokensStyle(itemTokens)}
                     >
-                      {it.icon ? <div className="text-lg">{it.icon}</div> : null}
+                      {it.icon ? (
+                        <div className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
+                          {it.icon}
+                        </div>
+                      ) : null}
                       {(() => {
                         const valueData = textContent(String(it.value ?? ""), valueTokens);
                         return (
@@ -934,7 +954,14 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           </div>
                         );
                       })() : null}
-                      {it.subtext ? <div className="mt-1 text-xs opacity-60">{it.subtext}</div> : null}
+                      {it.subtext ? (() => {
+                        const subtextData = textContent(String(it.subtext), subtextTokens);
+                        return (
+                          <div className={cls("mt-1 text-xs opacity-60", tokensClass(subtextTokens), subtextData.className)} style={tokensStyle(subtextTokens)} aria-label={subtextData.ariaLabel}>
+                            {subtextData.content}
+                          </div>
+                        );
+                      })() : null}
                     </div>
                   );
                 })
@@ -976,21 +1003,58 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
             ) : null}
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {members.length ? (
-                members.map((m, idx) => (
-                  <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                    {m.avatarUrl ? <img src={m.avatarUrl} alt="" className="mb-3 h-12 w-12 rounded-full object-cover" /> : null}
-                    <div className="text-sm font-semibold">{m.name || "Member"}</div>
-                    {m.role ? <div className="text-xs opacity-70">{m.role}</div> : null}
-                    {m.bio ? <div className="mt-2 text-sm opacity-80">{m.bio}</div> : null}
-                    {Array.isArray(m.socials) && m.socials.length ? (
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs opacity-70">
-                        {m.socials.map((s, sIdx) => (
-                          <span key={sIdx}>{s.label || s.href}</span>
-                        ))}
+                members.map((m, idx) => {
+                  const itemTokens = resolveFieldTokens((m as any).twTokens);
+                  const baseItemTokens = itemTokens ?? sectionTokens;
+                  const nameTokens = resolveFieldTokens((m as any).nameTokens, baseItemTokens);
+                  const roleTokens = resolveFieldTokens((m as any).roleTokens, baseItemTokens);
+                  const bioTokens = resolveFieldTokens((m as any).bioTokens, baseItemTokens);
+                  const avatarTokens = resolveFieldTokens((m as any).avatarTokens);
+                  const socialTokens = resolveFieldTokens((m as any).socialTokens, baseItemTokens);
+                  const nameData = textContent(String(m.name || "Member"), nameTokens);
+                  const roleData = m.role ? textContent(String(m.role), roleTokens) : null;
+                  const bioData = m.bio ? textContent(String(m.bio), bioTokens) : null;
+                  const socials = Array.isArray(m.socials) ? m.socials : [];
+                  return (
+                    <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
+                      {m.avatarUrl ? (
+                        <img src={m.avatarUrl} alt="" className={cls("mb-3 h-12 w-12 rounded-full object-cover", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />
+                      ) : null}
+                      <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                        {nameData.content}
                       </div>
-                    ) : null}
-                  </div>
-                ))
+                      {roleData ? (
+                        <div className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)} style={tokensStyle(roleTokens)} aria-label={roleData.ariaLabel}>
+                          {roleData.content}
+                        </div>
+                      ) : null}
+                      {bioData ? (
+                        <div className={cls("mt-2 text-sm opacity-80", tokensClass(bioTokens), bioData.className)} style={tokensStyle(bioTokens)} aria-label={bioData.ariaLabel}>
+                          {bioData.content}
+                        </div>
+                      ) : null}
+                      {socials.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs opacity-70">
+                          {socials.map((s, sIdx) => {
+                            const label = s.label || s.href || "";
+                            if (!label) return null;
+                            const socialData = textContent(String(label), socialTokens);
+                            return (
+                              <span
+                                key={`${label}-${sIdx}`}
+                                className={cls(tokensClass(socialTokens), socialData.className)}
+                                style={tokensStyle(socialTokens)}
+                                aria-label={socialData.ariaLabel}
+                              >
+                                {socialData.content}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-sm opacity-70">(لا يوجد أعضاء)</div>
               )}
@@ -1028,24 +1092,76 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
             ) : null}
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {plans.length ? (
-                plans.map((p, idx) => (
-                  <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", p.highlight ? "ring-1 ring-accent-500/40" : undefined)}>
-                    {p.badge ? <div className="text-[11px] opacity-70">{p.badge}</div> : null}
-                    <div className="text-sm font-semibold">{p.name || "Plan"}</div>
-                    {p.price ? <div className="mt-2 text-2xl">{p.price} {p.period ? <span className="text-xs opacity-60">{p.period}</span> : null}</div> : null}
-                    {p.description ? <div className="mt-2 text-sm opacity-80">{p.description}</div> : null}
-                    {Array.isArray(p.features) && p.features.length ? (
-                      <ul className="mt-3 list-disc ps-5 text-sm opacity-80">
-                        {p.features.map((f, fIdx) => <li key={fIdx}>{f}</li>)}
-                      </ul>
-                    ) : null}
-                    {p.ctaLabel ? (
-                      <div className="mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm">
-                        {p.ctaLabel}
+                plans.map((p, idx) => {
+                  const planTokens = resolveFieldTokens((p as any).twTokens);
+                  const basePlanTokens = planTokens ?? sectionTokens;
+                  const nameTokens = resolveFieldTokens((p as any).nameTokens, basePlanTokens);
+                  const priceTokens = resolveFieldTokens((p as any).priceTokens, basePlanTokens);
+                  const periodTokens = resolveFieldTokens((p as any).periodTokens, priceTokens ?? basePlanTokens);
+                  const descriptionTokens = resolveFieldTokens((p as any).descriptionTokens, basePlanTokens);
+                  const badgeTokens = resolveFieldTokens((p as any).badgeTokens, basePlanTokens);
+                  const featureTokens = resolveFieldTokens((p as any).featureTokens, basePlanTokens);
+                  const ctaTokens = resolveFieldTokens((p as any).ctaTokens, basePlanTokens);
+                  const nameData = textContent(String(p.name || "Plan"), nameTokens);
+                  const priceData = p.price ? textContent(String(p.price), priceTokens) : null;
+                  const periodData = p.period ? textContent(String(p.period), periodTokens) : null;
+                  const descriptionData = p.description ? textContent(String(p.description), descriptionTokens) : null;
+                  const badgeData = p.badge ? textContent(String(p.badge), badgeTokens) : null;
+                  const ctaData = p.ctaLabel ? textContent(String(p.ctaLabel), ctaTokens) : null;
+                  return (
+                    <div
+                      key={idx}
+                      className={cls(
+                        "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                        tokensClass(planTokens),
+                        p.highlight ? "ring-1 ring-accent-500/40" : undefined
+                      )}
+                      style={tokensStyle(planTokens)}
+                    >
+                      {badgeData ? (
+                        <div className={cls("text-[11px] opacity-70", tokensClass(badgeTokens), badgeData.className)} style={tokensStyle(badgeTokens)} aria-label={badgeData.ariaLabel}>
+                          {badgeData.content}
+                        </div>
+                      ) : null}
+                      <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                        {nameData.content}
                       </div>
-                    ) : null}
-                  </div>
-                ))
+                      {priceData ? (
+                        <div className={cls("mt-2 text-2xl", tokensClass(priceTokens), priceData.className)} style={tokensStyle(priceTokens)} aria-label={priceData.ariaLabel}>
+                          {priceData.content}
+                          {periodData ? (
+                            <span className={cls("text-xs opacity-60", tokensClass(periodTokens), periodData.className)} style={tokensStyle(periodTokens)} aria-label={periodData.ariaLabel}>
+                              {" "}
+                              {periodData.content}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {descriptionData ? (
+                        <div className={cls("mt-2 text-sm opacity-80", tokensClass(descriptionTokens), descriptionData.className)} style={tokensStyle(descriptionTokens)} aria-label={descriptionData.ariaLabel}>
+                          {descriptionData.content}
+                        </div>
+                      ) : null}
+                      {Array.isArray(p.features) && p.features.length ? (
+                        <ul className={cls("mt-3 list-disc ps-5 text-sm opacity-80", tokensClass(featureTokens))} style={tokensStyle(featureTokens)}>
+                          {p.features.map((f, fIdx) => {
+                            const featureData = textContent(String(f), featureTokens);
+                            return (
+                              <li key={fIdx} className={featureData.className} aria-label={featureData.ariaLabel}>
+                                {featureData.content}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                      {ctaData ? (
+                        <div className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens), ctaData.className)} style={tokensStyle(ctaTokens)} aria-label={ctaData.ariaLabel}>
+                          {ctaData.content}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-sm opacity-70">(لا يوجد خطط)</div>
               )}
@@ -1084,45 +1200,139 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
             <div className="mt-4 grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
                 {items.length ? (
-                  items.map((it, idx) => (
-                    <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                      <div className="text-sm font-semibold">{it.label || "Contact"}</div>
-                      {it.value ? <div className="text-sm opacity-80">{it.value}</div> : null}
-                    </div>
-                  ))
+                  items.map((it, idx) => {
+                    const itemTokens = resolveFieldTokens((it as any).twTokens);
+                    const baseItemTokens = itemTokens ?? sectionTokens;
+                    const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
+                    const valueTokens = resolveFieldTokens((it as any).valueTokens, baseItemTokens);
+                    const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
+                    const labelData = textContent(String(it.label || "Contact"), labelTokens);
+                    const valueData = it.value ? textContent(String(it.value), valueTokens) : null;
+                    return (
+                      <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
+                        <div className="flex items-center gap-2">
+                          {it.icon ? (
+                            <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
+                              {it.icon}
+                            </span>
+                          ) : null}
+                          <div className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                            {labelData.content}
+                          </div>
+                        </div>
+                        {valueData ? (
+                          it.href ? (
+                            <a
+                              href={it.href}
+                              className={cls("text-sm opacity-80 underline", tokensClass(valueTokens), valueData.className)}
+                              style={tokensStyle(valueTokens)}
+                              aria-label={valueData.ariaLabel}
+                            >
+                              {valueData.content}
+                            </a>
+                          ) : (
+                            <div className={cls("text-sm opacity-80", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
+                              {valueData.content}
+                            </div>
+                          )
+                        ) : null}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="text-sm opacity-70">(لا توجد بيانات تواصل)</div>
                 )}
               </div>
               <div className="space-y-4">
-                {d.mapEmbedUrl ? (
-                  <iframe
-                    title="map"
-                    src={d.mapEmbedUrl}
-                    className="h-48 w-full rounded-2xl border border-white/[0.08]"
-                  />
-                ) : null}
-                {fields.length ? (
-                  <form action={form.action || undefined} method={form.method || undefined} className="space-y-3">
-                    {form.title ? <div className="text-sm font-semibold">{form.title}</div> : null}
-                    {form.subtitle ? <div className="text-xs opacity-70">{form.subtitle}</div> : null}
-                    {fields.map((f, idx) => (
-                      <div key={idx}>
-                        {f.label ? <label className="block text-xs opacity-70">{f.label}</label> : null}
-                        {f.type === "textarea" ? (
-                          <textarea className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm" placeholder={f.placeholder} name={f.name} required={!!f.required} rows={4} />
-                        ) : (
-                          <input className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm" placeholder={f.placeholder} name={f.name} required={!!f.required} type={f.type ?? "text"} />
-                        )}
-                      </div>
-                    ))}
-                    {form.submitLabel ? (
-                      <button type="submit" className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm">
-                        {form.submitLabel}
-                      </button>
-                    ) : null}
-                  </form>
-                ) : null}
+                {d.mapEmbedUrl ? (() => {
+                  const mapTokens = resolveFieldTokens((d as any).mapTokens, sectionTokens);
+                  return (
+                    <iframe
+                      title="map"
+                      src={d.mapEmbedUrl}
+                      className={cls("h-48 w-full rounded-2xl border border-white/[0.08]", tokensClass(mapTokens))}
+                      style={tokensStyle(mapTokens)}
+                    />
+                  );
+                })() : null}
+                {fields.length ? (() => {
+                  const formTokens = resolveFieldTokens((form as any).twTokens, sectionTokens);
+                  const formTitleTokens = resolveFieldTokens((form as any).titleTokens, formTokens ?? sectionTokens);
+                  const formSubtitleTokens = resolveFieldTokens((form as any).subtitleTokens, formTokens ?? sectionTokens);
+                  const formFieldTokens = resolveFieldTokens((form as any).fieldTokens, formTokens ?? sectionTokens);
+                  const formLabelTokens = resolveFieldTokens((form as any).labelTokens, formFieldTokens ?? formTokens ?? sectionTokens);
+                  const formInputTokens = resolveFieldTokens((form as any).inputTokens, formFieldTokens ?? formTokens ?? sectionTokens);
+                  const submitTokens = resolveFieldTokens((form as any).submitTokens, formTokens ?? sectionTokens);
+                  return (
+                    <form
+                      action={form.action || undefined}
+                      method={form.method || undefined}
+                      className={cls("space-y-3", tokensClass(formTokens))}
+                      style={tokensStyle(formTokens)}
+                    >
+                      {form.title ? (() => {
+                        const formTitleData = textContent(String(form.title), formTitleTokens);
+                        return (
+                          <div className={cls("text-sm font-semibold", tokensClass(formTitleTokens), formTitleData.className)} style={tokensStyle(formTitleTokens)} aria-label={formTitleData.ariaLabel}>
+                            {formTitleData.content}
+                          </div>
+                        );
+                      })() : null}
+                      {form.subtitle ? (() => {
+                        const formSubtitleData = textContent(String(form.subtitle), formSubtitleTokens);
+                        return (
+                          <div className={cls("text-xs opacity-70", tokensClass(formSubtitleTokens), formSubtitleData.className)} style={tokensStyle(formSubtitleTokens)} aria-label={formSubtitleData.ariaLabel}>
+                            {formSubtitleData.content}
+                          </div>
+                        );
+                      })() : null}
+                      {fields.map((f, idx) => {
+                        const fieldTokens = resolveFieldTokens((f as any).twTokens, formFieldTokens ?? formTokens ?? sectionTokens);
+                        const labelTokens = resolveFieldTokens((f as any).labelTokens, formLabelTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
+                        const inputTokens = resolveFieldTokens((f as any).inputTokens, formInputTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
+                        return (
+                          <div key={idx} className={cls(tokensClass(fieldTokens))} style={tokensStyle(fieldTokens)}>
+                            {f.label ? (() => {
+                              const labelData = textContent(String(f.label), labelTokens);
+                              return (
+                                <label className={cls("block text-xs opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                                  {labelData.content}
+                                </label>
+                              );
+                            })() : null}
+                            {f.type === "textarea" ? (
+                              <textarea
+                                className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
+                                style={tokensStyle(inputTokens)}
+                                placeholder={f.placeholder}
+                                name={f.name}
+                                required={!!f.required}
+                                rows={4}
+                              />
+                            ) : (
+                              <input
+                                className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
+                                style={tokensStyle(inputTokens)}
+                                placeholder={f.placeholder}
+                                name={f.name}
+                                required={!!f.required}
+                                type={f.type ?? "text"}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                      {form.submitLabel ? (() => {
+                        const submitData = textContent(String(form.submitLabel), submitTokens);
+                        return (
+                          <button type="submit" className={cls("inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm", tokensClass(submitTokens), submitData.className)} style={tokensStyle(submitTokens)} aria-label={submitData.ariaLabel}>
+                            {submitData.content}
+                          </button>
+                        );
+                      })() : null}
+                    </form>
+                  );
+                })() : null}
               </div>
             </div>
           </SectionTextScope>

@@ -692,22 +692,57 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           <div className={cls("grid gap-2", gridCols)}>
             {items.length ? (
               items.slice(0, 8).map((it, i) => {
+                const itemTokens = resolveFieldTokens((it as any).twTokens);
+                const baseItemTokens = itemTokens ?? sectionTokens;
+                const titleTokens = resolveFieldTokens((it as any).titleTokens, baseItemTokens);
+                const textTokens = resolveFieldTokens((it as any).textTokens, baseItemTokens);
+                const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
+                const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
                 const itemTitle = it.title || "(ميزة)";
-                const itemTitleData = textContent(String(itemTitle), sectionTokens);
-                const itemTextData = it.text ? textContent(String(it.text), sectionTokens) : null;
-                return (
-                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                const itemTitleData = textContent(String(itemTitle), titleTokens);
+                const itemTextData = it.text ? textContent(String(it.text), textTokens) : null;
+                const wrapperClass = cls(
+                  "rounded-xl border border-white/[0.08] bg-white/[0.02] p-3",
+                  tokensClass(itemTokens),
+                  it.href ? tokensClass(linkTokens) : undefined
+                );
+                const wrapperStyle = {
+                  ...(tokensStyle(itemTokens) ?? {}),
+                  ...(it.href ? (tokensStyle(linkTokens) ?? {}) : {}),
+                };
+                const content = (
+                  <>
                     <div className="flex items-center gap-2">
-                      {it.iconUrl ? <img src={it.iconUrl} alt="" className="h-6 w-6 rounded-md" /> : it.icon ? <span>{it.icon}</span> : null}
-                      <div className={cls("text-sm font-semibold", itemTitleData.className)} aria-label={itemTitleData.ariaLabel}>
+                      {it.iconUrl ? (
+                        <img
+                          src={it.iconUrl}
+                          alt=""
+                          className={cls("h-6 w-6 rounded-md", tokensClass(iconTokens))}
+                          style={tokensStyle(iconTokens)}
+                        />
+                      ) : it.icon ? (
+                        <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
+                          {it.icon}
+                        </span>
+                      ) : null}
+                      <div className={cls("text-sm font-semibold", tokensClass(titleTokens), itemTitleData.className)} style={tokensStyle(titleTokens)} aria-label={itemTitleData.ariaLabel}>
                         {itemTitleData.content}
                       </div>
                     </div>
                     {itemTextData ? (
-                      <div className={cls("mt-2 text-xs opacity-80", itemTextData.className)} aria-label={itemTextData.ariaLabel}>
+                      <div className={cls("mt-2 text-xs opacity-80", tokensClass(textTokens), itemTextData.className)} style={tokensStyle(textTokens)} aria-label={itemTextData.ariaLabel}>
                         {itemTextData.content}
                       </div>
                     ) : null}
+                  </>
+                );
+                return it.href ? (
+                  <a key={i} href={it.href} className={wrapperClass} style={wrapperStyle}>
+                    {content}
+                  </a>
+                ) : (
+                  <div key={i} className={wrapperClass} style={wrapperStyle}>
+                    {content}
                   </div>
                 );
               })
@@ -748,20 +783,39 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           <div className={cls("grid gap-2", gridCols)}>
             {items.length ? (
               items.slice(0, 8).map((it, i) => {
-                const valueData = textContent(String(it.value ?? ""), sectionTokens);
-                const labelData = it.label ? textContent(String(it.label), sectionTokens) : null;
+                const itemTokens = resolveFieldTokens((it as any).twTokens);
+                const baseItemTokens = itemTokens ?? sectionTokens;
+                const valueTokens = resolveFieldTokens((it as any).valueTokens, baseItemTokens);
+                const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
+                const subtextTokens = resolveFieldTokens((it as any).subtextTokens, baseItemTokens);
+                const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
+                const valueData = textContent(String(it.value ?? ""), valueTokens);
+                const labelData = it.label ? textContent(String(it.label), labelTokens) : null;
+                const subtextData = it.subtext ? textContent(String(it.subtext), subtextTokens) : null;
                 return (
-                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">
-                    {it.icon ? <div className="text-lg">{it.icon}</div> : null}
-                    <div className={cls("text-lg font-semibold", valueData.className)} aria-label={valueData.ariaLabel}>
+                  <div
+                    key={i}
+                    className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center", tokensClass(itemTokens))}
+                    style={tokensStyle(itemTokens)}
+                  >
+                    {it.icon ? (
+                      <div className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
+                        {it.icon}
+                      </div>
+                    ) : null}
+                    <div className={cls("text-lg font-semibold", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
                       {valueData.content}
                     </div>
                     {labelData ? (
-                      <div className={cls("text-xs opacity-70", labelData.className)} aria-label={labelData.ariaLabel}>
+                      <div className={cls("text-xs opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
                         {labelData.content}
                       </div>
                     ) : null}
-                    {it.subtext ? <div className="text-[11px] opacity-60">{it.subtext}</div> : null}
+                    {subtextData ? (
+                      <div className={cls("text-[11px] opacity-60", tokensClass(subtextTokens), subtextData.className)} style={tokensStyle(subtextTokens)} aria-label={subtextData.ariaLabel}>
+                        {subtextData.content}
+                      </div>
+                    ) : null}
                   </div>
                 );
               })
@@ -801,14 +855,63 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           ) : null}
           <div className={cls("grid gap-2", gridCols)}>
             {members.length ? (
-              members.slice(0, 8).map((m, i) => (
-                <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-                  {m.avatarUrl ? <img src={m.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover mb-2" /> : null}
-                  <div className="text-sm font-semibold">{m.name || "(اسم)"}</div>
-                  {m.role ? <div className="text-xs opacity-70">{m.role}</div> : null}
-                  {m.bio ? <div className="mt-2 text-xs opacity-80">{m.bio}</div> : null}
-                </div>
-              ))
+              members.slice(0, 8).map((m, i) => {
+                const itemTokens = resolveFieldTokens((m as any).twTokens);
+                const baseItemTokens = itemTokens ?? sectionTokens;
+                const nameTokens = resolveFieldTokens((m as any).nameTokens, baseItemTokens);
+                const roleTokens = resolveFieldTokens((m as any).roleTokens, baseItemTokens);
+                const bioTokens = resolveFieldTokens((m as any).bioTokens, baseItemTokens);
+                const avatarTokens = resolveFieldTokens((m as any).avatarTokens);
+                const socialTokens = resolveFieldTokens((m as any).socialTokens, baseItemTokens);
+                const nameData = textContent(String(m.name || "(اسم)"), nameTokens);
+                const roleData = m.role ? textContent(String(m.role), roleTokens) : null;
+                const bioData = m.bio ? textContent(String(m.bio), bioTokens) : null;
+                const socials = Array.isArray(m.socials) ? m.socials : [];
+                return (
+                  <div key={i} className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
+                    {m.avatarUrl ? (
+                      <img
+                        src={m.avatarUrl}
+                        alt=""
+                        className={cls("h-10 w-10 rounded-full object-cover mb-2", tokensClass(avatarTokens))}
+                        style={tokensStyle(avatarTokens)}
+                      />
+                    ) : null}
+                    <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                      {nameData.content}
+                    </div>
+                    {roleData ? (
+                      <div className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)} style={tokensStyle(roleTokens)} aria-label={roleData.ariaLabel}>
+                        {roleData.content}
+                      </div>
+                    ) : null}
+                    {bioData ? (
+                      <div className={cls("mt-2 text-xs opacity-80", tokensClass(bioTokens), bioData.className)} style={tokensStyle(bioTokens)} aria-label={bioData.ariaLabel}>
+                        {bioData.content}
+                      </div>
+                    ) : null}
+                    {socials.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] opacity-70">
+                        {socials.map((s, sIdx) => {
+                          const label = s.label || s.href || "";
+                          if (!label) return null;
+                          const socialData = textContent(String(label), socialTokens);
+                          return (
+                            <span
+                              key={`${label}-${sIdx}`}
+                              className={cls(tokensClass(socialTokens), socialData.className)}
+                              style={tokensStyle(socialTokens)}
+                              aria-label={socialData.ariaLabel}
+                            >
+                              {socialData.content}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
             ) : (
               <div className="text-xs opacity-70">(لا يوجد أعضاء)</div>
             )}
@@ -844,19 +947,76 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           ) : null}
           <div className={cls("grid gap-2", gridCols)}>
             {plans.length ? (
-              plans.slice(0, 6).map((p, i) => (
-                <div key={i} className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", p.highlight ? "ring-1 ring-accent-500/40" : undefined)}>
-                  {p.badge ? <div className="text-[11px] opacity-70">{p.badge}</div> : null}
-                  <div className="text-sm font-semibold">{p.name || "(خطة)"}</div>
-                  {p.price ? <div className="mt-1 text-lg">{p.price} {p.period ? <span className="text-xs opacity-60">{p.period}</span> : null}</div> : null}
-                  {p.description ? <div className="mt-1 text-xs opacity-70">{p.description}</div> : null}
-                  {Array.isArray(p.features) && p.features.length ? (
-                    <ul className="mt-2 list-disc ps-5 text-xs opacity-80">
-                      {p.features.slice(0, 4).map((f, idx) => <li key={idx}>{f}</li>)}
-                    </ul>
-                  ) : null}
-                </div>
-              ))
+              plans.slice(0, 6).map((p, i) => {
+                const planTokens = resolveFieldTokens((p as any).twTokens);
+                const basePlanTokens = planTokens ?? sectionTokens;
+                const nameTokens = resolveFieldTokens((p as any).nameTokens, basePlanTokens);
+                const priceTokens = resolveFieldTokens((p as any).priceTokens, basePlanTokens);
+                const periodTokens = resolveFieldTokens((p as any).periodTokens, priceTokens ?? basePlanTokens);
+                const descriptionTokens = resolveFieldTokens((p as any).descriptionTokens, basePlanTokens);
+                const badgeTokens = resolveFieldTokens((p as any).badgeTokens, basePlanTokens);
+                const featureTokens = resolveFieldTokens((p as any).featureTokens, basePlanTokens);
+                const ctaTokens = resolveFieldTokens((p as any).ctaTokens, basePlanTokens);
+                const nameData = textContent(String(p.name || "(خطة)"), nameTokens);
+                const priceData = p.price ? textContent(String(p.price), priceTokens) : null;
+                const periodData = p.period ? textContent(String(p.period), periodTokens) : null;
+                const descriptionData = p.description ? textContent(String(p.description), descriptionTokens) : null;
+                const badgeData = p.badge ? textContent(String(p.badge), badgeTokens) : null;
+                const ctaData = p.ctaLabel ? textContent(String(p.ctaLabel), ctaTokens) : null;
+                return (
+                  <div
+                    key={i}
+                    className={cls(
+                      "rounded-xl border border-white/[0.08] bg-white/[0.02] p-3",
+                      tokensClass(planTokens),
+                      p.highlight ? "ring-1 ring-accent-500/40" : undefined
+                    )}
+                    style={tokensStyle(planTokens)}
+                  >
+                    {badgeData ? (
+                      <div className={cls("text-[11px] opacity-70", tokensClass(badgeTokens), badgeData.className)} style={tokensStyle(badgeTokens)} aria-label={badgeData.ariaLabel}>
+                        {badgeData.content}
+                      </div>
+                    ) : null}
+                    <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                      {nameData.content}
+                    </div>
+                    {priceData ? (
+                      <div className={cls("mt-1 text-lg", tokensClass(priceTokens), priceData.className)} style={tokensStyle(priceTokens)} aria-label={priceData.ariaLabel}>
+                        {priceData.content}
+                        {periodData ? (
+                          <span className={cls("text-xs opacity-60", tokensClass(periodTokens), periodData.className)} style={tokensStyle(periodTokens)} aria-label={periodData.ariaLabel}>
+                            {" "}
+                            {periodData.content}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {descriptionData ? (
+                      <div className={cls("mt-1 text-xs opacity-70", tokensClass(descriptionTokens), descriptionData.className)} style={tokensStyle(descriptionTokens)} aria-label={descriptionData.ariaLabel}>
+                        {descriptionData.content}
+                      </div>
+                    ) : null}
+                    {Array.isArray(p.features) && p.features.length ? (
+                      <ul className={cls("mt-2 list-disc ps-5 text-xs opacity-80", tokensClass(featureTokens))} style={tokensStyle(featureTokens)}>
+                        {p.features.slice(0, 4).map((f, idx) => {
+                          const featureData = textContent(String(f), featureTokens);
+                          return (
+                            <li key={idx} className={featureData.className} aria-label={featureData.ariaLabel}>
+                              {featureData.content}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+                    {ctaData ? (
+                      <div className={cls("mt-3 inline-flex items-center rounded-xl border border-white/10 px-3 py-1 text-xs", tokensClass(ctaTokens), ctaData.className)} style={tokensStyle(ctaTokens)} aria-label={ctaData.ariaLabel}>
+                        {ctaData.content}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
             ) : (
               <div className="text-xs opacity-70">(لا يوجد خطط)</div>
             )}
@@ -893,23 +1053,106 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-2">
               {items.length ? (
-                items.map((it, i) => (
-                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs">
-                    <div className="font-semibold">{it.label || "وسيلة"}</div>
-                    <div className="opacity-80">{it.value || ""}</div>
-                  </div>
-                ))
+                items.map((it, i) => {
+                  const itemTokens = resolveFieldTokens((it as any).twTokens);
+                  const baseItemTokens = itemTokens ?? sectionTokens;
+                  const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
+                  const valueTokens = resolveFieldTokens((it as any).valueTokens, baseItemTokens);
+                  const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
+                  const labelData = textContent(String(it.label || "وسيلة"), labelTokens);
+                  const valueData = it.value ? textContent(String(it.value), valueTokens) : null;
+                  return (
+                    <div key={i} className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
+                      <div className="flex items-center gap-2">
+                        {it.icon ? (
+                          <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
+                            {it.icon}
+                          </span>
+                        ) : null}
+                        <div className={cls("font-semibold", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                          {labelData.content}
+                        </div>
+                      </div>
+                      {valueData ? (
+                        it.href ? (
+                          <a
+                            href={it.href}
+                            className={cls("opacity-80", tokensClass(valueTokens), valueData.className)}
+                            style={tokensStyle(valueTokens)}
+                            aria-label={valueData.ariaLabel}
+                          >
+                            {valueData.content}
+                          </a>
+                        ) : (
+                          <div className={cls("opacity-80", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
+                            {valueData.content}
+                          </div>
+                        )
+                      ) : null}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-xs opacity-70">(لا توجد وسائل تواصل)</div>
               )}
             </div>
             <div className="space-y-2">
-              {d.mapEmbedUrl ? (
-                <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs opacity-70">Map embed</div>
-              ) : null}
-              {fields.length ? (
-                <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs opacity-70">Form ({fields.length} fields)</div>
-              ) : null}
+              {d.mapEmbedUrl ? (() => {
+                const mapTokens = resolveFieldTokens((d as any).mapTokens, sectionTokens);
+                return (
+                  <div className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs opacity-70", tokensClass(mapTokens))} style={tokensStyle(mapTokens)}>
+                    Map embed
+                  </div>
+                );
+              })() : null}
+              {fields.length ? (() => {
+                const formTokens = resolveFieldTokens((form as any).twTokens, sectionTokens);
+                const formTitleTokens = resolveFieldTokens((form as any).titleTokens, formTokens ?? sectionTokens);
+                const formSubtitleTokens = resolveFieldTokens((form as any).subtitleTokens, formTokens ?? sectionTokens);
+                const fieldTokens = resolveFieldTokens((form as any).fieldTokens, formTokens ?? sectionTokens);
+                const labelTokens = resolveFieldTokens((form as any).labelTokens, fieldTokens ?? formTokens ?? sectionTokens);
+                const inputTokens = resolveFieldTokens((form as any).inputTokens, fieldTokens ?? formTokens ?? sectionTokens);
+                const submitTokens = resolveFieldTokens((form as any).submitTokens, formTokens ?? sectionTokens);
+                const formTitleData = form.title ? textContent(String(form.title), formTitleTokens) : null;
+                const formSubtitleData = form.subtitle ? textContent(String(form.subtitle), formSubtitleTokens) : null;
+                return (
+                  <div className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs", tokensClass(formTokens))} style={tokensStyle(formTokens)}>
+                    {formTitleData ? (
+                      <div className={cls("font-semibold", tokensClass(formTitleTokens), formTitleData.className)} style={tokensStyle(formTitleTokens)} aria-label={formTitleData.ariaLabel}>
+                        {formTitleData.content}
+                      </div>
+                    ) : null}
+                    {formSubtitleData ? (
+                      <div className={cls("mt-1 text-[11px] opacity-70", tokensClass(formSubtitleTokens), formSubtitleData.className)} style={tokensStyle(formSubtitleTokens)} aria-label={formSubtitleData.ariaLabel}>
+                        {formSubtitleData.content}
+                      </div>
+                    ) : null}
+                    <div className={cls("mt-2 space-y-2", tokensClass(fieldTokens))} style={tokensStyle(fieldTokens)}>
+                      {fields.slice(0, 2).map((f, idx) => {
+                        const fieldLabel = f.label || f.name;
+                        const labelData = textContent(String(fieldLabel), labelTokens);
+                        return (
+                          <div key={idx} className="space-y-1">
+                            <div className={cls("text-[11px] opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                              {labelData.content}
+                            </div>
+                            <div className={cls("h-8 rounded-lg border border-white/[0.08] bg-white/[0.02]", tokensClass(inputTokens))} style={tokensStyle(inputTokens)} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {(() => {
+                      const submitText = form.submitLabel || "إرسال";
+                      const submitData = textContent(String(submitText), submitTokens);
+                      return (
+                        <div className={cls("mt-2 inline-flex rounded-lg border border-white/[0.08] px-3 py-1 text-[11px]", tokensClass(submitTokens), submitData.className)} style={tokensStyle(submitTokens)} aria-label={submitData.ariaLabel}>
+                          {submitData.content}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })() : null}
             </div>
           </div>
         </SectionTextScope>

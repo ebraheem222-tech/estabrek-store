@@ -358,7 +358,18 @@ export type FeaturesData = {
   title?: string;
   subtitle?: string;
   columns?: number; // 2..6
-  items: Array<{ title: string; text?: string; icon?: string; iconUrl?: string; href?: string }>;
+  items: Array<{
+    title: string;
+    text?: string;
+    icon?: string;
+    iconUrl?: string;
+    href?: string;
+    twTokens?: TwTokens;
+    titleTokens?: TwTokens;
+    textTokens?: TwTokens;
+    iconTokens?: TwTokens;
+    linkTokens?: TwTokens;
+  }>;
   ui?: UiTailwind;
 };
 
@@ -366,7 +377,17 @@ export type StatsData = {
   title?: string;
   subtitle?: string;
   columns?: number; // 2..6
-  items: Array<{ value: string; label?: string; subtext?: string; icon?: string }>;
+  items: Array<{
+    value: string;
+    label?: string;
+    subtext?: string;
+    icon?: string;
+    twTokens?: TwTokens;
+    valueTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    subtextTokens?: TwTokens;
+    iconTokens?: TwTokens;
+  }>;
   ui?: UiTailwind;
 };
 
@@ -376,6 +397,12 @@ export type TeamMember = {
   bio?: string;
   avatarUrl?: string;
   socials?: Array<{ label?: string; href?: string }>;
+  twTokens?: TwTokens;
+  nameTokens?: TwTokens;
+  roleTokens?: TwTokens;
+  bioTokens?: TwTokens;
+  avatarTokens?: TwTokens;
+  socialTokens?: TwTokens;
 };
 
 export type TeamData = {
@@ -396,6 +423,14 @@ export type PricingPlan = {
   features?: string[];
   ctaLabel?: string;
   ctaHref?: string;
+  twTokens?: TwTokens;
+  nameTokens?: TwTokens;
+  priceTokens?: TwTokens;
+  periodTokens?: TwTokens;
+  descriptionTokens?: TwTokens;
+  badgeTokens?: TwTokens;
+  featureTokens?: TwTokens;
+  ctaTokens?: TwTokens;
 };
 
 export type PricingData = {
@@ -412,13 +447,26 @@ export type ContactFormField = {
   type?: "text" | "email" | "tel" | "textarea";
   placeholder?: string;
   required?: boolean;
+  twTokens?: TwTokens;
+  labelTokens?: TwTokens;
+  inputTokens?: TwTokens;
 };
 
 export type ContactData = {
   title?: string;
   subtitle?: string;
-  items?: Array<{ label?: string; value?: string; href?: string; icon?: string }>;
+  items?: Array<{
+    label?: string;
+    value?: string;
+    href?: string;
+    icon?: string;
+    twTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    valueTokens?: TwTokens;
+    iconTokens?: TwTokens;
+  }>;
   mapEmbedUrl?: string;
+  mapTokens?: TwTokens;
   form?: {
     title?: string;
     subtitle?: string;
@@ -426,6 +474,13 @@ export type ContactData = {
     method?: "POST" | "GET";
     submitLabel?: string;
     fields?: ContactFormField[];
+    twTokens?: TwTokens;
+    titleTokens?: TwTokens;
+    subtitleTokens?: TwTokens;
+    fieldTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    inputTokens?: TwTokens;
+    submitTokens?: TwTokens;
   };
   ui?: UiTailwind;
 };
@@ -2310,6 +2365,54 @@ function FeaturesEditor({ value, onChange, errors }: { value: FeaturesData; onCh
                       }}
                       rows={3}
                     />
+
+                    <div className="space-y-3">
+                      <TokensPanel
+                        label="العنصر"
+                        tokens={it.twTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, twTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="الأيقونة"
+                        tokens={it.iconTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, iconTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="العنوان"
+                        tokens={it.titleTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, titleTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="النص"
+                        tokens={it.textTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, textTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="الرابط"
+                        tokens={it.linkTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, linkTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                    </div>
                   </div>
                 </SortableRow>
               ))}
@@ -2431,6 +2534,54 @@ function StatsEditor({ value, onChange, errors }: { value: StatsData; onChange: 
                         }}
                       />
                     </div>
+
+                    <div className="space-y-3">
+                      <TokensPanel
+                        label="العنصر"
+                        tokens={it.twTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, twTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="القيمة"
+                        tokens={it.valueTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, valueTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="التسمية"
+                        tokens={it.labelTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, labelTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="النص الإضافي"
+                        tokens={it.subtextTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, subtextTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="الأيقونة"
+                        tokens={it.iconTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, iconTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                    </div>
                   </div>
                 </SortableRow>
               ))}
@@ -2548,6 +2699,15 @@ function TeamEditor({ value, onChange, errors }: { value: TeamData; onChange: (v
                 <div className="text-xs opacity-60">(لا يوجد روابط)</div>
               )}
             </div>
+
+            <div className="space-y-3">
+              <TokensPanel label="العنصر" tokens={member.twTokens} onChange={(t) => updateMember(idx, { twTokens: t })} />
+              <TokensPanel label="الاسم" tokens={member.nameTokens} onChange={(t) => updateMember(idx, { nameTokens: t })} />
+              <TokensPanel label="الدور" tokens={member.roleTokens} onChange={(t) => updateMember(idx, { roleTokens: t })} />
+              <TokensPanel label="النبذة" tokens={member.bioTokens} onChange={(t) => updateMember(idx, { bioTokens: t })} />
+              <TokensPanel label="الصورة" tokens={member.avatarTokens} onChange={(t) => updateMember(idx, { avatarTokens: t })} />
+              <TokensPanel label="روابط اجتماعية" tokens={member.socialTokens} onChange={(t) => updateMember(idx, { socialTokens: t })} />
+            </div>
           </div>
         ))}
       </div>
@@ -2637,6 +2797,17 @@ function PricingEditor({ value, onChange, errors }: { value: PricingData; onChan
               <TextInput label="زر CTA" value={plan.ctaLabel ?? ""} onChange={(v) => updatePlan(idx, { ctaLabel: v })} />
               <TextInput label="رابط CTA" value={plan.ctaHref ?? ""} onChange={(v) => updatePlan(idx, { ctaHref: v })} dir="ltr" />
             </div>
+
+            <div className="space-y-3">
+              <TokensPanel label="الخطة" tokens={plan.twTokens} onChange={(t) => updatePlan(idx, { twTokens: t })} />
+              <TokensPanel label="الاسم" tokens={plan.nameTokens} onChange={(t) => updatePlan(idx, { nameTokens: t })} />
+              <TokensPanel label="السعر" tokens={plan.priceTokens} onChange={(t) => updatePlan(idx, { priceTokens: t })} />
+              <TokensPanel label="الفترة" tokens={plan.periodTokens} onChange={(t) => updatePlan(idx, { periodTokens: t })} />
+              <TokensPanel label="الوصف" tokens={plan.descriptionTokens} onChange={(t) => updatePlan(idx, { descriptionTokens: t })} />
+              <TokensPanel label="الشارة" tokens={plan.badgeTokens} onChange={(t) => updatePlan(idx, { badgeTokens: t })} />
+              <TokensPanel label="المزايا" tokens={plan.featureTokens} onChange={(t) => updatePlan(idx, { featureTokens: t })} />
+              <TokensPanel label="زر CTA" tokens={plan.ctaTokens} onChange={(t) => updatePlan(idx, { ctaTokens: t })} />
+            </div>
           </div>
         ))}
       </div>
@@ -2682,11 +2853,19 @@ function ContactEditor({ value, onChange, errors }: { value: ContactData; onChan
         {items.length ? (
           <div className="space-y-3">
             {items.map((it, idx) => (
-              <div key={idx} className="grid gap-3 md:grid-cols-4">
-                <TextInput label="Label" value={it.label ?? ""} onChange={(v) => updateItem(idx, { label: v })} />
-                <TextInput label="Value" value={it.value ?? ""} onChange={(v) => updateItem(idx, { value: v })} />
-                <TextInput label="Href (اختياري)" value={it.href ?? ""} onChange={(v) => updateItem(idx, { href: v })} dir="ltr" />
-                <TextInput label="Icon (Emoji)" value={it.icon ?? ""} onChange={(v) => updateItem(idx, { icon: v })} />
+              <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-3">
+                <div className="grid gap-3 md:grid-cols-4">
+                  <TextInput label="Label" value={it.label ?? ""} onChange={(v) => updateItem(idx, { label: v })} />
+                  <TextInput label="Value" value={it.value ?? ""} onChange={(v) => updateItem(idx, { value: v })} />
+                  <TextInput label="Href (اختياري)" value={it.href ?? ""} onChange={(v) => updateItem(idx, { href: v })} dir="ltr" />
+                  <TextInput label="Icon (Emoji)" value={it.icon ?? ""} onChange={(v) => updateItem(idx, { icon: v })} />
+                </div>
+                <div className="space-y-3">
+                  <TokensPanel label="العنصر" tokens={it.twTokens} onChange={(t) => updateItem(idx, { twTokens: t })} />
+                  <TokensPanel label="العنوان" tokens={it.labelTokens} onChange={(t) => updateItem(idx, { labelTokens: t })} />
+                  <TokensPanel label="القيمة" tokens={it.valueTokens} onChange={(t) => updateItem(idx, { valueTokens: t })} />
+                  <TokensPanel label="الأيقونة" tokens={it.iconTokens} onChange={(t) => updateItem(idx, { iconTokens: t })} />
+                </div>
               </div>
             ))}
           </div>
@@ -2701,6 +2880,7 @@ function ContactEditor({ value, onChange, errors }: { value: ContactData; onChan
         onChange={(v) => onChange({ ...value, mapEmbedUrl: v })}
         placeholder="https://..."
       />
+      <TokensPanel label="الخريطة" tokens={value.mapTokens} onChange={(t) => onChange({ ...value, mapTokens: t })} />
 
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
         <div className="text-sm font-semibold opacity-80">نموذج تواصل (اختياري)</div>
@@ -2736,68 +2916,109 @@ function ContactEditor({ value, onChange, errors }: { value: ContactData; onChan
           {fields.length ? (
             <div className="space-y-3">
               {fields.map((f: ContactFormField, idx: number) => (
-                <div key={idx} className="grid gap-3 md:grid-cols-4">
-                  <TextInput
-                    label="Label"
-                    value={f.label ?? ""}
-                    onChange={(v) => {
-                      const next = fields.slice();
-                      next[idx] = { ...next[idx], label: v };
-                      updateForm({ fields: next });
-                    }}
-                  />
-                  <TextInput
-                    label="Name"
-                    value={f.name ?? ""}
-                    onChange={(v) => {
-                      const next = fields.slice();
-                      next[idx] = { ...next[idx], name: v };
-                      updateForm({ fields: next });
-                    }}
-                    dir="ltr"
-                  />
-                  <Select
-                    label="Type"
-                    value={f.type ?? "text"}
-                    onChange={(v) => {
-                      const next = fields.slice();
-                      next[idx] = { ...next[idx], type: v as any };
-                      updateForm({ fields: next });
-                    }}
-                    options={[
-                      { value: "text", label: "text" },
-                      { value: "email", label: "email" },
-                      { value: "tel", label: "tel" },
-                      { value: "textarea", label: "textarea" },
-                    ]}
-                  />
-                  <TextInput
-                    label="Placeholder"
-                    value={f.placeholder ?? ""}
-                    onChange={(v) => {
-                      const next = fields.slice();
-                      next[idx] = { ...next[idx], placeholder: v };
-                      updateForm({ fields: next });
-                    }}
-                  />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={!!f.required}
-                      onChange={(e) => {
+                <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-3">
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <TextInput
+                      label="Label"
+                      value={f.label ?? ""}
+                      onChange={(v) => {
                         const next = fields.slice();
-                        next[idx] = { ...next[idx], required: e.target.checked };
+                        next[idx] = { ...next[idx], label: v };
                         updateForm({ fields: next });
                       }}
                     />
-                    مطلوب
-                  </label>
+                    <TextInput
+                      label="Name"
+                      value={f.name ?? ""}
+                      onChange={(v) => {
+                        const next = fields.slice();
+                        next[idx] = { ...next[idx], name: v };
+                        updateForm({ fields: next });
+                      }}
+                      dir="ltr"
+                    />
+                    <Select
+                      label="Type"
+                      value={f.type ?? "text"}
+                      onChange={(v) => {
+                        const next = fields.slice();
+                        next[idx] = { ...next[idx], type: v as any };
+                        updateForm({ fields: next });
+                      }}
+                      options={[
+                        { value: "text", label: "text" },
+                        { value: "email", label: "email" },
+                        { value: "tel", label: "tel" },
+                        { value: "textarea", label: "textarea" },
+                      ]}
+                    />
+                    <TextInput
+                      label="Placeholder"
+                      value={f.placeholder ?? ""}
+                      onChange={(v) => {
+                        const next = fields.slice();
+                        next[idx] = { ...next[idx], placeholder: v };
+                        updateForm({ fields: next });
+                      }}
+                    />
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={!!f.required}
+                        onChange={(e) => {
+                          const next = fields.slice();
+                          next[idx] = { ...next[idx], required: e.target.checked };
+                          updateForm({ fields: next });
+                        }}
+                      />
+                      مطلوب
+                    </label>
+                  </div>
+                  <div className="space-y-3">
+                    <TokensPanel
+                      label="الحقل"
+                      tokens={f.twTokens}
+                      onChange={(t) => {
+                        const next = fields.slice();
+                        next[idx] = { ...next[idx], twTokens: t };
+                        updateForm({ fields: next });
+                      }}
+                    />
+                    <TokensPanel
+                      label="التسمية"
+                      tokens={f.labelTokens}
+                      onChange={(t) => {
+                        const next = fields.slice();
+                        next[idx] = { ...next[idx], labelTokens: t };
+                        updateForm({ fields: next });
+                      }}
+                    />
+                    <TokensPanel
+                      label="الإدخال"
+                      tokens={f.inputTokens}
+                      onChange={(t) => {
+                        const next = fields.slice();
+                        next[idx] = { ...next[idx], inputTokens: t };
+                        updateForm({ fields: next });
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="text-xs opacity-60">(لا يوجد حقول)</div>
           )}
+        </div>
+
+        <div className="space-y-3">
+          <TokensPanel label="النموذج" tokens={form.twTokens} onChange={(t) => updateForm({ twTokens: t })} />
+          <TokensPanel label="عنوان النموذج" tokens={form.titleTokens} onChange={(t) => updateForm({ titleTokens: t })} />
+          <TokensPanel label="الوصف" tokens={form.subtitleTokens} onChange={(t) => updateForm({ subtitleTokens: t })} />
+          <TokensPanel label="حاوية الحقل" tokens={form.fieldTokens} onChange={(t) => updateForm({ fieldTokens: t })} />
+          <TokensPanel label="تسمية الحقل" tokens={form.labelTokens} onChange={(t) => updateForm({ labelTokens: t })} />
+          <TokensPanel label="إدخال الحقل" tokens={form.inputTokens} onChange={(t) => updateForm({ inputTokens: t })} />
+          <TokensPanel label="زر الإرسال" tokens={form.submitTokens} onChange={(t) => updateForm({ submitTokens: t })} />
         </div>
       </div>
 
