@@ -3,6 +3,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { cn } from "../../components/ui/cn";
+import { SectionStylingPanel } from "./SectionStylingPanel";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
 import {
   BG_PRESETS,
@@ -311,6 +312,23 @@ function spacerClass(h?: string): string {
   }
 }
 
+function hasTypographyOverrides(typography?: TwTokens["typography"] & { colorCustom?: string }) {
+  if (!typography) return false;
+  if (typography.family) return true;
+  if (typography.size && typography.size !== "base") return true;
+  if (typography.align && typography.align !== "left") return true;
+  if (typography.weight && typography.weight !== "normal") return true;
+  if (typography.color && typography.color !== "default") return true;
+  if (typography.lineHeight) return true;
+  if (typography.letterSpacing) return true;
+  if (typography.decoration) return true;
+  if (typography.transform) return true;
+  if (typography.truncate) return true;
+  if (typography.lineClamp) return true;
+  if ((typography as any).colorCustom) return true;
+  return false;
+}
+
 function ChildrenEditor({ components, onChange, max }: { components: CmsComponent[]; onChange: (next: CmsComponent[]) => void; max: number }) {
   // Reuse the main editor logic by wrapping children inside a pseudo section data object.
   return (
@@ -338,13 +356,15 @@ export function ComponentsEditor({
   const components = useMemo(() => getComponents(data), [data]);
 
   const [kindToAdd, setKindToAdd] = useState<CmsComponentKind>("text");
+  const [showAdvancedStyle, setShowAdvancedStyle] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(components[0]?.id ?? null);
 
   const selected = components.find((c) => c.id === selectedId) ?? null;
   const previewTokens = (selected as any)?.twTokens ?? (selected as any)?.tw;
   const previewStyle = tokensToInlineStyle(previewTokens);
   const previewLegacyClassName = typeof (selected as any)?.tw?.className === "string" ? (selected as any).tw.className : "";
-  const previewClassName = cn(tokensToClassName(previewTokens), previewLegacyClassName);
+  const previewTextScopeClass = hasTypographyOverrides(previewTokens?.typography) ? "cms-section-text" : "";
+  const previewClassName = cn(tokensToClassName(previewTokens), previewLegacyClassName, previewTextScopeClass);
   const selectedSource = (selected as any)?.props?.source ?? "manual";
 
   function updateComponents(next: CmsComponent[]) {
@@ -1664,6 +1684,20 @@ export function ComponentsEditor({
                     </div>
                   </div>
                 </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold text-white/70">Advanced styling</div>
+                  <Button size="sm" variant="ghost" onClick={() => setShowAdvancedStyle((v) => !v)}>
+                    {showAdvancedStyle ? "Hide" : "Show"}
+                  </Button>
+                </div>
+                {showAdvancedStyle ? (
+                  <SectionStylingPanel
+                    className="mt-2"
+                    tokens={(selected.twTokens ?? defaultTokensBase()) as any}
+                    onChange={(next) => patchSelected({ twTokens: next })}
+                  />
+                ) : null}
 
                 {/* Preview */}
                 <div className="rounded-xl border border-white/10 bg-black/20 p-4">
