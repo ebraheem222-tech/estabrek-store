@@ -132,6 +132,7 @@ export type TeamData = {
     roleTokens?: TwTokens;
     bioTokens?: TwTokens;
     avatarTokens?: TwTokens;
+    socialTokens?: TwTokens;
   }>;
   ui?: UiTailwind;
 };
@@ -153,7 +154,11 @@ export type PricingData = {
     twTokens?: TwTokens;
     nameTokens?: TwTokens;
     priceTokens?: TwTokens;
+    periodTokens?: TwTokens;
     descriptionTokens?: TwTokens;
+    badgeTokens?: TwTokens;
+    featureTokens?: TwTokens;
+    ctaTokens?: TwTokens;
   }>;
   ui?: UiTailwind;
 };
@@ -161,15 +166,41 @@ export type PricingData = {
 export type ContactData = {
   title?: string;
   subtitle?: string;
-  items?: Array<{ label?: string; value?: string; href?: string; icon?: string; twTokens?: TwTokens; labelTokens?: TwTokens; valueTokens?: TwTokens }>;
+  items?: Array<{
+    label?: string;
+    value?: string;
+    href?: string;
+    icon?: string;
+    twTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    valueTokens?: TwTokens;
+    iconTokens?: TwTokens;
+  }>;
   mapEmbedUrl?: string;
+  mapTokens?: TwTokens;
   form?: {
     title?: string;
     subtitle?: string;
     action?: string;
     method?: "POST" | "GET";
     submitLabel?: string;
-    fields?: Array<{ label?: string; name: string; type?: "text" | "email" | "tel" | "textarea"; placeholder?: string; required?: boolean }>;
+    fields?: Array<{
+      label?: string;
+      name: string;
+      type?: "text" | "email" | "tel" | "textarea";
+      placeholder?: string;
+      required?: boolean;
+      twTokens?: TwTokens;
+      labelTokens?: TwTokens;
+      inputTokens?: TwTokens;
+    }>;
+    twTokens?: TwTokens;
+    titleTokens?: TwTokens;
+    subtitleTokens?: TwTokens;
+    fieldTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    inputTokens?: TwTokens;
+    submitTokens?: TwTokens;
   };
   ui?: UiTailwind;
 };
