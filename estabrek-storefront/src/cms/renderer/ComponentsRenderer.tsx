@@ -148,8 +148,6 @@ function hasTypographyOverrides(typography?: any) {
 function mergeEffectTokens(tokens?: any, inheritTokens?: any): any | undefined {
   if (!inheritTokens) return tokens;
   const next = { ...(tokens ?? {}) } as any;
-  if (next.textEffect == null && inheritTokens?.textEffect != null) next.textEffect = inheritTokens.textEffect;
-  if (next.typewriter == null && inheritTokens?.typewriter != null) next.typewriter = inheritTokens.typewriter;
   if (inheritTokens?.typography) {
     next.typography = { ...(inheritTokens.typography ?? {}), ...(next.typography ?? {}) };
   }
@@ -160,8 +158,6 @@ function combineInheritTokens(parentInherit?: any, parentTokens?: any) {
   if (!parentInherit && !parentTokens) return undefined;
   const next = { ...(parentInherit ?? {}) } as any;
   if (parentTokens) {
-    if (parentTokens.textEffect !== undefined) next.textEffect = parentTokens.textEffect;
-    if (parentTokens.typewriter !== undefined) next.typewriter = parentTokens.typewriter;
     if (parentTokens.typography) {
       next.typography = { ...(next.typography ?? {}), ...(parentTokens.typography ?? {}) };
     }

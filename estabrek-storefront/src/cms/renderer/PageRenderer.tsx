@@ -189,11 +189,12 @@ function sectionDecorations(tokens?: TwTokens) {
 function renderComponentsBlock(data: any, productLookup?: Record<string, ProductMini>) {
   const components = data?.components;
   if (!Array.isArray(components) || !components.length) return null;
+  const inheritTokens = data?.twTokens?.typography ? { typography: data.twTokens.typography } : undefined;
   return (
     <ComponentsRenderer
       components={components as any}
       productLookup={productLookup as any}
-      inheritTokens={data?.twTokens}
+      inheritTokens={inheritTokens}
     />
   );
 }
