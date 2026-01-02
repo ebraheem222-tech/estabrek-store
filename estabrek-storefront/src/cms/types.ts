@@ -125,6 +125,10 @@ export type ProductMini = {
 export type CmsComponentKind =
   | "text"
   | "button"
+  | "input"
+  | "textarea"
+  | "select"
+  | "checkbox"
   | "image"
   | "icon"
   | "divider"

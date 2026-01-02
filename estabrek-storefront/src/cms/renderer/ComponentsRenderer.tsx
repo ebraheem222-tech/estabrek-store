@@ -130,6 +130,21 @@ function isInlineTag(tag: any, tokens?: any): boolean {
   ]).has(tag);
 }
 
+function normalizeSelectOptions(raw: any): Array<{ label: string; value: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((opt) => {
+      if (typeof opt === "string") return { label: opt, value: opt };
+      if (opt && typeof opt === "object") {
+        const label = typeof opt.label === "string" ? opt.label : String(opt.value ?? "");
+        const value = typeof opt.value === "string" ? opt.value : String(opt.label ?? "");
+        return { label, value };
+      }
+      return null;
+    })
+    .filter((opt): opt is { label: string; value: string } => !!opt && !!opt.label);
+}
+
 const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
 
 function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
@@ -624,6 +639,80 @@ export function ComponentsRenderer({
           >
             {textData.content}
           </a>
+        );
+        return wrapWithDecor(tokens, node, true, c.id);
+      }
+
+      case "input": {
+        const label = c.props?.label ?? "";
+        const node = (
+          <div className={cn("space-y-2", tokenClass)} style={tokenStyle}>
+            {label ? <label className="text-sm opacity-80">{label}</label> : null}
+            <input
+              type={c.props?.type ?? "text"}
+              name={c.props?.name ?? undefined}
+              placeholder={c.props?.placeholder ?? ""}
+              required={!!c.props?.required}
+              className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
+            />
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "textarea": {
+        const label = c.props?.label ?? "";
+        const node = (
+          <div className={cn("space-y-2", tokenClass)} style={tokenStyle}>
+            {label ? <label className="text-sm opacity-80">{label}</label> : null}
+            <textarea
+              rows={Number(c.props?.rows ?? 4)}
+              name={c.props?.name ?? undefined}
+              placeholder={c.props?.placeholder ?? ""}
+              required={!!c.props?.required}
+              className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
+            />
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "select": {
+        const label = c.props?.label ?? "";
+        const options = normalizeSelectOptions(c.props?.options);
+        const node = (
+          <div className={cn("space-y-2", tokenClass)} style={tokenStyle}>
+            {label ? <label className="text-sm opacity-80">{label}</label> : null}
+            <select
+              name={c.props?.name ?? undefined}
+              required={!!c.props?.required}
+              className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-[color:var(--accent-2)]/30"
+            >
+              {c.props?.placeholder ? <option value="">{c.props?.placeholder}</option> : null}
+              {options.map((opt, idx) => (
+                <option key={`${opt.value}-${idx}`} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
+      case "checkbox": {
+        const label = c.props?.label ?? "Checkbox";
+        const node = (
+          <label className={cn("inline-flex items-center gap-2", tokenClass)} style={tokenStyle}>
+            <input
+              type="checkbox"
+              name={c.props?.name ?? undefined}
+              defaultChecked={!!c.props?.checked}
+              required={!!c.props?.required}
+              className="h-4 w-4 rounded border border-[color:var(--border)] bg-transparent"
+            />
+            <span className="text-sm">{label}</span>
+          </label>
         );
         return wrapWithDecor(tokens, node, true, c.id);
       }
