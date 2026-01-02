@@ -5,6 +5,7 @@ import { Select } from "../../components/ui/Select";
 import { cn } from "../../components/ui/cn";
 import { SectionStylingPanel } from "./SectionStylingPanel";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
+import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import {
   BG_PRESETS,
   HOVER_PRESETS,
@@ -329,6 +330,17 @@ function hasTypographyOverrides(typography?: TwTokens["typography"] & { colorCus
   return false;
 }
 
+function previewDecorationsFromTokens(tokens?: any) {
+  const decor = tokens?.decor;
+  if (!decor) return null;
+  const before = decor.before;
+  const after = decor.after;
+  const hasBefore = !!before?.shape && before.shape !== "none";
+  const hasAfter = !!after?.shape && after.shape !== "none";
+  if (!hasBefore && !hasAfter) return null;
+  return { before: hasBefore ? before : undefined, after: hasAfter ? after : undefined };
+}
+
 function ChildrenEditor({ components, onChange, max }: { components: CmsComponent[]; onChange: (next: CmsComponent[]) => void; max: number }) {
   // Reuse the main editor logic by wrapping children inside a pseudo section data object.
   return (
@@ -365,6 +377,7 @@ export function ComponentsEditor({
   const previewLegacyClassName = typeof (selected as any)?.tw?.className === "string" ? (selected as any).tw.className : "";
   const previewTextScopeClass = hasTypographyOverrides(previewTokens?.typography) ? "cms-section-text" : "";
   const previewClassName = cn(tokensToClassName(previewTokens), previewLegacyClassName, previewTextScopeClass);
+  const previewDecorations = previewDecorationsFromTokens(previewTokens);
   const selectedSource = (selected as any)?.props?.source ?? "manual";
 
   function updateComponents(next: CmsComponent[]) {
@@ -1703,7 +1716,9 @@ export function ComponentsEditor({
                 <div className="rounded-xl border border-white/10 bg-black/20 p-4">
                   <div className="text-xs font-semibold text-white/70 mb-2">Preview</div>
                   <div className="space-y-3">
-                    <div>
+                    <div className={cn(previewDecorations ? "relative" : undefined)}>
+                      {previewDecorations ? <SectionDecorations decorations={previewDecorations} className="z-0" /> : null}
+                      <div className={cn(previewDecorations ? "relative z-10" : undefined)}>
                       {selected && isChildCapable(selected.kind) && (() => {
                         const children = getChildren(selected);
 
@@ -1814,6 +1829,7 @@ export function ComponentsEditor({
                           </div>
                         </div>
                       )}
+                      </div>
                     </div>
                   </div>
                 </div>

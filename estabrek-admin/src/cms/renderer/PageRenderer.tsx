@@ -84,9 +84,10 @@ function sectionComponents(data: any) {
 function renderComponentsBlock(data: any, className?: string) {
   const components = sectionComponents(data);
   if (!components.length) return null;
+  const inheritTokens = data?.twTokens?.typography ? { typography: data.twTokens.typography } : undefined;
   return (
     <div className={cls("mt-6", className)}>
-      <CmsComponentsRenderer components={components} inheritTokens={data?.twTokens} />
+      <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
     </div>
   );
 }

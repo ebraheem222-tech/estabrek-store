@@ -165,9 +165,10 @@ function sectionComponents(data: any) {
 function renderComponentsBlock(data: any, className?: string) {
   const components = sectionComponents(data);
   if (!components.length) return null;
+  const inheritTokens = data?.twTokens?.typography ? { typography: data.twTokens.typography } : undefined;
   return (
     <div className={cls("mt-6", className)}>
-      <CmsComponentsRenderer components={components} inheritTokens={data?.twTokens} />
+      <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
     </div>
   );
 }
@@ -1155,10 +1156,11 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
 
   const fallbackComponents = sectionComponents(data);
   if (fallbackComponents.length) {
+    const inheritTokens = (data as any)?.twTokens?.typography ? { typography: (data as any).twTokens.typography } : undefined;
     return (
       <section className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6">
         <div className="mx-auto max-w-6xl">
-          <CmsComponentsRenderer components={fallbackComponents} inheritTokens={(data as any)?.twTokens} />
+          <CmsComponentsRenderer components={fallbackComponents} inheritTokens={inheritTokens} />
         </div>
       </section>
     );

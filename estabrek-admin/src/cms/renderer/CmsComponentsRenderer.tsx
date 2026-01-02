@@ -1,6 +1,7 @@
 import React from "react";
 import type { CmsComponent } from "../types";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
+import { SectionDecorations } from "../decorations/DecorationLayer";
 import { TypewriterText } from "../../components/effects/TypewriterText";
 
 type CmsComponentsRendererProps = {
@@ -14,6 +15,35 @@ function cx(...parts: Array<string | undefined | null | false>) {
 }
 
 const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
+
+function hasDecorLayers(tokens?: any): boolean {
+  const before = tokens?.decor?.before?.shape;
+  const after = tokens?.decor?.after?.shape;
+  return !!((before && before !== "none") || (after && after !== "none"));
+}
+
+function decorationsFromTokens(tokens?: any) {
+  if (!hasDecorLayers(tokens)) return null;
+  const before = tokens?.decor?.before;
+  const after = tokens?.decor?.after;
+  const hasBefore = !!before?.shape && before.shape !== "none";
+  const hasAfter = !!after?.shape && after.shape !== "none";
+  if (!hasBefore && !hasAfter) return null;
+  return { before: hasBefore ? before : undefined, after: hasAfter ? after : undefined };
+}
+
+function wrapWithDecor(tokens: any, node: React.ReactElement, inline = false) {
+  const decorations = decorationsFromTokens(tokens);
+  if (!decorations) return node;
+  const Wrapper: React.ElementType = inline ? "span" : "div";
+  const Inner: React.ElementType = inline ? "span" : "div";
+  return (
+    <Wrapper className={cx("relative", inline ? "inline-block" : undefined)}>
+      <SectionDecorations decorations={decorations} className="z-0" />
+      <Inner className="relative z-10">{node}</Inner>
+    </Wrapper>
+  );
+}
 
 function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
   if (!text || !effect || !SPLIT_TEXT_EFFECTS.has(effect)) {
@@ -74,8 +104,6 @@ function hasTypographyOverrides(typography?: any) {
 function mergeEffectTokens(tokens?: any, inheritTokens?: any): any | undefined {
   if (!inheritTokens) return tokens;
   const next = { ...(tokens ?? {}) } as any;
-  if (next.textEffect == null && inheritTokens?.textEffect != null) next.textEffect = inheritTokens.textEffect;
-  if (next.typewriter == null && inheritTokens?.typewriter != null) next.typewriter = inheritTokens.typewriter;
   if (inheritTokens?.typography) {
     next.typography = { ...(inheritTokens.typography ?? {}), ...(next.typography ?? {}) };
   }
@@ -86,8 +114,6 @@ function combineInheritTokens(parentInherit?: any, parentTokens?: any) {
   if (!parentInherit && !parentTokens) return undefined;
   const next = { ...(parentInherit ?? {}) } as any;
   if (parentTokens) {
-    if (parentTokens.textEffect !== undefined) next.textEffect = parentTokens.textEffect;
-    if (parentTokens.typewriter !== undefined) next.typewriter = parentTokens.typewriter;
     if (parentTokens.typography) {
       next.typography = { ...(next.typography ?? {}), ...(parentTokens.typography ?? {}) };
     }
@@ -158,6 +184,29 @@ function spacerClass(h?: string): string {
   }
 }
 
+function isInlineTag(tag: any, tokens?: any): boolean {
+  const display = tokens?.layout?.display;
+  if (display === "inline" || display === "inline-flex") return true;
+  if (typeof tag !== "string") return false;
+  return new Set([
+    "span",
+    "small",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "u",
+    "s",
+    "a",
+    "button",
+    "label",
+    "code",
+    "kbd",
+    "sup",
+    "sub",
+  ]).has(tag);
+}
+
 function gridColsClass(cols?: number): string {
   const n = Math.min(6, Math.max(1, Number(cols) || 1));
   if (n === 1) return "grid-cols-1";
@@ -209,18 +258,19 @@ function ComponentNode({
       const rawText = props.text ?? "";
       const textValue = typeof rawText === "string" ? rawText : String(rawText);
       const textData = textContent(textValue, tokens);
-      return (
+      const node = (
         <As className={textData.useTypewriter ? classNameNoTextEffect : className} style={inlineStyle} aria-label={textData.ariaLabel}>
           {textData.content}
         </As>
       );
+      return wrapWithDecor(tokens, node, isInlineTag(As, tokens));
     }
     case "badge":
       {
         const rawText = props.text ?? "Badge";
         const textValue = typeof rawText === "string" ? rawText : String(rawText);
         const textData = textContent(textValue, tokens);
-        return (
+        const node = (
           <span
             className={cx("border border-white/10", textData.useTypewriter ? classNameNoTextEffect : className)}
             style={inlineStyle}
@@ -229,13 +279,14 @@ function ComponentNode({
             {textData.content}
           </span>
         );
+        return wrapWithDecor(tokens, node, true);
       }
     case "button": {
       const rawLabel = props.label ?? "Button";
       const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
       const textData = textContent(label, tokens);
       if (props.href) {
-        return (
+        const node = (
           <a
             href={props.href}
             className={cx(baseButtonClasses(props.variant), textData.useTypewriter ? classNameNoTextEffect : className)}
@@ -245,8 +296,9 @@ function ComponentNode({
             {textData.content}
           </a>
         );
+        return wrapWithDecor(tokens, node, true);
       }
-      return (
+      const node = (
         <button
           type="button"
           className={cx(baseButtonClasses(props.variant), textData.useTypewriter ? classNameNoTextEffect : className)}
@@ -256,6 +308,7 @@ function ComponentNode({
           {textData.content}
         </button>
       );
+      return wrapWithDecor(tokens, node, true);
     }
     case "card":
       {
@@ -270,7 +323,7 @@ function ComponentNode({
         const titleData = textContent(titleValue, tokens);
         const textData = textContent(textValue, tokens);
         const buttonData = textContent(buttonLabelValue, tokens);
-        return (
+        const node = (
           <div className={cx("border border-white/10", cardClassName)} style={inlineStyle}>
             <div className="space-y-2">
               {titleValue ? (
@@ -310,57 +363,66 @@ function ComponentNode({
             </div>
           </div>
         );
+        return wrapWithDecor(tokens, node, false);
       }
     case "list": {
       const items = Array.isArray(props.items) ? props.items : [];
       if (props.ordered) {
-        return (
+        const node = (
           <ol className={cx("list-decimal ps-6", className)} style={inlineStyle}>
             {items.map((it: string, idx: number) => (
               <li key={idx}>{it}</li>
             ))}
           </ol>
         );
+        return wrapWithDecor(tokens, node, false);
       }
-      return (
+      const node = (
         <ul className={cx("list-disc ps-6", className)} style={inlineStyle}>
           {items.map((it: string, idx: number) => (
             <li key={idx}>{it}</li>
           ))}
         </ul>
       );
+      return wrapWithDecor(tokens, node, false);
     }
     case "image":
-      return props.src ? (
-        <img src={props.src} alt={props.alt ?? ""} className={cx("max-w-full", className)} style={inlineStyle} />
-      ) : (
-        <div className={cx("border border-dashed border-white/20 p-6 text-xs opacity-70", className)} style={inlineStyle}>Image</div>
-      );
+      {
+        const node = props.src ? (
+          <img src={props.src} alt={props.alt ?? ""} className={cx("max-w-full", className)} style={inlineStyle} />
+        ) : (
+          <div className={cx("border border-dashed border-white/20 p-6 text-xs opacity-70", className)} style={inlineStyle}>Image</div>
+        );
+        return wrapWithDecor(tokens, node, !!props.src);
+      }
     case "icon":
-      return props.d ? (
-        <svg viewBox={props.viewBox ?? "0 0 24 24"} className={cx("h-6 w-6", className)} style={inlineStyle} fill="none" stroke="currentColor" strokeWidth="2">
-          <path d={props.d} />
-        </svg>
-      ) : (
-        <div className={cx("h-6 w-6 rounded-md border border-dashed border-white/20", className)} style={inlineStyle} />
-      );
+      {
+        const node = props.d ? (
+          <svg viewBox={props.viewBox ?? "0 0 24 24"} className={cx("h-6 w-6", className)} style={inlineStyle} fill="none" stroke="currentColor" strokeWidth="2">
+            <path d={props.d} />
+          </svg>
+        ) : (
+          <div className={cx("h-6 w-6 rounded-md border border-dashed border-white/20", className)} style={inlineStyle} />
+        );
+        return wrapWithDecor(tokens, node, !!props.d);
+      }
     case "divider":
-      return <hr className={cx("border-white/10", className)} style={inlineStyle} />;
+      return wrapWithDecor(tokens, <hr className={cx("border-white/10", className)} style={inlineStyle} />, false);
     case "spacer":
-      return <div className={cx(spacerClass(props.h), className)} style={inlineStyle} />;
+      return wrapWithDecor(tokens, <div className={cx(spacerClass(props.h), className)} style={inlineStyle} />, false);
     case "container":
-      return <div className={cx("mx-auto w-full", className)} style={inlineStyle}>{renderChildren()}</div>;
+      return wrapWithDecor(tokens, <div className={cx("mx-auto w-full", className)} style={inlineStyle}>{renderChildren()}</div>, false);
     case "stack":
-      return <div className={className} style={inlineStyle}>{renderChildren()}</div>;
+      return wrapWithDecor(tokens, <div className={className} style={inlineStyle}>{renderChildren()}</div>, false);
     case "row":
-      return <div className={className} style={inlineStyle}>{renderChildren()}</div>;
+      return wrapWithDecor(tokens, <div className={className} style={inlineStyle}>{renderChildren()}</div>, false);
     case "grid":
-      return <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>;
+      return wrapWithDecor(tokens, <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>, false);
     case "columns":
-      return <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>;
+      return wrapWithDecor(tokens, <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>, false);
     case "nav_menu": {
       const items = Array.isArray(props.items) ? props.items : [];
-      return (
+      const node = (
         <nav className={cx("border border-white/10", className)} style={inlineStyle}>
           {!items.length ? (
             <div className="text-xs opacity-60">No menu items.</div>
@@ -388,10 +450,11 @@ function ComponentNode({
           )}
         </nav>
       );
+      return wrapWithDecor(tokens, node, false);
     }
     case "productGrid": {
       const ids = Array.isArray(props.productIds) ? props.productIds : [];
-      return (
+      const node = (
         <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
           <div className="text-sm font-semibold">{props.title ?? "Product Grid"}</div>
           <div className={cx("mt-3 grid gap-3", gridColsClass(props.cols ?? 3))}>
@@ -407,18 +470,20 @@ function ComponentNode({
           </div>
         </div>
       );
+      return wrapWithDecor(tokens, node, false);
     }
     case "productSlider": {
-      return (
+      const node = (
         <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
           <div className="text-sm font-semibold">{props.title ?? "Products"}</div>
           <div className="mt-3 text-xs opacity-60">(Slider placeholder)</div>
         </div>
       );
+      return wrapWithDecor(tokens, node, false);
     }
     case "categoryTiles": {
       const items = Array.isArray(props.items) ? props.items : [];
-      return (
+      const node = (
         <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
           <div className="text-sm font-semibold">{props.title ?? "Categories"}</div>
           <div className={cx("mt-3 grid gap-3", gridColsClass(props.cols ?? 3))}>
@@ -434,25 +499,26 @@ function ComponentNode({
           </div>
         </div>
       );
+      return wrapWithDecor(tokens, node, false);
     }
     case "filtersBar":
-      return (
+      return wrapWithDecor(tokens, (
         <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs", className)} style={inlineStyle}>
           Filters bar
         </div>
-      );
+      ), false);
     case "data":
-      return (
+      return wrapWithDecor(tokens, (
         <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs", className)} style={inlineStyle}>
           Data component
         </div>
-      );
+      ), false);
     default:
-      return (
+      return wrapWithDecor(tokens, (
         <div className={cx("rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs opacity-70", className)} style={inlineStyle}>
           {component.kind}
         </div>
-      );
+      ), false);
   }
 }
 

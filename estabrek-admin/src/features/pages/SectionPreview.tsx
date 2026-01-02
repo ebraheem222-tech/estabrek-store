@@ -243,9 +243,10 @@ function sectionComponents(data: any) {
 function renderComponentsBlock(data: any) {
   const components = sectionComponents(data);
   if (!components.length) return null;
+  const inheritTokens = data?.twTokens?.typography ? { typography: data.twTokens.typography } : undefined;
   return (
     <div className="mt-4">
-      <CmsComponentsRenderer components={components} inheritTokens={data?.twTokens} />
+      <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
     </div>
   );
 }
@@ -1161,9 +1162,10 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   const fallbackComponents = sectionComponents(data);
   if (fallbackComponents.length) {
+    const inheritTokens = (data as any)?.twTokens?.typography ? { typography: (data as any).twTokens.typography } : undefined;
     return wrapPreview(data, (
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        <CmsComponentsRenderer components={fallbackComponents} inheritTokens={(data as any)?.twTokens} />
+        <CmsComponentsRenderer components={fallbackComponents} inheritTokens={inheritTokens} />
       </div>
     ));
   }
