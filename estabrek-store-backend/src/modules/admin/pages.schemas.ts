@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PageSectionTypeZ } from "./pageSectionData.schemas";
 
 export const CreatePageBody = z.object({
   name: z.string().min(1),
@@ -18,9 +19,7 @@ export const CreatePageBody = z.object({
 export const UpdatePageBody = CreatePageBody.partial();
 
 export const CreateSectionBody = z.object({
-  type: z.enum([
-    "HERO","RICH_TEXT","CUSTOM_HTML","GRID","BANNER","FEATURED_CATEGORIES","COLLECTIONS_GRID","BEST_SELLERS_SLIDER","NEW_ARRIVALS_SLIDER","BRANDS_SLIDER","FEATURED_PRODUCTS","IMAGE_GALLERY","FAQ","TESTIMONIALS","CTA","CARDS","VIDEO","NEWSLETTER"
-  ]),
+  type: PageSectionTypeZ,
   data: z.any(),
   order: z.number().int().nonnegative().optional(),
   isVisible: z.boolean().optional(),
