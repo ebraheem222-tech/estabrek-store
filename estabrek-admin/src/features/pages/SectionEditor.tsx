@@ -92,6 +92,27 @@ function TextAreaInput({
   );
 }
 
+function TokensPanel({
+  label,
+  tokens,
+  onChange,
+}: {
+  label: string;
+  tokens?: TwTokens;
+  onChange: (next: TwTokens) => void;
+}) {
+  return (
+    <details className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3">
+      <summary className="cursor-pointer text-sm font-semibold text-white/80">
+        تنسيق متقدم: {label}
+      </summary>
+      <div className="mt-3">
+        <SectionStylingPanel tokens={tokens} onChange={onChange} />
+      </div>
+    </details>
+  );
+}
+
 
 type CommonErrors = Record<string, string | undefined>;
 
@@ -166,6 +187,11 @@ export type HeroSlide = {
   align?: "left" | "center" | "right";
   primaryButton?: { label: string; href: string };
   secondaryButton?: { label: string; href: string };
+  slideTokens?: TwTokens;
+  titleTokens?: TwTokens;
+  subtitleTokens?: TwTokens;
+  primaryButtonTokens?: TwTokens;
+  secondaryButtonTokens?: TwTokens;
 };
 
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";
@@ -205,14 +231,14 @@ export type CustomHtmlData = {
 
 export type FaqData = {
   title?: string;
-  items: Array<{ question: string; answer: string }>;
+  items: Array<{ question: string; answer: string; twTokens?: TwTokens; questionTokens?: TwTokens; answerTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
 export type GridData = {
   title?: string;
   columns?: number; // 2..4
-  items: Array<{ title: string; text?: string; imageUrl?: string; href?: string }>;
+  items: Array<{ title: string; text?: string; imageUrl?: string; href?: string; twTokens?: TwTokens; titleTokens?: TwTokens; textTokens?: TwTokens; imageTokens?: TwTokens; linkTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
@@ -224,6 +250,10 @@ export type FeaturedCategoriesData = {
     href: string;
     imageUrl?: string;
     categoryId?: string;
+    twTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    imageTokens?: TwTokens;
+    linkTokens?: TwTokens;
   }>;
   showArrows?: boolean;
   ui?: UiTailwind;
@@ -238,6 +268,10 @@ export type CollectionsGridData = {
     href: string;
     imageUrl?: string;
     categoryId?: string;
+    twTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    imageTokens?: TwTokens;
+    linkTokens?: TwTokens;
   }>;
   ui?: UiTailwind;
 };
@@ -250,14 +284,14 @@ export type ProductsSliderData = {
 
 export type BrandsSliderData = {
   title?: string;
-  items: Array<{ name: string; logoUrl?: string; href?: string }>;
+  items: Array<{ name: string; logoUrl?: string; href?: string; twTokens?: TwTokens; nameTokens?: TwTokens; logoTokens?: TwTokens; linkTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
 export type ImageGalleryData = {
   title?: string;
   columns?: number; // 2..6
-  images: Array<{ url: string; alt?: string }>;
+  images: Array<{ url: string; alt?: string; twTokens?: TwTokens; imageTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
@@ -281,7 +315,7 @@ export type CtaData = {
 
 export type TestimonialsData = {
   title?: string;
-  items: Array<{ name: string; role?: string; quote: string; avatarUrl?: string }>;
+  items: Array<{ name: string; role?: string; quote: string; avatarUrl?: string; twTokens?: TwTokens; nameTokens?: TwTokens; roleTokens?: TwTokens; quoteTokens?: TwTokens; avatarTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
@@ -322,6 +356,12 @@ export type CardsCard = {
   badge?: string;
   buttonLabel?: string;
   buttonHref?: string;
+  twTokens?: TwTokens;
+  titleTokens?: TwTokens;
+  textTokens?: TwTokens;
+  badgeTokens?: TwTokens;
+  buttonTokens?: TwTokens;
+  imageTokens?: TwTokens;
 };
 
 export type CardsData = {
@@ -874,6 +914,11 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
     align: (value as any).align,
     primaryButton: (value as any).primaryButton,
     secondaryButton: (value as any).secondaryButton,
+    slideTokens: (value as any).slideTokens,
+    titleTokens: (value as any).titleTokens,
+    subtitleTokens: (value as any).subtitleTokens,
+    primaryButtonTokens: (value as any).primaryButtonTokens,
+    secondaryButtonTokens: (value as any).secondaryButtonTokens,
   });
 
   const applyToRoot = (s: HeroSlide) => {
@@ -885,6 +930,11 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
     next.align = s.align;
     next.primaryButton = s.primaryButton;
     next.secondaryButton = s.secondaryButton;
+    next.slideTokens = s.slideTokens;
+    next.titleTokens = s.titleTokens;
+    next.subtitleTokens = s.subtitleTokens;
+    next.primaryButtonTokens = s.primaryButtonTokens;
+    next.secondaryButtonTokens = s.secondaryButtonTokens;
     delete next.slides;
     delete next.autoplayMs;
     delete next.showDots;
@@ -895,6 +945,14 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
     const nextSlides = slides.slice();
     nextSlides[idx] = { ...(nextSlides[idx] ?? { title: "" }), ...patch };
     onChange({ ...(value as any), slides: nextSlides });
+  };
+
+  const updateSlideTokens = (patch: Partial<HeroSlide>) => {
+    if (isSlider) {
+      updateSlide(activeSlide, patch);
+    } else {
+      onChange({ ...(value as any), ...patch });
+    }
   };
 
   const removeSlide = (idx: number) => {
@@ -1181,6 +1239,17 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
         </div>
       </div>
 
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="تنسيق متقدم (السلايد)" />
+        <div className="space-y-3">
+          <TokensPanel label="السلايد" tokens={s.slideTokens} onChange={(t) => updateSlideTokens({ slideTokens: t })} />
+          <TokensPanel label="العنوان" tokens={s.titleTokens} onChange={(t) => updateSlideTokens({ titleTokens: t })} />
+          <TokensPanel label="الوصف" tokens={s.subtitleTokens} onChange={(t) => updateSlideTokens({ subtitleTokens: t })} />
+          <TokensPanel label="زر أساسي" tokens={s.primaryButtonTokens} onChange={(t) => updateSlideTokens({ primaryButtonTokens: t })} />
+          <TokensPanel label="زر ثانوي" tokens={s.secondaryButtonTokens} onChange={(t) => updateSlideTokens({ secondaryButtonTokens: t })} />
+        </div>
+      </div>
+
       <UiClassesEditor value={value} onChange={onChange as any} />
     </div>
   );
@@ -1427,6 +1496,36 @@ function FaqEditor({ value, onChange, errors }: { value: FaqData; onChange: (v: 
                       }}
                       rows={4}
                     />
+
+                    <div className="space-y-3">
+                      <TokensPanel
+                        label="العنصر"
+                        tokens={it.twTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, twTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="السؤال"
+                        tokens={it.questionTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, questionTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="الجواب"
+                        tokens={it.answerTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, answerTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                    </div>
                   </div>
                 </SortableRow>
               ))}
@@ -1553,6 +1652,54 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
                         rows={3}
                       />
                     </div>
+
+                    <div className="space-y-3">
+                      <TokensPanel
+                        label="العنصر"
+                        tokens={it.twTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, twTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="العنوان"
+                        tokens={it.titleTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, titleTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="النص"
+                        tokens={it.textTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, textTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="الصورة"
+                        tokens={it.imageTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, imageTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <TokensPanel
+                        label="الرابط"
+                        tokens={it.linkTokens}
+                        onChange={(t) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, linkTokens: t };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                    </div>
                   </div>
                 </SortableRow>
               ))}
@@ -1665,6 +1812,27 @@ function ImageGalleryEditor({ value, onChange, errors }: { value: ImageGalleryDa
                 // eslint-disable-next-line jsx-a11y/alt-text
                 <img src={im.url} className="h-28 w-full rounded-xl object-cover border border-white/[0.08]" />
               ) : null}
+
+              <div className="space-y-3">
+                <TokensPanel
+                  label="الصورة"
+                  tokens={im.imageTokens}
+                  onChange={(t) => {
+                    const next = images.slice();
+                    next[idx] = { ...im, imageTokens: t };
+                    onChange({ ...value, images: next });
+                  }}
+                />
+                <TokensPanel
+                  label="الحاوية"
+                  tokens={im.twTokens}
+                  onChange={(t) => {
+                    const next = images.slice();
+                    next[idx] = { ...im, twTokens: t };
+                    onChange({ ...value, images: next });
+                  }}
+                />
+              </div>
             </div>
           ))}
 
@@ -1827,6 +1995,54 @@ function TestimonialsEditor({ value, onChange, errors }: { value: TestimonialsDa
                 <img src={it.avatarUrl} className="h-16 w-16 rounded-full object-cover border border-white/[0.08]" />
               ) : null}
             </div>
+
+            <div className="space-y-3">
+              <TokensPanel
+                label="العنصر"
+                tokens={it.twTokens}
+                onChange={(t) => {
+                  const next = items.slice();
+                  next[idx] = { ...it, twTokens: t };
+                  onChange({ ...value, items: next });
+                }}
+              />
+              <TokensPanel
+                label="الاسم"
+                tokens={it.nameTokens}
+                onChange={(t) => {
+                  const next = items.slice();
+                  next[idx] = { ...it, nameTokens: t };
+                  onChange({ ...value, items: next });
+                }}
+              />
+              <TokensPanel
+                label="الدور"
+                tokens={it.roleTokens}
+                onChange={(t) => {
+                  const next = items.slice();
+                  next[idx] = { ...it, roleTokens: t };
+                  onChange({ ...value, items: next });
+                }}
+              />
+              <TokensPanel
+                label="النص"
+                tokens={it.quoteTokens}
+                onChange={(t) => {
+                  const next = items.slice();
+                  next[idx] = { ...it, quoteTokens: t };
+                  onChange({ ...value, items: next });
+                }}
+              />
+              <TokensPanel
+                label="الصورة"
+                tokens={it.avatarTokens}
+                onChange={(t) => {
+                  const next = items.slice();
+                  next[idx] = { ...it, avatarTokens: t };
+                  onChange({ ...value, items: next });
+                }}
+              />
+            </div>
           </div>
         ))}
 
@@ -1958,6 +2174,28 @@ function FeaturedCategoriesEditor({ value, onChange, errors }: { value: Featured
                   </Button>
                 </div>
               </div>
+              <div className="mt-3 space-y-3">
+                <TokensPanel
+                  label="العنصر"
+                  tokens={it.twTokens}
+                  onChange={(t) => updateItem(idx, { twTokens: t } as any)}
+                />
+                <TokensPanel
+                  label="العنوان"
+                  tokens={it.labelTokens}
+                  onChange={(t) => updateItem(idx, { labelTokens: t } as any)}
+                />
+                <TokensPanel
+                  label="الصورة"
+                  tokens={it.imageTokens}
+                  onChange={(t) => updateItem(idx, { imageTokens: t } as any)}
+                />
+                <TokensPanel
+                  label="الرابط"
+                  tokens={it.linkTokens}
+                  onChange={(t) => updateItem(idx, { linkTokens: t } as any)}
+                />
+              </div>
               <div className="mt-2 text-xs opacity-60">
                 {it.categoryId ? `categoryId: ${it.categoryId}` : "(عنصر مخصص بدون categoryId)"}
               </div>
@@ -2051,6 +2289,28 @@ function CollectionsGridEditor({ value, onChange, errors }: { value: Collections
                     حذف
                   </Button>
                 </div>
+              </div>
+              <div className="mt-3 space-y-3">
+                <TokensPanel
+                  label="العنصر"
+                  tokens={it.twTokens}
+                  onChange={(t) => updateItem(idx, { twTokens: t } as any)}
+                />
+                <TokensPanel
+                  label="العنوان"
+                  tokens={it.labelTokens}
+                  onChange={(t) => updateItem(idx, { labelTokens: t } as any)}
+                />
+                <TokensPanel
+                  label="الصورة"
+                  tokens={it.imageTokens}
+                  onChange={(t) => updateItem(idx, { imageTokens: t } as any)}
+                />
+                <TokensPanel
+                  label="الرابط"
+                  tokens={it.linkTokens}
+                  onChange={(t) => updateItem(idx, { linkTokens: t } as any)}
+                />
               </div>
               <div className="mt-2 text-xs opacity-60">
                 {it.categoryId ? `categoryId: ${it.categoryId}` : "(عنصر مخصص بدون categoryId)"}
@@ -2186,6 +2446,12 @@ function BrandsSliderEditor({ value, onChange }: { value: BrandsSliderData; onCh
             </div>
             <div className="mt-3 flex justify-end">
               <Button type="button" variant="danger" onClick={() => remove(idx)}>حذف</Button>
+            </div>
+            <div className="mt-3 space-y-3">
+              <TokensPanel label="العنصر" tokens={it.twTokens} onChange={(t) => update(idx, { twTokens: t } as any)} />
+              <TokensPanel label="الاسم" tokens={it.nameTokens} onChange={(t) => update(idx, { nameTokens: t } as any)} />
+              <TokensPanel label="الشعار" tokens={it.logoTokens} onChange={(t) => update(idx, { logoTokens: t } as any)} />
+              <TokensPanel label="الرابط" tokens={it.linkTokens} onChange={(t) => update(idx, { linkTokens: t } as any)} />
             </div>
           </div>
         ))}
@@ -2332,6 +2598,14 @@ function CardsEditor({ value, onChange }: { value: CardsData; onChange: (v: Card
                 onChange={(v) => updateCard(idx, { buttonHref: v })}
                 dir="ltr"
               />
+            </div>
+            <div className="mt-4 space-y-3">
+              <TokensPanel label="الكرت" tokens={c.twTokens} onChange={(t) => updateCard(idx, { twTokens: t })} />
+              <TokensPanel label="العنوان" tokens={c.titleTokens} onChange={(t) => updateCard(idx, { titleTokens: t })} />
+              <TokensPanel label="النص" tokens={c.textTokens} onChange={(t) => updateCard(idx, { textTokens: t })} />
+              <TokensPanel label="الشارة" tokens={c.badgeTokens} onChange={(t) => updateCard(idx, { badgeTokens: t })} />
+              <TokensPanel label="الزر" tokens={c.buttonTokens} onChange={(t) => updateCard(idx, { buttonTokens: t })} />
+              <TokensPanel label="الصورة" tokens={c.imageTokens} onChange={(t) => updateCard(idx, { imageTokens: t })} />
             </div>
           </div>
         ))}

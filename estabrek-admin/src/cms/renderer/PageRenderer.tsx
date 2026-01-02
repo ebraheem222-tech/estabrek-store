@@ -48,11 +48,16 @@ function heroAnimClass(anim?: string, duration?: number, delay?: number) {
   return cls(HERO_ANIM_CLASS[anim] ?? "", dur, del);
 }
 
+function stripTextEffectTokens(tokens?: any) {
+  if (!tokens || typeof tokens !== "object" || !("textEffect" in tokens)) return tokens;
+  return { ...tokens, textEffect: undefined };
+}
+
 function uiSectionClass(data: any) {
   const ui = data?.ui;
   const base = typeof ui?.sectionClass === "string" ? ui.sectionClass : "";
   const tokens = data?.twTokens;
-  return cls(base, tokensToClassName(tokens));
+  return cls(base, tokensToClassName(stripTextEffectTokens(tokens)));
 }
 
 function uiSectionStyle(data: any) {
