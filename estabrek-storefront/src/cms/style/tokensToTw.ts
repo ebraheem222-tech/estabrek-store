@@ -112,6 +112,12 @@ function hoverExtendedClass(preset?: HoverPresetExtended): string {
   }
 }
 
+function hasTypographyOverrides(tokens?: CmsTokens): boolean {
+  const typography = tokens?.typography;
+  if (!typography || typeof typography !== "object") return false;
+  return Object.values(typography).some((value) => value !== undefined && value !== null && value !== "" && value !== "default");
+}
+
 export function tokensToClassName(tokens?: CmsTokens): string {
   if (!tokens) return "";
   const parts: string[] = [];
@@ -184,6 +190,7 @@ export function tokensToClassName(tokens?: CmsTokens): string {
   }
   if (tokens.typography?.truncate) parts.push("truncate");
   if (tokens.typography?.lineClamp) parts.push(`line-clamp-${tokens.typography.lineClamp}`);
+  if (hasTypographyOverrides(tokens)) parts.push("cms-typography-override");
 
   // style
   if (tokens.style?.bg) parts.push(bgMap[tokens.style.bg]);
