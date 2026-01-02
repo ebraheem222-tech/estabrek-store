@@ -70,6 +70,7 @@ export const HeroDataZ = z.object({
   secondaryButton: ButtonZ.optional(),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   subtitle: v.subtitle ?? "",
   backgroundImageUrl: v.backgroundImageUrl ?? "",
@@ -85,6 +86,7 @@ export const RichTextDataZ = z.object({
   html: zText(100000),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   html: v.html ?? "",
   ui: v.ui ?? { sectionClass: "", containerClass: "" },
@@ -95,6 +97,7 @@ export const CustomHtmlDataZ = z.object({
   html: zText(200000),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   html: v.html ?? "",
   ui: v.ui ?? { sectionClass: "", containerClass: "" },
@@ -108,6 +111,7 @@ export const FaqDataZ = z.object({
   }).passthrough()).default([]),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   items: Array.isArray(v.items) ? v.items : [],
   ui: v.ui ?? { sectionClass: "", containerClass: "" },
@@ -124,6 +128,7 @@ export const GridDataZ = z.object({
   }).passthrough()).default([]),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   columns: typeof v.columns === "number" ? v.columns : 3,
   items: Array.isArray(v.items) ? v.items : [],
@@ -139,6 +144,7 @@ export const ImageGalleryDataZ = z.object({
   }).passthrough()).default([]),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   columns: typeof v.columns === "number" ? v.columns : 3,
   images: Array.isArray(v.images) ? v.images : [],
@@ -152,6 +158,7 @@ export const BannerDataZ = z.object({
   linkHref: zOptText(2048),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   text: v.text ?? "",
   variant: v.variant ?? "info",
   linkLabel: v.linkLabel ?? "",
@@ -165,6 +172,7 @@ export const FeaturedProductsDataZ = z.object({
   columns: z.preprocess(asNumber, z.number().int().min(1).max(12)).optional(),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   productIds: Array.isArray(v.productIds) ? v.productIds : [],
   columns: typeof v.columns === "number" ? v.columns : 4,
@@ -181,6 +189,7 @@ export const TestimonialsDataZ = z.object({
   }).passthrough()).default([]),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   items: Array.isArray(v.items) ? v.items : [],
   ui: v.ui ?? { sectionClass: "", containerClass: "" },
@@ -195,6 +204,7 @@ export const CtaDataZ = z.object({
   buttonHref: zOptText(2048),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   subtitle: v.subtitle ?? "",
   imageUrl: v.imageUrl ?? "",
@@ -223,6 +233,7 @@ export const CardsDataZ = z.object({
     imageClass: zOptText(1000),
   }).optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   subtitle: v.subtitle ?? "",
   cards: Array.isArray(v.cards) ? v.cards : [],
@@ -242,6 +253,7 @@ export const VideoDataZ = z.object({
   controls: z.preprocess(asBool, z.boolean()).optional(),
   ui: UiTailwindZ.optional(),
 }).passthrough().transform((v) => ({
+  ...v,
   title: v.title ?? "",
   subtitle: v.subtitle ?? "",
   url: v.url ?? "",
