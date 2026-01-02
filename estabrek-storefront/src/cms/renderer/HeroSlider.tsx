@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { HeroData, HeroSlide } from "../sectionTypes";
 import { TypewriterText } from "@/components/effects/TypewriterText";
-import { tokensToClassName } from "@/cms/style/tokensToTw";
+import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 
 function clamp01(v: unknown, fallback = 0.35) {
   const n = Number(v);
@@ -31,6 +31,11 @@ function normalizeSlides(d: HeroData): HeroSlide[] {
       align: (d as any).align,
       primaryButton: (d as any).primaryButton,
       secondaryButton: (d as any).secondaryButton,
+      slideTokens: (d as any).slideTokens,
+      titleTokens: (d as any).titleTokens,
+      subtitleTokens: (d as any).subtitleTokens,
+      primaryButtonTokens: (d as any).primaryButtonTokens,
+      secondaryButtonTokens: (d as any).secondaryButtonTokens,
     },
   ];
 }
@@ -53,6 +58,29 @@ function splitTextWithEffect(text: string, effect?: string): { content: React.Re
 
 function textEffectClass(tokens?: any) {
   return tokensToClassName({ textEffect: tokens?.textEffect } as any);
+}
+
+function resolveFieldTokens<T>(fieldTokens: T | undefined | null, fallback?: T): T | undefined {
+  return fieldTokens === undefined || fieldTokens === null ? fallback : fieldTokens;
+}
+
+function stripTextEffectTokens(tokens?: any) {
+  if (!tokens || typeof tokens !== "object" || !("textEffect" in tokens)) return tokens;
+  return { ...tokens, textEffect: undefined };
+}
+
+function hasTypographyOverrides(tokens?: any): boolean {
+  const typography = tokens?.typography;
+  if (!typography || typeof typography !== "object") return false;
+  return Object.values(typography).some((v) => v !== undefined && v !== null && v !== "" && v !== "default");
+}
+
+function tokensClass(tokens?: any): string {
+  return cls(tokensToClassName(stripTextEffectTokens(tokens)), hasTypographyOverrides(tokens) ? "cms-section-text" : undefined);
+}
+
+function tokensStyle(tokens?: any): React.CSSProperties | undefined {
+  return tokensToInlineStyle(tokens);
 }
 
 const HERO_ANIM_CLASS: Record<string, string> = {
@@ -145,26 +173,34 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
   const slideKey = `${index}-${slideAnim}-${slideDuration}`;
   const contentKey = `${index}-${contentAnim}-${contentDuration}-${contentDelay}`;
 
+  const slideTokens = resolveFieldTokens((current as any).slideTokens);
+  const baseSlideTokens = slideTokens ?? tokens;
+  const titleTokens = resolveFieldTokens((current as any).titleTokens, baseSlideTokens);
+  const subtitleTokens = resolveFieldTokens((current as any).subtitleTokens, baseSlideTokens);
+  const primaryButtonTokens = resolveFieldTokens((current as any).primaryButtonTokens, baseSlideTokens);
+  const secondaryButtonTokens = resolveFieldTokens((current as any).secondaryButtonTokens, baseSlideTokens);
+
   const hasBg = !!current?.backgroundImageUrl;
-  const titleData = textContent(String(current?.title ?? ""), tokens);
-  const subtitleData = current?.subtitle ? textContent(String(current.subtitle), tokens) : null;
-  const primaryLabelData = current?.primaryButton?.label ? textContent(String(current.primaryButton.label), tokens) : null;
-  const secondaryLabelData = current?.secondaryButton?.label ? textContent(String(current.secondaryButton.label), tokens) : null;
+  const titleData = textContent(String(current?.title ?? ""), titleTokens);
+  const subtitleData = current?.subtitle ? textContent(String(current.subtitle), subtitleTokens) : null;
+  const primaryLabelData = current?.primaryButton?.label ? textContent(String(current.primaryButton.label), primaryButtonTokens) : null;
+  const secondaryLabelData = current?.secondaryButton?.label ? textContent(String(current.secondaryButton.label), secondaryButtonTokens) : null;
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/40">
       {/* background */}
       <div
         key={slideKey}
-        className={cls("relative min-h-[340px] sm:min-h-[420px]", slideAnimClass)}
+        className={cls("relative min-h-[340px] sm:min-h-[420px]", slideAnimClass, tokensClass(slideTokens))}
         style={
           hasBg
             ? {
                 backgroundImage: `url(${current.backgroundImageUrl})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
+                ...(tokensStyle(slideTokens) ?? {}),
               }
-            : undefined
+            : tokensStyle(slideTokens)
         }
       >
         {/* if background image exists, keep overlay; otherwise use a luxury gold gradient haze */}
@@ -187,16 +223,24 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
         >
           <div className={"flex flex-col gap-4 " + justify}>
             <h2
-              className={cls("text-balance text-4xl font-black tracking-tight sm:text-5xl", titleData.className)}
-              style={{ color: hasBg ? "#F7F4E9" : "#0B0B0B" }}
+              className={cls(
+                "text-balance text-4xl font-black tracking-tight sm:text-5xl",
+                tokensClass(titleTokens),
+                titleData.className
+              )}
+              style={{ color: hasBg ? "#F7F4E9" : "#0B0B0B", ...(tokensStyle(titleTokens) ?? {}) }}
               aria-label={titleData.ariaLabel}
             >
               {titleData.content}
             </h2>
             {subtitleData ? (
               <p
-                className={cls("max-w-[70ch] text-base leading-relaxed", subtitleData.className)}
-                style={{ color: hasBg ? "rgba(247,244,233,0.85)" : "rgba(11,11,11,0.65)" }}
+                className={cls(
+                  "max-w-[70ch] text-base leading-relaxed",
+                  tokensClass(subtitleTokens),
+                  subtitleData.className
+                )}
+                style={{ color: hasBg ? "rgba(247,244,233,0.85)" : "rgba(11,11,11,0.65)", ...(tokensStyle(subtitleTokens) ?? {}) }}
                 aria-label={subtitleData.ariaLabel}
               >
                 {subtitleData.content}
@@ -209,8 +253,10 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
                   href={current.primaryButton.href}
                   className={cls(
                     "inline-flex items-center justify-center rounded-2xl border border-[color:var(--accent-2)]/50 bg-[color:var(--accent-2)] px-5 py-3 text-sm font-semibold text-[#0B0B0B] shadow-sm transition hover:brightness-95",
+                    tokensClass(primaryButtonTokens),
                     primaryLabelData?.className
                   )}
+                  style={tokensStyle(primaryButtonTokens)}
                   aria-label={primaryLabelData?.ariaLabel}
                 >
                   {primaryLabelData?.content ?? current.primaryButton.label}
@@ -224,8 +270,10 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
                     hasBg
                       ? "border border-white/20 bg-white/10 text-[#F7F4E9] hover:bg-white/15"
                       : "border border-[#0B0B0B]/20 bg-[#0B0B0B] text-[#F7F4E9] hover:bg-[#1A1A1A]",
+                    tokensClass(secondaryButtonTokens),
                     secondaryLabelData?.className
                   )}
+                  style={tokensStyle(secondaryButtonTokens)}
                   aria-label={secondaryLabelData?.ariaLabel}
                 >
                   {secondaryLabelData?.content ?? current.secondaryButton.label}

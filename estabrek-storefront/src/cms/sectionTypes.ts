@@ -1,4 +1,5 @@
 import type { PageSectionType } from "./types";
+import type { TwTokens } from "./style/tokens";
 
 // Shared CMS section data shapes.
 // This file is intentionally framework-agnostic (works in Admin preview and Storefront).
@@ -38,6 +39,11 @@ export type HeroSlide = {
   align?: "left" | "center" | "right";
   primaryButton?: { label: string; href: string };
   secondaryButton?: { label: string; href: string };
+  slideTokens?: TwTokens;
+  titleTokens?: TwTokens;
+  subtitleTokens?: TwTokens;
+  primaryButtonTokens?: TwTokens;
+  secondaryButtonTokens?: TwTokens;
 };
 
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";
@@ -90,7 +96,7 @@ export type GridData = {
   mode?: "grid" | "container";
   title?: string;
   columns?: number; // 1..6
-  items?: Array<{ title: string; text?: string; imageUrl?: string; href?: string }>;
+  items?: Array<{ title: string; text?: string; imageUrl?: string; href?: string; twTokens?: TwTokens; titleTokens?: TwTokens; textTokens?: TwTokens; imageTokens?: TwTokens; linkTokens?: TwTokens }>;
   blocks?: Array<{ type: PageSectionType; data: any; isVisible?: boolean }>;
   ui?: UiTailwind;
 };
@@ -103,6 +109,10 @@ export type FeaturedCategoriesData = {
     href: string;
     imageUrl?: string;
     categoryId?: string;
+    twTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    imageTokens?: TwTokens;
+    linkTokens?: TwTokens;
   }>;
   showArrows?: boolean;
   ui?: UiTailwind;
@@ -117,6 +127,10 @@ export type CollectionsGridData = {
     href: string;
     imageUrl?: string;
     categoryId?: string;
+    twTokens?: TwTokens;
+    labelTokens?: TwTokens;
+    imageTokens?: TwTokens;
+    linkTokens?: TwTokens;
   }>;
   ui?: UiTailwind;
 };
@@ -129,7 +143,7 @@ export type ProductsSliderData = {
 
 export type BrandsSliderData = {
   title?: string;
-  items: Array<{ name: string; logoUrl?: string; href?: string }>;
+  items: Array<{ name: string; logoUrl?: string; href?: string; twTokens?: TwTokens; nameTokens?: TwTokens; logoTokens?: TwTokens; linkTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
@@ -156,20 +170,20 @@ export type NewsletterData = {
 export type ImageGalleryData = {
   title?: string;
   columns?: number; // 2..6
-  images: Array<{ url: string; alt?: string }>;
+  images: Array<{ url: string; alt?: string; twTokens?: TwTokens; imageTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
 export type FaqData = {
   title?: string;
-  items: Array<{ question?: string; answer?: string; q?: string; a?: string }>;
+  items: Array<{ question?: string; answer?: string; q?: string; a?: string; twTokens?: TwTokens; questionTokens?: TwTokens; answerTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
 export type TestimonialsData = {
   title?: string;
-  items?: Array<{ name: string; role?: string; quote: string; avatarUrl?: string }>;
-  testimonials?: Array<{ name: string; role?: string; quote: string; avatarUrl?: string }>;
+  items?: Array<{ name: string; role?: string; quote: string; avatarUrl?: string; twTokens?: TwTokens; nameTokens?: TwTokens; roleTokens?: TwTokens; quoteTokens?: TwTokens; avatarTokens?: TwTokens }>;
+  testimonials?: Array<{ name: string; role?: string; quote: string; avatarUrl?: string; twTokens?: TwTokens; nameTokens?: TwTokens; roleTokens?: TwTokens; quoteTokens?: TwTokens; avatarTokens?: TwTokens }>;
   ui?: UiTailwind;
 };
 
@@ -194,6 +208,12 @@ export type CardsCard = {
   href?: string;
   linkHref?: string;
   productId?: string;
+  twTokens?: TwTokens;
+  titleTokens?: TwTokens;
+  textTokens?: TwTokens;
+  badgeTokens?: TwTokens;
+  buttonTokens?: TwTokens;
+  imageTokens?: TwTokens;
 };
 
 export type CardsData = {
