@@ -461,6 +461,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
   if (type === "RICH_TEXT") {
     const d = data as RichTextData;
     const safe = sanitizeHtml(d.html || "");
+    const hasComponents = sectionComponents(d).length > 0;
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
@@ -478,7 +479,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
             "text-sm leading-6 opacity-90 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-semibold [&_p]:my-2 [&_ul]:list-disc [&_ul]:ps-5 [&_ol]:list-decimal [&_ol]:ps-5 [&_a]:underline",
             htmlEffectClass
           )}
-          dangerouslySetInnerHTML={{ __html: safe || "<p class='opacity-60'>(محتوى)</p>" }}
+          dangerouslySetInnerHTML={{ __html: safe || (hasComponents ? "" : "<p class='opacity-60'>(محتوى)</p>") }}
         />
         </SectionTextScope>
         {componentsBlock}
@@ -489,6 +490,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
   if (type === "CUSTOM_HTML") {
     const d = data as CustomHtmlData;
     const safe = sanitizeHtml(d.html || "");
+    const hasComponents = sectionComponents(d).length > 0;
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = textContent("Custom HTML", sectionTokens);
@@ -505,7 +507,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
         </div>
         <div
           className={cls("text-sm leading-6 opacity-90 [&_a]:underline", htmlEffectClass)}
-          dangerouslySetInnerHTML={{ __html: safe || "<p class='opacity-60'>(HTML)</p>" }}
+          dangerouslySetInnerHTML={{ __html: safe || (hasComponents ? "" : "<p class='opacity-60'>(HTML)</p>") }}
         />
         </SectionTextScope>
         {componentsBlock}

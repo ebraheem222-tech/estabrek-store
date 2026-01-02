@@ -409,6 +409,31 @@ export default function PageEditorPage() {
     setOpenSection(true);
   };
 
+  const openCreateComponentsSection = () => {
+    setEditingSectionId(null);
+    setSectionType("RICH_TEXT");
+    setSectionVisible(true);
+    const idPart = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const d = {
+      ...defaultDataForType("RICH_TEXT"),
+      html: "",
+      components: [
+        {
+          id: `cmp_${idPart}`,
+          kind: "text",
+          name: "Text",
+          props: { as: "p", text: "مكوّن جديد" },
+        },
+      ],
+    };
+    setSectionDataObj(d);
+    setSectionDataRaw(JSON.stringify(d ?? {}, null, 2));
+    setSectionTemplateId("components_only");
+    setAdvancedJson(false);
+    setSectionErrors({});
+    setOpenSection(true);
+  };
+
   const openEditSection = (s: any) => {
     setEditingSectionId(s.id);
     setSectionType(s.type);
@@ -462,7 +487,8 @@ export default function PageEditorPage() {
     }
 
     if (type === "RICH_TEXT") {
-      if (!String(data?.html ?? "").trim()) fields.html = "المحتوى مطلوب";
+      const hasComponents = Array.isArray(data?.components) && data.components.length > 0;
+      if (!String(data?.html ?? "").trim() && !hasComponents) fields.html = "المحتوى مطلوب";
     }
 
     if (type === "FAQ") {
@@ -508,8 +534,17 @@ export default function PageEditorPage() {
 
     if (type === "CONTACT") {
       const items = Array.isArray(data?.items) ? data.items : [];
-      const fieldsList = Array.isArray(data?.form?.fields) ? data.form.fields : [];
-      if (!items.length && !fieldsList.length && !String(data?.mapEmbedUrl ?? "").trim()) {
+      const form = data?.form;
+      const fieldsList = Array.isArray(form?.fields) ? form.fields : [];
+      const hasForm =
+        !!form &&
+        (fieldsList.length > 0 ||
+          String(form?.title ?? "").trim() ||
+          String(form?.subtitle ?? "").trim() ||
+          String(form?.submitLabel ?? "").trim() ||
+          String(form?.action ?? "").trim());
+      const hasComponents = Array.isArray(data?.components) && data.components.length > 0;
+      if (!items.length && !hasForm && !String(data?.mapEmbedUrl ?? "").trim() && !hasComponents) {
         fields.items = "لازم تضيف وسيلة تواصل أو نموذج أو خريطة";
       }
     }
@@ -530,7 +565,8 @@ export default function PageEditorPage() {
     }
 
     if (type === "CUSTOM_HTML") {
-      if (!String(data?.html ?? "").trim()) fields.html = "HTML مطلوب";
+      const hasComponents = Array.isArray(data?.components) && data.components.length > 0;
+      if (!String(data?.html ?? "").trim() && !hasComponents) fields.html = "HTML مطلوب";
     }
 
     if (type === "BANNER") {
@@ -843,6 +879,7 @@ export default function PageEditorPage() {
               {showPreview ? "إخفاء المعاينة المباشرة" : "معاينة مباشرة"}
             </Button>
             <Button variant="secondary" onClick={openCreateSection}>إضافة Section</Button>
+            <Button variant="secondary" onClick={openCreateComponentsSection}>إضافة Components</Button>
 
             <select
               className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm sm:w-auto"

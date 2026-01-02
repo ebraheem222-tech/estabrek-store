@@ -379,6 +379,9 @@ export function ComponentsEditor({
   const previewClassName = cn(tokensToClassName(previewTokens), previewLegacyClassName, previewTextScopeClass);
   const previewDecorations = previewDecorationsFromTokens(previewTokens);
   const selectedSource = (selected as any)?.props?.source ?? "manual";
+  const positionValue = selected?.twTokens?.layout?.position ?? "static";
+  const showOffsets = positionValue !== "static";
+  const zIndexOptions = ["auto", "0", "10", "20", "30", "40", "50"].map((v) => ({ value: v, label: v }));
 
   function updateComponents(next: CmsComponent[]) {
     onChange(setComponents(data, next));
@@ -1165,6 +1168,79 @@ export function ComponentsEditor({
                         })
                       }
                     />
+                    <Select
+                      label="Z-Index"
+                      value={selected.twTokens?.layout?.zIndex ?? "auto"}
+                      options={zIndexOptions}
+                      onValueChange={(v: any) =>
+                        patchSelected({
+                          twTokens: {
+                            ...(selected.twTokens ?? defaultTokensBase()),
+                            layout: { ...((selected.twTokens ?? defaultTokensBase()).layout ?? {}), zIndex: v },
+                          },
+                        })
+                      }
+                    />
+                    {showOffsets ? (
+                      <>
+                        <Input
+                          label="Top"
+                          value={selected.twTokens?.layout?.top ?? ""}
+                          onChange={(v) =>
+                            patchSelected({
+                              twTokens: {
+                                ...(selected.twTokens ?? defaultTokensBase()),
+                                layout: { ...((selected.twTokens ?? defaultTokensBase()).layout ?? {}), top: v ? v : undefined },
+                              },
+                            })
+                          }
+                          dir="ltr"
+                          placeholder="auto / 0 / 12px"
+                        />
+                        <Input
+                          label="Right"
+                          value={selected.twTokens?.layout?.right ?? ""}
+                          onChange={(v) =>
+                            patchSelected({
+                              twTokens: {
+                                ...(selected.twTokens ?? defaultTokensBase()),
+                                layout: { ...((selected.twTokens ?? defaultTokensBase()).layout ?? {}), right: v ? v : undefined },
+                              },
+                            })
+                          }
+                          dir="ltr"
+                          placeholder="auto / 0 / 12px"
+                        />
+                        <Input
+                          label="Bottom"
+                          value={selected.twTokens?.layout?.bottom ?? ""}
+                          onChange={(v) =>
+                            patchSelected({
+                              twTokens: {
+                                ...(selected.twTokens ?? defaultTokensBase()),
+                                layout: { ...((selected.twTokens ?? defaultTokensBase()).layout ?? {}), bottom: v ? v : undefined },
+                              },
+                            })
+                          }
+                          dir="ltr"
+                          placeholder="auto / 0 / 12px"
+                        />
+                        <Input
+                          label="Left"
+                          value={selected.twTokens?.layout?.left ?? ""}
+                          onChange={(v) =>
+                            patchSelected({
+                              twTokens: {
+                                ...(selected.twTokens ?? defaultTokensBase()),
+                                layout: { ...((selected.twTokens ?? defaultTokensBase()).layout ?? {}), left: v ? v : undefined },
+                              },
+                            })
+                          }
+                          dir="ltr"
+                          placeholder="auto / 0 / 12px"
+                        />
+                      </>
+                    ) : null}
                     <Select
                       label="Padding"
                       value={selected.twTokens?.spacing?.padding ?? "none"}

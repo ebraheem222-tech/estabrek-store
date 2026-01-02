@@ -10,6 +10,7 @@ import { listCategories, type CatalogCategory } from "../../api/catalog.api";
 import DOMPurify from "dompurify";
 import { SectionStylingPanel } from "./SectionStylingPanel";
 import type { TwTokens } from "../../cms/style/tokens";
+import type { CmsComponent } from "../../cms/types";
 import {
   DndContext,
   PointerSensor,
@@ -330,12 +331,14 @@ export type HeroData = HeroSlide & {
 export type RichTextData = {
   title?: string;
   html: string;
+  components?: CmsComponent[];
   ui?: UiTailwind;
 };
 
 export type CustomHtmlData = {
   title?: string;
   html: string;
+  components?: CmsComponent[];
   ui?: UiTailwind;
 };
 
@@ -882,6 +885,23 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
 
     case "RICH_TEXT":
       return [
+        {
+          id: "components_only",
+          label: "Components فقط",
+          data: {
+            title: "",
+            html: "",
+            components: [
+              {
+                id: "c-components-text",
+                kind: "text",
+                name: "Text",
+                props: { as: "p", text: "مكوّن جديد" },
+              },
+            ],
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies RichTextData,
+        },
         {
           id: "rich_about",
           label: "RichText - من نحن",

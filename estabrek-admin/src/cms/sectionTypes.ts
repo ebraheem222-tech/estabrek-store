@@ -1,6 +1,6 @@
 // Shared CMS section data shapes.
 // This file is intentionally framework-agnostic (works in Admin preview and Storefront).
-import type { PageSectionType } from "./types";
+import type { PageSectionType, CmsComponent } from "./types";
 import type { TwTokens } from "./style/tokens";
 
 export type UiTailwind = {
@@ -45,12 +45,14 @@ export type HeroData = HeroSlide & {
 export type RichTextData = {
   title?: string;
   html: string;
+  components?: CmsComponent[];
   ui?: UiTailwind;
 };
 
 export type CustomHtmlData = {
   title?: string;
   html: string;
+  components?: CmsComponent[];
   ui?: UiTailwind;
 };
 

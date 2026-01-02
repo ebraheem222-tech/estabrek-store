@@ -31,6 +31,7 @@ import {
   FONT_WEIGHT_PRESETS,
   TEXT_ALIGN_PRESETS,
   HOVER_PRESETS,
+  POSITION_PRESETS,
   type TwTokens,
   type AnimPreset,
   type DecorLayer,
@@ -222,6 +223,22 @@ function LayoutEditor({ tokens, onChange }: {
   const bgOptions = BG_PRESETS.map(p => ({ value: p, label: p.replace(/-/g, " ") }));
   const radiusOptions = RADIUS_PRESETS.map(p => ({ value: p, label: p }));
   const shadowOptions = SHADOW_PRESETS.map(p => ({ value: p, label: p }));
+  const positionOptions = POSITION_PRESETS.map((p) => ({
+    value: p,
+    label:
+      p === "static"
+        ? "ثابت"
+        : p === "relative"
+        ? "نسبي"
+        : p === "absolute"
+        ? "مطلق"
+        : p === "fixed"
+        ? "ثابت للشاشة"
+        : "ملتصق",
+  }));
+  const zIndexOptions = ["auto", "0", "10", "20", "30", "40", "50"].map((v) => ({ value: v, label: v }));
+  const positionValue = tokens?.layout?.position ?? "static";
+  const showOffsets = positionValue !== "static";
 
   return (
     <div className="space-y-4">
@@ -298,6 +315,62 @@ function LayoutEditor({ tokens, onChange }: {
           />
         </FieldGroup>
       </div>
+
+      <Divider title="الموضع" />
+
+      <div className="grid grid-cols-2 gap-4">
+        <FieldGroup label="Position" labelAr="الموضع">
+          <Select
+            value={positionValue}
+            onChange={(v) => onChange({ ...tokens, layout: { ...tokens?.layout, position: v as any } })}
+            options={positionOptions}
+          />
+        </FieldGroup>
+        <FieldGroup label="Z-Index">
+          <Select
+            value={tokens?.layout?.zIndex ?? "auto"}
+            onChange={(v) => onChange({ ...tokens, layout: { ...tokens?.layout, zIndex: v as any } })}
+            options={zIndexOptions}
+          />
+        </FieldGroup>
+      </div>
+
+      {showOffsets ? (
+        <div className="grid grid-cols-2 gap-4">
+          <FieldGroup label="Top">
+            <Input
+              value={tokens?.layout?.top ?? ""}
+              onChange={(v) => onChange({ ...tokens, layout: { ...tokens?.layout, top: v ? v : undefined } })}
+              dir="ltr"
+              placeholder="auto / 0 / 12px"
+            />
+          </FieldGroup>
+          <FieldGroup label="Right">
+            <Input
+              value={tokens?.layout?.right ?? ""}
+              onChange={(v) => onChange({ ...tokens, layout: { ...tokens?.layout, right: v ? v : undefined } })}
+              dir="ltr"
+              placeholder="auto / 0 / 12px"
+            />
+          </FieldGroup>
+          <FieldGroup label="Bottom">
+            <Input
+              value={tokens?.layout?.bottom ?? ""}
+              onChange={(v) => onChange({ ...tokens, layout: { ...tokens?.layout, bottom: v ? v : undefined } })}
+              dir="ltr"
+              placeholder="auto / 0 / 12px"
+            />
+          </FieldGroup>
+          <FieldGroup label="Left">
+            <Input
+              value={tokens?.layout?.left ?? ""}
+              onChange={(v) => onChange({ ...tokens, layout: { ...tokens?.layout, left: v ? v : undefined } })}
+              dir="ltr"
+              placeholder="auto / 0 / 12px"
+            />
+          </FieldGroup>
+        </div>
+      ) : null}
     </div>
   );
 }
