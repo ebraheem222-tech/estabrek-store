@@ -12,6 +12,28 @@ function cn(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+function resolveOffsetValue(value?: number | string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
+  if (typeof value !== "string") return undefined;
+  const v = value.trim();
+  if (!v) return undefined;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return `${v}px`;
+  return v;
+}
+
+function isGradientValue(value?: string): boolean {
+  if (!value) return false;
+  return /gradient\(/i.test(value);
+}
+
+function parseGradientStops(value?: string): string[] | null {
+  if (!value) return null;
+  const match = value.match(/linear-gradient\([^,]+,\s*([^,]+),\s*([^)]+)\)/i);
+  if (match) return [match[1].trim(), match[2].trim()];
+  return null;
+}
+
 function hasDecorLayers(tokens?: any): boolean {
   const before = tokens?.decor?.before?.shape;
   const after = tokens?.decor?.after?.shape;
@@ -208,10 +230,18 @@ function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before")
   const size = layer.size ?? "md";
   const opacity = layer.opacity ?? "20";
   const color = layer.color ?? "muted";
-  const fill = layer.fill ?? (color === "sunset" || color === "ocean" || color === "neon" ? "gradient" : "solid");
+  const fillMode = layer.fill ?? (color === "sunset" || color === "ocean" || color === "neon" ? "gradient" : "solid");
   const blur = layer.blur ?? "0";
   const flipX = !!layer.flipX;
   const flipY = !!layer.flipY;
+  const zIndex = typeof layer.zIndex === "number" ? layer.zIndex : undefined;
+  const offsetX = resolveOffsetValue(layer.offsetX);
+  const offsetY = resolveOffsetValue(layer.offsetY);
+  const rotate = Number.isFinite(layer.rotate as number) ? `rotate(${Number(layer.rotate)}deg)` : undefined;
+  const scale = Number.isFinite(layer.scale as number) ? `scale(${Number(layer.scale)})` : undefined;
+  const customColor = typeof layer.customColor === "string" ? layer.customColor.trim() : "";
+  const customIsGradient = isGradientValue(customColor);
+  const wantsGradient = fillMode === "gradient" || customIsGradient;
 
   const sizeMapH: Record<string, string> = { xs: "h-8", sm: "h-12", md: "h-20", lg: "h-28", xl: "h-36" };
   const sizeMapW: Record<string, string> = { xs: "w-8", sm: "w-12", md: "w-20", lg: "w-28", xl: "w-36" };
@@ -225,21 +255,26 @@ function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before")
     placement === "left" ? "left-0 top-0 bottom-0" :
     "right-0 top-0 bottom-0";
 
-  const blurClass = blur === "md" ? "blur-md" : blur === "sm" ? "blur-sm" : undefined;
-  const rotateClass = placement === "left" ? "-rotate-90" : placement === "right" ? "rotate-90" : undefined;
-  const flipXClass = flipX ? "-scale-x-100" : undefined;
-  const flipYClass = flipY ? "-scale-y-100" : undefined;
+  const blurClass = blur === "lg" ? "blur-lg" : blur === "md" ? "blur-md" : blur === "sm" ? "blur-sm" : undefined;
 
   const opacityValue = Math.max(0, Math.min(100, Number(opacity))) / 100;
+  const layerOpacity = opacityValue * (fillMode === "glass" ? 0.6 : 1);
+  const translate = offsetX || offsetY ? `translate(${offsetX ?? "0px"}, ${offsetY ?? "0px"})` : undefined;
+  const transformParts: string[] = [];
+  if (placement === "left") transformParts.push("rotate(-90deg)");
+  if (placement === "right") transformParts.push("rotate(90deg)");
+  if (flipX) transformParts.push("scaleX(-1)");
+  if (flipY) transformParts.push("scaleY(-1)");
+  if (translate) transformParts.push(translate);
+  if (rotate) transformParts.push(rotate);
+  if (scale) transformParts.push(scale);
+  const transform = transformParts.length ? transformParts.join(" ") : undefined;
   const baseWrap = cn(
     "pointer-events-none absolute overflow-hidden",
     posClass,
     wrapSize,
-    kind === "before" ? "-z-10" : "-z-10",
-    blurClass,
-    rotateClass,
-    flipXClass,
-    flipYClass
+    zIndex === undefined ? "-z-10" : undefined,
+    blurClass
   );
 
   // Solid color via currentColor; gradients via defs.
@@ -265,21 +300,52 @@ function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before")
 
   const gradientId = `${kind}-grad-${Math.random().toString(36).slice(2,8)}`;
 
+  const gradientStops = wantsGradient
+    ? customIsGradient
+      ? (parseGradientStops(customColor) ?? [])
+      : customColor
+        ? [customColor, customColor]
+        : (gradStops as any)[color] ?? gradStops.sunset
+    : [];
+  const resolvedStops = gradientStops.length >= 2 ? gradientStops : gradStops.sunset;
+
   const def = SHAPES[layer.shape] ?? SHAPES.wave;
 
   return (
-    <div className={baseWrap} style={{ opacity: Number.isFinite(opacityValue) ? opacityValue : undefined }} aria-hidden="true">
-      <svg className={cn("w-full h-full", fill === "glass" ? "opacity-60" : undefined, solidClass)} viewBox={def.viewBox} preserveAspectRatio="none">
-        {fill === "gradient" ? (
+    <div
+      className={baseWrap}
+      style={{
+        opacity: Number.isFinite(layerOpacity) ? layerOpacity : undefined,
+        transform,
+        zIndex,
+        color: customColor && !customIsGradient ? customColor : undefined,
+      }}
+      aria-hidden="true"
+    >
+      <svg
+        className={cn("w-full h-full", customColor && !customIsGradient ? undefined : solidClass)}
+        viewBox={def.viewBox}
+        preserveAspectRatio="none"
+      >
+        {wantsGradient ? (
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor={(gradStops as any)[color]?.[0] ?? gradStops.sunset[0]} stopOpacity={0.85} />
-              <stop offset="50%" stopColor={(gradStops as any)[color]?.[1] ?? gradStops.sunset[1]} stopOpacity={0.85} />
-              <stop offset="100%" stopColor={(gradStops as any)[color]?.[2] ?? gradStops.sunset[2]} stopOpacity={0.85} />
+              {resolvedStops.length >= 3 ? (
+                <>
+                  <stop offset="0%" stopColor={resolvedStops[0]} stopOpacity={0.85} />
+                  <stop offset="50%" stopColor={resolvedStops[1]} stopOpacity={0.85} />
+                  <stop offset="100%" stopColor={resolvedStops[2]} stopOpacity={0.85} />
+                </>
+              ) : (
+                <>
+                  <stop offset="0%" stopColor={resolvedStops[0]} stopOpacity={0.85} />
+                  <stop offset="100%" stopColor={resolvedStops[1] ?? resolvedStops[0]} stopOpacity={0.85} />
+                </>
+              )}
             </linearGradient>
           </defs>
         ) : null}
-        <path d={def.d} fill={fill === "gradient" ? `url(#${gradientId})` : "currentColor"} />
+        <path d={def.d} fill={wantsGradient ? `url(#${gradientId})` : "currentColor"} />
       </svg>
     </div>
   );

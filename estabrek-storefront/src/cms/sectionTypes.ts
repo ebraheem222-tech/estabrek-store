@@ -101,6 +101,79 @@ export type GridData = {
   ui?: UiTailwind;
 };
 
+export type FeaturesData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  items: Array<{ title: string; text?: string; icon?: string; iconUrl?: string; href?: string; twTokens?: TwTokens; titleTokens?: TwTokens; textTokens?: TwTokens; iconTokens?: TwTokens; linkTokens?: TwTokens }>;
+  ui?: UiTailwind;
+};
+
+export type StatsData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  items: Array<{ value: string; label?: string; subtext?: string; icon?: string; twTokens?: TwTokens; valueTokens?: TwTokens; labelTokens?: TwTokens; subtextTokens?: TwTokens; iconTokens?: TwTokens }>;
+  ui?: UiTailwind;
+};
+
+export type TeamData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  members: Array<{
+    name: string;
+    role?: string;
+    bio?: string;
+    avatarUrl?: string;
+    socials?: Array<{ label?: string; href?: string }>;
+    twTokens?: TwTokens;
+    nameTokens?: TwTokens;
+    roleTokens?: TwTokens;
+    bioTokens?: TwTokens;
+    avatarTokens?: TwTokens;
+  }>;
+  ui?: UiTailwind;
+};
+
+export type PricingData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number;
+  plans: Array<{
+    name: string;
+    price?: string;
+    period?: string;
+    description?: string;
+    badge?: string;
+    highlight?: boolean;
+    features?: string[];
+    ctaLabel?: string;
+    ctaHref?: string;
+    twTokens?: TwTokens;
+    nameTokens?: TwTokens;
+    priceTokens?: TwTokens;
+    descriptionTokens?: TwTokens;
+  }>;
+  ui?: UiTailwind;
+};
+
+export type ContactData = {
+  title?: string;
+  subtitle?: string;
+  items?: Array<{ label?: string; value?: string; href?: string; icon?: string; twTokens?: TwTokens; labelTokens?: TwTokens; valueTokens?: TwTokens }>;
+  mapEmbedUrl?: string;
+  form?: {
+    title?: string;
+    subtitle?: string;
+    action?: string;
+    method?: "POST" | "GET";
+    submitLabel?: string;
+    fields?: Array<{ label?: string; name: string; type?: "text" | "email" | "tel" | "textarea"; placeholder?: string; required?: boolean }>;
+  };
+  ui?: UiTailwind;
+};
+
 export type FeaturedCategoriesData = {
   title?: string;
   subtitle?: string;
