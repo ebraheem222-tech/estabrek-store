@@ -103,7 +103,7 @@ body {
     color: var(--cms-text-color) !important;
   }
 
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div) {
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div):not(.cms-typography-override) {
     color: inherit !important;
     font-size: inherit !important;
     font-weight: inherit !important;
@@ -115,7 +115,7 @@ body {
     text-decoration: inherit !important;
   }
 
-  .cms-section-text :where(a,button) {
+  .cms-section-text :where(a,button):not(.cms-typography-override) {
     color: inherit !important;
     font-size: inherit !important;
     font-weight: inherit !important;
