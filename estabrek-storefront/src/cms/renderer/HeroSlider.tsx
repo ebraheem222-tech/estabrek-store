@@ -11,6 +11,11 @@ function clamp01(v: unknown, fallback = 0.35) {
   return Math.min(1, Math.max(0, n));
 }
 
+function safeNum(v: unknown, fallback: number) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function normalizeSlides(d: HeroData): HeroSlide[] {
   const raw = (d as any).slides;
   if (Array.isArray(raw) && raw.length > 0) {
@@ -50,6 +55,24 @@ function textEffectClass(tokens?: any) {
   return tokensToClassName({ textEffect: tokens?.textEffect } as any);
 }
 
+const HERO_ANIM_CLASS: Record<string, string> = {
+  "fade-up": "anim-fade-up",
+  "zoom-in": "anim-zoom-in",
+  "slide-up": "anim-slide-up",
+  "scale-in": "animate-scale-in",
+};
+
+function cls(...parts: Array<string | undefined | null | false>) {
+  return parts.filter(Boolean).join(" ");
+}
+
+function heroAnimClass(anim?: string, duration?: number, delay?: number) {
+  if (!anim || anim === "none") return "";
+  const dur = Number.isFinite(duration as number) ? `animation-duration-${duration}` : "";
+  const del = Number.isFinite(delay as number) ? `animation-delay-${delay}` : "";
+  return cls(HERO_ANIM_CLASS[anim] ?? "", dur, del);
+}
+
 function textContent(text: string, tokens?: any) {
   const value = typeof text === "string" ? text : String(text ?? "");
   const effect = tokens?.textEffect;
@@ -85,10 +108,6 @@ function textContent(text: string, tokens?: any) {
   return { useTypewriter: false, ariaLabel: split.ariaLabel, className: textEffectClass(tokens), content: split.content };
 }
 
-function cls(...parts: Array<string | undefined | null | false>) {
-  return parts.filter(Boolean).join(" ");
-}
-
 export default function HeroSlider({ data, textTokens }: { data: HeroData; textTokens?: any }) {
   const slides = useMemo(() => normalizeSlides(data), [data]);
   const [index, setIndex] = useState(0);
@@ -116,6 +135,16 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
   const justify =
     align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
 
+  const slideAnim = (data as any).slideAnim ?? "none";
+  const slideDuration = safeNum((data as any).slideDuration, 600);
+  const contentAnim = (data as any).contentAnim ?? "fade-up";
+  const contentDuration = safeNum((data as any).contentDuration, 400);
+  const contentDelay = safeNum((data as any).contentDelay, 0);
+  const slideAnimClass = heroAnimClass(slideAnim, slideDuration, 0);
+  const contentAnimClass = heroAnimClass(contentAnim, contentDuration, contentDelay);
+  const slideKey = `${index}-${slideAnim}-${slideDuration}`;
+  const contentKey = `${index}-${contentAnim}-${contentDuration}-${contentDelay}`;
+
   const hasBg = !!current?.backgroundImageUrl;
   const titleData = textContent(String(current?.title ?? ""), tokens);
   const subtitleData = current?.subtitle ? textContent(String(current.subtitle), tokens) : null;
@@ -126,7 +155,8 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
     <section className="relative overflow-hidden rounded-3xl border border-black/10 bg-white/40">
       {/* background */}
       <div
-        className="relative min-h-[340px] sm:min-h-[420px]"
+        key={slideKey}
+        className={cls("relative min-h-[340px] sm:min-h-[420px]", slideAnimClass)}
         style={
           hasBg
             ? {
@@ -148,7 +178,13 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
         <div aria-hidden className="pointer-events-none absolute -top-24 right-[-140px] h-[520px] w-[520px] rounded-full bg-[color:var(--accent-1)]/30 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-32 left-[-160px] h-[620px] w-[620px] rounded-full bg-[color:var(--accent-2)]/20 blur-3xl" />
 
-        <div className="relative mx-auto flex h-full min-h-[340px] max-w-6xl flex-col justify-center gap-5 px-6 py-14 sm:min-h-[420px] sm:px-10">
+        <div
+          key={contentKey}
+          className={cls(
+            "relative mx-auto flex h-full min-h-[340px] max-w-6xl flex-col justify-center gap-5 px-6 py-14 sm:min-h-[420px] sm:px-10",
+            contentAnimClass
+          )}
+        >
           <div className={"flex flex-col gap-4 " + justify}>
             <h2
               className={cls("text-balance text-4xl font-black tracking-tight sm:text-5xl", titleData.className)}

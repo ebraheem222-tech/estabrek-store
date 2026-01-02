@@ -76,6 +76,20 @@ function cls(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+const HERO_ANIM_CLASS: Record<string, string> = {
+  "fade-up": "anim-fade-up",
+  "zoom-in": "anim-zoom-in",
+  "slide-up": "anim-slide-up",
+  "scale-in": "animate-scale-in",
+};
+
+function heroAnimClass(anim?: string, duration?: number, delay?: number) {
+  if (!anim || anim === "none") return "";
+  const dur = Number.isFinite(duration as number) ? `animation-duration-${duration}` : "";
+  const del = Number.isFinite(delay as number) ? `animation-delay-${delay}` : "";
+  return cls(HERO_ANIM_CLASS[anim] ?? "", dur, del);
+}
+
 const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
 
 function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
@@ -312,11 +326,18 @@ function Section({
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
     const primaryLabelData = d.primaryButton?.label ? textContent(String(d.primaryButton.label), sectionTokens) : null;
     const secondaryLabelData = d.secondaryButton?.label ? textContent(String(d.secondaryButton.label), sectionTokens) : null;
+    const slideAnim = (d as any).slideAnim ?? "none";
+    const slideDuration = safeNum((d as any).slideDuration, 600);
+    const contentAnim = (d as any).contentAnim ?? "fade-up";
+    const contentDuration = safeNum((d as any).contentDuration, 400);
+    const contentDelay = safeNum((d as any).contentDelay, 0);
+    const slideAnimClass = heroAnimClass(slideAnim, slideDuration, 0);
+    const contentAnimClass = heroAnimClass(contentAnim, contentDuration, contentDelay);
 
     return (
       <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03]", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div
-          className={cls("relative min-h-[260px]", uiContainerClass(d))}
+          className={cls("relative min-h-[260px]", uiContainerClass(d), slideAnimClass)}
           style={
             d.backgroundImageUrl
               ? {
@@ -329,7 +350,7 @@ function Section({
         >
           <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
           <SectionTextScope data={d}>
-            <div className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify)}>
+            <div className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify, contentAnimClass)}>
               <h2 className={cls("text-2xl font-bold", titleData.className)} aria-label={titleData.ariaLabel}>
                 {titleData.content}
               </h2>
