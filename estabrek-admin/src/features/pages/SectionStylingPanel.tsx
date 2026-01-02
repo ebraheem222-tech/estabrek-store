@@ -276,6 +276,27 @@ function LayoutEditor({ tokens, onChange }: {
           onChange={(v) => onChange({ ...tokens, style: { ...tokens?.style, borderCustomColor: v } })}
         />
       </FieldGroup>
+
+      <Divider title="الحجم" />
+
+      <div className="grid grid-cols-2 gap-4">
+        <FieldGroup label="العرض" labelAr="Width">
+          <Input
+            value={tokens?.size?.width || ""}
+            onChange={(v) => onChange({ ...tokens, size: { ...tokens?.size, width: v } })}
+            dir="ltr"
+            placeholder="auto / 100% / 320px"
+          />
+        </FieldGroup>
+        <FieldGroup label="الارتفاع" labelAr="Height">
+          <Input
+            value={tokens?.size?.height || ""}
+            onChange={(v) => onChange({ ...tokens, size: { ...tokens?.size, height: v } })}
+            dir="ltr"
+            placeholder="auto / 60vh / 420px"
+          />
+        </FieldGroup>
+      </div>
     </div>
   );
 }

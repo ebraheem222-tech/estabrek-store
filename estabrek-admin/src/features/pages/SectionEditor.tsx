@@ -123,6 +123,15 @@ export type UiTailwind = {
   containerClass?: string;
 };
 
+export type SectionLayoutMode = "stack" | "row" | "grid";
+
+export type SectionLayout = {
+  mode?: SectionLayoutMode;
+  group?: string;
+  columns?: number;
+  span?: number;
+};
+
 function normalizeUi(ui: any): UiTailwind {
   if (!ui || typeof ui !== "object") return {};
   return {
@@ -174,6 +183,78 @@ function UiClassesEditor({
 
       <div className="mt-3 text-xs opacity-60">
         نصيحة: خلي الـContainer classes خفيف (مثلاً max-w-6xl) عشان ما يتعارض مع التصميم.
+      </div>
+    </div>
+  );
+}
+
+function SectionLayoutEditor({
+  value,
+  onChange,
+}: {
+  value: any;
+  onChange: (next: any) => void;
+}) {
+  const rawLayout = value?.layout && typeof value.layout === "object" ? value.layout : {};
+  const mode = (rawLayout.mode as SectionLayoutMode) ?? "stack";
+  const group = typeof rawLayout.group === "string" ? rawLayout.group : "";
+  const columns = Math.min(6, Math.max(1, Number(rawLayout.columns ?? 2)));
+  const span = Math.min(columns, Math.max(1, Number(rawLayout.span ?? 1)));
+
+  const updateLayout = (patch: Partial<SectionLayout>) => {
+    const next = { ...rawLayout, ...patch };
+    onChange({ ...(value ?? {}), layout: next });
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-3">
+      <div className="text-sm font-semibold">ترتيب القسم داخل الصفحة</div>
+      <Select
+        label="طريقة العرض"
+        value={mode}
+        onChange={(v) => updateLayout({ mode: v as SectionLayoutMode })}
+        options={[
+          { value: "stack", label: "عمودي (Stack)" },
+          { value: "row", label: "أفقي (Row)" },
+          { value: "grid", label: "شبكة (Grid)" },
+        ]}
+      />
+
+      {mode !== "stack" ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Input
+            label="Row/Group ID"
+            value={group}
+            onChange={(v) => updateLayout({ group: v })}
+            placeholder="مثال: row-1"
+            dir="ltr"
+          />
+          <Select
+            label="عدد الأعمدة"
+            value={String(columns)}
+            onChange={(v) => {
+              const nextCols = Math.min(6, Math.max(1, Number(v) || 1));
+              const nextSpan = Math.min(nextCols, span);
+              updateLayout({ columns: nextCols, span: nextSpan });
+            }}
+            options={[2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) }))}
+          />
+          <Select
+            label="عرض القسم (Span)"
+            value={String(span)}
+            onChange={(v) => updateLayout({ span: Math.min(columns, Math.max(1, Number(v) || 1)) })}
+            options={Array.from({ length: columns }, (_, i) => {
+              const n = i + 1;
+              return { value: String(n), label: String(n) };
+            })}
+          />
+        </div>
+      ) : (
+        <div className="text-xs opacity-60">اختر Row أو Grid لوضع عدة Sections في نفس الصف.</div>
+      )}
+
+      <div className="text-xs opacity-60">
+        ضع نفس Row/Group ID لأكثر من Section حتى يظهروا بجانب بعضهم.
       </div>
     </div>
   );
@@ -2791,6 +2872,7 @@ export function SectionEditor({
   return (
     <div className="space-y-4">
       {content}
+      <SectionLayoutEditor value={baseValue} onChange={onChange} />
       <SectionStylingPanel
         tokens={sectionTokens}
         onChange={(next) => onChange({ ...baseValue, twTokens: next })}

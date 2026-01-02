@@ -66,6 +66,27 @@ export function resolveCustomBackground(value?: string):
 
 type CmsTokens = TwTokens & TwTokensExtended;
 
+function resolveSizeValue(value: unknown, axis: "width" | "height"): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
+  if (typeof value !== "string") return undefined;
+  const v = value.trim();
+  if (!v) return undefined;
+  if (v === "0") return "0";
+  const keywordMap: Record<string, string> = {
+    auto: "auto",
+    full: "100%",
+    screen: axis === "width" ? "100vw" : "100vh",
+    min: "min-content",
+    max: "max-content",
+    fit: "fit-content",
+    none: "none",
+  };
+  if (keywordMap[v]) return keywordMap[v];
+  if (/^\d+(\.\d+)?$/.test(v)) return `${v}px`;
+  return v;
+}
+
 function textEffectClass(effect?: TextEffectPreset): string {
   if (!effect || effect === "none") return "";
   return `text-${effect}`;
@@ -253,6 +274,7 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string; borderCustomColor?: string }) | undefined;
   const textTokens = tokens.typography as (TwTokens["typography"] & { colorCustom?: string }) | undefined;
   const motionTokens = tokens.motion;
+  const sizeTokens = tokens.size;
   const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const textColor = resolveCustomColor(textTokens?.colorCustom ?? textTokens?.color);
   const borderColor = resolveCustomColor(styleTokens?.borderCustomColor ?? styleTokens?.borderColor);
@@ -274,6 +296,11 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
     style.borderColor = borderColor;
     (style as Record<string, string>)["--cms-border-color"] = borderColor;
   }
+  if (sizeTokens?.width) style.width = resolveSizeValue(sizeTokens.width, "width");
+  if (sizeTokens?.minW) style.minWidth = resolveSizeValue(sizeTokens.minW, "width");
+  if (sizeTokens?.height) style.height = resolveSizeValue(sizeTokens.height, "height");
+  if (sizeTokens?.minH) style.minHeight = resolveSizeValue(sizeTokens.minH, "height");
+  if (sizeTokens?.maxH) style.maxHeight = resolveSizeValue(sizeTokens.maxH, "height");
   if (typeof motionTokens?.duration === "number" && Number.isFinite(motionTokens.duration)) {
     style.animationDuration = motionTokens.duration >= 10 ? `${motionTokens.duration}ms` : `${motionTokens.duration}s`;
   }
