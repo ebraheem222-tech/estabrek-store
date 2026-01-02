@@ -48,7 +48,7 @@ function TextInput({ onChange, ...props }: SimpleInputProps) {
     <Input
       {...props}
       value={props.value ?? ""}
-      onChange={(e: any) => onChange(e?.target?.value ?? "")}
+      onValueChange={onChange}
     />
   );
 }
