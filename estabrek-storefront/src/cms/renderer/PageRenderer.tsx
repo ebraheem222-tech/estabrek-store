@@ -298,7 +298,10 @@ function buildSectionGroups(sections: CmsSection[]): SectionGroup[] {
   const groups: SectionGroup[] = [];
   for (const sec of sections) {
     const layout = normalizeSectionLayout((sec as any)?.data?.layout);
-    const groupKey = layout.mode !== "stack" && layout.group ? `${layout.mode}:${layout.group}` : "";
+    const groupKey =
+      layout.mode !== "stack"
+        ? (layout.group ? `${layout.mode}:${layout.group}` : `auto:${layout.mode}:${layout.columns}`)
+        : "";
     const last = groups[groups.length - 1];
     if (groupKey && last && last.groupKey === groupKey) {
       last.sections.push(sec);
