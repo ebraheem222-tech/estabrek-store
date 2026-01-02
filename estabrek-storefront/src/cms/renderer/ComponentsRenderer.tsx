@@ -6,6 +6,7 @@ import { SHAPES } from "@/cms/shapes/shapeRegistry";
 import ProductCard from "@/components/ProductCard";
 import { buildCanonicalQuery, type CatalogFilters } from "@/lib/filtersUrl";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
+import { TypewriterText } from "@/components/effects/TypewriterText";
 
 function cn(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
@@ -123,6 +124,53 @@ function splitTextWithEffect(text: string, effect?: string): { content: React.Re
   return { content, ariaLabel: text };
 }
 
+function textEffectClass(tokens?: any) {
+  return tokensToClassName({ textEffect: tokens?.textEffect } as any);
+}
+
+function mergeEffectTokens(tokens?: any, inheritTokens?: any): any | undefined {
+  if (!inheritTokens) return tokens;
+  const next = { ...(tokens ?? {}) } as any;
+  if (next.textEffect == null && inheritTokens?.textEffect != null) next.textEffect = inheritTokens.textEffect;
+  if (next.typewriter == null && inheritTokens?.typewriter != null) next.typewriter = inheritTokens.typewriter;
+  return next;
+}
+
+function textContent(text: string, tokens?: any) {
+  const value = typeof text === "string" ? text : String(text ?? "");
+  const effect = tokens?.textEffect;
+  const typewriter = tokens?.typewriter;
+  const typewriterTexts = Array.isArray(typewriter?.texts) && typewriter.texts.length
+    ? typewriter.texts
+    : value
+      ? [value]
+      : [];
+  const useTypewriter = !!(typewriter?.enabled && typewriterTexts.length);
+
+  if (useTypewriter) {
+    const allowEffect = effect && effect !== "none" && !SPLIT_TEXT_EFFECTS.has(effect) && effect !== "typewriter";
+    const typewriterClass = allowEffect ? textEffectClass(tokens) : "";
+    return {
+      useTypewriter: true,
+      ariaLabel: undefined as string | undefined,
+      className: "",
+      content: (
+        <TypewriterText
+          texts={typewriterTexts}
+          typeSpeed={typewriter?.speed}
+          deleteSpeed={typewriter?.deleteSpeed}
+          pauseTime={typewriter?.pauseTime}
+          loop={typewriter?.loop ?? true}
+          textClassName={typewriterClass || undefined}
+        />
+      ),
+    };
+  }
+
+  const split = splitTextWithEffect(value, effect);
+  return { useTypewriter: false, ariaLabel: split.ariaLabel, className: textEffectClass(tokens), content: split.content };
+}
+
 
 function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before") {
   if (!layer || !layer.shape || layer.shape === "none") return null;
@@ -222,7 +270,15 @@ function RenderBox({ tokens, className, children }: { tokens?: any; className?: 
   );
 }
 
-export function ComponentsRenderer({ components, productLookup }: { components?: CmsComponent[]; productLookup?: Record<string, any> }) {
+export function ComponentsRenderer({
+  components,
+  productLookup,
+  inheritTokens,
+}: {
+  components?: CmsComponent[];
+  productLookup?: Record<string, any>;
+  inheritTokens?: any;
+}) {
   if (!components?.length) return null;
 
   const renderOne = (c: CmsComponent, stack = new Set<CmsComponent>(), depth = 0): React.ReactNode => {
@@ -233,7 +289,8 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
     const nextDepth = depth + 1;
 
     // Layout components support nesting: props.children = CmsComponent[]
-    const tokens = resolveTokens(c);
+    const baseTokens = resolveTokens(c);
+    const tokens = mergeEffectTokens(baseTokens, inheritTokens);
     const legacyClassName = getLegacyClassName(c);
     const children = getChildren(c);
 
@@ -302,6 +359,9 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
 
     // Non-layout leaf components
     const tokenClass = cn(tokensToClassName(tokens), legacyClassName);
+    const tokenClassNoTextEffect = tokens?.textEffect
+      ? cn(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName)
+      : tokenClass;
     const tokenStyle = tokensToInlineStyle(tokens);
 
     switch (c.kind) {
@@ -421,10 +481,10 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
         const As = (c.props?.as ?? "p") as any;
         const rawText = c.props?.text ?? "";
         const textValue = typeof rawText === "string" ? rawText : String(rawText);
-        const split = splitTextWithEffect(textValue, tokens?.textEffect);
+        const textData = textContent(textValue, tokens);
         const node = (
-          <As className={tokenClass} style={tokenStyle} aria-label={split.ariaLabel}>
-            {split.content}
+          <As className={textData.useTypewriter ? tokenClassNoTextEffect : tokenClass} style={tokenStyle} aria-label={textData.ariaLabel}>
+            {textData.content}
           </As>
         );
         return wrapWithDecor(tokens, node, isInlineTag(As, tokens), c.id);
@@ -433,10 +493,14 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
       case "badge": {
         const rawText = c.props?.text ?? "Badge";
         const textValue = typeof rawText === "string" ? rawText : String(rawText);
-        const split = splitTextWithEffect(textValue, tokens?.textEffect);
+        const textData = textContent(textValue, tokens);
         const node = (
-          <span className={cn("inline-flex items-center rounded-full border border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} aria-label={split.ariaLabel}>
-            {split.content}
+          <span
+            className={cn("inline-flex items-center rounded-full border border-black/10 dark:border-white/15", textData.useTypewriter ? tokenClassNoTextEffect : tokenClass)}
+            style={tokenStyle}
+            aria-label={textData.ariaLabel}
+          >
+            {textData.content}
           </span>
         );
         return wrapWithDecor(tokens, node, true, c.id);
@@ -447,10 +511,15 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
         const rawLabel = c.props?.label ?? "Button";
         const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
         const variant = c.props?.variant ?? "primary";
-        const split = splitTextWithEffect(label, tokens?.textEffect);
+        const textData = textContent(label, tokens);
         const node = (
-          <a href={href} className={cn(baseButtonClasses(variant), tokenClass)} style={tokenStyle} aria-label={split.ariaLabel}>
-            {split.content}
+          <a
+            href={href}
+            className={cn(baseButtonClasses(variant), textData.useTypewriter ? tokenClassNoTextEffect : tokenClass)}
+            style={tokenStyle}
+            aria-label={textData.ariaLabel}
+          >
+            {textData.content}
           </a>
         );
         return wrapWithDecor(tokens, node, true, c.id);
@@ -462,14 +531,30 @@ export function ComponentsRenderer({ components, productLookup }: { components?:
         const buttonLabel = c.props?.buttonLabel;
         const buttonHref = c.props?.buttonHref ?? "#";
         const buttonVariant = c.props?.buttonVariant ?? "secondary";
+        const titleValue = typeof title === "string" ? title : String(title);
+        const textValue = typeof text === "string" ? text : String(text);
+        const buttonValue = typeof buttonLabel === "string" ? buttonLabel : String(buttonLabel ?? "");
+        const titleData = textContent(titleValue, tokens);
+        const textData = textContent(textValue, tokens);
+        const buttonData = textContent(buttonValue, tokens);
         const node = (
-          <div className={cn("rounded-2xl border border-black/10 bg-white dark:bg-white/5 dark:border-white/15", tokenClass)} style={tokenStyle}>
+          <div className={cn("rounded-2xl border border-black/10 bg-white dark:bg-white/5 dark:border-white/15", tokenClassNoTextEffect)} style={tokenStyle}>
             <div className="space-y-2">
-              <div className="text-lg font-semibold">{title}</div>
-              {text ? <div className="text-sm opacity-80">{text}</div> : null}
+              <div className={cn("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </div>
+              {text ? (
+                <div className={cn("text-sm opacity-80", textData.className)} aria-label={textData.ariaLabel}>
+                  {textData.content}
+                </div>
+              ) : null}
               {buttonLabel ? (
-                <a href={buttonHref} className={cn(baseButtonClasses(buttonVariant), "mt-2 inline-flex")}>
-                  {buttonLabel}
+                <a
+                  href={buttonHref}
+                  className={cn(baseButtonClasses(buttonVariant), "mt-2 inline-flex", buttonData.className)}
+                  aria-label={buttonData.ariaLabel}
+                >
+                  {buttonData.content}
                 </a>
               ) : null}
             </div>
