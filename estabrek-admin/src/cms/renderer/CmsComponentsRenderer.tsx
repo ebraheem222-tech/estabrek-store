@@ -217,6 +217,21 @@ function gridColsClass(cols?: number): string {
   return "grid-cols-1 sm:grid-cols-6";
 }
 
+function normalizeSelectOptions(raw: any): Array<{ label: string; value: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((opt) => {
+      if (typeof opt === "string") return { label: opt, value: opt };
+      if (opt && typeof opt === "object") {
+        const label = typeof opt.label === "string" ? opt.label : String(opt.value ?? "");
+        const value = typeof opt.value === "string" ? opt.value : String(opt.label ?? "");
+        return { label, value };
+      }
+      return null;
+    })
+    .filter((opt): opt is { label: string; value: string } => !!opt && !!opt.label);
+}
+
 function ComponentNode({
   component,
   depth = 0,
@@ -307,6 +322,76 @@ function ComponentNode({
         >
           {textData.content}
         </button>
+      );
+      return wrapWithDecor(tokens, node, true);
+    }
+    case "input": {
+      const label = props.label ?? "";
+      const node = (
+        <div className={cx("space-y-2", className)} style={inlineStyle}>
+          {label ? <label className="text-sm opacity-80">{label}</label> : null}
+          <input
+            type={props.type ?? "text"}
+            name={props.name ?? undefined}
+            placeholder={props.placeholder ?? ""}
+            required={!!props.required}
+            className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-white/10"
+          />
+        </div>
+      );
+      return wrapWithDecor(tokens, node, false);
+    }
+    case "textarea": {
+      const label = props.label ?? "";
+      const node = (
+        <div className={cx("space-y-2", className)} style={inlineStyle}>
+          {label ? <label className="text-sm opacity-80">{label}</label> : null}
+          <textarea
+            rows={Number(props.rows ?? 4)}
+            name={props.name ?? undefined}
+            placeholder={props.placeholder ?? ""}
+            required={!!props.required}
+            className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-white/10"
+          />
+        </div>
+      );
+      return wrapWithDecor(tokens, node, false);
+    }
+    case "select": {
+      const label = props.label ?? "";
+      const options = normalizeSelectOptions(props.options);
+      const node = (
+        <div className={cx("space-y-2", className)} style={inlineStyle}>
+          {label ? <label className="text-sm opacity-80">{label}</label> : null}
+          <select
+            name={props.name ?? undefined}
+            required={!!props.required}
+            className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-white/10"
+          >
+            {props.placeholder ? <option value="">{props.placeholder}</option> : null}
+            {options.map((opt, idx) => (
+              <option key={`${opt.value}-${idx}`} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+      return wrapWithDecor(tokens, node, false);
+    }
+    case "checkbox": {
+      const label = props.label ?? "Checkbox";
+      const node = (
+        <label className={cx("inline-flex items-center gap-2", className)} style={inlineStyle}>
+          <input
+            type="checkbox"
+            name={props.name ?? undefined}
+            defaultChecked={!!props.checked}
+            required={!!props.required}
+            className="h-4 w-4 rounded border border-white/20 bg-transparent"
+          />
+          <span className="text-sm">{label}</span>
+        </label>
       );
       return wrapWithDecor(tokens, node, true);
     }

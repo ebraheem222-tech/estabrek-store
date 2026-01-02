@@ -130,6 +130,42 @@ function defaultBadgeTokens(): TwTokens {
   };
 }
 
+function defaultFieldTokens(): TwTokens {
+  return {
+    ...defaultTokensBase(),
+    layout: {
+      display: "flex",
+      position: "relative",
+      zIndex: "auto",
+      flex: { dir: "col", items: "start" },
+    },
+    spacing: { padding: "sm", gap: "xs" },
+    typography: { size: "sm", align: "left", weight: "normal", color: "default" },
+    style: {
+      bg: "solid-surface",
+      radius: "xl",
+      shadow: "none",
+      borderWidth: "1",
+      borderStyle: "solid",
+      borderColor: "muted",
+    },
+  };
+}
+
+function defaultCheckboxTokens(): TwTokens {
+  return {
+    ...defaultTokensBase(),
+    layout: {
+      display: "inline-flex",
+      position: "relative",
+      zIndex: "auto",
+      flex: { dir: "row", items: "center" },
+    },
+    spacing: { padding: "none", gap: "xs" },
+    typography: { size: "sm", align: "left", weight: "normal", color: "default" },
+  };
+}
+
 function defaultContainerTokens(): TwTokens {
   return {
     ...defaultTokensBase(),
@@ -181,6 +217,38 @@ function defaultComponent(kind: CmsComponentKind): CmsComponent {
       return { id: makeId("list"), kind: "list", name: "List", props: { ordered: false, items: ["Item 1", "Item 2", "Item 3"] }, twTokens: defaultTokensBase() };
     case "button":
       return { id: makeId("btn"), kind: "button", name: "Button", props: { label: "Button", href: "/shop", variant: "primary" }, twTokens: defaultButtonTokens() };
+    case "input":
+      return {
+        id: makeId("input"),
+        kind: "input",
+        name: "Input",
+        props: { label: "Label", name: "", placeholder: "اكتب هنا", type: "text", required: false },
+        twTokens: defaultFieldTokens(),
+      };
+    case "textarea":
+      return {
+        id: makeId("textarea"),
+        kind: "textarea",
+        name: "Textarea",
+        props: { label: "Label", name: "", placeholder: "اكتب هنا", rows: 4, required: false },
+        twTokens: defaultFieldTokens(),
+      };
+    case "select":
+      return {
+        id: makeId("select"),
+        kind: "select",
+        name: "Select",
+        props: { label: "Select", name: "", placeholder: "اختر", options: ["Option 1", "Option 2"], required: false },
+        twTokens: defaultFieldTokens(),
+      };
+    case "checkbox":
+      return {
+        id: makeId("check"),
+        kind: "checkbox",
+        name: "Checkbox",
+        props: { label: "Checkbox", name: "", checked: false, required: false },
+        twTokens: defaultCheckboxTokens(),
+      };
     case "image":
       return { id: makeId("img"), kind: "image", name: "Image", props: { src: "", alt: "" }, twTokens: defaultTokensBase() };
     case "icon":
@@ -428,6 +496,10 @@ export function ComponentsEditor({
           options={[
             { value: "text", label: "Text" },
             { value: "button", label: "Button" },
+            { value: "input", label: "Input" },
+            { value: "textarea", label: "Textarea" },
+            { value: "select", label: "Select" },
+            { value: "checkbox", label: "Checkbox" },
             { value: "badge", label: "Badge" },
             { value: "card", label: "Card" },
             { value: "list", label: "List" },
@@ -689,6 +761,171 @@ export function ComponentsEditor({
                           { value: "ghost", label: "ghost" },
                         ]}
                         onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), variant: v } })}
+                      />
+                    </div>
+                  )}
+
+                  {selected.kind === "input" && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Input
+                        label="Label"
+                        value={selected.props?.label ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), label: v } })}
+                      />
+                      <Input
+                        label="Name"
+                        value={selected.props?.name ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), name: v } })}
+                        dir="ltr"
+                      />
+                      <Input
+                        label="Placeholder"
+                        value={selected.props?.placeholder ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), placeholder: v } })}
+                      />
+                      <Select
+                        label="Type"
+                        value={selected.props?.type ?? "text"}
+                        options={[
+                          { value: "text", label: "text" },
+                          { value: "email", label: "email" },
+                          { value: "number", label: "number" },
+                          { value: "password", label: "password" },
+                          { value: "tel", label: "tel" },
+                          { value: "url", label: "url" },
+                        ]}
+                        onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), type: v } })}
+                      />
+                      <Select
+                        label="Required"
+                        value={String(!!selected.props?.required)}
+                        options={[
+                          { value: "false", label: "No" },
+                          { value: "true", label: "Yes" },
+                        ]}
+                        onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), required: v === "true" } })}
+                      />
+                    </div>
+                  )}
+
+                  {selected.kind === "textarea" && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Input
+                        label="Label"
+                        value={selected.props?.label ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), label: v } })}
+                      />
+                      <Input
+                        label="Name"
+                        value={selected.props?.name ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), name: v } })}
+                        dir="ltr"
+                      />
+                      <Input
+                        label="Placeholder"
+                        value={selected.props?.placeholder ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), placeholder: v } })}
+                      />
+                      <Input
+                        label="Rows"
+                        type="number"
+                        value={String(selected.props?.rows ?? 4)}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), rows: Math.max(2, Number(v) || 4) } })}
+                      />
+                      <Select
+                        label="Required"
+                        value={String(!!selected.props?.required)}
+                        options={[
+                          { value: "false", label: "No" },
+                          { value: "true", label: "Yes" },
+                        ]}
+                        onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), required: v === "true" } })}
+                      />
+                    </div>
+                  )}
+
+                  {selected.kind === "select" && (() => {
+                    const rawOptions = Array.isArray(selected.props?.options) ? selected.props.options : [];
+                    const optionsText = rawOptions
+                      .map((opt: any) => (typeof opt === "string" ? opt : opt?.label ?? opt?.value ?? ""))
+                      .filter(Boolean)
+                      .join(", ");
+                    return (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Input
+                          label="Label"
+                          value={selected.props?.label ?? ""}
+                          onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), label: v } })}
+                        />
+                        <Input
+                          label="Name"
+                          value={selected.props?.name ?? ""}
+                          onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), name: v } })}
+                          dir="ltr"
+                        />
+                        <Input
+                          label="Placeholder"
+                          value={selected.props?.placeholder ?? ""}
+                          onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), placeholder: v } })}
+                        />
+                        <Select
+                          label="Required"
+                          value={String(!!selected.props?.required)}
+                          options={[
+                            { value: "false", label: "No" },
+                            { value: "true", label: "Yes" },
+                          ]}
+                          onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), required: v === "true" } })}
+                        />
+                        <Input
+                          label="Options (comma separated)"
+                          value={optionsText}
+                          onValueChange={(v) =>
+                            patchSelected({
+                              props: {
+                                ...(selected.props ?? {}),
+                                options: v
+                                  .split(",")
+                                  .map((x: string) => x.trim())
+                                  .filter(Boolean),
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                    );
+                  })()}
+
+                  {selected.kind === "checkbox" && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Input
+                        label="Label"
+                        value={selected.props?.label ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), label: v } })}
+                      />
+                      <Input
+                        label="Name"
+                        value={selected.props?.name ?? ""}
+                        onValueChange={(v) => patchSelected({ props: { ...(selected.props ?? {}), name: v } })}
+                        dir="ltr"
+                      />
+                      <Select
+                        label="Checked"
+                        value={String(!!selected.props?.checked)}
+                        options={[
+                          { value: "false", label: "No" },
+                          { value: "true", label: "Yes" },
+                        ]}
+                        onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), checked: v === "true" } })}
+                      />
+                      <Select
+                        label="Required"
+                        value={String(!!selected.props?.required)}
+                        options={[
+                          { value: "false", label: "No" },
+                          { value: "true", label: "Yes" },
+                        ]}
+                        onValueChange={(v: any) => patchSelected({ props: { ...(selected.props ?? {}), required: v === "true" } })}
                       />
                     </div>
                   )}
@@ -1856,6 +2093,73 @@ export function ComponentsEditor({
                         <a href={selected.props?.href ?? "#"} className={cn(baseButtonClasses(selected.props?.variant), previewClassName)} style={previewStyle}>
                           {selected.props?.label ?? "Button"}
                         </a>
+                      )}
+                      {selected.kind === "input" && (
+                        <div className={cn("space-y-2", previewClassName)} style={previewStyle}>
+                          {selected.props?.label ? (
+                            <label className="text-xs opacity-70">{selected.props?.label}</label>
+                          ) : null}
+                          <input
+                            type={selected.props?.type ?? "text"}
+                            name={selected.props?.name ?? undefined}
+                            placeholder={selected.props?.placeholder ?? ""}
+                            required={!!selected.props?.required}
+                            className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-white/10"
+                          />
+                        </div>
+                      )}
+                      {selected.kind === "textarea" && (
+                        <div className={cn("space-y-2", previewClassName)} style={previewStyle}>
+                          {selected.props?.label ? (
+                            <label className="text-xs opacity-70">{selected.props?.label}</label>
+                          ) : null}
+                          <textarea
+                            rows={Number(selected.props?.rows ?? 4)}
+                            name={selected.props?.name ?? undefined}
+                            placeholder={selected.props?.placeholder ?? ""}
+                            required={!!selected.props?.required}
+                            className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-white/10"
+                          />
+                        </div>
+                      )}
+                      {selected.kind === "select" && (() => {
+                        const rawOptions = Array.isArray(selected.props?.options) ? selected.props.options : [];
+                        const options = rawOptions
+                          .map((opt: any) => (typeof opt === "string" ? { label: opt, value: opt } : { label: opt?.label ?? opt?.value ?? "", value: opt?.value ?? opt?.label ?? "" }))
+                          .filter((opt: any) => opt.label);
+                        return (
+                          <div className={cn("space-y-2", previewClassName)} style={previewStyle}>
+                            {selected.props?.label ? (
+                              <label className="text-xs opacity-70">{selected.props?.label}</label>
+                            ) : null}
+                            <select
+                              name={selected.props?.name ?? undefined}
+                              required={!!selected.props?.required}
+                              className="w-full bg-transparent border-0 p-0 text-sm outline-none focus:ring-2 focus:ring-white/10"
+                            >
+                              {selected.props?.placeholder ? (
+                                <option value="">{selected.props?.placeholder}</option>
+                              ) : null}
+                              {options.map((opt: any, idx: number) => (
+                                <option key={`${opt.value}-${idx}`} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })()}
+                      {selected.kind === "checkbox" && (
+                        <label className={cn("inline-flex items-center gap-2", previewClassName)} style={previewStyle}>
+                          <input
+                            type="checkbox"
+                            name={selected.props?.name ?? undefined}
+                            defaultChecked={!!selected.props?.checked}
+                            required={!!selected.props?.required}
+                            className="h-4 w-4 rounded border border-white/20 bg-transparent"
+                          />
+                          <span className="text-sm">{selected.props?.label ?? "Checkbox"}</span>
+                        </label>
                       )}
                       {selected.kind === "card" && (
                         <div className={cn("border border-black/10 dark:border-white/15", previewClassName)} style={previewStyle}>

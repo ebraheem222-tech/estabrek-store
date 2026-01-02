@@ -29,6 +29,7 @@ import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { aiImproveSeo, aiSuggestSections, aiTranslatePage, moveSection as moveSectionApi, type PageSection, type PageSectionType, type PageStatus } from "../../api/pages.api";
 import { SectionEditor, defaultDataForType, templatesForType } from "./SectionEditor";
+import { SectionStylingPanel } from "./SectionStylingPanel";
 import { ComponentsEditor } from "./ComponentsEditor";
 import { SectionPreview } from "./SectionPreview";
 import { ThemePreview } from "../../components/ThemePreview";
@@ -111,7 +112,7 @@ function SortableSectionCard({
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold">{section.type}</div>
+              <div className="text-sm font-semibold">{section.data?.__mode === "components" ? "COMPONENTS" : section.type}</div>
               <span className="rounded-full border border-white/[0.10] bg-white/[0.04] px-2 py-0.5 text-[11px] opacity-80">#{section.order ?? 0}</span>
               {section.isVisible ? (
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-200">ظاهر</span>
@@ -366,6 +367,7 @@ export default function PageEditorPage() {
   const [advancedJson, setAdvancedJson] = useState(false);
   const [sectionDataRaw, setSectionDataRaw] = useState<string>("{}");
   const [sectionErrors, setSectionErrors] = useState<SectionFieldErrors>({});
+  const [componentsOnlyMode, setComponentsOnlyMode] = useState(false);
 
   const previewState = useMemo(() => {
     if (!advancedJson) return { data: sectionDataObj ?? {}, error: null as string | null };
@@ -398,6 +400,7 @@ export default function PageEditorPage() {
 
   const openCreateSection = () => {
     setEditingSectionId(null);
+    setComponentsOnlyMode(false);
     setSectionType("RICH_TEXT");
     setSectionVisible(true);
     const d = defaultDataForType("RICH_TEXT");
@@ -411,12 +414,14 @@ export default function PageEditorPage() {
 
   const openCreateComponentsSection = () => {
     setEditingSectionId(null);
+    setComponentsOnlyMode(true);
     setSectionType("RICH_TEXT");
     setSectionVisible(true);
     const idPart = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     const d = {
       ...defaultDataForType("RICH_TEXT"),
       html: "",
+      __mode: "components",
       components: [
         {
           id: `cmp_${idPart}`,
@@ -439,6 +444,7 @@ export default function PageEditorPage() {
     setSectionType(s.type);
     setSectionVisible(Boolean(s.isVisible ?? true));
     const d = s.data ?? {};
+    setComponentsOnlyMode(d?.__mode === "components");
     setSectionDataObj(d);
     setSectionDataRaw(JSON.stringify(d ?? {}, null, 2));
     setSectionTemplateId("__custom__");
@@ -1058,7 +1064,11 @@ export default function PageEditorPage() {
       {/* Section modal */}
       <Modal
         open={openSection}
-        title={editingSectionId ? "تعديل Section" : "إضافة Section"}
+        title={
+          componentsOnlyMode
+            ? (editingSectionId ? "تعديل Components" : "إضافة Components")
+            : (editingSectionId ? "تعديل Section" : "إضافة Section")
+        }
         onCancel={() => setOpenSection(false)}
         widthClassName="w-[94vw] max-w-[1900px] max-h-[95vh]"
         footer={
@@ -1070,53 +1080,58 @@ export default function PageEditorPage() {
         }
       >
         <div dir="rtl" className="space-y-4 overflow-x-auto">
-          <Select
-            label="Type"
-            value={sectionType}
-            onChange={(e) => {
-              const t = e.target.value as any;
-              setSectionType(t);
-              const d = defaultDataForType(t);
-              setSectionDataObj(d);
-              setSectionDataRaw(JSON.stringify(d ?? {}, null, 2));
-              setSectionTemplateId("__blank__");
-              setSectionErrors({});
-            }}
-            options={SECTION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
-          />
-
-          {templates.length ? (
-            <div className="grid gap-3 sm:grid-cols-3 items-end">
+          {!componentsOnlyMode ? (
+            <>
               <Select
-                label="Template"
-                value={sectionTemplateId}
-                onChange={(e) => setSectionTemplateId(e.target.value)}
-                options={[
-                  { value: "__blank__", label: "فارغ" },
-                  ...(editingSectionId ? [{ value: "__custom__", label: "المحتوى الحالي" }] : []),
-                  ...templates.map((t) => ({ value: t.id, label: t.label })),
-                ]}
-              />
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  applyTemplate(sectionTemplateId);
-                  setAdvancedJson(false);
-                }}
-              >
-                تطبيق Template
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
+                label="Type"
+                value={sectionType}
+                onChange={(e) => {
+                  const t = e.target.value as any;
+                  setComponentsOnlyMode(false);
+                  setSectionType(t);
+                  const d = defaultDataForType(t);
+                  setSectionDataObj(d);
+                  setSectionDataRaw(JSON.stringify(d ?? {}, null, 2));
                   setSectionTemplateId("__blank__");
-                  applyTemplate("__blank__");
-                  setAdvancedJson(false);
+                  setSectionErrors({});
                 }}
-              >
-                تفريغ
-              </Button>
-            </div>
+                options={SECTION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+              />
+
+              {templates.length ? (
+                <div className="grid gap-3 sm:grid-cols-3 items-end">
+                  <Select
+                    label="Template"
+                    value={sectionTemplateId}
+                    onChange={(e) => setSectionTemplateId(e.target.value)}
+                    options={[
+                      { value: "__blank__", label: "فارغ" },
+                      ...(editingSectionId ? [{ value: "__custom__", label: "المحتوى الحالي" }] : []),
+                      ...templates.map((t) => ({ value: t.id, label: t.label })),
+                    ]}
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      applyTemplate(sectionTemplateId);
+                      setAdvancedJson(false);
+                    }}
+                  >
+                    تطبيق Template
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setSectionTemplateId("__blank__");
+                      applyTemplate("__blank__");
+                      setAdvancedJson(false);
+                    }}
+                  >
+                    تفريغ
+                  </Button>
+                </div>
+              ) : null}
+            </>
           ) : null}
 
           <div className="flex items-center gap-2">
@@ -1158,17 +1173,33 @@ export default function PageEditorPage() {
             <div className="min-w-0">
               {!advancedJson ? (
                 <div className="min-w-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                  <SectionEditor
-                    type={sectionType}
-                    value={sectionDataObj}
-                    errors={sectionErrors.fields}
-                    onChange={(v) => {
-                      setSectionDataObj(v);
-                      setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
-                      setSectionErrors({});
-                      setSectionTemplateId("__custom__");
-                    }}
-                  />
+                  {!componentsOnlyMode ? (
+                    <SectionEditor
+                      type={sectionType}
+                      value={sectionDataObj}
+                      errors={sectionErrors.fields}
+                      onChange={(v) => {
+                        setSectionDataObj(v);
+                        setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
+                        setSectionErrors({});
+                        setSectionTemplateId("__custom__");
+                      }}
+                    />
+                  ) : (
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+                      <div className="text-sm font-semibold mb-3">تنسيق القسم المتقدم</div>
+                      <SectionStylingPanel
+                        tokens={sectionDataObj?.twTokens ?? {}}
+                        onChange={(next) => {
+                          const v = { ...(sectionDataObj ?? {}), twTokens: next };
+                          setSectionDataObj(v);
+                          setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
+                          setSectionErrors({});
+                          setSectionTemplateId("__custom__");
+                        }}
+                      />
+                    </div>
+                  )}
 
                   <div className="mt-4">
                     <ComponentsEditor
@@ -1206,7 +1237,7 @@ export default function PageEditorPage() {
             <div className="min-w-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-sm font-semibold">Preview</div>
-                <div className="text-xs opacity-60">{sectionType}</div>
+                <div className="text-xs opacity-60">{componentsOnlyMode ? "COMPONENTS" : sectionType}</div>
               </div>
               {previewState.error ? (
                 <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-xs text-red-100">
