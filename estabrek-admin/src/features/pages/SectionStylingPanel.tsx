@@ -16,6 +16,7 @@ import {
   DECOR_PLACEMENT_PRESETS,
   DECOR_SIZE_PRESETS,
   DECOR_COLOR_PRESETS,
+  DECOR_FILL_PRESETS,
   DECOR_BLUR_PRESETS,
   ANIM_LABELS,
   SHAPE_LABELS,
@@ -576,7 +577,15 @@ function DecorationsEditor({ decor, onChange }: {
   }));
   const placementOptions = DECOR_PLACEMENT_PRESETS.map(p => ({ value: p, label: p === "top" ? "أعلى" : p === "bottom" ? "أسفل" : p === "left" ? "يسار" : p === "right" ? "يمين" : "خلفية" }));
   const sizeOptions = DECOR_SIZE_PRESETS.map(s => ({ value: s, label: s }));
+  const fillOptions = DECOR_FILL_PRESETS.map((f) => ({
+    value: f,
+    label: f === "solid" ? "صلب" : f === "gradient" ? "تدرج" : "زجاجي",
+  }));
   const colorOptions = DECOR_COLOR_PRESETS.map(c => ({ value: c, label: c }));
+  const blurOptions = DECOR_BLUR_PRESETS.map((b) => ({
+    value: b,
+    label: b === "0" ? "بدون" : b,
+  }));
 
   const renderDecorLayer = (layer: DecorLayer | undefined, key: "before" | "after", label: string) => (
     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-3">
@@ -617,11 +626,36 @@ function DecorationsEditor({ decor, onChange }: {
             />
           </FieldGroup>
 
+          <FieldGroup label="الملء">
+            <ButtonGroup
+              value={layer?.fill || "solid"}
+              onChange={(v) => onChange({ ...decor, [key]: { ...layer, fill: v as any } })}
+              options={fillOptions}
+            />
+          </FieldGroup>
+
           <FieldGroup label="اللون">
             <Select
               value={layer?.color || "accent"}
               onChange={(v) => onChange({ ...decor, [key]: { ...layer, color: v as any } })}
               options={colorOptions}
+            />
+          </FieldGroup>
+
+          {layer?.color === "custom" ? (
+            <FieldGroup label="لون مخصص">
+              <ColorPicker
+                value={layer?.customColor || ""}
+                onChange={(v) => onChange({ ...decor, [key]: { ...layer, customColor: v } })}
+              />
+            </FieldGroup>
+          ) : null}
+
+          <FieldGroup label="الضبابية">
+            <Select
+              value={layer?.blur || "0"}
+              onChange={(v) => onChange({ ...decor, [key]: { ...layer, blur: v as any } })}
+              options={blurOptions}
             />
           </FieldGroup>
 
@@ -635,6 +669,67 @@ function DecorationsEditor({ decor, onChange }: {
               suffix="%"
             />
           </FieldGroup>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <FieldGroup label="Z-Index">
+              <Input
+                dir="ltr"
+                value={layer?.zIndex ?? ""}
+                placeholder="مثال: 0 أو 10"
+                onChange={(v) => {
+                  const val = String(v ?? "").trim();
+                  const n = val === "" ? undefined : Number(val);
+                  onChange({ ...decor, [key]: { ...layer, zIndex: Number.isFinite(n as number) ? (n as number) : undefined } });
+                }}
+              />
+            </FieldGroup>
+            <FieldGroup label="الدوران (deg)">
+              <Input
+                dir="ltr"
+                value={layer?.rotate ?? ""}
+                placeholder="0"
+                onChange={(v) => {
+                  const val = String(v ?? "").trim();
+                  const n = val === "" ? undefined : Number(val);
+                  onChange({ ...decor, [key]: { ...layer, rotate: Number.isFinite(n as number) ? (n as number) : undefined } });
+                }}
+              />
+            </FieldGroup>
+            <FieldGroup label="Scale">
+              <Input
+                dir="ltr"
+                value={layer?.scale ?? ""}
+                placeholder="1"
+                onChange={(v) => {
+                  const val = String(v ?? "").trim();
+                  const n = val === "" ? undefined : Number(val);
+                  onChange({ ...decor, [key]: { ...layer, scale: Number.isFinite(n as number) ? (n as number) : undefined } });
+                }}
+              />
+            </FieldGroup>
+            <FieldGroup label="إزاحة X">
+              <Input
+                dir="ltr"
+                value={layer?.offsetX ?? ""}
+                placeholder="0, -20, 10%"
+                onChange={(v) => {
+                  const val = String(v ?? "").trim();
+                  onChange({ ...decor, [key]: { ...layer, offsetX: val ? val : undefined } });
+                }}
+              />
+            </FieldGroup>
+            <FieldGroup label="إزاحة Y">
+              <Input
+                dir="ltr"
+                value={layer?.offsetY ?? ""}
+                placeholder="0, 24, -10%"
+                onChange={(v) => {
+                  const val = String(v ?? "").trim();
+                  onChange({ ...decor, [key]: { ...layer, offsetY: val ? val : undefined } });
+                }}
+              />
+            </FieldGroup>
+          </div>
 
           <div className="flex gap-4">
             <Toggle

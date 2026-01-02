@@ -10,6 +10,11 @@ import type {
   FeaturedProductsData,
   CollectionsGridData,
   GridData,
+  FeaturesData,
+  StatsData,
+  TeamData,
+  PricingData,
+  ContactData,
   HeroData,
   ImageGalleryData,
   NewsletterData,
@@ -569,6 +574,29 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "GRID") {
     const d = data as GridData;
+    if (d?.mode === "container") {
+      const blocks = Array.isArray(d.blocks) ? d.blocks : [];
+      const componentsBlock = renderComponentsBlock(d);
+      return wrapPreview(d, (
+        <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <SectionTextScope data={d}>
+            {d.title ? <div className="mb-3 text-sm font-semibold">{d.title}</div> : null}
+            <div className="space-y-2">
+              {blocks.length ? (
+                blocks.map((b: any, i: number) => (
+                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs">
+                    Section: {b?.type ?? "(نوع)"}
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs opacity-70">(لا يوجد Sections داخل الـContainer)</div>
+              )}
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </div>
+      ));
+    }
     const cols = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
     const items = Array.isArray(d.items) ? d.items : [];
     const gridCols = cols === 2 ? "sm:grid-cols-2" : cols === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3";
@@ -631,6 +659,259 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
             <div className="text-xs opacity-70">(لا يوجد عناصر)</div>
           )}
         </div>
+        </SectionTextScope>
+        {componentsBlock}
+      </div>
+    ));
+  }
+
+  if (type === "FEATURES") {
+    const d = data as FeaturesData;
+    const items = Array.isArray(d.items) ? d.items : [];
+    const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols =
+      cols <= 2 ? "sm:grid-cols-2" : cols === 3 ? "sm:grid-cols-3" : cols === 4 ? "sm:grid-cols-4" : cols === 5 ? "sm:grid-cols-5" : "sm:grid-cols-6";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          {titleData ? (
+            <div className={cls("mb-1 text-sm font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </div>
+          ) : null}
+          {subtitleData ? (
+            <div className={cls("mb-3 text-xs opacity-70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+              {subtitleData.content}
+            </div>
+          ) : null}
+          <div className={cls("grid gap-2", gridCols)}>
+            {items.length ? (
+              items.slice(0, 8).map((it, i) => {
+                const itemTitle = it.title || "(ميزة)";
+                const itemTitleData = textContent(String(itemTitle), sectionTokens);
+                const itemTextData = it.text ? textContent(String(it.text), sectionTokens) : null;
+                return (
+                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                    <div className="flex items-center gap-2">
+                      {it.iconUrl ? <img src={it.iconUrl} alt="" className="h-6 w-6 rounded-md" /> : it.icon ? <span>{it.icon}</span> : null}
+                      <div className={cls("text-sm font-semibold", itemTitleData.className)} aria-label={itemTitleData.ariaLabel}>
+                        {itemTitleData.content}
+                      </div>
+                    </div>
+                    {itemTextData ? (
+                      <div className={cls("mt-2 text-xs opacity-80", itemTextData.className)} aria-label={itemTextData.ariaLabel}>
+                        {itemTextData.content}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-xs opacity-70">(لا يوجد عناصر)</div>
+            )}
+          </div>
+        </SectionTextScope>
+        {componentsBlock}
+      </div>
+    ));
+  }
+
+  if (type === "STATS") {
+    const d = data as StatsData;
+    const items = Array.isArray(d.items) ? d.items : [];
+    const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols =
+      cols <= 2 ? "sm:grid-cols-2" : cols === 3 ? "sm:grid-cols-3" : cols === 4 ? "sm:grid-cols-4" : cols === 5 ? "sm:grid-cols-5" : "sm:grid-cols-6";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          {titleData ? (
+            <div className={cls("mb-1 text-sm font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </div>
+          ) : null}
+          {subtitleData ? (
+            <div className={cls("mb-3 text-xs opacity-70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+              {subtitleData.content}
+            </div>
+          ) : null}
+          <div className={cls("grid gap-2", gridCols)}>
+            {items.length ? (
+              items.slice(0, 8).map((it, i) => {
+                const valueData = textContent(String(it.value ?? ""), sectionTokens);
+                const labelData = it.label ? textContent(String(it.label), sectionTokens) : null;
+                return (
+                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center">
+                    {it.icon ? <div className="text-lg">{it.icon}</div> : null}
+                    <div className={cls("text-lg font-semibold", valueData.className)} aria-label={valueData.ariaLabel}>
+                      {valueData.content}
+                    </div>
+                    {labelData ? (
+                      <div className={cls("text-xs opacity-70", labelData.className)} aria-label={labelData.ariaLabel}>
+                        {labelData.content}
+                      </div>
+                    ) : null}
+                    {it.subtext ? <div className="text-[11px] opacity-60">{it.subtext}</div> : null}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-xs opacity-70">(لا يوجد عناصر)</div>
+            )}
+          </div>
+        </SectionTextScope>
+        {componentsBlock}
+      </div>
+    ));
+  }
+
+  if (type === "TEAM") {
+    const d = data as TeamData;
+    const members = Array.isArray(d.members) ? d.members : [];
+    const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols =
+      cols <= 2 ? "sm:grid-cols-2" : cols === 3 ? "sm:grid-cols-3" : cols === 4 ? "sm:grid-cols-4" : cols === 5 ? "sm:grid-cols-5" : "sm:grid-cols-6";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          {titleData ? (
+            <div className={cls("mb-1 text-sm font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </div>
+          ) : null}
+          {subtitleData ? (
+            <div className={cls("mb-3 text-xs opacity-70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+              {subtitleData.content}
+            </div>
+          ) : null}
+          <div className={cls("grid gap-2", gridCols)}>
+            {members.length ? (
+              members.slice(0, 8).map((m, i) => (
+                <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
+                  {m.avatarUrl ? <img src={m.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover mb-2" /> : null}
+                  <div className="text-sm font-semibold">{m.name || "(اسم)"}</div>
+                  {m.role ? <div className="text-xs opacity-70">{m.role}</div> : null}
+                  {m.bio ? <div className="mt-2 text-xs opacity-80">{m.bio}</div> : null}
+                </div>
+              ))
+            ) : (
+              <div className="text-xs opacity-70">(لا يوجد أعضاء)</div>
+            )}
+          </div>
+        </SectionTextScope>
+        {componentsBlock}
+      </div>
+    ));
+  }
+
+  if (type === "PRICING") {
+    const d = data as PricingData;
+    const plans = Array.isArray(d.plans) ? d.plans : [];
+    const cols = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols = cols === 2 ? "sm:grid-cols-2" : cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          {titleData ? (
+            <div className={cls("mb-1 text-sm font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </div>
+          ) : null}
+          {subtitleData ? (
+            <div className={cls("mb-3 text-xs opacity-70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+              {subtitleData.content}
+            </div>
+          ) : null}
+          <div className={cls("grid gap-2", gridCols)}>
+            {plans.length ? (
+              plans.slice(0, 6).map((p, i) => (
+                <div key={i} className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", p.highlight ? "ring-1 ring-accent-500/40" : undefined)}>
+                  {p.badge ? <div className="text-[11px] opacity-70">{p.badge}</div> : null}
+                  <div className="text-sm font-semibold">{p.name || "(خطة)"}</div>
+                  {p.price ? <div className="mt-1 text-lg">{p.price} {p.period ? <span className="text-xs opacity-60">{p.period}</span> : null}</div> : null}
+                  {p.description ? <div className="mt-1 text-xs opacity-70">{p.description}</div> : null}
+                  {Array.isArray(p.features) && p.features.length ? (
+                    <ul className="mt-2 list-disc ps-5 text-xs opacity-80">
+                      {p.features.slice(0, 4).map((f, idx) => <li key={idx}>{f}</li>)}
+                    </ul>
+                  ) : null}
+                </div>
+              ))
+            ) : (
+              <div className="text-xs opacity-70">(لا يوجد خطط)</div>
+            )}
+          </div>
+        </SectionTextScope>
+        {componentsBlock}
+      </div>
+    ));
+  }
+
+  if (type === "CONTACT") {
+    const d = data as ContactData;
+    const items = Array.isArray(d.items) ? d.items : [];
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    const form = d.form ?? {};
+    const fields = Array.isArray(form.fields) ? form.fields : [];
+
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          {titleData ? (
+            <div className={cls("mb-1 text-sm font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              {titleData.content}
+            </div>
+          ) : null}
+          {subtitleData ? (
+            <div className={cls("mb-3 text-xs opacity-70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+              {subtitleData.content}
+            </div>
+          ) : null}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              {items.length ? (
+                items.map((it, i) => (
+                  <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs">
+                    <div className="font-semibold">{it.label || "وسيلة"}</div>
+                    <div className="opacity-80">{it.value || ""}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs opacity-70">(لا توجد وسائل تواصل)</div>
+              )}
+            </div>
+            <div className="space-y-2">
+              {d.mapEmbedUrl ? (
+                <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs opacity-70">Map embed</div>
+              ) : null}
+              {fields.length ? (
+                <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs opacity-70">Form ({fields.length} fields)</div>
+              ) : null}
+            </div>
+          </div>
         </SectionTextScope>
         {componentsBlock}
       </div>

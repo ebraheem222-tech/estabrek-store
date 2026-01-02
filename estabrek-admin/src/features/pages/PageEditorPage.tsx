@@ -45,6 +45,11 @@ const SECTION_TYPES: Array<{ value: PageSectionType; label: string }> = [
   { value: "RICH_TEXT", label: "RICH_TEXT" },
   { value: "CUSTOM_HTML", label: "CUSTOM_HTML" },
   { value: "GRID", label: "GRID" },
+  { value: "FEATURES", label: "FEATURES (مزايا)" },
+  { value: "STATS", label: "STATS (أرقام)" },
+  { value: "TEAM", label: "TEAM (الفريق)" },
+  { value: "PRICING", label: "PRICING (الأسعار)" },
+  { value: "CONTACT", label: "CONTACT (تواصل)" },
   { value: "BANNER", label: "BANNER" },
   { value: "FEATURED_CATEGORIES", label: "التصنيفات المميزة (عناوين)" },
   { value: "COLLECTIONS_GRID", label: "شبكة المجموعات (Grid)" },
@@ -466,13 +471,47 @@ export default function PageEditorPage() {
     }
 
     if (type === "GRID") {
-      const cols = data?.columns;
-      if (cols !== undefined && cols !== null) {
-        const n = Number(cols);
-        if (!Number.isFinite(n) || n < 2 || n > 4) fields.columns = "الأعمدة لازم تكون بين 2 و 4";
+      const mode = data?.mode ?? "grid";
+      if (mode !== "container") {
+        const cols = data?.columns;
+        if (cols !== undefined && cols !== null) {
+          const n = Number(cols);
+          if (!Number.isFinite(n) || n < 2 || n > 4) fields.columns = "الأعمدة لازم تكون بين 2 و 4";
+        }
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (!items.length) fields.items = "لازم تضيف عنصر واحد على الأقل";
+      } else {
+        const blocks = Array.isArray(data?.blocks) ? data.blocks : [];
+        if (!blocks.length) fields.items = "لازم تضيف Section واحد على الأقل داخل الـContainer";
       }
+    }
+
+    if (type === "FEATURES") {
       const items = Array.isArray(data?.items) ? data.items : [];
-      if (!items.length) fields.items = "لازم تضيف عنصر واحد على الأقل";
+      if (!items.length) fields.items = "لازم تضيف ميزة واحدة على الأقل";
+    }
+
+    if (type === "STATS") {
+      const items = Array.isArray(data?.items) ? data.items : [];
+      if (!items.length) fields.items = "لازم تضيف رقم واحد على الأقل";
+    }
+
+    if (type === "TEAM") {
+      const members = Array.isArray(data?.members) ? data.members : [];
+      if (!members.length) fields.items = "لازم تضيف عضو واحد على الأقل";
+    }
+
+    if (type === "PRICING") {
+      const plans = Array.isArray(data?.plans) ? data.plans : [];
+      if (!plans.length) fields.items = "لازم تضيف خطة واحدة على الأقل";
+    }
+
+    if (type === "CONTACT") {
+      const items = Array.isArray(data?.items) ? data.items : [];
+      const fieldsList = Array.isArray(data?.form?.fields) ? data.form.fields : [];
+      if (!items.length && !fieldsList.length && !String(data?.mapEmbedUrl ?? "").trim()) {
+        fields.items = "لازم تضيف وسيلة تواصل أو نموذج أو خريطة";
+      }
     }
 
     if (type === "FEATURED_CATEGORIES") {

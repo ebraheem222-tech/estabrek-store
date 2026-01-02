@@ -263,6 +263,32 @@ function SectionLayoutEditor({
   );
 }
 
+const SECTION_TYPE_OPTIONS: Array<{ value: PageSectionType; label: string }> = [
+  { value: "HERO", label: "HERO" },
+  { value: "RICH_TEXT", label: "RICH_TEXT" },
+  { value: "CUSTOM_HTML", label: "CUSTOM_HTML" },
+  { value: "GRID", label: "GRID" },
+  { value: "FEATURES", label: "FEATURES" },
+  { value: "STATS", label: "STATS" },
+  { value: "TEAM", label: "TEAM" },
+  { value: "PRICING", label: "PRICING" },
+  { value: "CONTACT", label: "CONTACT" },
+  { value: "BANNER", label: "BANNER" },
+  { value: "FEATURED_CATEGORIES", label: "FEATURED_CATEGORIES" },
+  { value: "COLLECTIONS_GRID", label: "COLLECTIONS_GRID" },
+  { value: "NEW_ARRIVALS_SLIDER", label: "NEW_ARRIVALS_SLIDER" },
+  { value: "BEST_SELLERS_SLIDER", label: "BEST_SELLERS_SLIDER" },
+  { value: "BRANDS_SLIDER", label: "BRANDS_SLIDER" },
+  { value: "FEATURED_PRODUCTS", label: "FEATURED_PRODUCTS" },
+  { value: "NEWSLETTER", label: "NEWSLETTER" },
+  { value: "IMAGE_GALLERY", label: "IMAGE_GALLERY" },
+  { value: "FAQ", label: "FAQ" },
+  { value: "TESTIMONIALS", label: "TESTIMONIALS" },
+  { value: "CTA", label: "CTA" },
+  { value: "CARDS", label: "CARDS" },
+  { value: "VIDEO", label: "VIDEO" },
+];
+
 export type HeroSlide = {
   title: string;
   subtitle?: string;
@@ -320,9 +346,87 @@ export type FaqData = {
 };
 
 export type GridData = {
+  mode?: "grid" | "container";
   title?: string;
   columns?: number; // 2..4
   items: Array<{ title: string; text?: string; imageUrl?: string; href?: string; twTokens?: TwTokens; titleTokens?: TwTokens; textTokens?: TwTokens; imageTokens?: TwTokens; linkTokens?: TwTokens }>;
+  blocks?: Array<{ type: PageSectionType; data: any; isVisible?: boolean }>;
+  ui?: UiTailwind;
+};
+
+export type FeaturesData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number; // 2..6
+  items: Array<{ title: string; text?: string; icon?: string; iconUrl?: string; href?: string }>;
+  ui?: UiTailwind;
+};
+
+export type StatsData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number; // 2..6
+  items: Array<{ value: string; label?: string; subtext?: string; icon?: string }>;
+  ui?: UiTailwind;
+};
+
+export type TeamMember = {
+  name: string;
+  role?: string;
+  bio?: string;
+  avatarUrl?: string;
+  socials?: Array<{ label?: string; href?: string }>;
+};
+
+export type TeamData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number; // 2..6
+  members: TeamMember[];
+  ui?: UiTailwind;
+};
+
+export type PricingPlan = {
+  name: string;
+  price?: string;
+  period?: string;
+  description?: string;
+  badge?: string;
+  highlight?: boolean;
+  features?: string[];
+  ctaLabel?: string;
+  ctaHref?: string;
+};
+
+export type PricingData = {
+  title?: string;
+  subtitle?: string;
+  columns?: number; // 2..4
+  plans: PricingPlan[];
+  ui?: UiTailwind;
+};
+
+export type ContactFormField = {
+  label?: string;
+  name: string;
+  type?: "text" | "email" | "tel" | "textarea";
+  placeholder?: string;
+  required?: boolean;
+};
+
+export type ContactData = {
+  title?: string;
+  subtitle?: string;
+  items?: Array<{ label?: string; value?: string; href?: string; icon?: string }>;
+  mapEmbedUrl?: string;
+  form?: {
+    title?: string;
+    subtitle?: string;
+    action?: string;
+    method?: "POST" | "GET";
+    submitLabel?: string;
+    fields?: ContactFormField[];
+  };
   ui?: UiTailwind;
 };
 
@@ -490,11 +594,68 @@ export function defaultDataForType(type: PageSectionType): any {
       } satisfies FaqData;
     case "GRID":
       return {
+        mode: "grid",
         title: "",
         columns: 3,
         items: [{ title: "", text: "", imageUrl: "", href: "" }],
+        blocks: [],
         ui: { sectionClass: "", containerClass: "" },
       } satisfies GridData;
+    case "FEATURES":
+      return {
+        title: "المميزات",
+        subtitle: "",
+        columns: 3,
+        items: [{ title: "ميزة", text: "شرح مختصر", icon: "✨", iconUrl: "", href: "" }],
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies FeaturesData;
+    case "STATS":
+      return {
+        title: "أرقام سريعة",
+        subtitle: "",
+        columns: 3,
+        items: [{ value: "10K+", label: "عميل سعيد", subtext: "", icon: "" }],
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies StatsData;
+    case "TEAM":
+      return {
+        title: "فريق العمل",
+        subtitle: "",
+        columns: 3,
+        members: [{ name: "اسم", role: "الدور", bio: "نبذة قصيرة", avatarUrl: "", socials: [] }],
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies TeamData;
+    case "PRICING":
+      return {
+        title: "خطط الأسعار",
+        subtitle: "",
+        columns: 3,
+        plans: [{ name: "الخطة الأساسية", price: "99$", period: "شهرياً", description: "", features: ["ميزة 1", "ميزة 2"], ctaLabel: "اشترك", ctaHref: "#", highlight: false, badge: "" }],
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies PricingData;
+    case "CONTACT":
+      return {
+        title: "تواصل معنا",
+        subtitle: "",
+        items: [
+          { label: "الهاتف", value: "+970 000 000 000", href: "tel:+970000000000", icon: "📞" },
+          { label: "البريد", value: "info@example.com", href: "mailto:info@example.com", icon: "✉️" },
+        ],
+        mapEmbedUrl: "",
+        form: {
+          title: "راسلنا",
+          subtitle: "",
+          action: "",
+          method: "POST",
+          submitLabel: "إرسال",
+          fields: [
+            { label: "الاسم", name: "name", type: "text", placeholder: "", required: true },
+            { label: "البريد الإلكتروني", name: "email", type: "email", placeholder: "", required: true },
+            { label: "الرسالة", name: "message", type: "textarea", placeholder: "", required: true },
+          ],
+        },
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies ContactData;
     case "IMAGE_GALLERY":
       return {
         title: "",
@@ -722,6 +883,7 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
           id: "grid_features",
           label: "Grid - مميزات (3 أعمدة)",
           data: {
+            mode: "grid",
             title: "ليش تختارنا؟",
             columns: 3,
             items: [
@@ -731,6 +893,127 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             ],
             ui: { sectionClass: "", containerClass: "" },
           } satisfies GridData,
+        },
+        {
+          id: "grid_container",
+          label: "Container - Sections داخل قسم",
+          data: {
+            mode: "container",
+            title: "قسم يحتوي أقسام",
+            columns: 2,
+            blocks: [
+              { type: "RICH_TEXT", data: { title: "من نحن", html: "<p>نبذة قصيرة عن النشاط.</p>", ui: { sectionClass: "", containerClass: "" } } },
+              { type: "FAQ", data: { title: "أسئلة شائعة", items: [{ question: "سؤال؟", answer: "جواب مختصر." }], ui: { sectionClass: "", containerClass: "" } } },
+            ],
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies GridData,
+        },
+      ];
+
+    case "FEATURES":
+      return [
+        {
+          id: "features_basic",
+          label: "Features - 3 أعمدة",
+          data: {
+            title: "المميزات",
+            subtitle: "ليش تختارنا؟",
+            columns: 3,
+            items: [
+              { title: "جودة ممتازة", text: "منتجات مختارة بعناية.", icon: "✨" },
+              { title: "توصيل سريع", text: "خلال أيام قليلة.", icon: "🚚" },
+              { title: "دعم سريع", text: "نرد عليك بأسرع وقت.", icon: "💬" },
+            ],
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies FeaturesData,
+        },
+      ];
+
+    case "STATS":
+      return [
+        {
+          id: "stats_basic",
+          label: "Stats - أرقام",
+          data: {
+            title: "أرقام تتكلم",
+            subtitle: "",
+            columns: 3,
+            items: [
+              { value: "10K+", label: "عميل سعيد" },
+              { value: "120+", label: "منتج متوفر" },
+              { value: "4.9/5", label: "تقييم العملاء" },
+            ],
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies StatsData,
+        },
+      ];
+
+    case "TEAM":
+      return [
+        {
+          id: "team_basic",
+          label: "Team - الفريق",
+          data: {
+            title: "فريق العمل",
+            subtitle: "الناس اللي يشتغلوا خلف الكواليس",
+            columns: 3,
+            members: [
+              { name: "سارة", role: "المديرة", bio: "خبرة 8 سنوات", avatarUrl: "" },
+              { name: "محمد", role: "المبيعات", bio: "مهتم بخدمة العملاء", avatarUrl: "" },
+              { name: "ليان", role: "التسويق", bio: "صانعة محتوى", avatarUrl: "" },
+            ],
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies TeamData,
+        },
+      ];
+
+    case "PRICING":
+      return [
+        {
+          id: "pricing_basic",
+          label: "Pricing - خطط أسعار",
+          data: {
+            title: "خطط الأسعار",
+            subtitle: "اختر الخطة الأنسب لك",
+            columns: 3,
+            plans: [
+              { name: "أساسية", price: "29$", period: "شهرياً", features: ["ميزة 1", "ميزة 2"], ctaLabel: "ابدأ", ctaHref: "#" },
+              { name: "احترافية", price: "59$", period: "شهرياً", features: ["ميزة 1", "ميزة 2", "ميزة 3"], ctaLabel: "اشترك", ctaHref: "#", highlight: true, badge: "الأفضل" },
+              { name: "شركات", price: "99$", period: "شهرياً", features: ["ميزة 1", "ميزة 2", "ميزة 3", "ميزة 4"], ctaLabel: "تواصل معنا", ctaHref: "#" },
+            ],
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies PricingData,
+        },
+      ];
+
+    case "CONTACT":
+      return [
+        {
+          id: "contact_basic",
+          label: "Contact - تواصل",
+          data: {
+            title: "تواصل معنا",
+            subtitle: "نرد عليك بسرعة",
+            items: [
+              { label: "الهاتف", value: "+970 000 000 000", href: "tel:+970000000000", icon: "📞" },
+              { label: "البريد", value: "info@example.com", href: "mailto:info@example.com", icon: "✉️" },
+              { label: "العنوان", value: "القدس - شارع المثال", href: "", icon: "📍" },
+            ],
+            mapEmbedUrl: "",
+            form: {
+              title: "راسلنا",
+              subtitle: "",
+              action: "",
+              method: "POST",
+              submitLabel: "إرسال",
+              fields: [
+                { label: "الاسم", name: "name", type: "text", required: true },
+                { label: "البريد الإلكتروني", name: "email", type: "email", required: true },
+                { label: "الرسالة", name: "message", type: "textarea", required: true },
+              ],
+            },
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies ContactData,
         },
       ];
 
@@ -1632,6 +1915,12 @@ function FaqEditor({ value, onChange, errors }: { value: FaqData; onChange: (v: 
 
 function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v: GridData) => void; errors?: CommonErrors }) {
   const items = Array.isArray(value.items) ? value.items : [];
+  const blocks = Array.isArray(value.blocks) ? value.blocks : [];
+  const mode = (value.mode ?? "grid") as "grid" | "container";
+  const cols = Number(value.columns ?? 3);
+  const [newBlockType, setNewBlockType] = useState<PageSectionType>("RICH_TEXT");
+  const [openBlockKey, setOpenBlockKey] = useState<string | null>(null);
+
   useEffect(() => {
     if (!items.length) return;
     if (items.every((it: any) => typeof it.__key === "string" && it.__key)) return;
@@ -1640,12 +1929,56 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!blocks.length) return;
+    if (blocks.every((it: any) => typeof it.__key === "string" && it.__key)) return;
+    const next = blocks.map((it: any) => ({ ...it, __key: it.__key ?? uid("block") }));
+    onChange({ ...value, blocks: next as any });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const cols = Number(value.columns ?? 3);
+
+  const addBlock = () => {
+    const next = blocks.concat([{ type: newBlockType, data: defaultDataForType(newBlockType), isVisible: true, __key: uid("block") } as any]);
+    onChange({ ...value, blocks: next });
+    setOpenBlockKey((next[next.length - 1] as any).__key ?? null);
+  };
+
+  const updateBlock = (idx: number, patch: any) => {
+    const next = blocks.slice();
+    next[idx] = { ...next[idx], ...patch };
+    onChange({ ...value, blocks: next });
+  };
+
+  const moveBlock = (idx: number, dir: -1 | 1) => {
+    const j = idx + dir;
+    if (j < 0 || j >= blocks.length) return;
+    onChange({ ...value, blocks: moveInArray(blocks, idx, j) as any });
+  };
+
+  const removeBlock = (idx: number) => {
+    const next = blocks.slice();
+    next.splice(idx, 1);
+    onChange({ ...value, blocks: next });
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
+        <Select
+          label="وضع القسم"
+          value={mode}
+          onChange={(v) => onChange({ ...value, mode: v as any })}
+          options={[
+            { value: "grid", label: "Grid (عناصر)" },
+            { value: "container", label: "Container (Sections)" },
+          ]}
+        />
+      </div>
+
+      {mode === "grid" ? (
         <Select
           label="عدد الأعمدة"
           value={String(cols)}
@@ -1657,7 +1990,240 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
           ]}
           error={errors?.columns}
         />
+      ) : null}
+
+      {errors?.items ? <div className="text-xs text-red-400">{errors.items}</div> : null}
+
+      {mode === "container" ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <Select
+              label="نوع القسم"
+              value={newBlockType}
+              onChange={(v) => setNewBlockType(v as PageSectionType)}
+              options={SECTION_TYPE_OPTIONS}
+            />
+            <Button variant="secondary" onClick={addBlock}>+ إضافة Section</Button>
+          </div>
+
+          {blocks.length ? (
+            <div className="space-y-3">
+              {blocks.map((block: any, idx: number) => {
+                const key = block.__key ?? String(idx);
+                const isOpen = openBlockKey === key;
+                return (
+                  <div key={key} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        className="text-sm font-semibold hover:underline"
+                        onClick={() => setOpenBlockKey(isOpen ? null : key)}
+                      >
+                        {block.type} #{idx + 1}
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-xs opacity-80">
+                          <input
+                            type="checkbox"
+                            checked={block.isVisible !== false}
+                            onChange={(e) => updateBlock(idx, { isVisible: e.target.checked })}
+                          />
+                          ظاهر
+                        </label>
+                        <Button size="sm" variant="ghost" onClick={() => moveBlock(idx, -1)} disabled={idx === 0}>↑</Button>
+                        <Button size="sm" variant="ghost" onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1}>↓</Button>
+                        <Button size="sm" variant="danger" onClick={() => removeBlock(idx)}>حذف</Button>
+                      </div>
+                    </div>
+
+                    {isOpen ? (
+                      <div className="mt-4">
+                        <SectionEditor
+                          type={block.type as PageSectionType}
+                          value={block.data ?? {}}
+                          onChange={(next) => updateBlock(idx, { data: next })}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm opacity-70">
+              لا يوجد Sections داخل الـContainer بعد.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event: DragEndEvent) => {
+              const { active, over } = event;
+              if (!over || active.id === over.id) return;
+              const oldIndex = items.findIndex((x: any) => x.__key === active.id);
+              const newIndex = items.findIndex((x: any) => x.__key === over.id);
+              if (oldIndex < 0 || newIndex < 0) return;
+              onChange({ ...value, items: arrayMove(items as any[], oldIndex, newIndex) as any });
+            }}
+          >
+            <SortableContext items={(items as any[]).map((x: any) => x.__key)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-3">
+                {items.map((it: any, idx: number) => (
+                  <SortableRow key={it.__key ?? idx} id={it.__key ?? String(idx)}>
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold opacity-80">عنصر #{idx + 1}</div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => onChange({ ...value, items: items.filter((_: any, i: number) => i !== idx) })}
+                            disabled={items.length <= 1}
+                          >
+                            حذف
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Input
+                          label="العنوان"
+                          value={it.title ?? ""}
+                          onChange={(v) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, title: v };
+                            onChange({ ...value, items: next });
+                          }}
+                        />
+                        <Input
+                          label="الرابط (اختياري)"
+                          value={it.href ?? ""}
+                          onChange={(v) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, href: v };
+                            onChange({ ...value, items: next });
+                          }}
+                          dir="ltr"
+                        />
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <MediaUrlInput
+                          label="Image URL (اختياري)"
+                          value={it.imageUrl ?? ""}
+                          onChange={(v) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, imageUrl: v };
+                            onChange({ ...value, items: next });
+                          }}
+                        />
+                        <TextArea
+                          label="النص"
+                          value={it.text ?? ""}
+                          onChange={(v) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, text: v };
+                            onChange({ ...value, items: next });
+                          }}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <TokensPanel
+                          label="العنصر"
+                          tokens={it.twTokens}
+                          onChange={(t) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, twTokens: t };
+                            onChange({ ...value, items: next });
+                          }}
+                        />
+                        <TokensPanel
+                          label="العنوان"
+                          tokens={it.titleTokens}
+                          onChange={(t) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, titleTokens: t };
+                            onChange({ ...value, items: next });
+                          }}
+                        />
+                        <TokensPanel
+                          label="النص"
+                          tokens={it.textTokens}
+                          onChange={(t) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, textTokens: t };
+                            onChange({ ...value, items: next });
+                          }}
+                        />
+                        <TokensPanel
+                          label="الصورة"
+                          tokens={it.imageTokens}
+                          onChange={(t) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, imageTokens: t };
+                            onChange({ ...value, items: next });
+                          }}
+                        />
+                        <TokensPanel
+                          label="الرابط"
+                          tokens={it.linkTokens}
+                          onChange={(t) => {
+                            const next = items.slice();
+                            next[idx] = { ...it, linkTokens: t };
+                            onChange({ ...value, items: next });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </SortableRow>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          <Button variant="secondary" onClick={() => onChange({ ...value, items: [...items, { title: "", text: "", imageUrl: "", href: "", __key: uid("grid") }] as any })}>
+            + إضافة عنصر
+          </Button>
+        </div>
+      )}
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
+function FeaturesEditor({ value, onChange, errors }: { value: FeaturesData; onChange: (v: FeaturesData) => void; errors?: CommonErrors }) {
+  const items = Array.isArray(value.items) ? value.items : [];
+  useEffect(() => {
+    if (!items.length) return;
+    if (items.every((it: any) => typeof it.__key === "string" && it.__key)) return;
+    const next = items.map((it: any) => ({ ...it, __key: it.__key ?? uid("feat") }));
+    onChange({ ...value, items: next as any });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const cols = Number(value.columns ?? 3);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
+        <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />
       </div>
+
+      <Select
+        label="عدد الأعمدة"
+        value={String(cols)}
+        onChange={(v) => onChange({ ...value, columns: Number(v) })}
+        options={[2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) }))}
+        error={errors?.columns}
+      />
 
       {errors?.items ? <div className="text-xs text-red-400">{errors.items}</div> : null}
 
@@ -1680,21 +2246,40 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
                 <SortableRow key={it.__key ?? idx} id={it.__key ?? String(idx)}>
                   <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-semibold opacity-80">عنصر #{idx + 1}</div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          onClick={() => onChange({ ...value, items: items.filter((_: any, i: number) => i !== idx) })}
-                          disabled={items.length <= 1}
-                        >
-                          حذف
-                        </Button>
-                      </div>
+                      <div className="text-sm font-semibold opacity-80">ميزة #{idx + 1}</div>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => onChange({ ...value, items: items.filter((_: any, i: number) => i !== idx) })}
+                        disabled={items.length <= 1}
+                      >
+                        حذف
+                      </Button>
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-2">
-                      <Input
+                      <TextInput
+                        label="الأيقونة (Emoji)"
+                        value={it.icon ?? ""}
+                        onChange={(v) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, icon: v };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                      <MediaUrlInput
+                        label="Icon Image URL (اختياري)"
+                        value={it.iconUrl ?? ""}
+                        onChange={(v) => {
+                          const next = items.slice();
+                          next[idx] = { ...it, iconUrl: v };
+                          onChange({ ...value, items: next });
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <TextInput
                         label="العنوان"
                         value={it.title ?? ""}
                         onChange={(v) => {
@@ -1703,7 +2288,7 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
                           onChange({ ...value, items: next });
                         }}
                       />
-                      <Input
+                      <TextInput
                         label="الرابط (اختياري)"
                         value={it.href ?? ""}
                         onChange={(v) => {
@@ -1715,71 +2300,133 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
                       />
                     </div>
 
+                    <TextArea
+                      label="النص"
+                      value={it.text ?? ""}
+                      onChange={(v) => {
+                        const next = items.slice();
+                        next[idx] = { ...it, text: v };
+                        onChange({ ...value, items: next });
+                      }}
+                      rows={3}
+                    />
+                  </div>
+                </SortableRow>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+
+        <Button
+          variant="secondary"
+          onClick={() => onChange({ ...value, items: [...items, { title: "", text: "", icon: "", iconUrl: "", href: "", __key: uid("feat") }] as any })}
+        >
+          + إضافة ميزة
+        </Button>
+      </div>
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
+function StatsEditor({ value, onChange, errors }: { value: StatsData; onChange: (v: StatsData) => void; errors?: CommonErrors }) {
+  const items = Array.isArray(value.items) ? value.items : [];
+  useEffect(() => {
+    if (!items.length) return;
+    if (items.every((it: any) => typeof it.__key === "string" && it.__key)) return;
+    const next = items.map((it: any) => ({ ...it, __key: it.__key ?? uid("stat") }));
+    onChange({ ...value, items: next as any });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const cols = Number(value.columns ?? 3);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
+        <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />
+      </div>
+
+      <Select
+        label="عدد الأعمدة"
+        value={String(cols)}
+        onChange={(v) => onChange({ ...value, columns: Number(v) })}
+        options={[2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) }))}
+        error={errors?.columns}
+      />
+
+      {errors?.items ? <div className="text-xs text-red-400">{errors.items}</div> : null}
+
+      <div className="space-y-3">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event: DragEndEvent) => {
+            const { active, over } = event;
+            if (!over || active.id === over.id) return;
+            const oldIndex = items.findIndex((x: any) => x.__key === active.id);
+            const newIndex = items.findIndex((x: any) => x.__key === over.id);
+            if (oldIndex < 0 || newIndex < 0) return;
+            onChange({ ...value, items: arrayMove(items as any[], oldIndex, newIndex) as any });
+          }}
+        >
+          <SortableContext items={(items as any[]).map((x: any) => x.__key)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3">
+              {items.map((it: any, idx: number) => (
+                <SortableRow key={it.__key ?? idx} id={it.__key ?? String(idx)}>
+                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-semibold opacity-80">رقم #{idx + 1}</div>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => onChange({ ...value, items: items.filter((_: any, i: number) => i !== idx) })}
+                        disabled={items.length <= 1}
+                      >
+                        حذف
+                      </Button>
+                    </div>
+
                     <div className="grid gap-3 md:grid-cols-2">
-                      <MediaUrlInput
-                        label="Image URL (اختياري)"
-                        value={it.imageUrl ?? ""}
+                      <TextInput
+                        label="القيمة"
+                        value={it.value ?? ""}
                         onChange={(v) => {
                           const next = items.slice();
-                          next[idx] = { ...it, imageUrl: v };
+                          next[idx] = { ...it, value: v };
                           onChange({ ...value, items: next });
                         }}
                       />
-                      <TextArea
-                        label="النص"
-                        value={it.text ?? ""}
+                      <TextInput
+                        label="التسمية (اختياري)"
+                        value={it.label ?? ""}
                         onChange={(v) => {
                           const next = items.slice();
-                          next[idx] = { ...it, text: v };
+                          next[idx] = { ...it, label: v };
                           onChange({ ...value, items: next });
                         }}
-                        rows={3}
                       />
                     </div>
 
-                    <div className="space-y-3">
-                      <TokensPanel
-                        label="العنصر"
-                        tokens={it.twTokens}
-                        onChange={(t) => {
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <TextInput
+                        label="أيقونة (اختياري)"
+                        value={it.icon ?? ""}
+                        onChange={(v) => {
                           const next = items.slice();
-                          next[idx] = { ...it, twTokens: t };
+                          next[idx] = { ...it, icon: v };
                           onChange({ ...value, items: next });
                         }}
                       />
-                      <TokensPanel
-                        label="العنوان"
-                        tokens={it.titleTokens}
-                        onChange={(t) => {
+                      <TextInput
+                        label="نص إضافي (اختياري)"
+                        value={it.subtext ?? ""}
+                        onChange={(v) => {
                           const next = items.slice();
-                          next[idx] = { ...it, titleTokens: t };
-                          onChange({ ...value, items: next });
-                        }}
-                      />
-                      <TokensPanel
-                        label="النص"
-                        tokens={it.textTokens}
-                        onChange={(t) => {
-                          const next = items.slice();
-                          next[idx] = { ...it, textTokens: t };
-                          onChange({ ...value, items: next });
-                        }}
-                      />
-                      <TokensPanel
-                        label="الصورة"
-                        tokens={it.imageTokens}
-                        onChange={(t) => {
-                          const next = items.slice();
-                          next[idx] = { ...it, imageTokens: t };
-                          onChange({ ...value, items: next });
-                        }}
-                      />
-                      <TokensPanel
-                        label="الرابط"
-                        tokens={it.linkTokens}
-                        onChange={(t) => {
-                          const next = items.slice();
-                          next[idx] = { ...it, linkTokens: t };
+                          next[idx] = { ...it, subtext: v };
                           onChange({ ...value, items: next });
                         }}
                       />
@@ -1791,9 +2438,367 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
           </SortableContext>
         </DndContext>
 
-        <Button variant="secondary" onClick={() => onChange({ ...value, items: [...items, { title: "", text: "", imageUrl: "", href: "", __key: uid("grid") }] as any })}>
-          + إضافة عنصر
+        <Button
+          variant="secondary"
+          onClick={() => onChange({ ...value, items: [...items, { value: "", label: "", subtext: "", icon: "", __key: uid("stat") }] as any })}
+        >
+          + إضافة رقم
         </Button>
+      </div>
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
+function TeamEditor({ value, onChange, errors }: { value: TeamData; onChange: (v: TeamData) => void; errors?: CommonErrors }) {
+  const members = Array.isArray(value.members) ? value.members : [];
+  const cols = Number(value.columns ?? 3);
+
+  function updateMember(idx: number, patch: Partial<TeamMember>) {
+    const next = members.slice();
+    next[idx] = { ...next[idx], ...patch };
+    onChange({ ...value, members: next });
+  }
+
+  function addMember() {
+    onChange({ ...value, members: [...members, { name: "", role: "", bio: "", avatarUrl: "", socials: [] }] });
+  }
+
+  function removeMember(idx: number) {
+    const next = members.slice();
+    next.splice(idx, 1);
+    onChange({ ...value, members: next });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
+        <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />
+      </div>
+
+      <Select
+        label="عدد الأعمدة"
+        value={String(cols)}
+        onChange={(v) => onChange({ ...value, columns: Number(v) })}
+        options={[2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) }))}
+        error={errors?.columns}
+      />
+
+      {errors?.items ? <div className="text-xs text-red-400">{errors.items}</div> : null}
+
+      <div className="space-y-3">
+        {members.map((member, idx) => (
+          <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold opacity-80">عضو #{idx + 1}</div>
+              <Button size="sm" variant="danger" onClick={() => removeMember(idx)} disabled={members.length <= 1}>
+                حذف
+              </Button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextInput label="الاسم" value={member.name ?? ""} onChange={(v) => updateMember(idx, { name: v })} />
+              <TextInput label="الدور (اختياري)" value={member.role ?? ""} onChange={(v) => updateMember(idx, { role: v })} />
+            </div>
+
+            <TextAreaInput label="نبذة (اختياري)" value={member.bio ?? ""} onChange={(v) => updateMember(idx, { bio: v })} rows={3} />
+
+            <MediaUrlInput label="Avatar URL (اختياري)" value={member.avatarUrl ?? ""} onChange={(v) => updateMember(idx, { avatarUrl: v })} />
+
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold opacity-80">روابط اجتماعية</div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => updateMember(idx, { socials: [...(member.socials ?? []), { label: "", href: "" }] })}
+                >
+                  + إضافة رابط
+                </Button>
+              </div>
+              {(member.socials ?? []).length ? (
+                <div className="space-y-2">
+                  {(member.socials ?? []).map((s, sIdx) => (
+                    <div key={sIdx} className="grid gap-3 md:grid-cols-2">
+                      <TextInput
+                        label="Label"
+                        value={s.label ?? ""}
+                        onChange={(v) => {
+                          const socials = [...(member.socials ?? [])];
+                          socials[sIdx] = { ...socials[sIdx], label: v };
+                          updateMember(idx, { socials });
+                        }}
+                      />
+                      <TextInput
+                        label="Link"
+                        value={s.href ?? ""}
+                        onChange={(v) => {
+                          const socials = [...(member.socials ?? [])];
+                          socials[sIdx] = { ...socials[sIdx], href: v };
+                          updateMember(idx, { socials });
+                        }}
+                        dir="ltr"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs opacity-60">(لا يوجد روابط)</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Button variant="secondary" onClick={addMember}>+ إضافة عضو</Button>
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
+function PricingEditor({ value, onChange, errors }: { value: PricingData; onChange: (v: PricingData) => void; errors?: CommonErrors }) {
+  const plans = Array.isArray(value.plans) ? value.plans : [];
+  const cols = Number(value.columns ?? 3);
+
+  function updatePlan(idx: number, patch: Partial<PricingPlan>) {
+    const next = plans.slice();
+    next[idx] = { ...next[idx], ...patch };
+    onChange({ ...value, plans: next });
+  }
+
+  function addPlan() {
+    onChange({ ...value, plans: [...plans, { name: "", price: "", period: "", description: "", features: [], ctaLabel: "", ctaHref: "", highlight: false, badge: "" }] });
+  }
+
+  function removePlan(idx: number) {
+    const next = plans.slice();
+    next.splice(idx, 1);
+    onChange({ ...value, plans: next });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
+        <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />
+      </div>
+
+      <Select
+        label="عدد الأعمدة"
+        value={String(cols)}
+        onChange={(v) => onChange({ ...value, columns: Number(v) })}
+        options={[2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))}
+        error={errors?.columns}
+      />
+
+      {errors?.items ? <div className="text-xs text-red-400">{errors.items}</div> : null}
+
+      <div className="space-y-3">
+        {plans.map((plan, idx) => (
+          <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold opacity-80">خطة #{idx + 1}</div>
+              <Button size="sm" variant="danger" onClick={() => removePlan(idx)} disabled={plans.length <= 1}>
+                حذف
+              </Button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <TextInput label="الاسم" value={plan.name ?? ""} onChange={(v) => updatePlan(idx, { name: v })} />
+              <TextInput label="السعر" value={plan.price ?? ""} onChange={(v) => updatePlan(idx, { price: v })} />
+              <TextInput label="الفترة (مثال: شهرياً)" value={plan.period ?? ""} onChange={(v) => updatePlan(idx, { period: v })} />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextInput label="Badge (اختياري)" value={plan.badge ?? ""} onChange={(v) => updatePlan(idx, { badge: v })} />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={!!plan.highlight}
+                  onChange={(e) => updatePlan(idx, { highlight: e.target.checked })}
+                />
+                تمييز الخطة
+              </label>
+            </div>
+
+            <TextAreaInput label="الوصف (اختياري)" value={plan.description ?? ""} onChange={(v) => updatePlan(idx, { description: v })} rows={3} />
+
+            <TextArea
+              label="المزايا (سطر لكل ميزة)"
+              value={(plan.features ?? []).join("\n")}
+              onChange={(v) => updatePlan(idx, { features: v.split(/\r?\n/).map((x) => x.trim()).filter(Boolean) })}
+              rows={4}
+            />
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextInput label="زر CTA" value={plan.ctaLabel ?? ""} onChange={(v) => updatePlan(idx, { ctaLabel: v })} />
+              <TextInput label="رابط CTA" value={plan.ctaHref ?? ""} onChange={(v) => updatePlan(idx, { ctaHref: v })} dir="ltr" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Button variant="secondary" onClick={addPlan}>+ إضافة خطة</Button>
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
+function ContactEditor({ value, onChange, errors }: { value: ContactData; onChange: (v: ContactData) => void; errors?: CommonErrors }) {
+  const items = Array.isArray(value.items) ? value.items : [];
+  const form = value.form ?? { fields: [] };
+  const fields = Array.isArray(form.fields) ? form.fields : [];
+
+  const updateItem = (idx: number, patch: any) => {
+    const next = items.slice();
+    next[idx] = { ...next[idx], ...patch };
+    onChange({ ...value, items: next });
+  };
+
+  const updateForm = (patch: any) => {
+    onChange({ ...value, form: { ...form, ...patch } });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
+        <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />
+      </div>
+
+      {errors?.items ? <div className="text-xs text-red-400">{errors.items}</div> : null}
+
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold opacity-80">وسائل التواصل</div>
+          <Button size="sm" variant="ghost" onClick={() => onChange({ ...value, items: [...items, { label: "", value: "", href: "", icon: "" }] })}>
+            + إضافة وسيلة
+          </Button>
+        </div>
+        {items.length ? (
+          <div className="space-y-3">
+            {items.map((it, idx) => (
+              <div key={idx} className="grid gap-3 md:grid-cols-4">
+                <TextInput label="Label" value={it.label ?? ""} onChange={(v) => updateItem(idx, { label: v })} />
+                <TextInput label="Value" value={it.value ?? ""} onChange={(v) => updateItem(idx, { value: v })} />
+                <TextInput label="Href (اختياري)" value={it.href ?? ""} onChange={(v) => updateItem(idx, { href: v })} dir="ltr" />
+                <TextInput label="Icon (Emoji)" value={it.icon ?? ""} onChange={(v) => updateItem(idx, { icon: v })} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs opacity-60">(لا يوجد عناصر)</div>
+        )}
+      </div>
+
+      <MediaUrlInput
+        label="Map Embed URL (اختياري)"
+        value={value.mapEmbedUrl ?? ""}
+        onChange={(v) => onChange({ ...value, mapEmbedUrl: v })}
+        placeholder="https://..."
+      />
+
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <div className="text-sm font-semibold opacity-80">نموذج تواصل (اختياري)</div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <TextInput label="Form Title" value={form.title ?? ""} onChange={(v) => updateForm({ title: v })} />
+          <TextInput label="Form Subtitle" value={form.subtitle ?? ""} onChange={(v) => updateForm({ subtitle: v })} />
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <TextInput label="Action URL" value={form.action ?? ""} onChange={(v) => updateForm({ action: v })} dir="ltr" />
+          <Select
+            label="Method"
+            value={form.method ?? "POST"}
+            onChange={(v) => updateForm({ method: v as any })}
+            options={[
+              { value: "POST", label: "POST" },
+              { value: "GET", label: "GET" },
+            ]}
+          />
+          <TextInput label="Submit Label" value={form.submitLabel ?? ""} onChange={(v) => updateForm({ submitLabel: v })} />
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold opacity-80">حقول النموذج</div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => updateForm({ fields: [...fields, { label: "", name: "", type: "text", placeholder: "", required: false }] })}
+            >
+              + إضافة حقل
+            </Button>
+          </div>
+          {fields.length ? (
+            <div className="space-y-3">
+              {fields.map((f: ContactFormField, idx: number) => (
+                <div key={idx} className="grid gap-3 md:grid-cols-4">
+                  <TextInput
+                    label="Label"
+                    value={f.label ?? ""}
+                    onChange={(v) => {
+                      const next = fields.slice();
+                      next[idx] = { ...next[idx], label: v };
+                      updateForm({ fields: next });
+                    }}
+                  />
+                  <TextInput
+                    label="Name"
+                    value={f.name ?? ""}
+                    onChange={(v) => {
+                      const next = fields.slice();
+                      next[idx] = { ...next[idx], name: v };
+                      updateForm({ fields: next });
+                    }}
+                    dir="ltr"
+                  />
+                  <Select
+                    label="Type"
+                    value={f.type ?? "text"}
+                    onChange={(v) => {
+                      const next = fields.slice();
+                      next[idx] = { ...next[idx], type: v as any };
+                      updateForm({ fields: next });
+                    }}
+                    options={[
+                      { value: "text", label: "text" },
+                      { value: "email", label: "email" },
+                      { value: "tel", label: "tel" },
+                      { value: "textarea", label: "textarea" },
+                    ]}
+                  />
+                  <TextInput
+                    label="Placeholder"
+                    value={f.placeholder ?? ""}
+                    onChange={(v) => {
+                      const next = fields.slice();
+                      next[idx] = { ...next[idx], placeholder: v };
+                      updateForm({ fields: next });
+                    }}
+                  />
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!!f.required}
+                      onChange={(e) => {
+                        const next = fields.slice();
+                        next[idx] = { ...next[idx], required: e.target.checked };
+                        updateForm({ fields: next });
+                      }}
+                    />
+                    مطلوب
+                  </label>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs opacity-60">(لا يوجد حقول)</div>
+          )}
+        </div>
       </div>
 
       <UiClassesEditor value={value} onChange={onChange as any} />
@@ -2823,6 +3828,21 @@ export function SectionEditor({
       break;
     case "GRID":
       content = <GridEditor value={value as GridData} onChange={onChange} errors={errors} />;
+      break;
+    case "FEATURES":
+      content = <FeaturesEditor value={value as FeaturesData} onChange={onChange} errors={errors} />;
+      break;
+    case "STATS":
+      content = <StatsEditor value={value as StatsData} onChange={onChange} errors={errors} />;
+      break;
+    case "TEAM":
+      content = <TeamEditor value={value as TeamData} onChange={onChange} errors={errors} />;
+      break;
+    case "PRICING":
+      content = <PricingEditor value={value as PricingData} onChange={onChange} errors={errors} />;
+      break;
+    case "CONTACT":
+      content = <ContactEditor value={value as ContactData} onChange={onChange} errors={errors} />;
       break;
     case "FEATURED_CATEGORIES":
       content = <FeaturedCategoriesEditor value={value as FeaturedCategoriesData} onChange={onChange} errors={errors} />;

@@ -11,6 +11,11 @@ import type {
   FeaturedProductsData,
   CollectionsGridData,
   GridData,
+  FeaturesData,
+  StatsData,
+  TeamData,
+  PricingData,
+  ContactData,
   HeroData,
   ImageGalleryData,
   NewsletterData,
@@ -688,6 +693,33 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
 
   if (type === "GRID") {
     const d = data as GridData;
+    if (d?.mode === "container") {
+      const blocks = Array.isArray(d.blocks) ? d.blocks : [];
+      const componentsBlock = renderComponentsBlock(d);
+      const sectionTokens = (d as any)?.twTokens;
+      const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+      return (
+        <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
+            <SectionTextScope data={d}>
+              {titleData ? (
+                <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                  {titleData.content}
+                </h3>
+              ) : null}
+              <div className="space-y-5">
+                {blocks
+                  .filter((b: any) => b && b.type && b.isVisible !== false)
+                  .map((b: any, i: number) => (
+                    <Section key={b.id ?? `${type}-block-${i}`} type={b.type as PageSectionType} data={b.data} />
+                  ))}
+              </div>
+            </SectionTextScope>
+            {componentsBlock}
+          </div>
+        </section>
+      );
+    }
     const columns = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
@@ -763,6 +795,335 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   </div>
                 );
               })}
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </div>
+      </section>
+    );
+  }
+
+  if (type === "FEATURES") {
+    const d = data as FeaturesData;
+    const items = Array.isArray(d.items) ? d.items : [];
+    const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols =
+      cols <= 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : cols === 4 ? "md:grid-cols-4" : cols === 5 ? "md:grid-cols-5" : "md:grid-cols-6";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return (
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+          <SectionTextScope data={d}>
+            {titleData ? (
+              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            {subtitleData ? (
+              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                {subtitleData.content}
+              </div>
+            ) : null}
+            <div className={cls("mt-4 grid gap-4", gridCols)}>
+              {items.length ? (
+                items.map((it, idx) => {
+                  const itemTokens = resolveFieldTokens((it as any).twTokens);
+                  const baseItemTokens = itemTokens ?? sectionTokens;
+                  const titleTokens = resolveFieldTokens((it as any).titleTokens, baseItemTokens);
+                  const textTokens = resolveFieldTokens((it as any).textTokens, baseItemTokens);
+                  const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
+                  return (
+                    <div
+                      key={idx}
+                      className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
+                      style={tokensStyle(itemTokens)}
+                    >
+                      <div className="flex items-center gap-2">
+                        {it.iconUrl ? (
+                          <img src={it.iconUrl} alt="" className={cls("h-8 w-8 rounded-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)} />
+                        ) : it.icon ? (
+                          <span className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>{it.icon}</span>
+                        ) : null}
+                        {(() => {
+                          const titleData = textContent(String(it.title ?? ""), titleTokens);
+                          return (
+                            <div className={cls("text-sm font-semibold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
+                              {titleData.content}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      {it.text ? (() => {
+                        const textData = textContent(String(it.text), textTokens);
+                        return (
+                          <div className={cls("mt-2 text-sm opacity-80", tokensClass(textTokens), textData.className)} style={tokensStyle(textTokens)} aria-label={textData.ariaLabel}>
+                            {textData.content}
+                          </div>
+                        );
+                      })() : null}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-sm opacity-70">(لا يوجد عناصر)</div>
+              )}
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </div>
+      </section>
+    );
+  }
+
+  if (type === "STATS") {
+    const d = data as StatsData;
+    const items = Array.isArray(d.items) ? d.items : [];
+    const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols =
+      cols <= 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : cols === 4 ? "md:grid-cols-4" : cols === 5 ? "md:grid-cols-5" : "md:grid-cols-6";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return (
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+          <SectionTextScope data={d}>
+            {titleData ? (
+              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            {subtitleData ? (
+              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                {subtitleData.content}
+              </div>
+            ) : null}
+            <div className={cls("mt-4 grid gap-4", gridCols)}>
+              {items.length ? (
+                items.map((it, idx) => {
+                  const itemTokens = resolveFieldTokens((it as any).twTokens);
+                  const baseItemTokens = itemTokens ?? sectionTokens;
+                  const valueTokens = resolveFieldTokens((it as any).valueTokens, baseItemTokens);
+                  const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
+                  return (
+                    <div
+                      key={idx}
+                      className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-center", tokensClass(itemTokens))}
+                      style={tokensStyle(itemTokens)}
+                    >
+                      {it.icon ? <div className="text-lg">{it.icon}</div> : null}
+                      {(() => {
+                        const valueData = textContent(String(it.value ?? ""), valueTokens);
+                        return (
+                          <div className={cls("text-2xl font-semibold", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
+                            {valueData.content}
+                          </div>
+                        );
+                      })()}
+                      {it.label ? (() => {
+                        const labelData = textContent(String(it.label), labelTokens);
+                        return (
+                          <div className={cls("text-sm opacity-80", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                            {labelData.content}
+                          </div>
+                        );
+                      })() : null}
+                      {it.subtext ? <div className="mt-1 text-xs opacity-60">{it.subtext}</div> : null}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-sm opacity-70">(لا يوجد عناصر)</div>
+              )}
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </div>
+      </section>
+    );
+  }
+
+  if (type === "TEAM") {
+    const d = data as TeamData;
+    const members = Array.isArray(d.members) ? d.members : [];
+    const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols =
+      cols <= 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : cols === 4 ? "md:grid-cols-4" : cols === 5 ? "md:grid-cols-5" : "md:grid-cols-6";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return (
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+          <SectionTextScope data={d}>
+            {titleData ? (
+              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            {subtitleData ? (
+              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                {subtitleData.content}
+              </div>
+            ) : null}
+            <div className={cls("mt-4 grid gap-4", gridCols)}>
+              {members.length ? (
+                members.map((m, idx) => (
+                  <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+                    {m.avatarUrl ? <img src={m.avatarUrl} alt="" className="mb-3 h-12 w-12 rounded-full object-cover" /> : null}
+                    <div className="text-sm font-semibold">{m.name || "Member"}</div>
+                    {m.role ? <div className="text-xs opacity-70">{m.role}</div> : null}
+                    {m.bio ? <div className="mt-2 text-sm opacity-80">{m.bio}</div> : null}
+                    {Array.isArray(m.socials) && m.socials.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs opacity-70">
+                        {m.socials.map((s, sIdx) => (
+                          <span key={sIdx}>{s.label || s.href}</span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm opacity-70">(لا يوجد أعضاء)</div>
+              )}
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </div>
+      </section>
+    );
+  }
+
+  if (type === "PRICING") {
+    const d = data as PricingData;
+    const plans = Array.isArray(d.plans) ? d.plans : [];
+    const cols = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
+    const gridCols = cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return (
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+          <SectionTextScope data={d}>
+            {titleData ? (
+              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            {subtitleData ? (
+              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                {subtitleData.content}
+              </div>
+            ) : null}
+            <div className={cls("mt-4 grid gap-4", gridCols)}>
+              {plans.length ? (
+                plans.map((p, idx) => (
+                  <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", p.highlight ? "ring-1 ring-accent-500/40" : undefined)}>
+                    {p.badge ? <div className="text-[11px] opacity-70">{p.badge}</div> : null}
+                    <div className="text-sm font-semibold">{p.name || "Plan"}</div>
+                    {p.price ? <div className="mt-2 text-2xl">{p.price} {p.period ? <span className="text-xs opacity-60">{p.period}</span> : null}</div> : null}
+                    {p.description ? <div className="mt-2 text-sm opacity-80">{p.description}</div> : null}
+                    {Array.isArray(p.features) && p.features.length ? (
+                      <ul className="mt-3 list-disc ps-5 text-sm opacity-80">
+                        {p.features.map((f, fIdx) => <li key={fIdx}>{f}</li>)}
+                      </ul>
+                    ) : null}
+                    {p.ctaLabel ? (
+                      <div className="mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm">
+                        {p.ctaLabel}
+                      </div>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm opacity-70">(لا يوجد خطط)</div>
+              )}
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </div>
+      </section>
+    );
+  }
+
+  if (type === "CONTACT") {
+    const d = data as ContactData;
+    const items = Array.isArray(d.items) ? d.items : [];
+    const form = d.form ?? {};
+    const fields = Array.isArray(form.fields) ? form.fields : [];
+    const componentsBlock = renderComponentsBlock(d);
+    const sectionTokens = (d as any)?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+
+    return (
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+          <SectionTextScope data={d}>
+            {titleData ? (
+              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            {subtitleData ? (
+              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                {subtitleData.content}
+              </div>
+            ) : null}
+            <div className="mt-4 grid gap-6 md:grid-cols-2">
+              <div className="space-y-3">
+                {items.length ? (
+                  items.map((it, idx) => (
+                    <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+                      <div className="text-sm font-semibold">{it.label || "Contact"}</div>
+                      {it.value ? <div className="text-sm opacity-80">{it.value}</div> : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm opacity-70">(لا توجد بيانات تواصل)</div>
+                )}
+              </div>
+              <div className="space-y-4">
+                {d.mapEmbedUrl ? (
+                  <iframe
+                    title="map"
+                    src={d.mapEmbedUrl}
+                    className="h-48 w-full rounded-2xl border border-white/[0.08]"
+                  />
+                ) : null}
+                {fields.length ? (
+                  <form action={form.action || undefined} method={form.method || undefined} className="space-y-3">
+                    {form.title ? <div className="text-sm font-semibold">{form.title}</div> : null}
+                    {form.subtitle ? <div className="text-xs opacity-70">{form.subtitle}</div> : null}
+                    {fields.map((f, idx) => (
+                      <div key={idx}>
+                        {f.label ? <label className="block text-xs opacity-70">{f.label}</label> : null}
+                        {f.type === "textarea" ? (
+                          <textarea className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm" placeholder={f.placeholder} name={f.name} required={!!f.required} rows={4} />
+                        ) : (
+                          <input className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm" placeholder={f.placeholder} name={f.name} required={!!f.required} type={f.type ?? "text"} />
+                        )}
+                      </div>
+                    ))}
+                    {form.submitLabel ? (
+                      <button type="submit" className="inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm">
+                        {form.submitLabel}
+                      </button>
+                    ) : null}
+                  </form>
+                ) : null}
+              </div>
             </div>
           </SectionTextScope>
           {componentsBlock}
