@@ -1,4 +1,4 @@
-import type { PageSectionType } from "./types";
+import type { PageSectionType, CmsComponent } from "./types";
 import type { TwTokens } from "./style/tokens";
 
 // Shared CMS section data shapes.
@@ -71,12 +71,14 @@ export type HeroData = HeroSlide & {
 export type RichTextData = {
   title?: string;
   html: string;
+  components?: CmsComponent[];
   ui?: UiTailwind;
 };
 
 export type CustomHtmlData = {
   title?: string;
   html: string;
+  components?: CmsComponent[];
   ui?: UiTailwind;
 };
 

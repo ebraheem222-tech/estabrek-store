@@ -288,6 +288,10 @@ export type TwTokens = {
     overflow?: OverflowPreset;
     overflowX?: OverflowPreset;
     overflowY?: OverflowPreset;
+    top?: string;
+    right?: string;
+    bottom?: string;
+    left?: string;
 
     // Shown when display === flex / inline-flex
     flex?: {

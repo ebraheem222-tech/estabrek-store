@@ -87,6 +87,17 @@ function resolveSizeValue(value: unknown, axis: "width" | "height"): string | un
   return v;
 }
 
+function resolveOffsetValue(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
+  if (typeof value !== "string") return undefined;
+  const v = value.trim();
+  if (!v) return undefined;
+  if (v === "0" || v === "auto") return v;
+  if (/^\d+(\.\d+)?$/.test(v)) return `${v}px`;
+  return v;
+}
+
 function textEffectClass(effect?: TextEffectPreset): string {
   if (!effect || effect === "none") return "";
   return `text-${effect}`;
@@ -165,7 +176,14 @@ export function tokensToClassName(tokens?: CmsTokens): string {
     if (gr?.flow) parts.push(gridFlowMap[gr.flow]);
   }
 
-  if (tokens.layout?.position) parts.push(positionMap[tokens.layout.position]);
+  if (tokens.layout?.position) {
+    if (tokens.layout.position === "sticky") {
+      const hasOffset = !!(tokens.layout.top || tokens.layout.bottom || tokens.layout.left || tokens.layout.right);
+      parts.push(hasOffset ? "sticky" : positionMap.sticky);
+    } else {
+      parts.push(positionMap[tokens.layout.position]);
+    }
+  }
   if (tokens.layout?.zIndex) parts.push(tokens.layout.zIndex === "auto" ? "z-auto" : `z-${tokens.layout.zIndex}`);
   if (tokens.layout?.overflow) parts.push(overflowMap[tokens.layout.overflow]);
   if (tokens.layout?.overflowX) parts.push(overflowMap[tokens.layout.overflowX].replace(/^overflow-/, "overflow-x-"));
@@ -301,6 +319,22 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
   if (sizeTokens?.height) style.height = resolveSizeValue(sizeTokens.height, "height");
   if (sizeTokens?.minH) style.minHeight = resolveSizeValue(sizeTokens.minH, "height");
   if (sizeTokens?.maxH) style.maxHeight = resolveSizeValue(sizeTokens.maxH, "height");
+  if (tokens.layout?.top !== undefined) {
+    const v = resolveOffsetValue(tokens.layout.top);
+    if (v !== undefined) style.top = v;
+  }
+  if (tokens.layout?.right !== undefined) {
+    const v = resolveOffsetValue(tokens.layout.right);
+    if (v !== undefined) style.right = v;
+  }
+  if (tokens.layout?.bottom !== undefined) {
+    const v = resolveOffsetValue(tokens.layout.bottom);
+    if (v !== undefined) style.bottom = v;
+  }
+  if (tokens.layout?.left !== undefined) {
+    const v = resolveOffsetValue(tokens.layout.left);
+    if (v !== undefined) style.left = v;
+  }
   if (typeof motionTokens?.duration === "number" && Number.isFinite(motionTokens.duration)) {
     style.animationDuration = motionTokens.duration >= 10 ? `${motionTokens.duration}ms` : `${motionTokens.duration}s`;
   }
