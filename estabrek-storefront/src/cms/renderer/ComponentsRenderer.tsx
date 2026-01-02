@@ -128,11 +128,44 @@ function textEffectClass(tokens?: any) {
   return tokensToClassName({ textEffect: tokens?.textEffect } as any);
 }
 
+function hasTypographyOverrides(typography?: any) {
+  if (!typography) return false;
+  if (typography.family) return true;
+  if (typography.size && typography.size !== "base") return true;
+  if (typography.align && typography.align !== "left") return true;
+  if (typography.weight && typography.weight !== "normal") return true;
+  if (typography.color && typography.color !== "default") return true;
+  if (typography.lineHeight) return true;
+  if (typography.letterSpacing) return true;
+  if (typography.decoration) return true;
+  if (typography.transform) return true;
+  if (typography.truncate) return true;
+  if (typography.lineClamp) return true;
+  if (typography.colorCustom) return true;
+  return false;
+}
+
 function mergeEffectTokens(tokens?: any, inheritTokens?: any): any | undefined {
   if (!inheritTokens) return tokens;
   const next = { ...(tokens ?? {}) } as any;
   if (next.textEffect == null && inheritTokens?.textEffect != null) next.textEffect = inheritTokens.textEffect;
   if (next.typewriter == null && inheritTokens?.typewriter != null) next.typewriter = inheritTokens.typewriter;
+  if (inheritTokens?.typography) {
+    next.typography = { ...(inheritTokens.typography ?? {}), ...(next.typography ?? {}) };
+  }
+  return next;
+}
+
+function combineInheritTokens(parentInherit?: any, parentTokens?: any) {
+  if (!parentInherit && !parentTokens) return undefined;
+  const next = { ...(parentInherit ?? {}) } as any;
+  if (parentTokens) {
+    if (parentTokens.textEffect !== undefined) next.textEffect = parentTokens.textEffect;
+    if (parentTokens.typewriter !== undefined) next.typewriter = parentTokens.typewriter;
+    if (parentTokens.typography) {
+      next.typography = { ...(next.typography ?? {}), ...(parentTokens.typography ?? {}) };
+    }
+  }
   return next;
 }
 
@@ -258,7 +291,8 @@ function renderDecorLayer(layer?: DecorLayer, kind: "before"|"after" = "before")
 
 
 function RenderBox({ tokens, className, children }: { tokens?: any; className?: string; children: React.ReactNode }) {
-  const cls = cn(tokensToClassName(tokens), className);
+  const textScopeClass = hasTypographyOverrides(tokens?.typography) ? "cms-section-text" : undefined;
+  const cls = cn(tokensToClassName(tokens), className, textScopeClass);
   const inlineStyle = tokensToInlineStyle(tokens);
   const hasDecor = hasDecorLayers(tokens);
   return (
@@ -281,7 +315,12 @@ export function ComponentsRenderer({
 }) {
   if (!components?.length) return null;
 
-  const renderOne = (c: CmsComponent, stack = new Set<CmsComponent>(), depth = 0): React.ReactNode => {
+  const renderOne = (
+    c: CmsComponent,
+    stack = new Set<CmsComponent>(),
+    depth = 0,
+    inheritedTokens = inheritTokens
+  ): React.ReactNode => {
     if (depth > 100) return null; // safety guard against runaway nesting
     if (stack.has(c)) return null; // guard against accidental cycles in CMS data
     const nextStack = new Set(stack);
@@ -290,9 +329,10 @@ export function ComponentsRenderer({
 
     // Layout components support nesting: props.children = CmsComponent[]
     const baseTokens = resolveTokens(c);
-    const tokens = mergeEffectTokens(baseTokens, inheritTokens);
+    const tokens = mergeEffectTokens(baseTokens, inheritedTokens);
     const legacyClassName = getLegacyClassName(c);
     const children = getChildren(c);
+    const nextInheritTokens = combineInheritTokens(inheritedTokens, tokens);
 
     const gridColsMap: Record<number, string> = {
       2: "grid-cols-1 md:grid-cols-2",
@@ -312,7 +352,7 @@ export function ComponentsRenderer({
       case "container": {
         return (
           <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "mx-auto w-full")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
+            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
           </RenderBox>
         );
       }
@@ -320,7 +360,7 @@ export function ComponentsRenderer({
       case "stack": {
         return (
           <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-col")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
+            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
           </RenderBox>
         );
       }
@@ -328,7 +368,7 @@ export function ComponentsRenderer({
       case "row": {
         return (
           <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-row flex-wrap")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
+            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
           </RenderBox>
         );
       }
@@ -338,7 +378,7 @@ export function ComponentsRenderer({
         const cls = cn("grid", gridColsMap[cols] ?? gridColsMap[2]);
         return (
           <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
+            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
           </RenderBox>
         );
       }
@@ -348,7 +388,7 @@ export function ComponentsRenderer({
         const cls = cn("grid", columnsColsMap[cols] ?? columnsColsMap[2]);
         return (
           <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth)) : null}
+            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
           </RenderBox>
         );
       }
@@ -358,9 +398,10 @@ export function ComponentsRenderer({
     }
 
     // Non-layout leaf components
-    const tokenClass = cn(tokensToClassName(tokens), legacyClassName);
+    const textScopeClass = hasTypographyOverrides(tokens?.typography) ? "cms-section-text" : undefined;
+    const tokenClass = cn(tokensToClassName(tokens), legacyClassName, textScopeClass);
     const tokenClassNoTextEffect = tokens?.textEffect
-      ? cn(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName)
+      ? cn(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName, textScopeClass)
       : tokenClass;
     const tokenStyle = tokensToInlineStyle(tokens);
 
