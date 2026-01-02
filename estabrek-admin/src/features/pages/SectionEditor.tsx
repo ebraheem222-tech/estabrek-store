@@ -223,10 +223,10 @@ function SectionLayoutEditor({
       {mode !== "stack" ? (
         <div className="grid gap-3 md:grid-cols-2">
           <Input
-            label="Row/Group ID"
+            label="Row/Group ID (اختياري)"
             value={group}
             onChange={(v) => updateLayout({ group: v })}
-            placeholder="مثال: row-1"
+            placeholder="مثال: row-1 (اتركه فارغ للتجميع التلقائي)"
             dir="ltr"
           />
           <Select
@@ -254,7 +254,10 @@ function SectionLayoutEditor({
       )}
 
       <div className="text-xs opacity-60">
-        ضع نفس Row/Group ID لأكثر من Section حتى يظهروا بجانب بعضهم.
+        لو تركته فارغ، الأقسام المتجاورة بنفس الوضع وعدد الأعمدة تتجمّع تلقائيًا. لفصل صفوف متعددة استخدم Group ID مختلف.
+      </div>
+      <div className="text-xs opacity-60">
+        للتحكم بالعرض/الارتفاع استخدم "تنسيق القسم المتقدم" &gt; الحجم (auto / % / px / vh / vw).
       </div>
     </div>
   );
