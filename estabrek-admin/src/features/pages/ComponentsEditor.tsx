@@ -3,7 +3,6 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { cn } from "../../components/ui/cn";
-import { SectionStylingPanel } from "./SectionStylingPanel";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import {
@@ -42,6 +41,10 @@ import {
 } from "../../cms/style/tokens";
 import { SHAPES } from "../../cms/shapes/shapeRegistry";
 import type { CmsComponent, CmsComponentKind, CmsSectionData } from "../../cms/types";
+
+const LazySectionStylingPanel = React.lazy(() =>
+  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
+);
 
 type ChildCapableKind = "container" | "stack" | "row" | "grid" | "columns";
 
@@ -2127,11 +2130,13 @@ export function ComponentsEditor({
                   </Button>
                 </div>
                 {showAdvancedStyle ? (
-                  <SectionStylingPanel
-                    className="mt-2"
-                    tokens={(selected.twTokens ?? defaultTokensBase()) as any}
-                    onChange={(next) => patchSelected({ twTokens: next })}
-                  />
+                  <React.Suspense fallback={<div className="mt-2 text-sm text-white/60">Loading styling…</div>}>
+                    <LazySectionStylingPanel
+                      className="mt-2"
+                      tokens={(selected.twTokens ?? defaultTokensBase()) as any}
+                      onChange={(next) => patchSelected({ twTokens: next })}
+                    />
+                  </React.Suspense>
                 ) : null}
 
                 {/* Preview */}

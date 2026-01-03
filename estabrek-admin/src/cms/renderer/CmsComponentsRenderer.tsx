@@ -16,6 +16,23 @@ function cx(...parts: Array<string | undefined | null | false>) {
 }
 
 const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
+const INLINE_TAGS = new Set([
+  "span",
+  "small",
+  "strong",
+  "em",
+  "b",
+  "i",
+  "u",
+  "s",
+  "a",
+  "button",
+  "label",
+  "code",
+  "kbd",
+  "sup",
+  "sub",
+]);
 
 function hasDecorLayers(tokens?: any): boolean {
   const before = tokens?.decor?.before?.shape;
@@ -195,23 +212,7 @@ function isInlineTag(tag: any, tokens?: any): boolean {
   const display = tokens?.layout?.display;
   if (display === "inline" || display === "inline-flex") return true;
   if (typeof tag !== "string") return false;
-  return new Set([
-    "span",
-    "small",
-    "strong",
-    "em",
-    "b",
-    "i",
-    "u",
-    "s",
-    "a",
-    "button",
-    "label",
-    "code",
-    "kbd",
-    "sup",
-    "sub",
-  ]).has(tag);
+  return INLINE_TAGS.has(tag);
 }
 
 function gridColsClass(cols?: number): string {

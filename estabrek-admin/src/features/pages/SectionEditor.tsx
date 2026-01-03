@@ -8,7 +8,6 @@ import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import { MediaUrlInput } from "../../components/media/MediaUrlInput";
 import { listCategories, type CatalogCategory } from "../../api/catalog.api";
 import DOMPurify from "dompurify";
-import { SectionStylingPanel } from "./SectionStylingPanel";
 import type { TwTokens } from "../../cms/style/tokens";
 import type { CmsComponent } from "../../cms/types";
 import {
@@ -26,6 +25,10 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+const LazySectionStylingPanel = React.lazy(() =>
+  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
+);
 
 /**
  * NOTE: Some section editors were written using <TextInput /> / <TextAreaInput /> with a simplified
@@ -102,14 +105,22 @@ function TokensPanel({
   tokens?: TwTokens;
   onChange: (next: TwTokens) => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
   return (
-    <details className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3">
+    <details
+      className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3"
+      onToggle={(e) => setIsOpen((e.currentTarget as HTMLDetailsElement).open)}
+    >
       <summary className="cursor-pointer text-sm font-semibold text-white/80">
         تنسيق متقدم: {label}
       </summary>
-      <div className="mt-3">
-        <SectionStylingPanel tokens={tokens} onChange={onChange} />
-      </div>
+      {isOpen ? (
+        <React.Suspense fallback={<div className="mt-3 text-sm text-white/60">Loading styling…</div>}>
+          <div className="mt-3">
+            <LazySectionStylingPanel tokens={tokens} onChange={onChange} />
+          </div>
+        </React.Suspense>
+      ) : null}
     </details>
   );
 }

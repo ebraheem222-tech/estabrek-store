@@ -29,11 +29,16 @@ import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { aiImproveSeo, aiSuggestSections, aiTranslatePage, moveSection as moveSectionApi, type PageSection, type PageSectionType, type PageStatus } from "../../api/pages.api";
 import { SectionEditor, defaultDataForType, templatesForType } from "./SectionEditor";
-import { SectionStylingPanel } from "./SectionStylingPanel";
 import { ComponentsEditor } from "./ComponentsEditor";
-import { SectionPreview } from "./SectionPreview";
 import { ThemePreview } from "../../components/ThemePreview";
 import { toast } from "../../lib/toast";
+
+const LazySectionStylingPanel = React.lazy(() =>
+  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
+);
+const LazySectionPreview = React.lazy(() =>
+  import("./SectionPreview").then((m) => ({ default: m.SectionPreview }))
+);
 
 const STATUSES: Array<{ value: PageStatus; label: string }> = [
   { value: "DRAFT", label: "مسودة" },
@@ -122,7 +127,9 @@ function SortableSectionCard({
             </div>
             <div className="mt-2">
               <ThemePreview theme={theme} className="rounded-2xl p-2">
-                <SectionPreview type={section.type} data={previewData ?? section.data} />
+                <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview…</div>}>
+                  <LazySectionPreview type={section.type} data={previewData ?? section.data} />
+                </React.Suspense>
               </ThemePreview>
             </div>
           </div>
@@ -1188,16 +1195,18 @@ export default function PageEditorPage() {
                   ) : (
                     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                       <div className="text-sm font-semibold mb-3">تنسيق القسم المتقدم</div>
-                      <SectionStylingPanel
-                        tokens={sectionDataObj?.twTokens ?? {}}
-                        onChange={(next) => {
-                          const v = { ...(sectionDataObj ?? {}), twTokens: next };
-                          setSectionDataObj(v);
-                          setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
-                          setSectionErrors({});
-                          setSectionTemplateId("__custom__");
-                        }}
-                      />
+                      <React.Suspense fallback={<div className="text-sm text-white/60">Loading styling…</div>}>
+                        <LazySectionStylingPanel
+                          tokens={sectionDataObj?.twTokens ?? {}}
+                          onChange={(next) => {
+                            const v = { ...(sectionDataObj ?? {}), twTokens: next };
+                            setSectionDataObj(v);
+                            setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
+                            setSectionErrors({});
+                            setSectionTemplateId("__custom__");
+                          }}
+                        />
+                      </React.Suspense>
                     </div>
                   )}
 
@@ -1246,7 +1255,9 @@ export default function PageEditorPage() {
               ) : (
                 <div className="space-y-3">
                   <ThemePreview theme={theme} className="rounded-2xl p-2">
-                    <SectionPreview type={sectionType} data={modalPreviewData} />
+                    <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview…</div>}>
+                      <LazySectionPreview type={sectionType} data={modalPreviewData} />
+                    </React.Suspense>
                   </ThemePreview>
 
                   {Array.isArray((modalPreviewData as any)?.components) && (modalPreviewData as any).components.length ? (
