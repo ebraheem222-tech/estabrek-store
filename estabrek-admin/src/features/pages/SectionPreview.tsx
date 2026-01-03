@@ -232,13 +232,17 @@ function SectionShell({
   const decorations = sectionDecorations(tokens);
   const hasDecorations = !!decorations;
   const wantsOverflowHidden = typeof className === "string" && className.includes("overflow-hidden");
+  const baseClassName =
+    hasDecorations && wantsOverflowHidden && typeof className === "string"
+      ? className.replace(/\boverflow-hidden\b/g, "").trim()
+      : className;
   const previewMargins = previewDecorMargins(tokens);
   const baseStyle = uiSectionStyle(data);
   const shellStyle = previewMargins ? { ...previewMargins, ...(baseStyle ?? {}) } : baseStyle;
   return (
     <div
       className={cls(
-        className,
+        baseClassName,
         uiSectionClass(data),
         hasDecorations ? "relative overflow-visible" : undefined
       )}

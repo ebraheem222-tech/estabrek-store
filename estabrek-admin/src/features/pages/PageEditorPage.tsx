@@ -1234,7 +1234,7 @@ export default function PageEditorPage() {
               )}
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="min-w-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-220px)] lg:overflow-auto">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-sm font-semibold">Preview</div>
                 <div className="text-xs opacity-60">{componentsOnlyMode ? "COMPONENTS" : sectionType}</div>

@@ -193,6 +193,30 @@ function sectionDecorations(tokens?: TwTokens) {
   return { before: hasBefore ? before : undefined, after: hasAfter ? after : undefined };
 }
 
+function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
+  const decorations = sectionDecorations(tokens);
+  if (!decorations) return node;
+  const className = node.props?.className;
+  const wantsOverflowHidden = typeof className === "string" && className.includes("overflow-hidden");
+  const cleanedClassName =
+    wantsOverflowHidden && typeof className === "string"
+      ? className.replace(/\boverflow-hidden\b/g, "").trim()
+      : className;
+  const mergedClassName = cls(cleanedClassName, "relative", "overflow-visible");
+  const innerClassName = cls("relative z-10", wantsOverflowHidden ? "overflow-hidden" : undefined);
+  const innerStyle = wantsOverflowHidden ? { borderRadius: "inherit" } : undefined;
+  return React.cloneElement(
+    node,
+    { className: mergedClassName },
+    <>
+      <SectionDecorations decorations={decorations} className="z-0" />
+      <div className={innerClassName} style={innerStyle}>
+        {node.props?.children}
+      </div>
+    </>
+  );
+}
+
 function sectionComponents(data: any) {
   const list = data?.components;
   return Array.isArray(list) ? list : [];
@@ -328,7 +352,7 @@ function HeroSection({ data }: { data: HeroData }) {
   const slideKey = `${activeSlide}-${slideAnim}-${slideDuration}`;
   const contentKey = `${activeSlide}-${contentAnim}-${contentDuration}-${contentDelay}`;
 
-  return (
+  return wrapDecorations(
     <section className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03]", uiSectionClass(data))} style={uiSectionStyle(data)}>
       <div
         key={slideKey}
@@ -433,7 +457,8 @@ function HeroSection({ data }: { data: HeroData }) {
         ) : null}
       </div>
       {componentsBlock}
-    </section>
+    </section>,
+    (data as any)?.twTokens
   );
 }
 
@@ -483,7 +508,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const htmlEffectClass = textEffectClass(sectionTokens);
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -508,7 +533,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const htmlEffectClass = textEffectClass(sectionTokens);
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-4xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -537,7 +562,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const textData = textContent(String(d.text ?? ""), sectionTokens);
     const linkValue = d.linkLabel || d.linkHref || "";
     const linkData = d.linkHref ? textContent(String(linkValue), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border p-5", color, uiSectionClass(d))} style={uiSectionStyle(d)}>
         <SectionTextScope data={d}>
           <div className={cls("flex flex-col gap-2 md:flex-row md:items-center md:justify-between", uiContainerClass(d))}>
@@ -574,7 +599,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
     const buttonData = d.buttonLabel ? textContent(String(d.buttonLabel), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -635,7 +660,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -650,7 +675,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 const baseItemTokens = itemTokens ?? sectionTokens;
                 const questionTokens = resolveFieldTokens((it as any).questionTokens, baseItemTokens);
                 const answerTokens = resolveFieldTokens((it as any).answerTokens, baseItemTokens);
-                return (
+                const node = (
                   <div
                     key={idx}
                     className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
@@ -682,6 +707,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     })() : null}
                   </div>
                 );
+                return wrapDecorations(node, itemTokens);
               })}
             </div>
           </SectionTextScope>
@@ -698,7 +724,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
       const componentsBlock = renderComponentsBlock(d);
       const sectionTokens = (d as any)?.twTokens;
       const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
-      return (
+      return wrapDecorations(
         <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
           <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
             <SectionTextScope data={d}>
@@ -717,7 +743,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
             </SectionTextScope>
             {componentsBlock}
           </div>
-        </section>
+        </section>,
+        sectionTokens
       );
     }
     const columns = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
@@ -725,7 +752,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -742,7 +769,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 const textTokens = resolveFieldTokens((it as any).textTokens, baseItemTokens);
                 const imageTokens = resolveFieldTokens((it as any).imageTokens);
                 const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
-                return (
+                return wrapDecorations(
                   <div
                     key={idx}
                     className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
@@ -792,14 +819,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                         </div>
                       );
                     })() : null}
-                  </div>
+                  </div>,
+                  itemTokens
                 );
               })}
             </div>
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -814,7 +843,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -870,17 +899,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       })() : null}
                     </>
                   );
-                  return (
-                    it.href ? (
-                      <a key={idx} href={it.href} className={wrapperClass} style={wrapperStyle}>
-                        {content}
-                      </a>
-                    ) : (
-                      <div key={idx} className={wrapperClass} style={wrapperStyle}>
-                        {content}
-                      </div>
-                    )
+                  const node = it.href ? (
+                    <a key={idx} href={it.href} className={wrapperClass} style={wrapperStyle}>
+                      {content}
+                    </a>
+                  ) : (
+                    <div key={idx} className={wrapperClass} style={wrapperStyle}>
+                      {content}
+                    </div>
                   );
+                  return wrapDecorations(node, itemTokens);
                 })
               ) : (
                 <div className="text-sm opacity-70">(لا يوجد عناصر)</div>
@@ -889,7 +917,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -904,7 +933,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -927,7 +956,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
                   const subtextTokens = resolveFieldTokens((it as any).subtextTokens, baseItemTokens);
                   const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
-                  return (
+                  return wrapDecorations(
                     <div
                       key={idx}
                       className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-center", tokensClass(itemTokens))}
@@ -962,7 +991,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           </div>
                         );
                       })() : null}
-                    </div>
+                    </div>,
+                    itemTokens
                   );
                 })
               ) : (
@@ -972,7 +1002,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -987,7 +1018,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1015,7 +1046,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const roleData = m.role ? textContent(String(m.role), roleTokens) : null;
                   const bioData = m.bio ? textContent(String(m.bio), bioTokens) : null;
                   const socials = Array.isArray(m.socials) ? m.socials : [];
-                  return (
+                  return wrapDecorations(
                     <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
                       {m.avatarUrl ? (
                         <img src={m.avatarUrl} alt="" className={cls("mb-3 h-12 w-12 rounded-full object-cover", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />
@@ -1052,7 +1083,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           })}
                         </div>
                       ) : null}
-                    </div>
+                    </div>,
+                    itemTokens
                   );
                 })
               ) : (
@@ -1062,7 +1094,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1076,7 +1109,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1108,7 +1141,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const descriptionData = p.description ? textContent(String(p.description), descriptionTokens) : null;
                   const badgeData = p.badge ? textContent(String(p.badge), badgeTokens) : null;
                   const ctaData = p.ctaLabel ? textContent(String(p.ctaLabel), ctaTokens) : null;
-                  return (
+                  return wrapDecorations(
                     <div
                       key={idx}
                       className={cls(
@@ -1159,7 +1192,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           {ctaData.content}
                         </div>
                       ) : null}
-                    </div>
+                    </div>,
+                    planTokens
                   );
                 })
               ) : (
@@ -1169,7 +1203,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1183,7 +1218,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1208,7 +1243,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
                     const labelData = textContent(String(it.label || "Contact"), labelTokens);
                     const valueData = it.value ? textContent(String(it.value), valueTokens) : null;
-                    return (
+                    return wrapDecorations(
                       <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
                         <div className="flex items-center gap-2">
                           {it.icon ? (
@@ -1236,7 +1271,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                             </div>
                           )
                         ) : null}
-                      </div>
+                      </div>,
+                      itemTokens
                     );
                   })
                 ) : (
@@ -1246,14 +1282,20 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               <div className="space-y-4">
                 {d.mapEmbedUrl ? (() => {
                   const mapTokens = resolveFieldTokens((d as any).mapTokens, sectionTokens);
-                  return (
-                    <iframe
-                      title="map"
-                      src={d.mapEmbedUrl}
-                      className={cls("h-48 w-full rounded-2xl border border-white/[0.08]", tokensClass(mapTokens))}
+                  const node = (
+                    <div
+                      className={cls("h-48 w-full overflow-hidden rounded-2xl border border-white/[0.08]", tokensClass(mapTokens))}
                       style={tokensStyle(mapTokens)}
-                    />
+                    >
+                      <iframe
+                        title="map"
+                        src={d.mapEmbedUrl}
+                        className="h-full w-full"
+                        loading="lazy"
+                      />
+                    </div>
                   );
+                  return wrapDecorations(node, mapTokens);
                 })() : null}
                 {fields.length ? (() => {
                   const formTokens = resolveFieldTokens((form as any).twTokens, sectionTokens);
@@ -1263,7 +1305,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const formLabelTokens = resolveFieldTokens((form as any).labelTokens, formFieldTokens ?? formTokens ?? sectionTokens);
                   const formInputTokens = resolveFieldTokens((form as any).inputTokens, formFieldTokens ?? formTokens ?? sectionTokens);
                   const submitTokens = resolveFieldTokens((form as any).submitTokens, formTokens ?? sectionTokens);
-                  return (
+                  return wrapDecorations(
                     <form
                       action={form.action || undefined}
                       method={form.method || undefined}
@@ -1290,7 +1332,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                         const fieldTokens = resolveFieldTokens((f as any).twTokens, formFieldTokens ?? formTokens ?? sectionTokens);
                         const labelTokens = resolveFieldTokens((f as any).labelTokens, formLabelTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
                         const inputTokens = resolveFieldTokens((f as any).inputTokens, formInputTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
-                        return (
+                        return wrapDecorations(
                           <div key={idx} className={cls(tokensClass(fieldTokens))} style={tokensStyle(fieldTokens)}>
                             {f.label ? (() => {
                               const labelData = textContent(String(f.label), labelTokens);
@@ -1319,7 +1361,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                                 type={f.type ?? "text"}
                               />
                             )}
-                          </div>
+                          </div>,
+                          fieldTokens
                         );
                       })}
                       {form.submitLabel ? (() => {
@@ -1330,7 +1373,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           </button>
                         );
                       })() : null}
-                    </form>
+                    </form>,
+                    formTokens
                   );
                 })() : null}
               </div>
@@ -1338,7 +1382,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1350,7 +1395,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1384,7 +1429,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
                   const imageTokens = resolveFieldTokens((it as any).imageTokens);
                   const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
-                  return (
+                  const node = (
                     <div
                       key={idx}
                       className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
@@ -1424,6 +1469,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       })() : null}
                     </div>
                   );
+                  return wrapDecorations(node, itemTokens);
                 })
               ) : (
                 <div className="text-sm opacity-70">No items yet.</div>
@@ -1432,7 +1478,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1446,7 +1493,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1468,7 +1515,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
                   const imageTokens = resolveFieldTokens((it as any).imageTokens);
                   const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
-                  return (
+                  const node = (
                     <div
                       key={idx}
                       className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
@@ -1508,6 +1555,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       })() : null}
                     </div>
                   );
+                  return wrapDecorations(node, itemTokens);
                 })
               ) : (
                 <div className="text-sm opacity-70">No items yet.</div>
@@ -1516,7 +1564,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1527,7 +1576,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionTokens = (d as any)?.twTokens;
     const titleValue = d.title || (type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers");
     const titleData = textContent(String(titleValue), sectionTokens);
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1544,7 +1593,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1554,7 +1604,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1571,7 +1621,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const nameTokens = resolveFieldTokens((it as any).nameTokens, baseItemTokens);
                   const logoTokens = resolveFieldTokens((it as any).logoTokens, baseItemTokens);
                   const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
-                  return (
+                  const node = (
                     <div
                       key={idx}
                       className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm", tokensClass(itemTokens))}
@@ -1611,6 +1661,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       })() : null}
                     </div>
                   );
+                  return wrapDecorations(node, itemTokens);
                 })
               ) : (
                 <div className="text-sm opacity-70">No brands yet.</div>
@@ -1619,7 +1670,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1630,7 +1682,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const textData = d.text ? textContent(String(d.text), sectionTokens) : null;
     const ctaData = d.ctaLabel ? textContent(String(d.ctaLabel), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-4xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1665,7 +1717,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1677,7 +1730,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1690,7 +1743,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               {(d.images ?? []).map((im, idx) => {
                 const itemTokens = resolveFieldTokens((im as any).twTokens);
                 const imageTokens = resolveFieldTokens((im as any).imageTokens);
-                return (
+                const node = (
                   <div
                     key={idx}
                     className={cls("overflow-hidden rounded-2xl", tokensClass(itemTokens))}
@@ -1704,12 +1757,14 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     />
                   </div>
                 );
+                return wrapDecorations(node, itemTokens);
               })}
             </div>
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1718,7 +1773,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1735,7 +1790,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 const roleTokens = resolveFieldTokens((t as any).roleTokens, baseItemTokens);
                 const quoteTokens = resolveFieldTokens((t as any).quoteTokens, baseItemTokens);
                 const avatarTokens = resolveFieldTokens((t as any).avatarTokens);
-                return (
+                const node = (
                   <div
                     key={idx}
                     className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
@@ -1793,12 +1848,14 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     })() : null}
                   </div>
                 );
+                return wrapDecorations(node, itemTokens);
               })}
             </div>
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1810,7 +1867,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -1841,7 +1898,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -1860,7 +1918,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const tokenClass = tokensClass(sectionTokens);
     const titleData = d.title ? textContent(String(d.title ?? ""), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle ?? ""), sectionTokens) : null;
-    return (
+    return wrapDecorations(
       <section className={cls(sectionClass, tokenClass)} style={uiSectionStyle(d)}>
         <div className={ui.containerClass || "mx-auto max-w-5xl px-4"}>
           <SectionTextScope data={d}>
@@ -1885,7 +1943,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               const badgeTokens = resolveFieldTokens((c as any).badgeTokens, baseCardTokens);
               const buttonTokens = resolveFieldTokens((c as any).buttonTokens, baseCardTokens);
               const imageTokens = resolveFieldTokens((c as any).imageTokens);
-              return (
+              const node = (
                 <div
                   key={idx}
                   className={cls(
@@ -1968,12 +2026,14 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   ) : null}
                 </div>
               );
+              return wrapDecorations(node, cardTokens);
             })}
           </div>
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
   if (type === "VIDEO") {
@@ -1989,7 +2049,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
     const yt = d.url ? youtubeId(d.url) : null;
     const vm = d.url ? vimeoId(d.url) : null;
 
-    return (
+    return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
@@ -2040,7 +2100,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           </SectionTextScope>
           {componentsBlock}
         </div>
-      </section>
+      </section>,
+      sectionTokens
     );
   }
 
@@ -2067,8 +2128,6 @@ export function PageRenderer({ sections }: { sections: PageSection[] }) {
     <div className="space-y-5">
       {groups.flatMap((group) => {
         const renderSectionItem = (sec: PageSection) => {
-          const decorations = sectionDecorations((sec as any)?.data?.twTokens);
-          const hasDecorations = !!decorations;
           const layout = normalizeSectionLayout((sec as any)?.data?.layout);
           const span = clampInt(layout.span, 1, group.columns, 1);
           const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
@@ -2081,11 +2140,8 @@ export function PageRenderer({ sections }: { sections: PageSection[] }) {
               : undefined;
 
           return (
-            <div key={sec.id} className={cls(hasDecorations ? "relative" : undefined, colSpanClass)} style={rowStyle}>
-              {hasDecorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
-              <div className={hasDecorations ? "relative z-10" : undefined}>
-                <Section type={sec.type} data={sec.data} />
-              </div>
+            <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
+              <Section type={sec.type} data={sec.data} />
             </div>
           );
         };
