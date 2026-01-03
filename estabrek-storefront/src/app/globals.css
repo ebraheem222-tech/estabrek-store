@@ -103,27 +103,27 @@ body {
     color: var(--cms-text-color) !important;
   }
 
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div):not(.cms-typography-override) {
-    color: inherit !important;
-    font-size: inherit !important;
-    font-weight: inherit !important;
-    line-height: inherit !important;
-    letter-spacing: inherit !important;
-    text-align: inherit !important;
-    font-family: inherit !important;
-    text-transform: inherit !important;
-    text-decoration: inherit !important;
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div):not(:where(.cms-typography-override,.cms-text-effects)) {
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    font-family: inherit;
+    text-transform: inherit;
+    text-decoration: inherit;
   }
 
-  .cms-section-text :where(a,button):not(.cms-typography-override) {
-    color: inherit !important;
-    font-size: inherit !important;
-    font-weight: inherit !important;
-    line-height: inherit !important;
-    letter-spacing: inherit !important;
-    text-align: inherit !important;
-    font-family: inherit !important;
-    text-transform: inherit !important;
+  .cms-section-text :where(a,button):not(:where(.cms-typography-override,.cms-text-effects)) {
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    font-family: inherit;
+    text-transform: inherit;
   }
 
   .font-arabic { font-family: var(--font-arabic, inherit); }
