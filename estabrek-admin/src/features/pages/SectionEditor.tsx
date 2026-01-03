@@ -10,6 +10,7 @@ import { listCategories, type CatalogCategory } from "../../api/catalog.api";
 import DOMPurify from "dompurify";
 import type { TwTokens } from "../../cms/style/tokens";
 import type { CmsComponent } from "../../cms/types";
+import { SectionStylingPanel } from "./SectionEditorImports";
 import {
   DndContext,
   PointerSensor,
