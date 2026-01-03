@@ -319,11 +319,13 @@ function renderComponentsBlock(data: any, productLookup?: Record<string, Product
   if (!Array.isArray(components) || !components.length) return null;
   const inheritTokens = data?.twTokens?.typography ? { typography: data.twTokens.typography } : undefined;
   return (
-    <ComponentsRenderer
-      components={components as any}
-      productLookup={productLookup as any}
-      inheritTokens={inheritTokens}
-    />
+    <SectionTextScope data={data}>
+      <ComponentsRenderer
+        components={components as any}
+        productLookup={productLookup as any}
+        inheritTokens={inheritTokens}
+      />
+    </SectionTextScope>
   );
 }
 
