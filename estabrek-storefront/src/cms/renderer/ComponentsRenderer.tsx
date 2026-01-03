@@ -789,6 +789,58 @@ export function ComponentsRenderer({
         return wrapWithDecor(tokens, node, true, c.id);
       }
 
+      case "svg": {
+        const props = c.props ?? {};
+        const shapeKey = typeof props.shape === "string" ? props.shape : "";
+        const preset = shapeKey && shapeKey !== "custom" ? (SHAPES as any)[shapeKey] : undefined;
+        const viewBox = typeof props.viewBox === "string" ? props.viewBox : preset?.viewBox ?? "0 0 100 100";
+        const d = typeof props.d === "string" ? props.d : preset?.d ?? "";
+        const paths = Array.isArray(props.paths) ? props.paths : preset?.paths;
+        const preserveAspectRatio = typeof props.preserveAspectRatio === "string" ? props.preserveAspectRatio : "none";
+        const mode = props.mode === "fill" || props.mode === "stroke"
+          ? props.mode
+          : (shapeKey === "lines-horizontal" || shapeKey === "lines-diagonal" ? "stroke" : "fill");
+        const strokeWidth = Number.isFinite(Number(props.strokeWidth)) ? Number(props.strokeWidth) : 2;
+
+        const hasPath = (typeof d === "string" && d.trim()) || (Array.isArray(paths) && paths.length);
+        if (!hasPath) return null;
+
+        const node = (
+          <svg
+            viewBox={viewBox}
+            preserveAspectRatio={preserveAspectRatio}
+            className={cn("pointer-events-none block", tokenClass)}
+            style={tokenStyle}
+            aria-hidden="true"
+          >
+            {Array.isArray(paths) && paths.length
+              ? paths.map((p, idx) => (
+                <path
+                  key={`${shapeKey || "custom"}-${idx}`}
+                  d={p}
+                  fill={mode === "stroke" ? "none" : "currentColor"}
+                  stroke={mode === "stroke" ? "currentColor" : undefined}
+                  strokeWidth={mode === "stroke" ? strokeWidth : undefined}
+                  strokeLinecap={mode === "stroke" ? "round" : undefined}
+                  strokeLinejoin={mode === "stroke" ? "round" : undefined}
+                />
+              ))
+              : (
+                <path
+                  d={d}
+                  fill={mode === "stroke" ? "none" : "currentColor"}
+                  stroke={mode === "stroke" ? "currentColor" : undefined}
+                  strokeWidth={mode === "stroke" ? strokeWidth : undefined}
+                  strokeLinecap={mode === "stroke" ? "round" : undefined}
+                  strokeLinejoin={mode === "stroke" ? "round" : undefined}
+                />
+              )}
+          </svg>
+        );
+
+        return wrapWithDecor(tokens, node, false, c.id);
+      }
+
       case "divider": {
         const node = <hr className={cn("border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} />;
         return wrapWithDecor(tokens, node, false, c.id);

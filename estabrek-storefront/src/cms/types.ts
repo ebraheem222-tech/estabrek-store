@@ -131,6 +131,7 @@ export type CmsComponentKind =
   | "checkbox"
   | "image"
   | "icon"
+  | "svg"
   | "divider"
   | "spacer"
   | "badge"
