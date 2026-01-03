@@ -175,7 +175,7 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
   if (config.shape === "noise") {
     const noiseTransform = [combinedTransform, flipTransform].filter(Boolean).join(" ");
     return (
-      <div
+      <span
         className={`pointer-events-none ${className}`}
         style={{
           ...baseStyle,
@@ -197,7 +197,7 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
     
     const fadeTransform = [combinedTransform, flipTransform].filter(Boolean).join(" ");
     return (
-      <div
+      <span
         className={`pointer-events-none ${className}`}
         style={{
           ...baseStyle,
@@ -220,7 +220,7 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
   const svgWidth = "100%";
 
   return (
-    <div
+    <span
       className={`pointer-events-none overflow-hidden ${className}`}
       style={{
         ...baseStyle,
@@ -256,7 +256,7 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
           fill={isGradient && gradientId ? `url(#${gradientId})` : solidColor}
         />
       </svg>
-    </div>
+    </span>
   );
 };
 
