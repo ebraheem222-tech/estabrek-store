@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PageSectionTypeZ } from "./pageSectionData.schemas";
+import { PageSectionTypeZ } from "./pageSectionData.schemas.js";
 
 export const CreatePageBody = z.object({
   name: z.string().min(1),
