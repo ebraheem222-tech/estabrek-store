@@ -193,6 +193,42 @@ function sectionDecorations(tokens?: TwTokens) {
   return { before: hasBefore ? before : undefined, after: hasAfter ? after : undefined };
 }
 
+const INLINE_DECOR_TAGS = new Set([
+  "span",
+  "a",
+  "button",
+  "label",
+  "strong",
+  "em",
+  "small",
+  "b",
+  "i",
+  "u",
+  "code",
+  "kbd",
+  "mark",
+  "s",
+  "sub",
+  "sup",
+]);
+
+const VOID_ELEMENTS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
+
 function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
   const decorations = sectionDecorations(tokens);
   if (!decorations) return node;
@@ -202,17 +238,35 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     wantsOverflowHidden && typeof className === "string"
       ? className.replace(/\boverflow-hidden\b/g, "").trim()
       : className;
+  const tagName = typeof node.type === "string" ? node.type : undefined;
+  const isInline = !!tagName && INLINE_DECOR_TAGS.has(tagName);
+  const isVoid = !!tagName && VOID_ELEMENTS.has(tagName);
   const mergedClassName = cls(cleanedClassName, "relative", "overflow-visible");
-  const innerClassName = cls("relative z-10", wantsOverflowHidden ? "overflow-hidden" : undefined);
+  const innerClassName = cls(
+    "relative z-10",
+    wantsOverflowHidden ? "overflow-hidden" : undefined,
+    isInline ? "inline-block" : "block"
+  );
   const innerStyle = wantsOverflowHidden ? { borderRadius: "inherit" } : undefined;
+  if (isVoid) {
+    const Wrapper = isInline ? "span" : "div";
+    return (
+      <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
+        <SectionDecorations decorations={decorations} className="z-0" />
+        <span className={innerClassName} style={innerStyle}>
+          {node}
+        </span>
+      </Wrapper>
+    );
+  }
   return React.cloneElement(
     node,
     { className: mergedClassName },
     <>
       <SectionDecorations decorations={decorations} className="z-0" />
-      <div className={innerClassName} style={innerStyle}>
+      <span className={innerClassName} style={innerStyle}>
         {node.props?.children}
-      </div>
+      </span>
     </>
   );
 }
@@ -371,69 +425,85 @@ function HeroSection({ data }: { data: HeroData }) {
         <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
         <SectionTextScope data={data}>
           <div key={contentKey} className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify, contentAnimClass)}>
-            <h2 className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
-              {titleData.content}
-            </h2>
-            {subtitleData ? (
+            {wrapDecorations(
+              <h2 className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h2>,
+              titleTokens
+            )}
+            {subtitleData ? wrapDecorations(
               <p className={cls("max-w-[60ch] text-sm opacity-90", tokensClass(subtitleTokens), subtitleData.className)} style={tokensStyle(subtitleTokens)} aria-label={subtitleData.ariaLabel}>
                 {subtitleData.content}
-              </p>
+              </p>,
+              subtitleTokens
             ) : null}
             <div className="mt-2 flex flex-wrap gap-2">
               {primaryButton?.label ? (
                 primaryButton?.href ? (
-                  <a
-                    href={primaryButton.href}
-                    className={cls(
-                      "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
-                      tokensClass(primaryButtonTokens),
-                      primaryLabelData?.className
-                    )}
-                    style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
-                    aria-label={primaryLabelData?.ariaLabel}
-                  >
-                    {primaryLabelData?.content ?? primaryButton.label}
-                  </a>
+                  wrapDecorations(
+                    <a
+                      href={primaryButton.href}
+                      className={cls(
+                        "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
+                        tokensClass(primaryButtonTokens),
+                        primaryLabelData?.className
+                      )}
+                      style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                      aria-label={primaryLabelData?.ariaLabel}
+                    >
+                      {primaryLabelData?.content ?? primaryButton.label}
+                    </a>,
+                    primaryButtonTokens
+                  )
                 ) : (
-                  <span
-                    className={cls(
-                      "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
-                      tokensClass(primaryButtonTokens),
-                      primaryLabelData?.className
-                    )}
-                    style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
-                    aria-label={primaryLabelData?.ariaLabel}
-                  >
-                    {primaryLabelData?.content ?? primaryButton.label}
-                  </span>
+                  wrapDecorations(
+                    <span
+                      className={cls(
+                        "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
+                        tokensClass(primaryButtonTokens),
+                        primaryLabelData?.className
+                      )}
+                      style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                      aria-label={primaryLabelData?.ariaLabel}
+                    >
+                      {primaryLabelData?.content ?? primaryButton.label}
+                    </span>,
+                    primaryButtonTokens
+                  )
                 )
               ) : null}
               {secondaryButton?.label ? (
                 secondaryButton?.href ? (
-                  <a
-                    href={secondaryButton.href}
-                    className={cls(
-                      "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]",
-                      tokensClass(secondaryButtonTokens),
-                      secondaryLabelData?.className
-                    )}
-                    style={tokensStyle(secondaryButtonTokens)}
-                    aria-label={secondaryLabelData?.ariaLabel}
-                  >
-                    {secondaryLabelData?.content ?? secondaryButton.label}
-                  </a>
+                  wrapDecorations(
+                    <a
+                      href={secondaryButton.href}
+                      className={cls(
+                        "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]",
+                        tokensClass(secondaryButtonTokens),
+                        secondaryLabelData?.className
+                      )}
+                      style={tokensStyle(secondaryButtonTokens)}
+                      aria-label={secondaryLabelData?.ariaLabel}
+                    >
+                      {secondaryLabelData?.content ?? secondaryButton.label}
+                    </a>,
+                    secondaryButtonTokens
+                  )
                 ) : (
-                  <span
-                    className={cls(
-                      "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90",
-                      tokensClass(secondaryButtonTokens),
-                      secondaryLabelData?.className
-                    )}
-                    style={tokensStyle(secondaryButtonTokens)}
-                    aria-label={secondaryLabelData?.ariaLabel}
-                  >
-                    {secondaryLabelData?.content ?? secondaryButton.label}
-                  </span>
+                  wrapDecorations(
+                    <span
+                      className={cls(
+                        "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90",
+                        tokensClass(secondaryButtonTokens),
+                        secondaryLabelData?.className
+                      )}
+                      style={tokensStyle(secondaryButtonTokens)}
+                      aria-label={secondaryLabelData?.ariaLabel}
+                    >
+                      {secondaryLabelData?.content ?? secondaryButton.label}
+                    </span>,
+                    secondaryButtonTokens
+                  )
                 )
               ) : null}
             </div>
@@ -683,26 +753,28 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   >
                     {(() => {
                       const questionData = textContent(String(it.question ?? ""), questionTokens);
-                      return (
+                      return wrapDecorations(
                         <div
                           className={cls("text-sm font-semibold", tokensClass(questionTokens), questionData.className)}
                           style={tokensStyle(questionTokens)}
                           aria-label={questionData.ariaLabel}
                         >
                           {questionData.content}
-                        </div>
+                        </div>,
+                        questionTokens
                       );
                     })()}
                     {it.answer ? (() => {
                       const answerData = textContent(String(it.answer ?? ""), answerTokens);
-                      return (
+                      return wrapDecorations(
                         <div
                           className={cls("mt-1 text-sm opacity-80", tokensClass(answerTokens), answerData.className)}
                           style={tokensStyle(answerTokens)}
                           aria-label={answerData.ariaLabel}
                         >
                           {answerData.content}
-                        </div>
+                        </div>,
+                        answerTokens
                       );
                     })() : null}
                   </div>
@@ -775,48 +847,52 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
                     style={tokensStyle(itemTokens)}
                   >
-                    {it.imageUrl ? (
+                    {it.imageUrl ? wrapDecorations(
                       <img
                         src={it.imageUrl}
                         alt={it.title}
                         className={cls("mb-3 h-28 w-full rounded-xl object-cover", tokensClass(imageTokens))}
                         style={tokensStyle(imageTokens)}
-                      />
+                      />,
+                      imageTokens
                     ) : null}
                     {(() => {
                       const itemTitleData = textContent(String(it.title ?? ""), titleTokens);
-                      return (
+                      return wrapDecorations(
                         <div
                           className={cls("text-sm font-semibold", tokensClass(titleTokens), itemTitleData.className)}
                           style={tokensStyle(titleTokens)}
                           aria-label={itemTitleData.ariaLabel}
                         >
                           {itemTitleData.content}
-                        </div>
+                        </div>,
+                        titleTokens
                       );
                     })()}
                     {it.text ? (() => {
                       const itemTextData = textContent(String(it.text), textTokens);
-                      return (
+                      return wrapDecorations(
                         <div
                           className={cls("mt-1 text-sm opacity-80", tokensClass(textTokens), itemTextData.className)}
                           style={tokensStyle(textTokens)}
                           aria-label={itemTextData.ariaLabel}
                         >
                           {itemTextData.content}
-                        </div>
+                        </div>,
+                        textTokens
                       );
                     })() : null}
                     {it.href ? (() => {
                       const linkData = textContent(String(it.href), linkTokens);
-                      return (
+                      return wrapDecorations(
                         <div
                           className={cls("mt-2 text-xs opacity-60", tokensClass(linkTokens), linkData.className)}
                           style={tokensStyle(linkTokens)}
                           aria-label={linkData.ariaLabel}
                         >
                           {linkData.content}
-                        </div>
+                        </div>,
+                        linkTokens
                       );
                     })() : null}
                   </div>,
@@ -876,25 +952,33 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     <>
                       <div className="flex items-center gap-2">
                         {it.iconUrl ? (
-                          <img src={it.iconUrl} alt="" className={cls("h-8 w-8 rounded-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)} />
+                          wrapDecorations(
+                            <img src={it.iconUrl} alt="" className={cls("h-8 w-8 rounded-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)} />,
+                            iconTokens
+                          )
                         ) : it.icon ? (
-                          <span className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>{it.icon}</span>
+                          wrapDecorations(
+                            <span className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>{it.icon}</span>,
+                            iconTokens
+                          )
                         ) : null}
                         {(() => {
                           const titleData = textContent(String(it.title ?? ""), titleTokens);
-                          return (
+                          return wrapDecorations(
                             <div className={cls("text-sm font-semibold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
                               {titleData.content}
-                            </div>
+                            </div>,
+                            titleTokens
                           );
                         })()}
                       </div>
                       {it.text ? (() => {
                         const textData = textContent(String(it.text), textTokens);
-                        return (
+                        return wrapDecorations(
                           <div className={cls("mt-2 text-sm opacity-80", tokensClass(textTokens), textData.className)} style={tokensStyle(textTokens)} aria-label={textData.ariaLabel}>
                             {textData.content}
-                          </div>
+                          </div>,
+                          textTokens
                         );
                       })() : null}
                     </>
@@ -962,33 +1046,37 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-center", tokensClass(itemTokens))}
                       style={tokensStyle(itemTokens)}
                     >
-                      {it.icon ? (
+                      {it.icon ? wrapDecorations(
                         <div className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
                           {it.icon}
-                        </div>
+                        </div>,
+                        iconTokens
                       ) : null}
                       {(() => {
                         const valueData = textContent(String(it.value ?? ""), valueTokens);
-                        return (
+                        return wrapDecorations(
                           <div className={cls("text-2xl font-semibold", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
                             {valueData.content}
-                          </div>
+                          </div>,
+                          valueTokens
                         );
                       })()}
                       {it.label ? (() => {
                         const labelData = textContent(String(it.label), labelTokens);
-                        return (
+                        return wrapDecorations(
                           <div className={cls("text-sm opacity-80", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
                             {labelData.content}
-                          </div>
+                          </div>,
+                          labelTokens
                         );
                       })() : null}
                       {it.subtext ? (() => {
                         const subtextData = textContent(String(it.subtext), subtextTokens);
-                        return (
+                        return wrapDecorations(
                           <div className={cls("mt-1 text-xs opacity-60", tokensClass(subtextTokens), subtextData.className)} style={tokensStyle(subtextTokens)} aria-label={subtextData.ariaLabel}>
                             {subtextData.content}
-                          </div>
+                          </div>,
+                          subtextTokens
                         );
                       })() : null}
                     </div>,
@@ -1048,21 +1136,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const socials = Array.isArray(m.socials) ? m.socials : [];
                   return wrapDecorations(
                     <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
-                      {m.avatarUrl ? (
-                        <img src={m.avatarUrl} alt="" className={cls("mb-3 h-12 w-12 rounded-full object-cover", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />
+                      {m.avatarUrl ? wrapDecorations(
+                        <img src={m.avatarUrl} alt="" className={cls("mb-3 h-12 w-12 rounded-full object-cover", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />,
+                        avatarTokens
                       ) : null}
-                      <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                        {nameData.content}
-                      </div>
-                      {roleData ? (
+                      {wrapDecorations(
+                        <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                          {nameData.content}
+                        </div>,
+                        nameTokens
+                      )}
+                      {roleData ? wrapDecorations(
                         <div className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)} style={tokensStyle(roleTokens)} aria-label={roleData.ariaLabel}>
                           {roleData.content}
-                        </div>
+                        </div>,
+                        roleTokens
                       ) : null}
-                      {bioData ? (
+                      {bioData ? wrapDecorations(
                         <div className={cls("mt-2 text-sm opacity-80", tokensClass(bioTokens), bioData.className)} style={tokensStyle(bioTokens)} aria-label={bioData.ariaLabel}>
                           {bioData.content}
-                        </div>
+                        </div>,
+                        bioTokens
                       ) : null}
                       {socials.length ? (
                         <div className="mt-3 flex flex-wrap gap-2 text-xs opacity-70">
@@ -1070,7 +1164,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                             const label = s.label || s.href || "";
                             if (!label) return null;
                             const socialData = textContent(String(label), socialTokens);
-                            return (
+                            return wrapDecorations(
                               <span
                                 key={`${label}-${sIdx}`}
                                 className={cls(tokensClass(socialTokens), socialData.className)}
@@ -1078,7 +1172,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                                 aria-label={socialData.ariaLabel}
                               >
                                 {socialData.content}
-                              </span>
+                              </span>,
+                              socialTokens
                             );
                           })}
                         </div>
@@ -1151,46 +1246,75 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       )}
                       style={tokensStyle(planTokens)}
                     >
-                      {badgeData ? (
+                      {badgeData ? wrapDecorations(
                         <div className={cls("text-[11px] opacity-70", tokensClass(badgeTokens), badgeData.className)} style={tokensStyle(badgeTokens)} aria-label={badgeData.ariaLabel}>
                           {badgeData.content}
-                        </div>
+                        </div>,
+                        badgeTokens
                       ) : null}
-                      <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                        {nameData.content}
-                      </div>
-                      {priceData ? (
+                      {wrapDecorations(
+                        <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                          {nameData.content}
+                        </div>,
+                        nameTokens
+                      )}
+                      {priceData ? wrapDecorations(
                         <div className={cls("mt-2 text-2xl", tokensClass(priceTokens), priceData.className)} style={tokensStyle(priceTokens)} aria-label={priceData.ariaLabel}>
                           {priceData.content}
-                          {periodData ? (
+                          {periodData ? wrapDecorations(
                             <span className={cls("text-xs opacity-60", tokensClass(periodTokens), periodData.className)} style={tokensStyle(periodTokens)} aria-label={periodData.ariaLabel}>
                               {" "}
                               {periodData.content}
-                            </span>
+                            </span>,
+                            periodTokens
                           ) : null}
-                        </div>
+                        </div>,
+                        priceTokens
                       ) : null}
-                      {descriptionData ? (
+                      {descriptionData ? wrapDecorations(
                         <div className={cls("mt-2 text-sm opacity-80", tokensClass(descriptionTokens), descriptionData.className)} style={tokensStyle(descriptionTokens)} aria-label={descriptionData.ariaLabel}>
                           {descriptionData.content}
-                        </div>
+                        </div>,
+                        descriptionTokens
                       ) : null}
                       {Array.isArray(p.features) && p.features.length ? (
                         <ul className={cls("mt-3 list-disc ps-5 text-sm opacity-80", tokensClass(featureTokens))} style={tokensStyle(featureTokens)}>
                           {p.features.map((f, fIdx) => {
                             const featureData = textContent(String(f), featureTokens);
-                            return (
+                            return wrapDecorations(
                               <li key={fIdx} className={featureData.className} aria-label={featureData.ariaLabel}>
                                 {featureData.content}
-                              </li>
+                              </li>,
+                              featureTokens
                             );
                           })}
                         </ul>
                       ) : null}
                       {ctaData ? (
-                        <div className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens), ctaData.className)} style={tokensStyle(ctaTokens)} aria-label={ctaData.ariaLabel}>
-                          {ctaData.content}
-                        </div>
+                        p.ctaHref ? (
+                          wrapDecorations(
+                            <a
+                              href={p.ctaHref}
+                              className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens), ctaData.className)}
+                              style={tokensStyle(ctaTokens)}
+                              aria-label={ctaData.ariaLabel}
+                            >
+                              {ctaData.content}
+                            </a>,
+                            ctaTokens
+                          )
+                        ) : (
+                          wrapDecorations(
+                            <span
+                              className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens), ctaData.className)}
+                              style={tokensStyle(ctaTokens)}
+                              aria-label={ctaData.ariaLabel}
+                            >
+                              {ctaData.content}
+                            </span>,
+                            ctaTokens
+                          )
+                        )
                       ) : null}
                     </div>,
                     planTokens
@@ -1246,29 +1370,39 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     return wrapDecorations(
                       <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
                         <div className="flex items-center gap-2">
-                          {it.icon ? (
+                          {it.icon ? wrapDecorations(
                             <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
                               {it.icon}
-                            </span>
+                            </span>,
+                            iconTokens
                           ) : null}
-                          <div className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                            {labelData.content}
-                          </div>
+                          {wrapDecorations(
+                            <div className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                              {labelData.content}
+                            </div>,
+                            labelTokens
+                          )}
                         </div>
                         {valueData ? (
                           it.href ? (
-                            <a
-                              href={it.href}
-                              className={cls("text-sm opacity-80 underline", tokensClass(valueTokens), valueData.className)}
-                              style={tokensStyle(valueTokens)}
-                              aria-label={valueData.ariaLabel}
-                            >
-                              {valueData.content}
-                            </a>
+                            wrapDecorations(
+                              <a
+                                href={it.href}
+                                className={cls("text-sm opacity-80 underline", tokensClass(valueTokens), valueData.className)}
+                                style={tokensStyle(valueTokens)}
+                                aria-label={valueData.ariaLabel}
+                              >
+                                {valueData.content}
+                              </a>,
+                              valueTokens
+                            )
                           ) : (
-                            <div className={cls("text-sm opacity-80", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
-                              {valueData.content}
-                            </div>
+                            wrapDecorations(
+                              <div className={cls("text-sm opacity-80", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
+                                {valueData.content}
+                              </div>,
+                              valueTokens
+                            )
                           )
                         ) : null}
                       </div>,
@@ -1314,18 +1448,20 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     >
                       {form.title ? (() => {
                         const formTitleData = textContent(String(form.title), formTitleTokens);
-                        return (
+                        return wrapDecorations(
                           <div className={cls("text-sm font-semibold", tokensClass(formTitleTokens), formTitleData.className)} style={tokensStyle(formTitleTokens)} aria-label={formTitleData.ariaLabel}>
                             {formTitleData.content}
-                          </div>
+                          </div>,
+                          formTitleTokens
                         );
                       })() : null}
                       {form.subtitle ? (() => {
                         const formSubtitleData = textContent(String(form.subtitle), formSubtitleTokens);
-                        return (
+                        return wrapDecorations(
                           <div className={cls("text-xs opacity-70", tokensClass(formSubtitleTokens), formSubtitleData.className)} style={tokensStyle(formSubtitleTokens)} aria-label={formSubtitleData.ariaLabel}>
                             {formSubtitleData.content}
-                          </div>
+                          </div>,
+                          formSubtitleTokens
                         );
                       })() : null}
                       {fields.map((f, idx) => {
@@ -1336,30 +1472,37 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           <div key={idx} className={cls(tokensClass(fieldTokens))} style={tokensStyle(fieldTokens)}>
                             {f.label ? (() => {
                               const labelData = textContent(String(f.label), labelTokens);
-                              return (
+                              return wrapDecorations(
                                 <label className={cls("block text-xs opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
                                   {labelData.content}
-                                </label>
+                                </label>,
+                                labelTokens
                               );
                             })() : null}
                             {f.type === "textarea" ? (
-                              <textarea
-                                className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
-                                style={tokensStyle(inputTokens)}
-                                placeholder={f.placeholder}
-                                name={f.name}
-                                required={!!f.required}
-                                rows={4}
-                              />
+                              wrapDecorations(
+                                <textarea
+                                  className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
+                                  style={tokensStyle(inputTokens)}
+                                  placeholder={f.placeholder}
+                                  name={f.name}
+                                  required={!!f.required}
+                                  rows={4}
+                                />,
+                                inputTokens
+                              )
                             ) : (
-                              <input
-                                className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
-                                style={tokensStyle(inputTokens)}
-                                placeholder={f.placeholder}
-                                name={f.name}
-                                required={!!f.required}
-                                type={f.type ?? "text"}
-                              />
+                              wrapDecorations(
+                                <input
+                                  className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
+                                  style={tokensStyle(inputTokens)}
+                                  placeholder={f.placeholder}
+                                  name={f.name}
+                                  required={!!f.required}
+                                  type={f.type ?? "text"}
+                                />,
+                                inputTokens
+                              )
                             )}
                           </div>,
                           fieldTokens
@@ -1367,10 +1510,11 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       })}
                       {form.submitLabel ? (() => {
                         const submitData = textContent(String(form.submitLabel), submitTokens);
-                        return (
+                        return wrapDecorations(
                           <button type="submit" className={cls("inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm", tokensClass(submitTokens), submitData.className)} style={tokensStyle(submitTokens)} aria-label={submitData.ariaLabel}>
                             {submitData.content}
-                          </button>
+                          </button>,
+                          submitTokens
                         );
                       })() : null}
                     </form>,
@@ -1436,35 +1580,40 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       style={tokensStyle(itemTokens)}
                     >
                       {it.imageUrl ? (
-                        <img
-                          src={it.imageUrl}
-                          alt=""
-                          className={cls("mb-3 h-32 w-full rounded-xl object-cover", tokensClass(imageTokens))}
-                          style={tokensStyle(imageTokens)}
-                        />
+                        wrapDecorations(
+                          <img
+                            src={it.imageUrl}
+                            alt=""
+                            className={cls("mb-3 h-32 w-full rounded-xl object-cover", tokensClass(imageTokens))}
+                            style={tokensStyle(imageTokens)}
+                          />,
+                          imageTokens
+                        )
                       ) : null}
                       {(() => {
                         const labelData = textContent(String(it.label ?? "Category"), labelTokens);
-                        return (
+                        return wrapDecorations(
                           <div
                             className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)}
                             style={tokensStyle(labelTokens)}
                             aria-label={labelData.ariaLabel}
                           >
                             {labelData.content}
-                          </div>
+                          </div>,
+                          labelTokens
                         );
                       })()}
                       {it.href ? (() => {
                         const hrefData = textContent(String(it.href), linkTokens);
-                        return (
+                        return wrapDecorations(
                           <div
                             className={cls("mt-1 text-xs opacity-70", tokensClass(linkTokens), hrefData.className)}
                             style={tokensStyle(linkTokens)}
                             aria-label={hrefData.ariaLabel}
                           >
                             {hrefData.content}
-                          </div>
+                          </div>,
+                          linkTokens
                         );
                       })() : null}
                     </div>
@@ -1521,36 +1670,39 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
                       style={tokensStyle(itemTokens)}
                     >
-                      {it.imageUrl ? (
+                      {it.imageUrl ? wrapDecorations(
                         <img
                           src={it.imageUrl}
                           alt=""
                           className={cls("mb-3 h-32 w-full rounded-xl object-cover", tokensClass(imageTokens))}
                           style={tokensStyle(imageTokens)}
-                        />
+                        />,
+                        imageTokens
                       ) : null}
                       {(() => {
                         const labelData = textContent(String(it.label ?? "Collection"), labelTokens);
-                        return (
+                        return wrapDecorations(
                           <div
                             className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)}
                             style={tokensStyle(labelTokens)}
                             aria-label={labelData.ariaLabel}
                           >
                             {labelData.content}
-                          </div>
+                          </div>,
+                          labelTokens
                         );
                       })()}
                       {it.href ? (() => {
                         const hrefData = textContent(String(it.href), linkTokens);
-                        return (
+                        return wrapDecorations(
                           <div
                             className={cls("mt-1 text-xs opacity-70", tokensClass(linkTokens), hrefData.className)}
                             style={tokensStyle(linkTokens)}
                             aria-label={hrefData.ariaLabel}
                           >
                             {hrefData.content}
-                          </div>
+                          </div>,
+                          linkTokens
                         );
                       })() : null}
                     </div>
@@ -1629,34 +1781,39 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     >
                       {(() => {
                         const nameData = textContent(String(it.name ?? "Brand"), nameTokens);
-                        return (
+                        return wrapDecorations(
                           <div
                             className={cls("font-semibold", tokensClass(nameTokens), nameData.className)}
                             style={tokensStyle(nameTokens)}
                             aria-label={nameData.ariaLabel}
                           >
                             {nameData.content}
-                          </div>
+                          </div>,
+                          nameTokens
                         );
                       })()}
                       {it.logoUrl ? (
-                        <div
-                          className={cls("mt-1 text-xs opacity-70", tokensClass(logoTokens))}
-                          style={tokensStyle(logoTokens)}
-                        >
-                          logo: {it.logoUrl}
-                        </div>
+                        wrapDecorations(
+                          <div
+                            className={cls("mt-1 text-xs opacity-70", tokensClass(logoTokens))}
+                            style={tokensStyle(logoTokens)}
+                          >
+                            logo: {it.logoUrl}
+                          </div>,
+                          logoTokens
+                        )
                       ) : null}
                       {it.href ? (() => {
                         const hrefData = textContent(String(it.href), linkTokens);
-                        return (
+                        return wrapDecorations(
                           <div
                             className={cls("mt-1 text-xs opacity-70", tokensClass(linkTokens), hrefData.className)}
                             style={tokensStyle(linkTokens)}
                             aria-label={hrefData.ariaLabel}
                           >
                             {hrefData.content}
-                          </div>
+                          </div>,
+                          linkTokens
                         );
                       })() : null}
                     </div>
@@ -1749,12 +1906,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     className={cls("overflow-hidden rounded-2xl", tokensClass(itemTokens))}
                     style={tokensStyle(itemTokens)}
                   >
-                    <img
-                      src={im.url}
-                      alt={im.alt ?? ""}
-                      className={cls("h-40 w-full object-cover", tokensClass(imageTokens))}
-                      style={tokensStyle(imageTokens)}
-                    />
+                    {wrapDecorations(
+                      <img
+                        src={im.url}
+                        alt={im.alt ?? ""}
+                        className={cls("h-40 w-full object-cover", tokensClass(imageTokens))}
+                        style={tokensStyle(imageTokens)}
+                      />,
+                      imageTokens
+                    )}
                   </div>
                 );
                 return wrapDecorations(node, itemTokens);
@@ -1798,52 +1958,61 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   >
                     <div className="flex items-center gap-3">
                       {t.avatarUrl ? (
-                        <img
-                          src={t.avatarUrl}
-                          alt={t.name ?? "Avatar"}
-                          className={cls("h-10 w-10 rounded-full object-cover border border-white/10", tokensClass(avatarTokens))}
-                          style={tokensStyle(avatarTokens)}
-                        />
+                        wrapDecorations(
+                          <img
+                            src={t.avatarUrl}
+                            alt={t.name ?? "Avatar"}
+                            className={cls("h-10 w-10 rounded-full object-cover border border-white/10", tokensClass(avatarTokens))}
+                            style={tokensStyle(avatarTokens)}
+                          />,
+                          avatarTokens
+                        )
                       ) : (
-                        <div className={cls("h-10 w-10 rounded-full bg-white/10", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />
+                        wrapDecorations(
+                          <div className={cls("h-10 w-10 rounded-full bg-white/10", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />,
+                          avatarTokens
+                        )
                       )}
                       <div>
                         {(() => {
                           const nameData = textContent(String(t.name ?? ""), nameTokens);
-                          return (
+                          return wrapDecorations(
                             <div
                               className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)}
                               style={tokensStyle(nameTokens)}
                               aria-label={nameData.ariaLabel}
                             >
                               {nameData.content}
-                            </div>
+                            </div>,
+                            nameTokens
                           );
                         })()}
                         {t.role ? (() => {
                           const roleData = textContent(String(t.role), roleTokens);
-                          return (
+                          return wrapDecorations(
                             <div
                               className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)}
                               style={tokensStyle(roleTokens)}
                               aria-label={roleData.ariaLabel}
                             >
                               {roleData.content}
-                            </div>
+                            </div>,
+                            roleTokens
                           );
                         })() : null}
                       </div>
                     </div>
                     {t.quote ? (() => {
                       const quoteData = textContent(String(t.quote), quoteTokens);
-                      return (
+                      return wrapDecorations(
                         <div
                           className={cls("mt-3 text-sm opacity-90", tokensClass(quoteTokens), quoteData.className)}
                           style={tokensStyle(quoteTokens)}
                           aria-label={quoteData.ariaLabel}
                         >
                           "{quoteData.content}"
-                        </div>
+                        </div>,
+                        quoteTokens
                       );
                     })() : null}
                   </div>
@@ -1954,39 +2123,42 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   )}
                   style={tokensStyle(cardTokens)}
                 >
-                  {c.imageUrl ? (
+                  {c.imageUrl ? wrapDecorations(
                     <img
                       src={c.imageUrl}
                       alt={c.title ?? ""}
                       className={cls(ui.imageClass || "w-full h-40 object-cover rounded-xl border border-white/10", tokensClass(imageTokens))}
                       style={tokensStyle(imageTokens)}
-                    />
+                    />,
+                    imageTokens
                   ) : null}
 
                   <div className="mt-3 flex items-start justify-between gap-2">
                     {c.title ? (() => {
                       const cardTitleData = textContent(String(c.title ?? ""), titleTokens);
-                      return (
+                      return wrapDecorations(
                         <div
                           className={cls("text-white font-semibold", tokensClass(titleTokens), cardTitleData.className)}
                           style={tokensStyle(titleTokens)}
                           aria-label={cardTitleData.ariaLabel}
                         >
                           {cardTitleData.content}
-                        </div>
+                        </div>,
+                        titleTokens
                       );
                     })() : <div />}
                     {c.badge ? (
                       (() => {
                         const badgeData = textContent(String(c.badge ?? ""), badgeTokens);
-                        return (
+                        return wrapDecorations(
                           <div
                             className={cls("shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80", tokensClass(badgeTokens), badgeData.className)}
                             style={tokensStyle(badgeTokens)}
                             aria-label={badgeData.ariaLabel}
                           >
                             {badgeData.content}
-                          </div>
+                          </div>,
+                          badgeTokens
                         );
                       })()
                     ) : null}
@@ -1994,21 +2166,22 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
 
                   {c.text ? (() => {
                     const cardTextData = textContent(String(c.text ?? ""), textTokens);
-                    return (
+                    return wrapDecorations(
                       <div
                         className={cls("mt-2 text-sm text-white/70", tokensClass(textTokens), cardTextData.className)}
                         style={tokensStyle(textTokens)}
                         aria-label={cardTextData.ariaLabel}
                       >
                         {cardTextData.content}
-                      </div>
+                      </div>,
+                      textTokens
                     );
                   })() : null}
 
                   {c.buttonLabel && c.buttonHref ? (
                     (() => {
                       const buttonData = textContent(String(c.buttonLabel ?? ""), buttonTokens);
-                      return (
+                      return wrapDecorations(
                         <a
                           href={c.buttonHref}
                           className={cls(
@@ -2020,7 +2193,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           aria-label={buttonData.ariaLabel}
                         >
                           {buttonData.content}
-                        </a>
+                        </a>,
+                        buttonTokens
                       );
                     })()
                   ) : null}

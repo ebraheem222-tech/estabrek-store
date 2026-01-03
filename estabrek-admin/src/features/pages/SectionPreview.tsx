@@ -194,6 +194,95 @@ function sectionDecorations(tokens?: TwTokens) {
   return { before: hasBefore ? before : undefined, after: hasAfter ? after : undefined };
 }
 
+const INLINE_DECOR_TAGS = new Set([
+  "span",
+  "a",
+  "button",
+  "label",
+  "strong",
+  "em",
+  "small",
+  "b",
+  "i",
+  "u",
+  "code",
+  "kbd",
+  "mark",
+  "s",
+  "sub",
+  "sup",
+]);
+
+const VOID_ELEMENTS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
+
+function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
+  const decorations = sectionDecorations(tokens);
+  if (!decorations) return node;
+  const className = node.props?.className;
+  const wantsOverflowHidden = typeof className === "string" && className.includes("overflow-hidden");
+  const cleanedClassName =
+    wantsOverflowHidden && typeof className === "string"
+      ? className.replace(/\boverflow-hidden\b/g, "").trim()
+      : className;
+  const tagName = typeof node.type === "string" ? node.type : undefined;
+  const isInline = !!tagName && INLINE_DECOR_TAGS.has(tagName);
+  const isVoid = !!tagName && VOID_ELEMENTS.has(tagName);
+  const mergedClassName = cls(cleanedClassName, "relative", "overflow-visible");
+  const innerClassName = cls(
+    "relative z-10",
+    wantsOverflowHidden ? "overflow-hidden" : undefined,
+    isInline ? "inline-block" : "block"
+  );
+  const innerStyle = wantsOverflowHidden ? { borderRadius: "inherit" } : undefined;
+  if (tagName === "details") {
+    const Wrapper = isInline ? "span" : "div";
+    return (
+      <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
+        <SectionDecorations decorations={decorations ?? undefined} className="z-0" />
+        <span className={innerClassName} style={innerStyle}>
+          {node}
+        </span>
+      </Wrapper>
+    );
+  }
+  if (isVoid) {
+    const Wrapper = isInline ? "span" : "div";
+    return (
+      <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
+        <SectionDecorations decorations={decorations ?? undefined} className="z-0" />
+        <span className={innerClassName} style={innerStyle}>
+          {node}
+        </span>
+      </Wrapper>
+    );
+  }
+  return React.cloneElement(
+    node,
+    { className: mergedClassName },
+    <>
+      <SectionDecorations decorations={decorations ?? undefined} className="z-0" />
+      <span className={innerClassName} style={innerStyle}>
+        {node.props?.children}
+      </span>
+    </>
+  );
+}
+
 function previewDecorMargins(tokens?: TwTokens): React.CSSProperties | undefined {
   const decor = tokens?.decor;
   if (!decor) return undefined;
@@ -339,116 +428,135 @@ function HeroPreview({ data }: { data: HeroData }) {
 
   return (
     <SectionShell data={data} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-      <div
-        key={slideKey}
-        className={cls("relative min-h-[180px]", uiContainerClass(data), slideAnimClass, tokensClass(slideTokens))}
-        style={
-          (s as any).backgroundImageUrl
-            ? {
-                backgroundImage: `url(${(s as any).backgroundImageUrl})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                ...(tokensStyle(slideTokens) ?? {}),
-              }
-            : tokensStyle(slideTokens)
-        }
-      >
-        <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
-        <SectionTextScope data={data}>
-        <div key={contentKey} className={cls("relative p-6 flex flex-col gap-3", justify, contentAnimClass)}>
-          <div
-            className={cls("text-lg font-semibold", tokensClass(titleTokens), titleData.className)}
-            style={tokensStyle(titleTokens)}
-            aria-label={titleData.ariaLabel}
-          >
-            {titleData.content}
+      {wrapDecorations(
+        <div
+          key={slideKey}
+          className={cls("relative min-h-[180px]", uiContainerClass(data), slideAnimClass, tokensClass(slideTokens))}
+          style={
+            (s as any).backgroundImageUrl
+              ? {
+                  backgroundImage: `url(${(s as any).backgroundImageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  ...(tokensStyle(slideTokens) ?? {}),
+                }
+              : tokensStyle(slideTokens)
+          }
+        >
+          <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
+          <SectionTextScope data={data}>
+          <div key={contentKey} className={cls("relative p-6 flex flex-col gap-3", justify, contentAnimClass)}>
+            {wrapDecorations(
+              <div
+                className={cls("text-lg font-semibold", tokensClass(titleTokens), titleData.className)}
+                style={tokensStyle(titleTokens)}
+                aria-label={titleData.ariaLabel}
+              >
+                {titleData.content}
+              </div>,
+              titleTokens
+            )}
+            {subtitleData ? wrapDecorations(
+              <div
+                className={cls("text-sm opacity-80 max-w-[40ch]", tokensClass(subtitleTokens), subtitleData.className)}
+                style={tokensStyle(subtitleTokens)}
+                aria-label={subtitleData.ariaLabel}
+              >
+                {subtitleData.content}
+              </div>,
+              subtitleTokens
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {primaryButton?.label ? (
+                primaryButton?.href ? (
+                  wrapDecorations(
+                    <a
+                      href={primaryButton.href}
+                      className={cls(
+                        "inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
+                        tokensClass(primaryButtonTokens),
+                        primaryLabelData?.className
+                      )}
+                      style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                      aria-label={primaryLabelData?.ariaLabel}
+                    >
+                      {primaryLabelData?.content ?? primaryButton.label}
+                    </a>,
+                    primaryButtonTokens
+                  )
+                ) : (
+                  wrapDecorations(
+                    <span
+                      className={cls(
+                        "inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
+                        tokensClass(primaryButtonTokens),
+                        primaryLabelData?.className
+                      )}
+                      style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                      aria-label={primaryLabelData?.ariaLabel}
+                    >
+                      {primaryLabelData?.content ?? primaryButton.label}
+                    </span>,
+                    primaryButtonTokens
+                  )
+                )
+              ) : null}
+              {secondaryButton?.label ? (
+                secondaryButton?.href ? (
+                  wrapDecorations(
+                    <a
+                      href={secondaryButton.href}
+                      className={cls(
+                        "inline-flex items-center px-3 py-1 text-xs font-semibold border rounded-xl border-white/20",
+                        tokensClass(secondaryButtonTokens),
+                        secondaryLabelData?.className
+                      )}
+                      style={tokensStyle(secondaryButtonTokens)}
+                      aria-label={secondaryLabelData?.ariaLabel}
+                    >
+                      {secondaryLabelData?.content ?? secondaryButton.label}
+                    </a>,
+                    secondaryButtonTokens
+                  )
+                ) : (
+                  wrapDecorations(
+                    <span
+                      className={cls(
+                        "inline-flex items-center px-3 py-1 text-xs font-semibold border rounded-xl border-white/20",
+                        tokensClass(secondaryButtonTokens),
+                        secondaryLabelData?.className
+                      )}
+                      style={tokensStyle(secondaryButtonTokens)}
+                      aria-label={secondaryLabelData?.ariaLabel}
+                    >
+                      {secondaryLabelData?.content ?? secondaryButton.label}
+                    </span>,
+                    secondaryButtonTokens
+                  )
+                )
+              ) : null}
+            </div>
           </div>
-          {subtitleData ? (
-            <div
-              className={cls("text-sm opacity-80 max-w-[40ch]", tokensClass(subtitleTokens), subtitleData.className)}
-              style={tokensStyle(subtitleTokens)}
-              aria-label={subtitleData.ariaLabel}
-            >
-              {subtitleData.content}
+          </SectionTextScope>
+          {showDots && slides.length > 1 ? (
+            <div className="absolute flex items-center gap-2 -translate-x-1/2 bottom-3 left-1/2">
+              {slides.map((_: any, idx: number) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveSlide(idx)}
+                  aria-label={`Slide ${idx + 1}`}
+                  className={cls(
+                    "h-2 w-2 rounded-full transition",
+                    idx === activeIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
+                  )}
+                />
+              ))}
             </div>
           ) : null}
-          <div className="flex flex-wrap gap-2">
-            {primaryButton?.label ? (
-              primaryButton?.href ? (
-                <a
-                  href={primaryButton.href}
-                  className={cls(
-                    "inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
-                    tokensClass(primaryButtonTokens),
-                    primaryLabelData?.className
-                  )}
-                  style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
-                  aria-label={primaryLabelData?.ariaLabel}
-                >
-                  {primaryLabelData?.content ?? primaryButton.label}
-                </a>
-              ) : (
-                <span
-                  className={cls(
-                    "inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
-                    tokensClass(primaryButtonTokens),
-                    primaryLabelData?.className
-                  )}
-                  style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
-                  aria-label={primaryLabelData?.ariaLabel}
-                >
-                  {primaryLabelData?.content ?? primaryButton.label}
-                </span>
-              )
-            ) : null}
-            {secondaryButton?.label ? (
-              secondaryButton?.href ? (
-                <a
-                  href={secondaryButton.href}
-                  className={cls(
-                    "inline-flex items-center px-3 py-1 text-xs font-semibold border rounded-xl border-white/20",
-                    tokensClass(secondaryButtonTokens),
-                    secondaryLabelData?.className
-                  )}
-                  style={tokensStyle(secondaryButtonTokens)}
-                  aria-label={secondaryLabelData?.ariaLabel}
-                >
-                  {secondaryLabelData?.content ?? secondaryButton.label}
-                </a>
-              ) : (
-                <span
-                  className={cls(
-                    "inline-flex items-center px-3 py-1 text-xs font-semibold border rounded-xl border-white/20",
-                    tokensClass(secondaryButtonTokens),
-                    secondaryLabelData?.className
-                  )}
-                  style={tokensStyle(secondaryButtonTokens)}
-                  aria-label={secondaryLabelData?.ariaLabel}
-                >
-                  {secondaryLabelData?.content ?? secondaryButton.label}
-                </span>
-              )
-            ) : null}
-          </div>
-        </div>
-        </SectionTextScope>
-        {showDots && slides.length > 1 ? (
-          <div className="absolute flex items-center gap-2 -translate-x-1/2 bottom-3 left-1/2">
-            {slides.map((_: any, idx: number) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setActiveSlide(idx)}
-                aria-label={`Slide ${idx + 1}`}
-                className={cls(
-                  "h-2 w-2 rounded-full transition",
-                  idx === activeIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
-                )}
-              />
-            ))}
-          </div>
-        ) : null}
-      </div>
+        </div>,
+        slideTokens
+      )}
       {componentsBlock}
     </SectionShell>
   );
@@ -543,29 +651,34 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
               const questionText = it.question || "(سؤال)";
               const questionData = textContent(String(questionText), questionTokens);
               const answerData = it.answer ? textContent(String(it.answer ?? ""), answerTokens) : null;
-              return (
+              return wrapDecorations(
                 <details
                   key={i}
                   className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", tokensClass(itemTokens))}
                   style={tokensStyle(itemTokens)}
                 >
-                  <summary
-                    className={cls("text-sm font-medium cursor-pointer", tokensClass(questionTokens), questionData.className)}
-                    style={tokensStyle(questionTokens)}
-                    aria-label={questionData.ariaLabel}
-                  >
-                    {questionData.content}
-                  </summary>
-                  {answerData ? (
+                  {wrapDecorations(
+                    <summary
+                      className={cls("text-sm font-medium cursor-pointer", tokensClass(questionTokens), questionData.className)}
+                      style={tokensStyle(questionTokens)}
+                      aria-label={questionData.ariaLabel}
+                    >
+                      {questionData.content}
+                    </summary>,
+                    questionTokens
+                  )}
+                  {answerData ? wrapDecorations(
                     <div
                       className={cls("mt-2 text-sm whitespace-pre-wrap opacity-80", tokensClass(answerTokens), answerData.className)}
                       style={tokensStyle(answerTokens)}
                       aria-label={answerData.ariaLabel}
                     >
                       {answerData.content}
-                    </div>
+                    </div>,
+                    answerTokens
                   ) : null}
-                </details>
+                </details>,
+                itemTokens
               );
             })
           ) : (
@@ -631,34 +744,41 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
               const itemTitleData = textContent(String(itemTitle), titleTokens);
               const itemTextData = it.text ? textContent(String(it.text), textTokens) : null;
               const hrefData = it.href ? textContent(String(it.href), linkTokens) : null;
-              return (
+              return wrapDecorations(
                 <div
                   key={i}
                   className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", tokensClass(itemTokens))}
                   style={tokensStyle(itemTokens)}
                 >
-                  {it.imageUrl ? (
+                  {it.imageUrl ? wrapDecorations(
                     <img
                       src={it.imageUrl}
                       alt=""
                       className={cls("object-cover w-full h-20 mb-2 rounded-lg", tokensClass(imageTokens))}
                       style={tokensStyle(imageTokens)}
-                    />
+                    />,
+                    imageTokens
                   ) : null}
-                  <div className={cls("text-sm font-medium", tokensClass(titleTokens), itemTitleData.className)} style={tokensStyle(titleTokens)} aria-label={itemTitleData.ariaLabel}>
-                    {itemTitleData.content}
-                  </div>
-                  {itemTextData ? (
+                  {wrapDecorations(
+                    <div className={cls("text-sm font-medium", tokensClass(titleTokens), itemTitleData.className)} style={tokensStyle(titleTokens)} aria-label={itemTitleData.ariaLabel}>
+                      {itemTitleData.content}
+                    </div>,
+                    titleTokens
+                  )}
+                  {itemTextData ? wrapDecorations(
                     <div className={cls("mt-1 text-xs whitespace-pre-wrap opacity-80", tokensClass(textTokens), itemTextData.className)} style={tokensStyle(textTokens)} aria-label={itemTextData.ariaLabel}>
                       {itemTextData.content}
-                    </div>
+                    </div>,
+                    textTokens
                   ) : null}
-                  {hrefData ? (
+                  {hrefData ? wrapDecorations(
                     <div className={cls("mt-2 text-[11px] opacity-60", tokensClass(linkTokens), hrefData.className)} style={tokensStyle(linkTokens)} aria-label={hrefData.ariaLabel}>
                       {hrefData.content}
-                    </div>
+                    </div>,
+                    linkTokens
                   ) : null}
-                </div>
+                </div>,
+                itemTokens
               );
             })
           ) : (
@@ -720,29 +840,41 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                   <>
                     <div className="flex items-center gap-2">
                       {it.iconUrl ? (
-                        <img
-                          src={it.iconUrl}
-                          alt=""
-                          className={cls("h-6 w-6 rounded-md", tokensClass(iconTokens))}
-                          style={tokensStyle(iconTokens)}
-                        />
+                        wrapDecorations(
+                          <img
+                            src={it.iconUrl}
+                            alt=""
+                            className={cls("h-6 w-6 rounded-md", tokensClass(iconTokens))}
+                            style={tokensStyle(iconTokens)}
+                          />,
+                          iconTokens
+                        )
                       ) : it.icon ? (
-                        <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
-                          {it.icon}
-                        </span>
+                        wrapDecorations(
+                          <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
+                            {it.icon}
+                          </span>,
+                          iconTokens
+                        )
                       ) : null}
-                      <div className={cls("text-sm font-semibold", tokensClass(titleTokens), itemTitleData.className)} style={tokensStyle(titleTokens)} aria-label={itemTitleData.ariaLabel}>
-                        {itemTitleData.content}
-                      </div>
+                      {wrapDecorations(
+                        <div className={cls("text-sm font-semibold", tokensClass(titleTokens), itemTitleData.className)} style={tokensStyle(titleTokens)} aria-label={itemTitleData.ariaLabel}>
+                          {itemTitleData.content}
+                        </div>,
+                        titleTokens
+                      )}
                     </div>
                     {itemTextData ? (
-                      <div className={cls("mt-2 text-xs opacity-80", tokensClass(textTokens), itemTextData.className)} style={tokensStyle(textTokens)} aria-label={itemTextData.ariaLabel}>
-                        {itemTextData.content}
-                      </div>
+                      wrapDecorations(
+                        <div className={cls("mt-2 text-xs opacity-80", tokensClass(textTokens), itemTextData.className)} style={tokensStyle(textTokens)} aria-label={itemTextData.ariaLabel}>
+                          {itemTextData.content}
+                        </div>,
+                        textTokens
+                      )
                     ) : null}
                   </>
                 );
-                return it.href ? (
+                const node = it.href ? (
                   <a key={i} href={it.href} className={wrapperClass} style={wrapperStyle}>
                     {content}
                   </a>
@@ -751,6 +883,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                     {content}
                   </div>
                 );
+                return wrapDecorations(it.href ? wrapDecorations(node, linkTokens) : node, itemTokens);
               })
             ) : (
               <div className="text-xs opacity-70">(لا يوجد عناصر)</div>
@@ -798,31 +931,38 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 const valueData = textContent(String(it.value ?? ""), valueTokens);
                 const labelData = it.label ? textContent(String(it.label), labelTokens) : null;
                 const subtextData = it.subtext ? textContent(String(it.subtext), subtextTokens) : null;
-                return (
+                return wrapDecorations(
                   <div
                     key={i}
                     className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-center", tokensClass(itemTokens))}
                     style={tokensStyle(itemTokens)}
                   >
-                    {it.icon ? (
+                    {it.icon ? wrapDecorations(
                       <div className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
                         {it.icon}
-                      </div>
+                      </div>,
+                      iconTokens
                     ) : null}
-                    <div className={cls("text-lg font-semibold", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
-                      {valueData.content}
-                    </div>
-                    {labelData ? (
+                    {wrapDecorations(
+                      <div className={cls("text-lg font-semibold", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
+                        {valueData.content}
+                      </div>,
+                      valueTokens
+                    )}
+                    {labelData ? wrapDecorations(
                       <div className={cls("text-xs opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
                         {labelData.content}
-                      </div>
+                      </div>,
+                      labelTokens
                     ) : null}
-                    {subtextData ? (
+                    {subtextData ? wrapDecorations(
                       <div className={cls("text-[11px] opacity-60", tokensClass(subtextTokens), subtextData.className)} style={tokensStyle(subtextTokens)} aria-label={subtextData.ariaLabel}>
                         {subtextData.content}
-                      </div>
+                      </div>,
+                      subtextTokens
                     ) : null}
-                  </div>
+                  </div>,
+                  itemTokens
                 );
               })
             ) : (
@@ -873,28 +1013,34 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 const roleData = m.role ? textContent(String(m.role), roleTokens) : null;
                 const bioData = m.bio ? textContent(String(m.bio), bioTokens) : null;
                 const socials = Array.isArray(m.socials) ? m.socials : [];
-                return (
+                return wrapDecorations(
                   <div key={i} className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
-                    {m.avatarUrl ? (
+                    {m.avatarUrl ? wrapDecorations(
                       <img
                         src={m.avatarUrl}
                         alt=""
                         className={cls("h-10 w-10 rounded-full object-cover mb-2", tokensClass(avatarTokens))}
                         style={tokensStyle(avatarTokens)}
-                      />
+                      />,
+                      avatarTokens
                     ) : null}
-                    <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                      {nameData.content}
-                    </div>
-                    {roleData ? (
+                    {wrapDecorations(
+                      <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                        {nameData.content}
+                      </div>,
+                      nameTokens
+                    )}
+                    {roleData ? wrapDecorations(
                       <div className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)} style={tokensStyle(roleTokens)} aria-label={roleData.ariaLabel}>
                         {roleData.content}
-                      </div>
+                      </div>,
+                      roleTokens
                     ) : null}
-                    {bioData ? (
+                    {bioData ? wrapDecorations(
                       <div className={cls("mt-2 text-xs opacity-80", tokensClass(bioTokens), bioData.className)} style={tokensStyle(bioTokens)} aria-label={bioData.ariaLabel}>
                         {bioData.content}
-                      </div>
+                      </div>,
+                      bioTokens
                     ) : null}
                     {socials.length ? (
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] opacity-70">
@@ -902,7 +1048,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                           const label = s.label || s.href || "";
                           if (!label) return null;
                           const socialData = textContent(String(label), socialTokens);
-                          return (
+                          return wrapDecorations(
                             <span
                               key={`${label}-${sIdx}`}
                               className={cls(tokensClass(socialTokens), socialData.className)}
@@ -910,12 +1056,14 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                               aria-label={socialData.ariaLabel}
                             >
                               {socialData.content}
-                            </span>
+                            </span>,
+                            socialTokens
                           );
                         })}
                       </div>
                     ) : null}
-                  </div>
+                  </div>,
+                  itemTokens
                 );
               })
             ) : (
@@ -969,7 +1117,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 const descriptionData = p.description ? textContent(String(p.description), descriptionTokens) : null;
                 const badgeData = p.badge ? textContent(String(p.badge), badgeTokens) : null;
                 const ctaData = p.ctaLabel ? textContent(String(p.ctaLabel), ctaTokens) : null;
-                return (
+                return wrapDecorations(
                   <div
                     key={i}
                     className={cls(
@@ -979,48 +1127,58 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                     )}
                     style={tokensStyle(planTokens)}
                   >
-                    {badgeData ? (
+                    {badgeData ? wrapDecorations(
                       <div className={cls("text-[11px] opacity-70", tokensClass(badgeTokens), badgeData.className)} style={tokensStyle(badgeTokens)} aria-label={badgeData.ariaLabel}>
                         {badgeData.content}
-                      </div>
+                      </div>,
+                      badgeTokens
                     ) : null}
-                    <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                      {nameData.content}
-                    </div>
-                    {priceData ? (
+                    {wrapDecorations(
+                      <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                        {nameData.content}
+                      </div>,
+                      nameTokens
+                    )}
+                    {priceData ? wrapDecorations(
                       <div className={cls("mt-1 text-lg", tokensClass(priceTokens), priceData.className)} style={tokensStyle(priceTokens)} aria-label={priceData.ariaLabel}>
                         {priceData.content}
-                        {periodData ? (
+                        {periodData ? wrapDecorations(
                           <span className={cls("text-xs opacity-60", tokensClass(periodTokens), periodData.className)} style={tokensStyle(periodTokens)} aria-label={periodData.ariaLabel}>
                             {" "}
                             {periodData.content}
-                          </span>
+                          </span>,
+                          periodTokens
                         ) : null}
-                      </div>
+                      </div>,
+                      priceTokens
                     ) : null}
-                    {descriptionData ? (
+                    {descriptionData ? wrapDecorations(
                       <div className={cls("mt-1 text-xs opacity-70", tokensClass(descriptionTokens), descriptionData.className)} style={tokensStyle(descriptionTokens)} aria-label={descriptionData.ariaLabel}>
                         {descriptionData.content}
-                      </div>
+                      </div>,
+                      descriptionTokens
                     ) : null}
                     {Array.isArray(p.features) && p.features.length ? (
                       <ul className={cls("mt-2 list-disc ps-5 text-xs opacity-80", tokensClass(featureTokens))} style={tokensStyle(featureTokens)}>
                         {p.features.slice(0, 4).map((f, idx) => {
                           const featureData = textContent(String(f), featureTokens);
-                          return (
+                          return wrapDecorations(
                             <li key={idx} className={featureData.className} aria-label={featureData.ariaLabel}>
                               {featureData.content}
-                            </li>
+                            </li>,
+                            featureTokens
                           );
                         })}
                       </ul>
                     ) : null}
-                    {ctaData ? (
+                    {ctaData ? wrapDecorations(
                       <div className={cls("mt-3 inline-flex items-center rounded-xl border border-white/10 px-3 py-1 text-xs", tokensClass(ctaTokens), ctaData.className)} style={tokensStyle(ctaTokens)} aria-label={ctaData.ariaLabel}>
                         {ctaData.content}
-                      </div>
+                      </div>,
+                      ctaTokens
                     ) : null}
-                  </div>
+                  </div>,
+                  planTokens
                 );
               })
             ) : (
@@ -1067,35 +1225,46 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                   const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
                   const labelData = textContent(String(it.label || "وسيلة"), labelTokens);
                   const valueData = it.value ? textContent(String(it.value), valueTokens) : null;
-                  return (
+                  return wrapDecorations(
                     <div key={i} className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
                       <div className="flex items-center gap-2">
-                        {it.icon ? (
+                        {it.icon ? wrapDecorations(
                           <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
                             {it.icon}
-                          </span>
+                          </span>,
+                          iconTokens
                         ) : null}
-                        <div className={cls("font-semibold", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                          {labelData.content}
-                        </div>
+                        {wrapDecorations(
+                          <div className={cls("font-semibold", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                            {labelData.content}
+                          </div>,
+                          labelTokens
+                        )}
                       </div>
                       {valueData ? (
                         it.href ? (
-                          <a
-                            href={it.href}
-                            className={cls("opacity-80", tokensClass(valueTokens), valueData.className)}
-                            style={tokensStyle(valueTokens)}
-                            aria-label={valueData.ariaLabel}
-                          >
-                            {valueData.content}
-                          </a>
+                          wrapDecorations(
+                            <a
+                              href={it.href}
+                              className={cls("opacity-80", tokensClass(valueTokens), valueData.className)}
+                              style={tokensStyle(valueTokens)}
+                              aria-label={valueData.ariaLabel}
+                            >
+                              {valueData.content}
+                            </a>,
+                            valueTokens
+                          )
                         ) : (
-                          <div className={cls("opacity-80", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
-                            {valueData.content}
-                          </div>
+                          wrapDecorations(
+                            <div className={cls("opacity-80", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
+                              {valueData.content}
+                            </div>,
+                            valueTokens
+                          )
                         )
                       ) : null}
-                    </div>
+                    </div>,
+                    itemTokens
                   );
                 })
               ) : (
@@ -1105,10 +1274,11 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
             <div className="space-y-2">
               {d.mapEmbedUrl ? (() => {
                 const mapTokens = resolveFieldTokens((d as any).mapTokens, sectionTokens);
-                return (
+                return wrapDecorations(
                   <div className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs opacity-70", tokensClass(mapTokens))} style={tokensStyle(mapTokens)}>
                     Map embed
-                  </div>
+                  </div>,
+                  mapTokens
                 );
               })() : null}
               {fields.length ? (() => {
@@ -1121,42 +1291,55 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 const submitTokens = resolveFieldTokens((form as any).submitTokens, formTokens ?? sectionTokens);
                 const formTitleData = form.title ? textContent(String(form.title), formTitleTokens) : null;
                 const formSubtitleData = form.subtitle ? textContent(String(form.subtitle), formSubtitleTokens) : null;
-                return (
+                return wrapDecorations(
                   <div className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs", tokensClass(formTokens))} style={tokensStyle(formTokens)}>
-                    {formTitleData ? (
+                    {formTitleData ? wrapDecorations(
                       <div className={cls("font-semibold", tokensClass(formTitleTokens), formTitleData.className)} style={tokensStyle(formTitleTokens)} aria-label={formTitleData.ariaLabel}>
                         {formTitleData.content}
-                      </div>
+                      </div>,
+                      formTitleTokens
                     ) : null}
-                    {formSubtitleData ? (
+                    {formSubtitleData ? wrapDecorations(
                       <div className={cls("mt-1 text-[11px] opacity-70", tokensClass(formSubtitleTokens), formSubtitleData.className)} style={tokensStyle(formSubtitleTokens)} aria-label={formSubtitleData.ariaLabel}>
                         {formSubtitleData.content}
-                      </div>
+                      </div>,
+                      formSubtitleTokens
                     ) : null}
-                    <div className={cls("mt-2 space-y-2", tokensClass(fieldTokens))} style={tokensStyle(fieldTokens)}>
-                      {fields.slice(0, 2).map((f, idx) => {
-                        const fieldLabel = f.label || f.name;
-                        const labelData = textContent(String(fieldLabel), labelTokens);
-                        return (
-                          <div key={idx} className="space-y-1">
-                            <div className={cls("text-[11px] opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                              {labelData.content}
+                    {wrapDecorations(
+                      <div className={cls("mt-2 space-y-2", tokensClass(fieldTokens))} style={tokensStyle(fieldTokens)}>
+                        {fields.slice(0, 2).map((f, idx) => {
+                          const fieldLabel = f.label || f.name;
+                          const labelData = textContent(String(fieldLabel), labelTokens);
+                          return (
+                            <div key={idx} className="space-y-1">
+                              {wrapDecorations(
+                                <div className={cls("text-[11px] opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                                  {labelData.content}
+                                </div>,
+                                labelTokens
+                              )}
+                              {wrapDecorations(
+                                <div className={cls("h-8 rounded-lg border border-white/[0.08] bg-white/[0.02]", tokensClass(inputTokens))} style={tokensStyle(inputTokens)} />,
+                                inputTokens
+                              )}
                             </div>
-                            <div className={cls("h-8 rounded-lg border border-white/[0.08] bg-white/[0.02]", tokensClass(inputTokens))} style={tokensStyle(inputTokens)} />
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>,
+                      fieldTokens
+                    )}
                     {(() => {
                       const submitText = form.submitLabel || "إرسال";
                       const submitData = textContent(String(submitText), submitTokens);
-                      return (
+                      return wrapDecorations(
                         <div className={cls("mt-2 inline-flex rounded-lg border border-white/[0.08] px-3 py-1 text-[11px]", tokensClass(submitTokens), submitData.className)} style={tokensStyle(submitTokens)} aria-label={submitData.ariaLabel}>
                           {submitData.content}
-                        </div>
+                        </div>,
+                        submitTokens
                       );
                     })()}
-                  </div>
+                  </div>,
+                  formTokens
                 );
               })() : null}
             </div>
@@ -1210,29 +1393,35 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
                 const labelData = textContent(String(it.label || "Category"), labelTokens);
                 const hrefData = it.href ? textContent(String(it.href), linkTokens) : null;
-                return (
+                return wrapDecorations(
                   <div
                     key={i}
                     className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", tokensClass(itemTokens))}
                     style={tokensStyle(itemTokens)}
                   >
-                    {it.imageUrl ? (
+                    {it.imageUrl ? wrapDecorations(
                       <img
                         src={it.imageUrl}
                         alt=""
                         className={cls("object-cover w-full h-16 mb-2 rounded-lg", tokensClass(imageTokens))}
                         style={tokensStyle(imageTokens)}
-                      />
+                      />,
+                      imageTokens
                     ) : null}
-                    <div className={cls("text-sm font-medium", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                      {labelData.content}
-                    </div>
-                    {hrefData ? (
+                    {wrapDecorations(
+                      <div className={cls("text-sm font-medium", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                        {labelData.content}
+                      </div>,
+                      labelTokens
+                    )}
+                    {hrefData ? wrapDecorations(
                       <div className={cls("mt-1 text-[11px] opacity-60", tokensClass(linkTokens), hrefData.className)} style={tokensStyle(linkTokens)} aria-label={hrefData.ariaLabel}>
                         {hrefData.content}
-                      </div>
+                      </div>,
+                      linkTokens
                     ) : null}
-                  </div>
+                  </div>,
+                  itemTokens
                 );
               })
             ) : (
@@ -1278,29 +1467,35 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
               const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
               const labelData = textContent(String(it.label || "Collection"), labelTokens);
               const hrefData = it.href ? textContent(String(it.href), linkTokens) : null;
-              return (
+              return wrapDecorations(
                 <div
                   key={i}
                   className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", tokensClass(itemTokens))}
                   style={tokensStyle(itemTokens)}
                 >
-                  {it.imageUrl ? (
+                  {it.imageUrl ? wrapDecorations(
                     <img
                       src={it.imageUrl}
                       alt=""
                       className={cls("object-cover w-full h-16 mb-2 rounded-lg", tokensClass(imageTokens))}
                       style={tokensStyle(imageTokens)}
-                    />
+                    />,
+                    imageTokens
                   ) : null}
-                  <div className={cls("text-sm font-medium", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                    {labelData.content}
-                  </div>
-                  {hrefData ? (
+                  {wrapDecorations(
+                    <div className={cls("text-sm font-medium", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
+                      {labelData.content}
+                    </div>,
+                    labelTokens
+                  )}
+                  {hrefData ? wrapDecorations(
                     <div className={cls("mt-1 text-[11px] opacity-60", tokensClass(linkTokens), hrefData.className)} style={tokensStyle(linkTokens)} aria-label={hrefData.ariaLabel}>
                       {hrefData.content}
-                    </div>
+                    </div>,
+                    linkTokens
                   ) : null}
-                </div>
+                </div>,
+                itemTokens
               );
             })
           ) : (
@@ -1363,26 +1558,32 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
               const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
               const nameData = textContent(String(it.name || "Brand"), nameTokens);
               const hrefData = it.href ? textContent(String(it.href), linkTokens) : null;
-              return (
+              return wrapDecorations(
                 <div
                   key={i}
                   className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-xs", tokensClass(itemTokens))}
                   style={tokensStyle(itemTokens)}
                 >
-                  <div className={cls("font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                    {nameData.content}
-                  </div>
-                  {it.logoUrl ? (
+                  {wrapDecorations(
+                    <div className={cls("font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                      {nameData.content}
+                    </div>,
+                    nameTokens
+                  )}
+                  {it.logoUrl ? wrapDecorations(
                     <div className={cls("mt-1 text-[11px] opacity-60", tokensClass(logoTokens))} style={tokensStyle(logoTokens)}>
                       logo: {it.logoUrl}
-                    </div>
+                    </div>,
+                    logoTokens
                   ) : null}
-                  {hrefData ? (
+                  {hrefData ? wrapDecorations(
                     <div className={cls("mt-1 text-[11px] opacity-60", tokensClass(linkTokens), hrefData.className)} style={tokensStyle(linkTokens)} aria-label={hrefData.ariaLabel}>
                       {hrefData.content}
-                    </div>
+                    </div>,
+                    linkTokens
                   ) : null}
-                </div>
+                </div>,
+                itemTokens
               );
             })
           ) : (
@@ -1418,19 +1619,23 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
             {images.slice(0, 12).map((im, i) => {
               const itemTokens = resolveFieldTokens((im as any).twTokens);
               const imageTokens = resolveFieldTokens((im as any).imageTokens);
-              return (
+              return wrapDecorations(
                 <div
                   key={i}
                   className={cls("overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02]", tokensClass(itemTokens))}
                   style={tokensStyle(itemTokens)}
                 >
-                  <img
-                    src={im.url}
-                    alt={im.alt ?? ""}
-                    className={cls("object-cover w-full h-20", tokensClass(imageTokens))}
-                    style={tokensStyle(imageTokens)}
-                  />
-                </div>
+                  {wrapDecorations(
+                    <img
+                      src={im.url}
+                      alt={im.alt ?? ""}
+                      className={cls("object-cover w-full h-20", tokensClass(imageTokens))}
+                      style={tokensStyle(imageTokens)}
+                    />,
+                    imageTokens
+                  )}
+                </div>,
+                itemTokens
               );
             })}
           </div>
@@ -1569,7 +1774,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                   const nameData = textContent(String(it.name || "(Name)"), nameTokens);
                   const roleData = it.role ? textContent(String(it.role), roleTokens) : null;
                   const quoteData = it.quote ? textContent(String(it.quote), quoteTokens) : null;
-                  return (
+                  return wrapDecorations(
                     <div
                       key={i}
                       className={cls("rounded-xl border border-white/[0.08] bg-white/[0.02] p-3", tokensClass(itemTokens))}
@@ -1577,32 +1782,44 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                     >
                       <div className="flex items-center gap-2">
                         {it.avatarUrl ? (
-                          <img
-                            src={it.avatarUrl}
-                            alt={it.name ?? "Avatar"}
-                            className={cls("object-cover w-8 h-8 border rounded-full border-white/10", tokensClass(avatarTokens))}
-                            style={tokensStyle(avatarTokens)}
-                          />
+                          wrapDecorations(
+                            <img
+                              src={it.avatarUrl}
+                              alt={it.name ?? "Avatar"}
+                              className={cls("object-cover w-8 h-8 border rounded-full border-white/10", tokensClass(avatarTokens))}
+                              style={tokensStyle(avatarTokens)}
+                            />,
+                            avatarTokens
+                          )
                         ) : (
-                          <div className={cls("w-8 h-8 rounded-full bg-white/10", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />
+                          wrapDecorations(
+                            <div className={cls("w-8 h-8 rounded-full bg-white/10", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />,
+                            avatarTokens
+                          )
                         )}
                         <div className="text-xs opacity-70">
-                          <div className={cls(tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                            {nameData.content}
-                          </div>
-                          {roleData ? (
+                          {wrapDecorations(
+                            <div className={cls(tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
+                              {nameData.content}
+                            </div>,
+                            nameTokens
+                          )}
+                          {roleData ? wrapDecorations(
                             <div className={cls("opacity-70", tokensClass(roleTokens), roleData.className)} style={tokensStyle(roleTokens)} aria-label={roleData.ariaLabel}>
                               {roleData.content}
-                            </div>
+                            </div>,
+                            roleTokens
                           ) : null}
                         </div>
                       </div>
-                      {quoteData ? (
+                      {quoteData ? wrapDecorations(
                         <div className={cls("mt-2 text-sm opacity-90", tokensClass(quoteTokens), quoteData.className)} style={tokensStyle(quoteTokens)} aria-label={quoteData.ariaLabel}>
                           {quoteData.content}
-                        </div>
+                        </div>,
+                        quoteTokens
                       ) : null}
-                    </div>
+                    </div>,
+                    itemTokens
                   );
                 })
               ) : (
@@ -1736,7 +1953,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 const badgeData = c.badge ? textContent(String(c.badge ?? ""), badgeTokens) : null;
                 const textData = c.text ? textContent(String(c.text ?? ""), textTokens) : null;
                 const buttonData = c.buttonLabel ? textContent(String(c.buttonLabel ?? ""), buttonTokens) : null;
-                return (
+                const node = (
                   <div
                     key={idx}
                     className={cls(
@@ -1747,35 +1964,39 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                     )}
                     style={tokensStyle(cardTokens)}
                   >
-                    {c.imageUrl ? (
+                    {c.imageUrl ? wrapDecorations(
                       <img
                         src={c.imageUrl}
                         alt={c.title ?? ""}
                         className={cls(ui.imageClass || "w-full h-40 object-cover rounded-xl border border-white/10", tokensClass(imageTokens))}
                         style={tokensStyle(imageTokens)}
-                      />
+                      />,
+                      imageTokens
                     ) : null}
 
                     <div className="flex items-start justify-between gap-2 mt-3">
-                      {titleData ? (
+                      {titleData ? wrapDecorations(
                         <div className={cls("font-semibold text-white", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
                           {titleData.content}
-                        </div>
+                        </div>,
+                        titleTokens
                       ) : <div />}
-                      {badgeData ? (
+                      {badgeData ? wrapDecorations(
                         <div className={cls("shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80", tokensClass(badgeTokens), badgeData.className)} style={tokensStyle(badgeTokens)} aria-label={badgeData.ariaLabel}>
                           {badgeData.content}
-                        </div>
+                        </div>,
+                        badgeTokens
                       ) : null}
                     </div>
 
-                    {textData ? (
+                    {textData ? wrapDecorations(
                       <div className={cls("mt-2 text-sm text-white/70", tokensClass(textTokens), textData.className)} style={tokensStyle(textTokens)} aria-label={textData.ariaLabel}>
                         {textData.content}
-                      </div>
+                      </div>,
+                      textTokens
                     ) : null}
 
-                    {c.buttonLabel && c.buttonHref && buttonData ? (
+                    {c.buttonLabel && c.buttonHref && buttonData ? wrapDecorations(
                       <a
                         href={c.buttonHref}
                         className={cls("inline-flex items-center justify-center px-3 py-2 mt-4 text-sm text-white rounded-xl bg-white/10 hover:bg-white/15", tokensClass(buttonTokens), buttonData.className)}
@@ -1783,10 +2004,12 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                         aria-label={buttonData.ariaLabel}
                       >
                         {buttonData.content}
-                      </a>
+                      </a>,
+                      buttonTokens
                     ) : null}
                   </div>
                 );
+                return wrapDecorations(node, cardTokens);
               })()
             ))}
           </div>
