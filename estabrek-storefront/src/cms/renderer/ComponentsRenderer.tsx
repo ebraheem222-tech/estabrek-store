@@ -12,6 +12,24 @@ function cn(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+const INLINE_TAGS = new Set([
+  "span",
+  "small",
+  "strong",
+  "em",
+  "b",
+  "i",
+  "u",
+  "s",
+  "a",
+  "button",
+  "label",
+  "code",
+  "kbd",
+  "sup",
+  "sub",
+]);
+
 function resolveOffsetValue(value?: number | string): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
@@ -111,23 +129,7 @@ function isInlineTag(tag: any, tokens?: any): boolean {
   const display = tokens?.layout?.display;
   if (display === "inline" || display === "inline-flex") return true;
   if (typeof tag !== "string") return false;
-  return new Set([
-    "span",
-    "small",
-    "strong",
-    "em",
-    "b",
-    "i",
-    "u",
-    "s",
-    "a",
-    "button",
-    "label",
-    "code",
-    "kbd",
-    "sup",
-    "sub",
-  ]).has(tag);
+  return INLINE_TAGS.has(tag);
 }
 
 function normalizeSelectOptions(raw: any): Array<{ label: string; value: string }> {
@@ -146,6 +148,35 @@ function normalizeSelectOptions(raw: any): Array<{ label: string; value: string 
 }
 
 const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
+
+const GRID_COLS_MAP: Record<number, string> = {
+  2: "grid-cols-1 md:grid-cols-2",
+  3: "grid-cols-1 md:grid-cols-3",
+  4: "grid-cols-1 md:grid-cols-4",
+  5: "grid-cols-1 md:grid-cols-5",
+  6: "grid-cols-1 md:grid-cols-6",
+};
+
+const COLUMNS_COLS_MAP: Record<number, string> = {
+  2: "grid-cols-1 md:grid-cols-2",
+  3: "grid-cols-1 md:grid-cols-3",
+  4: "grid-cols-1 md:grid-cols-4",
+};
+
+const NAV_ICON_PATHS: Record<string, string> = {
+  home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
+  shop: "M4 7h16l-1.5 14H5.5L4 7Zm3-4h10l1 4H6l1-4Z",
+  phone: "M6 2h3l2 5-2 1c1 3 3 5 6 6l1-2 5 2v3c0 1-1 2-2 2C10 19 5 14 4 6c0-1 1-2 2-2Z",
+  star: "M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7l3-7Z",
+  sparkle: "M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2Z",
+  chev: "M9 6l6 6-6 6",
+};
+
+const NAV_GRAD_STOPS: Record<string, string[]> = {
+  sunset: ["#fb7185", "#f97316", "#fbbf24"],
+  ocean: ["#06b6d4", "#3b82f6", "#6366f1"],
+  neon: ["#d946ef", "#8b5cf6", "#3b82f6"],
+};
 
 function splitTextWithEffect(text: string, effect?: string): { content: React.ReactNode; ariaLabel?: string } {
   if (!text || !effect || !SPLIT_TEXT_EFFECTS.has(effect)) {
@@ -392,97 +423,88 @@ export function ComponentsRenderer({
 }) {
   if (!components?.length) return null;
 
-  const renderOne = (
-    c: CmsComponent,
-    stack = new Set<CmsComponent>(),
-    depth = 0,
-    inheritedTokens = inheritTokens
-  ): React.ReactNode => {
+  const renderOne = (c: CmsComponent, stack: Set<CmsComponent>, depth: number, inheritedTokens = inheritTokens): React.ReactNode => {
     if (depth > 100) return null; // safety guard against runaway nesting
     if (stack.has(c)) return null; // guard against accidental cycles in CMS data
-    const nextStack = new Set(stack);
-    nextStack.add(c);
-    const nextDepth = depth + 1;
+    stack.add(c);
+    try {
+      const nextDepth = depth + 1;
 
-    // Layout components support nesting: props.children = CmsComponent[]
-    const baseTokens = resolveTokens(c);
-    const tokens = mergeEffectTokens(baseTokens, inheritedTokens);
-    const legacyClassName = getLegacyClassName(c);
-    const children = getChildren(c);
-    const nextInheritTokens = combineInheritTokens(inheritedTokens, tokens);
+      // Layout components support nesting: props.children = CmsComponent[]
+      const baseTokens = resolveTokens(c);
+      const tokens = mergeEffectTokens(baseTokens, inheritedTokens);
+      const legacyClassName = getLegacyClassName(c);
+      const children = getChildren(c);
+      const nextInheritTokens = combineInheritTokens(inheritedTokens, tokens);
 
-    const gridColsMap: Record<number, string> = {
-      2: "grid-cols-1 md:grid-cols-2",
-      3: "grid-cols-1 md:grid-cols-3",
-      4: "grid-cols-1 md:grid-cols-4",
-      5: "grid-cols-1 md:grid-cols-5",
-      6: "grid-cols-1 md:grid-cols-6",
-    };
+      const isLayout =
+        c.kind === "container" ||
+        c.kind === "stack" ||
+        c.kind === "row" ||
+        c.kind === "grid" ||
+        c.kind === "columns";
+      const renderedChildren = isLayout && children.length
+        ? children.map((ch) => renderOne(ch, stack, nextDepth, nextInheritTokens))
+        : null;
 
-    const columnsColsMap: Record<number, string> = {
-      2: "grid-cols-1 md:grid-cols-2",
-      3: "grid-cols-1 md:grid-cols-3",
-      4: "grid-cols-1 md:grid-cols-4",
-    };
+      switch (c.kind) {
+        case "container": {
+          return (
+            <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "mx-auto w-full")}>
+              {renderedChildren}
+            </RenderBox>
+          );
+        }
 
-    switch (c.kind) {
-      case "container": {
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "mx-auto w-full")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
-          </RenderBox>
-        );
+        case "stack": {
+          return (
+            <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-col")}>
+              {renderedChildren}
+            </RenderBox>
+          );
+        }
+
+        case "row": {
+          return (
+            <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-row flex-wrap")}>
+              {renderedChildren}
+            </RenderBox>
+          );
+        }
+
+        case "grid": {
+          const cols = Math.min(6, Math.max(2, Number(c.props?.cols ?? 2)));
+          const cls = cn("grid", GRID_COLS_MAP[cols] ?? GRID_COLS_MAP[2]);
+          return (
+            <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
+              {renderedChildren}
+            </RenderBox>
+          );
+        }
+
+        case "columns": {
+          const cols = Math.min(4, Math.max(2, Number(c.props?.cols ?? 2)));
+          const cls = cn("grid", COLUMNS_COLS_MAP[cols] ?? COLUMNS_COLS_MAP[2]);
+          return (
+            <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
+              {renderedChildren}
+            </RenderBox>
+          );
+        }
+
+        default:
+          break;
       }
 
-      case "stack": {
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-col")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
-          </RenderBox>
-        );
-      }
+      // Non-layout leaf components
+      const textScopeClass = hasTypographyOverrides(tokens?.typography) ? "cms-section-text" : undefined;
+      const tokenClass = cn(tokensToClassName(tokens), legacyClassName, textScopeClass);
+      const tokenClassNoTextEffect = tokens?.textEffect
+        ? cn(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName, textScopeClass)
+        : tokenClass;
+      const tokenStyle = tokensToInlineStyle(tokens);
 
-      case "row": {
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "flex flex-row flex-wrap")}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
-          </RenderBox>
-        );
-      }
-
-      case "grid": {
-        const cols = Math.min(6, Math.max(2, Number(c.props?.cols ?? 2)));
-        const cls = cn("grid", gridColsMap[cols] ?? gridColsMap[2]);
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
-          </RenderBox>
-        );
-      }
-
-      case "columns": {
-        const cols = Math.min(4, Math.max(2, Number(c.props?.cols ?? 2)));
-        const cls = cn("grid", columnsColsMap[cols] ?? columnsColsMap[2]);
-        return (
-          <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, cls)}>
-            {children.length ? children.map((ch) => renderOne(ch, nextStack, nextDepth, nextInheritTokens)) : null}
-          </RenderBox>
-        );
-      }
-
-      default:
-        break;
-    }
-
-    // Non-layout leaf components
-    const textScopeClass = hasTypographyOverrides(tokens?.typography) ? "cms-section-text" : undefined;
-    const tokenClass = cn(tokensToClassName(tokens), legacyClassName, textScopeClass);
-    const tokenClassNoTextEffect = tokens?.textEffect
-      ? cn(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName, textScopeClass)
-      : tokenClass;
-    const tokenStyle = tokensToInlineStyle(tokens);
-
-    switch (c.kind) {
+      switch (c.kind) {
       case "nav_menu": {
         const props = c.props ?? {};
         const items = Array.isArray(props.items) ? props.items : [];
@@ -490,19 +512,10 @@ export function ComponentsRenderer({
         const gradient = (props.gradient ?? "none") as "none" | "sunset" | "ocean" | "neon";
         const showIcons = !!(props.showIcons ?? true);
 
-        const iconPaths: Record<string, string> = {
-          home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
-          shop: "M4 7h16l-1.5 14H5.5L4 7Zm3-4h10l1 4H6l1-4Z",
-          phone: "M6 2h3l2 5-2 1c1 3 3 5 6 6l1-2 5 2v3c0 1-1 2-2 2C10 19 5 14 4 6c0-1 1-2 2-2Z",
-          star: "M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7l3-7Z",
-          sparkle: "M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2Z",
-          chev: "M9 6l6 6-6 6",
-        };
-
         function Icon({ name }: { name?: string }) {
           if (!showIcons) return null;
           const key = (name ?? "none") as string;
-          const d = iconPaths[key];
+          const d = NAV_ICON_PATHS[key];
           if (!d) return null;
           return (
             <svg viewBox="0 0 24 24" className="h-4 w-4 opacity-90" fill="none" stroke="currentColor" strokeWidth="2">
@@ -511,15 +524,10 @@ export function ComponentsRenderer({
           );
         }
 
-        const gradStops: Record<string, string[]> = {
-          sunset: ["#fb7185", "#f97316", "#fbbf24"],
-          ocean: ["#06b6d4", "#3b82f6", "#6366f1"],
-          neon: ["#d946ef", "#8b5cf6", "#3b82f6"],
-        };
         function GradientBg() {
           if (gradient === "none") return null;
           const id = `nav-grad-${c.id}`;
-          const stops = gradStops[gradient] ?? gradStops.sunset;
+          const stops = NAV_GRAD_STOPS[gradient] ?? NAV_GRAD_STOPS.sunset;
           return (
             <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full">
               <defs>
@@ -980,7 +988,11 @@ export function ComponentsRenderer({
       default:
         return null;
     }
+    } finally {
+      stack.delete(c);
+    }
   };
 
-  return <div className="space-y-4">{components.map((c) => renderOne(c))}</div>;
+  const rootStack = new Set<CmsComponent>();
+  return <div className="space-y-4">{components.map((c) => renderOne(c, rootStack, 0, inheritTokens))}</div>;
 }
