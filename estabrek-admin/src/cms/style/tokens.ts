@@ -206,6 +206,7 @@ export const DECOR_SHAPE_PRESETS = [
   "lines-diagonal",
   "gradient-fade",
   "noise",
+  "custom-svg",
 ] as const;
 export type DecorShapePreset = typeof DECOR_SHAPE_PRESETS[number];
 
@@ -240,6 +241,10 @@ export type DecorLayer = {
   offsetY?: number | string;
   rotate?: number;
   scale?: number;
+  /** Custom SVG markup (<svg>/<path>) or a raw path `d` string (used when shape === "custom-svg"). */
+  svg?: string;
+  /** Optional viewBox override for custom SVG (e.g. "0 0 24 24"). */
+  svgViewBox?: string;
 };
 
 // Decoration preset combinations
@@ -459,4 +464,5 @@ export const SHAPE_LABELS: Record<DecorShapePreset, { en: string; ar: string }> 
   "lines-diagonal": { en: "Diagonal Lines", ar: "خطوط قطرية" },
   "gradient-fade": { en: "Gradient Fade", ar: "تدرج" },
   "noise": { en: "Noise Texture", ar: "نسيج" },
+  "custom-svg": { en: "Custom SVG", ar: "SVG مخصص" },
 };

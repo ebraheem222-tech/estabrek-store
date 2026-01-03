@@ -125,8 +125,10 @@
 /* ============================================================
    CARD EFFECTS - GAMING
    ============================================================ */
-.card-gaming { position: relative; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid #e94560; border-radius: 1rem; overflow: hidden; }
-.card-gaming::before { content: ''; position: absolute; inset: 0; background: linear-gradient(45deg, transparent 40%, rgba(233,69,96,0.1) 50%, transparent 60%); animation: card-shine 3s ease-in-out infinite; }
+.card-gaming { position: relative; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid #e94560; border-radius: 1rem; overflow: hidden; color: rgba(255,255,255,0.92); }
+.card-gaming::before { content: ''; position: absolute; inset: 0; background: linear-gradient(45deg, transparent 40%, rgba(233,69,96,0.1) 50%, transparent 60%); animation: card-shine 3s ease-in-out infinite; pointer-events: none; z-index: 0; }
+.card-gaming > * { position: relative; z-index: 1; }
+.card-gaming :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 .card-gaming.rarity-common { border-color: #808080; }
 .card-gaming.rarity-uncommon { border-color: #1eff00; box-shadow: 0 0 20px rgba(30,255,0,0.3); }
 .card-gaming.rarity-rare { border-color: #0070dd; box-shadow: 0 0 20px rgba(0,112,221,0.3); }
@@ -138,20 +140,23 @@
    ============================================================ */
 .card-glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 1rem; }
 .card-glass-frost { background: rgba(255,255,255,0.25); backdrop-filter: blur(20px) saturate(180%); }
-.card-glass-dark { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-color: rgba(255,255,255,0.1); }
+.card-glass-dark { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.92); }
+.card-glass-dark :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 .card-glass-aurora { background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); backdrop-filter: blur(10px); }
 
 /* ============================================================
    CARD EFFECTS - NEON
    ============================================================ */
-.card-neon { background: #0a0a0a; border: 2px solid; border-radius: 1rem; position: relative; }
+.card-neon { background: #0a0a0a; border: 2px solid; border-color: rgba(255,255,255,0.18); border-radius: 1rem; position: relative; color: rgba(255,255,255,0.92); }
 .card-neon-cyan { border-color: #00ffff; box-shadow: 0 0 10px #00ffff, inset 0 0 10px rgba(0,255,255,0.1); }
 .card-neon-pink { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff, inset 0 0 10px rgba(255,0,255,0.1); }
 .card-neon-green { border-color: #39ff14; box-shadow: 0 0 10px #39ff14, inset 0 0 10px rgba(57,255,20,0.1); }
 .card-neon-purple { border-color: #a855f7; box-shadow: 0 0 10px #a855f7, inset 0 0 10px rgba(168,85,247,0.1); }
 .card-neon-orange { border-color: #f97316; box-shadow: 0 0 10px #f97316, inset 0 0 10px rgba(249,115,22,0.1); }
 .card-neon-multi { border-color: #00ffff; box-shadow: 0 0 10px #00ffff, 0 0 20px #ff00ff, 0 0 30px #ffff00; }
-.card-neon::before { content: ''; position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; border: 1px solid currentColor; border-radius: 0.75rem; opacity: 0.5; }
+.card-neon::before { content: ''; position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; border: 1px solid; border-color: inherit; border-radius: 0.75rem; opacity: 0.5; pointer-events: none; z-index: 0; }
+.card-neon > * { position: relative; z-index: 1; }
+.card-neon :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 
 /* ============================================================
    CARD EFFECTS - 3D
@@ -164,7 +169,8 @@
    CARD EFFECTS - HOLOGRAPHIC
    ============================================================ */
 .card-holographic { position: relative; overflow: hidden; }
-.card-holographic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,107,107,0.3), rgba(78,205,196,0.3), rgba(69,183,209,0.3), rgba(150,206,180,0.3), rgba(255,234,167,0.3)); background-size: 400% 400%; animation: holographic 3s ease infinite; opacity: 0.5; pointer-events: none; }
+.card-holographic::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,107,107,0.3), rgba(78,205,196,0.3), rgba(69,183,209,0.3), rgba(150,206,180,0.3), rgba(255,234,167,0.3)); background-size: 400% 400%; animation: holographic 3s ease infinite; opacity: 0.5; pointer-events: none; z-index: 0; }
+.card-holographic > * { position: relative; z-index: 1; }
 
 /* ============================================================
    CARD EFFECTS - ANIMATED BORDER
@@ -178,10 +184,12 @@
 /* ============================================================
    CARD EFFECTS - RETRO / NEUMORPHIC / SPECIAL
    ============================================================ */
-.card-retro { background: linear-gradient(135deg, #111827, #0f172a); border: 2px solid #f97316; box-shadow: 0 6px 0 #000; }
+.card-retro { background: linear-gradient(135deg, #111827, #0f172a); border: 2px solid #f97316; box-shadow: 0 6px 0 #000; color: rgba(255,255,255,0.92); }
+.card-retro :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 .card-retro-terminal { background: #0b0f0a; border: 1px solid #22c55e; box-shadow: 0 0 12px rgba(34,197,94,0.35); color: #22c55e; }
 .card-retro-gameboy { background: #d9e3b6; border: 2px solid #6b7280; box-shadow: inset 0 2px 0 rgba(255,255,255,0.4); }
-.card-retro-arcade { background: #111827; border: 2px solid #ec4899; box-shadow: 0 0 18px rgba(236,72,153,0.4); }
+.card-retro-arcade { background: #111827; border: 2px solid #ec4899; box-shadow: 0 0 18px rgba(236,72,153,0.4); color: rgba(255,255,255,0.92); }
+.card-retro-arcade :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 
 .card-neumorphic { background: var(--color-surface); box-shadow: 8px 8px 16px rgba(0,0,0,0.25), -8px -8px 16px rgba(255,255,255,0.06); }
 .card-neumorphic-raised { background: var(--color-surface); box-shadow: 12px 12px 24px rgba(0,0,0,0.28), -12px -12px 24px rgba(255,255,255,0.08); }

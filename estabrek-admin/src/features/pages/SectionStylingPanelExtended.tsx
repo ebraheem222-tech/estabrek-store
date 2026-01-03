@@ -580,6 +580,33 @@ function DecorationsEditor({ decor, onChange }: {
 
       {layer?.shape && layer.shape !== "none" && (
         <>
+          {layer?.shape === "custom-svg" ? (
+            <>
+              <FieldGroup label="SVG">
+                <textarea
+                  dir="ltr"
+                  value={layer?.svg || ""}
+                  onChange={(e) => onChange({ ...decor, [key]: { ...layer, svg: e.target.value || undefined } })}
+                  rows={4}
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-sm text-white"
+                  placeholder='<svg viewBox="0 0 24 24"><path d="M..." /></svg> أو ضع path d فقط'
+                />
+              </FieldGroup>
+
+              <FieldGroup label="ViewBox">
+                <Input
+                  dir="ltr"
+                  value={layer?.svgViewBox ?? ""}
+                  placeholder="0 0 24 24"
+                  onChange={(v) => {
+                    const next = String(v ?? "").trim();
+                    onChange({ ...decor, [key]: { ...layer, svgViewBox: next ? next : undefined } });
+                  }}
+                />
+              </FieldGroup>
+            </>
+          ) : null}
+
           <FieldGroup label="الموضع">
             <ButtonGroup
               value={layer?.placement || "bottom"}

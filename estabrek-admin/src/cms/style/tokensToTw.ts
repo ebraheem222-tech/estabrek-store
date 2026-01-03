@@ -257,27 +257,65 @@ export function tokensToClassName(tokens?: CmsTokens): string {
   if (tokens.spacing?.marginBottom) parts.push(marginMap[tokens.spacing.marginBottom].replace(/^m-/, "mb-"));
 
   // typography
-  if (tokens.typography?.family) parts.push(fontFamilyMap[tokens.typography.family]);
-  if (tokens.typography?.size) parts.push(textSizeMap[tokens.typography.size]);
-  if (tokens.typography?.align) parts.push(textAlignMap[tokens.typography.align]);
-  if (tokens.typography?.weight) parts.push(fontWeightMap[tokens.typography.weight]);
-  if (tokens.typography?.color) parts.push(textColorMap[tokens.typography.color]);
-  if (tokens.typography?.lineHeight) parts.push(lineHeightMap[tokens.typography.lineHeight]);
-  if (tokens.typography?.letterSpacing) parts.push(letterSpacingMap[tokens.typography.letterSpacing]);
-  if (tokens.typography?.decoration) {
-    if (tokens.typography.decoration === "underline") parts.push("underline");
-    else if (tokens.typography.decoration === "overline") parts.push("overline");
-    else if (tokens.typography.decoration === "line-through") parts.push("line-through");
-    else if (tokens.typography.decoration === "none") parts.push("no-underline");
+  const typography = tokens.typography;
+  if (typography?.family) {
+    parts.push(fontFamilyMap[typography.family]);
+    parts.push("cms-typography-family-override");
   }
-  if (tokens.typography?.transform) {
-    if (tokens.typography.transform === "uppercase") parts.push("uppercase");
-    else if (tokens.typography.transform === "lowercase") parts.push("lowercase");
-    else if (tokens.typography.transform === "capitalize") parts.push("capitalize");
-    else if (tokens.typography.transform === "normal-case") parts.push("normal-case");
+  if (typography?.size) {
+    parts.push(textSizeMap[typography.size]);
+    if (typography.size !== "base") parts.push("cms-typography-size-override");
   }
-  if (tokens.typography?.truncate) parts.push("truncate");
-  if (tokens.typography?.lineClamp) parts.push(`line-clamp-${tokens.typography.lineClamp}`);
+  if (typography?.align) {
+    parts.push(textAlignMap[typography.align]);
+    if (typography.align !== "left") parts.push("cms-typography-align-override");
+  }
+  if (typography?.weight) {
+    parts.push(fontWeightMap[typography.weight]);
+    if (typography.weight !== "normal") parts.push("cms-typography-weight-override");
+  }
+  if (typography?.color) {
+    parts.push(textColorMap[typography.color]);
+    if (typography.color !== "default") parts.push("cms-typography-color-override");
+  }
+  if (typography?.lineHeight) {
+    parts.push(lineHeightMap[typography.lineHeight]);
+    if (typography.lineHeight !== "normal") parts.push("cms-typography-lineheight-override");
+  }
+  if (typography?.letterSpacing) {
+    parts.push(letterSpacingMap[typography.letterSpacing]);
+    if (typography.letterSpacing !== "normal") parts.push("cms-typography-letterspacing-override");
+  }
+  if (typography?.decoration) {
+    if (typography.decoration === "underline") {
+      parts.push("underline");
+      parts.push("cms-typography-decoration-override");
+    } else if (typography.decoration === "overline") {
+      parts.push("overline");
+      parts.push("cms-typography-decoration-override");
+    } else if (typography.decoration === "line-through") {
+      parts.push("line-through");
+      parts.push("cms-typography-decoration-override");
+    } else if (typography.decoration === "none") {
+      parts.push("no-underline");
+    }
+  }
+  if (typography?.transform) {
+    if (typography.transform === "uppercase") {
+      parts.push("uppercase");
+      parts.push("cms-typography-transform-override");
+    } else if (typography.transform === "lowercase") {
+      parts.push("lowercase");
+      parts.push("cms-typography-transform-override");
+    } else if (typography.transform === "capitalize") {
+      parts.push("capitalize");
+      parts.push("cms-typography-transform-override");
+    } else if (typography.transform === "normal-case") {
+      parts.push("normal-case");
+    }
+  }
+  if (typography?.truncate) parts.push("truncate");
+  if (typography?.lineClamp) parts.push(`line-clamp-${typography.lineClamp}`);
   if (hasTypographyOverrides(tokens)) parts.push("cms-typography-override");
 
   // style
@@ -330,7 +368,10 @@ export function tokensToClassName(tokens?: CmsTokens): string {
   const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const customText = resolveCustomColor(tokens.typography?.colorCustom ?? tokens.typography?.color);
   if (customBg?.type === "color") parts.push("cms-inline-bg");
-  if (customText) parts.push("cms-inline-text");
+  if (customText) {
+    parts.push("cms-inline-text");
+    parts.push("cms-typography-color-override");
+  }
 
   return parts.filter(Boolean).join(" ").trim();
 }

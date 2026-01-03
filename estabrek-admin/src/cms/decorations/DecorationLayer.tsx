@@ -89,6 +89,38 @@ function isGradientValue(value?: string): boolean {
   return /gradient\(/i.test(value);
 }
 
+function parseSvgViewBox(svg: string): string | undefined {
+  const m = svg.match(/viewBox\s*=\s*["']([^"']+)["']/i);
+  return m ? m[1].trim() : undefined;
+}
+
+function parseSvgPaths(svg: string): string[] {
+  const paths: string[] = [];
+  const re = /<path\b[^>]*\bd\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(svg)) !== null) {
+    const d = (match[1] ?? "").trim();
+    if (d) paths.push(d);
+  }
+  return paths;
+}
+
+function parseCustomSvg(config: DecorLayer): { viewBox: string; paths: string[] } | null {
+  const raw = typeof config.svg === "string" ? config.svg.trim() : "";
+  if (!raw) return null;
+
+  const viewBoxOverride = typeof config.svgViewBox === "string" ? config.svgViewBox.trim() : "";
+  const looksLikeMarkup = /<\s*svg\b/i.test(raw) || /<\s*path\b/i.test(raw);
+  const paths = parseSvgPaths(raw);
+
+  if (paths.length) {
+    return { viewBox: viewBoxOverride || parseSvgViewBox(raw) || "0 0 100 100", paths };
+  }
+
+  if (looksLikeMarkup) return null;
+  return { viewBox: viewBoxOverride || "0 0 100 100", paths: [raw] };
+}
+
 interface DecorationLayerProps {
   config: DecorLayer;
   className?: string;
@@ -99,9 +131,6 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
   className = "",
 }) => {
   if (!config.shape || config.shape === "none") return null;
-
-  const shape = SHAPES[config.shape];
-  if (!shape) return null;
 
   const placement = (config.placement || "bottom") as DecorPlacementPreset;
   const size = (config.size || "md") as DecorSizePreset;
@@ -215,6 +244,51 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
   const svgWidth = "100%";
   const usesStroke = config.shape === "lines-horizontal" || config.shape === "lines-diagonal";
   const paint = isGradient && gradientId ? `url(#${gradientId})` : solidColor;
+
+  if (config.shape === "custom-svg") {
+    const parsed = parseCustomSvg(config);
+    if (!parsed) return null;
+
+    return (
+      <span
+        className={`pointer-events-none overflow-hidden ${className}`}
+        style={{
+          ...baseStyle,
+          height: isBackground ? "100%" : svgHeight,
+          zIndex,
+          opacity: layerOpacity,
+          filter: filterStyle,
+        }}
+        aria-hidden="true"
+      >
+        <svg
+          viewBox={parsed.viewBox}
+          preserveAspectRatio="none"
+          style={{
+            width: svgWidth,
+            height: svgHeight,
+            display: "block",
+            transform: flipTransform,
+          }}
+        >
+          {isGradient && gradientId && (
+            <defs>
+              <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={parseGradientColor(gradientValue, 0)} />
+                <stop offset="100%" stopColor={parseGradientColor(gradientValue, 1)} />
+              </linearGradient>
+            </defs>
+          )}
+          {parsed.paths.map((d, idx) => (
+            <path key={`custom-svg-${idx}`} d={d} fill={paint} />
+          ))}
+        </svg>
+      </span>
+    );
+  }
+
+  const shape = SHAPES[config.shape];
+  if (!shape) return null;
 
   return (
     <span

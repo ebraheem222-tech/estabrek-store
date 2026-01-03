@@ -58,11 +58,29 @@ function stripTextEffectTokens(tokens?: any) {
   return { ...tokens, textEffect: undefined };
 }
 
+function hasTypographyOverrides(tokens?: any): boolean {
+  const typography = tokens?.typography;
+  if (!typography || typeof typography !== "object") return false;
+  if (typography.family) return true;
+  if (typography.size && typography.size !== "base") return true;
+  if (typography.align && typography.align !== "left") return true;
+  if (typography.weight && typography.weight !== "normal") return true;
+  if (typography.color && typography.color !== "default") return true;
+  if (typography.colorCustom) return true;
+  if (typography.lineHeight) return true;
+  if (typography.letterSpacing) return true;
+  if (typography.decoration) return true;
+  if (typography.transform) return true;
+  if (typography.truncate) return true;
+  if (typography.lineClamp) return true;
+  return false;
+}
+
 function uiSectionClass(data: any) {
   const ui = data?.ui;
   const base = typeof ui?.sectionClass === "string" ? ui.sectionClass : "";
   const tokens = data?.twTokens;
-  return cls(base, tokensToClassName(stripTextEffectTokens(tokens)));
+  return cls(base, tokensToClassName(stripTextEffectTokens(tokens)), hasTypographyOverrides(tokens) ? "cms-section-text" : undefined);
 }
 
 function uiSectionStyle(data: any) {
