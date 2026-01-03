@@ -32,6 +32,7 @@ import {
   TEXT_COLOR_PRESETS,
   MAX_W_PRESETS,
   DECOR_SHAPE_PRESETS,
+  SHAPE_LABELS,
   DECOR_PLACEMENT_PRESETS,
   DECOR_SIZE_PRESETS,
   DECOR_COLOR_PRESETS,
@@ -39,6 +40,7 @@ import {
   DECOR_BLUR_PRESETS,
   type TwTokens,
 } from "../../cms/style/tokens";
+import { SHAPES } from "../../cms/shapes/shapeRegistry";
 import type { CmsComponent, CmsComponentKind, CmsSectionData } from "../../cms/types";
 
 type ChildCapableKind = "container" | "stack" | "row" | "grid" | "columns";
@@ -199,6 +201,14 @@ function defaultGridTokens(): TwTokens {
   };
 }
 
+function defaultSvgTokens(): TwTokens {
+  return {
+    ...defaultTokensBase(),
+    size: { width: "full", height: "160" },
+    effects: { opacity: "30" },
+  };
+}
+
 function defaultComponent(kind: CmsComponentKind): CmsComponent {
   switch (kind) {
     case "text":
@@ -253,6 +263,16 @@ function defaultComponent(kind: CmsComponentKind): CmsComponent {
       return { id: makeId("img"), kind: "image", name: "Image", props: { src: "", alt: "" }, twTokens: defaultTokensBase() };
     case "icon":
       return { id: makeId("ico"), kind: "icon", name: "Icon", props: { d: "", viewBox: "0 0 24 24" }, twTokens: defaultTokensBase() };
+    case "svg": {
+      const preset = (SHAPES as any).wave;
+      return {
+        id: makeId("svg"),
+        kind: "svg",
+        name: "SVG Shape",
+        props: { shape: "wave", d: preset?.d ?? "", viewBox: preset?.viewBox ?? "0 0 100 100", mode: "fill", strokeWidth: 2, preserveAspectRatio: "none" },
+        twTokens: defaultSvgTokens(),
+      };
+    }
     case "divider":
       return { id: makeId("div"), kind: "divider", name: "Divider", props: {}, twTokens: defaultTokensBase() };
     case "spacer":
@@ -505,6 +525,7 @@ export function ComponentsEditor({
             { value: "list", label: "List" },
             { value: "image", label: "Image" },
             { value: "icon", label: "Icon" },
+            { value: "svg", label: "SVG Shape" },
             { value: "divider", label: "Divider" },
             { value: "spacer", label: "Spacer" },
             { value: "container", label: "Container" },
@@ -1185,6 +1206,94 @@ export function ComponentsEditor({
                       />
                     </div>
                   )}
+
+                  {selected.kind === "svg" && (() => {
+                    const props = selected.props ?? {};
+                    const shapeValue = typeof props.shape === "string" ? props.shape : "custom";
+                    const shapeOptions = [
+                      { value: "custom", label: "Custom" },
+                      ...DECOR_SHAPE_PRESETS.filter((s) => s !== "none").map((s) => ({
+                        value: s,
+                        label: SHAPE_LABELS[s as any]?.en ?? s,
+                      })),
+                    ];
+                    const modeValue = props.mode === "stroke" ? "stroke" : "fill";
+                    const preserve = typeof props.preserveAspectRatio === "string" ? props.preserveAspectRatio : "none";
+                    const preserveOptions = [
+                      { value: "none", label: "none (stretch)" },
+                      { value: "xMidYMid meet", label: "xMidYMid meet" },
+                      { value: "xMidYMid slice", label: "xMidYMid slice" },
+                    ];
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <Select
+                            label="Shape"
+                            value={shapeValue}
+                            options={shapeOptions}
+                            onValueChange={(v: any) => {
+                              if (v === "custom") {
+                                patchSelected({ props: { ...props, shape: "custom" } });
+                                return;
+                              }
+                              const preset = (SHAPES as any)[v];
+                              const nextMode = v === "lines-horizontal" || v === "lines-diagonal" ? "stroke" : "fill";
+                              patchSelected({
+                                props: {
+                                  ...props,
+                                  shape: v,
+                                  mode: nextMode,
+                                  d: preset?.d ?? props.d ?? "",
+                                  viewBox: preset?.viewBox ?? props.viewBox ?? "0 0 100 100",
+                                },
+                              });
+                            }}
+                          />
+                          <Select
+                            label="Mode"
+                            value={modeValue}
+                            options={[
+                              { value: "fill", label: "fill" },
+                              { value: "stroke", label: "stroke" },
+                            ]}
+                            onValueChange={(v: any) => patchSelected({ props: { ...props, mode: v } })}
+                          />
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <Input
+                            label="viewBox"
+                            value={props.viewBox ?? "0 0 100 100"}
+                            onValueChange={(v) => patchSelected({ props: { ...props, viewBox: v } })}
+                            dir="ltr"
+                          />
+                          <Select
+                            label="preserveAspectRatio"
+                            value={preserve}
+                            options={preserveOptions}
+                            onValueChange={(v: any) => patchSelected({ props: { ...props, preserveAspectRatio: v } })}
+                          />
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <Input
+                            label="Stroke width"
+                            value={String(props.strokeWidth ?? 2)}
+                            onValueChange={(v) => patchSelected({ props: { ...props, strokeWidth: v } })}
+                            dir="ltr"
+                          />
+                        </div>
+
+                        <Input
+                          label="SVG path (d)"
+                          value={props.d ?? ""}
+                          onValueChange={(v) => patchSelected({ props: { ...props, d: v } })}
+                          dir="ltr"
+                        />
+                      </div>
+                    );
+                  })()}
 
                   {selected.kind === "spacer" && (
                     <Select
@@ -2193,6 +2302,53 @@ export function ComponentsEditor({
                           <path d={selected.props?.d} />
                         </svg>
                       )}
+                      {selected.kind === "svg" && (() => {
+                        const props = selected.props ?? {};
+                        const shapeKey = typeof props.shape === "string" ? props.shape : "";
+                        const preset = shapeKey && shapeKey !== "custom" ? (SHAPES as any)[shapeKey] : undefined;
+                        const viewBox = typeof props.viewBox === "string" ? props.viewBox : preset?.viewBox ?? "0 0 100 100";
+                        const d = typeof props.d === "string" ? props.d : preset?.d ?? "";
+                        const paths = Array.isArray(props.paths) ? props.paths : preset?.paths;
+                        const preserveAspectRatio = typeof props.preserveAspectRatio === "string" ? props.preserveAspectRatio : "none";
+                        const mode = props.mode === "fill" || props.mode === "stroke"
+                          ? props.mode
+                          : (shapeKey === "lines-horizontal" || shapeKey === "lines-diagonal" ? "stroke" : "fill");
+                        const strokeWidth = Number.isFinite(Number(props.strokeWidth)) ? Number(props.strokeWidth) : 2;
+                        const hasPath = (typeof d === "string" && d.trim()) || (Array.isArray(paths) && paths.length);
+                        if (!hasPath) return null;
+                        return (
+                          <svg
+                            viewBox={viewBox}
+                            preserveAspectRatio={preserveAspectRatio}
+                            className={cn("pointer-events-none block", previewClassName)}
+                            style={previewStyle}
+                            aria-hidden="true"
+                          >
+                            {Array.isArray(paths) && paths.length
+                              ? paths.map((p, idx) => (
+                                <path
+                                  key={`${shapeKey || "custom"}-${idx}`}
+                                  d={p}
+                                  fill={mode === "stroke" ? "none" : "currentColor"}
+                                  stroke={mode === "stroke" ? "currentColor" : undefined}
+                                  strokeWidth={mode === "stroke" ? strokeWidth : undefined}
+                                  strokeLinecap={mode === "stroke" ? "round" : undefined}
+                                  strokeLinejoin={mode === "stroke" ? "round" : undefined}
+                                />
+                              ))
+                              : (
+                                <path
+                                  d={d}
+                                  fill={mode === "stroke" ? "none" : "currentColor"}
+                                  stroke={mode === "stroke" ? "currentColor" : undefined}
+                                  strokeWidth={mode === "stroke" ? strokeWidth : undefined}
+                                  strokeLinecap={mode === "stroke" ? "round" : undefined}
+                                  strokeLinejoin={mode === "stroke" ? "round" : undefined}
+                                />
+                              )}
+                          </svg>
+                        );
+                      })()}
                       {selected.kind === "divider" && <hr className="border-white/15" style={previewStyle} />}
                       {selected.kind === "spacer" && <div className={spacerClass(selected.props?.h)} style={previewStyle} />}
 

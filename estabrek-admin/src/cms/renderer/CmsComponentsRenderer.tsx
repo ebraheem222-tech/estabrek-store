@@ -3,6 +3,7 @@ import type { CmsComponent } from "../types";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
 import { SectionDecorations } from "../decorations/DecorationLayer";
 import { TypewriterText } from "../../components/effects/TypewriterText";
+import { SHAPES } from "../shapes/shapeRegistry";
 
 type CmsComponentsRendererProps = {
   components?: CmsComponent[];
@@ -182,6 +183,12 @@ function spacerClass(h?: string): string {
     default:
       return "h-8";
   }
+}
+
+function svgModeForShape(shape?: string, mode?: string): "fill" | "stroke" {
+  if (mode === "fill" || mode === "stroke") return mode;
+  if (shape === "lines-horizontal" || shape === "lines-diagonal") return "stroke";
+  return "fill";
 }
 
 function isInlineTag(tag: any, tokens?: any): boolean {
@@ -490,6 +497,56 @@ function ComponentNode({
           <div className={cx("h-6 w-6 rounded-md border border-dashed border-white/20", className)} style={inlineStyle} />
         );
         return wrapWithDecor(tokens, node, !!props.d);
+      }
+    case "svg":
+      {
+        const shapeKey = typeof props.shape === "string" ? props.shape : "";
+        const preset = shapeKey && shapeKey !== "custom" ? (SHAPES as any)[shapeKey] : undefined;
+        const viewBox = typeof props.viewBox === "string" ? props.viewBox : preset?.viewBox ?? "0 0 100 100";
+        const d = typeof props.d === "string" ? props.d : preset?.d ?? "";
+        const paths = Array.isArray(props.paths) ? props.paths : preset?.paths;
+        const preserveAspectRatio = typeof props.preserveAspectRatio === "string" ? props.preserveAspectRatio : "none";
+        const mode = svgModeForShape(shapeKey, props.mode);
+        const strokeWidth = Number.isFinite(Number(props.strokeWidth)) ? Number(props.strokeWidth) : 2;
+
+        const hasPath = (typeof d === "string" && d.trim()) || (Array.isArray(paths) && paths.length);
+        const node = hasPath ? (
+          <svg
+            viewBox={viewBox}
+            preserveAspectRatio={preserveAspectRatio}
+            className={cx("pointer-events-none block", className)}
+            style={inlineStyle}
+            aria-hidden="true"
+          >
+            {Array.isArray(paths) && paths.length
+              ? paths.map((p, idx) => (
+                <path
+                  key={`${shapeKey || "custom"}-${idx}`}
+                  d={p}
+                  fill={mode === "stroke" ? "none" : "currentColor"}
+                  stroke={mode === "stroke" ? "currentColor" : undefined}
+                  strokeWidth={mode === "stroke" ? strokeWidth : undefined}
+                  strokeLinecap={mode === "stroke" ? "round" : undefined}
+                  strokeLinejoin={mode === "stroke" ? "round" : undefined}
+                />
+              ))
+              : (
+                <path
+                  d={d}
+                  fill={mode === "stroke" ? "none" : "currentColor"}
+                  stroke={mode === "stroke" ? "currentColor" : undefined}
+                  strokeWidth={mode === "stroke" ? strokeWidth : undefined}
+                  strokeLinecap={mode === "stroke" ? "round" : undefined}
+                  strokeLinejoin={mode === "stroke" ? "round" : undefined}
+                />
+              )}
+          </svg>
+        ) : (
+          <div className={cx("rounded-md border border-dashed border-white/20 p-4 text-xs opacity-70", className)} style={inlineStyle}>
+            SVG
+          </div>
+        );
+        return wrapWithDecor(tokens, node, false);
       }
     case "divider":
       return wrapWithDecor(tokens, <hr className={cx("border-white/10", className)} style={inlineStyle} />, false);
