@@ -66,6 +66,43 @@ export function resolveCustomBackground(value?: string):
 
 type CmsTokens = TwTokens & TwTokensExtended;
 
+const PADDING_VALUE_MAP: Record<keyof typeof paddingMap, string> = {
+  none: "0",
+  xs: "0.5rem",
+  sm: "0.75rem",
+  md: "1rem",
+  lg: "1.5rem",
+  xl: "2rem",
+  "2xl": "3rem",
+  "3xl": "4rem",
+};
+
+const GAP_VALUE_MAP: Record<keyof typeof gapMap, string> = {
+  none: "0",
+  xs: "0.5rem",
+  sm: "0.75rem",
+  md: "1rem",
+  lg: "1.5rem",
+  xl: "2rem",
+  "2xl": "3rem",
+};
+
+const MARGIN_VALUE_MAP: Record<keyof typeof marginMap, string> = {
+  none: "0",
+  auto: "auto",
+  xs: "0.5rem",
+  sm: "0.75rem",
+  md: "1rem",
+  lg: "1.5rem",
+  xl: "2rem",
+  "2xl": "3rem",
+};
+
+function resolvePresetSpacingValue(map: Record<string, string>, preset: unknown): string | undefined {
+  if (typeof preset !== "string") return undefined;
+  return map[preset];
+}
+
 function resolveSizeValue(value: unknown, axis: "width" | "height"): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value === "number" && Number.isFinite(value)) return `${value}px`;
@@ -304,6 +341,7 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string; borderCustomColor?: string }) | undefined;
   const textTokens = tokens.typography as (TwTokens["typography"] & { colorCustom?: string }) | undefined;
   const motionTokens = tokens.motion;
+  const spacingTokens = tokens.spacing;
   const sizeTokens = tokens.size;
   const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const textColor = resolveCustomColor(textTokens?.colorCustom ?? textTokens?.color);
@@ -326,6 +364,49 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
     style.borderColor = borderColor;
     (style as Record<string, string>)["--cms-border-color"] = borderColor;
   }
+
+  // spacing (inline to reliably override hard-coded padding/margins)
+  const padding = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.padding);
+  if (padding !== undefined) style.padding = padding;
+  const paddingX = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingX);
+  if (paddingX !== undefined) {
+    style.paddingLeft = paddingX;
+    style.paddingRight = paddingX;
+  }
+  const paddingY = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingY);
+  if (paddingY !== undefined) {
+    style.paddingTop = paddingY;
+    style.paddingBottom = paddingY;
+  }
+  const paddingTop = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingTop);
+  if (paddingTop !== undefined) style.paddingTop = paddingTop;
+  const paddingBottom = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingBottom);
+  if (paddingBottom !== undefined) style.paddingBottom = paddingBottom;
+
+  const gap = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gap);
+  if (gap !== undefined) style.gap = gap;
+  const gapX = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gapX);
+  if (gapX !== undefined) style.columnGap = gapX;
+  const gapY = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gapY);
+  if (gapY !== undefined) style.rowGap = gapY;
+
+  const margin = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.margin);
+  if (margin !== undefined) style.margin = margin;
+  const marginX = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginX);
+  if (marginX !== undefined) {
+    style.marginLeft = marginX;
+    style.marginRight = marginX;
+  }
+  const marginY = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginY);
+  if (marginY !== undefined) {
+    style.marginTop = marginY;
+    style.marginBottom = marginY;
+  }
+  const marginTop = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginTop);
+  if (marginTop !== undefined) style.marginTop = marginTop;
+  const marginBottom = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginBottom);
+  if (marginBottom !== undefined) style.marginBottom = marginBottom;
+
   if (sizeTokens?.width) style.width = resolveSizeValue(sizeTokens.width, "width");
   if (sizeTokens?.minW) style.minWidth = resolveSizeValue(sizeTokens.minW, "width");
   if (sizeTokens?.height) style.height = resolveSizeValue(sizeTokens.height, "height");

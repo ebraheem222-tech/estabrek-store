@@ -170,7 +170,7 @@
    CARD EFFECTS - ANIMATED BORDER
    ============================================================ */
 .card-animated-border { position: relative; background: var(--color-surface); }
-.card-animated-border::before { content: ''; position: absolute; inset: -2px; background: linear-gradient(90deg, var(--color-accent), var(--color-gold), var(--color-accent)); background-size: 200% 100%; animation: border-rotate 3s linear infinite; border-radius: inherit; z-index: -1; }
+.card-animated-border::before { content: ''; position: absolute; inset: 0; padding: 2px; background: linear-gradient(90deg, var(--color-accent), var(--color-gold), var(--color-accent)); background-size: 200% 100%; animation: border-rotate 3s linear infinite; border-radius: inherit; pointer-events: none; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude; }
 @keyframes border-rotate { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
 @keyframes card-shine { 0%, 100% { transform: translateX(-100%); } 50% { transform: translateX(100%); } }
 @keyframes legendary-pulse { 0%, 100% { box-shadow: 0 0 30px rgba(255,128,0,0.5); } 50% { box-shadow: 0 0 50px rgba(255,128,0,0.8); } }
