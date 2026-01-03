@@ -375,7 +375,9 @@ function renderComponentsBlock(data: any) {
   const inheritTokens = data?.twTokens?.typography ? { typography: data.twTokens.typography } : undefined;
   return (
     <div className="mt-4">
-      <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
+      <SectionTextScope data={data}>
+        <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
+      </SectionTextScope>
     </div>
   );
 }

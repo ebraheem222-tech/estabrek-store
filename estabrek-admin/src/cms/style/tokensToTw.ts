@@ -145,9 +145,21 @@ function hoverExtendedClass(preset?: HoverPresetExtended): string {
 }
 
 function hasTypographyOverrides(tokens?: CmsTokens): boolean {
-  const typography = tokens?.typography;
+  const typography = tokens?.typography as any;
   if (!typography || typeof typography !== "object") return false;
-  return Object.values(typography).some((value) => value !== undefined && value !== null && value !== "" && value !== "default");
+  if (typography.family) return true;
+  if (typography.size && typography.size !== "base") return true;
+  if (typography.align && typography.align !== "left") return true;
+  if (typography.weight && typography.weight !== "normal") return true;
+  if (typography.color && typography.color !== "default") return true;
+  if (typography.colorCustom) return true;
+  if (typography.lineHeight) return true;
+  if (typography.letterSpacing) return true;
+  if (typography.decoration) return true;
+  if (typography.transform) return true;
+  if (typography.truncate) return true;
+  if (typography.lineClamp) return true;
+  return false;
 }
 
 export function tokensToClassName(tokens?: CmsTokens): string {
