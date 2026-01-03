@@ -353,6 +353,10 @@ function defaultComponent(kind: CmsComponentKind): CmsComponent {
   }
 }
 
+export function createDefaultComponent(kind: CmsComponentKind): CmsComponent {
+  return defaultComponent(kind);
+}
+
 function baseButtonClasses(variant?: string): string {
   const v = variant ?? "primary";
   switch (v) {

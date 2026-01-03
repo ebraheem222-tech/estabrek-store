@@ -29,9 +29,10 @@ import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { aiImproveSeo, aiSuggestSections, aiTranslatePage, moveSection as moveSectionApi, type PageSection, type PageSectionType, type PageStatus } from "../../api/pages.api";
 import { SectionEditor, defaultDataForType, templatesForType } from "./SectionEditor";
-import { ComponentsEditor } from "./ComponentsEditor";
+import { ComponentsEditor, createDefaultComponent } from "./ComponentsEditor";
 import { ThemePreview } from "../../components/ThemePreview";
 import { toast } from "../../lib/toast";
+import type { CmsComponentKind } from "../../cms/types";
 
 const LazySectionStylingPanel = React.lazy(() =>
   import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
@@ -70,6 +71,34 @@ const SECTION_TYPES: Array<{ value: PageSectionType; label: string }> = [
   { value: "CTA", label: "CTA" },
   { value: "CARDS", label: "CARDS (Flex Cards)" },
   { value: "VIDEO", label: "VIDEO" },
+];
+
+const COMPONENT_KIND_OPTIONS: Array<{ value: CmsComponentKind; label: string }> = [
+  { value: "text", label: "Text" },
+  { value: "button", label: "Button" },
+  { value: "card", label: "Card" },
+  { value: "container", label: "Container" },
+  { value: "stack", label: "Stack" },
+  { value: "row", label: "Row" },
+  { value: "grid", label: "Grid" },
+  { value: "columns", label: "Columns" },
+  { value: "checkbox", label: "Checkbox" },
+  { value: "input", label: "Input" },
+  { value: "textarea", label: "Textarea" },
+  { value: "select", label: "Select" },
+  { value: "badge", label: "Badge" },
+  { value: "list", label: "List" },
+  { value: "image", label: "Image" },
+  { value: "icon", label: "Icon" },
+  { value: "svg", label: "SVG Shape" },
+  { value: "divider", label: "Divider" },
+  { value: "spacer", label: "Spacer" },
+  { value: "nav_menu", label: "Navigation Menu" },
+  { value: "data", label: "Data" },
+  { value: "productGrid", label: "E-commerce: Product Grid" },
+  { value: "productSlider", label: "E-commerce: Product Slider" },
+  { value: "categoryTiles", label: "E-commerce: Category Tiles" },
+  { value: "filtersBar", label: "E-commerce: Filters Bar" },
 ];
 
 
@@ -375,6 +404,7 @@ export default function PageEditorPage() {
   const [sectionDataRaw, setSectionDataRaw] = useState<string>("{}");
   const [sectionErrors, setSectionErrors] = useState<SectionFieldErrors>({});
   const [componentsOnlyMode, setComponentsOnlyMode] = useState(false);
+  const [componentsSectionKind, setComponentsSectionKind] = useState<CmsComponentKind>("text");
 
   const previewState = useMemo(() => {
     if (!advancedJson) return { data: sectionDataObj ?? {}, error: null as string | null };
@@ -419,24 +449,22 @@ export default function PageEditorPage() {
     setOpenSection(true);
   };
 
-  const openCreateComponentsSection = () => {
+  const openCreateComponentsSection = (initialKind?: CmsComponentKind) => {
     setEditingSectionId(null);
     setComponentsOnlyMode(true);
     setSectionType("RICH_TEXT");
     setSectionVisible(true);
-    const idPart = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const kind = initialKind ?? componentsSectionKind;
+    const base = createDefaultComponent(kind);
+    const first =
+      kind === "text"
+        ? { ...base, props: { ...(base.props ?? {}), text: "مكوّن جديد" } }
+        : base;
     const d = {
       ...defaultDataForType("RICH_TEXT"),
       html: "",
       __mode: "components",
-      components: [
-        {
-          id: `cmp_${idPart}`,
-          kind: "text",
-          name: "Text",
-          props: { as: "p", text: "مكوّن جديد" },
-        },
-      ],
+      components: [first],
     };
     setSectionDataObj(d);
     setSectionDataRaw(JSON.stringify(d ?? {}, null, 2));
@@ -892,6 +920,18 @@ export default function PageEditorPage() {
               {showPreview ? "إخفاء المعاينة المباشرة" : "معاينة مباشرة"}
             </Button>
             <Button variant="secondary" onClick={openCreateSection}>إضافة Section</Button>
+            <select
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm sm:w-auto"
+              value={componentsSectionKind}
+              onChange={(e) => setComponentsSectionKind(e.target.value as CmsComponentKind)}
+              title="نوع Component لقسم Components"
+            >
+              {COMPONENT_KIND_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
             <Button variant="secondary" onClick={openCreateComponentsSection}>إضافة Components</Button>
 
             <select
