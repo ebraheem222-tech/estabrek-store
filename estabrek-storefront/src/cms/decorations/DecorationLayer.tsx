@@ -216,15 +216,18 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
 
   // Determine dimensions based on placement
   const isVertical = placement === "left" || placement === "right";
-  const svgHeight = isVertical ? "100%" : height;
+  const isBackground = placement === "background";
+  const svgHeight = isVertical || isBackground ? "100%" : height;
   const svgWidth = "100%";
+  const usesStroke = config.shape === "lines-horizontal" || config.shape === "lines-diagonal";
+  const paint = isGradient && gradientId ? `url(#${gradientId})` : solidColor;
 
   return (
     <span
       className={`pointer-events-none overflow-hidden ${className}`}
       style={{
         ...baseStyle,
-        height: placement === "background" ? "100%" : svgHeight,
+        height: isBackground ? "100%" : svgHeight,
         zIndex,
         opacity: layerOpacity,
         filter: filterStyle,
@@ -253,7 +256,11 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
         )}
         <path
           d={shape.d}
-          fill={isGradient && gradientId ? `url(#${gradientId})` : solidColor}
+          fill={usesStroke ? "none" : paint}
+          stroke={usesStroke ? paint : undefined}
+          strokeWidth={usesStroke ? 2 : undefined}
+          strokeLinecap={usesStroke ? "round" : undefined}
+          strokeLinejoin={usesStroke ? "round" : undefined}
         />
       </svg>
     </span>
