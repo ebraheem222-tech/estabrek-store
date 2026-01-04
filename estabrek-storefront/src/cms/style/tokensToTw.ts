@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { TwTokens } from "./tokens";
 import type { CardTemplatePreset, HoverPresetExtended, TextEffectPreset, TwTokensExtended } from "./tokens-extended";
+import { getInteractionEffectById } from "../effects/interactionEffects";
 import {
   bgMap,
   displayMap,
@@ -383,9 +384,16 @@ export function tokensToClassName(tokens?: CmsTokens): string {
   }
   const cardTemplateCls = cardTemplateClass(tokens.cardTemplate);
   if (cardTemplateCls) parts.push(cardTemplateCls);
-  const hoverExtendedCls = hoverExtendedClass(tokens.hoverExtended);
+
+  const hoverEffectCls = getInteractionEffectById(tokens.hoverEffectId)?.hoverClassName;
+  if (hoverEffectCls) parts.push(hoverEffectCls);
+
+  const focusEffectCls = getInteractionEffectById(tokens.focusEffectId)?.focusClassName;
+  if (focusEffectCls) parts.push(focusEffectCls);
+
+  const hoverExtendedCls = hoverEffectCls ? undefined : hoverExtendedClass(tokens.hoverExtended);
   if (hoverExtendedCls) parts.push(hoverExtendedCls);
-  if (!hoverExtendedCls && tokens.state?.hover) parts.push(hoverMap[tokens.state.hover]);
+  if (!hoverEffectCls && !hoverExtendedCls && tokens.state?.hover) parts.push(hoverMap[tokens.state.hover]);
 
   // custom colors (inline vars)
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string }) | undefined;
