@@ -372,6 +372,34 @@ function TypographyEditor({ tokens, onChange }: {
   const weightOptions = FONT_WEIGHT_PRESETS.map(p => ({ value: p, label: p }));
   const alignOptions = TEXT_ALIGN_PRESETS.map(p => ({ value: p, label: p === "right" ? "يمين" : p === "left" ? "يسار" : p === "center" ? "وسط" : "ضبط" }));
   const colorOptions = TEXT_COLOR_PRESETS.map(p => ({ value: p, label: p }));
+  const textGradient = tokens?.textGradient;
+  const gradientKind = textGradient?.kind ?? "linear";
+  const gradientMode = textGradient?.mode ?? 2;
+  const linearDirection = textGradient?.direction ?? "to right";
+  const radialPosition = textGradient?.radialPosition ?? "at center";
+
+  const linearDirectionOptions = [
+    { value: "to right", label: "يمين" },
+    { value: "to left", label: "يسار" },
+    { value: "to bottom", label: "أسفل" },
+    { value: "to top", label: "أعلى" },
+    { value: "45deg", label: "45°" },
+    { value: "135deg", label: "135°" },
+    { value: "225deg", label: "225°" },
+    { value: "315deg", label: "315°" },
+  ];
+
+  const radialPositionOptions = [
+    { value: "at center", label: "الوسط" },
+    { value: "at top", label: "أعلى" },
+    { value: "at bottom", label: "أسفل" },
+    { value: "at left", label: "يسار" },
+    { value: "at right", label: "يمين" },
+    { value: "at top left", label: "أعلى يسار" },
+    { value: "at top right", label: "أعلى يمين" },
+    { value: "at bottom left", label: "أسفل يسار" },
+    { value: "at bottom right", label: "أسفل يمين" },
+  ];
 
   return (
     <div className="space-y-4">
@@ -425,13 +453,97 @@ function TypographyEditor({ tokens, onChange }: {
       <FieldGroup label="تأثير النص" labelAr="Text Effect" hint="50+ تأثير نص جاهز">
         <Select
           value={tokens?.textEffect || "none"}
-          onChange={(v) => onChange({ ...tokens, textEffect: v as TextEffectPreset })}
+          onChange={(v) => {
+            const nextEffect = v as TextEffectPreset;
+            const nextTokens = { ...tokens, textEffect: nextEffect } as any;
+            if (nextEffect === "gradient-custom") {
+              nextTokens.textGradient = {
+                kind: tokens?.textGradient?.kind ?? "linear",
+                mode: tokens?.textGradient?.mode ?? 2,
+                direction: tokens?.textGradient?.direction ?? "to right",
+                radialPosition: tokens?.textGradient?.radialPosition ?? "at center",
+                color1: tokens?.textGradient?.color1 ?? "#06B6D4",
+                color2: tokens?.textGradient?.color2 ?? "#A78BFA",
+                color3: tokens?.textGradient?.color3 ?? "#F97316",
+              };
+            }
+            onChange(nextTokens);
+          }}
           options={TEXT_EFFECT_PRESETS.map(p => ({
             value: p,
             label: TEXT_EFFECT_LABELS[p]?.ar || p,
           }))}
         />
       </FieldGroup>
+
+      {tokens?.textEffect === "gradient-custom" && (
+        <>
+          <Divider title="تدرج مخصص" />
+
+          <FieldGroup label="نوع التدرج" labelAr="Gradient Kind">
+            <ButtonGroup
+              value={gradientKind}
+              onChange={(v) => onChange({ ...tokens, textGradient: { ...textGradient, kind: v as any } })}
+              options={[
+                { value: "linear", label: "خطي" },
+                { value: "radial", label: "دائري" },
+              ]}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="عدد الألوان" labelAr="Colors">
+            <ButtonGroup
+              value={String(gradientMode)}
+              onChange={(v) => onChange({ ...tokens, textGradient: { ...textGradient, mode: (Number(v) === 3 ? 3 : 2) as any } })}
+              options={[
+                { value: "2", label: "2" },
+                { value: "3", label: "3" },
+              ]}
+            />
+          </FieldGroup>
+
+          {gradientKind === "linear" ? (
+            <FieldGroup label="اتجاه التدرج" labelAr="Direction">
+              <Select
+                value={linearDirection}
+                onChange={(v) => onChange({ ...tokens, textGradient: { ...textGradient, direction: v } })}
+                options={linearDirectionOptions}
+              />
+            </FieldGroup>
+          ) : (
+            <FieldGroup label="موضع التدرج" labelAr="Position">
+              <Select
+                value={radialPosition}
+                onChange={(v) => onChange({ ...tokens, textGradient: { ...textGradient, radialPosition: v } })}
+                options={radialPositionOptions}
+              />
+            </FieldGroup>
+          )}
+
+          <FieldGroup label="اللون 1">
+            <ColorPicker
+              value={textGradient?.color1 || "#06B6D4"}
+              onChange={(v) => onChange({ ...tokens, textGradient: { ...textGradient, color1: v } })}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="اللون 2">
+            <ColorPicker
+              value={textGradient?.color2 || "#A78BFA"}
+              onChange={(v) => onChange({ ...tokens, textGradient: { ...textGradient, color2: v } })}
+            />
+          </FieldGroup>
+
+          {gradientMode === 3 && (
+            <FieldGroup label="اللون 3">
+              <ColorPicker
+                value={textGradient?.color3 || "#F97316"}
+                onChange={(v) => onChange({ ...tokens, textGradient: { ...textGradient, color3: v } })}
+              />
+            </FieldGroup>
+          )}
+        </>
+      )}
     </div>
   );
 }

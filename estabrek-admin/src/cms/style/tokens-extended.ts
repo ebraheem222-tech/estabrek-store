@@ -16,20 +16,53 @@ export const TEXT_EFFECT_PRESETS = [
   "gradient", "gradient-gold", "gradient-sunset", "gradient-ocean", "gradient-forest",
   "gradient-neon", "gradient-rainbow", "gradient-fire", "gradient-ice", "gradient-aurora",
   "gradient-cosmic", "gradient-candy", "gradient-metal", "gradient-holographic",
+  "gradient-royal", "gradient-silver", "gradient-rose", "gradient-midnight", "gradient-tropical",
+  "gradient-custom",
   // Glow/Neon
   "glow", "glow-accent", "glow-gold", "glow-neon", "glow-pulse",
-  "neon", "neon-blue", "neon-pink", "neon-green", "neon-purple", "neon-multi",
+  "glow-cyan", "glow-pink", "glow-green", "glow-purple", "glow-orange", "glow-red",
+  "glow-yellow", "glow-blue", "glow-white", "glow-neon-multi", "glow-soft",
+  "neon", "neon-cyan", "neon-blue", "neon-pink", "neon-green", "neon-purple", "neon-orange",
+  "neon-red", "neon-yellow", "neon-white", "neon-multi", "neon-flicker",
+  // Shadows
+  "shadow-soft", "shadow-hard", "shadow-long", "shadow-3d", "shadow-retro",
+  "shadow-double", "shadow-outline", "shadow-blur", "shadow-inset", "shadow-emboss",
   // 3D Effects
   "3d", "3d-shadow", "3d-emboss", "3d-deboss", "3d-extrude", "3d-stack",
   "3d-pop", "3d-float", "3d-retro", "3d-chrome", "3d-gold",
   // Outline
   "outline", "outline-thick", "outline-double", "outline-gradient", "outline-neon",
+  "outline-thin", "outline-medium", "outline-colored", "outline-shadow",
   // Animated
   "shimmer", "shimmer-gold", "wave", "bounce", "pulse", "glitch",
   "typewriter", "reveal", "slide-up", "fade-in", "blur-in", "scale-in",
+  "anim-bounce", "anim-pulse", "anim-spin", "anim-ping", "anim-shake",
+  "anim-fade-in", "anim-slide-up", "anim-slide-down", "anim-scale", "anim-glow-pulse",
+  "anim-rainbow", "anim-typing", "anim-wave", "anim-float", "anim-glitch",
+  // Typography
+  "typo-elegant", "typo-modern", "typo-bold", "typo-thin", "typo-mono", "typo-display",
+  "typo-handwritten", "typo-condensed", "typo-expanded", "typo-small-caps", "typo-drop-cap", "typo-justified",
   // Special
   "glass", "frosted", "blur-bg", "highlight", "underline-animated",
   "strikethrough", "split", "masked", "clip-text",
+  "special-stroke", "special-stroke-gradient", "special-hollow", "special-double-stroke",
+  "special-metallic", "special-chrome", "special-gold-foil", "special-fire", "special-ice",
+  "special-blood", "special-poison", "special-electric",
+  // Decorative
+  "deco-underline", "deco-underline-wavy", "deco-strikethrough", "deco-highlight",
+  "deco-highlight-gradient", "deco-box", "deco-tag", "deco-bracket",
+  // Dark
+  "dark-subtle", "dark-bright", "dark-muted", "dark-accent", "dark-warm", "dark-cool", "dark-contrast", "dark-glow",
+  // Light
+  "light-default", "light-muted", "light-bold", "light-accent", "light-warm", "light-cool", "light-elegant", "light-shadow",
+  // Labels
+  "label-primary", "label-secondary", "label-success", "label-danger", "label-warning", "label-outline",
+  // Headings
+  "heading-hero", "heading-section", "heading-subtitle", "heading-elegant", "heading-bold", "heading-accent",
+  // Paragraphs
+  "para-default", "para-large", "para-small", "para-quote", "para-lead", "para-caption",
+  // Artistic
+  "art-watercolor", "art-sketch", "art-vintage", "art-comic", "art-graffiti", "art-neon-sign",
 ] as const;
 export type TextEffectPreset = typeof TEXT_EFFECT_PRESETS[number];
 
@@ -156,7 +189,7 @@ export type ScrollAnimPreset = typeof SCROLL_ANIM_PRESETS[number];
 // ============================================================
 // EXTENDED LABELS (Arabic)
 // ============================================================
-export const TEXT_EFFECT_LABELS: Record<TextEffectPreset, { ar: string; en: string }> = {
+export const TEXT_EFFECT_LABELS: Partial<Record<TextEffectPreset, { ar: string; en: string }>> = {
   "none": { ar: "بدون", en: "None" },
   "gradient": { ar: "تدرج", en: "Gradient" },
   "gradient-gold": { ar: "تدرج ذهبي", en: "Gold Gradient" },
@@ -172,17 +205,50 @@ export const TEXT_EFFECT_LABELS: Record<TextEffectPreset, { ar: string; en: stri
   "gradient-candy": { ar: "حلوى", en: "Candy" },
   "gradient-metal": { ar: "معدن", en: "Metal" },
   "gradient-holographic": { ar: "هولوغرام", en: "Holographic" },
+  "gradient-royal": { ar: "تدرج ملكي", en: "Royal" },
+  "gradient-silver": { ar: "تدرج فضي", en: "Silver" },
+  "gradient-rose": { ar: "تدرج وردي", en: "Rose" },
+  "gradient-midnight": { ar: "تدرج منتصف الليل", en: "Midnight" },
+  "gradient-tropical": { ar: "تدرج استوائي", en: "Tropical" },
+  "gradient-custom": { ar: "تدرج مخصص", en: "Custom Gradient" },
   "glow": { ar: "توهج", en: "Glow" },
   "glow-accent": { ar: "توهج أساسي", en: "Accent Glow" },
   "glow-gold": { ar: "توهج ذهبي", en: "Gold Glow" },
   "glow-neon": { ar: "توهج نيون", en: "Neon Glow" },
   "glow-pulse": { ar: "توهج نابض", en: "Pulse Glow" },
+  "glow-cyan": { ar: "توهج سماوي", en: "Glow Cyan" },
+  "glow-pink": { ar: "توهج وردي", en: "Glow Pink" },
+  "glow-green": { ar: "توهج أخضر", en: "Glow Green" },
+  "glow-purple": { ar: "توهج بنفسجي", en: "Glow Purple" },
+  "glow-orange": { ar: "توهج برتقالي", en: "Glow Orange" },
+  "glow-red": { ar: "توهج أحمر", en: "Glow Red" },
+  "glow-yellow": { ar: "توهج أصفر", en: "Glow Yellow" },
+  "glow-blue": { ar: "توهج أزرق", en: "Glow Blue" },
+  "glow-white": { ar: "توهج أبيض", en: "Glow White" },
+  "glow-neon-multi": { ar: "توهج نيون متعدد", en: "Glow Neon Multi" },
+  "glow-soft": { ar: "توهج ناعم", en: "Glow Soft" },
   "neon": { ar: "نيون", en: "Neon" },
+  "neon-cyan": { ar: "نيون سماوي", en: "Neon Cyan" },
   "neon-blue": { ar: "نيون أزرق", en: "Blue Neon" },
   "neon-pink": { ar: "نيون وردي", en: "Pink Neon" },
   "neon-green": { ar: "نيون أخضر", en: "Green Neon" },
   "neon-purple": { ar: "نيون بنفسجي", en: "Purple Neon" },
+  "neon-orange": { ar: "نيون برتقالي", en: "Neon Orange" },
+  "neon-red": { ar: "نيون أحمر", en: "Neon Red" },
+  "neon-yellow": { ar: "نيون أصفر", en: "Neon Yellow" },
+  "neon-white": { ar: "نيون أبيض", en: "Neon White" },
   "neon-multi": { ar: "نيون متعدد", en: "Multi Neon" },
+  "neon-flicker": { ar: "نيون متقطع", en: "Neon Flicker" },
+  "shadow-soft": { ar: "ظل ناعم", en: "Shadow Soft" },
+  "shadow-hard": { ar: "ظل قوي", en: "Shadow Hard" },
+  "shadow-long": { ar: "ظل طويل", en: "Shadow Long" },
+  "shadow-3d": { ar: "ظل ثلاثي الأبعاد", en: "Shadow 3D" },
+  "shadow-retro": { ar: "ظل ريترو", en: "Shadow Retro" },
+  "shadow-double": { ar: "ظل مزدوج", en: "Shadow Double" },
+  "shadow-outline": { ar: "ظل محدد", en: "Shadow Outline" },
+  "shadow-blur": { ar: "ظل ضبابي", en: "Shadow Blur" },
+  "shadow-inset": { ar: "ظل داخلي", en: "Shadow Inset" },
+  "shadow-emboss": { ar: "ظل بارز", en: "Shadow Emboss" },
   "3d": { ar: "ثلاثي الأبعاد", en: "3D" },
   "3d-shadow": { ar: "ظل 3D", en: "3D Shadow" },
   "3d-emboss": { ar: "نقش بارز", en: "Emboss" },
@@ -195,10 +261,14 @@ export const TEXT_EFFECT_LABELS: Record<TextEffectPreset, { ar: string; en: stri
   "3d-chrome": { ar: "كروم", en: "Chrome" },
   "3d-gold": { ar: "ذهبي 3D", en: "Gold 3D" },
   "outline": { ar: "إطار", en: "Outline" },
+  "outline-thin": { ar: "محدد رفيع", en: "Outline Thin" },
+  "outline-medium": { ar: "محدد متوسط", en: "Outline Medium" },
   "outline-thick": { ar: "إطار سميك", en: "Thick Outline" },
+  "outline-colored": { ar: "محدد ملون", en: "Outline Colored" },
   "outline-double": { ar: "إطار مزدوج", en: "Double Outline" },
   "outline-gradient": { ar: "إطار متدرج", en: "Gradient Outline" },
   "outline-neon": { ar: "إطار نيون", en: "Neon Outline" },
+  "outline-shadow": { ar: "محدد بظل", en: "Outline Shadow" },
   "shimmer": { ar: "لمعان", en: "Shimmer" },
   "shimmer-gold": { ar: "لمعان ذهبي", en: "Gold Shimmer" },
   "wave": { ar: "موجة", en: "Wave" },
@@ -211,6 +281,33 @@ export const TEXT_EFFECT_LABELS: Record<TextEffectPreset, { ar: string; en: stri
   "fade-in": { ar: "ظهور تدريجي", en: "Fade In" },
   "blur-in": { ar: "ضبابي", en: "Blur In" },
   "scale-in": { ar: "تكبير", en: "Scale In" },
+  "anim-bounce": { ar: "متحرك نطاط", en: "Animated Bounce" },
+  "anim-pulse": { ar: "متحرك نابض", en: "Animated Pulse" },
+  "anim-spin": { ar: "متحرك دوار", en: "Animated Spin" },
+  "anim-ping": { ar: "متحرك رنين", en: "Animated Ping" },
+  "anim-shake": { ar: "متحرك اهتزاز", en: "Animated Shake" },
+  "anim-fade-in": { ar: "متحرك ظهور", en: "Animated Fade In" },
+  "anim-slide-up": { ar: "متحرك انزلاق للأعلى", en: "Animated Slide Up" },
+  "anim-slide-down": { ar: "متحرك انزلاق للأسفل", en: "Animated Slide Down" },
+  "anim-scale": { ar: "متحرك تكبير", en: "Animated Scale" },
+  "anim-glow-pulse": { ar: "متحرك توهج نابض", en: "Animated Glow Pulse" },
+  "anim-rainbow": { ar: "متحرك قوس قزح", en: "Animated Rainbow" },
+  "anim-typing": { ar: "متحرك كتابة", en: "Animated Typing" },
+  "anim-wave": { ar: "متحرك موجة", en: "Animated Wave" },
+  "anim-float": { ar: "متحرك طفو", en: "Animated Float" },
+  "anim-glitch": { ar: "متحرك خلل", en: "Animated Glitch" },
+  "typo-elegant": { ar: "طباعة أنيقة", en: "Typography Elegant" },
+  "typo-modern": { ar: "طباعة حديثة", en: "Typography Modern" },
+  "typo-bold": { ar: "طباعة عريضة", en: "Typography Bold" },
+  "typo-thin": { ar: "طباعة رفيعة", en: "Typography Thin" },
+  "typo-mono": { ar: "طباعة أحادية", en: "Typography Mono" },
+  "typo-display": { ar: "طباعة عرض", en: "Typography Display" },
+  "typo-handwritten": { ar: "طباعة يدوية", en: "Typography Handwritten" },
+  "typo-condensed": { ar: "طباعة مضغوطة", en: "Typography Condensed" },
+  "typo-expanded": { ar: "طباعة موسعة", en: "Typography Expanded" },
+  "typo-small-caps": { ar: "طباعة أحرف صغيرة", en: "Typography Small Caps" },
+  "typo-drop-cap": { ar: "طباعة حرف كبير", en: "Typography Drop Cap" },
+  "typo-justified": { ar: "طباعة مضبوطة", en: "Typography Justified" },
   "glass": { ar: "زجاج", en: "Glass" },
   "frosted": { ar: "مثلج", en: "Frosted" },
   "blur-bg": { ar: "خلفية ضبابية", en: "Blur Background" },
@@ -220,6 +317,66 @@ export const TEXT_EFFECT_LABELS: Record<TextEffectPreset, { ar: string; en: stri
   "split": { ar: "انقسام", en: "Split" },
   "masked": { ar: "مقنع", en: "Masked" },
   "clip-text": { ar: "قص النص", en: "Clip Text" },
+  "special-stroke": { ar: "خاص محدد", en: "Special Stroke" },
+  "special-stroke-gradient": { ar: "خاص محدد متدرج", en: "Special Stroke Gradient" },
+  "special-hollow": { ar: "خاص مفرغ", en: "Special Hollow" },
+  "special-double-stroke": { ar: "خاص محدد مزدوج", en: "Special Double Stroke" },
+  "special-metallic": { ar: "خاص معدني", en: "Special Metallic" },
+  "special-chrome": { ar: "خاص كروم", en: "Special Chrome" },
+  "special-gold-foil": { ar: "خاص ورق ذهبي", en: "Special Gold Foil" },
+  "special-fire": { ar: "خاص ناري", en: "Special Fire" },
+  "special-ice": { ar: "خاص جليدي", en: "Special Ice" },
+  "special-blood": { ar: "خاص دموي", en: "Special Blood" },
+  "special-poison": { ar: "خاص سام", en: "Special Poison" },
+  "special-electric": { ar: "خاص كهربائي", en: "Special Electric" },
+  "deco-underline": { ar: "زخرفة خط سفلي", en: "Decorative Underline" },
+  "deco-underline-wavy": { ar: "زخرفة خط سفلي متموج", en: "Decorative Underline Wavy" },
+  "deco-strikethrough": { ar: "زخرفة شطب", en: "Decorative Strikethrough" },
+  "deco-highlight": { ar: "زخرفة تظليل", en: "Decorative Highlight" },
+  "deco-highlight-gradient": { ar: "زخرفة تظليل متدرج", en: "Decorative Highlight Gradient" },
+  "deco-box": { ar: "زخرفة صندوق", en: "Decorative Box" },
+  "deco-tag": { ar: "زخرفة وسم", en: "Decorative Tag" },
+  "deco-bracket": { ar: "زخرفة أقواس", en: "Decorative Bracket" },
+  "dark-subtle": { ar: "داكن خفيف", en: "Dark Subtle" },
+  "dark-bright": { ar: "داكن مشرق", en: "Dark Bright" },
+  "dark-muted": { ar: "داكن باهت", en: "Dark Muted" },
+  "dark-accent": { ar: "داكن مميز", en: "Dark Accent" },
+  "dark-warm": { ar: "داكن دافئ", en: "Dark Warm" },
+  "dark-cool": { ar: "داكن بارد", en: "Dark Cool" },
+  "dark-contrast": { ar: "داكن متباين", en: "Dark Contrast" },
+  "dark-glow": { ar: "داكن متوهج", en: "Dark Glow" },
+  "light-default": { ar: "فاتح افتراضي", en: "Light Default" },
+  "light-muted": { ar: "فاتح باهت", en: "Light Muted" },
+  "light-bold": { ar: "فاتح عريض", en: "Light Bold" },
+  "light-accent": { ar: "فاتح مميز", en: "Light Accent" },
+  "light-warm": { ar: "فاتح دافئ", en: "Light Warm" },
+  "light-cool": { ar: "فاتح بارد", en: "Light Cool" },
+  "light-elegant": { ar: "فاتح أنيق", en: "Light Elegant" },
+  "light-shadow": { ar: "فاتح بظل", en: "Light Shadow" },
+  "label-primary": { ar: "وسم أساسي", en: "Label Primary" },
+  "label-secondary": { ar: "وسم ثانوي", en: "Label Secondary" },
+  "label-success": { ar: "وسم نجاح", en: "Label Success" },
+  "label-danger": { ar: "وسم خطر", en: "Label Danger" },
+  "label-warning": { ar: "وسم تحذير", en: "Label Warning" },
+  "label-outline": { ar: "وسم محدد", en: "Label Outline" },
+  "heading-hero": { ar: "عنوان بطل", en: "Heading Hero" },
+  "heading-section": { ar: "عنوان قسم", en: "Heading Section" },
+  "heading-subtitle": { ar: "عنوان فرعي", en: "Heading Subtitle" },
+  "heading-elegant": { ar: "عنوان أنيق", en: "Heading Elegant" },
+  "heading-bold": { ar: "عنوان عريض", en: "Heading Bold" },
+  "heading-accent": { ar: "عنوان مميز", en: "Heading Accent" },
+  "para-default": { ar: "فقرة افتراضية", en: "Paragraph Default" },
+  "para-large": { ar: "فقرة كبيرة", en: "Paragraph Large" },
+  "para-small": { ar: "فقرة صغيرة", en: "Paragraph Small" },
+  "para-quote": { ar: "فقرة اقتباس", en: "Paragraph Quote" },
+  "para-lead": { ar: "فقرة رئيسية", en: "Paragraph Lead" },
+  "para-caption": { ar: "فقرة تسمية", en: "Paragraph Caption" },
+  "art-watercolor": { ar: "فني ألوان مائية", en: "Art Watercolor" },
+  "art-sketch": { ar: "فني رسم", en: "Art Sketch" },
+  "art-vintage": { ar: "فني عتيق", en: "Art Vintage" },
+  "art-comic": { ar: "فني كوميدي", en: "Art Comic" },
+  "art-graffiti": { ar: "فني غرافيتي", en: "Art Graffiti" },
+  "art-neon-sign": { ar: "فني لافتة نيون", en: "Art Neon Sign" },
 };
 
 export const CARD_TEMPLATE_LABELS: Record<CardTemplatePreset, { ar: string; en: string }> = {
@@ -393,8 +550,20 @@ export const HOVER_LABELS: Record<HoverPresetExtended, { ar: string; en: string 
 // ============================================================
 // EXTENDED TwTokens TYPE
 // ============================================================
+export type TextGradientKind = "linear" | "radial";
+export type TextGradientTokens = {
+  kind?: TextGradientKind;
+  mode?: 2 | 3;
+  color1?: string;
+  color2?: string;
+  color3?: string;
+  direction?: string;
+  radialPosition?: string;
+};
+
 export type TwTokensExtended = {
   textEffect?: TextEffectPreset;
+  textGradient?: TextGradientTokens;
   cardTemplate?: CardTemplatePreset;
   buttonStyle?: ButtonStylePreset;
   hoverExtended?: HoverPresetExtended;
