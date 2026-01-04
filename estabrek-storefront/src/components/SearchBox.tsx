@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 type SuggestProduct = { id: string; title: string; slug: string };
 type SuggestCategory = { id: string; name: string; slug: string };
@@ -168,9 +169,16 @@ export function SearchBox() {
             </div>
           ) : null}
 
-          {showResults ? (
-            <div className="p-2">
-              {loading ? <div className="px-2 py-2 text-sm text-white/60">جاري البحث...</div> : null}
+              {showResults ? (
+                <div className="p-2">
+              {loading ? (
+                <div className="px-2 py-2">
+                  <LoadingIndicator
+                    className="flex items-center justify-center"
+                    fallback={<div className="text-sm text-white/60">جاري البحث...</div>}
+                  />
+                </div>
+              ) : null}
 
               {categories.length ? (
                 <div className="mb-2">
@@ -224,4 +232,3 @@ export function SearchBox() {
     </div>
   );
 }
-

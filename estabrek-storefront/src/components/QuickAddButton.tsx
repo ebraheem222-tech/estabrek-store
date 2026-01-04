@@ -5,6 +5,7 @@ import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog"
 import { formatMoney } from "@/lib/catalog";
 import { getProductByIdClient, getProductBySlugClient } from "@/lib/apiClient";
 import { useCart } from "@/store/cart";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 type Props = {
   productId?: string;
@@ -302,7 +303,7 @@ const colorHasAvailable = (key: string): boolean => {
         <div className="p-5">
           {loading ? (
             <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
-              Loading…
+              <LoadingIndicator className="flex items-center justify-center" fallback={<span>Loading…</span>} />
             </div>
           ) : !product ? (
             <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">

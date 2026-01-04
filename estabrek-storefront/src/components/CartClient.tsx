@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/store/cart";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 type Quote = {
   subtotal?: string | number;
@@ -230,7 +231,10 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
             </div>
 
             {loading ? (
-              <div className="text-sm text-white/70">يتم الحساب...</div>
+              <LoadingIndicator
+                className="flex items-center justify-center py-2"
+                fallback={<div className="text-sm text-white/70">يتم الحساب...</div>}
+              />
             ) : err ? (
               <div className="text-sm text-red-300">خطأ: {err}</div>
             ) : quote ? (
@@ -508,5 +512,4 @@ function Row({
     </div>
   );
 }
-
 
