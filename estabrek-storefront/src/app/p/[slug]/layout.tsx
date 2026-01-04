@@ -20,7 +20,7 @@ export default async function ProductLayout({ children }: { children: React.Reac
   const loading = preset ? { enabled, animationId: preset.id, html: preset.html, css: preset.css } : null;
 
   return (
-    <ThemeWrap theme={theme}>
+    <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId}>
       <UiSettingsProvider loading={loading}>
         <AnnouncementBar site={settings.site} />
         <Navbar site={bootstrap.site} primaryMenu={bootstrap.primaryMenu} />

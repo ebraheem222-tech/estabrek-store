@@ -22,7 +22,7 @@ export default async function CategoryLayout({ children }: { children: React.Rea
   const customCss = bootstrap.site.customCss?.trim() || "";
 
   return (
-    <ThemeWrap theme={theme}>
+    <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId}>
       <UiSettingsProvider loading={loading}>
         {customCss ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
         <ScriptTags scripts={bootstrap.site.scriptsHead} />

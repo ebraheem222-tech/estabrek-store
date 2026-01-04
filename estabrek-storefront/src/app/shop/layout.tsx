@@ -21,7 +21,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   const loading = preset ? { enabled, animationId: preset.id, html: preset.html, css: preset.css } : null;
 
   return (
-    <ThemeWrap theme={theme}>
+    <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId}>
       <UiSettingsProvider loading={loading}>
         {customCss ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
         <ScriptTags scripts={bootstrap.site.scriptsHead} />

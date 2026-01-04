@@ -21,7 +21,7 @@ export default async function CartLayout({ children }: { children: React.ReactNo
   const loading = preset ? { enabled, animationId: preset.id, html: preset.html, css: preset.css } : null;
 
   return (
-    <ThemeWrap theme={theme}>
+    <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId}>
       <UiSettingsProvider loading={loading}>
         <AnnouncementBar site={settings.site} />
         <Topbar header={header} />
