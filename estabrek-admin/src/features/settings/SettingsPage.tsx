@@ -8,6 +8,11 @@ import { MediaUrlInput } from "../../components/media/MediaUrlInput";
 import { Card, CardContent, CardHeader } from "../../components/ui/Card";
 import { useSettings, useSettingsActions } from "../../hooks/useSettings";
 import { ALL_NAV_TEMPLATES, NAV_CATEGORY_LABELS_AR, getNavTemplateById } from "../../cms/nav/navTemplates";
+import {
+  ALL_WEBSITE_THEMES,
+  WEBSITE_THEME_CATEGORY_LABELS_AR,
+  getWebsiteThemeById,
+} from "../../cms/themes/websiteThemes";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -46,6 +51,8 @@ type HeaderConfig = {
     mode?: "dark" | "light";
     // Step 2 (Theme Engine): presetId
     presetId?: ThemePresetId;
+    // Step 16: Website theme preset id
+    websiteThemeId?: string;
     primary?: string;
     secondary?: string;
     // legacy fields (kept for backwards compatibility)
@@ -140,9 +147,13 @@ const isThemePresetId = (value: unknown): value is ThemePresetId =>
 
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
   const o = safeObj(v);
+  const rawWebsiteThemeId = typeof o.websiteThemeId === "string" ? o.websiteThemeId : "default";
+  const websiteThemeId =
+    rawWebsiteThemeId === "default" || getWebsiteThemeById(rawWebsiteThemeId) ? rawWebsiteThemeId : "default";
   return {
     mode: o.mode === "light" ? "light" : "dark",
     presetId: isThemePresetId(o.presetId) ? o.presetId : "estabrak_soft_gold",
+    websiteThemeId,
     primary: typeof o.primary === "string" && o.primary.trim() ? o.primary : undefined,
     secondary: typeof o.secondary === "string" && o.secondary.trim() ? o.secondary : undefined,
     accent: (o.accent === "rose" || o.accent === "orange" || o.accent === "emerald" || o.accent === "violet" || o.accent === "gold" || o.accent === "blue")
@@ -172,6 +183,14 @@ const CMS_NAV_TEMPLATE_OPTIONS: Array<{ value: string; label: string }> = [
   ...ALL_NAV_TEMPLATES.map((tpl) => ({
     value: tpl.id,
     label: `${NAV_CATEGORY_LABELS_AR[tpl.category] ?? tpl.category} — ${tpl.nameAr}`,
+  })),
+];
+
+const WEBSITE_THEME_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "default", label: "افتراضي" },
+  ...ALL_WEBSITE_THEMES.map((t) => ({
+    value: t.id,
+    label: `${WEBSITE_THEME_CATEGORY_LABELS_AR[t.category] ?? t.category} — ${t.nameAr}`,
   })),
 ];
 
@@ -861,6 +880,12 @@ export default function SettingsPage() {
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div className="mb-3 text-sm font-semibold">الثيم</div>
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      <Select
+                        label="ثيم الموقع"
+                        value={theme.websiteThemeId ?? "default"}
+                        onValueChange={(value) => updateTheme({ websiteThemeId: value })}
+                        options={WEBSITE_THEME_OPTIONS}
+                      />
                       <Select
                         label="البريست"
                         value={theme.presetId ?? "estabrak_soft_gold"}
