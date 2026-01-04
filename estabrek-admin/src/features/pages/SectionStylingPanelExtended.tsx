@@ -48,6 +48,7 @@ import {
   type HoverPresetExtended,
   type TwTokensExtended,
 } from "../../cms/style/tokens-extended";
+import { INTERACTION_CATEGORY_LABELS_AR, INTERACTION_EFFECTS } from "../../cms/effects/interactionEffects";
 import { SvgLibraryPicker } from "./SvgLibraryPicker";
 
 // ============================================================
@@ -799,6 +800,11 @@ function EffectsEditor({ tokens, onChange }: {
   tokens?: TwTokens & TwTokensExtended;
   onChange: (t: TwTokens & TwTokensExtended) => void;
 }) {
+  const interactionOptions = INTERACTION_EFFECTS.map((e) => ({
+    value: e.id,
+    label: `${INTERACTION_CATEGORY_LABELS_AR[e.category]} - ${e.nameAr}`,
+  }));
+
   const hoverOptions = HOVER_PRESETS_EXTENDED.map(h => ({
     value: h,
     label: HOVER_LABELS[h]?.ar || h,
@@ -811,7 +817,29 @@ function EffectsEditor({ tokens, onChange }: {
 
   return (
     <div className="space-y-4">
-      <FieldGroup label="تأثير التحويم" labelAr="Hover Effect" hint="40+ تأثير hover">
+      <Divider title="تأثيرات Hover / Focus" />
+
+      <FieldGroup label="تأثير Hover" labelAr="Hover (Library)" hint="100+ تأثير hover">
+        <Select
+          value={tokens?.hoverEffectId ?? ""}
+          onChange={(v) => onChange({ ...tokens, hoverEffectId: v || undefined })}
+          options={interactionOptions}
+          placeholder="بدون"
+        />
+      </FieldGroup>
+
+      <FieldGroup label="تأثير Focus" labelAr="Focus (Library)" hint="100+ تأثير focus">
+        <Select
+          value={tokens?.focusEffectId ?? ""}
+          onChange={(v) => onChange({ ...tokens, focusEffectId: v || undefined })}
+          options={interactionOptions}
+          placeholder="بدون"
+        />
+      </FieldGroup>
+
+      <Divider title="Hover (قديم)" />
+
+      <FieldGroup label="تأثير التحويم" labelAr="Hover Effect" hint="40+ تأثير hover (قديم)">
         <Select
           value={tokens?.hoverExtended || tokens?.state?.hover || "none"}
           onChange={(v) => onChange({ ...tokens, hoverExtended: v as HoverPresetExtended })}

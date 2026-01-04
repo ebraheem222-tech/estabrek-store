@@ -567,6 +567,8 @@ export type TwTokensExtended = {
   cardTemplate?: CardTemplatePreset;
   buttonStyle?: ButtonStylePreset;
   hoverExtended?: HoverPresetExtended;
+  hoverEffectId?: string;
+  focusEffectId?: string;
   loader?: LoaderPreset;
   transitionPreset?: TransitionPreset;
   scrollAnim?: ScrollAnimPreset;
