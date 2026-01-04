@@ -48,6 +48,7 @@ import {
   type HoverPresetExtended,
   type TwTokensExtended,
 } from "../../cms/style/tokens-extended";
+import { SvgLibraryPicker } from "./SvgLibraryPicker";
 
 // ============================================================
 // TYPES
@@ -582,6 +583,17 @@ function DecorationsEditor({ decor, onChange }: {
         <>
           {layer?.shape === "custom-svg" ? (
             <>
+              <FieldGroup label="مكتبة SVG">
+                <SvgLibraryPicker
+                  onInsert={(svg) =>
+                    onChange({
+                      ...decor,
+                      [key]: { ...layer, svg, svgViewBox: undefined },
+                    })
+                  }
+                />
+              </FieldGroup>
+
               <FieldGroup label="SVG">
                 <textarea
                   dir="ltr"

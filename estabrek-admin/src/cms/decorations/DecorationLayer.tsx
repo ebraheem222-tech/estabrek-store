@@ -89,6 +89,166 @@ function isGradientValue(value?: string): boolean {
   return /gradient\(/i.test(value);
 }
 
+type ParsedSvgNode = {
+  tag: string;
+  attrs: Record<string, string>;
+  children: ParsedSvgNode[];
+};
+
+type ParsedCustomSvg = {
+  viewBox: string;
+  rootAttrs: Record<string, string>;
+  nodes: ParsedSvgNode[];
+};
+
+const ALLOWED_SVG_TAGS = new Set([
+  "g",
+  "defs",
+  "path",
+  "circle",
+  "rect",
+  "ellipse",
+  "line",
+  "polyline",
+  "polygon",
+  "lineargradient",
+  "radialgradient",
+  "stop",
+  "pattern",
+  "mask",
+  "filter",
+  "feturbulence",
+  "fegaussianblur",
+  "fecolormatrix",
+  "feoffset",
+  "feblend",
+  "fecomposite",
+  "feflood",
+  "femorphology",
+  "fedropshadow",
+  "clippath",
+  "use",
+  "title",
+  "desc",
+]);
+
+const SHAPE_TAGS = new Set(["path", "circle", "rect", "ellipse", "line", "polyline", "polygon"]);
+
+function toReactAttrName(name: string): string | null {
+  const raw = name.trim();
+  if (!raw) return null;
+  if (raw.includes(":")) return null;
+  if (raw.toLowerCase().startsWith("on")) return null;
+  if (raw === "class") return "className";
+  return raw.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
+function rewriteUrlRefs(value: string, idMap: Record<string, string>): string {
+  if (!value) return value;
+  const urlRewritten = value.replace(
+    /url\(\s*['"]?#([^'")]+)['"]?\s*\)/gi,
+    (_m, id: string) => `url(#${idMap[id] || id})`,
+  );
+  const hashMatch = urlRewritten.match(/^#(.+)$/);
+  if (hashMatch) {
+    const id = hashMatch[1];
+    return `#${idMap[id] || id}`;
+  }
+  return urlRewritten;
+}
+
+function parseInlineStyle(styleText: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!styleText) return out;
+
+  const pairs = styleText.split(";");
+  for (const pair of pairs) {
+    const idx = pair.indexOf(":");
+    if (idx === -1) continue;
+    const rawKey = pair.slice(0, idx).trim().toLowerCase();
+    const rawValue = pair.slice(idx + 1).trim();
+    if (!rawKey || !rawValue) continue;
+
+    const key = rawKey.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    out[key] = rawValue;
+  }
+
+  return out;
+}
+
+function inferViewBox(svgEl: Element): string | undefined {
+  const widthRaw = svgEl.getAttribute("width")?.trim() || "";
+  const heightRaw = svgEl.getAttribute("height")?.trim() || "";
+  const width = Number(widthRaw.replace(/px$/i, ""));
+  const height = Number(heightRaw.replace(/px$/i, ""));
+  if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+    return `0 0 ${width} ${height}`;
+  }
+  return undefined;
+}
+
+function collectIds(root: Element, idPrefix: string): Record<string, string> {
+  const idMap: Record<string, string> = {};
+  const walk = (el: Element) => {
+    const id = el.getAttribute("id")?.trim();
+    if (id) idMap[id] = `${idPrefix}-${id}`;
+    for (const child of Array.from(el.children)) walk(child);
+  };
+  walk(root);
+  return idMap;
+}
+
+function sanitizeAttributes(
+  el: Element,
+  idMap: Record<string, string>,
+  opts: { isRoot?: boolean },
+): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  for (const attr of Array.from(el.attributes)) {
+    const rawName = attr.name;
+    const value = attr.value?.trim();
+    if (!value) continue;
+
+    const lower = rawName.toLowerCase();
+    if (lower === "xmlns" || lower.startsWith("xmlns:")) continue;
+    if (opts.isRoot && (lower === "width" || lower === "height")) continue;
+    if (lower === "viewbox") continue;
+
+    if (lower === "style") {
+      const styleAttrs = parseInlineStyle(value);
+      for (const [k, v] of Object.entries(styleAttrs)) {
+        out[k] = rewriteUrlRefs(v, idMap);
+      }
+      continue;
+    }
+
+    const propName = toReactAttrName(rawName);
+    if (!propName) continue;
+
+    if (propName === "id") out[propName] = idMap[value] || value;
+    else out[propName] = rewriteUrlRefs(value, idMap);
+  }
+
+  return out;
+}
+
+function elementToNode(el: Element, idMap: Record<string, string>): ParsedSvgNode | null {
+  const tag = el.tagName;
+  const normalized = tag.toLowerCase();
+  if (!ALLOWED_SVG_TAGS.has(normalized)) return null;
+
+  const attrs = sanitizeAttributes(el, idMap, { isRoot: false });
+  const children: ParsedSvgNode[] = [];
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType !== 1) continue;
+    const node = elementToNode(child as Element, idMap);
+    if (node) children.push(node);
+  }
+
+  return { tag, attrs, children };
+}
+
 function parseSvgViewBox(svg: string): string | undefined {
   const m = svg.match(/viewBox\s*=\s*["']([^"']+)["']/i);
   return m ? m[1].trim() : undefined;
@@ -105,20 +265,87 @@ function parseSvgPaths(svg: string): string[] {
   return paths;
 }
 
-function parseCustomSvg(config: DecorLayer): { viewBox: string; paths: string[] } | null {
+function parseCustomSvg(config: DecorLayer, idPrefix: string): ParsedCustomSvg | null {
   const raw = typeof config.svg === "string" ? config.svg.trim() : "";
   if (!raw) return null;
 
   const viewBoxOverride = typeof config.svgViewBox === "string" ? config.svgViewBox.trim() : "";
-  const looksLikeMarkup = /<\s*svg\b/i.test(raw) || /<\s*path\b/i.test(raw);
-  const paths = parseSvgPaths(raw);
+  const looksLikeMarkup =
+    /<\s*svg\b/i.test(raw) ||
+    /<\s*(path|circle|rect|ellipse|line|polyline|polygon|defs|g|pattern|mask|filter)\b/i.test(raw);
 
-  if (paths.length) {
-    return { viewBox: viewBoxOverride || parseSvgViewBox(raw) || "0 0 100 100", paths };
+  if (!looksLikeMarkup) {
+    return {
+      viewBox: viewBoxOverride || "0 0 100 100",
+      rootAttrs: {},
+      nodes: [{ tag: "path", attrs: { d: raw }, children: [] }],
+    };
   }
 
-  if (looksLikeMarkup) return null;
-  return { viewBox: viewBoxOverride || "0 0 100 100", paths: [raw] };
+  const markup = /<\s*svg\b/i.test(raw)
+    ? raw
+    : `<svg xmlns="http://www.w3.org/2000/svg"${viewBoxOverride ? ` viewBox="${viewBoxOverride}"` : ""}>${raw}</svg>`;
+
+  if (typeof DOMParser === "undefined") {
+    const paths = parseSvgPaths(markup);
+    if (!paths.length) return null;
+    return {
+      viewBox: viewBoxOverride || parseSvgViewBox(markup) || "0 0 100 100",
+      rootAttrs: {},
+      nodes: paths.map((d) => ({ tag: "path", attrs: { d }, children: [] })),
+    };
+  }
+
+  const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
+  if (!doc || doc.getElementsByTagName("parsererror").length > 0) return null;
+
+  const svgEl = doc.documentElement;
+  if (!svgEl || svgEl.tagName.toLowerCase() !== "svg") return null;
+
+  const idMap = collectIds(svgEl, idPrefix);
+  const viewBox =
+    viewBoxOverride ||
+    svgEl.getAttribute("viewBox")?.trim() ||
+    inferViewBox(svgEl) ||
+    "0 0 100 100";
+
+  const rootAttrs = sanitizeAttributes(svgEl, idMap, { isRoot: true });
+  const nodes: ParsedSvgNode[] = [];
+  for (const child of Array.from(svgEl.childNodes)) {
+    if (child.nodeType !== 1) continue;
+    const node = elementToNode(child as Element, idMap);
+    if (node) nodes.push(node);
+  }
+
+  return { viewBox, rootAttrs, nodes };
+}
+
+function renderParsedSvgNode(
+  node: ParsedSvgNode,
+  key: string,
+  paint: string,
+  applyPaintToCurrentColor: boolean,
+): React.ReactNode {
+  const normalized = node.tag.toLowerCase();
+  const nextAttrs: Record<string, string> = { ...node.attrs };
+
+  if (applyPaintToCurrentColor && SHAPE_TAGS.has(normalized)) {
+    const fill = (nextAttrs.fill || "").trim();
+    const stroke = (nextAttrs.stroke || "").trim();
+
+    if (normalized === "line") {
+      nextAttrs.fill = "none";
+      if (!stroke || stroke === "currentColor") nextAttrs.stroke = paint;
+    } else {
+      if (!fill || fill === "currentColor") nextAttrs.fill = paint;
+      if (stroke === "currentColor") nextAttrs.stroke = paint;
+    }
+  }
+
+  const children = node.children.map((c, idx) =>
+    renderParsedSvgNode(c, `${key}.${idx}`, paint, applyPaintToCurrentColor),
+  );
+  return React.createElement(node.tag, { key, ...nextAttrs }, children.length ? children : undefined);
 }
 
 interface DecorationLayerProps {
@@ -130,6 +357,8 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
   config,
   className = "",
 }) => {
+  const reactId = React.useId();
+  const idPrefix = `decor-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   if (!config.shape || config.shape === "none") return null;
 
   const placement = (config.placement || "bottom") as DecorPlacementPreset;
@@ -246,8 +475,22 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
   const paint = isGradient && gradientId ? `url(#${gradientId})` : solidColor;
 
   if (config.shape === "custom-svg") {
-    const parsed = parseCustomSvg(config);
+    const parsed = parseCustomSvg(config, idPrefix);
     if (!parsed) return null;
+
+    const applyPaintToCurrentColor = isGradient && !!gradientId;
+    const rootAttrs: Record<string, string> = { ...parsed.rootAttrs };
+    const rootFill = (rootAttrs.fill || "").trim();
+    const rootStroke = (rootAttrs.stroke || "").trim();
+
+    if (applyPaintToCurrentColor) {
+      if ((!rootFill || rootFill === "currentColor") && rootFill !== "none" && !/^url\(/i.test(rootFill)) {
+        rootAttrs.fill = paint;
+      }
+      if (rootStroke === "currentColor") rootAttrs.stroke = paint;
+    } else {
+      if (!rootFill) rootAttrs.fill = "currentColor";
+    }
 
     return (
       <span
@@ -264,11 +507,13 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
         <svg
           viewBox={parsed.viewBox}
           preserveAspectRatio="none"
+          {...rootAttrs}
           style={{
             width: svgWidth,
             height: svgHeight,
             display: "block",
             transform: flipTransform,
+            color: solidColor,
           }}
         >
           {isGradient && gradientId && (
@@ -279,9 +524,9 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
               </linearGradient>
             </defs>
           )}
-          {parsed.paths.map((d, idx) => (
-            <path key={`custom-svg-${idx}`} d={d} fill={paint} />
-          ))}
+          {parsed.nodes.map((n, idx) =>
+            renderParsedSvgNode(n, `custom-svg-${idx}`, paint, applyPaintToCurrentColor),
+          )}
         </svg>
       </span>
     );
