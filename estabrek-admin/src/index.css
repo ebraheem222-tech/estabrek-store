@@ -189,6 +189,51 @@
   [data-theme="light"] .bg-white\/\[0\.08\] { background-color: color-mix(in srgb, var(--surface) 92%, var(--text) 8%) !important; }
   [data-theme="light"] .bg-white\/\[0\.10\] { background-color: color-mix(in srgb, var(--surface) 90%, var(--text) 10%) !important; }
 
+  /* Admin dashboard theme (maps Tailwind palette to CSS vars set via settings) */
+  [data-admin-theme] .bg-surface-950 { background-color: var(--bg) !important; }
+  [data-admin-theme] .bg-surface-950\/80 { background-color: color-mix(in srgb, var(--bg) 80%, transparent) !important; }
+  [data-admin-theme] .bg-surface-900 { background-color: var(--surface) !important; }
+  [data-admin-theme] .bg-surface-900\/30 { background-color: color-mix(in srgb, var(--surface) 30%, transparent) !important; }
+  [data-admin-theme] .bg-surface-900\/40 { background-color: color-mix(in srgb, var(--surface) 40%, transparent) !important; }
+  [data-admin-theme] .bg-surface-800 { background-color: var(--surface-2) !important; }
+  [data-admin-theme] .hover\:bg-surface-700:hover { background-color: color-mix(in srgb, var(--surface-2) 86%, var(--text) 14%) !important; }
+
+  [data-admin-theme] .bg-accent-400 { background-color: var(--accent) !important; }
+  [data-admin-theme] .bg-accent-500 { background-color: var(--accent) !important; }
+  [data-admin-theme] .bg-accent-500\/10 { background-color: color-mix(in srgb, var(--accent) 10%, transparent) !important; }
+  [data-admin-theme] .bg-accent-500\/30 { background-color: color-mix(in srgb, var(--accent) 30%, transparent) !important; }
+  [data-admin-theme] .bg-accent-500\/\[0\.03\] { background-color: color-mix(in srgb, var(--accent) 3%, transparent) !important; }
+  [data-admin-theme] .bg-accent-600 { background-color: var(--accent-hover) !important; }
+  [data-admin-theme] .bg-accent-600\/80 { background-color: color-mix(in srgb, var(--accent-hover) 80%, transparent) !important; }
+  [data-admin-theme] .bg-accent-600\/\[0\.02\] { background-color: color-mix(in srgb, var(--accent-hover) 2%, transparent) !important; }
+  [data-admin-theme] .hover\:bg-accent-500:hover { background-color: var(--accent) !important; }
+
+  [data-admin-theme] .text-accent-300 { color: var(--accent-soft) !important; }
+  [data-admin-theme] .text-accent-400 { color: var(--accent) !important; }
+  [data-admin-theme] .text-accent-500 { color: var(--accent) !important; }
+
+  [data-admin-theme] .border-accent-500\/20 { border-color: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
+  [data-admin-theme] .border-accent-500\/50 { border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important; }
+  [data-admin-theme] .border-accent-500\/60 { border-color: color-mix(in srgb, var(--accent) 60%, transparent) !important; }
+
+  [data-admin-theme] .ring-accent-500\/40 { --tw-ring-color: color-mix(in srgb, var(--accent) 40%, transparent) !important; }
+  [data-admin-theme] .focus\:ring-accent-500\/30:focus { --tw-ring-color: color-mix(in srgb, var(--accent) 30%, transparent) !important; }
+  [data-admin-theme] .focus-visible\:ring-accent-500\/50:focus-visible { --tw-ring-color: color-mix(in srgb, var(--accent) 50%, transparent) !important; }
+  [data-admin-theme] .focus-visible\:ring-offset-surface-950:focus-visible { --tw-ring-offset-color: var(--bg) !important; }
+  [data-admin-theme] .focus\:border-accent-500\/50:focus { border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important; }
+
+  [data-admin-theme] .from-accent-500 {
+    --tw-gradient-from: var(--accent) var(--tw-gradient-from-position);
+    --tw-gradient-to: color-mix(in srgb, var(--accent) 0%, transparent) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+  [data-admin-theme] .from-accent-500\/10 {
+    --tw-gradient-from: color-mix(in srgb, var(--accent) 10%, transparent) var(--tw-gradient-from-position);
+    --tw-gradient-to: color-mix(in srgb, var(--accent) 0%, transparent) var(--tw-gradient-to-position);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+  }
+  [data-admin-theme] .to-accent-600 { --tw-gradient-to: var(--accent-hover) var(--tw-gradient-to-position); }
+
   .font-arabic { font-family: var(--font-arabic, inherit); }
   .font-display { font-family: var(--font-display, inherit); }
 

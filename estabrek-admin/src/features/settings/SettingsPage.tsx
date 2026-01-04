@@ -86,6 +86,12 @@ type ThemePresetId =
   | "desert_sand"
   | "plum_night";
 
+type AdminThemePresetId = "default" | ThemePresetId;
+
+type AdminThemeConfig = {
+  presetId: AdminThemePresetId;
+};
+
 type CustomTheme = {
   id: string;
   name: string;
@@ -166,6 +172,14 @@ function normalizeLoading(v: any): LoadingConfig {
     enabled: o.enabled === true,
     animationId,
   };
+}
+
+function normalizeAdminTheme(v: any): AdminThemeConfig {
+  const o = safeObj(v);
+  const rawPresetId = typeof o.presetId === "string" ? o.presetId : "default";
+  const presetId =
+    rawPresetId === "default" || isThemePresetId(rawPresetId) ? (rawPresetId as AdminThemePresetId) : "default";
+  return { presetId };
 }
 
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
@@ -271,6 +285,7 @@ function normalizeHeader(v: any): HeaderConfig {
     ui: {
       ...safeObj(o.ui),
       loading: normalizeLoading((o.ui as any)?.loading),
+      adminTheme: normalizeAdminTheme((o.ui as any)?.adminTheme),
     },
   };
 }
@@ -572,6 +587,7 @@ export default function SettingsPage() {
 
   const theme = normalizeTheme(headerCfg.theme);
   const loading = normalizeLoading((headerCfg.ui as any)?.loading);
+  const adminTheme = normalizeAdminTheme((headerCfg.ui as any)?.adminTheme);
   const loadingPreset = getLoadingById(loading.animationId) ?? null;
 
   const updateTheme = (patch: Partial<NonNullable<HeaderConfig["theme"]>>) => {
@@ -584,6 +600,16 @@ export default function SettingsPage() {
       ui: {
         ...safeObj(p.ui),
         loading: { ...normalizeLoading((p.ui as any)?.loading), ...patch },
+      },
+    }));
+  };
+
+  const updateAdminTheme = (patch: Partial<AdminThemeConfig>) => {
+    setHeaderCfg((p) => ({
+      ...p,
+      ui: {
+        ...safeObj(p.ui),
+        adminTheme: { ...normalizeAdminTheme((p.ui as any)?.adminTheme), ...patch },
       },
     }));
   };
@@ -989,6 +1015,15 @@ export default function SettingsPage() {
                         value={theme.websiteThemeId ?? "default"}
                         onValueChange={(value) => updateTheme({ websiteThemeId: value })}
                         options={WEBSITE_THEME_OPTIONS}
+                      />
+                      <Select
+                        label="ثيم لوحة التحكم"
+                        value={adminTheme.presetId}
+                        onValueChange={(value) => updateAdminTheme({ presetId: value as AdminThemePresetId })}
+                        options={[
+                          { value: "default", label: "افتراضي" },
+                          ...THEME_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
+                        ]}
                       />
                       <Select
                         label="البريست"

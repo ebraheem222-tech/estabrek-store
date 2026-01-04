@@ -2,8 +2,10 @@
 import React, { useEffect, useState, createContext, useContext } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useSettings } from "../hooks/useSettings";
 import { cn } from "../components/ui/cn";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { applyAdminTheme } from "../theme/adminTheme";
 
 // Icons as inline SVGs for modern look
 const Icons = {
@@ -204,8 +206,14 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { admin, logout } = useAuth();
+  const qSettings = useSettings();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    const cfg = (qSettings.data as any)?.header?.ui?.adminTheme;
+    applyAdminTheme(cfg);
+  }, [qSettings.data]);
 
   useEffect(() => {
     setMobileOpen(false);
