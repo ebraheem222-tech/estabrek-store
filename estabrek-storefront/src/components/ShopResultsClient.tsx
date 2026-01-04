@@ -7,6 +7,7 @@ import { ProductTile } from "@/components/ProductTile";
 import { ProductTileSkeleton } from "@/components/ProductTileSkeleton";
 import { ShopGrid } from "@/components/ShopGrid";
 import { buildCanonicalQuery } from "@/lib/filtersUrl";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 type Props = {
   initial: any;
@@ -99,7 +100,16 @@ export default function ShopResultsClient({ initial, filters, basePath }: Props)
                 (canLoadMore ? "bg-white text-black hover:opacity-90" : "bg-white/10 text-white/40")
               }
             >
-              {loading ? "جارٍ التحميل..." : nextCursor ? "تحميل المزيد" : "لا يوجد المزيد"}
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingIndicator className="inline-grid scale-75 place-items-center" />
+                  <span>جارٍ التحميل...</span>
+                </span>
+              ) : nextCursor ? (
+                "تحميل المزيد"
+              ) : (
+                "لا يوجد المزيد"
+              )}
             </button>
 
             <a

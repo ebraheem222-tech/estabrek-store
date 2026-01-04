@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/store/cart";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { LoadingImg } from "@/components/LoadingImg";
 
 type Quote = {
   subtotal?: string | number;
@@ -163,7 +164,12 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
                         {line?.imageUrl ? (
-                          <img src={line.imageUrl} alt={title} className="h-full w-full object-cover" />
+                          <LoadingImg
+                            src={line.imageUrl}
+                            alt={title}
+                            wrapperClassName="block h-full w-full"
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <div className="h-full w-full bg-white/[0.03]" />
                         )}
@@ -512,4 +518,3 @@ function Row({
     </div>
   );
 }
-

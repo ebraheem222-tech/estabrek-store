@@ -4,6 +4,7 @@ import NewsletterForm from "@/components/NewsletterForm";
 import { FormSection } from "./sections/FormSection";
 import { ComponentsRenderer } from "./ComponentsRenderer";
 import { TypewriterText } from "@/components/effects/TypewriterText";
+import { LoadingImg } from "@/components/LoadingImg";
 import type { CmsSection, PageSectionType, ProductMini } from "../types";
 import { sanitizeHtml } from "../sanitizeHtml";
 import type {
@@ -915,9 +916,10 @@ function Section({
                     style={tokensStyle(itemTokens)}
                   >
                     {it.imageUrl ? (
-                      <img
+                      <LoadingImg
                         src={it.imageUrl}
                         alt={it.title}
+                        wrapperClassName="block w-full"
                         className={cls("mb-3 h-28 w-full rounded-xl object-cover", tokensClass(imageTokens))}
                         style={tokensStyle(imageTokens)}
                       />
@@ -992,7 +994,13 @@ function Section({
                       <div className="flex items-center gap-2">
                         {it.iconUrl ? (
                           wrapDecorations(
-                            <img src={it.iconUrl} alt="" className={cls("h-8 w-8 rounded-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)} />,
+                            <LoadingImg
+                              src={it.iconUrl}
+                              alt=""
+                              wrapperClassName="h-8 w-8"
+                              className={cls("h-8 w-8 rounded-lg", tokensClass(iconTokens))}
+                              style={tokensStyle(iconTokens)}
+                            />,
                             iconTokens
                           )
                         ) : it.icon ? (
@@ -1178,7 +1186,13 @@ function Section({
                   const node = (
                     <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
                       {m.avatarUrl ? (
-                        <img src={m.avatarUrl} alt="" className={cls("mb-3 h-12 w-12 rounded-full object-cover", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />
+                        <LoadingImg
+                          src={m.avatarUrl}
+                          alt=""
+                          wrapperClassName="h-12 w-12"
+                          className={cls("mb-3 h-12 w-12 rounded-full object-cover", tokensClass(avatarTokens))}
+                          style={tokensStyle(avatarTokens)}
+                        />
                       ) : null}
                       {wrapDecorations(
                         <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
@@ -1620,9 +1634,10 @@ function Section({
                       style={{ ...(tokensStyle(itemTokens) ?? {}), ...(tokensStyle(linkTokens) ?? {}) }}
                     >
                       {it.imageUrl ? (
-                        <img
+                        <LoadingImg
                           src={it.imageUrl}
                           alt={it.label}
+                          wrapperClassName="block w-full"
                           className={cls("h-32 w-full rounded-xl object-cover", tokensClass(imageTokens))}
                           style={tokensStyle(imageTokens)}
                         />
@@ -1696,10 +1711,14 @@ function Section({
                   >
                     <div className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]">
                       {it.imageUrl ? (
-                        <img
+                        <LoadingImg
                           src={it.imageUrl}
                           alt={it.label}
-                          className={cls("h-40 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]", tokensClass(imageTokens))}
+                          wrapperClassName="block w-full"
+                          className={cls(
+                            "h-40 w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]",
+                            tokensClass(imageTokens)
+                          )}
                           style={tokensStyle(imageTokens)}
                         />
                       ) : (
@@ -1748,9 +1767,10 @@ function Section({
                 const imageTokens = resolveFieldTokens((im as any).imageTokens);
                 const node = (
                   <div key={idx} className={tokensClass(itemTokens)} style={tokensStyle(itemTokens)}>
-                    <img
+                    <LoadingImg
                       src={im.url}
                       alt={im.alt ?? ""}
+                      wrapperClassName="block w-full"
                       className={cls("h-40 w-full rounded-2xl object-cover", tokensClass(imageTokens))}
                       style={tokensStyle(imageTokens)}
                     />
@@ -2030,8 +2050,7 @@ function Section({
                     >
                       {logoUrl ? (
                         wrapDecorations(
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <LoadingImg
                             src={logoUrl}
                             alt={name}
                             className={cls("max-h-10 max-w-[140px] object-contain", tokensClass(logoTokens))}
@@ -2198,10 +2217,14 @@ function Section({
                   >
                     {img ? (
                       wrapDecorations(
-                        <img
+                        <LoadingImg
                           src={img}
                           alt={c.title ?? ""}
-                          className={cls(ui.imageClass || "w-full h-40 object-cover rounded-xl border border-white/10", tokensClass(imageTokens))}
+                          wrapperClassName="block w-full"
+                          className={cls(
+                            ui.imageClass || "w-full h-40 object-cover rounded-xl border border-white/10",
+                            tokensClass(imageTokens)
+                          )}
                           style={tokensStyle(imageTokens)}
                         />,
                         imageTokens

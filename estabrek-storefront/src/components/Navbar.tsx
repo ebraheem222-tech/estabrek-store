@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
+import { LoadingImg } from "@/components/LoadingImg";
 import type { MenuTree, SitePublicSettings, NavItem } from "@/lib/types";
 import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
 
@@ -267,8 +268,12 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
               <Link href="/" className="mx-auto flex items-center gap-2">
                 {site.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={site.logoUrl} alt={site.siteName ?? "Logo"} className="h-8 w-8 rounded-lg object-cover" />
+                  <LoadingImg
+                    src={site.logoUrl}
+                    alt={site.siteName ?? "Logo"}
+                    wrapperClassName="h-8 w-8"
+                    className="h-8 w-8 rounded-lg object-cover"
+                  />
                 ) : (
                   <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
                 )}
@@ -319,8 +324,12 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="flex items-center gap-2">
               {site.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={site.logoUrl} alt={site.siteName ?? "Logo"} className="h-8 w-8 rounded-lg object-cover" />
+                <LoadingImg
+                  src={site.logoUrl}
+                  alt={site.siteName ?? "Logo"}
+                  wrapperClassName="h-8 w-8"
+                  className="h-8 w-8 rounded-lg object-cover"
+                />
                 ) : (
                   <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
                 )}

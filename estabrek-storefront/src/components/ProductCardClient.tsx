@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatMoney, getProductPrimaryImage, getProductMinPrice } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -66,6 +67,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   const swatches = useMemo(() => buildSwatches(product), [product]);
   const [hoverImg, setHoverImg] = useState<string | null>(null);
   const minPrice = useMemo(() => getProductMinPrice(product), [product]);
+  const [imgReady, setImgReady] = useState(false);
 
   const badge = useMemo(() => {
     const items = (product.items ?? []) as any[];
@@ -87,6 +89,10 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   }, [product]);
 
   const baseImg = hoverImg || primary || "";
+
+  useEffect(() => {
+    setImgReady(false);
+  }, [baseImg]);
 
   return (
     <div
@@ -121,6 +127,9 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
           ) : null}
           {baseImg ? (
             <>
+              {!imgReady ? (
+                <LoadingIndicator className="pointer-events-none absolute inset-0 grid place-items-center" />
+              ) : null}
               <Image
                 src={cldUrl(baseImg, { w: 600, h: 750, c: "fill", g: "auto" })}
                 alt={product.title}
@@ -136,6 +145,8 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
                     : "opacity-100")
                 }
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                onLoadingComplete={() => setImgReady(true)}
+                onError={() => setImgReady(true)}
               />
 
               {/* default hover swap to secondary */}

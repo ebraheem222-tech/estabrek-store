@@ -7,6 +7,7 @@ import ProductCard from "@/components/ProductCard";
 import { buildCanonicalQuery, type CatalogFilters } from "@/lib/filtersUrl";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import { TypewriterText } from "@/components/effects/TypewriterText";
+import { LoadingImg } from "@/components/LoadingImg";
 
 function cn(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
@@ -781,7 +782,14 @@ export function ComponentsRenderer({
       case "image": {
         const src = c.props?.src;
         if (!src) return null;
-        const node = <img src={src} alt={c.props?.alt ?? ""} className={cn("max-w-full rounded-xl", tokenClass)} style={tokenStyle} />;
+        const node = (
+          <LoadingImg
+            src={src}
+            alt={c.props?.alt ?? ""}
+            className={cn("max-w-full rounded-xl", tokenClass)}
+            style={tokenStyle}
+          />
+        );
         return wrapWithDecor(tokens, node, true, c.id);
       }
 
@@ -943,9 +951,10 @@ export function ComponentsRenderer({
                 >
                   <div className="relative aspect-[16/9] bg-black/[0.04]">
                     {it.imageUrl ? (
-                      <img
+                      <LoadingImg
                         src={it.imageUrl}
                         alt={it.title ?? "Category"}
+                        wrapperClassName="block h-full w-full"
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       />
                     ) : null}
