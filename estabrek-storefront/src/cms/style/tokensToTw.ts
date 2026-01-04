@@ -64,6 +64,26 @@ export function resolveCustomBackground(value?: string):
   return color ? { type: "color", value: color } : undefined;
 }
 
+function buildCustomTextGradient(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const v = value as any;
+
+  const kind = v.kind === "radial" ? "radial" : "linear";
+  const wantsThree = v.mode === 3;
+
+  const color1 = resolveCustomColor(v.color1) ?? "#06B6D4";
+  const color2 = resolveCustomColor(v.color2) ?? "#A78BFA";
+  const color3 = resolveCustomColor(v.color3);
+
+  const direction = typeof v.direction === "string" && v.direction.trim() ? v.direction.trim() : "to right";
+  const radialPosition = typeof v.radialPosition === "string" && v.radialPosition.trim() ? v.radialPosition.trim() : "at center";
+
+  const stops = wantsThree && color3 ? `${color1}, ${color2}, ${color3}` : `${color1}, ${color2}`;
+
+  if (kind === "radial") return `radial-gradient(circle ${radialPosition}, ${stops})`;
+  return `linear-gradient(${direction}, ${stops})`;
+}
+
 type CmsTokens = TwTokens & TwTokensExtended;
 
 const PADDING_VALUE_MAP: Record<keyof typeof paddingMap, string> = {
@@ -408,6 +428,11 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
   if (borderColor) {
     style.borderColor = borderColor;
     (style as Record<string, string>)["--cms-border-color"] = borderColor;
+  }
+
+  if (tokens.textEffect === "gradient-custom") {
+    const gradient = buildCustomTextGradient((tokens as any).textGradient);
+    if (gradient) (style as Record<string, string>)["--cms-text-gradient"] = gradient;
   }
 
   // spacing (inline to reliably override hard-coded padding/margins)

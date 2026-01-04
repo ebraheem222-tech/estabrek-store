@@ -15,20 +15,53 @@ export const TEXT_EFFECT_PRESETS = [
   "gradient", "gradient-gold", "gradient-sunset", "gradient-ocean", "gradient-forest",
   "gradient-neon", "gradient-rainbow", "gradient-fire", "gradient-ice", "gradient-aurora",
   "gradient-cosmic", "gradient-candy", "gradient-metal", "gradient-holographic",
+  "gradient-royal", "gradient-silver", "gradient-rose", "gradient-midnight", "gradient-tropical",
+  "gradient-custom",
   // Glow/Neon
   "glow", "glow-accent", "glow-gold", "glow-neon", "glow-pulse",
-  "neon", "neon-blue", "neon-pink", "neon-green", "neon-purple", "neon-multi",
+  "glow-cyan", "glow-pink", "glow-green", "glow-purple", "glow-orange", "glow-red",
+  "glow-yellow", "glow-blue", "glow-white", "glow-neon-multi", "glow-soft",
+  "neon", "neon-cyan", "neon-blue", "neon-pink", "neon-green", "neon-purple", "neon-orange",
+  "neon-red", "neon-yellow", "neon-white", "neon-multi", "neon-flicker",
+  // Shadows
+  "shadow-soft", "shadow-hard", "shadow-long", "shadow-3d", "shadow-retro",
+  "shadow-double", "shadow-outline", "shadow-blur", "shadow-inset", "shadow-emboss",
   // 3D Effects
   "3d", "3d-shadow", "3d-emboss", "3d-deboss", "3d-extrude", "3d-stack",
   "3d-pop", "3d-float", "3d-retro", "3d-chrome", "3d-gold",
   // Outline
   "outline", "outline-thick", "outline-double", "outline-gradient", "outline-neon",
+  "outline-thin", "outline-medium", "outline-colored", "outline-shadow",
   // Animated
   "shimmer", "shimmer-gold", "wave", "bounce", "pulse", "glitch",
   "typewriter", "reveal", "slide-up", "fade-in", "blur-in", "scale-in",
+  "anim-bounce", "anim-pulse", "anim-spin", "anim-ping", "anim-shake",
+  "anim-fade-in", "anim-slide-up", "anim-slide-down", "anim-scale", "anim-glow-pulse",
+  "anim-rainbow", "anim-typing", "anim-wave", "anim-float", "anim-glitch",
+  // Typography
+  "typo-elegant", "typo-modern", "typo-bold", "typo-thin", "typo-mono", "typo-display",
+  "typo-handwritten", "typo-condensed", "typo-expanded", "typo-small-caps", "typo-drop-cap", "typo-justified",
   // Special
   "glass", "frosted", "blur-bg", "highlight", "underline-animated",
   "strikethrough", "split", "masked", "clip-text",
+  "special-stroke", "special-stroke-gradient", "special-hollow", "special-double-stroke",
+  "special-metallic", "special-chrome", "special-gold-foil", "special-fire", "special-ice",
+  "special-blood", "special-poison", "special-electric",
+  // Decorative
+  "deco-underline", "deco-underline-wavy", "deco-strikethrough", "deco-highlight",
+  "deco-highlight-gradient", "deco-box", "deco-tag", "deco-bracket",
+  // Dark
+  "dark-subtle", "dark-bright", "dark-muted", "dark-accent", "dark-warm", "dark-cool", "dark-contrast", "dark-glow",
+  // Light
+  "light-default", "light-muted", "light-bold", "light-accent", "light-warm", "light-cool", "light-elegant", "light-shadow",
+  // Labels
+  "label-primary", "label-secondary", "label-success", "label-danger", "label-warning", "label-outline",
+  // Headings
+  "heading-hero", "heading-section", "heading-subtitle", "heading-elegant", "heading-bold", "heading-accent",
+  // Paragraphs
+  "para-default", "para-large", "para-small", "para-quote", "para-lead", "para-caption",
+  // Artistic
+  "art-watercolor", "art-sketch", "art-vintage", "art-comic", "art-graffiti", "art-neon-sign",
 ] as const;
 export type TextEffectPreset = typeof TEXT_EFFECT_PRESETS[number];
 
@@ -155,8 +188,20 @@ export type ScrollAnimPreset = typeof SCROLL_ANIM_PRESETS[number];
 // ============================================================
 // EXTENDED TwTokens TYPE
 // ============================================================
+export type TextGradientKind = "linear" | "radial";
+export type TextGradientTokens = {
+  kind?: TextGradientKind;
+  mode?: 2 | 3;
+  color1?: string;
+  color2?: string;
+  color3?: string;
+  direction?: string;
+  radialPosition?: string;
+};
+
 export type TwTokensExtended = {
   textEffect?: TextEffectPreset;
+  textGradient?: TextGradientTokens;
   cardTemplate?: CardTemplatePreset;
   buttonStyle?: ButtonStylePreset;
   hoverExtended?: HoverPresetExtended;

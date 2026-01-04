@@ -19,6 +19,12 @@
 .text-gradient-cosmic { background: linear-gradient(135deg, #7C3AED, #4C1D95, #0EA5E9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .text-gradient-candy { background: linear-gradient(135deg, #FB7185, #F472B6, #FCD34D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .text-gradient-metal { background: linear-gradient(135deg, #F3F4F6, #9CA3AF, #6B7280); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-royal { background: linear-gradient(135deg, #7C3AED, #8B5CF6, #1D4ED8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-silver { background: linear-gradient(135deg, #D1D5DB, #F3F4F6, #9CA3AF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-rose { background: linear-gradient(135deg, #FB7185, #F472B6, #E11D48); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-midnight { background: linear-gradient(135deg, #0F172A, #312E81, #0F172A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-tropical { background: linear-gradient(135deg, #A3E635, #FACC15, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-custom { background: var(--cms-text-gradient, linear-gradient(90deg, #06B6D4, #A78BFA)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
 /* ============================================================
    GLOW TEXT EFFECTS
@@ -28,22 +34,58 @@
 .text-glow-gold { text-shadow: 0 0 10px var(--color-gold), 0 0 20px var(--color-gold), 0 0 30px var(--color-gold); }
 .text-glow-neon { text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px var(--color-accent), 0 0 35px var(--color-accent); }
 .text-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+.text-glow-cyan { color: #22D3EE; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-pink { color: #F472B6; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-green { color: #4ADE80; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-purple { color: #C084FC; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-orange { color: #FB923C; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-red { color: #EF4444; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-yellow { color: #FACC15; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-blue { color: #60A5FA; text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+.text-glow-white { color: #FFFFFF; text-shadow: 0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.6), 0 0 30px rgba(255,255,255,0.4), 0 0 40px rgba(255,255,255,0.2); }
+.text-glow-gold { color: #FBBF24; text-shadow: 0 0 10px rgba(251,191,36,0.8), 0 0 20px rgba(251,191,36,0.6), 0 0 30px rgba(251,191,36,0.4), 0 0 40px rgba(251,191,36,0.2); }
+.text-glow-neon-multi { color: #FFFFFF; text-shadow: 0 0 10px #FF00FF, 0 0 20px #00FFFF, 0 0 30px #FF00FF, 0 0 40px #00FFFF; }
+.text-glow-soft { color: #93C5FD; text-shadow: 0 0 20px rgba(147,197,253,0.5), 0 0 40px rgba(147,197,253,0.3); }
 
 /* ============================================================
    NEON & OUTLINE TEXT EFFECTS
    ============================================================ */
 .text-neon { color: #00FFFF; text-shadow: 0 0 5px #00FFFF, 0 0 15px #00FFFF, 0 0 30px #00FFFF; }
+.text-neon-cyan { color: #00FFFF; text-shadow: 0 0 5px #00FFFF, 0 0 15px #00FFFF, 0 0 30px #00FFFF, 0 0 60px rgba(0,255,255,0.6); }
 .text-neon-blue { color: #60A5FA; text-shadow: 0 0 5px #60A5FA, 0 0 15px #60A5FA, 0 0 30px #3B82F6; }
 .text-neon-pink { color: #F472B6; text-shadow: 0 0 5px #F472B6, 0 0 15px #F472B6, 0 0 30px #EC4899; }
 .text-neon-green { color: #34D399; text-shadow: 0 0 5px #34D399, 0 0 15px #34D399, 0 0 30px #10B981; }
 .text-neon-purple { color: #A78BFA; text-shadow: 0 0 5px #A78BFA, 0 0 15px #A78BFA, 0 0 30px #7C3AED; }
+.text-neon-orange { color: #FB923C; text-shadow: 0 0 5px #FB923C, 0 0 15px #FB923C, 0 0 30px #F97316; }
+.text-neon-red { color: #EF4444; text-shadow: 0 0 5px #EF4444, 0 0 15px #EF4444, 0 0 30px #B91C1C; }
+.text-neon-yellow { color: #FACC15; text-shadow: 0 0 5px #FACC15, 0 0 15px #FACC15, 0 0 30px #EAB308; }
+.text-neon-white { color: #FFFFFF; text-shadow: 0 0 5px #FFFFFF, 0 0 15px rgba(255,255,255,0.9), 0 0 30px rgba(255,255,255,0.7); }
+.text-neon-flicker { color: #00FFFF; text-shadow: 0 0 5px #00FFFF, 0 0 15px #00FFFF, 0 0 30px #00FFFF; animation: neon-flicker 2s infinite; }
 .text-neon-multi { background: linear-gradient(90deg, #00FFFF, #FF00FF, #FFFF00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
 
-.text-outline { -webkit-text-stroke: 1px currentColor; color: transparent; }
-.text-outline-thick { -webkit-text-stroke: 2px currentColor; color: transparent; }
-.text-outline-double { -webkit-text-stroke: 1px currentColor; color: transparent; text-shadow: 0 0 6px currentColor; }
+.text-outline { -webkit-text-stroke: 1px currentColor; -webkit-text-fill-color: transparent; }
+.text-outline-thick { -webkit-text-stroke: 2px currentColor; -webkit-text-fill-color: transparent; }
+.text-outline-double { -webkit-text-stroke: 1px currentColor; -webkit-text-fill-color: transparent; text-shadow: 0 0 6px currentColor; }
+.text-outline-thin { -webkit-text-stroke: 1px currentColor; -webkit-text-fill-color: transparent; }
+.text-outline-medium { -webkit-text-stroke: 2px currentColor; -webkit-text-fill-color: transparent; }
+.text-outline-colored { -webkit-text-stroke: 2px #3B82F6; -webkit-text-fill-color: transparent; }
+.text-outline-shadow { -webkit-text-stroke: 2px #000000; -webkit-text-fill-color: transparent; text-shadow: 3px 3px 0 rgba(0,0,0,0.3); }
 .text-outline-gradient { background: linear-gradient(90deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1px transparent; }
-.text-outline-neon { -webkit-text-stroke: 1px #00FFFF; color: transparent; text-shadow: 0 0 10px #00FFFF; }
+.text-outline-neon { -webkit-text-stroke: 1px #00FFFF; -webkit-text-fill-color: transparent; text-shadow: 0 0 10px #00FFFF; }
+
+/* ============================================================
+   SHADOW TEXT STYLES
+   ============================================================ */
+.text-shadow-soft { text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+.text-shadow-hard { text-shadow: 3px 3px 0 rgba(0,0,0,0.3); }
+.text-shadow-long { text-shadow: 1px 1px 0 #333, 2px 2px 0 #333, 3px 3px 0 #333, 4px 4px 0 #333, 5px 5px 0 #333; }
+.text-shadow-3d { text-shadow: 0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25); }
+.text-shadow-retro { text-shadow: 3px 3px 0 #ff6b6b, 6px 6px 0 #4ecdc4; }
+.text-shadow-double { text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; }
+.text-shadow-outline { text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+.text-shadow-blur { text-shadow: 0 0 10px rgba(0,0,0,0.5), 0 0 20px rgba(0,0,0,0.3); }
+.text-shadow-inset { text-shadow: 2px 2px 3px rgba(255,255,255,0.5), -1px -1px 2px rgba(0,0,0,0.3); }
+.text-shadow-emboss { text-shadow: -1px -1px 1px rgba(255,255,255,0.5), 1px 1px 1px rgba(0,0,0,0.5); }
 
 /* ============================================================
    3D TEXT EFFECTS
@@ -75,6 +117,21 @@
 .text-fade-in { animation: text-fade-in 0.6s ease-out both; }
 .text-blur-in { animation: text-blur-in 0.7s ease-out both; }
 .text-scale-in { animation: text-scale-in 0.6s ease-out both; }
+.text-anim-bounce { display: inline-block; animation: bounce 1s ease-in-out infinite; }
+.text-anim-pulse { display: inline-block; animation: text-pulse 1.6s ease-in-out infinite; }
+.text-anim-spin { display: inline-block; animation: text-spin 1s linear infinite; }
+.text-anim-ping { display: inline-block; animation: text-ping 1s cubic-bezier(0,0,0.2,1) infinite; }
+.text-anim-shake { display: inline-block; animation: text-shake 0.5s infinite; }
+.text-anim-fade-in { animation: text-fade-in 0.6s ease-out both; }
+.text-anim-slide-up { animation: text-slide-up 0.6s ease-out both; }
+.text-anim-slide-down { animation: text-slide-down 0.6s ease-out both; }
+.text-anim-scale { display: inline-block; animation: text-scale 1s ease-in-out infinite; }
+.text-anim-glow-pulse { animation: glow-pulse 2s infinite; }
+.text-anim-rainbow { background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000); background-size: 400% 400%; animation: text-rainbow 5s ease infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.text-anim-typing { overflow: hidden; white-space: nowrap; border-inline-start: 2px solid currentColor; animation: typewriter 3s steps(30) forwards, blink 0.5s step-end infinite alternate; }
+.text-anim-wave { display: inline-block; transform-origin: bottom center; animation: text-wave 1s ease-in-out infinite; }
+.text-anim-float { display: inline-block; animation: float 3s ease-in-out infinite; }
+.text-anim-glitch { position: relative; animation: glitch 0.3s linear infinite; }
 
 /* ============================================================
    SPECIAL TEXT EFFECTS
@@ -88,6 +145,101 @@
 .text-split { letter-spacing: 0.12em; text-transform: uppercase; }
 .text-masked { background: linear-gradient(135deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .text-clip-text { background: linear-gradient(135deg, var(--color-accent), var(--color-gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+/* ============================================================
+   TYPOGRAPHY TEXT STYLES
+   ============================================================ */
+.text-typo-elegant { font-family: ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif; font-style: italic; letter-spacing: 0.02em; }
+.text-typo-modern { font-family: ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; }
+.text-typo-bold { font-weight: 900; letter-spacing: -0.02em; }
+.text-typo-thin { font-weight: 100; letter-spacing: 0.05em; }
+.text-typo-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; }
+.text-typo-display { font-weight: 800; letter-spacing: -0.05em; }
+.text-typo-handwritten { font-family: \"Brush Script MT\", cursive; font-style: italic; }
+.text-typo-condensed { font-weight: 800; letter-spacing: -0.03em; text-transform: uppercase; font-stretch: condensed; }
+.text-typo-expanded { font-weight: 500; letter-spacing: 0.3em; text-transform: uppercase; }
+.text-typo-small-caps { font-variant: small-caps; font-weight: 600; letter-spacing: 0.05em; }
+.text-typo-drop-cap::first-letter { font-size: 3em; font-weight: 800; float: inline-start; margin-inline-end: 0.5em; line-height: 1; }
+.text-typo-justified { text-align: justify; hyphens: auto; }
+
+/* ============================================================
+   SPECIAL TEXT STYLES
+   ============================================================ */
+.text-special-stroke { -webkit-text-stroke: 2px #000; -webkit-text-fill-color: transparent; font-weight: 900; }
+.text-special-stroke-gradient { background: linear-gradient(90deg, #7C3AED, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1px rgba(0,0,0,0.3); font-weight: 900; }
+.text-special-hollow { -webkit-text-stroke: 3px currentColor; -webkit-text-fill-color: transparent; font-weight: 900; }
+.text-special-double-stroke { color: #fff; -webkit-text-stroke: 4px #000; paint-order: stroke fill; font-weight: 900; }
+.text-special-metallic { background: linear-gradient(180deg, #F3F4F6 0%, #D1D5DB 50%, #6B7280 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 2px rgba(0,0,0,0.3); font-weight: 800; }
+.text-special-chrome { background: linear-gradient(180deg, #E5E7EB 0%, #9CA3AF 50%, #E5E7EB 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(0,0,0,0.15); font-weight: 900; }
+.text-special-gold-foil { background: linear-gradient(90deg, #FDE68A, #FBBF24, #FDE68A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(0,0,0,0.3); font-weight: 800; }
+.text-special-fire { background: linear-gradient(180deg, #DC2626, #F97316, #FDE68A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 10px rgba(255,100,0,0.5); font-weight: 900; }
+.text-special-ice { background: linear-gradient(180deg, #A5F3FC, #60A5FA, #1D4ED8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 10px rgba(0,200,255,0.5); font-weight: 800; }
+.text-special-blood { background: linear-gradient(180deg, #EF4444, #B91C1C, #7F1D1D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(139,0,0,0.5); font-weight: 900; }
+.text-special-poison { background: linear-gradient(180deg, #4ADE80, #16A34A, #14532D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 15px rgba(0,255,0,0.5); font-weight: 900; }
+.text-special-electric { background: linear-gradient(90deg, #FDE047, #FACC15, #FEF08A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 10px rgba(255,255,0,0.8), 0 0 20px rgba(255,255,0,0.5); font-weight: 900; }
+
+/* ============================================================
+   DECORATIVE TEXT STYLES
+   ============================================================ */
+.text-deco-underline { text-decoration: underline; text-decoration-thickness: 4px; text-decoration-color: #3B82F6; text-underline-offset: 0.25em; font-weight: 800; }
+.text-deco-underline-wavy { text-decoration: underline wavy; text-decoration-thickness: 4px; text-decoration-color: #EC4899; text-underline-offset: 0.25em; font-weight: 800; }
+.text-deco-strikethrough { text-decoration: line-through; text-decoration-thickness: 4px; text-decoration-color: #EF4444; font-weight: 800; }
+.text-deco-highlight { background: #FACC15; color: #111827; padding: 0.1em 0.35em; border-radius: 0.2em; box-decoration-break: clone; font-weight: 800; }
+.text-deco-highlight-gradient { background: linear-gradient(90deg, #7C3AED, #EC4899); color: #FFFFFF; padding: 0.12em 0.45em; border-radius: 0.35em; box-decoration-break: clone; font-weight: 800; }
+.text-deco-box { display: inline-block; border: 2px solid currentColor; padding: 0.25em 0.6em; font-weight: 800; }
+.text-deco-tag { display: inline-block; background: #111827; color: #FFFFFF; padding: 0.2em 0.65em; border-radius: 9999px; font-weight: 800; }
+.text-deco-bracket { font-weight: 800; }
+.text-deco-bracket::before { content: '['; color: #3B82F6; margin-inline-end: 0.25em; }
+.text-deco-bracket::after { content: ']'; color: #3B82F6; margin-inline-start: 0.25em; }
+
+/* ============================================================
+   DARK/LIGHT & UI TEXT STYLES
+   ============================================================ */
+.text-dark-subtle { color: rgba(209,213,219,0.9); font-weight: 500; }
+.text-dark-bright { color: #FFFFFF; font-weight: 800; }
+.text-dark-muted { color: rgba(107,114,128,1); font-weight: 400; }
+.text-dark-accent { color: #60A5FA; font-weight: 800; }
+.text-dark-warm { color: #FCD34D; font-weight: 500; }
+.text-dark-cool { color: #67E8F9; font-weight: 500; }
+.text-dark-contrast { color: #FFFFFF; font-weight: 900; letter-spacing: -0.02em; }
+.text-dark-glow { color: #FFFFFF; font-weight: 800; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+.text-light-default { color: #111827; font-weight: 400; }
+.text-light-muted { color: #6B7280; font-weight: 400; }
+.text-light-bold { color: #111827; font-weight: 800; }
+.text-light-accent { color: #2563EB; font-weight: 700; }
+.text-light-warm { color: #B45309; font-weight: 500; }
+.text-light-cool { color: #0E7490; font-weight: 500; }
+.text-light-elegant { color: #1F2937; font-weight: 300; letter-spacing: 0.02em; }
+.text-light-shadow { color: #111827; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); }
+
+.text-label-primary { display: inline-block; color: #FFFFFF; background: #2563EB; padding: 0.2em 0.8em; border-radius: 9999px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75em; }
+.text-label-secondary { display: inline-block; color: #374151; background: #E5E7EB; padding: 0.2em 0.8em; border-radius: 9999px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75em; }
+.text-label-success { display: inline-block; color: #FFFFFF; background: #16A34A; padding: 0.2em 0.8em; border-radius: 9999px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75em; }
+.text-label-danger { display: inline-block; color: #FFFFFF; background: #DC2626; padding: 0.2em 0.8em; border-radius: 9999px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75em; }
+.text-label-warning { display: inline-block; color: #111827; background: #FACC15; padding: 0.2em 0.8em; border-radius: 9999px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75em; }
+.text-label-outline { display: inline-block; color: #2563EB; border: 2px solid #2563EB; padding: 0.2em 0.8em; border-radius: 9999px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.75em; }
+
+.text-heading-hero { font-weight: 900; letter-spacing: -0.04em; }
+.text-heading-section { font-weight: 800; }
+.text-heading-subtitle { font-weight: 600; color: rgba(107,114,128,1); }
+.text-heading-elegant { font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; }
+.text-heading-bold { font-weight: 900; letter-spacing: -0.02em; }
+.text-heading-accent { background: linear-gradient(90deg, #2563EB, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+
+.text-para-default { color: rgba(55,65,81,1); line-height: 1.7; }
+.text-para-large { color: rgba(55,65,81,1); line-height: 1.7; }
+.text-para-small { color: rgba(75,85,99,1); line-height: 1.7; }
+.text-para-quote { color: rgba(75,85,99,1); font-style: italic; border-inline-start: 4px solid rgba(209,213,219,1); padding-inline-start: 1rem; }
+.text-para-lead { color: rgba(75,85,99,1); font-weight: 300; line-height: 1.7; }
+.text-para-caption { color: rgba(107,114,128,1); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.75em; }
+
+.text-art-watercolor { background: linear-gradient(90deg, #F9A8D4, #C4B5FD, #93C5FD); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; filter: blur(0.5px); }
+.text-art-sketch { color: #1F2937; font-weight: 800; text-shadow: 1px 1px 0 #666, -1px -1px 0 #ccc; }
+.text-art-vintage { color: #78350F; font-family: ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif; font-weight: 800; text-shadow: 2px 2px 0 rgba(0,0,0,0.1); }
+.text-art-comic { color: #FACC15; font-weight: 900; text-transform: uppercase; -webkit-text-stroke: 3px #000; paint-order: stroke fill; text-shadow: 4px 4px 0 #000; }
+.text-art-graffiti { background: linear-gradient(135deg, #EF4444, #FACC15, #22C55E); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; font-style: italic; -webkit-text-stroke: 1px rgba(0,0,0,0.3); transform: skewX(-5deg); display: inline-block; }
+.text-art-neon-sign { color: #F472B6; font-weight: 800; text-shadow: 0 0 5px #ff69b4, 0 0 10px #ff69b4, 0 0 20px #ff69b4, 0 0 40px #ff1493, 0 0 80px #ff1493; }
 
 .cms-text-effects :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div) {
   color: inherit;
@@ -118,6 +270,13 @@
 @keyframes text-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes text-blur-in { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: blur(0); } }
 @keyframes text-scale-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes text-spin { to { transform: rotate(360deg); } }
+@keyframes text-ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+@keyframes text-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@keyframes text-slide-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes text-scale { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+@keyframes text-rainbow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes text-wave { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(20deg); } 75% { transform: rotate(-20deg); } }
 @keyframes underline-grow { from { background-size: 0% 2px; } to { background-size: 100% 2px; } }
 @keyframes hover-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-2px); } 40%, 80% { transform: translateX(2px); } }
 @keyframes hover-swing { 0% { transform: rotate(0deg); } 20% { transform: rotate(4deg); } 40% { transform: rotate(-4deg); } 60% { transform: rotate(3deg); } 80% { transform: rotate(-3deg); } 100% { transform: rotate(0deg); } }
