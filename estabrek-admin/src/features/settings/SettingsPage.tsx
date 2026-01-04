@@ -14,6 +14,7 @@ import {
   getWebsiteThemeById,
 } from "../../cms/themes/websiteThemes";
 import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../cms/effects/loadingAnimations";
+import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../cms/style/searchStyles";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -36,6 +37,7 @@ type HeaderConfig = {
   heightDesktop?: "compact" | "normal" | "comfortable";
   heightMobile?: "compact" | "normal" | "comfortable";
   searchStyle?: "input" | "icon";
+  searchInputStyleId?: string;
   cartStyle?: "iconBadge" | "icon" | "badge";
   topbar?: {
     enabled?: boolean;
@@ -217,11 +219,22 @@ const WEBSITE_THEME_OPTIONS: Array<{ value: string; label: string }> = [
 
 const LOADING_ANIMATION_OPTIONS: Array<{ value: string; label: string }> = ALL_LOADING_ANIMATIONS.map((l) => ({
   value: l.id,
-  label: `${LOADING_CATEGORY_LABELS_AR[l.category] ?? l.category} — ${l.nameAr}`,
+  label: `${LOADING_CATEGORY_LABELS_AR[l.category] ?? l.category} - ${l.nameAr}`,
 }));
+
+const SEARCH_INPUT_STYLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "default", label: "افتراضي" },
+  ...ALL_SEARCH_INPUTS.map((s) => ({
+    value: s.id,
+    label: `${SEARCH_INPUT_CATEGORY_LABELS_AR[s.category] ?? s.category} - ${s.nameAr}`,
+  })),
+];
 
 function normalizeHeader(v: any): HeaderConfig {
   const o = safeObj(v);
+  const rawSearchInputStyleId = typeof o.searchInputStyleId === "string" ? o.searchInputStyleId : "default";
+  const searchInputStyleId =
+    rawSearchInputStyleId === "default" || getSearchInputById(rawSearchInputStyleId) ? rawSearchInputStyleId : "default";
   return {
     ...o,
     preset: (o.preset === "minimal" || o.preset === "centered") ? o.preset : "classic",
@@ -232,6 +245,7 @@ function normalizeHeader(v: any): HeaderConfig {
     heightDesktop: (o.heightDesktop === "compact" || o.heightDesktop === "comfortable") ? o.heightDesktop : "normal",
     heightMobile: (o.heightMobile === "compact" || o.heightMobile === "comfortable") ? o.heightMobile : "compact",
     searchStyle: (o.searchStyle === "icon") ? "icon" : "input",
+    searchInputStyleId,
     cartStyle: (o.cartStyle === "icon" || o.cartStyle === "badge") ? o.cartStyle : "iconBadge",
     theme: normalizeTheme(o.theme),
     topbar: {
@@ -416,6 +430,12 @@ export default function SettingsPage() {
   const [footerJsonDraft, setFooterJsonDraft] = useState<string>("");
 
   const [errors, setErrors] = useState<Errors>({});
+
+  const selectedSearchInputStyle = useMemo(() => {
+    const id = headerCfg.searchInputStyleId;
+    if (id && id !== "default") return getSearchInputById(id) ?? getSearchInputById("search-basic-simple") ?? null;
+    return getSearchInputById("search-basic-simple") ?? null;
+  }, [headerCfg.searchInputStyleId]);
 
   useEffect(() => {
     if (!settings) return;
@@ -887,22 +907,29 @@ export default function SettingsPage() {
                         { value: "comfortable", label: "مريح" },
                       ]}
                     />
-                    <Select
-                      label="نمط البحث"
-                      value={headerCfg.searchStyle ?? "input"}
-                      onValueChange={(value) =>
-                        setHeaderCfg((p) => ({ ...p, searchStyle: value as HeaderConfig["searchStyle"] }))
-                      }
-                      options={[
-                        { value: "input", label: "حقل" },
-                        { value: "icon", label: "أيقونة" },
-                      ]}
-                    />
-                    <Select
-                      label="نمط السلة"
-                      value={headerCfg.cartStyle ?? "iconBadge"}
-                      onValueChange={(value) =>
-                        setHeaderCfg((p) => ({ ...p, cartStyle: value as HeaderConfig["cartStyle"] }))
+	                    <Select
+	                      label="نمط البحث"
+	                      value={headerCfg.searchStyle ?? "input"}
+	                      onValueChange={(value) =>
+	                        setHeaderCfg((p) => ({ ...p, searchStyle: value as HeaderConfig["searchStyle"] }))
+	                      }
+	                      options={[
+	                        { value: "input", label: "حقل" },
+	                        { value: "icon", label: "أيقونة" },
+	                      ]}
+	                    />
+	                    <Select
+	                      label="نمط مربع البحث"
+	                      value={headerCfg.searchInputStyleId ?? "default"}
+	                      onValueChange={(value) => setHeaderCfg((p) => ({ ...p, searchInputStyleId: value }))}
+	                      options={SEARCH_INPUT_STYLE_OPTIONS}
+	                      disabled={headerCfg.showSearch === false || headerCfg.searchStyle === "icon"}
+	                    />
+	                    <Select
+	                      label="نمط السلة"
+	                      value={headerCfg.cartStyle ?? "iconBadge"}
+	                      onValueChange={(value) =>
+	                        setHeaderCfg((p) => ({ ...p, cartStyle: value as HeaderConfig["cartStyle"] }))
                       }
                       options={[
                         { value: "iconBadge", label: "أيقونة + عداد" },
@@ -912,17 +939,52 @@ export default function SettingsPage() {
                     />
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    <Toggle label="تثبيت الهيدر" checked={!!headerCfg.sticky} onChange={(v) => setHeaderCfg((p) => ({ ...p, sticky: v }))} />
-                    <Toggle label="إظهار البحث" checked={headerCfg.showSearch !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showSearch: v }))} />
-                    <Toggle label="إظهار السلة" checked={headerCfg.showCart !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showCart: v }))} />
-                    <Toggle label="إظهار الحساب" checked={!!headerCfg.showAccount} onChange={(v) => setHeaderCfg((p) => ({ ...p, showAccount: v }))} />
-                  </div>
+	                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+	                    <Toggle label="تثبيت الهيدر" checked={!!headerCfg.sticky} onChange={(v) => setHeaderCfg((p) => ({ ...p, sticky: v }))} />
+	                    <Toggle label="إظهار البحث" checked={headerCfg.showSearch !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showSearch: v }))} />
+	                    <Toggle label="إظهار السلة" checked={headerCfg.showCart !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showCart: v }))} />
+	                    <Toggle label="إظهار الحساب" checked={!!headerCfg.showAccount} onChange={(v) => setHeaderCfg((p) => ({ ...p, showAccount: v }))} />
+	                  </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="mb-3 text-sm font-semibold">الثيم</div>
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                      <Select
+	                  {headerCfg.searchStyle !== "icon" &&
+	                  headerCfg.showSearch !== false &&
+	                  selectedSearchInputStyle ? (
+	                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+	                      <div className="mb-3 text-sm font-semibold">معاينة مربع البحث</div>
+	                      <div className="flex justify-end">
+	                        <form
+	                          className={`relative ${selectedSearchInputStyle.containerClassName}`}
+	                          onSubmit={(e) => e.preventDefault()}
+	                        >
+	                          <input
+	                            dir="rtl"
+	                            className={selectedSearchInputStyle.inputClassName}
+	                            placeholder="بحث..."
+	                            readOnly
+	                          />
+	                          {selectedSearchInputStyle.buttonClassName ? (
+	                            <button type="button" className={selectedSearchInputStyle.buttonClassName}>
+	                              {selectedSearchInputStyle.iconClassName &&
+	                              !selectedSearchInputStyle.iconClassName.includes("absolute") ? (
+	                                <span className={selectedSearchInputStyle.iconClassName}>🔍</span>
+	                              ) : (
+	                                "بحث"
+	                              )}
+	                            </button>
+	                          ) : null}
+	                          {selectedSearchInputStyle.iconClassName &&
+	                          selectedSearchInputStyle.iconClassName.includes("absolute") ? (
+	                            <span className={selectedSearchInputStyle.iconClassName}>🔍</span>
+	                          ) : null}
+	                        </form>
+	                      </div>
+	                    </div>
+	                  ) : null}
+
+	                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+	                    <div className="mb-3 text-sm font-semibold">الثيم</div>
+	                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+	                      <Select
                         label="ثيم الموقع"
                         value={theme.websiteThemeId ?? "default"}
                         onValueChange={(value) => updateTheme({ websiteThemeId: value })}
