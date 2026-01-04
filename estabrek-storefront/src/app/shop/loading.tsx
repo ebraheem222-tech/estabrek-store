@@ -1,10 +1,14 @@
 import React from "react";
 import { ProductTileSkeleton } from "@/components/ProductTileSkeleton";
+import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 export default function LoadingShop() {
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <div className="h-8 w-32 rounded-xl bg-black/10" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="h-8 w-32 rounded-xl bg-black/10" />
+        <LoadingIndicator className="inline-grid place-items-center" />
+      </div>
 
       <div className="lg:grid lg:grid-cols-[280px,1fr] lg:gap-8">
         <aside className="hidden lg:block">
