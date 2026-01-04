@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 import { ScriptTags } from "@/components/ScriptTags";
 import { ThemeWrap } from "@/components/ThemeWrap";
 import { UiSettingsProvider } from "@/components/UiSettingsProvider";
-import { getLoadingById } from "@/cms/effects/loadingAnimations";
+import { getLoadingById } from "../../cms/effects/loadingAnimations";
 
 export default async function CartLayout({ children }: { children: React.ReactNode }) {
   const [bootstrap, settings] = await Promise.all([getBootstrap(), getPublicSettings()]);
