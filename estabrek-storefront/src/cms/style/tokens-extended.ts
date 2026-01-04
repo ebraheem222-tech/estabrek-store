@@ -39,18 +39,41 @@ export const CARD_TEMPLATE_PRESETS = [
   "default",
   // Gaming
   "gaming", "gaming-common", "gaming-uncommon", "gaming-rare", "gaming-epic", "gaming-legendary",
+  "gaming-mythic", "gaming-holographic", "gaming-neon-frame", "gaming-pixel", "gaming-cyberpunk",
   // Glass
   "glass", "glass-frost", "glass-dark", "glass-light", "glass-colored", "glass-aurora", "glass-rainbow",
+  "glass-metallic", "glass-blur-heavy", "glass-neon-glow", "glass-morphism",
   // Neon
   "neon", "neon-cyan", "neon-pink", "neon-green", "neon-purple", "neon-orange", "neon-multi",
+  "neon-red", "neon-yellow", "neon-flicker", "neon-pulse",
+  // Gradient
+  "gradient-sunset", "gradient-ocean", "gradient-forest", "gradient-fire", "gradient-royal",
+  "gradient-midnight", "gradient-rose-gold", "gradient-aurora", "gradient-candy", "gradient-mesh",
+  // Minimal
+  "minimal-clean", "minimal-border", "minimal-shadow", "minimal-flat", "minimal-accent",
+  "minimal-dark", "minimal-outline", "minimal-rounded", "minimal-paper", "minimal-mono",
+  // Luxury
+  "luxury-gold", "luxury-platinum", "luxury-black", "luxury-rose", "luxury-marble",
+  "luxury-velvet", "luxury-champagne", "luxury-emerald", "luxury-sapphire", "luxury-ruby",
   // 3D
   "3d", "3d-sm", "3d-md", "3d-lg", "3d-xl",
+  "3d-lift", "3d-tilt", "3d-flip", "3d-pop", "3d-float",
+  "3d-layered", "3d-shadow-box", "3d-prism", "3d-perspective", "3d-fold",
+  // Pricing
+  "pricing", "pricing-simple", "pricing-popular", "pricing-bordered", "pricing-gradient",
+  "pricing-dark", "pricing-glass", "pricing-neon", "pricing-enterprise",
+  // Team
+  "team-simple", "team-overlay", "team-bordered", "team-dark", "team-horizontal", "team-creative",
+  // Blog
+  "blog-classic", "blog-minimal", "blog-featured", "blog-horizontal", "blog-dark", "blog-magazine",
+  // Testimonials
+  "testimonial", "testimonial-simple", "testimonial-bordered", "testimonial-dark", "testimonial-gradient", "testimonial-bubble", "testimonial-card",
   // Special
   "holographic", "retro", "retro-terminal", "retro-gameboy", "retro-arcade",
   "neumorphic", "neumorphic-raised", "neumorphic-pressed", "neumorphic-flat",
   "gradient-border", "animated-border", "flip", "tilt", "spotlight", "morphing", "layered",
   // Business
-  "pricing", "testimonial", "stat",
+  "stat",
 ] as const;
 export type CardTemplatePreset = typeof CARD_TEMPLATE_PRESETS[number];
 

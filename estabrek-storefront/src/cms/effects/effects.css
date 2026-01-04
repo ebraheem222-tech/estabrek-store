@@ -111,6 +111,7 @@
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes neon-flicker { 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; } 20%, 24%, 55% { opacity: 0.4; } }
+@keyframes neon-pulse { 0%, 100% { box-shadow: 0 0 20px rgba(236,72,153,0.4), inset 0 0 20px rgba(236,72,153,0.1); } 50% { box-shadow: 0 0 40px rgba(236,72,153,0.7), inset 0 0 30px rgba(236,72,153,0.2); } }
 @keyframes text-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.03); opacity: 0.8; } }
 @keyframes text-reveal { from { opacity: 0; clip-path: inset(0 0 100% 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
 @keyframes text-slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -121,6 +122,12 @@
 @keyframes hover-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-2px); } 40%, 80% { transform: translateX(2px); } }
 @keyframes hover-swing { 0% { transform: rotate(0deg); } 20% { transform: rotate(4deg); } 40% { transform: rotate(-4deg); } 60% { transform: rotate(3deg); } 80% { transform: rotate(-3deg); } 100% { transform: rotate(0deg); } }
 @keyframes hover-wobble { 0% { transform: translateX(0); } 15% { transform: translateX(-3px) rotate(-1deg); } 30% { transform: translateX(3px) rotate(1deg); } 45% { transform: translateX(-2px) rotate(-1deg); } 60% { transform: translateX(2px) rotate(1deg); } 75% { transform: translateX(-1px) rotate(0deg); } 100% { transform: translateX(0); } }
+
+/* ============================================================
+   CARD EFFECTS - BASE
+   ============================================================ */
+.cms-card { position: relative; color: rgba(255,255,255,0.92); }
+.cms-card :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 
 /* ============================================================
    CARD EFFECTS - GAMING
@@ -134,6 +141,12 @@
 .card-gaming.rarity-rare { border-color: #0070dd; box-shadow: 0 0 20px rgba(0,112,221,0.3); }
 .card-gaming.rarity-epic { border-color: #a335ee; box-shadow: 0 0 25px rgba(163,53,238,0.4); }
 .card-gaming.rarity-legendary { border-color: #ff8000; box-shadow: 0 0 30px rgba(255,128,0,0.5); animation: legendary-pulse 2s ease-in-out infinite; }
+.card-gaming.rarity-mythic { background: linear-gradient(135deg, #7f1d1d, #831843, #7f1d1d); border-color: #ef4444; box-shadow: 0 0 30px rgba(239,68,68,0.45); }
+.card-gaming.rarity-holographic { background: linear-gradient(135deg, #0e7490, #6d28d9, #be185d); border-color: rgba(255,255,255,0.3); box-shadow: 0 0 24px rgba(168,85,247,0.25); }
+.card-gaming.rarity-holographic::before { background: linear-gradient(135deg, rgba(255,107,107,0.25), rgba(78,205,196,0.25), rgba(69,183,209,0.25), rgba(255,234,167,0.25)); background-size: 400% 400%; animation: holographic 3s ease infinite; opacity: 0.55; }
+.card-gaming.rarity-neon-frame { background: #000; border-width: 4px; border-color: #00ffff; box-shadow: 0 0 20px rgba(0,255,255,0.5), inset 0 0 20px rgba(0,255,255,0.12); }
+.card-gaming.rarity-pixel { background: #111827; border-width: 4px; border-color: #374151; border-radius: 0; image-rendering: pixelated; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.card-gaming.rarity-cyberpunk { background: linear-gradient(135deg, rgba(250,204,21,0.14), #000, rgba(34,211,238,0.14)); border-color: rgba(250,204,21,0.55); box-shadow: 0 0 22px rgba(250,204,21,0.25); }
 
 /* ============================================================
    CARD EFFECTS - GLASS
@@ -143,6 +156,10 @@
 .card-glass-dark { background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.92); }
 .card-glass-dark :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 .card-glass-aurora { background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); backdrop-filter: blur(10px); }
+.card-glass-metallic { background: linear-gradient(135deg, rgba(209,213,219,0.16), rgba(75,85,99,0.12)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(156,163,175,0.25); }
+.card-glass-blur-heavy { background: rgba(255,255,255,0.06); backdrop-filter: blur(32px) saturate(140%); -webkit-backdrop-filter: blur(32px) saturate(140%); border: 1px solid rgba(255,255,255,0.12); }
+.card-glass-neon-glow { background: rgba(0,0,0,0.35); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(0,255,255,0.35); box-shadow: 0 0 30px rgba(0,255,255,0.2); }
+.card-glass-morphism { background: rgba(255,255,255,0.1); backdrop-filter: blur(28px) saturate(150%); -webkit-backdrop-filter: blur(28px) saturate(150%); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 14px 30px rgba(0,0,0,0.18); }
 
 /* ============================================================
    CARD EFFECTS - NEON
@@ -154,6 +171,11 @@
 .card-neon-purple { border-color: #a855f7; box-shadow: 0 0 10px #a855f7, inset 0 0 10px rgba(168,85,247,0.1); }
 .card-neon-orange { border-color: #f97316; box-shadow: 0 0 10px #f97316, inset 0 0 10px rgba(249,115,22,0.1); }
 .card-neon-multi { border-color: #00ffff; box-shadow: 0 0 10px #00ffff, 0 0 20px #ff00ff, 0 0 30px #ffff00; }
+.card-neon-red { border-color: #ef4444; box-shadow: 0 0 10px #ef4444, inset 0 0 10px rgba(239,68,68,0.12); }
+.card-neon-yellow { border-color: #facc15; box-shadow: 0 0 10px #facc15, inset 0 0 10px rgba(250,204,21,0.12); }
+.card-neon-flicker { border-color: #00ffff; box-shadow: 0 0 12px #00ffff, inset 0 0 12px rgba(0,255,255,0.12); }
+.card-neon-flicker::before { animation: neon-flicker 2.6s infinite; }
+.card-neon-pulse { border-color: #ec4899; animation: neon-pulse 2s ease-in-out infinite; }
 .card-neon::before { content: ''; position: absolute; top: 4px; left: 4px; right: 4px; bottom: 4px; border: 1px solid; border-color: inherit; border-radius: 0.75rem; opacity: 0.5; pointer-events: none; z-index: 0; }
 .card-neon > * { position: relative; z-index: 1; }
 .card-neon :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
@@ -164,6 +186,20 @@
 .card-3d { transform-style: preserve-3d; transition: transform 0.3s ease; }
 .card-3d:hover { transform: translateY(-10px) rotateX(5deg) rotateY(-5deg); }
 .card-3d-shadow { box-shadow: 0 10px 30px -10px rgba(0,0,0,0.3), 0 20px 50px -20px rgba(0,0,0,0.2); }
+.card-3d-lift:hover { transform: translateY(-12px); }
+.card-3d-tilt:hover { transform: rotateX(6deg) rotateY(-6deg); }
+.card-3d-pop:hover { transform: translateY(-6px) scale(1.02); }
+.card-3d-float { animation: float 4s ease-in-out infinite; }
+.card-3d-flip { transition: transform 0.7s ease; transform-style: preserve-3d; }
+.card-3d-flip:hover { transform: rotateY(12deg); }
+.card-3d-layered { position: relative; }
+.card-3d-layered::before { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.06); transform: translateX(6px) translateY(6px); border-radius: inherit; z-index: -1; }
+.card-3d-shadow-box { box-shadow: 8px 8px 0 rgba(0,0,0,0.55); border: 2px solid rgba(0,0,0,0.35); }
+.card-3d-prism { clip-path: polygon(0 10%, 100% 0, 100% 90%, 0 100%); }
+.card-3d-perspective { transform: perspective(1000px) rotateX(5deg); transition: transform 0.5s ease; }
+.card-3d-perspective:hover { transform: perspective(1000px) rotateX(0deg); }
+.card-3d-fold { transform-origin: top; transition: transform 0.5s ease; }
+.card-3d-fold:hover { transform: perspective(800px) rotateX(-10deg); }
 
 /* ============================================================
    CARD EFFECTS - HOLOGRAPHIC
@@ -187,7 +223,7 @@
 .card-retro { background: linear-gradient(135deg, #111827, #0f172a); border: 2px solid #f97316; box-shadow: 0 6px 0 #000; color: rgba(255,255,255,0.92); }
 .card-retro :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 .card-retro-terminal { background: #0b0f0a; border: 1px solid #22c55e; box-shadow: 0 0 12px rgba(34,197,94,0.35); color: #22c55e; }
-.card-retro-gameboy { background: #d9e3b6; border: 2px solid #6b7280; box-shadow: inset 0 2px 0 rgba(255,255,255,0.4); }
+.card-retro-gameboy { background: #d9e3b6; border: 2px solid #6b7280; box-shadow: inset 0 2px 0 rgba(255,255,255,0.4); color: #111827; }
 .card-retro-arcade { background: #111827; border: 2px solid #ec4899; box-shadow: 0 0 18px rgba(236,72,153,0.4); color: rgba(255,255,255,0.92); }
 .card-retro-arcade :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
 
@@ -210,6 +246,83 @@
 .card-pricing { background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
 .card-testimonial { background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
 .card-stat { background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: 0 8px 22px rgba(0,0,0,0.2); }
+
+/* ============================================================
+   CARD EFFECTS - GRADIENT
+   ============================================================ */
+.card-gradient-sunset { background: linear-gradient(135deg, #f97316, #ec4899, #7c3aed); border: 0; }
+.card-gradient-ocean { background: linear-gradient(135deg, #06b6d4, #3b82f6, #4f46e5); border: 0; }
+.card-gradient-forest { background: linear-gradient(135deg, #16a34a, #059669, #0f766e); border: 0; }
+.card-gradient-fire { background: linear-gradient(135deg, #ef4444, #f97316, #facc15); border: 0; }
+.card-gradient-royal { background: linear-gradient(135deg, #7c3aed, #8b5cf6, #1d4ed8); border: 0; }
+.card-gradient-midnight { background: linear-gradient(135deg, #0f172a, #1f2937, #0b1220); border: 1px solid rgba(148,163,184,0.25); }
+.card-gradient-rose-gold { background: linear-gradient(135deg, #fda4af, #fbcfe8, #fde68a); border: 0; color: #4c0519; }
+.card-gradient-aurora { background: linear-gradient(135deg, #34d399, #60a5fa, #a78bfa); border: 0; }
+.card-gradient-candy { background: linear-gradient(135deg, #fb7185, #f472b6, #fcd34d); border: 0; color: #3f1d2f; }
+.card-gradient-mesh { background: radial-gradient(at 40% 20%, rgba(120,119,198,0.3) 0, transparent 50%), radial-gradient(at 80% 0%, rgba(255,119,198,0.3) 0, transparent 50%), radial-gradient(at 0% 50%, rgba(255,198,119,0.3) 0, transparent 50%), radial-gradient(at 80% 50%, rgba(119,198,255,0.3) 0, transparent 50%), radial-gradient(at 0% 100%, rgba(119,255,198,0.3) 0, transparent 50%), #0a0a0a; border: 0; }
+
+/* ============================================================
+   CARD EFFECTS - MINIMAL
+   ============================================================ */
+.card-minimal-clean { background: #ffffff; border: 0; box-shadow: 0 12px 30px rgba(0,0,0,0.12); color: #111827; }
+.card-minimal-border { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; }
+.card-minimal-shadow { background: #ffffff; border: 0; box-shadow: 0 14px 34px rgba(0,0,0,0.14); color: #111827; }
+.card-minimal-flat { background: #f9fafb; border: 0; color: #111827; }
+.card-minimal-accent { background: #ffffff; border: 1px solid #e5e7eb; border-top: 4px solid #3b82f6; color: #111827; }
+.card-minimal-dark { background: #111827; border: 1px solid #1f2937; color: rgba(255,255,255,0.92); }
+.card-minimal-outline { background: transparent; border: 2px solid #111827; color: #111827; }
+.card-minimal-rounded { background: #ffffff; border: 1px solid #f3f4f6; border-radius: 1.75rem; color: #111827; }
+.card-minimal-paper { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; }
+.card-minimal-mono { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+/* ============================================================
+   CARD EFFECTS - LUXURY
+   ============================================================ */
+.card-luxury-gold { background: linear-gradient(135deg, #0b1220, #111827, #0b1220); border: 1px solid rgba(245,158,11,0.25); color: #fcd34d; }
+.card-luxury-platinum { background: linear-gradient(135deg, #f3f4f6, #e5e7eb, #f8fafc); border: 1px solid rgba(107,114,128,0.35); color: #111827; }
+.card-luxury-black { background: #000000; border: 0; color: rgba(255,255,255,0.92); }
+.card-luxury-rose { background: linear-gradient(135deg, #ffe4e6, #fdf2f8, #ffe4e6); border: 1px solid #fecdd3; color: #881337; }
+.card-luxury-marble { background: linear-gradient(135deg, #f8fafc, #e2e8f0); border: 1px solid rgba(148,163,184,0.55); color: #111827; overflow: hidden; }
+.card-luxury-marble::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.35), transparent 35%), radial-gradient(circle at 80% 30%, rgba(255,255,255,0.25), transparent 40%), radial-gradient(circle at 50% 80%, rgba(0,0,0,0.08), transparent 45%); opacity: 0.45; pointer-events: none; }
+.card-luxury-velvet { background: linear-gradient(135deg, #3b0764, #581c87, #3b0764); border: 1px solid rgba(168,85,247,0.35); color: rgba(255,255,255,0.92); }
+.card-luxury-champagne { background: linear-gradient(135deg, #fef3c7, #fffbeb, #fef3c7); border: 1px solid rgba(217,119,6,0.3); color: #78350f; }
+.card-luxury-emerald { background: linear-gradient(135deg, #022c22, #064e3b, #022c22); border: 1px solid rgba(52,211,153,0.25); color: rgba(255,255,255,0.92); }
+.card-luxury-sapphire { background: linear-gradient(135deg, #0b1b3a, #1e3a8a, #0b1b3a); border: 1px solid rgba(96,165,250,0.25); color: rgba(255,255,255,0.92); }
+.card-luxury-ruby { background: linear-gradient(135deg, #450a0a, #7f1d1d, #450a0a); border: 1px solid rgba(248,113,113,0.25); color: rgba(255,255,255,0.92); }
+
+/* ============================================================
+   CARD EFFECTS - PRICING / TEAM / BLOG / TESTIMONIALS
+   ============================================================ */
+.card-pricing-simple { background: #ffffff; border: 1px solid #e5e7eb; color: #111827; text-align: center; }
+.card-pricing-popular { background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 0; color: rgba(255,255,255,0.92); text-align: center; }
+.card-pricing-bordered { background: #ffffff; border: 2px solid #111827; color: #111827; text-align: center; }
+.card-pricing-gradient { background: linear-gradient(135deg, #7c3aed, #ec4899, #f59e0b); border: 0; color: rgba(255,255,255,0.92); text-align: center; }
+.card-pricing-dark { background: #111827; border: 0; color: rgba(255,255,255,0.92); text-align: center; }
+.card-pricing-glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.92); text-align: center; }
+.card-pricing-neon { background: #0a0a0a; border: 2px solid #00ffff; box-shadow: 0 0 22px rgba(0,255,255,0.35); color: rgba(255,255,255,0.92); text-align: center; }
+.card-pricing-enterprise { background: linear-gradient(135deg, #0f172a, #1f2937); border: 1px solid rgba(148,163,184,0.25); color: rgba(255,255,255,0.92); text-align: center; }
+
+.card-team-simple { background: #ffffff; border: 1px solid #f3f4f6; color: #111827; text-align: center; }
+.card-team-overlay { background: #0b1220; border: 0; color: rgba(255,255,255,0.92); overflow: hidden; }
+.card-team-bordered { background: #ffffff; border: 2px solid #e5e7eb; color: #111827; text-align: center; }
+.card-team-dark { background: #111827; border: 0; color: rgba(255,255,255,0.92); text-align: center; }
+.card-team-horizontal { background: #ffffff; border: 1px solid #f3f4f6; color: #111827; }
+.card-team-creative { background: linear-gradient(135deg, #7c3aed, #ec4899); border: 0; color: rgba(255,255,255,0.92); text-align: center; }
+
+.card-blog-classic { background: #ffffff; border: 1px solid #f3f4f6; color: #111827; }
+.card-blog-minimal { background: #ffffff; border: 1px solid #f3f4f6; color: #111827; }
+.card-blog-featured { background: #0b1220; border: 0; color: rgba(255,255,255,0.92); overflow: hidden; }
+.card-blog-horizontal { background: #ffffff; border: 1px solid #f3f4f6; color: #111827; }
+.card-blog-dark { background: #111827; border: 0; color: rgba(255,255,255,0.92); }
+.card-blog-magazine { background: #ffffff; border-bottom: 4px solid #dc2626; color: #111827; border-radius: 0; }
+
+.card-testimonial-simple { background: #ffffff; border: 1px solid #f3f4f6; color: #111827; }
+.card-testimonial-bordered { background: #ffffff; border: 2px solid #e5e7eb; color: #111827; }
+.card-testimonial-dark { background: #111827; border: 0; color: rgba(255,255,255,0.92); }
+.card-testimonial-gradient { background: linear-gradient(135deg, #2563eb, #7c3aed); border: 0; color: rgba(255,255,255,0.92); }
+.card-testimonial-bubble { background: #f3f4f6; border: 0; color: #111827; position: relative; }
+.card-testimonial-bubble::before { content: ''; position: absolute; bottom: -8px; right: 32px; width: 16px; height: 16px; background: #f3f4f6; transform: rotate(45deg); }
+.card-testimonial-card { background: #ffffff; border: 0; box-shadow: 0 14px 34px rgba(0,0,0,0.14); color: #111827; text-align: center; }
 
 /* ============================================================
    HOVER EFFECTS
