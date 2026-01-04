@@ -13,6 +13,7 @@ import {
   WEBSITE_THEME_CATEGORY_LABELS_AR,
   getWebsiteThemeById,
 } from "../../cms/themes/websiteThemes";
+import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../cms/effects/loadingAnimations";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -60,6 +61,14 @@ type HeaderConfig = {
     radius?: "md" | "xl" | "2xl";
     surface?: "classic" | "glass";
     customThemes?: CustomTheme[];
+  };
+
+  // Global UI settings (stored under settings.header.ui)
+  ui?: {
+    loading?: {
+      enabled?: boolean;
+      animationId?: string;
+    };
   };
 
 };
@@ -145,6 +154,18 @@ const THEME_PRESET_IDS = THEME_PRESETS.map((p) => p.id);
 const isThemePresetId = (value: unknown): value is ThemePresetId =>
   typeof value === "string" && THEME_PRESET_IDS.includes(value as ThemePresetId);
 
+type LoadingConfig = { enabled: boolean; animationId: string };
+
+function normalizeLoading(v: any): LoadingConfig {
+  const o = safeObj(v);
+  const rawId = typeof o.animationId === "string" ? o.animationId : "spinner-simple";
+  const animationId = getLoadingById(rawId) ? rawId : "spinner-simple";
+  return {
+    enabled: o.enabled === true,
+    animationId,
+  };
+}
+
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
   const o = safeObj(v);
   const rawWebsiteThemeId = typeof o.websiteThemeId === "string" ? o.websiteThemeId : "default";
@@ -194,6 +215,11 @@ const WEBSITE_THEME_OPTIONS: Array<{ value: string; label: string }> = [
   })),
 ];
 
+const LOADING_ANIMATION_OPTIONS: Array<{ value: string; label: string }> = ALL_LOADING_ANIMATIONS.map((l) => ({
+  value: l.id,
+  label: `${LOADING_CATEGORY_LABELS_AR[l.category] ?? l.category} — ${l.nameAr}`,
+}));
+
 function normalizeHeader(v: any): HeaderConfig {
   const o = safeObj(v);
   return {
@@ -227,6 +253,10 @@ function normalizeHeader(v: any): HeaderConfig {
       enabled: !!o.cta?.enabled,
       label: o.cta?.label ?? "",
       href: o.cta?.href ?? "",
+    },
+    ui: {
+      ...safeObj(o.ui),
+      loading: normalizeLoading((o.ui as any)?.loading),
     },
   };
 }
@@ -521,9 +551,21 @@ export default function SettingsPage() {
   };
 
   const theme = normalizeTheme(headerCfg.theme);
+  const loading = normalizeLoading((headerCfg.ui as any)?.loading);
+  const loadingPreset = getLoadingById(loading.animationId) ?? null;
 
   const updateTheme = (patch: Partial<NonNullable<HeaderConfig["theme"]>>) => {
     setHeaderCfg((p) => ({ ...p, theme: { ...normalizeTheme(p.theme), ...patch } }));
+  };
+
+  const updateLoading = (patch: Partial<LoadingConfig>) => {
+    setHeaderCfg((p) => ({
+      ...p,
+      ui: {
+        ...safeObj(p.ui),
+        loading: { ...normalizeLoading((p.ui as any)?.loading), ...patch },
+      },
+    }));
   };
 
   return (
@@ -974,6 +1016,36 @@ export default function SettingsPage() {
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">حركة التحميل (Loading)</div>
+                    <div className="space-y-3">
+                      <Toggle
+                        label="تفعيل حركة تحميل مخصصة"
+                        checked={loading.enabled}
+                        onChange={(v) => updateLoading({ enabled: v })}
+                      />
+
+                      <div className={loading.enabled ? "space-y-3" : "space-y-3 opacity-60 pointer-events-none"}>
+                        <Select
+                          label="النوع"
+                          value={loading.animationId}
+                          onValueChange={(value) => updateLoading({ animationId: value })}
+                          options={LOADING_ANIMATION_OPTIONS}
+                        />
+
+                        {loadingPreset ? (
+                          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                            <div className="mb-2 text-xs opacity-70">معاينة</div>
+                            <div className="flex items-center justify-center">
+                              <style>{loadingPreset.css}</style>
+                              <div dangerouslySetInnerHTML={{ __html: loadingPreset.html }} />
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
 
