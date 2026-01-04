@@ -2,11 +2,14 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/presets";
+import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "@/cms/themes/websiteThemes";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
   /** Theme Engine preset id (recommended) */
   presetId?: string;
+  /** Optional Website Theme id (curated list from settings) */
+  websiteThemeId?: string;
   /** optional custom theme presets stored in settings */
   customThemes?: any[];
   /** optional override colors */
@@ -116,19 +119,29 @@ export function ThemeWrap({ theme, children }: { theme?: ThemeCfg | null; childr
   const vars = mode === "dark" ? preset.dark : preset.light;
   const themeVars = useMemo(() => generateThemeCssVars(preset, mode), [preset, mode]);
 
+  const websiteTheme = getWebsiteThemeById(typeof t.websiteThemeId === "string" ? t.websiteThemeId : null);
+  const websiteVars = websiteTheme ? generateWebsiteThemeCssVars(websiteTheme) : null;
+
   const r: NonNullable<ThemeCfg["radius"]> = t.radius === "md" || t.radius === "xl" || t.radius === "2xl" ? t.radius : "2xl";
   const surface: "classic" | "glass" = t.surface === "classic" ? "classic" : "glass";
   const primary = resolveCustomColor(t.primary);
   const secondary = resolveCustomColor(t.secondary);
-  const accent = primary ?? vars["--accent"];
-  const accentSoft = secondary ?? vars["--accent-soft"] ?? accent;
-  const accentHover = secondary ?? vars["--accent-hover"] ?? accent;
+
+  const baseAccent = websiteTheme?.colors.primary ?? vars["--accent"];
+  const baseAccentSoft = websiteTheme?.colors.secondary ?? vars["--accent-soft"] ?? baseAccent;
+  const baseAccentHover = websiteTheme?.colors.accent ?? vars["--accent-hover"] ?? baseAccent;
+
+  const accent = primary ?? baseAccent;
+  const accentSoft = secondary ?? baseAccentSoft ?? accent;
+  const accentHover = secondary ?? baseAccentHover ?? accent;
   const accentContrast = contrastTextColor(accent, vars["--text"]);
-  const [a1, a2, a3] = [
-    accentSoft ?? preset.accentStops[0],
-    accent ?? preset.accentStops[1],
-    accentHover ?? preset.accentStops[2],
-  ];
+  const [a1, a2, a3] = websiteTheme
+    ? [
+        accentSoft ?? websiteTheme.colors.secondary,
+        accent ?? websiteTheme.colors.primary,
+        accentHover ?? websiteTheme.colors.accent,
+      ]
+    : [accentSoft ?? preset.accentStops[0], accent ?? preset.accentStops[1], accentHover ?? preset.accentStops[2]];
 
   return (
     <div
@@ -138,6 +151,7 @@ export function ThemeWrap({ theme, children }: { theme?: ThemeCfg | null; childr
         {
           ...vars,
           ...themeVars,
+          ...(websiteVars ?? {}),
           "--accent": accent,
           "--accent-soft": accentSoft,
           "--accent-hover": accentHover,
