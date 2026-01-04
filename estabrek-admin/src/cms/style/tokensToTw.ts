@@ -142,21 +142,25 @@ function textEffectClass(effect?: TextEffectPreset): string {
 
 function cardTemplateClass(preset?: CardTemplatePreset): string {
   if (!preset || preset === "default") return "";
-  if (preset === "gaming") return "card-gaming";
+  const base = "cms-card";
+  if (preset === "gaming") return `${base} card-gaming`;
   if (preset.startsWith("gaming-")) {
-    return `card-gaming rarity-${preset.replace("gaming-", "")}`;
+    return `${base} card-gaming rarity-${preset.replace("gaming-", "")}`;
   }
-  if (preset === "neon") return "card-neon";
-  if (preset.startsWith("neon-")) return `card-neon card-${preset}`;
+  if (preset === "neon") return `${base} card-neon`;
+  if (preset.startsWith("neon-")) return `${base} card-neon card-${preset}`;
   if (preset.startsWith("glass-")) {
-    if (preset === "glass-light" || preset === "glass-colored") return "card-glass";
-    if (preset === "glass-rainbow") return "card-glass-aurora";
-    return `card-${preset}`;
+    if (preset === "glass-light" || preset === "glass-colored") return `${base} card-glass`;
+    if (preset === "glass-rainbow") return `${base} card-glass-aurora`;
+    return `${base} card-${preset}`;
   }
-  if (preset.startsWith("3d")) return "card-3d card-3d-shadow";
-  if (preset === "gradient-border" || preset === "animated-border") return "card-animated-border";
-  if (preset === "holographic") return "card-holographic";
-  return `card-${preset}`;
+  if (preset === "3d" || preset === "3d-sm" || preset === "3d-md" || preset === "3d-lg" || preset === "3d-xl") {
+    return `${base} card-3d card-3d-shadow`;
+  }
+  if (preset.startsWith("3d-")) return `${base} card-3d card-${preset}`;
+  if (preset === "gradient-border" || preset === "animated-border") return `${base} card-animated-border`;
+  if (preset === "holographic") return `${base} card-holographic`;
+  return `${base} card-${preset}`;
 }
 
 function hoverExtendedClass(preset?: HoverPresetExtended): string {
