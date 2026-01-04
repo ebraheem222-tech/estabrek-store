@@ -210,6 +210,8 @@ export type TwTokensExtended = {
   loader?: LoaderPreset;
   transitionPreset?: TransitionPreset;
   scrollAnim?: ScrollAnimPreset;
+  containerStyleId?: string;
+  dividerStyleId?: string;
 
   // Counter animation
   counter?: {

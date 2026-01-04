@@ -1,6 +1,7 @@
 import React from "react";
 import type { CmsComponent } from "@/cms/types";
 import type { DecorLayer } from "@/cms/style/tokens";
+import { getContainerById, getDividerById } from "@/cms/style/containerStyles";
 import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 import { SHAPES } from "@/cms/shapes/shapeRegistry";
 import ProductCard from "@/components/ProductCard";
@@ -450,9 +451,10 @@ export function ComponentsRenderer({
 
       switch (c.kind) {
         case "container": {
+          const preset = getContainerById(tokens?.containerStyleId);
           return (
             <RenderBox key={c.id} tokens={tokens} className={cn(legacyClassName, "mx-auto w-full")}>
-              {renderedChildren}
+              {preset?.innerClassName ? <div className={preset.innerClassName}>{renderedChildren}</div> : renderedChildren}
             </RenderBox>
           );
         }
@@ -858,7 +860,14 @@ export function ComponentsRenderer({
       }
 
       case "divider": {
-        const node = <hr className={cn("border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} />;
+        const preset = getDividerById(tokens?.dividerStyleId);
+        const node = preset?.svg ? (
+          <div className={tokenClass} style={tokenStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />
+        ) : preset ? (
+          <div className={tokenClass} style={tokenStyle} />
+        ) : (
+          <hr className={cn("border-black/10 dark:border-white/15", tokenClass)} style={tokenStyle} />
+        );
         return wrapWithDecor(tokens, node, false, c.id);
       }
 
