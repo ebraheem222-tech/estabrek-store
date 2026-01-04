@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/presets";
 import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "@/cms/themes/websiteThemes";
+import { applyCursorTheme } from "@/theme/cursorTheme";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
@@ -90,7 +91,15 @@ function toCustomPresets(customThemes?: any[] | null): ThemePreset[] {
     .filter(Boolean) as ThemePreset[];
 }
 
-export function ThemeWrap({ theme, children }: { theme?: ThemeCfg | null; children: React.ReactNode }) {
+export function ThemeWrap({
+  theme,
+  cursorThemeId,
+  children,
+}: {
+  theme?: ThemeCfg | null;
+  cursorThemeId?: string | null;
+  children: React.ReactNode;
+}) {
   const t = theme ?? {};
   const baseMode: "dark" | "light" = t.mode === "light" ? "light" : "dark";
   // Default: Estabrak Soft (matches logo + paper background). Keep luxury_gold as selectable preset.
@@ -111,6 +120,10 @@ export function ThemeWrap({ theme, children }: { theme?: ThemeCfg | null; childr
       mode: m === "dark" || m === "light" ? (m as any) : undefined,
     });
   }, []);
+
+  useEffect(() => {
+    applyCursorTheme(cursorThemeId);
+  }, [cursorThemeId]);
 
   const mode: "dark" | "light" = preview?.mode ?? baseMode;
   const presetId = preview?.presetId ?? basePresetId;
