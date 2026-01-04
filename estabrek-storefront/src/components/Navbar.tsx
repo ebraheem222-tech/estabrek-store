@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
 import type { MenuTree, SitePublicSettings, NavItem } from "@/lib/types";
+import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
 
 
 function NavNode({
@@ -14,21 +15,31 @@ function NavNode({
   showIcons,
   mode,
   gradient,
+  template,
 }: {
   item: any;
   pathname: string;
   showIcons: boolean;
   mode: "dropdown" | "mega";
   gradient: "none" | "sunset" | "ocean" | "neon";
+  template?: NavTemplate;
 }) {
   const hasChildren = !!(item.children && item.children.length);
   const href = item.href || "#";
   const external = !!item.isExternal || /^https?:\/\//.test(href);
   const active = !external && href !== "#" && (pathname === href || pathname.startsWith(href + "/"));
 
-  const baseLink =
-    "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition " +
-    (active ? "bg-white/[0.10] text-white" : "text-white/85 hover:bg-white/[0.06]");
+  const baseLink = template
+    ? [
+        "inline-flex items-center gap-2 rounded-xl px-3 py-2 transition-colors duration-200",
+        template.styles.link,
+        template.styles.linkHover,
+        active ? template.styles.linkActive : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition " +
+      (active ? "bg-white/[0.10] text-white" : "text-white/85 hover:bg-white/[0.06]");
 
   const iconPaths: Record<string, string> = {
     home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
@@ -99,13 +110,29 @@ function NavNode({
           {mode === "mega" ? (
             <div className="grid gap-2 sm:grid-cols-2">
               {(item.children ?? []).map((ch: any) => (
-                <NavNode key={ch.id ?? ch.href ?? ch.label} item={ch} pathname={pathname} showIcons={showIcons} mode="dropdown" gradient={gradient} />
+                <NavNode
+                  key={ch.id ?? ch.href ?? ch.label}
+                  item={ch}
+                  pathname={pathname}
+                  showIcons={showIcons}
+                  mode="dropdown"
+                  gradient={gradient}
+                  template={template}
+                />
               ))}
             </div>
           ) : (
             <div className="grid gap-1">
               {(item.children ?? []).map((ch: any) => (
-                <NavNode key={ch.id ?? ch.href ?? ch.label} item={ch} pathname={pathname} showIcons={showIcons} mode="dropdown" gradient={gradient} />
+                <NavNode
+                  key={ch.id ?? ch.href ?? ch.label}
+                  item={ch}
+                  pathname={pathname}
+                  showIcons={showIcons}
+                  mode="dropdown"
+                  gradient={gradient}
+                  template={template}
+                />
               ))}
             </div>
           )}
@@ -121,14 +148,21 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const cmsNavCfg = (cmsNav && (cmsNav.enabled ?? cmsNav?.props?.enabled ?? true)) ? cmsNav : null;
+  const cmsNavCfg = cmsNav && typeof cmsNav === "object" ? cmsNav : null;
+  const cmsNavEnabled = cmsNavCfg ? (cmsNavCfg.enabled ?? cmsNavCfg?.props?.enabled ?? true) : false;
+
+  const templateIdRaw =
+    (typeof cmsNavCfg?.templateId === "string" && cmsNavCfg.templateId) ||
+    (typeof cmsNavCfg?.props?.templateId === "string" && cmsNavCfg.props.templateId) ||
+    "default";
+  const navTemplate = templateIdRaw !== "default" ? getNavTemplateById(templateIdRaw) : undefined;
   const navItems: any[] = useMemo(() => {
-    if (cmsNavCfg?.enabled) {
+    if (cmsNavEnabled) {
       // Admin stores cmsNav as { enabled, mode, gradient, showIcons, items }
       return Array.isArray(cmsNavCfg.items) ? cmsNavCfg.items : [];
     }
     return primaryMenu?.tree ?? [];
-  }, [cmsNavCfg, primaryMenu]);
+  }, [cmsNavCfg, cmsNavEnabled, primaryMenu]);
 
   const navMode: "dropdown" | "mega" = (cmsNavCfg?.mode === "mega" ? "mega" : "dropdown");
   const navGradient: "none" | "sunset" | "ocean" | "neon" =
@@ -191,8 +225,33 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     }
   }
 
+  const headerClassName = (() => {
+    if (!navTemplate) {
+      return (sticky ? "sticky top-0 z-40 " : "relative z-40 ") + "border-b border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur";
+    }
+
+    const navCls = navTemplate.styles.nav ?? "";
+    const hasPosition = /\b(sticky|fixed|absolute)\b/.test(navCls);
+    const hasZIndex = /\bz-(?:\d+|auto)\b|\bz-\[/.test(navCls);
+
+    const extra: string[] = [];
+    if (!hasPosition) extra.push(sticky ? "sticky top-0" : "relative");
+    if (!hasZIndex) extra.push("z-40");
+    return [...extra, navCls].filter(Boolean).join(" ");
+  })();
+
+  const siteNameClass = navTemplate?.styles.logo ?? "text-sm font-semibold tracking-wide text-white/90";
+  const desktopLinksClass = navTemplate?.styles.links ?? "hidden items-center gap-1 md:flex";
+  const desktopLinksClassCentered = navTemplate?.styles.links ? `${navTemplate.styles.links} justify-center` : "hidden items-center justify-center gap-1 md:flex";
+  const ctaClassName = navTemplate?.styles.button
+    ? `hidden md:inline-flex items-center ${navTemplate.styles.button}`
+    : "hidden md:inline-flex items-center rounded-xl bg-white text-black px-3 py-2 text-sm font-semibold hover:opacity-90";
+  const ctaMobileClassName = navTemplate?.styles.button
+    ? `inline-flex w-full justify-center ${navTemplate.styles.button}`
+    : "inline-flex w-full justify-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black";
+
   return (
-    <header className={(sticky ? "sticky top-0 z-40 " : "relative z-40 ") + "border-b border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur"}>
+    <header className={headerClassName}>
       <div className={"mx-auto max-w-6xl px-4 " + padCls}>
         {preset === "centered" ? (
           <div className="space-y-3">
@@ -213,7 +272,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 ) : (
                   <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
                 )}
-                <div className="text-sm font-semibold tracking-wide text-white/90">{site.siteName || "Store"}</div>
+                <div className={siteNameClass}>{site.siteName || "Store"}</div>
               </Link>
 
               <div className="flex items-center gap-2">
@@ -242,9 +301,17 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               </div>
             ) : null}
 
-            <nav className="hidden items-center justify-center gap-1 md:flex">
+            <nav className={desktopLinksClassCentered}>
               {navItems.map((it) => (
-                <NavNode key={it.id ?? it.href ?? it.label} item={it} pathname={pathname} showIcons={navShowIcons} mode={navMode} gradient={navGradient} />
+                <NavNode
+                  key={it.id ?? it.href ?? it.label}
+                  item={it}
+                  pathname={pathname}
+                  showIcons={navShowIcons}
+                  mode={navMode}
+                  gradient={navGradient}
+                  template={navTemplate}
+                />
               ))}
             </nav>
           </div>
@@ -254,15 +321,23 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               {site.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={site.logoUrl} alt={site.siteName ?? "Logo"} className="h-8 w-8 rounded-lg object-cover" />
-              ) : (
-                <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
-              )}
-              <div className="text-sm font-semibold tracking-wide text-white/90">{site.siteName || "Store"}</div>
+                ) : (
+                  <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
+                )}
+              <div className={siteNameClass}>{site.siteName || "Store"}</div>
             </Link>
 
-            <nav className="hidden items-center gap-1 md:flex">
+            <nav className={desktopLinksClass}>
               {navItems.map((it) => (
-                <NavNode key={it.id ?? it.href ?? it.label} item={it} pathname={pathname} showIcons={navShowIcons} mode={navMode} gradient={navGradient} />
+                <NavNode
+                  key={it.id ?? it.href ?? it.label}
+                  item={it}
+                  pathname={pathname}
+                  showIcons={navShowIcons}
+                  mode={navMode}
+                  gradient={navGradient}
+                  template={navTemplate}
+                />
               ))}
             </nav>
 
@@ -289,10 +364,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               ) : null}
 
               {cta ? (
-                <Link
-                  href={cta.href || "/"}
-                  className="hidden md:inline-flex items-center rounded-xl bg-white text-black px-3 py-2 text-sm font-semibold hover:opacity-90"
-                >
+                <Link href={cta.href || "/"} className={ctaClassName}>
                   {cta.label || "CTA"}
                 </Link>
               ) : null}
@@ -329,7 +401,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               </div>
             ) : null}
             {cta ? (
-              <Link href={cta.href || "/"} className="inline-flex w-full justify-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black">
+              <Link href={cta.href || "/"} className={ctaMobileClassName}>
                 {cta.label || "CTA"}
               </Link>
             ) : null}
