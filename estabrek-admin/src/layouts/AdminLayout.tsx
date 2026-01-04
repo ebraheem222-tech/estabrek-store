@@ -6,6 +6,7 @@ import { useSettings } from "../hooks/useSettings";
 import { cn } from "../components/ui/cn";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { applyAdminTheme } from "../theme/adminTheme";
+import { applyCursorTheme } from "../theme/cursorTheme";
 
 // Icons as inline SVGs for modern look
 const Icons = {
@@ -213,6 +214,8 @@ export default function AdminLayout() {
   useEffect(() => {
     const cfg = (qSettings.data as any)?.header?.ui?.adminTheme;
     applyAdminTheme(cfg);
+    const cursorThemeId = (qSettings.data as any)?.header?.ui?.cursorThemeId;
+    applyCursorTheme(cursorThemeId);
   }, [qSettings.data]);
 
   useEffect(() => {

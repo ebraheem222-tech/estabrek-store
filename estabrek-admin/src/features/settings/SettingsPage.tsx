@@ -15,6 +15,7 @@ import {
 } from "../../cms/themes/websiteThemes";
 import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../cms/effects/loadingAnimations";
 import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../cms/style/searchStyles";
+import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../cms/style/cursorStyles";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -71,6 +72,8 @@ type HeaderConfig = {
       enabled?: boolean;
       animationId?: string;
     };
+    adminTheme?: Partial<AdminThemeConfig>;
+    cursorThemeId?: CursorThemeId;
   };
 
 };
@@ -91,6 +94,8 @@ type AdminThemePresetId = "default" | ThemePresetId;
 type AdminThemeConfig = {
   presetId: AdminThemePresetId;
 };
+
+type CursorThemeId = string;
 
 type CustomTheme = {
   id: string;
@@ -182,6 +187,12 @@ function normalizeAdminTheme(v: any): AdminThemeConfig {
   return { presetId };
 }
 
+function normalizeCursorThemeId(v: any): CursorThemeId {
+  const raw = typeof v === "string" ? v : "default";
+  if (raw === "default") return "default";
+  return getCursorThemeById(raw) ? raw : "default";
+}
+
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
   const o = safeObj(v);
   const rawWebsiteThemeId = typeof o.websiteThemeId === "string" ? o.websiteThemeId : "default";
@@ -244,6 +255,14 @@ const SEARCH_INPUT_STYLE_OPTIONS: Array<{ value: string; label: string }> = [
   })),
 ];
 
+const CURSOR_THEME_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "default", label: "افتراضي" },
+  ...ALL_CURSOR_THEMES.map((t) => ({
+    value: t.id,
+    label: `${t.nameAr} — ${t.name}`,
+  })),
+];
+
 function normalizeHeader(v: any): HeaderConfig {
   const o = safeObj(v);
   const rawSearchInputStyleId = typeof o.searchInputStyleId === "string" ? o.searchInputStyleId : "default";
@@ -286,6 +305,7 @@ function normalizeHeader(v: any): HeaderConfig {
       ...safeObj(o.ui),
       loading: normalizeLoading((o.ui as any)?.loading),
       adminTheme: normalizeAdminTheme((o.ui as any)?.adminTheme),
+      cursorThemeId: normalizeCursorThemeId((o.ui as any)?.cursorThemeId),
     },
   };
 }
@@ -588,6 +608,7 @@ export default function SettingsPage() {
   const theme = normalizeTheme(headerCfg.theme);
   const loading = normalizeLoading((headerCfg.ui as any)?.loading);
   const adminTheme = normalizeAdminTheme((headerCfg.ui as any)?.adminTheme);
+  const cursorThemeId = normalizeCursorThemeId((headerCfg.ui as any)?.cursorThemeId);
   const loadingPreset = getLoadingById(loading.animationId) ?? null;
 
   const updateTheme = (patch: Partial<NonNullable<HeaderConfig["theme"]>>) => {
@@ -610,6 +631,16 @@ export default function SettingsPage() {
       ui: {
         ...safeObj(p.ui),
         adminTheme: { ...normalizeAdminTheme((p.ui as any)?.adminTheme), ...patch },
+      },
+    }));
+  };
+
+  const updateCursorThemeId = (themeId: CursorThemeId) => {
+    setHeaderCfg((p) => ({
+      ...p,
+      ui: {
+        ...safeObj(p.ui),
+        cursorThemeId: normalizeCursorThemeId(themeId),
       },
     }));
   };
@@ -1024,6 +1055,12 @@ export default function SettingsPage() {
                           { value: "default", label: "افتراضي" },
                           ...THEME_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
                         ]}
+                      />
+                      <Select
+                        label="ثيم المؤشر (Cursor)"
+                        value={cursorThemeId}
+                        onValueChange={(value) => updateCursorThemeId(value as CursorThemeId)}
+                        options={CURSOR_THEME_OPTIONS}
                       />
                       <Select
                         label="البريست"
