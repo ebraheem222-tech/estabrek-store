@@ -4,8 +4,8 @@
 // Switch between basic and extended styling panel
 // ============================================================
 
-// Use extended panel for full CMS features (100+ options)
-export { SectionStylingPanelExtended as SectionStylingPanel } from "./SectionStylingPanelExtended";
+// Default: shared mega panel used by PageEditor/ComponentsEditor (100+ options)
+export { SectionStylingPanel } from "./SectionStylingPanel";
 
-// Or use basic panel for simpler interface
-// export { SectionStylingPanel } from "./SectionStylingPanel";
+// Alternative: keep the legacy panel implementation
+// export { SectionStylingPanelExtended as SectionStylingPanel } from "./SectionStylingPanelExtended";

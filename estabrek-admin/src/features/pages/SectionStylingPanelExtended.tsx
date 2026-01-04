@@ -48,6 +48,12 @@ import {
   type HoverPresetExtended,
   type TwTokensExtended,
 } from "../../cms/style/tokens-extended";
+import {
+  ALL_CONTAINER_STYLES,
+  ALL_DIVIDER_STYLES,
+  CONTAINER_CATEGORY_LABELS_AR,
+  DIVIDER_CATEGORY_LABELS_AR,
+} from "../../cms/style/containerStyles";
 import { INTERACTION_CATEGORY_LABELS_AR, INTERACTION_EFFECTS } from "../../cms/effects/interactionEffects";
 import { SvgLibraryPicker } from "./SvgLibraryPicker";
 
@@ -72,6 +78,16 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: "effects", label: "التأثيرات", icon: "🎨" },
   { id: "advanced", label: "متقدم", icon: "⚙️" },
 ];
+
+const containerOptions = ALL_CONTAINER_STYLES.map((c) => ({
+  value: c.id,
+  label: `${CONTAINER_CATEGORY_LABELS_AR[c.category] ?? c.category} - ${c.nameAr}`,
+}));
+
+const dividerOptions = ALL_DIVIDER_STYLES.map((d) => ({
+  value: d.id,
+  label: `${DIVIDER_CATEGORY_LABELS_AR[d.category] ?? d.category} - ${d.nameAr}`,
+}));
 
 // ============================================================
 // HELPER COMPONENTS
@@ -224,8 +240,29 @@ function LayoutEditor({ tokens, onChange }: {
   const radiusOptions = RADIUS_PRESETS.map(p => ({ value: p, label: p }));
   const shadowOptions = SHADOW_PRESETS.map(p => ({ value: p, label: p }));
 
+
   return (
     <div className="space-y-4">
+      <Divider title="الحاويات / الفواصل" />
+
+      <FieldGroup label="نمط الحاوية" labelAr="Container Style" hint="اختر نمط جاهز للحاوية">
+        <Select
+          value={tokens?.containerStyleId ?? ""}
+          onChange={(v) => onChange({ ...tokens, containerStyleId: v || undefined })}
+          options={containerOptions}
+          placeholder="بدون"
+        />
+      </FieldGroup>
+
+      <FieldGroup label="نمط الفاصل" labelAr="Divider Style" hint="اختر نمط جاهز للفواصل">
+        <Select
+          value={tokens?.dividerStyleId ?? ""}
+          onChange={(v) => onChange({ ...tokens, dividerStyleId: v || undefined })}
+          options={dividerOptions}
+          placeholder="بدون"
+        />
+      </FieldGroup>
+
       <FieldGroup label="الخلفية" labelAr="Background">
         <Select
           value={tokens?.style?.bg || "none"}
