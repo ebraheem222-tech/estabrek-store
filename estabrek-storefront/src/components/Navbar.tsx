@@ -184,13 +184,14 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
       ? (header as any).heightMobile
       : "compact";
   const searchStyle: "input" | "icon" = (header as any)?.searchStyle === "icon" ? "icon" : "input";
+  const searchInputStyleId: string = typeof (header as any)?.searchInputStyleId === "string" ? (header as any).searchInputStyleId : "default";
   const cartStyle: "iconBadge" | "icon" | "badge" =
     (header as any)?.cartStyle === "icon" || (header as any)?.cartStyle === "badge" ? (header as any).cartStyle : "iconBadge";
   const padMap: Record<string, string> = { compact: "py-2", normal: "py-3", comfortable: "py-4" };
   const padCls = `${padMap[heightMobile]} md:${padMap[heightDesktop]}`;
 
   function SearchControl({ withLabel }: { withLabel?: boolean }) {
-    if (searchStyle !== "icon") return <SearchBox />;
+    if (searchStyle !== "icon") return <SearchBox styleId={searchInputStyleId} />;
     return (
       <Link
         href="/search"

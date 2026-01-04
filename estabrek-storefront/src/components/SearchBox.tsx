@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { getSearchInputById } from "@/cms/style/searchStyles";
 
 type SuggestProduct = { id: string; title: string; slug: string };
 type SuggestCategory = { id: string; name: string; slug: string };
@@ -43,7 +44,15 @@ function uniq(list: string[]): string[] {
   return out;
 }
 
-export function SearchBox() {
+function pickWidthClasses(className: string | undefined): string {
+  if (!className) return "";
+  return className
+    .split(/\s+/)
+    .filter((token) => token.startsWith("w-") || token.startsWith("max-w-") || token.startsWith("min-w-"))
+    .join(" ");
+}
+
+export function SearchBox({ styleId }: { styleId?: string }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -52,6 +61,15 @@ export function SearchBox() {
   const [categories, setCategories] = useState<SuggestCategory[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const ref = useRef<HTMLDivElement | null>(null);
+
+  const preset = useMemo(() => {
+    const id = styleId && styleId !== "default" ? styleId : null;
+    return id ? getSearchInputById(id) : null;
+  }, [styleId]);
+
+  const wrapperWidthClassName = preset ? pickWidthClasses(preset.containerClassName) : "w-full max-w-[520px]";
+  const iconIsAbsolute = !!preset?.iconClassName?.includes("absolute");
+  const iconOnLeft = iconIsAbsolute && !!preset?.iconClassName?.includes("left");
 
   useEffect(() => {
     setRecent(loadRecent());
@@ -107,36 +125,79 @@ export function SearchBox() {
   }
 
   return (
-    <div ref={ref} className="relative w-full max-w-[520px]">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          commitSearch(q);
-        }}
-        className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"
-      >
-        <span className="opacity-70">🔎</span>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onFocus={() => setOpen(true)}
-          placeholder="ابحث عن منتج..."
-          className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
-        />
-        {q ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQ("");
-              setProducts([]);
-              setCategories([]);
-            }}
-            className="rounded-lg px-2 py-1 text-white/70 hover:bg-white/[0.06]"
-          >
-            ✕
-          </button>
-        ) : null}
-      </form>
+    <div ref={ref} className={`relative ${wrapperWidthClassName}`}>
+      {preset ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            commitSearch(q);
+          }}
+          className={`relative ${preset.containerClassName}`}
+        >
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onFocus={() => setOpen(true)}
+            placeholder="ابحث عن منتج..."
+            className={preset.inputClassName}
+            dir="rtl"
+          />
+
+          {preset.buttonClassName ? (
+            <button type="submit" className={preset.buttonClassName}>
+              {preset.iconClassName && !iconIsAbsolute ? <span className={preset.iconClassName}>🔎</span> : "بحث"}
+            </button>
+          ) : null}
+
+          {preset.iconClassName && iconIsAbsolute ? <span className={preset.iconClassName}>🔎</span> : null}
+
+          {q && !preset.buttonClassName ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQ("");
+                setProducts([]);
+                setCategories([]);
+              }}
+              className={`absolute ${iconOnLeft ? "right-2" : "left-2"} top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs text-current opacity-60 hover:opacity-100`}
+              aria-label="مسح البحث"
+            >
+              ✕
+            </button>
+          ) : null}
+        </form>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            commitSearch(q);
+          }}
+          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"
+        >
+          <span className="opacity-70">🔎</span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onFocus={() => setOpen(true)}
+            placeholder="ابحث عن منتج..."
+            className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
+          />
+          {q ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQ("");
+                setProducts([]);
+                setCategories([]);
+              }}
+              className="rounded-lg px-2 py-1 text-white/70 hover:bg-white/[0.06]"
+              aria-label="مسح البحث"
+            >
+              ✕
+            </button>
+          ) : null}
+        </form>
+      )}
 
       {(showRecent || showResults) ? (
         <div className="absolute left-0 right-0 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[color:var(--surface)] shadow-xl">
