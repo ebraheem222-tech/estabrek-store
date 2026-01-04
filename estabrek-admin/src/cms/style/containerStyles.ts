@@ -332,7 +332,7 @@ export const NEON_CONTAINERS: ContainerStyle[] = [
     nameAr: "نيون قوس قزح",
     category: "neon",
     className:
-      "bg-gray-900 rounded-2xl p-6 border-2 border-transparent bg-clip-padding text-white relative before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-r before:from-pink-500 before:via-purple-500 before:to-cyan-500 before:-z-10 shadow-[0_0_30px_rgba(168,85,247,0.4)]",
+      "bg-gray-900 rounded-2xl p-6 border-2 border-transparent bg-clip-padding text-white relative before:content-[''] before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-r before:from-pink-500 before:via-purple-500 before:to-cyan-500 before:-z-10 before:pointer-events-none shadow-[0_0_30px_rgba(168,85,247,0.4)]",
   },
 ];
 
@@ -505,7 +505,7 @@ export const SPECIAL_CONTAINERS: ContainerStyle[] = [
     nameAr: "ورقي",
     category: "special",
     className:
-      "bg-[#fffef9] rounded-sm p-6 shadow-md border border-[#e8e4d9] relative before:absolute before:inset-0 before:bg-[linear-gradient(90deg,transparent_79px,#e8e4d9_79px,#e8e4d9_81px,transparent_81px)] before:bg-[length:100px_100%]",
+      "bg-[#fffef9] rounded-sm p-6 shadow-md border border-[#e8e4d9] relative before:content-[''] before:absolute before:inset-0 before:bg-[linear-gradient(90deg,transparent_79px,#e8e4d9_79px,#e8e4d9_81px,transparent_81px)] before:bg-[length:100px_100%] before:pointer-events-none before:opacity-60",
   },
   {
     id: "container-special-terminal",
@@ -591,8 +591,8 @@ export const SIMPLE_DIVIDERS: DividerStyle[] = [
   { id: "divider-short-color", name: "Short Color", nameAr: "قصير ملون", category: "simple", className: "w-24 h-1 bg-blue-500 mx-auto rounded-full" },
   { id: "divider-left", name: "Left Aligned", nameAr: "محاذاة يسار", category: "simple", className: "w-24 h-1 bg-gray-300 rounded-full" },
   { id: "divider-right", name: "Right Aligned", nameAr: "محاذاة يمين", category: "simple", className: "w-24 h-1 bg-gray-300 mr-0 ml-auto rounded-full" },
-  { id: "divider-vertical", name: "Vertical", nameAr: "عمودي", category: "simple", className: "w-px h-full bg-gray-300" },
-  { id: "divider-vertical-dashed", name: "Vertical Dashed", nameAr: "عمودي متقطع", category: "simple", className: "w-px h-full border-r border-dashed border-gray-300" },
+  { id: "divider-vertical", name: "Vertical", nameAr: "عمودي", category: "simple", className: "w-px h-12 bg-gray-300" },
+  { id: "divider-vertical-dashed", name: "Vertical Dashed", nameAr: "عمودي متقطع", category: "simple", className: "w-px h-12 border-r border-dashed border-gray-300" },
   { id: "divider-inset", name: "Inset", nameAr: "مدخل", category: "simple", className: "w-[calc(100%-2rem)] h-px bg-gray-200 mx-auto" },
 ];
 
@@ -851,4 +851,3 @@ export function getDividerById(id?: string): DividerStyle | undefined {
   if (!id) return undefined;
   return ALL_DIVIDER_STYLES.find((d) => d.id === id);
 }
-
