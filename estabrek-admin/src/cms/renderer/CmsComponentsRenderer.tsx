@@ -1,6 +1,7 @@
 import React from "react";
 import type { CmsComponent } from "../types";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
+import { getContainerById, getDividerById } from "../style/containerStyles";
 import { SectionDecorations } from "../decorations/DecorationLayer";
 import { TypewriterText } from "../../components/effects/TypewriterText";
 import { SHAPES } from "../shapes/shapeRegistry";
@@ -550,11 +551,25 @@ function ComponentNode({
         return wrapWithDecor(tokens, node, false);
       }
     case "divider":
-      return wrapWithDecor(tokens, <hr className={cx("border-white/10", className)} style={inlineStyle} />, false);
+      {
+        const preset = getDividerById(tokens?.dividerStyleId);
+        const node = preset?.svg ? (
+          <div className={className} style={inlineStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />
+        ) : preset ? (
+          <div className={className} style={inlineStyle} />
+        ) : (
+          <hr className={cx("border-white/10", className)} style={inlineStyle} />
+        );
+        return wrapWithDecor(tokens, node, false);
+      }
     case "spacer":
       return wrapWithDecor(tokens, <div className={cx(spacerClass(props.h), className)} style={inlineStyle} />, false);
     case "container":
-      return wrapWithDecor(tokens, <div className={cx("mx-auto w-full", className)} style={inlineStyle}>{renderChildren()}</div>, false);
+      {
+        const preset = getContainerById(tokens?.containerStyleId);
+        const children = preset?.innerClassName ? <div className={preset.innerClassName}>{renderChildren()}</div> : renderChildren();
+        return wrapWithDecor(tokens, <div className={cx("mx-auto w-full", className)} style={inlineStyle}>{children}</div>, false);
+      }
     case "stack":
       return wrapWithDecor(tokens, <div className={className} style={inlineStyle}>{renderChildren()}</div>, false);
     case "row":

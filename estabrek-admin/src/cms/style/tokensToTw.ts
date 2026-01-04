@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { TwTokens } from "./tokens";
 import type { CardTemplatePreset, HoverPresetExtended, TextEffectPreset, TwTokensExtended } from "./tokens-extended";
+import { getContainerById, getDividerById } from "./containerStyles";
 import { getInteractionEffectById } from "../effects/interactionEffects";
 import {
   bgMap,
@@ -227,6 +228,12 @@ function hasTypographyOverrides(tokens?: CmsTokens): boolean {
 export function tokensToClassName(tokens?: CmsTokens): string {
   if (!tokens) return "";
   const parts: string[] = [];
+
+  const containerPreset = getContainerById(tokens.containerStyleId);
+  if (containerPreset?.className) parts.push(containerPreset.className);
+
+  const dividerPreset = getDividerById(tokens.dividerStyleId);
+  if (dividerPreset?.className) parts.push(dividerPreset.className);
 
   // layout
   if (tokens.layout?.display) parts.push(displayMap[tokens.layout.display]);
