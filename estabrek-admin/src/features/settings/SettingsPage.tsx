@@ -7,6 +7,7 @@ import { Select } from "../../components/ui/Select";
 import { MediaUrlInput } from "../../components/media/MediaUrlInput";
 import { Card, CardContent, CardHeader } from "../../components/ui/Card";
 import { useSettings, useSettingsActions } from "../../hooks/useSettings";
+import { ALL_NAV_TEMPLATES, NAV_CATEGORY_LABELS_AR, getNavTemplateById } from "../../cms/nav/navTemplates";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -109,6 +110,7 @@ type CmsNavConfig = {
   enabled: boolean;
   mode: "dropdown" | "mega";
   gradient: "none" | "sunset" | "ocean" | "neon";
+  templateId: string;
   showIcons: boolean;
   items: CmsNavItem[];
 };
@@ -165,6 +167,14 @@ const THEME_PRESET_CARDS: CustomTheme[] = [
   { id: "plum_night", name: "Plum Night", bg: "#F8F5FF", text: "#1C102A", accent: "#A855F7" },
 ] as const;
 
+const CMS_NAV_TEMPLATE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "default", label: "افتراضي" },
+  ...ALL_NAV_TEMPLATES.map((tpl) => ({
+    value: tpl.id,
+    label: `${NAV_CATEGORY_LABELS_AR[tpl.category] ?? tpl.category} — ${tpl.nameAr}`,
+  })),
+];
+
 function normalizeHeader(v: any): HeaderConfig {
   const o = safeObj(v);
   return {
@@ -205,10 +215,13 @@ function normalizeHeader(v: any): HeaderConfig {
 function normalizeCmsNav(v: any): CmsNavConfig {
   const o = safeObj(v);
   const items = Array.isArray(o.items) ? o.items : [];
+  const rawTemplateId = typeof o.templateId === "string" ? o.templateId : "default";
+  const templateId = rawTemplateId === "default" || getNavTemplateById(rawTemplateId) ? rawTemplateId : "default";
   return {
     enabled: !!o.enabled,
     mode: (o.mode === "mega" ? "mega" : "dropdown"),
     gradient: (["none","sunset","ocean","neon"].includes(o.gradient) ? o.gradient : "none"),
+    templateId,
     showIcons: o.showIcons !== false,
     items: items.map((it: any) => ({
       id: String(it.id ?? cryptoId()),
@@ -376,6 +389,7 @@ export default function SettingsPage() {
     setScriptsBodyText(JSON.stringify(body, null, 2));
 
     setHeaderCfg(normalizeHeader(settings.header));
+    setCmsNavCfg(normalizeCmsNav((settings.header as any)?.cmsNav));
     setFooterCfg(normalizeFooter(settings.footer));
     setShowHeaderJson(false);
     setShowFooterJson(false);
@@ -387,7 +401,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!showHeaderJson) return;
-    setHeaderJsonDraft(JSON.stringify(headerCfg ?? {}, null, 2));
+    setHeaderJsonDraft(JSON.stringify({ ...(headerCfg ?? {}), cmsNav: cmsNavCfg }, null, 2));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showHeaderJson]);
 
@@ -401,6 +415,9 @@ export default function SettingsPage() {
     try {
       const parsed = headerJsonDraft?.trim() ? JSON.parse(headerJsonDraft) : {};
       setHeaderCfg(normalizeHeader(parsed));
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && "cmsNav" in (parsed as any)) {
+        setCmsNavCfg(normalizeCmsNav((parsed as any).cmsNav));
+      }
       setErrors((p) => ({ ...p, headerJson: undefined }));
     } catch {
       setErrors((p) => ({ ...p, headerJson: "JSON غير صالح" }));
@@ -525,7 +542,7 @@ export default function SettingsPage() {
                   </label>
 
                   <div className={cmsNavCfg.enabled ? "space-y-3" : "space-y-3 opacity-50 pointer-events-none"}>
-                    <div className="grid gap-3 md:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-5">
                       <Select
                         label="النمط"
                         value={cmsNavCfg.mode}
@@ -545,6 +562,12 @@ export default function SettingsPage() {
                           { value: "ocean", label: "محيط" },
                           { value: "neon", label: "نيون" },
                         ]}
+                      />
+                      <Select
+                        label="قالب التنقل"
+                        value={cmsNavCfg.templateId}
+                        onValueChange={(value) => setCmsNavCfg((p) => ({ ...p, templateId: value }))}
+                        options={CMS_NAV_TEMPLATE_OPTIONS}
                       />
                       <Select
                         label="الأيقونات"
@@ -1098,7 +1121,7 @@ export default function SettingsPage() {
                           variant="ghost"
                           size="sm"
                           type="button"
-                          onClick={() => setHeaderJsonDraft(JSON.stringify(headerCfg ?? {}, null, 2))}
+                          onClick={() => setHeaderJsonDraft(JSON.stringify({ ...(headerCfg ?? {}), cmsNav: cmsNavCfg }, null, 2))}
                         >
                           إعادة ضبط
                         </Button>
