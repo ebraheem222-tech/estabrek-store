@@ -336,7 +336,7 @@ function LayoutEditor({ tokens, onChange }: {
 
       <Divider title="الحجم" />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="العرض" labelAr="Width">
           <Input
             value={tokens?.size?.width || ""}
@@ -357,7 +357,7 @@ function LayoutEditor({ tokens, onChange }: {
 
       <Divider title="الموضع" />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="Position" labelAr="الموضع">
           <Select
             value={positionValue}
@@ -375,7 +375,7 @@ function LayoutEditor({ tokens, onChange }: {
       </div>
 
       {showOffsets ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="Top">
             <Input
               value={tokens?.layout?.top ?? ""}
@@ -436,7 +436,7 @@ function SpacingEditor({ tokens, onChange }: {
         />
       </FieldGroup>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="حشو أفقي" labelAr="Padding X">
           <Select
             value={tokens?.spacing?.paddingX || "none"}
@@ -463,7 +463,7 @@ function SpacingEditor({ tokens, onChange }: {
         />
       </FieldGroup>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="هامش علوي">
           <Select
             value={tokens?.spacing?.marginTop || "none"}
@@ -1092,7 +1092,7 @@ function EffectsEditor({ tokens, onChange }: {
       />
 
       {tokens?.counter?.enabled && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="من">
             <Input
               type="number"
@@ -1143,7 +1143,7 @@ function EffectsEditor({ tokens, onChange }: {
               placeholder="مطور ويب&#10;مصمم UI/UX&#10;مبرمج React"
             />
           </FieldGroup>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <FieldGroup label="سرعة الكتابة (ms)">
               <Input
                 type="number"
@@ -1200,7 +1200,7 @@ function AdvancedEditor({ tokens, onChange }: {
       />
 
       {tokens?.sticky?.enabled && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="المسافة من الأعلى">
             <Input
               value={tokens?.sticky?.top ?? "0"}
@@ -1228,7 +1228,7 @@ function AdvancedEditor({ tokens, onChange }: {
       />
 
       {tokens?.parallax?.enabled && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="السرعة">
             <Slider
               value={tokens?.parallax?.speed ?? 0.5}

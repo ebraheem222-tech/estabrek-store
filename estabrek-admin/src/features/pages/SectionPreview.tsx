@@ -1615,7 +1615,15 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const images = Array.isArray(d.images) ? d.images : [];
     const gridCols =
-      cols <= 2 ? "grid-cols-2" : cols === 3 ? "grid-cols-3" : cols === 4 ? "grid-cols-4" : cols === 5 ? "grid-cols-5" : "grid-cols-6";
+      cols <= 2
+        ? "grid-cols-2"
+        : cols === 3
+        ? "grid-cols-2 md:grid-cols-3"
+        : cols === 4
+        ? "grid-cols-2 md:grid-cols-4"
+        : cols === 5
+        ? "grid-cols-2 md:grid-cols-5"
+        : "grid-cols-2 md:grid-cols-6";
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;

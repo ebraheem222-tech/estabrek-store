@@ -598,7 +598,7 @@ export function ComponentsEditor({
             {!selected ? (
               <div className="text-white/60 text-sm">Select a component to edit.</div>
             ) : (
-              <div className="space-y-4 min-w-[960px]">
+              <div className="space-y-4 min-w-0">
                 <div className="grid gap-3 md:grid-cols-2">
                   <Input
                     label="Name"
@@ -741,7 +741,7 @@ export function ComponentsEditor({
                                 <div className="space-y-2">
                                   {(it.children ?? []).map((ch: any) => (
                                     <div key={ch.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
-                                      <div className="grid gap-2 md:grid-cols-[1fr,1fr,160px,auto] items-end">
+                                      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_auto] items-end">
                                         <Input label="Label" value={ch.label ?? ""} onValueChange={(v) => patchChild(it.id, ch.id, { label: v })} />
                                         <Input label="Href" value={ch.href ?? ""} onValueChange={(v) => patchChild(it.id, ch.id, { href: v })} />
                                         <Select
@@ -1354,7 +1354,7 @@ export function ComponentsEditor({
 
                   <div className="overflow-x-auto pb-2 -mx-1 px-1">
                     <div
-                      className="grid gap-5 min-w-[960px]"
+                      className="grid gap-5 min-w-0"
                       style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
                     >
                     <Select
@@ -1811,7 +1811,7 @@ export function ComponentsEditor({
                     <div className="mt-2 mb-2 text-xs font-semibold text-white/60">Decor (before/after)</div>
                     <div className="overflow-x-auto pb-2 -mx-1 px-1">
                       <div
-                        className="grid gap-5 min-w-[960px]"
+                        className="grid gap-5 min-w-0"
                         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
                       >
                       <Select
