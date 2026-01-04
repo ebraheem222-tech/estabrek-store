@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -100,11 +99,6 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const active = images[activeIdx] ?? images[0];
   const primary = images[0];
   const secondary = images[1];
-  const [mainReady, setMainReady] = useState(false);
-
-  useEffect(() => {
-    setMainReady(false);
-  }, [active?.url]);
 
   const canPrev = images.length > 1 && activeIdx > 0;
   const canNext = images.length > 1 && activeIdx < images.length - 1;
@@ -167,9 +161,6 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               aria-label="Open image"
             />
 
-            {!mainReady ? (
-              <LoadingIndicator className="pointer-events-none absolute inset-0 grid place-items-center" />
-            ) : null}
             <Image
               key={active.url}
               src={cldUrl(active.url, { w: 1400, c: "fit" })}
@@ -181,8 +172,6 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               }
               sizes="(max-width: 1024px) 100vw, 50vw"
               priority
-              onLoadingComplete={() => setMainReady(true)}
-              onError={() => setMainReady(true)}
             />
             {/* subtle hover swap to secondary when not in gallery mode */}
             {!galleryMode && secondary?.url && activeIdx === 0 ? (

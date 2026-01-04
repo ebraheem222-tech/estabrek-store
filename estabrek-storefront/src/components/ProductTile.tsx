@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatMoney, getProductPrimaryImage } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { cldUrl } from "@/lib/cloudinary";
 import { prefetchProductQuickAdd } from "@/lib/apiClient";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -57,11 +55,6 @@ function getSwatches(p: CatalogProduct): string[] {
 export function ProductTile({ product }: { product: CatalogProduct }) {
   const { primary, secondary } = getCardImages(product);
   const swatches = getSwatches(product);
-  const [primaryReady, setPrimaryReady] = useState(false);
-
-  useEffect(() => {
-    setPrimaryReady(false);
-  }, [primary]);
 
   return (
     <div
@@ -75,9 +68,6 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
         <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
           {primary ? (
             <>
-              {!primaryReady ? (
-                <LoadingIndicator className="pointer-events-none absolute inset-0 grid place-items-center" />
-              ) : null}
               <Image
                 src={cldUrl(primary, { w: 600, h: 750, c: "fill", g: "auto" })}
                 alt={product.title}
@@ -87,8 +77,6 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                   secondary ? "opacity-100 group-hover:opacity-0" : "opacity-100",
                 ].join(" ")}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                onLoadingComplete={() => setPrimaryReady(true)}
-                onError={() => setPrimaryReady(true)}
               />
               {secondary ? (
                 <Image
