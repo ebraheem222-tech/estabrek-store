@@ -2,8 +2,8 @@
 import React from "react";
 import { cn } from "./cn";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
-type Size = "sm" | "md" | "lg" | "icon";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "success" | "accent";
+type Size = "xs" | "sm" | "md" | "lg" | "icon" | "icon-sm";
 
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
@@ -14,8 +14,8 @@ type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base = [
-  "relative inline-flex items-center justify-center gap-2 font-medium transition-all duration-200",
-  "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950",
+  "relative inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 ease-smooth",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950",
   "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
   "active:scale-[0.98]",
 ].join(" ");
@@ -23,10 +23,17 @@ const base = [
 const variants: Record<Variant, string> = {
   primary: [
     "bg-white text-surface-950 hover:bg-white/90",
-    "shadow-[0_1px_2px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)]",
+    "shadow-[0_1px_2px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)]",
+    "hover:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_8px_20px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)]",
+  ].join(" "),
+  accent: [
+    "bg-gradient-to-b from-accent-500 to-accent-600 text-white",
+    "shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(139,92,246,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]",
+    "hover:shadow-[0_1px_2px_rgba(0,0,0,0.25),0_8px_20px_rgba(139,92,246,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]",
+    "hover:from-accent-400 hover:to-accent-500",
   ].join(" "),
   secondary: [
-    "bg-white/[0.06] text-white border border-white/[0.08] hover:bg-white/[0.1] hover:border-white/[0.12]",
+    "bg-white/[0.04] text-white border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.12]",
     "shadow-inner-light",
   ].join(" "),
   ghost: [
@@ -41,10 +48,12 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
+  xs: "h-7 px-2.5 text-xs rounded-lg",
   sm: "h-8 px-3 text-xs rounded-lg",
   md: "h-10 px-4 text-sm rounded-xl",
   lg: "h-12 px-6 text-base rounded-xl",
   icon: "h-10 w-10 rounded-xl",
+  "icon-sm": "h-8 w-8 rounded-lg",
 };
 
 export function Button({

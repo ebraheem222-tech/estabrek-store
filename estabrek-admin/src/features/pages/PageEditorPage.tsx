@@ -124,52 +124,129 @@ function SortableSectionCard({
     transition,
   };
 
+  const sectionTypeLabel = section.data?.__mode === "components" ? "COMPONENTS" : section.type;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={[
-        "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4",
-        isDragging ? "ring-2 ring-white/20" : "",
+        "group relative rounded-xl p-5 transition-all duration-300 ease-smooth",
+        "bg-gradient-to-br from-white/[0.03] via-white/[0.015] to-transparent",
+        "border border-white/[0.06] hover:border-white/[0.1]",
+        isDragging 
+          ? "ring-2 ring-accent-500/40 border-accent-500/30 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.4),0_0_30px_-10px_rgba(139,92,246,0.2)]" 
+          : "hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.3)]",
       ].join(" ")}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+      {/* Top highlight line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+          {/* Drag Handle */}
           <button
             type="button"
-            className="mt-0.5 select-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-sm opacity-70 hover:opacity-100 cursor-grab"
+            className="mt-1 flex-shrink-0 w-8 h-8 rounded-lg border border-white/[0.06] bg-white/[0.02] flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/[0.04] cursor-grab active:cursor-grabbing transition-all"
             title="اسحب للترتيب"
             {...attributes}
             {...listeners}
           >
-            ⋮⋮
+            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="5" cy="3" r="1.5" />
+              <circle cx="11" cy="3" r="1.5" />
+              <circle cx="5" cy="8" r="1.5" />
+              <circle cx="11" cy="8" r="1.5" />
+              <circle cx="5" cy="13" r="1.5" />
+              <circle cx="11" cy="13" r="1.5" />
+            </svg>
           </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold">{section.data?.__mode === "components" ? "COMPONENTS" : section.type}</div>
-              <span className="rounded-full border border-white/[0.10] bg-white/[0.04] px-2 py-0.5 text-[11px] opacity-80">#{section.order ?? 0}</span>
+          
+          <div className="flex-1 min-w-0">
+            {/* Section Header */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Type icon badge */}
+              <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-accent-500/10 border border-accent-500/20">
+                <svg className="w-3.5 h-3.5 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                </svg>
+                <span className="text-xs font-medium text-accent-300">{sectionTypeLabel}</span>
+              </div>
+              
+              {/* Order badge */}
+              <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/60 font-mono">
+                #{section.order ?? 0}
+              </span>
+              
+              {/* Visibility badge */}
               {section.isVisible ? (
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-200">ظاهر</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  ظاهر
+                </span>
               ) : (
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-200">مخفي</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  مخفي
+                </span>
               )}
             </div>
-            <div className="mt-2">
-              <ThemePreview theme={theme} className="rounded-2xl p-2">
-                <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview…</div>}>
-                  <LazySectionPreview type={section.type} data={previewData ?? section.data} />
-                </React.Suspense>
-              </ThemePreview>
+            
+            {/* Preview */}
+            <div className="mt-3">
+              <div className="rounded-xl overflow-hidden bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:16px_16px]">
+                <ThemePreview theme={theme} className="rounded-xl p-2">
+                  <React.Suspense fallback={<div className="p-6 text-xs text-white/40 text-center">جاري التحميل...</div>}>
+                    <LazySectionPreview type={section.type} data={previewData ?? section.data} />
+                  </React.Suspense>
+                </ThemePreview>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant={section.isVisible ? "ghost" : "secondary"} size="sm" onClick={onToggleVisible}>
-            {section.isVisible ? "إخفاء" : "إظهار"}
+        {/* Actions */}
+        <div className="flex items-center gap-1.5">
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            onClick={onToggleVisible}
+            title={section.isVisible ? "إخفاء" : "إظهار"}
+            className="text-white/50 hover:text-white"
+          >
+            {section.isVisible ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+            )}
           </Button>
-          <Button variant="secondary" size="sm" onClick={onEdit}>تعديل</Button>
-          <Button variant="danger" size="sm" onClick={onDelete}>حذف</Button>
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            onClick={onEdit}
+            title="تعديل"
+            className="text-white/50 hover:text-accent-400"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon-sm" 
+            onClick={onDelete}
+            title="حذف"
+            className="text-white/50 hover:text-red-400"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </Button>
         </div>
       </div>
     </div>
