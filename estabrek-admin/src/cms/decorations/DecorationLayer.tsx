@@ -391,9 +391,10 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
       ? resolvedColor
       : `linear-gradient(135deg, ${resolvedColor}, ${resolvedColor})`
     : "";
-  const solidColor = baseIsGradient ? parseGradientColor(resolvedColor, 0) : resolvedColor;
-  const isGradient = wantsGradient && isGradientValue(gradientValue);
-  const gradientId = isGradient ? `gradient-${config.shape}-${placement}` : null;
+  const gradientStops = wantsGradient && isGradientValue(gradientValue) ? parseGradientStops(gradientValue) : [];
+  const solidColor = baseIsGradient ? (parseGradientStops(resolvedColor)[0] ?? resolvedColor) : resolvedColor;
+  const isGradient = wantsGradient && gradientStops.length >= 2;
+  const gradientId = isGradient ? `${idPrefix}-gradient-${placement}` : null;
 
   const positionStyles = getPositionStyles(placement);
   const baseTransform = positionStyles.transform as string | undefined;
@@ -519,8 +520,11 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
           {isGradient && gradientId && (
             <defs>
               <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={parseGradientColor(gradientValue, 0)} />
-                <stop offset="100%" stopColor={parseGradientColor(gradientValue, 1)} />
+                {gradientStops.map((stopColor, idx) => {
+                  const denom = Math.max(1, gradientStops.length - 1);
+                  const offset = (idx / denom) * 100;
+                  return <stop key={`${gradientId}-${idx}`} offset={`${offset}%`} stopColor={stopColor} />;
+                })}
               </linearGradient>
             </defs>
           )}
@@ -560,8 +564,11 @@ export const DecorationLayer: React.FC<DecorationLayerProps> = ({
         {isGradient && gradientId && (
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={parseGradientColor(gradientValue, 0)} />
-              <stop offset="100%" stopColor={parseGradientColor(gradientValue, 1)} />
+              {gradientStops.map((stopColor, idx) => {
+                const denom = Math.max(1, gradientStops.length - 1);
+                const offset = (idx / denom) * 100;
+                return <stop key={`${gradientId}-${idx}`} offset={`${offset}%`} stopColor={stopColor} />;
+              })}
             </linearGradient>
           </defs>
         )}
@@ -601,10 +608,78 @@ export const SectionDecorations: React.FC<SectionDecorationsProps> = ({
   );
 };
 
-function parseGradientColor(gradient: string, stopIndex: 0 | 1): string {
-  const match = gradient.match(/linear-gradient\([^,]+,\s*([^,]+),\s*([^)]+)\)/);
-  if (match) {
-    return stopIndex === 0 ? match[1].trim() : match[2].trim();
+function parseGradientStops(gradient: string): string[] {
+  const fallback = ["#6FA6A1", "#5B918C"];
+  const raw = String(gradient ?? "").trim();
+  if (!raw || !isGradientValue(raw)) return [];
+
+  const open = raw.indexOf("(");
+  const close = raw.lastIndexOf(")");
+  if (open < 0 || close <= open) return fallback;
+
+  const inner = raw.slice(open + 1, close);
+  const args = splitCommaArgs(inner).map((x) => x.trim()).filter(Boolean);
+  if (args.length < 2) return fallback;
+
+  const first = args[0]?.trim() ?? "";
+  const startAt = isLikelyGradientDirection(first) ? 1 : 0;
+  const colors = args
+    .slice(startAt)
+    .map(extractLeadingColorToken)
+    .filter((x): x is string => !!x);
+
+  if (colors.length >= 2) return colors;
+  if (colors.length === 1) return [colors[0], colors[0]];
+  return fallback;
+}
+
+function splitCommaArgs(value: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let depth = 0;
+
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i];
+    if (ch === "(") depth++;
+    if (ch === ")") depth = Math.max(0, depth - 1);
+
+    if (ch === "," && depth === 0) {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    current += ch;
   }
-  return stopIndex === 0 ? "#6FA6A1" : "#5B918C";
+  if (current.trim()) parts.push(current);
+  return parts;
+}
+
+function isLikelyGradientDirection(value: string): boolean {
+  const v = String(value ?? "").trim().toLowerCase();
+  if (!v) return false;
+  if (v.startsWith("to ")) return true;
+  if (v.includes(" at ")) return true;
+  if (/(deg|grad|rad|turn)$/.test(v)) return true;
+  if (v.startsWith("circle") || v.startsWith("ellipse")) return true;
+  return false;
+}
+
+function extractLeadingColorToken(value: string): string | null {
+  const v = String(value ?? "").trim();
+  if (!v) return null;
+
+  if (/^[a-zA-Z][a-zA-Z0-9_-]*\(/.test(v)) {
+    let depth = 0;
+    for (let i = 0; i < v.length; i++) {
+      const ch = v[i];
+      if (ch === "(") depth++;
+      if (ch === ")") {
+        depth--;
+        if (depth === 0) return v.slice(0, i + 1).trim();
+      }
+    }
+  }
+
+  const token = v.split(/\s+/)[0];
+  return token ? token.trim() : null;
 }

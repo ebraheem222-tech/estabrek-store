@@ -210,12 +210,20 @@ function ColorPicker({ value, onChange, label }: {
   onChange: (v: string) => void;
   label?: string;
 }) {
+  const safeColorValue = (() => {
+    const v = String(value ?? "").trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+    if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+      return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+    }
+    return "#000000";
+  })();
   return (
     <div className="flex items-center gap-2">
       {label && <span className="text-sm text-white/70">{label}</span>}
       <input
         type="color"
-        value={value || "#000000"}
+        value={safeColorValue}
         onChange={(e) => onChange(e.target.value)}
         className="h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1 cursor-pointer"
       />
@@ -910,6 +918,14 @@ function DecorationsEditor({ decor, onChange }: {
                 value={layer?.customColor || ""}
                 onChange={(v) => onChange({ ...decor, [key]: { ...layer, customColor: v } })}
               />
+              <div className="mt-2 text-xs text-white/50">
+                يدعم:{" "}
+                <span dir="ltr" className="text-white/70">#RRGGBB</span>
+                {" "}أو{" "}
+                <span dir="ltr" className="text-white/70">
+                  linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7)
+                </span>
+              </div>
             </FieldGroup>
           ) : null}
 
@@ -929,6 +945,20 @@ function DecorationsEditor({ decor, onChange }: {
               max={100}
               step={5}
               suffix="%"
+            />
+          </FieldGroup>
+
+          <FieldGroup label="ترتيب الظهور">
+            <ButtonGroup
+              value={(layer?.zIndex ?? 0) >= 10 ? "above" : "below"}
+              onChange={(v) => {
+                const nextZ = v === "above" ? 20 : 0;
+                onChange({ ...decor, [key]: { ...layer, zIndex: nextZ } });
+              }}
+              options={[
+                { value: "below", label: "تحت المحتوى" },
+                { value: "above", label: "فوق المحتوى" },
+              ]}
             />
           </FieldGroup>
 
