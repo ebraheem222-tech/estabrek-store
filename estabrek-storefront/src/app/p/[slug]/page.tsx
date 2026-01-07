@@ -5,6 +5,7 @@ import { getProductBySlug } from "@/lib/api";
 import { formatMoney, getProductMinPrice } from "@/lib/catalog";
 import ProductDetail from "@/components/ProductDetail";
 import ShareButton from "@/components/ShareButton";
+import RecommendedProductsSection from "@/components/RecommendedProductsSection";
 
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
 import { listCategories } from "@/lib/api";
@@ -151,6 +152,7 @@ const productLd: any = {
             </div>
           ) : null}
 
+          <RecommendedProductsSection productId={(product as any).id} />
           <ShareButton title={product.title} />
     </div>
   );
