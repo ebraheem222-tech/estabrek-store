@@ -1,10 +1,11 @@
 // src/layouts/AdminLayout.tsx
-import React, { useEffect, useState, createContext, useContext } from "react";
+import React, { Suspense, useEffect, useState, createContext, useContext } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useSettings } from "../hooks/useSettings";
 import { cn } from "../components/ui/cn";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { Spinner } from "../components/ui/Spinner";
 import { applyAdminTheme } from "../theme/adminTheme";
 import { applyCursorTheme } from "../theme/cursorTheme";
 
@@ -398,7 +399,15 @@ export default function AdminLayout() {
             <div className="p-4 sm:p-6">
               <div className="max-w-7xl mx-auto animate-fade-in-up">
                 <ErrorBoundary title="حدث خطأ داخل الصفحة">
-                  <Outlet />
+                  <Suspense
+                    fallback={(
+                      <div className="flex items-center justify-center py-12">
+                        <Spinner size="lg" />
+                      </div>
+                    )}
+                  >
+                    <Outlet />
+                  </Suspense>
                 </ErrorBoundary>
               </div>
             </div>

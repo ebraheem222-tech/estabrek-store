@@ -1,5 +1,5 @@
 // src/routes/router.tsx
-import React from "react";
+import React, { lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
@@ -7,41 +7,42 @@ import AdminLayout from "../layouts/AdminLayout";
 import AuthLayout from "../layouts/AuthLayout";
 
 // features pages
-import LoginPage from "../features/auth/LoginPage";
-import TwoFactorPage from "../features/auth/TwoFactorPage";
-import ForgotPasswordPage from "../features/auth/ForgotPasswordPage";
-import ResetPasswordPage from "../features/auth/ResetPasswordPage";
+const LoginPage = lazy(() => import("../features/auth/LoginPage"));
+const TwoFactorPage = lazy(() => import("../features/auth/TwoFactorPage"));
+const ForgotPasswordPage = lazy(() => import("../features/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("../features/auth/ResetPasswordPage"));
 
-import DashboardPage from "../features/dashboard/DashboardPage";
+const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 
-import ProfilePage from "../features/account/ProfilePage";
-import EmailChangePage from "../features/account/EmailChangePage";
-import SecurityCenterPage from "../features/account/SecurityCenterPage";
+const ProfilePage = lazy(() => import("../features/account/ProfilePage"));
+const EmailChangePage = lazy(() => import("../features/account/EmailChangePage"));
+const SecurityCenterPage = lazy(() => import("../features/account/SecurityCenterPage"));
 
-import OrdersPage from "../features/orders/OrdersPage";
-import OrderDetailsPage from "../features/orders/OrderDetailsPage";
+const OrdersPage = lazy(() => import("../features/orders/OrdersPage"));
+const OrderDetailsPage = lazy(() => import("../features/orders/OrderDetailsPage"));
 
-import OutboxPage from "../features/outbox/OutboxPage";
-import OutboxDetailsPage from "../features/outbox/OutboxDetailsPage";
+const OutboxPage = lazy(() => import("../features/outbox/OutboxPage"));
+const OutboxDetailsPage = lazy(() => import("../features/outbox/OutboxDetailsPage"));
 
-import CategoriesPage from "../features/catalog/CategoriesPage";
-import ProductsPage from "../features/catalog/ProductsPage";
-import ProductEditorPage from "../features/catalog/ProductEditorPage";
-import SizesPage from "../features/catalog/SizesPage";
+const CategoriesPage = lazy(() => import("../features/catalog/CategoriesPage"));
+const ProductsPage = lazy(() => import("../features/catalog/ProductsPage"));
+const ProductEditorPage = lazy(() => import("../features/catalog/ProductEditorPage"));
+const SizesPage = lazy(() => import("../features/catalog/SizesPage"));
 
-import LowStockPage from "../features/inventory/LowStockPage";
-import InventoryAdjustmentsPage from "../features/inventory/InventoryAdjustmentsPage";
+const LowStockPage = lazy(() => import("../features/inventory/LowStockPage"));
+const InventoryAdjustmentsPage = lazy(() => import("../features/inventory/InventoryAdjustmentsPage"));
 
-import CouponsPage from "../features/discounts/CouponsPage";
+const CouponsPage = lazy(() => import("../features/discounts/CouponsPage"));
+const CouponTesterPage = lazy(() => import("../features/discounts/CouponTesterPage"));
 
-import CouponTesterPage from "../features/discounts/CouponTesterPage";
-import SettingsPage from "../features/settings/SettingsPage";
-import NavPage from "../features/nav/NavPage";
+const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
+const NavPage = lazy(() => import("../features/nav/NavPage"));
 
-import PagesListPage from "../features/pages/PagesListPage";
-import PageEditorPage from "../features/pages/PageEditorPage";
-import PagePreviewPage from "../features/pages/PagePreviewPage";
-import ReviewsPage from "../features/ugc/ReviewsPage";
+const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
+const PageEditorPage = lazy(() => import("../features/pages/PageEditorPage"));
+const PagePreviewPage = lazy(() => import("../features/pages/PagePreviewPage"));
+
+const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
 function NotFound() {

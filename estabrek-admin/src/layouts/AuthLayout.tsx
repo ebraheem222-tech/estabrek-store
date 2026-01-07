@@ -1,5 +1,6 @@
 // src/layouts/AuthLayout.tsx
-import React from "react";
+import React, { Suspense } from "react";
+import { Spinner } from "../components/ui/Spinner";
 
 type Props = {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ export default function AuthLayout({ children }: Props) {
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center p-6">
-        {children}
+        <Suspense fallback={<Spinner size="lg" />}>{children}</Suspense>
       </div>
 
       {/* Footer */}

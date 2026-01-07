@@ -1276,9 +1276,10 @@ export default function PageEditorPage() {
                 onClick={() => {
                   const next = !advancedJson;
                   setAdvancedJson(next);
-                  // keep raw in sync
-                  const raw = JSON.stringify(sectionDataObj ?? {}, null, 2);
-                  setSectionDataRaw(raw);
+                  if (next) {
+                    // keep raw in sync (only when opening Advanced JSON)
+                    setSectionDataRaw(JSON.stringify(sectionDataObj ?? {}, null, 2));
+                  }
                   setSectionErrors({});
                 }}
               >
@@ -1304,7 +1305,6 @@ export default function PageEditorPage() {
                       errors={sectionErrors.fields}
                       onChange={(v) => {
                         setSectionDataObj(v);
-                        setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
                         setSectionErrors({});
                         setSectionTemplateId("__custom__");
                       }}
@@ -1318,7 +1318,6 @@ export default function PageEditorPage() {
                           onChange={(next) => {
                             const v = { ...(sectionDataObj ?? {}), twTokens: next };
                             setSectionDataObj(v);
-                            setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
                             setSectionErrors({});
                             setSectionTemplateId("__custom__");
                           }}
@@ -1332,7 +1331,6 @@ export default function PageEditorPage() {
                       value={sectionDataObj}
                       onChange={(v) => {
                         setSectionDataObj(v);
-                        setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
                         setSectionErrors({});
                         setSectionTemplateId("__custom__");
                       }}

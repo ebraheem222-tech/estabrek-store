@@ -10,7 +10,6 @@ import { listCategories, type CatalogCategory } from "../../api/catalog.api";
 import DOMPurify from "dompurify";
 import type { TwTokens } from "../../cms/style/tokens";
 import type { CmsComponent } from "../../cms/types";
-import { SectionStylingPanel } from "./SectionEditorImports";
 import {
   DndContext,
   PointerSensor,
@@ -4149,10 +4148,18 @@ export function SectionEditor({
     <div className="space-y-4">
       {content}
       <SectionLayoutEditor value={baseValue} onChange={onChange} />
-      <SectionStylingPanel
-        tokens={sectionTokens}
-        onChange={(next) => onChange({ ...baseValue, twTokens: next })}
-      />
+      <React.Suspense
+        fallback={
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/60">
+            Loading styling.
+          </div>
+        }
+      >
+        <LazySectionStylingPanel
+          tokens={sectionTokens}
+          onChange={(next) => onChange({ ...baseValue, twTokens: next })}
+        />
+      </React.Suspense>
     </div>
   );
 }
