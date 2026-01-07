@@ -510,15 +510,15 @@
     color: var(--cms-text-color) !important;
   }
 
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-size-override) { font-size: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-weight-override) { font-weight: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-lineheight-override) { line-height: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-letterspacing-override,.cms-text-effects)) { letter-spacing: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-align-override) { text-align: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(.cms-typography-family-override) { font-family: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-transform-override,.cms-text-effects)) { text-transform: inherit; }
-  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-decoration-override,.cms-text-effects)) { text-decoration: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(.cms-typography-size-override) { font-size: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(.cms-typography-weight-override) { font-weight: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(.cms-typography-lineheight-override) { line-height: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(:where(.cms-typography-letterspacing-override,.cms-text-effects)) { letter-spacing: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(.cms-typography-align-override) { text-align: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(.cms-typography-family-override) { font-family: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(:where(.cms-typography-transform-override,.cms-text-effects)) { text-transform: inherit; }
+  .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(:where(.cms-typography-decoration-override,.cms-text-effects)) { text-decoration: inherit; }
 
   /* Animation delay presets (ms) */
   .animation-delay-0 { animation-delay: 0ms; }

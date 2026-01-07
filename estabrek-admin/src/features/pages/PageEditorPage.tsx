@@ -1203,7 +1203,7 @@ export default function PageEditorPage() {
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4 overflow-x-auto">
+        <div dir="rtl" className="space-y-4">
           {!componentsOnlyMode ? (
             <>
               <Select
