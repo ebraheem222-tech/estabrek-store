@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatMoney, getProductPrimaryImage, getProductMinPrice } from "@/lib/catalog";
@@ -60,12 +60,47 @@ function buildSwatches(p: CatalogProduct): Swatch[] {
   return out;
 }
 
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return true;
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
+
+function buildAutoVariantImages(p: CatalogProduct, primary?: string | null): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  const push = (url?: string | null) => {
+    const u = String(url ?? "").trim();
+    if (!u) return;
+    const key = u.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(u);
+  };
+
+  push(primary ?? null);
+
+  const items = p.items ?? [];
+  for (const it of items) {
+    const imgs = it.images ?? [];
+    const primaryImg = imgs.find((im) => im.isPrimary)?.url ?? imgs[0]?.url ?? it.primaryImageUrl ?? imgs[1]?.url ?? it.secondaryImageUrl ?? null;
+    push(primaryImg);
+    if (out.length >= 8) break;
+  }
+
+  return out;
+}
+
 export default function ProductCardClient({ product }: { product: CatalogProduct }) {
   const router = useRouter();
   const { primary, secondary } = useMemo(() => getCardImages(product), [product]);
   const swatches = useMemo(() => buildSwatches(product), [product]);
+  const [isHovered, setIsHovered] = useState(false);
   const [hoverImg, setHoverImg] = useState<string | null>(null);
   const minPrice = useMemo(() => getProductMinPrice(product), [product]);
+  const autoVariantImages = useMemo(() => buildAutoVariantImages(product, primary), [product, primary]);
+  const canAutoRotate = autoVariantImages.length > 1;
+  const [autoIndex, setAutoIndex] = useState(0);
 
   const badge = useMemo(() => {
     const items = (product.items ?? []) as any[];
@@ -86,7 +121,66 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
     return null;
   }, [product]);
 
-  const baseImg = hoverImg || primary || "";
+  const targetImg = useMemo(() => {
+    if (hoverImg) return hoverImg;
+    if (isHovered && canAutoRotate) return autoVariantImages[autoIndex] ?? primary ?? "";
+    if (isHovered && secondary) return secondary;
+    return primary ?? "";
+  }, [autoIndex, autoVariantImages, canAutoRotate, hoverImg, isHovered, primary, secondary]);
+
+  const [shownImg, setShownImg] = useState<string>(targetImg);
+  const [prevImg, setPrevImg] = useState<string | null>(null);
+  const [fadeIn, setFadeIn] = useState(true);
+  const shownImgRef = useRef(shownImg);
+  const rafRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    shownImgRef.current = shownImg;
+  }, [shownImg]);
+
+  useEffect(() => {
+    if (!targetImg) {
+      setShownImg("");
+      setPrevImg(null);
+      setFadeIn(true);
+      return;
+    }
+
+    const current = shownImgRef.current;
+    if (targetImg === current) return;
+
+    if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+    if (timeoutRef.current != null) window.clearTimeout(timeoutRef.current);
+
+    setPrevImg(current || null);
+    setShownImg(targetImg);
+    setFadeIn(false);
+
+    rafRef.current = window.requestAnimationFrame(() => setFadeIn(true));
+    timeoutRef.current = window.setTimeout(() => {
+      setPrevImg(null);
+      timeoutRef.current = null;
+    }, 500);
+
+    return () => {
+      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+      if (timeoutRef.current != null) window.clearTimeout(timeoutRef.current);
+    };
+  }, [targetImg]);
+
+  useEffect(() => {
+    if (!isHovered) return;
+    if (hoverImg) return;
+    if (!canAutoRotate) return;
+    if (prefersReducedMotion()) return;
+
+    const interval = window.setInterval(() => {
+      setAutoIndex((i) => (i + 1) % autoVariantImages.length);
+    }, 1300);
+
+    return () => window.clearInterval(interval);
+  }, [autoVariantImages.length, canAutoRotate, hoverImg, isHovered]);
 
   return (
     <div
@@ -99,6 +193,13 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
       onMouseEnter={() => {
         // page prefetch for instant navigation feel
         router.prefetch(`/p/${product.slug}`);
+        setIsHovered(true);
+        setAutoIndex(0);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setHoverImg(null);
+        setAutoIndex(0);
       }}
     >
       <Link href={`/p/${product.slug}`} className="block">
@@ -119,35 +220,30 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
               </span>
             </div>
           ) : null}
-          {baseImg ? (
+          {shownImg ? (
             <>
-              <Image
-                src={cldUrl(baseImg, { w: 600, h: 750, c: "fill", g: "auto" })}
-                alt={product.title}
-                fill
-                className={
-                  // Luxury hover: gentle zoom
-                  "object-cover transition duration-500 group-hover:scale-[1.03] " +
-                  "will-change-transform " +
-                  (hoverImg
-                    ? "opacity-100"
-                    : secondary
-                    ? "opacity-100 group-hover:opacity-0"
-                    : "opacity-100")
-                }
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-              />
-
-              {/* default hover swap to secondary */}
-              {!hoverImg && secondary ? (
+              {prevImg ? (
                 <Image
-                  src={cldUrl(secondary, { w: 600, h: 750, c: "fill", g: "auto" })}
+                  src={cldUrl(prevImg, { w: 600, h: 750, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
-                  className="object-cover opacity-0 transition duration-500 group-hover:opacity-100"
+                  className={
+                    "object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] will-change-transform " +
+                    (fadeIn ? "opacity-0" : "opacity-100")
+                  }
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
               ) : null}
+              <Image
+                src={cldUrl(shownImg, { w: 600, h: 750, c: "fill", g: "auto" })}
+                alt={product.title}
+                fill
+                className={
+                  "object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] will-change-transform " +
+                  (prevImg ? (fadeIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1") : "opacity-100")
+                }
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              />
             </>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-zinc-500">No image</div>
