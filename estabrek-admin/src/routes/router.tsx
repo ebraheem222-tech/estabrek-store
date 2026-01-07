@@ -36,6 +36,7 @@ const CouponsPage = lazy(() => import("../features/discounts/CouponsPage"));
 const CouponTesterPage = lazy(() => import("../features/discounts/CouponTesterPage"));
 
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
+const ChatbotPage = lazy(() => import("../features/chatbot/ChatbotPage"));
 const NavPage = lazy(() => import("../features/nav/NavPage"));
 
 const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
@@ -141,6 +142,7 @@ export default function AppRouter() {
           
               <Route path="discounts/coupons/test" element={<CouponTesterPage />} />{/* settings */}
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="chatbot" element={<ChatbotPage />} />
 
           {/* nav + pages */}
           <Route path="nav" element={<NavPage />} />

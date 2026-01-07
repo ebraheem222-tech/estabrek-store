@@ -151,6 +151,13 @@ export const ENDPOINTS = {
         commentStatus: (id: string) => `/admin/ugc/comments/${id}/status`,
         commentById: (id: string) => `/admin/ugc/comments/${id}`,
       },
+
+      chatbot: {
+        entries: "/admin/chatbot/entries",
+        entryById: (id: string) => `/admin/chatbot/entries/${id}`,
+        conversations: "/admin/chatbot/conversations",
+        conversationById: (id: string) => `/admin/chatbot/conversations/${id}`,
+      },
       
     },
   } as const;

@@ -76,6 +76,16 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.75.75 0 011.04 0l2.39 2.32a.75.75 0 00.424.201l3.307.48a.75.75 0 01.415 1.279l-2.39 2.33a.75.75 0 00-.216.664l.564 3.296a.75.75 0 01-1.088.79l-2.96-1.556a.75.75 0 00-.698 0l-2.96 1.556a.75.75 0 01-1.088-.79l.564-3.296a.75.75 0 00-.216-.664l-2.39-2.33a.75.75 0 01.415-1.279l3.307-.48a.75.75 0 00.424-.201l2.39-2.32z" />
     </svg>
   ),
+  chatbot: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25-4.03 8.25-9 8.25c-1.446 0-2.812-.28-4.03-.78L3 20.25l1.053-3.158A7.83 7.83 0 012.25 12z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h9M7.5 13.5h5.25" />
+    </svg>
+  ),
   profile: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -134,6 +144,7 @@ const NAV_DISCOUNTS: NavItem[] = [
 
 const NAV_SITE: NavItem[] = [
   { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings },
+  { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot },
   { to: "/admin/nav", label: "القوائم", icon: Icons.nav },
   { to: "/admin/pages", label: "الصفحات", icon: Icons.pages },
   { to: "/admin/ugc/reviews", label: "التقييمات", icon: Icons.reviews },
