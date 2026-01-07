@@ -899,7 +899,7 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
       return [
         {
           id: "components_only",
-          label: "Components فقط",
+          label: "تنسيق متقدم لكل componets",
           data: {
             title: "",
             html: "",
