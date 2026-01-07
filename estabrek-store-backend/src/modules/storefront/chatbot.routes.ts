@@ -55,6 +55,7 @@ r.post("/message", validate({ body: ChatbotMessageBody }), asyncHandler(async (r
       reply: reply.answer,
       mode: reply.mode,
       sources: reply.sources,
+      products: reply.products ?? [],
     });
   }
 
@@ -81,8 +82,8 @@ r.post("/message", validate({ body: ChatbotMessageBody }), asyncHandler(async (r
     reply: reply.answer,
     mode: reply.mode,
     sources: reply.sources,
+    products: reply.products ?? [],
   });
 }));
 
 export default r;
-

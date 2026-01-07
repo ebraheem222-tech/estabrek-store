@@ -1,5 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
+import type { RecommendedProduct } from "../storefront/recommend.service.js";
+import { recommendProducts } from "../storefront/recommend.service.js";
 
 type Locale = "ar" | "he" | "en";
 
@@ -10,6 +12,7 @@ type ChatbotReply = {
   mode: "kb" | "openai" | "fallback";
   sources: ChatbotSource[];
   shouldHandoff?: boolean;
+  products?: RecommendedProduct[];
 };
 
 const STOP_WORDS = new Set([
@@ -54,6 +57,20 @@ function scoreEntry(tokens: string[], entry: { title: string; answer: string; ta
   // small boost for curated entries
   score += Math.max(-10, Math.min(10, entry.priority)) * 0.1;
   return score;
+}
+
+function isRecommendationIntent(message: string): boolean {
+  const s = String(message ?? "").toLowerCase();
+  if (!s.trim()) return false;
+  // Arabic + English triggers (keep simple)
+  return (
+    s.includes("رشح") ||
+    s.includes("ترشيح") ||
+    s.includes("اقترح") ||
+    s.includes("اقتراح") ||
+    s.includes("recommend") ||
+    s.includes("suggest")
+  );
 }
 
 async function getSupportContact() {
@@ -107,6 +124,36 @@ export async function generateChatbotReply(opts: {
   const locale = opts.locale ?? "ar";
   const msg = String(opts.message ?? "").trim();
   const tokens = tokenize(msg);
+
+  // Product recommendation flow (uses AI ranking if available, always has fallback)
+  if (isRecommendationIntent(msg)) {
+    const rec = await recommendProducts({ locale, message: msg, limit: 6 });
+    const products = rec.products ?? [];
+
+    const lines = products.map((p) => `- ${p.title} — /p/${encodeURIComponent(p.slug)}`).join("\n");
+    const tail =
+      locale === "en"
+        ? "\n\nTell me your budget, color, and size and I’ll refine the picks."
+        : locale === "he"
+        ? "\n\nתגיד/י לי תקציב, צבע ומידה ואדייק את ההמלצות."
+        : "\n\nقلّي ميزانيتك/اللون/المقاس وراح أضبط الترشيحات أكثر.";
+
+    const answerBase =
+      locale === "en"
+        ? `Sure — here are some recommendations:\n${lines || "- (no products found)"}`
+        : locale === "he"
+        ? `בטח — הנה כמה המלצות:\n${lines || "- (לא נמצאו מוצרים)"}`
+        : `أكيد — هذه ترشيحات ممكن تعجبك:\n${lines || "- (لم يتم العثور على منتجات)"}`
+    ;
+
+    return {
+      answer: `${answerBase}${tail}`,
+      mode: rec.source === "openai" ? "openai" : "fallback",
+      sources: [],
+      products,
+      shouldHandoff: false,
+    };
+  }
 
   // Pull all enabled entries for locale (bounded) and score client-side (simple + fast enough for small KBs).
   const all = await prisma.chatbotEntry.findMany({
@@ -174,4 +221,3 @@ Rules:
   const contact = await getSupportContact();
   return { answer: fallbackText(locale, contact), mode: "fallback", sources: [] };
 }
-

@@ -5,11 +5,14 @@ import { validate } from "../../utils/validate.js";
 import { getPublicSettings } from "../settings/settings.service.js";
 import { PageBySlugQuery, StorefrontListProductsQuery, StorefrontSearchSuggestQuery } from "./storefront.schemas.js";
 import chatbot from "./chatbot.routes.js";
+import recommend from "./recommend.routes.js";
 
 const r = Router();
 
 // public chatbot helper (knowledge-base + optional AI)
 r.use("/chatbot", chatbot);
+// product recommendations (AI + fallback)
+r.use("/recommend", recommend);
 
 /**
  * Storefront Contract (public, no auth)
