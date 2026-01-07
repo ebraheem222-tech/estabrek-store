@@ -12,6 +12,7 @@ import ugc from "../ugc/ugc.controller.js";
 import uploads from "./uploads.controller.js";
 import inventory from "./inventory.controller.js";
 import coupons from "./coupons.controller.js";
+import chatbot from "./chatbot.controller.js";
 
 const r = Router();
 
@@ -32,5 +33,6 @@ r.use("/outbox", outbox);
 r.use("/uploads", uploads);
 r.use("/inventory", inventory);
 r.use("/coupons", coupons);
+r.use("/chatbot", chatbot);
 
 export default r;

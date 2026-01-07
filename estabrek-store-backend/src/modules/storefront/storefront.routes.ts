@@ -4,8 +4,12 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { getPublicSettings } from "../settings/settings.service.js";
 import { PageBySlugQuery, StorefrontListProductsQuery, StorefrontSearchSuggestQuery } from "./storefront.schemas.js";
+import chatbot from "./chatbot.routes.js";
 
 const r = Router();
+
+// public chatbot helper (knowledge-base + optional AI)
+r.use("/chatbot", chatbot);
 
 /**
  * Storefront Contract (public, no auth)
