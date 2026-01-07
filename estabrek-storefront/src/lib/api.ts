@@ -18,6 +18,7 @@ const ProductsListZ = z.any();
 const ProductZ = z.any();
 const SettingsZ = z.any();
 const IdsZ = z.any();
+const RecommendZ = z.any();
 
 export const getBootstrap = cache(async (): Promise<StorefrontBootstrap> => {
   const url = `${baseUrl()}/storefront/bootstrap`;
@@ -145,6 +146,49 @@ export const getBestSellersIds = cache(async (limit: number = 12): Promise<strin
   const json = await res.json();
   const parsed = IdsZ.parse(json) as any;
   return Array.isArray(parsed?.productIds) ? parsed.productIds : [];
+});
+
+// -------------------------------
+// Storefront AI helpers (recommendations)
+// -------------------------------
+
+export type RecommendedProduct = {
+  id: string;
+  slug: string;
+  title: string;
+  imageUrl?: string | null;
+  minPrice?: number | null;
+  categoryName?: string | null;
+};
+
+export const recommendProducts = cache(async (params: {
+  locale?: "ar" | "he" | "en";
+  message?: string;
+  productId?: string;
+  limit?: number;
+  excludeIds?: string[];
+}): Promise<{ ok: true; source: "openai" | "fallback"; products: RecommendedProduct[] }> => {
+  const url = `${baseUrl()}/storefront/recommend/products`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params ?? {}),
+      next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
+    });
+    if (!res.ok) {
+      return { ok: true, source: "fallback", products: [] };
+    }
+    const json = await res.json();
+    const parsed = RecommendZ.parse(json) as any;
+    return {
+      ok: true,
+      source: parsed?.source === "openai" ? "openai" : "fallback",
+      products: Array.isArray(parsed?.products) ? (parsed.products as RecommendedProduct[]) : [],
+    };
+  } catch {
+    return { ok: true, source: "fallback", products: [] };
+  }
 });
 
 

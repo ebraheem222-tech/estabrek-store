@@ -1,14 +1,25 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { cldUrl } from "@/lib/cloudinary";
+import { formatMoney } from "@/lib/catalog";
 
 type Role = "user" | "assistant";
+
+type RecommendedProduct = {
+  id: string;
+  slug: string;
+  title: string;
+  imageUrl?: string | null;
+  minPrice?: number | null;
+};
 
 type Msg = {
   id: string;
   role: Role;
   text: string;
   at: number;
+  products?: RecommendedProduct[];
 };
 
 type ApiResponse = {
@@ -16,6 +27,7 @@ type ApiResponse = {
   conversationId?: string;
   reply?: string;
   error?: string;
+  products?: RecommendedProduct[];
 };
 
 const STORAGE_KEY = "estabrek_chatbot_v1";
@@ -121,7 +133,8 @@ export default function ChatWidget() {
       if (!replyText) throw new Error(json?.error || "حدث خطأ");
 
       if (json?.conversationId) setConversationId(json.conversationId);
-      setMessages((m) => [...m, { id: uid(), role: "assistant", text: replyText, at: Date.now() }]);
+      const products = Array.isArray(json?.products) ? json.products : [];
+      setMessages((m) => [...m, { id: uid(), role: "assistant", text: replyText, at: Date.now(), products }]);
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "حدث خطأ");
       setMessages((m) => [
@@ -213,15 +226,47 @@ export default function ChatWidget() {
           <div className="max-h-[52vh] space-y-2 overflow-auto px-3 py-3">
             {messages.map((m) => (
               <div key={m.id} className={m.role === "user" ? "flex justify-start" : "flex justify-end"}>
-                <div
-                  className={
-                    "max-w-[86%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-relaxed " +
-                    (m.role === "user"
-                      ? "bg-black text-white"
-                      : "bg-[color:var(--accent-1)]/15 text-black border border-black/10")
-                  }
-                >
-                  {m.text}
+                <div className="max-w-[90%]">
+                  <div
+                    className={
+                      "whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-relaxed " +
+                      (m.role === "user"
+                        ? "bg-black text-white"
+                        : "bg-[color:var(--accent-1)]/15 text-black border border-black/10")
+                    }
+                  >
+                    {m.text}
+                  </div>
+
+                  {m.role === "assistant" && m.products?.length ? (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {m.products.slice(0, 6).map((p) => (
+                        <a
+                          key={p.id}
+                          href={`/p/${encodeURIComponent(p.slug)}`}
+                          className="overflow-hidden rounded-xl border border-black/10 bg-white hover:bg-white/90 transition"
+                        >
+                          <div className="aspect-[4/3] w-full bg-black/[0.04]">
+                            {p.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={cldUrl(p.imageUrl, { w: 320, h: 240, c: "fill", g: "auto" })}
+                                alt={p.title}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="p-2">
+                            <div className="line-clamp-2 text-[12px] font-semibold text-black">{p.title}</div>
+                            <div className="mt-1 text-[11px] text-black/60">
+                              {p.minPrice != null ? formatMoney(p.minPrice, "ILS") : ""}
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -275,4 +320,3 @@ export default function ChatWidget() {
     </div>
   );
 }
-
