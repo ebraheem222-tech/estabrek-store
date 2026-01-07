@@ -463,7 +463,7 @@ export function ComponentsEditor({
   const components = useMemo(() => getComponents(data), [data]);
 
   const [kindToAdd, setKindToAdd] = useState<CmsComponentKind>("text");
-  const [showAdvancedStyle, setShowAdvancedStyle] = useState(false);
+  const [showAdvancedStyle, setShowAdvancedStyle] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(components[0]?.id ?? null);
 
   const selected = components.find((c) => c.id === selectedId) ?? null;
@@ -1349,6 +1349,7 @@ export function ComponentsEditor({
                 )}
 
                 {/* Tokens */}
+                {false && (
                 <div className="rounded-xl border border-white/10 bg-white/[0.015] p-3">
                   <div className="text-xs font-semibold text-white/70 mb-3">Design (Tailwind presets)</div>
 
@@ -2126,11 +2127,12 @@ export function ComponentsEditor({
                     </div>
                   </div>
                 </div>
+                )}
 
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-white/70">Advanced styling</div>
+                  <div className="text-xs font-semibold text-white/70">تنسيق القسم المتقدم</div>
                   <Button size="sm" variant="ghost" onClick={() => setShowAdvancedStyle((v) => !v)}>
-                    {showAdvancedStyle ? "Hide" : "Show"}
+                    {showAdvancedStyle ? "إخفاء" : "إظهار"}
                   </Button>
                 </div>
                 {showAdvancedStyle ? (
