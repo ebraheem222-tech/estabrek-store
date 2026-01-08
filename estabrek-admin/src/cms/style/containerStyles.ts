@@ -582,7 +582,7 @@ export const SIMPLE_DIVIDERS: DividerStyle[] = [
   { id: "divider-solid", name: "Solid", nameAr: "صلب", category: "simple", className: "w-full h-px bg-gray-300" },
   { id: "divider-dashed", name: "Dashed", nameAr: "متقطع", category: "simple", className: "w-full h-px border-t border-dashed border-gray-300" },
   { id: "divider-dotted", name: "Dotted", nameAr: "منقط", category: "simple", className: "w-full h-px border-t border-dotted border-gray-300" },
-  { id: "divider-double", name: "Double", nameAr: "مزدوج", category: "simple", className: "w-full h-1 border-t-2 border-b-2 border-gray-300" },
+  { id: "divider-double", name: "Double", nameAr: "مزدوج", category: "simple", className: "w-full h-1 border-t-2 border-b-2 border-solid border-gray-300" },
   { id: "divider-thick", name: "Thick", nameAr: "سميك", category: "simple", className: "w-full h-1 bg-gray-300 rounded-full" },
   { id: "divider-thin", name: "Thin", nameAr: "رفيع", category: "simple", className: "w-full h-[0.5px] bg-gray-200" },
   { id: "divider-gradient", name: "Gradient", nameAr: "متدرج", category: "simple", className: "w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" },

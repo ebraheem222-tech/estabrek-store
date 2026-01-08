@@ -4,6 +4,7 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { cn } from "../../components/ui/cn";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
+import { getDividerById } from "../../cms/style/containerStyles";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import {
   BG_PRESETS,
@@ -2360,7 +2361,16 @@ export function ComponentsEditor({
                           </svg>
                         );
                       })()}
-                      {selected.kind === "divider" && <hr className="border-white/15" style={previewStyle} />}
+                      {selected.kind === "divider" && (() => {
+                        const preset = getDividerById(previewTokens?.dividerStyleId);
+                        if (preset?.svg) {
+                          return <div className={previewClassName} style={previewStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />;
+                        }
+                        if (preset) {
+                          return <div className={previewClassName} style={previewStyle} />;
+                        }
+                        return <hr className={cn("border-white/15", previewClassName)} style={previewStyle} />;
+                      })()}
                       {selected.kind === "spacer" && <div className={spacerClass(selected.props?.h)} style={previewStyle} />}
 
                       {selected && isChildCapable(selected.kind) && (
