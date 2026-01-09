@@ -41,7 +41,7 @@ import {
 } from "../../api/pages.api";
 import { SectionEditor, defaultDataForType, templatesForType } from "./SectionEditor";
 import { ComponentsEditor, createDefaultComponent } from "./ComponentsEditor";
-import { PageRenderer } from "./PageRenderer";
+import { PageRenderer, type SelectedElement } from "./PageRenderer";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import { ThemePreview } from "../../components/ThemePreview";
 import { toast } from "../../lib/toast";
@@ -406,6 +406,38 @@ function setDeepValue(target: any, path: Array<string | number>, value: any): an
   return clone;
 }
 
+function getDeepValue(target: any, path: Array<string | number>): any {
+  return path.reduce((acc, key) => (acc == null ? undefined : (acc as any)[key]), target);
+}
+
+function guessTokensPath(valuePath: Array<string | number>, data: any, kind?: string): Array<string | number> | null {
+  if (!valuePath.length || !data) return null;
+  if (kind === "card") {
+    const path = [...valuePath, "twTokens"];
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  if (kind === "image") {
+    const path = [...valuePath.slice(0, -1), "imageTokens"];
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  const last = valuePath[valuePath.length - 1];
+  const parent = valuePath[valuePath.length - 2];
+  const candidates: Array<Array<string | number>> = [];
+  if (last === "label" && (parent === "primaryButton" || parent === "secondaryButton")) {
+    candidates.push([...valuePath.slice(0, -2), `${parent}Tokens`]);
+  }
+  if (typeof last === "string") {
+    if (last === "buttonLabel") candidates.push([...valuePath.slice(0, -1), "buttonTokens"]);
+    if (last === "ctaLabel") candidates.push([...valuePath.slice(0, -1), "ctaTokens"]);
+    if (last === "linkLabel") candidates.push([...valuePath.slice(0, -1), "linkTokens"]);
+    candidates.push([...valuePath.slice(0, -1), `${last}Tokens`]);
+  }
+  for (const path of candidates) {
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  return null;
+}
+
 export default function PageEditorPage() {
   const nav = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -440,6 +472,7 @@ export default function PageEditorPage() {
   const [showAdvancedStyling, setShowAdvancedStyling] = useState(false);
   const [selectionBusy, setSelectionBusy] = useState(false);
   const [showInlineStyling, setShowInlineStyling] = useState(true);
+  const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -588,8 +621,16 @@ export default function PageEditorPage() {
     } else {
       setShowInlineStyling(false);
       setShowAdvancedStyling(false);
+      setSelectedElement(null);
     }
   }, [selectedSectionId]);
+
+  useEffect(() => {
+    if (!selectedSectionId || !selectedElement) return;
+    if (String(selectedElement.sectionId) !== String(selectedSectionId)) {
+      setSelectedElement(null);
+    }
+  }, [selectedElement, selectedSectionId]);
 
   useEffect(() => {
     if (selectedSectionId && !selectedSection) {
@@ -616,6 +657,18 @@ export default function PageEditorPage() {
     if (selectedSectionIndex < 0) return selectedSection.data ?? null;
     return getTranslatedSectionData(selectedSection, selectedSectionIndex);
   }, [selectedSection, selectedSectionIndex, translatedSections, contentLocale]);
+
+  const resolvedElementTokensPath = useMemo(() => {
+    if (!selectedElement || !selectedSection) return null;
+    if (selectedElement.tokensPath?.length) return selectedElement.tokensPath;
+    if (!selectedElement.valuePath?.length) return null;
+    return guessTokensPath(selectedElement.valuePath, selectedSection.data, selectedElement.kind);
+  }, [selectedElement, selectedSection]);
+
+  const selectedElementTokens = useMemo(() => {
+    if (!resolvedElementTokensPath || !selectedSection) return null;
+    return getDeepValue(selectedSection.data ?? {}, resolvedElementTokensPath) ?? {};
+  }, [resolvedElementTokensPath, selectedSection]);
 
   const qc = useQueryClient();
 
@@ -851,12 +904,25 @@ export default function PageEditorPage() {
 
   const handleSelectSection = (sectionId: string) => {
     setSelectedSectionId(sectionId);
+    setSelectedElement(null);
+    setShowInlineStyling(true);
+  };
+
+  const handleSelectElement = (element: SelectedElement) => {
+    setSelectedElement(element);
+    setSelectedSectionId(String(element.sectionId));
     setShowInlineStyling(true);
   };
 
   const handleSelectedTokensChange = (nextTokens: any) => {
     if (!selectedSection) return;
     const nextData = { ...(selectedSection.data ?? {}), twTokens: nextTokens };
+    void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const handleSelectedElementTokensChange = (nextTokens: any) => {
+    if (!selectedSection || !resolvedElementTokensPath) return;
+    const nextData = setDeepValue(selectedSection.data ?? {}, resolvedElementTokensPath, nextTokens);
     void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
   };
 
@@ -1745,6 +1811,8 @@ export default function PageEditorPage() {
                         onInlineEdit={handleInlineEdit}
                         selectedSectionId={selectedSectionId}
                         onSectionSelect={handleSelectSection}
+                        selectedElement={selectedElement}
+                        onElementSelect={handleSelectElement}
                       />
                     ) : (
                       <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/60">
@@ -1773,6 +1841,7 @@ export default function PageEditorPage() {
                   onClick={() => {
                     setSelectedSectionId(null);
                     setShowInlineStyling(false);
+                    setSelectedElement(null);
                   }}
                 >
                   Clear
@@ -1822,6 +1891,45 @@ export default function PageEditorPage() {
                 >
                   Delete
                 </Button>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                {selectedElement ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs font-semibold">
+                        Element: <span className="text-white/70">{selectedElement.kind}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setSelectedElement(null)}
+                      >
+                        Clear element
+                      </Button>
+                    </div>
+                    {selectedElement.label ? (
+                      <div className="text-[11px] text-white/60">{selectedElement.label}</div>
+                    ) : null}
+                    {resolvedElementTokensPath ? (
+                      <div className="max-h-[36vh] overflow-auto">
+                        <ResponsiveTokensPanel
+                          tokens={selectedElementTokens ?? {}}
+                          onChange={handleSelectedElementTokensChange}
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-xs text-white/60">
+                        Element styling inherits section styles. Use Advanced styling to adjust section tokens.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-white/60">
+                    Click a text, button, image, or card to edit element styling.
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">

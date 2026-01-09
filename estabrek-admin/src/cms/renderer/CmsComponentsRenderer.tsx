@@ -10,11 +10,34 @@ type CmsComponentsRendererProps = {
   components?: CmsComponent[];
   className?: string;
   inheritTokens?: any;
+  selection?: ComponentSelection;
+};
+
+type ElementPath = Array<string | number>;
+
+type ElementMeta = {
+  kind: string;
+  label?: string;
+  valuePath?: ElementPath;
+  tokensPath?: ElementPath;
+};
+
+type SelectedElementLike = ElementMeta & {
+  sectionId: string;
+  key?: string;
+};
+
+type ComponentSelection = {
+  sectionId: string;
+  selectedElement?: SelectedElementLike | null;
 };
 
 function cx(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
+
+const SELECTED_ELEMENT_CLASS = "ring-2 ring-accent-500/40 ring-offset-2 ring-offset-black/40";
+const SELECTED_TEXT_CLASS = "outline outline-1 outline-accent-500/50 outline-offset-2 rounded-sm";
 
 const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
 const INLINE_TAGS = new Set([
@@ -78,12 +101,12 @@ function splitTextWithEffect(text: string, effect?: string): { content: React.Re
   return { content, ariaLabel: text };
 }
 
-function getChildren(component: CmsComponent): CmsComponent[] {
+function getChildrenWithPath(component: CmsComponent): { items: CmsComponent[]; path?: ElementPath } {
   const fromProps = (component.props as any)?.children;
-  if (Array.isArray(fromProps)) return fromProps as CmsComponent[];
+  if (Array.isArray(fromProps)) return { items: fromProps as CmsComponent[], path: ["props", "children"] };
   const fromRoot = (component as any)?.children;
-  if (Array.isArray(fromRoot)) return fromRoot as CmsComponent[];
-  return [];
+  if (Array.isArray(fromRoot)) return { items: fromRoot as CmsComponent[], path: ["children"] };
+  return { items: [], path: undefined };
 }
 
 function getLegacyTokens(component: CmsComponent): any | undefined {
@@ -96,6 +119,44 @@ function getLegacyTokens(component: CmsComponent): any | undefined {
 
 function resolveTokens(component: CmsComponent): any | undefined {
   return component.twTokens ?? getLegacyTokens(component);
+}
+
+function elementKey(meta: ElementMeta): string {
+  return `${meta.kind}:${JSON.stringify(meta.valuePath ?? [])}:${JSON.stringify(meta.tokensPath ?? [])}`;
+}
+
+function selectedKey(selected: SelectedElementLike | null | undefined): string | null {
+  if (!selected) return null;
+  if (selected.key) return selected.key;
+  return elementKey({
+    kind: selected.kind ?? "",
+    valuePath: selected.valuePath,
+    tokensPath: selected.tokensPath,
+  });
+}
+
+function isElementSelected(selected: SelectedElementLike | null | undefined, sectionId: string, meta: ElementMeta): boolean {
+  if (!selected) return false;
+  if (String(selected.sectionId) !== String(sectionId)) return false;
+  const key = selectedKey(selected);
+  return !!key && key === elementKey(meta);
+}
+
+function elementDataAttrs(meta: ElementMeta, sectionId: string, selected: boolean) {
+  return {
+    "data-cms-element": meta.kind,
+    "data-cms-key": elementKey(meta),
+    "data-cms-label": meta.label,
+    "data-cms-value-path": meta.valuePath ? JSON.stringify(meta.valuePath) : undefined,
+    "data-cms-tokens-path": meta.tokensPath ? JSON.stringify(meta.tokensPath) : undefined,
+    "data-cms-selected": selected ? "true" : undefined,
+    "data-cms-section": sectionId,
+  } as const;
+}
+
+function elementState(sectionId: string, selectedElement: SelectedElementLike | null | undefined, meta: ElementMeta) {
+  const selected = isElementSelected(selectedElement, sectionId, meta);
+  return { selected, attrs: elementDataAttrs(meta, sectionId, selected) };
 }
 
 function textEffectClass(tokens?: any) {
@@ -245,24 +306,43 @@ function ComponentNode({
   component,
   depth = 0,
   inheritTokens,
+  path = [],
+  selection,
 }: {
   component: CmsComponent;
   depth?: number;
   inheritTokens?: any;
+  path?: ElementPath;
+  selection?: ComponentSelection;
 }) {
   const props = (component.props ?? {}) as any;
   const baseTokens = resolveTokens(component) as any;
   const tokens = mergeEffectTokens(baseTokens, inheritTokens) as any;
   const legacyClassName = typeof (component as any)?.tw?.className === "string" ? (component as any).tw.className : "";
+  const componentLabel = typeof component.name === "string" && component.name.trim() ? component.name.trim() : component.kind;
+  const selectionEnabled = !!selection?.sectionId && path.length > 0;
+  const sectionId = selection?.sectionId ?? "";
+  const selectedElement = selection?.selectedElement ?? null;
+  const tokensPath = selectionEnabled ? [...path, "twTokens"] : undefined;
+  const baseMeta = selectionEnabled
+    ? {
+        kind: component.kind,
+        label: componentLabel,
+        valuePath: path,
+        tokensPath,
+      }
+    : null;
+  const baseState = baseMeta ? elementState(sectionId, selectedElement, baseMeta) : null;
   const textScopeClass = hasTypographyOverrides(tokens?.typography) ? "cms-section-text" : "";
   const className = cx(tokensToClassName(tokens), legacyClassName, textScopeClass);
   const classNameNoTextEffect = tokens?.textEffect
     ? cx(tokensToClassName({ ...(tokens ?? {}), textEffect: undefined } as any), legacyClassName, textScopeClass)
     : className;
   const inlineStyle = tokensToInlineStyle(tokens);
-  const children = getChildren(component);
+  const { items: children, path: childrenPath } = getChildrenWithPath(component);
   const safeDepth = Math.min(depth, 6);
   const childInheritTokens = combineInheritTokens(inheritTokens, tokens);
+  const childPathBase = childrenPath ? [...path, ...childrenPath] : null;
 
   const renderChildren = () => {
     if (!children.length || safeDepth >= 6) return null;
@@ -272,6 +352,8 @@ function ComponentNode({
         component={child}
         depth={safeDepth + 1}
         inheritTokens={childInheritTokens}
+        path={childPathBase ? [...childPathBase, idx] : []}
+        selection={selection}
       />
     ));
   };
@@ -282,8 +364,25 @@ function ComponentNode({
       const rawText = props.text ?? "";
       const textValue = typeof rawText === "string" ? rawText : String(rawText);
       const textData = textContent(textValue, tokens);
+      const textMeta = selectionEnabled
+        ? {
+            kind: "text",
+            label: textValue || componentLabel,
+            valuePath: [...path, "props", "text"],
+            tokensPath,
+          }
+        : null;
+      const textState = textMeta ? elementState(sectionId, selectedElement, textMeta) : null;
       const node = (
-        <As className={textData.useTypewriter ? classNameNoTextEffect : className} style={inlineStyle} aria-label={textData.ariaLabel}>
+        <As
+          className={cx(
+            textData.useTypewriter ? classNameNoTextEffect : className,
+            textState?.selected ? SELECTED_TEXT_CLASS : undefined
+          )}
+          style={inlineStyle}
+          aria-label={textData.ariaLabel}
+          {...textState?.attrs}
+        >
           {textData.content}
         </As>
       );
@@ -294,11 +393,25 @@ function ComponentNode({
         const rawText = props.text ?? "Badge";
         const textValue = typeof rawText === "string" ? rawText : String(rawText);
         const textData = textContent(textValue, tokens);
+        const badgeMeta = selectionEnabled
+          ? {
+              kind: "badge",
+              label: textValue || componentLabel,
+              valuePath: [...path, "props", "text"],
+              tokensPath,
+            }
+          : null;
+        const badgeState = badgeMeta ? elementState(sectionId, selectedElement, badgeMeta) : null;
         const node = (
           <span
-            className={cx("border border-white/10", textData.useTypewriter ? classNameNoTextEffect : className)}
+            className={cx(
+              "border border-white/10",
+              textData.useTypewriter ? classNameNoTextEffect : className,
+              badgeState?.selected ? SELECTED_TEXT_CLASS : undefined
+            )}
             style={inlineStyle}
             aria-label={textData.ariaLabel}
+            {...badgeState?.attrs}
           >
             {textData.content}
           </span>
@@ -309,13 +422,27 @@ function ComponentNode({
       const rawLabel = props.label ?? "Button";
       const label = typeof rawLabel === "string" ? rawLabel : String(rawLabel);
       const textData = textContent(label, tokens);
+      const buttonMeta = selectionEnabled
+        ? {
+            kind: "button",
+            label: label || componentLabel,
+            valuePath: [...path, "props", "label"],
+            tokensPath,
+          }
+        : null;
+      const buttonState = buttonMeta ? elementState(sectionId, selectedElement, buttonMeta) : null;
       if (props.href) {
         const node = (
           <a
             href={props.href}
-            className={cx(baseButtonClasses(props.variant), textData.useTypewriter ? classNameNoTextEffect : className)}
+            className={cx(
+              baseButtonClasses(props.variant),
+              textData.useTypewriter ? classNameNoTextEffect : className,
+              buttonState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+            )}
             style={inlineStyle}
             aria-label={textData.ariaLabel}
+            {...buttonState?.attrs}
           >
             {textData.content}
           </a>
@@ -325,9 +452,14 @@ function ComponentNode({
       const node = (
         <button
           type="button"
-          className={cx(baseButtonClasses(props.variant), textData.useTypewriter ? classNameNoTextEffect : className)}
+          className={cx(
+            baseButtonClasses(props.variant),
+            textData.useTypewriter ? classNameNoTextEffect : className,
+            buttonState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+          )}
           style={inlineStyle}
           aria-label={textData.ariaLabel}
+          {...buttonState?.attrs}
         >
           {textData.content}
         </button>
@@ -337,7 +469,11 @@ function ComponentNode({
     case "input": {
       const label = props.label ?? "";
       const node = (
-        <div className={cx("space-y-2", className)} style={inlineStyle}>
+        <div
+          className={cx("space-y-2", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           {label ? <label className="text-sm opacity-80">{label}</label> : null}
           <input
             type={props.type ?? "text"}
@@ -353,7 +489,11 @@ function ComponentNode({
     case "textarea": {
       const label = props.label ?? "";
       const node = (
-        <div className={cx("space-y-2", className)} style={inlineStyle}>
+        <div
+          className={cx("space-y-2", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           {label ? <label className="text-sm opacity-80">{label}</label> : null}
           <textarea
             rows={Number(props.rows ?? 4)}
@@ -370,7 +510,11 @@ function ComponentNode({
       const label = props.label ?? "";
       const options = normalizeSelectOptions(props.options);
       const node = (
-        <div className={cx("space-y-2", className)} style={inlineStyle}>
+        <div
+          className={cx("space-y-2", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           {label ? <label className="text-sm opacity-80">{label}</label> : null}
           <select
             name={props.name ?? undefined}
@@ -391,7 +535,11 @@ function ComponentNode({
     case "checkbox": {
       const label = props.label ?? "Checkbox";
       const node = (
-        <label className={cx("inline-flex items-center gap-2", className)} style={inlineStyle}>
+        <label
+          className={cx("inline-flex items-center gap-2", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           <input
             type="checkbox"
             name={props.name ?? undefined}
@@ -417,13 +565,58 @@ function ComponentNode({
         const titleData = textContent(titleValue, tokens);
         const textData = textContent(textValue, tokens);
         const buttonData = textContent(buttonLabelValue, tokens);
+        const cardMeta = selectionEnabled
+          ? {
+              kind: "card",
+              label: componentLabel,
+              valuePath: path,
+              tokensPath,
+            }
+          : null;
+        const cardState = cardMeta ? elementState(sectionId, selectedElement, cardMeta) : null;
+        const titleMeta = selectionEnabled
+          ? {
+              kind: "text",
+              label: titleValue || componentLabel,
+              valuePath: [...path, "props", "title"],
+              tokensPath,
+            }
+          : null;
+        const titleState = titleMeta ? elementState(sectionId, selectedElement, titleMeta) : null;
+        const textMeta = selectionEnabled
+          ? {
+              kind: "text",
+              label: textValue || componentLabel,
+              valuePath: [...path, "props", "text"],
+              tokensPath,
+            }
+          : null;
+        const textState = textMeta ? elementState(sectionId, selectedElement, textMeta) : null;
+        const buttonMeta = selectionEnabled
+          ? {
+              kind: "button",
+              label: buttonLabelValue || componentLabel,
+              valuePath: [...path, "props", "buttonLabel"],
+              tokensPath,
+            }
+          : null;
+        const buttonState = buttonMeta ? elementState(sectionId, selectedElement, buttonMeta) : null;
         const node = (
-          <div className={cx("border border-white/10", cardClassName)} style={inlineStyle}>
+          <div
+            className={cx("border border-white/10", cardClassName, cardState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            {...cardState?.attrs}
+          >
             <div className="space-y-2">
               {titleValue ? (
                 <div
-                  className={cx("font-semibold", titleData.useTypewriter ? undefined : textEffects)}
+                  className={cx(
+                    "font-semibold",
+                    titleData.useTypewriter ? undefined : textEffects,
+                    titleState?.selected ? SELECTED_TEXT_CLASS : undefined
+                  )}
                   aria-label={titleData.ariaLabel}
+                  {...titleState?.attrs}
                 >
                   {titleData.content}
                 </div>
@@ -431,7 +624,15 @@ function ComponentNode({
                 <div className="font-semibold">Card</div>
               )}
               {textValue ? (
-                <div className={cx("opacity-80", textData.useTypewriter ? undefined : textEffects)} aria-label={textData.ariaLabel}>
+                <div
+                  className={cx(
+                    "opacity-80",
+                    textData.useTypewriter ? undefined : textEffects,
+                    textState?.selected ? SELECTED_TEXT_CLASS : undefined
+                  )}
+                  aria-label={textData.ariaLabel}
+                  {...textState?.attrs}
+                >
                   {textData.content}
                 </div>
               ) : null}
@@ -439,16 +640,28 @@ function ComponentNode({
                 props.buttonHref ? (
                   <a
                     href={props.buttonHref}
-                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", buttonData.useTypewriter ? undefined : textEffects)}
+                    className={cx(
+                      baseButtonClasses(props.buttonVariant),
+                      "mt-2 inline-flex",
+                      buttonData.useTypewriter ? undefined : textEffects,
+                      buttonState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+                    )}
                     aria-label={buttonData.ariaLabel}
+                    {...buttonState?.attrs}
                   >
                     {buttonData.content}
                   </a>
                 ) : (
                   <button
                     type="button"
-                    className={cx(baseButtonClasses(props.buttonVariant), "mt-2 inline-flex", buttonData.useTypewriter ? undefined : textEffects)}
+                    className={cx(
+                      baseButtonClasses(props.buttonVariant),
+                      "mt-2 inline-flex",
+                      buttonData.useTypewriter ? undefined : textEffects,
+                      buttonState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+                    )}
                     aria-label={buttonData.ariaLabel}
+                    {...buttonState?.attrs}
                   >
                     {buttonData.content}
                   </button>
@@ -463,7 +676,11 @@ function ComponentNode({
       const items = Array.isArray(props.items) ? props.items : [];
       if (props.ordered) {
         const node = (
-          <ol className={cx("list-decimal ps-6", className)} style={inlineStyle}>
+          <ol
+            className={cx("list-decimal ps-6", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            {...baseState?.attrs}
+          >
             {items.map((it: string, idx: number) => (
               <li key={idx}>{it}</li>
             ))}
@@ -472,7 +689,11 @@ function ComponentNode({
         return wrapWithDecor(tokens, node, false);
       }
       const node = (
-        <ul className={cx("list-disc ps-6", className)} style={inlineStyle}>
+        <ul
+          className={cx("list-disc ps-6", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           {items.map((it: string, idx: number) => (
             <li key={idx}>{it}</li>
           ))}
@@ -482,21 +703,71 @@ function ComponentNode({
     }
     case "image":
       {
+        const imageMeta = selectionEnabled
+          ? {
+              kind: "image",
+              label: props.alt ?? componentLabel,
+              valuePath: [...path, "props", "src"],
+              tokensPath,
+            }
+          : null;
+        const imageState = imageMeta ? elementState(sectionId, selectedElement, imageMeta) : null;
         const node = props.src ? (
-          <img src={props.src} alt={props.alt ?? ""} className={cx("max-w-full", className)} style={inlineStyle} />
+          <img
+            src={props.src}
+            alt={props.alt ?? ""}
+            className={cx("max-w-full", className, imageState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            {...imageState?.attrs}
+          />
         ) : (
-          <div className={cx("border border-dashed border-white/20 p-6 text-xs opacity-70", className)} style={inlineStyle}>Image</div>
+          <div
+            className={cx(
+              "border border-dashed border-white/20 p-6 text-xs opacity-70",
+              className,
+              imageState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+            )}
+            style={inlineStyle}
+            {...imageState?.attrs}
+          >
+            Image
+          </div>
         );
         return wrapWithDecor(tokens, node, !!props.src);
       }
     case "icon":
       {
+        const iconMeta = selectionEnabled
+          ? {
+              kind: "icon",
+              label: componentLabel,
+              valuePath: [...path, "props", "d"],
+              tokensPath,
+            }
+          : null;
+        const iconState = iconMeta ? elementState(sectionId, selectedElement, iconMeta) : null;
         const node = props.d ? (
-          <svg viewBox={props.viewBox ?? "0 0 24 24"} className={cx("h-6 w-6", className)} style={inlineStyle} fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            viewBox={props.viewBox ?? "0 0 24 24"}
+            className={cx("h-6 w-6", className, iconState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            {...iconState?.attrs}
+          >
             <path d={props.d} />
           </svg>
         ) : (
-          <div className={cx("h-6 w-6 rounded-md border border-dashed border-white/20", className)} style={inlineStyle} />
+          <div
+            className={cx(
+              "h-6 w-6 rounded-md border border-dashed border-white/20",
+              className,
+              iconState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+            )}
+            style={inlineStyle}
+            {...iconState?.attrs}
+          />
         );
         return wrapWithDecor(tokens, node, !!props.d);
       }
@@ -512,13 +783,23 @@ function ComponentNode({
         const strokeWidth = Number.isFinite(Number(props.strokeWidth)) ? Number(props.strokeWidth) : 2;
 
         const hasPath = (typeof d === "string" && d.trim()) || (Array.isArray(paths) && paths.length);
+        const svgMeta = selectionEnabled
+          ? {
+              kind: "svg",
+              label: componentLabel,
+              valuePath: [...path, "props", "d"],
+              tokensPath,
+            }
+          : null;
+        const svgState = svgMeta ? elementState(sectionId, selectedElement, svgMeta) : null;
         const node = hasPath ? (
           <svg
             viewBox={viewBox}
             preserveAspectRatio={preserveAspectRatio}
-            className={cx("pointer-events-none block", className)}
+            className={cx("pointer-events-none block", className, svgState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
             style={inlineStyle}
             aria-hidden="true"
+            {...svgState?.attrs}
           >
             {Array.isArray(paths) && paths.length
               ? paths.map((p, idx) => (
@@ -544,7 +825,15 @@ function ComponentNode({
               )}
           </svg>
         ) : (
-          <div className={cx("rounded-md border border-dashed border-white/20 p-4 text-xs opacity-70", className)} style={inlineStyle}>
+          <div
+            className={cx(
+              "rounded-md border border-dashed border-white/20 p-4 text-xs opacity-70",
+              className,
+              svgState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+            )}
+            style={inlineStyle}
+            {...svgState?.attrs}
+          >
             SVG
           </div>
         );
@@ -554,34 +843,101 @@ function ComponentNode({
       {
         const preset = getDividerById(tokens?.dividerStyleId);
         const node = preset?.svg ? (
-          <div className={className} style={inlineStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />
+          <div
+            className={cx(className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            {...baseState?.attrs}
+            dangerouslySetInnerHTML={{ __html: preset.svg }}
+          />
         ) : preset ? (
-          <div className={className} style={inlineStyle} />
+          <div
+            className={cx(className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            {...baseState?.attrs}
+          />
         ) : (
-          <hr className={cx("border-white/10", className)} style={inlineStyle} />
+          <hr
+            className={cx("border-white/10", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            {...baseState?.attrs}
+          />
         );
         return wrapWithDecor(tokens, node, false);
       }
     case "spacer":
-      return wrapWithDecor(tokens, <div className={cx(spacerClass(props.h), className)} style={inlineStyle} />, false);
+      return wrapWithDecor(
+        tokens,
+        <div
+          className={cx(spacerClass(props.h), className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        />,
+        false
+      );
     case "container":
       {
         const preset = getContainerById(tokens?.containerStyleId);
         const children = preset?.innerClassName ? <div className={preset.innerClassName}>{renderChildren()}</div> : renderChildren();
-        return wrapWithDecor(tokens, <div className={cx("mx-auto w-full", className)} style={inlineStyle}>{children}</div>, false);
+        return wrapWithDecor(
+          tokens,
+          <div
+            className={cx("mx-auto w-full", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            style={inlineStyle}
+            {...baseState?.attrs}
+          >
+            {children}
+          </div>,
+          false
+        );
       }
     case "stack":
-      return wrapWithDecor(tokens, <div className={className} style={inlineStyle}>{renderChildren()}</div>, false);
+      return wrapWithDecor(
+        tokens,
+        <div className={cx(className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)} style={inlineStyle} {...baseState?.attrs}>
+          {renderChildren()}
+        </div>,
+        false
+      );
     case "row":
-      return wrapWithDecor(tokens, <div className={className} style={inlineStyle}>{renderChildren()}</div>, false);
+      return wrapWithDecor(
+        tokens,
+        <div className={cx(className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)} style={inlineStyle} {...baseState?.attrs}>
+          {renderChildren()}
+        </div>,
+        false
+      );
     case "grid":
-      return wrapWithDecor(tokens, <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>, false);
+      return wrapWithDecor(
+        tokens,
+        <div
+          className={cx(gridColsClass(props.cols), className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
+          {renderChildren()}
+        </div>,
+        false
+      );
     case "columns":
-      return wrapWithDecor(tokens, <div className={cx(gridColsClass(props.cols), className)} style={inlineStyle}>{renderChildren()}</div>, false);
+      return wrapWithDecor(
+        tokens,
+        <div
+          className={cx(gridColsClass(props.cols), className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
+          {renderChildren()}
+        </div>,
+        false
+      );
     case "nav_menu": {
       const items = Array.isArray(props.items) ? props.items : [];
       const node = (
-        <nav className={cx("border border-white/10", className)} style={inlineStyle}>
+        <nav
+          className={cx("border border-white/10", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           {!items.length ? (
             <div className="text-xs opacity-60">No menu items.</div>
           ) : (
@@ -613,7 +969,15 @@ function ComponentNode({
     case "productGrid": {
       const ids = Array.isArray(props.productIds) ? props.productIds : [];
       const node = (
-        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
+        <div
+          className={cx(
+            "rounded-2xl border border-white/10 bg-white/[0.02] p-4",
+            className,
+            baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+          )}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           <div className="text-sm font-semibold">{props.title ?? "Product Grid"}</div>
           <div className={cx("mt-3 grid gap-3", gridColsClass(props.cols ?? 3))}>
             {ids.length ? (
@@ -632,7 +996,15 @@ function ComponentNode({
     }
     case "productSlider": {
       const node = (
-        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
+        <div
+          className={cx(
+            "rounded-2xl border border-white/10 bg-white/[0.02] p-4",
+            className,
+            baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+          )}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           <div className="text-sm font-semibold">{props.title ?? "Products"}</div>
           <div className="mt-3 text-xs opacity-60">(Slider placeholder)</div>
         </div>
@@ -642,7 +1014,15 @@ function ComponentNode({
     case "categoryTiles": {
       const items = Array.isArray(props.items) ? props.items : [];
       const node = (
-        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4", className)} style={inlineStyle}>
+        <div
+          className={cx(
+            "rounded-2xl border border-white/10 bg-white/[0.02] p-4",
+            className,
+            baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+          )}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           <div className="text-sm font-semibold">{props.title ?? "Categories"}</div>
           <div className={cx("mt-3 grid gap-3", gridColsClass(props.cols ?? 3))}>
             {items.length ? (
@@ -661,32 +1041,62 @@ function ComponentNode({
     }
     case "filtersBar":
       return wrapWithDecor(tokens, (
-        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs", className)} style={inlineStyle}>
+        <div
+          className={cx(
+            "rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs",
+            className,
+            baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+          )}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           Filters bar
         </div>
       ), false);
     case "data":
       return wrapWithDecor(tokens, (
-        <div className={cx("rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs", className)} style={inlineStyle}>
+        <div
+          className={cx(
+            "rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs",
+            className,
+            baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+          )}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           Data component
         </div>
       ), false);
     default:
       return wrapWithDecor(tokens, (
-        <div className={cx("rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs opacity-70", className)} style={inlineStyle}>
+        <div
+          className={cx(
+            "rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs opacity-70",
+            className,
+            baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+          )}
+          style={inlineStyle}
+          {...baseState?.attrs}
+        >
           {component.kind}
         </div>
       ), false);
   }
 }
 
-export function CmsComponentsRenderer({ components, className, inheritTokens }: CmsComponentsRendererProps) {
+export function CmsComponentsRenderer({ components, className, inheritTokens, selection }: CmsComponentsRendererProps) {
   const list = Array.isArray(components) ? components : [];
   if (!list.length) return null;
   return (
     <div className={className}>
       {list.map((component, idx) => (
-        <ComponentNode key={component.id ?? `cmp-${idx}`} component={component} inheritTokens={inheritTokens} />
+        <ComponentNode
+          key={component.id ?? `cmp-${idx}`}
+          component={component}
+          inheritTokens={inheritTokens}
+          path={["components", idx]}
+          selection={selection}
+        />
       ))}
     </div>
   );

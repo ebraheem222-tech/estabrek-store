@@ -166,6 +166,84 @@ type SectionSelectHandler = (sectionId: string) => void;
 const InlineEditContext = React.createContext<InlineEditContextValue | null>(null);
 const InlineSectionContext = React.createContext<string | null>(null);
 
+type ElementPath = Array<string | number>;
+
+type ElementMeta = {
+  kind: string;
+  label?: string;
+  valuePath?: ElementPath;
+  tokensPath?: ElementPath;
+};
+
+export type SelectedElement = ElementMeta & {
+  sectionId: string;
+  key: string;
+};
+
+type ElementSelectHandler = (payload: SelectedElement) => void;
+
+type InlineSelectContextValue = {
+  selected?: SelectedElement | null;
+  onSelect?: ElementSelectHandler;
+};
+
+const InlineSelectContext = React.createContext<InlineSelectContextValue | null>(null);
+
+const SELECTED_ELEMENT_CLASS = "ring-2 ring-accent-500/40 ring-offset-2 ring-offset-black/40";
+const SELECTED_TEXT_CLASS = "outline outline-1 outline-accent-500/50 outline-offset-2 rounded-sm";
+
+function elementKey(meta: ElementMeta): string {
+  return `${meta.kind}:${JSON.stringify(meta.valuePath ?? [])}:${JSON.stringify(meta.tokensPath ?? [])}`;
+}
+
+function buildSelectedElement(sectionId: string, meta: ElementMeta): SelectedElement {
+  return { ...meta, sectionId, key: elementKey(meta) };
+}
+
+function isElementSelected(selected: SelectedElement | null | undefined, sectionId: string, meta: ElementMeta): boolean {
+  return !!selected && String(selected.sectionId) === String(sectionId) && selected.key === elementKey(meta);
+}
+
+function elementDataAttrs(meta: ElementMeta, sectionId: string, selected: boolean) {
+  return {
+    "data-cms-element": meta.kind,
+    "data-cms-key": elementKey(meta),
+    "data-cms-label": meta.label,
+    "data-cms-value-path": meta.valuePath ? JSON.stringify(meta.valuePath) : undefined,
+    "data-cms-tokens-path": meta.tokensPath ? JSON.stringify(meta.tokensPath) : undefined,
+    "data-cms-selected": selected ? "true" : undefined,
+  } as const;
+}
+
+function parseElementPath(raw?: string): ElementPath | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveElementMeta(target: HTMLElement | null): ElementMeta | null {
+  if (!target) return null;
+  const node = target.closest("[data-cms-element]") as HTMLElement | null;
+  if (!node) return null;
+  const kind = node.dataset.cmsElement;
+  if (!kind) return null;
+  return {
+    kind,
+    label: node.dataset.cmsLabel,
+    valuePath: parseElementPath(node.dataset.cmsValuePath),
+    tokensPath: parseElementPath(node.dataset.cmsTokensPath),
+  };
+}
+
+function elementState(sectionId: string, selectedElement: SelectedElement | null | undefined, meta: ElementMeta) {
+  const selected = isElementSelected(selectedElement, sectionId, meta);
+  return { selected, attrs: elementDataAttrs(meta, sectionId, selected) };
+}
+
 type InlineEditableTextProps = {
   as?: React.ElementType;
   value: string;
@@ -177,6 +255,10 @@ type InlineEditableTextProps = {
   multiline?: boolean;
   dir?: "ltr" | "rtl";
   placeholder?: string;
+  selectKind?: string;
+  selectLabel?: string;
+  selectTokensPath?: ElementPath;
+  selectHighlight?: boolean;
 };
 
 function InlineEditableText({
@@ -190,9 +272,14 @@ function InlineEditableText({
   multiline,
   dir,
   placeholder,
+  selectKind,
+  selectLabel,
+  selectTokensPath,
+  selectHighlight = true,
 }: InlineEditableTextProps) {
   const inline = React.useContext(InlineEditContext);
   const sectionId = React.useContext(InlineSectionContext);
+  const selectContext = React.useContext(InlineSelectContext);
   const canEdit = Boolean(inline?.enabled && inline?.onCommit && sectionId && path?.length);
   const [draft, setDraft] = useState(value);
   const [editing, setEditing] = useState(false);
@@ -203,6 +290,22 @@ function InlineEditableText({
 
   const isPlaceholder = canEdit && !draft && !!placeholder;
   const displayValue = canEdit ? (draft || (placeholder ?? "")) : (textData?.content ?? value);
+  const canSelect = !!sectionId && !!path?.length;
+  const selectionMeta = canSelect
+    ? {
+        kind: selectKind ?? "text",
+        valuePath: path,
+        tokensPath: selectTokensPath,
+        label: selectLabel ?? ariaLabel ?? placeholder,
+      }
+    : null;
+  const isSelected =
+    !!selectionMeta && !!sectionId
+      ? isElementSelected(selectContext?.selected, sectionId, selectionMeta)
+      : false;
+  const selectionAttrs = selectionMeta
+    ? elementDataAttrs(selectionMeta, sectionId ?? "", isSelected)
+    : undefined;
 
   return (
     <As
@@ -211,11 +314,13 @@ function InlineEditableText({
       className={cls(
         className,
         canEdit ? "cursor-text rounded-md outline outline-1 outline-transparent focus:outline-white/30 focus:bg-white/[0.04] transition" : undefined,
-        isPlaceholder ? "text-white/40 italic" : undefined
+        isPlaceholder ? "text-white/40 italic" : undefined,
+        isSelected && selectHighlight ? SELECTED_TEXT_CLASS : undefined
       )}
       style={style}
       aria-label={ariaLabel ?? textData?.ariaLabel}
       dir={dir}
+      {...selectionAttrs}
       onClick={canEdit ? (e: React.MouseEvent) => e.preventDefault() : undefined}
       onFocus={
         canEdit
@@ -420,17 +525,24 @@ function sectionComponents(data: any) {
   return Array.isArray(list) ? list : [];
 }
 
-function renderComponentsBlock(data: any, className?: string) {
+function ComponentsBlock({ data, className }: { data: any; className?: string }) {
+  const sectionId = React.useContext(InlineSectionContext);
+  const selectContext = React.useContext(InlineSelectContext);
   const components = sectionComponents(data);
   if (!components.length) return null;
   const inheritTokens = data?.twTokens?.typography ? { typography: data.twTokens.typography } : undefined;
+  const selection = sectionId ? { sectionId, selectedElement: selectContext?.selected ?? null } : undefined;
   return (
     <div className={cls("mt-6", className)}>
       <SectionTextScope data={data}>
-        <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
+        <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} selection={selection} />
       </SectionTextScope>
     </div>
   );
+}
+
+function renderComponentsBlock(data: any, className?: string) {
+  return <ComponentsBlock data={data} className={className} />;
 }
 
 type SectionLayoutMode = "stack" | "row" | "grid";
@@ -502,7 +614,15 @@ function buildSectionGroups(sections: PageSection[]): SectionGroup[] {
   return groups;
 }
 
-function HeroSection({ data }: { data: HeroData }) {
+function HeroSection({
+  data,
+  sectionId,
+  selectedElement,
+}: {
+  data: HeroData;
+  sectionId: string;
+  selectedElement?: SelectedElement | null;
+}) {
   const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
   const hasSlides = slides.length > 0;
   const [activeSlide, setActiveSlide] = useState(0);
@@ -555,6 +675,9 @@ function HeroSection({ data }: { data: HeroData }) {
   const contentAnimClass = heroAnimClass(contentAnim, contentDuration, contentDelay);
   const slideKey = `${activeSlide}-${slideAnim}-${slideDuration}`;
   const contentKey = `${activeSlide}-${contentAnim}-${contentDuration}-${contentDelay}`;
+
+  const primaryTokensPath = hasSlides ? ["slides", activeSlide, "primaryButtonTokens"] : ["primaryButtonTokens"];
+  const secondaryTokensPath = hasSlides ? ["slides", activeSlide, "secondaryButtonTokens"] : ["secondaryButtonTokens"];
 
   return wrapDecorations(
     <section className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03]", uiSectionClass(data))} style={uiSectionStyle(data)}>
@@ -610,9 +733,23 @@ function HeroSection({ data }: { data: HeroData }) {
                       href={primaryButton.href}
                       className={cls(
                         "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
-                        tokensClass(primaryButtonTokens)
+                        tokensClass(primaryButtonTokens),
+                        elementState(sectionId, selectedElement, {
+                          kind: "button",
+                          valuePath: primaryLabelPath,
+                          tokensPath: primaryTokensPath,
+                          label: primaryButton.label,
+                        }).selected
+                          ? SELECTED_ELEMENT_CLASS
+                          : undefined
                       )}
                       style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                      {...elementState(sectionId, selectedElement, {
+                        kind: "button",
+                        valuePath: primaryLabelPath,
+                        tokensPath: primaryTokensPath,
+                        label: primaryButton.label,
+                      }).attrs}
                     >
                       <InlineEditableText
                         as="span"
@@ -622,6 +759,9 @@ function HeroSection({ data }: { data: HeroData }) {
                         className={primaryLabelData?.className}
                         ariaLabel={primaryLabelData?.ariaLabel}
                         placeholder="Button"
+                        selectKind="button"
+                        selectTokensPath={primaryTokensPath}
+                        selectHighlight={false}
                       />
                     </a>,
                     primaryButtonTokens
@@ -641,6 +781,8 @@ function HeroSection({ data }: { data: HeroData }) {
                       style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
                       ariaLabel={primaryLabelData?.ariaLabel}
                       placeholder="Button"
+                      selectKind="button"
+                      selectTokensPath={primaryTokensPath}
                     />,
                     primaryButtonTokens
                   )
@@ -653,9 +795,23 @@ function HeroSection({ data }: { data: HeroData }) {
                       href={secondaryButton.href}
                       className={cls(
                         "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]",
-                        tokensClass(secondaryButtonTokens)
+                        tokensClass(secondaryButtonTokens),
+                        elementState(sectionId, selectedElement, {
+                          kind: "button",
+                          valuePath: secondaryLabelPath,
+                          tokensPath: secondaryTokensPath,
+                          label: secondaryButton.label,
+                        }).selected
+                          ? SELECTED_ELEMENT_CLASS
+                          : undefined
                       )}
                       style={tokensStyle(secondaryButtonTokens)}
+                      {...elementState(sectionId, selectedElement, {
+                        kind: "button",
+                        valuePath: secondaryLabelPath,
+                        tokensPath: secondaryTokensPath,
+                        label: secondaryButton.label,
+                      }).attrs}
                     >
                       <InlineEditableText
                         as="span"
@@ -665,6 +821,9 @@ function HeroSection({ data }: { data: HeroData }) {
                         className={secondaryLabelData?.className}
                         ariaLabel={secondaryLabelData?.ariaLabel}
                         placeholder="Button"
+                        selectKind="button"
+                        selectTokensPath={secondaryTokensPath}
+                        selectHighlight={false}
                       />
                     </a>,
                     secondaryButtonTokens
@@ -684,6 +843,8 @@ function HeroSection({ data }: { data: HeroData }) {
                       style={tokensStyle(secondaryButtonTokens)}
                       ariaLabel={secondaryLabelData?.ariaLabel}
                       placeholder="Button"
+                      selectKind="button"
+                      selectTokensPath={secondaryTokensPath}
                     />,
                     secondaryButtonTokens
                   )
@@ -748,11 +909,22 @@ function vimeoId(url: string): string | null {
   }
 }
 
-function Section({ type, data }: { type: PageSectionType; data: any }) {
+function Section({
+  type,
+  data,
+  sectionId,
+  selectedElement,
+}: {
+  type: PageSectionType;
+  data: any;
+  sectionId: string;
+  selectedElement?: SelectedElement | null;
+}) {
+  const getElementState = (meta: ElementMeta) => elementState(sectionId, selectedElement, meta);
   if (!data || typeof data !== "object") return null;
 
   if (type === "HERO") {
-    return <HeroSection data={data as HeroData} />;
+    return <HeroSection data={data as HeroData} sectionId={sectionId} selectedElement={selectedElement} />;
   }
 
   if (type === "RICH_TEXT") {
@@ -836,10 +1008,19 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               multiline
             />
             {d.linkLabel && d.linkHref ? (
+              (() => {
+                const linkState = getElementState({
+                  kind: "button",
+                  valuePath: ["linkLabel"],
+                  label: d.linkLabel ?? "Link",
+                });
+                return (
               <a
+                {...linkState.attrs}
                 className={cls(
                   "text-sm font-semibold underline decoration-white/30 underline-offset-4 hover:decoration-white/60",
-                  linkData?.className
+                  linkData?.className,
+                  linkState.selected ? SELECTED_ELEMENT_CLASS : undefined
                 )}
                 href={d.linkHref}
               >
@@ -851,8 +1032,12 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   className={linkData?.className}
                   ariaLabel={linkData?.ariaLabel}
                   placeholder="Link"
+                  selectKind="button"
+                  selectHighlight={false}
                 />
               </a>
+                );
+              })()
             ) : null}
           </div>
         </SectionTextScope>
@@ -878,11 +1063,25 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           <SectionTextScope data={d}>
             <div className={cls("flex flex-col gap-3", justify)}>
               {d.imageUrl ? (
-                <img
-                  src={d.imageUrl}
-                  alt={d.title ?? "CTA image"}
-                  className={cls("h-40 w-full max-w-xl rounded-2xl border border-white/10 object-cover", imageAlign)}
-                />
+                (() => {
+                  const imageState = getElementState({
+                    kind: "image",
+                    valuePath: ["imageUrl"],
+                    label: d.title ?? "CTA image",
+                  });
+                  return (
+                    <img
+                      {...imageState.attrs}
+                      src={d.imageUrl}
+                      alt={d.title ?? "CTA image"}
+                      className={cls(
+                        "h-40 w-full max-w-xl rounded-2xl border border-white/10 object-cover",
+                        imageAlign,
+                        imageState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
+                    />
+                  );
+                })()
               ) : null}
               {titleData ? (
                 <InlineEditableText
@@ -909,24 +1108,37 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               ) : null}
               {d.buttonLabel ? (
                 d.buttonHref ? (
-                  <a
-                    href={d.buttonHref}
-                    className={cls(
-                      "mt-2 inline-flex w-fit rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
-                      buttonData?.className
-                    )}
-                    style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
-                  >
-                    <InlineEditableText
-                      as="span"
-                      value={String(d.buttonLabel ?? "")}
-                      path={["buttonLabel"]}
-                      textData={buttonData ?? undefined}
-                      className={buttonData?.className}
-                      ariaLabel={buttonData?.ariaLabel}
-                      placeholder="Button"
-                    />
-                  </a>
+                  (() => {
+                    const buttonState = getElementState({
+                      kind: "button",
+                      valuePath: ["buttonLabel"],
+                      label: d.buttonLabel ?? "Button",
+                    });
+                    return (
+                      <a
+                        {...buttonState.attrs}
+                        href={d.buttonHref}
+                        className={cls(
+                          "mt-2 inline-flex w-fit rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
+                          buttonData?.className,
+                          buttonState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                        )}
+                        style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
+                      >
+                        <InlineEditableText
+                          as="span"
+                          value={String(d.buttonLabel ?? "")}
+                          path={["buttonLabel"]}
+                          textData={buttonData ?? undefined}
+                          className={buttonData?.className}
+                          ariaLabel={buttonData?.ariaLabel}
+                          placeholder="Button"
+                          selectKind="button"
+                          selectHighlight={false}
+                        />
+                      </a>
+                    );
+                  })()
                 ) : (
                   <InlineEditableText
                     as="span"
@@ -940,6 +1152,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
                     ariaLabel={buttonData?.ariaLabel}
                     placeholder="Button"
+                    selectKind="button"
                   />
                 )
               ) : null}
@@ -977,10 +1190,21 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 const baseItemTokens = itemTokens ?? sectionTokens;
                 const questionTokens = resolveFieldTokens((it as any).questionTokens, baseItemTokens);
                 const answerTokens = resolveFieldTokens((it as any).answerTokens, baseItemTokens);
+                const cardState = getElementState({
+                  kind: "card",
+                  valuePath: ["items", idx],
+                  tokensPath: ["items", idx, "twTokens"],
+                  label: it.question ?? `FAQ ${idx + 1}`,
+                });
                 const node = (
                   <div
                     key={idx}
-                    className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
+                    {...cardState.attrs}
+                    className={cls(
+                      "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                      tokensClass(itemTokens),
+                      cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                    )}
                     style={tokensStyle(itemTokens)}
                   >
                     {(() => {
@@ -1093,19 +1317,45 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 const textTokens = resolveFieldTokens((it as any).textTokens, baseItemTokens);
                 const imageTokens = resolveFieldTokens((it as any).imageTokens);
                 const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
+                const cardState = getElementState({
+                  kind: "card",
+                  valuePath: ["items", idx],
+                  tokensPath: ["items", idx, "twTokens"],
+                  label: it.title ?? `Item ${idx + 1}`,
+                });
                 return wrapDecorations(
                   <div
                     key={idx}
-                    className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
+                    {...cardState.attrs}
+                    className={cls(
+                      "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                      tokensClass(itemTokens),
+                      cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                    )}
                     style={tokensStyle(itemTokens)}
                   >
                     {it.imageUrl ? wrapDecorations(
-                      <img
-                        src={it.imageUrl}
-                        alt={it.title}
-                        className={cls("mb-3 h-28 w-full rounded-xl object-cover", tokensClass(imageTokens))}
-                        style={tokensStyle(imageTokens)}
-                      />,
+                      (() => {
+                        const imageState = getElementState({
+                          kind: "image",
+                          valuePath: ["items", idx, "imageUrl"],
+                          tokensPath: ["items", idx, "imageTokens"],
+                          label: it.title ?? "Grid image",
+                        });
+                        return (
+                          <img
+                            {...imageState.attrs}
+                            src={it.imageUrl}
+                            alt={it.title}
+                            className={cls(
+                              "mb-3 h-28 w-full rounded-xl object-cover",
+                              tokensClass(imageTokens),
+                              imageState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                            )}
+                            style={tokensStyle(imageTokens)}
+                          />
+                        );
+                      })(),
                       imageTokens
                     ) : null}
                     {(() => {
@@ -1214,10 +1464,17 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const textTokens = resolveFieldTokens((it as any).textTokens, baseItemTokens);
                   const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
                   const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
+                  const cardState = getElementState({
+                    kind: "card",
+                    valuePath: ["items", idx],
+                    tokensPath: ["items", idx, "twTokens"],
+                    label: it.title ?? `Feature ${idx + 1}`,
+                  });
                   const wrapperClass = cls(
                     "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
                     tokensClass(itemTokens),
-                    it.href ? tokensClass(linkTokens) : undefined
+                    it.href ? tokensClass(linkTokens) : undefined,
+                    cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
                   );
                   const wrapperStyle = { ...(tokensStyle(itemTokens) ?? {}), ...(it.href ? (tokensStyle(linkTokens) ?? {}) : {}) };
                   const content = (
@@ -1225,7 +1482,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       <div className="flex items-center gap-2">
                         {it.iconUrl ? (
                           wrapDecorations(
-                            <img src={it.iconUrl} alt="" className={cls("h-8 w-8 rounded-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)} />,
+                            (() => {
+                              const iconState = getElementState({
+                                kind: "image",
+                                valuePath: ["items", idx, "iconUrl"],
+                                tokensPath: ["items", idx, "iconTokens"],
+                                label: it.title ?? "Feature icon",
+                              });
+                              return (
+                                <img
+                                  {...iconState.attrs}
+                                  src={it.iconUrl}
+                                  alt=""
+                                  className={cls(
+                                    "h-8 w-8 rounded-lg",
+                                    tokensClass(iconTokens),
+                                    iconState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                  )}
+                                  style={tokensStyle(iconTokens)}
+                                />
+                              );
+                            })(),
                             iconTokens
                           )
                         ) : it.icon ? (
@@ -1271,11 +1548,11 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     </>
                   );
                   const node = it.href ? (
-                    <a key={idx} href={it.href} className={wrapperClass} style={wrapperStyle}>
+                    <a key={idx} href={it.href} className={wrapperClass} style={wrapperStyle} {...cardState.attrs}>
                       {content}
                     </a>
                   ) : (
-                    <div key={idx} className={wrapperClass} style={wrapperStyle}>
+                    <div key={idx} className={wrapperClass} style={wrapperStyle} {...cardState.attrs}>
                       {content}
                     </div>
                   );
@@ -1340,10 +1617,21 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
                   const subtextTokens = resolveFieldTokens((it as any).subtextTokens, baseItemTokens);
                   const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
+                  const cardState = getElementState({
+                    kind: "card",
+                    valuePath: ["items", idx],
+                    tokensPath: ["items", idx, "twTokens"],
+                    label: it.label ?? `Stat ${idx + 1}`,
+                  });
                   return wrapDecorations(
                     <div
                       key={idx}
-                      className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-center", tokensClass(itemTokens))}
+                      {...cardState.attrs}
+                      className={cls(
+                        "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-center",
+                        tokensClass(itemTokens),
+                        cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
                       style={tokensStyle(itemTokens)}
                     >
                       {it.icon ? wrapDecorations(
@@ -1469,10 +1757,45 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const roleData = m.role ? textContent(String(m.role), roleTokens) : null;
                   const bioData = m.bio ? textContent(String(m.bio), bioTokens) : null;
                   const socials = Array.isArray(m.socials) ? m.socials : [];
+                  const cardState = getElementState({
+                    kind: "card",
+                    valuePath: ["members", idx],
+                    tokensPath: ["members", idx, "twTokens"],
+                    label: m.name ?? `Member ${idx + 1}`,
+                  });
                   return wrapDecorations(
-                    <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
+                    <div
+                      key={idx}
+                      {...cardState.attrs}
+                      className={cls(
+                        "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                        tokensClass(itemTokens),
+                        cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
+                      style={tokensStyle(itemTokens)}
+                    >
                       {m.avatarUrl ? wrapDecorations(
-                        <img src={m.avatarUrl} alt="" className={cls("mb-3 h-12 w-12 rounded-full object-cover", tokensClass(avatarTokens))} style={tokensStyle(avatarTokens)} />,
+                        (() => {
+                          const avatarState = getElementState({
+                            kind: "image",
+                            valuePath: ["members", idx, "avatarUrl"],
+                            tokensPath: ["members", idx, "avatarTokens"],
+                            label: m.name ?? "Avatar",
+                          });
+                          return (
+                            <img
+                              {...avatarState.attrs}
+                              src={m.avatarUrl}
+                              alt=""
+                              className={cls(
+                                "mb-3 h-12 w-12 rounded-full object-cover",
+                                tokensClass(avatarTokens),
+                                avatarState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                              )}
+                              style={tokensStyle(avatarTokens)}
+                            />
+                          );
+                        })(),
                         avatarTokens
                       ) : null}
                       {wrapDecorations(
@@ -1608,14 +1931,22 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const descriptionData = p.description ? textContent(String(p.description), descriptionTokens) : null;
                   const badgeData = p.badge ? textContent(String(p.badge), badgeTokens) : null;
                   const ctaData = p.ctaLabel ? textContent(String(p.ctaLabel), ctaTokens) : null;
+                  const cardState = getElementState({
+                    kind: "card",
+                    valuePath: ["plans", idx],
+                    tokensPath: ["plans", idx, "twTokens"],
+                    label: p.name ?? `Plan ${idx + 1}`,
+                  });
                   return wrapDecorations(
                     <div
                       key={idx}
                       className={cls(
                         "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
                         tokensClass(planTokens),
-                        p.highlight ? "ring-1 ring-accent-500/40" : undefined
+                        p.highlight ? "ring-1 ring-accent-500/40" : undefined,
+                        cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
                       )}
+                      {...cardState.attrs}
                       style={tokensStyle(planTokens)}
                     >
                       {badgeData ? wrapDecorations(
@@ -1709,7 +2040,24 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           wrapDecorations(
                             <a
                               href={p.ctaHref}
-                              className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens))}
+                              {...getElementState({
+                                kind: "button",
+                                valuePath: ["plans", idx, "ctaLabel"],
+                                tokensPath: ["plans", idx, "ctaTokens"],
+                                label: p.ctaLabel ?? "CTA",
+                              }).attrs}
+                              className={cls(
+                                "mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm",
+                                tokensClass(ctaTokens),
+                                getElementState({
+                                  kind: "button",
+                                  valuePath: ["plans", idx, "ctaLabel"],
+                                  tokensPath: ["plans", idx, "ctaTokens"],
+                                  label: p.ctaLabel ?? "CTA",
+                                }).selected
+                                  ? SELECTED_ELEMENT_CLASS
+                                  : undefined
+                              )}
                               style={tokensStyle(ctaTokens)}
                             >
                               <InlineEditableText
@@ -1720,6 +2068,9 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                                 className={ctaData.className}
                                 ariaLabel={ctaData.ariaLabel}
                                 placeholder="CTA"
+                                selectKind="button"
+                                selectTokensPath={["plans", idx, "ctaTokens"]}
+                                selectHighlight={false}
                               />
                             </a>,
                             ctaTokens
@@ -1735,6 +2086,8 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                               style={tokensStyle(ctaTokens)}
                               ariaLabel={ctaData.ariaLabel}
                               placeholder="CTA"
+                              selectKind="button"
+                              selectTokensPath={["plans", idx, "ctaTokens"]}
                             />,
                             ctaTokens
                           )
@@ -1804,8 +2157,23 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     const iconTokens = resolveFieldTokens((it as any).iconTokens, baseItemTokens);
                     const labelData = textContent(String(it.label || "Contact"), labelTokens);
                     const valueData = it.value ? textContent(String(it.value), valueTokens) : null;
+                    const cardState = getElementState({
+                      kind: "card",
+                      valuePath: ["items", idx],
+                      tokensPath: ["items", idx, "twTokens"],
+                      label: it.label ?? `Contact ${idx + 1}`,
+                    });
                     return wrapDecorations(
-                      <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))} style={tokensStyle(itemTokens)}>
+                      <div
+                        key={idx}
+                        {...cardState.attrs}
+                        className={cls(
+                          "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                          tokensClass(itemTokens),
+                          cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                        )}
+                        style={tokensStyle(itemTokens)}
+                      >
                         <div className="flex items-center gap-2">
                           {it.icon ? wrapDecorations(
                             <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
@@ -1991,8 +2359,23 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       })}
                       {form.submitLabel ? (() => {
                         const submitData = textContent(String(form.submitLabel), submitTokens);
+                        const submitState = getElementState({
+                          kind: "button",
+                          valuePath: ["form", "submitLabel"],
+                          tokensPath: ["form", "submitTokens"],
+                          label: form.submitLabel ?? "Submit",
+                        });
                         return wrapDecorations(
-                          <button type="submit" className={cls("inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm", tokensClass(submitTokens))} style={tokensStyle(submitTokens)}>
+                          <button
+                            type="submit"
+                            {...submitState.attrs}
+                            className={cls(
+                              "inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm",
+                              tokensClass(submitTokens),
+                              submitState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                            )}
+                            style={tokensStyle(submitTokens)}
+                          >
                             <InlineEditableText
                               as="span"
                               value={String(form.submitLabel ?? "")}
@@ -2001,6 +2384,9 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                               className={submitData.className}
                               ariaLabel={submitData.ariaLabel}
                               placeholder="Submit"
+                              selectKind="button"
+                              selectTokensPath={["form", "submitTokens"]}
+                              selectHighlight={false}
                             />
                           </button>,
                           submitTokens
@@ -2075,20 +2461,46 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
                   const imageTokens = resolveFieldTokens((it as any).imageTokens);
                   const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
+                  const cardState = getElementState({
+                    kind: "card",
+                    valuePath: ["items", idx],
+                    tokensPath: ["items", idx, "twTokens"],
+                    label: it.label ?? `Category ${idx + 1}`,
+                  });
                   const node = (
                     <div
                       key={idx}
-                      className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
+                      {...cardState.attrs}
+                      className={cls(
+                        "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                        tokensClass(itemTokens),
+                        cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
                       style={tokensStyle(itemTokens)}
                     >
                       {it.imageUrl ? (
                         wrapDecorations(
-                          <img
-                            src={it.imageUrl}
-                            alt=""
-                            className={cls("mb-3 h-32 w-full rounded-xl object-cover", tokensClass(imageTokens))}
-                            style={tokensStyle(imageTokens)}
-                          />,
+                          (() => {
+                            const imageState = getElementState({
+                              kind: "image",
+                              valuePath: ["items", idx, "imageUrl"],
+                              tokensPath: ["items", idx, "imageTokens"],
+                              label: it.label ?? "Category image",
+                            });
+                            return (
+                              <img
+                                {...imageState.attrs}
+                                src={it.imageUrl}
+                                alt=""
+                                className={cls(
+                                  "mb-3 h-32 w-full rounded-xl object-cover",
+                                  tokensClass(imageTokens),
+                                  imageState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                )}
+                                style={tokensStyle(imageTokens)}
+                              />
+                            );
+                          })(),
                           imageTokens
                         )
                       ) : null}
@@ -2182,19 +2594,45 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
                   const imageTokens = resolveFieldTokens((it as any).imageTokens);
                   const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
+                  const cardState = getElementState({
+                    kind: "card",
+                    valuePath: ["items", idx],
+                    tokensPath: ["items", idx, "twTokens"],
+                    label: it.label ?? `Collection ${idx + 1}`,
+                  });
                   const node = (
                     <div
                       key={idx}
-                      className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
+                      {...cardState.attrs}
+                      className={cls(
+                        "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                        tokensClass(itemTokens),
+                        cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
                       style={tokensStyle(itemTokens)}
                     >
                       {it.imageUrl ? wrapDecorations(
-                        <img
-                          src={it.imageUrl}
-                          alt=""
-                          className={cls("mb-3 h-32 w-full rounded-xl object-cover", tokensClass(imageTokens))}
-                          style={tokensStyle(imageTokens)}
-                        />,
+                        (() => {
+                          const imageState = getElementState({
+                            kind: "image",
+                            valuePath: ["items", idx, "imageUrl"],
+                            tokensPath: ["items", idx, "imageTokens"],
+                            label: it.label ?? "Collection image",
+                          });
+                          return (
+                            <img
+                              {...imageState.attrs}
+                              src={it.imageUrl}
+                              alt=""
+                              className={cls(
+                                "mb-3 h-32 w-full rounded-xl object-cover",
+                                tokensClass(imageTokens),
+                                imageState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                              )}
+                              style={tokensStyle(imageTokens)}
+                            />
+                          );
+                        })(),
                         imageTokens
                       ) : null}
                       {(() => {
@@ -2306,10 +2744,21 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   const nameTokens = resolveFieldTokens((it as any).nameTokens, baseItemTokens);
                   const logoTokens = resolveFieldTokens((it as any).logoTokens, baseItemTokens);
                   const linkTokens = resolveFieldTokens((it as any).linkTokens, baseItemTokens);
+                  const cardState = getElementState({
+                    kind: "card",
+                    valuePath: ["items", idx],
+                    tokensPath: ["items", idx, "twTokens"],
+                    label: it.name ?? `Brand ${idx + 1}`,
+                  });
                   const node = (
                     <div
                       key={idx}
-                      className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm", tokensClass(itemTokens))}
+                      {...cardState.attrs}
+                      className={cls(
+                        "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm",
+                        tokensClass(itemTokens),
+                        cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
                       style={tokensStyle(itemTokens)}
                     >
                       {(() => {
@@ -2404,20 +2853,35 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
             ) : null}
             {d.ctaLabel ? (
               d.ctaHref ? (
-                <a
-                  href={d.ctaHref}
-                  className={cls("inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:opacity-90")}
-                >
-                  <InlineEditableText
-                    as="span"
-                    value={String(d.ctaLabel ?? "")}
-                    path={["ctaLabel"]}
-                    textData={ctaData ?? undefined}
-                    className={ctaData?.className}
-                    ariaLabel={ctaData?.ariaLabel}
-                    placeholder="CTA"
-                  />
-                </a>
+                (() => {
+                  const buttonState = getElementState({
+                    kind: "button",
+                    valuePath: ["ctaLabel"],
+                    label: d.ctaLabel ?? "CTA",
+                  });
+                  return (
+                    <a
+                      {...buttonState.attrs}
+                      href={d.ctaHref}
+                      className={cls(
+                        "inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:opacity-90",
+                        buttonState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
+                    >
+                      <InlineEditableText
+                        as="span"
+                        value={String(d.ctaLabel ?? "")}
+                        path={["ctaLabel"]}
+                        textData={ctaData ?? undefined}
+                        className={ctaData?.className}
+                        ariaLabel={ctaData?.ariaLabel}
+                        placeholder="CTA"
+                        selectKind="button"
+                        selectHighlight={false}
+                      />
+                    </a>
+                  );
+                })()
               ) : (
                 <InlineEditableText
                   as="span"
@@ -2427,6 +2891,7 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   className={cls("inline-flex items-center rounded-xl bg-white/80 px-4 py-2 text-sm font-semibold text-black/80", ctaData?.className)}
                   ariaLabel={ctaData?.ariaLabel}
                   placeholder="CTA"
+                  selectKind="button"
                 />
               )
             ) : null}
@@ -2465,19 +2930,45 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               {(d.images ?? []).map((im, idx) => {
                 const itemTokens = resolveFieldTokens((im as any).twTokens);
                 const imageTokens = resolveFieldTokens((im as any).imageTokens);
+                const cardState = getElementState({
+                  kind: "card",
+                  valuePath: ["images", idx],
+                  tokensPath: ["images", idx, "twTokens"],
+                  label: im.alt ?? `Image ${idx + 1}`,
+                });
                 const node = (
                   <div
                     key={idx}
-                    className={cls("overflow-hidden rounded-2xl", tokensClass(itemTokens))}
+                    {...cardState.attrs}
+                    className={cls(
+                      "overflow-hidden rounded-2xl",
+                      tokensClass(itemTokens),
+                      cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                    )}
                     style={tokensStyle(itemTokens)}
                   >
                     {wrapDecorations(
-                      <img
-                        src={im.url}
-                        alt={im.alt ?? ""}
-                        className={cls("h-40 w-full object-cover", tokensClass(imageTokens))}
-                        style={tokensStyle(imageTokens)}
-                      />,
+                      (() => {
+                        const imageState = getElementState({
+                          kind: "image",
+                          valuePath: ["images", idx, "url"],
+                          tokensPath: ["images", idx, "imageTokens"],
+                          label: im.alt ?? `Image ${idx + 1}`,
+                        });
+                        return (
+                          <img
+                            {...imageState.attrs}
+                            src={im.url}
+                            alt={im.alt ?? ""}
+                            className={cls(
+                              "h-40 w-full object-cover",
+                              tokensClass(imageTokens),
+                              imageState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                            )}
+                            style={tokensStyle(imageTokens)}
+                          />
+                        );
+                      })(),
                       imageTokens
                     )}
                   </div>
@@ -2521,21 +3012,47 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 const roleTokens = resolveFieldTokens((t as any).roleTokens, baseItemTokens);
                 const quoteTokens = resolveFieldTokens((t as any).quoteTokens, baseItemTokens);
                 const avatarTokens = resolveFieldTokens((t as any).avatarTokens);
+                const cardState = getElementState({
+                  kind: "card",
+                  valuePath: ["items", idx],
+                  tokensPath: ["items", idx, "twTokens"],
+                  label: t.name ?? `Testimonial ${idx + 1}`,
+                });
                 const node = (
                   <div
                     key={idx}
-                    className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", tokensClass(itemTokens))}
+                    {...cardState.attrs}
+                    className={cls(
+                      "rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4",
+                      tokensClass(itemTokens),
+                      cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                    )}
                     style={tokensStyle(itemTokens)}
                   >
                     <div className="flex items-center gap-3">
                       {t.avatarUrl ? (
                         wrapDecorations(
-                          <img
-                            src={t.avatarUrl}
-                            alt={t.name ?? "Avatar"}
-                            className={cls("h-10 w-10 rounded-full object-cover border border-white/10", tokensClass(avatarTokens))}
-                            style={tokensStyle(avatarTokens)}
-                          />,
+                          (() => {
+                            const avatarState = getElementState({
+                              kind: "image",
+                              valuePath: ["items", idx, "avatarUrl"],
+                              tokensPath: ["items", idx, "avatarTokens"],
+                              label: t.name ?? "Avatar",
+                            });
+                            return (
+                              <img
+                                {...avatarState.attrs}
+                                src={t.avatarUrl}
+                                alt={t.name ?? "Avatar"}
+                                className={cls(
+                                  "h-10 w-10 rounded-full object-cover border border-white/10",
+                                  tokensClass(avatarTokens),
+                                  avatarState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                )}
+                                style={tokensStyle(avatarTokens)}
+                              />
+                            );
+                          })(),
                           avatarTokens
                         )
                       ) : (
@@ -2715,6 +3232,12 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               const badgeTokens = resolveFieldTokens((c as any).badgeTokens, baseCardTokens);
               const buttonTokens = resolveFieldTokens((c as any).buttonTokens, baseCardTokens);
               const imageTokens = resolveFieldTokens((c as any).imageTokens);
+              const cardState = getElementState({
+                kind: "card",
+                valuePath: ["cards", idx],
+                tokensPath: ["cards", idx, "twTokens"],
+                label: c.title ?? `Card ${idx + 1}`,
+              });
               const node = (
                 <div
                   key={idx}
@@ -2722,17 +3245,34 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     ui.cardClass ||
                       "w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.67rem)] rounded-2xl border border-white/10 bg-white/5 p-4",
                     cardEffects,
-                    tokensClass(cardTokens)
+                    tokensClass(cardTokens),
+                    cardState.selected ? SELECTED_ELEMENT_CLASS : undefined
                   )}
+                  {...cardState.attrs}
                   style={tokensStyle(cardTokens)}
                 >
                   {c.imageUrl ? wrapDecorations(
-                    <img
-                      src={c.imageUrl}
-                      alt={c.title ?? ""}
-                      className={cls(ui.imageClass || "w-full h-40 object-cover rounded-xl border border-white/10", tokensClass(imageTokens))}
-                      style={tokensStyle(imageTokens)}
-                    />,
+                    (() => {
+                      const imageState = getElementState({
+                        kind: "image",
+                        valuePath: ["cards", idx, "imageUrl"],
+                        tokensPath: ["cards", idx, "imageTokens"],
+                        label: c.title ?? "Card image",
+                      });
+                      return (
+                        <img
+                          {...imageState.attrs}
+                          src={c.imageUrl}
+                          alt={c.title ?? ""}
+                          className={cls(
+                            ui.imageClass || "w-full h-40 object-cover rounded-xl border border-white/10",
+                            tokensClass(imageTokens),
+                            imageState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                          )}
+                          style={tokensStyle(imageTokens)}
+                        />
+                      );
+                    })(),
                     imageTokens
                   ) : null}
 
@@ -2794,13 +3334,21 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   {c.buttonLabel && c.buttonHref ? (
                     (() => {
                       const buttonData = textContent(String(c.buttonLabel ?? ""), buttonTokens);
+                      const buttonState = getElementState({
+                        kind: "button",
+                        valuePath: ["cards", idx, "buttonLabel"],
+                        tokensPath: ["cards", idx, "buttonTokens"],
+                        label: c.buttonLabel ?? "Button",
+                      });
                       return wrapDecorations(
                         <a
                           href={c.buttonHref}
                           className={cls(
                             "mt-4 inline-flex items-center justify-center rounded-xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15",
-                            tokensClass(buttonTokens)
+                            tokensClass(buttonTokens),
+                            buttonState.selected ? SELECTED_ELEMENT_CLASS : undefined
                           )}
+                          {...buttonState.attrs}
                           style={tokensStyle(buttonTokens)}
                         >
                           <InlineEditableText
@@ -2811,6 +3359,9 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                             className={buttonData.className}
                             ariaLabel={buttonData.ariaLabel}
                             placeholder="Button"
+                            selectKind="button"
+                            selectTokensPath={["cards", idx, "buttonTokens"]}
+                            selectHighlight={false}
                           />
                         </a>,
                         buttonTokens
@@ -2933,6 +3484,9 @@ export function PageRenderer({
   selectedSectionId,
   onSectionSelect,
   highlightSelected = true,
+  selectedElement,
+  onElementSelect,
+  highlightSelectedElement = true,
 }: {
   sections: PageSection[];
   inlineEditing?: boolean;
@@ -2940,85 +3494,99 @@ export function PageRenderer({
   selectedSectionId?: string | null;
   onSectionSelect?: SectionSelectHandler;
   highlightSelected?: boolean;
+  selectedElement?: SelectedElement | null;
+  onElementSelect?: ElementSelectHandler;
+  highlightSelectedElement?: boolean;
 }) {
   const sorted = (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const groups = buildSectionGroups(sorted);
   const inlineContext = { enabled: !!inlineEditing && !!onInlineEdit, onCommit: onInlineEdit };
+  const selectContext = {
+    selected: highlightSelectedElement ? (selectedElement ?? null) : null,
+    onSelect: onElementSelect,
+  };
 
   return (
     <InlineEditContext.Provider value={inlineContext}>
-      <div className="space-y-5">
-        {groups.flatMap((group) => {
-          const renderSectionItem = (sec: PageSection) => {
-            const layout = normalizeSectionLayout((sec as any)?.data?.layout);
-            const span = clampInt(layout.span, 1, group.columns, 1);
-            const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
-            const rowStyle =
-              group.mode === "row" && group.columns > 0
-                ? {
-                    flex: `0 0 ${(span / group.columns) * 100}%`,
-                    maxWidth: `${(span / group.columns) * 100}%`,
-                  }
-                : undefined;
-            const stringId = String(sec.id);
-            const isSelected = highlightSelected && selectedSectionId != null && String(selectedSectionId) === stringId;
+      <InlineSelectContext.Provider value={selectContext}>
+        <div className="space-y-5">
+          {groups.flatMap((group) => {
+            const renderSectionItem = (sec: PageSection) => {
+              const layout = normalizeSectionLayout((sec as any)?.data?.layout);
+              const span = clampInt(layout.span, 1, group.columns, 1);
+              const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
+              const rowStyle =
+                group.mode === "row" && group.columns > 0
+                  ? {
+                      flex: `0 0 ${(span / group.columns) * 100}%`,
+                      maxWidth: `${(span / group.columns) * 100}%`,
+                    }
+                  : undefined;
+              const stringId = String(sec.id);
+              const isSelected = highlightSelected && selectedSectionId != null && String(selectedSectionId) === stringId;
+
+              return (
+                <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
+                  <InlineSectionContext.Provider value={stringId}>
+                    <div
+                      data-section-id={stringId}
+                      className={cls(
+                        "cms-canvas-section relative",
+                        onSectionSelect ? "cursor-pointer" : undefined,
+                        isSelected ? "outline outline-2 outline-accent-500/40 outline-offset-4" : "outline outline-1 outline-transparent"
+                      )}
+                      onMouseDownCapture={
+                        onSectionSelect || onElementSelect
+                          ? (event) => {
+                              if (event.button !== 0) return;
+                              const meta = resolveElementMeta(event.target as HTMLElement | null);
+                              if (meta && onElementSelect) {
+                                onElementSelect(buildSelectedElement(stringId, meta));
+                                return;
+                              }
+                              onSectionSelect?.(stringId);
+                            }
+                          : undefined
+                      }
+                      onClick={
+                        onSectionSelect
+                          ? (event) => {
+                              if (event.defaultPrevented) return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }
+                          : undefined
+                      }
+                    >
+                      {isSelected ? (
+                        <div className="pointer-events-none absolute -top-3 left-3 rounded-full border border-accent-500/40 bg-accent-500/20 px-2 py-0.5 text-[10px] text-accent-200 shadow-sm">
+                          Selected
+                        </div>
+                      ) : null}
+                      <Section type={sec.type} data={sec.data} sectionId={stringId} selectedElement={highlightSelectedElement ? selectedElement : null} />
+                    </div>
+                  </InlineSectionContext.Provider>
+                </div>
+              );
+            };
+
+            if (group.mode === "stack") {
+              return group.sections.map(renderSectionItem);
+            }
+
+            const groupClass =
+              group.mode === "row"
+                ? "flex flex-wrap items-stretch gap-5"
+                : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
 
             return (
-              <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
-                <InlineSectionContext.Provider value={stringId}>
-                  <div
-                    data-section-id={stringId}
-                    className={cls(
-                      "cms-canvas-section relative",
-                      onSectionSelect ? "cursor-pointer" : undefined,
-                      isSelected ? "outline outline-2 outline-accent-500/40 outline-offset-4" : "outline outline-1 outline-transparent"
-                    )}
-                    onMouseDownCapture={
-                      onSectionSelect
-                        ? (event) => {
-                            if (event.button !== 0) return;
-                            onSectionSelect(stringId);
-                          }
-                        : undefined
-                    }
-                    onClick={
-                      onSectionSelect
-                        ? (event) => {
-                            if (event.defaultPrevented) return;
-                            event.preventDefault();
-                            event.stopPropagation();
-                          }
-                        : undefined
-                    }
-                  >
-                    {isSelected ? (
-                      <div className="pointer-events-none absolute -top-3 left-3 rounded-full border border-accent-500/40 bg-accent-500/20 px-2 py-0.5 text-[10px] text-accent-200 shadow-sm">
-                        Selected
-                      </div>
-                    ) : null}
-                    <Section type={sec.type} data={sec.data} />
-                  </div>
-                </InlineSectionContext.Provider>
+              <div key={group.key} className={groupClass}>
+                {group.sections.map(renderSectionItem)}
               </div>
             );
-          };
-
-          if (group.mode === "stack") {
-            return group.sections.map(renderSectionItem);
-          }
-
-          const groupClass =
-            group.mode === "row"
-              ? "flex flex-wrap items-stretch gap-5"
-              : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
-
-          return (
-            <div key={group.key} className={groupClass}>
-              {group.sections.map(renderSectionItem)}
-            </div>
-          );
-        })}
-      </div>
+          })}
+        </div>
+      </InlineSelectContext.Provider>
     </InlineEditContext.Provider>
   );
 }
