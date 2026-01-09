@@ -22,6 +22,12 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
+const ArrowLeftIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+  </svg>
+);
+
 const TagIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -29,20 +35,38 @@ const TagIcon = () => (
 );
 
 const TruckIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
   </svg>
 );
 
 const ShieldIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
   </svg>
 );
 
 const RefreshIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+  </svg>
+);
+
+const HeartIcon = () => (
+  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+  </svg>
+);
+
+const GridIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+  </svg>
+);
+
+const ChevronLeftIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
   </svg>
 );
 
@@ -54,162 +78,152 @@ export default async function FallbackHome() {
   ]);
 
   const top = (cats ?? []).slice(0, 8);
+  const siteName = bootstrap?.site?.siteName || "Estabrak Store";
 
   return (
-    <div className="space-y-12">
-      {/* Hero Section */}
-      <section className="hero-section relative overflow-hidden rounded-3xl border border-white/[0.08]">
-        {/* Animated Background Elements */}
-        <div className="floating-element floating-element-1" />
-        <div className="floating-element floating-element-2" />
-        <div className="floating-element floating-element-3" />
-        <div className="grid-pattern" />
+    <div className="space-y-16" dir="rtl">
+      {/* MEGA HERO SECTION */}
+      <section className="hero-mega">
+        {/* Animated Orbs */}
+        <div className="hero-orb hero-orb-1" />
+        <div className="hero-orb hero-orb-2" />
+        <div className="hero-orb hero-orb-3" />
         
-        {/* Particles */}
-        {[...Array(6)].map((_, i) => (
+        {/* Floating Shapes */}
+        <div className="hero-shape hero-shape-1" />
+        <div className="hero-shape hero-shape-2" />
+        <div className="hero-shape hero-shape-3" />
+        
+        {/* Glowing Lines */}
+        <div className="hero-line hero-line-1" />
+        <div className="hero-line hero-line-2" />
+        <div className="hero-line hero-line-3" />
+
+        {/* Sparkles */}
+        {[...Array(8)].map((_, i) => (
           <div 
             key={i}
-            className="particle"
+            className="sparkle"
             style={{
-              left: `${15 + i * 15}%`,
-              animationDelay: `${i * 2}s`,
-              animationDuration: `${12 + i * 2}s`
+              top: `${20 + Math.random() * 60}%`,
+              left: `${10 + Math.random() * 80}%`,
+              animationDelay: `${i * 0.5}s`,
             }}
           />
         ))}
 
         {/* Content */}
-        <div className="relative z-10 px-8 py-16 md:py-24 md:px-12">
-          <div className="max-w-3xl">
-            {/* Badge */}
-            <div className="hero-cta mb-6" style={{ animationDelay: '0s' }}>
-              <span className="animated-badge">
-                <SparklesIcon />
-                مرحباً بك في متجرنا
-              </span>
+        <div className="hero-mega-content">
+          {/* Badge */}
+          <div className="hero-mega-badge">
+            <SparklesIcon />
+            <span>مرحباً بك في {siteName}</span>
+          </div>
+
+          {/* Title */}
+          <h1 className="hero-mega-title">
+            <span className="text-[var(--text)]">اكتشف</span>
+            <br />
+            <span className="gradient-text">أفضل المنتجات</span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="hero-mega-subtitle">
+            تشكيلة واسعة من المنتجات المميزة بأفضل الأسعار. توصيل سريع لجميع المناطق وخدمة عملاء على مدار الساعة.
+          </p>
+
+          {/* CTA */}
+          <div className="hero-mega-cta">
+            <Link href="/shop" className="hero-mega-btn-primary">
+              <ShoppingBagIcon />
+              <span>تسوّق الآن</span>
+              <ArrowLeftIcon />
+            </Link>
+            <Link href="/search" className="hero-mega-btn-secondary">
+              <span>استكشف المزيد</span>
+            </Link>
+          </div>
+
+          {/* Stats */}
+          <div className="hero-stats">
+            <div className="hero-stat">
+              <div className="hero-stat-value">{products.total || "100"}+</div>
+              <div className="hero-stat-label">منتج</div>
             </div>
-
-            {/* Title */}
-            <h1 className="hero-title text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-              <span className="text-[var(--text)]">{bootstrap.site.siteName || "Estabrak Store"}</span>
-              <br />
-              <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
-                أفضل المنتجات
-              </span>
-            </h1>
-
-            {/* Subtitle */}
-            <p className="hero-subtitle mt-6 text-lg md:text-xl text-[var(--text)]/70 max-w-xl">
-              اكتشف تشكيلة واسعة من المنتجات المميزة بأفضل الأسعار. توصيل سريع وخدمة عملاء متميزة.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="hero-cta mt-8 flex flex-wrap gap-4">
-              <Link 
-                href="/shop" 
-                className="group inline-flex items-center gap-3 px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
-              >
-                <ShoppingBagIcon />
-                تسوّق الآن
-                <ArrowRightIcon />
-              </Link>
-              <Link 
-                href="/" 
-                className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border border-white/15 bg-white/5 text-[var(--text)] font-medium hover:bg-white/10 hover:border-white/25 transition-all duration-300"
-              >
-                استكشف المزيد
-              </Link>
+            <div className="hero-stat">
+              <div className="hero-stat-value">{top.length || "10"}+</div>
+              <div className="hero-stat-label">تصنيف</div>
             </div>
-
-            {/* Trust Badges */}
-            <div className="hero-cta mt-10 flex flex-wrap items-center gap-6 text-sm text-[var(--text)]/60" style={{ animationDelay: '0.6s' }}>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <TruckIcon />
-                </div>
-                <span>شحن سريع</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">
-                  <ShieldIcon />
-                </div>
-                <span>دفع آمن</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
-                  <RefreshIcon />
-                </div>
-                <span>إرجاع مجاني</span>
-              </div>
+            <div className="hero-stat">
+              <div className="hero-stat-value">24/7</div>
+              <div className="hero-stat-label">دعم</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Categories Section */}
-      {top.length ? (
-        <section className="space-y-6">
-          <div className="section-header">
-            <h2 className="section-title">
-              <span className="section-title-icon text-white">
+      {/* CATEGORIES SECTION */}
+      {top.length > 0 && (
+        <section className="featured-section">
+          <div className="featured-section-header">
+            <h2 className="featured-section-title">
+              <span className="featured-section-icon">
                 <TagIcon />
               </span>
               التصنيفات
             </h2>
             <Link 
               href="/shop" 
-              className="inline-flex items-center gap-2 text-sm text-[var(--text)]/70 hover:text-[var(--accent)] transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
             >
               عرض الكل
-              <ArrowRightIcon />
+              <ArrowLeftIcon />
             </Link>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+
+          <div className="category-showcase stagger-children">
             {top.map((c, idx) => (
               <Link
                 key={c.id}
                 href={`/c/${c.slug}`}
-                className="category-card stagger-item group"
-                style={{ animationDelay: `${idx * 50}ms` }}
+                className="category-showcase-item"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-                    {c.name}
-                  </span>
-                  <svg className="w-5 h-5 text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
+                <div className="category-showcase-icon">
+                  <GridIcon />
+                </div>
+                <div className="category-showcase-name">{c.name}</div>
+                <div className="category-showcase-count">تصفح المنتجات</div>
+                <div className="category-showcase-arrow">
+                  <ChevronLeftIcon />
                 </div>
               </Link>
             ))}
           </div>
         </section>
-      ) : null}
+      )}
 
-      {/* Products Section */}
-      <section className="space-y-6">
-        <div className="section-header">
-          <h2 className="section-title">
-            <span className="section-title-icon text-white">
+      {/* PRODUCTS SECTION */}
+      <section className="featured-section">
+        <div className="featured-section-header">
+          <h2 className="featured-section-title">
+            <span className="featured-section-icon">
               <SparklesIcon />
             </span>
             أحدث المنتجات
           </h2>
           <Link 
             href="/shop" 
-            className="inline-flex items-center gap-2 text-sm text-[var(--text)]/70 hover:text-[var(--accent)] transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
           >
             المتجر
-            <ArrowRightIcon />
+            <ArrowLeftIcon />
           </Link>
         </div>
 
         {products.items?.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {products.items.map((p, idx) => (
-              <div key={p.id} className="stagger-item" style={{ animationDelay: `${idx * 60}ms` }}>
-                <ProductTile product={p} />
-              </div>
+          <div className="products-showcase stagger-children">
+            {products.items.map((p) => (
+              <ProductTile key={p.id} product={p} />
             ))}
           </div>
         ) : (
@@ -225,28 +239,61 @@ export default async function FallbackHome() {
         )}
       </section>
 
-      {/* Features Section */}
-      <section className="grid gap-4 md:grid-cols-3">
-        <div className="glass-card rounded-2xl p-6 text-center">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center mx-auto mb-4 text-emerald-400">
+      {/* FEATURES SECTION */}
+      <section className="features-mega-grid">
+        <div className="feature-mega-card">
+          <div className="feature-mega-icon emerald">
             <TruckIcon />
           </div>
-          <h3 className="font-semibold text-[var(--text)] mb-2">شحن سريع</h3>
-          <p className="text-sm text-[var(--muted)]">توصيل سريع لجميع المناطق</p>
+          <h3 className="feature-mega-title">شحن سريع</h3>
+          <p className="feature-mega-desc">
+            توصيل سريع وآمن لجميع المناطق مع إمكانية تتبع الشحنة
+          </p>
         </div>
-        <div className="glass-card rounded-2xl p-6 text-center">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center mx-auto mb-4 text-blue-400">
+
+        <div className="feature-mega-card">
+          <div className="feature-mega-icon blue">
             <ShieldIcon />
           </div>
-          <h3 className="font-semibold text-[var(--text)] mb-2">دفع آمن</h3>
-          <p className="text-sm text-[var(--muted)]">طرق دفع متعددة وآمنة</p>
+          <h3 className="feature-mega-title">دفع آمن</h3>
+          <p className="feature-mega-desc">
+            طرق دفع متعددة وآمنة تشمل البطاقات والدفع عند الاستلام
+          </p>
         </div>
-        <div className="glass-card rounded-2xl p-6 text-center">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 flex items-center justify-center mx-auto mb-4 text-amber-400">
+
+        <div className="feature-mega-card">
+          <div className="feature-mega-icon amber">
             <RefreshIcon />
           </div>
-          <h3 className="font-semibold text-[var(--text)] mb-2">إرجاع مجاني</h3>
-          <p className="text-sm text-[var(--muted)]">استرجع منتجك خلال 14 يوم</p>
+          <h3 className="feature-mega-title">إرجاع مجاني</h3>
+          <p className="feature-mega-desc">
+            استرجع منتجك خلال 14 يوم مع ضمان استرداد كامل المبلغ
+          </p>
+        </div>
+
+        <div className="feature-mega-card">
+          <div className="feature-mega-icon purple">
+            <HeartIcon />
+          </div>
+          <h3 className="feature-mega-title">دعم متميز</h3>
+          <p className="feature-mega-desc">
+            فريق دعم متخصص جاهز لمساعدتك على مدار الساعة
+          </p>
+        </div>
+      </section>
+
+      {/* NEWSLETTER SECTION */}
+      <section className="newsletter-section">
+        <h3 className="newsletter-title">اشترك في النشرة البريدية</h3>
+        <p className="newsletter-desc">احصل على آخر العروض والخصومات مباشرة</p>
+        <div className="newsletter-form">
+          <input 
+            type="email" 
+            placeholder="البريد الإلكتروني"
+            className="newsletter-input"
+            dir="ltr"
+          />
+          <button className="newsletter-btn">اشترك</button>
         </div>
       </section>
     </div>
