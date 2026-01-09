@@ -122,6 +122,7 @@ function SortableSectionCard({
   onToggleVisible,
   previewData,
   theme,
+  index = 0,
 }: {
   section: PageSection;
   onEdit: () => void;
@@ -129,59 +130,198 @@ function SortableSectionCard({
   onToggleVisible: () => void;
   previewData?: any;
   theme?: any;
+  index?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
+  // 3D tilt effect on mouse move
+  const handleMouseMove = React.useCallback((e: React.MouseEvent) => {
+    if (!cardRef.current || isDragging) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = (y - centerY) / 30;
+    const rotateY = (centerX - x) / 30;
+    const spotlightX = (x / rect.width) * 100;
+    const spotlightY = (y / rect.height) * 100;
+    
+    cardRef.current.style.setProperty('--rotate-x', `${rotateX}deg`);
+    cardRef.current.style.setProperty('--rotate-y', `${rotateY}deg`);
+    cardRef.current.style.setProperty('--spotlight-x', `${spotlightX}%`);
+    cardRef.current.style.setProperty('--spotlight-y', `${spotlightY}%`);
+  }, [isDragging]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    if (!cardRef.current) return;
+    cardRef.current.style.setProperty('--rotate-x', '0deg');
+    cardRef.current.style.setProperty('--rotate-y', '0deg');
+  }, []);
+
+  // Section type icon mapping
+  const sectionTypeIcon = React.useMemo(() => {
+    const type = section.data?.__mode === "components" ? "COMPONENTS" : section.type;
+    switch(type) {
+      case 'HERO': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      );
+      case 'RICH_TEXT': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+        </svg>
+      );
+      case 'GRID': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+      );
+      case 'FEATURES': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+      );
+      case 'COMPONENTS': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+        </svg>
+      );
+      default: return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      );
+    }
+  }, [section.type, section.data]);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={[
-        "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4",
-        isDragging ? "ring-2 ring-white/20" : "",
-      ].join(" ")}
+      className="opacity-0 animate-fade-in-up"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <button
-            type="button"
-            className="mt-0.5 select-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-sm opacity-70 hover:opacity-100 cursor-grab"
-            title="اسحب للترتيب"
-            {...attributes}
-            {...listeners}
-          >
-            ⋮⋮
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold">{section.data?.__mode === "components" ? "COMPONENTS" : section.type}</div>
-              <span className="rounded-full border border-white/[0.10] bg-white/[0.04] px-2 py-0.5 text-[11px] opacity-80">#{section.order ?? 0}</span>
-              {section.isVisible ? (
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-200">ظاهر</span>
-              ) : (
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-200">مخفي</span>
-              )}
-            </div>
-            <div className="mt-2">
-              <ThemePreview theme={theme} className="rounded-2xl p-2">
-                <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview…</div>}>
-                  <LazySectionPreview type={section.type} data={previewData ?? section.data} />
-                </React.Suspense>
-              </ThemePreview>
+      <div
+        ref={cardRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className={[
+          "section-card-3d p-5",
+          isDragging ? "ring-2 ring-accent-500/50 border-accent-500/30 shadow-2xl shadow-accent-500/20" : "",
+        ].join(" ")}
+        style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'forwards' }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            {/* Drag Handle */}
+            <button
+              type="button"
+              className="mt-1 w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] text-white/50 hover:text-white hover:border-white/[0.15] hover:from-white/[0.08] hover:to-white/[0.04] transition-all cursor-grab active:cursor-grabbing"
+              title="اسحب للترتيب"
+              {...attributes}
+              {...listeners}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+              </svg>
+            </button>
+            
+            {/* Section Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Section Type Badge */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent-500/10 border border-accent-500/20 text-accent-400">
+                  {sectionTypeIcon}
+                  <span className="text-xs font-medium">
+                    {section.data?.__mode === "components" ? "COMPONENTS" : section.type}
+                  </span>
+                </div>
+                
+                {/* Order Badge */}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/60">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  </svg>
+                  {section.order ?? 0}
+                </span>
+                
+                {/* Visibility Badge */}
+                {section.isVisible ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    ظاهر
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-400">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                    مخفي
+                  </span>
+                )}
+              </div>
+              
+              {/* Preview Container */}
+              <div className="mt-4 rounded-xl overflow-hidden border border-white/[0.06] bg-black/20">
+                <ThemePreview theme={theme} className="rounded-xl">
+                  <React.Suspense 
+                    fallback={
+                      <div className="p-8 text-center">
+                        <div className="inline-flex items-center gap-2 text-xs text-white/40">
+                          <Spinner className="w-4 h-4" />
+                          جاري تحميل المعاينة...
+                        </div>
+                      </div>
+                    }
+                  >
+                    <LazySectionPreview type={section.type} data={previewData ?? section.data} />
+                  </React.Suspense>
+                </ThemePreview>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant={section.isVisible ? "ghost" : "secondary"} size="sm" onClick={onToggleVisible}>
-            {section.isVisible ? "إخفاء" : "إظهار"}
-          </Button>
-          <Button variant="secondary" size="sm" onClick={onEdit}>تعديل</Button>
-          <Button variant="danger" size="sm" onClick={onDelete}>حذف</Button>
+          {/* Actions */}
+          <div className="flex flex-col gap-2">
+            <Button 
+              variant={section.isVisible ? "ghost" : "secondary"} 
+              size="sm" 
+              onClick={onToggleVisible}
+              className="btn-shine"
+              title={section.isVisible ? "إخفاء القسم" : "إظهار القسم"}
+            >
+              {section.isVisible ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              )}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onEdit} className="btn-shine">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </Button>
+            <Button variant="danger" size="sm" onClick={onDelete}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -1018,10 +1158,22 @@ export default function PageEditorPage() {
 
   if (q.isLoading) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div className="flex items-center gap-2">
-          <Spinner />
-          <div className="text-sm opacity-80">جاري التحميل…</div>
+      <div dir="rtl" className="relative rounded-2xl border border-white/[0.06] glass-premium p-12 overflow-hidden">
+        {/* Ambient glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-gradient-to-b from-accent-500/10 to-transparent blur-3xl pointer-events-none" />
+        
+        <div className="relative flex flex-col items-center justify-center gap-4">
+          <div className="relative">
+            <Spinner className="w-12 h-12" />
+            {/* Orbiting elements */}
+            <div className="absolute inset-[-25px] animate-orbit" style={{ animationDuration: '3s' }}>
+              <div className="w-2.5 h-2.5 rounded-full bg-accent-500/50 shadow-lg shadow-accent-500/30" />
+            </div>
+            <div className="absolute inset-[-40px] animate-orbit" style={{ animationDuration: '5s', animationDirection: 'reverse' }}>
+              <div className="w-2 h-2 rounded-full bg-accent-400/30" />
+            </div>
+          </div>
+          <p className="text-sm text-white/60">جاري تحميل الصفحة...</p>
         </div>
       </div>
     );
@@ -1029,36 +1181,104 @@ export default function PageEditorPage() {
 
   if (q.isError || !page) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-red-400/20 bg-red-500/10 p-6 text-red-100">
-        فشل تحميل الصفحة.
-        <div className="mt-4">
-          <Button variant="ghost" onClick={() => nav("/admin/pages")}>رجوع</Button>
+      <div dir="rtl" className="relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5 p-8 overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
+        
+        <div className="flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-red-300">فشل تحميل الصفحة</h3>
+            <p className="mt-1 text-sm text-red-400/70">حدث خطأ أثناء تحميل بيانات الصفحة</p>
+          </div>
+          <Button variant="ghost" onClick={() => nav("/admin/pages")} className="mt-2 btn-shine">
+            <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            العودة للصفحات
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="space-y-4">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="text-lg font-semibold flex items-center gap-2">
-              تحرير الصفحة
-              {isDirty ? <span className="rounded-lg bg-amber-500/20 px-2 py-1 text-[11px] text-amber-100">غير محفوظ</span> : null}
+    <div dir="rtl" className="space-y-5 perspective-container">
+      {/* Enhanced Header Card */}
+      <div className="relative rounded-2xl border border-white/[0.06] glass-premium p-6 overflow-hidden">
+        {/* 3D Background decorations */}
+        <div className="absolute top-[-30px] right-[-30px] w-20 h-20 opacity-20 pointer-events-none">
+          <div className="floating-cube" />
+        </div>
+        <div className="absolute bottom-[-20px] left-[20%] w-16 h-16 opacity-15 pointer-events-none">
+          <div className="floating-sphere" />
+        </div>
+        
+        {/* Ambient glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[120px] bg-gradient-to-b from-accent-500/10 to-transparent blur-3xl pointer-events-none" />
+        
+        {/* Top highlight */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-500/30 to-transparent" />
+        
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/25 flex items-center justify-center shadow-lg shadow-accent-500/10">
+              <svg className="w-7 h-7 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
             </div>
-            <div className="mt-1 text-xs opacity-70">
-              ID: <span className="opacity-100">{page.id}</span>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold text-gradient-premium">تحرير الصفحة</h1>
+                {isDirty ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-xs text-amber-400 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    غير محفوظ
+                  </span>
+                ) : null}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ${
+                  page.status === 'PUBLISHED' 
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                    : 'bg-white/5 border border-white/10 text-white/60'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${page.status === 'PUBLISHED' ? 'bg-emerald-400' : 'bg-white/40'}`} />
+                  {page.status === 'PUBLISHED' ? 'منشور' : 'مسودة'}
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-3 text-sm text-white/50">
+                <span>ID: <span className="font-mono text-white/70">{page.id}</span></span>
+                <span>•</span>
+                <span>{sections.length} قسم</span>
+              </div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="ghost" onClick={() => nav("/admin/pages")}>رجوع</Button>
-            <Button variant="ghost" onClick={() => nav(`/admin/pages/${page.id}/preview`)}>Preview</Button>
+            <Button variant="ghost" onClick={() => nav("/admin/pages")} className="btn-shine">
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              رجوع
+            </Button>
+            <Button variant="ghost" onClick={() => nav(`/admin/pages/${page.id}/preview`)}>
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              معاينة
+            </Button>
             
-            <Button variant="secondary" onClick={openCreateSection}>إضافة Section</Button>
+            <Button variant="accent" onClick={openCreateSection} className="btn-shine">
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              إضافة Section
+            </Button>
             <select
-              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm sm:w-auto"
+              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm sm:w-auto hover:bg-white/[0.06] transition-colors"
               value={componentsSectionKind}
               onChange={(e) => setComponentsSectionKind(e.target.value as CmsComponentKind)}
               title="نوع Component لقسم Components"
@@ -1069,10 +1289,15 @@ export default function PageEditorPage() {
                 </option>
               ))}
             </select>
-            <Button variant="secondary" onClick={openCreateComponentsSection}>إضافة Components</Button>
+            <Button variant="secondary" onClick={openCreateComponentsSection}>
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
+              </svg>
+              إضافة Components
+            </Button>
 
             <select
-              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm sm:w-auto"
+              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm sm:w-auto hover:bg-white/[0.06] transition-colors"
               value={aiLocale}
               onChange={(e) => setAiLocale(e.target.value as any)}
               title="لغة AI (للمحتوى والـ SEO)"
