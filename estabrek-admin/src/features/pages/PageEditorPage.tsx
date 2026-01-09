@@ -439,6 +439,7 @@ export default function PageEditorPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [showAdvancedStyling, setShowAdvancedStyling] = useState(false);
   const [selectionBusy, setSelectionBusy] = useState(false);
+  const [showInlineStyling, setShowInlineStyling] = useState(true);
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -582,6 +583,15 @@ export default function PageEditorPage() {
   }, [localSections, selectedSectionId]);
 
   useEffect(() => {
+    if (selectedSectionId) {
+      setShowInlineStyling(true);
+    } else {
+      setShowInlineStyling(false);
+      setShowAdvancedStyling(false);
+    }
+  }, [selectedSectionId]);
+
+  useEffect(() => {
     if (selectedSectionId && !selectedSection) {
       setSelectedSectionId(null);
       setShowAdvancedStyling(false);
@@ -595,6 +605,17 @@ export default function PageEditorPage() {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [selectedSectionId]);
+
+  const selectedSectionIndex = useMemo(() => {
+    if (!selectedSectionId) return -1;
+    return localSections.findIndex((s) => String(s.id) === String(selectedSectionId));
+  }, [localSections, selectedSectionId]);
+
+  const selectedSectionPreviewData = useMemo(() => {
+    if (!selectedSection) return null;
+    if (selectedSectionIndex < 0) return selectedSection.data ?? null;
+    return getTranslatedSectionData(selectedSection, selectedSectionIndex);
+  }, [selectedSection, selectedSectionIndex, translatedSections, contentLocale]);
 
   const qc = useQueryClient();
 
@@ -830,7 +851,7 @@ export default function PageEditorPage() {
 
   const handleSelectSection = (sectionId: string) => {
     setSelectedSectionId(sectionId);
-    setShowAdvancedStyling(true);
+    setShowInlineStyling(true);
   };
 
   const handleSelectedTokensChange = (nextTokens: any) => {
@@ -882,7 +903,7 @@ export default function PageEditorPage() {
       });
       await qc.invalidateQueries({ queryKey: ["pages", id] });
       setSelectedSectionId(String(created.id));
-      setShowAdvancedStyling(true);
+      setShowInlineStyling(true);
     } catch {
       toast.error("???? ??? ?????? ?????.");
     } finally {
@@ -1735,6 +1756,104 @@ export default function PageEditorPage() {
               </div>
             )}
           </div>
+
+          {selectedSection ? (
+            <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold">Selected section</div>
+                  <div className="text-xs text-white/60">
+                    {selectedSection.type} | Order {selectedSection.order ?? 0} | ID {selectedSection.id}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedSectionId(null);
+                    setShowInlineStyling(false);
+                  }}
+                >
+                  Clear
+                </Button>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="secondary"
+                  onClick={() => openEditSection(selectedSection)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="secondary"
+                  onClick={() => setShowAdvancedStyling(true)}
+                >
+                  Open styling window
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="secondary"
+                  onClick={duplicateSelectedSection}
+                  isLoading={selectionBusy}
+                >
+                  Duplicate
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={selectedSection.isVisible ? "ghost" : "secondary"}
+                  onClick={toggleSelectedVisibility}
+                  disabled={selectionBusy}
+                >
+                  {selectedSection.isVisible ? "Hide" : "Show"}
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="danger"
+                  onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-xs font-semibold"
+                  onClick={() => setShowInlineStyling((v) => !v)}
+                >
+                  <span>Advanced styling</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform ${showInlineStyling ? "rotate-180" : ""}`}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
+                  </svg>
+                </button>
+                {showInlineStyling ? (
+                  <div className="mt-3 max-h-[40vh] overflow-auto">
+                    <ResponsiveTokensPanel
+                      tokens={selectedSection.data?.twTokens ?? {}}
+                      onChange={handleSelectedTokensChange}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-white/60">
+              Select a section in the canvas to edit styling and actions.
+            </div>
+          )}
         </div>
       </div>
 
@@ -1961,51 +2080,76 @@ export default function PageEditorPage() {
         title="تنسيق متقدم"
         description={selectedSection ? `Section: ${selectedSection.type}` : undefined}
         onCancel={() => setShowAdvancedStyling(false)}
-        widthClassName="max-w-4xl"
+        widthClassName="max-w-6xl"
       >
         {selectedSection ? (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60">
-              <div>
-                ID: <span className="text-white/90">{selectedSection.id}</span>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60">
+                <div>
+                  ID: <span className="text-white/90">{selectedSection.id}</span>
+                </div>
+                <div>Order: {selectedSection.order ?? 0}</div>
+                <div className="text-white/80">{selectedSection.type}</div>
               </div>
-              <div>Order: {selectedSection.order ?? 0}</div>
-              <div className="text-white/80">{selectedSection.type}</div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setShowAdvancedStyling(false);
+                    openEditSection(selectedSection);
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={duplicateSelectedSection}
+                  isLoading={selectionBusy}
+                >
+                  Duplicate
+                </Button>
+                <Button
+                  variant={selectedSection.isVisible ? "ghost" : "secondary"}
+                  size="sm"
+                  onClick={toggleSelectedVisibility}
+                  disabled={selectionBusy}
+                >
+                  {selectedSection.isVisible ? "Hide" : "Show"}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
+                  disabled={selectionBusy}
+                >
+                  Delete
+                </Button>
+              </div>
+
+              <ResponsiveTokensPanel
+                tokens={selectedSection.data?.twTokens ?? {}}
+                onChange={handleSelectedTokensChange}
+              />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowAdvancedStyling(false);
-                  openEditSection(selectedSection);
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={duplicateSelectedSection}
-                isLoading={selectionBusy}
-              >
-                Duplicate
-              </Button>
-              <Button
-                variant={selectedSection.isVisible ? "ghost" : "secondary"}
-                size="sm"
-                onClick={toggleSelectedVisibility}
-                disabled={selectionBusy}
-              >
-                {selectedSection.isVisible ? "Hide" : "Show"}
-              </Button>
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3 lg:sticky lg:top-4 lg:self-start lg:max-h-[70vh] lg:overflow-auto">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-semibold">Preview</div>
+                <div className="text-xs opacity-60">{selectedSection.type}</div>
+              </div>
+              <ThemePreview theme={theme} className="rounded-2xl p-2">
+                <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview.</div>}>
+                  <LazySectionPreview
+                    type={selectedSection.type}
+                    data={selectedSectionPreviewData ?? selectedSection.data}
+                  />
+                </React.Suspense>
+              </ThemePreview>
             </div>
-
-            <ResponsiveTokensPanel
-              tokens={selectedSection.data?.twTokens ?? {}}
-              onChange={handleSelectedTokensChange}
-            />
           </div>
         ) : (
           <div className="text-sm text-white/60">No section selected.</div>

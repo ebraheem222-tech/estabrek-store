@@ -2973,13 +2973,20 @@ export function PageRenderer({
                       onSectionSelect ? "cursor-pointer" : undefined,
                       isSelected ? "outline outline-2 outline-accent-500/40 outline-offset-4" : "outline outline-1 outline-transparent"
                     )}
+                    onMouseDownCapture={
+                      onSectionSelect
+                        ? (event) => {
+                            if (event.button !== 0) return;
+                            onSectionSelect(stringId);
+                          }
+                        : undefined
+                    }
                     onClick={
                       onSectionSelect
                         ? (event) => {
                             if (event.defaultPrevented) return;
                             event.preventDefault();
                             event.stopPropagation();
-                            onSectionSelect(stringId);
                           }
                         : undefined
                     }
