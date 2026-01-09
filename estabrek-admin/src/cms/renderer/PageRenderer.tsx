@@ -39,6 +39,14 @@ function cls(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+function isItemVisible(item: any): boolean {
+  if (item == null) return false;
+  if (typeof item !== "object") return true;
+  if ("hidden" in item) return item.hidden !== true;
+  if ("isVisible" in item) return item.isVisible !== false;
+  return true;
+}
+
 const HERO_ANIM_CLASS: Record<string, string> = {
   "fade-up": "anim-fade-up",
   "zoom-in": "anim-zoom-in",
@@ -378,12 +386,12 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           {d.title ? <h3 className="mb-3 text-lg font-semibold">{d.title}</h3> : null}
           <div className="space-y-3">
-            {(d.items ?? []).map((it, idx) => (
+            {(d.items ?? []).map((it, idx) => (!isItemVisible(it) ? null : (
               <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                 <div className="text-sm font-semibold">{it.question}</div>
                 <div className="mt-1 text-sm opacity-80">{it.answer}</div>
               </div>
-            ))}
+            )))}
           </div>
           {componentsBlock}
         </div>
@@ -425,13 +433,13 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
           <div className={cls("grid gap-4", columns === 2 ? "md:grid-cols-2" : columns === 3 ? "md:grid-cols-3" : "md:grid-cols-4")}>
-            {(d.items ?? []).map((it, idx) => (
+            {(d.items ?? []).map((it, idx) => (!isItemVisible(it) ? null : (
               <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                 {it.imageUrl ? <img src={it.imageUrl} alt={it.title} className="mb-3 h-28 w-full rounded-xl object-cover" /> : null}
                 <div className="text-sm font-semibold">{it.title}</div>
                 {it.text ? <div className="mt-1 text-sm opacity-80">{it.text}</div> : null}
               </div>
-            ))}
+            )))}
           </div>
           {componentsBlock}
         </div>
@@ -454,7 +462,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           {d.subtitle ? <div className="mt-1 text-sm opacity-80">{d.subtitle}</div> : null}
           <div className={cls("mt-4 grid gap-4", gridCols)}>
             {items.length ? (
-              items.map((it, idx) => (
+              items.map((it, idx) => (!isItemVisible(it) ? null : (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                   <div className="flex items-center gap-2">
                     {it.iconUrl ? <img src={it.iconUrl} alt="" className="h-8 w-8 rounded-lg" /> : null}
@@ -463,7 +471,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                   </div>
                   {it.text ? <div className="mt-2 text-sm opacity-80">{it.text}</div> : null}
                 </div>
-              ))
+              )))
             ) : (
               <div className="text-sm opacity-70">(لا يوجد عناصر)</div>
             )}
@@ -489,14 +497,14 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           {d.subtitle ? <div className="mt-1 text-sm opacity-80">{d.subtitle}</div> : null}
           <div className={cls("mt-4 grid gap-4", gridCols)}>
             {items.length ? (
-              items.map((it, idx) => (
+              items.map((it, idx) => (!isItemVisible(it) ? null : (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-center">
                   {it.icon ? <div className="text-lg">{it.icon}</div> : null}
                   <div className="text-2xl font-semibold">{it.value || "0"}</div>
                   {it.label ? <div className="text-sm opacity-80">{it.label}</div> : null}
                   {it.subtext ? <div className="mt-1 text-xs opacity-60">{it.subtext}</div> : null}
                 </div>
-              ))
+              )))
             ) : (
               <div className="text-sm opacity-70">(لا يوجد عناصر)</div>
             )}
@@ -522,7 +530,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           {d.subtitle ? <div className="mt-1 text-sm opacity-80">{d.subtitle}</div> : null}
           <div className={cls("mt-4 grid gap-4", gridCols)}>
             {members.length ? (
-              members.map((m, idx) => (
+              members.map((m, idx) => (!isItemVisible(m) ? null : (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                   {m.avatarUrl ? <img src={m.avatarUrl} alt="" className="mb-3 h-12 w-12 rounded-full object-cover" /> : null}
                   <div className="text-sm font-semibold">{m.name || "Member"}</div>
@@ -536,7 +544,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                     </div>
                   ) : null}
                 </div>
-              ))
+              )))
             ) : (
               <div className="text-sm opacity-70">(لا يوجد أعضاء)</div>
             )}
@@ -561,7 +569,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           {d.subtitle ? <div className="mt-1 text-sm opacity-80">{d.subtitle}</div> : null}
           <div className={cls("mt-4 grid gap-4", gridCols)}>
             {plans.length ? (
-              plans.map((p, idx) => (
+              plans.map((p, idx) => (!isItemVisible(p) ? null : (
                 <div key={idx} className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4", p.highlight ? "ring-1 ring-accent-500/40" : undefined)}>
                   {p.badge ? <div className="text-[11px] opacity-70">{p.badge}</div> : null}
                   <div className="text-sm font-semibold">{p.name || "Plan"}</div>
@@ -585,7 +593,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                     </div>
                   ) : null}
                 </div>
-              ))
+              )))
             ) : (
               <div className="text-sm opacity-70">(لا يوجد خطط)</div>
             )}
@@ -611,12 +619,12 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           <div className="mt-4 grid gap-6 md:grid-cols-2">
             <div className="space-y-3">
               {items.length ? (
-                items.map((it, idx) => (
+                items.map((it, idx) => (!isItemVisible(it) ? null : (
                   <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                     <div className="text-sm font-semibold">{it.label || "Contact"}</div>
                     {it.value ? <div className="text-sm opacity-80">{it.value}</div> : null}
                   </div>
-                ))
+                )))
               ) : (
                 <div className="text-sm opacity-70">(لا توجد بيانات تواصل)</div>
               )}
@@ -633,7 +641,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
               {form.title ? <div className="text-sm font-semibold">{form.title}</div> : null}
               {form.subtitle ? <div className="mt-1 text-xs opacity-70">{form.subtitle}</div> : null}
               <form className="mt-4 space-y-3">
-                {fields.map((f, idx) => (
+                {fields.map((f, idx) => (!isItemVisible(f) ? null : (
                   <div key={`${f.name}-${idx}`} className="space-y-1">
                     <label className="text-xs opacity-70">{f.label || f.name}</label>
                     {f.type === "textarea" ? (
@@ -652,7 +660,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                       />
                     )}
                   </div>
-                ))}
+                )))}
                 <button type="button" className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm">
                   {form.submitLabel || "إرسال"}
                 </button>
@@ -689,13 +697,13 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           ) : null}
           <div className="grid gap-4 md:grid-cols-3">
             {items.length ? (
-              items.slice(0, 6).map((it, idx) => (
+              items.slice(0, 6).map((it, idx) => (!isItemVisible(it) ? null : (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                   {it.imageUrl ? <img src={it.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
                   <div className="text-sm font-semibold">{it.label ?? "Category"}</div>
                   {it.href ? <div className="mt-1 text-xs opacity-70">{it.href}</div> : null}
                 </div>
-              ))
+              )))
             ) : (
               <div className="text-sm opacity-70">No items yet.</div>
             )}
@@ -720,13 +728,13 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           {d.subtitle ? <div className="mb-4 text-sm opacity-80">{d.subtitle}</div> : null}
           <div className={cls("grid gap-4", clsCols)}>
             {items.length ? (
-              items.slice(0, 8).map((it, idx) => (
+              items.slice(0, 8).map((it, idx) => (!isItemVisible(it) ? null : (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                   {it.imageUrl ? <img src={it.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" /> : null}
                   <div className="text-sm font-semibold">{it.label ?? "Collection"}</div>
                   {it.href ? <div className="mt-1 text-xs opacity-70">{it.href}</div> : null}
                 </div>
-              ))
+              )))
             ) : (
               <div className="text-sm opacity-70">No items yet.</div>
             )}
@@ -768,13 +776,13 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
           <div className="grid gap-4 md:grid-cols-4">
             {items.length ? (
-              items.slice(0, 8).map((it, idx) => (
+              items.slice(0, 8).map((it, idx) => (!isItemVisible(it) ? null : (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm">
                   <div className="font-semibold">{it.name ?? "Brand"}</div>
                   {it.logoUrl ? <div className="mt-1 text-xs opacity-70">logo: {it.logoUrl}</div> : null}
                   {it.href ? <div className="mt-1 text-xs opacity-70">{it.href}</div> : null}
                 </div>
-              ))
+              )))
             ) : (
               <div className="text-sm opacity-70">No brands yet.</div>
             )}
@@ -821,9 +829,9 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
           <div className={cls("grid gap-3", clsCols)}>
-            {(d.images ?? []).map((im, idx) => (
+            {(d.images ?? []).map((im, idx) => (!isItemVisible(im) ? null : (
               <img key={idx} src={im.url} alt={im.alt ?? ""} className="h-40 w-full rounded-2xl object-cover" />
-            ))}
+            )))}
           </div>
           {componentsBlock}
         </div>
@@ -839,7 +847,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
           <div className="grid gap-4 md:grid-cols-3">
-            {(d.items ?? []).map((t, idx) => (
+            {(d.items ?? []).map((t, idx) => (!isItemVisible(t) ? null : (
               <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                 <div className="flex items-center gap-3">
                   {t.avatarUrl ? (
@@ -854,7 +862,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                 </div>
                 <div className="mt-3 text-sm opacity-90">"{t.quote}"</div>
               </div>
-            ))}
+            )))}
           </div>
           {componentsBlock}
         </div>
@@ -920,7 +928,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           {d.subtitle ? <p className="mt-1 text-white/70">{d.subtitle}</p> : null}
 
           <div className={ui.cardsClass || "mt-6 flex flex-wrap gap-4"}>
-            {cards.map((c, idx) => (
+            {cards.map((c, idx) => (!isItemVisible(c) ? null : (
               <div
                 key={idx}
                 className={
@@ -956,7 +964,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                   </a>
                 ) : null}
               </div>
-            ))}
+            )))}
           </div>
           {componentsBlock}
         </div>

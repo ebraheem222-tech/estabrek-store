@@ -1089,15 +1089,19 @@ export function CmsComponentsRenderer({ components, className, inheritTokens, se
   if (!list.length) return null;
   return (
     <div className={className}>
-      {list.map((component, idx) => (
-        <ComponentNode
-          key={component.id ?? `cmp-${idx}`}
-          component={component}
-          inheritTokens={inheritTokens}
-          path={["components", idx]}
-          selection={selection}
-        />
-      ))}
+      {list.map((component, idx) => {
+        if (!component) return null;
+        if (component.isVisible === false || (component as any).hidden === true) return null;
+        return (
+          <ComponentNode
+            key={component.id ?? `cmp-${idx}`}
+            component={component}
+            inheritTokens={inheritTokens}
+            path={["components", idx]}
+            selection={selection}
+          />
+        );
+      })}
     </div>
   );
 }

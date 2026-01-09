@@ -454,6 +454,22 @@ type QuickEditField = {
   type?: "text" | "url";
 };
 
+type HistoryEntry = {
+  sectionId: string;
+  prevData: any;
+  nextData: any;
+  ts: number;
+};
+
+type ElementArrayInfo = {
+  arrayPath: Array<string | number>;
+  indexPathIndex: number;
+  index: number;
+  itemPath: Array<string | number>;
+  item: any;
+  array: any[];
+};
+
 function toQuickValue(value: any) {
   if (value == null) return "";
   return typeof value === "string" ? value : String(value);
@@ -520,6 +536,14 @@ function buildElementQuickFields(selected: SelectedElement | null, data: any): Q
     add("Label", valuePath);
     const linkPath = resolveSiblingPath(valuePath, data, ["href", "linkHref", "url", "ctaHref", "buttonHref"]);
     if (linkPath) add("Link URL", linkPath, "url");
+    const targetPath = resolveSiblingPath(valuePath, data, ["target", "linkTarget", "buttonTarget", "ctaTarget"]);
+    if (targetPath) add("Link target", targetPath);
+    const iconPath = resolveSiblingPath(valuePath, data, ["icon", "iconName", "iconUrl", "iconLeft", "iconRight"]);
+    if (iconPath) {
+      const last = iconPath[iconPath.length - 1];
+      const isUrl = typeof last === "string" && last.toLowerCase().includes("url");
+      add("Icon", iconPath, isUrl ? "url" : undefined);
+    }
   }
 
   if (kind === "image") {
@@ -545,6 +569,14 @@ function buildElementQuickFields(selected: SelectedElement | null, data: any): Q
       add("CTA label", [...basePath, "ctaLabel"]);
       const linkPath = resolveChildPath(basePath, data, ["buttonHref", "href", "linkHref", "ctaHref"]);
       if (linkPath) add("Link URL", linkPath, "url");
+      const targetPath = resolveChildPath(basePath, data, ["buttonTarget", "ctaTarget", "target", "linkTarget"]);
+      if (targetPath) add("Link target", targetPath);
+      const iconPath = resolveChildPath(basePath, data, ["icon", "iconUrl", "iconName"]);
+      if (iconPath) {
+        const last = iconPath[iconPath.length - 1];
+        const isUrl = typeof last === "string" && last.toLowerCase().includes("url");
+        add("Icon", iconPath, isUrl ? "url" : undefined);
+      }
       const imagePath = resolveChildPath(basePath, data, ["imageUrl", "image"]);
       if (imagePath) add("Image URL", imagePath, "url");
       const altPath = imagePath
@@ -555,6 +587,71 @@ function buildElementQuickFields(selected: SelectedElement | null, data: any): Q
   }
 
   return fields;
+}
+
+function cloneData<T>(value: T): T {
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return value;
+  }
+}
+
+function cloneWithFreshKeys<T>(value: T): T {
+  const clone = cloneData(value);
+  const stamp = `${Date.now().toString(16)}_${Math.random().toString(16).slice(2)}`;
+  const walk = (node: any) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (typeof node.__key === "string") {
+      node.__key = `dup_${stamp}`;
+    }
+    if (typeof node.id === "string") {
+      node.id = `${node.id}_dup_${stamp}`;
+    }
+    Object.values(node).forEach(walk);
+  };
+  walk(clone);
+  return clone;
+}
+
+function resolveElementArrayInfo(valuePath: Array<string | number> | undefined, data: any): ElementArrayInfo | null {
+  if (!valuePath || !valuePath.length || !data) return null;
+  for (let i = valuePath.length - 1; i >= 0; i -= 1) {
+    if (typeof valuePath[i] !== "number") continue;
+    const index = valuePath[i] as number;
+    const arrayPath = valuePath.slice(0, i);
+    const arrayValue = getDeepValue(data, arrayPath);
+    if (!Array.isArray(arrayValue)) continue;
+    return {
+      arrayPath,
+      indexPathIndex: i,
+      index,
+      itemPath: valuePath.slice(0, i + 1),
+      item: arrayValue[index],
+      array: arrayValue,
+    };
+  }
+  return null;
+}
+
+function updatePathIndex(
+  path: Array<string | number> | undefined,
+  indexPathIndex: number,
+  nextIndex: number
+): Array<string | number> | undefined {
+  if (!path || path.length <= indexPathIndex) return path;
+  if (typeof path[indexPathIndex] !== "number") return path;
+  const next = path.slice();
+  next[indexPathIndex] = nextIndex;
+  return next;
+}
+
+function elementKeyForSelection(kind: string, valuePath?: Array<string | number>, tokensPath?: Array<string | number>) {
+  return `${kind}:${JSON.stringify(valuePath ?? [])}:${JSON.stringify(tokensPath ?? [])}`;
 }
 
 export default function PageEditorPage() {
@@ -600,6 +697,16 @@ export default function PageEditorPage() {
   const [libraryBusy, setLibraryBusy] = useState(false);
   const canvasScrollRef = React.useRef<HTMLDivElement>(null);
   const [canvasActionBar, setCanvasActionBar] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [elementModalOpen, setElementModalOpen] = useState(false);
+  const [elementModalFields, setElementModalFields] = useState<QuickEditField[]>([]);
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const autosaveTimersRef = React.useRef<Map<string, number>>(new Map());
+  const autosaveSavedTimerRef = React.useRef<number | null>(null);
+  const historyRef = React.useRef<HistoryEntry[]>([]);
+  const historyIndexRef = React.useRef(-1);
+  const lastHistoryAtRef = React.useRef(0);
+  const suppressHistoryRef = React.useRef(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -741,6 +848,12 @@ export default function PageEditorPage() {
     setLocalSections(sections as any);
   }, [sections]);
 
+  useEffect(() => {
+    historyRef.current = [];
+    historyIndexRef.current = -1;
+    setHistoryVersion((v) => v + 1);
+  }, [page?.id, localSections.length]);
+
   const selectedTemplate = useMemo(
     () => PAGE_TEMPLATES.find((tpl) => tpl.id === templateId) ?? PAGE_TEMPLATES[0],
     [templateId]
@@ -825,6 +938,29 @@ export default function PageEditorPage() {
     () => buildElementQuickFields(selectedElement, selectedSection?.data ?? null),
     [selectedElement, selectedSection]
   );
+
+  const elementArrayInfo = useMemo(
+    () => resolveElementArrayInfo(selectedElement?.valuePath, selectedSection?.data ?? null),
+    [selectedElement, selectedSection]
+  );
+
+  const elementIsVisible = useMemo(() => {
+    const item = elementArrayInfo?.item;
+    if (!item || typeof item !== "object") return true;
+    if ("hidden" in item) return item.hidden !== true;
+    if ("isVisible" in item) return item.isVisible !== false;
+    return true;
+  }, [elementArrayInfo]);
+
+  const elementCanDuplicate = !!elementArrayInfo;
+  const elementCanDelete = !!elementArrayInfo && Array.isArray(elementArrayInfo.array) && elementArrayInfo.array.length > 0;
+  const elementCanToggleVisibility = !!elementArrayInfo && elementArrayInfo.item && typeof elementArrayInfo.item === "object";
+
+  useEffect(() => {
+    if (!selectedElement) {
+      setElementModalOpen(false);
+    }
+  }, [selectedElement]);
 
 
   const qc = useQueryClient();
@@ -956,6 +1092,65 @@ export default function PageEditorPage() {
     const cache = previewBump ? `?b=${previewBump}` : "";
     return `/admin/pages/${pageId}/preview${cache}`;
   }, [page?.id, id, previewBump]);
+
+  useEffect(() => {
+    return () => {
+      autosaveTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      autosaveTimersRef.current.clear();
+      if (autosaveSavedTimerRef.current) {
+        window.clearTimeout(autosaveSavedTimerRef.current);
+        autosaveSavedTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const queueSectionSave = (sectionId: string, nextData: any) => {
+    if (!id) return;
+    const timers = autosaveTimersRef.current;
+    const existing = timers.get(sectionId);
+    if (existing) window.clearTimeout(existing);
+
+    setAutosaveState("saving");
+    const timer = window.setTimeout(async () => {
+      timers.delete(sectionId);
+      try {
+        await updateSectionApi(sectionId, { data: nextData });
+      } catch {
+        toast.error("???? ??? ???????.");
+      }
+      if (timers.size === 0) {
+        setAutosaveState("saved");
+        if (autosaveSavedTimerRef.current) {
+          window.clearTimeout(autosaveSavedTimerRef.current);
+        }
+        autosaveSavedTimerRef.current = window.setTimeout(() => {
+          setAutosaveState("idle");
+        }, 1200);
+      }
+    }, 650);
+
+    timers.set(sectionId, timer);
+  };
+
+  const recordHistory = (entry: HistoryEntry) => {
+    if (suppressHistoryRef.current) return;
+    const now = Date.now();
+    const history = historyRef.current.slice(0, historyIndexRef.current + 1);
+    const last = history[history.length - 1];
+    if (last && last.sectionId === entry.sectionId && now - last.ts < 1200) {
+      history[history.length - 1] = { ...last, nextData: entry.nextData, ts: now };
+      historyRef.current = history;
+      historyIndexRef.current = history.length - 1;
+      lastHistoryAtRef.current = now;
+      setHistoryVersion((v) => v + 1);
+      return;
+    }
+    history.push(entry);
+    historyRef.current = history;
+    historyIndexRef.current = history.length - 1;
+    lastHistoryAtRef.current = now;
+    setHistoryVersion((v) => v + 1);
+  };
 
   useEffect(() => {
     if (canvasView !== "live" || !selectedElement) {
@@ -1121,7 +1316,23 @@ export default function PageEditorPage() {
     }
   };
 
-  const persistSectionData = async (sectionId: string, nextData: any, errorMessage?: string) => {
+  const persistSectionData = async (
+    sectionId: string,
+    nextData: any,
+    errorMessage?: string,
+    options?: { skipHistory?: boolean; immediate?: boolean }
+  ) => {
+    const prevSection = localSections.find((s) => String(s.id) === String(sectionId));
+    const prevData = prevSection?.data ?? {};
+    if (!options?.skipHistory && !suppressHistoryRef.current) {
+      recordHistory({
+        sectionId: String(sectionId),
+        prevData: cloneData(prevData),
+        nextData: cloneData(nextData),
+        ts: Date.now(),
+      });
+    }
+
     setLocalSections((prev) =>
       prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, data: nextData } : s))
     );
@@ -1140,11 +1351,49 @@ export default function PageEditorPage() {
       setSectionDataRaw(JSON.stringify(nextData ?? {}, null, 2));
     }
 
-    try {
-      await updateSectionApi(sectionId, { data: nextData });
-    } catch {
-      if (errorMessage) toast.error(errorMessage);
+    if (options?.immediate) {
+      try {
+        await updateSectionApi(sectionId, { data: nextData });
+      } catch {
+        if (errorMessage) toast.error(errorMessage);
+      }
+      return;
     }
+
+    queueSectionSave(sectionId, nextData);
+  };
+
+  const applyHistoryEntry = async (entry: HistoryEntry, mode: "undo" | "redo") => {
+    if (!entry) return;
+    suppressHistoryRef.current = true;
+    try {
+      await persistSectionData(
+        entry.sectionId,
+        mode === "undo" ? entry.prevData : entry.nextData,
+        "???? ??? ???????.",
+        { skipHistory: true, immediate: true }
+      );
+    } finally {
+      suppressHistoryRef.current = false;
+    }
+  };
+
+  const undoLast = async () => {
+    const idx = historyIndexRef.current;
+    if (idx < 0) return;
+    const entry = historyRef.current[idx];
+    historyIndexRef.current = idx - 1;
+    setHistoryVersion((v) => v + 1);
+    await applyHistoryEntry(entry, "undo");
+  };
+
+  const redoLast = async () => {
+    const idx = historyIndexRef.current + 1;
+    if (idx >= historyRef.current.length) return;
+    const entry = historyRef.current[idx];
+    historyIndexRef.current = idx;
+    setHistoryVersion((v) => v + 1);
+    await applyHistoryEntry(entry, "redo");
   };
 
   const handleInlineEdit = async ({ sectionId, path, value }: InlineEditPayload) => {
@@ -1184,6 +1433,81 @@ export default function PageEditorPage() {
     if (!selectedSection) return;
     const nextData = setDeepValue(selectedSection.data ?? {}, path, value);
     void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const openElementModal = () => {
+    if (!elementQuickFields.length) return;
+    setElementModalFields(elementQuickFields.map((f) => ({ ...f })));
+    setElementModalOpen(true);
+  };
+
+  const saveElementModal = async () => {
+    if (!selectedSection) return;
+    let nextData = selectedSection.data ?? {};
+    for (const field of elementModalFields) {
+      nextData = setDeepValue(nextData, field.path, field.value);
+    }
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+    setElementModalOpen(false);
+  };
+
+  const handleDuplicateElement = async () => {
+    if (!selectedSection || !elementArrayInfo) return;
+    const { arrayPath, index, indexPathIndex, array, item } = elementArrayInfo;
+    if (!Array.isArray(array)) return;
+    const nextItem = cloneWithFreshKeys(item);
+    const nextArray = array.slice();
+    nextArray.splice(index + 1, 0, nextItem);
+    const nextData = setDeepValue(selectedSection.data ?? {}, arrayPath, nextArray);
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+    if (selectedElement) {
+      const nextValuePath = updatePathIndex(selectedElement.valuePath, indexPathIndex, index + 1);
+      const nextTokensPath = updatePathIndex(selectedElement.tokensPath, indexPathIndex, index + 1);
+      setSelectedElement({
+        ...selectedElement,
+        valuePath: nextValuePath,
+        tokensPath: nextTokensPath,
+        key: elementKeyForSelection(selectedElement.kind, nextValuePath, nextTokensPath),
+      });
+    }
+  };
+
+  const handleDeleteElement = async () => {
+    if (!selectedSection || !elementArrayInfo) return;
+    const { arrayPath, index, indexPathIndex, array } = elementArrayInfo;
+    if (!Array.isArray(array) || array.length === 0) return;
+    const nextArray = array.filter((_, idx) => idx !== index);
+    const nextData = setDeepValue(selectedSection.data ?? {}, arrayPath, nextArray);
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+    if (!nextArray.length) {
+      setSelectedElement(null);
+      return;
+    }
+    const nextIndex = Math.min(index, nextArray.length - 1);
+    if (selectedElement) {
+      const nextValuePath = updatePathIndex(selectedElement.valuePath, indexPathIndex, nextIndex);
+      const nextTokensPath = updatePathIndex(selectedElement.tokensPath, indexPathIndex, nextIndex);
+      setSelectedElement({
+        ...selectedElement,
+        valuePath: nextValuePath,
+        tokensPath: nextTokensPath,
+        key: elementKeyForSelection(selectedElement.kind, nextValuePath, nextTokensPath),
+      });
+    }
+  };
+
+  const handleToggleElementVisibility = async () => {
+    if (!selectedSection || !elementArrayInfo) return;
+    const { itemPath, item } = elementArrayInfo;
+    if (!item || typeof item !== "object") return;
+    const nextItem = { ...item } as any;
+    if ("hidden" in nextItem) {
+      nextItem.hidden = !elementIsVisible;
+    } else {
+      nextItem.isVisible = !elementIsVisible;
+    }
+    const nextData = setDeepValue(selectedSection.data ?? {}, itemPath, nextItem);
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
   };
 
   const persistSectionVisibility = async (sectionId: string, isVisible: boolean) => {
@@ -1677,6 +2001,8 @@ export default function PageEditorPage() {
 
   const canMoveUp = selectedSectionIndex > 0;
   const canMoveDown = selectedSectionIndex >= 0 && selectedSectionIndex < localSections.length - 1;
+  const canUndo = historyIndexRef.current >= 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
 
   if (q.isLoading) {
     return (
@@ -1868,6 +2194,36 @@ export default function PageEditorPage() {
             >
               ✨ ترجمة EN
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canUndo}
+              onClick={undoLast}
+              title="Undo"
+            >
+              Undo
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canRedo}
+              onClick={redoLast}
+              title="Redo"
+            >
+              Redo
+            </Button>
+            {autosaveState !== "idle" ? (
+              <div
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs",
+                  autosaveState === "saving"
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+                ].join(" ")}
+              >
+                {autosaveState === "saving" ? "Autosaving..." : "Saved"}
+              </div>
+            ) : null}
             {page.status !== "PUBLISHED" ? (
               <Button variant="secondary" onClick={() => setPageStatus("PUBLISHED")}>نشر</Button>
             ) : (
@@ -2241,6 +2597,47 @@ export default function PageEditorPage() {
                         maxWidth: "calc(100% - 16px)",
                       }}
                     >
+                      {selectedElement ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="secondary"
+                            onClick={openElementModal}
+                            disabled={!elementQuickFields.length}
+                          >
+                            Edit element
+                          </Button>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="secondary"
+                            onClick={handleDuplicateElement}
+                            disabled={!elementCanDuplicate}
+                          >
+                            Dup element
+                          </Button>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant={elementIsVisible ? "ghost" : "secondary"}
+                            onClick={handleToggleElementVisibility}
+                            disabled={!elementCanToggleVisibility}
+                          >
+                            {elementIsVisible ? "Hide element" : "Show element"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="danger"
+                            onClick={handleDeleteElement}
+                            disabled={!elementCanDelete}
+                          >
+                            Delete element
+                          </Button>
+                          <span className="mx-1 h-4 w-px bg-white/10" />
+                        </>
+                      ) : null}
                       <Button type="button" size="xs" variant="secondary" onClick={() => openEditSection(selectedSection)}>
                         Edit
                       </Button>
@@ -2352,6 +2749,49 @@ export default function PageEditorPage() {
                     </div>
                     {selectedElement.label ? (
                       <div className="text-[11px] text-white/60">{selectedElement.label}</div>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="secondary"
+                        onClick={openElementModal}
+                        disabled={!elementQuickFields.length}
+                      >
+                        Edit element
+                      </Button>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="secondary"
+                        onClick={handleDuplicateElement}
+                        disabled={!elementCanDuplicate}
+                      >
+                        Duplicate
+                      </Button>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant={elementIsVisible ? "ghost" : "secondary"}
+                        onClick={handleToggleElementVisibility}
+                        disabled={!elementCanToggleVisibility}
+                      >
+                        {elementIsVisible ? "Hide" : "Show"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="danger"
+                        onClick={handleDeleteElement}
+                        disabled={!elementCanDelete}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                    {!elementArrayInfo ? (
+                      <div className="text-[11px] text-white/50">
+                        Duplicate/Delete apply to list items only.
+                      </div>
                     ) : null}
                     {elementQuickFields.length ? (
                       <div className="space-y-2">
@@ -2641,6 +3081,44 @@ export default function PageEditorPage() {
       </Modal>
 
       <Modal
+        open={elementModalOpen && !!selectedElement}
+        title="Edit element"
+        description={selectedElement ? `${selectedElement.kind}${selectedElement.label ? ` - ${selectedElement.label}` : ""}` : undefined}
+        onCancel={() => setElementModalOpen(false)}
+        widthClassName="max-w-2xl"
+        footer={
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              onClick={saveElementModal}
+              disabled={!elementModalFields.length}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        {elementModalFields.length ? (
+          <div className="grid gap-3">
+            {elementModalFields.map((field) => (
+              <Input
+                key={field.key}
+                label={field.label}
+                value={field.value}
+                type={field.type === "url" ? "url" : "text"}
+                onValueChange={(value) => {
+                  setElementModalFields((prev) =>
+                    prev.map((item) => (item.key === field.key ? { ...item, value } : item))
+                  );
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-white/60">No editable fields.</div>
+        )}
+      </Modal>
+      <Modal
         open={showAdvancedStyling && !!selectedSection}
         title="تنسيق متقدم"
         description={selectedSection ? `Section: ${selectedSection.type}` : undefined}
@@ -2745,6 +3223,9 @@ export default function PageEditorPage() {
     </div>
   );
 }
+
+
+
 
 
 

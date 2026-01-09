@@ -41,6 +41,14 @@ function cls(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
 }
 
+function isItemVisible(item: any): boolean {
+  if (item == null) return false;
+  if (typeof item !== "object") return true;
+  if ("hidden" in item) return item.hidden !== true;
+  if ("isVisible" in item) return item.isVisible !== false;
+  return true;
+}
+
 const HERO_ANIM_CLASS: Record<string, string> = {
   "fade-up": "anim-fade-up",
   "zoom-in": "anim-zoom-in",
@@ -1186,6 +1194,7 @@ function Section({
             ) : null}
             <div className="space-y-3">
               {(d.items ?? []).map((it, idx) => {
+                if (!isItemVisible(it)) return null;
                 const itemTokens = resolveFieldTokens((it as any).twTokens);
                 const baseItemTokens = itemTokens ?? sectionTokens;
                 const questionTokens = resolveFieldTokens((it as any).questionTokens, baseItemTokens);
@@ -1311,6 +1320,7 @@ function Section({
             ) : null}
             <div className={cls("grid gap-4", columns === 2 ? "md:grid-cols-2" : columns === 3 ? "md:grid-cols-3" : "md:grid-cols-4")}>
               {(d.items ?? []).map((it, idx) => {
+                if (!isItemVisible(it)) return null;
                 const itemTokens = resolveFieldTokens((it as any).twTokens);
                 const baseItemTokens = itemTokens ?? sectionTokens;
                 const titleTokens = resolveFieldTokens((it as any).titleTokens, baseItemTokens);
@@ -1458,6 +1468,7 @@ function Section({
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {items.length ? (
                 items.map((it, idx) => {
+                  if (!isItemVisible(it)) return null;
                   const itemTokens = resolveFieldTokens((it as any).twTokens);
                   const baseItemTokens = itemTokens ?? sectionTokens;
                   const titleTokens = resolveFieldTokens((it as any).titleTokens, baseItemTokens);
@@ -1611,6 +1622,7 @@ function Section({
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {items.length ? (
                 items.map((it, idx) => {
+                  if (!isItemVisible(it)) return null;
                   const itemTokens = resolveFieldTokens((it as any).twTokens);
                   const baseItemTokens = itemTokens ?? sectionTokens;
                   const valueTokens = resolveFieldTokens((it as any).valueTokens, baseItemTokens);
@@ -1746,6 +1758,7 @@ function Section({
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {members.length ? (
                 members.map((m, idx) => {
+                  if (!isItemVisible(m)) return null;
                   const itemTokens = resolveFieldTokens((m as any).twTokens);
                   const baseItemTokens = itemTokens ?? sectionTokens;
                   const nameTokens = resolveFieldTokens((m as any).nameTokens, baseItemTokens);
@@ -1916,6 +1929,7 @@ function Section({
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {plans.length ? (
                 plans.map((p, idx) => {
+                  if (!isItemVisible(p)) return null;
                   const planTokens = resolveFieldTokens((p as any).twTokens);
                   const basePlanTokens = planTokens ?? sectionTokens;
                   const nameTokens = resolveFieldTokens((p as any).nameTokens, basePlanTokens);
@@ -2150,6 +2164,7 @@ function Section({
               <div className="space-y-3">
                 {items.length ? (
                   items.map((it, idx) => {
+                    if (!isItemVisible(it)) return null;
                     const itemTokens = resolveFieldTokens((it as any).twTokens);
                     const baseItemTokens = itemTokens ?? sectionTokens;
                     const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
@@ -2307,6 +2322,7 @@ function Section({
                         );
                       })() : null}
                       {fields.map((f, idx) => {
+                        if (!isItemVisible(f)) return null;
                         const fieldTokens = resolveFieldTokens((f as any).twTokens, formFieldTokens ?? formTokens ?? sectionTokens);
                         const labelTokens = resolveFieldTokens((f as any).labelTokens, formLabelTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
                         const inputTokens = resolveFieldTokens((f as any).inputTokens, formInputTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
@@ -2456,6 +2472,7 @@ function Section({
             <div className="grid gap-4 md:grid-cols-3">
               {items.length ? (
                 items.slice(0, 6).map((it, idx) => {
+                  if (!isItemVisible(it)) return null;
                   const itemTokens = resolveFieldTokens((it as any).twTokens);
                   const baseItemTokens = itemTokens ?? sectionTokens;
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
@@ -2589,6 +2606,7 @@ function Section({
             <div className={cls("grid gap-4", clsCols)}>
               {items.length ? (
                 items.slice(0, 8).map((it, idx) => {
+                  if (!isItemVisible(it)) return null;
                   const itemTokens = resolveFieldTokens((it as any).twTokens);
                   const baseItemTokens = itemTokens ?? sectionTokens;
                   const labelTokens = resolveFieldTokens((it as any).labelTokens, baseItemTokens);
@@ -2739,6 +2757,7 @@ function Section({
             <div className="grid gap-4 md:grid-cols-4">
               {items.length ? (
                 items.slice(0, 8).map((it, idx) => {
+                  if (!isItemVisible(it)) return null;
                   const itemTokens = resolveFieldTokens((it as any).twTokens);
                   const baseItemTokens = itemTokens ?? sectionTokens;
                   const nameTokens = resolveFieldTokens((it as any).nameTokens, baseItemTokens);
@@ -2928,6 +2947,7 @@ function Section({
             ) : null}
             <div className={cls("grid gap-3", clsCols)}>
               {(d.images ?? []).map((im, idx) => {
+                if (!isItemVisible(im)) return null;
                 const itemTokens = resolveFieldTokens((im as any).twTokens);
                 const imageTokens = resolveFieldTokens((im as any).imageTokens);
                 const cardState = getElementState({
@@ -3006,6 +3026,7 @@ function Section({
             ) : null}
             <div className="grid gap-4 md:grid-cols-3">
               {(d.items ?? []).map((t, idx) => {
+                if (!isItemVisible(t)) return null;
                 const itemTokens = resolveFieldTokens((t as any).twTokens);
                 const baseItemTokens = itemTokens ?? sectionTokens;
                 const nameTokens = resolveFieldTokens((t as any).nameTokens, baseItemTokens);
@@ -3224,6 +3245,7 @@ function Section({
 
           <div className={ui.cardsClass || "mt-6 flex flex-wrap gap-4"}>
             {cards.map((c, idx) => {
+              if (!isItemVisible(c)) return null;
               const cardTokens = resolveFieldTokens((c as any).twTokens);
               const cardEffects = cardEffectClass(cardTokens ?? sectionTokens);
               const baseCardTokens = cardTokens ?? sectionTokens;
