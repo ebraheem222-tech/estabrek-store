@@ -206,17 +206,16 @@ function SortableSectionCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="opacity-0 animate-fade-in-up"
     >
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         className={[
-          "section-card-3d p-5",
+          "section-card-3d p-5 opacity-0 animate-fade-in-up",
           isDragging ? "ring-2 ring-accent-500/50 border-accent-500/30 shadow-2xl shadow-accent-500/20" : "",
         ].join(" ")}
-        style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'forwards' }}
+        style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -1487,6 +1486,7 @@ export default function PageEditorPage() {
                         <SortableSectionCard
                           key={s.id}
                           section={s}
+                          index={idx}
                           previewData={getTranslatedSectionData(s, idx)}
                           theme={theme}
                           onEdit={() => openEditSection(s)}
