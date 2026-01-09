@@ -512,6 +512,14 @@ model Product {
   title       String
   slug        String           @unique
   description String?
+  /** semantic search embedding (vector as JSON array) */
+  embedding        Json?
+  /** text used to generate embedding */
+  embeddingText    String?
+  /** embedding model id */
+  embeddingModel   String?
+  /** last embedding timestamp */
+  embeddingUpdatedAt DateTime?
   isActive    Boolean          @default(true)
   categoryId  String
   category    Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -607,6 +615,14 @@ view             String?
 dominantColorHex String?
 /** palette extracted (array of hex strings) */
 palette          Json?
+/** image embedding (vector as JSON array) */
+embedding        Json?
+/** text used to generate embedding */
+embeddingText    String?
+/** embedding model id */
+embeddingModel   String?
+/** last embedding timestamp */
+embeddingUpdatedAt DateTime?
   @@index([productItemId])
 }
 
