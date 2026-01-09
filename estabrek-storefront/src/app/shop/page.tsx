@@ -163,15 +163,18 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
       </div>
 
       {/* Main Content */}
-      <div className="lg:grid lg:grid-cols-[320px,1fr] lg:gap-8">
+      <div className="lg:grid lg:grid-cols-[300px,1fr] lg:gap-8">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-24">
-            <ProductFiltersBar
-              colors={out.facets?.colors ?? []}
-              sizes={out.facets?.sizes ?? []}
-              categories={categories ?? []}
-            />
+        <aside className="hidden lg:block filters-sidebar">
+          <div className="sticky top-24 space-y-6">
+            {/* Sidebar Header Card */}
+            <div className="sidebar-filters-card">
+              <ProductFiltersBar
+                colors={out.facets?.colors ?? []}
+                sizes={out.facets?.sizes ?? []}
+                categories={categories ?? []}
+              />
+            </div>
           </div>
         </aside>
 
