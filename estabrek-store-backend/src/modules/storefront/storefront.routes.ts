@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
@@ -6,8 +7,23 @@ import { getPublicSettings } from "../settings/settings.service.js";
 import { PageBySlugQuery, StorefrontListProductsQuery, StorefrontSearchSuggestQuery } from "./storefront.schemas.js";
 import chatbot from "./chatbot.routes.js";
 import recommend from "./recommend.routes.js";
+import { searchProductsByImageBuffer } from "./imageSearch.service.js";
+import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
+import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
 
 const r = Router();
+
+const ALLOWED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_IMAGE_MIME.has((file.mimetype || "").toLowerCase())) return cb(null, true);
+    const err = new Error("INVALID_FILE_TYPE") as any;
+    err.code = "INVALID_FILE_TYPE";
+    return cb(err, false);
+  },
+});
 
 // public chatbot helper (knowledge-base + optional AI)
 r.use("/chatbot", chatbot);
@@ -171,7 +187,10 @@ r.get("/search/suggest", validate({ query: StorefrontSearchSuggestQuery }), asyn
   const q = String((req.query as any).q ?? "").trim();
   const limit = Math.min(20, Math.max(1, Number((req.query as any).limit ?? 6)));
 
-  if (!q) return res.json({ products: [], categories: [] });
+  if (!q) return res.json({ products: [], categories: [], didYouMean: null });
+
+  const normalized = normalizeSearchText(q);
+  const categoryLimit = Math.min(limit, 8);
 
   const [products, categories] = await Promise.all([
     prisma.product.findMany({
@@ -195,55 +214,132 @@ r.get("/search/suggest", validate({ query: StorefrontSearchSuggestQuery }), asyn
       },
       select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },
-      take: Math.min(limit, 8),
+      take: categoryLimit,
     }),
   ]);
 
-  res.json({ products, categories });
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const needProducts = productById.size < limit;
+  const needCategories = categoryById.size < categoryLimit;
+
+  let didYouMean: string | null = null;
+
+  if (normalized) {
+    if (needProducts || !productById.size) {
+      const fallbackProducts = await prisma.product.findMany({
+        where: { isActive: true },
+        select: { id: true, title: true, slug: true },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+
+      const scored = fallbackProducts
+        .map((p) => ({ item: p, score: scoreTextMatch(q, p.title) }))
+        .filter((row) => row.score >= 0.45)
+        .sort((a, b) => b.score - a.score);
+
+      for (const row of scored) {
+        if (productById.has(row.item.id)) continue;
+        productById.set(row.item.id, row.item);
+        if (productById.size >= limit) break;
+      }
+
+      if (!didYouMean && scored.length) {
+        const best = scored[0]!;
+        const bestNorm = normalizeSearchText(best.item.title);
+        if (best.score >= 0.88 && bestNorm && bestNorm !== normalized) {
+          didYouMean = best.item.title;
+        }
+      }
+    }
+
+    if (needCategories || !categoryById.size) {
+      const fallbackCategories = await prisma.category.findMany({
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: "asc" },
+      });
+
+      const scored = fallbackCategories
+        .map((c) => ({ item: c, score: scoreTextMatch(q, c.name) }))
+        .filter((row) => row.score >= 0.5)
+        .sort((a, b) => b.score - a.score);
+
+      for (const row of scored) {
+        if (categoryById.has(row.item.id)) continue;
+        categoryById.set(row.item.id, row.item);
+        if (categoryById.size >= categoryLimit) break;
+      }
+
+      if (!didYouMean && scored.length) {
+        const best = scored[0]!;
+        const bestNorm = normalizeSearchText(best.item.name);
+        if (best.score >= 0.88 && bestNorm && bestNorm !== normalized) {
+          didYouMean = best.item.name;
+        }
+      }
+    }
+  }
+
+  res.json({
+    products: Array.from(productById.values()).slice(0, limit),
+    categories: Array.from(categoryById.values()).slice(0, categoryLimit),
+    didYouMean,
+  });
 }));
 
 /**
- * Search suggestions (typeahead)
+ * Image search (AI embedding)
  *
- * GET /v1/storefront/search/suggest?q=shirt&limit=6
+ * POST /v1/storefront/search/image?limit=24&locale=ar
+ * multipart/form-data:
+ *  - file: image (jpeg/png/webp)
+ *  - imageUrl: optional URL if no file
  */
-r.get("/search/suggest", validate({ query: StorefrontSearchSuggestQuery }), asyncHandler(async (req, res) => {
-  const q = String((req.query as any).q).trim();
-  const limit = Math.min(20, Math.max(1, Number((req.query as any).limit ?? 6)));
-
-  // Products
-  const products = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      title: { contains: q, mode: "insensitive" },
-    },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-    },
-    orderBy: { updatedAt: "desc" },
-    take: limit,
+r.post("/search/image", (req, res, next) => {
+  const handler = imageUpload.single("file");
+  handler(req as any, res as any, (err: any) => {
+    if (err?.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ error: "FILE_TOO_LARGE", message: "Max file size is 8MB" });
+    }
+    if (err?.code === "INVALID_FILE_TYPE") {
+      return res.status(415).json({ error: "INVALID_FILE_TYPE", message: "Only PNG, JPG, or WebP images are allowed" });
+    }
+    if (err) {
+      return res.status(400).json({ error: "UPLOAD_FAILED", message: err?.message ?? String(err) });
+    }
+    next();
   });
+}, asyncHandler(async (req, res) => {
+  const limitRaw = Number((req.query as any).limit ?? (req.body as any)?.limit ?? 24);
+  const limit = Math.min(48, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 24));
+  const locale = String((req.query as any).locale ?? (req.body as any)?.locale ?? "ar") as ("ar" | "he" | "en");
 
-  // Categories
-  const categories = await prisma.category.findMany({
-    where: {
-      name: { contains: q, mode: "insensitive" },
-    },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-    },
-    orderBy: { updatedAt: "desc" },
-    take: Math.min(10, limit),
-  });
+  let buffer: Buffer | null = null;
+  let mime: string | null = null;
 
-  res.json({
-    products,
-    categories,
-  });
+  const file = (req as any).file as { buffer?: Buffer; mimetype?: string } | undefined;
+  if (file?.buffer?.length) {
+    buffer = file.buffer;
+    mime = file.mimetype ?? "image/jpeg";
+  } else if ((req.body as any)?.imageUrl) {
+    const loaded = await loadImageFromUrl(String((req.body as any).imageUrl));
+    if (loaded) {
+      buffer = loaded.buffer;
+      mime = loaded.mime;
+    }
+  }
+
+  if (!buffer || !mime) {
+    return res.status(400).json({ error: "NO_IMAGE", message: "Provide an image file or imageUrl" });
+  }
+
+  const result = await searchProductsByImageBuffer(buffer, mime, { limit, locale });
+  if (!result.ok) {
+    return res.status(503).json({ error: result.error });
+  }
+
+  res.json(result);
 }));
 
 export default r;
