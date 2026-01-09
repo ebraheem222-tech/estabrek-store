@@ -42,10 +42,7 @@ import {
 } from "../../cms/style/tokens";
 import { SHAPES } from "../../cms/shapes/shapeRegistry";
 import type { CmsComponent, CmsComponentKind, CmsSectionData } from "../../cms/types";
-
-const LazySectionStylingPanel = React.lazy(() =>
-  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
-);
+import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 
 type ChildCapableKind = "container" | "stack" | "row" | "grid" | "columns";
 
@@ -2137,13 +2134,11 @@ export function ComponentsEditor({
                   </Button>
                 </div>
                 {showAdvancedStyle ? (
-                  <React.Suspense fallback={<div className="mt-2 text-sm text-white/60">Loading styling…</div>}>
-                    <LazySectionStylingPanel
-                      className="mt-2"
-                      tokens={(selected.twTokens ?? defaultTokensBase()) as any}
-                      onChange={(next) => patchSelected({ twTokens: next })}
-                    />
-                  </React.Suspense>
+                  <ResponsiveTokensPanel
+                    className="mt-2"
+                    tokens={(selected.twTokens ?? defaultTokensBase()) as any}
+                    onChange={(next) => patchSelected({ twTokens: next })}
+                  />
                 ) : null}
 
                 {/* Preview */}
@@ -2400,4 +2395,5 @@ export function ComponentsEditor({
     </div>
   );
 }
+
 

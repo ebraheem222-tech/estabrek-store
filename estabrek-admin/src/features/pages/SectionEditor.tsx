@@ -10,6 +10,7 @@ import { listCategories, type CatalogCategory } from "../../api/catalog.api";
 import DOMPurify from "dompurify";
 import type { TwTokens } from "../../cms/style/tokens";
 import type { CmsComponent } from "../../cms/types";
+import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import {
   DndContext,
   PointerSensor,
@@ -25,10 +26,6 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-
-const LazySectionStylingPanel = React.lazy(() =>
-  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
-);
 
 /**
  * NOTE: Some section editors were written using <TextInput /> / <TextAreaInput /> with a simplified
@@ -115,11 +112,9 @@ function TokensPanel({
         تنسيق متقدم: {label}
       </summary>
       {isOpen ? (
-        <React.Suspense fallback={<div className="mt-3 text-sm text-white/60">Loading styling…</div>}>
-          <div className="mt-3">
-            <LazySectionStylingPanel tokens={tokens} onChange={onChange} />
-          </div>
-        </React.Suspense>
+        <div className="mt-3">
+          <ResponsiveTokensPanel tokens={tokens as any} onChange={onChange as any} />
+        </div>
       ) : null}
     </details>
   );
@@ -4148,19 +4143,14 @@ export function SectionEditor({
     <div className="space-y-4">
       {content}
       <SectionLayoutEditor value={baseValue} onChange={onChange} />
-      <React.Suspense
-        fallback={
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-white/60">
-            Loading styling.
-          </div>
-        }
-      >
-        <LazySectionStylingPanel
-          tokens={sectionTokens}
-          onChange={(next) => onChange({ ...baseValue, twTokens: next })}
-        />
-      </React.Suspense>
+      <ResponsiveTokensPanel
+        tokens={sectionTokens as any}
+        onChange={(next) => onChange({ ...baseValue, twTokens: next })}
+      />
     </div>
   );
 }
+
+
+
 

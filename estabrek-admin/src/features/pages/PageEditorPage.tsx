@@ -27,16 +27,28 @@ import { Select } from "../../components/ui/Select";
 import { Spinner } from "../../components/ui/Spinner";
 import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { aiImproveSeo, aiSuggestSections, aiTranslatePage, moveSection as moveSectionApi, type PageSection, type PageSectionType, type PageStatus } from "../../api/pages.api";
+import {
+  aiImproveSeo,
+  aiSuggestSections,
+  aiTranslatePage,
+  createSection as createSectionApi,
+  deleteSection as deleteSectionApi,
+  moveSection as moveSectionApi,
+  updateSection as updateSectionApi,
+  type PageSection,
+  type PageSectionType,
+  type PageStatus,
+} from "../../api/pages.api";
 import { SectionEditor, defaultDataForType, templatesForType } from "./SectionEditor";
 import { ComponentsEditor, createDefaultComponent } from "./ComponentsEditor";
+import { PageRenderer } from "./PageRenderer";
+import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import { ThemePreview } from "../../components/ThemePreview";
 import { toast } from "../../lib/toast";
+import { scopeCss } from "../../lib/scopeCss";
+import { PAGE_TEMPLATES } from "./pageTemplates";
 import type { CmsComponentKind } from "../../cms/types";
 
-const LazySectionStylingPanel = React.lazy(() =>
-  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
-);
 const LazySectionPreview = React.lazy(() =>
   import("./SectionPreview").then((m) => ({ default: m.SectionPreview }))
 );
@@ -124,129 +136,52 @@ function SortableSectionCard({
     transition,
   };
 
-  const sectionTypeLabel = section.data?.__mode === "components" ? "COMPONENTS" : section.type;
-
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={[
-        "group relative rounded-xl p-5 transition-all duration-300 ease-smooth",
-        "bg-gradient-to-br from-white/[0.03] via-white/[0.015] to-transparent",
-        "border border-white/[0.06] hover:border-white/[0.1]",
-        isDragging 
-          ? "ring-2 ring-accent-500/40 border-accent-500/30 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.4),0_0_30px_-10px_rgba(139,92,246,0.2)]" 
-          : "hover:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.3)]",
+        "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4",
+        isDragging ? "ring-2 ring-white/20" : "",
       ].join(" ")}
     >
-      {/* Top highlight line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-      
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4 flex-1 min-w-0">
-          {/* Drag Handle */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
           <button
             type="button"
-            className="mt-1 flex-shrink-0 w-8 h-8 rounded-lg border border-white/[0.06] bg-white/[0.02] flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/[0.04] cursor-grab active:cursor-grabbing transition-all"
+            className="mt-0.5 select-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-sm opacity-70 hover:opacity-100 cursor-grab"
             title="اسحب للترتيب"
             {...attributes}
             {...listeners}
           >
-            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
-              <circle cx="5" cy="3" r="1.5" />
-              <circle cx="11" cy="3" r="1.5" />
-              <circle cx="5" cy="8" r="1.5" />
-              <circle cx="11" cy="8" r="1.5" />
-              <circle cx="5" cy="13" r="1.5" />
-              <circle cx="11" cy="13" r="1.5" />
-            </svg>
+            ⋮⋮
           </button>
-          
-          <div className="flex-1 min-w-0">
-            {/* Section Header */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Type icon badge */}
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-accent-500/10 border border-accent-500/20">
-                <svg className="w-3.5 h-3.5 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                </svg>
-                <span className="text-xs font-medium text-accent-300">{sectionTypeLabel}</span>
-              </div>
-              
-              {/* Order badge */}
-              <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/60 font-mono">
-                #{section.order ?? 0}
-              </span>
-              
-              {/* Visibility badge */}
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold">{section.data?.__mode === "components" ? "COMPONENTS" : section.type}</div>
+              <span className="rounded-full border border-white/[0.10] bg-white/[0.04] px-2 py-0.5 text-[11px] opacity-80">#{section.order ?? 0}</span>
               {section.isVisible ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  ظاهر
-                </span>
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-200">ظاهر</span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  مخفي
-                </span>
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-200">مخفي</span>
               )}
             </div>
-            
-            {/* Preview */}
-            <div className="mt-3">
-              <div className="rounded-xl overflow-hidden bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:16px_16px]">
-                <ThemePreview theme={theme} className="rounded-xl p-2">
-                  <React.Suspense fallback={<div className="p-6 text-xs text-white/40 text-center">جاري التحميل...</div>}>
-                    <LazySectionPreview type={section.type} data={previewData ?? section.data} />
-                  </React.Suspense>
-                </ThemePreview>
-              </div>
+            <div className="mt-2">
+              <ThemePreview theme={theme} className="rounded-2xl p-2">
+                <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview…</div>}>
+                  <LazySectionPreview type={section.type} data={previewData ?? section.data} />
+                </React.Suspense>
+              </ThemePreview>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1.5">
-          <Button 
-            variant="ghost" 
-            size="icon-sm" 
-            onClick={onToggleVisible}
-            title={section.isVisible ? "إخفاء" : "إظهار"}
-            className="text-white/50 hover:text-white"
-          >
-            {section.isVisible ? (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              </svg>
-            )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant={section.isVisible ? "ghost" : "secondary"} size="sm" onClick={onToggleVisible}>
+            {section.isVisible ? "إخفاء" : "إظهار"}
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon-sm" 
-            onClick={onEdit}
-            title="تعديل"
-            className="text-white/50 hover:text-accent-400"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon-sm" 
-            onClick={onDelete}
-            title="حذف"
-            className="text-white/50 hover:text-red-400"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </Button>
+          <Button variant="secondary" size="sm" onClick={onEdit}>تعديل</Button>
+          <Button variant="danger" size="sm" onClick={onDelete}>حذف</Button>
         </div>
       </div>
     </div>
@@ -256,6 +191,12 @@ function SortableSectionCard({
 type PageFieldErrors = {
   name?: string;
   slug?: string;
+};
+
+type InlineEditPayload = {
+  sectionId: string;
+  path: Array<string | number>;
+  value: string;
 };
 
 function TextArea({
@@ -301,6 +242,20 @@ function normalizeSlug(v: string) {
   return t.startsWith("/") ? t : `/${t}`;
 }
 
+function setDeepValue(target: any, path: Array<string | number>, value: any): any {
+  if (!path.length) return value;
+  const [head, ...rest] = path;
+  const forceArray = typeof head === "number";
+  const isArray = Array.isArray(target) || forceArray;
+  const clone = isArray
+    ? [...(Array.isArray(target) ? target : [])]
+    : { ...(target && typeof target === "object" ? target : {}) };
+  const current = isArray ? (clone as any)[head] : (clone as any)[head];
+  const nextValue = rest.length ? setDeepValue(current, rest, value) : value;
+  (clone as any)[head] = nextValue;
+  return clone;
+}
+
 export default function PageEditorPage() {
   const nav = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -325,6 +280,12 @@ export default function PageEditorPage() {
   const [aiLocale, setAiLocale] = useState<"ar" | "he" | "en">("ar");
   const [aiBusy, setAiBusy] = useState<null | "sections" | "seo" | "translate-he" | "translate-en">(null);
   const [contentLocale, setContentLocale] = useState<"ar" | "he" | "en">("ar");
+  const [inlineEditing, setInlineEditing] = useState(true);
+  const [canvasView, setCanvasView] = useState<"live" | "preview">("live");
+  const [previewMode, setPreviewMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [templateId, setTemplateId] = useState<(typeof PAGE_TEMPLATES)[number]["id"]>("landing");
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [confirmTemplateReplace, setConfirmTemplateReplace] = useState(false);
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -350,6 +311,21 @@ export default function PageEditorPage() {
     const arr = (i18nMeta?.sections as any)?.[contentLocale];
     return Array.isArray(arr) ? arr : null;
   }, [i18nMeta, contentLocale]);
+
+  const inlineEditingAvailable = contentLocale === "ar";
+  useEffect(() => {
+    if (!inlineEditingAvailable) {
+      setInlineEditing(false);
+    }
+  }, [inlineEditingAvailable]);
+
+  const previewWidthClass = useMemo(() => {
+    if (previewMode === "mobile") return "max-w-[360px]";
+    if (previewMode === "tablet") return "max-w-[440px]";
+    return "max-w-none";
+  }, [previewMode]);
+
+  const canvasDir = contentLocale === "en" ? "ltr" : "rtl";
 
   const getTranslatedSectionData = (section: PageSection, index: number) => {
     if (!translatedSections || contentLocale === "ar") return section.data;
@@ -434,6 +410,19 @@ export default function PageEditorPage() {
     setLocalSections(sections as any);
   }, [sections]);
 
+  const selectedTemplate = useMemo(
+    () => PAGE_TEMPLATES.find((tpl) => tpl.id === templateId) ?? PAGE_TEMPLATES[0],
+    [templateId]
+  );
+
+  const canvasSections = useMemo(() => {
+    if (!translatedSections || contentLocale === "ar") return localSections;
+    return localSections.map((sec, idx) => {
+      const data = getTranslatedSectionData(sec, idx);
+      return data === sec.data ? sec : { ...sec, data };
+    });
+  }, [localSections, translatedSections, contentLocale]);
+
   const qc = useQueryClient();
 
   const sensors = useSensors(
@@ -503,7 +492,6 @@ export default function PageEditorPage() {
   }, [translatedSections, contentLocale, previewState.data, editingSectionId, localSections, sectionType]);
 
   const [confirmDeleteSectionId, setConfirmDeleteSectionId] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(true);
   const [previewBump, setPreviewBump] = useState(0);
   const previewUrl = useMemo(() => {
     const pageId = page?.id ?? id ?? "";
@@ -580,6 +568,80 @@ export default function PageEditorPage() {
     setSectionDataObj(t.data ?? {});
     setSectionDataRaw(JSON.stringify(t.data ?? {}, null, 2));
     setSectionErrors({});
+  };
+
+  const applyPageTemplate = async (mode: "append" | "replace") => {
+    if (!id) return;
+    const template = selectedTemplate;
+    if (!template) return;
+    setTemplateBusy(true);
+    try {
+      if (mode === "replace" && localSections.length) {
+        await Promise.all(localSections.map((s) => deleteSectionApi(s.id)));
+      }
+
+      const sectionsToCreate = template.sections ?? [];
+      if (!sectionsToCreate.length) {
+        if (mode === "append") {
+          toast.info("القالب لا يحتوي على أقسام.");
+        } else {
+          toast.success("تم تطبيق القالب.");
+        }
+        await qc.invalidateQueries({ queryKey: ["pages", id] });
+        return;
+      }
+
+      const offset =
+        mode === "append"
+          ? localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1
+          : 0;
+      for (const [idx, s] of sectionsToCreate.entries()) {
+        await createSectionApi(id, {
+          type: s.type,
+          data: s.data ?? {},
+          isVisible: s.isVisible ?? true,
+          order: offset + idx,
+        });
+      }
+      await qc.invalidateQueries({ queryKey: ["pages", id] });
+      toast.success("تم تطبيق القالب.");
+    } catch {
+      toast.error("تعذر تطبيق القالب.");
+    } finally {
+      setTemplateBusy(false);
+      setConfirmTemplateReplace(false);
+    }
+  };
+
+  const handleInlineEdit = async ({ sectionId, path, value }: InlineEditPayload) => {
+    if (!id || !inlineEditingAvailable) return;
+    const idx = localSections.findIndex((s) => String(s.id) === String(sectionId));
+    if (idx < 0) return;
+    const section = localSections[idx];
+    const nextData = setDeepValue(section.data ?? {}, path, value);
+    const nextSection = { ...section, data: nextData };
+
+    setLocalSections((prev) =>
+      prev.map((s) => (String(s.id) === String(sectionId) ? nextSection : s))
+    );
+    qc.setQueryData(["pages", id], (prev: any) => {
+      if (!prev || !Array.isArray(prev.sections)) return prev;
+      const nextSections = prev.sections.map((s: any) =>
+        String(s.id) === String(sectionId) ? { ...s, data: nextData } : s
+      );
+      return { ...prev, sections: nextSections };
+    });
+
+    if (editingSectionId && String(editingSectionId) === String(sectionId)) {
+      setSectionDataObj(nextData);
+      setSectionDataRaw(JSON.stringify(nextData ?? {}, null, 2));
+    }
+
+    try {
+      await updateSectionApi(section.id, { data: nextData });
+    } catch {
+      toast.error("تعذر حفظ التعديل.");
+    }
   };
 
   const preview = useMemo(() => {
@@ -993,9 +1055,7 @@ export default function PageEditorPage() {
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => nav("/admin/pages")}>رجوع</Button>
             <Button variant="ghost" onClick={() => nav(`/admin/pages/${page.id}/preview`)}>Preview</Button>
-            <Button variant={showPreview ? "ghost" : "secondary"} onClick={() => setShowPreview((v) => !v)}>
-              {showPreview ? "إخفاء المعاينة المباشرة" : "معاينة مباشرة"}
-            </Button>
+            
             <Button variant="secondary" onClick={openCreateSection}>إضافة Section</Button>
             <select
               className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm sm:w-auto"
@@ -1151,37 +1211,194 @@ export default function PageEditorPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-lg font-semibold">Sections</div>
-          <div className="text-xs opacity-70">{sections.length} sections</div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_480px]">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-lg font-semibold">Templates</div>
+              <div className="text-xs opacity-70">{selectedTemplate?.label}</div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+              <Select
+                label="Page template"
+                value={templateId}
+                onValueChange={(value) => setTemplateId(value as any)}
+                options={PAGE_TEMPLATES.map((tpl) => ({ value: tpl.id, label: tpl.label }))}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => applyPageTemplate("append")}
+                isLoading={templateBusy}
+              >
+                Append
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => setConfirmTemplateReplace(true)}
+                disabled={templateBusy}
+              >
+                Replace
+              </Button>
+            </div>
+
+            <div className="mt-2 text-xs opacity-60">
+              {selectedTemplate?.description ?? ""}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-lg font-semibold">Sections</div>
+              <div className="text-xs opacity-70">{sections.length} sections</div>
+            </div>
+
+            <div className="space-y-3">
+              {localSections.length ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext items={localSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-3">
+                      {localSections.map((s, idx) => (
+                        <SortableSectionCard
+                          key={s.id}
+                          section={s}
+                          previewData={getTranslatedSectionData(s, idx)}
+                          theme={theme}
+                          onEdit={() => openEditSection(s)}
+                          onDelete={() => setConfirmDeleteSectionId(s.id)}
+                          onToggleVisible={() => {
+                            if (!id) return;
+                            actions.updateSection.mutateAsync({ pageId: id, sectionId: s.id, body: { isVisible: !s.isVisible } }).catch(() => {});
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="text-sm opacity-70">No sections yet.</div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {localSections.length ? (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={localSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-                  {localSections.map((s, idx) => (
-                    <SortableSectionCard
-                      key={s.id}
-                      section={s}
-                      previewData={getTranslatedSectionData(s, idx)}
-                      theme={theme}
-                      onEdit={() => openEditSection(s)}
-                      onDelete={() => setConfirmDeleteSectionId(s.id)}
-                      onToggleVisible={() => {
-                        if (!id) return;
-                        actions.updateSection.mutateAsync({ pageId: id, sectionId: s.id, body: { isVisible: !s.isVisible } }).catch(() => {});
-                      }}
-                    />
-                  ))}
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 lg:sticky lg:top-4 lg:self-start">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-semibold">Canvas</div>
+            <div className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+              <Button
+                type="button"
+                size="xs"
+                variant={canvasView === "live" ? "secondary" : "ghost"}
+                onClick={() => setCanvasView("live")}
+              >
+                Live
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={canvasView === "preview" ? "secondary" : "ghost"}
+                onClick={() => setCanvasView("preview")}
+              >
+                Preview
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+              <Button
+                type="button"
+                size="xs"
+                variant={previewMode === "desktop" ? "secondary" : "ghost"}
+                onClick={() => setPreviewMode("desktop")}
+              >
+                Desktop
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={previewMode === "tablet" ? "secondary" : "ghost"}
+                onClick={() => setPreviewMode("tablet")}
+              >
+                Tablet
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={previewMode === "mobile" ? "secondary" : "ghost"}
+                onClick={() => setPreviewMode("mobile")}
+              >
+                Mobile
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="xs" variant="ghost" onClick={() => setPreviewBump((x) => x + 1)}>
+                Refresh
+              </Button>
+              {previewUrl ? (
+                <a className="text-xs opacity-80 hover:opacity-100 underline" href={previewUrl} target="_blank" rel="noreferrer">
+                  Open in tab
+                </a>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] p-2">
+            <div className="text-xs opacity-70">
+              Inline edit{inlineEditingAvailable ? "" : " (AR only)"}
+            </div>
+            <button
+              type="button"
+              className={
+                "relative h-6 w-11 rounded-full border transition-all " +
+                (inlineEditing ? "bg-white/20 border-white/20" : "bg-white/10 border-white/10") +
+                (inlineEditingAvailable ? "" : " opacity-50 cursor-not-allowed")
+              }
+              onClick={() => {
+                if (!inlineEditingAvailable) return;
+                setInlineEditing((v) => !v);
+              }}
+            >
+              <span
+                className={
+                  "absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white transition-all " +
+                  (inlineEditing ? "left-1" : "right-1")
+                }
+              />
+            </button>
+          </div>
+
+          <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+            {canvasView === "preview" ? (
+              previewUrl ? (
+                <div className={`mx-auto w-full ${previewWidthClass}`}>
+                  <iframe key={`preview-${previewBump}`} title="preview" src={previewUrl} className="h-[70vh] w-full" />
                 </div>
-              </SortableContext>
-            </DndContext>
-          ) : (
-            <div className="text-sm opacity-70">لا يوجد Sections.</div>
-          )}
+              ) : (
+                <div className="p-6 text-sm text-white/60">Preview unavailable.</div>
+              )
+            ) : (
+              <div className="max-h-[70vh] overflow-auto">
+                <ThemePreview key={`live-${previewBump}`} theme={theme} className="min-h-[60vh] p-4">
+                  {customCss && customCss.trim() ? <style>{scopeCss(customCss, "#cms-preview-root")}</style> : null}
+                  <div id="cms-preview-root" className={`mx-auto w-full ${previewWidthClass}`} dir={canvasDir}>
+                    {canvasSections.length ? (
+                      <PageRenderer
+                        sections={canvasSections}
+                        inlineEditing={inlineEditing && inlineEditingAvailable}
+                        onInlineEdit={handleInlineEdit}
+                      />
+                    ) : (
+                      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/60">
+                        No sections to preview.
+                      </div>
+                    )}
+                  </div>
+                </ThemePreview>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1203,7 +1420,7 @@ export default function PageEditorPage() {
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div dir="rtl" className="space-y-4 overflow-x-auto">
           {!componentsOnlyMode ? (
             <>
               <Select
@@ -1276,10 +1493,9 @@ export default function PageEditorPage() {
                 onClick={() => {
                   const next = !advancedJson;
                   setAdvancedJson(next);
-                  if (next) {
-                    // keep raw in sync (only when opening Advanced JSON)
-                    setSectionDataRaw(JSON.stringify(sectionDataObj ?? {}, null, 2));
-                  }
+                  // keep raw in sync
+                  const raw = JSON.stringify(sectionDataObj ?? {}, null, 2);
+                  setSectionDataRaw(raw);
                   setSectionErrors({});
                 }}
               >
@@ -1305,6 +1521,7 @@ export default function PageEditorPage() {
                       errors={sectionErrors.fields}
                       onChange={(v) => {
                         setSectionDataObj(v);
+                        setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
                         setSectionErrors({});
                         setSectionTemplateId("__custom__");
                       }}
@@ -1313,11 +1530,12 @@ export default function PageEditorPage() {
                     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                       <div className="text-sm font-semibold mb-3">تنسيق القسم المتقدم</div>
                       <React.Suspense fallback={<div className="text-sm text-white/60">Loading styling…</div>}>
-                        <LazySectionStylingPanel
+                        <ResponsiveTokensPanel
                           tokens={sectionDataObj?.twTokens ?? {}}
                           onChange={(next) => {
                             const v = { ...(sectionDataObj ?? {}), twTokens: next };
                             setSectionDataObj(v);
+                            setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
                             setSectionErrors({});
                             setSectionTemplateId("__custom__");
                           }}
@@ -1331,6 +1549,7 @@ export default function PageEditorPage() {
                       value={sectionDataObj}
                       onChange={(v) => {
                         setSectionDataObj(v);
+                        setSectionDataRaw(JSON.stringify(v ?? {}, null, 2));
                         setSectionErrors({});
                         setSectionTemplateId("__custom__");
                       }}
@@ -1410,20 +1629,17 @@ export default function PageEditorPage() {
         onConfirm={deleteSection}
         onCancel={() => setConfirmDeleteSectionId(null)}
       />
-      {showPreview && previewUrl ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-          <div className="flex items-center justify-between gap-2 px-2 py-1">
-            <div className="text-sm font-semibold">Live Preview</div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={() => setPreviewBump((x) => x + 1)}>تحديث</Button>
-              <a className="text-xs opacity-80 hover:opacity-100 underline" href={previewUrl} target="_blank" rel="noreferrer">فتح في تبويب</a>
-            </div>
-          </div>
-          <div className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-            <iframe title="preview" src={previewUrl} className="h-[70vh] w-full" />
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={confirmTemplateReplace}
+        title="Replace template?"
+        message="This will remove all current sections and apply the selected template."
+        confirmText="Replace"
+        cancelText="Cancel"
+        variant="warning"
+        isLoading={templateBusy}
+        onConfirm={() => applyPageTemplate("replace")}
+        onCancel={() => setConfirmTemplateReplace(false)}
+      />
 
     </div>
   );

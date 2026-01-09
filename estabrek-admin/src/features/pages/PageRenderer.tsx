@@ -150,6 +150,125 @@ function textContent(text: string, tokens?: any) {
   return { useTypewriter: false, ariaLabel: split.ariaLabel, className: textEffectClass(tokens), content: split.content };
 }
 
+type InlineEditPayload = {
+  sectionId: string;
+  path: Array<string | number>;
+  value: string;
+};
+
+type InlineEditContextValue = {
+  enabled: boolean;
+  onCommit?: (payload: InlineEditPayload) => void;
+};
+
+const InlineEditContext = React.createContext<InlineEditContextValue | null>(null);
+const InlineSectionContext = React.createContext<string | null>(null);
+
+type InlineEditableTextProps = {
+  as?: React.ElementType;
+  value: string;
+  path?: Array<string | number>;
+  textData?: { content: React.ReactNode; ariaLabel?: string; className?: string };
+  className?: string;
+  style?: React.CSSProperties;
+  ariaLabel?: string;
+  multiline?: boolean;
+  dir?: "ltr" | "rtl";
+  placeholder?: string;
+};
+
+function InlineEditableText({
+  as: As = "span",
+  value,
+  path,
+  textData,
+  className,
+  style,
+  ariaLabel,
+  multiline,
+  dir,
+  placeholder,
+}: InlineEditableTextProps) {
+  const inline = React.useContext(InlineEditContext);
+  const sectionId = React.useContext(InlineSectionContext);
+  const canEdit = Boolean(inline?.enabled && inline?.onCommit && sectionId && path?.length);
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  const isPlaceholder = canEdit && !draft && !!placeholder;
+  const displayValue = canEdit ? (draft || (placeholder ?? "")) : (textData?.content ?? value);
+
+  return (
+    <As
+      contentEditable={canEdit}
+      suppressContentEditableWarning
+      className={cls(
+        className,
+        canEdit ? "cursor-text rounded-md outline outline-1 outline-transparent focus:outline-white/30 focus:bg-white/[0.04] transition" : undefined,
+        isPlaceholder ? "text-white/40 italic" : undefined
+      )}
+      style={style}
+      aria-label={ariaLabel ?? textData?.ariaLabel}
+      dir={dir}
+      onClick={canEdit ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+      onFocus={
+        canEdit
+          ? (e: React.FocusEvent) => {
+              setEditing(true);
+              if (isPlaceholder) {
+                setDraft("");
+                (e.currentTarget as HTMLElement).textContent = "";
+              }
+            }
+          : undefined
+      }
+      onInput={
+        canEdit
+          ? (e: React.FormEvent) => {
+              setDraft((e.currentTarget as HTMLElement).textContent ?? "");
+            }
+          : undefined
+      }
+      onKeyDown={
+        canEdit
+          ? (e: React.KeyboardEvent) => {
+              if (!multiline && e.key === "Enter") {
+                e.preventDefault();
+                (e.currentTarget as HTMLElement).blur();
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setDraft(value);
+                (e.currentTarget as HTMLElement).textContent = value;
+                (e.currentTarget as HTMLElement).blur();
+              }
+            }
+          : undefined
+      }
+      onBlur={
+        canEdit
+          ? (e: React.FocusEvent) => {
+              setEditing(false);
+              let nextValue = (e.currentTarget as HTMLElement).textContent ?? "";
+              if (placeholder && !value && nextValue === placeholder) {
+                nextValue = "";
+              }
+              if (nextValue !== value) {
+                inline?.onCommit?.({ sectionId: String(sectionId), path: path ?? [], value: nextValue });
+              }
+            }
+          : undefined
+      }
+    >
+      {displayValue}
+    </As>
+  );
+}
+
 function heroAnimClass(anim?: string, duration?: number, delay?: number) {
   if (!anim || anim === "none") return "";
   const dur = Number.isFinite(duration as number) ? `animation-duration-${duration}` : "";
@@ -250,7 +369,7 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     wantsOverflowHidden && typeof className === "string"
       ? className.replace(/\boverflow-hidden\b/g, "").trim()
       : className;
-  const tagName = typeof node.type === "string" ? node.type : undefined;
+  const tagName = typeof node.type === "string" ? node.type : (typeof node.props?.as === "string" ? node.props.as : undefined);
   const isInline = !!tagName && INLINE_DECOR_TAGS.has(tagName);
   const isVoid = !!tagName && VOID_ELEMENTS.has(tagName);
   const mergedClassName = cls(cleanedClassName, "relative", "overflow-visible");
@@ -260,6 +379,17 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     isInline ? "inline-block" : "block"
   );
   const innerStyle = wantsOverflowHidden ? { borderRadius: "inherit" } : undefined;
+  if (typeof node.type !== "string") {
+    const Wrapper = isInline ? "span" : "div";
+    return (
+      <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
+        <SectionDecorations decorations={decorations} className="z-0" />
+        <span className={innerClassName} style={innerStyle}>
+          {node}
+        </span>
+      </Wrapper>
+    );
+  }
   if (isVoid) {
     const Wrapper = isInline ? "span" : "div";
     return (
@@ -405,6 +535,10 @@ function HeroSection({ data }: { data: HeroData }) {
   const primaryButtonTokens = resolveFieldTokens((s as any).primaryButtonTokens, baseSlideTokens);
   const secondaryButtonTokens = resolveFieldTokens((s as any).secondaryButtonTokens, baseSlideTokens);
   const titleValue = (s as any).title || "";
+  const titlePath = hasSlides ? ["slides", activeSlide, "title"] : ["title"];
+  const subtitlePath = hasSlides ? ["slides", activeSlide, "subtitle"] : ["subtitle"];
+  const primaryLabelPath = hasSlides ? ["slides", activeSlide, "primaryButton", "label"] : ["primaryButton", "label"];
+  const secondaryLabelPath = hasSlides ? ["slides", activeSlide, "secondaryButton", "label"] : ["secondaryButton", "label"];
   const titleData = textContent(String(titleValue), titleTokens);
   const subtitleValue = (s as any).subtitle;
   const subtitleData = subtitleValue ? textContent(String(subtitleValue), subtitleTokens) : null;
@@ -440,15 +574,30 @@ function HeroSection({ data }: { data: HeroData }) {
         <SectionTextScope data={data}>
           <div key={contentKey} className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify, contentAnimClass)}>
             {wrapDecorations(
-              <h2 className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h2>,
+              <InlineEditableText
+                as="h2"
+                value={String(titleValue)}
+                path={titlePath}
+                textData={titleData}
+                className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)}
+                style={tokensStyle(titleTokens)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Hero title"
+              />,
               titleTokens
             )}
             {subtitleData ? wrapDecorations(
-              <p className={cls("max-w-[60ch] text-sm opacity-90", tokensClass(subtitleTokens), subtitleData.className)} style={tokensStyle(subtitleTokens)} aria-label={subtitleData.ariaLabel}>
-                {subtitleData.content}
-              </p>,
+              <InlineEditableText
+                as="p"
+                value={String(subtitleValue ?? "")}
+                path={subtitlePath}
+                textData={subtitleData}
+                className={cls("max-w-[60ch] text-sm opacity-90", tokensClass(subtitleTokens), subtitleData.className)}
+                style={tokensStyle(subtitleTokens)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder="Hero subtitle"
+                multiline
+              />,
               subtitleTokens
             ) : null}
             <div className="mt-2 flex flex-wrap gap-2">
@@ -459,29 +608,38 @@ function HeroSection({ data }: { data: HeroData }) {
                       href={primaryButton.href}
                       className={cls(
                         "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
-                        tokensClass(primaryButtonTokens),
-                        primaryLabelData?.className
+                        tokensClass(primaryButtonTokens)
                       )}
                       style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
-                      aria-label={primaryLabelData?.ariaLabel}
                     >
-                      {primaryLabelData?.content ?? primaryButton.label}
+                      <InlineEditableText
+                        as="span"
+                        value={String(primaryButton.label)}
+                        path={primaryLabelPath}
+                        textData={primaryLabelData ?? undefined}
+                        className={primaryLabelData?.className}
+                        ariaLabel={primaryLabelData?.ariaLabel}
+                        placeholder="Button"
+                      />
                     </a>,
                     primaryButtonTokens
                   )
                 ) : (
                   wrapDecorations(
-                    <span
+                    <InlineEditableText
+                      as="span"
+                      value={String(primaryButton.label)}
+                      path={primaryLabelPath}
+                      textData={primaryLabelData ?? undefined}
                       className={cls(
                         "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
                         tokensClass(primaryButtonTokens),
                         primaryLabelData?.className
                       )}
                       style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
-                      aria-label={primaryLabelData?.ariaLabel}
-                    >
-                      {primaryLabelData?.content ?? primaryButton.label}
-                    </span>,
+                      ariaLabel={primaryLabelData?.ariaLabel}
+                      placeholder="Button"
+                    />,
                     primaryButtonTokens
                   )
                 )
@@ -493,29 +651,38 @@ function HeroSection({ data }: { data: HeroData }) {
                       href={secondaryButton.href}
                       className={cls(
                         "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]",
-                        tokensClass(secondaryButtonTokens),
-                        secondaryLabelData?.className
+                        tokensClass(secondaryButtonTokens)
                       )}
                       style={tokensStyle(secondaryButtonTokens)}
-                      aria-label={secondaryLabelData?.ariaLabel}
                     >
-                      {secondaryLabelData?.content ?? secondaryButton.label}
+                      <InlineEditableText
+                        as="span"
+                        value={String(secondaryButton.label)}
+                        path={secondaryLabelPath}
+                        textData={secondaryLabelData ?? undefined}
+                        className={secondaryLabelData?.className}
+                        ariaLabel={secondaryLabelData?.ariaLabel}
+                        placeholder="Button"
+                      />
                     </a>,
                     secondaryButtonTokens
                   )
                 ) : (
                   wrapDecorations(
-                    <span
+                    <InlineEditableText
+                      as="span"
+                      value={String(secondaryButton.label)}
+                      path={secondaryLabelPath}
+                      textData={secondaryLabelData ?? undefined}
                       className={cls(
                         "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90",
                         tokensClass(secondaryButtonTokens),
                         secondaryLabelData?.className
                       )}
                       style={tokensStyle(secondaryButtonTokens)}
-                      aria-label={secondaryLabelData?.ariaLabel}
-                    >
-                      {secondaryLabelData?.content ?? secondaryButton.label}
-                    </span>,
+                      ariaLabel={secondaryLabelData?.ariaLabel}
+                      placeholder="Button"
+                    />,
                     secondaryButtonTokens
                   )
                 )
@@ -597,9 +764,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-3 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Section title"
+              />
             ) : null}
             <div
               className={cls("prose prose-invert max-w-none", htmlEffectClass)}
@@ -650,9 +823,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
       <section className={cls("rounded-3xl border p-5", color, uiSectionClass(d))} style={uiSectionStyle(d)}>
         <SectionTextScope data={d}>
           <div className={cls("flex flex-col gap-2 md:flex-row md:items-center md:justify-between", uiContainerClass(d))}>
-            <div className={cls("text-sm opacity-90", textData.className)} aria-label={textData.ariaLabel}>
-              {textData.content}
-            </div>
+            <InlineEditableText
+              as="div"
+              value={String(d.text ?? "")}
+              path={["text"]}
+              textData={textData}
+              className={cls("text-sm opacity-90", textData.className)}
+              ariaLabel={textData.ariaLabel}
+              placeholder="Banner text"
+              multiline
+            />
             {d.linkLabel && d.linkHref ? (
               <a
                 className={cls(
@@ -660,9 +840,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   linkData?.className
                 )}
                 href={d.linkHref}
-                aria-label={linkData?.ariaLabel}
               >
-                {linkData?.content ?? d.linkLabel}
+                <InlineEditableText
+                  as="span"
+                  value={String(d.linkLabel ?? "")}
+                  path={["linkLabel"]}
+                  textData={linkData ?? undefined}
+                  className={linkData?.className}
+                  ariaLabel={linkData?.ariaLabel}
+                  placeholder="Link"
+                />
               </a>
             ) : null}
           </div>
@@ -696,14 +883,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                 />
               ) : null}
               {titleData ? (
-                <div className={cls("text-xl font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                  {titleData.content}
-                </div>
+                <InlineEditableText
+                  as="div"
+                  value={String(d.title ?? "")}
+                  path={["title"]}
+                  textData={titleData}
+                  className={cls("text-xl font-semibold", titleData.className)}
+                  ariaLabel={titleData.ariaLabel}
+                  placeholder="CTA title"
+                />
               ) : null}
               {subtitleData ? (
-                <div className={cls("text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                  {subtitleData.content}
-                </div>
+                <InlineEditableText
+                  as="div"
+                  value={String(d.subtitle ?? "")}
+                  path={["subtitle"]}
+                  textData={subtitleData}
+                  className={cls("text-sm opacity-80", subtitleData.className)}
+                  ariaLabel={subtitleData.ariaLabel}
+                  placeholder="CTA subtitle"
+                  multiline
+                />
               ) : null}
               {d.buttonLabel ? (
                 d.buttonHref ? (
@@ -714,21 +914,31 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       buttonData?.className
                     )}
                     style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
-                    aria-label={buttonData?.ariaLabel}
                   >
-                    {buttonData?.content ?? d.buttonLabel}
+                    <InlineEditableText
+                      as="span"
+                      value={String(d.buttonLabel ?? "")}
+                      path={["buttonLabel"]}
+                      textData={buttonData ?? undefined}
+                      className={buttonData?.className}
+                      ariaLabel={buttonData?.ariaLabel}
+                      placeholder="Button"
+                    />
                   </a>
                 ) : (
-                  <span
+                  <InlineEditableText
+                    as="span"
+                    value={String(d.buttonLabel ?? "")}
+                    path={["buttonLabel"]}
+                    textData={buttonData ?? undefined}
                     className={cls(
                       "mt-2 inline-flex w-fit rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
                       buttonData?.className
                     )}
                     style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
-                    aria-label={buttonData?.ariaLabel}
-                  >
-                    {buttonData?.content ?? d.buttonLabel}
-                  </span>
+                    ariaLabel={buttonData?.ariaLabel}
+                    placeholder="Button"
+                  />
                 )
               ) : null}
             </div>
@@ -749,9 +959,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-3 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="FAQ title"
+              />
             ) : null}
             <div className="space-y-3">
               {(d.items ?? []).map((it, idx) => {
@@ -768,26 +984,34 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     {(() => {
                       const questionData = textContent(String(it.question ?? ""), questionTokens);
                       return wrapDecorations(
-                        <div
+                        <InlineEditableText
+                          as="div"
+                          value={String(it.question ?? "")}
+                          path={["items", idx, "question"]}
+                          textData={questionData}
                           className={cls("text-sm font-semibold", tokensClass(questionTokens), questionData.className)}
                           style={tokensStyle(questionTokens)}
-                          aria-label={questionData.ariaLabel}
-                        >
-                          {questionData.content}
-                        </div>,
+                          ariaLabel={questionData.ariaLabel}
+                          placeholder="Question"
+                          multiline
+                        />,
                         questionTokens
                       );
                     })()}
                     {it.answer ? (() => {
                       const answerData = textContent(String(it.answer ?? ""), answerTokens);
                       return wrapDecorations(
-                        <div
+                        <InlineEditableText
+                          as="div"
+                          value={String(it.answer ?? "")}
+                          path={["items", idx, "answer"]}
+                          textData={answerData}
                           className={cls("mt-1 text-sm opacity-80", tokensClass(answerTokens), answerData.className)}
                           style={tokensStyle(answerTokens)}
-                          aria-label={answerData.ariaLabel}
-                        >
-                          {answerData.content}
-                        </div>,
+                          ariaLabel={answerData.ariaLabel}
+                          placeholder="Answer"
+                          multiline
+                        />,
                         answerTokens
                       );
                     })() : null}
@@ -815,9 +1039,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
           <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
             <SectionTextScope data={d}>
               {titleData ? (
-                <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                  {titleData.content}
-                </h3>
+                <InlineEditableText
+                  as="h3"
+                  value={String(d.title ?? "")}
+                  path={["title"]}
+                  textData={titleData}
+                  className={cls("mb-4 text-lg font-semibold", titleData.className)}
+                  ariaLabel={titleData.ariaLabel}
+                  placeholder="Grid title"
+                />
               ) : null}
               <div className="space-y-5">
                 {blocks
@@ -843,9 +1073,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-4 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Grid title"
+              />
             ) : null}
             <div className={cls("grid gap-4", columns === 2 ? "md:grid-cols-2" : columns === 3 ? "md:grid-cols-3" : "md:grid-cols-4")}>
               {(d.items ?? []).map((it, idx) => {
@@ -873,26 +1109,33 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     {(() => {
                       const itemTitleData = textContent(String(it.title ?? ""), titleTokens);
                       return wrapDecorations(
-                        <div
+                        <InlineEditableText
+                          as="div"
+                          value={String(it.title ?? "")}
+                          path={["items", idx, "title"]}
+                          textData={itemTitleData}
                           className={cls("text-sm font-semibold", tokensClass(titleTokens), itemTitleData.className)}
                           style={tokensStyle(titleTokens)}
-                          aria-label={itemTitleData.ariaLabel}
-                        >
-                          {itemTitleData.content}
-                        </div>,
+                          ariaLabel={itemTitleData.ariaLabel}
+                          placeholder="Item title"
+                        />,
                         titleTokens
                       );
                     })()}
                     {it.text ? (() => {
                       const itemTextData = textContent(String(it.text), textTokens);
                       return wrapDecorations(
-                        <div
+                        <InlineEditableText
+                          as="div"
+                          value={String(it.text ?? "")}
+                          path={["items", idx, "text"]}
+                          textData={itemTextData}
                           className={cls("mt-1 text-sm opacity-80", tokensClass(textTokens), itemTextData.className)}
                           style={tokensStyle(textTokens)}
-                          aria-label={itemTextData.ariaLabel}
-                        >
-                          {itemTextData.content}
-                        </div>,
+                          ariaLabel={itemTextData.ariaLabel}
+                          placeholder="Item text"
+                          multiline
+                        />,
                         textTokens
                       );
                     })() : null}
@@ -938,14 +1181,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Features title"
+              />
             ) : null}
             {subtitleData ? (
-              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                {subtitleData.content}
-              </div>
+              <InlineEditableText
+                as="div"
+                value={String(d.subtitle ?? "")}
+                path={["subtitle"]}
+                textData={subtitleData}
+                className={cls("mt-1 text-sm opacity-80", subtitleData.className)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder="Features subtitle"
+                multiline
+              />
             ) : null}
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {items.length ? (
@@ -979,9 +1235,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                         {(() => {
                           const titleData = textContent(String(it.title ?? ""), titleTokens);
                           return wrapDecorations(
-                            <div className={cls("text-sm font-semibold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
-                              {titleData.content}
-                            </div>,
+                            <InlineEditableText
+                              as="div"
+                              value={String(it.title ?? "")}
+                              path={["items", idx, "title"]}
+                              textData={titleData}
+                              className={cls("text-sm font-semibold", tokensClass(titleTokens), titleData.className)}
+                              style={tokensStyle(titleTokens)}
+                              ariaLabel={titleData.ariaLabel}
+                              placeholder="Feature title"
+                            />,
                             titleTokens
                           );
                         })()}
@@ -989,9 +1252,17 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       {it.text ? (() => {
                         const textData = textContent(String(it.text), textTokens);
                         return wrapDecorations(
-                          <div className={cls("mt-2 text-sm opacity-80", tokensClass(textTokens), textData.className)} style={tokensStyle(textTokens)} aria-label={textData.ariaLabel}>
-                            {textData.content}
-                          </div>,
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.text ?? "")}
+                            path={["items", idx, "text"]}
+                            textData={textData}
+                            className={cls("mt-2 text-sm opacity-80", tokensClass(textTokens), textData.className)}
+                            style={tokensStyle(textTokens)}
+                            ariaLabel={textData.ariaLabel}
+                            placeholder="Feature text"
+                            multiline
+                          />,
                           textTokens
                         );
                       })() : null}
@@ -1036,14 +1307,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Stats title"
+              />
             ) : null}
             {subtitleData ? (
-              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                {subtitleData.content}
-              </div>
+              <InlineEditableText
+                as="div"
+                value={String(d.subtitle ?? "")}
+                path={["subtitle"]}
+                textData={subtitleData}
+                className={cls("mt-1 text-sm opacity-80", subtitleData.className)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder="Stats subtitle"
+                multiline
+              />
             ) : null}
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {items.length ? (
@@ -1069,27 +1353,49 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       {(() => {
                         const valueData = textContent(String(it.value ?? ""), valueTokens);
                         return wrapDecorations(
-                          <div className={cls("text-2xl font-semibold", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
-                            {valueData.content}
-                          </div>,
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.value ?? "")}
+                            path={["items", idx, "value"]}
+                            textData={valueData}
+                            className={cls("text-2xl font-semibold", tokensClass(valueTokens), valueData.className)}
+                            style={tokensStyle(valueTokens)}
+                            ariaLabel={valueData.ariaLabel}
+                            placeholder="Value"
+                          />,
                           valueTokens
                         );
                       })()}
                       {it.label ? (() => {
                         const labelData = textContent(String(it.label), labelTokens);
                         return wrapDecorations(
-                          <div className={cls("text-sm opacity-80", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                            {labelData.content}
-                          </div>,
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.label ?? "")}
+                            path={["items", idx, "label"]}
+                            textData={labelData}
+                            className={cls("text-sm opacity-80", tokensClass(labelTokens), labelData.className)}
+                            style={tokensStyle(labelTokens)}
+                            ariaLabel={labelData.ariaLabel}
+                            placeholder="Label"
+                          />,
                           labelTokens
                         );
                       })() : null}
                       {it.subtext ? (() => {
                         const subtextData = textContent(String(it.subtext), subtextTokens);
                         return wrapDecorations(
-                          <div className={cls("mt-1 text-xs opacity-60", tokensClass(subtextTokens), subtextData.className)} style={tokensStyle(subtextTokens)} aria-label={subtextData.ariaLabel}>
-                            {subtextData.content}
-                          </div>,
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.subtext ?? "")}
+                            path={["items", idx, "subtext"]}
+                            textData={subtextData}
+                            className={cls("mt-1 text-xs opacity-60", tokensClass(subtextTokens), subtextData.className)}
+                            style={tokensStyle(subtextTokens)}
+                            ariaLabel={subtextData.ariaLabel}
+                            placeholder="Subtext"
+                            multiline
+                          />,
                           subtextTokens
                         );
                       })() : null}
@@ -1125,14 +1431,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Team title"
+              />
             ) : null}
             {subtitleData ? (
-              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                {subtitleData.content}
-              </div>
+              <InlineEditableText
+                as="div"
+                value={String(d.subtitle ?? "")}
+                path={["subtitle"]}
+                textData={subtitleData}
+                className={cls("mt-1 text-sm opacity-80", subtitleData.className)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder="Team subtitle"
+                multiline
+              />
             ) : null}
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {members.length ? (
@@ -1155,21 +1474,43 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                         avatarTokens
                       ) : null}
                       {wrapDecorations(
-                        <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                          {nameData.content}
-                        </div>,
+                        <InlineEditableText
+                          as="div"
+                          value={String(m.name ?? "")}
+                          path={["members", idx, "name"]}
+                          textData={nameData}
+                          className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)}
+                          style={tokensStyle(nameTokens)}
+                          ariaLabel={nameData.ariaLabel}
+                          placeholder="Name"
+                        />,
                         nameTokens
                       )}
                       {roleData ? wrapDecorations(
-                        <div className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)} style={tokensStyle(roleTokens)} aria-label={roleData.ariaLabel}>
-                          {roleData.content}
-                        </div>,
+                        <InlineEditableText
+                          as="div"
+                          value={String(m.role ?? "")}
+                          path={["members", idx, "role"]}
+                          textData={roleData}
+                          className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)}
+                          style={tokensStyle(roleTokens)}
+                          ariaLabel={roleData.ariaLabel}
+                          placeholder="Role"
+                        />,
                         roleTokens
                       ) : null}
                       {bioData ? wrapDecorations(
-                        <div className={cls("mt-2 text-sm opacity-80", tokensClass(bioTokens), bioData.className)} style={tokensStyle(bioTokens)} aria-label={bioData.ariaLabel}>
-                          {bioData.content}
-                        </div>,
+                        <InlineEditableText
+                          as="div"
+                          value={String(m.bio ?? "")}
+                          path={["members", idx, "bio"]}
+                          textData={bioData}
+                          className={cls("mt-2 text-sm opacity-80", tokensClass(bioTokens), bioData.className)}
+                          style={tokensStyle(bioTokens)}
+                          ariaLabel={bioData.ariaLabel}
+                          placeholder="Bio"
+                          multiline
+                        />,
                         bioTokens
                       ) : null}
                       {socials.length ? (
@@ -1179,14 +1520,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                             if (!label) return null;
                             const socialData = textContent(String(label), socialTokens);
                             return wrapDecorations(
-                              <span
-                                key={`${label}-${sIdx}`}
+                              <InlineEditableText
+                                as="span"
+                                value={String(label)}
+                                path={["members", idx, "socials", sIdx, "label"]}
+                                textData={socialData}
                                 className={cls(tokensClass(socialTokens), socialData.className)}
                                 style={tokensStyle(socialTokens)}
-                                aria-label={socialData.ariaLabel}
-                              >
-                                {socialData.content}
-                              </span>,
+                                ariaLabel={socialData.ariaLabel}
+                                placeholder="Social"
+                              />,
                               socialTokens
                             );
                           })}
@@ -1223,14 +1566,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Pricing title"
+              />
             ) : null}
             {subtitleData ? (
-              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                {subtitleData.content}
-              </div>
+              <InlineEditableText
+                as="div"
+                value={String(d.subtitle ?? "")}
+                path={["subtitle"]}
+                textData={subtitleData}
+                className={cls("mt-1 text-sm opacity-80", subtitleData.className)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder="Pricing subtitle"
+                multiline
+              />
             ) : null}
             <div className={cls("mt-4 grid gap-4", gridCols)}>
               {plans.length ? (
@@ -1261,34 +1617,70 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       style={tokensStyle(planTokens)}
                     >
                       {badgeData ? wrapDecorations(
-                        <div className={cls("text-[11px] opacity-70", tokensClass(badgeTokens), badgeData.className)} style={tokensStyle(badgeTokens)} aria-label={badgeData.ariaLabel}>
-                          {badgeData.content}
-                        </div>,
+                        <InlineEditableText
+                          as="div"
+                          value={String(p.badge ?? "")}
+                          path={["plans", idx, "badge"]}
+                          textData={badgeData}
+                          className={cls("text-[11px] opacity-70", tokensClass(badgeTokens), badgeData.className)}
+                          style={tokensStyle(badgeTokens)}
+                          ariaLabel={badgeData.ariaLabel}
+                          placeholder="Badge"
+                        />,
                         badgeTokens
                       ) : null}
                       {wrapDecorations(
-                        <div className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)} style={tokensStyle(nameTokens)} aria-label={nameData.ariaLabel}>
-                          {nameData.content}
-                        </div>,
+                        <InlineEditableText
+                          as="div"
+                          value={String(p.name ?? "")}
+                          path={["plans", idx, "name"]}
+                          textData={nameData}
+                          className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)}
+                          style={tokensStyle(nameTokens)}
+                          ariaLabel={nameData.ariaLabel}
+                          placeholder="Plan name"
+                        />,
                         nameTokens
                       )}
                       {priceData ? wrapDecorations(
-                        <div className={cls("mt-2 text-2xl", tokensClass(priceTokens), priceData.className)} style={tokensStyle(priceTokens)} aria-label={priceData.ariaLabel}>
-                          {priceData.content}
+                        <div className={cls("mt-2 text-2xl", tokensClass(priceTokens))} style={tokensStyle(priceTokens)}>
+                          <InlineEditableText
+                            as="span"
+                            value={String(p.price ?? "")}
+                            path={["plans", idx, "price"]}
+                            textData={priceData}
+                            className={priceData.className}
+                            ariaLabel={priceData.ariaLabel}
+                            placeholder="Price"
+                          />
                           {periodData ? wrapDecorations(
-                            <span className={cls("text-xs opacity-60", tokensClass(periodTokens), periodData.className)} style={tokensStyle(periodTokens)} aria-label={periodData.ariaLabel}>
-                              {" "}
-                              {periodData.content}
-                            </span>,
+                            <InlineEditableText
+                              as="span"
+                              value={String(p.period ?? "")}
+                              path={["plans", idx, "period"]}
+                              textData={periodData}
+                              className={cls("text-xs opacity-60", tokensClass(periodTokens), periodData.className)}
+                              style={tokensStyle(periodTokens)}
+                              ariaLabel={periodData.ariaLabel}
+                              placeholder="Period"
+                            />,
                             periodTokens
                           ) : null}
                         </div>,
                         priceTokens
                       ) : null}
                       {descriptionData ? wrapDecorations(
-                        <div className={cls("mt-2 text-sm opacity-80", tokensClass(descriptionTokens), descriptionData.className)} style={tokensStyle(descriptionTokens)} aria-label={descriptionData.ariaLabel}>
-                          {descriptionData.content}
-                        </div>,
+                        <InlineEditableText
+                          as="div"
+                          value={String(p.description ?? "")}
+                          path={["plans", idx, "description"]}
+                          textData={descriptionData}
+                          className={cls("mt-2 text-sm opacity-80", tokensClass(descriptionTokens), descriptionData.className)}
+                          style={tokensStyle(descriptionTokens)}
+                          ariaLabel={descriptionData.ariaLabel}
+                          placeholder="Description"
+                          multiline
+                        />,
                         descriptionTokens
                       ) : null}
                       {Array.isArray(p.features) && p.features.length ? (
@@ -1296,9 +1688,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           {p.features.map((f, fIdx) => {
                             const featureData = textContent(String(f), featureTokens);
                             return wrapDecorations(
-                              <li key={fIdx} className={featureData.className} aria-label={featureData.ariaLabel}>
-                                {featureData.content}
-                              </li>,
+                              <InlineEditableText
+                                as="li"
+                                value={String(f ?? "")}
+                                path={["plans", idx, "features", fIdx]}
+                                textData={featureData}
+                                className={featureData.className}
+                                ariaLabel={featureData.ariaLabel}
+                                placeholder="Feature"
+                              />,
                               featureTokens
                             );
                           })}
@@ -1309,23 +1707,33 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           wrapDecorations(
                             <a
                               href={p.ctaHref}
-                              className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens), ctaData.className)}
+                              className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens))}
                               style={tokensStyle(ctaTokens)}
-                              aria-label={ctaData.ariaLabel}
                             >
-                              {ctaData.content}
+                              <InlineEditableText
+                                as="span"
+                                value={String(p.ctaLabel ?? "")}
+                                path={["plans", idx, "ctaLabel"]}
+                                textData={ctaData}
+                                className={ctaData.className}
+                                ariaLabel={ctaData.ariaLabel}
+                                placeholder="CTA"
+                              />
                             </a>,
                             ctaTokens
                           )
                         ) : (
                           wrapDecorations(
-                            <span
+                            <InlineEditableText
+                              as="span"
+                              value={String(p.ctaLabel ?? "")}
+                              path={["plans", idx, "ctaLabel"]}
+                              textData={ctaData}
                               className={cls("mt-4 inline-flex items-center rounded-xl border border-white/10 px-3 py-2 text-sm", tokensClass(ctaTokens), ctaData.className)}
                               style={tokensStyle(ctaTokens)}
-                              aria-label={ctaData.ariaLabel}
-                            >
-                              {ctaData.content}
-                            </span>,
+                              ariaLabel={ctaData.ariaLabel}
+                              placeholder="CTA"
+                            />,
                             ctaTokens
                           )
                         )
@@ -1361,14 +1769,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Contact title"
+              />
             ) : null}
             {subtitleData ? (
-              <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                {subtitleData.content}
-              </div>
+              <InlineEditableText
+                as="div"
+                value={String(d.subtitle ?? "")}
+                path={["subtitle"]}
+                textData={subtitleData}
+                className={cls("mt-1 text-sm opacity-80", subtitleData.className)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder="Contact subtitle"
+                multiline
+              />
             ) : null}
             <div className="mt-4 grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
@@ -1391,9 +1812,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                             iconTokens
                           ) : null}
                           {wrapDecorations(
-                            <div className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                              {labelData.content}
-                            </div>,
+                            <InlineEditableText
+                              as="div"
+                              value={String(it.label ?? "")}
+                              path={["items", idx, "label"]}
+                              textData={labelData}
+                              className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)}
+                              style={tokensStyle(labelTokens)}
+                              ariaLabel={labelData.ariaLabel}
+                              placeholder="Label"
+                            />,
                             labelTokens
                           )}
                         </div>
@@ -1402,19 +1830,34 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                             wrapDecorations(
                               <a
                                 href={it.href}
-                                className={cls("text-sm opacity-80 underline", tokensClass(valueTokens), valueData.className)}
+                                className={cls("text-sm opacity-80 underline", tokensClass(valueTokens))}
                                 style={tokensStyle(valueTokens)}
-                                aria-label={valueData.ariaLabel}
                               >
-                                {valueData.content}
+                                <InlineEditableText
+                                  as="span"
+                                  value={String(it.value ?? "")}
+                                  path={["items", idx, "value"]}
+                                  textData={valueData}
+                                  className={valueData.className}
+                                  ariaLabel={valueData.ariaLabel}
+                                  placeholder="Value"
+                                />
                               </a>,
                               valueTokens
                             )
                           ) : (
                             wrapDecorations(
-                              <div className={cls("text-sm opacity-80", tokensClass(valueTokens), valueData.className)} style={tokensStyle(valueTokens)} aria-label={valueData.ariaLabel}>
-                                {valueData.content}
-                              </div>,
+                              <InlineEditableText
+                                as="div"
+                                value={String(it.value ?? "")}
+                                path={["items", idx, "value"]}
+                                textData={valueData}
+                                className={cls("text-sm opacity-80", tokensClass(valueTokens), valueData.className)}
+                                style={tokensStyle(valueTokens)}
+                                ariaLabel={valueData.ariaLabel}
+                                placeholder="Value"
+                                multiline
+                              />,
                               valueTokens
                             )
                           )
@@ -1463,18 +1906,33 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       {form.title ? (() => {
                         const formTitleData = textContent(String(form.title), formTitleTokens);
                         return wrapDecorations(
-                          <div className={cls("text-sm font-semibold", tokensClass(formTitleTokens), formTitleData.className)} style={tokensStyle(formTitleTokens)} aria-label={formTitleData.ariaLabel}>
-                            {formTitleData.content}
-                          </div>,
+                          <InlineEditableText
+                            as="div"
+                            value={String(form.title ?? "")}
+                            path={["form", "title"]}
+                            textData={formTitleData}
+                            className={cls("text-sm font-semibold", tokensClass(formTitleTokens), formTitleData.className)}
+                            style={tokensStyle(formTitleTokens)}
+                            ariaLabel={formTitleData.ariaLabel}
+                            placeholder="Form title"
+                          />,
                           formTitleTokens
                         );
                       })() : null}
                       {form.subtitle ? (() => {
                         const formSubtitleData = textContent(String(form.subtitle), formSubtitleTokens);
                         return wrapDecorations(
-                          <div className={cls("text-xs opacity-70", tokensClass(formSubtitleTokens), formSubtitleData.className)} style={tokensStyle(formSubtitleTokens)} aria-label={formSubtitleData.ariaLabel}>
-                            {formSubtitleData.content}
-                          </div>,
+                          <InlineEditableText
+                            as="div"
+                            value={String(form.subtitle ?? "")}
+                            path={["form", "subtitle"]}
+                            textData={formSubtitleData}
+                            className={cls("text-xs opacity-70", tokensClass(formSubtitleTokens), formSubtitleData.className)}
+                            style={tokensStyle(formSubtitleTokens)}
+                            ariaLabel={formSubtitleData.ariaLabel}
+                            placeholder="Form subtitle"
+                            multiline
+                          />,
                           formSubtitleTokens
                         );
                       })() : null}
@@ -1487,9 +1945,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                             {f.label ? (() => {
                               const labelData = textContent(String(f.label), labelTokens);
                               return wrapDecorations(
-                                <label className={cls("block text-xs opacity-70", tokensClass(labelTokens), labelData.className)} style={tokensStyle(labelTokens)} aria-label={labelData.ariaLabel}>
-                                  {labelData.content}
-                                </label>,
+                                <InlineEditableText
+                                  as="label"
+                                  value={String(f.label ?? "")}
+                                  path={["form", "fields", idx, "label"]}
+                                  textData={labelData}
+                                  className={cls("block text-xs opacity-70", tokensClass(labelTokens), labelData.className)}
+                                  style={tokensStyle(labelTokens)}
+                                  ariaLabel={labelData.ariaLabel}
+                                  placeholder="Field label"
+                                />,
                                 labelTokens
                               );
                             })() : null}
@@ -1525,8 +1990,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       {form.submitLabel ? (() => {
                         const submitData = textContent(String(form.submitLabel), submitTokens);
                         return wrapDecorations(
-                          <button type="submit" className={cls("inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm", tokensClass(submitTokens), submitData.className)} style={tokensStyle(submitTokens)} aria-label={submitData.ariaLabel}>
-                            {submitData.content}
+                          <button type="submit" className={cls("inline-flex items-center rounded-xl bg-white/10 px-4 py-2 text-sm", tokensClass(submitTokens))} style={tokensStyle(submitTokens)}>
+                            <InlineEditableText
+                              as="span"
+                              value={String(form.submitLabel ?? "")}
+                              path={["form", "submitLabel"]}
+                              textData={submitData}
+                              className={submitData.className}
+                              ariaLabel={submitData.ariaLabel}
+                              placeholder="Submit"
+                            />
                           </button>,
                           submitTokens
                         );
@@ -1561,14 +2034,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   {titleData ? (
-                    <h3 className={cls("text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                      {titleData.content}
-                    </h3>
+                    <InlineEditableText
+                      as="h3"
+                      value={String(d.title ?? "")}
+                      path={["title"]}
+                      textData={titleData}
+                      className={cls("text-lg font-semibold", titleData.className)}
+                      ariaLabel={titleData.ariaLabel}
+                      placeholder="Categories title"
+                    />
                   ) : null}
                   {subtitleData ? (
-                    <div className={cls("mt-1 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                      {subtitleData.content}
-                    </div>
+                    <InlineEditableText
+                      as="div"
+                      value={String(d.subtitle ?? "")}
+                      path={["subtitle"]}
+                      textData={subtitleData}
+                      className={cls("mt-1 text-sm opacity-80", subtitleData.className)}
+                      ariaLabel={subtitleData.ariaLabel}
+                      placeholder="Categories subtitle"
+                      multiline
+                    />
                   ) : null}
                 </div>
                 {showArrows ? (
@@ -1607,13 +2093,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       {(() => {
                         const labelData = textContent(String(it.label ?? "Category"), labelTokens);
                         return wrapDecorations(
-                          <div
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.label ?? "")}
+                            path={["items", idx, "label"]}
+                            textData={labelData}
                             className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)}
                             style={tokensStyle(labelTokens)}
-                            aria-label={labelData.ariaLabel}
-                          >
-                            {labelData.content}
-                          </div>,
+                            ariaLabel={labelData.ariaLabel}
+                            placeholder="Category"
+                          />,
                           labelTokens
                         );
                       })()}
@@ -1661,14 +2150,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-2 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-2 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Collections title"
+              />
             ) : null}
             {subtitleData ? (
-              <div className={cls("mb-4 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-                {subtitleData.content}
-              </div>
+              <InlineEditableText
+                as="div"
+                value={String(d.subtitle ?? "")}
+                path={["subtitle"]}
+                textData={subtitleData}
+                className={cls("mb-4 text-sm opacity-80", subtitleData.className)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder="Collections subtitle"
+                multiline
+              />
             ) : null}
             <div className={cls("grid gap-4", clsCols)}>
               {items.length ? (
@@ -1696,13 +2198,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       {(() => {
                         const labelData = textContent(String(it.label ?? "Collection"), labelTokens);
                         return wrapDecorations(
-                          <div
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.label ?? "")}
+                            path={["items", idx, "label"]}
+                            textData={labelData}
                             className={cls("text-sm font-semibold", tokensClass(labelTokens), labelData.className)}
                             style={tokensStyle(labelTokens)}
-                            aria-label={labelData.ariaLabel}
-                          >
-                            {labelData.content}
-                          </div>,
+                            ariaLabel={labelData.ariaLabel}
+                            placeholder="Collection"
+                          />,
                           labelTokens
                         );
                       })()}
@@ -1746,9 +2251,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-              {titleData.content}
-            </h3>
+            <InlineEditableText
+              as="h3"
+              value={String(d.title ?? "")}
+              path={["title"]}
+              textData={titleData}
+              className={cls("mb-4 text-lg font-semibold", titleData.className)}
+              ariaLabel={titleData.ariaLabel}
+              placeholder={type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers"}
+            />
             <div className="grid gap-4 md:grid-cols-4">
               {Array.from({ length: limit }).map((_, idx) => (
                 <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-xs opacity-70">
@@ -1775,9 +2286,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-4 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Brands title"
+              />
             ) : null}
             <div className="grid gap-4 md:grid-cols-4">
               {items.length ? (
@@ -1796,13 +2313,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       {(() => {
                         const nameData = textContent(String(it.name ?? "Brand"), nameTokens);
                         return wrapDecorations(
-                          <div
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.name ?? "")}
+                            path={["items", idx, "name"]}
+                            textData={nameData}
                             className={cls("font-semibold", tokensClass(nameTokens), nameData.className)}
                             style={tokensStyle(nameTokens)}
-                            aria-label={nameData.ariaLabel}
-                          >
-                            {nameData.content}
-                          </div>,
+                            ariaLabel={nameData.ariaLabel}
+                            placeholder="Brand"
+                          />,
                           nameTokens
                         );
                       })()}
@@ -1858,31 +2378,54 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-4xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-2 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-2 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Newsletter title"
+              />
             ) : null}
             {textData ? (
-              <p className={cls("mb-4 text-sm opacity-80", textData.className)} aria-label={textData.ariaLabel}>
-                {textData.content}
-              </p>
+              <InlineEditableText
+                as="p"
+                value={String(d.text ?? "")}
+                path={["text"]}
+                textData={textData}
+                className={cls("mb-4 text-sm opacity-80", textData.className)}
+                ariaLabel={textData.ariaLabel}
+                placeholder="Newsletter text"
+                multiline
+              />
             ) : null}
             {d.ctaLabel ? (
               d.ctaHref ? (
                 <a
                   href={d.ctaHref}
-                  className={cls("inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:opacity-90", ctaData?.className)}
-                  aria-label={ctaData?.ariaLabel}
+                  className={cls("inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:opacity-90")}
                 >
-                  {ctaData?.content ?? d.ctaLabel}
+                  <InlineEditableText
+                    as="span"
+                    value={String(d.ctaLabel ?? "")}
+                    path={["ctaLabel"]}
+                    textData={ctaData ?? undefined}
+                    className={ctaData?.className}
+                    ariaLabel={ctaData?.ariaLabel}
+                    placeholder="CTA"
+                  />
                 </a>
               ) : (
-                <span
+                <InlineEditableText
+                  as="span"
+                  value={String(d.ctaLabel ?? "")}
+                  path={["ctaLabel"]}
+                  textData={ctaData ?? undefined}
                   className={cls("inline-flex items-center rounded-xl bg-white/80 px-4 py-2 text-sm font-semibold text-black/80", ctaData?.className)}
-                  aria-label={ctaData?.ariaLabel}
-                >
-                  {ctaData?.content ?? d.ctaLabel}
-                </span>
+                  ariaLabel={ctaData?.ariaLabel}
+                  placeholder="CTA"
+                />
               )
             ) : null}
           </SectionTextScope>
@@ -1906,9 +2449,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-4 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Gallery title"
+              />
             ) : null}
             <div className={cls("grid gap-3", clsCols)}>
               {(d.images ?? []).map((im, idx) => {
@@ -1952,9 +2501,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-                {titleData.content}
-              </h3>
+              <InlineEditableText
+                as="h3"
+                value={String(d.title ?? "")}
+                path={["title"]}
+                textData={titleData}
+                className={cls("mb-4 text-lg font-semibold", titleData.className)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder="Testimonials title"
+              />
             ) : null}
             <div className="grid gap-4 md:grid-cols-3">
               {(d.items ?? []).map((t, idx) => {
@@ -1991,26 +2546,32 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                         {(() => {
                           const nameData = textContent(String(t.name ?? ""), nameTokens);
                           return wrapDecorations(
-                            <div
+                            <InlineEditableText
+                              as="div"
+                              value={String(t.name ?? "")}
+                              path={["items", idx, "name"]}
+                              textData={nameData}
                               className={cls("text-sm font-semibold", tokensClass(nameTokens), nameData.className)}
                               style={tokensStyle(nameTokens)}
-                              aria-label={nameData.ariaLabel}
-                            >
-                              {nameData.content}
-                            </div>,
+                              ariaLabel={nameData.ariaLabel}
+                              placeholder="Name"
+                            />,
                             nameTokens
                           );
                         })()}
                         {t.role ? (() => {
                           const roleData = textContent(String(t.role), roleTokens);
                           return wrapDecorations(
-                            <div
+                            <InlineEditableText
+                              as="div"
+                              value={String(t.role ?? "")}
+                              path={["items", idx, "role"]}
+                              textData={roleData}
                               className={cls("text-xs opacity-70", tokensClass(roleTokens), roleData.className)}
                               style={tokensStyle(roleTokens)}
-                              aria-label={roleData.ariaLabel}
-                            >
-                              {roleData.content}
-                            </div>,
+                              ariaLabel={roleData.ariaLabel}
+                              placeholder="Role"
+                            />,
                             roleTokens
                           );
                         })() : null}
@@ -2019,12 +2580,19 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     {t.quote ? (() => {
                       const quoteData = textContent(String(t.quote), quoteTokens);
                       return wrapDecorations(
-                        <div
-                          className={cls("mt-3 text-sm opacity-90", tokensClass(quoteTokens), quoteData.className)}
-                          style={tokensStyle(quoteTokens)}
-                          aria-label={quoteData.ariaLabel}
-                        >
-                          "{quoteData.content}"
+                        <div className={cls("mt-3 text-sm opacity-90", tokensClass(quoteTokens), quoteData.className)} style={tokensStyle(quoteTokens)}>
+                          "
+                          <InlineEditableText
+                            as="span"
+                            value={String(t.quote ?? "")}
+                            path={["items", idx, "quote"]}
+                            textData={quoteData}
+                            className={quoteData.className}
+                            ariaLabel={quoteData.ariaLabel}
+                            placeholder="Quote"
+                            multiline
+                          />
+                          "
                         </div>,
                         quoteTokens
                       );
@@ -2055,9 +2623,15 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
           {titleData ? (
-            <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-              {titleData.content}
-            </h3>
+            <InlineEditableText
+              as="h3"
+              value={String(d.title ?? "")}
+              path={["title"]}
+              textData={titleData}
+              className={cls("mb-4 text-lg font-semibold", titleData.className)}
+              ariaLabel={titleData.ariaLabel}
+              placeholder="Featured products title"
+            />
           ) : null}
           <div className={cls("grid gap-4", cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-4")}>
             {ids.length ? (
@@ -2106,14 +2680,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={ui.containerClass || "mx-auto max-w-5xl px-4"}>
           <SectionTextScope data={d}>
           {titleData ? (
-            <h2 className={cls("text-2xl font-semibold text-white", titleData.className)} aria-label={titleData.ariaLabel}>
-              {titleData.content}
-            </h2>
+            <InlineEditableText
+              as="h2"
+              value={String(d.title ?? "")}
+              path={["title"]}
+              textData={titleData}
+              className={cls("text-2xl font-semibold text-white", titleData.className)}
+              ariaLabel={titleData.ariaLabel}
+              placeholder="Cards title"
+            />
           ) : null}
           {subtitleData ? (
-            <p className={cls("mt-1 text-white/70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-              {subtitleData.content}
-            </p>
+            <InlineEditableText
+              as="p"
+              value={String(d.subtitle ?? "")}
+              path={["subtitle"]}
+              textData={subtitleData}
+              className={cls("mt-1 text-white/70", subtitleData.className)}
+              ariaLabel={subtitleData.ariaLabel}
+              placeholder="Cards subtitle"
+              multiline
+            />
           ) : null}
 
           <div className={ui.cardsClass || "mt-6 flex flex-wrap gap-4"}>
@@ -2151,13 +2738,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                     {c.title ? (() => {
                       const cardTitleData = textContent(String(c.title ?? ""), titleTokens);
                       return wrapDecorations(
-                        <div
+                        <InlineEditableText
+                          as="div"
+                          value={String(c.title ?? "")}
+                          path={["cards", idx, "title"]}
+                          textData={cardTitleData}
                           className={cls("text-white font-semibold", tokensClass(titleTokens), cardTitleData.className)}
                           style={tokensStyle(titleTokens)}
-                          aria-label={cardTitleData.ariaLabel}
-                        >
-                          {cardTitleData.content}
-                        </div>,
+                          ariaLabel={cardTitleData.ariaLabel}
+                          placeholder="Card title"
+                        />,
                         titleTokens
                       );
                     })() : <div />}
@@ -2165,13 +2755,16 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                       (() => {
                         const badgeData = textContent(String(c.badge ?? ""), badgeTokens);
                         return wrapDecorations(
-                          <div
+                          <InlineEditableText
+                            as="div"
+                            value={String(c.badge ?? "")}
+                            path={["cards", idx, "badge"]}
+                            textData={badgeData}
                             className={cls("shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80", tokensClass(badgeTokens), badgeData.className)}
                             style={tokensStyle(badgeTokens)}
-                            aria-label={badgeData.ariaLabel}
-                          >
-                            {badgeData.content}
-                          </div>,
+                            ariaLabel={badgeData.ariaLabel}
+                            placeholder="Badge"
+                          />,
                           badgeTokens
                         );
                       })()
@@ -2181,13 +2774,17 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                   {c.text ? (() => {
                     const cardTextData = textContent(String(c.text ?? ""), textTokens);
                     return wrapDecorations(
-                      <div
+                      <InlineEditableText
+                        as="div"
+                        value={String(c.text ?? "")}
+                        path={["cards", idx, "text"]}
+                        textData={cardTextData}
                         className={cls("mt-2 text-sm text-white/70", tokensClass(textTokens), cardTextData.className)}
                         style={tokensStyle(textTokens)}
-                        aria-label={cardTextData.ariaLabel}
-                      >
-                        {cardTextData.content}
-                      </div>,
+                        ariaLabel={cardTextData.ariaLabel}
+                        placeholder="Card text"
+                        multiline
+                      />,
                       textTokens
                     );
                   })() : null}
@@ -2200,13 +2797,19 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
                           href={c.buttonHref}
                           className={cls(
                             "mt-4 inline-flex items-center justify-center rounded-xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15",
-                            tokensClass(buttonTokens),
-                            buttonData.className
+                            tokensClass(buttonTokens)
                           )}
                           style={tokensStyle(buttonTokens)}
-                          aria-label={buttonData.ariaLabel}
                         >
-                          {buttonData.content}
+                          <InlineEditableText
+                            as="span"
+                            value={String(c.buttonLabel ?? "")}
+                            path={["cards", idx, "buttonLabel"]}
+                            textData={buttonData}
+                            className={buttonData.className}
+                            ariaLabel={buttonData.ariaLabel}
+                            placeholder="Button"
+                          />
                         </a>,
                         buttonTokens
                       );
@@ -2242,14 +2845,27 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
         <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
           {titleData ? (
-            <h3 className={cls("mb-2 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
-              {titleData.content}
-            </h3>
+            <InlineEditableText
+              as="h3"
+              value={String(d.title ?? "")}
+              path={["title"]}
+              textData={titleData}
+              className={cls("mb-2 text-lg font-semibold", titleData.className)}
+              ariaLabel={titleData.ariaLabel}
+              placeholder="Video title"
+            />
           ) : null}
           {subtitleData ? (
-            <div className={cls("mb-4 text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
-              {subtitleData.content}
-            </div>
+            <InlineEditableText
+              as="div"
+              value={String(d.subtitle ?? "")}
+              path={["subtitle"]}
+              textData={subtitleData}
+              className={cls("mb-4 text-sm opacity-80", subtitleData.className)}
+              ariaLabel={subtitleData.ariaLabel}
+              placeholder="Video subtitle"
+              multiline
+            />
           ) : null}
 
           <div className={cls("overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40", aspectClass)}>
@@ -2308,48 +2924,61 @@ function Section({ type, data }: { type: PageSectionType; data: any }) {
   return null;
 }
 
-export function PageRenderer({ sections }: { sections: PageSection[] }) {
+export function PageRenderer({
+  sections,
+  inlineEditing = false,
+  onInlineEdit,
+}: {
+  sections: PageSection[];
+  inlineEditing?: boolean;
+  onInlineEdit?: (payload: InlineEditPayload) => void;
+}) {
   const sorted = (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const groups = buildSectionGroups(sorted);
+  const inlineContext = { enabled: !!inlineEditing && !!onInlineEdit, onCommit: onInlineEdit };
 
   return (
-    <div className="space-y-5">
-      {groups.flatMap((group) => {
-        const renderSectionItem = (sec: PageSection) => {
-          const layout = normalizeSectionLayout((sec as any)?.data?.layout);
-          const span = clampInt(layout.span, 1, group.columns, 1);
-          const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
-          const rowStyle =
-            group.mode === "row" && group.columns > 0
-              ? {
-                  flex: `0 0 ${(span / group.columns) * 100}%`,
-                  maxWidth: `${(span / group.columns) * 100}%`,
-                }
-              : undefined;
+    <InlineEditContext.Provider value={inlineContext}>
+      <div className="space-y-5">
+        {groups.flatMap((group) => {
+          const renderSectionItem = (sec: PageSection) => {
+            const layout = normalizeSectionLayout((sec as any)?.data?.layout);
+            const span = clampInt(layout.span, 1, group.columns, 1);
+            const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
+            const rowStyle =
+              group.mode === "row" && group.columns > 0
+                ? {
+                    flex: `0 0 ${(span / group.columns) * 100}%`,
+                    maxWidth: `${(span / group.columns) * 100}%`,
+                  }
+                : undefined;
+
+            return (
+              <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
+                <InlineSectionContext.Provider value={String(sec.id)}>
+                  <Section type={sec.type} data={sec.data} />
+                </InlineSectionContext.Provider>
+              </div>
+            );
+          };
+
+          if (group.mode === "stack") {
+            return group.sections.map(renderSectionItem);
+          }
+
+          const groupClass =
+            group.mode === "row"
+              ? "flex flex-wrap items-stretch gap-5"
+              : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
 
           return (
-            <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
-              <Section type={sec.type} data={sec.data} />
+            <div key={group.key} className={groupClass}>
+              {group.sections.map(renderSectionItem)}
             </div>
           );
-        };
-
-        if (group.mode === "stack") {
-          return group.sections.map(renderSectionItem);
-        }
-
-        const groupClass =
-          group.mode === "row"
-            ? "flex flex-wrap items-stretch gap-5"
-            : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
-
-        return (
-          <div key={group.key} className={groupClass}>
-            {group.sections.map(renderSectionItem)}
-          </div>
-        );
-      })}
-    </div>
+        })}
+      </div>
+    </InlineEditContext.Provider>
   );
 }
 
