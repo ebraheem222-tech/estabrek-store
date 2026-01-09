@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { getSearchInputById } from "@/cms/style/searchStyles";
@@ -66,6 +66,44 @@ function stripWidthClasses(className: string | undefined): string {
     .join(" ");
 }
 
+// Icons
+const SearchIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+
+const ImageIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+
+const MicIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+  </svg>
+);
+
+const SpinnerIcon = () => (
+  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+  </svg>
+);
+
 export function SearchBox({ styleId }: { styleId?: string }) {
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -80,6 +118,8 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   const [categories, setCategories] = useState<SuggestCategory[]>([]);
   const [didYouMean, setDidYouMean] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showImagePanel, setShowImagePanel] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const speechRef = useRef<any>(null);
@@ -89,7 +129,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
     return id ? getSearchInputById(id) : null;
   }, [styleId]);
 
-  const wrapperWidthClassName = preset ? pickWidthClasses(preset.containerClassName) : "w-full max-w-[520px]";
+  const wrapperWidthClassName = preset ? pickWidthClasses(preset.containerClassName) : "w-full max-w-[600px]";
   const presetContainer = preset ? stripWidthClasses(preset.containerClassName) : "";
   const iconIsAbsolute = !!preset?.iconClassName?.includes("absolute");
   const iconOnLeft = iconIsAbsolute && !!preset?.iconClassName?.includes("left");
@@ -118,7 +158,10 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (!ref.current) return;
-      if (!ref.current.contains(e.target as any)) setOpen(false);
+      if (!ref.current.contains(e.target as any)) {
+        setOpen(false);
+        setShowImagePanel(false);
+      }
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -174,21 +217,55 @@ export function SearchBox({ styleId }: { styleId?: string }) {
     router.push(`/search?q=${encodeURIComponent(query)}`);
   }
 
-  async function onImagePick(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function processImageFile(file: File) {
     setImageError(null);
     setImageLoading(true);
     try {
       const payload = await searchProductsByImage(file);
       saveImageSearchPayload(payload);
       setOpen(false);
+      setShowImagePanel(false);
       router.push("/search#image-search");
     } catch (err: any) {
-      setImageError(err?.message || "Image search failed.");
+      setImageError(err?.message || "فشل البحث بالصورة");
     } finally {
       setImageLoading(false);
       if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
+
+  async function onImagePick(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processImageFile(file);
+  }
+
+  // Drag and drop handlers
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }
+
+  async function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        await processImageFile(file);
+      } else {
+        setImageError("يرجى سحب صورة فقط");
+      }
     }
   }
 
@@ -205,7 +282,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
       setVoiceSupported(false);
-      setVoiceError("Voice search is not supported in this browser.");
+      setVoiceError("البحث الصوتي غير مدعوم في هذا المتصفح");
       return;
     }
     if (voiceActive) {
@@ -225,28 +302,29 @@ export function SearchBox({ styleId }: { styleId?: string }) {
     const lang =
       (typeof document !== "undefined" && document.documentElement?.lang) ||
       (typeof navigator !== "undefined" && navigator.language) ||
-      "en-US";
+      "ar";
     recognition.lang = lang;
 
     recognition.onresult = (event: any) => {
-      const transcript = event?.results?.[0]?.[0]?.transcript ? String(event.results[0][0].transcript).trim() : "";
-      if (transcript) {
-        setQ(transcript);
-        commitSearch(transcript);
+      const transcript = event?.results?.[0]?.[0]?.transcript;
+      if (typeof transcript === "string" && transcript.trim()) {
+        setQ(transcript.trim());
+        setOpen(true);
+        commitSearch(transcript.trim());
       }
       setVoiceActive(false);
     };
+
     recognition.onerror = (event: any) => {
-      const code = String(event?.error || "").toLowerCase();
-      if (code === "not-allowed" || code === "service-not-allowed") {
-        setVoiceError("Microphone permission denied.");
-      } else if (code === "no-speech") {
-        setVoiceError("No speech detected. Try again.");
-      } else {
-        setVoiceError("Voice search failed.");
-      }
+      console.error("Speech recognition error:", event?.error);
       setVoiceActive(false);
+      if (event?.error === "not-allowed" || event?.error === "service-not-allowed") {
+        setVoiceError("يرجى السماح بالوصول إلى الميكروفون");
+      } else {
+        setVoiceError("فشل البحث الصوتي");
+      }
     };
+
     recognition.onend = () => {
       setVoiceActive(false);
     };
@@ -257,39 +335,45 @@ export function SearchBox({ styleId }: { styleId?: string }) {
       recognition.start();
     } catch {
       setVoiceActive(false);
-      setVoiceError("Voice search failed to start.");
+      setVoiceError("فشل بدء البحث الصوتي");
     }
   }
 
   return (
     <div ref={ref} className={`relative ${wrapperWidthClassName}`}>
-      <div className="flex items-center gap-2">
-        {preset ? (
+      {/* Main Search Container */}
+      <div 
+        className="search-container"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className={`flex items-center gap-2 p-2 ${isDragging ? 'opacity-50' : ''}`}>
+          {/* Search Icon */}
+          <div className="flex items-center justify-center w-10 h-10 text-[var(--muted)]">
+            <SearchIcon />
+          </div>
+
+          {/* Input */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
               commitSearch(q);
             }}
-            className={`relative flex-1 ${presetContainer}`}
+            className="flex-1"
           >
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onFocus={() => setOpen(true)}
-            placeholder="ابحث عن منتج..."
-            className={preset.inputClassName}
-            dir="rtl"
-          />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onFocus={() => setOpen(true)}
+              placeholder="ابحث عن منتج..."
+              className="search-input"
+              dir="rtl"
+            />
+          </form>
 
-          {preset.buttonClassName ? (
-            <button type="submit" className={preset.buttonClassName}>
-              {preset.iconClassName && !iconIsAbsolute ? <span className={preset.iconClassName}>🔎</span> : "بحث"}
-            </button>
-          ) : null}
-
-          {preset.iconClassName && iconIsAbsolute ? <span className={preset.iconClassName}>🔎</span> : null}
-
-          {q && !preset.buttonClassName ? (
+          {/* Clear Button */}
+          {q && (
             <button
               type="button"
               onClick={() => {
@@ -297,147 +381,213 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                 setProducts([]);
                 setCategories([]);
               }}
-              className={`absolute ${iconOnLeft ? "right-2" : "left-2"} top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs text-current opacity-60 hover:opacity-100`}
+              className="search-action-btn !w-8 !h-8"
               aria-label="مسح البحث"
             >
-              ✕
+              <CloseIcon />
             </button>
-          ) : null}
-          </form>
-        ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              commitSearch(q);
-            }}
-            className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"
+          )}
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-white/10" />
+
+          {/* Image Search Button */}
+          <button
+            type="button"
+            onClick={() => setShowImagePanel(!showImagePanel)}
+            className={`search-action-btn ${showImagePanel ? 'active' : ''}`}
+            aria-label="البحث بالصورة"
+            disabled={imageLoading}
+            title="البحث بالصورة"
           >
-          <span className="opacity-70">🔎</span>
+            {imageLoading ? <SpinnerIcon /> : <ImageIcon />}
+          </button>
+
+          {/* Voice Search Button */}
+          <button
+            type="button"
+            onClick={onVoiceToggle}
+            className={`search-action-btn ${voiceActive ? 'active' : ''}`}
+            aria-label="البحث الصوتي"
+            disabled={!voiceSupported}
+            title="البحث الصوتي"
+          >
+            <MicIcon />
+          </button>
+
           <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onFocus={() => setOpen(true)}
-            placeholder="ابحث عن منتج..."
-            className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
+            ref={imageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={onImagePick}
           />
-          {q ? (
-            <button
-              type="button"
-              onClick={() => {
-                setQ("");
-                setProducts([]);
-                setCategories([]);
-              }}
-              className="rounded-lg px-2 py-1 text-white/70 hover:bg-white/[0.06]"
-              aria-label="مسح البحث"
-            >
-              ✕
-            </button>
-          ) : null}
-          </form>
+        </div>
+
+        {/* Drag Overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[var(--accent)]/20 border-2 border-dashed border-[var(--accent)] rounded-2xl z-20">
+            <div className="text-center">
+              <UploadIcon />
+              <p className="mt-2 text-sm font-medium">أفلت الصورة هنا</p>
+            </div>
+          </div>
         )}
-
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="hidden"
-          onChange={onImagePick}
-        />
-        <button
-          type="button"
-          onClick={() => imageInputRef.current?.click()}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--text)] hover:brightness-95"
-          aria-label="Search by image"
-          disabled={imageLoading}
-        >
-          {imageLoading ? "..." : "IMG"}
-        </button>
-        <button
-          type="button"
-          onClick={onVoiceToggle}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--text)] hover:brightness-95"
-          aria-label="Voice search"
-          disabled={!voiceSupported}
-        >
-          {voiceActive ? "REC" : "MIC"}
-        </button>
       </div>
 
-      {imageError ? (
-        <div className="mt-2 text-xs text-red-500">{imageError}</div>
-      ) : null}
-      {voiceError ? (
-        <div className="mt-2 text-xs text-red-500">{voiceError}</div>
-      ) : null}
+      {/* Image Search Panel */}
+      {showImagePanel && (
+        <div className="search-dropdown p-4 mt-2">
+          <div className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <ImageIcon />
+            البحث بالصورة
+          </div>
+          <div 
+            className={`drag-drop-zone ${isDragging ? 'active' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="drag-icon text-[var(--muted)] mb-3">
+              <UploadIcon />
+            </div>
+            <p className="text-sm text-[var(--muted)] mb-2">اسحب وأفلت صورة هنا</p>
+            <p className="text-xs text-[var(--muted)]/60 mb-4">أو</p>
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              disabled={imageLoading}
+            >
+              {imageLoading ? (
+                <span className="flex items-center gap-2">
+                  <SpinnerIcon />
+                  جاري البحث...
+                </span>
+              ) : (
+                "اختر صورة من جهازك"
+              )}
+            </button>
+            <p className="text-xs text-[var(--muted)]/60 mt-3">PNG, JPG, WEBP حتى 5MB</p>
+          </div>
+        </div>
+      )}
 
-      {(showRecent || showResults) ? (
-        <div className="absolute left-0 right-0 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[color:var(--surface)] shadow-xl">
+      {/* Error Messages */}
+      {imageError && (
+        <div className="mt-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400 flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {imageError}
+        </div>
+      )}
+      {voiceError && (
+        <div className="mt-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400 flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {voiceError}
+        </div>
+      )}
+
+      {/* Voice Active Indicator */}
+      {voiceActive && (
+        <div className="mt-2 p-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-sm text-[var(--accent)] flex items-center gap-2">
+          <div className="flex gap-1">
+            <span className="w-1 h-4 bg-[var(--accent)] rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+            <span className="w-1 h-4 bg-[var(--accent)] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+            <span className="w-1 h-4 bg-[var(--accent)] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+          </div>
+          جاري الاستماع... تحدث الآن
+        </div>
+      )}
+
+      {/* Search Results Dropdown */}
+      {(showRecent || showResults) && !showImagePanel ? (
+        <div className="search-dropdown">
           {showRecent ? (
-            <div className="p-2">
-              <div className="px-2 py-1 text-xs font-semibold text-white/70">آخر عمليات البحث</div>
-              <div className="divide-y divide-white/10">
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-[var(--muted)] flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  آخر عمليات البحث
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    saveRecent([]);
+                    setRecent([]);
+                  }}
+                  className="text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                >
+                  مسح الكل
+                </button>
+              </div>
+              <div className="space-y-1">
                 {recent.slice(0, 6).map((r) => (
                   <button
                     key={r}
                     type="button"
                     onClick={() => commitSearch(r)}
-                    className="flex w-full items-center justify-between gap-2 px-2 py-2 text-sm text-white/80 hover:bg-white/[0.06]"
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
                   >
                     <span className="truncate">{r}</span>
-                    <span className="opacity-60">↩</span>
+                    <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  saveRecent([]);
-                  setRecent([]);
-                }}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/70 hover:bg-white/[0.08]"
-              >
-                مسح السجل
-              </button>
             </div>
           ) : null}
 
-              {showResults ? (
-                <div className="p-2">
-                  {showDidYouMean ? (
-                    <div className="mb-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80">
-                      <span className="text-xs text-white/60">هل تقصد</span>{" "}
-                      <button
-                        type="button"
-                        onClick={() => commitSearch(didYouMean as string)}
-                        className="font-semibold text-white hover:underline"
-                      >
-                        {didYouMean}
-                      </button>
-                      ؟
-                    </div>
-                  ) : null}
+          {showResults ? (
+            <div className="p-3 border-t border-white/[0.06]">
+              {showDidYouMean ? (
+                <div className="mb-3 p-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-sm">
+                  <span className="text-[var(--muted)]">هل تقصد </span>
+                  <button
+                    type="button"
+                    onClick={() => commitSearch(didYouMean as string)}
+                    className="font-semibold text-[var(--accent)] hover:underline"
+                  >
+                    {didYouMean}
+                  </button>
+                  <span className="text-[var(--muted)]">؟</span>
+                </div>
+              ) : null}
+
               {loading ? (
-                <div className="px-2 py-2">
+                <div className="flex items-center justify-center py-4">
                   <LoadingIndicator
                     className="flex items-center justify-center"
-                    fallback={<div className="text-sm text-white/60">جاري البحث...</div>}
+                    fallback={<div className="text-sm text-[var(--muted)]">جاري البحث...</div>}
                   />
                 </div>
               ) : null}
 
               {categories.length ? (
-                <div className="mb-2">
-                  <div className="px-2 py-1 text-xs font-semibold text-white/70">تصنيفات</div>
+                <div className="mb-3">
+                  <div className="px-2 py-1 text-xs font-semibold text-[var(--muted)] flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    تصنيفات
+                  </div>
                   {categories.slice(0, 5).map((c) => (
                     <Link
                       key={c.id}
                       href={`/c/${c.slug}`}
                       onClick={() => setOpen(false)}
-                      className="flex items-center justify-between gap-2 rounded-xl px-2 py-2 text-sm text-white/80 hover:bg-white/[0.06]"
+                      className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
                     >
                       <span className="truncate">{c.name}</span>
-                      <span className="opacity-60">↗</span>
+                      <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
                     </Link>
                   ))}
                 </div>
@@ -445,30 +595,43 @@ export function SearchBox({ styleId }: { styleId?: string }) {
 
               {products.length ? (
                 <div>
-                  <div className="px-2 py-1 text-xs font-semibold text-white/70">منتجات</div>
+                  <div className="px-2 py-1 text-xs font-semibold text-[var(--muted)] flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    منتجات
+                  </div>
                   {products.slice(0, 6).map((p) => (
                     <Link
                       key={p.id}
                       href={`/p/${p.slug}`}
                       onClick={() => setOpen(false)}
-                      className="flex items-center justify-between gap-2 rounded-xl px-2 py-2 text-sm text-white/80 hover:bg-white/[0.06]"
+                      className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
                     >
                       <span className="truncate">{p.title}</span>
-                      <span className="opacity-60">↗</span>
+                      <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
                     </Link>
                   ))}
                 </div>
               ) : null}
 
               {(!loading && !categories.length && !products.length) ? (
-                <div className="px-2 py-2 text-sm text-white/60">لا توجد نتائج</div>
+                <div className="text-center py-4 text-sm text-[var(--muted)]">
+                  <svg className="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  لا توجد نتائج
+                </div>
               ) : null}
 
               <button
                 type="button"
                 onClick={() => commitSearch(q)}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                className="mt-3 w-full rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
+                <SearchIcon />
                 عرض كل النتائج
               </button>
             </div>
