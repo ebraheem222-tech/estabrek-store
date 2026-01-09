@@ -138,22 +138,40 @@ const productLd: any = {
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Breadcrumbs items={crumbs} />
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
+      
       <ProductDetail product={product as any} />
 
-          {product.description ? (
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-              <div className="text-sm font-semibold">الوصف</div>
-              <div className="mt-2 whitespace-pre-wrap text-sm text-white/80">{product.description}</div>
+      {/* Description Section */}
+      {product.description ? (
+        <div className="glass-card rounded-3xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-          ) : null}
+            <div>
+              <h2 className="text-lg font-bold text-[var(--text)]">وصف المنتج</h2>
+              <p className="text-xs text-[var(--muted)]">تفاصيل ومعلومات إضافية</p>
+            </div>
+          </div>
+          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="prose prose-sm prose-invert max-w-none">
+            <p className="whitespace-pre-wrap text-sm text-[var(--text)]/80 leading-relaxed">{product.description}</p>
+          </div>
+        </div>
+      ) : null}
 
-          <RecommendedProductsSection productId={(product as any).id} />
-          <ShareButton title={product.title} />
+      {/* Recommended Products */}
+      <RecommendedProductsSection productId={(product as any).id} />
+      
+      {/* Share Button */}
+      <ShareButton title={product.title} />
     </div>
   );
 }

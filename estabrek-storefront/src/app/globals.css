@@ -326,3 +326,362 @@ body {
 .duration-1000 { animation-duration: 1000ms; }
 .duration-\[1500ms\] { animation-duration: 1500ms; }
 .duration-\[2000ms\] { animation-duration: 2000ms; }
+
+/* ============================================
+   PRODUCT CARD & DETAILS PREMIUM STYLES
+   ============================================ */
+
+/* 3D Card Container */
+.perspective-container {
+  perspective: 1200px;
+  perspective-origin: center;
+}
+
+/* Premium Product Card */
+.product-card-3d {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg));
+  transition: transform 0.15s ease-out, box-shadow 0.4s ease;
+}
+
+.product-card-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.product-card-3d:hover::before {
+  opacity: 1;
+}
+
+.product-card-3d:hover {
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 40px -15px var(--accent, rgba(139, 92, 246, 0.3));
+}
+
+/* Image Zoom Effect */
+.product-image-zoom {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.group:hover .product-image-zoom {
+  transform: scale(1.08);
+}
+
+/* Premium Badge */
+.product-badge {
+  backdrop-filter: blur(8px);
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.1); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05); }
+}
+
+/* Quick Add Button Slide Up */
+.quick-add-slide {
+  transform: translateY(100%);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.group:hover .quick-add-slide {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Color Swatch Animation */
+.color-swatch {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.color-swatch::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid transparent;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch.active::after {
+  border-color: var(--accent, #8b5cf6);
+}
+
+/* Price Shine Effect */
+.price-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.price-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s ease;
+}
+
+.group:hover .price-shine::after {
+  left: 100%;
+}
+
+/* Product Gallery Styles */
+.gallery-main-image {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+}
+
+.gallery-main-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.3) 100%);
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.gallery-main-image:hover::before {
+  opacity: 1;
+}
+
+/* Thumbnail Active State */
+.thumbnail-active {
+  position: relative;
+}
+
+.thumbnail-active::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--accent, #8b5cf6), var(--accent-2, #f59e0b));
+  z-index: -1;
+}
+
+/* Lightbox Styles */
+.lightbox-overlay {
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.85), rgba(0,0,0,0.95));
+  backdrop-filter: blur(20px);
+}
+
+.lightbox-image {
+  animation: lightbox-zoom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes lightbox-zoom {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Navigation Buttons */
+.gallery-nav-btn {
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.gallery-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* Buy Box Styles */
+.buy-box {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+}
+
+.buy-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+}
+
+.buy-box-section {
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.buy-box-section:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Size Button Styles */
+.size-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.size-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.size-btn:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.size-btn.active {
+  background: linear-gradient(135deg, var(--accent, #8b5cf6), var(--accent-2, #f59e0b));
+  border-color: transparent;
+  color: white;
+}
+
+/* Add to Cart Button */
+.add-to-cart-btn {
+  position: relative;
+  overflow: hidden;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.add-to-cart-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.add-to-cart-btn:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.add-to-cart-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px -10px var(--accent, rgba(139, 92, 246, 0.5));
+}
+
+/* Quantity Input */
+.qty-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1rem;
+  padding: 0.5rem;
+}
+
+.qty-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.2s;
+}
+
+.qty-btn:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* Success Message Animation */
+@keyframes success-slide {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.success-message {
+  animation: success-slide 2s ease forwards;
+}
+
+/* Color Picker Modal */
+.color-modal {
+  animation: modal-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-slide {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Stagger Animation for Grid Items */
+.stagger-item {
+  opacity: 0;
+  animation: stagger-fade 0.5s ease forwards;
+}
+
+.stagger-item:nth-child(1) { animation-delay: 0ms; }
+.stagger-item:nth-child(2) { animation-delay: 50ms; }
+.stagger-item:nth-child(3) { animation-delay: 100ms; }
+.stagger-item:nth-child(4) { animation-delay: 150ms; }
+.stagger-item:nth-child(5) { animation-delay: 200ms; }
+.stagger-item:nth-child(6) { animation-delay: 250ms; }
+.stagger-item:nth-child(7) { animation-delay: 300ms; }
+.stagger-item:nth-child(8) { animation-delay: 350ms; }
+
+@keyframes stagger-fade {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Glass Effect */
+.glass-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Image Loading Skeleton */
+.image-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
