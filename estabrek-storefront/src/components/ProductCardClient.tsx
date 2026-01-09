@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatMoney, getProductPrimaryImage, getProductMinPrice } from "@/lib/catalog";
@@ -93,14 +93,45 @@ function buildAutoVariantImages(p: CatalogProduct, primary?: string | null): str
 
 export default function ProductCardClient({ product }: { product: CatalogProduct }) {
   const router = useRouter();
+  const cardRef = useRef<HTMLDivElement>(null);
   const { primary, secondary } = useMemo(() => getCardImages(product), [product]);
   const swatches = useMemo(() => buildSwatches(product), [product]);
   const [isHovered, setIsHovered] = useState(false);
   const [hoverImg, setHoverImg] = useState<string | null>(null);
+  const [activeSwatch, setActiveSwatch] = useState<string | null>(null);
   const minPrice = useMemo(() => getProductMinPrice(product), [product]);
   const autoVariantImages = useMemo(() => buildAutoVariantImages(product, primary), [product, primary]);
   const canAutoRotate = autoVariantImages.length > 1;
   const [autoIndex, setAutoIndex] = useState(0);
+
+  // 3D tilt effect
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!cardRef.current || prefersReducedMotion()) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = (y - centerY) / 25;
+    const rotateY = (centerX - x) / 25;
+    const spotlightX = (x / rect.width) * 100;
+    const spotlightY = (y / rect.height) * 100;
+    
+    cardRef.current.style.setProperty('--rotate-x', `${rotateX}deg`);
+    cardRef.current.style.setProperty('--rotate-y', `${rotateY}deg`);
+    cardRef.current.style.setProperty('--spotlight-x', `${spotlightX}%`);
+    cardRef.current.style.setProperty('--spotlight-y', `${spotlightY}%`);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!cardRef.current) return;
+    cardRef.current.style.setProperty('--rotate-x', '0deg');
+    cardRef.current.style.setProperty('--rotate-y', '0deg');
+    setIsHovered(false);
+    setHoverImg(null);
+    setActiveSwatch(null);
+    setAutoIndex(0);
+  }, []);
 
   const badge = useMemo(() => {
     const items = (product.items ?? []) as any[];
@@ -183,130 +214,177 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   }, [autoVariantImages.length, canAutoRotate, hoverImg, isHovered]);
 
   return (
-    <div
-      className={
-        // Luxury: clean card on warm paper + gold accents
-        "group overflow-hidden rounded-2xl border border-black/10 bg-white/90 shadow-sm " +
-        "transition duration-300 hover:-translate-y-0.5 hover:shadow-lg " +
-        "hover:ring-1 hover:ring-[color:var(--accent-2)]"
-      }
-      onMouseEnter={() => {
-        // page prefetch for instant navigation feel
-        router.prefetch(`/p/${product.slug}`);
-        setIsHovered(true);
-        setAutoIndex(0);
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setHoverImg(null);
-        setAutoIndex(0);
-      }}
-    >
-      <Link href={`/p/${product.slug}`} className="block">
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-black/[0.04]">
-          {badge ? (
-            <div className="absolute left-3 top-3 z-10">
-              <span
-                className={
-                  "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur " +
-                  (badge.tone === "danger"
-                    ? "bg-red-600 text-white"
-                    : badge.tone === "gold"
-                    ? "bg-[color:var(--accent-2)] text-black"
-                    : "bg-[var(--text)]/80 text-[var(--bg)]")
-                }
-              >
-                {badge.text}
-              </span>
-            </div>
-          ) : null}
-          {shownImg ? (
-            <>
-              {prevImg ? (
+    <div className="perspective-container">
+      <div
+        ref={cardRef}
+        className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300"
+        onMouseEnter={() => {
+          router.prefetch(`/p/${product.slug}`);
+          setIsHovered(true);
+          setAutoIndex(0);
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        <Link href={`/p/${product.slug}`} className="block">
+          {/* Image Container */}
+          <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
+            {/* Badge */}
+            {badge ? (
+              <div className="absolute left-3 top-3 z-20">
+                <span
+                  className={
+                    "product-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold shadow-lg " +
+                    (badge.tone === "danger"
+                      ? "bg-gradient-to-r from-red-500 to-red-600 text-white"
+                      : badge.tone === "gold"
+                      ? "bg-gradient-to-r from-amber-400 to-orange-500 text-black"
+                      : "bg-[var(--text)]/90 text-[var(--bg)]")
+                  }
+                >
+                  {badge.tone === "neutral" && (
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                  )}
+                  {badge.text}
+                </span>
+              </div>
+            ) : null}
+
+            {/* Images */}
+            {shownImg ? (
+              <>
+                {prevImg ? (
+                  <Image
+                    src={cldUrl(prevImg, { w: 600, h: 750, c: "fill", g: "auto" })}
+                    alt={product.title}
+                    fill
+                    className={
+                      "object-cover product-image-zoom will-change-transform " +
+                      (fadeIn ? "opacity-0" : "opacity-100")
+                    }
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  />
+                ) : null}
                 <Image
-                  src={cldUrl(prevImg, { w: 600, h: 750, c: "fill", g: "auto" })}
+                  src={cldUrl(shownImg, { w: 600, h: 750, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
                   className={
-                    "object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] will-change-transform " +
-                    (fadeIn ? "opacity-0" : "opacity-100")
+                    "object-cover product-image-zoom will-change-transform " +
+                    (prevImg ? (fadeIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1") : "opacity-100")
                   }
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
-              ) : null}
-              <Image
-                src={cldUrl(shownImg, { w: 600, h: 750, c: "fill", g: "auto" })}
-                alt={product.title}
-                fill
-                className={
-                  "object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] will-change-transform " +
-                  (prevImg ? (fadeIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1") : "opacity-100")
-                }
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-              />
-            </>
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-zinc-500">No image</div>
-          )}
+              </>
+            ) : (
+              <div className="image-skeleton flex h-full w-full items-center justify-center text-xs text-[var(--muted)]">
+                <svg className="w-8 h-8 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
 
-          {/* subtle gold sheen on hover */}
-          <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100">
-            <div className="absolute -inset-24 rotate-12 bg-gradient-to-r from-transparent via-[color:var(--accent-1)]/20 to-transparent blur-2xl" />
-          </div>
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
 
-          {/* Quick Add overlay on hover (keeps AliExpress vibe) */}
-          <div className="pointer-events-none absolute inset-x-3 bottom-3 translate-y-2 opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-            <div className="pointer-events-auto">
-              <QuickAddButton product={product} buttonLabel="إضافة سريعة" className="" />
+            {/* Shimmer Effect on Hover */}
+            <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 z-10">
+              <div className="absolute -inset-24 rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl" />
             </div>
+
+            {/* Quick Add Button - Slides up on hover */}
+            <div className="absolute inset-x-0 bottom-0 p-3 z-20">
+              <div className="quick-add-slide">
+                <QuickAddButton product={product} buttonLabel="إضافة سريعة" className="w-full backdrop-blur-sm" />
+              </div>
+            </div>
+
+            {/* Image Counter - when multiple images */}
+            {autoVariantImages.length > 1 && isHovered && (
+              <div className="absolute top-3 right-3 z-20 flex gap-1">
+                {autoVariantImages.slice(0, 5).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                      idx === autoIndex ? 'bg-white w-3' : 'bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Content */}
+          <div className="relative p-4 space-y-3">
+            {/* Title & Price */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                  {product.title}
+                </h3>
+                <p className="mt-0.5 text-xs text-[var(--muted)] flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  {(product as any).category?.name ?? "—"}
+                </p>
+              </div>
+              <div className="price-shine shrink-0 text-sm font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+                {minPrice != null ? formatMoney(minPrice, "ILS") : "—"}
+              </div>
+            </div>
+
+            {/* Animated Underline */}
+            <div className="relative h-px bg-[var(--border)] overflow-hidden">
+              <div className="absolute inset-y-0 left-0 w-0 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] transition-all duration-500 group-hover:w-full" />
+            </div>
+
+            {/* Color Swatches */}
+            {swatches.length ? (
+              <div className="flex items-center gap-2">
+                {swatches.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    className={`color-swatch h-5 w-5 rounded-full border-2 transition-all ${
+                      activeSwatch === s.key 
+                        ? 'border-[var(--accent)] scale-110 active' 
+                        : 'border-[var(--border)] hover:border-white/30'
+                    }`}
+                    style={{ background: s.hex ?? "linear-gradient(135deg, #ddd, #999)" }}
+                    title={s.name}
+                    onMouseEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (s.imageUrl) {
+                        setHoverImg(s.imageUrl);
+                        setActiveSwatch(s.key);
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setHoverImg(null);
+                      setActiveSwatch(null);
+                    }}
+                  />
+                ))}
+                {(product.items?.length ?? 0) > swatches.length ? (
+                  <span className="text-xs text-[var(--muted)] font-medium">
+                    +{(product.items?.length ?? 0) - swatches.length}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </Link>
+
+        {/* Fallback Quick Add - visible when not hovering image */}
+        <div className="px-4 pb-4 group-hover:hidden">
+          <QuickAddButton product={product} className="w-full" />
         </div>
-
-        <div className="space-y-2 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-[#0B0B0B]">{product.title}</div>
-              <div className="mt-0.5 text-xs text-black/60">{(product as any).category?.name ?? "—"}</div>
-            </div>
-            <div className="shrink-0 text-sm font-semibold text-[color:var(--accent-2)]">
-  {minPrice != null ? formatMoney(minPrice, "ILS") : "—"}
-</div>
-          </div>
-
-          {/* gold underline accent */}
-          <div className="h-px w-0 bg-[color:var(--accent-2)] transition-all duration-300 group-hover:w-full" />
-
-          {/* swatches: circles, hover changes main image */}
-          {swatches.length ? (
-            <div className="flex items-center gap-1.5">
-              {swatches.map((s) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  className="h-4 w-4 rounded-full border border-black/15 transition hover:scale-110"
-                  style={{ background: s.hex ?? "transparent" }}
-                  title={s.name}
-                  onMouseEnter={(e) => {
-                    e.preventDefault();
-                    if (s.imageUrl) setHoverImg(s.imageUrl);
-                  }}
-                  onMouseLeave={(e) => {
-                    e.preventDefault();
-                    setHoverImg(null);
-                  }}
-                />
-              ))}
-              {(product.items?.length ?? 0) > swatches.length ? (
-                <span className="ml-1 text-xs text-black/60">+{(product.items?.length ?? 0) - swatches.length}</span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </Link>
-
-      {/* fallback: button visible when not hovering image area */}
-      <div className="px-4 pb-4 group-hover:hidden">
-        <QuickAddButton product={product} />
       </div>
     </div>
   );
