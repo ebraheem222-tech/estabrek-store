@@ -2326,6 +2326,12 @@ function Section({
                         const fieldTokens = resolveFieldTokens((f as any).twTokens, formFieldTokens ?? formTokens ?? sectionTokens);
                         const labelTokens = resolveFieldTokens((f as any).labelTokens, formLabelTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
                         const inputTokens = resolveFieldTokens((f as any).inputTokens, formInputTokens ?? fieldTokens ?? formTokens ?? sectionTokens);
+                        const inputState = getElementState({
+                          kind: "input",
+                          valuePath: ["form", "fields", idx],
+                          tokensPath: ["form", "fields", idx, "inputTokens"],
+                          label: f.label ?? f.name ?? `Field ${idx + 1}`,
+                        });
                         return wrapDecorations(
                           <div key={idx} className={cls(tokensClass(fieldTokens))} style={tokensStyle(fieldTokens)}>
                             {f.label ? (() => {
@@ -2347,24 +2353,34 @@ function Section({
                             {f.type === "textarea" ? (
                               wrapDecorations(
                                 <textarea
-                                  className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
+                                  className={cls(
+                                    "mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm",
+                                    tokensClass(inputTokens),
+                                    inputState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                  )}
                                   style={tokensStyle(inputTokens)}
                                   placeholder={f.placeholder}
                                   name={f.name}
                                   required={!!f.required}
                                   rows={4}
+                                  {...inputState.attrs}
                                 />,
                                 inputTokens
                               )
                             ) : (
                               wrapDecorations(
                                 <input
-                                  className={cls("mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm", tokensClass(inputTokens))}
+                                  className={cls(
+                                    "mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] p-2 text-sm",
+                                    tokensClass(inputTokens),
+                                    inputState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                  )}
                                   style={tokensStyle(inputTokens)}
                                   placeholder={f.placeholder}
                                   name={f.name}
                                   required={!!f.required}
                                   type={f.type ?? "text"}
+                                  {...inputState.attrs}
                                 />,
                                 inputTokens
                               )

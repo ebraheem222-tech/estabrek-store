@@ -546,6 +546,14 @@ function buildElementQuickFields(selected: SelectedElement | null, data: any): Q
     }
   }
 
+  if (kind === "field" || kind === "input" || kind === "textarea" || kind === "select") {
+    add("Label", [...valuePath, "label"]);
+    add("Placeholder", [...valuePath, "placeholder"]);
+    add("Name", [...valuePath, "name"]);
+    add("Type", [...valuePath, "type"]);
+    add("Rows", [...valuePath, "rows"]);
+  }
+
   if (kind === "image") {
     add("Image URL", valuePath, "url");
     const altPath = resolveSiblingPath(valuePath, data, ["alt", "altText", "imageAlt", "caption"]);
@@ -681,6 +689,7 @@ export default function PageEditorPage() {
   const [inlineEditing, setInlineEditing] = useState(true);
   const [canvasView, setCanvasView] = useState<"live" | "preview">("live");
   const [previewMode, setPreviewMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [canvasFullScreen, setCanvasFullScreen] = useState(false);
   const [templateId, setTemplateId] = useState<(typeof PAGE_TEMPLATES)[number]["id"]>("landing");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [confirmTemplateReplace, setConfirmTemplateReplace] = useState(false);
@@ -747,6 +756,27 @@ export default function PageEditorPage() {
   }, [previewMode]);
 
   const canvasDir = contentLocale === "en" ? "ltr" : "rtl";
+  const canvasViewportClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "max-h-[70vh]";
+  const canvasPreviewHeightClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "h-[70vh]";
+  const canvasPanelClass = canvasFullScreen
+    ? "fixed inset-0 z-40 flex flex-col border border-white/10 bg-black/90 p-4"
+    : "rounded-2xl border border-white/10 bg-white/5 p-4 lg:sticky lg:top-4 lg:self-start";
+
+  useEffect(() => {
+    if (!canvasFullScreen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setCanvasFullScreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [canvasFullScreen]);
 
   const sectionLibraryItems = useMemo<LibraryItem[]>(() => {
     const base = defaultDataForType(sectionLibraryType);
@@ -903,6 +933,16 @@ export default function PageEditorPage() {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [selectedSectionId]);
+
+  useEffect(() => {
+    if (!selectedSectionId || canvasView !== "live") return;
+    const container = canvasScrollRef.current;
+    if (!container) return;
+    const node = container.querySelector(`[data-section-id="${selectedSectionId}"]`) as HTMLElement | null;
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [selectedSectionId, canvasView, previewMode, previewBump, canvasFullScreen, inlineEditing, contentLocale]);
 
   useEffect(() => {
     if (sectionInsertIndex == null) return;
@@ -1200,7 +1240,7 @@ export default function PageEditorPage() {
       window.removeEventListener("resize", update);
       observer?.disconnect();
     };
-  }, [canvasView, selectedElement, previewMode, previewBump, inlineEditing, contentLocale]);
+  }, [canvasView, selectedElement, previewMode, previewBump, inlineEditing, contentLocale, canvasFullScreen]);
 
   const openCreateSection = () => {
     setEditingSectionId(null);
@@ -2468,26 +2508,36 @@ export default function PageEditorPage() {
           ) : null}
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 lg:sticky lg:top-4 lg:self-start">
+        <div className={canvasPanelClass}>
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-semibold">Canvas</div>
-            <div className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 size="xs"
-                variant={canvasView === "live" ? "secondary" : "ghost"}
-                onClick={() => setCanvasView("live")}
+                variant={canvasFullScreen ? "secondary" : "ghost"}
+                onClick={() => setCanvasFullScreen((v) => !v)}
               >
-                Live
+                {canvasFullScreen ? "Exit full screen" : "Full screen"}
               </Button>
-              <Button
-                type="button"
-                size="xs"
-                variant={canvasView === "preview" ? "secondary" : "ghost"}
-                onClick={() => setCanvasView("preview")}
-              >
-                Preview
-              </Button>
+              <div className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={canvasView === "live" ? "secondary" : "ghost"}
+                  onClick={() => setCanvasView("live")}
+                >
+                  Live
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={canvasView === "preview" ? "secondary" : "ghost"}
+                  onClick={() => setCanvasView("preview")}
+                >
+                  Preview
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -2559,13 +2609,18 @@ export default function PageEditorPage() {
             {canvasView === "preview" ? (
               previewUrl ? (
                 <div className={`mx-auto w-full ${previewWidthClass}`}>
-                  <iframe key={`preview-${previewBump}`} title="preview" src={previewUrl} className="h-[70vh] w-full" />
+                  <iframe
+                    key={`preview-${previewBump}`}
+                    title="preview"
+                    src={previewUrl}
+                    className={`${canvasPreviewHeightClass} w-full`}
+                  />
                 </div>
               ) : (
                 <div className="p-6 text-sm text-white/60">Preview unavailable.</div>
               )
             ) : (
-              <div ref={canvasScrollRef} className="relative max-h-[70vh] overflow-auto">
+              <div ref={canvasScrollRef} className={`relative ${canvasViewportClass} overflow-auto`}>
                 <ThemePreview key={`live-${previewBump}`} theme={theme} className="min-h-[60vh] p-4">
                   {customCss && customCss.trim() ? <style>{scopeCss(customCss, "#cms-preview-root")}</style> : null}
                   <div id="cms-preview-root" className={`mx-auto w-full ${previewWidthClass}`} dir={canvasDir}>
