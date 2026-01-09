@@ -123,6 +123,8 @@ function SortableSectionCard({
   previewData,
   theme,
   index = 0,
+  onSelect,
+  isSelected,
 }: {
   section: PageSection;
   onEdit: () => void;
@@ -131,6 +133,8 @@ function SortableSectionCard({
   previewData?: any;
   theme?: any;
   index?: number;
+  onSelect?: () => void;
+  isSelected?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -206,13 +210,19 @@ function SortableSectionCard({
     <div
       ref={setNodeRef}
       style={style}
+      id={`section-card-${section.id}`}
     >
       <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
+        onClick={() => {
+          if (isDragging) return;
+          onSelect?.();
+        }}
         className={[
           "section-card-3d p-5 opacity-0 animate-fade-in-up",
+          isSelected ? "ring-2 ring-accent-500/50 border-accent-500/40 shadow-glow" : "",
           isDragging ? "ring-2 ring-accent-500/50 border-accent-500/30 shadow-2xl shadow-accent-500/20" : "",
         ].join(" ")}
         style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
@@ -226,6 +236,7 @@ function SortableSectionCard({
               title="اسحب للترتيب"
               {...attributes}
               {...listeners}
+              onClick={(e) => e.stopPropagation()}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
@@ -295,7 +306,7 @@ function SortableSectionCard({
             <Button 
               variant={section.isVisible ? "ghost" : "secondary"} 
               size="sm" 
-              onClick={onToggleVisible}
+              onClick={(e) => { e.stopPropagation(); onToggleVisible(); }}
               className="btn-shine"
               title={section.isVisible ? "إخفاء القسم" : "إظهار القسم"}
             >
@@ -310,12 +321,12 @@ function SortableSectionCard({
                 </svg>
               )}
             </Button>
-            <Button variant="secondary" size="sm" onClick={onEdit} className="btn-shine">
+            <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="btn-shine">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </Button>
-            <Button variant="danger" size="sm" onClick={onDelete}>
+            <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
@@ -425,6 +436,9 @@ export default function PageEditorPage() {
   const [templateId, setTemplateId] = useState<(typeof PAGE_TEMPLATES)[number]["id"]>("landing");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [confirmTemplateReplace, setConfirmTemplateReplace] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [showAdvancedStyling, setShowAdvancedStyling] = useState(false);
+  const [selectionBusy, setSelectionBusy] = useState(false);
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -562,6 +576,26 @@ export default function PageEditorPage() {
     });
   }, [localSections, translatedSections, contentLocale]);
 
+  const selectedSection = useMemo(() => {
+    if (!selectedSectionId) return null;
+    return localSections.find((s) => String(s.id) === String(selectedSectionId)) ?? null;
+  }, [localSections, selectedSectionId]);
+
+  useEffect(() => {
+    if (selectedSectionId && !selectedSection) {
+      setSelectedSectionId(null);
+      setShowAdvancedStyling(false);
+    }
+  }, [selectedSectionId, selectedSection]);
+
+  useEffect(() => {
+    if (!selectedSectionId) return;
+    const el = document.getElementById(`section-card-${selectedSectionId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedSectionId]);
+
   const qc = useQueryClient();
 
   const sensors = useSensors(
@@ -610,6 +644,12 @@ export default function PageEditorPage() {
   const [sectionErrors, setSectionErrors] = useState<SectionFieldErrors>({});
   const [componentsOnlyMode, setComponentsOnlyMode] = useState(false);
   const [componentsSectionKind, setComponentsSectionKind] = useState<CmsComponentKind>("text");
+
+  useEffect(() => {
+    if (openSection) {
+      setShowAdvancedStyling(false);
+    }
+  }, [openSection]);
 
   const previewState = useMemo(() => {
     if (!advancedJson) return { data: sectionDataObj ?? {}, error: null as string | null };
@@ -680,6 +720,7 @@ export default function PageEditorPage() {
 
   const openEditSection = (s: any) => {
     setEditingSectionId(s.id);
+    setSelectedSectionId(String(s.id));
     setSectionType(s.type);
     setSectionVisible(Boolean(s.isVisible ?? true));
     const d = s.data ?? {};
@@ -752,24 +793,19 @@ export default function PageEditorPage() {
     }
   };
 
-  const handleInlineEdit = async ({ sectionId, path, value }: InlineEditPayload) => {
-    if (!id || !inlineEditingAvailable) return;
-    const idx = localSections.findIndex((s) => String(s.id) === String(sectionId));
-    if (idx < 0) return;
-    const section = localSections[idx];
-    const nextData = setDeepValue(section.data ?? {}, path, value);
-    const nextSection = { ...section, data: nextData };
-
+  const persistSectionData = async (sectionId: string, nextData: any, errorMessage?: string) => {
     setLocalSections((prev) =>
-      prev.map((s) => (String(s.id) === String(sectionId) ? nextSection : s))
+      prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, data: nextData } : s))
     );
-    qc.setQueryData(["pages", id], (prev: any) => {
-      if (!prev || !Array.isArray(prev.sections)) return prev;
-      const nextSections = prev.sections.map((s: any) =>
-        String(s.id) === String(sectionId) ? { ...s, data: nextData } : s
-      );
-      return { ...prev, sections: nextSections };
-    });
+    if (id) {
+      qc.setQueryData(["pages", id], (prev: any) => {
+        if (!prev || !Array.isArray(prev.sections)) return prev;
+        const nextSections = prev.sections.map((s: any) =>
+          String(s.id) === String(sectionId) ? { ...s, data: nextData } : s
+        );
+        return { ...prev, sections: nextSections };
+      });
+    }
 
     if (editingSectionId && String(editingSectionId) === String(sectionId)) {
       setSectionDataObj(nextData);
@@ -777,9 +813,80 @@ export default function PageEditorPage() {
     }
 
     try {
-      await updateSectionApi(section.id, { data: nextData });
+      await updateSectionApi(sectionId, { data: nextData });
     } catch {
-      toast.error("تعذر حفظ التعديل.");
+      if (errorMessage) toast.error(errorMessage);
+    }
+  };
+
+  const handleInlineEdit = async ({ sectionId, path, value }: InlineEditPayload) => {
+    if (!id || !inlineEditingAvailable) return;
+    const idx = localSections.findIndex((s) => String(s.id) === String(sectionId));
+    if (idx < 0) return;
+    const section = localSections[idx];
+    const nextData = setDeepValue(section.data ?? {}, path, value);
+    await persistSectionData(section.id, nextData, "???? ??? ???????.");
+  };
+
+  const handleSelectSection = (sectionId: string) => {
+    setSelectedSectionId(sectionId);
+    setShowAdvancedStyling(true);
+  };
+
+  const handleSelectedTokensChange = (nextTokens: any) => {
+    if (!selectedSection) return;
+    const nextData = { ...(selectedSection.data ?? {}), twTokens: nextTokens };
+    void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const persistSectionVisibility = async (sectionId: string, isVisible: boolean) => {
+    setLocalSections((prev) =>
+      prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, isVisible } : s))
+    );
+    if (id) {
+      qc.setQueryData(["pages", id], (prev: any) => {
+        if (!prev || !Array.isArray(prev.sections)) return prev;
+        const nextSections = prev.sections.map((s: any) =>
+          String(s.id) === String(sectionId) ? { ...s, isVisible } : s
+        );
+        return { ...prev, sections: nextSections };
+      });
+    }
+    try {
+      await updateSectionApi(sectionId, { isVisible });
+    } catch {
+      toast.error("???? ????? ??? ??????");
+    }
+  };
+
+  const toggleSelectedVisibility = async () => {
+    if (!selectedSection) return;
+    setSelectionBusy(true);
+    try {
+      await persistSectionVisibility(selectedSection.id, !selectedSection.isVisible);
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const duplicateSelectedSection = async () => {
+    if (!id || !selectedSection) return;
+    setSelectionBusy(true);
+    try {
+      const nextOrder = localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1;
+      const created = await createSectionApi(id, {
+        type: selectedSection.type,
+        data: selectedSection.data ?? {},
+        isVisible: selectedSection.isVisible ?? true,
+        order: nextOrder,
+      });
+      await qc.invalidateQueries({ queryKey: ["pages", id] });
+      setSelectedSectionId(String(created.id));
+      setShowAdvancedStyling(true);
+    } catch {
+      toast.error("???? ??? ?????? ?????.");
+    } finally {
+      setSelectionBusy(false);
     }
   };
 
@@ -1487,8 +1594,10 @@ export default function PageEditorPage() {
                           key={s.id}
                           section={s}
                           index={idx}
+                          isSelected={String(selectedSectionId ?? "") === String(s.id)}
                           previewData={getTranslatedSectionData(s, idx)}
                           theme={theme}
+                          onSelect={() => handleSelectSection(String(s.id))}
                           onEdit={() => openEditSection(s)}
                           onDelete={() => setConfirmDeleteSectionId(s.id)}
                           onToggleVisible={() => {
@@ -1613,6 +1722,8 @@ export default function PageEditorPage() {
                         sections={canvasSections}
                         inlineEditing={inlineEditing && inlineEditingAvailable}
                         onInlineEdit={handleInlineEdit}
+                        selectedSectionId={selectedSectionId}
+                        onSectionSelect={handleSelectSection}
                       />
                     ) : (
                       <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/60">
@@ -1645,7 +1756,7 @@ export default function PageEditorPage() {
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div dir="rtl" className="space-y-4 overflow-x-auto">
           {!componentsOnlyMode ? (
             <>
               <Select
@@ -1843,6 +1954,62 @@ export default function PageEditorPage() {
             </div>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={showAdvancedStyling && !!selectedSection}
+        title="تنسيق متقدم"
+        description={selectedSection ? `Section: ${selectedSection.type}` : undefined}
+        onCancel={() => setShowAdvancedStyling(false)}
+        widthClassName="max-w-4xl"
+      >
+        {selectedSection ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60">
+              <div>
+                ID: <span className="text-white/90">{selectedSection.id}</span>
+              </div>
+              <div>Order: {selectedSection.order ?? 0}</div>
+              <div className="text-white/80">{selectedSection.type}</div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowAdvancedStyling(false);
+                  openEditSection(selectedSection);
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={duplicateSelectedSection}
+                isLoading={selectionBusy}
+              >
+                Duplicate
+              </Button>
+              <Button
+                variant={selectedSection.isVisible ? "ghost" : "secondary"}
+                size="sm"
+                onClick={toggleSelectedVisibility}
+                disabled={selectionBusy}
+              >
+                {selectedSection.isVisible ? "Hide" : "Show"}
+              </Button>
+            </div>
+
+            <ResponsiveTokensPanel
+              tokens={selectedSection.data?.twTokens ?? {}}
+              onChange={handleSelectedTokensChange}
+            />
+          </div>
+        ) : (
+          <div className="text-sm text-white/60">No section selected.</div>
+        )}
       </Modal>
 
       <ConfirmDialog

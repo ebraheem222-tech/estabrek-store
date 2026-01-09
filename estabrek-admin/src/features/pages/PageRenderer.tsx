@@ -161,6 +161,8 @@ type InlineEditContextValue = {
   onCommit?: (payload: InlineEditPayload) => void;
 };
 
+type SectionSelectHandler = (sectionId: string) => void;
+
 const InlineEditContext = React.createContext<InlineEditContextValue | null>(null);
 const InlineSectionContext = React.createContext<string | null>(null);
 
@@ -2928,10 +2930,16 @@ export function PageRenderer({
   sections,
   inlineEditing = false,
   onInlineEdit,
+  selectedSectionId,
+  onSectionSelect,
+  highlightSelected = true,
 }: {
   sections: PageSection[];
   inlineEditing?: boolean;
   onInlineEdit?: (payload: InlineEditPayload) => void;
+  selectedSectionId?: string | null;
+  onSectionSelect?: SectionSelectHandler;
+  highlightSelected?: boolean;
 }) {
   const sorted = (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const groups = buildSectionGroups(sorted);
@@ -2952,11 +2960,37 @@ export function PageRenderer({
                     maxWidth: `${(span / group.columns) * 100}%`,
                   }
                 : undefined;
+            const stringId = String(sec.id);
+            const isSelected = highlightSelected && selectedSectionId != null && String(selectedSectionId) === stringId;
 
             return (
               <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
-                <InlineSectionContext.Provider value={String(sec.id)}>
-                  <Section type={sec.type} data={sec.data} />
+                <InlineSectionContext.Provider value={stringId}>
+                  <div
+                    data-section-id={stringId}
+                    className={cls(
+                      "cms-canvas-section relative",
+                      onSectionSelect ? "cursor-pointer" : undefined,
+                      isSelected ? "outline outline-2 outline-accent-500/40 outline-offset-4" : "outline outline-1 outline-transparent"
+                    )}
+                    onClick={
+                      onSectionSelect
+                        ? (event) => {
+                            if (event.defaultPrevented) return;
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onSectionSelect(stringId);
+                          }
+                        : undefined
+                    }
+                  >
+                    {isSelected ? (
+                      <div className="pointer-events-none absolute -top-3 left-3 rounded-full border border-accent-500/40 bg-accent-500/20 px-2 py-0.5 text-[10px] text-accent-200 shadow-sm">
+                        Selected
+                      </div>
+                    ) : null}
+                    <Section type={sec.type} data={sec.data} />
+                  </div>
                 </InlineSectionContext.Provider>
               </div>
             );
