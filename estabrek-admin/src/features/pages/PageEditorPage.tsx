@@ -2783,6 +2783,7 @@ export default function PageEditorPage() {
             )}
           </div>
         </div>
+        </div>
 
         {!canvasFullScreen ? (
         <div className="w-full lg:w-[360px] lg:shrink-0 lg:self-start lg:sticky lg:top-4">
