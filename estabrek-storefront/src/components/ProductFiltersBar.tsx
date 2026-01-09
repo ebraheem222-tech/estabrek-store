@@ -1,17 +1,87 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type FacetColor = { name: string; hex?: string | null; count: number };
 type FacetSize = { id: string; name: string; count: number };
 
+// Icons
+const SearchIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+
+const CategoryIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+  </svg>
+);
+
+const SortIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+  </svg>
+);
+
+const PriceIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const ColorIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+  </svg>
+);
+
+const SizeIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+  </svg>
+);
+
+const FilterIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg className="w-4 h-4 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+);
+
 function parseCsv(v: string | null | undefined): string[] {
   if (!v) return [];
-  return v
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  return v.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 function toCsv(arr: string[]): string {
@@ -30,48 +100,6 @@ function uniqCaseInsensitive(arr: string[]): string[] {
   return out;
 }
 
-function Chip({
-  active,
-  onClick,
-  children,
-  title,
-}: {
-  active?: boolean;
-  onClick?: () => void;
-  children: React.ReactNode;
-  title?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={[
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition",
-        "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]",
-        active
-          ? "border-[var(--accent)] bg-[var(--surface-2)]"
-          : "border-[var(--border)]",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Swatch({ hex }: { hex?: string | null }) {
-  if (!hex) {
-    return <span className="h-4 w-4 rounded-full border border-[var(--border)]" />;
-  }
-  const safe = hex.startsWith("#") ? hex : `#${hex}`;
-  return (
-    <span
-      className="h-4 w-4 rounded-full border border-[var(--border)]"
-      style={{ background: safe }}
-    />
-  );
-}
-
 export function ProductFiltersBar({
   colors,
   sizes,
@@ -86,8 +114,12 @@ export function ProductFiltersBar({
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const sp = useSearchParams();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    colors: true,
+    sizes: true,
+  });
 
-  // simple params
   const sortParam = useMemo(() => sp?.get("sort") ?? "latest", [sp]);
   const minPriceParam = useMemo(() => sp?.get("minPrice") ?? "", [sp]);
   const maxPriceParam = useMemo(() => sp?.get("maxPrice") ?? "", [sp]);
@@ -102,18 +134,31 @@ export function ProductFiltersBar({
 
   const selectedSizes = useMemo(() => {
     const v = sp?.get("sizeIds") ?? sp?.get("sizeId");
-    const arr = parseCsv(v);
-    return Array.from(new Set(arr));
+    return Array.from(new Set(parseCsv(v)));
   }, [sp]);
 
-  const hasAny =
-    selectedColors.length > 0 ||
-    selectedSizes.length > 0 ||
-    !!minPriceParam ||
-    !!maxPriceParam ||
-    !!qParam ||
-    inStockParam ||
-    !!categoryIdParam;
+  const selectedCategory = useMemo(() => {
+    return categories.find(c => c.id === categoryIdParam);
+  }, [categories, categoryIdParam]);
+
+  // Build active filters array for tags display
+  const activeFilters = useMemo(() => {
+    const filters: Array<{ type: string; label: string; value: string }> = [];
+    if (qParam) filters.push({ type: "q", label: `بحث: ${qParam}`, value: qParam });
+    if (selectedCategory) filters.push({ type: "categoryId", label: selectedCategory.name, value: categoryIdParam });
+    if (inStockParam) filters.push({ type: "inStock", label: "متوفر فقط", value: "1" });
+    if (minPriceParam) filters.push({ type: "minPrice", label: `من: ₪${minPriceParam}`, value: minPriceParam });
+    if (maxPriceParam) filters.push({ type: "maxPrice", label: `إلى: ₪${maxPriceParam}`, value: maxPriceParam });
+    selectedColors.forEach(c => filters.push({ type: "color", label: c, value: c }));
+    selectedSizes.forEach(s => {
+      const size = sizes.find(sz => sz.id === s);
+      filters.push({ type: "size", label: size?.name || s, value: s });
+    });
+    return filters;
+  }, [qParam, selectedCategory, categoryIdParam, inStockParam, minPriceParam, maxPriceParam, selectedColors, selectedSizes, sizes]);
+
+  const activeFiltersCount = activeFilters.length;
+  const hasAny = activeFiltersCount > 0;
 
   function push(next: URLSearchParams) {
     if (!pathname) return;
@@ -121,33 +166,45 @@ export function ProductFiltersBar({
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
+  function removeFilter(type: string, value: string) {
+    const next = new URLSearchParams(sp?.toString() ?? "");
+    if (type === "color") {
+      const cur = uniqCaseInsensitive(parseCsv(next.get("colors")));
+      const updated = cur.filter(c => c.toLowerCase() !== value.toLowerCase());
+      if (updated.length) next.set("colors", toCsv(updated));
+      else next.delete("colors");
+    } else if (type === "size") {
+      const cur = Array.from(new Set(parseCsv(next.get("sizeIds"))));
+      const updated = cur.filter(s => s !== value);
+      if (updated.length) next.set("sizeIds", toCsv(updated));
+      else next.delete("sizeIds");
+    } else {
+      next.delete(type);
+    }
+    next.set("page", "1");
+    push(next);
+  }
+
   function toggleColor(name: string) {
     const next = new URLSearchParams(sp?.toString() ?? "");
-    next.delete("color"); // legacy
+    next.delete("color");
     const cur = uniqCaseInsensitive(parseCsv(next.get("colors")));
     const exists = cur.some((c) => c.toLowerCase() === name.toLowerCase());
-    const updated = exists
-      ? cur.filter((c) => c.toLowerCase() !== name.toLowerCase())
-      : [...cur, name];
-
+    const updated = exists ? cur.filter((c) => c.toLowerCase() !== name.toLowerCase()) : [...cur, name];
     if (updated.length) next.set("colors", toCsv(updated));
     else next.delete("colors");
-
-    // changing filters should reset pagination only
     next.set("page", "1");
     push(next);
   }
 
   function toggleSize(id: string) {
     const next = new URLSearchParams(sp?.toString() ?? "");
-    next.delete("sizeId"); // legacy
+    next.delete("sizeId");
     const cur = Array.from(new Set(parseCsv(next.get("sizeIds"))));
     const exists = cur.includes(id);
     const updated = exists ? cur.filter((s) => s !== id) : [...cur, id];
-
     if (updated.length) next.set("sizeIds", toCsv(updated));
     else next.delete("sizeIds");
-
     next.set("page", "1");
     push(next);
   }
@@ -163,173 +220,360 @@ export function ProductFiltersBar({
 
   function clearAll() {
     const next = new URLSearchParams(sp?.toString() ?? "");
-    next.delete("colors");
-    next.delete("sizeIds");
-    next.delete("color");
-    next.delete("sizeId");
-    next.delete("page");
-    next.delete("sort");
-    next.delete("minPrice");
-    next.delete("maxPrice");
-    next.delete("q");
-    next.delete("inStock");
-    next.delete("categoryId");
+    ["colors", "sizeIds", "color", "sizeId", "page", "sort", "minPrice", "maxPrice", "q", "inStock", "categoryId"].forEach(k => next.delete(k));
     push(next);
   }
 
-  return (
-    <div className={["space-y-3", className ?? ""].join(" ")}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-[var(--text)]">Filters</div>
-        {hasAny ? (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-sm text-[var(--muted)] hover:text-[var(--text)]"
-          >
-            Clear
-          </button>
-        ) : null}
+  function toggleSection(section: string) {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  }
+
+  const filtersContent = (
+    <div className="space-y-5">
+      {/* Active Filter Tags */}
+      {hasAny && (
+        <div className="filter-tags">
+          {activeFilters.map((filter, idx) => (
+            <span key={`${filter.type}-${filter.value}-${idx}`} className="filter-tag">
+              {filter.label}
+              <button
+                type="button"
+                onClick={() => removeFilter(filter.type, filter.value)}
+                className="filter-tag-remove"
+              >
+                <XIcon />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search Input */}
+      <div className="filter-section">
+        <label className="filter-label">
+          <SearchIcon />
+          بحث
+        </label>
+        <div className="relative">
+          <input
+            className="filter-input pr-10"
+            value={qParam}
+            onChange={(e) => setSimple("q", e.target.value)}
+            placeholder="ابحث عن منتج..."
+          />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
+            <SearchIcon />
+          </div>
+        </div>
       </div>
 
-
-      <div className="grid gap-3 sm:grid-cols-3">
-  <div className="space-y-1 sm:col-span-1">
-    <div className="text-xs text-[var(--muted)]">بحث</div>
-    <input
-      className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] placeholder:text-[var(--muted)]"
-      value={qParam}
-      onChange={(e) => setSimple("q", e.target.value)}
-      placeholder="ابحث عن منتج..."
-    />
-  </div>
-
-  <div className="space-y-1 sm:col-span-1">
-    <div className="text-xs text-[var(--muted)]">التصنيف</div>
-    <select
-      className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-      value={categoryIdParam}
-      onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
-    >
-      <option value="">الكل</option>
-      {categories
-        .filter((c) => !c.parentId)
-        .map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-    </select>
-  </div>
-
-  <div className="space-y-1 sm:col-span-1">
-    <div className="text-xs text-[var(--muted)]">المتوفر فقط</div>
-    <button
-      type="button"
-      onClick={() => setSimple("inStock", inStockParam ? undefined : "1")}
-      className={[
-        "h-10 w-full rounded-xl border px-3 text-sm text-start",
-        inStockParam
-          ? "border-[var(--accent)] bg-[var(--surface-2)] text-[var(--text)]"
-          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]",
-      ].join(" ")}
-    >
-      {inStockParam ? "مفعل" : "غير مفعل"}
-    </button>
-  </div>
-</div>
-
-<div className="grid gap-3 sm:grid-cols-3">
-
-        <div className="space-y-1">
-          <div className="text-xs text-[var(--muted)]">Sort</div>
+      {/* Category & Sort Row */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="filter-section">
+          <label className="filter-label">
+            <CategoryIcon />
+            التصنيف
+          </label>
           <select
-            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-            value={sortParam}
-            onChange={(e) => setSimple("sort", e.target.value)}
+            className="filter-select"
+            value={categoryIdParam}
+            onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
           >
-            <option value="latest">Latest</option>
-            <option value="title_asc">Title A→Z</option>
-            <option value="title_desc">Title Z→A</option>
-            <option value="price_asc">Price Low→High</option>
-            <option value="price_desc">Price High→Low</option>
+            <option value="">جميع التصنيفات</option>
+            {categories.filter((c) => !c.parentId).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
           </select>
         </div>
 
-        <div className="space-y-1">
-          <div className="text-xs text-[var(--muted)]">Min price</div>
-          <input
-            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-            value={minPriceParam}
-            onChange={(e) => setSimple("minPrice", e.target.value)}
-            inputMode="numeric"
-            dir="ltr"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <div className="text-xs text-[var(--muted)]">Max price</div>
-          <input
-            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-            value={maxPriceParam}
-            onChange={(e) => setSimple("maxPrice", e.target.value)}
-            inputMode="numeric"
-            dir="ltr"
-          />
+        <div className="filter-section">
+          <label className="filter-label">
+            <SortIcon />
+            الترتيب
+          </label>
+          <select
+            className="filter-select"
+            value={sortParam}
+            onChange={(e) => setSimple("sort", e.target.value)}
+          >
+            <option value="latest">الأحدث</option>
+            <option value="title_asc">العنوان أ→ي</option>
+            <option value="title_desc">العنوان ي→أ</option>
+            <option value="price_asc">السعر: الأقل أولاً</option>
+            <option value="price_desc">السعر: الأعلى أولاً</option>
+          </select>
         </div>
       </div>
 
-
-      {colors.length ? (
-        <div>
-          <div className="mb-2 text-xs font-medium text-[var(--muted)]">
-            Color
+      {/* Price Range */}
+      <div className="filter-section">
+        <label className="filter-label">
+          <PriceIcon />
+          نطاق السعر
+        </label>
+        <div className="price-range-container">
+          <div className="relative flex-1">
+            <input
+              className="price-range-input"
+              value={minPriceParam}
+              onChange={(e) => setSimple("minPrice", e.target.value)}
+              placeholder="الحد الأدنى"
+              inputMode="numeric"
+              dir="ltr"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">₪</span>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {colors.map((c) => {
-              const active = selectedColors.some(
-                (x) => x.toLowerCase() === c.name.toLowerCase()
-              );
-              return (
-                <Chip
-                  key={c.name}
-                  active={active}
-                  onClick={() => toggleColor(c.name)}
-                  title={`${c.name} (${c.count})`}
-                >
-                  <Swatch hex={c.hex} />
-                  <span className="whitespace-nowrap">{c.name}</span>
-                  <span className="text-xs text-[var(--muted)]">({c.count})</span>
-                </Chip>
-              );
-            })}
+          <div className="flex items-center justify-center w-8">
+            <span className="price-range-separator">—</span>
           </div>
-        </div>
-      ) : null}
-
-      {sizes.length ? (
-        <div>
-          <div className="mb-2 text-xs font-medium text-[var(--muted)]">
-            Size
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {sizes.map((s) => {
-              const active = selectedSizes.includes(s.id);
-              return (
-                <Chip
-                  key={s.id}
-                  active={active}
-                  onClick={() => toggleSize(s.id)}
-                  title={`${s.name} (${s.count})`}
-                >
-                  <span className="whitespace-nowrap">{s.name}</span>
-                  <span className="text-xs text-[var(--muted)]">({s.count})</span>
-                </Chip>
-              );
-            })}
+          <div className="relative flex-1">
+            <input
+              className="price-range-input"
+              value={maxPriceParam}
+              onChange={(e) => setSimple("maxPrice", e.target.value)}
+              placeholder="الحد الأقصى"
+              inputMode="numeric"
+              dir="ltr"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">₪</span>
           </div>
         </div>
-      ) : null}
+      </div>
+
+      {/* In Stock Toggle */}
+      <div className="filter-section">
+        <button
+          type="button"
+          onClick={() => setSimple("inStock", inStockParam ? undefined : "1")}
+          className={`filter-toggle ${inStockParam ? "active" : ""}`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+              inStockParam 
+                ? "bg-[var(--accent)] border-[var(--accent)]" 
+                : "border-white/20 bg-transparent"
+            }`}>
+              {inStockParam && <CheckIcon />}
+            </div>
+            <span className="font-medium">المتوفر فقط</span>
+          </div>
+          <span className="filter-toggle-indicator" />
+        </button>
+      </div>
+
+      {/* Colors Accordion */}
+      {colors.length > 0 && (
+        <div className={`filter-accordion ${expandedSections.colors ? "open" : ""}`}>
+          <button
+            type="button"
+            className="filter-accordion-header"
+            onClick={() => toggleSection("colors")}
+          >
+            <div className="flex items-center gap-2">
+              <ColorIcon />
+              <span className="font-medium">الألوان</span>
+              {selectedColors.length > 0 && (
+                <span className="active-filters-count">{selectedColors.length}</span>
+              )}
+            </div>
+            <div className={`transition-transform duration-300 ${expandedSections.colors ? "rotate-180" : ""}`}>
+              <ChevronDownIcon />
+            </div>
+          </button>
+          <div className={`filter-accordion-content ${expandedSections.colors ? "expanded" : ""}`}>
+            <div className="filter-accordion-body">
+              <div className="color-chips-container">
+                {colors.map((c) => {
+                  const active = selectedColors.some((x) => x.toLowerCase() === c.name.toLowerCase());
+                  const hex = c.hex?.startsWith("#") ? c.hex : c.hex ? `#${c.hex}` : null;
+                  return (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => toggleColor(c.name)}
+                      className={`color-chip ${active ? "active" : ""}`}
+                    >
+                      <span 
+                        className="color-chip-swatch" 
+                        style={{ background: hex ?? "linear-gradient(135deg, #ddd, #888)" }} 
+                      />
+                      <span>{c.name}</span>
+                      <span className="color-chip-count">({c.count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sizes Accordion */}
+      {sizes.length > 0 && (
+        <div className={`filter-accordion ${expandedSections.sizes ? "open" : ""}`}>
+          <button
+            type="button"
+            className="filter-accordion-header"
+            onClick={() => toggleSection("sizes")}
+          >
+            <div className="flex items-center gap-2">
+              <SizeIcon />
+              <span className="font-medium">المقاسات</span>
+              {selectedSizes.length > 0 && (
+                <span className="active-filters-count">{selectedSizes.length}</span>
+              )}
+            </div>
+            <div className={`transition-transform duration-300 ${expandedSections.sizes ? "rotate-180" : ""}`}>
+              <ChevronDownIcon />
+            </div>
+          </button>
+          <div className={`filter-accordion-content ${expandedSections.sizes ? "expanded" : ""}`}>
+            <div className="filter-accordion-body">
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((s) => {
+                  const active = selectedSizes.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleSize(s.id)}
+                      className={`size-chip ${active ? "active" : ""}`}
+                    >
+                      {s.name}
+                      <span className="text-xs opacity-60 mr-1">({s.count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className={className} dir="rtl">
+      {/* Mobile Filter Toggle */}
+      <button 
+        type="button" 
+        onClick={() => setMobileOpen(true)} 
+        className="mobile-filter-toggle md:hidden"
+      >
+        <FilterIcon />
+        <span>الفلاتر</span>
+        {activeFiltersCount > 0 && (
+          <span className="active-filters-count">{activeFiltersCount}</span>
+        )}
+      </button>
+
+      {/* Desktop Filters */}
+      <div className="filters-container hidden md:block">
+        <div className="filters-header">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+              <FilterIcon />
+            </div>
+            <div>
+              <h3 className="font-bold text-[var(--text)]">الفلاتر</h3>
+              {activeFiltersCount > 0 && (
+                <p className="text-xs text-[var(--muted)]">{activeFiltersCount} فلتر نشط</p>
+              )}
+            </div>
+          </div>
+          {hasAny && (
+            <button type="button" onClick={clearAll} className="clear-filters-btn">
+              <TrashIcon />
+              مسح الكل
+            </button>
+          )}
+        </div>
+        {filtersContent}
+      </div>
+
+      {/* Mobile Filters Modal */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            onClick={() => setMobileOpen(false)} 
+          />
+          <div 
+            className="absolute inset-y-0 right-0 w-full max-w-sm bg-[var(--surface)] overflow-y-auto"
+            style={{ animation: "slideInRight 0.3s ease" }}
+          >
+            {/* Mobile Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/10 bg-[var(--surface)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+                  <FilterIcon />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[var(--text)]">الفلاتر</h3>
+                  {activeFiltersCount > 0 && (
+                    <p className="text-xs text-[var(--muted)]">{activeFiltersCount} فلتر نشط</p>
+                  )}
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setMobileOpen(false)} 
+                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[var(--text)] hover:bg-white/10 transition-colors"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {/* Mobile Content */}
+            <div className="p-4">
+              {filtersContent}
+            </div>
+
+            {/* Mobile Footer */}
+            <div className="sticky bottom-0 p-4 border-t border-white/10 bg-[var(--surface)] flex gap-3">
+              {hasAny && (
+                <button 
+                  type="button" 
+                  onClick={clearAll} 
+                  className="flex-1 py-3 rounded-xl border border-white/10 text-[var(--text)] font-medium hover:bg-white/5 transition-colors"
+                >
+                  مسح الكل
+                </button>
+              )}
+              <button 
+                type="button" 
+                onClick={() => setMobileOpen(false)} 
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 transition-opacity"
+              >
+                عرض النتائج
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        .filter-accordion-content {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s ease;
+        }
+        
+        .filter-accordion-content.expanded {
+          max-height: 500px;
+        }
+      `}</style>
     </div>
   );
 }
