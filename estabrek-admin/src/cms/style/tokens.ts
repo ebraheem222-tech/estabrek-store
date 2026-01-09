@@ -401,6 +401,17 @@ export type TwTokens = {
     after?: DecorLayer;
     preset?: DecorPresetKey;
   };
+
+  /**
+   * Breakpoint overrides (mobile-first).
+   * - base (mobile): top-level tokens (no prefix)
+   * - tablet: md:
+   * - desktop: lg:
+   */
+  responsive?: {
+    tablet?: TwTokens;
+    desktop?: TwTokens;
+  };
 };
 
 // ============================================================

@@ -225,7 +225,16 @@ function hasTypographyOverrides(tokens?: CmsTokens): boolean {
   return false;
 }
 
-export function tokensToClassName(tokens?: CmsTokens): string {
+function prefixClasses(className: string, prefix: string): string {
+  if (!className) return "";
+  return className
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((cls) => `${prefix}:${cls}`)
+    .join(" ");
+}
+
+function tokensToClassNameBase(tokens?: CmsTokens): string {
   if (!tokens) return "";
   const parts: string[] = [];
 
@@ -415,9 +424,26 @@ export function tokensToClassName(tokens?: CmsTokens): string {
   return parts.filter(Boolean).join(" ").trim();
 }
 
+export function tokensToClassName(tokens?: CmsTokens): string {
+  if (!tokens) return "";
+  const base = tokensToClassNameBase(tokens);
+  const responsive = (tokens as any)?.responsive as { tablet?: CmsTokens; desktop?: CmsTokens } | undefined;
+  if (!responsive) return base;
+
+  const parts = [base];
+  if (responsive.tablet) {
+    parts.push(prefixClasses(tokensToClassNameBase(responsive.tablet), "md"));
+  }
+  if (responsive.desktop) {
+    parts.push(prefixClasses(tokensToClassNameBase(responsive.desktop), "lg"));
+  }
+  return parts.filter(Boolean).join(" ").trim();
+}
+
 export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefined {
   if (!tokens) return undefined;
   const style: CSSProperties = {};
+  const hasResponsiveOverrides = !!(tokens.responsive && (tokens.responsive.tablet || tokens.responsive.desktop));
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string; borderCustomColor?: string }) | undefined;
   const textTokens = tokens.typography as (TwTokens["typography"] & { colorCustom?: string }) | undefined;
   const motionTokens = tokens.motion;
@@ -450,47 +476,49 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
     if (gradient) (style as Record<string, string>)["--cms-text-gradient"] = gradient;
   }
 
-  // spacing (inline to reliably override hard-coded padding/margins)
-  const padding = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.padding);
-  if (padding !== undefined) style.padding = padding;
-  const paddingX = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingX);
-  if (paddingX !== undefined) {
-    style.paddingLeft = paddingX;
-    style.paddingRight = paddingX;
-  }
-  const paddingY = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingY);
-  if (paddingY !== undefined) {
-    style.paddingTop = paddingY;
-    style.paddingBottom = paddingY;
-  }
-  const paddingTop = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingTop);
-  if (paddingTop !== undefined) style.paddingTop = paddingTop;
-  const paddingBottom = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingBottom);
-  if (paddingBottom !== undefined) style.paddingBottom = paddingBottom;
+  // spacing (avoid inline when responsive overrides exist to allow breakpoint classes)
+  if (!hasResponsiveOverrides) {
+    const padding = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.padding);
+    if (padding !== undefined) style.padding = padding;
+    const paddingX = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingX);
+    if (paddingX !== undefined) {
+      style.paddingLeft = paddingX;
+      style.paddingRight = paddingX;
+    }
+    const paddingY = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingY);
+    if (paddingY !== undefined) {
+      style.paddingTop = paddingY;
+      style.paddingBottom = paddingY;
+    }
+    const paddingTop = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingTop);
+    if (paddingTop !== undefined) style.paddingTop = paddingTop;
+    const paddingBottom = resolvePresetSpacingValue(PADDING_VALUE_MAP, spacingTokens?.paddingBottom);
+    if (paddingBottom !== undefined) style.paddingBottom = paddingBottom;
 
-  const gap = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gap);
-  if (gap !== undefined) style.gap = gap;
-  const gapX = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gapX);
-  if (gapX !== undefined) style.columnGap = gapX;
-  const gapY = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gapY);
-  if (gapY !== undefined) style.rowGap = gapY;
+    const gap = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gap);
+    if (gap !== undefined) style.gap = gap;
+    const gapX = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gapX);
+    if (gapX !== undefined) style.columnGap = gapX;
+    const gapY = resolvePresetSpacingValue(GAP_VALUE_MAP, spacingTokens?.gapY);
+    if (gapY !== undefined) style.rowGap = gapY;
 
-  const margin = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.margin);
-  if (margin !== undefined) style.margin = margin;
-  const marginX = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginX);
-  if (marginX !== undefined) {
-    style.marginLeft = marginX;
-    style.marginRight = marginX;
+    const margin = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.margin);
+    if (margin !== undefined) style.margin = margin;
+    const marginX = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginX);
+    if (marginX !== undefined) {
+      style.marginLeft = marginX;
+      style.marginRight = marginX;
+    }
+    const marginY = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginY);
+    if (marginY !== undefined) {
+      style.marginTop = marginY;
+      style.marginBottom = marginY;
+    }
+    const marginTop = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginTop);
+    if (marginTop !== undefined) style.marginTop = marginTop;
+    const marginBottom = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginBottom);
+    if (marginBottom !== undefined) style.marginBottom = marginBottom;
   }
-  const marginY = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginY);
-  if (marginY !== undefined) {
-    style.marginTop = marginY;
-    style.marginBottom = marginY;
-  }
-  const marginTop = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginTop);
-  if (marginTop !== undefined) style.marginTop = marginTop;
-  const marginBottom = resolvePresetSpacingValue(MARGIN_VALUE_MAP, spacingTokens?.marginBottom);
-  if (marginBottom !== undefined) style.marginBottom = marginBottom;
 
   if (sizeTokens?.width) style.width = resolveSizeValue(sizeTokens.width, "width");
   if (sizeTokens?.minW) style.minWidth = resolveSizeValue(sizeTokens.minW, "width");
