@@ -7,6 +7,8 @@ import sharp from "sharp";
 import { extractDominantAndPaletteFromFile, autoGroupByColor, nameColor, rgbToHex } from "../../lib/colorAnalysis.js";
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
+import { indexProductImageEmbedding } from "../../lib/productImageEmbeddings.js";
+import { indexProductTextEmbedding } from "../../lib/productTextEmbeddings.js";
 import { validate } from "../../utils/validate.js";
 import { asyncHandler } from "../../utils/async.js";
 import {
@@ -136,6 +138,10 @@ r.post("/products", validate({ body: CreateProductBody }), asyncHandler(async (r
     });
 
     return product;
+  });
+
+  void indexProductTextEmbedding(created.id).catch((err: any) => {
+    console.warn("[product-embedding] failed", created.id, err?.message ?? err);
   });
 
   res.status(201).json(created);
@@ -390,6 +396,12 @@ r.get("/products/:id", asyncHandler(async (req, res) => {
 
 r.patch("/products/:id", validate({ body: UpdateProductBody }), asyncHandler(async (req, res) => {
   const out = await prisma.product.update({ where: { id: req.params.id }, data: req.body });
+  const shouldIndex = ["title", "description", "categoryId", "slug"].some((key) => key in (req.body ?? {}));
+  if (shouldIndex) {
+    void indexProductTextEmbedding(out.id).catch((err: any) => {
+      console.warn("[product-embedding] failed", out.id, err?.message ?? err);
+    });
+  }
   res.json(out);
 }));
 
@@ -517,6 +529,9 @@ r.delete("/variants/:id", asyncHandler(async (req, res) => {
 /* ========== Images ========== */
 r.post("/images", validate({ body: AddImageBody }), asyncHandler(async (req, res) => {
   const out = await prisma.productItemImage.create({ data: req.body });
+  void indexProductImageEmbedding(out.id).catch((err: any) => {
+    console.warn("[image-embedding] failed", out.id, err?.message ?? err);
+  });
   res.status(201).json(out);
 }));
 r.patch("/images/:id", validate({ body: UpdateImageBody }), asyncHandler(async (req, res) => {
@@ -827,6 +842,7 @@ r.post(
         | null;
     }>;
 
+    const createdImageIds: string[] = [];
     const result = await prisma.$transaction(async (tx) => {
       const createdItems: any[] = [];
 
@@ -860,7 +876,7 @@ r.post(
           const rel = `/uploads/images/${a.filename}`;
           const url = makePublicUrl(req, rel);
 
-          await tx.productItemImage.create({
+          const createdImg = await tx.productItemImage.create({
             data: {
               productItemId: item.id,
               url,
@@ -872,6 +888,7 @@ r.post(
               palette: (a as any).palette ?? null,
             },
           });
+          createdImageIds.push(createdImg.id);
 
           // move media asset out of pending folder
           const nextTags = (a.tags || []).filter((t) => t !== "pending");
@@ -938,6 +955,12 @@ r.post(
       return { createdItems };
     });
 
+    for (const id of createdImageIds) {
+      void indexProductImageEmbedding(id).catch((err: any) => {
+        console.warn("[image-embedding] failed", id, err?.message ?? err);
+      });
+    }
+
     res.json({ ok: true, ...result });
   })
 );
@@ -956,6 +979,9 @@ r.put(
   validate({ body: ProductDeepUpdateBody }),
   asyncHandler(async (req, res) => {
     const out = await updateProductDeep(req.params.id, req.body, { adminUserId: req.user?.sub ?? null, reason: "Product full edit" });
+    void indexProductTextEmbedding(req.params.id).catch((err: any) => {
+      console.warn("[product-embedding] failed", req.params.id, err?.message ?? err);
+    });
     res.json(out);
   })
 );

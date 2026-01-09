@@ -46,6 +46,7 @@ const EnvSchema = z.object({
   RATE_LIMIT_AUTH_WINDOW_MS: z.coerce.number().default(60_000),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().default(20),
   RATE_LIMIT_USE_REDIS: Boolish,
+  RATE_LIMIT_MEMORY_MAX_KEYS: z.coerce.number().int().min(1_000).default(50_000),
 
   // Body size limits
   BODY_JSON_LIMIT: z.string().default("2mb"),
@@ -67,6 +68,14 @@ const EnvSchema = z.object({
 
   // Optional: trust proxy for real client IP behind reverse proxies
   TRUST_PROXY: Boolish,
+
+  // IP allow/block lists (comma-separated IPs or CIDRs)
+  IP_ALLOWLIST: z.string().default(""),
+  IP_BLOCKLIST: z.string().default(""),
+  ADMIN_IP_ALLOWLIST: z.string().default(""),
+  ADMIN_IP_BLOCKLIST: z.string().default(""),
+  WEBHOOK_IP_ALLOWLIST: z.string().default(""),
+  WEBHOOK_IP_BLOCKLIST: z.string().default(""),
 
   // HTTPS + CSRF hardening
   ENFORCE_HTTPS: Boolish,

@@ -2,6 +2,8 @@
 import { prisma } from "../../lib/prisma.js";
 import type { Prisma } from "@prisma/client";
 import { annotateLinesWithDiscount } from "../../utils/money.js";
+import { openaiEmbedText } from "../../lib/openai.js";
+import { scoreTextMatch } from "../../lib/searchText.js";
 
 function parseCsv(v?: string | null): string[] | undefined {
   if (!v) return undefined;
@@ -10,6 +12,177 @@ function parseCsv(v?: string | null): string[] | undefined {
     .map((s) => s.trim())
     .filter(Boolean);
   return arr.length ? Array.from(new Set(arr)) : undefined;
+}
+
+const baseProductSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  isActive: true,
+  categoryId: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
+const SEMANTIC_MIN_QUERY_LENGTH = 3;
+const SEMANTIC_MAX_CANDIDATES = 2000;
+const SEMANTIC_MAX_RESULTS = 1200;
+
+type SemanticCandidate = {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  embedding?: any;
+  category?: { name?: string | null } | null;
+};
+
+function asVector(v: unknown): number[] | null {
+  if (!Array.isArray(v)) return null;
+  const arr = v.map((x) => Number(x));
+  if (arr.some((n) => !Number.isFinite(n))) return null;
+  return arr;
+}
+
+function cosineSimilarity(a: number[], b: number[]) {
+  if (a.length !== b.length || a.length === 0) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    const av = a[i]!;
+    const bv = b[i]!;
+    dot += av * bv;
+    normA += av * av;
+    normB += bv * bv;
+  }
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  return denom ? dot / denom : 0;
+}
+
+function minScoreForQuery(query: string) {
+  const len = query.trim().length;
+  if (len < 4) return 0.2;
+  if (len < 8) return 0.16;
+  return 0.12;
+}
+
+function buildCandidateText(c: SemanticCandidate): string {
+  return [c.title, c.description, c.slug, c.category?.name].filter(Boolean).join(" ");
+}
+
+function rankSemanticCandidates(query: string, queryEmbedding: number[], candidates: SemanticCandidate[]) {
+  const ranked: Array<{ id: string; score: number }> = [];
+  for (const c of candidates) {
+    const text = buildCandidateText(c);
+    const lexicalScore = scoreTextMatch(query, text);
+    const titleScore = scoreTextMatch(query, c.title);
+
+    let semanticScore = 0;
+    let hasEmbedding = false;
+    const vec = asVector(c.embedding);
+    if (vec && vec.length === queryEmbedding.length) {
+      semanticScore = cosineSimilarity(queryEmbedding, vec);
+      hasEmbedding = true;
+    }
+
+    let score = 0;
+    if (hasEmbedding) {
+      score = semanticScore * 0.7 + lexicalScore * 0.2 + titleScore * 0.1;
+    } else {
+      score = Math.max(lexicalScore, titleScore * 0.9);
+    }
+
+    if (!Number.isFinite(score) || score <= 0) continue;
+    ranked.push({ id: c.id, score });
+  }
+
+  ranked.sort((a, b) => b.score - a.score);
+  return ranked;
+}
+
+async function buildFacetsForProductIds(args: {
+  productIds: string[];
+  itemWhereNoColor: Prisma.ProductItemWhereInput;
+  itemWhereNoSize: Prisma.ProductItemWhereInput;
+  minPrice?: number;
+  maxPrice?: number;
+  colorsArr?: string[];
+  sizeArr?: string[];
+}) {
+  const ids = Array.from(new Set(args.productIds.map((id) => String(id)).filter(Boolean)));
+  if (!ids.length) {
+    return {
+      colors: [],
+      sizes: [],
+      selected: {
+        colors: args.colorsArr ?? [],
+        sizeIds: args.sizeArr ?? [],
+      },
+    };
+  }
+
+  const colorRows = await prisma.productItem.groupBy({
+    by: ["colorName", "colorHex"],
+    where: {
+      AND: [
+        args.itemWhereNoColor,
+        { productId: { in: ids } },
+      ],
+    },
+    _count: { _all: true },
+  });
+
+  const price: Prisma.DecimalFilter<"ProductVariant"> = {};
+  if (args.minPrice != null) price.gte = args.minPrice;
+  if (args.maxPrice != null) price.lte = args.maxPrice;
+  const hasPrice = args.minPrice != null || args.maxPrice != null;
+
+  const sizeRows = await prisma.productVariant.groupBy({
+    by: ["sizeId"],
+    where: {
+      ...(hasPrice ? { price } : {}),
+      item: {
+        AND: [
+          args.itemWhereNoSize,
+          { productId: { in: ids } },
+        ],
+      },
+    },
+    _count: { _all: true },
+  });
+
+  const sizeIds = sizeRows.map((r) => r.sizeId);
+  const sizes = sizeIds.length
+    ? await prisma.size.findMany({
+        where: { id: { in: sizeIds }, active: true },
+        select: { id: true, name: true, order: true },
+      })
+    : [];
+  const sizeById = new Map(sizes.map((s) => [s.id, s]));
+
+  return {
+    colors: colorRows
+      .map((r) => ({
+        name: r.colorName,
+        colorHex: r.colorHex,
+        count: r._count._all,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+    sizes: sizeRows
+      .map((r) => ({
+        id: r.sizeId,
+        name: sizeById.get(r.sizeId)?.name ?? r.sizeId,
+        order: sizeById.get(r.sizeId)?.order ?? 0,
+        count: r._count._all,
+      }))
+      .sort((a, b) => b.count - a.count || a.order - b.order || a.name.localeCompare(b.name)),
+    selected: {
+      colors: args.colorsArr ?? [],
+      sizeIds: args.sizeArr ?? [],
+    },
+  };
 }
 
 function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string }): Prisma.ProductWhereInput {
@@ -133,6 +306,86 @@ function buildProductsWhere(input: {
   return { productWhere, baseProductWhere, itemWhereFull, itemWhereNoColor, itemWhereNoSize, colorsArr, sizeArr };
 }
 
+async function listProductsSemantic(params: {
+  q?: string;
+  category?: string;
+  categoryId?: string;
+  inStock?: boolean;
+  color?: string;
+  sizeId?: string;
+  colors?: string;
+  sizeIds?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  page: number;
+  pageSize: number;
+  limit?: number;
+}) {
+  const query = params.q?.trim() ?? "";
+  if (!query || query.length < SEMANTIC_MIN_QUERY_LENGTH) return null;
+
+  const embedded = await openaiEmbedText(query);
+  if (!embedded.ok) return null;
+
+  const {
+    productWhere,
+    itemWhereNoColor,
+    itemWhereNoSize,
+    colorsArr,
+    sizeArr,
+  } = buildProductsWhere({ ...params, q: undefined });
+
+  const candidates = await prisma.product.findMany({
+    where: productWhere,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      embedding: true,
+      category: { select: { name: true } },
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: SEMANTIC_MAX_CANDIDATES,
+  });
+
+  if (!candidates.length) return null;
+
+  const ranked = rankSemanticCandidates(query, embedded.embedding, candidates);
+  if (!ranked.length) return null;
+
+  const minScore = minScoreForQuery(query);
+  const filtered = ranked.filter((r) => r.score >= minScore);
+  const finalRanked = (filtered.length ? filtered : ranked).slice(0, SEMANTIC_MAX_RESULTS);
+  const orderedIds = finalRanked.map((r) => r.id);
+  if (!orderedIds.length) return null;
+
+  const pageSize: number = params.limit ?? params.pageSize;
+  const skip = (params.page - 1) * pageSize;
+  const pageIds = orderedIds.slice(skip, skip + pageSize);
+
+  const items = await listProductsByIds(pageIds);
+  const facets = await buildFacetsForProductIds({
+    productIds: orderedIds,
+    itemWhereNoColor,
+    itemWhereNoSize,
+    minPrice: params.minPrice,
+    maxPrice: params.maxPrice,
+    colorsArr,
+    sizeArr,
+  });
+
+  return {
+    items,
+    total: orderedIds.length,
+    page: params.page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(orderedIds.length / pageSize)),
+    facets,
+  };
+}
+
 export async function listProducts(params: {
   q?: string;
   category?: string;
@@ -151,6 +404,14 @@ export async function listProducts(params: {
   pageSize: number;
   limit?: number;
 }) {
+  const sort = params.sort ?? "latest";
+  const query = params.q?.trim() ?? "";
+  const useSemantic = !!query && sort === "latest";
+  if (useSemantic) {
+    const semantic = await listProductsSemantic(params);
+    if (semantic) return semantic;
+  }
+
   const {
     productWhere,
     baseProductWhere,
@@ -162,9 +423,9 @@ export async function listProducts(params: {
 
   const pageSize: number = params.limit ?? params.pageSize;
   const orderBy: Prisma.ProductOrderByWithRelationInput =
-    params.sort === "title_asc"
+    sort === "title_asc"
       ? { title: "asc" }
-      : params.sort === "title_desc"
+      : sort === "title_desc"
       ? { title: "desc" }
       : { createdAt: "desc" };
 
@@ -176,7 +437,8 @@ export async function listProducts(params: {
       orderBy,
       skip,
       take: pageSize,
-      include: {
+      select: {
+        ...baseProductSelect,
         category: true,
         items: {
           where: { isActive: true },
@@ -185,6 +447,16 @@ export async function listProducts(params: {
             images: {
               orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
               take: 2,
+              select: {
+                id: true,
+                url: true,
+                alt: true,
+                position: true,
+                isPrimary: true,
+                view: true,
+                dominantColorHex: true,
+                palette: true,
+              },
             },
             variants: {
               include: { size: true },
@@ -210,9 +482,9 @@ export async function listProducts(params: {
 
   // Optional in-page price sorting (minPrice is computed above)
   const sortedItems =
-    params.sort === "price_asc"
+    sort === "price_asc"
       ? [...items].sort((a, b) => (a.minPrice ?? 0) - (b.minPrice ?? 0) || a.title.localeCompare(b.title))
-      : params.sort === "price_desc"
+      : sort === "price_desc"
       ? [...items].sort((a, b) => (b.minPrice ?? 0) - (a.minPrice ?? 0) || a.title.localeCompare(b.title))
       : items;
 
@@ -293,11 +565,24 @@ export function getProductById(id: string) {
   // `findUnique` cannot include extra filters; use findFirst for id + isActive.
   return prisma.product.findFirst({
     where: { id, isActive: true },
-    include: {
+    select: {
+      ...baseProductSelect,
       category: true,
       items: {
         include: {
-          images: { orderBy: { position: "asc" } },
+          images: {
+            orderBy: { position: "asc" },
+            select: {
+              id: true,
+              url: true,
+              alt: true,
+              position: true,
+              isPrimary: true,
+              view: true,
+              dominantColorHex: true,
+              palette: true,
+            },
+          },
           variants: { include: { size: true } },
         },
         orderBy: { createdAt: "asc" },
@@ -311,11 +596,24 @@ export function getProductById(id: string) {
 export function getProductBySlug(slug: string) {
   return prisma.product.findFirst({
     where: { slug, isActive: true },
-    include: {
+    select: {
+      ...baseProductSelect,
       category: true,
       items: {
         include: {
-          images: { orderBy: { position: "asc" } },
+          images: {
+            orderBy: { position: "asc" },
+            select: {
+              id: true,
+              url: true,
+              alt: true,
+              position: true,
+              isPrimary: true,
+              view: true,
+              dominantColorHex: true,
+              palette: true,
+            },
+          },
           variants: { include: { size: true } },
         },
         orderBy: { createdAt: "asc" },
@@ -352,7 +650,19 @@ export function listProductItems(productId: string) {
   return prisma.productItem.findMany({
     where: { productId, isActive: true },
     include: {
-      images: { orderBy: { position: "asc" } },
+      images: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          url: true,
+          alt: true,
+          position: true,
+          isPrimary: true,
+          view: true,
+          dominantColorHex: true,
+          palette: true,
+        },
+      },
       variants: { include: { size: true } },
     },
     orderBy: { createdAt: "asc" },
@@ -362,7 +672,26 @@ export function listProductItems(productId: string) {
 export function getVariant(id: string) {
   return prisma.productVariant.findUnique({
     where: { id },
-    include: { item: { include: { product: true, images: true } }, size: true },
+    include: {
+      item: {
+        include: {
+          product: true,
+          images: {
+            select: {
+              id: true,
+              url: true,
+              alt: true,
+              position: true,
+              isPrimary: true,
+              view: true,
+              dominantColorHex: true,
+              palette: true,
+            },
+          },
+        },
+      },
+      size: true,
+    },
   });
 }
 
@@ -370,7 +699,70 @@ export function listProductImages(productId: string) {
   return prisma.productItemImage.findMany({
     where: { item: { productId } },
     orderBy: [{ isPrimary: "desc" }, { position: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      productItemId: true,
+      url: true,
+      alt: true,
+      position: true,
+      isPrimary: true,
+      createdAt: true,
+      view: true,
+      dominantColorHex: true,
+      palette: true,
+    },
   });
+}
+
+export async function listProductsByIds(ids: string[]) {
+  const clean = ids.map((x) => String(x)).filter(Boolean);
+  if (!clean.length) return [];
+
+  const products = await prisma.product.findMany({
+    where: { id: { in: clean }, isActive: true },
+    select: {
+      ...baseProductSelect,
+      category: true,
+      items: {
+        where: { isActive: true },
+        include: {
+          images: {
+            orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+            take: 2,
+            select: {
+              id: true,
+              url: true,
+              alt: true,
+              position: true,
+              isPrimary: true,
+              view: true,
+              dominantColorHex: true,
+              palette: true,
+            },
+          },
+          variants: {
+            include: { size: true },
+            orderBy: { size: { order: "asc" } },
+          },
+        },
+      },
+    },
+  });
+
+  const items = products.map((p) => {
+    let minPrice: number | null = null;
+    for (const it of p.items ?? []) {
+      for (const v of it.variants ?? []) {
+        const price = num((v as any).price);
+        if (price == null) continue;
+        if (minPrice == null || price < minPrice) minPrice = price;
+      }
+    }
+    return { ...p, minPrice };
+  });
+
+  const byId = new Map(items.map((p) => [p.id, p]));
+  return clean.map((id) => byId.get(id)).filter(Boolean);
 }
 
 export function createReview(productId: string, data: { rating: number; title?: string; body: string; userId?: string }) {

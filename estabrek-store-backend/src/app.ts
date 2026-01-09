@@ -15,7 +15,8 @@ import { securityHeaders } from "./middleware/securityHeaders.js";
 import { httpsOnly } from "./middleware/httpsOnly.js";
 import { originGuard } from "./middleware/originGuard.js";
 import { csrfGuard } from "./middleware/csrf.js";
-import webhooksRouter from "./routes/webhooks.route.js"; // عدّل المسار حسب مشروعك
+import { ipAccess } from "./middleware/ipAccess.js";
+import webhooksRouter from "./routes/webhooks.route.js"; // ???? ?????? ??? ??????
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use(securityHeaders);
 app.use(httpsOnly);
 app.use(cors({ origin: corsOrigins, credentials: true }));
 app.use(cookieParser());
+app.use(ipAccess);
 app.use(originGuard);
 app.use(rateLimit);
 app.use(csrfGuard);

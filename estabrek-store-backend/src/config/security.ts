@@ -14,7 +14,7 @@ export function signAccessToken(payload: JwtPayloadBase, opts?: Partial<SignOpti
 
 export function verifyAccessToken<T extends JwtPayloadBase = JwtPayloadBase>(token: string): T {
   const secret: Secret = env.JWT_SECRET;
-  return jwt.verify(token, secret) as T;
+  return jwt.verify(token, secret, { algorithms: ["HS256"] }) as T;
 }
 
 // --- TOTP (2FA) helpers ---

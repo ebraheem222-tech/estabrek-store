@@ -1,12 +1,17 @@
 import type { RequestHandler } from "express";
 import { env } from "../config/env.js";
 import { getRedis } from "../lib/redis.js";
+import { normalizeIp } from "../utils/ip.js";
 
 type Bucket = { count: number; resetAt: number };
 
 const pathBuckets = new Map<string, Bucket>();
 const ipBuckets = new Map<string, Bucket>();
 const authBuckets = new Map<string, Bucket>();
+
+const PATH_MAX_SEGMENTS = 12;
+const PATH_MAX_SEGMENT_LEN = 64;
+let lastSweepAt = 0;
 
 const LUA_INCR_EXPIRE = `
 local current = redis.call("INCR", KEYS[1])
@@ -18,6 +23,38 @@ end
 return {current, ttl}
 `;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HEX_RE = /^[0-9a-f]{16,}$/i;
+const NUM_RE = /^\d{6,}$/;
+const TOKEN_RE = /^[a-z0-9_-]{20,}$/i;
+
+function fnv1a32(s: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function normalizePathForKey(path: string) {
+  const rawParts = (path || "/").split("/").filter(Boolean);
+  const parts = rawParts.length > PATH_MAX_SEGMENTS ? rawParts.slice(0, PATH_MAX_SEGMENTS) : rawParts;
+
+  const mapped = parts.map((seg) => {
+    if (!seg) return "";
+    if (seg.length > PATH_MAX_SEGMENT_LEN) return ":seg";
+    if (UUID_RE.test(seg)) return ":uuid";
+    if (HEX_RE.test(seg)) return ":hex";
+    if (NUM_RE.test(seg)) return ":id";
+    if (TOKEN_RE.test(seg)) return ":tok";
+    return seg;
+  });
+
+  const p = `/${mapped.filter(Boolean).join("/")}`;
+  return p || "/";
+}
+
 function getBucket(buckets: Map<string, Bucket>, key: string, now: number, ttl: number) {
   let b = buckets.get(key);
   if (!b || b.resetAt <= now) {
@@ -27,19 +64,58 @@ function getBucket(buckets: Map<string, Bucket>, key: string, now: number, ttl: 
   return b;
 }
 
+function sweepExpired(buckets: Map<string, Bucket>, now: number) {
+  for (const [k, b] of buckets) {
+    if (b.resetAt <= now) buckets.delete(k);
+  }
+  if (buckets.size <= env.RATE_LIMIT_MEMORY_MAX_KEYS) return;
+
+  const over = buckets.size - env.RATE_LIMIT_MEMORY_MAX_KEYS;
+  let i = 0;
+  for (const k of buckets.keys()) {
+    buckets.delete(k);
+    i += 1;
+    if (i >= over) break;
+  }
+}
+
+function maybeSweep(now: number) {
+  const sweepEvery = Math.min(30_000, env.RATE_LIMIT_WINDOW_MS, env.RATE_LIMIT_AUTH_WINDOW_MS);
+  if (now - lastSweepAt < sweepEvery) return;
+  lastSweepAt = now;
+
+  const hardMax = Math.max(env.RATE_LIMIT_MEMORY_MAX_KEYS * 4, 250_000);
+  if (pathBuckets.size > hardMax) pathBuckets.clear();
+  if (ipBuckets.size > hardMax) ipBuckets.clear();
+  if (authBuckets.size > hardMax) authBuckets.clear();
+
+  sweepExpired(pathBuckets, now);
+  sweepExpired(ipBuckets, now);
+  sweepExpired(authBuckets, now);
+}
+
 function isAuthPath(path: string) {
   return path.startsWith("/v1/auth");
 }
 
 export const rateLimit: RequestHandler = (req, res, next) => {
   const now = Date.now();
-  const ip = req.ip || "unknown";
+  maybeSweep(now);
+
+  const ip = normalizeIp(req.ip || "") || "unknown";
+  const normPath = normalizePathForKey(req.path || "/");
+  const pathSig = fnv1a32(`${req.method}:${normPath}`);
 
   const useRedis = env.RATE_LIMIT_USE_REDIS && !!env.REDIS_URL;
   const redis = useRedis ? getRedis() : null;
 
   const runLocal = () => {
-    const pathBucket = getBucket(pathBuckets, `${ip}:${req.path}`, now, env.RATE_LIMIT_WINDOW_MS);
+    const perPathKey = `${ip}:${pathSig}`;
+    const pathKey =
+      pathBuckets.size >= env.RATE_LIMIT_MEMORY_MAX_KEYS && !pathBuckets.has(perPathKey)
+        ? `${ip}:*`
+        : perPathKey;
+    const pathBucket = getBucket(pathBuckets, pathKey, now, env.RATE_LIMIT_WINDOW_MS);
     pathBucket.count += 1;
 
     const ipBucket = getBucket(ipBuckets, ip, now, env.RATE_LIMIT_WINDOW_MS);
@@ -71,6 +147,7 @@ export const rateLimit: RequestHandler = (req, res, next) => {
       (authBucket && authBucket.count > env.RATE_LIMIT_AUTH_MAX)
     ) {
       const retryAt = Math.max(pathBucket.resetAt, ipBucket.resetAt, authBucket?.resetAt ?? 0);
+      res.setHeader("Retry-After", Math.max(1, Math.ceil((retryAt - now) / 1000)).toString());
       return res.status(429).json({ error: "RATE_LIMIT", retryAt });
     }
 
@@ -82,7 +159,7 @@ export const rateLimit: RequestHandler = (req, res, next) => {
   }
 
   const prefix = `${env.REDIS_KEY_PREFIX}:rl`;
-  const pathKey = `${prefix}:path:${ip}:${req.path}`;
+  const pathKey = `${prefix}:path:${ip}:${pathSig}`;
   const ipKey = `${prefix}:ip:${ip}`;
   const authKey = `${prefix}:auth:${ip}`;
 
@@ -125,6 +202,7 @@ export const rateLimit: RequestHandler = (req, res, next) => {
         (authRes && authRes.count > env.RATE_LIMIT_AUTH_MAX)
       ) {
         const retryAt = Math.max(pathResetAt, ipResetAt, authResetAt);
+        res.setHeader("Retry-After", Math.max(1, Math.ceil((retryAt - now) / 1000)).toString());
         return res.status(429).json({ error: "RATE_LIMIT", retryAt });
       }
 
