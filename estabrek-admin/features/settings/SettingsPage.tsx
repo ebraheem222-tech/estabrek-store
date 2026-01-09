@@ -14,6 +14,8 @@ import {
   getWebsiteThemeById,
 } from "../../cms/themes/websiteThemes";
 import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../cms/effects/loadingAnimations";
+import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../cms/style/searchStyles";
+import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../cms/style/cursorStyles";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -36,6 +38,7 @@ type HeaderConfig = {
   heightDesktop?: "compact" | "normal" | "comfortable";
   heightMobile?: "compact" | "normal" | "comfortable";
   searchStyle?: "input" | "icon";
+  searchInputStyleId?: string;
   cartStyle?: "iconBadge" | "icon" | "badge";
   topbar?: {
     enabled?: boolean;
@@ -69,6 +72,8 @@ type HeaderConfig = {
       enabled?: boolean;
       animationId?: string;
     };
+    adminTheme?: Partial<AdminThemeConfig>;
+    cursorThemeId?: CursorThemeId;
   };
 
 };
@@ -83,6 +88,14 @@ type ThemePresetId =
   | "ocean_mist"
   | "desert_sand"
   | "plum_night";
+
+type AdminThemePresetId = "default" | ThemePresetId;
+
+type AdminThemeConfig = {
+  presetId: AdminThemePresetId;
+};
+
+type CursorThemeId = string;
 
 type CustomTheme = {
   id: string;
@@ -166,6 +179,20 @@ function normalizeLoading(v: any): LoadingConfig {
   };
 }
 
+function normalizeAdminTheme(v: any): AdminThemeConfig {
+  const o = safeObj(v);
+  const rawPresetId = typeof o.presetId === "string" ? o.presetId : "default";
+  const presetId =
+    rawPresetId === "default" || isThemePresetId(rawPresetId) ? (rawPresetId as AdminThemePresetId) : "default";
+  return { presetId };
+}
+
+function normalizeCursorThemeId(v: any): CursorThemeId {
+  const raw = typeof v === "string" ? v : "default";
+  if (raw === "default") return "default";
+  return getCursorThemeById(raw) ? raw : "default";
+}
+
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
   const o = safeObj(v);
   const rawWebsiteThemeId = typeof o.websiteThemeId === "string" ? o.websiteThemeId : "default";
@@ -217,11 +244,30 @@ const WEBSITE_THEME_OPTIONS: Array<{ value: string; label: string }> = [
 
 const LOADING_ANIMATION_OPTIONS: Array<{ value: string; label: string }> = ALL_LOADING_ANIMATIONS.map((l) => ({
   value: l.id,
-  label: `${LOADING_CATEGORY_LABELS_AR[l.category] ?? l.category} — ${l.nameAr}`,
+  label: `${LOADING_CATEGORY_LABELS_AR[l.category] ?? l.category} - ${l.nameAr}`,
 }));
+
+const SEARCH_INPUT_STYLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "default", label: "افتراضي" },
+  ...ALL_SEARCH_INPUTS.map((s) => ({
+    value: s.id,
+    label: `${SEARCH_INPUT_CATEGORY_LABELS_AR[s.category] ?? s.category} - ${s.nameAr}`,
+  })),
+];
+
+const CURSOR_THEME_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "default", label: "افتراضي" },
+  ...ALL_CURSOR_THEMES.map((t) => ({
+    value: t.id,
+    label: `${t.nameAr} — ${t.name}`,
+  })),
+];
 
 function normalizeHeader(v: any): HeaderConfig {
   const o = safeObj(v);
+  const rawSearchInputStyleId = typeof o.searchInputStyleId === "string" ? o.searchInputStyleId : "default";
+  const searchInputStyleId =
+    rawSearchInputStyleId === "default" || getSearchInputById(rawSearchInputStyleId) ? rawSearchInputStyleId : "default";
   return {
     ...o,
     preset: (o.preset === "minimal" || o.preset === "centered") ? o.preset : "classic",
@@ -232,6 +278,7 @@ function normalizeHeader(v: any): HeaderConfig {
     heightDesktop: (o.heightDesktop === "compact" || o.heightDesktop === "comfortable") ? o.heightDesktop : "normal",
     heightMobile: (o.heightMobile === "compact" || o.heightMobile === "comfortable") ? o.heightMobile : "compact",
     searchStyle: (o.searchStyle === "icon") ? "icon" : "input",
+    searchInputStyleId,
     cartStyle: (o.cartStyle === "icon" || o.cartStyle === "badge") ? o.cartStyle : "iconBadge",
     theme: normalizeTheme(o.theme),
     topbar: {
@@ -257,6 +304,8 @@ function normalizeHeader(v: any): HeaderConfig {
     ui: {
       ...safeObj(o.ui),
       loading: normalizeLoading((o.ui as any)?.loading),
+      adminTheme: normalizeAdminTheme((o.ui as any)?.adminTheme),
+      cursorThemeId: normalizeCursorThemeId((o.ui as any)?.cursorThemeId),
     },
   };
 }
@@ -417,6 +466,12 @@ export default function SettingsPage() {
 
   const [errors, setErrors] = useState<Errors>({});
 
+  const selectedSearchInputStyle = useMemo(() => {
+    const id = headerCfg.searchInputStyleId;
+    if (id && id !== "default") return getSearchInputById(id) ?? getSearchInputById("search-basic-simple") ?? null;
+    return getSearchInputById("search-basic-simple") ?? null;
+  }, [headerCfg.searchInputStyleId]);
+
   useEffect(() => {
     if (!settings) return;
 
@@ -552,6 +607,8 @@ export default function SettingsPage() {
 
   const theme = normalizeTheme(headerCfg.theme);
   const loading = normalizeLoading((headerCfg.ui as any)?.loading);
+  const adminTheme = normalizeAdminTheme((headerCfg.ui as any)?.adminTheme);
+  const cursorThemeId = normalizeCursorThemeId((headerCfg.ui as any)?.cursorThemeId);
   const loadingPreset = getLoadingById(loading.animationId) ?? null;
 
   const updateTheme = (patch: Partial<NonNullable<HeaderConfig["theme"]>>) => {
@@ -564,6 +621,26 @@ export default function SettingsPage() {
       ui: {
         ...safeObj(p.ui),
         loading: { ...normalizeLoading((p.ui as any)?.loading), ...patch },
+      },
+    }));
+  };
+
+  const updateAdminTheme = (patch: Partial<AdminThemeConfig>) => {
+    setHeaderCfg((p) => ({
+      ...p,
+      ui: {
+        ...safeObj(p.ui),
+        adminTheme: { ...normalizeAdminTheme((p.ui as any)?.adminTheme), ...patch },
+      },
+    }));
+  };
+
+  const updateCursorThemeId = (themeId: CursorThemeId) => {
+    setHeaderCfg((p) => ({
+      ...p,
+      ui: {
+        ...safeObj(p.ui),
+        cursorThemeId: normalizeCursorThemeId(themeId),
       },
     }));
   };
@@ -887,22 +964,29 @@ export default function SettingsPage() {
                         { value: "comfortable", label: "مريح" },
                       ]}
                     />
-                    <Select
-                      label="نمط البحث"
-                      value={headerCfg.searchStyle ?? "input"}
-                      onValueChange={(value) =>
-                        setHeaderCfg((p) => ({ ...p, searchStyle: value as HeaderConfig["searchStyle"] }))
-                      }
-                      options={[
-                        { value: "input", label: "حقل" },
-                        { value: "icon", label: "أيقونة" },
-                      ]}
-                    />
-                    <Select
-                      label="نمط السلة"
-                      value={headerCfg.cartStyle ?? "iconBadge"}
-                      onValueChange={(value) =>
-                        setHeaderCfg((p) => ({ ...p, cartStyle: value as HeaderConfig["cartStyle"] }))
+	                    <Select
+	                      label="نمط البحث"
+	                      value={headerCfg.searchStyle ?? "input"}
+	                      onValueChange={(value) =>
+	                        setHeaderCfg((p) => ({ ...p, searchStyle: value as HeaderConfig["searchStyle"] }))
+	                      }
+	                      options={[
+	                        { value: "input", label: "حقل" },
+	                        { value: "icon", label: "أيقونة" },
+	                      ]}
+	                    />
+	                    <Select
+	                      label="نمط مربع البحث"
+	                      value={headerCfg.searchInputStyleId ?? "default"}
+	                      onValueChange={(value) => setHeaderCfg((p) => ({ ...p, searchInputStyleId: value }))}
+	                      options={SEARCH_INPUT_STYLE_OPTIONS}
+	                      disabled={headerCfg.showSearch === false || headerCfg.searchStyle === "icon"}
+	                    />
+	                    <Select
+	                      label="نمط السلة"
+	                      value={headerCfg.cartStyle ?? "iconBadge"}
+	                      onValueChange={(value) =>
+	                        setHeaderCfg((p) => ({ ...p, cartStyle: value as HeaderConfig["cartStyle"] }))
                       }
                       options={[
                         { value: "iconBadge", label: "أيقونة + عداد" },
@@ -912,21 +996,71 @@ export default function SettingsPage() {
                     />
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    <Toggle label="تثبيت الهيدر" checked={!!headerCfg.sticky} onChange={(v) => setHeaderCfg((p) => ({ ...p, sticky: v }))} />
-                    <Toggle label="إظهار البحث" checked={headerCfg.showSearch !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showSearch: v }))} />
-                    <Toggle label="إظهار السلة" checked={headerCfg.showCart !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showCart: v }))} />
-                    <Toggle label="إظهار الحساب" checked={!!headerCfg.showAccount} onChange={(v) => setHeaderCfg((p) => ({ ...p, showAccount: v }))} />
-                  </div>
+	                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+	                    <Toggle label="تثبيت الهيدر" checked={!!headerCfg.sticky} onChange={(v) => setHeaderCfg((p) => ({ ...p, sticky: v }))} />
+	                    <Toggle label="إظهار البحث" checked={headerCfg.showSearch !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showSearch: v }))} />
+	                    <Toggle label="إظهار السلة" checked={headerCfg.showCart !== false} onChange={(v) => setHeaderCfg((p) => ({ ...p, showCart: v }))} />
+	                    <Toggle label="إظهار الحساب" checked={!!headerCfg.showAccount} onChange={(v) => setHeaderCfg((p) => ({ ...p, showAccount: v }))} />
+	                  </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="mb-3 text-sm font-semibold">الثيم</div>
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                      <Select
+	                  {headerCfg.searchStyle !== "icon" &&
+	                  headerCfg.showSearch !== false &&
+	                  selectedSearchInputStyle ? (
+	                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+	                      <div className="mb-3 text-sm font-semibold">معاينة مربع البحث</div>
+	                      <div className="flex justify-end">
+	                        <form
+	                          className={`relative ${selectedSearchInputStyle.containerClassName}`}
+	                          onSubmit={(e) => e.preventDefault()}
+	                        >
+	                          <input
+	                            dir="rtl"
+	                            className={selectedSearchInputStyle.inputClassName}
+	                            placeholder="بحث..."
+	                            readOnly
+	                          />
+	                          {selectedSearchInputStyle.buttonClassName ? (
+	                            <button type="button" className={selectedSearchInputStyle.buttonClassName}>
+	                              {selectedSearchInputStyle.iconClassName &&
+	                              !selectedSearchInputStyle.iconClassName.includes("absolute") ? (
+	                                <span className={selectedSearchInputStyle.iconClassName}>🔍</span>
+	                              ) : (
+	                                "بحث"
+	                              )}
+	                            </button>
+	                          ) : null}
+	                          {selectedSearchInputStyle.iconClassName &&
+	                          selectedSearchInputStyle.iconClassName.includes("absolute") ? (
+	                            <span className={selectedSearchInputStyle.iconClassName}>🔍</span>
+	                          ) : null}
+	                        </form>
+	                      </div>
+	                    </div>
+	                  ) : null}
+
+	                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+	                    <div className="mb-3 text-sm font-semibold">الثيم</div>
+	                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+	                      <Select
                         label="ثيم الموقع"
                         value={theme.websiteThemeId ?? "default"}
                         onValueChange={(value) => updateTheme({ websiteThemeId: value })}
                         options={WEBSITE_THEME_OPTIONS}
+                      />
+                      <Select
+                        label="ثيم لوحة التحكم"
+                        value={adminTheme.presetId}
+                        onValueChange={(value) => updateAdminTheme({ presetId: value as AdminThemePresetId })}
+                        options={[
+                          { value: "default", label: "افتراضي" },
+                          ...THEME_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
+                        ]}
+                      />
+                      <Select
+                        label="ثيم المؤشر (Cursor)"
+                        value={cursorThemeId}
+                        onValueChange={(value) => updateCursorThemeId(value as CursorThemeId)}
+                        options={CURSOR_THEME_OPTIONS}
                       />
                       <Select
                         label="البريست"

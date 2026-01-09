@@ -27,16 +27,28 @@ import { Select } from "../../components/ui/Select";
 import { Spinner } from "../../components/ui/Spinner";
 import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { aiImproveSeo, aiSuggestSections, aiTranslatePage, moveSection as moveSectionApi, type PageSection, type PageSectionType, type PageStatus } from "../../api/pages.api";
+import {
+  aiImproveSeo,
+  aiSuggestSections,
+  aiTranslatePage,
+  createSection as createSectionApi,
+  deleteSection as deleteSectionApi,
+  moveSection as moveSectionApi,
+  updateSection as updateSectionApi,
+  type PageSection,
+  type PageSectionType,
+  type PageStatus,
+} from "../../api/pages.api";
 import { SectionEditor, defaultDataForType, templatesForType } from "./SectionEditor";
 import { ComponentsEditor, createDefaultComponent } from "./ComponentsEditor";
+import { PageRenderer, type SelectedElement } from "./PageRenderer";
+import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import { ThemePreview } from "../../components/ThemePreview";
 import { toast } from "../../lib/toast";
+import { scopeCss } from "../../lib/scopeCss";
+import { PAGE_TEMPLATES } from "./pageTemplates";
 import type { CmsComponentKind } from "../../cms/types";
 
-const LazySectionStylingPanel = React.lazy(() =>
-  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
-);
 const LazySectionPreview = React.lazy(() =>
   import("./SectionPreview").then((m) => ({ default: m.SectionPreview }))
 );
@@ -110,6 +122,9 @@ function SortableSectionCard({
   onToggleVisible,
   previewData,
   theme,
+  index = 0,
+  onSelect,
+  isSelected,
 }: {
   section: PageSection;
   onEdit: () => void;
@@ -117,59 +132,206 @@ function SortableSectionCard({
   onToggleVisible: () => void;
   previewData?: any;
   theme?: any;
+  index?: number;
+  onSelect?: () => void;
+  isSelected?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
+  // 3D tilt effect on mouse move
+  const handleMouseMove = React.useCallback((e: React.MouseEvent) => {
+    if (!cardRef.current || isDragging) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = (y - centerY) / 30;
+    const rotateY = (centerX - x) / 30;
+    const spotlightX = (x / rect.width) * 100;
+    const spotlightY = (y / rect.height) * 100;
+    
+    cardRef.current.style.setProperty('--rotate-x', `${rotateX}deg`);
+    cardRef.current.style.setProperty('--rotate-y', `${rotateY}deg`);
+    cardRef.current.style.setProperty('--spotlight-x', `${spotlightX}%`);
+    cardRef.current.style.setProperty('--spotlight-y', `${spotlightY}%`);
+  }, [isDragging]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    if (!cardRef.current) return;
+    cardRef.current.style.setProperty('--rotate-x', '0deg');
+    cardRef.current.style.setProperty('--rotate-y', '0deg');
+  }, []);
+
+  // Section type icon mapping
+  const sectionTypeIcon = React.useMemo(() => {
+    const type = section.data?.__mode === "components" ? "COMPONENTS" : section.type;
+    switch(type) {
+      case 'HERO': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      );
+      case 'RICH_TEXT': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+        </svg>
+      );
+      case 'GRID': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+      );
+      case 'FEATURES': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+      );
+      case 'COMPONENTS': return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+        </svg>
+      );
+      default: return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      );
+    }
+  }, [section.type, section.data]);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={[
-        "rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4",
-        isDragging ? "ring-2 ring-white/20" : "",
-      ].join(" ")}
+      id={`section-card-${section.id}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <button
-            type="button"
-            className="mt-0.5 select-none rounded-lg border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-sm opacity-70 hover:opacity-100 cursor-grab"
-            title="اسحب للترتيب"
-            {...attributes}
-            {...listeners}
-          >
-            ⋮⋮
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold">{section.data?.__mode === "components" ? "COMPONENTS" : section.type}</div>
-              <span className="rounded-full border border-white/[0.10] bg-white/[0.04] px-2 py-0.5 text-[11px] opacity-80">#{section.order ?? 0}</span>
-              {section.isVisible ? (
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-200">ظاهر</span>
-              ) : (
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-200">مخفي</span>
-              )}
-            </div>
-            <div className="mt-2">
-              <ThemePreview theme={theme} className="rounded-2xl p-2">
-                <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview…</div>}>
-                  <LazySectionPreview type={section.type} data={previewData ?? section.data} />
-                </React.Suspense>
-              </ThemePreview>
+      <div
+        ref={cardRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onClick={() => {
+          if (isDragging) return;
+          onSelect?.();
+        }}
+        className={[
+          "section-card-3d p-5 opacity-0 animate-fade-in-up",
+          isSelected ? "ring-2 ring-accent-500/50 border-accent-500/40 shadow-glow" : "",
+          isDragging ? "ring-2 ring-accent-500/50 border-accent-500/30 shadow-2xl shadow-accent-500/20" : "",
+        ].join(" ")}
+        style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            {/* Drag Handle */}
+            <button
+              type="button"
+              className="mt-1 w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] text-white/50 hover:text-white hover:border-white/[0.15] hover:from-white/[0.08] hover:to-white/[0.04] transition-all cursor-grab active:cursor-grabbing"
+              title="اسحب للترتيب"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+              </svg>
+            </button>
+            
+            {/* Section Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Section Type Badge */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent-500/10 border border-accent-500/20 text-accent-400">
+                  {sectionTypeIcon}
+                  <span className="text-xs font-medium">
+                    {section.data?.__mode === "components" ? "COMPONENTS" : section.type}
+                  </span>
+                </div>
+                
+                {/* Order Badge */}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/60">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  </svg>
+                  {section.order ?? 0}
+                </span>
+                
+                {/* Visibility Badge */}
+                {section.isVisible ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    ظاهر
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-400">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                    مخفي
+                  </span>
+                )}
+              </div>
+              
+              {/* Preview Container */}
+              <div className="mt-4 rounded-xl overflow-hidden border border-white/[0.06] bg-black/20">
+                <ThemePreview theme={theme} className="rounded-xl">
+                  <React.Suspense 
+                    fallback={
+                      <div className="p-8 text-center">
+                        <div className="inline-flex items-center gap-2 text-xs text-white/40">
+                          <Spinner className="w-4 h-4" />
+                          جاري تحميل المعاينة...
+                        </div>
+                      </div>
+                    }
+                  >
+                    <LazySectionPreview type={section.type} data={previewData ?? section.data} />
+                  </React.Suspense>
+                </ThemePreview>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant={section.isVisible ? "ghost" : "secondary"} size="sm" onClick={onToggleVisible}>
-            {section.isVisible ? "إخفاء" : "إظهار"}
-          </Button>
-          <Button variant="secondary" size="sm" onClick={onEdit}>تعديل</Button>
-          <Button variant="danger" size="sm" onClick={onDelete}>حذف</Button>
+          {/* Actions */}
+          <div className="flex flex-col gap-2">
+            <Button 
+              variant={section.isVisible ? "ghost" : "secondary"} 
+              size="sm" 
+              onClick={(e) => { e.stopPropagation(); onToggleVisible(); }}
+              className="btn-shine"
+              title={section.isVisible ? "إخفاء القسم" : "إظهار القسم"}
+            >
+              {section.isVisible ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              )}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="btn-shine">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </Button>
+            <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -179,6 +341,12 @@ function SortableSectionCard({
 type PageFieldErrors = {
   name?: string;
   slug?: string;
+};
+
+type InlineEditPayload = {
+  sectionId: string;
+  path: Array<string | number>;
+  value: string;
 };
 
 function TextArea({
@@ -218,10 +386,280 @@ type SectionFieldErrors = {
   fields?: Record<string, string | undefined>;
 };
 
+type LibraryItem = {
+  id: string;
+  label: string;
+  type: PageSectionType;
+  data: any;
+};
+
 function normalizeSlug(v: string) {
   const t = (v ?? "").trim();
   if (!t) return "";
   return t.startsWith("/") ? t : `/${t}`;
+}
+
+function setDeepValue(target: any, path: Array<string | number>, value: any): any {
+  if (!path.length) return value;
+  const [head, ...rest] = path;
+  const forceArray = typeof head === "number";
+  const isArray = Array.isArray(target) || forceArray;
+  const clone = isArray
+    ? [...(Array.isArray(target) ? target : [])]
+    : { ...(target && typeof target === "object" ? target : {}) };
+  const current = isArray ? (clone as any)[head] : (clone as any)[head];
+  const nextValue = rest.length ? setDeepValue(current, rest, value) : value;
+  (clone as any)[head] = nextValue;
+  return clone;
+}
+
+function getDeepValue(target: any, path: Array<string | number>): any {
+  return path.reduce((acc, key) => (acc == null ? undefined : (acc as any)[key]), target);
+}
+
+function guessTokensPath(valuePath: Array<string | number>, data: any, kind?: string): Array<string | number> | null {
+  if (!valuePath.length || !data) return null;
+  if (kind === "card") {
+    const path = [...valuePath, "twTokens"];
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  if (kind === "image") {
+    const path = [...valuePath.slice(0, -1), "imageTokens"];
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  const last = valuePath[valuePath.length - 1];
+  const parent = valuePath[valuePath.length - 2];
+  const candidates: Array<Array<string | number>> = [];
+  if (last === "label" && (parent === "primaryButton" || parent === "secondaryButton")) {
+    candidates.push([...valuePath.slice(0, -2), `${parent}Tokens`]);
+  }
+  if (typeof last === "string") {
+    if (last === "buttonLabel") candidates.push([...valuePath.slice(0, -1), "buttonTokens"]);
+    if (last === "ctaLabel") candidates.push([...valuePath.slice(0, -1), "ctaTokens"]);
+    if (last === "linkLabel") candidates.push([...valuePath.slice(0, -1), "linkTokens"]);
+    if (last === "price" || last === "priceText") candidates.push([...valuePath.slice(0, -1), "priceTokens"]);
+    candidates.push([...valuePath.slice(0, -1), `${last}Tokens`]);
+  }
+  for (const path of candidates) {
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  return null;
+}
+
+type QuickEditField = {
+  key: string;
+  label: string;
+  path: Array<string | number>;
+  value: string;
+  type?: "text" | "url";
+};
+
+type HistoryEntry = {
+  sectionId: string;
+  prevData: any;
+  nextData: any;
+  ts: number;
+};
+
+type ElementArrayInfo = {
+  arrayPath: Array<string | number>;
+  indexPathIndex: number;
+  index: number;
+  itemPath: Array<string | number>;
+  item: any;
+  array: any[];
+};
+
+function toQuickValue(value: any) {
+  if (value == null) return "";
+  return typeof value === "string" ? value : String(value);
+}
+
+function resolveSiblingPath(
+  basePath: Array<string | number>,
+  data: any,
+  keys: string[]
+): Array<string | number> | null {
+  if (!basePath.length) return null;
+  const parent = basePath.slice(0, -1);
+  let fallback: Array<string | number> | null = null;
+  for (const key of keys) {
+    const path = [...parent, key];
+    if (!fallback) fallback = path;
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  return fallback;
+}
+
+function resolveChildPath(
+  basePath: Array<string | number>,
+  data: any,
+  keys: string[]
+): Array<string | number> | null {
+  if (!basePath.length) return null;
+  let fallback: Array<string | number> | null = null;
+  for (const key of keys) {
+    const path = [...basePath, key];
+    if (!fallback) fallback = path;
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  return fallback;
+}
+
+function addQuickField(fields: QuickEditField[], seen: Set<string>, label: string, path: Array<string | number> | null, value: any, type?: "text" | "url") {
+  if (!path || !path.length) return;
+  const key = JSON.stringify(path);
+  if (seen.has(key)) return;
+  seen.add(key);
+  fields.push({ key, label, path, value: toQuickValue(value), type });
+}
+
+function buildElementQuickFields(selected: SelectedElement | null, data: any): QuickEditField[] {
+  if (!selected || !data || !selected.valuePath?.length) return [];
+  const fields: QuickEditField[] = [];
+  const seen = new Set<string>();
+  const valuePath = selected.valuePath;
+  const kind = selected.kind;
+  const last = valuePath[valuePath.length - 1];
+
+  const add = (label: string, path: Array<string | number> | null, type?: "text" | "url") =>
+    addQuickField(fields, seen, label, path, path ? getDeepValue(data, path) : undefined, type);
+
+  if (kind === "text") {
+    const label = typeof last === "string" && last.toLowerCase().includes("price") ? "Price" : "Text";
+    add(label, valuePath);
+    const linkPath = resolveSiblingPath(valuePath, data, ["href", "linkHref", "url", "ctaHref", "buttonHref"]);
+    if (linkPath) add("Link URL", linkPath, "url");
+  }
+
+  if (kind === "button") {
+    add("Label", valuePath);
+    const linkPath = resolveSiblingPath(valuePath, data, ["href", "linkHref", "url", "ctaHref", "buttonHref"]);
+    if (linkPath) add("Link URL", linkPath, "url");
+    const targetPath = resolveSiblingPath(valuePath, data, ["target", "linkTarget", "buttonTarget", "ctaTarget"]);
+    if (targetPath) add("Link target", targetPath);
+    const iconPath = resolveSiblingPath(valuePath, data, ["icon", "iconName", "iconUrl", "iconLeft", "iconRight"]);
+    if (iconPath) {
+      const last = iconPath[iconPath.length - 1];
+      const isUrl = typeof last === "string" && last.toLowerCase().includes("url");
+      add("Icon", iconPath, isUrl ? "url" : undefined);
+    }
+  }
+
+  if (kind === "field" || kind === "input" || kind === "textarea" || kind === "select") {
+    add("Label", [...valuePath, "label"]);
+    add("Placeholder", [...valuePath, "placeholder"]);
+    add("Name", [...valuePath, "name"]);
+    add("Type", [...valuePath, "type"]);
+    add("Rows", [...valuePath, "rows"]);
+  }
+
+  if (kind === "image") {
+    add("Image URL", valuePath, "url");
+    const altPath = resolveSiblingPath(valuePath, data, ["alt", "altText", "imageAlt", "caption"]);
+    if (altPath) add("Alt text", altPath);
+  }
+
+  if (kind === "card") {
+    const card = getDeepValue(data, valuePath);
+    if (card && typeof card === "object") {
+      const basePath =
+        card && typeof (card as any).props === "object"
+          ? [...valuePath, "props"]
+          : valuePath;
+      add("Title", [...basePath, "title"]);
+      add("Text", [...basePath, "text"]);
+      add("Subtitle", [...basePath, "subtitle"]);
+      add("Badge", [...basePath, "badge"]);
+      add("Price", [...basePath, "price"]);
+      add("Price text", [...basePath, "priceText"]);
+      add("Button label", [...basePath, "buttonLabel"]);
+      add("CTA label", [...basePath, "ctaLabel"]);
+      const linkPath = resolveChildPath(basePath, data, ["buttonHref", "href", "linkHref", "ctaHref"]);
+      if (linkPath) add("Link URL", linkPath, "url");
+      const targetPath = resolveChildPath(basePath, data, ["buttonTarget", "ctaTarget", "target", "linkTarget"]);
+      if (targetPath) add("Link target", targetPath);
+      const iconPath = resolveChildPath(basePath, data, ["icon", "iconUrl", "iconName"]);
+      if (iconPath) {
+        const last = iconPath[iconPath.length - 1];
+        const isUrl = typeof last === "string" && last.toLowerCase().includes("url");
+        add("Icon", iconPath, isUrl ? "url" : undefined);
+      }
+      const imagePath = resolveChildPath(basePath, data, ["imageUrl", "image"]);
+      if (imagePath) add("Image URL", imagePath, "url");
+      const altPath = imagePath
+        ? resolveSiblingPath(imagePath, data, ["alt", "altText", "imageAlt", "caption"])
+        : resolveChildPath(basePath, data, ["alt", "altText", "imageAlt"]);
+      if (altPath) add("Alt text", altPath);
+    }
+  }
+
+  return fields;
+}
+
+function cloneData<T>(value: T): T {
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return value;
+  }
+}
+
+function cloneWithFreshKeys<T>(value: T): T {
+  const clone = cloneData(value);
+  const stamp = `${Date.now().toString(16)}_${Math.random().toString(16).slice(2)}`;
+  const walk = (node: any) => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (typeof node.__key === "string") {
+      node.__key = `dup_${stamp}`;
+    }
+    if (typeof node.id === "string") {
+      node.id = `${node.id}_dup_${stamp}`;
+    }
+    Object.values(node).forEach(walk);
+  };
+  walk(clone);
+  return clone;
+}
+
+function resolveElementArrayInfo(valuePath: Array<string | number> | undefined, data: any): ElementArrayInfo | null {
+  if (!valuePath || !valuePath.length || !data) return null;
+  for (let i = valuePath.length - 1; i >= 0; i -= 1) {
+    if (typeof valuePath[i] !== "number") continue;
+    const index = valuePath[i] as number;
+    const arrayPath = valuePath.slice(0, i);
+    const arrayValue = getDeepValue(data, arrayPath);
+    if (!Array.isArray(arrayValue)) continue;
+    return {
+      arrayPath,
+      indexPathIndex: i,
+      index,
+      itemPath: valuePath.slice(0, i + 1),
+      item: arrayValue[index],
+      array: arrayValue,
+    };
+  }
+  return null;
+}
+
+function updatePathIndex(
+  path: Array<string | number> | undefined,
+  indexPathIndex: number,
+  nextIndex: number
+): Array<string | number> | undefined {
+  if (!path || path.length <= indexPathIndex) return path;
+  if (typeof path[indexPathIndex] !== "number") return path;
+  const next = path.slice();
+  next[indexPathIndex] = nextIndex;
+  return next;
+}
+
+function elementKeyForSelection(kind: string, valuePath?: Array<string | number>, tokensPath?: Array<string | number>) {
+  return `${kind}:${JSON.stringify(valuePath ?? [])}:${JSON.stringify(tokensPath ?? [])}`;
 }
 
 export default function PageEditorPage() {
@@ -248,6 +686,40 @@ export default function PageEditorPage() {
   const [aiLocale, setAiLocale] = useState<"ar" | "he" | "en">("ar");
   const [aiBusy, setAiBusy] = useState<null | "sections" | "seo" | "translate-he" | "translate-en">(null);
   const [contentLocale, setContentLocale] = useState<"ar" | "he" | "en">("ar");
+  const [inlineEditing, setInlineEditing] = useState(true);
+  const [canvasView, setCanvasView] = useState<"live" | "preview">("live");
+  const [previewMode, setPreviewMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [canvasFullScreen, setCanvasFullScreen] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(360);
+  const leftPanelResizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
+  const [leftPanelResizing, setLeftPanelResizing] = useState(false);
+  const [templateId, setTemplateId] = useState<(typeof PAGE_TEMPLATES)[number]["id"]>("landing");
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [confirmTemplateReplace, setConfirmTemplateReplace] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [showAdvancedStyling, setShowAdvancedStyling] = useState(false);
+  const [selectionBusy, setSelectionBusy] = useState(false);
+  const [showInlineStyling, setShowInlineStyling] = useState(true);
+  const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
+  const [showSectionLibrary, setShowSectionLibrary] = useState(false);
+  const [sectionLibraryType, setSectionLibraryType] = useState<PageSectionType>("HERO");
+  const [sectionInsertIndex, setSectionInsertIndex] = useState<number | null>(null);
+  const [libraryDragItem, setLibraryDragItem] = useState<LibraryItem | null>(null);
+  const [libraryDragOverIndex, setLibraryDragOverIndex] = useState<number | null>(null);
+  const [libraryBusy, setLibraryBusy] = useState(false);
+  const canvasScrollRef = React.useRef<HTMLDivElement>(null);
+  const [canvasActionBar, setCanvasActionBar] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [elementModalOpen, setElementModalOpen] = useState(false);
+  const [elementModalFields, setElementModalFields] = useState<QuickEditField[]>([]);
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const autosaveTimersRef = React.useRef<Map<string, number>>(new Map());
+  const autosaveSavedTimerRef = React.useRef<number | null>(null);
+  const historyRef = React.useRef<HistoryEntry[]>([]);
+  const historyIndexRef = React.useRef(-1);
+  const lastHistoryAtRef = React.useRef(0);
+  const suppressHistoryRef = React.useRef(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -273,6 +745,81 @@ export default function PageEditorPage() {
     const arr = (i18nMeta?.sections as any)?.[contentLocale];
     return Array.isArray(arr) ? arr : null;
   }, [i18nMeta, contentLocale]);
+
+  const inlineEditingAvailable = contentLocale === "ar";
+  useEffect(() => {
+    if (!inlineEditingAvailable) {
+      setInlineEditing(false);
+    }
+  }, [inlineEditingAvailable]);
+
+  const previewWidthClass = useMemo(() => {
+    if (previewMode === "mobile") return "max-w-[360px]";
+    if (previewMode === "tablet") return "max-w-[440px]";
+    return "max-w-none";
+  }, [previewMode]);
+
+  const canvasDir = contentLocale === "en" ? "ltr" : "rtl";
+  const canvasViewportClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "max-h-[70vh]";
+  const canvasPreviewHeightClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "h-[70vh]";
+  const canvasPanelClass = canvasFullScreen
+    ? "fixed inset-0 z-40 flex flex-col border border-white/10 bg-black/90 p-4"
+    : "rounded-2xl border border-white/10 bg-white/5 p-4";
+  const leftPanelStyle = leftPanelCollapsed ? undefined : { width: `min(100%, ${leftPanelWidth}px)` };
+
+  useEffect(() => {
+    if (!canvasFullScreen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setCanvasFullScreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [canvasFullScreen]);
+
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      if (!leftPanelResizeRef.current) return;
+      const delta = event.clientX - leftPanelResizeRef.current.startX;
+      const next = leftPanelResizeRef.current.startWidth + delta;
+      const clamped = Math.min(520, Math.max(260, next));
+      setLeftPanelWidth(clamped);
+    };
+    const handleUp = () => {
+      if (!leftPanelResizeRef.current) return;
+      leftPanelResizeRef.current = null;
+      setLeftPanelResizing(false);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, []);
+
+  const sectionLibraryItems = useMemo<LibraryItem[]>(() => {
+    const base = defaultDataForType(sectionLibraryType);
+    const templates = templatesForType(sectionLibraryType);
+    const list: LibraryItem[] = [
+      { id: `blank:${sectionLibraryType}`, label: "Blank", type: sectionLibraryType, data: base ?? {} },
+      ...templates.map((t) => ({
+        id: `${sectionLibraryType}:${t.id}`,
+        label: t.label,
+        type: sectionLibraryType,
+        data: t.data ?? {},
+      })),
+    ];
+    return list;
+  }, [sectionLibraryType]);
+
+  const showInsertPoints = showSectionLibrary || !!libraryDragItem;
 
   const getTranslatedSectionData = (section: PageSection, index: number) => {
     if (!translatedSections || contentLocale === "ar") return section.data;
@@ -357,12 +904,134 @@ export default function PageEditorPage() {
     setLocalSections(sections as any);
   }, [sections]);
 
+  useEffect(() => {
+    historyRef.current = [];
+    historyIndexRef.current = -1;
+    setHistoryVersion((v) => v + 1);
+  }, [page?.id, localSections.length]);
+
+  const selectedTemplate = useMemo(
+    () => PAGE_TEMPLATES.find((tpl) => tpl.id === templateId) ?? PAGE_TEMPLATES[0],
+    [templateId]
+  );
+
+  const canvasSections = useMemo(() => {
+    if (!translatedSections || contentLocale === "ar") return localSections;
+    return localSections.map((sec, idx) => {
+      const data = getTranslatedSectionData(sec, idx);
+      return data === sec.data ? sec : { ...sec, data };
+    });
+  }, [localSections, translatedSections, contentLocale]);
+
+  const selectedSection = useMemo(() => {
+    if (!selectedSectionId) return null;
+    return localSections.find((s) => String(s.id) === String(selectedSectionId)) ?? null;
+  }, [localSections, selectedSectionId]);
+
+  useEffect(() => {
+    if (selectedSectionId) {
+      setShowInlineStyling(true);
+    } else {
+      setShowInlineStyling(false);
+      setShowAdvancedStyling(false);
+      setSelectedElement(null);
+    }
+  }, [selectedSectionId]);
+
+  useEffect(() => {
+    if (!selectedSectionId || !selectedElement) return;
+    if (String(selectedElement.sectionId) !== String(selectedSectionId)) {
+      setSelectedElement(null);
+    }
+  }, [selectedElement, selectedSectionId]);
+
+  useEffect(() => {
+    if (selectedSectionId && !selectedSection) {
+      setSelectedSectionId(null);
+      setShowAdvancedStyling(false);
+    }
+  }, [selectedSectionId, selectedSection]);
+
+  useEffect(() => {
+    if (!selectedSectionId) return;
+    const el = document.getElementById(`section-card-${selectedSectionId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedSectionId]);
+
+  useEffect(() => {
+    if (sectionInsertIndex == null) return;
+    if (sectionInsertIndex < 0 || sectionInsertIndex > localSections.length) {
+      setSectionInsertIndex(null);
+    }
+  }, [sectionInsertIndex, localSections.length]);
+
+  const selectedSectionIndex = useMemo(() => {
+    if (!selectedSectionId) return -1;
+    return localSections.findIndex((s) => String(s.id) === String(selectedSectionId));
+  }, [localSections, selectedSectionId]);
+
+  const selectedSectionPreviewData = useMemo(() => {
+    if (!selectedSection) return null;
+    if (selectedSectionIndex < 0) return selectedSection.data ?? null;
+    return getTranslatedSectionData(selectedSection, selectedSectionIndex);
+  }, [selectedSection, selectedSectionIndex, translatedSections, contentLocale]);
+
+  const resolvedElementTokensPath = useMemo(() => {
+    if (!selectedElement || !selectedSection) return null;
+    if (selectedElement.tokensPath?.length) return selectedElement.tokensPath;
+    if (!selectedElement.valuePath?.length) return null;
+    return guessTokensPath(selectedElement.valuePath, selectedSection.data, selectedElement.kind);
+  }, [selectedElement, selectedSection]);
+
+  const selectedElementTokens = useMemo(() => {
+    if (!resolvedElementTokensPath || !selectedSection) return null;
+    return getDeepValue(selectedSection.data ?? {}, resolvedElementTokensPath) ?? {};
+  }, [resolvedElementTokensPath, selectedSection]);
+
+  const elementQuickFields = useMemo(
+    () => buildElementQuickFields(selectedElement, selectedSection?.data ?? null),
+    [selectedElement, selectedSection]
+  );
+
+  const elementArrayInfo = useMemo(
+    () => resolveElementArrayInfo(selectedElement?.valuePath, selectedSection?.data ?? null),
+    [selectedElement, selectedSection]
+  );
+
+  const elementIsVisible = useMemo(() => {
+    const item = elementArrayInfo?.item;
+    if (!item || typeof item !== "object") return true;
+    if ("hidden" in item) return item.hidden !== true;
+    if ("isVisible" in item) return item.isVisible !== false;
+    return true;
+  }, [elementArrayInfo]);
+
+  const elementCanDuplicate = !!elementArrayInfo;
+  const elementCanDelete = !!elementArrayInfo && Array.isArray(elementArrayInfo.array) && elementArrayInfo.array.length > 0;
+  const elementCanToggleVisibility = !!elementArrayInfo && elementArrayInfo.item && typeof elementArrayInfo.item === "object";
+
+  useEffect(() => {
+    if (!selectedElement) {
+      setElementModalOpen(false);
+    }
+  }, [selectedElement]);
+
+
   const qc = useQueryClient();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  const startLeftResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    leftPanelResizeRef.current = { startX: event.clientX, startWidth: leftPanelWidth };
+    setLeftPanelResizing(true);
+    event.preventDefault();
+  };
 
   const persistOrder = async (next: PageSection[]) => {
     if (!id) return;
@@ -393,6 +1062,53 @@ export default function PageEditorPage() {
     void persistOrder(normalized);
   };
 
+  const renderInsertZone = (index: number, isEmpty = false) => {
+    if (!showInsertPoints) return null;
+    const isActive = libraryDragOverIndex === index || sectionInsertIndex === index;
+    const label = libraryDragItem
+      ? "Drop to insert here"
+      : isEmpty
+        ? "Insert your first section"
+        : "Insert section here";
+    return (
+      <div
+        key={`insert-${index}`}
+        className={[
+          "rounded-xl border border-dashed px-3 py-2 text-xs transition",
+          isActive ? "border-accent-500/60 bg-accent-500/10 text-accent-200" : "border-white/10 text-white/50 hover:text-white/70",
+        ].join(" ")}
+        onClick={() => {
+          setSectionInsertIndex(index);
+          setShowSectionLibrary(true);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setLibraryDragOverIndex(index);
+        }}
+        onDragLeave={() => {
+          if (libraryDragOverIndex === index) setLibraryDragOverIndex(null);
+        }}
+        onDrop={handleInsertDrop(index)}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span>{label}</span>
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSectionInsertIndex(index);
+              setShowSectionLibrary(true);
+            }}
+          >
+            Insert
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   // create/edit section modal
   const [openSection, setOpenSection] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
@@ -405,6 +1121,12 @@ export default function PageEditorPage() {
   const [sectionErrors, setSectionErrors] = useState<SectionFieldErrors>({});
   const [componentsOnlyMode, setComponentsOnlyMode] = useState(false);
   const [componentsSectionKind, setComponentsSectionKind] = useState<CmsComponentKind>("text");
+
+  useEffect(() => {
+    if (openSection) {
+      setShowAdvancedStyling(false);
+    }
+  }, [openSection]);
 
   const previewState = useMemo(() => {
     if (!advancedJson) return { data: sectionDataObj ?? {}, error: null as string | null };
@@ -426,7 +1148,6 @@ export default function PageEditorPage() {
   }, [translatedSections, contentLocale, previewState.data, editingSectionId, localSections, sectionType]);
 
   const [confirmDeleteSectionId, setConfirmDeleteSectionId] = useState<string | null>(null);
-  const [showPreview, setShowPreview] = useState(true);
   const [previewBump, setPreviewBump] = useState(0);
   const previewUrl = useMemo(() => {
     const pageId = page?.id ?? id ?? "";
@@ -434,6 +1155,125 @@ export default function PageEditorPage() {
     const cache = previewBump ? `?b=${previewBump}` : "";
     return `/admin/pages/${pageId}/preview${cache}`;
   }, [page?.id, id, previewBump]);
+
+  useEffect(() => {
+    if (!selectedSectionId || canvasView !== "live") return;
+    const container = canvasScrollRef.current;
+    if (!container) return;
+    const node = container.querySelector(`[data-section-id="${selectedSectionId}"]`) as HTMLElement | null;
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [selectedSectionId, canvasView, previewMode, previewBump, canvasFullScreen, inlineEditing, contentLocale]);
+
+  useEffect(() => {
+    return () => {
+      autosaveTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      autosaveTimersRef.current.clear();
+      if (autosaveSavedTimerRef.current) {
+        window.clearTimeout(autosaveSavedTimerRef.current);
+        autosaveSavedTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const queueSectionSave = (sectionId: string, nextData: any) => {
+    if (!id) return;
+    const timers = autosaveTimersRef.current;
+    const existing = timers.get(sectionId);
+    if (existing) window.clearTimeout(existing);
+
+    setAutosaveState("saving");
+    const timer = window.setTimeout(async () => {
+      timers.delete(sectionId);
+      try {
+        await updateSectionApi(sectionId, { data: nextData });
+      } catch {
+        toast.error("???? ??? ???????.");
+      }
+      if (timers.size === 0) {
+        setAutosaveState("saved");
+        if (autosaveSavedTimerRef.current) {
+          window.clearTimeout(autosaveSavedTimerRef.current);
+        }
+        autosaveSavedTimerRef.current = window.setTimeout(() => {
+          setAutosaveState("idle");
+        }, 1200);
+      }
+    }, 650);
+
+    timers.set(sectionId, timer);
+  };
+
+  const recordHistory = (entry: HistoryEntry) => {
+    if (suppressHistoryRef.current) return;
+    const now = Date.now();
+    const history = historyRef.current.slice(0, historyIndexRef.current + 1);
+    const last = history[history.length - 1];
+    if (last && last.sectionId === entry.sectionId && now - last.ts < 1200) {
+      history[history.length - 1] = { ...last, nextData: entry.nextData, ts: now };
+      historyRef.current = history;
+      historyIndexRef.current = history.length - 1;
+      lastHistoryAtRef.current = now;
+      setHistoryVersion((v) => v + 1);
+      return;
+    }
+    history.push(entry);
+    historyRef.current = history;
+    historyIndexRef.current = history.length - 1;
+    lastHistoryAtRef.current = now;
+    setHistoryVersion((v) => v + 1);
+  };
+
+  useEffect(() => {
+    if (canvasView !== "live" || !selectedElement) {
+      setCanvasActionBar(null);
+      return;
+    }
+    const container = canvasScrollRef.current;
+    if (!container) {
+      setCanvasActionBar(null);
+      return;
+    }
+
+    let raf: number | null = null;
+    const update = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const selectedNode = container.querySelector("[data-cms-selected=\"true\"]") as HTMLElement | null;
+        if (!selectedNode) {
+          setCanvasActionBar(null);
+          return;
+        }
+        const containerRect = container.getBoundingClientRect();
+        const rect = selectedNode.getBoundingClientRect();
+        const top = rect.bottom - containerRect.top + container.scrollTop + 6;
+        const left = rect.left - containerRect.left + container.scrollLeft;
+        const width = Math.min(rect.width, container.clientWidth - 16);
+        if (!Number.isFinite(top) || !Number.isFinite(left) || !Number.isFinite(width)) {
+          setCanvasActionBar(null);
+          return;
+        }
+        setCanvasActionBar({ top, left, width });
+      });
+    };
+
+    update();
+    container.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    const selectedNode = container.querySelector("[data-cms-selected=\"true\"]") as HTMLElement | null;
+    if (observer && selectedNode) {
+      observer.observe(selectedNode);
+    }
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      container.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      observer?.disconnect();
+    };
+  }, [canvasView, selectedElement, previewMode, previewBump, inlineEditing, contentLocale, canvasFullScreen]);
 
   const openCreateSection = () => {
     setEditingSectionId(null);
@@ -476,6 +1316,7 @@ export default function PageEditorPage() {
 
   const openEditSection = (s: any) => {
     setEditingSectionId(s.id);
+    setSelectedSectionId(String(s.id));
     setSectionType(s.type);
     setSectionVisible(Boolean(s.isVisible ?? true));
     const d = s.data ?? {};
@@ -503,6 +1344,360 @@ export default function PageEditorPage() {
     setSectionDataObj(t.data ?? {});
     setSectionDataRaw(JSON.stringify(t.data ?? {}, null, 2));
     setSectionErrors({});
+  };
+
+  const applyPageTemplate = async (mode: "append" | "replace") => {
+    if (!id) return;
+    const template = selectedTemplate;
+    if (!template) return;
+    setTemplateBusy(true);
+    try {
+      if (mode === "replace" && localSections.length) {
+        await Promise.all(localSections.map((s) => deleteSectionApi(s.id)));
+      }
+
+      const sectionsToCreate = template.sections ?? [];
+      if (!sectionsToCreate.length) {
+        if (mode === "append") {
+          toast.info("القالب لا يحتوي على أقسام.");
+        } else {
+          toast.success("تم تطبيق القالب.");
+        }
+        await qc.invalidateQueries({ queryKey: ["pages", id] });
+        return;
+      }
+
+      const offset =
+        mode === "append"
+          ? localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1
+          : 0;
+      for (const [idx, s] of sectionsToCreate.entries()) {
+        await createSectionApi(id, {
+          type: s.type,
+          data: s.data ?? {},
+          isVisible: s.isVisible ?? true,
+          order: offset + idx,
+        });
+      }
+      await qc.invalidateQueries({ queryKey: ["pages", id] });
+      toast.success("تم تطبيق القالب.");
+    } catch {
+      toast.error("تعذر تطبيق القالب.");
+    } finally {
+      setTemplateBusy(false);
+      setConfirmTemplateReplace(false);
+    }
+  };
+
+  const persistSectionData = async (
+    sectionId: string,
+    nextData: any,
+    errorMessage?: string,
+    options?: { skipHistory?: boolean; immediate?: boolean }
+  ) => {
+    const prevSection = localSections.find((s) => String(s.id) === String(sectionId));
+    const prevData = prevSection?.data ?? {};
+    if (!options?.skipHistory && !suppressHistoryRef.current) {
+      recordHistory({
+        sectionId: String(sectionId),
+        prevData: cloneData(prevData),
+        nextData: cloneData(nextData),
+        ts: Date.now(),
+      });
+    }
+
+    setLocalSections((prev) =>
+      prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, data: nextData } : s))
+    );
+    if (id) {
+      qc.setQueryData(["pages", id], (prev: any) => {
+        if (!prev || !Array.isArray(prev.sections)) return prev;
+        const nextSections = prev.sections.map((s: any) =>
+          String(s.id) === String(sectionId) ? { ...s, data: nextData } : s
+        );
+        return { ...prev, sections: nextSections };
+      });
+    }
+
+    if (editingSectionId && String(editingSectionId) === String(sectionId)) {
+      setSectionDataObj(nextData);
+      setSectionDataRaw(JSON.stringify(nextData ?? {}, null, 2));
+    }
+
+    if (options?.immediate) {
+      try {
+        await updateSectionApi(sectionId, { data: nextData });
+      } catch {
+        if (errorMessage) toast.error(errorMessage);
+      }
+      return;
+    }
+
+    queueSectionSave(sectionId, nextData);
+  };
+
+  const applyHistoryEntry = async (entry: HistoryEntry, mode: "undo" | "redo") => {
+    if (!entry) return;
+    suppressHistoryRef.current = true;
+    try {
+      await persistSectionData(
+        entry.sectionId,
+        mode === "undo" ? entry.prevData : entry.nextData,
+        "???? ??? ???????.",
+        { skipHistory: true, immediate: true }
+      );
+    } finally {
+      suppressHistoryRef.current = false;
+    }
+  };
+
+  const undoLast = async () => {
+    const idx = historyIndexRef.current;
+    if (idx < 0) return;
+    const entry = historyRef.current[idx];
+    historyIndexRef.current = idx - 1;
+    setHistoryVersion((v) => v + 1);
+    await applyHistoryEntry(entry, "undo");
+  };
+
+  const redoLast = async () => {
+    const idx = historyIndexRef.current + 1;
+    if (idx >= historyRef.current.length) return;
+    const entry = historyRef.current[idx];
+    historyIndexRef.current = idx;
+    setHistoryVersion((v) => v + 1);
+    await applyHistoryEntry(entry, "redo");
+  };
+
+  const handleInlineEdit = async ({ sectionId, path, value }: InlineEditPayload) => {
+    if (!id || !inlineEditingAvailable) return;
+    const idx = localSections.findIndex((s) => String(s.id) === String(sectionId));
+    if (idx < 0) return;
+    const section = localSections[idx];
+    const nextData = setDeepValue(section.data ?? {}, path, value);
+    await persistSectionData(section.id, nextData, "???? ??? ???????.");
+  };
+
+  const handleSelectSection = (sectionId: string) => {
+    setSelectedSectionId(sectionId);
+    setSelectedElement(null);
+    setShowInlineStyling(true);
+  };
+
+  const handleSelectElement = (element: SelectedElement) => {
+    setSelectedElement(element);
+    setSelectedSectionId(String(element.sectionId));
+    setShowInlineStyling(true);
+  };
+
+  const handleSelectedTokensChange = (nextTokens: any) => {
+    if (!selectedSection) return;
+    const nextData = { ...(selectedSection.data ?? {}), twTokens: nextTokens };
+    void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const handleSelectedElementTokensChange = (nextTokens: any) => {
+    if (!selectedSection || !resolvedElementTokensPath) return;
+    const nextData = setDeepValue(selectedSection.data ?? {}, resolvedElementTokensPath, nextTokens);
+    void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const handleQuickFieldChange = (path: Array<string | number>, value: string) => {
+    if (!selectedSection) return;
+    const nextData = setDeepValue(selectedSection.data ?? {}, path, value);
+    void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const openElementModal = () => {
+    if (!elementQuickFields.length) return;
+    setElementModalFields(elementQuickFields.map((f) => ({ ...f })));
+    setElementModalOpen(true);
+  };
+
+  const saveElementModal = async () => {
+    if (!selectedSection) return;
+    let nextData = selectedSection.data ?? {};
+    for (const field of elementModalFields) {
+      nextData = setDeepValue(nextData, field.path, field.value);
+    }
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+    setElementModalOpen(false);
+  };
+
+  const handleDuplicateElement = async () => {
+    if (!selectedSection || !elementArrayInfo) return;
+    const { arrayPath, index, indexPathIndex, array, item } = elementArrayInfo;
+    if (!Array.isArray(array)) return;
+    const nextItem = cloneWithFreshKeys(item);
+    const nextArray = array.slice();
+    nextArray.splice(index + 1, 0, nextItem);
+    const nextData = setDeepValue(selectedSection.data ?? {}, arrayPath, nextArray);
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+    if (selectedElement) {
+      const nextValuePath = updatePathIndex(selectedElement.valuePath, indexPathIndex, index + 1);
+      const nextTokensPath = updatePathIndex(selectedElement.tokensPath, indexPathIndex, index + 1);
+      setSelectedElement({
+        ...selectedElement,
+        valuePath: nextValuePath,
+        tokensPath: nextTokensPath,
+        key: elementKeyForSelection(selectedElement.kind, nextValuePath, nextTokensPath),
+      });
+    }
+  };
+
+  const handleDeleteElement = async () => {
+    if (!selectedSection || !elementArrayInfo) return;
+    const { arrayPath, index, indexPathIndex, array } = elementArrayInfo;
+    if (!Array.isArray(array) || array.length === 0) return;
+    const nextArray = array.filter((_, idx) => idx !== index);
+    const nextData = setDeepValue(selectedSection.data ?? {}, arrayPath, nextArray);
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+    if (!nextArray.length) {
+      setSelectedElement(null);
+      return;
+    }
+    const nextIndex = Math.min(index, nextArray.length - 1);
+    if (selectedElement) {
+      const nextValuePath = updatePathIndex(selectedElement.valuePath, indexPathIndex, nextIndex);
+      const nextTokensPath = updatePathIndex(selectedElement.tokensPath, indexPathIndex, nextIndex);
+      setSelectedElement({
+        ...selectedElement,
+        valuePath: nextValuePath,
+        tokensPath: nextTokensPath,
+        key: elementKeyForSelection(selectedElement.kind, nextValuePath, nextTokensPath),
+      });
+    }
+  };
+
+  const handleToggleElementVisibility = async () => {
+    if (!selectedSection || !elementArrayInfo) return;
+    const { itemPath, item } = elementArrayInfo;
+    if (!item || typeof item !== "object") return;
+    const nextItem = { ...item } as any;
+    if ("hidden" in nextItem) {
+      nextItem.hidden = !elementIsVisible;
+    } else {
+      nextItem.isVisible = !elementIsVisible;
+    }
+    const nextData = setDeepValue(selectedSection.data ?? {}, itemPath, nextItem);
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const persistSectionVisibility = async (sectionId: string, isVisible: boolean) => {
+    setLocalSections((prev) =>
+      prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, isVisible } : s))
+    );
+    if (id) {
+      qc.setQueryData(["pages", id], (prev: any) => {
+        if (!prev || !Array.isArray(prev.sections)) return prev;
+        const nextSections = prev.sections.map((s: any) =>
+          String(s.id) === String(sectionId) ? { ...s, isVisible } : s
+        );
+        return { ...prev, sections: nextSections };
+      });
+    }
+    try {
+      await updateSectionApi(sectionId, { isVisible });
+    } catch {
+      toast.error("???? ????? ??? ??????");
+    }
+  };
+
+  const toggleSelectedVisibility = async () => {
+    if (!selectedSection) return;
+    setSelectionBusy(true);
+    try {
+      await persistSectionVisibility(selectedSection.id, !selectedSection.isVisible);
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const duplicateSelectedSection = async () => {
+    if (!id || !selectedSection) return;
+    setSelectionBusy(true);
+    try {
+      const nextOrder = localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1;
+      const created = await createSectionApi(id, {
+        type: selectedSection.type,
+        data: selectedSection.data ?? {},
+        isVisible: selectedSection.isVisible ?? true,
+        order: nextOrder,
+      });
+      await qc.invalidateQueries({ queryKey: ["pages", id] });
+      setSelectedSectionId(String(created.id));
+      setShowInlineStyling(true);
+    } catch {
+      toast.error("???? ??? ?????? ?????.");
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const calculateInsertOrder = (index: number) => {
+    const before = localSections[index - 1];
+    const after = localSections[index];
+    if (before && after) {
+      const prevOrder = Number(before.order ?? index - 1);
+      const nextOrder = Number(after.order ?? index);
+      return (prevOrder + nextOrder) / 2;
+    }
+    if (before) return Number(before.order ?? index - 1) + 1;
+    if (after) return Number(after.order ?? 0) - 1;
+    return 0;
+  };
+
+  const insertSectionFromLibrary = async (item: LibraryItem, index: number | null) => {
+    if (!id) return;
+    const insertAt = index == null ? localSections.length : Math.min(Math.max(index, 0), localSections.length);
+    const order = calculateInsertOrder(insertAt);
+    setLibraryBusy(true);
+    try {
+      const created = await actions.createSection.mutateAsync({
+        pageId: id,
+        body: { type: item.type, data: item.data ?? {}, isVisible: true, order },
+      });
+      setSelectedSectionId(String(created.id));
+      setSelectedElement(null);
+      setShowInlineStyling(true);
+      setSectionInsertIndex(null);
+    } catch {
+      // toast handled in mutation
+    } finally {
+      setLibraryBusy(false);
+      setLibraryDragItem(null);
+      setLibraryDragOverIndex(null);
+    }
+  };
+
+  const handleLibraryDragStart = (item: LibraryItem) => (event: React.DragEvent<HTMLDivElement>) => {
+    setLibraryDragItem(item);
+    setLibraryDragOverIndex(null);
+    event.dataTransfer.effectAllowed = "copy";
+    try {
+      event.dataTransfer.setData("application/x-page-section", JSON.stringify(item));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLibraryDragEnd = () => {
+    setLibraryDragItem(null);
+    setLibraryDragOverIndex(null);
+  };
+
+  const handleInsertDrop = (index: number) => async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    let payload: LibraryItem | null = null;
+    try {
+      const raw = event.dataTransfer.getData("application/x-page-section");
+      if (raw) payload = JSON.parse(raw) as LibraryItem;
+    } catch {
+      payload = null;
+    }
+    const item = payload ?? libraryDragItem;
+    if (!item) return;
+    await insertSectionFromLibrary(item, index);
   };
 
   const preview = useMemo(() => {
@@ -877,12 +2072,29 @@ export default function PageEditorPage() {
     setConfirmDeleteSectionId(null);
   };
 
+  const canMoveUp = selectedSectionIndex > 0;
+  const canMoveDown = selectedSectionIndex >= 0 && selectedSectionIndex < localSections.length - 1;
+  const canUndo = historyIndexRef.current >= 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+
   if (q.isLoading) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div className="flex items-center gap-2">
-          <Spinner />
-          <div className="text-sm opacity-80">جاري التحميل…</div>
+      <div dir="rtl" className="relative rounded-2xl border border-white/[0.06] glass-premium p-12 overflow-hidden">
+        {/* Ambient glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-gradient-to-b from-accent-500/10 to-transparent blur-3xl pointer-events-none" />
+        
+        <div className="relative flex flex-col items-center justify-center gap-4">
+          <div className="relative">
+            <Spinner className="w-12 h-12" />
+            {/* Orbiting elements */}
+            <div className="absolute inset-[-25px] animate-orbit" style={{ animationDuration: '3s' }}>
+              <div className="w-2.5 h-2.5 rounded-full bg-accent-500/50 shadow-lg shadow-accent-500/30" />
+            </div>
+            <div className="absolute inset-[-40px] animate-orbit" style={{ animationDuration: '5s', animationDirection: 'reverse' }}>
+              <div className="w-2 h-2 rounded-full bg-accent-400/30" />
+            </div>
+          </div>
+          <p className="text-sm text-white/60">جاري تحميل الصفحة...</p>
         </div>
       </div>
     );
@@ -890,38 +2102,104 @@ export default function PageEditorPage() {
 
   if (q.isError || !page) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-red-400/20 bg-red-500/10 p-6 text-red-100">
-        فشل تحميل الصفحة.
-        <div className="mt-4">
-          <Button variant="ghost" onClick={() => nav("/admin/pages")}>رجوع</Button>
+      <div dir="rtl" className="relative rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5 p-8 overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
+        
+        <div className="flex flex-col items-center justify-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-red-300">فشل تحميل الصفحة</h3>
+            <p className="mt-1 text-sm text-red-400/70">حدث خطأ أثناء تحميل بيانات الصفحة</p>
+          </div>
+          <Button variant="ghost" onClick={() => nav("/admin/pages")} className="mt-2 btn-shine">
+            <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            العودة للصفحات
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="space-y-4">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="text-lg font-semibold flex items-center gap-2">
-              تحرير الصفحة
-              {isDirty ? <span className="rounded-lg bg-amber-500/20 px-2 py-1 text-[11px] text-amber-100">غير محفوظ</span> : null}
+    <div dir="rtl" className="space-y-5 perspective-container">
+      {/* Enhanced Header Card */}
+      <div className="relative rounded-2xl border border-white/[0.06] glass-premium p-6 overflow-hidden">
+        {/* 3D Background decorations */}
+        <div className="absolute top-[-30px] right-[-30px] w-20 h-20 opacity-20 pointer-events-none">
+          <div className="floating-cube" />
+        </div>
+        <div className="absolute bottom-[-20px] left-[20%] w-16 h-16 opacity-15 pointer-events-none">
+          <div className="floating-sphere" />
+        </div>
+        
+        {/* Ambient glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[120px] bg-gradient-to-b from-accent-500/10 to-transparent blur-3xl pointer-events-none" />
+        
+        {/* Top highlight */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-500/30 to-transparent" />
+        
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500/20 to-accent-600/10 border border-accent-500/25 flex items-center justify-center shadow-lg shadow-accent-500/10">
+              <svg className="w-7 h-7 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
             </div>
-            <div className="mt-1 text-xs opacity-70">
-              ID: <span className="opacity-100">{page.id}</span>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold text-gradient-premium">تحرير الصفحة</h1>
+                {isDirty ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-xs text-amber-400 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    غير محفوظ
+                  </span>
+                ) : null}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs ${
+                  page.status === 'PUBLISHED' 
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                    : 'bg-white/5 border border-white/10 text-white/60'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${page.status === 'PUBLISHED' ? 'bg-emerald-400' : 'bg-white/40'}`} />
+                  {page.status === 'PUBLISHED' ? 'منشور' : 'مسودة'}
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-3 text-sm text-white/50">
+                <span>ID: <span className="font-mono text-white/70">{page.id}</span></span>
+                <span>•</span>
+                <span>{sections.length} قسم</span>
+              </div>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="ghost" onClick={() => nav("/admin/pages")}>رجوع</Button>
-            <Button variant="ghost" onClick={() => nav(`/admin/pages/${page.id}/preview`)}>Preview</Button>
-            <Button variant={showPreview ? "ghost" : "secondary"} onClick={() => setShowPreview((v) => !v)}>
-              {showPreview ? "إخفاء المعاينة المباشرة" : "معاينة مباشرة"}
+            <Button variant="ghost" onClick={() => nav("/admin/pages")} className="btn-shine">
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              رجوع
             </Button>
-            <Button variant="secondary" onClick={openCreateSection}>إضافة Section</Button>
+            <Button variant="ghost" onClick={() => nav(`/admin/pages/${page.id}/preview`)}>
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              معاينة
+            </Button>
+            
+            <Button variant="accent" onClick={openCreateSection} className="btn-shine">
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              إضافة Section
+            </Button>
             <select
-              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm sm:w-auto"
+              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm sm:w-auto hover:bg-white/[0.06] transition-colors"
               value={componentsSectionKind}
               onChange={(e) => setComponentsSectionKind(e.target.value as CmsComponentKind)}
               title="نوع Component لقسم Components"
@@ -932,10 +2210,15 @@ export default function PageEditorPage() {
                 </option>
               ))}
             </select>
-            <Button variant="secondary" onClick={openCreateComponentsSection}>إضافة Components</Button>
+            <Button variant="secondary" onClick={openCreateComponentsSection}>
+              <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
+              </svg>
+              إضافة Components
+            </Button>
 
             <select
-              className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm sm:w-auto"
+              className="h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-sm sm:w-auto hover:bg-white/[0.06] transition-colors"
               value={aiLocale}
               onChange={(e) => setAiLocale(e.target.value as any)}
               title="لغة AI (للمحتوى والـ SEO)"
@@ -984,6 +2267,36 @@ export default function PageEditorPage() {
             >
               ✨ ترجمة EN
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canUndo}
+              onClick={undoLast}
+              title="Undo"
+            >
+              Undo
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canRedo}
+              onClick={redoLast}
+              title="Redo"
+            >
+              Redo
+            </Button>
+            {autosaveState !== "idle" ? (
+              <div
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs",
+                  autosaveState === "saving"
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+                ].join(" ")}
+              >
+                {autosaveState === "saving" ? "Autosaving..." : "Saved"}
+              </div>
+            ) : null}
             {page.status !== "PUBLISHED" ? (
               <Button variant="secondary" onClick={() => setPageStatus("PUBLISHED")}>نشر</Button>
             ) : (
@@ -1074,38 +2387,606 @@ export default function PageEditorPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-lg font-semibold">Sections</div>
-          <div className="text-xs opacity-70">{sections.length} sections</div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        {!canvasFullScreen && !leftPanelCollapsed ? (
+          <div className="flex w-full flex-col gap-4 lg:shrink-0" style={leftPanelStyle}>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-lg font-semibold">Templates</div>
+              <div className="text-xs opacity-70">{selectedTemplate?.label}</div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+              <Select
+                label="Page template"
+                value={templateId}
+                onValueChange={(value) => setTemplateId(value as any)}
+                options={PAGE_TEMPLATES.map((tpl) => ({ value: tpl.id, label: tpl.label }))}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => applyPageTemplate("append")}
+                isLoading={templateBusy}
+              >
+                Append
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => setConfirmTemplateReplace(true)}
+                disabled={templateBusy}
+              >
+                Replace
+              </Button>
+            </div>
+
+            <div className="mt-2 text-xs opacity-60">
+              {selectedTemplate?.description ?? ""}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-lg font-semibold">Sections</div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs opacity-70">{sections.length} sections</div>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={showSectionLibrary ? "secondary" : "ghost"}
+                  onClick={() => setShowSectionLibrary((v) => !v)}
+                >
+                  {showSectionLibrary ? "Hide library" : "Library"}
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setLeftPanelCollapsed(true)}
+                >
+                  Collapse
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {localSections.length ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext items={localSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-3">
+                      {showInsertPoints ? renderInsertZone(0, localSections.length === 0) : null}
+                      {localSections.map((s, idx) => (
+                        <React.Fragment key={s.id}>
+                          <SortableSectionCard
+                            section={s}
+                            index={idx}
+                            isSelected={String(selectedSectionId ?? "") === String(s.id)}
+                            previewData={getTranslatedSectionData(s, idx)}
+                            theme={theme}
+                            onSelect={() => handleSelectSection(String(s.id))}
+                            onEdit={() => openEditSection(s)}
+                            onDelete={() => setConfirmDeleteSectionId(s.id)}
+                            onToggleVisible={() => {
+                              if (!id) return;
+                              actions.updateSection.mutateAsync({ pageId: id, sectionId: s.id, body: { isVisible: !s.isVisible } }).catch(() => {});
+                            }}
+                          />
+                          {showInsertPoints ? renderInsertZone(idx + 1) : null}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                showInsertPoints ? renderInsertZone(0, true) : <div className="text-sm opacity-70">No sections yet.</div>
+              )}
+            </div>
+          </div>
+
+          {showSectionLibrary ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-lg font-semibold">Section library</div>
+                <div className="text-xs opacity-70">{sectionLibraryType}</div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <Select
+                  label="Type"
+                  value={sectionLibraryType}
+                  onChange={(e) => setSectionLibraryType(e.target.value as PageSectionType)}
+                  options={SECTION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setSectionInsertIndex(localSections.length)}
+                >
+                  Insert at end
+                </Button>
+              </div>
+
+              <div className="mt-2 text-xs text-white/60">
+                Insert position:{" "}
+                <span className="text-white/80">
+                  {sectionInsertIndex == null ? "End" : `#${sectionInsertIndex + 1}`}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {sectionLibraryItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 hover:border-accent-500/40 transition"
+                    draggable
+                    onDragStart={handleLibraryDragStart(item)}
+                    onDragEnd={handleLibraryDragEnd}
+                  >
+                    <div className="h-28 overflow-hidden rounded-lg border border-white/[0.08] bg-black/30">
+                      <ThemePreview theme={theme} className="h-full p-2">
+                        <React.Suspense fallback={<div className="p-4 text-[11px] text-white/50">Loading...</div>}>
+                          <div className="scale-[0.6] origin-top-right">
+                            <LazySectionPreview type={item.type} data={item.data} />
+                          </div>
+                        </React.Suspense>
+                      </ThemePreview>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="text-xs font-medium">{item.label}</div>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="secondary"
+                        disabled={libraryBusy}
+                        onClick={() => insertSectionFromLibrary(item, sectionInsertIndex)}
+                      >
+                        Insert
+                      </Button>
+                    </div>
+                    <div className="mt-1 text-[10px] text-white/50">Drag to insert between sections.</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          </div>
+        ) : null}
+
+        {!canvasFullScreen && !leftPanelCollapsed ? (
+          <div
+            className={
+              "hidden lg:block w-1 shrink-0 cursor-col-resize rounded-full " +
+              (leftPanelResizing ? "bg-accent-500/40" : "bg-white/10")
+            }
+            onPointerDown={startLeftResize}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sections panel"
+          />
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className={canvasPanelClass}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-semibold">Canvas</div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="xs"
+                variant={leftPanelCollapsed ? "secondary" : "ghost"}
+                onClick={() => setLeftPanelCollapsed((v) => !v)}
+              >
+                {leftPanelCollapsed ? "Show list" : "Hide list"}
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={canvasFullScreen ? "secondary" : "ghost"}
+                onClick={() => setCanvasFullScreen((v) => !v)}
+              >
+                {canvasFullScreen ? "Exit full screen" : "Full screen"}
+              </Button>
+              <div className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={canvasView === "live" ? "secondary" : "ghost"}
+                  onClick={() => setCanvasView("live")}
+                >
+                  Live
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={canvasView === "preview" ? "secondary" : "ghost"}
+                  onClick={() => setCanvasView("preview")}
+                >
+                  Preview
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+              <Button
+                type="button"
+                size="xs"
+                variant={previewMode === "desktop" ? "secondary" : "ghost"}
+                onClick={() => setPreviewMode("desktop")}
+              >
+                Desktop
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={previewMode === "tablet" ? "secondary" : "ghost"}
+                onClick={() => setPreviewMode("tablet")}
+              >
+                Tablet
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={previewMode === "mobile" ? "secondary" : "ghost"}
+                onClick={() => setPreviewMode("mobile")}
+              >
+                Mobile
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="xs" variant="ghost" onClick={() => setPreviewBump((x) => x + 1)}>
+                Refresh
+              </Button>
+              {previewUrl ? (
+                <a className="text-xs opacity-80 hover:opacity-100 underline" href={previewUrl} target="_blank" rel="noreferrer">
+                  Open in tab
+                </a>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] p-2">
+            <div className="text-xs opacity-70">
+              Inline edit{inlineEditingAvailable ? "" : " (AR only)"}
+            </div>
+            <button
+              type="button"
+              className={
+                "relative h-6 w-11 rounded-full border transition-all " +
+                (inlineEditing ? "bg-white/20 border-white/20" : "bg-white/10 border-white/10") +
+                (inlineEditingAvailable ? "" : " opacity-50 cursor-not-allowed")
+              }
+              onClick={() => {
+                if (!inlineEditingAvailable) return;
+                setInlineEditing((v) => !v);
+              }}
+            >
+              <span
+                className={
+                  "absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full bg-white transition-all " +
+                  (inlineEditing ? "left-1" : "right-1")
+                }
+              />
+            </button>
+          </div>
+
+          <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+            {canvasView === "preview" ? (
+              previewUrl ? (
+                <div className={`mx-auto w-full ${previewWidthClass}`}>
+                  <iframe
+                    key={`preview-${previewBump}`}
+                    title="preview"
+                    src={previewUrl}
+                    className={`${canvasPreviewHeightClass} w-full`}
+                  />
+                </div>
+              ) : (
+                <div className="p-6 text-sm text-white/60">Preview unavailable.</div>
+              )
+            ) : (
+              <div ref={canvasScrollRef} className={`relative ${canvasViewportClass} overflow-auto`}>
+                <ThemePreview key={`live-${previewBump}`} theme={theme} className="min-h-[60vh] p-4">
+                  {customCss && customCss.trim() ? <style>{scopeCss(customCss, "#cms-preview-root")}</style> : null}
+                  <div id="cms-preview-root" className={`mx-auto w-full ${previewWidthClass}`} dir={canvasDir}>
+                    {canvasSections.length ? (
+                      <PageRenderer
+                        sections={canvasSections}
+                        inlineEditing={inlineEditing && inlineEditingAvailable}
+                        onInlineEdit={handleInlineEdit}
+                        selectedSectionId={selectedSectionId}
+                        onSectionSelect={handleSelectSection}
+                        selectedElement={selectedElement}
+                        onElementSelect={handleSelectElement}
+                      />
+                    ) : (
+                      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/60">
+                        No sections to preview.
+                      </div>
+                    )}
+                  </div>
+                </ThemePreview>
+                {canvasActionBar && selectedSection ? (
+                  <div className="pointer-events-none absolute inset-0">
+                    <div
+                      className="pointer-events-auto absolute z-20 flex flex-wrap items-center gap-1 rounded-xl border border-white/[0.08] bg-black/80 p-2 text-[11px] shadow-lg shadow-black/40"
+                      style={{
+                        top: canvasActionBar.top,
+                        left: canvasActionBar.left,
+                        width: canvasActionBar.width,
+                        maxWidth: "calc(100% - 16px)",
+                      }}
+                    >
+                      {selectedElement ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="secondary"
+                            onClick={openElementModal}
+                            disabled={!elementQuickFields.length}
+                          >
+                            Edit element
+                          </Button>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="secondary"
+                            onClick={handleDuplicateElement}
+                            disabled={!elementCanDuplicate}
+                          >
+                            Dup element
+                          </Button>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant={elementIsVisible ? "ghost" : "secondary"}
+                            onClick={handleToggleElementVisibility}
+                            disabled={!elementCanToggleVisibility}
+                          >
+                            {elementIsVisible ? "Hide element" : "Show element"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="danger"
+                            onClick={handleDeleteElement}
+                            disabled={!elementCanDelete}
+                          >
+                            Delete element
+                          </Button>
+                          <span className="mx-1 h-4 w-px bg-white/10" />
+                        </>
+                      ) : null}
+                      <Button type="button" size="xs" variant="secondary" onClick={() => openEditSection(selectedSection)}>
+                        Edit
+                      </Button>
+                      <Button type="button" size="xs" variant="secondary" onClick={duplicateSelectedSection} isLoading={selectionBusy}>
+                        Duplicate
+                      </Button>
+                      <Button type="button" size="xs" variant={selectedSection.isVisible ? "ghost" : "secondary"} onClick={toggleSelectedVisibility} disabled={selectionBusy}>
+                        {selectedSection.isVisible ? "Hide" : "Show"}
+                      </Button>
+                      <Button type="button" size="xs" variant="ghost" disabled={!canMoveUp} onClick={() => moveSection(selectedSection.id, "UP")}>
+                        Move up
+                      </Button>
+                      <Button type="button" size="xs" variant="ghost" disabled={!canMoveDown} onClick={() => moveSection(selectedSection.id, "DOWN")}>
+                        Move down
+                      </Button>
+                      <Button type="button" size="xs" variant="danger" onClick={() => setConfirmDeleteSectionId(selectedSection.id)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {localSections.length ? (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={localSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-                  {localSections.map((s, idx) => (
-                    <SortableSectionCard
-                      key={s.id}
-                      section={s}
-                      previewData={getTranslatedSectionData(s, idx)}
-                      theme={theme}
-                      onEdit={() => openEditSection(s)}
-                      onDelete={() => setConfirmDeleteSectionId(s.id)}
-                      onToggleVisible={() => {
-                        if (!id) return;
-                        actions.updateSection.mutateAsync({ pageId: id, sectionId: s.id, body: { isVisible: !s.isVisible } }).catch(() => {});
-                      }}
-                    />
-                  ))}
+        {!canvasFullScreen ? (
+        <div className="w-full lg:w-[360px] lg:shrink-0 lg:self-start lg:sticky lg:top-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            {selectedSection ? (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold">Selected section</div>
+                    <div className="text-xs text-white/60">
+                      {selectedSection.type} | Order {selectedSection.order ?? 0} | ID {selectedSection.id}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                      setSelectedSectionId(null);
+                      setShowInlineStyling(false);
+                      setSelectedElement(null);
+                    }}
+                  >
+                    Clear
+                  </Button>
                 </div>
-              </SortableContext>
-            </DndContext>
-          ) : (
-            <div className="text-sm opacity-70">لا يوجد Sections.</div>
-          )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={() => openEditSection(selectedSection)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={() => setShowAdvancedStyling(true)}
+                  >
+                    Open styling window
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={duplicateSelectedSection}
+                    isLoading={selectionBusy}
+                  >
+                    Duplicate
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant={selectedSection.isVisible ? "ghost" : "secondary"}
+                    onClick={toggleSelectedVisibility}
+                    disabled={selectionBusy}
+                  >
+                    {selectedSection.isVisible ? "Hide" : "Show"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="danger"
+                    onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                  {selectedElement ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold">
+                          Element: <span className="text-white/70">{selectedElement.kind}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => setSelectedElement(null)}
+                        >
+                          Clear element
+                        </Button>
+                      </div>
+                      {selectedElement.label ? (
+                        <div className="text-[11px] text-white/60">{selectedElement.label}</div>
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          onClick={openElementModal}
+                          disabled={!elementQuickFields.length}
+                        >
+                          Edit element
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          onClick={handleDuplicateElement}
+                          disabled={!elementCanDuplicate}
+                        >
+                          Duplicate
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant={elementIsVisible ? "ghost" : "secondary"}
+                          onClick={handleToggleElementVisibility}
+                          disabled={!elementCanToggleVisibility}
+                        >
+                          {elementIsVisible ? "Hide" : "Show"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="danger"
+                          onClick={handleDeleteElement}
+                          disabled={!elementCanDelete}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                      {!elementArrayInfo ? (
+                        <div className="text-[11px] text-white/50">
+                          Duplicate/Delete apply to list items only.
+                        </div>
+                      ) : null}
+                      {elementQuickFields.length ? (
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold">Quick edits</div>
+                          <div className="grid gap-2">
+                            {elementQuickFields.map((field) => (
+                              <Input
+                                key={field.key}
+                                label={field.label}
+                                value={field.value}
+                                type={field.type === "url" ? "url" : "text"}
+                                onValueChange={(value) => handleQuickFieldChange(field.path, value)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {resolvedElementTokensPath ? (
+                        <div className="max-h-[36vh] overflow-auto">
+                          <ResponsiveTokensPanel
+                            tokens={selectedElementTokens ?? {}}
+                            onChange={handleSelectedElementTokensChange}
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-xs text-white/60">
+                          Element styling inherits section styles. Use Advanced styling to adjust section tokens.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-white/60">
+                      Click a text, button, image, or card to edit element styling.
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between text-xs font-semibold"
+                    onClick={() => setShowInlineStyling((v) => !v)}
+                  >
+                    <span>Advanced styling</span>
+                    <svg
+                      className={`h-4 w-4 transition-transform ${showInlineStyling ? "rotate-180" : ""}`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
+                    </svg>
+                  </button>
+                  {showInlineStyling ? (
+                    <div className="mt-3 max-h-[40vh] overflow-auto">
+                      <ResponsiveTokensPanel
+                        tokens={selectedSection.data?.twTokens ?? {}}
+                        onChange={handleSelectedTokensChange}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-white/60">
+                Select a section in the canvas to edit styling and actions.
+              </div>
+            )}
+          </div>
         </div>
+      ) : null}
+
       </div>
 
       {/* Section modal */}
@@ -1236,7 +3117,7 @@ export default function PageEditorPage() {
                     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
                       <div className="text-sm font-semibold mb-3">تنسيق القسم المتقدم</div>
                       <React.Suspense fallback={<div className="text-sm text-white/60">Loading styling…</div>}>
-                        <LazySectionStylingPanel
+                        <ResponsiveTokensPanel
                           tokens={sectionDataObj?.twTokens ?? {}}
                           onChange={(next) => {
                             const v = { ...(sectionDataObj ?? {}), twTokens: next };
@@ -1326,6 +3207,125 @@ export default function PageEditorPage() {
         </div>
       </Modal>
 
+      <Modal
+        open={elementModalOpen && !!selectedElement}
+        title="Edit element"
+        description={selectedElement ? `${selectedElement.kind}${selectedElement.label ? ` - ${selectedElement.label}` : ""}` : undefined}
+        onCancel={() => setElementModalOpen(false)}
+        widthClassName="max-w-2xl"
+        footer={
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              onClick={saveElementModal}
+              disabled={!elementModalFields.length}
+            >
+              Save
+            </Button>
+          </div>
+        }
+      >
+        {elementModalFields.length ? (
+          <div className="grid gap-3">
+            {elementModalFields.map((field) => (
+              <Input
+                key={field.key}
+                label={field.label}
+                value={field.value}
+                type={field.type === "url" ? "url" : "text"}
+                onValueChange={(value) => {
+                  setElementModalFields((prev) =>
+                    prev.map((item) => (item.key === field.key ? { ...item, value } : item))
+                  );
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-white/60">No editable fields.</div>
+        )}
+      </Modal>
+      <Modal
+        open={showAdvancedStyling && !!selectedSection}
+        title="تنسيق متقدم"
+        description={selectedSection ? `Section: ${selectedSection.type}` : undefined}
+        onCancel={() => setShowAdvancedStyling(false)}
+        widthClassName="max-w-6xl"
+      >
+        {selectedSection ? (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60">
+                <div>
+                  ID: <span className="text-white/90">{selectedSection.id}</span>
+                </div>
+                <div>Order: {selectedSection.order ?? 0}</div>
+                <div className="text-white/80">{selectedSection.type}</div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setShowAdvancedStyling(false);
+                    openEditSection(selectedSection);
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={duplicateSelectedSection}
+                  isLoading={selectionBusy}
+                >
+                  Duplicate
+                </Button>
+                <Button
+                  variant={selectedSection.isVisible ? "ghost" : "secondary"}
+                  size="sm"
+                  onClick={toggleSelectedVisibility}
+                  disabled={selectionBusy}
+                >
+                  {selectedSection.isVisible ? "Hide" : "Show"}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
+                  disabled={selectionBusy}
+                >
+                  Delete
+                </Button>
+              </div>
+
+              <ResponsiveTokensPanel
+                tokens={selectedSection.data?.twTokens ?? {}}
+                onChange={handleSelectedTokensChange}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3 lg:sticky lg:top-4 lg:self-start lg:max-h-[70vh] lg:overflow-auto">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-semibold">Preview</div>
+                <div className="text-xs opacity-60">{selectedSection.type}</div>
+              </div>
+              <ThemePreview theme={theme} className="rounded-2xl p-2">
+                <React.Suspense fallback={<div className="p-6 text-xs text-white/50">Loading preview.</div>}>
+                  <LazySectionPreview
+                    type={selectedSection.type}
+                    data={selectedSectionPreviewData ?? selectedSection.data}
+                  />
+                </React.Suspense>
+              </ThemePreview>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-white/60">No section selected.</div>
+        )}
+      </Modal>
+
       <ConfirmDialog
         open={!!confirmDeleteSectionId}
         title="تأكيد الحذف"
@@ -1335,24 +3335,24 @@ export default function PageEditorPage() {
         onConfirm={deleteSection}
         onCancel={() => setConfirmDeleteSectionId(null)}
       />
-      {showPreview && previewUrl ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-          <div className="flex items-center justify-between gap-2 px-2 py-1">
-            <div className="text-sm font-semibold">Live Preview</div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={() => setPreviewBump((x) => x + 1)}>تحديث</Button>
-              <a className="text-xs opacity-80 hover:opacity-100 underline" href={previewUrl} target="_blank" rel="noreferrer">فتح في تبويب</a>
-            </div>
-          </div>
-          <div className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-            <iframe title="preview" src={previewUrl} className="h-[70vh] w-full" />
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        open={confirmTemplateReplace}
+        title="Replace template?"
+        message="This will remove all current sections and apply the selected template."
+        confirmText="Replace"
+        cancelText="Cancel"
+        variant="warning"
+        isLoading={templateBusy}
+        onConfirm={() => applyPageTemplate("replace")}
+        onCancel={() => setConfirmTemplateReplace(false)}
+      />
 
     </div>
   );
 }
+
+
+
 
 
 

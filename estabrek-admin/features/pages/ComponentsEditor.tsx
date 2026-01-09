@@ -4,6 +4,7 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { cn } from "../../components/ui/cn";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
+import { getDividerById } from "../../cms/style/containerStyles";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import {
   BG_PRESETS,
@@ -41,10 +42,7 @@ import {
 } from "../../cms/style/tokens";
 import { SHAPES } from "../../cms/shapes/shapeRegistry";
 import type { CmsComponent, CmsComponentKind, CmsSectionData } from "../../cms/types";
-
-const LazySectionStylingPanel = React.lazy(() =>
-  import("./SectionStylingPanel").then((m) => ({ default: m.SectionStylingPanel }))
-);
+import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 
 type ChildCapableKind = "container" | "stack" | "row" | "grid" | "columns";
 
@@ -463,7 +461,7 @@ export function ComponentsEditor({
   const components = useMemo(() => getComponents(data), [data]);
 
   const [kindToAdd, setKindToAdd] = useState<CmsComponentKind>("text");
-  const [showAdvancedStyle, setShowAdvancedStyle] = useState(false);
+  const [showAdvancedStyle, setShowAdvancedStyle] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(components[0]?.id ?? null);
 
   const selected = components.find((c) => c.id === selectedId) ?? null;
@@ -598,7 +596,7 @@ export function ComponentsEditor({
             {!selected ? (
               <div className="text-white/60 text-sm">Select a component to edit.</div>
             ) : (
-              <div className="space-y-4 min-w-[960px]">
+              <div className="space-y-4 min-w-0">
                 <div className="grid gap-3 md:grid-cols-2">
                   <Input
                     label="Name"
@@ -741,7 +739,7 @@ export function ComponentsEditor({
                                 <div className="space-y-2">
                                   {(it.children ?? []).map((ch: any) => (
                                     <div key={ch.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-2">
-                                      <div className="grid gap-2 md:grid-cols-[1fr,1fr,160px,auto] items-end">
+                                      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_auto] items-end">
                                         <Input label="Label" value={ch.label ?? ""} onValueChange={(v) => patchChild(it.id, ch.id, { label: v })} />
                                         <Input label="Href" value={ch.href ?? ""} onValueChange={(v) => patchChild(it.id, ch.id, { href: v })} />
                                         <Select
@@ -1349,12 +1347,13 @@ export function ComponentsEditor({
                 )}
 
                 {/* Tokens */}
+                {false && (
                 <div className="rounded-xl border border-white/10 bg-white/[0.015] p-3">
                   <div className="text-xs font-semibold text-white/70 mb-3">Design (Tailwind presets)</div>
 
                   <div className="overflow-x-auto pb-2 -mx-1 px-1">
                     <div
-                      className="grid gap-5 min-w-[960px]"
+                      className="grid gap-5 min-w-0"
                       style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
                     >
                     <Select
@@ -1811,7 +1810,7 @@ export function ComponentsEditor({
                     <div className="mt-2 mb-2 text-xs font-semibold text-white/60">Decor (before/after)</div>
                     <div className="overflow-x-auto pb-2 -mx-1 px-1">
                       <div
-                        className="grid gap-5 min-w-[960px]"
+                        className="grid gap-5 min-w-0"
                         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}
                       >
                       <Select
@@ -2126,21 +2125,20 @@ export function ComponentsEditor({
                     </div>
                   </div>
                 </div>
+                )}
 
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-semibold text-white/70">Advanced styling</div>
+                  <div className="text-xs font-semibold text-white/70">تنسيق القسم المتقدم</div>
                   <Button size="sm" variant="ghost" onClick={() => setShowAdvancedStyle((v) => !v)}>
-                    {showAdvancedStyle ? "Hide" : "Show"}
+                    {showAdvancedStyle ? "إخفاء" : "إظهار"}
                   </Button>
                 </div>
                 {showAdvancedStyle ? (
-                  <React.Suspense fallback={<div className="mt-2 text-sm text-white/60">Loading styling…</div>}>
-                    <LazySectionStylingPanel
-                      className="mt-2"
-                      tokens={(selected.twTokens ?? defaultTokensBase()) as any}
-                      onChange={(next) => patchSelected({ twTokens: next })}
-                    />
-                  </React.Suspense>
+                  <ResponsiveTokensPanel
+                    className="mt-2"
+                    tokens={(selected.twTokens ?? defaultTokensBase()) as any}
+                    onChange={(next) => patchSelected({ twTokens: next })}
+                  />
                 ) : null}
 
                 {/* Preview */}
@@ -2358,7 +2356,16 @@ export function ComponentsEditor({
                           </svg>
                         );
                       })()}
-                      {selected.kind === "divider" && <hr className="border-white/15" style={previewStyle} />}
+                      {selected.kind === "divider" && (() => {
+                        const preset = getDividerById(previewTokens?.dividerStyleId);
+                        if (preset?.svg) {
+                          return <div className={previewClassName} style={previewStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />;
+                        }
+                        if (preset) {
+                          return <div className={previewClassName} style={previewStyle} />;
+                        }
+                        return <hr className={cn("border-white/15", previewClassName)} style={previewStyle} />;
+                      })()}
                       {selected.kind === "spacer" && <div className={spacerClass(selected.props?.h)} style={previewStyle} />}
 
                       {selected && isChildCapable(selected.kind) && (
@@ -2388,4 +2395,5 @@ export function ComponentsEditor({
     </div>
   );
 }
+
 

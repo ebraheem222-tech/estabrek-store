@@ -210,12 +210,20 @@ function ColorPicker({ value, onChange, label }: {
   onChange: (v: string) => void;
   label?: string;
 }) {
+  const safeColorValue = (() => {
+    const v = String(value ?? "").trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+    if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+      return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+    }
+    return "#000000";
+  })();
   return (
     <div className="flex items-center gap-2">
       {label && <span className="text-sm text-white/70">{label}</span>}
       <input
         type="color"
-        value={value || "#000000"}
+        value={safeColorValue}
         onChange={(e) => onChange(e.target.value)}
         className="h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1 cursor-pointer"
       />
@@ -336,7 +344,7 @@ function LayoutEditor({ tokens, onChange }: {
 
       <Divider title="الحجم" />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="العرض" labelAr="Width">
           <Input
             value={tokens?.size?.width || ""}
@@ -357,7 +365,7 @@ function LayoutEditor({ tokens, onChange }: {
 
       <Divider title="الموضع" />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="Position" labelAr="الموضع">
           <Select
             value={positionValue}
@@ -375,7 +383,7 @@ function LayoutEditor({ tokens, onChange }: {
       </div>
 
       {showOffsets ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="Top">
             <Input
               value={tokens?.layout?.top ?? ""}
@@ -436,7 +444,7 @@ function SpacingEditor({ tokens, onChange }: {
         />
       </FieldGroup>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="حشو أفقي" labelAr="Padding X">
           <Select
             value={tokens?.spacing?.paddingX || "none"}
@@ -463,7 +471,7 @@ function SpacingEditor({ tokens, onChange }: {
         />
       </FieldGroup>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <FieldGroup label="هامش علوي">
           <Select
             value={tokens?.spacing?.marginTop || "none"}
@@ -910,6 +918,14 @@ function DecorationsEditor({ decor, onChange }: {
                 value={layer?.customColor || ""}
                 onChange={(v) => onChange({ ...decor, [key]: { ...layer, customColor: v } })}
               />
+              <div className="mt-2 text-xs text-white/50">
+                يدعم:{" "}
+                <span dir="ltr" className="text-white/70">#RRGGBB</span>
+                {" "}أو{" "}
+                <span dir="ltr" className="text-white/70">
+                  linear-gradient(135deg, #06b6d4, #3b82f6, #a855f7)
+                </span>
+              </div>
             </FieldGroup>
           ) : null}
 
@@ -929,6 +945,20 @@ function DecorationsEditor({ decor, onChange }: {
               max={100}
               step={5}
               suffix="%"
+            />
+          </FieldGroup>
+
+          <FieldGroup label="ترتيب الظهور">
+            <ButtonGroup
+              value={(layer?.zIndex ?? 0) >= 10 ? "above" : "below"}
+              onChange={(v) => {
+                const nextZ = v === "above" ? 20 : 0;
+                onChange({ ...decor, [key]: { ...layer, zIndex: nextZ } });
+              }}
+              options={[
+                { value: "below", label: "تحت المحتوى" },
+                { value: "above", label: "فوق المحتوى" },
+              ]}
             />
           </FieldGroup>
 
@@ -1092,7 +1122,7 @@ function EffectsEditor({ tokens, onChange }: {
       />
 
       {tokens?.counter?.enabled && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="من">
             <Input
               type="number"
@@ -1143,7 +1173,7 @@ function EffectsEditor({ tokens, onChange }: {
               placeholder="مطور ويب&#10;مصمم UI/UX&#10;مبرمج React"
             />
           </FieldGroup>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <FieldGroup label="سرعة الكتابة (ms)">
               <Input
                 type="number"
@@ -1200,7 +1230,7 @@ function AdvancedEditor({ tokens, onChange }: {
       />
 
       {tokens?.sticky?.enabled && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="المسافة من الأعلى">
             <Input
               value={tokens?.sticky?.top ?? "0"}
@@ -1228,7 +1258,7 @@ function AdvancedEditor({ tokens, onChange }: {
       />
 
       {tokens?.parallax?.enabled && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <FieldGroup label="السرعة">
             <Slider
               value={tokens?.parallax?.speed ?? 0.5}
