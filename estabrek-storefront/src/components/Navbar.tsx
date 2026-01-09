@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { LoadingImg } from "@/components/LoadingImg";
 import type { MenuTree, SitePublicSettings, NavItem } from "@/lib/types";
 import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
@@ -193,14 +194,20 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   function SearchControl({ withLabel }: { withLabel?: boolean }) {
     if (searchStyle !== "icon") return <SearchBox styleId={searchInputStyleId} />;
     return (
-      <Link
-        href="/search"
-        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
-        aria-label="Search"
-      >
-        <span aria-hidden>🔎</span>
-        {withLabel ? <span>بحث</span> : null}
-      </Link>
+      <div className="inline-flex items-center gap-2">
+        <Link
+          href="/search"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+          aria-label="Search"
+        >
+          <span aria-hidden>🔎</span>
+          {withLabel ? <span>بحث</span> : null}
+        </Link>
+        <VoiceSearchButton
+          withLabel={withLabel}
+          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+        />
+      </div>
     );
   }
 
@@ -439,3 +446,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     </header>
   );
 }
+
+
+
+

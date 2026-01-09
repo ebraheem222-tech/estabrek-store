@@ -1,15 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { getSearchInputById } from "@/cms/style/searchStyles";
+import { saveImageSearchPayload, searchProductsByImage } from "@/lib/imageSearchClient";
 
 type SuggestProduct = { id: string; title: string; slug: string };
 type SuggestCategory = { id: string; name: string; slug: string };
 
 const RECENT_KEY = "recent_searches_v1";
+
+function getSpeechRecognitionCtor(): any | null {
+  if (typeof window === "undefined") return null;
+  return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+}
 
 function loadRecent(): string[] {
   if (typeof window === "undefined") return [];
@@ -52,15 +58,31 @@ function pickWidthClasses(className: string | undefined): string {
     .join(" ");
 }
 
+function stripWidthClasses(className: string | undefined): string {
+  if (!className) return "";
+  return className
+    .split(/\s+/)
+    .filter((token) => !(token.startsWith("w-") || token.startsWith("max-w-") || token.startsWith("min-w-")))
+    .join(" ");
+}
+
 export function SearchBox({ styleId }: { styleId?: string }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceSupported, setVoiceSupported] = useState(true);
   const [products, setProducts] = useState<SuggestProduct[]>([]);
   const [categories, setCategories] = useState<SuggestCategory[]>([]);
+  const [didYouMean, setDidYouMean] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
   const ref = useRef<HTMLDivElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const speechRef = useRef<any>(null);
 
   const preset = useMemo(() => {
     const id = styleId && styleId !== "default" ? styleId : null;
@@ -68,11 +90,28 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   }, [styleId]);
 
   const wrapperWidthClassName = preset ? pickWidthClasses(preset.containerClassName) : "w-full max-w-[520px]";
+  const presetContainer = preset ? stripWidthClasses(preset.containerClassName) : "";
   const iconIsAbsolute = !!preset?.iconClassName?.includes("absolute");
   const iconOnLeft = iconIsAbsolute && !!preset?.iconClassName?.includes("left");
 
   useEffect(() => {
     setRecent(loadRecent());
+  }, []);
+
+  useEffect(() => {
+    setVoiceSupported(!!getSpeechRecognitionCtor());
+    return () => {
+      try {
+        if (speechRef.current) {
+          speechRef.current.onresult = null;
+          speechRef.current.onerror = null;
+          speechRef.current.onend = null;
+          speechRef.current.stop();
+        }
+      } catch {
+        // ignore
+      }
+    };
   }, []);
 
   // Close on outside click
@@ -92,6 +131,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
     if (query.length < 2) {
       setProducts([]);
       setCategories([]);
+      setDidYouMean(null);
       return;
     }
     const t = setTimeout(async () => {
@@ -101,9 +141,11 @@ export function SearchBox({ styleId }: { styleId?: string }) {
         const json = await res.json();
         setProducts(Array.isArray(json?.products) ? json.products : []);
         setCategories(Array.isArray(json?.categories) ? json.categories : []);
+        setDidYouMean(typeof json?.didYouMean === "string" ? json.didYouMean : null);
       } catch {
         setProducts([]);
         setCategories([]);
+        setDidYouMean(null);
       } finally {
         setLoading(false);
       }
@@ -112,7 +154,15 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   }, [q, open]);
 
   const showRecent = useMemo(() => open && q.trim().length < 2 && recent.length > 0, [open, q, recent]);
-  const showResults = useMemo(() => open && (products.length > 0 || categories.length > 0 || loading), [open, products, categories, loading]);
+  const showResults = useMemo(
+    () => open && (products.length > 0 || categories.length > 0 || loading || !!didYouMean),
+    [open, products, categories, loading, didYouMean]
+  );
+  const showDidYouMean = useMemo(() => {
+    const next = didYouMean?.trim();
+    if (!open || !next) return false;
+    return next !== q.trim();
+  }, [open, didYouMean, q]);
 
   function commitSearch(next: string) {
     const query = next.trim();
@@ -124,16 +174,104 @@ export function SearchBox({ styleId }: { styleId?: string }) {
     router.push(`/search?q=${encodeURIComponent(query)}`);
   }
 
+  async function onImagePick(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageError(null);
+    setImageLoading(true);
+    try {
+      const payload = await searchProductsByImage(file);
+      saveImageSearchPayload(payload);
+      setOpen(false);
+      router.push("/search#image-search");
+    } catch (err: any) {
+      setImageError(err?.message || "Image search failed.");
+    } finally {
+      setImageLoading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
+
+  function stopVoice() {
+    try {
+      speechRef.current?.stop?.();
+    } catch {
+      // ignore
+    }
+    setVoiceActive(false);
+  }
+
+  function onVoiceToggle() {
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) {
+      setVoiceSupported(false);
+      setVoiceError("Voice search is not supported in this browser.");
+      return;
+    }
+    if (voiceActive) {
+      stopVoice();
+      return;
+    }
+
+    let recognition = speechRef.current;
+    if (!recognition) {
+      recognition = new Ctor();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      speechRef.current = recognition;
+    }
+
+    const lang =
+      (typeof document !== "undefined" && document.documentElement?.lang) ||
+      (typeof navigator !== "undefined" && navigator.language) ||
+      "en-US";
+    recognition.lang = lang;
+
+    recognition.onresult = (event: any) => {
+      const transcript = event?.results?.[0]?.[0]?.transcript ? String(event.results[0][0].transcript).trim() : "";
+      if (transcript) {
+        setQ(transcript);
+        commitSearch(transcript);
+      }
+      setVoiceActive(false);
+    };
+    recognition.onerror = (event: any) => {
+      const code = String(event?.error || "").toLowerCase();
+      if (code === "not-allowed" || code === "service-not-allowed") {
+        setVoiceError("Microphone permission denied.");
+      } else if (code === "no-speech") {
+        setVoiceError("No speech detected. Try again.");
+      } else {
+        setVoiceError("Voice search failed.");
+      }
+      setVoiceActive(false);
+    };
+    recognition.onend = () => {
+      setVoiceActive(false);
+    };
+
+    setVoiceError(null);
+    setVoiceActive(true);
+    try {
+      recognition.start();
+    } catch {
+      setVoiceActive(false);
+      setVoiceError("Voice search failed to start.");
+    }
+  }
+
   return (
     <div ref={ref} className={`relative ${wrapperWidthClassName}`}>
-      {preset ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            commitSearch(q);
-          }}
-          className={`relative ${preset.containerClassName}`}
-        >
+      <div className="flex items-center gap-2">
+        {preset ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              commitSearch(q);
+            }}
+            className={`relative flex-1 ${presetContainer}`}
+          >
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -165,15 +303,15 @@ export function SearchBox({ styleId }: { styleId?: string }) {
               ✕
             </button>
           ) : null}
-        </form>
-      ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            commitSearch(q);
-          }}
-          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"
-        >
+          </form>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              commitSearch(q);
+            }}
+            className="flex flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"
+          >
           <span className="opacity-70">🔎</span>
           <input
             value={q}
@@ -196,8 +334,42 @@ export function SearchBox({ styleId }: { styleId?: string }) {
               ✕
             </button>
           ) : null}
-        </form>
-      )}
+          </form>
+        )}
+
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={onImagePick}
+        />
+        <button
+          type="button"
+          onClick={() => imageInputRef.current?.click()}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--text)] hover:brightness-95"
+          aria-label="Search by image"
+          disabled={imageLoading}
+        >
+          {imageLoading ? "..." : "IMG"}
+        </button>
+        <button
+          type="button"
+          onClick={onVoiceToggle}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--text)] hover:brightness-95"
+          aria-label="Voice search"
+          disabled={!voiceSupported}
+        >
+          {voiceActive ? "REC" : "MIC"}
+        </button>
+      </div>
+
+      {imageError ? (
+        <div className="mt-2 text-xs text-red-500">{imageError}</div>
+      ) : null}
+      {voiceError ? (
+        <div className="mt-2 text-xs text-red-500">{voiceError}</div>
+      ) : null}
 
       {(showRecent || showResults) ? (
         <div className="absolute left-0 right-0 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[color:var(--surface)] shadow-xl">
@@ -232,6 +404,19 @@ export function SearchBox({ styleId }: { styleId?: string }) {
 
               {showResults ? (
                 <div className="p-2">
+                  {showDidYouMean ? (
+                    <div className="mb-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80">
+                      <span className="text-xs text-white/60">هل تقصد</span>{" "}
+                      <button
+                        type="button"
+                        onClick={() => commitSearch(didYouMean as string)}
+                        className="font-semibold text-white hover:underline"
+                      >
+                        {didYouMean}
+                      </button>
+                      ؟
+                    </div>
+                  ) : null}
               {loading ? (
                 <div className="px-2 py-2">
                   <LoadingIndicator
