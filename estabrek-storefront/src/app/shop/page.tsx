@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listProducts, listCategories } from "@/lib/api";
 import { ShopGrid } from "@/components/ShopGrid";
 import ShopResultsClient from "@/components/ShopResultsClient";
@@ -12,6 +13,49 @@ import type { Metadata } from "next";
 
 type SP = Record<string, string | string[] | undefined>;
 
+// Icons
+const ShopIcon = () => (
+  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+  </svg>
+);
+
+const ProductsIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+  </svg>
+);
+
+const HomeIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
+const ChevronLeftIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+const SparklesIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+  </svg>
+);
+
+const EmptyIcon = () => (
+  <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+  </svg>
+);
+
 function pick(sp: SP, key: string): string | undefined {
   const v = sp[key];
   if (!v) return undefined;
@@ -24,8 +68,8 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const canonical = new URL(qs ? `/shop?${qs}` : "/shop", base).toString();
 
-  const title = "Shop";
-  const description = "Browse products";
+  const title = "المتجر";
+  const description = "تصفح جميع المنتجات";
 
   return {
     title,
@@ -58,40 +102,88 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
       sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
       minPrice: f.minPrice,
       maxPrice: f.maxPrice,
-      // legacy support
       color: pick(searchParams, "color"),
       sizeId: pick(searchParams, "sizeId"),
     }),
   ]);
 
+  const currentPage = out.page ?? 1;
+  const totalPages = out.totalPages ?? 1;
+
+  // Generate page numbers with ellipsis
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const delta = 2;
+    
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
+    }
+    return pages;
+  };
+
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-7xl space-y-8 px-4 py-8" dir="rtl">
       <NormalizeFilters basePath="/shop" />
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-bold">Shop</h1>
-        <div className="text-sm text-[var(--muted)]">{out.total} products</div>
+      
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
+        <Link href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
+          <HomeIcon />
+          الرئيسية
+        </Link>
+        <ChevronLeftIcon />
+        <span className="text-[var(--text)]">المتجر</span>
+      </nav>
+
+      {/* Shop Header */}
+      <div className="shop-hero">
+        <div className="relative z-10">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+                <ShopIcon />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-[var(--text)]">المتجر</h1>
+                <p className="text-[var(--muted)] text-sm mt-1">
+                  تصفح جميع منتجاتنا المميزة
+                </p>
+              </div>
+            </div>
+            <div className="search-results-count">
+              <ProductsIcon />
+              {out.total ?? 0} منتج
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="lg:grid lg:grid-cols-[280px,1fr] lg:gap-8">
+      {/* Main Content */}
+      <div className="lg:grid lg:grid-cols-[320px,1fr] lg:gap-8">
+        {/* Desktop Sidebar */}
         <aside className="hidden lg:block">
           <div className="sticky top-24">
-          <ProductFiltersBar
-            colors={out.facets?.colors ?? []}
-            sizes={out.facets?.sizes ?? []}
-            categories={categories ?? []}
-          />
+            <ProductFiltersBar
+              colors={out.facets?.colors ?? []}
+              sizes={out.facets?.sizes ?? []}
+              categories={categories ?? []}
+            />
           </div>
         </aside>
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between gap-3 lg:hidden">
-            <MobileFiltersDrawer>
-              <ProductFiltersBar
-                colors={out.facets?.colors ?? []}
-                sizes={out.facets?.sizes ?? []}
-                categories={categories ?? []}
-              />
-            </MobileFiltersDrawer>
+        {/* Products Section */}
+        <section className="space-y-6">
+          {/* Mobile Filters */}
+          <div className="lg:hidden">
+            <ProductFiltersBar
+              colors={out.facets?.colors ?? []}
+              sizes={out.facets?.sizes ?? []}
+              categories={categories ?? []}
+            />
           </div>
 
           <ShopToolbar total={out.total ?? (out.items?.length ?? 0)} />
@@ -102,36 +194,73 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
             <ShopResultsClient initial={out} filters={{ ...f, lm: 1 }} basePath="/shop" />
           ) : (
             <>
-              <ShopGrid>
-                {(out.items ?? []).map((p) => (
-                  <ProductTile key={p.id} product={p} />
-                ))}
-              </ShopGrid>
+              {/* Products Grid */}
+              {(out.items ?? []).length > 0 ? (
+                <div className="products-grid">
+                  {(out.items ?? []).map((p, idx) => (
+                    <div key={p.id} className="stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
+                      <ProductTile product={p} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="no-results">
+                  <div className="no-results-icon text-[var(--muted)]">
+                    <EmptyIcon />
+                  </div>
+                  <h3 className="text-xl font-semibold text-[var(--text)] mb-2">لا توجد منتجات</h3>
+                  <p className="text-sm text-[var(--muted)] mb-6 max-w-md">
+                    لم نتمكن من العثور على منتجات تطابق الفلاتر المحددة. جرب تعديل الفلاتر أو مسحها.
+                  </p>
+                  <Link
+                    href="/shop"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-medium hover:opacity-90 transition-opacity"
+                  >
+                    عرض جميع المنتجات
+                  </Link>
+                </div>
+              )}
 
               {/* Pagination */}
-              {out.totalPages && out.totalPages > 1 ? (
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
-                  {Array.from({ length: out.totalPages }, (_, i) => i + 1).slice(0, 9).map((p) => {
-                    const q = buildCanonicalQuery({ ...f, page: p, lm: undefined });
+              {totalPages > 1 && (
+                <div className="pagination-container">
+                  {/* Previous Button */}
+                  <Link
+                    href={currentPage > 1 ? `/shop?${buildCanonicalQuery({ ...f, page: currentPage - 1, lm: undefined })}` : "#"}
+                    className={`pagination-btn ${currentPage <= 1 ? "opacity-40 pointer-events-none" : ""}`}
+                  >
+                    <ChevronRightIcon />
+                  </Link>
+
+                  {/* Page Numbers */}
+                  {getPageNumbers().map((page, idx) => {
+                    if (page === '...') {
+                      return <span key={`dots-${idx}`} className="pagination-dots">...</span>;
+                    }
+                    const pageNum = page as number;
+                    const q = buildCanonicalQuery({ ...f, page: pageNum, lm: undefined });
                     const href = q ? `/shop?${q}` : "/shop";
-                    const active = p === (out.page ?? 1);
+                    const isActive = pageNum === currentPage;
                     return (
-                      <a
-                        key={p}
+                      <Link
+                        key={pageNum}
                         href={href}
-                        className={[
-                          "h-10 min-w-[40px] rounded-xl px-3 inline-flex items-center justify-center border text-sm",
-                          active
-                            ? "border-black bg-black text-[#F7F4E9]"
-                            : "border-black/15 bg-white hover:bg-black/5",
-                        ].join(" ")}
+                        className={`pagination-btn ${isActive ? "active" : ""}`}
                       >
-                        {p}
-                      </a>
+                        {pageNum}
+                      </Link>
                     );
                   })}
+
+                  {/* Next Button */}
+                  <Link
+                    href={currentPage < totalPages ? `/shop?${buildCanonicalQuery({ ...f, page: currentPage + 1, lm: undefined })}` : "#"}
+                    className={`pagination-btn ${currentPage >= totalPages ? "opacity-40 pointer-events-none" : ""}`}
+                  >
+                    <ChevronLeftIcon />
+                  </Link>
                 </div>
-              ) : null}
+              )}
             </>
           )}
         </section>
