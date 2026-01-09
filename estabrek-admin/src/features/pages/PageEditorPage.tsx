@@ -690,6 +690,10 @@ export default function PageEditorPage() {
   const [canvasView, setCanvasView] = useState<"live" | "preview">("live");
   const [previewMode, setPreviewMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [canvasFullScreen, setCanvasFullScreen] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(360);
+  const leftPanelResizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
+  const [leftPanelResizing, setLeftPanelResizing] = useState(false);
   const [templateId, setTemplateId] = useState<(typeof PAGE_TEMPLATES)[number]["id"]>("landing");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [confirmTemplateReplace, setConfirmTemplateReplace] = useState(false);
@@ -760,7 +764,8 @@ export default function PageEditorPage() {
   const canvasPreviewHeightClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "h-[70vh]";
   const canvasPanelClass = canvasFullScreen
     ? "fixed inset-0 z-40 flex flex-col border border-white/10 bg-black/90 p-4"
-    : "rounded-2xl border border-white/10 bg-white/5 p-4 lg:sticky lg:top-4 lg:self-start";
+    : "rounded-2xl border border-white/10 bg-white/5 p-4";
+  const leftPanelStyle = leftPanelCollapsed ? undefined : { width: `min(100%, ${leftPanelWidth}px)` };
 
   useEffect(() => {
     if (!canvasFullScreen) return;
@@ -777,6 +782,27 @@ export default function PageEditorPage() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [canvasFullScreen]);
+
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      if (!leftPanelResizeRef.current) return;
+      const delta = event.clientX - leftPanelResizeRef.current.startX;
+      const next = leftPanelResizeRef.current.startWidth + delta;
+      const clamped = Math.min(520, Math.max(260, next));
+      setLeftPanelWidth(clamped);
+    };
+    const handleUp = () => {
+      if (!leftPanelResizeRef.current) return;
+      leftPanelResizeRef.current = null;
+      setLeftPanelResizing(false);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, []);
 
   const sectionLibraryItems = useMemo<LibraryItem[]>(() => {
     const base = defaultDataForType(sectionLibraryType);
@@ -935,16 +961,6 @@ export default function PageEditorPage() {
   }, [selectedSectionId]);
 
   useEffect(() => {
-    if (!selectedSectionId || canvasView !== "live") return;
-    const container = canvasScrollRef.current;
-    if (!container) return;
-    const node = container.querySelector(`[data-section-id="${selectedSectionId}"]`) as HTMLElement | null;
-    if (node) {
-      node.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [selectedSectionId, canvasView, previewMode, previewBump, canvasFullScreen, inlineEditing, contentLocale]);
-
-  useEffect(() => {
     if (sectionInsertIndex == null) return;
     if (sectionInsertIndex < 0 || sectionInsertIndex > localSections.length) {
       setSectionInsertIndex(null);
@@ -1009,6 +1025,13 @@ export default function PageEditorPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  const startLeftResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    leftPanelResizeRef.current = { startX: event.clientX, startWidth: leftPanelWidth };
+    setLeftPanelResizing(true);
+    event.preventDefault();
+  };
 
   const persistOrder = async (next: PageSection[]) => {
     if (!id) return;
@@ -1132,6 +1155,16 @@ export default function PageEditorPage() {
     const cache = previewBump ? `?b=${previewBump}` : "";
     return `/admin/pages/${pageId}/preview${cache}`;
   }, [page?.id, id, previewBump]);
+
+  useEffect(() => {
+    if (!selectedSectionId || canvasView !== "live") return;
+    const container = canvasScrollRef.current;
+    if (!container) return;
+    const node = container.querySelector(`[data-section-id="${selectedSectionId}"]`) as HTMLElement | null;
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [selectedSectionId, canvasView, previewMode, previewBump, canvasFullScreen, inlineEditing, contentLocale]);
 
   useEffect(() => {
     return () => {
@@ -2354,9 +2387,10 @@ export default function PageEditorPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_480px]">
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        {!canvasFullScreen && !leftPanelCollapsed ? (
+          <div className="flex w-full flex-col gap-4 lg:shrink-0" style={leftPanelStyle}>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="mb-3 flex items-center justify-between">
               <div className="text-lg font-semibold">Templates</div>
               <div className="text-xs opacity-70">{selectedTemplate?.label}</div>
@@ -2402,6 +2436,14 @@ export default function PageEditorPage() {
                   onClick={() => setShowSectionLibrary((v) => !v)}
                 >
                   {showSectionLibrary ? "Hide library" : "Library"}
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setLeftPanelCollapsed(true)}
+                >
+                  Collapse
                 </Button>
               </div>
             </div>
@@ -2506,12 +2548,35 @@ export default function PageEditorPage() {
               </div>
             </div>
           ) : null}
-        </div>
+          </div>
+        ) : null}
 
-        <div className={canvasPanelClass}>
+        {!canvasFullScreen && !leftPanelCollapsed ? (
+          <div
+            className={
+              "hidden lg:block w-1 shrink-0 cursor-col-resize rounded-full " +
+              (leftPanelResizing ? "bg-accent-500/40" : "bg-white/10")
+            }
+            onPointerDown={startLeftResize}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sections panel"
+          />
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className={canvasPanelClass}>
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-semibold">Canvas</div>
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="xs"
+                variant={leftPanelCollapsed ? "secondary" : "ghost"}
+                onClick={() => setLeftPanelCollapsed((v) => !v)}
+              >
+                {leftPanelCollapsed ? "Show list" : "Hide list"}
+              </Button>
               <Button
                 type="button"
                 size="xs"
@@ -2717,204 +2782,211 @@ export default function PageEditorPage() {
               </div>
             )}
           </div>
-
-          {selectedSection ? (
-            <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">Selected section</div>
-                  <div className="text-xs text-white/60">
-                    {selectedSection.type} | Order {selectedSection.order ?? 0} | ID {selectedSection.id}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => {
-                    setSelectedSectionId(null);
-                    setShowInlineStyling(false);
-                    setSelectedElement(null);
-                  }}
-                >
-                  Clear
-                </Button>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="secondary"
-                  onClick={() => openEditSection(selectedSection)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="secondary"
-                  onClick={() => setShowAdvancedStyling(true)}
-                >
-                  Open styling window
-                </Button>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="secondary"
-                  onClick={duplicateSelectedSection}
-                  isLoading={selectionBusy}
-                >
-                  Duplicate
-                </Button>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant={selectedSection.isVisible ? "ghost" : "secondary"}
-                  onClick={toggleSelectedVisibility}
-                  disabled={selectionBusy}
-                >
-                  {selectedSection.isVisible ? "Hide" : "Show"}
-                </Button>
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="danger"
-                  onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-
-              <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                {selectedElement ? (
-                  <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                      <div className="text-xs font-semibold">
-                        Element: <span className="text-white/70">{selectedElement.kind}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="ghost"
-                        onClick={() => setSelectedElement(null)}
-                      >
-                        Clear element
-                      </Button>
-                    </div>
-                    {selectedElement.label ? (
-                      <div className="text-[11px] text-white/60">{selectedElement.label}</div>
-                    ) : null}
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="secondary"
-                        onClick={openElementModal}
-                        disabled={!elementQuickFields.length}
-                      >
-                        Edit element
-                      </Button>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="secondary"
-                        onClick={handleDuplicateElement}
-                        disabled={!elementCanDuplicate}
-                      >
-                        Duplicate
-                      </Button>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant={elementIsVisible ? "ghost" : "secondary"}
-                        onClick={handleToggleElementVisibility}
-                        disabled={!elementCanToggleVisibility}
-                      >
-                        {elementIsVisible ? "Hide" : "Show"}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="danger"
-                        onClick={handleDeleteElement}
-                        disabled={!elementCanDelete}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                    {!elementArrayInfo ? (
-                      <div className="text-[11px] text-white/50">
-                        Duplicate/Delete apply to list items only.
-                      </div>
-                    ) : null}
-                    {elementQuickFields.length ? (
-                      <div className="space-y-2">
-                        <div className="text-xs font-semibold">Quick edits</div>
-                        <div className="grid gap-2">
-                          {elementQuickFields.map((field) => (
-                            <Input
-                              key={field.key}
-                              label={field.label}
-                              value={field.value}
-                              type={field.type === "url" ? "url" : "text"}
-                              onValueChange={(value) => handleQuickFieldChange(field.path, value)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {resolvedElementTokensPath ? (
-                      <div className="max-h-[36vh] overflow-auto">
-                        <ResponsiveTokensPanel
-                          tokens={selectedElementTokens ?? {}}
-                          onChange={handleSelectedElementTokensChange}
-                        />
-                      </div>
-                    ) : (
-                      <div className="text-xs text-white/60">
-                        Element styling inherits section styles. Use Advanced styling to adjust section tokens.
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-xs text-white/60">
-                    Click a text, button, image, or card to edit element styling.
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between text-xs font-semibold"
-                  onClick={() => setShowInlineStyling((v) => !v)}
-                >
-                  <span>Advanced styling</span>
-                  <svg
-                    className={`h-4 w-4 transition-transform ${showInlineStyling ? "rotate-180" : ""}`}
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
-                  </svg>
-                </button>
-                {showInlineStyling ? (
-                  <div className="mt-3 max-h-[40vh] overflow-auto">
-                    <ResponsiveTokensPanel
-                      tokens={selectedSection.data?.twTokens ?? {}}
-                      onChange={handleSelectedTokensChange}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-white/60">
-              Select a section in the canvas to edit styling and actions.
-            </div>
-          )}
         </div>
+
+        {!canvasFullScreen ? (
+        <div className="w-full lg:w-[360px] lg:shrink-0 lg:self-start lg:sticky lg:top-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            {selectedSection ? (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold">Selected section</div>
+                    <div className="text-xs text-white/60">
+                      {selectedSection.type} | Order {selectedSection.order ?? 0} | ID {selectedSection.id}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                      setSelectedSectionId(null);
+                      setShowInlineStyling(false);
+                      setSelectedElement(null);
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={() => openEditSection(selectedSection)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={() => setShowAdvancedStyling(true)}
+                  >
+                    Open styling window
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={duplicateSelectedSection}
+                    isLoading={selectionBusy}
+                  >
+                    Duplicate
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant={selectedSection.isVisible ? "ghost" : "secondary"}
+                    onClick={toggleSelectedVisibility}
+                    disabled={selectionBusy}
+                  >
+                    {selectedSection.isVisible ? "Hide" : "Show"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="danger"
+                    onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                  {selectedElement ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold">
+                          Element: <span className="text-white/70">{selectedElement.kind}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => setSelectedElement(null)}
+                        >
+                          Clear element
+                        </Button>
+                      </div>
+                      {selectedElement.label ? (
+                        <div className="text-[11px] text-white/60">{selectedElement.label}</div>
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          onClick={openElementModal}
+                          disabled={!elementQuickFields.length}
+                        >
+                          Edit element
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          onClick={handleDuplicateElement}
+                          disabled={!elementCanDuplicate}
+                        >
+                          Duplicate
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant={elementIsVisible ? "ghost" : "secondary"}
+                          onClick={handleToggleElementVisibility}
+                          disabled={!elementCanToggleVisibility}
+                        >
+                          {elementIsVisible ? "Hide" : "Show"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="danger"
+                          onClick={handleDeleteElement}
+                          disabled={!elementCanDelete}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                      {!elementArrayInfo ? (
+                        <div className="text-[11px] text-white/50">
+                          Duplicate/Delete apply to list items only.
+                        </div>
+                      ) : null}
+                      {elementQuickFields.length ? (
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold">Quick edits</div>
+                          <div className="grid gap-2">
+                            {elementQuickFields.map((field) => (
+                              <Input
+                                key={field.key}
+                                label={field.label}
+                                value={field.value}
+                                type={field.type === "url" ? "url" : "text"}
+                                onValueChange={(value) => handleQuickFieldChange(field.path, value)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {resolvedElementTokensPath ? (
+                        <div className="max-h-[36vh] overflow-auto">
+                          <ResponsiveTokensPanel
+                            tokens={selectedElementTokens ?? {}}
+                            onChange={handleSelectedElementTokensChange}
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-xs text-white/60">
+                          Element styling inherits section styles. Use Advanced styling to adjust section tokens.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-white/60">
+                      Click a text, button, image, or card to edit element styling.
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between text-xs font-semibold"
+                    onClick={() => setShowInlineStyling((v) => !v)}
+                  >
+                    <span>Advanced styling</span>
+                    <svg
+                      className={`h-4 w-4 transition-transform ${showInlineStyling ? "rotate-180" : ""}`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
+                    </svg>
+                  </button>
+                  {showInlineStyling ? (
+                    <div className="mt-3 max-h-[40vh] overflow-auto">
+                      <ResponsiveTokensPanel
+                        tokens={selectedSection.data?.twTokens ?? {}}
+                        onChange={handleSelectedTokensChange}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-white/60">
+                Select a section in the canvas to edit styling and actions.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       </div>
 
       {/* Section modal */}
