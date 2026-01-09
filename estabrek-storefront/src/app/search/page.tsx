@@ -2,6 +2,7 @@ import { listCategories, listProducts } from "@/lib/api";
 import { ProductTile } from "@/components/ProductTile";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import NormalizeFilters from "@/components/NormalizeFilters";
+import { ImageSearchPanel } from "@/components/ImageSearchPanel";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
 
@@ -47,6 +48,8 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <NormalizeFilters basePath="/search" />
+
+      <ImageSearchPanel />
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
