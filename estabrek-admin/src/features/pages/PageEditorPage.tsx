@@ -386,6 +386,13 @@ type SectionFieldErrors = {
   fields?: Record<string, string | undefined>;
 };
 
+type LibraryItem = {
+  id: string;
+  label: string;
+  type: PageSectionType;
+  data: any;
+};
+
 function normalizeSlug(v: string) {
   const t = (v ?? "").trim();
   if (!t) return "";
@@ -430,12 +437,124 @@ function guessTokensPath(valuePath: Array<string | number>, data: any, kind?: st
     if (last === "buttonLabel") candidates.push([...valuePath.slice(0, -1), "buttonTokens"]);
     if (last === "ctaLabel") candidates.push([...valuePath.slice(0, -1), "ctaTokens"]);
     if (last === "linkLabel") candidates.push([...valuePath.slice(0, -1), "linkTokens"]);
+    if (last === "price" || last === "priceText") candidates.push([...valuePath.slice(0, -1), "priceTokens"]);
     candidates.push([...valuePath.slice(0, -1), `${last}Tokens`]);
   }
   for (const path of candidates) {
     if (getDeepValue(data, path) !== undefined) return path;
   }
   return null;
+}
+
+type QuickEditField = {
+  key: string;
+  label: string;
+  path: Array<string | number>;
+  value: string;
+  type?: "text" | "url";
+};
+
+function toQuickValue(value: any) {
+  if (value == null) return "";
+  return typeof value === "string" ? value : String(value);
+}
+
+function resolveSiblingPath(
+  basePath: Array<string | number>,
+  data: any,
+  keys: string[]
+): Array<string | number> | null {
+  if (!basePath.length) return null;
+  const parent = basePath.slice(0, -1);
+  let fallback: Array<string | number> | null = null;
+  for (const key of keys) {
+    const path = [...parent, key];
+    if (!fallback) fallback = path;
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  return fallback;
+}
+
+function resolveChildPath(
+  basePath: Array<string | number>,
+  data: any,
+  keys: string[]
+): Array<string | number> | null {
+  if (!basePath.length) return null;
+  let fallback: Array<string | number> | null = null;
+  for (const key of keys) {
+    const path = [...basePath, key];
+    if (!fallback) fallback = path;
+    if (getDeepValue(data, path) !== undefined) return path;
+  }
+  return fallback;
+}
+
+function addQuickField(fields: QuickEditField[], seen: Set<string>, label: string, path: Array<string | number> | null, value: any, type?: "text" | "url") {
+  if (!path || !path.length) return;
+  const key = JSON.stringify(path);
+  if (seen.has(key)) return;
+  seen.add(key);
+  fields.push({ key, label, path, value: toQuickValue(value), type });
+}
+
+function buildElementQuickFields(selected: SelectedElement | null, data: any): QuickEditField[] {
+  if (!selected || !data || !selected.valuePath?.length) return [];
+  const fields: QuickEditField[] = [];
+  const seen = new Set<string>();
+  const valuePath = selected.valuePath;
+  const kind = selected.kind;
+  const last = valuePath[valuePath.length - 1];
+
+  const add = (label: string, path: Array<string | number> | null, type?: "text" | "url") =>
+    addQuickField(fields, seen, label, path, path ? getDeepValue(data, path) : undefined, type);
+
+  if (kind === "text") {
+    const label = typeof last === "string" && last.toLowerCase().includes("price") ? "Price" : "Text";
+    add(label, valuePath);
+    const linkPath = resolveSiblingPath(valuePath, data, ["href", "linkHref", "url", "ctaHref", "buttonHref"]);
+    if (linkPath) add("Link URL", linkPath, "url");
+  }
+
+  if (kind === "button") {
+    add("Label", valuePath);
+    const linkPath = resolveSiblingPath(valuePath, data, ["href", "linkHref", "url", "ctaHref", "buttonHref"]);
+    if (linkPath) add("Link URL", linkPath, "url");
+  }
+
+  if (kind === "image") {
+    add("Image URL", valuePath, "url");
+    const altPath = resolveSiblingPath(valuePath, data, ["alt", "altText", "imageAlt", "caption"]);
+    if (altPath) add("Alt text", altPath);
+  }
+
+  if (kind === "card") {
+    const card = getDeepValue(data, valuePath);
+    if (card && typeof card === "object") {
+      const basePath =
+        card && typeof (card as any).props === "object"
+          ? [...valuePath, "props"]
+          : valuePath;
+      add("Title", [...basePath, "title"]);
+      add("Text", [...basePath, "text"]);
+      add("Subtitle", [...basePath, "subtitle"]);
+      add("Badge", [...basePath, "badge"]);
+      add("Price", [...basePath, "price"]);
+      add("Price text", [...basePath, "priceText"]);
+      add("Button label", [...basePath, "buttonLabel"]);
+      add("CTA label", [...basePath, "ctaLabel"]);
+      const linkPath = resolveChildPath(basePath, data, ["buttonHref", "href", "linkHref", "ctaHref"]);
+      if (linkPath) add("Link URL", linkPath, "url");
+      const imagePath = resolveChildPath(basePath, data, ["imageUrl", "image"]);
+      if (imagePath) add("Image URL", imagePath, "url");
+      const altPath = imagePath
+        ? resolveSiblingPath(imagePath, data, ["alt", "altText", "imageAlt", "caption"])
+        : resolveChildPath(basePath, data, ["alt", "altText", "imageAlt"]);
+      if (altPath) add("Alt text", altPath);
+    }
+  }
+
+  return fields;
 }
 
 export default function PageEditorPage() {
@@ -473,6 +592,14 @@ export default function PageEditorPage() {
   const [selectionBusy, setSelectionBusy] = useState(false);
   const [showInlineStyling, setShowInlineStyling] = useState(true);
   const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
+  const [showSectionLibrary, setShowSectionLibrary] = useState(false);
+  const [sectionLibraryType, setSectionLibraryType] = useState<PageSectionType>("HERO");
+  const [sectionInsertIndex, setSectionInsertIndex] = useState<number | null>(null);
+  const [libraryDragItem, setLibraryDragItem] = useState<LibraryItem | null>(null);
+  const [libraryDragOverIndex, setLibraryDragOverIndex] = useState<number | null>(null);
+  const [libraryBusy, setLibraryBusy] = useState(false);
+  const canvasScrollRef = React.useRef<HTMLDivElement>(null);
+  const [canvasActionBar, setCanvasActionBar] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -513,6 +640,23 @@ export default function PageEditorPage() {
   }, [previewMode]);
 
   const canvasDir = contentLocale === "en" ? "ltr" : "rtl";
+
+  const sectionLibraryItems = useMemo<LibraryItem[]>(() => {
+    const base = defaultDataForType(sectionLibraryType);
+    const templates = templatesForType(sectionLibraryType);
+    const list: LibraryItem[] = [
+      { id: `blank:${sectionLibraryType}`, label: "Blank", type: sectionLibraryType, data: base ?? {} },
+      ...templates.map((t) => ({
+        id: `${sectionLibraryType}:${t.id}`,
+        label: t.label,
+        type: sectionLibraryType,
+        data: t.data ?? {},
+      })),
+    ];
+    return list;
+  }, [sectionLibraryType]);
+
+  const showInsertPoints = showSectionLibrary || !!libraryDragItem;
 
   const getTranslatedSectionData = (section: PageSection, index: number) => {
     if (!translatedSections || contentLocale === "ar") return section.data;
@@ -647,6 +791,13 @@ export default function PageEditorPage() {
     }
   }, [selectedSectionId]);
 
+  useEffect(() => {
+    if (sectionInsertIndex == null) return;
+    if (sectionInsertIndex < 0 || sectionInsertIndex > localSections.length) {
+      setSectionInsertIndex(null);
+    }
+  }, [sectionInsertIndex, localSections.length]);
+
   const selectedSectionIndex = useMemo(() => {
     if (!selectedSectionId) return -1;
     return localSections.findIndex((s) => String(s.id) === String(selectedSectionId));
@@ -669,6 +820,12 @@ export default function PageEditorPage() {
     if (!resolvedElementTokensPath || !selectedSection) return null;
     return getDeepValue(selectedSection.data ?? {}, resolvedElementTokensPath) ?? {};
   }, [resolvedElementTokensPath, selectedSection]);
+
+  const elementQuickFields = useMemo(
+    () => buildElementQuickFields(selectedElement, selectedSection?.data ?? null),
+    [selectedElement, selectedSection]
+  );
+
 
   const qc = useQueryClient();
 
@@ -704,6 +861,53 @@ export default function PageEditorPage() {
     const normalized = moved.map((s, idx) => ({ ...s, order: idx }));
     setLocalSections(normalized);
     void persistOrder(normalized);
+  };
+
+  const renderInsertZone = (index: number, isEmpty = false) => {
+    if (!showInsertPoints) return null;
+    const isActive = libraryDragOverIndex === index || sectionInsertIndex === index;
+    const label = libraryDragItem
+      ? "Drop to insert here"
+      : isEmpty
+        ? "Insert your first section"
+        : "Insert section here";
+    return (
+      <div
+        key={`insert-${index}`}
+        className={[
+          "rounded-xl border border-dashed px-3 py-2 text-xs transition",
+          isActive ? "border-accent-500/60 bg-accent-500/10 text-accent-200" : "border-white/10 text-white/50 hover:text-white/70",
+        ].join(" ")}
+        onClick={() => {
+          setSectionInsertIndex(index);
+          setShowSectionLibrary(true);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setLibraryDragOverIndex(index);
+        }}
+        onDragLeave={() => {
+          if (libraryDragOverIndex === index) setLibraryDragOverIndex(null);
+        }}
+        onDrop={handleInsertDrop(index)}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span>{label}</span>
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSectionInsertIndex(index);
+              setShowSectionLibrary(true);
+            }}
+          >
+            Insert
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   // create/edit section modal
@@ -752,6 +956,56 @@ export default function PageEditorPage() {
     const cache = previewBump ? `?b=${previewBump}` : "";
     return `/admin/pages/${pageId}/preview${cache}`;
   }, [page?.id, id, previewBump]);
+
+  useEffect(() => {
+    if (canvasView !== "live" || !selectedElement) {
+      setCanvasActionBar(null);
+      return;
+    }
+    const container = canvasScrollRef.current;
+    if (!container) {
+      setCanvasActionBar(null);
+      return;
+    }
+
+    let raf: number | null = null;
+    const update = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const selectedNode = container.querySelector("[data-cms-selected=\"true\"]") as HTMLElement | null;
+        if (!selectedNode) {
+          setCanvasActionBar(null);
+          return;
+        }
+        const containerRect = container.getBoundingClientRect();
+        const rect = selectedNode.getBoundingClientRect();
+        const top = rect.bottom - containerRect.top + container.scrollTop + 6;
+        const left = rect.left - containerRect.left + container.scrollLeft;
+        const width = Math.min(rect.width, container.clientWidth - 16);
+        if (!Number.isFinite(top) || !Number.isFinite(left) || !Number.isFinite(width)) {
+          setCanvasActionBar(null);
+          return;
+        }
+        setCanvasActionBar({ top, left, width });
+      });
+    };
+
+    update();
+    container.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    const selectedNode = container.querySelector("[data-cms-selected=\"true\"]") as HTMLElement | null;
+    if (observer && selectedNode) {
+      observer.observe(selectedNode);
+    }
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      container.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      observer?.disconnect();
+    };
+  }, [canvasView, selectedElement, previewMode, previewBump, inlineEditing, contentLocale]);
 
   const openCreateSection = () => {
     setEditingSectionId(null);
@@ -926,6 +1180,12 @@ export default function PageEditorPage() {
     void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
   };
 
+  const handleQuickFieldChange = (path: Array<string | number>, value: string) => {
+    if (!selectedSection) return;
+    const nextData = setDeepValue(selectedSection.data ?? {}, path, value);
+    void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
   const persistSectionVisibility = async (sectionId: string, isVisible: boolean) => {
     setLocalSections((prev) =>
       prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, isVisible } : s))
@@ -975,6 +1235,72 @@ export default function PageEditorPage() {
     } finally {
       setSelectionBusy(false);
     }
+  };
+
+  const calculateInsertOrder = (index: number) => {
+    const before = localSections[index - 1];
+    const after = localSections[index];
+    if (before && after) {
+      const prevOrder = Number(before.order ?? index - 1);
+      const nextOrder = Number(after.order ?? index);
+      return (prevOrder + nextOrder) / 2;
+    }
+    if (before) return Number(before.order ?? index - 1) + 1;
+    if (after) return Number(after.order ?? 0) - 1;
+    return 0;
+  };
+
+  const insertSectionFromLibrary = async (item: LibraryItem, index: number | null) => {
+    if (!id) return;
+    const insertAt = index == null ? localSections.length : Math.min(Math.max(index, 0), localSections.length);
+    const order = calculateInsertOrder(insertAt);
+    setLibraryBusy(true);
+    try {
+      const created = await actions.createSection.mutateAsync({
+        pageId: id,
+        body: { type: item.type, data: item.data ?? {}, isVisible: true, order },
+      });
+      setSelectedSectionId(String(created.id));
+      setSelectedElement(null);
+      setShowInlineStyling(true);
+      setSectionInsertIndex(null);
+    } catch {
+      // toast handled in mutation
+    } finally {
+      setLibraryBusy(false);
+      setLibraryDragItem(null);
+      setLibraryDragOverIndex(null);
+    }
+  };
+
+  const handleLibraryDragStart = (item: LibraryItem) => (event: React.DragEvent<HTMLDivElement>) => {
+    setLibraryDragItem(item);
+    setLibraryDragOverIndex(null);
+    event.dataTransfer.effectAllowed = "copy";
+    try {
+      event.dataTransfer.setData("application/x-page-section", JSON.stringify(item));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLibraryDragEnd = () => {
+    setLibraryDragItem(null);
+    setLibraryDragOverIndex(null);
+  };
+
+  const handleInsertDrop = (index: number) => async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    let payload: LibraryItem | null = null;
+    try {
+      const raw = event.dataTransfer.getData("application/x-page-section");
+      if (raw) payload = JSON.parse(raw) as LibraryItem;
+    } catch {
+      payload = null;
+    }
+    const item = payload ?? libraryDragItem;
+    if (!item) return;
+    await insertSectionFromLibrary(item, index);
   };
 
   const preview = useMemo(() => {
@@ -1349,6 +1675,9 @@ export default function PageEditorPage() {
     setConfirmDeleteSectionId(null);
   };
 
+  const canMoveUp = selectedSectionIndex > 0;
+  const canMoveDown = selectedSectionIndex >= 0 && selectedSectionIndex < localSections.length - 1;
+
   if (q.isLoading) {
     return (
       <div dir="rtl" className="relative rounded-2xl border border-white/[0.06] glass-premium p-12 overflow-hidden">
@@ -1668,7 +1997,17 @@ export default function PageEditorPage() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="mb-3 flex items-center justify-between">
               <div className="text-lg font-semibold">Sections</div>
-              <div className="text-xs opacity-70">{sections.length} sections</div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs opacity-70">{sections.length} sections</div>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={showSectionLibrary ? "secondary" : "ghost"}
+                  onClick={() => setShowSectionLibrary((v) => !v)}
+                >
+                  {showSectionLibrary ? "Hide library" : "Library"}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -1676,31 +2015,101 @@ export default function PageEditorPage() {
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                   <SortableContext items={localSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-3">
+                      {showInsertPoints ? renderInsertZone(0, localSections.length === 0) : null}
                       {localSections.map((s, idx) => (
-                        <SortableSectionCard
-                          key={s.id}
-                          section={s}
-                          index={idx}
-                          isSelected={String(selectedSectionId ?? "") === String(s.id)}
-                          previewData={getTranslatedSectionData(s, idx)}
-                          theme={theme}
-                          onSelect={() => handleSelectSection(String(s.id))}
-                          onEdit={() => openEditSection(s)}
-                          onDelete={() => setConfirmDeleteSectionId(s.id)}
-                          onToggleVisible={() => {
-                            if (!id) return;
-                            actions.updateSection.mutateAsync({ pageId: id, sectionId: s.id, body: { isVisible: !s.isVisible } }).catch(() => {});
-                          }}
-                        />
+                        <React.Fragment key={s.id}>
+                          <SortableSectionCard
+                            section={s}
+                            index={idx}
+                            isSelected={String(selectedSectionId ?? "") === String(s.id)}
+                            previewData={getTranslatedSectionData(s, idx)}
+                            theme={theme}
+                            onSelect={() => handleSelectSection(String(s.id))}
+                            onEdit={() => openEditSection(s)}
+                            onDelete={() => setConfirmDeleteSectionId(s.id)}
+                            onToggleVisible={() => {
+                              if (!id) return;
+                              actions.updateSection.mutateAsync({ pageId: id, sectionId: s.id, body: { isVisible: !s.isVisible } }).catch(() => {});
+                            }}
+                          />
+                          {showInsertPoints ? renderInsertZone(idx + 1) : null}
+                        </React.Fragment>
                       ))}
                     </div>
                   </SortableContext>
                 </DndContext>
               ) : (
-                <div className="text-sm opacity-70">No sections yet.</div>
+                showInsertPoints ? renderInsertZone(0, true) : <div className="text-sm opacity-70">No sections yet.</div>
               )}
             </div>
           </div>
+
+          {showSectionLibrary ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-lg font-semibold">Section library</div>
+                <div className="text-xs opacity-70">{sectionLibraryType}</div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <Select
+                  label="Type"
+                  value={sectionLibraryType}
+                  onChange={(e) => setSectionLibraryType(e.target.value as PageSectionType)}
+                  options={SECTION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setSectionInsertIndex(localSections.length)}
+                >
+                  Insert at end
+                </Button>
+              </div>
+
+              <div className="mt-2 text-xs text-white/60">
+                Insert position:{" "}
+                <span className="text-white/80">
+                  {sectionInsertIndex == null ? "End" : `#${sectionInsertIndex + 1}`}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {sectionLibraryItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 hover:border-accent-500/40 transition"
+                    draggable
+                    onDragStart={handleLibraryDragStart(item)}
+                    onDragEnd={handleLibraryDragEnd}
+                  >
+                    <div className="h-28 overflow-hidden rounded-lg border border-white/[0.08] bg-black/30">
+                      <ThemePreview theme={theme} className="h-full p-2">
+                        <React.Suspense fallback={<div className="p-4 text-[11px] text-white/50">Loading...</div>}>
+                          <div className="scale-[0.6] origin-top-right">
+                            <LazySectionPreview type={item.type} data={item.data} />
+                          </div>
+                        </React.Suspense>
+                      </ThemePreview>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="text-xs font-medium">{item.label}</div>
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="secondary"
+                        disabled={libraryBusy}
+                        onClick={() => insertSectionFromLibrary(item, sectionInsertIndex)}
+                      >
+                        Insert
+                      </Button>
+                    </div>
+                    <div className="mt-1 text-[10px] text-white/50">Drag to insert between sections.</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4 lg:sticky lg:top-4 lg:self-start">
@@ -1800,7 +2209,7 @@ export default function PageEditorPage() {
                 <div className="p-6 text-sm text-white/60">Preview unavailable.</div>
               )
             ) : (
-              <div className="max-h-[70vh] overflow-auto">
+              <div ref={canvasScrollRef} className="relative max-h-[70vh] overflow-auto">
                 <ThemePreview key={`live-${previewBump}`} theme={theme} className="min-h-[60vh] p-4">
                   {customCss && customCss.trim() ? <style>{scopeCss(customCss, "#cms-preview-root")}</style> : null}
                   <div id="cms-preview-root" className={`mx-auto w-full ${previewWidthClass}`} dir={canvasDir}>
@@ -1821,6 +2230,38 @@ export default function PageEditorPage() {
                     )}
                   </div>
                 </ThemePreview>
+                {canvasActionBar && selectedSection ? (
+                  <div className="pointer-events-none absolute inset-0">
+                    <div
+                      className="pointer-events-auto absolute z-20 flex flex-wrap items-center gap-1 rounded-xl border border-white/[0.08] bg-black/80 p-2 text-[11px] shadow-lg shadow-black/40"
+                      style={{
+                        top: canvasActionBar.top,
+                        left: canvasActionBar.left,
+                        width: canvasActionBar.width,
+                        maxWidth: "calc(100% - 16px)",
+                      }}
+                    >
+                      <Button type="button" size="xs" variant="secondary" onClick={() => openEditSection(selectedSection)}>
+                        Edit
+                      </Button>
+                      <Button type="button" size="xs" variant="secondary" onClick={duplicateSelectedSection} isLoading={selectionBusy}>
+                        Duplicate
+                      </Button>
+                      <Button type="button" size="xs" variant={selectedSection.isVisible ? "ghost" : "secondary"} onClick={toggleSelectedVisibility} disabled={selectionBusy}>
+                        {selectedSection.isVisible ? "Hide" : "Show"}
+                      </Button>
+                      <Button type="button" size="xs" variant="ghost" disabled={!canMoveUp} onClick={() => moveSection(selectedSection.id, "UP")}>
+                        Move up
+                      </Button>
+                      <Button type="button" size="xs" variant="ghost" disabled={!canMoveDown} onClick={() => moveSection(selectedSection.id, "DOWN")}>
+                        Move down
+                      </Button>
+                      <Button type="button" size="xs" variant="danger" onClick={() => setConfirmDeleteSectionId(selectedSection.id)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -1896,7 +2337,7 @@ export default function PageEditorPage() {
               <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
                 {selectedElement ? (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                       <div className="text-xs font-semibold">
                         Element: <span className="text-white/70">{selectedElement.kind}</span>
                       </div>
@@ -1911,6 +2352,22 @@ export default function PageEditorPage() {
                     </div>
                     {selectedElement.label ? (
                       <div className="text-[11px] text-white/60">{selectedElement.label}</div>
+                    ) : null}
+                    {elementQuickFields.length ? (
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold">Quick edits</div>
+                        <div className="grid gap-2">
+                          {elementQuickFields.map((field) => (
+                            <Input
+                              key={field.key}
+                              label={field.label}
+                              value={field.value}
+                              type={field.type === "url" ? "url" : "text"}
+                              onValueChange={(value) => handleQuickFieldChange(field.path, value)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     ) : null}
                     {resolvedElementTokensPath ? (
                       <div className="max-h-[36vh] overflow-auto">
