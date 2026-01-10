@@ -1397,7 +1397,7 @@ function Section({
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
 
     return wrapDecorations(
-      <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+      <section {...attrs} data-section-type="CONTACT" className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
