@@ -11376,3 +11376,351 @@ html {
   transform: translateY(-3px);
   box-shadow: 0 15px 40px rgba(139, 92, 246, 0.4);
 }
+
+/* ============================================
+   SEASONAL EFFECTS WRAPPER
+   ============================================ */
+
+.seasonal-effects-wrapper {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  overflow: hidden;
+}
+
+.seasonal-close-btn {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seasonal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
+}
+
+/* ============================================
+   PRODUCT PAGE ENHANCEMENTS
+   ============================================ */
+
+.product-360-container {
+  overflow: hidden;
+}
+
+.product-info-bar {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(245, 158, 11, 0.05));
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.size-recommender-container {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Product Badges Enhancement */
+.product-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Stock Indicator Enhancement */
+.stock-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stock-indicator .stock-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stock-indicator .stock-icon.in-stock {
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+}
+
+.stock-indicator .stock-icon.low-stock {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: white;
+}
+
+.stock-indicator .stock-icon.out-of-stock {
+  background: linear-gradient(135deg, #ef4444, #f87171);
+  color: white;
+}
+
+.stock-indicator .stock-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.stock-indicator .stock-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.stock-indicator .stock-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stock-indicator .stock-progress {
+  width: 100px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.stock-indicator .stock-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.stock-indicator .stock-progress-fill.high {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.stock-indicator .stock-progress-fill.medium {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.stock-indicator .stock-progress-fill.low {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+/* Price Display Enhancement */
+.price-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.price-display .current-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.price-display.size-sm .current-price {
+  font-size: 1rem;
+}
+
+.price-display.size-md .current-price {
+  font-size: 1.5rem;
+}
+
+.price-display.size-lg .current-price {
+  font-size: 2rem;
+}
+
+.price-display .original-price {
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.price-display .discount-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: linear-gradient(135deg, #ef4444, #f87171);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* Size Recommender Enhancement */
+.size-recommender .size-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.size-recommender .size-option {
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.size-recommender .size-option:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.size-recommender .size-option.selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+}
+
+.size-recommender .size-option.recommended {
+  position: relative;
+}
+
+.size-recommender .size-option.recommended::after {
+  content: "مُوصى به";
+  position: absolute;
+  top: -8px;
+  right: 50%;
+  transform: translateX(50%);
+  font-size: 0.625rem;
+  padding: 0.125rem 0.375rem;
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+}
+
+.size-recommender .size-option.out-of-stock {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+/* ============================================
+   SEASONAL EFFECTS OVERLAY
+   ============================================ */
+
+.seasonal-effects-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  overflow: hidden;
+}
+
+.seasonal-dismiss-btn {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.3s ease;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seasonal-dismiss-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+/* Product Enhancements Badges */
+.product-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.product-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  animation: badgePop 0.3s ease-out;
+}
+
+.badge-new {
+  background: linear-gradient(135deg, #8b5cf6, #a855f7);
+  color: white;
+}
+
+.badge-sale {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: white;
+}
+
+.badge-bestseller {
+  background: linear-gradient(135deg, #f59e0b, #eab308);
+  color: white;
+}
+
+.badge-limited {
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  color: white;
+}
+
+.badge-trending {
+  background: linear-gradient(135deg, #06b6d4, #0ea5e9);
+  color: white;
+}
+
+.badge-soldout {
+  background: linear-gradient(135deg, #6b7280, #9ca3af);
+  color: white;
+}
+
+.badge-preorder {
+  background: linear-gradient(135deg, #14b8a6, #10b981);
+  color: white;
+}
+
+.badge-exclusive {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: white;
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

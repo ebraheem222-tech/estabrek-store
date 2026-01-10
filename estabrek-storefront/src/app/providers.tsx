@@ -25,11 +25,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             <RecentlyViewedProvider>
               <QuickViewProvider>
                 <MotionProvider>
-                  {/* Seasonal Theme Provider for effects */}
+                  {/* Seasonal Theme Provider */}
                   <SeasonalThemeProvider>
                     {children}
-                    <SeasonalEffects />
                   </SeasonalThemeProvider>
+                  
+                  {/* Seasonal Effects (shows once per hour) */}
+                  <SeasonalEffects />
                   
                   {/* Global UI Components */}
                   <ChatWidget />

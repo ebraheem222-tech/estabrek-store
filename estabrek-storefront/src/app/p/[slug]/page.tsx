@@ -7,13 +7,7 @@ import ProductDetail from "@/components/ProductDetail";
 import ShareButton from "@/components/ShareButton";
 import RecommendedProductsSection from "@/components/RecommendedProductsSection";
 import { RecentlyViewedSection } from "@/components/RecentlyViewedSection";
-import { 
-  StockIndicator, 
-  ProductBadges, 
-  SizeRecommender,
-  PriceDisplay 
-} from "@/components/ProductEnhancements";
-import { Product360View } from "@/components/Product360View";
+import { ProductPageEnhancements } from "@/components/ProductPageEnhancements";
 
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
 import { listCategories } from "@/lib/api";
@@ -145,16 +139,6 @@ const productLd: any = {
 
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
 
-  // Extract product data for enhancements
-  const images = (product as any).images?.map((img: any) => img.url) || [];
-  const stock = (product as any).stock ?? (product as any).quantity ?? 100;
-  const inStock = (product as any).inStock ?? stock > 0;
-  const comparePrice = (product as any).compareAtPrice ?? (product as any).originalPrice;
-  const sizes = (product as any).sizes ?? (product as any).variants?.map((v: any) => v.size).filter(Boolean) ?? [];
-  const isNew = (product as any).isNew ?? false;
-  const isBestseller = (product as any).isBestseller ?? false;
-  const isTrending = (product as any).isTrending ?? false;
-
   return (
     <div className="space-y-8">
       <Breadcrumbs items={crumbs} />
@@ -162,54 +146,10 @@ const productLd: any = {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
       
-      {/* Product Badges */}
-      <ProductBadges
-        isNew={isNew}
-        isBestseller={isBestseller}
-        isTrending={isTrending}
-        salePercent={comparePrice && price ? Math.round((1 - price / comparePrice) * 100) : undefined}
-        stock={stock}
-        lowStockThreshold={10}
-      />
-
-      {/* 360° View (if multiple images) */}
-      {images.length > 3 && (
-        <div className="glass-card rounded-3xl p-4">
-          <h3 className="text-sm font-semibold mb-3 text-[var(--text)]">عرض 360° - {product.title}</h3>
-          <Product360View
-            images={images}
-            autoRotate={false}
-            showControls={true}
-            enableZoom={true}
-            enableFullscreen={true}
-          />
-        </div>
-      )}
+      {/* All Product Enhancements - Client Component */}
+      <ProductPageEnhancements product={product as any} />
       
       <ProductDetail product={product as any} />
-
-      {/* Stock & Price Info */}
-      <div className="flex flex-wrap gap-4 items-center">
-        <StockIndicator
-          stock={stock}
-          lowStockThreshold={10}
-          showCount={stock <= 20}
-          showProgress={true}
-        />
-        <PriceDisplay
-          price={price || 0}
-          originalPrice={comparePrice}
-          currency="₪"
-        />
-      </div>
-
-      {/* Size Recommender */}
-      {sizes.length > 0 && (
-        <SizeRecommender
-          sizes={sizes}
-          productType="clothing"
-        />
-      )}
 
       {/* Description Section */}
       {product.description ? (
