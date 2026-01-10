@@ -2,16 +2,35 @@
 
 import React from "react";
 import { CartProvider } from "@/store/cart";
+import { WishlistProvider } from "@/store/wishlist";
+import { RecentlyViewedProvider } from "@/store/recentlyViewed";
+import { ToastProvider } from "@/components/Toast";
+import { QuickViewProvider } from "@/components/QuickViewModal";
+import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
 import ChatWidget from "@/components/ChatWidget";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <CartProvider>
-      <MotionProvider>
-        {children}
-        <ChatWidget />
-      </MotionProvider>
-    </CartProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <RecentlyViewedProvider>
+              <QuickViewProvider>
+                <MotionProvider>
+                  {children}
+                  <ChatWidget />
+                  <MobileBottomNav />
+                  <ScrollToTop />
+                </MotionProvider>
+              </QuickViewProvider>
+            </RecentlyViewedProvider>
+          </WishlistProvider>
+        </CartProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

@@ -22,6 +22,7 @@ export type CatalogVariant = {
   id: string;
   sku?: string | null;
   price: any;
+  compareAt?: any;
   stock?: number | null;
   size?: CatalogSize | null;
 };
