@@ -266,6 +266,7 @@ type InlineEditableTextProps = {
   selectKind?: string;
   selectLabel?: string;
   selectTokensPath?: ElementPath;
+  selectValuePath?: ElementPath;
   selectHighlight?: boolean;
 };
 
@@ -283,6 +284,7 @@ function InlineEditableText({
   selectKind,
   selectLabel,
   selectTokensPath,
+  selectValuePath,
   selectHighlight = true,
 }: InlineEditableTextProps) {
   const inline = React.useContext(InlineEditContext);
@@ -298,11 +300,12 @@ function InlineEditableText({
 
   const isPlaceholder = canEdit && !draft && !!placeholder;
   const displayValue = canEdit ? (draft || (placeholder ?? "")) : (textData?.content ?? value);
-  const canSelect = !!sectionId && !!path?.length;
+  const selectionPath = selectValuePath ?? path;
+  const canSelect = !!sectionId && !!selectionPath?.length;
   const selectionMeta = canSelect
     ? {
         kind: selectKind ?? "text",
-        valuePath: path,
+        valuePath: selectionPath,
         tokensPath: selectTokensPath,
         label: selectLabel ?? ariaLabel ?? placeholder,
       }
@@ -1018,32 +1021,33 @@ function Section({
             {d.linkLabel && d.linkHref ? (
               (() => {
                 const linkState = getElementState({
-                  kind: "button",
-                  valuePath: ["linkLabel"],
+                  kind: "link",
+                  valuePath: ["linkHref"],
                   label: d.linkLabel ?? "Link",
                 });
                 return (
-              <a
-                {...linkState.attrs}
-                className={cls(
-                  "text-sm font-semibold underline decoration-white/30 underline-offset-4 hover:decoration-white/60",
-                  linkData?.className,
-                  linkState.selected ? SELECTED_ELEMENT_CLASS : undefined
-                )}
-                href={d.linkHref}
-              >
-                <InlineEditableText
-                  as="span"
-                  value={String(d.linkLabel ?? "")}
-                  path={["linkLabel"]}
-                  textData={linkData ?? undefined}
-                  className={linkData?.className}
-                  ariaLabel={linkData?.ariaLabel}
-                  placeholder="Link"
-                  selectKind="button"
-                  selectHighlight={false}
-                />
-              </a>
+                  <a
+                    {...linkState.attrs}
+                    className={cls(
+                      "text-sm font-semibold underline decoration-white/30 underline-offset-4 hover:decoration-white/60",
+                      linkData?.className,
+                      linkState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                    )}
+                    href={d.linkHref}
+                  >
+                    <InlineEditableText
+                      as="span"
+                      value={String(d.linkLabel ?? "")}
+                      path={["linkLabel"]}
+                      textData={linkData ?? undefined}
+                      className={linkData?.className}
+                      ariaLabel={linkData?.ariaLabel}
+                      placeholder="Link"
+                      selectKind="link"
+                      selectValuePath={["linkHref"]}
+                      selectHighlight={false}
+                    />
+                  </a>
                 );
               })()
             ) : null}
@@ -1064,12 +1068,24 @@ function Section({
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
     const buttonData = d.buttonLabel ? textContent(String(d.buttonLabel), sectionTokens) : null;
+    const ctaState = getElementState({
+      kind: "cta",
+      tokensPath: ["twTokens"],
+      label: d.title ?? "CTA",
+    });
 
     return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
-            <div className={cls("flex flex-col gap-3", justify)}>
+            <div
+              {...ctaState.attrs}
+              className={cls(
+                "flex flex-col gap-3",
+                justify,
+                ctaState.selected ? SELECTED_ELEMENT_CLASS : undefined
+              )}
+            >
               {d.imageUrl ? (
                 (() => {
                   const imageState = getElementState({
@@ -1404,13 +1420,17 @@ function Section({
                     {it.href ? (() => {
                       const linkData = textContent(String(it.href), linkTokens);
                       return wrapDecorations(
-                        <div
+                        <InlineEditableText
+                          as="div"
+                          value={String(it.href ?? "")}
+                          path={["items", idx, "href"]}
+                          textData={linkData}
                           className={cls("mt-2 text-xs opacity-60", tokensClass(linkTokens), linkData.className)}
                           style={tokensStyle(linkTokens)}
-                          aria-label={linkData.ariaLabel}
-                        >
-                          {linkData.content}
-                        </div>,
+                          ariaLabel={linkData.ariaLabel}
+                          placeholder="Link"
+                          selectKind="link"
+                        />,
                         linkTokens
                       );
                     })() : null}
@@ -1518,7 +1538,27 @@ function Section({
                           )
                         ) : it.icon ? (
                           wrapDecorations(
-                            <span className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>{it.icon}</span>,
+                            (() => {
+                              const iconState = getElementState({
+                                kind: "icon",
+                                valuePath: ["items", idx, "icon"],
+                                tokensPath: ["items", idx, "iconTokens"],
+                                label: it.title ?? "Feature icon",
+                              });
+                              return (
+                                <span
+                                  {...iconState.attrs}
+                                  className={cls(
+                                    "text-lg",
+                                    tokensClass(iconTokens),
+                                    iconState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                  )}
+                                  style={tokensStyle(iconTokens)}
+                                >
+                                  {it.icon}
+                                </span>
+                              );
+                            })(),
                             iconTokens
                           )
                         ) : null}
@@ -1647,9 +1687,27 @@ function Section({
                       style={tokensStyle(itemTokens)}
                     >
                       {it.icon ? wrapDecorations(
-                        <div className={cls("text-lg", tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
-                          {it.icon}
-                        </div>,
+                        (() => {
+                          const iconState = getElementState({
+                            kind: "icon",
+                            valuePath: ["items", idx, "icon"],
+                            tokensPath: ["items", idx, "iconTokens"],
+                            label: it.label ?? "Stat icon",
+                          });
+                          return (
+                            <div
+                              {...iconState.attrs}
+                              className={cls(
+                                "text-lg",
+                                tokensClass(iconTokens),
+                                iconState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                              )}
+                              style={tokensStyle(iconTokens)}
+                            >
+                              {it.icon}
+                            </div>
+                          );
+                        })(),
                         iconTokens
                       ) : null}
                       {(() => {
@@ -1867,6 +1925,8 @@ function Section({
                                 style={tokensStyle(socialTokens)}
                                 ariaLabel={socialData.ariaLabel}
                                 placeholder="Social"
+                                selectKind="link"
+                                selectValuePath={["members", idx, "socials", sIdx, "href"]}
                               />,
                               socialTokens
                             );
@@ -1973,6 +2033,8 @@ function Section({
                           style={tokensStyle(badgeTokens)}
                           ariaLabel={badgeData.ariaLabel}
                           placeholder="Badge"
+                          selectKind="badge"
+                          selectTokensPath={["plans", idx, "badgeTokens"]}
                         />,
                         badgeTokens
                       ) : null}
@@ -2178,6 +2240,13 @@ function Section({
                       tokensPath: ["items", idx, "twTokens"],
                       label: it.label ?? `Contact ${idx + 1}`,
                     });
+                    const linkState = it.href
+                      ? getElementState({
+                          kind: "link",
+                          valuePath: ["items", idx, "href"],
+                          label: it.href ?? "Link",
+                        })
+                      : null;
                     return wrapDecorations(
                       <div
                         key={idx}
@@ -2191,9 +2260,26 @@ function Section({
                       >
                         <div className="flex items-center gap-2">
                           {it.icon ? wrapDecorations(
-                            <span className={cls(tokensClass(iconTokens))} style={tokensStyle(iconTokens)}>
-                              {it.icon}
-                            </span>,
+                            (() => {
+                              const iconState = getElementState({
+                                kind: "icon",
+                                valuePath: ["items", idx, "icon"],
+                                tokensPath: ["items", idx, "iconTokens"],
+                                label: it.label ?? "Contact icon",
+                              });
+                              return (
+                                <span
+                                  {...iconState.attrs}
+                                  className={cls(
+                                    tokensClass(iconTokens),
+                                    iconState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                  )}
+                                  style={tokensStyle(iconTokens)}
+                                >
+                                  {it.icon}
+                                </span>
+                              );
+                            })(),
                             iconTokens
                           ) : null}
                           {wrapDecorations(
@@ -2215,7 +2301,12 @@ function Section({
                             wrapDecorations(
                               <a
                                 href={it.href}
-                                className={cls("text-sm opacity-80 underline", tokensClass(valueTokens))}
+                                {...(linkState ? linkState.attrs : {})}
+                                className={cls(
+                                  "text-sm opacity-80 underline",
+                                  tokensClass(valueTokens),
+                                  linkState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+                                )}
                                 style={tokensStyle(valueTokens)}
                               >
                                 <InlineEditableText
@@ -2226,6 +2317,8 @@ function Section({
                                   className={valueData.className}
                                   ariaLabel={valueData.ariaLabel}
                                   placeholder="Value"
+                                  selectKind="link"
+                                  selectValuePath={["items", idx, "href"]}
                                 />
                               </a>,
                               valueTokens
@@ -2258,15 +2351,26 @@ function Section({
               <div className="space-y-4">
                 {d.mapEmbedUrl ? (() => {
                   const mapTokens = resolveFieldTokens((d as any).mapTokens, sectionTokens);
+                  const mapState = getElementState({
+                    kind: "map",
+                    valuePath: ["mapEmbedUrl"],
+                    tokensPath: ["mapTokens"],
+                    label: "Map",
+                  });
                   const node = (
                     <div
-                      className={cls("h-48 w-full overflow-hidden rounded-2xl border border-white/[0.08]", tokensClass(mapTokens))}
+                      {...mapState.attrs}
+                      className={cls(
+                        "h-48 w-full overflow-hidden rounded-2xl border border-white/[0.08]",
+                        tokensClass(mapTokens),
+                        mapState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
                       style={tokensStyle(mapTokens)}
                     >
                       <iframe
                         title="map"
                         src={d.mapEmbedUrl}
-                        className="h-full w-full"
+                        className="h-full w-full pointer-events-none"
                         loading="lazy"
                       />
                     </div>
@@ -2556,13 +2660,17 @@ function Section({
                       {it.href ? (() => {
                         const hrefData = textContent(String(it.href), linkTokens);
                         return wrapDecorations(
-                          <div
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.href ?? "")}
+                            path={["items", idx, "href"]}
+                            textData={hrefData}
                             className={cls("mt-1 text-xs opacity-70", tokensClass(linkTokens), hrefData.className)}
                             style={tokensStyle(linkTokens)}
-                            aria-label={hrefData.ariaLabel}
-                          >
-                            {hrefData.content}
-                          </div>,
+                            ariaLabel={hrefData.ariaLabel}
+                            placeholder="Link"
+                            selectKind="link"
+                          />,
                           linkTokens
                         );
                       })() : null}
@@ -2688,13 +2796,17 @@ function Section({
                       {it.href ? (() => {
                         const hrefData = textContent(String(it.href), linkTokens);
                         return wrapDecorations(
-                          <div
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.href ?? "")}
+                            path={["items", idx, "href"]}
+                            textData={hrefData}
                             className={cls("mt-1 text-xs opacity-70", tokensClass(linkTokens), hrefData.className)}
                             style={tokensStyle(linkTokens)}
-                            aria-label={hrefData.ariaLabel}
-                          >
-                            {hrefData.content}
-                          </div>,
+                            ariaLabel={hrefData.ariaLabel}
+                            placeholder="Link"
+                            selectKind="link"
+                          />,
                           linkTokens
                         );
                       })() : null}
@@ -2826,13 +2938,17 @@ function Section({
                       {it.href ? (() => {
                         const hrefData = textContent(String(it.href), linkTokens);
                         return wrapDecorations(
-                          <div
+                          <InlineEditableText
+                            as="div"
+                            value={String(it.href ?? "")}
+                            path={["items", idx, "href"]}
+                            textData={hrefData}
                             className={cls("mt-1 text-xs opacity-70", tokensClass(linkTokens), hrefData.className)}
                             style={tokensStyle(linkTokens)}
-                            aria-label={hrefData.ariaLabel}
-                          >
-                            {hrefData.content}
-                          </div>,
+                            ariaLabel={hrefData.ariaLabel}
+                            placeholder="Link"
+                            selectKind="link"
+                          />,
                           linkTokens
                         );
                       })() : null}
@@ -3344,6 +3460,8 @@ function Section({
                             style={tokensStyle(badgeTokens)}
                             ariaLabel={badgeData.ariaLabel}
                             placeholder="Badge"
+                            selectKind="badge"
+                            selectTokensPath={["cards", idx, "badgeTokens"]}
                           />,
                           badgeTokens
                         );
@@ -3430,6 +3548,11 @@ function Section({
 
     const yt = d.url ? youtubeId(d.url) : null;
     const vm = d.url ? vimeoId(d.url) : null;
+    const videoState = getElementState({
+      kind: "video",
+      valuePath: ["url"],
+      label: d.title ?? "Video",
+    });
 
     return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
@@ -3459,10 +3582,17 @@ function Section({
             />
           ) : null}
 
-          <div className={cls("overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40", aspectClass)}>
+          <div
+            {...videoState.attrs}
+            className={cls(
+              "overflow-hidden rounded-2xl border border-white/[0.08] bg-black/40",
+              aspectClass,
+              videoState.selected ? SELECTED_ELEMENT_CLASS : undefined
+            )}
+          >
             {yt ? (
               <iframe
-                className="h-full w-full"
+                className="h-full w-full pointer-events-none"
                 src={`https://www.youtube.com/embed/${yt}`}
                 title="YouTube video"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -3470,7 +3600,7 @@ function Section({
               />
             ) : vm ? (
               <iframe
-                className="h-full w-full"
+                className="h-full w-full pointer-events-none"
                 src={`https://player.vimeo.com/video/${vm}`}
                 title="Vimeo video"
                 allow="autoplay; fullscreen; picture-in-picture"
@@ -3478,7 +3608,7 @@ function Section({
               />
             ) : d.url ? (
               <video
-                className="h-full w-full"
+                className="h-full w-full pointer-events-none"
                 src={d.url}
                 poster={d.posterUrl ?? undefined}
                 controls={d.controls ?? true}
@@ -3515,7 +3645,7 @@ function Section({
   return null;
 }
 
-export function PageRenderer({
+export const PageRenderer = React.memo(function PageRenderer({
   sections,
   inlineEditing = false,
   onInlineEdit,
@@ -3627,5 +3757,5 @@ export function PageRenderer({
       </InlineSelectContext.Provider>
     </InlineEditContext.Provider>
   );
-}
+});
 

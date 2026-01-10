@@ -391,7 +391,54 @@ type LibraryItem = {
   label: string;
   type: PageSectionType;
   data: any;
+  source?: "built-in" | "saved";
 };
+
+type SavedSectionTemplate = {
+  id: string;
+  label: string;
+  type: PageSectionType;
+  data: any;
+  createdAt: number;
+};
+
+type LibraryCategory = "all" | "hero" | "content" | "commerce" | "media" | "layout" | "saved";
+
+const SECTION_TYPE_CATEGORY: Record<PageSectionType, LibraryCategory> = {
+  HERO: "hero",
+  RICH_TEXT: "content",
+  CUSTOM_HTML: "content",
+  GRID: "layout",
+  FEATURES: "content",
+  STATS: "content",
+  TEAM: "content",
+  PRICING: "commerce",
+  CONTACT: "content",
+  BANNER: "content",
+  FEATURED_CATEGORIES: "commerce",
+  COLLECTIONS_GRID: "commerce",
+  NEW_ARRIVALS_SLIDER: "commerce",
+  BEST_SELLERS_SLIDER: "commerce",
+  BRANDS_SLIDER: "commerce",
+  FEATURED_PRODUCTS: "commerce",
+  NEWSLETTER: "content",
+  IMAGE_GALLERY: "media",
+  FAQ: "content",
+  TESTIMONIALS: "content",
+  CTA: "content",
+  CARDS: "content",
+  VIDEO: "media",
+};
+
+const LIBRARY_CATEGORIES: Array<{ id: LibraryCategory; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "hero", label: "Hero" },
+  { id: "content", label: "Content" },
+  { id: "commerce", label: "Commerce" },
+  { id: "media", label: "Media" },
+  { id: "layout", label: "Layout" },
+  { id: "saved", label: "Saved" },
+];
 
 function normalizeSlug(v: string) {
   const t = (v ?? "").trim();
@@ -454,6 +501,17 @@ type QuickEditField = {
   type?: "text" | "url";
 };
 
+type QuickFieldPreset = {
+  label: string;
+  value: string;
+};
+
+type QuickFieldMeta = {
+  error?: string;
+  hint?: string;
+  presets?: QuickFieldPreset[];
+};
+
 type HistoryEntry = {
   sectionId: string;
   prevData: any;
@@ -473,6 +531,137 @@ type ElementArrayInfo = {
 function toQuickValue(value: any) {
   if (value == null) return "";
   return typeof value === "string" ? value : String(value);
+}
+
+const TARGET_PRESETS: QuickFieldPreset[] = [
+  { label: "Same tab", value: "_self" },
+  { label: "New tab", value: "_blank" },
+  { label: "Parent", value: "_parent" },
+  { label: "Top", value: "_top" },
+];
+
+const ASPECT_PRESETS: QuickFieldPreset[] = [
+  { label: "16:9", value: "16/9" },
+  { label: "4:3", value: "4/3" },
+  { label: "1:1", value: "1/1" },
+  { label: "9:16", value: "9/16" },
+];
+
+const BADGE_PRESETS: QuickFieldPreset[] = [
+  { label: "New", value: "New" },
+  { label: "Hot", value: "Hot" },
+  { label: "Sale", value: "Sale" },
+  { label: "Best", value: "Best" },
+  { label: "Limited", value: "Limited" },
+];
+
+function isValidUrl(value: string) {
+  const v = value.trim();
+  if (!v) return true;
+  if (v.startsWith("/") || v.startsWith("#")) return true;
+  if (v.startsWith("mailto:") || v.startsWith("tel:") || v.startsWith("data:")) return true;
+  try {
+    // Allow http(s) and custom schemes.
+    new URL(v);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function buildQuickFieldMeta(field: QuickEditField): QuickFieldMeta {
+  const meta: QuickFieldMeta = {};
+  const label = field.label.toLowerCase();
+  const value = field.value.trim();
+
+  if (field.type === "url") {
+    meta.hint = "Use https://, /path, #anchor, mailto:, or tel:";
+    if (value && !isValidUrl(value)) {
+      meta.error = "Invalid URL";
+    }
+  }
+
+  if (label.includes("target")) {
+    meta.presets = TARGET_PRESETS;
+    if (value && !TARGET_PRESETS.some((preset) => preset.value === value)) {
+      meta.error = "Use _self, _blank, _parent, or _top";
+    }
+  }
+
+  if (label.includes("aspect")) {
+    meta.presets = ASPECT_PRESETS;
+    if (value && !ASPECT_PRESETS.some((preset) => preset.value === value)) {
+      meta.error = "Use 16/9, 4/3, 1/1, or 9/16";
+    }
+  }
+
+  if (label.includes("badge")) {
+    meta.presets = BADGE_PRESETS;
+  }
+
+  if (label.includes("price") && !meta.hint) {
+    meta.hint = "Example: 99 or 99 SAR";
+  }
+
+  if (label.includes("icon") && !meta.hint) {
+    meta.hint = "Icon name or URL";
+  }
+
+  return meta;
+}
+
+type DiffSummary = {
+  paths: string[];
+  total: number;
+};
+
+function diffSummary(prev: any, next: any, maxPaths = 4): DiffSummary {
+  const summary: DiffSummary = { paths: [], total: 0 };
+  const visited = new Set<any>();
+
+  const walk = (a: any, b: any, path: string) => {
+    if (Object.is(a, b)) return;
+    const aObj = a && typeof a === "object";
+    const bObj = b && typeof b === "object";
+
+    if (!aObj || !bObj) {
+      summary.total += 1;
+      if (summary.paths.length < maxPaths) summary.paths.push(path || "value");
+      return;
+    }
+
+    if (visited.has(a) || visited.has(b)) return;
+    visited.add(a);
+    visited.add(b);
+
+    const aArray = Array.isArray(a);
+    const bArray = Array.isArray(b);
+    if (aArray || bArray) {
+      const maxLen = Math.max(a?.length ?? 0, b?.length ?? 0);
+      for (let i = 0; i < maxLen; i += 1) {
+        walk(a?.[i], b?.[i], path ? `${path}[${i}]` : `[${i}]`);
+        if (summary.total > 200 && summary.paths.length >= maxPaths) return;
+      }
+      return;
+    }
+
+    const keys = new Set<string>([
+      ...Object.keys(a ?? {}),
+      ...Object.keys(b ?? {}),
+    ]);
+    if (!keys.size) {
+      summary.total += 1;
+      if (summary.paths.length < maxPaths) summary.paths.push(path || "value");
+      return;
+    }
+    for (const key of keys) {
+      walk(a?.[key], b?.[key], path ? `${path}.${key}` : key);
+      if (summary.total > 200 && summary.paths.length >= maxPaths) return;
+    }
+  };
+
+  walk(prev, next, "");
+  return summary;
 }
 
 function resolveSiblingPath(
@@ -515,15 +704,38 @@ function addQuickField(fields: QuickEditField[], seen: Set<string>, label: strin
 }
 
 function buildElementQuickFields(selected: SelectedElement | null, data: any): QuickEditField[] {
-  if (!selected || !data || !selected.valuePath?.length) return [];
+  if (!selected || !data) return [];
   const fields: QuickEditField[] = [];
   const seen = new Set<string>();
-  const valuePath = selected.valuePath;
+  const valuePath = selected.valuePath ?? [];
   const kind = selected.kind;
   const last = valuePath[valuePath.length - 1];
 
   const add = (label: string, path: Array<string | number> | null, type?: "text" | "url") =>
     addQuickField(fields, seen, label, path, path ? getDeepValue(data, path) : undefined, type);
+
+  if (!valuePath.length && kind !== "cta" && kind !== "map" && kind !== "video") return [];
+
+  if (kind === "cta") {
+    add("Title", ["title"]);
+    add("Subtitle", ["subtitle"]);
+    add("Button label", ["buttonLabel"]);
+    add("Button URL", ["buttonHref"], "url");
+    add("Image URL", ["imageUrl"], "url");
+    return fields;
+  }
+
+  if (kind === "map") {
+    add("Map URL", ["mapEmbedUrl"], "url");
+    return fields;
+  }
+
+  if (kind === "video") {
+    add("Video URL", ["url"], "url");
+    add("Poster URL", ["posterUrl"], "url");
+    add("Aspect", ["aspect"]);
+    return fields;
+  }
 
   if (kind === "text") {
     const label = typeof last === "string" && last.toLowerCase().includes("price") ? "Price" : "Text";
@@ -558,6 +770,21 @@ function buildElementQuickFields(selected: SelectedElement | null, data: any): Q
     add("Image URL", valuePath, "url");
     const altPath = resolveSiblingPath(valuePath, data, ["alt", "altText", "imageAlt", "caption"]);
     if (altPath) add("Alt text", altPath);
+  }
+
+  if (kind === "link") {
+    if (valuePath.length) add("Link URL", valuePath, "url");
+    const targetPath = resolveSiblingPath(valuePath, data, ["target", "linkTarget", "buttonTarget", "ctaTarget"]);
+    if (targetPath) add("Link target", targetPath);
+  }
+
+  if (kind === "icon") {
+    const isUrl = typeof last === "string" && last.toLowerCase().includes("url");
+    add("Icon", valuePath, isUrl ? "url" : undefined);
+  }
+
+  if (kind === "badge") {
+    add("Badge", valuePath);
   }
 
   if (kind === "card") {
@@ -662,6 +889,14 @@ function elementKeyForSelection(kind: string, valuePath?: Array<string | number>
   return `${kind}:${JSON.stringify(valuePath ?? [])}:${JSON.stringify(tokensPath ?? [])}`;
 }
 
+function isEditableTarget(target: EventTarget | null) {
+  if (!target || !(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
+
 export default function PageEditorPage() {
   const nav = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -694,6 +929,9 @@ export default function PageEditorPage() {
   const [leftPanelWidth, setLeftPanelWidth] = useState(360);
   const leftPanelResizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
   const [leftPanelResizing, setLeftPanelResizing] = useState(false);
+  const [rightPanelWidth, setRightPanelWidth] = useState(360);
+  const rightPanelResizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
+  const [rightPanelResizing, setRightPanelResizing] = useState(false);
   const [templateId, setTemplateId] = useState<(typeof PAGE_TEMPLATES)[number]["id"]>("landing");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [confirmTemplateReplace, setConfirmTemplateReplace] = useState(false);
@@ -708,6 +946,9 @@ export default function PageEditorPage() {
   const [libraryDragItem, setLibraryDragItem] = useState<LibraryItem | null>(null);
   const [libraryDragOverIndex, setLibraryDragOverIndex] = useState<number | null>(null);
   const [libraryBusy, setLibraryBusy] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryCategory, setLibraryCategory] = useState<LibraryCategory>("all");
+  const [savedTemplates, setSavedTemplates] = useState<SavedSectionTemplate[]>([]);
   const canvasScrollRef = React.useRef<HTMLDivElement>(null);
   const [canvasActionBar, setCanvasActionBar] = useState<{ top: number; left: number; width: number } | null>(null);
   const [elementModalOpen, setElementModalOpen] = useState(false);
@@ -720,6 +961,29 @@ export default function PageEditorPage() {
   const lastHistoryAtRef = React.useRef(0);
   const suppressHistoryRef = React.useRef(false);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const savedTemplatesKey = "cms.sectionTemplates.v1";
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(savedTemplatesKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setSavedTemplates(parsed as SavedSectionTemplate[]);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const persistSavedTemplates = (next: SavedSectionTemplate[]) => {
+    setSavedTemplates(next);
+    try {
+      window.localStorage.setItem(savedTemplatesKey, JSON.stringify(next));
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   const normalizeScripts = (v: any) => {
     if (v == null) return "";
@@ -766,6 +1030,7 @@ export default function PageEditorPage() {
     ? "fixed inset-0 z-40 flex flex-col border border-white/10 bg-black/90 p-4"
     : "rounded-2xl border border-white/10 bg-white/5 p-4";
   const leftPanelStyle = leftPanelCollapsed ? undefined : { width: `min(100%, ${leftPanelWidth}px)` };
+  const rightPanelStyle = canvasFullScreen ? undefined : { width: `min(100%, ${rightPanelWidth}px)` };
 
   useEffect(() => {
     if (!canvasFullScreen) return;
@@ -804,22 +1069,88 @@ export default function PageEditorPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      if (!rightPanelResizeRef.current) return;
+      const delta = event.clientX - rightPanelResizeRef.current.startX;
+      const next = rightPanelResizeRef.current.startWidth - delta;
+      const clamped = Math.min(520, Math.max(280, next));
+      setRightPanelWidth(clamped);
+    };
+    const handleUp = () => {
+      if (!rightPanelResizeRef.current) return;
+      rightPanelResizeRef.current = null;
+      setRightPanelResizing(false);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, []);
+
+  const filteredSectionTypes = useMemo(() => {
+    if (libraryCategory === "all" || libraryCategory === "saved") return SECTION_TYPES;
+    return SECTION_TYPES.filter((t) => SECTION_TYPE_CATEGORY[t.value] === libraryCategory);
+  }, [libraryCategory]);
+
+  useEffect(() => {
+    if (libraryCategory === "saved") return;
+    if (!filteredSectionTypes.find((t) => t.value === sectionLibraryType)) {
+      setSectionLibraryType(filteredSectionTypes[0]?.value ?? "HERO");
+    }
+  }, [libraryCategory, filteredSectionTypes, sectionLibraryType]);
+
+  const savedLibraryItems = useMemo<LibraryItem[]>(
+    () =>
+      savedTemplates.map((template) => ({
+        id: `saved:${template.id}`,
+        label: template.label,
+        type: template.type,
+        data: template.data,
+        source: "saved",
+      })),
+    [savedTemplates]
+  );
+
   const sectionLibraryItems = useMemo<LibraryItem[]>(() => {
     const base = defaultDataForType(sectionLibraryType);
     const templates = templatesForType(sectionLibraryType);
+    const savedForType = savedTemplates.filter((item) => item.type === sectionLibraryType);
     const list: LibraryItem[] = [
-      { id: `blank:${sectionLibraryType}`, label: "Blank", type: sectionLibraryType, data: base ?? {} },
+      { id: `blank:${sectionLibraryType}`, label: "Blank", type: sectionLibraryType, data: base ?? {}, source: "built-in" },
+      ...savedForType.map((item) => ({
+        id: `saved:${item.id}`,
+        label: item.label,
+        type: item.type,
+        data: item.data,
+        source: "saved",
+      })),
       ...templates.map((t) => ({
         id: `${sectionLibraryType}:${t.id}`,
         label: t.label,
         type: sectionLibraryType,
         data: t.data ?? {},
+        source: "built-in",
       })),
     ];
     return list;
-  }, [sectionLibraryType]);
+  }, [sectionLibraryType, savedTemplates]);
+
+  const libraryItems = useMemo(() => {
+    const sourceItems = libraryCategory === "saved" ? savedLibraryItems : sectionLibraryItems;
+    const q = librarySearch.trim().toLowerCase();
+    if (!q) return sourceItems;
+    return sourceItems.filter((item) => {
+      const label = item.label.toLowerCase();
+      const type = String(item.type).toLowerCase();
+      return label.includes(q) || type.includes(q);
+    });
+  }, [libraryCategory, librarySearch, savedLibraryItems, sectionLibraryItems]);
 
   const showInsertPoints = showSectionLibrary || !!libraryDragItem;
+  const canvasDropActive = libraryDragOverIndex === 0;
 
   const getTranslatedSectionData = (section: PageSection, index: number) => {
     if (!translatedSections || contentLocale === "ar") return section.data;
@@ -1030,6 +1361,13 @@ export default function PageEditorPage() {
     if (event.button !== 0) return;
     leftPanelResizeRef.current = { startX: event.clientX, startWidth: leftPanelWidth };
     setLeftPanelResizing(true);
+    event.preventDefault();
+  };
+
+  const startRightResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    rightPanelResizeRef.current = { startX: event.clientX, startWidth: rightPanelWidth };
+    setRightPanelResizing(true);
     event.preventDefault();
   };
 
@@ -1469,26 +1807,29 @@ export default function PageEditorPage() {
     await applyHistoryEntry(entry, "redo");
   };
 
-  const handleInlineEdit = async ({ sectionId, path, value }: InlineEditPayload) => {
-    if (!id || !inlineEditingAvailable) return;
-    const idx = localSections.findIndex((s) => String(s.id) === String(sectionId));
-    if (idx < 0) return;
-    const section = localSections[idx];
-    const nextData = setDeepValue(section.data ?? {}, path, value);
-    await persistSectionData(section.id, nextData, "???? ??? ???????.");
-  };
+  const handleInlineEdit = React.useCallback(
+    async ({ sectionId, path, value }: InlineEditPayload) => {
+      if (!id || !inlineEditingAvailable) return;
+      const idx = localSections.findIndex((s) => String(s.id) === String(sectionId));
+      if (idx < 0) return;
+      const section = localSections[idx];
+      const nextData = setDeepValue(section.data ?? {}, path, value);
+      await persistSectionData(section.id, nextData, "???? ??? ???????.");
+    },
+    [id, inlineEditingAvailable, localSections, persistSectionData]
+  );
 
-  const handleSelectSection = (sectionId: string) => {
+  const handleSelectSection = React.useCallback((sectionId: string) => {
     setSelectedSectionId(sectionId);
     setSelectedElement(null);
     setShowInlineStyling(true);
-  };
+  }, []);
 
-  const handleSelectElement = (element: SelectedElement) => {
+  const handleSelectElement = React.useCallback((element: SelectedElement) => {
     setSelectedElement(element);
     setSelectedSectionId(String(element.sectionId));
     setShowInlineStyling(true);
-  };
+  }, []);
 
   const handleSelectedTokensChange = (nextTokens: any) => {
     if (!selectedSection) return;
@@ -1583,6 +1924,27 @@ export default function PageEditorPage() {
     await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
   };
 
+  const moveSelectedElement = async (direction: "UP" | "DOWN") => {
+    if (!selectedSection || !elementArrayInfo) return;
+    const { arrayPath, index, indexPathIndex, array } = elementArrayInfo;
+    if (!Array.isArray(array)) return;
+    const nextIndex = direction === "UP" ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= array.length) return;
+    const nextArray = arrayMove(array, index, nextIndex);
+    const nextData = setDeepValue(selectedSection.data ?? {}, arrayPath, nextArray);
+    await persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+    if (selectedElement) {
+      const nextValuePath = updatePathIndex(selectedElement.valuePath, indexPathIndex, nextIndex);
+      const nextTokensPath = updatePathIndex(selectedElement.tokensPath, indexPathIndex, nextIndex);
+      setSelectedElement({
+        ...selectedElement,
+        valuePath: nextValuePath,
+        tokensPath: nextTokensPath,
+        key: elementKeyForSelection(selectedElement.kind, nextValuePath, nextTokensPath),
+      });
+    }
+  };
+
   const persistSectionVisibility = async (sectionId: string, isVisible: boolean) => {
     setLocalSections((prev) =>
       prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, isVisible } : s))
@@ -1668,6 +2030,25 @@ export default function PageEditorPage() {
       setLibraryDragItem(null);
       setLibraryDragOverIndex(null);
     }
+  };
+
+  const saveSectionAsTemplate = () => {
+    if (!selectedSection) return;
+    const defaultName = `${selectedSection.type} template`;
+    const label = window.prompt("Template name", defaultName);
+    if (!label) return;
+    const cleaned = label.trim();
+    if (!cleaned) return;
+    const nextTemplate: SavedSectionTemplate = {
+      id: `tpl_${Date.now().toString(36)}`,
+      label: cleaned,
+      type: selectedSection.type,
+      data: cloneData(selectedSection.data ?? {}),
+      createdAt: Date.now(),
+    };
+    persistSavedTemplates([nextTemplate, ...savedTemplates]);
+    setLibraryCategory("saved");
+    setShowSectionLibrary(true);
   };
 
   const handleLibraryDragStart = (item: LibraryItem) => (event: React.DragEvent<HTMLDivElement>) => {
@@ -2076,6 +2457,51 @@ export default function PageEditorPage() {
   const canMoveDown = selectedSectionIndex >= 0 && selectedSectionIndex < localSections.length - 1;
   const canUndo = historyIndexRef.current >= 0;
   const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+
+  const historyItems = useMemo(() => {
+    return historyRef.current.map((entry, idx) => {
+      const summary = diffSummary(entry.prevData, entry.nextData);
+      const section = localSections.find((s) => String(s.id) === String(entry.sectionId));
+      return {
+        entry,
+        idx,
+        summary,
+        sectionLabel: section?.type ?? "Section",
+      };
+    });
+  }, [historyVersion, localSections]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || isEditableTarget(event.target)) return;
+
+      if (event.altKey && selectedElement && elementArrayInfo) {
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          void moveSelectedElement("UP");
+        }
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          void moveSelectedElement("DOWN");
+        }
+        return;
+      }
+
+      if (event.shiftKey && selectedSection) {
+        if (event.key === "ArrowUp" && canMoveUp) {
+          event.preventDefault();
+          void moveSection(selectedSection.id, "UP");
+        }
+        if (event.key === "ArrowDown" && canMoveDown) {
+          event.preventDefault();
+          void moveSection(selectedSection.id, "DOWN");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedElement, elementArrayInfo, selectedSection, canMoveUp, canMoveDown, moveSelectedElement, moveSection]);
 
   if (q.isLoading) {
     return (
@@ -2486,23 +2912,58 @@ export default function PageEditorPage() {
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-3 flex items-center justify-between">
                 <div className="text-lg font-semibold">Section library</div>
-                <div className="text-xs opacity-70">{sectionLibraryType}</div>
+                <div className="text-xs opacity-70">
+                  {libraryCategory === "saved" ? "Saved" : sectionLibraryType}
+                </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <Select
-                  label="Type"
-                  value={sectionLibraryType}
-                  onChange={(e) => setSectionLibraryType(e.target.value as PageSectionType)}
-                  options={SECTION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+              <div className="space-y-3">
+                <Input
+                  label="Search"
+                  value={librarySearch}
+                  onValueChange={setLibrarySearch}
+                  placeholder="Search templates"
                 />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setSectionInsertIndex(localSections.length)}
-                >
-                  Insert at end
-                </Button>
+
+                <div className="flex flex-wrap gap-2">
+                  {LIBRARY_CATEGORIES.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      className={[
+                        "rounded-xl border px-3 py-1 text-[11px] transition",
+                        libraryCategory === category.id
+                          ? "border-accent-500/50 bg-accent-500/15 text-accent-200"
+                          : "border-white/10 bg-white/[0.02] text-white/60 hover:border-white/20 hover:text-white/80",
+                      ].join(" ")}
+                      onClick={() => setLibraryCategory(category.id)}
+                    >
+                      {category.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  {libraryCategory === "saved" ? (
+                    <div className="text-xs text-white/60">
+                      {savedTemplates.length ? `${savedTemplates.length} saved templates` : "No saved templates yet."}
+                    </div>
+                  ) : (
+                    <Select
+                      label="Type"
+                      value={sectionLibraryType}
+                      onChange={(e) => setSectionLibraryType(e.target.value as PageSectionType)}
+                      options={filteredSectionTypes.map((t) => ({ value: t.value, label: t.label }))}
+                    />
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setSectionInsertIndex(localSections.length)}
+                  >
+                    Insert at end
+                  </Button>
+                </div>
               </div>
 
               <div className="mt-2 text-xs text-white/60">
@@ -2513,7 +2974,7 @@ export default function PageEditorPage() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {sectionLibraryItems.map((item) => (
+                {libraryItems.map((item) => (
                   <div
                     key={item.id}
                     className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 hover:border-accent-500/40 transition"
@@ -2532,6 +2993,11 @@ export default function PageEditorPage() {
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <div className="text-xs font-medium">{item.label}</div>
+                      {item.source === "saved" ? (
+                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                          Saved
+                        </span>
+                      ) : null}
                       <Button
                         type="button"
                         size="xs"
@@ -2545,6 +3011,9 @@ export default function PageEditorPage() {
                     <div className="mt-1 text-[10px] text-white/50">Drag to insert between sections.</div>
                   </div>
                 ))}
+                {!libraryItems.length ? (
+                  <div className="text-xs text-white/60">No templates match this filter.</div>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -2700,8 +3169,40 @@ export default function PageEditorPage() {
                         onElementSelect={handleSelectElement}
                       />
                     ) : (
-                      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/60">
-                        No sections to preview.
+                      <div
+                        className={[
+                          "flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-8 text-sm text-white/60 transition",
+                          canvasDropActive
+                            ? "border-accent-500/50 bg-accent-500/10 text-accent-100"
+                            : "border-white/[0.12] bg-white/[0.02] hover:border-accent-500/40",
+                        ].join(" ")}
+                        onClick={() => {
+                          setSectionInsertIndex(0);
+                          setShowSectionLibrary(true);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setLibraryDragOverIndex(0);
+                        }}
+                        onDragLeave={() => {
+                          if (libraryDragOverIndex === 0) setLibraryDragOverIndex(null);
+                        }}
+                        onDrop={handleInsertDrop(0)}
+                      >
+                        <div className="text-sm font-semibold">Drop a section here</div>
+                        <div className="text-xs opacity-80">or click to open the library</div>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSectionInsertIndex(0);
+                            setShowSectionLibrary(true);
+                          }}
+                        >
+                          Open library
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -2786,7 +3287,23 @@ export default function PageEditorPage() {
         </div>
 
         {!canvasFullScreen ? (
-        <div className="w-full lg:w-[360px] lg:shrink-0 lg:self-start lg:sticky lg:top-4">
+          <div
+            className={
+              "hidden lg:block w-1 shrink-0 cursor-col-resize rounded-full " +
+              (rightPanelResizing ? "bg-accent-500/40" : "bg-white/10")
+            }
+            onPointerDown={startRightResize}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize inspector panel"
+          />
+        ) : null}
+
+        {!canvasFullScreen ? (
+        <div
+          className="w-full lg:shrink-0 lg:self-start lg:sticky lg:top-4"
+          style={rightPanelStyle}
+        >
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             {selectedSection ? (
               <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
@@ -2836,6 +3353,14 @@ export default function PageEditorPage() {
                     isLoading={selectionBusy}
                   >
                     Duplicate
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    onClick={saveSectionAsTemplate}
+                  >
+                    Save as template
                   </Button>
                   <Button
                     type="button"
@@ -2921,16 +3446,36 @@ export default function PageEditorPage() {
                       {elementQuickFields.length ? (
                         <div className="space-y-2">
                           <div className="text-xs font-semibold">Quick edits</div>
-                          <div className="grid gap-2">
-                            {elementQuickFields.map((field) => (
-                              <Input
-                                key={field.key}
-                                label={field.label}
-                                value={field.value}
-                                type={field.type === "url" ? "url" : "text"}
-                                onValueChange={(value) => handleQuickFieldChange(field.path, value)}
-                              />
-                            ))}
+                          <div className="grid gap-3">
+                            {elementQuickFields.map((field) => {
+                              const meta = buildQuickFieldMeta(field);
+                              return (
+                                <div key={field.key} className="space-y-2">
+                                  <Input
+                                    label={field.label}
+                                    value={field.value}
+                                    type={field.type === "url" ? "url" : "text"}
+                                    error={meta.error}
+                                    hint={meta.hint}
+                                    onValueChange={(value) => handleQuickFieldChange(field.path, value)}
+                                  />
+                                  {meta.presets?.length ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {meta.presets.map((preset) => (
+                                        <button
+                                          key={`${field.key}-${preset.value}`}
+                                          type="button"
+                                          className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/70 transition hover:border-accent-500/40 hover:text-white"
+                                          onClick={() => handleQuickFieldChange(field.path, preset.value)}
+                                        >
+                                          {preset.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       ) : null}
@@ -2977,6 +3522,67 @@ export default function PageEditorPage() {
                       />
                     </div>
                   ) : null}
+                </div>
+
+                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold">History</div>
+                    <div className="text-[10px] text-white/50">{historyItems.length} changes</div>
+                  </div>
+                  {historyItems.length ? (
+                    <div className="mt-3 max-h-[32vh] space-y-2 overflow-auto">
+                      {historyItems
+                        .slice()
+                        .reverse()
+                        .map((item) => {
+                          const isActive = item.idx === historyIndexRef.current;
+                          const isFuture = item.idx > historyIndexRef.current;
+                          const timeLabel = new Date(item.entry.ts).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                          return (
+                            <div
+                              key={`${item.entry.sectionId}-${item.idx}`}
+                              className={[
+                                "rounded-lg border px-2.5 py-2 text-[11px]",
+                                isActive
+                                  ? "border-accent-500/50 bg-accent-500/10 text-accent-100"
+                                  : isFuture
+                                    ? "border-white/5 bg-white/[0.02] text-white/35"
+                                    : "border-white/10 bg-white/[0.03] text-white/70",
+                              ].join(" ")}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-semibold">{item.sectionLabel}</span>
+                                <span className="text-[10px] opacity-60">{timeLabel}</span>
+                              </div>
+                              {item.summary.paths.length ? (
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {item.summary.paths.map((path) => (
+                                    <span
+                                      key={path}
+                                      className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px]"
+                                    >
+                                      {path}
+                                    </span>
+                                  ))}
+                                  {item.summary.total > item.summary.paths.length ? (
+                                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] opacity-70">
+                                      +{item.summary.total - item.summary.paths.length} more
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <div className="mt-1 text-[10px] opacity-60">Mixed changes</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-xs text-white/60">No changes yet.</div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -3228,19 +3834,45 @@ export default function PageEditorPage() {
       >
         {elementModalFields.length ? (
           <div className="grid gap-3">
-            {elementModalFields.map((field) => (
-              <Input
-                key={field.key}
-                label={field.label}
-                value={field.value}
-                type={field.type === "url" ? "url" : "text"}
-                onValueChange={(value) => {
-                  setElementModalFields((prev) =>
-                    prev.map((item) => (item.key === field.key ? { ...item, value } : item))
-                  );
-                }}
-              />
-            ))}
+            {elementModalFields.map((field) => {
+              const meta = buildQuickFieldMeta(field);
+              return (
+                <div key={field.key} className="space-y-2">
+                  <Input
+                    label={field.label}
+                    value={field.value}
+                    type={field.type === "url" ? "url" : "text"}
+                    error={meta.error}
+                    hint={meta.hint}
+                    onValueChange={(value) => {
+                      setElementModalFields((prev) =>
+                        prev.map((item) => (item.key === field.key ? { ...item, value } : item))
+                      );
+                    }}
+                  />
+                  {meta.presets?.length ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {meta.presets.map((preset) => (
+                        <button
+                          key={`${field.key}-${preset.value}`}
+                          type="button"
+                          className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/70 transition hover:border-accent-500/40 hover:text-white"
+                          onClick={() => {
+                            setElementModalFields((prev) =>
+                              prev.map((item) =>
+                                item.key === field.key ? { ...item, value: preset.value } : item
+                              )
+                            );
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-sm text-white/60">No editable fields.</div>
