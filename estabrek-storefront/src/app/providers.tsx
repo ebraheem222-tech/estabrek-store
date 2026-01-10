@@ -11,6 +11,10 @@ import MotionProvider from "@/motion/MotionProvider";
 import ChatWidget from "@/components/ChatWidget";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
+// New components
+import { LiveChat } from "@/components/LiveChat";
+import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThemes";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -21,10 +25,21 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             <RecentlyViewedProvider>
               <QuickViewProvider>
                 <MotionProvider>
-                  {children}
+                  {/* Seasonal Theme Provider for effects */}
+                  <SeasonalThemeProvider>
+                    {children}
+                    <SeasonalEffects />
+                  </SeasonalThemeProvider>
+                  
+                  {/* Global UI Components */}
                   <ChatWidget />
+                  <LiveChat 
+                    position="bottom-left"
+                    welcomeMessage="مرحباً! كيف يمكنني مساعدتك؟"
+                  />
                   <MobileBottomNav />
                   <ScrollToTop />
+                  <VoiceSearchButton />
                 </MotionProvider>
               </QuickViewProvider>
             </RecentlyViewedProvider>

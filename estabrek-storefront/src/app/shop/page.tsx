@@ -9,6 +9,8 @@ import { FiltersChips } from "@/components/FiltersChips";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import { ShopToolbar } from "@/components/ShopToolbar";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
+import { ImageSearchPanel } from "@/components/ImageSearchPanel";
+import { AIRecommendations } from "@/components/AIRecommendations";
 import type { Metadata } from "next";
 
 type SP = Record<string, string | string[] | undefined>;
@@ -160,6 +162,12 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* AI-Powered Search Tools */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <ImageSearchPanel />
+        <AIRecommendations title="منتجات مقترحة لك" />
       </div>
 
       {/* Main Content */}
