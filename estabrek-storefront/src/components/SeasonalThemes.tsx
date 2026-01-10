@@ -21,25 +21,50 @@ export function useSeasonalTheme() {
 // Provider
 export function SeasonalThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<SeasonalTheme>("default");
+  const [showEffects, setShowEffects] = useState(false);
 
-  // Auto-detect season
+  // Auto-detect season and check if should show effects
   useEffect(() => {
-    const now = new Date();
-    const month = now.getMonth(); // 0-11
-    const day = now.getDate();
+    // Check localStorage for last seen time
+    const lastSeen = localStorage.getItem("seasonal_effects_last_seen");
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000; // 1 hour in ms
+    
+    // Only show effects if not seen in the last hour
+    const shouldShow = !lastSeen || (now - parseInt(lastSeen)) > oneHour;
 
-    // Ramadan dates (approximate - should be updated yearly)
+    const currentDate = new Date();
+    const month = currentDate.getMonth(); // 0-11
+    const day = currentDate.getDate();
+
+    // Detect season
+    let detectedTheme: SeasonalTheme = "default";
+    
     // Winter (Dec-Feb)
     if (month === 11 || month === 0 || month === 1) {
-      setTheme("winter");
+      detectedTheme = "winter";
     }
     // Black Friday (November 20-30)
     else if (month === 10 && day >= 20 && day <= 30) {
-      setTheme("black-friday");
+      detectedTheme = "black-friday";
     }
     // Summer (June-Aug)
     else if (month >= 5 && month <= 7) {
-      setTheme("summer");
+      detectedTheme = "summer";
+    }
+
+    setTheme(detectedTheme);
+
+    if (shouldShow && detectedTheme !== "default") {
+      setShowEffects(true);
+      localStorage.setItem("seasonal_effects_last_seen", now.toString());
+      
+      // Auto-hide effects after 20 seconds
+      const timer = setTimeout(() => {
+        setShowEffects(false);
+      }, 20000);
+
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -50,7 +75,31 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
   return (
     <SeasonalContext.Provider value={{ theme, setTheme }}>
       {children}
+      {/* Only show effects if enabled */}
+      {showEffects && <SeasonalEffectsDisplay theme={theme} onClose={() => setShowEffects(false)} />}
     </SeasonalContext.Provider>
+  );
+}
+
+// Separate effects display component with close button
+function SeasonalEffectsDisplay({ theme, onClose }: { theme: SeasonalTheme; onClose: () => void }) {
+  if (theme === "default") return null;
+
+  return (
+    <div className="seasonal-effects-wrapper">
+      <button 
+        onClick={onClose}
+        className="seasonal-close-btn"
+        title="إخفاء التأثيرات"
+      >
+        ✕
+      </button>
+      {theme === "winter" && <WinterEffect count={30} />}
+      {theme === "ramadan" && <RamadanEffect />}
+      {theme === "eid" && <EidEffect />}
+      {theme === "black-friday" && <BlackFridayEffect />}
+      {theme === "summer" && <SummerEffect />}
+    </div>
   );
 }
 
@@ -281,21 +330,62 @@ export function SummerEffect() {
 // ============ MAIN SEASONAL EFFECTS COMPONENT ============
 export function SeasonalEffects() {
   const { theme } = useSeasonalTheme();
+  const [showEffects, setShowEffects] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
-  switch (theme) {
-    case "winter":
-      return <WinterEffect />;
-    case "ramadan":
-      return <RamadanEffect />;
-    case "eid":
-      return <EidEffect />;
-    case "black-friday":
-      return <BlackFridayEffect />;
-    case "summer":
-      return <SummerEffect />;
-    default:
-      return null;
-  }
+  useEffect(() => {
+    // Check if effects were dismissed or shown recently
+    const lastSeen = localStorage.getItem("seasonal_effects_last_seen");
+    const wasDismissed = localStorage.getItem("seasonal_effects_dismissed");
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+
+    // Don't show if dismissed in this session or seen within the hour
+    if (wasDismissed === "true") {
+      return;
+    }
+
+    if (lastSeen && (now - parseInt(lastSeen)) < oneHour) {
+      return;
+    }
+
+    // Show effects after a short delay
+    const timer = setTimeout(() => {
+      setShowEffects(true);
+      localStorage.setItem("seasonal_effects_last_seen", now.toString());
+    }, 2000);
+
+    // Auto-hide after 15 seconds
+    const hideTimer = setTimeout(() => {
+      setShowEffects(false);
+    }, 17000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
+
+  const handleDismiss = () => {
+    setShowEffects(false);
+    setDismissed(true);
+    localStorage.setItem("seasonal_effects_dismissed", "true");
+  };
+
+  if (!showEffects || dismissed || theme === "default") return null;
+
+  return (
+    <div className="seasonal-effects-overlay">
+      <button onClick={handleDismiss} className="seasonal-dismiss-btn" title="إخفاء التأثيرات">
+        ✕
+      </button>
+      {theme === "winter" && <WinterEffect count={25} />}
+      {theme === "ramadan" && <RamadanEffect />}
+      {theme === "eid" && <EidEffect />}
+      {theme === "black-friday" && <BlackFridayEffect />}
+      {theme === "summer" && <SummerEffect />}
+    </div>
+  );
 }
 
 // ============ THEME SWITCHER (for testing/admin) ============
