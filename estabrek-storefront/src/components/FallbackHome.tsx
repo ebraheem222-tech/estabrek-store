@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { getCategoriesTree, listProducts, getBootstrap } from "@/lib/api";
 import { ProductTile } from "@/components/ProductTile";
+import { CountdownTimer } from "@/components/CountdownTimer";
 
 // Icons
 const ShoppingBagIcon = () => (
@@ -225,6 +226,37 @@ export default async function FallbackHome() {
             <span className="quick-feature-title">ضمان الجودة</span>
             <span className="quick-feature-desc">منتجات أصلية</span>
           </div>
+        </div>
+      </section>
+
+      {/* ========== SPECIAL OFFER COUNTDOWN ========== */}
+      <section className="countdown-section">
+        <div className="countdown-bg">
+          <div className="countdown-orb countdown-orb-1" />
+          <div className="countdown-orb countdown-orb-2" />
+        </div>
+        <div className="countdown-content">
+          <div className="countdown-header">
+            <span className="countdown-badge">
+              <GiftIcon />
+              عرض محدود
+            </span>
+            <h2 className="countdown-title">خصم 30% على جميع المنتجات!</h2>
+            <p className="countdown-desc">استغل العرض قبل انتهاء الوقت</p>
+          </div>
+          <CountdownTimer
+            targetDate={new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()}
+            title=""
+            variant="default"
+            showLabels={true}
+          />
+          <Link 
+            href="/shop" 
+            className="countdown-cta"
+          >
+            تسوق الآن
+            <ArrowLeftIcon />
+          </Link>
         </div>
       </section>
 

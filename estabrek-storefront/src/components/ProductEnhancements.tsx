@@ -183,7 +183,7 @@ interface SizeRecommenderProps {
     stock?: number;
   }>;
   selectedSize?: string;
-  onSelectSize: (sizeId: string) => void;
+  onSelectSize?: (sizeId: string) => void;
   productType?: "clothing" | "shoes" | "accessories";
   className?: string;
 }
@@ -244,7 +244,7 @@ export function SizeRecommender({
               <button
                 key={size.id}
                 className={`size-option ${isSelected ? "selected" : ""} ${isRecommended ? "recommended" : ""} ${isOutOfStock ? "out-of-stock" : ""}`}
-                onClick={() => !isOutOfStock && onSelectSize(size.id)}
+                onClick={() => !isOutOfStock && onSelectSize?.(size.id)}
                 disabled={isOutOfStock}
               >
                 <span className="size-name">{size.name}</span>
@@ -316,7 +316,7 @@ export function SizeRecommender({
           </span>
           <button
             className="select-rec-btn"
-            onClick={() => onSelectSize(recommendedSize)}
+            onClick={() => onSelectSize?.(recommendedSize)}
           >
             اختر هذا المقاس
           </button>
