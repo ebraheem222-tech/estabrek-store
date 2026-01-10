@@ -9,6 +9,7 @@ import ProductCard from "@/components/ProductCard";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import FallbackHome from "@/components/FallbackHome";
 import FallbackShop from "@/components/FallbackShop";
+import FallbackContact from "@/components/FallbackContact";
 import CartClient from "@/components/CartClient";
 import { normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 
@@ -45,6 +46,7 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
     if (slug === "/") return <FallbackHome />;
     if (slug === "/shop") return <FallbackShop />;
     if (slug === "/cart") return <CartClient />;
+    if (slug === "/contact") return <FallbackContact />;
     notFound();
   }
 
@@ -302,12 +304,7 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
 
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-        <h1 className="text-xl font-semibold">{page.name}</h1>
-        <div className="text-xs text-white/50">{page.slug}</div>
-      </div>
-
+    <>
       {/* Page-level head scripts are injected in head.tsx */}
       <ScriptTags scripts={(page as any).headScripts} />
 
@@ -326,6 +323,6 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
 
       {/* Page-level body scripts */}
       <ScriptTags scripts={(page as any).bodyScripts} />
-    </div>
+    </>
   );
 }
