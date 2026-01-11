@@ -113,9 +113,10 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
           </div>
           <Product360View
             images={images}
-            autoRotate={false}
+            autoRotate={settings.product360AutoRotate}
+            autoRotateSpeed={settings.product360RotateSpeed}
             showControls={true}
-            enableZoom={true}
+            enableZoom={settings.productZoomEnabled}
             enableFullscreen={true}
           />
         </div>
@@ -127,7 +128,7 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <StockIndicator
               stock={stock}
-              lowStockThreshold={20}
+              lowStockThreshold={settings.productStockThreshold}
               showCount={true}
               showProgress={true}
               maxStock={100}

@@ -127,13 +127,15 @@ export function StorefrontFeaturesProvider({
         const res = await fetch(`${apiBase}/v1/storefront/bootstrap`);
         if (res.ok) {
           const data = await res.json();
-          const storefrontConfig = data?.settings?.header?.storefront;
+          // Settings are in data.site.header.storefront
+          const storefrontConfig = data?.site?.header?.storefront;
           if (storefrontConfig) {
             setSettings(prev => ({ ...prev, ...storefrontConfig }));
           }
         }
       } catch (error) {
         // Use default settings on error
+        console.warn("Failed to fetch storefront settings:", error);
       }
     };
 
