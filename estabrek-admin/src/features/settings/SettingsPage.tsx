@@ -169,6 +169,66 @@ const isThemePresetId = (value: unknown): value is ThemePresetId =>
 
 type LoadingConfig = { enabled: boolean; animationId: string };
 
+// Storefront UI Settings
+type StorefrontConfig = {
+  // Seasonal Effects
+  seasonalEffectsEnabled: boolean;
+  seasonalTheme: "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
+  seasonalEffectsDuration: number;
+  seasonalEffectsInterval: number;
+  // Product Page
+  product360ViewEnabled: boolean;
+  productBadgesEnabled: boolean;
+  productStockIndicator: boolean;
+  productSizeRecommender: boolean;
+  productRecentlyViewed: boolean;
+  productRecommendations: boolean;
+  productQuickView: boolean;
+  // Search & Discovery  
+  voiceSearchEnabled: boolean;
+  imageSearchEnabled: boolean;
+  aiRecommendationsEnabled: boolean;
+  // Chat & Support
+  liveChatEnabled: boolean;
+  liveChatPosition: "bottom-left" | "bottom-right";
+  liveChatWelcomeMessage: string;
+  // Visual Effects
+  confettiOnAddToCart: boolean;
+  heartBurstOnWishlist: boolean;
+  scrollAnimationsEnabled: boolean;
+  // Navigation
+  mobileBottomNavEnabled: boolean;
+  scrollToTopEnabled: boolean;
+};
+
+function normalizeStorefront(v: any): StorefrontConfig {
+  const o = safeObj(v);
+  return {
+    seasonalEffectsEnabled: o.seasonalEffectsEnabled !== false,
+    seasonalTheme: o.seasonalTheme || "auto",
+    seasonalEffectsDuration: o.seasonalEffectsDuration || 15,
+    seasonalEffectsInterval: o.seasonalEffectsInterval || 60,
+    product360ViewEnabled: o.product360ViewEnabled !== false,
+    productBadgesEnabled: o.productBadgesEnabled !== false,
+    productStockIndicator: o.productStockIndicator !== false,
+    productSizeRecommender: o.productSizeRecommender !== false,
+    productRecentlyViewed: o.productRecentlyViewed !== false,
+    productRecommendations: o.productRecommendations !== false,
+    productQuickView: o.productQuickView !== false,
+    voiceSearchEnabled: o.voiceSearchEnabled !== false,
+    imageSearchEnabled: o.imageSearchEnabled !== false,
+    aiRecommendationsEnabled: o.aiRecommendationsEnabled !== false,
+    liveChatEnabled: o.liveChatEnabled !== false,
+    liveChatPosition: o.liveChatPosition || "bottom-left",
+    liveChatWelcomeMessage: o.liveChatWelcomeMessage || "مرحباً! كيف يمكنني مساعدتك؟",
+    confettiOnAddToCart: o.confettiOnAddToCart !== false,
+    heartBurstOnWishlist: o.heartBurstOnWishlist !== false,
+    scrollAnimationsEnabled: o.scrollAnimationsEnabled !== false,
+    mobileBottomNavEnabled: o.mobileBottomNavEnabled !== false,
+    scrollToTopEnabled: o.scrollToTopEnabled !== false,
+  };
+}
+
 function normalizeLoading(v: any): LoadingConfig {
   const o = safeObj(v);
   const rawId = typeof o.animationId === "string" ? o.animationId : "spinner-simple";
@@ -459,6 +519,7 @@ export default function SettingsPage() {
   const [headerCfg, setHeaderCfg] = useState<HeaderConfig>(() => normalizeHeader(null));
   const [footerCfg, setFooterCfg] = useState<FooterConfig>(() => normalizeFooter(null));
   const [cmsNavCfg, setCmsNavCfg] = useState<CmsNavConfig>(() => normalizeCmsNav(null));
+  const [storefrontCfg, setStorefrontCfg] = useState<StorefrontConfig>(() => normalizeStorefront(null));
   const [showHeaderJson, setShowHeaderJson] = useState(false);
   const [showFooterJson, setShowFooterJson] = useState(false);
   const [headerJsonDraft, setHeaderJsonDraft] = useState<string>("");
@@ -494,6 +555,7 @@ export default function SettingsPage() {
 
     setHeaderCfg(normalizeHeader(settings.header));
     setCmsNavCfg(normalizeCmsNav((settings.header as any)?.cmsNav));
+    setStorefrontCfg(normalizeStorefront((settings.header as any)?.storefront));
     setFooterCfg(normalizeFooter(settings.footer));
     setShowHeaderJson(false);
     setShowFooterJson(false);
@@ -590,7 +652,7 @@ export default function SettingsPage() {
         contactEmail: contactEmail.trim() || null,
         contactPhone: contactPhone.trim() || null,
         customCss: customCss,
-        header: { ...headerCfg, cmsNav: cmsNavCfg },
+        header: { ...headerCfg, cmsNav: cmsNavCfg, storefront: storefrontCfg },
         footer: footerCfg,
         scriptsHead,
         scriptsBody,
@@ -1763,6 +1825,186 @@ export default function SettingsPage() {
                     <div className="mt-2 text-xs opacity-70">ملاحظة: عند حفظ الإعدادات سيتم إرسال settings.footer للباك-إند.</div>
                   </div>
                 ) : null}
+              </CardContent>
+            </Card>
+
+            {/* Storefront UI Settings */}
+            <Card>
+              <CardHeader title="إعدادات واجهة المتجر" subtitle="تحكم في ميزات وتأثيرات الواجهة الأمامية" />
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Seasonal Effects */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">التأثيرات الموسمية</div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Toggle
+                        label="تفعيل التأثيرات الموسمية"
+                        checked={storefrontCfg.seasonalEffectsEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, seasonalEffectsEnabled: v }))}
+                      />
+                      <Select
+                        label="الثيم الموسمي"
+                        value={storefrontCfg.seasonalTheme}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, seasonalTheme: v as StorefrontConfig["seasonalTheme"] }))}
+                        options={[
+                          { value: "auto", label: "تلقائي (حسب التاريخ)" },
+                          { value: "none", label: "بدون" },
+                          { value: "winter", label: "شتاء ❄️" },
+                          { value: "ramadan", label: "رمضان 🌙" },
+                          { value: "eid", label: "العيد 🎉" },
+                          { value: "black-friday", label: "الجمعة السوداء 🔥" },
+                          { value: "summer", label: "صيف ☀️" },
+                        ]}
+                      />
+                    </div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <Input
+                        type="number"
+                        label="مدة الظهور (ثواني)"
+                        value={String(storefrontCfg.seasonalEffectsDuration)}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, seasonalEffectsDuration: Number(v) || 15 }))}
+                      />
+                      <Input
+                        type="number"
+                        label="الفترة بين الظهور (دقائق)"
+                        value={String(storefrontCfg.seasonalEffectsInterval)}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, seasonalEffectsInterval: Number(v) || 60 }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Page Features */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">ميزات صفحة المنتج</div>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      <Toggle
+                        label="عرض 360°"
+                        checked={storefrontCfg.product360ViewEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, product360ViewEnabled: v }))}
+                      />
+                      <Toggle
+                        label="شارات المنتج"
+                        checked={storefrontCfg.productBadgesEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productBadgesEnabled: v }))}
+                      />
+                      <Toggle
+                        label="مؤشر المخزون"
+                        checked={storefrontCfg.productStockIndicator}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productStockIndicator: v }))}
+                      />
+                      <Toggle
+                        label="موصي المقاس"
+                        checked={storefrontCfg.productSizeRecommender}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productSizeRecommender: v }))}
+                      />
+                      <Toggle
+                        label="المشاهدة مؤخراً"
+                        checked={storefrontCfg.productRecentlyViewed}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productRecentlyViewed: v }))}
+                      />
+                      <Toggle
+                        label="المنتجات المقترحة"
+                        checked={storefrontCfg.productRecommendations}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productRecommendations: v }))}
+                      />
+                      <Toggle
+                        label="العرض السريع"
+                        checked={storefrontCfg.productQuickView}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, productQuickView: v }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Search & Discovery */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">البحث والاكتشاف</div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Toggle
+                        label="البحث الصوتي"
+                        checked={storefrontCfg.voiceSearchEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, voiceSearchEnabled: v }))}
+                      />
+                      <Toggle
+                        label="البحث بالصورة"
+                        checked={storefrontCfg.imageSearchEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, imageSearchEnabled: v }))}
+                      />
+                      <Toggle
+                        label="التوصيات الذكية"
+                        checked={storefrontCfg.aiRecommendationsEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, aiRecommendationsEnabled: v }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Chat & Support */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">الدردشة والدعم</div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Toggle
+                        label="الدردشة المباشرة"
+                        checked={storefrontCfg.liveChatEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, liveChatEnabled: v }))}
+                      />
+                      <Select
+                        label="موقع الدردشة"
+                        value={storefrontCfg.liveChatPosition}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, liveChatPosition: v as "bottom-left" | "bottom-right" }))}
+                        options={[
+                          { value: "bottom-left", label: "أسفل يسار" },
+                          { value: "bottom-right", label: "أسفل يمين" },
+                        ]}
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <Input
+                        label="رسالة الترحيب"
+                        value={storefrontCfg.liveChatWelcomeMessage}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, liveChatWelcomeMessage: v }))}
+                        placeholder="مرحباً! كيف يمكنني مساعدتك؟"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Visual Effects */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">التأثيرات البصرية</div>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      <Toggle
+                        label="قصاصات عند الإضافة للسلة"
+                        checked={storefrontCfg.confettiOnAddToCart}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, confettiOnAddToCart: v }))}
+                      />
+                      <Toggle
+                        label="قلوب عند الإضافة للمفضلة"
+                        checked={storefrontCfg.heartBurstOnWishlist}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, heartBurstOnWishlist: v }))}
+                      />
+                      <Toggle
+                        label="تأثيرات التمرير"
+                        checked={storefrontCfg.scrollAnimationsEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, scrollAnimationsEnabled: v }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold">التنقل</div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Toggle
+                        label="شريط التنقل السفلي (للهواتف)"
+                        checked={storefrontCfg.mobileBottomNavEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, mobileBottomNavEnabled: v }))}
+                      />
+                      <Toggle
+                        label="زر العودة للأعلى"
+                        checked={storefrontCfg.scrollToTopEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, scrollToTopEnabled: v }))}
+                      />
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
