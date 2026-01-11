@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
 import ChatWidget from "@/components/ChatWidget";
 import { StorefrontFeaturesProvider } from "@/components/StorefrontFeaturesProvider";
+import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -22,7 +23,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 <MotionProvider>
                   {/* Storefront Features (reads settings from API) */}
                   <StorefrontFeaturesProvider>
-                    {children}
+                    {/* Animation Effects (controlled by settings) */}
+                    <AnimationEffectsProvider>
+                      {children}
+                    </AnimationEffectsProvider>
                   </StorefrontFeaturesProvider>
                   
                   {/* Global Chatbot Widget */}
