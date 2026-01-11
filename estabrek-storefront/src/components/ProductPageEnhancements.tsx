@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Product360View } from "./Product360View";
 import { ProductBadges, StockIndicator, PriceDisplay, SizeRecommender } from "./ProductEnhancements";
+import { useStorefrontSettings } from "./StorefrontFeaturesProvider";
 
 interface ProductPageEnhancementsProps {
   product: {
@@ -34,6 +35,7 @@ interface ProductPageEnhancementsProps {
 
 export function ProductPageEnhancements({ product }: ProductPageEnhancementsProps) {
   const [mounted, setMounted] = useState(false);
+  const settings = useStorefrontSettings();
 
   useEffect(() => {
     setMounted(true);
@@ -67,29 +69,31 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
   return (
     <div className="product-enhancements space-y-6">
       {/* Badges Section */}
-      <div className="badges-section">
-        <ProductBadges
-          isNew={isNew}
-          isBestseller={isBestseller}
-          isTrending={isTrending}
-          salePercent={discountPercent > 0 ? discountPercent : undefined}
-          stock={stock}
-          lowStockThreshold={20}
-        />
-        
-        {/* Always show at least one badge for demo */}
-        {!isNew && !isBestseller && !isTrending && discountPercent === 0 && stock > 20 && (
-          <div className="demo-badge">
-            <span className="product-badge badge-new">
-              <span className="badge-icon">✨</span>
-              <span className="badge-label">متوفر</span>
-            </span>
-          </div>
-        )}
-      </div>
+      {settings.productBadgesEnabled && (
+        <div className="badges-section">
+          <ProductBadges
+            isNew={isNew}
+            isBestseller={isBestseller}
+            isTrending={isTrending}
+            salePercent={discountPercent > 0 ? discountPercent : undefined}
+            stock={stock}
+            lowStockThreshold={20}
+          />
+          
+          {/* Always show at least one badge for demo */}
+          {!isNew && !isBestseller && !isTrending && discountPercent === 0 && stock > 20 && (
+            <div className="demo-badge">
+              <span className="product-badge badge-new">
+                <span className="badge-icon">✨</span>
+                <span className="badge-label">متوفر</span>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 360° View Section */}
-      {images.length >= 1 && (
+      {settings.product360ViewEnabled && images.length >= 1 && (
         <div className="view-360-section glass-card rounded-2xl p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -118,27 +122,29 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
       )}
 
       {/* Stock & Price Section */}
-      <div className="stock-price-section glass-card rounded-2xl p-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <StockIndicator
-            stock={stock}
-            lowStockThreshold={20}
-            showCount={true}
-            showProgress={true}
-            maxStock={100}
-          />
-          <PriceDisplay
-            price={price}
-            originalPrice={comparePrice}
-            currency="₪"
-            size="lg"
-            showSavings={true}
-          />
+      {settings.productStockIndicator && (
+        <div className="stock-price-section glass-card rounded-2xl p-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <StockIndicator
+              stock={stock}
+              lowStockThreshold={20}
+              showCount={true}
+              showProgress={true}
+              maxStock={100}
+            />
+            <PriceDisplay
+              price={price}
+              originalPrice={comparePrice}
+              currency="₪"
+              size="lg"
+              showSavings={true}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Size Recommender Section */}
-      {sizes.length > 0 && (
+      {settings.productSizeRecommender && sizes.length > 0 && (
         <div className="size-section glass-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
@@ -159,7 +165,7 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
       )}
 
       {/* Demo sizes if none exist */}
-      {sizes.length === 0 && (
+      {settings.productSizeRecommender && sizes.length === 0 && (
         <div className="size-section glass-card rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
