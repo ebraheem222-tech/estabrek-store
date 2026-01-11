@@ -9,13 +9,13 @@ const RotateIcon = () => (
 );
 
 const PlayIcon = () => (
-  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
     <path d="M8 5v14l11-7z" />
   </svg>
 );
 
 const PauseIcon = () => (
-  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
     <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
   </svg>
 );
@@ -29,6 +29,18 @@ const ZoomInIcon = () => (
 const FullscreenIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+  </svg>
+);
+
+const ChevronLeftIcon = () => (
+  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
   </svg>
 );
 
@@ -59,6 +71,7 @@ export function Product360View({
   const [zoomPosition, setZoomPosition] = useState({ x: 50, y: 50 });
   const [isLoading, setIsLoading] = useState(true);
   const [loadedCount, setLoadedCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
@@ -68,19 +81,32 @@ export function Product360View({
 
   // Preload images
   useEffect(() => {
+    if (!images || images.length === 0) {
+      setHasError(true);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setLoadedCount(0);
+    setHasError(false);
 
+    let loadCount = 0;
     images.forEach((src) => {
       const img = new Image();
       img.onload = () => {
-        setLoadedCount((prev) => {
-          const newCount = prev + 1;
-          if (newCount >= totalFrames) {
-            setIsLoading(false);
-          }
-          return newCount;
-        });
+        loadCount++;
+        setLoadedCount(loadCount);
+        if (loadCount >= totalFrames) {
+          setIsLoading(false);
+        }
+      };
+      img.onerror = () => {
+        loadCount++;
+        setLoadedCount(loadCount);
+        if (loadCount >= totalFrames) {
+          setIsLoading(false);
+        }
       };
       img.src = src;
     });
@@ -88,7 +114,7 @@ export function Product360View({
 
   // Auto-rotate
   useEffect(() => {
-    if (isAutoPlaying && !isDragging && !isLoading) {
+    if (isAutoPlaying && !isDragging && !isLoading && totalFrames > 1) {
       autoPlayRef.current = setInterval(() => {
         setCurrentIndex((prev) => (prev + 1) % totalFrames);
       }, autoRotateSpeed);
@@ -102,6 +128,7 @@ export function Product360View({
   }, [isAutoPlaying, isDragging, isLoading, totalFrames, autoRotateSpeed]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
     setIsDragging(true);
     setIsAutoPlaying(false);
     startXRef.current = e.clientX;
@@ -166,6 +193,16 @@ export function Product360View({
     setIsDragging(false);
   }, []);
 
+  const goToPrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + totalFrames) % totalFrames);
+    setIsAutoPlaying(false);
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % totalFrames);
+    setIsAutoPlaying(false);
+  };
+
   const toggleFullscreen = () => {
     if (!isFullscreen && containerRef.current) {
       containerRef.current.requestFullscreen?.();
@@ -186,10 +223,22 @@ export function Product360View({
 
   const progress = totalFrames > 0 ? ((currentIndex + 1) / totalFrames) * 100 : 0;
 
+  // Error or no images
+  if (hasError || !images || images.length === 0) {
+    return (
+      <div className={`product-360-view ${className}`}>
+        <div className="view-360-error">
+          <RotateIcon />
+          <span>لا توجد صور للعرض 360°</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
-      className={`product-360-view ${className} ${isFullscreen ? "fullscreen" : ""}`}
+      className={`product-360-view ${className} ${isFullscreen ? "fullscreen" : ""} ${isDragging ? "dragging" : ""}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -197,6 +246,7 @@ export function Product360View({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      style={{ touchAction: "pan-y" }}
     >
       {/* Loading */}
       {isLoading && (
@@ -210,21 +260,36 @@ export function Product360View({
       )}
 
       {/* Image */}
-      <div
-        className={`view-360-image ${isZoomed ? "zoomed" : ""}`}
-        style={isZoomed ? {
-          transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
-        } : undefined}
-      >
-        <img
-          src={images[currentIndex]}
-          alt={`360° view - frame ${currentIndex + 1}`}
-          draggable={false}
-        />
-      </div>
+      {!isLoading && (
+        <div
+          className={`view-360-image ${isZoomed ? "zoomed" : ""}`}
+          style={isZoomed ? {
+            transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
+          } : undefined}
+        >
+          <img
+            src={images[currentIndex]}
+            alt={`360° view - frame ${currentIndex + 1}`}
+            draggable={false}
+            style={{ pointerEvents: "none" }}
+          />
+        </div>
+      )}
+
+      {/* Navigation Arrows */}
+      {!isLoading && totalFrames > 1 && (
+        <>
+          <button className="view-360-nav nav-prev" onClick={goToPrev} type="button">
+            <ChevronRightIcon />
+          </button>
+          <button className="view-360-nav nav-next" onClick={goToNext} type="button">
+            <ChevronLeftIcon />
+          </button>
+        </>
+      )}
 
       {/* Drag Indicator */}
-      {!isDragging && !isLoading && (
+      {!isDragging && !isLoading && totalFrames > 1 && (
         <div className="view-360-hint">
           <RotateIcon />
           <span>اسحب للتدوير</span>
@@ -232,33 +297,53 @@ export function Product360View({
       )}
 
       {/* Progress */}
-      <div className="view-360-progress">
-        <div className="progress-bar" style={{ width: `${progress}%` }} />
-      </div>
+      {totalFrames > 1 && (
+        <div className="view-360-progress">
+          <div className="progress-bar" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+
+      {/* Thumbnails Dots */}
+      {totalFrames > 1 && totalFrames <= 12 && (
+        <div className="view-360-dots">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              className={`dot ${currentIndex === i ? "active" : ""}`}
+              onClick={() => { setCurrentIndex(i); setIsAutoPlaying(false); }}
+              type="button"
+            />
+          ))}
+        </div>
+      )}
 
       {/* Controls */}
       {showControls && (
         <div className="view-360-controls">
-          <button
-            onClick={() => setIsAutoPlaying(!isAutoPlaying)}
-            className={isAutoPlaying ? "active" : ""}
-            title={isAutoPlaying ? "إيقاف" : "تشغيل تلقائي"}
-          >
-            {isAutoPlaying ? <PauseIcon /> : <PlayIcon />}
-          </button>
+          {totalFrames > 1 && (
+            <button
+              onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+              className={isAutoPlaying ? "active" : ""}
+              title={isAutoPlaying ? "إيقاف" : "تشغيل تلقائي"}
+              type="button"
+            >
+              {isAutoPlaying ? <PauseIcon /> : <PlayIcon />}
+            </button>
+          )}
           
           {enableZoom && (
             <button
               onClick={() => setIsZoomed(!isZoomed)}
               className={isZoomed ? "active" : ""}
               title="تكبير"
+              type="button"
             >
               <ZoomInIcon />
             </button>
           )}
           
           {enableFullscreen && (
-            <button onClick={toggleFullscreen} title="شاشة كاملة">
+            <button onClick={toggleFullscreen} title="شاشة كاملة" type="button">
               <FullscreenIcon />
             </button>
           )}
@@ -266,9 +351,11 @@ export function Product360View({
       )}
 
       {/* Frame Counter */}
-      <div className="view-360-counter">
-        {currentIndex + 1} / {totalFrames}
-      </div>
+      {totalFrames > 1 && (
+        <div className="view-360-counter">
+          {currentIndex + 1} / {totalFrames}
+        </div>
+      )}
     </div>
   );
 }

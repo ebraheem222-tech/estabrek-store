@@ -328,7 +328,17 @@ export function SummerEffect() {
 }
 
 // ============ MAIN SEASONAL EFFECTS COMPONENT ============
-export function SeasonalEffects() {
+interface SeasonalEffectsProps {
+  duration?: number; // seconds
+  interval?: number; // minutes
+  particleCount?: number;
+}
+
+export function SeasonalEffects({ 
+  duration = 15, 
+  interval = 60,
+  particleCount = 25 
+}: SeasonalEffectsProps) {
   const { theme } = useSeasonalTheme();
   const [showEffects, setShowEffects] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -338,14 +348,14 @@ export function SeasonalEffects() {
     const lastSeen = localStorage.getItem("seasonal_effects_last_seen");
     const wasDismissed = localStorage.getItem("seasonal_effects_dismissed");
     const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
+    const intervalMs = interval * 60 * 1000; // Convert minutes to ms
 
-    // Don't show if dismissed in this session or seen within the hour
+    // Don't show if dismissed in this session or seen within the interval
     if (wasDismissed === "true") {
       return;
     }
 
-    if (lastSeen && (now - parseInt(lastSeen)) < oneHour) {
+    if (lastSeen && (now - parseInt(lastSeen)) < intervalMs) {
       return;
     }
 
@@ -355,16 +365,16 @@ export function SeasonalEffects() {
       localStorage.setItem("seasonal_effects_last_seen", now.toString());
     }, 2000);
 
-    // Auto-hide after 15 seconds
+    // Auto-hide after duration
     const hideTimer = setTimeout(() => {
       setShowEffects(false);
-    }, 17000);
+    }, 2000 + (duration * 1000));
 
     return () => {
       clearTimeout(timer);
       clearTimeout(hideTimer);
     };
-  }, []);
+  }, [duration, interval]);
 
   const handleDismiss = () => {
     setShowEffects(false);
@@ -379,7 +389,7 @@ export function SeasonalEffects() {
       <button onClick={handleDismiss} className="seasonal-dismiss-btn" title="إخفاء التأثيرات">
         ✕
       </button>
-      {theme === "winter" && <WinterEffect count={25} />}
+      {theme === "winter" && <WinterEffect count={particleCount} />}
       {theme === "ramadan" && <RamadanEffect />}
       {theme === "eid" && <EidEffect />}
       {theme === "black-friday" && <BlackFridayEffect />}
