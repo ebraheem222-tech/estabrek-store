@@ -9,12 +9,7 @@ import { QuickViewProvider } from "@/components/QuickViewModal";
 import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
 import ChatWidget from "@/components/ChatWidget";
-import { MobileBottomNav } from "@/components/MobileBottomNav";
-import { ScrollToTop } from "@/components/ScrollToTop";
-// New components
-import { LiveChat } from "@/components/LiveChat";
-import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThemes";
-import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { StorefrontFeaturesProvider } from "@/components/StorefrontFeaturesProvider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -25,23 +20,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             <RecentlyViewedProvider>
               <QuickViewProvider>
                 <MotionProvider>
-                  {/* Seasonal Theme Provider */}
-                  <SeasonalThemeProvider>
+                  {/* Storefront Features (reads settings from API) */}
+                  <StorefrontFeaturesProvider>
                     {children}
-                  </SeasonalThemeProvider>
+                  </StorefrontFeaturesProvider>
                   
-                  {/* Seasonal Effects (shows once per hour) */}
-                  <SeasonalEffects />
-                  
-                  {/* Global UI Components */}
+                  {/* Global Chatbot Widget */}
                   <ChatWidget />
-                  <LiveChat 
-                    position="bottom-left"
-                    welcomeMessage="مرحباً! كيف يمكنني مساعدتك؟"
-                  />
-                  <MobileBottomNav />
-                  <ScrollToTop />
-                  <VoiceSearchButton />
                 </MotionProvider>
               </QuickViewProvider>
             </RecentlyViewedProvider>
