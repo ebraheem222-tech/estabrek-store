@@ -11724,3 +11724,283 @@ html {
     opacity: 1;
   }
 }
+
+/* ============================================
+   ENHANCED 360 VIEW STYLES
+   ============================================ */
+
+.product-360-view {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(245, 158, 11, 0.05));
+  border-radius: 1rem;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.product-360-view.dragging {
+  cursor: grabbing;
+}
+
+.product-360-view.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  border-radius: 0;
+  background: #000;
+  aspect-ratio: auto;
+}
+
+.view-360-image {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease;
+}
+
+.view-360-image img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.view-360-image.zoomed {
+  transform: scale(2);
+}
+
+.view-360-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  z-index: 10;
+}
+
+.view-360-loading .loading-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #8b5cf6;
+  border-radius: 50%;
+  animation: spin360 0.8s linear infinite;
+}
+
+@keyframes spin360 {
+  to { transform: rotate(360deg); }
+}
+
+.view-360-loading .loading-progress {
+  width: 150px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.view-360-loading .loading-progress div {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #f59e0b);
+  transition: width 0.3s ease;
+}
+
+.view-360-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--muted);
+}
+
+.view-360-hint {
+  position: absolute;
+  bottom: 4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  pointer-events: none;
+  animation: fadeInUp360 0.5s ease;
+}
+
+@keyframes fadeInUp360 {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.view-360-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.view-360-progress .progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #f59e0b);
+  transition: width 0.1s ease;
+}
+
+.view-360-dots {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.375rem;
+}
+
+.view-360-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-360-dots .dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.view-360-dots .dot.active {
+  background: #8b5cf6;
+  transform: scale(1.2);
+}
+
+.view-360-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.product-360-view:hover .view-360-nav {
+  opacity: 1;
+}
+
+.view-360-nav:hover {
+  background: rgba(139, 92, 246, 0.8);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.view-360-nav.nav-prev {
+  left: 0.5rem;
+}
+
+.view-360-nav.nav-next {
+  right: 0.5rem;
+}
+
+.view-360-controls {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 5;
+}
+
+.view-360-controls button {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-360-controls button:hover,
+.view-360-controls button.active {
+  background: rgba(139, 92, 246, 0.8);
+}
+
+.view-360-counter {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  z-index: 5;
+}
+
+/* WhatsApp Floating Button */
+.whatsapp-floating-btn {
+  position: fixed;
+  bottom: 6rem;
+  right: 1.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.whatsapp-floating-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 30px rgba(37, 211, 102, 0.5);
+}
+
+[dir="rtl"] .whatsapp-floating-btn {
+  right: auto;
+  left: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .whatsapp-floating-btn {
+    bottom: 5rem;
+    width: 3rem;
+    height: 3rem;
+  }
+}
