@@ -510,6 +510,15 @@
     color: var(--cms-text-color) !important;
   }
 
+  .cms-canvas-section [data-cms-element] {
+    cursor: pointer;
+  }
+
+  .cms-canvas-section [data-cms-element]:hover:not([data-cms-selected="true"]) {
+    outline: 1px dashed rgba(255, 255, 255, 0.35);
+    outline-offset: 2px;
+  }
+
   .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(:where(.cms-typography-color-override,.cms-text-effects)) { color: inherit; }
   .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(.cms-typography-size-override) { font-size: inherit; }
   .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button,label,input,textarea,select,option):not(.cms-typography-weight-override) { font-weight: inherit; }
