@@ -48,6 +48,7 @@ import { toast } from "../../lib/toast";
 import { scopeCss } from "../../lib/scopeCss";
 import { PAGE_TEMPLATES } from "./pageTemplates";
 import type { CmsComponentKind } from "../../cms/types";
+import type { TwTokens } from "../../cms/style/tokens";
 
 const LazySectionPreview = React.lazy(() =>
   import("./SectionPreview").then((m) => ({ default: m.SectionPreview }))
@@ -125,6 +126,7 @@ function SortableSectionCard({
   index = 0,
   onSelect,
   isSelected,
+  isMultiSelected,
 }: {
   section: PageSection;
   onEdit: () => void;
@@ -133,8 +135,9 @@ function SortableSectionCard({
   previewData?: any;
   theme?: any;
   index?: number;
-  onSelect?: () => void;
+  onSelect?: (event: React.MouseEvent) => void;
   isSelected?: boolean;
+  isMultiSelected?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -216,13 +219,14 @@ function SortableSectionCard({
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        onClick={() => {
+        onClick={(event) => {
           if (isDragging) return;
-          onSelect?.();
+          onSelect?.(event);
         }}
         className={[
           "section-card-3d p-5 opacity-0 animate-fade-in-up",
           isSelected ? "ring-2 ring-accent-500/50 border-accent-500/40 shadow-glow" : "",
+          isMultiSelected ? "ring-1 ring-white/30 border-white/20" : "",
           isDragging ? "ring-2 ring-accent-500/50 border-accent-500/30 shadow-2xl shadow-accent-500/20" : "",
         ].join(" ")}
         style={{ animationDelay: `${index * 60}ms`, animationFillMode: "both" }}
@@ -392,6 +396,9 @@ type LibraryItem = {
   type: PageSectionType;
   data: any;
   source?: "built-in" | "saved";
+  tags?: string[];
+  category?: string;
+  createdAt?: number;
 };
 
 type SavedSectionTemplate = {
@@ -399,10 +406,23 @@ type SavedSectionTemplate = {
   label: string;
   type: PageSectionType;
   data: any;
+  tags: string[];
+  category?: string;
   createdAt: number;
 };
 
 type LibraryCategory = "all" | "hero" | "content" | "commerce" | "media" | "layout" | "saved";
+
+type ClipboardSection = {
+  type: PageSectionType;
+  data: any;
+  isVisible: boolean;
+};
+
+type ClipboardElement = {
+  kind: string;
+  item: any;
+};
 
 const SECTION_TYPE_CATEGORY: Record<PageSectionType, LibraryCategory> = {
   HERO: "hero",
@@ -609,6 +629,87 @@ function buildQuickFieldMeta(field: QuickEditField): QuickFieldMeta {
 
   return meta;
 }
+
+function mergeTokens(base: any, patch: any): any {
+  if (!patch || typeof patch !== "object") return base;
+  if (!base || typeof base !== "object") return cloneData(patch);
+  if (Array.isArray(patch)) return patch.slice();
+  const next: any = { ...base };
+  for (const key of Object.keys(patch)) {
+    const value = patch[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      next[key] = mergeTokens(base[key], value);
+    } else {
+      next[key] = value;
+    }
+  }
+  return next;
+}
+
+const ELEMENT_STYLE_PRESETS: Record<string, Array<{ label: string; tokens: Partial<TwTokens> }>> = {
+  text: [
+    { label: "Headline", tokens: { typography: { size: "2xl", weight: "bold", color: "default" } } },
+    { label: "Muted", tokens: { typography: { color: "muted" } } },
+    { label: "Accent", tokens: { typography: { color: "accent", weight: "semibold" } } },
+  ],
+  button: [
+    {
+      label: "Primary",
+      tokens: {
+        style: { bg: "solid-accent", radius: "full", shadow: "md" },
+        typography: { color: "onPrimary", weight: "semibold" },
+        spacing: { paddingX: "lg", paddingY: "sm" },
+      },
+    },
+    {
+      label: "Outline",
+      tokens: {
+        style: { bg: "none", borderWidth: "2", borderColor: "accent", radius: "xl" },
+        typography: { color: "accent", weight: "semibold" },
+        spacing: { paddingX: "lg", paddingY: "sm" },
+      },
+    },
+    {
+      label: "Ghost",
+      tokens: {
+        style: { bg: "none", borderWidth: "1", borderColor: "subtle", radius: "lg" },
+        typography: { color: "default", weight: "medium" },
+        spacing: { paddingX: "lg", paddingY: "sm" },
+      },
+    },
+  ],
+  image: [
+    { label: "Rounded", tokens: { style: { radius: "2xl", shadow: "lg" } } },
+    { label: "Soft", tokens: { style: { radius: "3xl", shadow: "sm" }, effects: { opacity: "95" } } },
+  ],
+  card: [
+    {
+      label: "Surface",
+      tokens: {
+        style: { bg: "solid-surface", radius: "2xl", shadow: "md", borderWidth: "1", borderColor: "subtle" },
+        spacing: { padding: "lg" },
+      },
+    },
+    {
+      label: "Glass",
+      tokens: {
+        style: { bg: "glass-md", radius: "2xl", shadow: "lg" },
+        spacing: { padding: "lg" },
+        effects: { backdropBlur: "md" },
+      },
+    },
+  ],
+  badge: [
+    {
+      label: "Pill",
+      tokens: {
+        style: { bg: "solid-muted", radius: "full" },
+        typography: { size: "xs", weight: "semibold" },
+        spacing: { paddingX: "sm", paddingY: "xs" },
+      },
+    },
+  ],
+};
 
 type DiffSummary = {
   paths: string[];
@@ -926,20 +1027,26 @@ export default function PageEditorPage() {
   const [previewMode, setPreviewMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [canvasFullScreen, setCanvasFullScreen] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [leftPanelFullScreen, setLeftPanelFullScreen] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(360);
   const leftPanelResizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
   const [leftPanelResizing, setLeftPanelResizing] = useState(false);
   const [rightPanelWidth, setRightPanelWidth] = useState(360);
   const rightPanelResizeRef = React.useRef<{ startX: number; startWidth: number } | null>(null);
   const [rightPanelResizing, setRightPanelResizing] = useState(false);
+  const [canvasWidthMode, setCanvasWidthMode] = useState<"fit" | "custom">("custom");
+  const [canvasWidth, setCanvasWidth] = useState(1200);
   const [templateId, setTemplateId] = useState<(typeof PAGE_TEMPLATES)[number]["id"]>("landing");
   const [templateBusy, setTemplateBusy] = useState(false);
   const [confirmTemplateReplace, setConfirmTemplateReplace] = useState(false);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [multiSelectedSectionIds, setMultiSelectedSectionIds] = useState<string[]>([]);
+  const [lastSelectedSectionIndex, setLastSelectedSectionIndex] = useState<number | null>(null);
   const [showAdvancedStyling, setShowAdvancedStyling] = useState(false);
   const [selectionBusy, setSelectionBusy] = useState(false);
   const [showInlineStyling, setShowInlineStyling] = useState(true);
   const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
+  const [inspectorTab, setInspectorTab] = useState<"content" | "style" | "history">("content");
   const [showSectionLibrary, setShowSectionLibrary] = useState(false);
   const [sectionLibraryType, setSectionLibraryType] = useState<PageSectionType>("HERO");
   const [sectionInsertIndex, setSectionInsertIndex] = useState<number | null>(null);
@@ -949,8 +1056,13 @@ export default function PageEditorPage() {
   const [librarySearch, setLibrarySearch] = useState("");
   const [libraryCategory, setLibraryCategory] = useState<LibraryCategory>("all");
   const [savedTemplates, setSavedTemplates] = useState<SavedSectionTemplate[]>([]);
+  const [savedTagFilter, setSavedTagFilter] = useState<string | null>(null);
+  const [savedCategoryFilter, setSavedCategoryFilter] = useState<string | null>(null);
+  const [librarySort, setLibrarySort] = useState<"newest" | "oldest" | "name-asc" | "name-desc">("newest");
   const canvasScrollRef = React.useRef<HTMLDivElement>(null);
+  const importTemplatesInputRef = React.useRef<HTMLInputElement>(null);
   const [canvasActionBar, setCanvasActionBar] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [canvasGuides, setCanvasGuides] = useState<{ x: number; y: number; snapX: boolean; snapY: boolean } | null>(null);
   const [elementModalOpen, setElementModalOpen] = useState(false);
   const [elementModalFields, setElementModalFields] = useState<QuickEditField[]>([]);
   const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -961,25 +1073,48 @@ export default function PageEditorPage() {
   const lastHistoryAtRef = React.useRef(0);
   const suppressHistoryRef = React.useRef(false);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const clipboardSectionRef = React.useRef<ClipboardSection | null>(null);
+  const clipboardElementRef = React.useRef<ClipboardElement | null>(null);
   const savedTemplatesKey = "cms.sectionTemplates.v1";
+
+  const normalizeSavedTemplates = (raw: any): SavedSectionTemplate[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((item, idx) => {
+        if (!item || typeof item !== "object") return null;
+        const label = typeof item.label === "string" ? item.label : `Template ${idx + 1}`;
+        const type = item.type as PageSectionType;
+        return {
+          id: typeof item.id === "string" ? item.id : `tpl_${idx}_${Date.now().toString(36)}`,
+          label,
+          type: SECTION_TYPES.find((t) => t.value === type)?.value ?? "RICH_TEXT",
+          data: item.data ?? {},
+          tags: Array.isArray(item.tags) ? item.tags.filter((t: any) => typeof t === "string") : [],
+          category: typeof item.category === "string" ? item.category : undefined,
+          createdAt: Number.isFinite(Number(item.createdAt)) ? Number(item.createdAt) : Date.now(),
+        } as SavedSectionTemplate;
+      })
+      .filter((item): item is SavedSectionTemplate => !!item);
+  };
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(savedTemplatesKey);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        setSavedTemplates(parsed as SavedSectionTemplate[]);
-      }
+      const normalized = normalizeSavedTemplates(parsed);
+      if (normalized.length) setSavedTemplates(normalized);
     } catch {
       // ignore storage errors
     }
   }, []);
 
   const persistSavedTemplates = (next: SavedSectionTemplate[]) => {
-    setSavedTemplates(next);
+    const normalized = normalizeSavedTemplates(next);
+    setSavedTemplates(normalized);
     try {
-      window.localStorage.setItem(savedTemplatesKey, JSON.stringify(next));
+      window.localStorage.setItem(savedTemplatesKey, JSON.stringify(normalized));
     } catch {
       // ignore storage errors
     }
@@ -1023,6 +1158,10 @@ export default function PageEditorPage() {
     return "max-w-none";
   }, [previewMode]);
 
+  const canvasWidthStyle = canvasWidthMode === "fit"
+    ? { width: "100%" }
+    : { width: "100%", maxWidth: `${canvasWidth}px` };
+
   const canvasDir = contentLocale === "en" ? "ltr" : "rtl";
   const canvasViewportClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "max-h-[70vh]";
   const canvasPreviewHeightClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "h-[70vh]";
@@ -1030,15 +1169,16 @@ export default function PageEditorPage() {
     ? "fixed inset-0 z-40 flex flex-col border border-white/10 bg-black/90 p-4"
     : "rounded-2xl border border-white/10 bg-white/5 p-4";
   const leftPanelStyle = leftPanelCollapsed ? undefined : { width: `min(100%, ${leftPanelWidth}px)` };
-  const rightPanelStyle = canvasFullScreen ? undefined : { width: `min(100%, ${rightPanelWidth}px)` };
+  const rightPanelStyle = canvasFullScreen || leftPanelFullScreen ? undefined : { width: `min(100%, ${rightPanelWidth}px)` };
 
   useEffect(() => {
-    if (!canvasFullScreen) return;
+    if (!canvasFullScreen && !leftPanelFullScreen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setCanvasFullScreen(false);
+        setLeftPanelFullScreen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -1046,7 +1186,7 @@ export default function PageEditorPage() {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [canvasFullScreen]);
+  }, [canvasFullScreen, leftPanelFullScreen]);
 
   useEffect(() => {
     const handleMove = (event: PointerEvent) => {
@@ -1110,6 +1250,9 @@ export default function PageEditorPage() {
         type: template.type,
         data: template.data,
         source: "saved",
+        tags: template.tags,
+        category: template.category,
+        createdAt: template.createdAt,
       })),
     [savedTemplates]
   );
@@ -1126,6 +1269,9 @@ export default function PageEditorPage() {
         type: item.type,
         data: item.data,
         source: "saved",
+        tags: item.tags,
+        category: item.category,
+        createdAt: item.createdAt,
       })),
       ...templates.map((t) => ({
         id: `${sectionLibraryType}:${t.id}`,
@@ -1138,18 +1284,61 @@ export default function PageEditorPage() {
     return list;
   }, [sectionLibraryType, savedTemplates]);
 
+  const savedTags = useMemo(() => {
+    const tags = new Set<string>();
+    savedTemplates.forEach((tpl) => {
+      (tpl.tags ?? []).forEach((tag) => {
+        if (tag) tags.add(tag);
+      });
+    });
+    return Array.from(tags).sort();
+  }, [savedTemplates]);
+
+  const savedCategories = useMemo(() => {
+    const categories = new Set<string>();
+    savedTemplates.forEach((tpl) => {
+      if (tpl.category) categories.add(tpl.category);
+    });
+    return Array.from(categories).sort();
+  }, [savedTemplates]);
+
   const libraryItems = useMemo(() => {
-    const sourceItems = libraryCategory === "saved" ? savedLibraryItems : sectionLibraryItems;
+    let sourceItems = libraryCategory === "saved" ? savedLibraryItems : sectionLibraryItems;
+    if (libraryCategory === "saved") {
+      if (savedTagFilter) {
+        sourceItems = sourceItems.filter((item) => item.tags?.includes(savedTagFilter));
+      }
+      if (savedCategoryFilter) {
+        sourceItems = sourceItems.filter((item) => item.category === savedCategoryFilter);
+      }
+      sourceItems = sourceItems.slice().sort((a, b) => {
+        if (librarySort === "name-asc") return a.label.localeCompare(b.label);
+        if (librarySort === "name-desc") return b.label.localeCompare(a.label);
+        if (librarySort === "oldest") return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+        return (b.createdAt ?? 0) - (a.createdAt ?? 0);
+      });
+    }
     const q = librarySearch.trim().toLowerCase();
     if (!q) return sourceItems;
     return sourceItems.filter((item) => {
       const label = item.label.toLowerCase();
       const type = String(item.type).toLowerCase();
-      return label.includes(q) || type.includes(q);
+      const tags = (item.tags ?? []).join(" ").toLowerCase();
+      const category = (item.category ?? "").toLowerCase();
+      return label.includes(q) || type.includes(q) || tags.includes(q) || category.includes(q);
     });
-  }, [libraryCategory, librarySearch, savedLibraryItems, sectionLibraryItems]);
+  }, [
+    libraryCategory,
+    librarySearch,
+    savedLibraryItems,
+    sectionLibraryItems,
+    savedTagFilter,
+    savedCategoryFilter,
+    librarySort,
+  ]);
 
   const showInsertPoints = showSectionLibrary || !!libraryDragItem;
+  const showLeftPanel = leftPanelFullScreen || (!canvasFullScreen && !leftPanelCollapsed);
   const canvasDropActive = libraryDragOverIndex === 0;
 
   const getTranslatedSectionData = (section: PageSection, index: number) => {
@@ -1259,6 +1448,14 @@ export default function PageEditorPage() {
     return localSections.find((s) => String(s.id) === String(selectedSectionId)) ?? null;
   }, [localSections, selectedSectionId]);
 
+  const multiSelectedSections = useMemo(() => {
+    if (!multiSelectedSectionIds.length) return [];
+    const idSet = new Set(multiSelectedSectionIds.map(String));
+    return localSections.filter((s) => idSet.has(String(s.id)));
+  }, [localSections, multiSelectedSectionIds]);
+
+  const multiSelectionActive = multiSelectedSections.length > 1;
+
   useEffect(() => {
     if (selectedSectionId) {
       setShowInlineStyling(true);
@@ -1267,6 +1464,16 @@ export default function PageEditorPage() {
       setShowAdvancedStyling(false);
       setSelectedElement(null);
     }
+  }, [selectedSectionId]);
+
+  useEffect(() => {
+    if (!selectedSectionId) {
+      setMultiSelectedSectionIds([]);
+      setLastSelectedSectionIndex(null);
+      return;
+    }
+    const stringId = String(selectedSectionId);
+    setMultiSelectedSectionIds((prev) => (prev.includes(stringId) ? prev : [stringId]));
   }, [selectedSectionId]);
 
   useEffect(() => {
@@ -1324,6 +1531,11 @@ export default function PageEditorPage() {
   const elementQuickFields = useMemo(
     () => buildElementQuickFields(selectedElement, selectedSection?.data ?? null),
     [selectedElement, selectedSection]
+  );
+
+  const elementStylePresets = useMemo(
+    () => (selectedElement ? ELEMENT_STYLE_PRESETS[selectedElement.kind] ?? [] : []),
+    [selectedElement]
   );
 
   const elementArrayInfo = useMemo(
@@ -1566,11 +1778,13 @@ export default function PageEditorPage() {
   useEffect(() => {
     if (canvasView !== "live" || !selectedElement) {
       setCanvasActionBar(null);
+      setCanvasGuides(null);
       return;
     }
     const container = canvasScrollRef.current;
     if (!container) {
       setCanvasActionBar(null);
+      setCanvasGuides(null);
       return;
     }
 
@@ -1581,6 +1795,7 @@ export default function PageEditorPage() {
         const selectedNode = container.querySelector("[data-cms-selected=\"true\"]") as HTMLElement | null;
         if (!selectedNode) {
           setCanvasActionBar(null);
+          setCanvasGuides(null);
           return;
         }
         const containerRect = container.getBoundingClientRect();
@@ -1590,9 +1805,15 @@ export default function PageEditorPage() {
         const width = Math.min(rect.width, container.clientWidth - 16);
         if (!Number.isFinite(top) || !Number.isFinite(left) || !Number.isFinite(width)) {
           setCanvasActionBar(null);
+          setCanvasGuides(null);
           return;
         }
         setCanvasActionBar({ top, left, width });
+        const centerX = rect.left - containerRect.left + container.scrollLeft + rect.width / 2;
+        const centerY = rect.top - containerRect.top + container.scrollTop + rect.height / 2;
+        const snapX = Math.abs(centerX - (container.scrollLeft + container.clientWidth / 2)) < 6;
+        const snapY = Math.abs(centerY - (container.scrollTop + container.clientHeight / 2)) < 6;
+        setCanvasGuides({ x: centerX, y: centerY, snapX, snapY });
       });
     };
 
@@ -1820,16 +2041,67 @@ export default function PageEditorPage() {
   );
 
   const handleSelectSection = React.useCallback((sectionId: string) => {
-    setSelectedSectionId(sectionId);
+    const stringId = String(sectionId);
+    setSelectedSectionId(stringId);
     setSelectedElement(null);
     setShowInlineStyling(true);
-  }, []);
+    setMultiSelectedSectionIds([stringId]);
+    const idx = localSections.findIndex((s) => String(s.id) === stringId);
+    setLastSelectedSectionIndex(idx >= 0 ? idx : null);
+  }, [localSections]);
+
+  const handleSelectSectionFromList = React.useCallback(
+    (sectionId: string, event: React.MouseEvent) => {
+      const stringId = String(sectionId);
+      const idx = localSections.findIndex((s) => String(s.id) === stringId);
+      const isMeta = event.metaKey || event.ctrlKey;
+      const isShift = event.shiftKey;
+
+      setSelectedElement(null);
+      setShowInlineStyling(true);
+
+      if (isShift && lastSelectedSectionIndex != null && idx >= 0) {
+        const start = Math.min(lastSelectedSectionIndex, idx);
+        const end = Math.max(lastSelectedSectionIndex, idx);
+        const rangeIds = localSections.slice(start, end + 1).map((s) => String(s.id));
+        const nextIds = isMeta
+          ? Array.from(new Set([...multiSelectedSectionIds, ...rangeIds]))
+          : rangeIds;
+        setMultiSelectedSectionIds(nextIds);
+        setSelectedSectionId(stringId);
+        setLastSelectedSectionIndex(idx);
+        return;
+      }
+
+      if (isMeta) {
+        let nextIds: string[];
+        if (multiSelectedSectionIds.includes(stringId)) {
+          nextIds = multiSelectedSectionIds.filter((id) => id !== stringId);
+        } else {
+          nextIds = [...multiSelectedSectionIds, stringId];
+        }
+        setMultiSelectedSectionIds(nextIds);
+        setSelectedSectionId(nextIds.length ? stringId : null);
+        setLastSelectedSectionIndex(idx >= 0 ? idx : null);
+        return;
+      }
+
+      setSelectedSectionId(stringId);
+      setMultiSelectedSectionIds([stringId]);
+      setLastSelectedSectionIndex(idx >= 0 ? idx : null);
+    },
+    [lastSelectedSectionIndex, localSections, multiSelectedSectionIds]
+  );
 
   const handleSelectElement = React.useCallback((element: SelectedElement) => {
+    const stringId = String(element.sectionId);
     setSelectedElement(element);
-    setSelectedSectionId(String(element.sectionId));
+    setSelectedSectionId(stringId);
     setShowInlineStyling(true);
-  }, []);
+    setMultiSelectedSectionIds([stringId]);
+    const idx = localSections.findIndex((s) => String(s.id) === stringId);
+    setLastSelectedSectionIndex(idx >= 0 ? idx : null);
+  }, [localSections]);
 
   const handleSelectedTokensChange = (nextTokens: any) => {
     if (!selectedSection) return;
@@ -1843,10 +2115,89 @@ export default function PageEditorPage() {
     void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
   };
 
+  const applyElementStylePreset = (presetTokens: Partial<TwTokens>) => {
+    if (!selectedSection || !resolvedElementTokensPath) return;
+    const merged = mergeTokens(selectedElementTokens ?? {}, presetTokens);
+    const nextData = setDeepValue(selectedSection.data ?? {}, resolvedElementTokensPath, merged);
+    void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
   const handleQuickFieldChange = (path: Array<string | number>, value: string) => {
     if (!selectedSection) return;
     const nextData = setDeepValue(selectedSection.data ?? {}, path, value);
     void persistSectionData(selectedSection.id, nextData, "???? ??? ???????.");
+  };
+
+  const copySelection = () => {
+    if (selectedElement && elementArrayInfo) {
+      clipboardElementRef.current = {
+        kind: selectedElement.kind,
+        item: cloneWithFreshKeys(elementArrayInfo.item),
+      };
+      clipboardSectionRef.current = null;
+      toast.success("Element copied.");
+      return;
+    }
+    if (selectedSection) {
+      clipboardSectionRef.current = {
+        type: selectedSection.type,
+        data: cloneData(selectedSection.data ?? {}),
+        isVisible: selectedSection.isVisible ?? true,
+      };
+      clipboardElementRef.current = null;
+      toast.success("Section copied.");
+      return;
+    }
+    toast.error("Select a section or list item to copy.");
+  };
+
+  const pasteSelection = async () => {
+    if (selectedElement && elementArrayInfo && selectedSection && clipboardElementRef.current) {
+      const { arrayPath, index, indexPathIndex, array } = elementArrayInfo;
+      if (!Array.isArray(array)) return;
+      const nextItem = cloneWithFreshKeys(clipboardElementRef.current.item);
+      const nextArray = array.slice();
+      nextArray.splice(index + 1, 0, nextItem);
+      const nextData = setDeepValue(selectedSection.data ?? {}, arrayPath, nextArray);
+      await persistSectionData(selectedSection.id, nextData, "Element pasted.");
+      const nextValuePath = updatePathIndex(selectedElement.valuePath, indexPathIndex, index + 1);
+      const nextTokensPath = updatePathIndex(selectedElement.tokensPath, indexPathIndex, index + 1);
+      setSelectedElement({
+        ...selectedElement,
+        valuePath: nextValuePath,
+        tokensPath: nextTokensPath,
+        key: elementKeyForSelection(selectedElement.kind, nextValuePath, nextTokensPath),
+      });
+      return;
+    }
+    if (clipboardSectionRef.current && id) {
+      const insertAt = selectedSectionIndex >= 0 ? selectedSectionIndex + 1 : localSections.length;
+      const order = calculateInsertOrder(insertAt);
+      try {
+        const created = await createSectionApi(id, {
+          type: clipboardSectionRef.current.type,
+          data: cloneData(clipboardSectionRef.current.data ?? {}),
+          isVisible: clipboardSectionRef.current.isVisible ?? true,
+          order,
+        });
+        await qc.invalidateQueries({ queryKey: ["pages", id] });
+        setSelectedSectionId(String(created.id));
+        setMultiSelectedSectionIds([String(created.id)]);
+        setShowInlineStyling(true);
+      } catch {
+        toast.error("Failed to paste section.");
+      }
+      return;
+    }
+    toast.error("Nothing to paste.");
+  };
+
+  const duplicateSelection = async () => {
+    if (selectedElement && elementArrayInfo) {
+      await handleDuplicateElement();
+      return;
+    }
+    await duplicateSelectedSection();
   };
 
   const openElementModal = () => {
@@ -2032,6 +2383,62 @@ export default function PageEditorPage() {
     }
   };
 
+  const duplicateSectionsBulk = async () => {
+    if (!id || !multiSelectedSections.length) return;
+    setSelectionBusy(true);
+    try {
+      const sorted = multiSelectedSections
+        .slice()
+        .sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0));
+      let nextOrder = localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1;
+      let lastCreatedId: string | null = null;
+      for (const section of sorted) {
+        const created = await createSectionApi(id, {
+          type: section.type,
+          data: cloneData(section.data ?? {}),
+          isVisible: section.isVisible ?? true,
+          order: nextOrder,
+        });
+        lastCreatedId = String(created.id);
+        nextOrder += 1;
+      }
+      await qc.invalidateQueries({ queryKey: ["pages", id] });
+      if (lastCreatedId) {
+        setSelectedSectionId(lastCreatedId);
+        setMultiSelectedSectionIds([lastCreatedId]);
+      }
+    } catch {
+      toast.error("Failed to duplicate sections.");
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const setVisibilityBulk = async (visible: boolean) => {
+    if (!multiSelectedSections.length) return;
+    setSelectionBusy(true);
+    try {
+      await Promise.all(multiSelectedSections.map((section) => persistSectionVisibility(section.id, visible)));
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
+  const deleteSectionsBulk = async () => {
+    if (!id || !multiSelectedSections.length) return;
+    setSelectionBusy(true);
+    try {
+      await Promise.all(multiSelectedSections.map((section) => deleteSectionApi(section.id)));
+      await qc.invalidateQueries({ queryKey: ["pages", id] });
+      setSelectedSectionId(null);
+      setMultiSelectedSectionIds([]);
+    } catch {
+      toast.error("Failed to delete sections.");
+    } finally {
+      setSelectionBusy(false);
+    }
+  };
+
   const saveSectionAsTemplate = () => {
     if (!selectedSection) return;
     const defaultName = `${selectedSection.type} template`;
@@ -2044,11 +2451,101 @@ export default function PageEditorPage() {
       label: cleaned,
       type: selectedSection.type,
       data: cloneData(selectedSection.data ?? {}),
+      tags: [],
+      category: String(selectedSection.type),
       createdAt: Date.now(),
     };
     persistSavedTemplates([nextTemplate, ...savedTemplates]);
     setLibraryCategory("saved");
     setShowSectionLibrary(true);
+  };
+
+  const updateSavedTemplate = (templateId: string, updater: (tpl: SavedSectionTemplate) => SavedSectionTemplate) => {
+    const next = savedTemplates.map((tpl) => (tpl.id === templateId ? updater(tpl) : tpl));
+    persistSavedTemplates(next);
+  };
+
+  const renameTemplate = (templateId: string) => {
+    const tpl = savedTemplates.find((item) => item.id === templateId);
+    if (!tpl) return;
+    const nextLabel = window.prompt("Template name", tpl.label);
+    if (!nextLabel) return;
+    const cleaned = nextLabel.trim();
+    if (!cleaned) return;
+    updateSavedTemplate(templateId, (item) => ({ ...item, label: cleaned }));
+  };
+
+  const editTemplateTags = (templateId: string) => {
+    const tpl = savedTemplates.find((item) => item.id === templateId);
+    if (!tpl) return;
+    const next = window.prompt("Tags (comma separated)", (tpl.tags ?? []).join(", "));
+    if (next == null) return;
+    const tags = next
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    updateSavedTemplate(templateId, (item) => ({ ...item, tags }));
+  };
+
+  const editTemplateCategory = (templateId: string) => {
+    const tpl = savedTemplates.find((item) => item.id === templateId);
+    if (!tpl) return;
+    const next = window.prompt("Category", tpl.category ?? "");
+    if (next == null) return;
+    const cleaned = next.trim();
+    updateSavedTemplate(templateId, (item) => ({ ...item, category: cleaned || undefined }));
+  };
+
+  const deleteTemplate = (templateId: string) => {
+    const tpl = savedTemplates.find((item) => item.id === templateId);
+    if (!tpl) return;
+    const ok = window.confirm(`Delete template "${tpl.label}"?`);
+    if (!ok) return;
+    persistSavedTemplates(savedTemplates.filter((item) => item.id !== templateId));
+  };
+
+  const exportTemplates = () => {
+    if (!savedTemplates.length) {
+      toast.error("No saved templates.");
+      return;
+    }
+    const payload = JSON.stringify(savedTemplates, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "section-templates.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importTemplatesFromText = (text: string) => {
+    try {
+      const parsed = JSON.parse(text);
+      const normalized = normalizeSavedTemplates(parsed);
+      if (!normalized.length) {
+        toast.error("No templates found.");
+        return;
+      }
+      const existingIds = new Set(savedTemplates.map((tpl) => tpl.id));
+      const merged = normalized.filter((tpl) => !existingIds.has(tpl.id));
+      persistSavedTemplates([...merged, ...savedTemplates]);
+      toast.success("Templates imported.");
+    } catch {
+      toast.error("Invalid JSON file.");
+    }
+  };
+
+  const handleImportTemplates = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === "string" ? reader.result : "";
+      if (text) importTemplatesFromText(text);
+    };
+    reader.readAsText(file);
+    event.target.value = "";
   };
 
   const handleLibraryDragStart = (item: LibraryItem) => (event: React.DragEvent<HTMLDivElement>) => {
@@ -2475,6 +2972,27 @@ export default function PageEditorPage() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || isEditableTarget(event.target)) return;
 
+      const isMod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+
+      if (isMod && !event.altKey) {
+        if (key === "c") {
+          event.preventDefault();
+          copySelection();
+          return;
+        }
+        if (key === "v") {
+          event.preventDefault();
+          void pasteSelection();
+          return;
+        }
+        if (key === "d") {
+          event.preventDefault();
+          void duplicateSelection();
+          return;
+        }
+      }
+
       if (event.altKey && selectedElement && elementArrayInfo) {
         if (event.key === "ArrowUp") {
           event.preventDefault();
@@ -2501,7 +3019,18 @@ export default function PageEditorPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedElement, elementArrayInfo, selectedSection, canMoveUp, canMoveDown, moveSelectedElement, moveSection]);
+  }, [
+    selectedElement,
+    elementArrayInfo,
+    selectedSection,
+    canMoveUp,
+    canMoveDown,
+    moveSelectedElement,
+    moveSection,
+    copySelection,
+    pasteSelection,
+    duplicateSelection,
+  ]);
 
   if (q.isLoading) {
     return (
@@ -2814,8 +3343,28 @@ export default function PageEditorPage() {
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        {!canvasFullScreen && !leftPanelCollapsed ? (
-          <div className="flex w-full flex-col gap-4 lg:shrink-0" style={leftPanelStyle}>
+        {showLeftPanel ? (
+          <div
+            className={
+              leftPanelFullScreen
+                ? "fixed inset-0 z-50 flex flex-col gap-4 overflow-auto bg-black/90 p-6"
+                : "flex w-full flex-col gap-4 lg:shrink-0"
+            }
+            style={leftPanelFullScreen ? undefined : leftPanelStyle}
+          >
+            {leftPanelFullScreen ? (
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="text-sm font-semibold">Sections</div>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="secondary"
+                  onClick={() => setLeftPanelFullScreen(false)}
+                >
+                  Exit full screen
+                </Button>
+              </div>
+            ) : null}
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="mb-3 flex items-center justify-between">
               <div className="text-lg font-semibold">Templates</div>
@@ -2858,6 +3407,17 @@ export default function PageEditorPage() {
                 <Button
                   type="button"
                   size="xs"
+                  variant={leftPanelFullScreen ? "secondary" : "ghost"}
+                  onClick={() => {
+                    setLeftPanelFullScreen((v) => !v);
+                    setCanvasFullScreen(false);
+                  }}
+                >
+                  {leftPanelFullScreen ? "Exit full" : "Full screen"}
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
                   variant={showSectionLibrary ? "secondary" : "ghost"}
                   onClick={() => setShowSectionLibrary((v) => !v)}
                 >
@@ -2875,6 +3435,61 @@ export default function PageEditorPage() {
             </div>
 
             <div className="space-y-3">
+              {multiSelectionActive ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 p-2 text-[11px]">
+                  <span className="text-white/70">{multiSelectedSections.length} selected</span>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    disabled={selectionBusy}
+                    onClick={duplicateSectionsBulk}
+                  >
+                    Duplicate
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    disabled={selectionBusy}
+                    onClick={() => setVisibilityBulk(true)}
+                  >
+                    Show
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="secondary"
+                    disabled={selectionBusy}
+                    onClick={() => setVisibilityBulk(false)}
+                  >
+                    Hide
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="danger"
+                    disabled={selectionBusy}
+                    onClick={() => setConfirmBulkDelete(true)}
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => {
+                      if (selectedSectionId) {
+                        setMultiSelectedSectionIds([String(selectedSectionId)]);
+                        return;
+                      }
+                      setMultiSelectedSectionIds([]);
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              ) : null}
               {localSections.length ? (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                   <SortableContext items={localSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
@@ -2886,9 +3501,13 @@ export default function PageEditorPage() {
                             section={s}
                             index={idx}
                             isSelected={String(selectedSectionId ?? "") === String(s.id)}
+                            isMultiSelected={
+                              multiSelectedSectionIds.includes(String(s.id)) &&
+                              String(selectedSectionId ?? "") !== String(s.id)
+                            }
                             previewData={getTranslatedSectionData(s, idx)}
                             theme={theme}
-                            onSelect={() => handleSelectSection(String(s.id))}
+                            onSelect={(event) => handleSelectSectionFromList(String(s.id), event)}
                             onEdit={() => openEditSection(s)}
                             onDelete={() => setConfirmDeleteSectionId(s.id)}
                             onToggleVisible={() => {
@@ -2916,6 +3535,28 @@ export default function PageEditorPage() {
                   {libraryCategory === "saved" ? "Saved" : sectionLibraryType}
                 </div>
               </div>
+              {libraryCategory === "saved" ? (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <Button type="button" size="xs" variant="ghost" onClick={exportTemplates}>
+                    Export
+                  </Button>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => importTemplatesInputRef.current?.click()}
+                  >
+                    Import
+                  </Button>
+                  <input
+                    ref={importTemplatesInputRef}
+                    type="file"
+                    accept="application/json"
+                    className="hidden"
+                    onChange={handleImportTemplates}
+                  />
+                </div>
+              ) : null}
 
               <div className="space-y-3">
                 <Input
@@ -2942,6 +3583,72 @@ export default function PageEditorPage() {
                     </button>
                   ))}
                 </div>
+
+                {libraryCategory === "saved" ? (
+                  <>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label className="text-xs text-white/60">
+                        Sort
+                        <select
+                          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs"
+                          value={librarySort}
+                          onChange={(event) => setLibrarySort(event.target.value as any)}
+                        >
+                          <option value="newest">Newest</option>
+                          <option value="oldest">Oldest</option>
+                          <option value="name-asc">Name A-Z</option>
+                          <option value="name-desc">Name Z-A</option>
+                        </select>
+                      </label>
+                      <label className="text-xs text-white/60">
+                        Category
+                        <select
+                          className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs"
+                          value={savedCategoryFilter ?? ""}
+                          onChange={(event) => setSavedCategoryFilter(event.target.value || null)}
+                        >
+                          <option value="">All</option>
+                          {savedCategories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    {savedTags.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className={[
+                            "rounded-lg border px-2 py-1 text-[10px]",
+                            !savedTagFilter
+                              ? "border-accent-500/40 bg-accent-500/10 text-accent-200"
+                              : "border-white/10 bg-white/[0.02] text-white/60 hover:text-white/80",
+                          ].join(" ")}
+                          onClick={() => setSavedTagFilter(null)}
+                        >
+                          All tags
+                        </button>
+                        {savedTags.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            className={[
+                              "rounded-lg border px-2 py-1 text-[10px]",
+                              savedTagFilter === tag
+                                ? "border-accent-500/40 bg-accent-500/10 text-accent-200"
+                                : "border-white/10 bg-white/[0.02] text-white/60 hover:text-white/80",
+                            ].join(" ")}
+                            onClick={() => setSavedTagFilter(tag)}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
 
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                   {libraryCategory === "saved" ? (
@@ -2974,43 +3681,80 @@ export default function PageEditorPage() {
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {libraryItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 hover:border-accent-500/40 transition"
-                    draggable
-                    onDragStart={handleLibraryDragStart(item)}
-                    onDragEnd={handleLibraryDragEnd}
-                  >
-                    <div className="h-28 overflow-hidden rounded-lg border border-white/[0.08] bg-black/30">
-                      <ThemePreview theme={theme} className="h-full p-2">
-                        <React.Suspense fallback={<div className="p-4 text-[11px] text-white/50">Loading...</div>}>
-                          <div className="scale-[0.6] origin-top-right">
-                            <LazySectionPreview type={item.type} data={item.data} />
+                {libraryItems.map((item) => {
+                  const isSaved = item.source === "saved";
+                  const templateId = item.id.startsWith("saved:") ? item.id.slice(6) : item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 hover:border-accent-500/40 transition"
+                      draggable
+                      onDragStart={handleLibraryDragStart(item)}
+                      onDragEnd={handleLibraryDragEnd}
+                    >
+                      <div className="h-28 overflow-hidden rounded-lg border border-white/[0.08] bg-black/30">
+                        <ThemePreview theme={theme} className="h-full p-2">
+                          <React.Suspense fallback={<div className="p-4 text-[11px] text-white/50">Loading...</div>}>
+                            <div className="scale-[0.6] origin-top-right">
+                              <LazySectionPreview type={item.type} data={item.data} />
+                            </div>
+                          </React.Suspense>
+                        </ThemePreview>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <div className="text-xs font-medium">{item.label}</div>
+                        {isSaved ? (
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                            Saved
+                          </span>
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          disabled={libraryBusy}
+                          onClick={() => insertSectionFromLibrary(item, sectionInsertIndex)}
+                        >
+                          Insert
+                        </Button>
+                      </div>
+                      <div className="mt-1 text-[10px] text-white/50">Drag to insert between sections.</div>
+                      {isSaved ? (
+                        <>
+                          {item.tags?.length ? (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {item.tags.map((tag) => (
+                                <span
+                                  key={`${item.id}-${tag}`}
+                                  className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-white/60"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          {item.category ? (
+                            <div className="mt-2 text-[10px] text-white/50">Category: {item.category}</div>
+                          ) : null}
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Button type="button" size="xs" variant="ghost" onClick={() => renameTemplate(templateId)}>
+                              Rename
+                            </Button>
+                            <Button type="button" size="xs" variant="ghost" onClick={() => editTemplateTags(templateId)}>
+                              Tags
+                            </Button>
+                            <Button type="button" size="xs" variant="ghost" onClick={() => editTemplateCategory(templateId)}>
+                              Category
+                            </Button>
+                            <Button type="button" size="xs" variant="danger" onClick={() => deleteTemplate(templateId)}>
+                              Delete
+                            </Button>
                           </div>
-                        </React.Suspense>
-                      </ThemePreview>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <div className="text-xs font-medium">{item.label}</div>
-                      {item.source === "saved" ? (
-                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
-                          Saved
-                        </span>
+                        </>
                       ) : null}
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="secondary"
-                        disabled={libraryBusy}
-                        onClick={() => insertSectionFromLibrary(item, sectionInsertIndex)}
-                      >
-                        Insert
-                      </Button>
                     </div>
-                    <div className="mt-1 text-[10px] text-white/50">Drag to insert between sections.</div>
-                  </div>
-                ))}
+                  );
+                })}
                 {!libraryItems.length ? (
                   <div className="text-xs text-white/60">No templates match this filter.</div>
                 ) : null}
@@ -3020,7 +3764,7 @@ export default function PageEditorPage() {
           </div>
         ) : null}
 
-        {!canvasFullScreen && !leftPanelCollapsed ? (
+        {showLeftPanel && !leftPanelFullScreen ? (
           <div
             className={
               "hidden lg:block w-1 shrink-0 cursor-col-resize rounded-full " +
@@ -3033,6 +3777,7 @@ export default function PageEditorPage() {
           />
         ) : null}
 
+        {!leftPanelFullScreen ? (
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className={canvasPanelClass}>
           <div className="flex items-center justify-between gap-3">
@@ -3042,17 +3787,34 @@ export default function PageEditorPage() {
                 type="button"
                 size="xs"
                 variant={leftPanelCollapsed ? "secondary" : "ghost"}
-                onClick={() => setLeftPanelCollapsed((v) => !v)}
+                onClick={() => {
+                  setLeftPanelCollapsed((v) => !v);
+                  setLeftPanelFullScreen(false);
+                }}
               >
                 {leftPanelCollapsed ? "Show list" : "Hide list"}
               </Button>
               <Button
                 type="button"
                 size="xs"
-                variant={canvasFullScreen ? "secondary" : "ghost"}
-                onClick={() => setCanvasFullScreen((v) => !v)}
+                variant={leftPanelFullScreen ? "secondary" : "ghost"}
+                onClick={() => {
+                  setLeftPanelFullScreen((v) => !v);
+                  setCanvasFullScreen(false);
+                }}
               >
-                {canvasFullScreen ? "Exit full screen" : "Full screen"}
+                {leftPanelFullScreen ? "Exit list" : "List full"}
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant={canvasFullScreen ? "secondary" : "ghost"}
+                onClick={() => {
+                  setCanvasFullScreen((v) => !v);
+                  setLeftPanelFullScreen(false);
+                }}
+              >
+                {canvasFullScreen ? "Exit full screen" : "Canvas full"}
               </Button>
               <div className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
                 <Button
@@ -3114,6 +3876,41 @@ export default function PageEditorPage() {
             </div>
           </div>
 
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-white/60">Canvas width</span>
+              <button
+                type="button"
+                className={
+                  "rounded-lg border px-2 py-1 text-[11px] " +
+                  (canvasWidthMode === "fit"
+                    ? "border-accent-500/40 bg-accent-500/10 text-accent-200"
+                    : "border-white/10 bg-white/[0.02] text-white/60 hover:text-white/80")
+                }
+                onClick={() => setCanvasWidthMode((v) => (v === "fit" ? "custom" : "fit"))}
+              >
+                {canvasWidthMode === "fit" ? "Fit on" : "Fit off"}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={320}
+                max={1600}
+                step={10}
+                value={canvasWidth}
+                onChange={(event) => {
+                  setCanvasWidthMode("custom");
+                  setCanvasWidth(Number(event.target.value));
+                }}
+                className="w-40"
+              />
+              <span className="text-[11px] text-white/60">
+                {canvasWidthMode === "fit" ? "Fit" : `${canvasWidth}px`}
+              </span>
+            </div>
+          </div>
+
           <div className="mt-3 flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] p-2">
             <div className="text-xs opacity-70">
               Inline edit{inlineEditingAvailable ? "" : " (AR only)"}
@@ -3142,7 +3939,7 @@ export default function PageEditorPage() {
           <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
             {canvasView === "preview" ? (
               previewUrl ? (
-                <div className={`mx-auto w-full ${previewWidthClass}`}>
+                <div className={`mx-auto w-full ${previewWidthClass}`} style={canvasWidthStyle}>
                   <iframe
                     key={`preview-${previewBump}`}
                     title="preview"
@@ -3157,7 +3954,12 @@ export default function PageEditorPage() {
               <div ref={canvasScrollRef} className={`relative ${canvasViewportClass} overflow-auto`}>
                 <ThemePreview key={`live-${previewBump}`} theme={theme} className="min-h-[60vh] p-4">
                   {customCss && customCss.trim() ? <style>{scopeCss(customCss, "#cms-preview-root")}</style> : null}
-                  <div id="cms-preview-root" className={`mx-auto w-full ${previewWidthClass}`} dir={canvasDir}>
+                  <div
+                    id="cms-preview-root"
+                    className={`mx-auto w-full ${previewWidthClass}`}
+                    style={canvasWidthStyle}
+                    dir={canvasDir}
+                  >
                     {canvasSections.length ? (
                       <PageRenderer
                         sections={canvasSections}
@@ -3207,6 +4009,24 @@ export default function PageEditorPage() {
                     )}
                   </div>
                 </ThemePreview>
+                {canvasGuides ? (
+                  <div className="pointer-events-none absolute inset-0">
+                    <div
+                      className={[
+                        "absolute left-0 right-0 h-px",
+                        canvasGuides.snapY ? "bg-accent-500/60" : "bg-white/20",
+                      ].join(" ")}
+                      style={{ top: canvasGuides.y }}
+                    />
+                    <div
+                      className={[
+                        "absolute top-0 bottom-0 w-px",
+                        canvasGuides.snapX ? "bg-accent-500/60" : "bg-white/20",
+                      ].join(" ")}
+                      style={{ left: canvasGuides.x }}
+                    />
+                  </div>
+                ) : null}
                 {canvasActionBar && selectedSection ? (
                   <div className="pointer-events-none absolute inset-0">
                     <div
@@ -3285,8 +4105,9 @@ export default function PageEditorPage() {
           </div>
         </div>
         </div>
+        ) : null}
 
-        {!canvasFullScreen ? (
+        {!canvasFullScreen && !leftPanelFullScreen ? (
           <div
             className={
               "hidden lg:block w-1 shrink-0 cursor-col-resize rounded-full " +
@@ -3299,291 +4120,358 @@ export default function PageEditorPage() {
           />
         ) : null}
 
-        {!canvasFullScreen ? (
+        {!canvasFullScreen && !leftPanelFullScreen ? (
         <div
           className="w-full lg:shrink-0 lg:self-start lg:sticky lg:top-4"
           style={rightPanelStyle}
         >
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             {selectedSection ? (
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-semibold">Selected section</div>
-                    <div className="text-xs text-white/60">
-                      {selectedSection.type} | Order {selectedSection.order ?? 0} | ID {selectedSection.id}
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => {
-                      setSelectedSectionId(null);
-                      setShowInlineStyling(false);
-                      setSelectedElement(null);
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="secondary"
-                    onClick={() => openEditSection(selectedSection)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="secondary"
-                    onClick={() => setShowAdvancedStyling(true)}
-                  >
-                    Open styling window
-                  </Button>
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="secondary"
-                    onClick={duplicateSelectedSection}
-                    isLoading={selectionBusy}
-                  >
-                    Duplicate
-                  </Button>
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="secondary"
-                    onClick={saveSectionAsTemplate}
-                  >
-                    Save as template
-                  </Button>
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant={selectedSection.isVisible ? "ghost" : "secondary"}
-                    onClick={toggleSelectedVisibility}
-                    disabled={selectionBusy}
-                  >
-                    {selectedSection.isVisible ? "Hide" : "Show"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="danger"
-                    onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-
-                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                  {selectedElement ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-xs font-semibold">
-                          Element: <span className="text-white/70">{selectedElement.kind}</span>
-                        </div>
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="ghost"
-                          onClick={() => setSelectedElement(null)}
-                        >
-                          Clear element
-                        </Button>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold">Selected section</div>
+                      <div className="text-xs text-white/60">
+                        {selectedSection.type} | Order {selectedSection.order ?? 0} | ID {selectedSection.id}
                       </div>
-                      {selectedElement.label ? (
-                        <div className="text-[11px] text-white/60">{selectedElement.label}</div>
-                      ) : null}
-                      <div className="flex flex-wrap gap-2">
+                    </div>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="ghost"
+                      onClick={() => {
+                        setSelectedSectionId(null);
+                        setShowInlineStyling(false);
+                        setSelectedElement(null);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="mt-3 inline-flex w-full flex-wrap items-center gap-1 rounded-xl border border-white/[0.08] bg-black/30 p-1">
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant={inspectorTab === "content" ? "secondary" : "ghost"}
+                      onClick={() => setInspectorTab("content")}
+                    >
+                      Content
+                    </Button>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant={inspectorTab === "style" ? "secondary" : "ghost"}
+                      onClick={() => setInspectorTab("style")}
+                    >
+                      Style
+                    </Button>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant={inspectorTab === "history" ? "secondary" : "ghost"}
+                      onClick={() => setInspectorTab("history")}
+                    >
+                      History
+                    </Button>
+                  </div>
+                </div>
+
+                {inspectorTab === "content" ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                      <div className="text-xs font-semibold">Section actions</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
                         <Button
                           type="button"
                           size="xs"
                           variant="secondary"
-                          onClick={openElementModal}
-                          disabled={!elementQuickFields.length}
+                          onClick={() => openEditSection(selectedSection)}
                         >
-                          Edit element
+                          Edit
                         </Button>
                         <Button
                           type="button"
                           size="xs"
                           variant="secondary"
-                          onClick={handleDuplicateElement}
-                          disabled={!elementCanDuplicate}
+                          onClick={() => setShowAdvancedStyling(true)}
+                        >
+                          Open styling window
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          onClick={duplicateSelectedSection}
+                          isLoading={selectionBusy}
                         >
                           Duplicate
                         </Button>
                         <Button
                           type="button"
                           size="xs"
-                          variant={elementIsVisible ? "ghost" : "secondary"}
-                          onClick={handleToggleElementVisibility}
-                          disabled={!elementCanToggleVisibility}
+                          variant="secondary"
+                          onClick={saveSectionAsTemplate}
                         >
-                          {elementIsVisible ? "Hide" : "Show"}
+                          Save as template
+                        </Button>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant={selectedSection.isVisible ? "ghost" : "secondary"}
+                          onClick={toggleSelectedVisibility}
+                          disabled={selectionBusy}
+                        >
+                          {selectedSection.isVisible ? "Hide" : "Show"}
                         </Button>
                         <Button
                           type="button"
                           size="xs"
                           variant="danger"
-                          onClick={handleDeleteElement}
-                          disabled={!elementCanDelete}
+                          onClick={() => setConfirmDeleteSectionId(selectedSection.id)}
                         >
                           Delete
                         </Button>
                       </div>
-                      {!elementArrayInfo ? (
-                        <div className="text-[11px] text-white/50">
-                          Duplicate/Delete apply to list items only.
-                        </div>
-                      ) : null}
-                      {elementQuickFields.length ? (
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold">Quick edits</div>
-                          <div className="grid gap-3">
-                            {elementQuickFields.map((field) => {
-                              const meta = buildQuickFieldMeta(field);
-                              return (
-                                <div key={field.key} className="space-y-2">
-                                  <Input
-                                    label={field.label}
-                                    value={field.value}
-                                    type={field.type === "url" ? "url" : "text"}
-                                    error={meta.error}
-                                    hint={meta.hint}
-                                    onValueChange={(value) => handleQuickFieldChange(field.path, value)}
-                                  />
-                                  {meta.presets?.length ? (
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {meta.presets.map((preset) => (
-                                        <button
-                                          key={`${field.key}-${preset.value}`}
-                                          type="button"
-                                          className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/70 transition hover:border-accent-500/40 hover:text-white"
-                                          onClick={() => handleQuickFieldChange(field.path, preset.value)}
-                                        >
-                                          {preset.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              );
-                            })}
+                    </div>
+
+                    <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                      <div className="text-xs font-semibold">Element</div>
+                      {selectedElement ? (
+                        <div className="mt-2 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-semibold">
+                              Element: <span className="text-white/70">{selectedElement.kind}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="ghost"
+                              onClick={() => setSelectedElement(null)}
+                            >
+                              Clear element
+                            </Button>
                           </div>
-                        </div>
-                      ) : null}
-                      {resolvedElementTokensPath ? (
-                        <div className="max-h-[36vh] overflow-auto">
-                          <ResponsiveTokensPanel
-                            tokens={selectedElementTokens ?? {}}
-                            onChange={handleSelectedElementTokensChange}
-                          />
+                          {selectedElement.label ? (
+                            <div className="text-[11px] text-white/60">{selectedElement.label}</div>
+                          ) : null}
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="secondary"
+                              onClick={openElementModal}
+                              disabled={!elementQuickFields.length}
+                            >
+                              Edit element
+                            </Button>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="secondary"
+                              onClick={handleDuplicateElement}
+                              disabled={!elementCanDuplicate}
+                            >
+                              Duplicate
+                            </Button>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant={elementIsVisible ? "ghost" : "secondary"}
+                              onClick={handleToggleElementVisibility}
+                              disabled={!elementCanToggleVisibility}
+                            >
+                              {elementIsVisible ? "Hide" : "Show"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="danger"
+                              onClick={handleDeleteElement}
+                              disabled={!elementCanDelete}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                          {!elementArrayInfo ? (
+                            <div className="text-[11px] text-white/50">
+                              Duplicate/Delete apply to list items only.
+                            </div>
+                          ) : null}
+                          {elementQuickFields.length ? (
+                            <div className="space-y-2">
+                              <div className="text-xs font-semibold">Quick edits</div>
+                              <div className="grid gap-3">
+                                {elementQuickFields.map((field) => {
+                                  const meta = buildQuickFieldMeta(field);
+                                  return (
+                                    <div key={field.key} className="space-y-2">
+                                      <Input
+                                        label={field.label}
+                                        value={field.value}
+                                        type={field.type === "url" ? "url" : "text"}
+                                        error={meta.error}
+                                        hint={meta.hint}
+                                        onValueChange={(value) => handleQuickFieldChange(field.path, value)}
+                                      />
+                                      {meta.presets?.length ? (
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {meta.presets.map((preset) => (
+                                            <button
+                                              key={`${field.key}-${preset.value}`}
+                                              type="button"
+                                              className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/70 transition hover:border-accent-500/40 hover:text-white"
+                                              onClick={() => handleQuickFieldChange(field.path, preset.value)}
+                                            >
+                                              {preset.label}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       ) : (
-                        <div className="text-xs text-white/60">
-                          Element styling inherits section styles. Use Advanced styling to adjust section tokens.
+                        <div className="mt-2 text-xs text-white/60">
+                          Click a text, button, image, or card to edit element content.
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="text-xs text-white/60">
-                      Click a text, button, image, or card to edit element styling.
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between text-xs font-semibold"
-                    onClick={() => setShowInlineStyling((v) => !v)}
-                  >
-                    <span>Advanced styling</span>
-                    <svg
-                      className={`h-4 w-4 transition-transform ${showInlineStyling ? "rotate-180" : ""}`}
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
-                    </svg>
-                  </button>
-                  {showInlineStyling ? (
-                    <div className="mt-3 max-h-[40vh] overflow-auto">
-                      <ResponsiveTokensPanel
-                        tokens={selectedSection.data?.twTokens ?? {}}
-                        onChange={handleSelectedTokensChange}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs font-semibold">History</div>
-                    <div className="text-[10px] text-white/50">{historyItems.length} changes</div>
                   </div>
-                  {historyItems.length ? (
-                    <div className="mt-3 max-h-[32vh] space-y-2 overflow-auto">
-                      {historyItems
-                        .slice()
-                        .reverse()
-                        .map((item) => {
-                          const isActive = item.idx === historyIndexRef.current;
-                          const isFuture = item.idx > historyIndexRef.current;
-                          const timeLabel = new Date(item.entry.ts).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          });
-                          return (
-                            <div
-                              key={`${item.entry.sectionId}-${item.idx}`}
-                              className={[
-                                "rounded-lg border px-2.5 py-2 text-[11px]",
-                                isActive
-                                  ? "border-accent-500/50 bg-accent-500/10 text-accent-100"
-                                  : isFuture
-                                    ? "border-white/5 bg-white/[0.02] text-white/35"
-                                    : "border-white/10 bg-white/[0.03] text-white/70",
-                              ].join(" ")}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-semibold">{item.sectionLabel}</span>
-                                <span className="text-[10px] opacity-60">{timeLabel}</span>
-                              </div>
-                              {item.summary.paths.length ? (
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                  {item.summary.paths.map((path) => (
-                                    <span
-                                      key={path}
-                                      className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px]"
-                                    >
-                                      {path}
-                                    </span>
-                                  ))}
-                                  {item.summary.total > item.summary.paths.length ? (
-                                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] opacity-70">
-                                      +{item.summary.total - item.summary.paths.length} more
-                                    </span>
-                                  ) : null}
-                                </div>
-                              ) : (
-                                <div className="mt-1 text-[10px] opacity-60">Mixed changes</div>
-                              )}
+                ) : inspectorTab === "style" ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                      <div className="text-xs font-semibold">Element styles</div>
+                      {selectedElement ? (
+                        <div className="mt-2 space-y-3">
+                          {selectedElement.label ? (
+                            <div className="text-[11px] text-white/60">{selectedElement.label}</div>
+                          ) : null}
+                          {elementStylePresets.length ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {elementStylePresets.map((preset) => (
+                                <button
+                                  key={preset.label}
+                                  type="button"
+                                  className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/70 transition hover:border-accent-500/40 hover:text-white"
+                                  onClick={() => applyElementStylePreset(preset.tokens)}
+                                >
+                                  {preset.label}
+                                </button>
+                              ))}
                             </div>
-                          );
-                        })}
+                          ) : null}
+                          {resolvedElementTokensPath ? (
+                            <div className="max-h-[36vh] overflow-auto">
+                              <ResponsiveTokensPanel
+                                tokens={selectedElementTokens ?? {}}
+                                onChange={handleSelectedElementTokensChange}
+                              />
+                            </div>
+                          ) : (
+                            <div className="text-xs text-white/60">
+                              Element styling inherits section styles. Use section styles to adjust tokens.
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-xs text-white/60">Select an element to style.</div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="mt-2 text-xs text-white/60">No changes yet.</div>
-                  )}
-                </div>
+
+                    <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between text-xs font-semibold"
+                        onClick={() => setShowInlineStyling((v) => !v)}
+                      >
+                        <span>Section styles</span>
+                        <svg
+                          className={`h-4 w-4 transition-transform ${showInlineStyling ? "rotate-180" : ""}`}
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
+                        </svg>
+                      </button>
+                      {showInlineStyling ? (
+                        <div className="mt-3 max-h-[40vh] overflow-auto">
+                          <ResponsiveTokensPanel
+                            tokens={selectedSection.data?.twTokens ?? {}}
+                            onChange={handleSelectedTokensChange}
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-xs text-white/60">Enable to edit section spacing and colors.</div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs font-semibold">History</div>
+                      <div className="text-[10px] text-white/50">{historyItems.length} changes</div>
+                    </div>
+                    {historyItems.length ? (
+                      <div className="mt-3 max-h-[32vh] space-y-2 overflow-auto">
+                        {historyItems
+                          .slice()
+                          .reverse()
+                          .map((item) => {
+                            const isActive = item.idx === historyIndexRef.current;
+                            const isFuture = item.idx > historyIndexRef.current;
+                            const timeLabel = new Date(item.entry.ts).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            });
+                            return (
+                              <div
+                                key={`${item.entry.sectionId}-${item.idx}`}
+                                className={[
+                                  "rounded-lg border px-2.5 py-2 text-[11px]",
+                                  isActive
+                                    ? "border-accent-500/50 bg-accent-500/10 text-accent-100"
+                                    : isFuture
+                                      ? "border-white/5 bg-white/[0.02] text-white/35"
+                                      : "border-white/10 bg-white/[0.03] text-white/70",
+                                ].join(" ")}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-semibold">{item.sectionLabel}</span>
+                                  <span className="text-[10px] opacity-60">{timeLabel}</span>
+                                </div>
+                                {item.summary.paths.length ? (
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {item.summary.paths.map((path) => (
+                                      <span
+                                        key={path}
+                                        className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px]"
+                                      >
+                                        {path}
+                                      </span>
+                                    ))}
+                                    {item.summary.total > item.summary.paths.length ? (
+                                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] opacity-70">
+                                        +{item.summary.total - item.summary.paths.length} more
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 text-[10px] opacity-60">Mixed changes</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-white/60">No changes yet.</div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-xs text-white/60">
@@ -3967,6 +4855,19 @@ export default function PageEditorPage() {
         cancelText="إلغاء"
         onConfirm={deleteSection}
         onCancel={() => setConfirmDeleteSectionId(null)}
+      />
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title="Delete sections"
+        message={`Delete ${multiSelectedSections.length} selected sections?`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          setConfirmBulkDelete(false);
+          void deleteSectionsBulk();
+        }}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
       <ConfirmDialog
         open={confirmTemplateReplace}

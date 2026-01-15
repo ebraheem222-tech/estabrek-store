@@ -233,9 +233,7 @@ function parseElementPath(raw?: string): ElementPath | undefined {
   }
 }
 
-function resolveElementMeta(target: HTMLElement | null): ElementMeta | null {
-  if (!target) return null;
-  const node = target.closest("[data-cms-element]") as HTMLElement | null;
+function resolveElementMetaFromNode(node: HTMLElement | null): ElementMeta | null {
   if (!node) return null;
   const kind = node.dataset.cmsElement;
   if (!kind) return null;
@@ -245,6 +243,19 @@ function resolveElementMeta(target: HTMLElement | null): ElementMeta | null {
     valuePath: parseElementPath(node.dataset.cmsValuePath),
     tokensPath: parseElementPath(node.dataset.cmsTokensPath),
   };
+}
+
+function resolveElementMeta(target: HTMLElement | null): ElementMeta | null {
+  if (!target) return null;
+  const node = target.closest("[data-cms-element]") as HTMLElement | null;
+  return resolveElementMetaFromNode(node);
+}
+
+function resolveParentElementMeta(target: HTMLElement | null): ElementMeta | null {
+  if (!target) return null;
+  const node = target.closest("[data-cms-element]") as HTMLElement | null;
+  const parent = node?.parentElement?.closest("[data-cms-element]") as HTMLElement | null;
+  return resolveElementMetaFromNode(parent);
 }
 
 function elementState(sectionId: string, selectedElement: SelectedElement | null | undefined, meta: ElementMeta) {
@@ -3707,7 +3718,10 @@ export const PageRenderer = React.memo(function PageRenderer({
                         onSectionSelect || onElementSelect
                           ? (event) => {
                               if (event.button !== 0) return;
-                              const meta = resolveElementMeta(event.target as HTMLElement | null);
+                              const target = event.target as HTMLElement | null;
+                              const meta = event.altKey
+                                ? (resolveParentElementMeta(target) ?? resolveElementMeta(target))
+                                : resolveElementMeta(target);
                               if (meta && onElementSelect) {
                                 onElementSelect(buildSelectedElement(stringId, meta));
                                 return;
