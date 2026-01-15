@@ -31,7 +31,7 @@ export function AnimationEffectsProvider({ children }: { children: React.ReactNo
 
   const fireHeartBurst = useCallback((x?: number, y?: number) => {
     if (settings.heartBurstOnWishlist) {
-      heartBurst.burst(x, y);
+      heartBurst.fire(x, y);
     }
   }, [settings.heartBurstOnWishlist, heartBurst]);
 

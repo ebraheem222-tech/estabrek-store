@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { getSearchInputById } from "@/cms/style/searchStyles";
 import { saveImageSearchPayload, searchProductsByImage } from "@/lib/imageSearchClient";
+import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 
 type SuggestProduct = { id: string; title: string; slug: string };
 type SuggestCategory = { id: string; name: string; slug: string };
@@ -106,6 +107,7 @@ const SpinnerIcon = () => (
 
 export function SearchBox({ styleId }: { styleId?: string }) {
   const router = useRouter();
+  const settings = useStorefrontSettings();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,6 +125,10 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const speechRef = useRef<any>(null);
+  const imageSearchEnabled = settings.imageSearchEnabled;
+  const voiceSearchEnabled = settings.voiceSearchEnabled;
+  const suggestionsEnabled = settings.searchSuggestionsEnabled;
+  const historyEnabled = settings.searchHistoryEnabled;
 
   const preset = useMemo(() => {
     const id = styleId && styleId !== "default" ? styleId : null;
@@ -135,8 +141,12 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   const iconOnLeft = iconIsAbsolute && !!preset?.iconClassName?.includes("left");
 
   useEffect(() => {
+    if (!historyEnabled) {
+      setRecent([]);
+      return;
+    }
     setRecent(loadRecent());
-  }, []);
+  }, [historyEnabled]);
 
   useEffect(() => {
     setVoiceSupported(!!getSpeechRecognitionCtor());
@@ -153,6 +163,12 @@ export function SearchBox({ styleId }: { styleId?: string }) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!voiceSearchEnabled && voiceActive) {
+      stopVoice();
+    }
+  }, [voiceSearchEnabled, voiceActive]);
 
   // Close on outside click
   useEffect(() => {
@@ -171,6 +187,12 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   useEffect(() => {
     const query = q.trim();
     if (!open) return;
+    if (!suggestionsEnabled) {
+      setProducts([]);
+      setCategories([]);
+      setDidYouMean(null);
+      return;
+    }
     if (query.length < 2) {
       setProducts([]);
       setCategories([]);
@@ -194,30 +216,44 @@ export function SearchBox({ styleId }: { styleId?: string }) {
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [q, open]);
+  }, [q, open, suggestionsEnabled]);
 
-  const showRecent = useMemo(() => open && q.trim().length < 2 && recent.length > 0, [open, q, recent]);
+  useEffect(() => {
+    if (!imageSearchEnabled) {
+      setShowImagePanel(false);
+      setImageError(null);
+      setImageLoading(false);
+    }
+  }, [imageSearchEnabled]);
+
+  const showRecent = useMemo(
+    () => historyEnabled && open && q.trim().length < 2 && recent.length > 0,
+    [historyEnabled, open, q, recent]
+  );
   const showResults = useMemo(
-    () => open && (products.length > 0 || categories.length > 0 || loading || !!didYouMean),
-    [open, products, categories, loading, didYouMean]
+    () => suggestionsEnabled && open && (products.length > 0 || categories.length > 0 || loading || !!didYouMean),
+    [suggestionsEnabled, open, products, categories, loading, didYouMean]
   );
   const showDidYouMean = useMemo(() => {
     const next = didYouMean?.trim();
-    if (!open || !next) return false;
+    if (!suggestionsEnabled || !open || !next) return false;
     return next !== q.trim();
-  }, [open, didYouMean, q]);
+  }, [suggestionsEnabled, open, didYouMean, q]);
 
   function commitSearch(next: string) {
     const query = next.trim();
     if (!query) return;
-    const updated = uniq([query, ...loadRecent()]).slice(0, 10);
-    saveRecent(updated);
-    setRecent(updated);
+    if (historyEnabled) {
+      const updated = uniq([query, ...loadRecent()]).slice(0, 10);
+      saveRecent(updated);
+      setRecent(updated);
+    }
     setOpen(false);
     router.push(`/search?q=${encodeURIComponent(query)}`);
   }
 
   async function processImageFile(file: File) {
+    if (!imageSearchEnabled) return;
     setImageError(null);
     setImageLoading(true);
     try {
@@ -235,6 +271,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   }
 
   async function onImagePick(e: ChangeEvent<HTMLInputElement>) {
+    if (!imageSearchEnabled) return;
     const file = e.target.files?.[0];
     if (!file) return;
     await processImageFile(file);
@@ -242,18 +279,21 @@ export function SearchBox({ styleId }: { styleId?: string }) {
 
   // Drag and drop handlers
   function handleDragOver(e: DragEvent) {
+    if (!imageSearchEnabled) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   }
 
   function handleDragLeave(e: DragEvent) {
+    if (!imageSearchEnabled) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }
 
   async function handleDrop(e: DragEvent) {
+    if (!imageSearchEnabled) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -279,6 +319,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
   }
 
   function onVoiceToggle() {
+    if (!voiceSearchEnabled) return;
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) {
       setVoiceSupported(false);
@@ -392,29 +433,32 @@ export function SearchBox({ styleId }: { styleId?: string }) {
           <div className="w-px h-6 bg-white/10" />
 
           {/* Image Search Button */}
-          <button
-            type="button"
-            onClick={() => setShowImagePanel(!showImagePanel)}
-            className={`search-action-btn ${showImagePanel ? 'active' : ''}`}
-            aria-label="البحث بالصورة"
-            disabled={imageLoading}
-            title="البحث بالصورة"
-          >
-            {imageLoading ? <SpinnerIcon /> : <ImageIcon />}
-          </button>
+          {imageSearchEnabled ? (
+            <button
+              type="button"
+              onClick={() => setShowImagePanel(!showImagePanel)}
+              className={`search-action-btn ${showImagePanel ? 'active' : ''}`}
+              aria-label="????? ???????"
+              disabled={imageLoading}
+              title="????? ???????"
+            >
+              {imageLoading ? <SpinnerIcon /> : <ImageIcon />}
+            </button>
+          ) : null}
 
           {/* Voice Search Button */}
-          <button
-            type="button"
-            onClick={onVoiceToggle}
-            className={`search-action-btn ${voiceActive ? 'active' : ''}`}
-            aria-label="البحث الصوتي"
-            disabled={!voiceSupported}
-            title="البحث الصوتي"
-          >
-            <MicIcon />
-          </button>
-
+          {voiceSearchEnabled ? (
+            <button
+              type="button"
+              onClick={onVoiceToggle}
+              className={`search-action-btn ${voiceActive ? 'active' : ''}`}
+              aria-label="????? ??????"
+              disabled={!voiceSupported}
+              title="????? ??????"
+            >
+              <MicIcon />
+            </button>
+          ) : null}
           <input
             ref={imageInputRef}
             type="file"
@@ -425,7 +469,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
         </div>
 
         {/* Drag Overlay */}
-        {isDragging && (
+        {imageSearchEnabled && isDragging && (
           <div className="absolute inset-0 flex items-center justify-center bg-[var(--accent)]/20 border-2 border-dashed border-[var(--accent)] rounded-2xl z-20">
             <div className="text-center">
               <UploadIcon />
@@ -436,7 +480,7 @@ export function SearchBox({ styleId }: { styleId?: string }) {
       </div>
 
       {/* Image Search Panel */}
-      {showImagePanel && (
+      {imageSearchEnabled && showImagePanel && (
         <div className="search-dropdown p-4 mt-2">
           <div className="text-sm font-semibold mb-3 flex items-center gap-2">
             <ImageIcon />

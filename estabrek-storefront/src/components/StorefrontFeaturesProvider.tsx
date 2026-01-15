@@ -121,10 +121,12 @@ export function StorefrontFeaturesProvider({
     // Try to fetch settings from API
     const fetchSettings = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-        if (!apiBase) return;
-        
-        const res = await fetch(`${apiBase}/v1/storefront/bootstrap`);
+        const rawBase = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+        const resolvedBase =
+          rawBase ? (rawBase.endsWith("/v1") ? rawBase : `${rawBase}/v1`) : `${window.location.origin}/v1`;
+        if (!resolvedBase) return;
+
+        const res = await fetch(`${resolvedBase}/storefront/bootstrap`);
         if (res.ok) {
           const data = await res.json();
           // Settings are in data.site.header.storefront

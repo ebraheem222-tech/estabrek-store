@@ -9,10 +9,16 @@ import { QuickViewProvider } from "@/components/QuickViewModal";
 import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
 import ChatWidget from "@/components/ChatWidget";
-import { StorefrontFeaturesProvider } from "@/components/StorefrontFeaturesProvider";
+import { StorefrontFeaturesProvider, type StorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({
+  children,
+  initialStorefrontSettings,
+}: {
+  children: React.ReactNode;
+  initialStorefrontSettings?: Partial<StorefrontSettings>;
+}) {
   return (
     <ThemeProvider>
       <ToastProvider>
@@ -22,7 +28,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
               <QuickViewProvider>
                 <MotionProvider>
                   {/* Storefront Features (reads settings from API) */}
-                  <StorefrontFeaturesProvider>
+                  <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings}>
                     {/* Animation Effects (controlled by settings) */}
                     <AnimationEffectsProvider>
                       {children}
