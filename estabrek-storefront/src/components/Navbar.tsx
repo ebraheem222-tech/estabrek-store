@@ -157,7 +157,10 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [miniCartOpen, setMiniCartOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
   const settings = useStorefrontSettings();
 
   useEffect(() => {

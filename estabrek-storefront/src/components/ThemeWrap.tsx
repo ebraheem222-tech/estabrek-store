@@ -162,12 +162,21 @@ export function ThemeWrap({
       ]
     : [accentSoft ?? preset.accentStops[0], accent ?? preset.accentStops[1], accentHover ?? preset.accentStops[2]];
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const bg = vars["--bg"];
+    const text = vars["--text"];
+    if (bg) root.style.setProperty("--bg", String(bg));
+    if (text) root.style.setProperty("--text", String(text));
+  }, [vars, mode]);
+
   return (
     <div
       data-theme={mode}
       data-glass-effects={glassEnabled ? "1" : "0"}
       className={
-        "min-h-screen bg-[var(--bg)] text-[var(--text)]" +
+        "min-h-screen w-full bg-[var(--bg)] text-[var(--text)]" +
         (surface === "classic" || !glassEnabled ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")
       }
       style={

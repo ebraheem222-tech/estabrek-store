@@ -51,7 +51,10 @@ export function AIRecommendations({
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const baseUrl = apiBaseUrl || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/v1";
+  const baseUrl =
+    apiBaseUrl ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    (typeof window !== "undefined" ? `${window.location.origin}/v1` : "http://localhost:4000/v1");
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -189,7 +192,10 @@ export function CompleteTheLook({
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const baseUrl = apiBaseUrl || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/v1";
+  const baseUrl =
+    apiBaseUrl ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    (typeof window !== "undefined" ? `${window.location.origin}/v1` : "http://localhost:4000/v1");
 
   useEffect(() => {
     const fetchCompleteLook = async () => {
@@ -253,7 +259,10 @@ export function CustomersAlsoBought({ productId, apiBaseUrl }: { productId: stri
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const baseUrl = apiBaseUrl || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/v1";
+  const baseUrl =
+    apiBaseUrl ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    (typeof window !== "undefined" ? `${window.location.origin}/v1` : "http://localhost:4000/v1");
 
   useEffect(() => {
     const fetchAlsoBought = async () => {
