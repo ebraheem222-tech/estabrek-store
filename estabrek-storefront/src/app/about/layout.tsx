@@ -1,6 +1,7 @@
 import React from "react";
 import { getBootstrap, getPublicSettings } from "@/lib/api";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
+import { Topbar } from "@/components/Topbar";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ScriptTags } from "@/components/ScriptTags";
@@ -13,6 +14,8 @@ export default async function AboutLayout({ children }: { children: React.ReactN
   const customCss = bootstrap.site.customCss?.trim() || "";
   const header = (settings.site as any)?.header ?? null;
   const theme = header?.theme ?? null;
+  const initialStorefrontSettings = (settings.site as any)?.header?.storefront ?? undefined;
+  const navbarHeader = { ...(header ?? {}), sticky: true };
 
   const rawLoading = header?.ui?.loading ?? null;
   const enabled = rawLoading?.enabled === true;
@@ -21,12 +24,22 @@ export default async function AboutLayout({ children }: { children: React.ReactN
   const loading = preset ? { enabled, animationId: preset.id, html: preset.html, css: preset.css } : null;
 
   return (
-    <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId}>
+    <ThemeWrap
+      theme={theme}
+      cursorThemeId={header?.ui?.cursorThemeId}
+      storefrontSettings={initialStorefrontSettings}
+    >
       <UiSettingsProvider loading={loading}>
         {customCss ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
         <ScriptTags scripts={bootstrap.site.scriptsHead} />
         <AnnouncementBar site={settings.site} />
-        <Navbar site={bootstrap.site} primaryMenu={bootstrap.primaryMenu} />
+        <Topbar header={header} />
+        <Navbar
+          site={bootstrap.site}
+          primaryMenu={bootstrap.primaryMenu}
+          header={navbarHeader}
+          cmsNav={header?.cmsNav}
+        />
         {children}
         <Footer site={bootstrap.site} footerMenu={bootstrap.footerMenu} footer={(settings.site as any)?.footer} />
         <ScriptTags scripts={bootstrap.site.scriptsBody} />

@@ -1,6 +1,7 @@
 import React from "react";
 import { getBootstrap, getPublicSettings } from "@/lib/api";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
+import { Topbar } from "@/components/Topbar";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ScriptTags } from "@/components/ScriptTags";
@@ -12,6 +13,8 @@ export default async function ProductLayout({ children }: { children: React.Reac
   const [bootstrap, settings] = await Promise.all([getBootstrap(), getPublicSettings()]);
   const header = (settings.site as any)?.header ?? null;
   const theme = header?.theme ?? null;
+  const initialStorefrontSettings = (settings.site as any)?.header?.storefront ?? undefined;
+  const navbarHeader = { ...(header ?? {}), sticky: true };
 
   const rawLoading = header?.ui?.loading ?? null;
   const enabled = rawLoading?.enabled === true;
@@ -20,10 +23,20 @@ export default async function ProductLayout({ children }: { children: React.Reac
   const loading = preset ? { enabled, animationId: preset.id, html: preset.html, css: preset.css } : null;
 
   return (
-    <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId}>
+    <ThemeWrap
+      theme={theme}
+      cursorThemeId={header?.ui?.cursorThemeId}
+      storefrontSettings={initialStorefrontSettings}
+    >
       <UiSettingsProvider loading={loading}>
         <AnnouncementBar site={settings.site} />
-        <Navbar site={bootstrap.site} primaryMenu={bootstrap.primaryMenu} />
+        <Topbar header={header} />
+        <Navbar
+          site={bootstrap.site}
+          primaryMenu={bootstrap.primaryMenu}
+          header={navbarHeader}
+          cmsNav={header?.cmsNav}
+        />
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         <Footer site={bootstrap.site} footerMenu={bootstrap.footerMenu} footer={(settings.site as any)?.footer} />
         <ScriptTags scripts={bootstrap.site.scriptsBody} />
