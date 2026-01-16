@@ -1,10 +1,13 @@
 "use client";
 
 import React from "react";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 // Base Skeleton
 export function Skeleton({ className = "", ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={`skeleton ${className}`} {...props} />;
+  const settings = useStorefrontSettings();
+  const baseClass = settings.skeletonLoadingEnabled ? "skeleton" : "skeleton-muted";
+  return <div className={`${baseClass} ${className}`} {...props} />;
 }
 
 // Product Card Skeleton

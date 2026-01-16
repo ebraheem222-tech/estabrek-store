@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/presets";
 import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "@/cms/themes/websiteThemes";
 import { applyCursorTheme } from "@/theme/cursorTheme";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
@@ -101,6 +102,10 @@ export function ThemeWrap({
   children: React.ReactNode;
 }) {
   const t = theme ?? {};
+  const storefront = useStorefrontSettings();
+  const storefrontAccent = resolveCustomColor(storefront.accentColor);
+  const storefrontAccentSoft = resolveCustomColor(storefront.accentColor2);
+  const glassEnabled = storefront.glassEffectsEnabled !== false;
   const baseMode: "dark" | "light" = t.mode === "light" ? "light" : "dark";
   // Default: Estabrak Soft (matches logo + paper background). Keep luxury_gold as selectable preset.
   const basePresetId = t.presetId ?? (t.accent === "gold" ? "estabrak_soft_gold" : "estabrak_soft_gold");
@@ -144,9 +149,9 @@ export function ThemeWrap({
   const baseAccentSoft = websiteTheme?.colors.secondary ?? vars["--accent-soft"] ?? baseAccent;
   const baseAccentHover = websiteTheme?.colors.accent ?? vars["--accent-hover"] ?? baseAccent;
 
-  const accent = primary ?? baseAccent;
-  const accentSoft = secondary ?? baseAccentSoft ?? accent;
-  const accentHover = secondary ?? baseAccentHover ?? accent;
+  const accent = storefrontAccent ?? primary ?? baseAccent;
+  const accentSoft = storefrontAccentSoft ?? secondary ?? baseAccentSoft ?? accent;
+  const accentHover = storefrontAccentSoft ?? secondary ?? baseAccentHover ?? accent;
   const accentContrast = contrastTextColor(accent, vars["--text"]);
   const [a1, a2, a3] = websiteTheme
     ? [
@@ -159,7 +164,11 @@ export function ThemeWrap({
   return (
     <div
       data-theme={mode}
-      className={"min-h-screen bg-[var(--bg)] text-[var(--text)]" + (surface === "classic" ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")}
+      data-glass-effects={glassEnabled ? "1" : "0"}
+      className={
+        "min-h-screen bg-[var(--bg)] text-[var(--text)]" +
+        (surface === "classic" || !glassEnabled ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")
+      }
       style={
         {
           ...vars,

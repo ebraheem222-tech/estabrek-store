@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -20,6 +21,7 @@ function makeItemKey(it: any, idx: number): ItemKey {
 }
 
 export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: { product: CatalogProduct; selectedColorKey?: string; onSelectColorKey?: (k: string) => void }) {
+  const settings = useStorefrontSettings();
   const items = (product.items ?? []) as any[];
   const itemsWithKeys = useMemo(() => {
     return items.map((it, idx) => ({ ...it, __key: makeItemKey(it, idx) }));
@@ -62,6 +64,10 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const mainImageRef = useRef<HTMLDivElement>(null);
+  const zoomEnabled = settings.productZoomEnabled;
+  const lazyLoadImages = settings.lazyLoadImages;
+  const mainImagePriority = !lazyLoadImages;
+  const imageLoading = lazyLoadImages ? "lazy" : "eager";
 
   useEffect(() => {
     setActiveIdx(0);
@@ -69,6 +75,10 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
     setLightbox(false);
     setIsZoomed(false);
   }, [itemId]);
+
+  useEffect(() => {
+    if (!zoomEnabled) setIsZoomed(false);
+  }, [zoomEnabled]);
 
   useEffect(() => {
     if (!lightbox) return;
@@ -98,12 +108,12 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   }, [activeIdx]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!mainImageRef.current || !isZoomed) return;
+    if (!mainImageRef.current || !isZoomed || !zoomEnabled) return;
     const rect = mainImageRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     setZoomPos({ x, y });
-  }, [isZoomed]);
+  }, [isZoomed, zoomEnabled]);
 
   const active = images[activeIdx] ?? images[0];
   const primary = images[0];
@@ -111,6 +121,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
 
   const canPrev = images.length > 1 && activeIdx > 0;
   const canNext = images.length > 1 && activeIdx < images.length - 1;
+  const zoomActive = zoomEnabled && isZoomed;
 
   const swatches = useMemo(() => {
     return itemsWithKeys
@@ -161,13 +172,13 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
       {/* Main image */}
       <div
         ref={mainImageRef}
-        className="gallery-main-image relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[var(--surface-2)] cursor-zoom-in group"
+        className={`gallery-main-image relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-[var(--surface-2)] group ${zoomEnabled ? "cursor-zoom-in" : "cursor-pointer"}`}
         role="button"
         tabIndex={0}
         onClick={() => images.length && setLightbox(true)}
-        onMouseEnter={() => setIsZoomed(true)}
-        onMouseLeave={() => setIsZoomed(false)}
-        onMouseMove={handleMouseMove}
+        onMouseEnter={() => zoomEnabled && setIsZoomed(true)}
+        onMouseLeave={() => zoomEnabled && setIsZoomed(false)}
+        onMouseMove={zoomEnabled ? handleMouseMove : undefined}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") setLightbox(true);
         }}
@@ -176,12 +187,14 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
         {active?.url ? (
           <>
             {/* Zoom indicator */}
-            <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-              </svg>
-              اضغط للتكبير
-            </div>
+            {zoomEnabled ? (
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                </svg>
+                ???? ???????
+              </div>
+            ) : null}
 
             <button
               type="button"
@@ -198,23 +211,25 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               className={
                 "object-cover will-change-transform transition-transform duration-500 " +
                 (dir === "next" ? "anim-slide-in-right" : "anim-slide-in-left") +
-                (isZoomed ? " scale-150" : "")
+                (zoomActive ? " scale-150" : "")
               }
-              style={isZoomed ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : undefined}
+              style={zoomActive ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : undefined}
               sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
+              priority={mainImagePriority}
+              loading={mainImagePriority ? undefined : imageLoading}
             />
             
             {/* Hover swap to secondary */}
-            {!galleryMode && secondary?.url && activeIdx === 0 ? (
-              <Image
-                src={cldUrl(secondary.url, { w: 1400, c: "fit" })}
-                alt={product.title}
-                fill
-                className="object-cover opacity-0 transition duration-500 hover:opacity-100"
-                sizes="(max-width: 1024px) 100vw, 50vw"
-              />
-            ) : null}
+              {!galleryMode && secondary?.url && activeIdx === 0 ? (
+                <Image
+                  src={cldUrl(secondary.url, { w: 1400, c: "fit" })}
+                  alt={product.title}
+                  fill
+                  className="object-cover opacity-0 transition duration-500 hover:opacity-100"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  loading={imageLoading}
+                />
+              ) : null}
 
             {/* Image counter & navigation */}
             {images.length > 1 ? (
@@ -319,7 +334,8 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                       alt={product.title} 
                       fill 
                       className="object-cover" 
-                      sizes="56px" 
+                      sizes="56px"
+                      loading={imageLoading}
                     />
                   ) : null}
                   {selected && (
@@ -365,7 +381,8 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                   alt={product.title} 
                   fill 
                   className="object-cover transition-transform duration-300 group-hover:scale-105" 
-                  sizes="(max-width: 768px) 50vw, 33vw" 
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                  loading={imageLoading}
                 />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -417,6 +434,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                   fill
                   className="object-contain"
                   sizes="100vw"
+                  loading={imageLoading}
                 />
               ) : null}
 
@@ -476,6 +494,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                           fill
                           className="object-cover"
                           sizes="56px"
+                          loading={imageLoading}
                         />
                       ) : null}
                     </button>
@@ -489,3 +508,5 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
     </section>
   );
 }
+
+

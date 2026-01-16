@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 
 // Types
 export type ToastType = "success" | "error" | "warning" | "info";
+export type ToastPosition = "top-right" | "top-left" | "bottom-right" | "bottom-left";
 
 export interface Toast {
   id: string;
@@ -54,10 +55,19 @@ const CloseIcon = () => (
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 // Provider
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({
+  children,
+  enabled = true,
+  position = "bottom-left",
+}: {
+  children: React.ReactNode;
+  enabled?: boolean;
+  position?: ToastPosition;
+}) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = useCallback((toast: Omit<Toast, "id">) => {
+    if (!enabled) return;
     const id = Math.random().toString(36).substring(7);
     const newToast: Toast = { ...toast, id };
     setToasts((prev) => [...prev, newToast]);
@@ -67,7 +77,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, duration);
-  }, []);
+  }, [enabled]);
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -76,7 +86,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      {enabled ? <ToastContainer toasts={toasts} removeToast={removeToast} position={position} /> : null}
     </ToastContext.Provider>
   );
 }
@@ -91,9 +101,17 @@ export function useToast() {
 }
 
 // Toast Container
-function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast: (id: string) => void }) {
+function ToastContainer({
+  toasts,
+  removeToast,
+  position,
+}: {
+  toasts: Toast[];
+  removeToast: (id: string) => void;
+  position: ToastPosition;
+}) {
   return (
-    <div className="toast-container" dir="rtl">
+    <div className={`toast-container toast-${position}`} dir="rtl">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
       ))}

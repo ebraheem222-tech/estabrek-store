@@ -4,6 +4,12 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { CatalogProduct } from "@/lib/catalog";
+import { getProductMinPrice } from "@/lib/catalog";
+import { useCart } from "@/store/cart";
+import { useWishlist } from "@/store/wishlist";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
+import { useToastShortcuts } from "@/components/Toast";
 
 // Icons
 const XIcon = () => (
@@ -49,6 +55,7 @@ interface QuickViewModalProps {
   onAddToCart?: (product: CatalogProduct, variantId: string, quantity: number) => void;
   onToggleWishlist?: (product: CatalogProduct) => void;
   isInWishlist?: boolean;
+  compareEnabled?: boolean;
 }
 
 export function QuickViewModal({
@@ -58,6 +65,7 @@ export function QuickViewModal({
   onAddToCart,
   onToggleWishlist,
   isInWishlist,
+  compareEnabled = true,
 }: QuickViewModalProps) {
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
@@ -100,7 +108,8 @@ export function QuickViewModal({
   const images = selectedItem?.images ?? [];
   const currentImage = images[selectedImageIndex]?.url || product.items?.[0]?.images?.[0]?.url;
   const price = selectedVariant?.price ?? product.items?.[0]?.variants?.[0]?.price;
-  const compareAt = selectedVariant?.compareAt;
+  const compareAt = compareEnabled ? selectedVariant?.compareAt : undefined;
+  const showCompare = compareEnabled && compareAt && Number(compareAt) > Number(price);
   const stock = selectedVariant?.stock ?? 0;
   const isOutOfStock = stock <= 0;
 
@@ -156,7 +165,7 @@ export function QuickViewModal({
               )}
 
               {/* Discount Badge */}
-              {compareAt && Number(compareAt) > Number(price) && (
+              {showCompare && (
                 <span className="quick-view-badge">
                   خصم {Math.round((1 - Number(price) / Number(compareAt)) * 100)}%
                 </span>
@@ -207,7 +216,7 @@ export function QuickViewModal({
               <span className="quick-view-current-price">
                 {Number(price).toFixed(2)} ₪
               </span>
-              {compareAt && Number(compareAt) > Number(price) && (
+              {showCompare && (
                 <span className="quick-view-compare-price">
                   {Number(compareAt).toFixed(2)} ₪
                 </span>
@@ -348,4 +357,57 @@ export function useQuickView() {
     throw new Error("useQuickView must be used within a QuickViewProvider");
   }
   return context;
+}
+
+export function QuickViewLayer() {
+  const settings = useStorefrontSettings();
+  const { currentProduct, isOpen, closeQuickView } = useQuickView();
+  const { addItem } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const { fireConfetti, fireHeartBurst } = useAnimationEffects();
+  const toast = useToastShortcuts();
+
+  if (!settings.productQuickView) return null;
+
+  const inWishlist = currentProduct ? isInWishlist(currentProduct.id) : false;
+
+  const handleAddToCart = (_product: CatalogProduct, variantId: string, quantity: number) => {
+    addItem(variantId, quantity);
+    fireConfetti();
+    toast.cartAdded(_product.title);
+  };
+
+  const handleToggleWishlist = (product: CatalogProduct) => {
+    const imageUrl =
+      (product as any).items?.[0]?.images?.[0]?.url ??
+      (product as any).images?.[0]?.url ??
+      undefined;
+    const price = getProductMinPrice(product) ?? undefined;
+
+    const nextState = toggleWishlist({
+      id: product.id,
+      title: product.title,
+      slug: (product as any).slug ?? product.id,
+      image: imageUrl,
+      price,
+    });
+    if (nextState) {
+      fireHeartBurst();
+      toast.wishlistAdded(product.title);
+    } else {
+      toast.wishlistRemoved(product.title);
+    }
+  };
+
+  return (
+    <QuickViewModal
+      product={currentProduct}
+      isOpen={isOpen}
+      onClose={closeQuickView}
+      onAddToCart={handleAddToCart}
+      onToggleWishlist={handleToggleWishlist}
+      isInWishlist={inWishlist}
+      compareEnabled={settings.productCompareEnabled}
+    />
+  );
 }

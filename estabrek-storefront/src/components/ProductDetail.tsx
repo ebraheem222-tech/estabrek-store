@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { ProductGallery } from "@/components/ProductGallery";
 import ProductBuyBox from "@/components/ProductBuyBox";
-import { formatMoney, getProductMinPrice } from "@/lib/catalog";
+import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useRecentlyViewed } from "@/store/recentlyViewed";
 
 function initialColorKey(product: CatalogProduct): string | undefined {
   const items = (product as any).items ?? [];
@@ -17,9 +19,41 @@ export default function ProductDetail({ product }: { product: CatalogProduct }) 
   const init = useMemo(() => initialColorKey(product), [product]);
   const [colorKey, setColorKey] = useState<string | undefined>(init);
   const minPrice = useMemo(() => getProductMinPrice(product), [product]);
+  const primaryImage = useMemo(() => getProductPrimaryImage(product), [product]);
+  const settings = useStorefrontSettings();
+  const { addToRecentlyViewed } = useRecentlyViewed();
 
   const itemCount = (product as any).items?.length ?? 0;
   const variantCount = (product as any).items?.reduce((acc: number, item: any) => acc + (item.variants?.length ?? 0), 0) ?? 0;
+  const soldCountRaw = Number(
+    (product as any).soldCount ??
+      (product as any).salesCount ??
+      (product as any).ordersCount ??
+      (product as any).sold ??
+      NaN
+  );
+  const viewersCountRaw = Number(
+    (product as any).viewersCount ??
+      (product as any).viewCount ??
+      (product as any).views ??
+      (product as any).viewers ??
+      NaN
+  );
+  const soldCount = Number.isFinite(soldCountRaw) ? soldCountRaw : null;
+  const viewersCount = Number.isFinite(viewersCountRaw) ? viewersCountRaw : null;
+  const showSoldCount = settings.soldCountEnabled && soldCount != null && soldCount > 0;
+  const showViewersCount = settings.viewersCountEnabled && viewersCount != null && viewersCount > 0;
+
+  useEffect(() => {
+    if (!product?.id || !product?.slug) return;
+    addToRecentlyViewed({
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      image: primaryImage ?? undefined,
+      price: minPrice ?? undefined,
+    });
+  }, [addToRecentlyViewed, minPrice, primaryImage, product?.id, product?.slug, product?.title]);
 
   return (
     <div className="space-y-8">
@@ -85,6 +119,24 @@ export default function ProductDetail({ product }: { product: CatalogProduct }) 
                   <span>{variantCount} خيار</span>
                 </div>
               )}
+                {showViewersCount ? (
+                  <div className="flex items-center gap-1.5 text-[var(--muted)]">
+                    <svg className="w-4 h-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <span>{viewersCount} يشاهد الآن</span>
+                  </div>
+                ) : null}
+                {showSoldCount ? (
+                  <div className="flex items-center gap-1.5 text-[var(--muted)]">
+                    <svg className="w-4 h-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 14l4-4 3 3 6-6" />
+                    </svg>
+                    <span>{soldCount} تم بيعها</span>
+                  </div>
+                ) : null}
               <div className="flex items-center gap-1.5 text-emerald-400">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

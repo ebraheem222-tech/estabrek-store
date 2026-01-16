@@ -8,6 +8,8 @@ import { formatMoney, getProductPrimaryImage } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { cldUrl } from "@/lib/cloudinary";
 import { prefetchProductQuickAdd } from "@/lib/apiClient";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useQuickView } from "@/components/QuickViewModal";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -59,14 +61,20 @@ function prefersReducedMotion(): boolean {
 }
 
 export function ProductTile({ product }: { product: CatalogProduct }) {
+  const settings = useStorefrontSettings();
+  const { openQuickView } = useQuickView();
   const cardRef = useRef<HTMLDivElement>(null);
   const { primary, secondary } = getCardImages(product);
   const swatches = getSwatches(product);
   const [isHovered, setIsHovered] = useState(false);
+  const tiltEnabled = settings.cardTiltEffectEnabled;
+  const prefetchEnabled = settings.prefetchLinks;
+  const lazyLoadImages = settings.lazyLoadImages;
+  const quickViewEnabled = settings.productQuickView;
 
   // 3D tilt effect
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!cardRef.current || prefersReducedMotion()) return;
+    if (!cardRef.current || prefersReducedMotion() || !tiltEnabled) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -81,7 +89,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
     cardRef.current.style.setProperty('--rotate-y', `${rotateY}deg`);
     cardRef.current.style.setProperty('--spotlight-x', `${spotlightX}%`);
     cardRef.current.style.setProperty('--spotlight-y', `${spotlightY}%`);
-  }, []);
+  }, [tiltEnabled]);
 
   const handleMouseLeave = useCallback(() => {
     if (!cardRef.current) return;
@@ -96,13 +104,15 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
         ref={cardRef}
         className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300"
         onMouseEnter={() => {
-          prefetchProductQuickAdd({ slug: product.slug, id: product.id });
+          if (prefetchEnabled) {
+            prefetchProductQuickAdd({ slug: product.slug, id: product.id });
+          }
           setIsHovered(true);
         }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        <Link href={`/p/${product.slug}`} className="block relative">
+        <Link href={`/p/${product.slug}`} className="block relative" prefetch={prefetchEnabled}>
           {/* Image Container */}
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
             {primary ? (
@@ -111,6 +121,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                   src={cldUrl(primary, { w: 600, h: 750, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
+                  loading={lazyLoadImages ? "lazy" : "eager"}
                   className={[
                     "object-cover product-image-zoom will-change-transform",
                     secondary ? "opacity-100 group-hover:opacity-0" : "opacity-100",
@@ -122,6 +133,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                     src={cldUrl(secondary, { w: 600, h: 750, c: "fill", g: "auto" })}
                     alt={product.title}
                     fill
+                    loading={lazyLoadImages ? "lazy" : "eager"}
                     className="object-cover product-image-zoom opacity-0 transition duration-500 group-hover:opacity-100 will-change-transform"
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   />
@@ -143,6 +155,21 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
               <div className="absolute -inset-24 rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl" />
             </div>
           </div>
+
+          {/* Quick View */}
+          {quickViewEnabled ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openQuickView(product);
+              }}
+              className="absolute left-3 bottom-3 z-30 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs text-white backdrop-blur hover:bg-black/60"
+            >
+              معاينة سريعة
+            </button>
+          ) : null}
 
           {/* Content */}
           <div className="relative p-4 space-y-3">
@@ -204,3 +231,4 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
     </div>
   );
 }
+

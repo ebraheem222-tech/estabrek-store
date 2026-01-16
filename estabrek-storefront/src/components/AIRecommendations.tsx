@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 const SparklesIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -42,6 +43,7 @@ export function AIRecommendations({
   title = "مقترحات لك",
   apiBaseUrl,
 }: AIRecommendationsProps) {
+  const settings = useStorefrontSettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,10 @@ export function AIRecommendations({
       behavior: "smooth",
     });
   };
+
+  if (!settings.aiRecommendationsEnabled) {
+    return null;
+  }
 
   if (error || (!isLoading && products.length === 0)) {
     return null;
@@ -171,6 +177,8 @@ export function CompleteTheLook({
   title = "أكمل الإطلالة",
   apiBaseUrl,
 }: CompleteTheLookProps) {
+  const settings = useStorefrontSettings();
+  if (!settings.aiRecommendationsEnabled) return null;
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -226,6 +234,8 @@ export function CompleteTheLook({
 
 // "Customers Also Bought" Section
 export function CustomersAlsoBought({ productId, apiBaseUrl }: { productId: string; apiBaseUrl?: string }) {
+  const settings = useStorefrontSettings();
+  if (!settings.aiRecommendationsEnabled) return null;
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -267,3 +277,7 @@ export function CustomersAlsoBought({ productId, apiBaseUrl }: { productId: stri
     </section>
   );
 }
+
+
+
+

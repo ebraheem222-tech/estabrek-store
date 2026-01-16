@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, createContext, useContext } from "react";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type RevealDirection = "up" | "down" | "left" | "right" | "fade" | "scale" | "rotate";
 
@@ -25,8 +26,13 @@ export function RevealOnScroll({
   once = true,
   distance = 40,
 }: RevealOnScrollProps) {
+  const settings = useStorefrontSettings();
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+
+  if (!settings.scrollAnimationsEnabled) {
+    return <div className={className}>{children}</div>;
+  }
 
   useEffect(() => {
     const element = ref.current;
@@ -106,8 +112,13 @@ export function StaggeredReveal({
   duration = 600,
   threshold = 0.1,
 }: StaggeredRevealProps) {
+  const settings = useStorefrontSettings();
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+
+  if (!settings.scrollAnimationsEnabled) {
+    return <div className={className}>{children}</div>;
+  }
 
   useEffect(() => {
     const element = ref.current;
@@ -160,8 +171,13 @@ export function Parallax({
   speed = 0.5,
   direction = "vertical",
 }: ParallaxProps) {
+  const settings = useStorefrontSettings();
   const ref = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
+
+  if (!settings.parallaxEffectsEnabled) {
+    return <div className={className}>{children}</div>;
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -218,8 +234,13 @@ export function TextReveal({
   letterDelay = 30,
   tag: Tag = "span",
 }: TextRevealProps) {
+  const settings = useStorefrontSettings();
   const ref = useRef<HTMLElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+
+  if (!settings.scrollAnimationsEnabled) {
+    return <Tag ref={ref as any} className={className}>{text}</Tag>;
+  }
 
   useEffect(() => {
     const element = ref.current;
@@ -282,9 +303,19 @@ export function CountUp({
   className = "",
   separator = ",",
 }: CountUpProps) {
+  const settings = useStorefrontSettings();
   const ref = useRef<HTMLSpanElement>(null);
   const [count, setCount] = useState(start);
   const [hasStarted, setHasStarted] = useState(false);
+
+  if (!settings.scrollAnimationsEnabled) {
+    const formatted = end.toString().replace(/\B(?=(\d{3})+(?!\d))/g, separator);
+    return (
+      <span ref={ref} className={`count-up ${className}`}>
+        {prefix}{formatted}{suffix}
+      </span>
+    );
+  }
 
   useEffect(() => {
     const element = ref.current;
@@ -342,7 +373,12 @@ export function CountUp({
 
 // Progress Bar on Scroll
 export function ScrollProgress({ className = "" }: { className?: string }) {
+  const settings = useStorefrontSettings();
   const [progress, setProgress] = useState(0);
+
+  if (!settings.scrollAnimationsEnabled) {
+    return null;
+  }
 
   useEffect(() => {
     const handleScroll = () => {

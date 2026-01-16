@@ -7,8 +7,10 @@ import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { LoadingImg } from "@/components/LoadingImg";
+import { StorefrontMiniCart } from "@/components/StorefrontMiniCart";
 import type { MenuTree, SitePublicSettings, NavItem } from "@/lib/types";
 import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 
 function NavNode({
@@ -18,6 +20,7 @@ function NavNode({
   mode,
   gradient,
   template,
+  prefetchLinks,
 }: {
   item: any;
   pathname: string;
@@ -25,6 +28,7 @@ function NavNode({
   mode: "dropdown" | "mega";
   gradient: "none" | "sunset" | "ocean" | "neon";
   template?: NavTemplate;
+  prefetchLinks: boolean;
 }) {
   const hasChildren = !!(item.children && item.children.length);
   const href = item.href || "#";
@@ -91,7 +95,7 @@ function NavNode({
         <span>{item.label}</span>
       </a>
     ) : (
-      <Link href={href} className={baseLink}>
+      <Link href={href} className={baseLink} prefetch={prefetchLinks}>
         <Icon name={item.icon} />
         <span>{item.label}</span>
       </Link>
@@ -120,6 +124,7 @@ function NavNode({
                   mode="dropdown"
                   gradient={gradient}
                   template={template}
+                  prefetchLinks={prefetchLinks}
                 />
               ))}
             </div>
@@ -134,6 +139,7 @@ function NavNode({
                   mode="dropdown"
                   gradient={gradient}
                   template={template}
+                  prefetchLinks={prefetchLinks}
                 />
               ))}
             </div>
@@ -149,6 +155,8 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [miniCartOpen, setMiniCartOpen] = useState(false);
+  const settings = useStorefrontSettings();
 
   const cmsNavCfg = cmsNav && typeof cmsNav === "object" ? cmsNav : null;
   const cmsNavEnabled = cmsNavCfg ? (cmsNavCfg.enabled ?? cmsNavCfg?.props?.enabled ?? true) : false;
@@ -172,7 +180,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const navShowIcons: boolean = cmsNavCfg?.showIcons !== false;
 
   const preset: "classic" | "minimal" | "centered" = (header?.preset === "minimal" || header?.preset === "centered") ? header.preset : "classic";
-  const sticky: boolean = header?.sticky !== false;
+  const sticky: boolean = settings.stickyHeaderEnabled && header?.sticky !== false;
   const showSearch: boolean = header?.showSearch !== false;
   const showCart: boolean = header?.showCart !== false;
   const showAccount: boolean = !!header?.showAccount;
@@ -197,16 +205,19 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
       <div className="inline-flex items-center gap-2">
         <Link
           href="/search"
+          prefetch={settings.prefetchLinks}
           className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
           aria-label="Search"
         >
           <span aria-hidden>🔎</span>
           {withLabel ? <span>بحث</span> : null}
         </Link>
-        <VoiceSearchButton
-          withLabel={withLabel}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
-        />
+        {settings.voiceSearchEnabled ? (
+          <VoiceSearchButton
+            withLabel={withLabel}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+          />
+        ) : null}
       </div>
     );
   }
@@ -298,110 +309,23 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   </Link>
                 ) : null}
                 {showCart ? (
-                  <Link
-                    href="/cart"
+                settings.miniCartEnabled ? (
+                  <button
+                    type="button"
+                    onClick={() => setMiniCartOpen(true)}
                     className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
                   >
-                    <CartControl />
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-
-            {showSearch ? (
-              <div className="w-full">
-                <SearchControl withLabel />
-              </div>
-            ) : null}
-
-            <nav className={desktopLinksClassCentered}>
-              {navItems.map((it) => (
-                <NavNode
-                  key={it.id ?? it.href ?? it.label}
-                  item={it}
-                  pathname={pathname}
-                  showIcons={navShowIcons}
-                  mode={navMode}
-                  gradient={navGradient}
-                  template={navTemplate}
-                />
-              ))}
-            </nav>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              {site.logoUrl ? (
-                <LoadingImg
-                  src={site.logoUrl}
-                  alt={site.siteName ?? "Logo"}
-                  wrapperClassName="h-8 w-8"
-                  className="h-8 w-8 rounded-lg object-cover"
-                />
+                    🛒 <span className="hidden sm:inline">Cart</span> <CartBadge />
+                  </button>
                 ) : (
-                  <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
-                )}
-              <div className={siteNameClass}>{site.siteName || "Store"}</div>
-            </Link>
-
-            <nav className={desktopLinksClass}>
-              {navItems.map((it) => (
-                <NavNode
-                  key={it.id ?? it.href ?? it.label}
-                  item={it}
-                  pathname={pathname}
-                  showIcons={navShowIcons}
-                  mode={navMode}
-                  gradient={navGradient}
-                  template={navTemplate}
-                />
-              ))}
-            </nav>
-
-            {preset === "classic" && showSearch ? (
-              <div className="hidden flex-1 justify-center px-4 md:flex">
-                <SearchControl />
-              </div>
-            ) : null}
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setMobileOpen((v) => !v)}
-                className="md:hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
-                aria-label="Toggle menu"
-              >
-                ☰
-              </button>
-
-              {preset !== "classic" && showSearch ? (
-                <div className="hidden md:block w-[260px]">
-                  <SearchControl />
-                </div>
-              ) : null}
-
-              {cta ? (
-                <Link href={cta.href || "/"} className={ctaClassName}>
-                  {cta.label || "CTA"}
-                </Link>
-              ) : null}
-
-              {showAccount ? (
-                <Link
-                  href="/account"
-                  className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
-                >
-                  👤
-                </Link>
-              ) : null}
-
-              {showCart ? (
-                <Link
-                  href="/cart"
-                  className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
-                >
-                  🛒 <span className="hidden sm:inline">Cart</span> <CartBadge />
-                </Link>
+                  <Link
+                    href="/cart"
+                    prefetch={settings.prefetchLinks}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                  >
+                    🛒 <span className="hidden sm:inline">Cart</span> <CartBadge />
+                  </Link>
+                )
               ) : null}
             </div>
           </div>
@@ -442,6 +366,10 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
             </div>
           </div>
         </div>
+      ) : null}
+
+      {settings.miniCartEnabled ? (
+        <StorefrontMiniCart open={miniCartOpen} onClose={() => setMiniCartOpen(false)} />
       ) : null}
     </header>
   );

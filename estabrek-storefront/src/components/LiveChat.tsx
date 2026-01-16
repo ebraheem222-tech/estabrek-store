@@ -37,6 +37,7 @@ interface LiveChatProps {
   apiBaseUrl?: string;
   storeName?: string;
   welcomeMessage?: string;
+  offlineMessage?: string;
   placeholder?: string;
   position?: "bottom-right" | "bottom-left";
 }
@@ -45,6 +46,7 @@ export function LiveChat({
   apiBaseUrl,
   storeName = "متجرنا",
   welcomeMessage = "مرحباً! كيف يمكنني مساعدتك اليوم؟",
+  offlineMessage,
   placeholder = "اكتب رسالتك...",
   position = "bottom-right",
 }: LiveChatProps) {
@@ -55,10 +57,12 @@ export function LiveChat({
   const [isTyping, setIsTyping] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isOnline, setIsOnline] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const baseUrl = apiBaseUrl || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/v1";
+  const activeWelcomeMessage = isOnline ? welcomeMessage : (offlineMessage || welcomeMessage);
 
   // Generate session ID
   useEffect(() => {
@@ -69,6 +73,19 @@ export function LiveChat({
     }
     setSessionId(id);
   }, []);
+  // Track online/offline
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setIsOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
 
   // Add welcome message
   useEffect(() => {
@@ -77,12 +94,12 @@ export function LiveChat({
         {
           id: "welcome",
           role: "assistant",
-          content: welcomeMessage,
+          content: activeWelcomeMessage,
           timestamp: new Date(),
         },
       ]);
     }
-  }, [isOpen, welcomeMessage, messages.length]);
+  }, [activeWelcomeMessage, isOpen, messages.length]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -197,8 +214,8 @@ export function LiveChat({
               <div>
                 <h3>{storeName}</h3>
                 <span className="online-status">
-                  <span className="online-dot" />
-                  متصل الآن
+                  <span className="online-dot" style={{ backgroundColor: isOnline ? "#22c55e" : "#f97316" }} />
+                  {isOnline ? "متصل الآن" : "غير متصل"}
                 </span>
               </div>
             </div>
@@ -210,6 +227,12 @@ export function LiveChat({
                 <CloseIcon />
               </button>
             </div>
+          {!isOnline && offlineMessage ? (
+            <div className="px-4 py-2 text-xs text-amber-300 bg-amber-500/10 border-b border-amber-500/20">
+              {offlineMessage}
+            </div>
+          ) : null}
+
           </div>
 
           {!isMinimized && (

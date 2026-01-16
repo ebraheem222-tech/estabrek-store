@@ -10,10 +10,11 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
-export function useGsapMotion(rootRef: RefObject<HTMLElement>) {
+export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true) {
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    if (!enabled) return;
     if (prefersReducedMotion()) return;
 
     let ctxCleanup: (() => void) | null = null;
@@ -110,5 +111,5 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>) {
         // ignore
       }
     };
-  }, [rootRef]);
+  }, [rootRef, enabled]);
 }

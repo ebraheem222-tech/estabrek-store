@@ -15,8 +15,14 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "estabrek_theme";
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+export function ThemeProvider({
+  children,
+  defaultTheme = "dark",
+}: {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+}) {
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
 
@@ -39,12 +45,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (stored && ["dark", "light", "system"].includes(stored)) {
         setThemeState(stored);
         setResolvedTheme(resolveTheme(stored));
+      } else {
+        setThemeState(defaultTheme);
+        setResolvedTheme(resolveTheme(defaultTheme));
       }
     } catch (e) {
       console.error("Failed to load theme:", e);
+      setThemeState(defaultTheme);
+      setResolvedTheme(resolveTheme(defaultTheme));
     }
     setMounted(true);
-  }, []);
+  }, [defaultTheme]);
 
   // Apply theme to document
   useEffect(() => {

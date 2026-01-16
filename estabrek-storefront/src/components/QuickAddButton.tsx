@@ -6,6 +6,9 @@ import { formatMoney } from "@/lib/catalog";
 import { getProductByIdClient, getProductBySlugClient } from "@/lib/apiClient";
 import { useCart } from "@/store/cart";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
+import { useToastShortcuts } from "@/components/Toast";
 
 type Props = {
   productId?: string;
@@ -45,7 +48,10 @@ function isInStock(v: CatalogVariant) {
 }
 
 export function QuickAddButton({ productId, slug, product, className, buttonLabel }: Props) {
+  const settings = useStorefrontSettings();
   const { addItem } = useCart();
+  const { fireConfetti } = useAnimationEffects();
+  const toast = useToastShortcuts();
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -76,7 +82,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
     }
   }
 
-  async function onQuickAdd() {
+  async function onQuickAdd(e?: React.MouseEvent<HTMLButtonElement>) {
     const full = await ensureProduct();
     if (!full) return;
 
@@ -98,6 +104,8 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
         return;
       }
       addItem(auto.id, 1);
+      fireConfetti(e?.clientX, e?.clientY);
+      toast.cartAdded(full.title);
       setStatus("انضاف للسلة ✅");
       window.setTimeout(() => setStatus(null), 1400);
       return;
@@ -127,8 +135,9 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
     <div className={className}>
       <button
         type="button"
-        onClick={onQuickAdd}
+        onClick={(e) => void onQuickAdd(e)}
         onMouseEnter={async () => {
+          if (!settings.prefetchLinks) return;
           if (prefetchedRef.current) return;
           if (p || loading) return;
           prefetchedRef.current = true;
@@ -166,6 +175,8 @@ function QuickAddDrawer({
   closing: boolean;
 }) {
   const { addItem } = useCart();
+  const { fireConfetti } = useAnimationEffects();
+  const toast = useToastShortcuts();
 
   const items = product?.items ?? [];
 
@@ -230,6 +241,10 @@ function QuickAddDrawer({
   function onAdd() {
     if (!selectedVariant) return;
     addItem(selectedVariant.id, Math.max(1, qty));
+    if (product) {
+      fireConfetti();
+      toast.cartAdded(product.title);
+    }
     setStatus("تمت الإضافة ✅");
     window.setTimeout(() => {
       setStatus(null);

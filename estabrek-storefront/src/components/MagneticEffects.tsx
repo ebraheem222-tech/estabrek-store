@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 interface MagneticButtonProps {
   children: React.ReactNode;
@@ -11,10 +12,12 @@ interface MagneticButtonProps {
 
 export function MagneticButton({ children, className = "", strength = 0.3, onClick }: MagneticButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
+  const settings = useStorefrontSettings();
+  const enabled = settings.magneticButtonsEnabled;
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !enabled) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = el.getBoundingClientRect();
@@ -35,7 +38,7 @@ export function MagneticButton({ children, className = "", strength = 0.3, onCli
       el.removeEventListener("mousemove", handleMouseMove);
       el.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [strength]);
+  }, [enabled, strength]);
 
   return (
     <button ref={ref} className={`magnetic-button ${className}`} onClick={onClick}>

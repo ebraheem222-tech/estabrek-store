@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 // Icons
 const ClockIcon = () => (
@@ -33,16 +34,21 @@ interface RecentlyViewedSectionProps {
 
 export function RecentlyViewedSection({
   title = "شاهدته مؤخراً",
-  maxItems = 8,
+  maxItems,
   showClear = true,
   excludeId,
 }: RecentlyViewedSectionProps) {
+  const settings = useStorefrontSettings();
   const { items, clearRecentlyViewed } = useRecentlyViewed();
+  const resolvedMaxItems =
+    typeof maxItems === "number" ? maxItems : settings.productRecentlyViewedCount;
+
+  if (!settings.productRecentlyViewed) return null;
 
   // Filter out excluded item and limit
   const displayItems = items
     .filter((item) => item.id !== excludeId)
-    .slice(0, maxItems);
+    .slice(0, resolvedMaxItems);
 
   if (displayItems.length === 0) return null;
 
@@ -102,17 +108,22 @@ export function RecentlyViewedSection({
 
 // Compact version for sidebar
 export function RecentlyViewedCompact({
-  maxItems = 4,
+  maxItems,
   excludeId,
 }: {
   maxItems?: number;
   excludeId?: string;
 }) {
+  const settings = useStorefrontSettings();
   const { items } = useRecentlyViewed();
+  const resolvedMaxItems =
+    typeof maxItems === "number" ? maxItems : Math.min(4, settings.productRecentlyViewedCount);
+
+  if (!settings.productRecentlyViewed) return null;
 
   const displayItems = items
     .filter((item) => item.id !== excludeId)
-    .slice(0, maxItems);
+    .slice(0, resolvedMaxItems);
 
   if (displayItems.length === 0) return null;
 
@@ -157,3 +168,4 @@ export function RecentlyViewedCompact({
     </div>
   );
 }
+

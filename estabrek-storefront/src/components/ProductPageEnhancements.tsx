@@ -46,7 +46,8 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
   // Extract data
   const images = product.images?.map((img) => img.url) || [];
   const price = product.price || 0;
-  const comparePrice = product.compareAtPrice || product.originalPrice;
+  const compareEnabled = settings.productCompareEnabled;
+  const comparePrice = compareEnabled ? (product.compareAtPrice || product.originalPrice) : undefined;
   const stock = product.stock ?? product.quantity ?? 50;
   
   // Check if product is new (created within 14 days)
@@ -56,8 +57,9 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
   
   const isBestseller = product.isBestseller ?? false;
   const isTrending = product.isTrending ?? false;
-  const hasDiscount = comparePrice && comparePrice > price;
+  const hasDiscount = compareEnabled && comparePrice && comparePrice > price;
   const discountPercent = hasDiscount ? Math.round((1 - price / comparePrice) * 100) : 0;
+  const lowStockThreshold = settings.productStockThreshold;
 
   // Extract sizes from variants
   const sizes = product.sizes || product.variants?.filter(v => v.size).map(v => ({
@@ -75,13 +77,13 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
             isNew={isNew}
             isBestseller={isBestseller}
             isTrending={isTrending}
-            salePercent={discountPercent > 0 ? discountPercent : undefined}
+            salePercent={compareEnabled && discountPercent > 0 ? discountPercent : undefined}
             stock={stock}
-            lowStockThreshold={20}
+            lowStockThreshold={lowStockThreshold}
           />
           
           {/* Always show at least one badge for demo */}
-          {!isNew && !isBestseller && !isTrending && discountPercent === 0 && stock > 20 && (
+          {!isNew && !isBestseller && !isTrending && discountPercent === 0 && stock > lowStockThreshold && (
             <div className="demo-badge">
               <span className="product-badge badge-new">
                 <span className="badge-icon">✨</span>
@@ -135,10 +137,10 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
             />
             <PriceDisplay
               price={price}
-              originalPrice={comparePrice}
+              originalPrice={compareEnabled ? comparePrice : undefined}
               currency="₪"
               size="lg"
-              showSavings={true}
+              showSavings={compareEnabled}
             />
           </div>
         </div>

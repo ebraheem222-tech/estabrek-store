@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useCart } from "@/store/cart";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { LoadingImg } from "@/components/LoadingImg";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { CheckoutProgress, CouponInput } from "@/components/CheckoutEnhancements";
 
 // Icons
 const ShoppingCartIcon = () => (
@@ -78,6 +80,13 @@ type Quote = {
   discountAmount?: string | number;
   total?: string | number;
   currencyCode?: string;
+  coupon?: {
+    code?: string | null;
+    discountType?: "PERCENT" | "FIXED";
+    discountValue?: string | number | null;
+    maxDiscount?: string | number | null;
+    minCart?: string | number | null;
+  } | null;
   lines?: Array<{
     variantId: string;
     quantity: number;
@@ -101,6 +110,14 @@ type Quote = {
     total?: string | number;
     title?: string;
   }>;
+  message?: string;
+};
+
+type CouponResult = {
+  valid: boolean;
+  code: string;
+  discount: number;
+  discountType: "PERCENT" | "FIXED";
   message?: string;
 };
 
@@ -130,9 +147,11 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
   const checkoutMode = props.checkoutMode ?? "WHATSAPP";
   const whatsappNumber = props.whatsappNumber ?? null;
   const ordersEmail = props.ordersEmail ?? null;
+  const settings = useStorefrontSettings();
 
   const { items, setQty, removeItem, clear } = useCart();
   const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -149,6 +168,22 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
     [items]
   );
   const currencyCode = quote?.currencyCode ?? null;
+  const currencySymbol =
+    currencyCode === "USD"
+      ? "$"
+      : currencyCode === "EUR"
+      ? "€"
+      : currencyCode === "ILS"
+      ? "₪"
+      : (currencyCode ?? "₪");
+  const progressSteps = useMemo(
+    () => [
+      { id: "cart", title: "السلة" },
+      { id: "details", title: "البيانات" },
+      { id: "confirm", title: "تأكيد" },
+    ],
+    []
+  );
   const lineByVariant = useMemo(() => {
     const map = new Map<string, NonNullable<Quote["lines"]>[number]>();
     for (const line of quote?.lines ?? []) {
@@ -157,41 +192,92 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
     return map;
   }, [quote]);
 
-  async function refreshQuote() {
+    async function refreshQuote(nextCoupon?: string) {
     if (!payloadItems.length) {
       setQuote(null);
-      return;
+      setAppliedCoupon(null);
+      return null;
     }
     setLoading(true);
     setErr(null);
     setSuccessMsg(null);
+    const code = typeof nextCoupon === "string" ? nextCoupon : couponCode;
     try {
-      const res = await fetch(`${apiBase()}/catalog/cart-quote`, {
+      const res = await fetch(\`${apiBase()}/catalog/cart-quote\`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: payloadItems,
-          couponCode: couponCode || undefined,
+          couponCode: code || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.message || "تعذر حساب السلة");
       setQuote(data);
+      const discount = Number(data?.discountAmount ?? 0);
+      const coupon = data?.coupon;
+      if (coupon?.code) {
+        setAppliedCoupon({
+          valid: true,
+          code: coupon.code,
+          discount,
+          discountType: coupon.discountType === "PERCENT" ? "PERCENT" : "FIXED",
+        });
+      } else {
+        setAppliedCoupon(null);
+      }
+      if (typeof nextCoupon === "string") {
+        setCouponCode(nextCoupon);
+      }
+      return data;
     } catch (e: any) {
-      setErr(e?.message || "حدث خطأ");
+      setErr(e?.message || "خطأ غير متوقع");
       setQuote(null);
+      setAppliedCoupon(null);
+      return null;
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
+
     refreshQuote();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(payloadItems)]);
 
+  const handleApplyCoupon = async (code: string): Promise<CouponResult> => {
+    const data = await refreshQuote(code);
+    if (!data || !data.coupon?.code) {
+      return {
+        valid: false,
+        code,
+        discount: 0,
+        discountType: "FIXED",
+        message: "الكوبون غير صالح",
+      };
+    }
+    const discount = Number(data.discountAmount ?? 0);
+    return {
+      valid: true,
+      code: data.coupon.code,
+      discount,
+      discountType: data.coupon.discountType === "PERCENT" ? "PERCENT" : "FIXED",
+    };
+  };
+
+  const handleRemoveCoupon = () => {
+    if (!couponCode) return;
+    setCouponCode("");
+    setAppliedCoupon(null);
+    refreshQuote("");
+  };
+
   return (
     <main className="cart-container space-y-8 font-arabic" dir="rtl">
+      {settings.checkoutProgressEnabled && items.length > 0 ? (
+        <CheckoutProgress steps={progressSteps} currentStep={0} className="mb-4" />
+      ) : null}
       {/* Cart Header */}
       <div className="cart-header">
         <div className="flex items-center gap-4">
@@ -354,22 +440,33 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
 
             {/* Coupon Code */}
             <div className="mb-6">
-              <label className="text-xs text-[var(--muted)] mb-2 block">كود الخصم</label>
-              <div className="flex gap-2">
-                <input
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  placeholder="أدخل كود الخصم"
-                  className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none transition-colors"
-                  dir="ltr"
+              {settings.couponAnimationsEnabled ? (
+                <CouponInput
+                  onApply={handleApplyCoupon}
+                  onRemove={handleRemoveCoupon}
+                  appliedCoupon={appliedCoupon}
+                  currency={currencySymbol}
                 />
-                <button
-                  onClick={refreshQuote}
-                  className="px-4 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
-                >
-                  تطبيق
-                </button>
-              </div>
+              ) : (
+                <>
+                  <label className="text-xs text-[var(--muted)] mb-2 block">رمز الخصم</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      placeholder="أدخل كود الخصم"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none transition-colors"
+                      dir="ltr"
+                    />
+                    <button
+                      onClick={refreshQuote}
+                      className="px-4 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                    >
+                      تطبيق
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Summary Rows */}

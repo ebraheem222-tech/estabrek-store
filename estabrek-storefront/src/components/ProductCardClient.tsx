@@ -8,6 +8,8 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { formatMoney, getProductPrimaryImage, getProductMinPrice } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useQuickView } from "@/components/QuickViewModal";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -93,6 +95,8 @@ function buildAutoVariantImages(p: CatalogProduct, primary?: string | null): str
 
 export default function ProductCardClient({ product }: { product: CatalogProduct }) {
   const router = useRouter();
+  const settings = useStorefrontSettings();
+  const { openQuickView } = useQuickView();
   const cardRef = useRef<HTMLDivElement>(null);
   const { primary, secondary } = useMemo(() => getCardImages(product), [product]);
   const swatches = useMemo(() => buildSwatches(product), [product]);
@@ -103,10 +107,14 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   const autoVariantImages = useMemo(() => buildAutoVariantImages(product, primary), [product, primary]);
   const canAutoRotate = autoVariantImages.length > 1;
   const [autoIndex, setAutoIndex] = useState(0);
+  const tiltEnabled = settings.cardTiltEffectEnabled;
+  const prefetchEnabled = settings.prefetchLinks;
+  const lazyLoadImages = settings.lazyLoadImages;
+  const quickViewEnabled = settings.productQuickView;
 
   // 3D tilt effect
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!cardRef.current || prefersReducedMotion()) return;
+    if (!cardRef.current || prefersReducedMotion() || !tiltEnabled) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -121,7 +129,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
     cardRef.current.style.setProperty('--rotate-y', `${rotateY}deg`);
     cardRef.current.style.setProperty('--spotlight-x', `${spotlightX}%`);
     cardRef.current.style.setProperty('--spotlight-y', `${spotlightY}%`);
-  }, []);
+  }, [tiltEnabled]);
 
   const handleMouseLeave = useCallback(() => {
     if (!cardRef.current) return;
@@ -219,14 +227,16 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
         ref={cardRef}
         className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300"
         onMouseEnter={() => {
-          router.prefetch(`/p/${product.slug}`);
+          if (prefetchEnabled) {
+            router.prefetch(`/p/${product.slug}`);
+          }
           setIsHovered(true);
           setAutoIndex(0);
         }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        <Link href={`/p/${product.slug}`} className="block">
+        <Link href={`/p/${product.slug}`} className="block" prefetch={prefetchEnabled}>
           {/* Image Container */}
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
             {/* Badge */}
@@ -256,14 +266,15 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
             {shownImg ? (
               <>
                 {prevImg ? (
-                  <Image
-                    src={cldUrl(prevImg, { w: 600, h: 750, c: "fill", g: "auto" })}
-                    alt={product.title}
-                    fill
-                    className={
-                      "object-cover product-image-zoom will-change-transform " +
-                      (fadeIn ? "opacity-0" : "opacity-100")
-                    }
+                    <Image
+                      src={cldUrl(prevImg, { w: 600, h: 750, c: "fill", g: "auto" })}
+                      alt={product.title}
+                      fill
+                      loading={lazyLoadImages ? "lazy" : "eager"}
+                      className={
+                        "object-cover product-image-zoom will-change-transform " +
+                        (fadeIn ? "opacity-0" : "opacity-100")
+                      }
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   />
                 ) : null}
@@ -271,6 +282,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
                   src={cldUrl(shownImg, { w: 600, h: 750, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
+                  loading={lazyLoadImages ? "lazy" : "eager"}
                   className={
                     "object-cover product-image-zoom will-change-transform " +
                     (prevImg ? (fadeIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1") : "opacity-100")
@@ -293,6 +305,21 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
             <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 z-10">
               <div className="absolute -inset-24 rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl" />
             </div>
+
+            {/* Quick View */}
+            {quickViewEnabled ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openQuickView(product);
+                }}
+                className="absolute left-3 bottom-3 z-30 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs text-white backdrop-blur hover:bg-black/60"
+              >
+                معاينة سريعة
+              </button>
+            ) : null}
 
             {/* Quick Add Button - Slides up on hover */}
             <div className="absolute inset-x-0 bottom-0 p-3 z-20">
@@ -389,3 +416,5 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
     </div>
   );
 }
+
+

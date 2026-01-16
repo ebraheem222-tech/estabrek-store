@@ -4,6 +4,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog";
 import { formatMoney } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
+import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
+import { useToastShortcuts } from "@/components/Toast";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type Selection = {
   colorKey: string; // either colorName or a fallback key
@@ -37,6 +40,11 @@ export default function ProductBuyBox({
   onColorChange?: (k: string) => void;
 }) {
   const { addItem } = useCart();
+  const settings = useStorefrontSettings();
+  const { fireConfetti } = useAnimationEffects();
+  const toast = useToastShortcuts();
+  const [stockAlertActive, setStockAlertActive] = useState(false);
+  const [priceAlertActive, setPriceAlertActive] = useState(false);
 
   const items = product.items ?? [];
 
@@ -96,6 +104,13 @@ export default function ProductBuyBox({
 
   const canAdd = !!selectedVariant && (selectedVariant.stock == null || selectedVariant.stock > 0);
   const selectedPrice = selectedVariant ? Number(selectedVariant.price) : null;
+  const compareAt = selectedVariant
+    ? Number((selectedVariant as any).compareAt ?? (selectedVariant as any).compareAtPrice ?? NaN)
+    : NaN;
+  const hasCompareDiscount =
+    Number.isFinite(compareAt) && selectedPrice != null && compareAt > selectedPrice;
+  const showStockAlert = settings.stockAlertEnabled && !canAdd && variants.length > 0;
+  const showPriceAlert = settings.priceDropAlertEnabled && selectedPrice != null && !hasCompareDiscount;
 
   const colorLabel = (key: string, idx: number) => {
     const it = byColor.get(key);
@@ -153,9 +168,11 @@ export default function ProductBuyBox({
     setStatus(null);
   }
 
-  function onAdd() {
+  function onAdd(event?: React.MouseEvent) {
     if (!selectedVariant) return;
     addItem(selectedVariant.id, Math.max(1, qty));
+    fireConfetti(event?.clientX, event?.clientY);
+    toast.cartAdded(product.title);
     setStatus("تمت الإضافة للسلة ✅");
     window.setTimeout(() => setStatus(null), 2500);
   }
@@ -439,7 +456,7 @@ export default function ProductBuyBox({
           <button
             type="button"
             disabled={!canAdd}
-            onClick={onAdd}
+            onClick={(e) => onAdd(e)}
             className={
               "add-to-cart-btn flex-1 rounded-xl px-6 py-3.5 text-sm font-semibold flex items-center justify-center gap-2 " +
               (canAdd
@@ -472,10 +489,40 @@ export default function ProductBuyBox({
             هذا الخيار غير متوفر حالياً
           </div>
         ) : null}
+
+        {(showStockAlert || showPriceAlert) ? (
+          <div className="flex flex-wrap gap-2">
+            {showStockAlert ? (
+              <button
+                type="button"
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-[color:var(--text)] hover:bg-white/10 transition-colors disabled:opacity-60"
+                onClick={() => {
+                  if (stockAlertActive) return;
+                  setStockAlertActive(true);
+                  toast.info("تم تفعيل تنبيه توفر المنتج", product.title);
+                }}
+                disabled={stockAlertActive}
+              >
+                {stockAlertActive ? "تنبيه التوفر مُفعل" : "تنبيه عند توفر المنتج"}
+              </button>
+            ) : null}
+            {showPriceAlert ? (
+              <button
+                type="button"
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-[color:var(--text)] hover:bg-white/10 transition-colors disabled:opacity-60"
+                onClick={() => {
+                  if (priceAlertActive) return;
+                  setPriceAlertActive(true);
+                  toast.info("تم تفعيل تنبيه انخفاض السعر", product.title);
+                }}
+                disabled={priceAlertActive}
+              >
+                {priceAlertActive ? "تنبيه السعر مُفعل" : "تنبيه انخفاض السعر"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
-
-
-

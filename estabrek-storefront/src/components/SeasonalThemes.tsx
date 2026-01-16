@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, createContext, useContext } from "react";
 
 type SeasonalTheme = "default" | "ramadan" | "eid" | "black-friday" | "winter" | "summer";
+type SeasonalThemeMode = "auto" | "none" | SeasonalTheme;
 
 interface SeasonalContextValue {
   theme: SeasonalTheme;
@@ -19,12 +20,37 @@ export function useSeasonalTheme() {
 }
 
 // Provider
-export function SeasonalThemeProvider({ children }: { children: React.ReactNode }) {
+export function SeasonalThemeProvider({
+  children,
+  mode = "auto",
+  effectsEnabled = true,
+}: {
+  children: React.ReactNode;
+  mode?: SeasonalThemeMode;
+  effectsEnabled?: boolean;
+}) {
   const [theme, setTheme] = useState<SeasonalTheme>("default");
   const [showEffects, setShowEffects] = useState(false);
 
   // Auto-detect season and check if should show effects
   useEffect(() => {
+    if (!effectsEnabled || mode === "none") {
+      setTheme("default");
+      setShowEffects(false);
+      return;
+    }
+
+    if (mode && mode !== "auto") {
+      setTheme(mode);
+      setShowEffects(true);
+
+      const timer = setTimeout(() => {
+        setShowEffects(false);
+      }, 20000);
+
+      return () => clearTimeout(timer);
+    }
+
     // Check localStorage for last seen time
     const lastSeen = localStorage.getItem("seasonal_effects_last_seen");
     const now = Date.now();
@@ -66,7 +92,7 @@ export function SeasonalThemeProvider({ children }: { children: React.ReactNode 
 
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [effectsEnabled, mode]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-seasonal-theme", theme);

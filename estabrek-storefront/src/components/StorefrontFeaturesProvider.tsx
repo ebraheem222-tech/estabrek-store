@@ -6,6 +6,8 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { LiveChat } from "@/components/LiveChat";
 import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThemes";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import ChatWidget from "@/components/ChatWidget";
+import { RecentActivityPopup } from "@/components/RecentActivityPopup";
 
 // Default settings - all features
 const DEFAULT_SETTINGS = {
@@ -147,28 +149,32 @@ export function StorefrontFeaturesProvider({
   // Apply CSS variables for colors
   useEffect(() => {
     if (mounted && typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--accent', settings.accentColor);
+      document.documentElement.style.setProperty('--accent-2', settings.accentColor2);
+      document.documentElement.style.setProperty('--accent-1', settings.accentColor);
+      document.documentElement.style.setProperty('--accent-3', settings.accentColor2);
       document.documentElement.style.setProperty('--accent-primary', settings.accentColor);
       document.documentElement.style.setProperty('--accent-secondary', settings.accentColor2);
+      document.documentElement.dataset.glassEffects = settings.glassEffectsEnabled ? "1" : "0";
     }
-  }, [mounted, settings.accentColor, settings.accentColor2]);
+  }, [mounted, settings.accentColor, settings.accentColor2, settings.glassEffectsEnabled]);
 
   return (
     <StorefrontSettingsContext.Provider value={settings}>
       {/* Seasonal Theme Provider */}
-      {settings.seasonalEffectsEnabled ? (
-        <SeasonalThemeProvider>
-          {children}
-          {mounted && (
-            <SeasonalEffects 
-              duration={settings.seasonalEffectsDuration}
-              interval={settings.seasonalEffectsInterval}
-              particleCount={settings.seasonalParticleCount}
-            />
-          )}
-        </SeasonalThemeProvider>
-      ) : (
-        children
-      )}
+      <SeasonalThemeProvider
+        mode={settings.seasonalTheme}
+        effectsEnabled={settings.seasonalEffectsEnabled}
+      >
+        {children}
+        {mounted && settings.seasonalEffectsEnabled && settings.seasonalTheme !== "none" && (
+          <SeasonalEffects 
+            duration={settings.seasonalEffectsDuration}
+            interval={settings.seasonalEffectsInterval}
+            particleCount={settings.seasonalParticleCount}
+          />
+        )}
+      </SeasonalThemeProvider>
 
       {/* Conditional Global Components */}
       {mounted && (
@@ -177,11 +183,14 @@ export function StorefrontFeaturesProvider({
             <LiveChat
               position={settings.liveChatPosition}
               welcomeMessage={settings.liveChatWelcomeMessage}
+              offlineMessage={settings.liveChatOfflineMessage}
             />
           )}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
           {settings.scrollToTopEnabled && <ScrollToTop />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
+          {settings.chatbotEnabled && <ChatWidget />}
+          {settings.recentPurchasesPopup && <RecentActivityPopup />}
           
           {/* WhatsApp Button */}
           {settings.whatsappEnabled && settings.whatsappNumber && (
