@@ -7,6 +7,7 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { LoadingImg } from "@/components/LoadingImg";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { CheckoutProgress, CouponInput } from "@/components/CheckoutEnhancements";
+import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 
 // Icons
 const ShoppingCartIcon = () => (
@@ -164,6 +165,10 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    clearBodyScrollLocks();
+  }, []);
+
   const payloadItems = useMemo(
     () => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
     [items]
@@ -275,7 +280,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
   };
 
   return (
-    <main className="cart-container space-y-8 font-arabic" dir="rtl">
+    <section className="cart-container space-y-8 font-arabic" dir="rtl">
       {settings.checkoutProgressEnabled && items.length > 0 ? (
         <CheckoutProgress steps={progressSteps} currentStep={0} className="mb-4" />
       ) : null}
@@ -734,7 +739,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
           </aside>
         </div>
       )}
-    </main>
+    </section>
   );
 }
 

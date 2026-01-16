@@ -36,7 +36,19 @@ export function useBodyScrollLock(locked: boolean) {
 export function clearBodyScrollLocks() {
   lockCount = 0;
   if (typeof document !== "undefined") {
+    const root = document.documentElement;
     document.body.style.overflow = prevOverflow ?? "";
+    document.body.style.position = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.top = "";
+    document.body.style.width = "";
+    document.body.style.paddingRight = "";
+    document.body.style.transform = "";
+    root.style.overflow = "";
+    root.style.transform = "";
+    root.scrollLeft = 0;
+    document.body.scrollLeft = 0;
   }
   prevOverflow = null;
 }
