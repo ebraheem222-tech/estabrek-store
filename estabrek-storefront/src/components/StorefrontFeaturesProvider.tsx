@@ -45,7 +45,7 @@ const DEFAULT_SETTINGS = {
   
   // Chat & Support
   liveChatEnabled: true,
-  liveChatPosition: "bottom-left" as const,
+  liveChatPosition: "bottom-left" as "bottom-left" | "bottom-right" | "bottom-center",
   liveChatWelcomeMessage: "مرحباً! كيف يمكنني مساعدتك؟",
   liveChatOfflineMessage: "نحن غير متصلين حالياً",
   chatbotEnabled: true,

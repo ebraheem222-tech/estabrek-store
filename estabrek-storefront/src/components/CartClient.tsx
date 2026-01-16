@@ -167,6 +167,15 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
 
   useEffect(() => {
     clearBodyScrollLocks();
+    if (typeof window === "undefined") return;
+    const resetScroll = () => {
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+      window.scrollTo({ left: 0, top: window.scrollY });
+    };
+    resetScroll();
+    const timer = window.setTimeout(resetScroll, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const payloadItems = useMemo(
@@ -399,7 +408,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                         )}
                       </div>
                       {total && (
-                        <div className="text-lg font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent whitespace-nowrap">
+                        <div className="text-lg font-bold price-gradient whitespace-nowrap">
                           {total}
                         </div>
                       )}
@@ -497,7 +506,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                 <div className="h-px bg-white/10 my-3" />
                 <div className="flex items-center justify-between py-2">
                   <span className="font-semibold text-[var(--text)]">الإجمالي</span>
-                  <span className="cart-summary-total">{formatAmount(quote.total, currencyCode)}</span>
+                  <span className="cart-summary-total price-gradient">{formatAmount(quote.total, currencyCode)}</span>
                 </div>
               </div>
             ) : null}

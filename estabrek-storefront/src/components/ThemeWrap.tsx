@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/presets";
 import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "@/cms/themes/websiteThemes";
 import { applyCursorTheme } from "@/theme/cursorTheme";
-import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useStorefrontSettings, type StorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
@@ -95,25 +95,50 @@ function toCustomPresets(customThemes?: any[] | null): ThemePreset[] {
 export function ThemeWrap({
   theme,
   cursorThemeId,
+  storefrontSettings,
   children,
 }: {
   theme?: ThemeCfg | null;
   cursorThemeId?: string | null;
+  storefrontSettings?: Partial<StorefrontSettings>;
   children: React.ReactNode;
 }) {
   const t = theme ?? {};
   const storefront = useStorefrontSettings();
-  const themeColorsEnabled = storefront.themeColorsEnabled !== false;
-  const storefrontAccent = themeColorsEnabled ? resolveCustomColor(storefront.accentColor) : undefined;
-  const storefrontAccentSoft = themeColorsEnabled ? resolveCustomColor(storefront.accentColor2) : undefined;
-  const glassEnabled = storefront.glassEffectsEnabled !== false;
-  const baseMode: "dark" | "light" = t.mode === "light" ? "light" : "dark";
+  const storefrontCfg = useMemo(
+    () => ({ ...storefront, ...(storefrontSettings ?? {}) }),
+    [storefront, storefrontSettings]
+  );
+  const themeColorsEnabled = storefrontCfg.themeColorsEnabled !== false;
+  const storefrontAccent = themeColorsEnabled ? resolveCustomColor(storefrontCfg.accentColor) : undefined;
+  const storefrontAccentSoft = themeColorsEnabled ? resolveCustomColor(storefrontCfg.accentColor2) : undefined;
+  const glassEnabled = storefrontCfg.glassEffectsEnabled !== false;
+  const preferredMode: "dark" | "light" =
+    t.mode === "light" || t.mode === "dark"
+      ? t.mode
+      : storefrontCfg.darkModeDefault === false
+      ? "light"
+      : "dark";
   // Default: Estabrak Soft (matches logo + paper background). Keep luxury_gold as selectable preset.
   const basePresetId = t.presetId ?? (t.accent === "gold" ? "estabrak_soft_gold" : "estabrak_soft_gold");
 
   const customPresets = useMemo(() => toCustomPresets(t.customThemes), [t.customThemes]);
 
   const [preview, setPreview] = useState<{ presetId?: string; mode?: "dark" | "light" } | null>(null);
+  const [domMode, setDomMode] = useState<"dark" | "light" | null>(null);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const read = () => {
+      const attr = root.getAttribute("data-theme");
+      if (attr === "dark" || attr === "light") setDomMode(attr);
+    };
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "class"] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     // Preview without saving: /?themePreview=luxury_gold&themeMode=light
@@ -131,7 +156,7 @@ export function ThemeWrap({
     applyCursorTheme(cursorThemeId);
   }, [cursorThemeId]);
 
-  const mode: "dark" | "light" = preview?.mode ?? baseMode;
+  const mode: "dark" | "light" = preview?.mode ?? domMode ?? preferredMode;
   const presetId = preview?.presetId ?? basePresetId;
 
   const preset = getThemePreset(presetId ?? null, customPresets);
@@ -171,12 +196,22 @@ export function ThemeWrap({
     if (text) root.style.setProperty("--text", String(text));
   }, [vars, mode]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (root.getAttribute("data-theme") !== mode) {
+      root.setAttribute("data-theme", mode);
+      root.classList.remove("dark", "light");
+      root.classList.add(mode);
+    }
+  }, [mode]);
+
   return (
     <div
       data-theme={mode}
       data-glass-effects={glassEnabled ? "1" : "0"}
       className={
-        "min-h-screen w-full bg-[var(--bg)] text-[var(--text)]" +
+        "min-h-screen w-full bg-[var(--bg)] text-[var(--text)] overflow-x-hidden" +
         (surface === "classic" || !glassEnabled ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")
       }
       style={

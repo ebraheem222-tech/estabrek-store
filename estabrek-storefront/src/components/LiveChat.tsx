@@ -39,7 +39,7 @@ interface LiveChatProps {
   welcomeMessage?: string;
   offlineMessage?: string;
   placeholder?: string;
-  position?: "bottom-right" | "bottom-left";
+  position?: "bottom-right" | "bottom-left" | "bottom-center";
 }
 
 export function LiveChat({
