@@ -429,10 +429,11 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
             {/* Main lightbox image */}
             <div className="lightbox-image relative flex-1 overflow-hidden rounded-3xl bg-black/30">
               {active?.url ? (
-                <Image
+                <LqipImage
                   src={cldUrl(active.url, { w: 2000, c: "fit" })}
                   alt={product.title}
                   fill
+                  blurDataUrl={active.blurDataUrl ?? undefined}
                   className="object-contain"
                   sizes="100vw"
                   loading={imageLoading}
@@ -489,10 +490,11 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                       ].join(" ")}
                     >
                       {im.url ? (
-                        <Image
+                        <LqipImage
                           src={cldUrl(im.url, { w: 160, h: 160, c: "fill", g: "auto" })}
                           alt={product.title}
                           fill
+                          blurDataUrl={im.blurDataUrl ?? undefined}
                           className="object-cover"
                           sizes="56px"
                           loading={imageLoading}

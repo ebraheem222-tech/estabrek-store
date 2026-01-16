@@ -282,7 +282,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 className="md:hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
                 aria-label="Toggle menu"
               >
-                ?
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
               </button>
 
               <Link href="/" prefetch={settings.prefetchLinks} className="mx-auto flex items-center gap-2">
@@ -367,7 +369,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 className="md:hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
                 aria-label="Toggle menu"
               >
-                ?
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
               </button>
 
               <Link href="/" prefetch={settings.prefetchLinks} className="flex items-center gap-2">
