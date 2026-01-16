@@ -2,8 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useWishlist } from "@/store/wishlist";
+import { LqipImage } from "@/components/LqipImage";
 
 // Icons
 const HeartIcon = () => (
@@ -86,10 +86,12 @@ export default function WishlistPage() {
             <div key={item.id} className="wishlist-card">
               <Link href={`/p/${item.slug}`} className="wishlist-card-image">
                 {item.image ? (
-                  <Image
+                  <LqipImage
                     src={item.image}
                     alt={item.title}
                     fill
+                    blurDataUrl={item.imageBlurDataUrl ?? undefined}
+                    loading="lazy"
                     className="object-cover"
                     sizes="(max-width: 768px) 50vw, 25vw"
                   />
