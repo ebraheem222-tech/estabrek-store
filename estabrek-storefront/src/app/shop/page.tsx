@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listProducts, listCategories } from "@/lib/api";
+import { getPublicSettings, listProducts, listCategories } from "@/lib/api";
 import { ShopGrid } from "@/components/ShopGrid";
 import ShopResultsClient from "@/components/ShopResultsClient";
 import { ProductTile } from "@/components/ProductTile";
@@ -12,6 +12,7 @@ import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/fil
 import { ImageSearchPanel } from "@/components/ImageSearchPanel";
 import { AIRecommendations } from "@/components/AIRecommendations";
 import type { Metadata } from "next";
+import { renderCmsPageBySlug } from "../[[...slug]]/page";
 
 type SP = Record<string, string | string[] | undefined>;
 
@@ -82,6 +83,13 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: SP }) {
+  const settings = await getPublicSettings().catch(() => null);
+  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  if (storefrontCfg.cmsOverrideShop !== false) {
+    const cms = await renderCmsPageBySlug("/shop", searchParams, { allowFallback: false, allowNotFound: false });
+    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+  }
+
   const f = normalizeFiltersFromSearchParams(searchParams);
   const sort = ["latest", "title_asc", "title_desc", "price_asc", "price_desc"].includes(
     f.sort as string

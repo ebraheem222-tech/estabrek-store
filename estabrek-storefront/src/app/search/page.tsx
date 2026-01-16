@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { listCategories, listProducts } from "@/lib/api";
+import { getPublicSettings, listCategories, listProducts } from "@/lib/api";
 import { ProductTile } from "@/components/ProductTile";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import { ImageSearchPanel } from "@/components/ImageSearchPanel";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
+import { renderCmsPageBySlug } from "../[[...slug]]/page";
 
 type SP = Record<string, string | string[] | undefined>;
 
@@ -65,6 +66,13 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 }
 
 export default async function SearchPage({ searchParams }: { searchParams: SP }) {
+  const settings = await getPublicSettings().catch(() => null);
+  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  if (storefrontCfg.cmsOverrideSearch !== false) {
+    const cms = await renderCmsPageBySlug("/search", searchParams, { allowFallback: false, allowNotFound: false });
+    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+  }
+
   const f = normalizeFiltersFromSearchParams(searchParams);
 
   const [cats, out] = await Promise.all([

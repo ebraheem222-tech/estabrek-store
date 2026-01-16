@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import { getBootstrap } from "@/lib/api";
+import { getBootstrap, getPublicSettings } from "@/lib/api";
+import { renderCmsPageBySlug } from "../[[...slug]]/page";
 
 // Icons
 const HomeIcon = () => (
@@ -52,6 +53,13 @@ const UsersIcon = () => (
 );
 
 export default async function AboutPage() {
+  const settings = await getPublicSettings().catch(() => null);
+  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  if (storefrontCfg.cmsOverrideAbout !== false) {
+    const cms = await renderCmsPageBySlug("/about", undefined, { allowFallback: false, allowNotFound: false });
+    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+  }
+
   const bootstrap = await getBootstrap();
   const siteName = bootstrap?.site?.siteName || "Estabrek Store";
 

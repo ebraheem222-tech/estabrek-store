@@ -1,7 +1,15 @@
-import CmsPageRoute from "../[[...slug]]/page";
+import { getPublicSettings } from "@/lib/api";
+import FallbackContact from "@/components/FallbackContact";
+import { renderCmsPageBySlug } from "../[[...slug]]/page";
 
 type SP = Record<string, string | string[] | undefined>;
 
 export default async function ContactPage({ searchParams }: { searchParams?: SP }) {
-  return CmsPageRoute({ params: { slug: ["contact"] }, searchParams });
+  const settings = await getPublicSettings().catch(() => null);
+  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  if (storefrontCfg.cmsOverrideContact !== false) {
+    const cms = await renderCmsPageBySlug("/contact", searchParams, { allowFallback: false, allowNotFound: false });
+    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+  }
+  return <FallbackContact />;
 }
