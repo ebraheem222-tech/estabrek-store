@@ -85,6 +85,7 @@ const DEFAULT_SETTINGS = {
   soldCountEnabled: true,
   
   // Theme
+  themeColorsEnabled: true,
   accentColor: "#8b5cf6",
   accentColor2: "#f59e0b",
   glassEffectsEnabled: true,
@@ -150,16 +151,28 @@ export function StorefrontFeaturesProvider({
 
   // Apply CSS variables for colors
   useEffect(() => {
-    if (mounted && typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--accent', settings.accentColor);
-      document.documentElement.style.setProperty('--accent-2', settings.accentColor2);
-      document.documentElement.style.setProperty('--accent-1', settings.accentColor);
-      document.documentElement.style.setProperty('--accent-3', settings.accentColor2);
-      document.documentElement.style.setProperty('--accent-primary', settings.accentColor);
-      document.documentElement.style.setProperty('--accent-secondary', settings.accentColor2);
-      document.documentElement.dataset.glassEffects = settings.glassEffectsEnabled ? "1" : "0";
+    if (!mounted || typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (settings.themeColorsEnabled !== false) {
+      root.style.setProperty("--accent", settings.accentColor);
+      root.style.setProperty("--accent-2", settings.accentColor2);
+      root.style.setProperty("--accent-1", settings.accentColor);
+      root.style.setProperty("--accent-3", settings.accentColor2);
+      root.style.setProperty("--accent-primary", settings.accentColor);
+      root.style.setProperty("--accent-secondary", settings.accentColor2);
+    } else {
+      ["--accent", "--accent-2", "--accent-1", "--accent-3", "--accent-primary", "--accent-secondary"].forEach((prop) =>
+        root.style.removeProperty(prop)
+      );
     }
-  }, [mounted, settings.accentColor, settings.accentColor2, settings.glassEffectsEnabled]);
+    root.dataset.glassEffects = settings.glassEffectsEnabled ? "1" : "0";
+  }, [
+    mounted,
+    settings.themeColorsEnabled,
+    settings.accentColor,
+    settings.accentColor2,
+    settings.glassEffectsEnabled,
+  ]);
 
   return (
     <StorefrontSettingsContext.Provider value={settings}>

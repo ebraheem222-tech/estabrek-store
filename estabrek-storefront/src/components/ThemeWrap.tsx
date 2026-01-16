@@ -103,8 +103,9 @@ export function ThemeWrap({
 }) {
   const t = theme ?? {};
   const storefront = useStorefrontSettings();
-  const storefrontAccent = resolveCustomColor(storefront.accentColor);
-  const storefrontAccentSoft = resolveCustomColor(storefront.accentColor2);
+  const themeColorsEnabled = storefront.themeColorsEnabled !== false;
+  const storefrontAccent = themeColorsEnabled ? resolveCustomColor(storefront.accentColor) : undefined;
+  const storefrontAccentSoft = themeColorsEnabled ? resolveCustomColor(storefront.accentColor2) : undefined;
   const glassEnabled = storefront.glassEffectsEnabled !== false;
   const baseMode: "dark" | "light" = t.mode === "light" ? "light" : "dark";
   // Default: Estabrak Soft (matches logo + paper background). Keep luxury_gold as selectable preset.
