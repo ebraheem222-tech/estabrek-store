@@ -24,7 +24,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const loading = preset ? { enabled, animationId: preset.id, html: preset.html, css: preset.css } : null;
 
   return (
-    <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId}>
+    <ThemeWrap
+      theme={theme}
+      cursorThemeId={header?.ui?.cursorThemeId}
+      storefrontSettings={initialStorefrontSettings}
+    >
       <UiSettingsProvider loading={loading}>
         <Providers initialStorefrontSettings={initialStorefrontSettings}>
           <AnnouncementBar site={settings.site} />
