@@ -9,11 +9,13 @@ import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
 
+type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
+
 // Default settings - all features
 const DEFAULT_SETTINGS = {
   // Seasonal Effects
   seasonalEffectsEnabled: true,
-  seasonalTheme: "auto" as const,
+  seasonalTheme: "auto" as SeasonalThemeMode,
   seasonalEffectsDuration: 15,
   seasonalEffectsInterval: 60,
   seasonalParticleCount: 25,
