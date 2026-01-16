@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import type { CatalogProduct } from "@/lib/catalog";
-import { getProductMinPrice } from "@/lib/catalog";
+import { getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
+import { LqipImage } from "@/components/LqipImage";
 
 // Icons
 const XIcon = () => (
@@ -107,6 +107,7 @@ export function QuickViewModal({
   const selectedVariant = selectedItem?.variants?.[selectedVariantIndex];
   const images = selectedItem?.images ?? [];
   const currentImage = images[selectedImageIndex]?.url || product.items?.[0]?.images?.[0]?.url;
+  const currentBlur = images[selectedImageIndex]?.blurDataUrl ?? getProductImageBlurDataUrl(product, currentImage ?? null);
   const price = selectedVariant?.price ?? product.items?.[0]?.variants?.[0]?.price;
   const compareAt = compareEnabled ? selectedVariant?.compareAt : undefined;
   const showCompare = compareEnabled && compareAt && Number(compareAt) > Number(price);
@@ -143,10 +144,12 @@ export function QuickViewModal({
           <div className="quick-view-gallery">
             <div className="quick-view-main-image">
               {currentImage && (
-                <Image
+                <LqipImage
                   src={currentImage}
                   alt={product.title}
                   fill
+                  blurDataUrl={currentBlur ?? undefined}
+                  loading="lazy"
                   className="object-contain"
                   sizes="(max-width: 768px) 100vw, 400px"
                 />
@@ -181,10 +184,12 @@ export function QuickViewModal({
                     className={`quick-view-thumb ${idx === selectedImageIndex ? "active" : ""}`}
                     onClick={() => setSelectedImageIndex(idx)}
                   >
-                    <Image
+                    <LqipImage
                       src={img.url}
                       alt={`${product.title} ${idx + 1}`}
                       fill
+                      blurDataUrl={img.blurDataUrl ?? undefined}
+                      loading="lazy"
                       className="object-cover"
                       sizes="60px"
                     />
@@ -382,6 +387,7 @@ export function QuickViewLayer() {
       (product as any).items?.[0]?.images?.[0]?.url ??
       (product as any).images?.[0]?.url ??
       undefined;
+    const imageBlurDataUrl = getProductImageBlurDataUrl(product, imageUrl ?? null) ?? undefined;
     const price = getProductMinPrice(product) ?? undefined;
 
     const nextState = toggleWishlist({
@@ -389,6 +395,7 @@ export function QuickViewLayer() {
       title: product.title,
       slug: (product as any).slug ?? product.id,
       image: imageUrl,
+      imageBlurDataUrl,
       price,
     });
     if (nextState) {

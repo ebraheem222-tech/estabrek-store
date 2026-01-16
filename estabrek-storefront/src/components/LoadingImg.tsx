@@ -9,15 +9,17 @@ function cx(...parts: Array<string | undefined | null | false>) {
 
 export function LoadingImg({
   wrapperClassName,
+  blurDataUrl,
   ...imgProps
 }: React.ImgHTMLAttributes<HTMLImageElement> & {
   wrapperClassName?: string;
+  blurDataUrl?: string | null;
 }) {
-  const settings = useStorefrontSettings();
   const [loaded, setLoaded] = useState(false);
   const src = typeof imgProps.src === "string" ? imgProps.src : undefined;
-  const loading = imgProps.loading ?? (settings.lazyLoadImages ? "lazy" : "eager");
-  const decoding = imgProps.decoding ?? (settings.lazyLoadImages ? "async" : "auto");
+  const settings = useStorefrontSettings();
+  const loading = imgProps.loading ?? "lazy";
+  const decoding = imgProps.decoding ?? "async";
   const blurEnabled = settings.imageBlurEnabled;
 
   if (!src) return null;
@@ -25,9 +27,20 @@ export function LoadingImg({
   const { className, onLoad, ...rest } = imgProps;
   const blurClass = blurEnabled ? (loaded ? "blur-0 scale-100" : "blur-sm scale-[1.02] opacity-90") : "";
   const transitionClass = blurEnabled ? "transition-[filter,transform,opacity] duration-500" : "";
+  const showPlaceholder = blurEnabled && !loaded && typeof blurDataUrl === "string" && blurDataUrl.trim().length > 0;
+  const placeholderStyle = showPlaceholder
+    ? {
+        backgroundImage: `url("${blurDataUrl}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
 
   return (
-    <span className={cx("inline-block", blurEnabled ? "overflow-hidden" : undefined, wrapperClassName)}>
+    <span
+      className={cx("inline-block", blurEnabled ? "overflow-hidden" : undefined, wrapperClassName)}
+      style={placeholderStyle}
+    >
       <img
         {...rest}
         src={src}

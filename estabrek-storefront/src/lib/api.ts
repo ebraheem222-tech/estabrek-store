@@ -157,6 +157,7 @@ export type RecommendedProduct = {
   slug: string;
   title: string;
   imageUrl?: string | null;
+  imageBlurDataUrl?: string | null;
   minPrice?: number | null;
   categoryName?: string | null;
 };

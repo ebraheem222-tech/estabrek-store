@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { ProductTile } from "@/components/ProductTile";
+import { LoadingImg } from "@/components/LoadingImg";
 import type { CatalogProduct } from "@/lib/catalog";
 import {
   clearImageSearchPayload,
@@ -217,7 +218,7 @@ export function ImageSearchPanel() {
       {/* Preview */}
       {previewUrl && (
         <div className="image-search-preview mt-4">
-          <img
+          <LoadingImg
             src={previewUrl}
             alt="Preview"
             className="image-search-preview-img"

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { LoadingImg } from "@/components/LoadingImg";
 
 const CloseIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -48,6 +49,7 @@ interface CartItem {
   price: number;
   quantity: number;
   imageUrl?: string;
+  imageBlurDataUrl?: string;
   maxQuantity?: number;
 }
 
@@ -176,7 +178,12 @@ export function MiniCart({
                 <div key={item.id} className="cart-item">
                   {item.imageUrl && (
                     <div className="item-image">
-                      <img src={item.imageUrl} alt={item.title} />
+                      <LoadingImg
+                        src={item.imageUrl}
+                        alt={item.title}
+                        blurDataUrl={item.imageBlurDataUrl ?? undefined}
+                        className="h-full w-full object-cover"
+                      />
                     </div>
                   )}
                   <div className="item-details">
@@ -229,7 +236,11 @@ export function MiniCart({
               {upsellProducts.slice(0, 3).map((product) => (
                 <div key={product.id} className="upsell-product">
                   {product.imageUrl && (
-                    <img src={product.imageUrl} alt={product.title} />
+                    <LoadingImg
+                      src={product.imageUrl}
+                      alt={product.title}
+                      className="h-full w-full object-cover"
+                    />
                   )}
                   <div className="upsell-info">
                     <span className="title">{product.title}</span>

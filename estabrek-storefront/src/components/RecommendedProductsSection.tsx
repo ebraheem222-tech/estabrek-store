@@ -1,9 +1,9 @@
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { recommendProducts } from "@/lib/api";
 import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
+import { LqipImage } from "@/components/LqipImage";
 
 export default async function RecommendedProductsSection({
   productId,
@@ -42,10 +42,12 @@ export default async function RecommendedProductsSection({
           >
             <div className="relative aspect-[4/5] w-full overflow-hidden bg-black/[0.04]">
               {p.imageUrl ? (
-                <Image
+                <LqipImage
                   src={cldUrl(p.imageUrl, { w: 600, h: 750, c: "fill", g: "auto" })}
                   alt={p.title}
                   fill
+                  blurDataUrl={p.imageBlurDataUrl ?? undefined}
+                  loading="lazy"
                   className="object-cover transition duration-500 group-hover:scale-[1.03] will-change-transform"
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
@@ -63,4 +65,3 @@ export default async function RecommendedProductsSection({
     </div>
   );
 }
-

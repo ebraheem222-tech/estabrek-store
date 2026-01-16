@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { ProductGallery } from "@/components/ProductGallery";
 import ProductBuyBox from "@/components/ProductBuyBox";
-import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
+import { formatMoney, getProductMinPrice, getProductPrimaryImage, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
 
@@ -20,6 +20,7 @@ export default function ProductDetail({ product }: { product: CatalogProduct }) 
   const [colorKey, setColorKey] = useState<string | undefined>(init);
   const minPrice = useMemo(() => getProductMinPrice(product), [product]);
   const primaryImage = useMemo(() => getProductPrimaryImage(product), [product]);
+  const primaryBlur = useMemo(() => getProductImageBlurDataUrl(product, primaryImage), [product, primaryImage]);
   const settings = useStorefrontSettings();
   const { addToRecentlyViewed } = useRecentlyViewed();
 
@@ -51,9 +52,10 @@ export default function ProductDetail({ product }: { product: CatalogProduct }) 
       title: product.title,
       slug: product.slug,
       image: primaryImage ?? undefined,
+      imageBlurDataUrl: primaryBlur ?? undefined,
       price: minPrice ?? undefined,
     });
-  }, [addToRecentlyViewed, minPrice, primaryImage, product?.id, product?.slug, product?.title]);
+  }, [addToRecentlyViewed, minPrice, primaryBlur, primaryImage, product?.id, product?.slug, product?.title]);
 
   return (
     <div className="space-y-8">

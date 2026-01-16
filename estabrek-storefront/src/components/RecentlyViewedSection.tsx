@@ -2,9 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { LqipImage } from "@/components/LqipImage";
 
 // Icons
 const ClockIcon = () => (
@@ -79,10 +79,12 @@ export function RecentlyViewedSection({
             >
               <div className="recently-viewed-image">
                 {item.image ? (
-                  <Image
+                  <LqipImage
                     src={item.image}
                     alt={item.title}
                     fill
+                    blurDataUrl={item.imageBlurDataUrl ?? undefined}
+                    loading="lazy"
                     className="object-cover"
                     sizes="120px"
                   />
@@ -142,10 +144,12 @@ export function RecentlyViewedCompact({
           >
             <div className="recently-viewed-compact-image">
               {item.image ? (
-                <Image
+                <LqipImage
                   src={item.image}
                   alt={item.title}
                   fill
+                  blurDataUrl={item.imageBlurDataUrl ?? undefined}
+                  loading="lazy"
                   className="object-cover"
                   sizes="48px"
                 />

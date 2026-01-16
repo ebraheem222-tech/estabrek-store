@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
-import { formatMoney, getProductPrimaryImage, getProductMinPrice } from "@/lib/catalog";
+import { formatMoney, getProductPrimaryImage, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useQuickView } from "@/components/QuickViewModal";
+import { LqipImage } from "@/components/LqipImage";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -109,7 +109,6 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   const [autoIndex, setAutoIndex] = useState(0);
   const tiltEnabled = settings.cardTiltEffectEnabled;
   const prefetchEnabled = settings.prefetchLinks;
-  const lazyLoadImages = settings.lazyLoadImages;
   const quickViewEnabled = settings.productQuickView;
 
   // 3D tilt effect
@@ -170,6 +169,8 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   const [shownImg, setShownImg] = useState<string>(targetImg);
   const [prevImg, setPrevImg] = useState<string | null>(null);
   const [fadeIn, setFadeIn] = useState(true);
+  const shownBlur = useMemo(() => getProductImageBlurDataUrl(product, shownImg), [product, shownImg]);
+  const prevBlur = useMemo(() => getProductImageBlurDataUrl(product, prevImg), [product, prevImg]);
   const shownImgRef = useRef(shownImg);
   const rafRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
@@ -266,11 +267,12 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
             {shownImg ? (
               <>
                 {prevImg ? (
-                    <Image
+                    <LqipImage
                       src={cldUrl(prevImg, { w: 600, h: 750, c: "fill", g: "auto" })}
                       alt={product.title}
                       fill
-                      loading={lazyLoadImages ? "lazy" : "eager"}
+                      loading="lazy"
+                      blurDataUrl={prevBlur ?? undefined}
                       className={
                         "object-cover product-image-zoom will-change-transform " +
                         (fadeIn ? "opacity-0" : "opacity-100")
@@ -278,11 +280,12 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   />
                 ) : null}
-                <Image
+                <LqipImage
                   src={cldUrl(shownImg, { w: 600, h: 750, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
-                  loading={lazyLoadImages ? "lazy" : "eager"}
+                  loading="lazy"
+                  blurDataUrl={shownBlur ?? undefined}
                   className={
                     "object-cover product-image-zoom will-change-transform " +
                     (prevImg ? (fadeIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1") : "opacity-100")

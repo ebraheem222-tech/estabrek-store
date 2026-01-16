@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import { LoadingImg } from "@/components/LoadingImg";
 
 // Confetti Particle
 interface Particle {
@@ -266,7 +267,7 @@ export function AddToCartSuccess({ isVisible, productImage }: { isVisible: boole
       </div>
       {productImage && (
         <div className="success-image">
-          <img src={productImage} alt="Added to cart" />
+          <LoadingImg src={productImage} alt="Added to cart" className="h-full w-full object-cover" />
         </div>
       )}
       <span className="success-text">تمت الإضافة للسلة!</span>
@@ -287,7 +288,7 @@ export function useFlyToCart() {
     const flyingEl = document.createElement("div");
     flyingEl.className = "flying-to-cart";
     flyingEl.innerHTML = imageUrl
-      ? `<img src="${imageUrl}" alt="" />`
+      ? `<img src="${imageUrl}" alt="" loading="lazy" decoding="async" />`
       : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3.5 6h17M16 10a4 4 0 01-8 0"/></svg>`;
 
     flyingEl.style.cssText = `

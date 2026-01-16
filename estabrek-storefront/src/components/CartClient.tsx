@@ -96,6 +96,7 @@ type Quote = {
     sizeName?: string | null;
     sku?: string | null;
     imageUrl?: string | null;
+    imageBlurDataUrl?: string | null;
     unitPrice?: string | number;
     lineSubtotal?: string | number;
     lineDiscount?: string | number;
@@ -356,6 +357,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                       <LoadingImg
                         src={line.imageUrl}
                         alt={title}
+                        blurDataUrl={line.imageBlurDataUrl ?? undefined}
                         wrapperClassName="block h-full w-full"
                         className="h-full w-full object-cover"
                       />

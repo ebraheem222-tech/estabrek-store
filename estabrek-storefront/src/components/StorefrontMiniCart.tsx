@@ -15,6 +15,7 @@ type Quote = {
     colorName?: string | null;
     sizeName?: string | null;
     imageUrl?: string | null;
+    imageBlurDataUrl?: string | null;
   }>;
 };
 
@@ -90,6 +91,7 @@ export function StorefrontMiniCart({
         price: Number(line.unitPrice ?? 0),
         quantity: Number(line.quantity ?? 0),
         imageUrl: line.imageUrl ?? undefined,
+        imageBlurDataUrl: line.imageBlurDataUrl ?? undefined,
       };
     });
   }, [quote]);

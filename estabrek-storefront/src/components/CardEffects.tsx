@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { LoadingImg } from "@/components/LoadingImg";
 
 interface TiltCardProps {
   children: React.ReactNode;
@@ -121,7 +122,7 @@ export function HoverRevealCard({ image, title, subtitle, className = "", onClic
   return (
     <div className={`hover-reveal-card ${className}`} onClick={onClick}>
       <div className="hover-reveal-image">
-        <img src={image} alt={title} />
+        <LoadingImg src={image} alt={title} className="h-full w-full object-cover" />
       </div>
       <div className="hover-reveal-content">
         <h3>{title}</h3>

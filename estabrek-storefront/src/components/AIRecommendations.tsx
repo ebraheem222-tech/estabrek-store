@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { LoadingImg } from "@/components/LoadingImg";
 
 const SparklesIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -27,6 +28,7 @@ interface Product {
   title: string;
   slug: string;
   imageUrl?: string;
+  imageBlurDataUrl?: string;
   price?: number;
   originalPrice?: number;
   score?: number;
@@ -142,7 +144,12 @@ export function AIRecommendations({
             >
               {product.imageUrl && (
                 <div className="ai-product-image">
-                  <img src={product.imageUrl} alt={product.title} />
+                  <LoadingImg
+                    src={product.imageUrl}
+                    alt={product.title}
+                    blurDataUrl={product.imageBlurDataUrl ?? undefined}
+                    className="h-full w-full object-cover"
+                  />
                   {product.score && product.score > 0.8 && (
                     <span className="match-badge">تطابق عالي</span>
                   )}
@@ -219,7 +226,14 @@ export function CompleteTheLook({
         ) : (
           products.map((product) => (
             <Link key={product.id} href={`/p/${product.slug}`} className="complete-item">
-              {product.imageUrl && <img src={product.imageUrl} alt={product.title} />}
+              {product.imageUrl && (
+                <LoadingImg
+                  src={product.imageUrl}
+                  alt={product.title}
+                  blurDataUrl={product.imageBlurDataUrl ?? undefined}
+                  className="h-full w-full object-cover"
+                />
+              )}
               <div className="complete-overlay">
                 <span>{product.title}</span>
                 {product.price && <span className="price">₪{product.price}</span>}
@@ -268,7 +282,14 @@ export function CustomersAlsoBought({ productId, apiBaseUrl }: { productId: stri
       <div className="also-bought-grid">
         {products.map((product) => (
           <Link key={product.id} href={`/p/${product.slug}`} className="also-bought-item">
-            {product.imageUrl && <img src={product.imageUrl} alt={product.title} />}
+            {product.imageUrl && (
+              <LoadingImg
+                src={product.imageUrl}
+                alt={product.title}
+                blurDataUrl={product.imageBlurDataUrl ?? undefined}
+                className="h-full w-full object-cover"
+              />
+            )}
             <span className="title">{product.title}</span>
             {product.price && <span className="price">₪{product.price}</span>}
           </Link>

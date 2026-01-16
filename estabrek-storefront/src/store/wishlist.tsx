@@ -7,6 +7,7 @@ interface WishlistItem {
   title: string;
   slug: string;
   image?: string;
+  imageBlurDataUrl?: string;
   price?: number;
   addedAt: number;
 }

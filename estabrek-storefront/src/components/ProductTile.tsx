@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
-import { formatMoney, getProductPrimaryImage } from "@/lib/catalog";
+import { formatMoney, getProductPrimaryImage, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { cldUrl } from "@/lib/cloudinary";
 import { prefetchProductQuickAdd } from "@/lib/apiClient";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useQuickView } from "@/components/QuickViewModal";
+import { LqipImage } from "@/components/LqipImage";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -69,8 +69,9 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
   const [isHovered, setIsHovered] = useState(false);
   const tiltEnabled = settings.cardTiltEffectEnabled;
   const prefetchEnabled = settings.prefetchLinks;
-  const lazyLoadImages = settings.lazyLoadImages;
   const quickViewEnabled = settings.productQuickView;
+  const primaryBlur = getProductImageBlurDataUrl(product, primary ?? null);
+  const secondaryBlur = getProductImageBlurDataUrl(product, secondary ?? null);
 
   // 3D tilt effect
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -117,11 +118,12 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
             {primary ? (
               <>
-                <Image
+                <LqipImage
                   src={cldUrl(primary, { w: 600, h: 750, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
-                  loading={lazyLoadImages ? "lazy" : "eager"}
+                  loading="lazy"
+                  blurDataUrl={primaryBlur ?? undefined}
                   className={[
                     "object-cover product-image-zoom will-change-transform",
                     secondary ? "opacity-100 group-hover:opacity-0" : "opacity-100",
@@ -129,11 +131,12 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
                 {secondary ? (
-                  <Image
+                  <LqipImage
                     src={cldUrl(secondary, { w: 600, h: 750, c: "fill", g: "auto" })}
                     alt={product.title}
                     fill
-                    loading={lazyLoadImages ? "lazy" : "eager"}
+                    loading="lazy"
+                    blurDataUrl={secondaryBlur ?? undefined}
                     className="object-cover product-image-zoom opacity-0 transition duration-500 group-hover:opacity-100 will-change-transform"
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   />

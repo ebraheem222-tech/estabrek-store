@@ -14,6 +14,7 @@ export type CatalogImage = {
   alt?: string | null;
   isPrimary?: boolean;
   position?: number;
+  blurDataUrl?: string | null;
 };
 
 export type CatalogSize = { id: string; name: string; value?: string | null };
@@ -106,6 +107,25 @@ export function getProductPrimaryImage(p: CatalogProduct): string | null {
     const primary = imgs.find((im) => im.isPrimary) ?? imgs[0];
     if (primary?.url) return primary.url;
   }
+  return null;
+}
+
+export function getProductImageBlurDataUrl(p: CatalogProduct, url?: string | null): string | null {
+  const target = String(url ?? "").trim();
+  if (!target) return null;
+
+  const productImages = (p as any).images as Array<{ url?: string; blurDataUrl?: string | null }> | undefined;
+  if (Array.isArray(productImages)) {
+    const hit = productImages.find((im) => im?.url === target);
+    if (hit?.blurDataUrl) return hit.blurDataUrl;
+  }
+
+  for (const it of p.items ?? []) {
+    for (const im of it.images ?? []) {
+      if ((im as any)?.url === target) return (im as any)?.blurDataUrl ?? null;
+    }
+  }
+
   return null;
 }
 

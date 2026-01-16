@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { LqipImage } from "@/components/LqipImage";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -38,7 +38,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const item = itemsWithKeys.find((it) => it.__key === itemId) ?? itemsWithKeys[0];
 
   const images = useMemo(() => {
-    const imgs = (item?.images ?? []) as Array<{ id?: string | null; url?: string | null; isPrimary?: boolean }>;
+    const imgs = (item?.images ?? []) as Array<{ id?: string | null; url?: string | null; blurDataUrl?: string | null; isPrimary?: boolean }>;
     const primaryIdx = imgs.findIndex((im: { isPrimary?: boolean }) => im.isPrimary);
     if (primaryIdx > 0) {
       const copy = [...imgs];
@@ -65,9 +65,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const mainImageRef = useRef<HTMLDivElement>(null);
   const zoomEnabled = settings.productZoomEnabled;
-  const lazyLoadImages = settings.lazyLoadImages;
-  const mainImagePriority = !lazyLoadImages;
-  const imageLoading = lazyLoadImages ? "lazy" : "eager";
+  const imageLoading: "lazy" = "lazy";
 
   useEffect(() => {
     setActiveIdx(0);
@@ -203,11 +201,12 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               aria-label="Open image"
             />
 
-            <Image
+            <LqipImage
               key={active.url}
               src={cldUrl(active.url, { w: 1400, c: "fit" })}
               alt={product.title}
               fill
+              blurDataUrl={active.blurDataUrl ?? undefined}
               className={
                 "object-cover will-change-transform transition-transform duration-500 " +
                 (dir === "next" ? "anim-slide-in-right" : "anim-slide-in-left") +
@@ -215,16 +214,16 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               }
               style={zoomActive ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : undefined}
               sizes="(max-width: 1024px) 100vw, 50vw"
-              priority={mainImagePriority}
-              loading={mainImagePriority ? undefined : imageLoading}
+              loading={imageLoading}
             />
             
             {/* Hover swap to secondary */}
               {!galleryMode && secondary?.url && activeIdx === 0 ? (
-                <Image
+                <LqipImage
                   src={cldUrl(secondary.url, { w: 1400, c: "fit" })}
                   alt={product.title}
                   fill
+                  blurDataUrl={secondary.blurDataUrl ?? undefined}
                   className="object-cover opacity-0 transition duration-500 hover:opacity-100"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   loading={imageLoading}
@@ -329,10 +328,11 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                   ].join(" ")}
                 >
                   {im.url ? (
-                    <Image 
+                    <LqipImage 
                       src={cldUrl(im.url, { w: 160, h: 160, c: "fill", g: "auto" })} 
                       alt={product.title} 
                       fill 
+                      blurDataUrl={im.blurDataUrl ?? undefined}
                       className="object-cover" 
                       sizes="56px"
                       loading={imageLoading}
@@ -376,10 +376,11 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               style={{ animationDelay: `${idx * 50}ms` }}
             >
               {im.url ? (
-                <Image 
+                <LqipImage 
                   src={cldUrl(im.url, { w: 400, h: 500, c: "fill", g: "auto" })} 
                   alt={product.title} 
                   fill 
+                  blurDataUrl={im.blurDataUrl ?? undefined}
                   className="object-cover transition-transform duration-300 group-hover:scale-105" 
                   sizes="(max-width: 768px) 50vw, 33vw"
                   loading={imageLoading}

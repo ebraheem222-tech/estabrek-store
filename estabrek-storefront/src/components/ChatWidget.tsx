@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
+import { LoadingImg } from "@/components/LoadingImg";
 
 type Role = "user" | "assistant";
 
@@ -11,6 +12,7 @@ type RecommendedProduct = {
   slug: string;
   title: string;
   imageUrl?: string | null;
+  imageBlurDataUrl?: string | null;
   minPrice?: number | null;
 };
 
@@ -248,12 +250,11 @@ export default function ChatWidget() {
                         >
                           <div className="aspect-[4/3] w-full bg-black/[0.04]">
                             {p.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
+                              <LoadingImg
                                 src={cldUrl(p.imageUrl, { w: 320, h: 240, c: "fill", g: "auto" })}
                                 alt={p.title}
+                                blurDataUrl={p.imageBlurDataUrl ?? undefined}
                                 className="h-full w-full object-cover"
-                                loading="lazy"
                               />
                             ) : null}
                           </div>

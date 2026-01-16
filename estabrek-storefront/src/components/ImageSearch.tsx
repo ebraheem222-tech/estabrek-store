@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { LoadingImg } from "@/components/LoadingImg";
+import { getProductImageBlurDataUrl } from "@/lib/catalog";
 
 const CameraIcon = () => (
   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -175,7 +177,7 @@ export function ImageSearchModal({ onClose, apiBaseUrl }: ImageSearchProps) {
         {preview && (
           <div className="image-search-preview-section">
             <div className="image-search-preview">
-              <img src={preview} alt="Preview" />
+              <LoadingImg src={preview} alt="Preview" className="h-full w-full object-cover" />
               <button className="preview-clear" onClick={clearSearch}>
                 <CloseIcon />
               </button>
@@ -207,7 +209,12 @@ export function ImageSearchModal({ onClose, apiBaseUrl }: ImageSearchProps) {
                     >
                       {product.imageUrl && (
                         <div className="result-image">
-                          <img src={product.imageUrl} alt={product.title} />
+                          <LoadingImg
+                            src={product.imageUrl}
+                            alt={product.title}
+                            blurDataUrl={getProductImageBlurDataUrl(product, product.imageUrl ?? null) ?? undefined}
+                            className="h-full w-full object-cover"
+                          />
                           {product.similarity && (
                             <span className="similarity-badge">
                               {Math.round(product.similarity * 100)}% تطابق

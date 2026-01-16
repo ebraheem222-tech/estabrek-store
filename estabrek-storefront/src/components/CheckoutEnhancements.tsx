@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { LoadingImg } from "@/components/LoadingImg";
 
 // ============ PROGRESS STEPS ============
 
@@ -223,6 +224,7 @@ interface OrderItem {
   quantity: number;
   price: number;
   imageUrl?: string;
+  imageBlurDataUrl?: string;
 }
 
 interface OrderSummaryProps {
@@ -290,7 +292,12 @@ export function OrderSummary({
           >
             {item.imageUrl && (
               <div className="item-image">
-                <img src={item.imageUrl} alt={item.title} />
+                <LoadingImg
+                  src={item.imageUrl}
+                  alt={item.title}
+                  blurDataUrl={item.imageBlurDataUrl ?? undefined}
+                  className="h-full w-full object-cover"
+                />
                 <span className="quantity-badge">{item.quantity}</span>
               </div>
             )}

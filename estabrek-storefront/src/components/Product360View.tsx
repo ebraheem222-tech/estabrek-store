@@ -271,6 +271,8 @@ export function Product360View({
             src={images[currentIndex]}
             alt={`360° view - frame ${currentIndex + 1}`}
             draggable={false}
+            loading="lazy"
+            decoding="async"
             style={{ pointerEvents: "none" }}
           />
         </div>
@@ -388,6 +390,8 @@ export function Simple360Hover({ image, alt = "", className = "" }: Simple360Pro
       <img
         src={image}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         style={{
           transform: `perspective(1000px) rotateY(${rotation}deg)`,
         }}
@@ -439,6 +443,8 @@ export function ProductGallery({
             <img
               src={images[activeIndex]}
               alt={`${productName} - صورة ${activeIndex + 1}`}
+              loading="lazy"
+              decoding="async"
               style={isZoomed ? {
                 transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
               } : undefined}
@@ -472,7 +478,12 @@ export function ProductGallery({
               className={`thumb ${activeIndex === i ? "active" : ""}`}
               onClick={() => setActiveIndex(i)}
             >
-              <img src={img} alt={`${productName} - مصغرة ${i + 1}`} />
+              <img
+                src={img}
+                alt={`${productName} - مصغرة ${i + 1}`}
+                loading="lazy"
+                decoding="async"
+              />
             </button>
           ))}
           {images360?.length && (

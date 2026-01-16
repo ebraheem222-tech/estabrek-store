@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { LoadingImg } from "@/components/LoadingImg";
 
 function formatTimeAgo(ts: number) {
   const minutes = Math.max(1, Math.floor((Date.now() - ts) / 60000));
@@ -36,11 +37,11 @@ export function RecentActivityPopup() {
       <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">نشاط مؤخراً</div>
       <div className="mt-2 flex items-center gap-3">
         {item.image ? (
-          <img
+          <LoadingImg
             src={item.image}
             alt={item.title}
+            blurDataUrl={item.imageBlurDataUrl ?? undefined}
             className="h-10 w-10 rounded-xl object-cover border border-white/10"
-            loading="lazy"
           />
         ) : (
           <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10" />
