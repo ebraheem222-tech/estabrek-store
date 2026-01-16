@@ -35,6 +35,33 @@ body {
   color: rgba(255,255,255,0.92);
 }
 
+/* Scroll progress bar */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 70;
+  background: rgba(255,255,255,0.06);
+  pointer-events: none;
+}
+
+.scroll-progress-bar {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    var(--accent, #8b5cf6),
+    var(--accent-2, #f59e0b),
+    var(--accent-3, #ec4899)
+  );
+  box-shadow: 0 0 12px rgba(0,0,0,0.25);
+  transition: transform 0.08s linear;
+}
+
 /* Small helper for nicer scrollbars on desktop */
 * {
   scrollbar-width: thin;
@@ -9555,6 +9582,7 @@ html {
 
 .mini-cart-overlay.closing {
   animation: fadeOut 0.3s ease forwards;
+  pointer-events: none;
 }
 
 @keyframes fadeIn {
@@ -9583,6 +9611,7 @@ html {
 
 .mini-cart.closing {
   animation: slideOutLeft 0.3s ease forwards;
+  pointer-events: none;
 }
 
 @keyframes slideInLeft {
