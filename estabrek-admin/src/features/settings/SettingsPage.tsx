@@ -241,6 +241,14 @@ type StorefrontConfig = {
   recentPurchasesPopup: boolean;
   viewersCountEnabled: boolean;
   soldCountEnabled: boolean;
+
+  // CMS Overrides (core pages)
+  cmsOverrideHome: boolean;
+  cmsOverrideShop: boolean;
+  cmsOverrideAbout: boolean;
+  cmsOverrideContact: boolean;
+  cmsOverrideSearch: boolean;
+  cmsOverrideCart: boolean;
   
   // Theme & Colors
   themeColorsEnabled: boolean;
@@ -253,6 +261,7 @@ type StorefrontConfig = {
   lazyLoadImages: boolean;
   skeletonLoadingEnabled: boolean;
   prefetchLinks: boolean;
+  imageBlurEnabled: boolean;
 };
 
 function normalizeStorefront(v: any): StorefrontConfig {
@@ -328,6 +337,14 @@ function normalizeStorefront(v: any): StorefrontConfig {
     recentPurchasesPopup: o.recentPurchasesPopup === true,
     viewersCountEnabled: o.viewersCountEnabled === true,
     soldCountEnabled: o.soldCountEnabled !== false,
+
+    // CMS Overrides (core pages)
+    cmsOverrideHome: o.cmsOverrideHome !== false,
+    cmsOverrideShop: o.cmsOverrideShop !== false,
+    cmsOverrideAbout: o.cmsOverrideAbout !== false,
+    cmsOverrideContact: o.cmsOverrideContact !== false,
+    cmsOverrideSearch: o.cmsOverrideSearch !== false,
+    cmsOverrideCart: o.cmsOverrideCart !== false,
     
     // Theme
     themeColorsEnabled: o.themeColorsEnabled !== false,
@@ -340,6 +357,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     lazyLoadImages: o.lazyLoadImages !== false,
     skeletonLoadingEnabled: o.skeletonLoadingEnabled !== false,
     prefetchLinks: o.prefetchLinks !== false,
+    imageBlurEnabled: o.imageBlurEnabled === true,
   };
 }
 
@@ -2354,6 +2372,46 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
+                  {/* CMS Overrides */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="mb-3 text-sm font-semibold flex items-center gap-2">
+                      <span className="text-lg">🧩</span>
+                      صفحات CMS الأساسية
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Toggle
+                        label="الصفحة الرئيسية (/)"
+                        checked={storefrontCfg.cmsOverrideHome}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, cmsOverrideHome: v }))}
+                      />
+                      <Toggle
+                        label="المتجر (/shop)"
+                        checked={storefrontCfg.cmsOverrideShop}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, cmsOverrideShop: v }))}
+                      />
+                      <Toggle
+                        label="من نحن (/about)"
+                        checked={storefrontCfg.cmsOverrideAbout}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, cmsOverrideAbout: v }))}
+                      />
+                      <Toggle
+                        label="تواصل معنا (/contact)"
+                        checked={storefrontCfg.cmsOverrideContact}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, cmsOverrideContact: v }))}
+                      />
+                      <Toggle
+                        label="البحث (/search)"
+                        checked={storefrontCfg.cmsOverrideSearch}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, cmsOverrideSearch: v }))}
+                      />
+                      <Toggle
+                        label="السلة (/cart)"
+                        checked={storefrontCfg.cmsOverrideCart}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, cmsOverrideCart: v }))}
+                      />
+                    </div>
+                  </div>
+
                   {/* Theme & Colors */}
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <div className="mb-3 text-sm font-semibold flex items-center gap-2">
@@ -2424,6 +2482,11 @@ export default function SettingsPage() {
                         label="تحميل الصور الكسول"
                         checked={storefrontCfg.lazyLoadImages}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, lazyLoadImages: v }))}
+                      />
+                      <Toggle
+                        label="تمويه الصور أثناء التحميل"
+                        checked={storefrontCfg.imageBlurEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, imageBlurEnabled: v }))}
                       />
                       <Toggle
                         label="هياكل التحميل"
