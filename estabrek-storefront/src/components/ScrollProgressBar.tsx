@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 
-export function ScrollProgressBar() {
+type ScrollProgressBarProps = {
+  placement?: "overlay" | "under-header";
+};
+
+export function ScrollProgressBar({ placement = "overlay" }: ScrollProgressBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,8 +45,11 @@ export function ScrollProgressBar() {
     };
   }, []);
 
+  const rootClass =
+    placement === "under-header" ? "scroll-progress scroll-progress--under-header" : "scroll-progress";
+
   return (
-    <div className="scroll-progress" aria-hidden="true">
+    <div className={rootClass} aria-hidden="true">
       <div ref={barRef} className="scroll-progress-bar" />
     </div>
   );

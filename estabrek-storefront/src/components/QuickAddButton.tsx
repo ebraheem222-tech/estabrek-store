@@ -9,6 +9,7 @@ import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
+import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 
 type Props = {
   productId?: string;
@@ -114,14 +115,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
     setOpen(true);
   }
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   function close() {
     setClosing(true);

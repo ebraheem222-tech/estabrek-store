@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
 import { getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
@@ -10,6 +11,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
 import { LqipImage } from "@/components/LqipImage";
+import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 
 // Icons
 const XIcon = () => (
@@ -336,18 +338,25 @@ const QuickViewContext = React.createContext<QuickViewContextValue | undefined>(
 export function QuickViewProvider({ children }: { children: React.ReactNode }) {
   const [currentProduct, setCurrentProduct] = useState<CatalogProduct | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  useBodyScrollLock(isOpen);
 
   const openQuickView = (product: CatalogProduct) => {
     setCurrentProduct(product);
     setIsOpen(true);
-    document.body.style.overflow = "hidden";
   };
 
   const closeQuickView = () => {
     setIsOpen(false);
-    document.body.style.overflow = "";
     setTimeout(() => setCurrentProduct(null), 300);
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    closeQuickView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   return (
     <QuickViewContext.Provider value={{ openQuickView, closeQuickView, currentProduct, isOpen }}>
@@ -380,6 +389,7 @@ export function QuickViewLayer() {
     addItem(variantId, quantity);
     fireConfetti();
     toast.cartAdded(_product.title);
+    closeQuickView();
   };
 
   const handleToggleWishlist = (product: CatalogProduct) => {

@@ -5,6 +5,7 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { LqipImage } from "@/components/LqipImage";
+import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -78,10 +79,10 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
     if (!zoomEnabled) setIsZoomed(false);
   }, [zoomEnabled]);
 
+  useBodyScrollLock(lightbox);
+
   useEffect(() => {
     if (!lightbox) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setLightbox(false);
       if (e.key === "ArrowLeft") setActiveIdx((i) => Math.max(0, i - 1));
@@ -89,7 +90,6 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
   }, [lightbox, images.length]);

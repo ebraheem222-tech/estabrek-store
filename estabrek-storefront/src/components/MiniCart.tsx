@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { LoadingImg } from "@/components/LoadingImg";
+import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 
 const CloseIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -97,16 +98,11 @@ export function MiniCart({
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
   const freeShippingProgress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
 
-  // Lock body scroll while the cart is open.
   useEffect(() => {
-    if (!isOpen) return;
-    setIsAnimating(true);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    if (isOpen) setIsAnimating(true);
   }, [isOpen]);
+
+  useBodyScrollLock(isOpen || isAnimating);
 
   // Fallback: ensure closing overlay unmounts even if animationend never fires.
   useEffect(() => {

@@ -72,6 +72,7 @@ const DEFAULT_SETTINGS = {
   scrollToTopEnabled: true,
   breadcrumbsEnabled: true,
   stickyHeaderEnabled: true,
+  scrollProgressEnabled: true,
   
   // Notifications
   toastNotificationsEnabled: true,

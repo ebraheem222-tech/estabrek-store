@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 
 export function MobileFiltersDrawer({
   children,
@@ -20,15 +21,7 @@ export function MobileFiltersDrawer({
     }, 220);
   }
 
-  useEffect(() => {
-    if (!open) return;
-    // lock scroll while drawer is open
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
 
   return (
     <>

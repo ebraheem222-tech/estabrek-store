@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { LoadingImg } from "@/components/LoadingImg";
 import { StorefrontMiniCart } from "@/components/StorefrontMiniCart";
+import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import type { MenuTree, SitePublicSettings, NavItem } from "@/lib/types";
 import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -157,6 +158,11 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const [mobileOpen, setMobileOpen] = useState(false);
   const [miniCartOpen, setMiniCartOpen] = useState(false);
   const settings = useStorefrontSettings();
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setMiniCartOpen(false);
+  }, [pathname]);
 
   const cmsNavCfg = cmsNav && typeof cmsNav === "object" ? cmsNav : null;
   const cmsNavEnabled = cmsNavCfg ? (cmsNavCfg.enabled ?? cmsNavCfg?.props?.enabled ?? true) : false;
@@ -488,6 +494,10 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
             </div>
           </div>
         </div>
+      ) : null}
+
+      {settings.scrollProgressEnabled ? (
+        <ScrollProgressBar placement={sticky ? "under-header" : "overlay"} />
       ) : null}
 
       {settings.miniCartEnabled ? (
