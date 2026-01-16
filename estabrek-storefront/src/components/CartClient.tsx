@@ -459,7 +459,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                       dir="ltr"
                     />
                     <button
-                      onClick={refreshQuote}
+                      onClick={() => void refreshQuote()}
                       className="px-4 py-2.5 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
                     >
                       تطبيق
