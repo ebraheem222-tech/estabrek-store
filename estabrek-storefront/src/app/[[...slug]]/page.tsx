@@ -1,6 +1,16 @@
 import React from "react";
 import { notFound } from "next/navigation";
-import { getBootstrap, getBestSellersIds, getNewArrivalsIds, getPageBySlug, getProductById, getProductBySlug, listProducts, listCategories } from "@/lib/api";
+import {
+  getBootstrap,
+  getBestSellersIds,
+  getNewArrivalsIds,
+  getPageBySlug,
+  getProductById,
+  getProductBySlug,
+  getPublicSettings,
+  listProducts,
+  listCategories,
+} from "@/lib/api";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
 import { paramsToSlug } from "@/lib/slug";
 import { CmsPageRenderer } from "@/cms";
@@ -32,8 +42,13 @@ function walkComponents(list: any[] | undefined, visit: (c: any) => void, seen =
 
 type SP = Record<string, string | string[] | undefined>;
 
-export default async function CmsPageRoute({ params, searchParams }: { params?: { slug?: string[] }; searchParams?: SP }) {
-  const slug = paramsToSlug(params);
+export async function renderCmsPageBySlug(
+  slug: string,
+  searchParams?: SP,
+  options?: { allowFallback?: boolean; allowNotFound?: boolean }
+) {
+  const allowFallback = options?.allowFallback !== false;
+  const allowNotFound = options?.allowNotFound !== false;
 
   // URL-driven filters for CMS data components (ProductGrid/ProductSlider + FiltersBar)
   const f = normalizeFiltersFromSearchParams(searchParams ?? {});
@@ -41,13 +56,17 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
   const page = await getPageBySlug(slug);
 
   // ✅ Fallback pages if CMS page isn't published yet
-
   if (!page) {
-    if (slug === "/") return <FallbackHome />;
-    if (slug === "/shop") return <FallbackShop />;
-    if (slug === "/cart") return <CartClient />;
-    if (slug === "/contact") return <FallbackContact />;
-    notFound();
+    if (allowFallback) {
+      if (slug === "/") return <FallbackHome />;
+      if (slug === "/shop") return <FallbackShop />;
+      if (slug === "/cart") return <CartClient />;
+      if (slug === "/contact") return <FallbackContact />;
+      if (allowNotFound) notFound();
+      return null;
+    }
+    if (allowNotFound) notFound();
+    return null;
   }
 
   const bootstrap = await getBootstrap();
@@ -325,4 +344,22 @@ export default async function CmsPageRoute({ params, searchParams }: { params?: 
       <ScriptTags scripts={(page as any).bodyScripts} />
     </>
   );
+}
+
+export default async function CmsPageRoute({
+  params,
+  searchParams,
+}: {
+  params?: { slug?: string[] };
+  searchParams?: SP;
+}) {
+  const slug = paramsToSlug(params);
+  if (slug === "/") {
+    const settings = await getPublicSettings().catch(() => null);
+    const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+    if (storefrontCfg.cmsOverrideHome === false) {
+      return <FallbackHome />;
+    }
+  }
+  return renderCmsPageBySlug(slug, searchParams, { allowFallback: true, allowNotFound: true });
 }
