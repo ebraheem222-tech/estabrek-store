@@ -84,6 +84,14 @@ const DEFAULT_SETTINGS = {
   viewersCountEnabled: false,
   soldCountEnabled: true,
   
+  // CMS Overrides (core pages)
+  cmsOverrideHome: true,
+  cmsOverrideShop: true,
+  cmsOverrideAbout: true,
+  cmsOverrideContact: true,
+  cmsOverrideSearch: true,
+  cmsOverrideCart: true,
+
   // Theme
   themeColorsEnabled: true,
   accentColor: "#8b5cf6",
@@ -95,6 +103,7 @@ const DEFAULT_SETTINGS = {
   lazyLoadImages: true,
   skeletonLoadingEnabled: true,
   prefetchLinks: true,
+  imageBlurEnabled: false,
 };
 
 export type StorefrontSettings = typeof DEFAULT_SETTINGS;
