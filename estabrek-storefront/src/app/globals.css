@@ -47,6 +47,13 @@ body {
   pointer-events: none;
 }
 
+.scroll-progress--under-header {
+  position: absolute;
+  top: auto;
+  bottom: -1px;
+  z-index: 2;
+}
+
 .scroll-progress-bar {
   height: 100%;
   width: 100%;

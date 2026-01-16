@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { CartProvider } from "@/store/cart";
 import { WishlistProvider } from "@/store/wishlist";
 import { RecentlyViewedProvider } from "@/store/recentlyViewed";
@@ -10,6 +11,7 @@ import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
 import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
+import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 
 function StorefrontToastProvider({ children }: { children: React.ReactNode }) {
   const settings = useStorefrontSettings();
@@ -40,6 +42,11 @@ export default function Providers({
   initialStorefrontSettings?: Partial<StorefrontSettings>;
 }) {
   const defaultTheme = initialStorefrontSettings?.darkModeDefault === false ? "light" : "dark";
+  const pathname = usePathname();
+
+  useEffect(() => {
+    clearBodyScrollLocks();
+  }, [pathname]);
 
   return (
     <ThemeProvider defaultTheme={defaultTheme}>
