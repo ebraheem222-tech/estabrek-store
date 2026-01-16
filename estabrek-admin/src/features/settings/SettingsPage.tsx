@@ -243,6 +243,7 @@ type StorefrontConfig = {
   soldCountEnabled: boolean;
   
   // Theme & Colors
+  themeColorsEnabled: boolean;
   accentColor: string;
   accentColor2: string;
   glassEffectsEnabled: boolean;
@@ -329,6 +330,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     soldCountEnabled: o.soldCountEnabled !== false,
     
     // Theme
+    themeColorsEnabled: o.themeColorsEnabled !== false,
     accentColor: o.accentColor || "#8b5cf6",
     accentColor2: o.accentColor2 || "#f59e0b",
     glassEffectsEnabled: o.glassEffectsEnabled !== false,
@@ -565,14 +567,30 @@ type Errors = {
   footerJson?: string;
 };
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
   return (
-    <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+    <label
+      className={
+        "flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3" +
+        (disabled ? " cursor-not-allowed opacity-60" : "")
+      }
+    >
       <span className="text-sm">{label}</span>
       <input
         type="checkbox"
         className="h-5 w-5 accent-white"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
     </label>
@@ -2344,9 +2362,15 @@ export default function SettingsPage() {
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
                       <Toggle
+                        label="تفعيل الثيم والألوان"
+                        checked={storefrontCfg.themeColorsEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, themeColorsEnabled: v }))}
+                      />
+                      <Toggle
                         label="الوضع الداكن افتراضي"
                         checked={storefrontCfg.darkModeDefault}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, darkModeDefault: v }))}
+                        disabled={!storefrontCfg.themeColorsEnabled}
                       />
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -2357,9 +2381,15 @@ export default function SettingsPage() {
                             type="color"
                             value={storefrontCfg.accentColor}
                             onChange={(e) => setStorefrontCfg((p) => ({ ...p, accentColor: e.target.value }))}
-                            className="h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1"
+                            disabled={!storefrontCfg.themeColorsEnabled}
+                            className={
+                              "h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1" +
+                              (!storefrontCfg.themeColorsEnabled ? " cursor-not-allowed opacity-60" : "")
+                            }
                           />
-                          <span className="text-sm opacity-70">{storefrontCfg.accentColor}</span>
+                          <span className={"text-sm opacity-70" + (!storefrontCfg.themeColorsEnabled ? " opacity-40" : "")}>
+                            {storefrontCfg.accentColor}
+                          </span>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -2369,9 +2399,15 @@ export default function SettingsPage() {
                             type="color"
                             value={storefrontCfg.accentColor2}
                             onChange={(e) => setStorefrontCfg((p) => ({ ...p, accentColor2: e.target.value }))}
-                            className="h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1"
+                            disabled={!storefrontCfg.themeColorsEnabled}
+                            className={
+                              "h-10 w-12 rounded-lg border border-white/10 bg-transparent p-1" +
+                              (!storefrontCfg.themeColorsEnabled ? " cursor-not-allowed opacity-60" : "")
+                            }
                           />
-                          <span className="text-sm opacity-70">{storefrontCfg.accentColor2}</span>
+                          <span className={"text-sm opacity-70" + (!storefrontCfg.themeColorsEnabled ? " opacity-40" : "")}>
+                            {storefrontCfg.accentColor2}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -2451,9 +2487,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-
-
-
-
-
