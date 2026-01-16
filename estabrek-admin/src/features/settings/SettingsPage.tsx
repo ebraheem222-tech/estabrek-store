@@ -203,7 +203,7 @@ type StorefrontConfig = {
   
   // Chat & Support
   liveChatEnabled: boolean;
-  liveChatPosition: "bottom-left" | "bottom-right";
+  liveChatPosition: "bottom-left" | "bottom-right" | "bottom-center";
   liveChatWelcomeMessage: string;
   liveChatOfflineMessage: string;
   chatbotEnabled: boolean;
@@ -230,6 +230,7 @@ type StorefrontConfig = {
   scrollToTopEnabled: boolean;
   breadcrumbsEnabled: boolean;
   stickyHeaderEnabled: boolean;
+  scrollProgressEnabled: boolean;
   
   // Notifications & Alerts
   toastNotificationsEnabled: boolean;
@@ -326,6 +327,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     scrollToTopEnabled: o.scrollToTopEnabled !== false,
     breadcrumbsEnabled: o.breadcrumbsEnabled !== false,
     stickyHeaderEnabled: o.stickyHeaderEnabled !== false,
+    scrollProgressEnabled: o.scrollProgressEnabled !== false,
     
     // Notifications
     toastNotificationsEnabled: o.toastNotificationsEnabled !== false,
@@ -2170,10 +2172,16 @@ export default function SettingsPage() {
                       <Select
                         label="موقع الدردشة"
                         value={storefrontCfg.liveChatPosition}
-                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, liveChatPosition: v as "bottom-left" | "bottom-right" }))}
+                        onValueChange={(v) =>
+                          setStorefrontCfg((p) => ({
+                            ...p,
+                            liveChatPosition: v as "bottom-left" | "bottom-right" | "bottom-center",
+                          }))
+                        }
                         options={[
                           { value: "bottom-left", label: "أسفل يسار" },
                           { value: "bottom-right", label: "أسفل يمين" },
+                          { value: "bottom-center", label: "أسفل وسط" },
                         ]}
                       />
                     </div>
@@ -2307,6 +2315,11 @@ export default function SettingsPage() {
                         label="الهيدر الثابت"
                         checked={storefrontCfg.stickyHeaderEnabled}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, stickyHeaderEnabled: v }))}
+                      />
+                      <Toggle
+                        label="شريط تقدم التمرير"
+                        checked={storefrontCfg.scrollProgressEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, scrollProgressEnabled: v }))}
                       />
                     </div>
                   </div>
@@ -2550,3 +2563,6 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+
+
