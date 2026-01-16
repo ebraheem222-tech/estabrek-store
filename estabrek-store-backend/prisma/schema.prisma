@@ -446,6 +446,8 @@ model MediaAsset {
 dominantColorHex String?
 /** palette extracted (array of hex strings) */
 palette          Json?
+/** low-res placeholder (base64 data URL) */
+blurDataUrl      String?
   @@index([folder])
 }
 
@@ -615,6 +617,8 @@ view             String?
 dominantColorHex String?
 /** palette extracted (array of hex strings) */
 palette          Json?
+/** low-res placeholder (base64 data URL) */
+blurDataUrl      String?
 /** image embedding (vector as JSON array) */
 embedding        Json?
 /** text used to generate embedding */
