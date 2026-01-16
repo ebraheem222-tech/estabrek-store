@@ -456,6 +456,7 @@ export async function listProducts(params: {
                 view: true,
                 dominantColorHex: true,
                 palette: true,
+                blurDataUrl: true,
               },
             },
             variants: {
@@ -581,6 +582,7 @@ export function getProductById(id: string) {
               view: true,
               dominantColorHex: true,
               palette: true,
+              blurDataUrl: true,
             },
           },
           variants: { include: { size: true } },
@@ -612,6 +614,7 @@ export function getProductBySlug(slug: string) {
               view: true,
               dominantColorHex: true,
               palette: true,
+              blurDataUrl: true,
             },
           },
           variants: { include: { size: true } },
@@ -661,6 +664,7 @@ export function listProductItems(productId: string) {
           view: true,
           dominantColorHex: true,
           palette: true,
+          blurDataUrl: true,
         },
       },
       variants: { include: { size: true } },
@@ -686,6 +690,7 @@ export function getVariant(id: string) {
               view: true,
               dominantColorHex: true,
               palette: true,
+              blurDataUrl: true,
             },
           },
         },
@@ -710,6 +715,7 @@ export function listProductImages(productId: string) {
       view: true,
       dominantColorHex: true,
       palette: true,
+      blurDataUrl: true,
     },
   });
 }
@@ -738,6 +744,7 @@ export async function listProductsByIds(ids: string[]) {
               view: true,
               dominantColorHex: true,
               palette: true,
+              blurDataUrl: true,
             },
           },
           variants: {
@@ -882,6 +889,7 @@ type CartLine = {
   sizeName?: string | null;
   sku?: string | null;
   imageUrl?: string | null;
+  imageBlurDataUrl?: string | null;
 };
 
 async function loadLinesForItems(
@@ -919,6 +927,7 @@ async function loadLinesForItems(
     const imgs = (v.item as any).images ?? [];
     const primary = imgs.find((x: any) => x.isPrimary) ?? imgs[0];
     const imageUrl = primary?.url ?? null;
+    const imageBlurDataUrl = (primary as any)?.blurDataUrl ?? null;
 
     out.push({
       variantId: v.id,
@@ -935,6 +944,7 @@ async function loadLinesForItems(
       sizeName: v.size?.name ?? null,
       sku: v.sku,
       imageUrl,
+      imageBlurDataUrl,
     });
   }
 

@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
 import { deleteFromCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
+import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
 
 const r = Router();
 
@@ -373,6 +374,7 @@ r.get("/images", async (req, res) => {
         size: r.size,
         width: r.width,
         height: r.height,
+        blurDataUrl: (r as any).blurDataUrl ?? null,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         provider: r.provider,
@@ -532,6 +534,7 @@ r.patch("/images/:id", async (req, res) => {
       size: updated.size,
       width: updated.width,
       height: updated.height,
+      blurDataUrl: (updated as any).blurDataUrl ?? null,
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
       provider: updated.provider,
@@ -713,7 +716,11 @@ r.post("/images", (req, res) => {
 
       const out: any[] = [];
 
-      const processed: Array<{ file: any; opt: { ok: boolean; width: number | null; height: number | null; size: number } }> = [];
+      const processed: Array<{
+        file: any;
+        opt: { ok: boolean; width: number | null; height: number | null; size: number };
+        blurDataUrl: string | null;
+      }> = [];
       const tempFiles: string[] = [];
       for (const file of files) {
         const fullPath = path.join(IMAGES_DIR, file.filename);
@@ -731,14 +738,15 @@ r.post("/images", (req, res) => {
           await fs.unlink(fullPath).catch(() => undefined);
           continue;
         }
-        processed.push({ file, opt });
+        const blurDataUrl = await createBlurDataUrlFromFile(fullPath);
+        processed.push({ file, opt, blurDataUrl });
       }
 
       if (!processed.length) {
         return res.status(415).json({ error: "INVALID_FILE_TYPE", message: "Only PNG, JPG, or WebP images are allowed" });
       }
 
-      for (const { file, opt } of processed) {
+      for (const { file, opt, blurDataUrl } of processed) {
         const fullPath = path.join(IMAGES_DIR, file.filename);
 
         if (isCloudinaryEnabled()) {
@@ -766,6 +774,7 @@ r.post("/images", (req, res) => {
               size: uploaded.bytes || opt.size || file.size,
               width: uploaded.width ?? opt.width,
               height: uploaded.height ?? opt.height,
+              blurDataUrl: blurDataUrl ?? null,
             },
           });
 
@@ -781,6 +790,7 @@ r.post("/images", (req, res) => {
             size: created.size,
             width: created.width,
             height: created.height,
+            blurDataUrl: created.blurDataUrl,
             createdAt: created.createdAt,
             updatedAt: created.updatedAt,
             provider: created.provider,
@@ -798,6 +808,7 @@ r.post("/images", (req, res) => {
               size: opt.size || file.size,
               width: opt.width,
               height: opt.height,
+              blurDataUrl: blurDataUrl ?? null,
             },
           });
 
@@ -814,6 +825,7 @@ r.post("/images", (req, res) => {
             size: created.size,
             width: created.width,
             height: created.height,
+            blurDataUrl: created.blurDataUrl,
             createdAt: created.createdAt,
             updatedAt: created.updatedAt,
             provider: created.provider,

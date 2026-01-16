@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { extractDominantAndPaletteFromFile, autoGroupByColor, nameColor, rgbToHex } from "../../lib/colorAnalysis.js";
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
+import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
 import { indexProductImageEmbedding } from "../../lib/productImageEmbeddings.js";
 import { indexProductTextEmbedding } from "../../lib/productTextEmbeddings.js";
 import { validate } from "../../utils/validate.js";
@@ -659,6 +660,7 @@ r.post("/products/:id/images/batch", (req, res) => {
         file: any;
         opt: { ok: boolean; width: number | null; height: number | null; size: number };
         colors: { dominantColorHex: string | null; palette: string[] };
+        blurDataUrl: string | null;
       }> = [];
       const tempFiles: string[] = [];
 
@@ -679,14 +681,15 @@ r.post("/products/:id/images/batch", (req, res) => {
           continue;
         }
         const colors = await extractDominantAndPaletteFromFile(fullPath, 6);
-        processed.push({ file: f, opt, colors });
+        const blurDataUrl = await createBlurDataUrlFromFile(fullPath);
+        processed.push({ file: f, opt, colors, blurDataUrl });
       }
 
       if (!processed.length) {
         return res.status(415).json({ error: "INVALID_FILE_TYPE", message: "Only PNG, JPG, or WebP images are allowed" });
       }
 
-      for (const { file: f, opt, colors } of processed) {
+      for (const { file: f, opt, colors, blurDataUrl } of processed) {
         const created = await prisma.mediaAsset.create({
           data: {
             kind: "IMAGE",
@@ -700,6 +703,7 @@ r.post("/products/:id/images/batch", (req, res) => {
             height: opt.height,
             dominantColorHex: colors.dominantColorHex,
             palette: colors.palette as any,
+            blurDataUrl: blurDataUrl ?? null,
           },
         });
 
@@ -714,6 +718,7 @@ r.post("/products/:id/images/batch", (req, res) => {
           size: created.size,
           width: created.width,
           height: created.height,
+          blurDataUrl: created.blurDataUrl,
           path: rel,
           url: makePublicUrl(req, rel),
           dominantColorHex: created.dominantColorHex,
@@ -754,6 +759,7 @@ r.get("/products/:id/images/pending", asyncHandler(async (req, res) => {
       url: makePublicUrl(req, rel),
       dominantColorHex: (a as any).dominantColorHex ?? null,
       palette: (a as any).palette ?? null,
+      blurDataUrl: (a as any).blurDataUrl ?? null,
       createdAt: a.createdAt,
       updatedAt: a.updatedAt,
     };
@@ -778,6 +784,7 @@ r.post("/products/:id/images/auto-group", asyncHandler(async (req, res) => {
     url: makePublicUrl(req, `/uploads/images/${a.filename}`),
     dominantColorHex: (a as any).dominantColorHex ?? null,
     palette: (a as any).palette ?? null,
+    blurDataUrl: (a as any).blurDataUrl ?? null,
   }));
 
   const grouped = autoGroupByColor(enriched as any, { threshold });
@@ -802,6 +809,7 @@ r.post("/products/:id/images/auto-group", asyncHandler(async (req, res) => {
         url: a.url,
         dominantColorHex: a.dominantColorHex ?? null,
         palette: a.palette ?? null,
+        blurDataUrl: a.blurDataUrl ?? null,
       })),
     };
   });
@@ -886,6 +894,7 @@ r.post(
               view: aIn.view ?? null,
               dominantColorHex: (a as any).dominantColorHex ?? null,
               palette: (a as any).palette ?? null,
+              blurDataUrl: (a as any).blurDataUrl ?? null,
             },
           });
           createdImageIds.push(createdImg.id);

@@ -8,6 +8,7 @@ export type RecommendedProduct = {
   slug: string;
   title: string;
   imageUrl: string | null;
+  imageBlurDataUrl?: string | null;
   minPrice: number | null;
   categoryName?: string | null;
 };
@@ -60,20 +61,22 @@ function computeMinPrice(p: any): number | null {
   return out;
 }
 
-function pickPrimaryImage(p: any): string | null {
+function pickPrimaryImage(p: any): { url: string | null; blurDataUrl: string | null } {
   for (const it of p.items ?? []) {
-    const img = (it.images ?? [])[0]?.url;
-    if (img) return img;
+    const img = (it.images ?? [])[0];
+    if (img?.url) return { url: img.url, blurDataUrl: img.blurDataUrl ?? null };
   }
-  return null;
+  return { url: null, blurDataUrl: null };
 }
 
 function asRecommendedProduct(p: any): RecommendedProduct {
+  const image = pickPrimaryImage(p);
   return {
     id: String(p.id),
     slug: String(p.slug),
     title: String(p.title),
-    imageUrl: pickPrimaryImage(p),
+    imageUrl: image.url,
+    imageBlurDataUrl: image.blurDataUrl,
     minPrice: computeMinPrice(p),
     categoryName: p.category?.name ? String(p.category.name) : null,
   };
@@ -136,7 +139,7 @@ async function fetchCandidates(opts: {
           images: {
             orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
             take: 1,
-            select: { url: true },
+            select: { url: true, blurDataUrl: true },
           },
           variants: {
             where: { stock: { gt: 0 } },
