@@ -294,6 +294,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     alt={site.siteName ?? "Logo"}
                     wrapperClassName="h-8 w-8"
                     className="h-8 w-8 rounded-lg object-cover"
+                    disableBlur
+                    loading="eager"
+                    decoding="sync"
                   />
                 ) : (
                   <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
@@ -381,6 +384,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     alt={site.siteName ?? "Logo"}
                     wrapperClassName="h-8 w-8"
                     className="h-8 w-8 rounded-lg object-cover"
+                    disableBlur
+                    loading="eager"
+                    decoding="sync"
                   />
                 ) : (
                   <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />

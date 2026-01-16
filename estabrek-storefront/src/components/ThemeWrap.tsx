@@ -5,6 +5,7 @@ import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/
 import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "@/cms/themes/websiteThemes";
 import { applyCursorTheme } from "@/theme/cursorTheme";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
@@ -195,6 +196,7 @@ export function ThemeWrap({
         } as React.CSSProperties
       }
     >
+      <ScrollProgressBar />
       {children}
     </div>
   );

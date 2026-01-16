@@ -97,19 +97,23 @@ export function MiniCart({
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
   const freeShippingProgress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
 
-  // Handle animation
+  // Lock body scroll while the cart is open.
   useEffect(() => {
-    if (isOpen) {
-      setIsAnimating(true);
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
+    if (!isOpen) return;
+    setIsAnimating(true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
     };
   }, [isOpen]);
+
+  // Fallback: ensure closing overlay unmounts even if animationend never fires.
+  useEffect(() => {
+    if (isOpen || !isAnimating) return;
+    const timer = window.setTimeout(() => setIsAnimating(false), 350);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, isAnimating]);
 
   // Close on escape
   useEffect(() => {
