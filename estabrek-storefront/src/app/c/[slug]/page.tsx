@@ -1,4 +1,4 @@
-import { listCategories, listProducts } from "@/lib/api";
+import { getPublicSettings, listCategories, listProducts } from "@/lib/api";
 import { ProductTile } from "@/components/ProductTile";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
@@ -73,7 +73,7 @@ export default async function CategoryPage({
   )
     ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
     : undefined;
-  const [cats, out] = await Promise.all([
+  const [cats, out, settings] = await Promise.all([
     listCategories(),
     listProducts({
       category: params.slug,
@@ -87,7 +87,10 @@ export default async function CategoryPage({
       color: pick(searchParams, "color"),
       sizeId: pick(searchParams, "sizeId"),
     }),
+    getPublicSettings().catch(() => null),
   ]);
+  const storefrontSettings = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontSettings.breadcrumbsEnabled !== false;
 
   const current = cats.find((c) => c.slug === params.slug);
   const categoryName = current?.name ?? params.slug;
@@ -134,8 +137,10 @@ const breadcrumbLd = {
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <NormalizeFilters basePath={`/c/${params.slug}`} />
 
-      <Breadcrumbs items={crumbs} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      {breadcrumbsEnabled ? <Breadcrumbs items={crumbs} /> : null}
+      {breadcrumbsEnabled ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-2xl font-bold">{categoryName}</h1>
         <div className="text-sm text-zinc-500 dark:text-zinc-300">

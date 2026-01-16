@@ -674,6 +674,22 @@ body {
   border: 1px solid rgba(255,255,255,0.08);
 }
 
+:root[data-glass-effects="0"] .glass-card,
+:root[data-glass-effects="0"] .card-glass,
+:root[data-glass-effects="0"] .card-glass-frost,
+:root[data-glass-effects="0"] .card-glass-dark,
+:root[data-glass-effects="0"] .card-glass-aurora,
+:root[data-glass-effects="0"] .card-glass-metallic,
+:root[data-glass-effects="0"] .card-glass-blur-heavy,
+:root[data-glass-effects="0"] .card-glass-neon-glow,
+:root[data-glass-effects="0"] .card-glass-morphism,
+:root[data-glass-effects="0"] .card-pricing-glass,
+:root[data-glass-effects="0"] .hover-bg-glass:hover {
+  backdrop-filter: none !important;
+  background: rgba(255,255,255,0.04) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
 /* Image Loading Skeleton */
 .image-skeleton {
   background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
@@ -4198,8 +4214,6 @@ body {
 
 .toast-container {
   position: fixed;
-  bottom: 100px;
-  left: 1rem;
   z-index: 9999;
   display: flex;
   flex-direction: column;
@@ -4210,6 +4224,47 @@ body {
 
 @media (min-width: 768px) {
   .toast-container {
+    width: 380px;
+  }
+}
+
+.toast-container.toast-top-right {
+  top: 1rem;
+  right: 1rem;
+}
+
+.toast-container.toast-top-left {
+  top: 1rem;
+  left: 1rem;
+}
+
+.toast-container.toast-bottom-right {
+  bottom: 100px;
+  right: 1rem;
+}
+
+.toast-container.toast-bottom-left {
+  bottom: 100px;
+  left: 1rem;
+}
+
+@media (min-width: 768px) {
+  .toast-container.toast-top-right {
+    top: 2rem;
+    right: 2rem;
+  }
+
+  .toast-container.toast-top-left {
+    top: 2rem;
+    left: 2rem;
+  }
+
+  .toast-container.toast-bottom-right {
+    bottom: 2rem;
+    right: 2rem;
+  }
+
+  .toast-container.toast-bottom-left {
     bottom: 2rem;
     left: 2rem;
   }
@@ -5075,6 +5130,11 @@ body {
   background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+.skeleton-muted {
+  background: rgba(255,255,255,0.06);
   border-radius: 0.5rem;
 }
 

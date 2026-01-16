@@ -5,12 +5,32 @@ import { CartProvider } from "@/store/cart";
 import { WishlistProvider } from "@/store/wishlist";
 import { RecentlyViewedProvider } from "@/store/recentlyViewed";
 import { ToastProvider } from "@/components/Toast";
-import { QuickViewProvider } from "@/components/QuickViewModal";
+import { QuickViewProvider, QuickViewLayer } from "@/components/QuickViewModal";
 import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
-import ChatWidget from "@/components/ChatWidget";
-import { StorefrontFeaturesProvider, type StorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
+
+function StorefrontToastProvider({ children }: { children: React.ReactNode }) {
+  const settings = useStorefrontSettings();
+  return (
+    <ToastProvider
+      enabled={settings.toastNotificationsEnabled}
+      position={settings.toastPosition}
+    >
+      {children}
+    </ToastProvider>
+  );
+}
+
+function StorefrontMotionProvider({ children }: { children: React.ReactNode }) {
+  const settings = useStorefrontSettings();
+  return (
+    <MotionProvider enabled={settings.scrollAnimationsEnabled}>
+      {children}
+    </MotionProvider>
+  );
+}
 
 export default function Providers({
   children,
@@ -19,30 +39,30 @@ export default function Providers({
   children: React.ReactNode;
   initialStorefrontSettings?: Partial<StorefrontSettings>;
 }) {
+  const defaultTheme = initialStorefrontSettings?.darkModeDefault === false ? "light" : "dark";
+
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <RecentlyViewedProvider>
-              <QuickViewProvider>
-                <MotionProvider>
-                  {/* Storefront Features (reads settings from API) */}
-                  <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings}>
+    <ThemeProvider defaultTheme={defaultTheme}>
+      <CartProvider>
+        <WishlistProvider>
+          <RecentlyViewedProvider>
+            {/* Storefront Features (reads settings from API) */}
+            <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings}>
+              <StorefrontToastProvider>
+                <QuickViewProvider>
+                  <StorefrontMotionProvider>
                     {/* Animation Effects (controlled by settings) */}
                     <AnimationEffectsProvider>
                       {children}
+                      <QuickViewLayer />
                     </AnimationEffectsProvider>
-                  </StorefrontFeaturesProvider>
-                  
-                  {/* Global Chatbot Widget */}
-                  <ChatWidget />
-                </MotionProvider>
-              </QuickViewProvider>
-            </RecentlyViewedProvider>
-          </WishlistProvider>
-        </CartProvider>
-      </ToastProvider>
+                  </StorefrontMotionProvider>
+                </QuickViewProvider>
+              </StorefrontToastProvider>
+            </StorefrontFeaturesProvider>
+          </RecentlyViewedProvider>
+        </WishlistProvider>
+      </CartProvider>
     </ThemeProvider>
   );
 }

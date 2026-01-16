@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductBySlug } from "@/lib/api";
+import { getProductBySlug, getPublicSettings, listCategories } from "@/lib/api";
 import { formatMoney, getProductMinPrice } from "@/lib/catalog";
 import ProductDetail from "@/components/ProductDetail";
 import ShareButton from "@/components/ShareButton";
@@ -10,7 +10,6 @@ import { RecentlyViewedSection } from "@/components/RecentlyViewedSection";
 import { ProductPageEnhancements } from "@/components/ProductPageEnhancements";
 
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
-import { listCategories } from "@/lib/api";
 import type { Metadata } from "next";
 
 export const revalidate = 120;
@@ -64,6 +63,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = await getProductBySlug(params.slug);
   if (!product) notFound();
+  const settings = await getPublicSettings().catch(() => null);
+  const storefrontSettings = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontSettings.breadcrumbsEnabled !== false;
+  const recommendationsEnabled = storefrontSettings.productRecommendations !== false;
+  const recommendationsCount = Number(storefrontSettings.productRecommendationsCount ?? 8);
 
   const price = getProductMinPrice(product);
 
@@ -141,9 +145,11 @@ const productLd: any = {
 
   return (
     <div className="space-y-8">
-      <Breadcrumbs items={crumbs} />
+      {breadcrumbsEnabled ? <Breadcrumbs items={crumbs} /> : null}
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      {breadcrumbsEnabled ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      ) : null}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
       
       {/* All Product Enhancements - Client Component */}
@@ -176,7 +182,9 @@ const productLd: any = {
       <RecentlyViewedSection excludeId={(product as any).id} />
 
       {/* Recommended Products */}
-      <RecommendedProductsSection productId={(product as any).id} />
+      {recommendationsEnabled ? (
+        <RecommendedProductsSection productId={(product as any).id} limit={recommendationsCount} />
+      ) : null}
       
       {/* Share Button */}
       <ShareButton title={product.title} />
