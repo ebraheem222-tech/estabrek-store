@@ -203,7 +203,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
     setSuccessMsg(null);
     const code = typeof nextCoupon === "string" ? nextCoupon : couponCode;
     try {
-      const res = await fetch(\`${apiBase()}/catalog/cart-quote\`, {
+      const res = await fetch(`${apiBase()}/catalog/cart-quote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

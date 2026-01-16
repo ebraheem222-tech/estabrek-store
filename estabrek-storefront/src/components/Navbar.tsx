@@ -282,10 +282,10 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 className="md:hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
                 aria-label="Toggle menu"
               >
-                ☰
+                ?
               </button>
 
-              <Link href="/" className="mx-auto flex items-center gap-2">
+              <Link href="/" prefetch={settings.prefetchLinks} className="mx-auto flex items-center gap-2">
                 {site.logoUrl ? (
                   <LoadingImg
                     src={site.logoUrl}
@@ -303,19 +303,131 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 {showAccount ? (
                   <Link
                     href="/account"
+                    prefetch={settings.prefetchLinks}
                     className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
                   >
-                    👤
+                    ??
                   </Link>
                 ) : null}
                 {showCart ? (
+                  settings.miniCartEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => setMiniCartOpen(true)}
+                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                    >
+                      ?? <span className="hidden sm:inline">Cart</span> <CartBadge />
+                    </button>
+                  ) : (
+                    <Link
+                      href="/cart"
+                      prefetch={settings.prefetchLinks}
+                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                    >
+                      ?? <span className="hidden sm:inline">Cart</span> <CartBadge />
+                    </Link>
+                  )
+                ) : null}
+              </div>
+            </div>
+
+            <div className="hidden md:flex items-center justify-center gap-3">
+              <nav className={desktopLinksClassCentered}>
+                {navItems.map((it: any) => (
+                  <NavNode
+                    key={it.id ?? it.href ?? it.label}
+                    item={it}
+                    pathname={pathname}
+                    showIcons={navShowIcons}
+                    mode={navMode}
+                    gradient={navGradient}
+                    template={navTemplate}
+                    prefetchLinks={settings.prefetchLinks}
+                  />
+                ))}
+              </nav>
+              {showSearch ? (
+                <div className={searchStyle === "icon" ? "" : "max-w-[360px] w-full"}>
+                  <SearchControl />
+                </div>
+              ) : null}
+              {cta ? (
+                <Link href={cta.href || "/"} prefetch={settings.prefetchLinks} className={ctaClassName}>
+                  {cta.label || "CTA"}
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setMobileOpen((v) => !v)}
+                className="md:hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                aria-label="Toggle menu"
+              >
+                ?
+              </button>
+
+              <Link href="/" prefetch={settings.prefetchLinks} className="flex items-center gap-2">
+                {site.logoUrl ? (
+                  <LoadingImg
+                    src={site.logoUrl}
+                    alt={site.siteName ?? "Logo"}
+                    wrapperClassName="h-8 w-8"
+                    className="h-8 w-8 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
+                )}
+                <div className={siteNameClass}>{site.siteName || "Store"}</div>
+              </Link>
+            </div>
+
+            <nav className={preset === "minimal" ? desktopLinksClassCentered : desktopLinksClass}>
+              {navItems.map((it: any) => (
+                <NavNode
+                  key={it.id ?? it.href ?? it.label}
+                  item={it}
+                  pathname={pathname}
+                  showIcons={navShowIcons}
+                  mode={navMode}
+                  gradient={navGradient}
+                  template={navTemplate}
+                  prefetchLinks={settings.prefetchLinks}
+                />
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-2">
+              {showSearch ? (
+                <div className={searchStyle === "icon" ? "" : "hidden lg:block max-w-[360px] w-full"}>
+                  <SearchControl />
+                </div>
+              ) : null}
+              {cta ? (
+                <Link href={cta.href || "/"} prefetch={settings.prefetchLinks} className={ctaClassName}>
+                  {cta.label || "CTA"}
+                </Link>
+              ) : null}
+              {showAccount ? (
+                <Link
+                  href="/account"
+                  prefetch={settings.prefetchLinks}
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                >
+                  ??
+                </Link>
+              ) : null}
+              {showCart ? (
                 settings.miniCartEnabled ? (
                   <button
                     type="button"
                     onClick={() => setMiniCartOpen(true)}
                     className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
                   >
-                    🛒 <span className="hidden sm:inline">Cart</span> <CartBadge />
+                    <CartControl />
                   </button>
                 ) : (
                   <Link
@@ -323,7 +435,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     prefetch={settings.prefetchLinks}
                     className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
                   >
-                    🛒 <span className="hidden sm:inline">Cart</span> <CartBadge />
+                    <CartControl />
                   </Link>
                 )
               ) : null}
