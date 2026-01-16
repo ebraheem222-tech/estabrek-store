@@ -52,7 +52,7 @@ export async function searchProductsByImageBuffer(
 
   const images = await prisma.productItemImage.findMany({
     where: {
-      embedding: { not: Prisma.AnyNull },
+      embedding: { not: Prisma.DbNull },
       item: {
         isActive: true,
         product: { isActive: true },

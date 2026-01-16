@@ -16,7 +16,7 @@ async function main() {
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : undefined;
 
   const products = await prisma.product.findMany({
-    where: force ? {} : { embedding: Prisma.AnyNull },
+    where: force ? {} : { embedding: { equals: Prisma.DbNull } },
     select: { id: true, title: true },
     orderBy: { createdAt: "asc" },
     ...(limit ? { take: limit } : {}),
