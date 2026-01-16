@@ -44,8 +44,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") writeLS(items);
-  }, [items]);
+    if (typeof window === "undefined") return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY) setItems(readLS());
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") setItems(readLS());
+    };
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   const api: CartCtx = useMemo(() => {
     return {
@@ -58,17 +70,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           if (i >= 0) {
             const next = [...prev];
             next[i] = { ...next[i], quantity: next[i].quantity + addQty };
+            writeLS(next);
             return next;
           }
-          return [...prev, { variantId, quantity: addQty }];
+          const next = [...prev, { variantId, quantity: addQty }];
+          writeLS(next);
+          return next;
         });
       },
       setQty: (variantId, qty) => {
         const q = Math.max(1, Number(qty || 1));
-        setItems((prev) => prev.map((x) => (x.variantId === variantId ? { ...x, quantity: q } : x)));
+        setItems((prev) => {
+          const next = prev.map((x) => (x.variantId === variantId ? { ...x, quantity: q } : x));
+          writeLS(next);
+          return next;
+        });
       },
-      removeItem: (variantId) => setItems((prev) => prev.filter((x) => x.variantId !== variantId)),
-      clear: () => setItems([]),
+      removeItem: (variantId) =>
+        setItems((prev) => {
+          const next = prev.filter((x) => x.variantId !== variantId);
+          writeLS(next);
+          return next;
+        }),
+      clear: () =>
+        setItems(() => {
+          writeLS([]);
+          return [];
+        }),
     };
   }, [items]);
 

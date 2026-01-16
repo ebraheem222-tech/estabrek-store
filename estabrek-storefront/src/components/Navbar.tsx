@@ -157,12 +157,26 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [miniCartOpen, setMiniCartOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
   const settings = useStorefrontSettings();
 
   useEffect(() => {
     setMobileOpen(false);
     setMiniCartOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) setMiniCartOpen(false);
+  }, [isDesktop]);
 
   const cmsNavCfg = cmsNav && typeof cmsNav === "object" ? cmsNav : null;
   const cmsNavEnabled = cmsNavCfg ? (cmsNavCfg.enabled ?? cmsNavCfg?.props?.enabled ?? true) : false;
@@ -202,6 +216,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const searchInputStyleId: string = typeof (header as any)?.searchInputStyleId === "string" ? (header as any).searchInputStyleId : "default";
   const cartStyle: "iconBadge" | "icon" | "badge" =
     (header as any)?.cartStyle === "icon" || (header as any)?.cartStyle === "badge" ? (header as any).cartStyle : "iconBadge";
+  const allowMiniCart = settings.miniCartEnabled && isDesktop;
   const padMap: Record<string, string> = { compact: "py-2", normal: "py-3", comfortable: "py-4" };
   const padCls = `${padMap[heightMobile]} md:${padMap[heightDesktop]}`;
 
@@ -321,7 +336,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   </Link>
                 ) : null}
                 {showCart ? (
-                  settings.miniCartEnabled ? (
+                  allowMiniCart ? (
                     <button
                       type="button"
                       onClick={() => setMiniCartOpen(true)}
@@ -437,7 +452,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 </Link>
               ) : null}
               {showCart ? (
-                settings.miniCartEnabled ? (
+                allowMiniCart ? (
                   <button
                     type="button"
                     onClick={() => setMiniCartOpen(true)}
@@ -500,7 +515,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
         <ScrollProgressBar placement={sticky ? "under-header" : "overlay"} />
       ) : null}
 
-      {settings.miniCartEnabled ? (
+      {allowMiniCart ? (
         <StorefrontMiniCart open={miniCartOpen} onClose={() => setMiniCartOpen(false)} />
       ) : null}
     </header>
