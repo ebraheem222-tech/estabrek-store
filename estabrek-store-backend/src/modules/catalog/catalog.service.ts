@@ -14,6 +14,23 @@ function parseCsv(v?: string | null): string[] | undefined {
   return arr.length ? Array.from(new Set(arr)) : undefined;
 }
 
+function num(v: any): number | null {
+  if (v == null) return null;
+  if (typeof v === "object") {
+    if (typeof v.toNumber === "function") {
+      const n = v.toNumber();
+      return Number.isFinite(n) ? n : null;
+    }
+    if (typeof v.toString === "function") {
+      const n = Number(v.toString());
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 const baseProductSelect = {
   id: true,
   title: true,

@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { Prisma } from "@prisma/client";
 import { createImageEmbeddingFromBuffer } from "../../lib/imageEmbeddings.js";
 import { listProductsByIds } from "../catalog/catalog.service.js";
 
@@ -51,7 +52,7 @@ export async function searchProductsByImageBuffer(
 
   const images = await prisma.productItemImage.findMany({
     where: {
-      embedding: { not: null },
+      embedding: { not: Prisma.AnyNull },
       item: {
         isActive: true,
         product: { isActive: true },

@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { prisma } from "../lib/prisma.js";
+import { Prisma } from "@prisma/client";
 import { indexProductImageEmbedding } from "../lib/productImageEmbeddings.js";
 
 function sleep(ms: number) {
@@ -15,7 +16,7 @@ async function main() {
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.floor(limitRaw) : undefined;
 
   const images = await prisma.productItemImage.findMany({
-    where: force ? {} : { embedding: null },
+    where: force ? {} : { embedding: Prisma.AnyNull },
     select: { id: true, url: true },
     orderBy: { createdAt: "asc" },
     ...(limit ? { take: limit } : {}),
