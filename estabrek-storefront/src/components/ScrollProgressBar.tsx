@@ -8,6 +8,7 @@ type ScrollProgressBarProps = {
 
 export function ScrollProgressBar({ placement = "overlay" }: ScrollProgressBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const bar = barRef.current;
@@ -45,11 +46,31 @@ export function ScrollProgressBar({ placement = "overlay" }: ScrollProgressBarPr
     };
   }, []);
 
+  useEffect(() => {
+    const wrapper = wrapRef.current;
+    if (!wrapper) return;
+
+    if (placement !== "under-header") {
+      wrapper.style.top = "0px";
+      return;
+    }
+
+    const updateOffset = () => {
+      const header = document.querySelector("header");
+      const height = header ? Math.round(header.getBoundingClientRect().height) : 0;
+      wrapper.style.top = `${Math.max(0, height)}px`;
+    };
+
+    updateOffset();
+    window.addEventListener("resize", updateOffset);
+    return () => window.removeEventListener("resize", updateOffset);
+  }, [placement]);
+
   const rootClass =
     placement === "under-header" ? "scroll-progress scroll-progress--under-header" : "scroll-progress";
 
   return (
-    <div className={rootClass} aria-hidden="true">
+    <div ref={wrapRef} className={rootClass} aria-hidden="true">
       <div ref={barRef} className="scroll-progress-bar" />
     </div>
   );
