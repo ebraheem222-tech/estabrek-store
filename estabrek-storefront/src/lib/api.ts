@@ -20,6 +20,22 @@ const SettingsZ = z.any();
 const IdsZ = z.any();
 const RecommendZ = z.any();
 
+function parseMaybeJson<T>(value: T) {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return value;
+  }
+}
+
+function normalizeSiteSettings(site: any) {
+  if (!site || typeof site !== "object") return site;
+  const header = parseMaybeJson(site.header);
+  const footer = parseMaybeJson(site.footer);
+  return { ...site, header, footer };
+}
+
 export const getBootstrap = cache(async (): Promise<StorefrontBootstrap> => {
   const url = `${baseUrl()}/storefront/bootstrap`;
   const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:bootstrap"] } });
@@ -27,7 +43,8 @@ export const getBootstrap = cache(async (): Promise<StorefrontBootstrap> => {
     throw new Error(`bootstrap failed (${res.status})`);
   }
   const json = await res.json();
-  return BootstrapZ.parse(json) as StorefrontBootstrap;
+  const parsed = BootstrapZ.parse(json) as StorefrontBootstrap;
+  return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as StorefrontBootstrap;
 });
 
 export const getPageBySlug = cache(async (slug: string): Promise<StorefrontPage | null> => {
@@ -123,7 +140,8 @@ export const getPublicSettings = cache(async (): Promise<{ site: SitePublicSetti
   const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:settings"] } });
   if (!res.ok) throw new Error(`settings failed (${res.status})`);
   const json = await res.json();
-  return SettingsZ.parse(json) as { site: SitePublicSettings };
+  const parsed = SettingsZ.parse(json) as { site: SitePublicSettings };
+  return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as { site: SitePublicSettings };
 });
 
 // -------------------------------
