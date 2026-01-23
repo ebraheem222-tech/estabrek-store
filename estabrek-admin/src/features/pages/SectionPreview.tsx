@@ -32,8 +32,8 @@ import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import { DECOR_SIZE_HEIGHTS } from "../../cms/shapes/shapeRegistry";
 import type { TwTokens } from "../../cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
-import { heroThemes } from "../../cms/hero-themes";
-import { contactFormThemes } from "../../cms/contact-forms";
+import { heroThemes, heroComponents, HeroRenderer } from "../../cms/hero-themes";
+import { contactFormThemes, contactFormComponents, additionalFormComponents } from "../../cms/contact-forms";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -42,6 +42,114 @@ function safeNum(v: any, fallback: number) {
 
 function cls(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
+}
+
+function normalizeText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
+}
+
+function resolveThemeId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+const HERO_SUBHEADLINE_ONLY_THEMES = new Set(["ecommerce-fashion"]);
+
+function heroThemePreviewProps(data: HeroData) {
+  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
+  const source = slides.length ? (slides[0] ?? data) : data;
+  const title = String((source as any).title ?? "").trim();
+  const subtitle = (source as any).subtitle;
+  const primaryButton = (source as any).primaryButton;
+  const secondaryButton = (source as any).secondaryButton;
+  const themeId = resolveThemeId((data as any).themeId);
+  const subtitleText = subtitle != null ? String(subtitle) : undefined;
+  const useSubheadline = themeId ? HERO_SUBHEADLINE_ONLY_THEMES.has(themeId) : false;
+
+  return {
+    theme: themeId ?? undefined,
+    badge: (source as any).badge,
+    headline: title || "Hero headline",
+    subheadline: useSubheadline ? subtitleText : undefined,
+    description: useSubheadline ? undefined : subtitleText,
+    primaryCta: primaryButton?.label ? { text: String(primaryButton.label) } : undefined,
+    secondaryCta: secondaryButton?.label ? { text: String(secondaryButton.label) } : undefined,
+    imageSrc: (source as any).backgroundImageUrl ?? (data as any).backgroundImageUrl,
+    imageAlt: title || "Hero",
+  };
+}
+
+function contactThemePreviewProps(data: ContactData) {
+  const form = (data as any).form ?? {};
+  const fields = Array.isArray(form.fields) ? form.fields : [];
+  const items = Array.isArray((data as any).items) ? (data as any).items : [];
+  const hasFieldConfig = fields.length > 0;
+
+  let showName: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showEmail: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showPhone: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showSubject: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showCompany: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showMessage: boolean | undefined = hasFieldConfig ? false : undefined;
+
+  const matchField = (field: any, terms: string[]) => {
+    const nameText = normalizeText(field?.name);
+    const labelText = normalizeText(field?.label);
+    return terms.some((t) => nameText.includes(t) || labelText.includes(t));
+  };
+
+  for (const field of fields) {
+    const type = normalizeText(field?.type);
+    if (type === "email" || matchField(field, ["email", "e-mail", "بريد"])) showEmail = true;
+    if (type === "tel" || matchField(field, ["phone", "tel", "mobile", "جوال", "هاتف", "رقم"])) showPhone = true;
+    if (type === "textarea" || matchField(field, ["message", "رسالة", "تفاصيل", "ملاحظات"])) showMessage = true;
+    if (matchField(field, ["subject", "موضوع", "العنوان"])) showSubject = true;
+    if (matchField(field, ["company", "organization", "شركة", "مؤسسة"])) showCompany = true;
+    if (matchField(field, ["name", "اسم"])) showName = true;
+  }
+
+  let email: string | undefined;
+  let phone: string | undefined;
+  let address: string | undefined;
+
+  for (const item of items) {
+    const label = normalizeText(item?.label);
+    const value = typeof item?.value === "string" ? item.value.trim() : "";
+    if (!value) continue;
+    if (!email && (value.includes("@") || label.includes("email") || label.includes("بريد"))) {
+      email = value;
+      continue;
+    }
+    if (!phone && (/\d{3,}/.test(value) || label.includes("phone") || label.includes("هاتف") || label.includes("جوال"))) {
+      phone = value;
+      continue;
+    }
+    if (!address && (label.includes("address") || label.includes("عنوان"))) {
+      address = value;
+    }
+  }
+
+  const title = (data as any).title ?? form.title;
+  const subtitle = (data as any).subtitle ?? form.subtitle;
+
+  return {
+    theme: resolveThemeId((data as any).themeId) ?? undefined,
+    title: title ? String(title) : undefined,
+    subtitle: subtitle ? String(subtitle) : undefined,
+    description: subtitle ? String(subtitle) : undefined,
+    showName,
+    showEmail,
+    showPhone,
+    showSubject,
+    showCompany,
+    showMessage,
+    submitLabel: form.submitLabel ? String(form.submitLabel) : undefined,
+    email,
+    phone,
+    address,
+  };
 }
 
 const SPLIT_TEXT_EFFECTS = new Set(["wave", "bounce"]);
@@ -397,14 +505,21 @@ function renderComponentsBlock(data: any) {
 }
 
 function HeroPreview({ data }: { data: HeroData }) {
-  const themeId = typeof (data as any).themeId === "string" ? (data as any).themeId.trim() : "";
+  const themeId = resolveThemeId((data as any).themeId);
   if (themeId) {
     const theme = heroThemes.find((t) => t.id === themeId);
+    const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[themeId];
+    const themeProps = heroThemePreviewProps(data) as any;
+    const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={themeId} {...themeProps} />;
+
     return (
-      <SectionShell data={data} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-        <div className="text-[10px] uppercase tracking-wide opacity-60">Hero Theme</div>
-        <div className="mt-1 text-sm font-semibold">{theme?.name ?? themeId}</div>
-        <div className="mt-2 text-xs opacity-60">Rendered in canvas preview.</div>
+      <SectionShell data={data} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+        <div className="px-3 pt-3 text-[10px] uppercase tracking-wide opacity-60">{theme?.name ?? themeId}</div>
+        <div className="h-[220px] overflow-hidden">
+          <div className="origin-top-left scale-[0.75]" style={{ width: "133.333%" }}>
+            {themeNode}
+          </div>
+        </div>
       </SectionShell>
     );
   }
@@ -1221,14 +1336,22 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "CONTACT") {
     const d = data as ContactData;
-    const themeId = typeof (d as any).themeId === "string" ? (d as any).themeId.trim() : "";
+    const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const theme = contactFormThemes.find((t) => t.id === themeId);
+      const themeMap = { ...contactFormComponents, ...additionalFormComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? contactFormComponents["basic-simple"];
+      const themeProps = contactThemePreviewProps(d) as any;
+      const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : null;
+
       return wrapPreview(d, (
-        <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
-          <div className="text-[10px] uppercase tracking-wide opacity-60">Contact Form Theme</div>
-          <div className="mt-1 text-sm font-semibold">{theme?.name ?? themeId}</div>
-          <div className="mt-2 text-xs opacity-60">Rendered in canvas preview.</div>
+        <div className={cls("overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className="px-3 pt-3 text-[10px] uppercase tracking-wide opacity-60">{theme?.name ?? themeId}</div>
+          <div className="h-[220px] overflow-hidden">
+            <div className="origin-top-left scale-[0.8]" style={{ width: "125%" }}>
+              {themeNode}
+            </div>
+          </div>
         </div>
       ));
     }

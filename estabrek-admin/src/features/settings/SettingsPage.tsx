@@ -256,6 +256,7 @@ type StorefrontConfig = {
   accentColor: string;
   accentColor2: string;
   glassEffectsEnabled: boolean;
+  darkModeEnabled: boolean;
   darkModeDefault: boolean;
   
   // Performance
@@ -353,6 +354,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     accentColor: o.accentColor || "#8b5cf6",
     accentColor2: o.accentColor2 || "#f59e0b",
     glassEffectsEnabled: o.glassEffectsEnabled !== false,
+    darkModeEnabled: o.darkModeEnabled !== false,
     darkModeDefault: o.darkModeDefault !== false,
     
     // Performance
@@ -2438,10 +2440,15 @@ export default function SettingsPage() {
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, themeColorsEnabled: v }))}
                       />
                       <Toggle
+                        label="تمكين الوضع الداكن"
+                        checked={storefrontCfg.darkModeEnabled}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, darkModeEnabled: v }))}
+                      />
+                      <Toggle
                         label="الوضع الداكن افتراضي"
                         checked={storefrontCfg.darkModeDefault}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, darkModeDefault: v }))}
-                        disabled={!storefrontCfg.themeColorsEnabled}
+                        disabled={!storefrontCfg.themeColorsEnabled || !storefrontCfg.darkModeEnabled}
                       />
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
