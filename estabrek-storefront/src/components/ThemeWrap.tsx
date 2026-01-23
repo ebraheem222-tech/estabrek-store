@@ -113,8 +113,11 @@ export function ThemeWrap({
   const storefrontAccent = themeColorsEnabled ? resolveCustomColor(storefrontCfg.accentColor) : undefined;
   const storefrontAccentSoft = themeColorsEnabled ? resolveCustomColor(storefrontCfg.accentColor2) : undefined;
   const glassEnabled = storefrontCfg.glassEffectsEnabled !== false;
+  const allowDarkMode = storefrontCfg.darkModeEnabled !== false;
   const preferredMode: "dark" | "light" =
-    t.mode === "light" || t.mode === "dark"
+    !allowDarkMode
+      ? "light"
+      : t.mode === "light" || t.mode === "dark"
       ? t.mode
       : storefrontCfg.darkModeDefault === false
       ? "light"
@@ -156,7 +159,7 @@ export function ThemeWrap({
     applyCursorTheme(cursorThemeId);
   }, [cursorThemeId]);
 
-  const mode: "dark" | "light" = preview?.mode ?? domMode ?? preferredMode;
+  const mode: "dark" | "light" = allowDarkMode ? preview?.mode ?? domMode ?? preferredMode : "light";
   const presetId = preview?.presetId ?? basePresetId;
 
   const preset = getThemePreset(presetId ?? null, customPresets);
