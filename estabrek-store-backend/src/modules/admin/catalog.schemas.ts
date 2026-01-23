@@ -89,6 +89,7 @@ export const ProductDeepUpdateBody = z.object({
       alt: z.string().nullable().optional(),
       position: z.number().int().nonnegative().optional(),
       isPrimary: z.boolean().optional(),
+      view: z.string().nullable().optional(),
     })).optional(),
     variants: z.array(z.object({
       id: z.string().cuid().optional(),
