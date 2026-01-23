@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ProgressState = {
   value: number;
@@ -10,8 +10,6 @@ type ProgressState = {
 
 export function RouteProgress() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const searchKey = useMemo(() => searchParams?.toString() ?? "", [searchParams]);
   const [state, setState] = useState<ProgressState>({ value: 0, active: false });
   const stateRef = useRef(state);
   const tickRef = useRef<number | null>(null);
@@ -102,7 +100,7 @@ export function RouteProgress() {
 
   useEffect(() => {
     finish();
-  }, [pathname, searchKey, finish]);
+  }, [pathname, finish]);
 
   if (!state.active && state.value === 0) return null;
 
