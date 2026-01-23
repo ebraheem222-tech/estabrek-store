@@ -45,5 +45,4 @@ export {
   Hero97, Hero98, Hero99, Hero100,
 } from './HeroComponents';
 
-// Demo
-export { default as HeroThemesDemo } from './HeroThemesDemo';
+// Demo (admin-only; omitted from storefront bundle)

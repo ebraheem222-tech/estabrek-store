@@ -49,5 +49,4 @@ export {
   additionalFormComponents,
 } from './ContactFormComponents';
 
-// Demo
-export { default as ContactFormThemesDemo } from './ContactFormThemesDemo';
+// Demo (admin-only; omitted from storefront bundle)
