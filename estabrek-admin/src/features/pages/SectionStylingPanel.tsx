@@ -58,6 +58,7 @@ import {
 } from "../../cms/style/containerStyles";
 import { INTERACTION_CATEGORY_LABELS_AR, INTERACTION_EFFECTS } from "../../cms/effects/interactionEffects";
 import { SvgLibraryPicker } from "./SvgLibraryPicker";
+import { spotlightThemes } from "../../cms/spotlight-themes";
 
 // ============================================================
 // TYPES
@@ -90,6 +91,13 @@ const dividerOptions = ALL_DIVIDER_STYLES.map((d) => ({
   value: d.id,
   label: `${DIVIDER_CATEGORY_LABELS_AR[d.category] ?? d.category} - ${d.nameAr}`,
 }));
+const spotlightOptions = [
+  { value: "", label: "بدون" },
+  ...spotlightThemes.map((theme) => ({
+    value: theme.id,
+    label: `${theme.category} - ${theme.nameAr || theme.name}`,
+  })),
+];
 
 // ============================================================
 // HELPER COMPONENTS
@@ -1208,8 +1216,54 @@ function AdvancedEditor({ tokens, onChange }: {
   tokens?: TwTokens & TwTokensExtended;
   onChange: (t: TwTokens & TwTokensExtended) => void;
 }) {
+  const spotlightThemeId = (tokens as any)?.spotlightThemeId ?? "";
+  const spotlightTheme = spotlightThemeId
+    ? spotlightThemes.find((theme) => theme.id === spotlightThemeId)
+    : undefined;
+
   return (
     <div className="space-y-4">
+      <Divider title="Spotlight" />
+
+      <FieldGroup label="ثيم Spotlight" labelAr="Spotlight Theme">
+        <Select
+          value={spotlightThemeId}
+          onChange={(v) => {
+            const nextId = v || undefined;
+            onChange({
+              ...(tokens ?? {}),
+              spotlightThemeId: nextId,
+              spotlightSize: nextId ? (tokens as any)?.spotlightSize : undefined,
+              spotlightOpacity: nextId ? (tokens as any)?.spotlightOpacity : undefined,
+            } as any);
+          }}
+          options={spotlightOptions}
+        />
+      </FieldGroup>
+
+      {spotlightThemeId ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FieldGroup label="حجم الإضاءة">
+            <Slider
+              value={(tokens as any)?.spotlightSize ?? spotlightTheme?.spotlightSize ?? 220}
+              onChange={(v) => onChange({ ...(tokens ?? {}), spotlightSize: v } as any)}
+              min={140}
+              max={420}
+              step={10}
+            />
+          </FieldGroup>
+          <FieldGroup label="شفافية الإضاءة">
+            <Slider
+              value={(tokens as any)?.spotlightOpacity ?? spotlightTheme?.spotlightOpacity ?? 0.8}
+              onChange={(v) => onChange({ ...(tokens ?? {}), spotlightOpacity: v } as any)}
+              min={0.1}
+              max={1}
+              step={0.05}
+            />
+          </FieldGroup>
+        </div>
+      ) : null}
+
       <FieldGroup label="CSS مخصص" labelAr="Custom CSS">
         <textarea
           value={(tokens as any)?.customCss || ""}
