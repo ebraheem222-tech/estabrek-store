@@ -12024,7 +12024,12 @@ html {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(245, 158, 11, 0.05));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 14%, transparent),
+    color-mix(in srgb, var(--accent-2) 14%, transparent)
+  );
+  border: 1px solid var(--border);
   border-radius: 1rem;
   overflow: hidden;
   cursor: grab;
@@ -12041,7 +12046,7 @@ html {
   inset: 0;
   z-index: 9999;
   border-radius: 0;
-  background: #000;
+  background: var(--bg);
   aspect-ratio: auto;
 }
 
@@ -12076,16 +12081,17 @@ html {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
+  background: color-mix(in srgb, var(--bg) 75%, transparent);
+  color: var(--text);
+  backdrop-filter: blur(6px);
   z-index: 10;
 }
 
 .view-360-loading .loading-spinner {
   width: 3rem;
   height: 3rem;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #8b5cf6;
+  border: 3px solid color-mix(in srgb, var(--text) 18%, transparent);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin360 0.8s linear infinite;
 }
@@ -12097,14 +12103,14 @@ html {
 .view-360-loading .loading-progress {
   width: 150px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
   border-radius: 2px;
   overflow: hidden;
 }
 
 .view-360-loading .loading-progress div {
   height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #f59e0b);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
   transition: width 0.3s ease;
 }
 
@@ -12128,8 +12134,9 @@ html {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 2rem;
   font-size: 0.75rem;
   pointer-events: none;
@@ -12147,12 +12154,12 @@ html {
   left: 0;
   right: 0;
   height: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 .view-360-progress .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #f59e0b);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
   transition: width 0.1s ease;
 }
 
@@ -12169,18 +12176,19 @@ html {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: color-mix(in srgb, var(--text) 24%, transparent);
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .view-360-dots .dot:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: color-mix(in srgb, var(--text) 40%, transparent);
 }
 
 .view-360-dots .dot.active {
-  background: #8b5cf6;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
   transform: scale(1.2);
 }
 
@@ -12193,9 +12201,9 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
-  border: none;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 50%;
   cursor: pointer;
   opacity: 0;
@@ -12208,7 +12216,8 @@ html {
 }
 
 .view-360-nav:hover {
-  background: rgba(139, 92, 246, 0.8);
+  background: var(--accent);
+  color: var(--accent-contrast, #0B0B0B);
   transform: translateY(-50%) scale(1.1);
 }
 
@@ -12226,6 +12235,10 @@ html {
   right: 0.5rem;
   display: flex;
   gap: 0.5rem;
+  padding: 0.35rem;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
   z-index: 5;
 }
 
@@ -12235,8 +12248,8 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+  color: var(--text);
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
@@ -12245,7 +12258,8 @@ html {
 
 .view-360-controls button:hover,
 .view-360-controls button.active {
-  background: rgba(139, 92, 246, 0.8);
+  background: var(--accent);
+  color: var(--accent-contrast, #0B0B0B);
 }
 
 .view-360-counter {
@@ -12253,8 +12267,9 @@ html {
   top: 0.5rem;
   left: 0.5rem;
   padding: 0.25rem 0.75rem;
-  background: rgba(0, 0, 0, 0.5);
-  color: white;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 1rem;
   font-size: 0.75rem;
   z-index: 5;
