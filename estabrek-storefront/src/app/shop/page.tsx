@@ -85,6 +85,9 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   const settings = await getPublicSettings().catch(() => null);
   const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
+  const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
+  const aiRecommendationsEnabled = storefrontCfg.aiRecommendationsEnabled !== false;
   if (storefrontCfg.cmsOverrideShop !== false) {
     const cms = await renderCmsPageBySlug("/shop", searchParams, { allowFallback: false, allowNotFound: false });
     if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
@@ -140,14 +143,16 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
       <NormalizeFilters basePath="/shop" />
       
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
-        <Link href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
-          <HomeIcon />
-          الرئيسية
-        </Link>
-        <ChevronLeftIcon />
-        <span className="text-[var(--text)]">المتجر</span>
-      </nav>
+      {breadcrumbsEnabled ? (
+        <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          <Link href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
+            <HomeIcon />
+            الرئيسية
+          </Link>
+          <ChevronLeftIcon />
+          <span className="text-[var(--text)]">المتجر</span>
+        </nav>
+      ) : null}
 
       {/* Shop Header */}
       <div className="shop-hero">
@@ -174,8 +179,8 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
 
       {/* AI-Powered Search Tools */}
       <div className="grid md:grid-cols-2 gap-4">
-        <ImageSearchPanel />
-        <AIRecommendations title="منتجات مقترحة لك" />
+        {imageSearchEnabled ? <ImageSearchPanel /> : null}
+        {aiRecommendationsEnabled ? <AIRecommendations title="منتجات مقترحة لك" /> : null}
       </div>
 
       {/* Main Content */}

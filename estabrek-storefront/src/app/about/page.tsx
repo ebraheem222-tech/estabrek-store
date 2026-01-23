@@ -55,6 +55,7 @@ const UsersIcon = () => (
 export default async function AboutPage() {
   const settings = await getPublicSettings().catch(() => null);
   const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
   if (storefrontCfg.cmsOverrideAbout !== false) {
     const cms = await renderCmsPageBySlug("/about", undefined, { allowFallback: false, allowNotFound: false });
     if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
@@ -66,14 +67,16 @@ export default async function AboutPage() {
   return (
     <main className="about-page" dir="rtl">
       {/* Breadcrumb */}
-      <nav className="about-breadcrumb">
-        <Link href="/" className="breadcrumb-link">
-          <HomeIcon />
-          الرئيسية
-        </Link>
-        <ChevronLeftIcon />
-        <span className="breadcrumb-current">من نحن</span>
-      </nav>
+      {breadcrumbsEnabled ? (
+        <nav className="about-breadcrumb">
+          <Link href="/" className="breadcrumb-link">
+            <HomeIcon />
+            الرئيسية
+          </Link>
+          <ChevronLeftIcon />
+          <span className="breadcrumb-current">من نحن</span>
+        </nav>
+      ) : null}
 
       {/* Hero Section */}
       <section className="about-hero">

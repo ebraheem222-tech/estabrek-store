@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useWishlist } from "@/store/wishlist";
 import { LqipImage } from "@/components/LqipImage";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 // Icons
 const HeartIcon = () => (
@@ -44,18 +45,22 @@ const EmptyHeartIcon = () => (
 
 export default function WishlistPage() {
   const { items, removeFromWishlist, clearWishlist, count } = useWishlist();
+  const settings = useStorefrontSettings();
+  const breadcrumbsEnabled = settings.breadcrumbsEnabled !== false;
 
   return (
     <main className="wishlist-page" dir="rtl">
       {/* Breadcrumb */}
-      <nav className="wishlist-breadcrumb">
-        <Link href="/" className="breadcrumb-link">
-          <HomeIcon />
-          الرئيسية
-        </Link>
-        <ChevronLeftIcon />
-        <span className="breadcrumb-current">المفضلة</span>
-      </nav>
+      {breadcrumbsEnabled ? (
+        <nav className="wishlist-breadcrumb">
+          <Link href="/" className="breadcrumb-link">
+            <HomeIcon />
+            الرئيسية
+          </Link>
+          <ChevronLeftIcon />
+          <span className="breadcrumb-current">المفضلة</span>
+        </nav>
+      ) : null}
 
       {/* Header */}
       <div className="wishlist-header">

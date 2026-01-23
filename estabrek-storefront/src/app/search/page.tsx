@@ -68,6 +68,8 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 export default async function SearchPage({ searchParams }: { searchParams: SP }) {
   const settings = await getPublicSettings().catch(() => null);
   const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
+  const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
   if (storefrontCfg.cmsOverrideSearch !== false) {
     const cms = await renderCmsPageBySlug("/search", searchParams, { allowFallback: false, allowNotFound: false });
     if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
@@ -114,14 +116,16 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       <NormalizeFilters basePath="/search" />
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
-        <Link href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
-          <HomeIcon />
-          الرئيسية
-        </Link>
-        <ChevronLeftIcon />
-        <span className="text-[var(--text)]">البحث</span>
-      </nav>
+      {breadcrumbsEnabled ? (
+        <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          <Link href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
+            <HomeIcon />
+            الرئيسية
+          </Link>
+          <ChevronLeftIcon />
+          <span className="text-[var(--text)]">البحث</span>
+        </nav>
+      ) : null}
 
       {/* Search Header */}
       <div className="search-page-header">
@@ -152,7 +156,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       </div>
 
       {/* Image Search Panel */}
-      <ImageSearchPanel />
+      {imageSearchEnabled ? <ImageSearchPanel /> : null}
 
       {/* Filters */}
       <ProductFiltersBar
