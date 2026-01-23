@@ -8,109 +8,15 @@ import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThe
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
+import {
+  DEFAULT_STOREFRONT_SETTINGS,
+  normalizeStorefrontSettings,
+  type StorefrontSettings,
+} from "@/lib/storefrontSettings";
 
-type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
+export type { StorefrontSettings } from "@/lib/storefrontSettings";
 
-// Default settings - all features
-const DEFAULT_SETTINGS = {
-  // Seasonal Effects
-  seasonalEffectsEnabled: true,
-  seasonalTheme: "auto" as SeasonalThemeMode,
-  seasonalEffectsDuration: 15,
-  seasonalEffectsInterval: 60,
-  seasonalParticleCount: 25,
-  
-  // Product Page
-  product360ViewEnabled: true,
-  product360AutoRotate: false,
-  product360RotateSpeed: 100,
-  productBadgesEnabled: true,
-  productStockIndicator: true,
-  productStockThreshold: 20,
-  productSizeRecommender: true,
-  productRecentlyViewed: true,
-  productRecentlyViewedCount: 6,
-  productRecommendations: true,
-  productRecommendationsCount: 8,
-  productQuickView: true,
-  productZoomEnabled: true,
-  productCompareEnabled: true,
-  
-  // Search & Discovery
-  voiceSearchEnabled: true,
-  imageSearchEnabled: true,
-  aiRecommendationsEnabled: true,
-  searchSuggestionsEnabled: true,
-  searchHistoryEnabled: true,
-  
-  // Chat & Support
-  liveChatEnabled: true,
-  liveChatPosition: "bottom-left" as "bottom-left" | "bottom-right" | "bottom-center",
-  liveChatWelcomeMessage: "مرحباً! كيف يمكنني مساعدتك؟",
-  liveChatOfflineMessage: "نحن غير متصلين حالياً",
-  chatbotEnabled: true,
-  whatsappEnabled: false,
-  whatsappNumber: "",
-  
-  // Visual Effects
-  confettiOnAddToCart: true,
-  heartBurstOnWishlist: true,
-  scrollAnimationsEnabled: true,
-  magneticButtonsEnabled: true,
-  cardTiltEffectEnabled: true,
-  parallaxEffectsEnabled: true,
-  
-  // Cart & Checkout
-  miniCartEnabled: true,
-  cartAnimationsEnabled: true,
-  cartShakeOnAdd: true,
-  checkoutProgressEnabled: true,
-  couponAnimationsEnabled: true,
-  
-  // Navigation
-  mobileBottomNavEnabled: true,
-  scrollToTopEnabled: true,
-  breadcrumbsEnabled: true,
-  stickyHeaderEnabled: true,
-  scrollProgressEnabled: true,
-  
-  // Notifications
-  toastNotificationsEnabled: true,
-  toastPosition: "top-right" as const,
-  stockAlertEnabled: true,
-  priceDropAlertEnabled: true,
-  
-  // Social Proof
-  recentPurchasesPopup: false,
-  viewersCountEnabled: false,
-  soldCountEnabled: true,
-  
-  // CMS Overrides (core pages)
-  cmsOverrideHome: true,
-  cmsOverrideShop: true,
-  cmsOverrideAbout: true,
-  cmsOverrideContact: true,
-  cmsOverrideSearch: true,
-  cmsOverrideCart: true,
-
-  // Theme
-  themeColorsEnabled: true,
-  accentColor: "#8b5cf6",
-  accentColor2: "#f59e0b",
-  glassEffectsEnabled: true,
-  darkModeEnabled: true,
-  darkModeDefault: true,
-  
-  // Performance
-  lazyLoadImages: true,
-  skeletonLoadingEnabled: true,
-  prefetchLinks: true,
-  imageBlurEnabled: false,
-};
-
-export type StorefrontSettings = typeof DEFAULT_SETTINGS;
-
-const StorefrontSettingsContext = createContext<StorefrontSettings>(DEFAULT_SETTINGS);
+const StorefrontSettingsContext = createContext<StorefrontSettings>(DEFAULT_STOREFRONT_SETTINGS);
 
 export function useStorefrontSettings() {
   return useContext(StorefrontSettingsContext);
@@ -134,25 +40,17 @@ export function StorefrontFeaturesProvider({
     }
   };
 
-  const mergeSettings = (base: StorefrontSettings, patch?: Partial<StorefrontSettings>) => {
-    if (!patch || typeof patch !== "object") return base;
-    const next = { ...base } as StorefrontSettings;
-    for (const [key, value] of Object.entries(patch)) {
-      if (value === undefined || value === null) continue;
-      (next as any)[key] = value;
-    }
-    return next;
-  };
+  const mergeSettings = (base: StorefrontSettings, patch?: Partial<StorefrontSettings>) =>
+    normalizeStorefrontSettings(patch, base);
 
-  const [settings, setSettings] = useState<StorefrontSettings>(() => ({
-    ...DEFAULT_SETTINGS,
-    ...initialSettings,
-  }));
+  const [settings, setSettings] = useState<StorefrontSettings>(() =>
+    normalizeStorefrontSettings(initialSettings)
+  );
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     if (!initialSettings) return;
-    setSettings(prev => mergeSettings(prev, initialSettings));
+    setSettings((prev) => mergeSettings(prev, initialSettings));
   }, [initialSettings]);
 
   useEffect(() => {
@@ -166,16 +64,16 @@ export function StorefrontFeaturesProvider({
           rawBase ? (rawBase.endsWith("/v1") ? rawBase : `${rawBase}/v1`) : `${window.location.origin}/v1`;
         if (!resolvedBase) return;
 
-          const res = await fetch(`${resolvedBase}/storefront/bootstrap`, { cache: "no-store" });
-          if (res.ok) {
-            const data = await res.json();
-            // Settings are in data.site.header.storefront
-            const header = parseMaybeJson(data?.site?.header);
-            const storefrontConfig = (header as any)?.storefront ?? data?.site?.header?.storefront;
-            if (storefrontConfig) {
-              setSettings(prev => mergeSettings(prev, storefrontConfig));
-            }
+        const res = await fetch(`${resolvedBase}/storefront/bootstrap`, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          // Settings are in data.site.header.storefront
+          const header = parseMaybeJson(data?.site?.header);
+          const storefrontConfig = (header as any)?.storefront ?? data?.site?.header?.storefront;
+          if (storefrontConfig) {
+            setSettings((prev) => mergeSettings(prev, storefrontConfig));
           }
+        }
       } catch (error) {
         // Use default settings on error
         console.warn("Failed to fetch storefront settings:", error);

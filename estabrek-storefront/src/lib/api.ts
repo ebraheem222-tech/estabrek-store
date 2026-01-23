@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { z } from "zod";
 import type { StorefrontBootstrap, StorefrontPage, SitePublicSettings } from "./types";
+import { normalizeStorefrontSettings } from "./storefrontSettings";
 import type { CatalogCategory, CatalogProduct, CatalogProductsList } from "./catalog";
 
 function baseUrl() {
@@ -33,6 +34,13 @@ function normalizeSiteSettings(site: any) {
   if (!site || typeof site !== "object") return site;
   const header = parseMaybeJson(site.header);
   const footer = parseMaybeJson(site.footer);
+  const rawStorefront =
+    (header && typeof header === "object" ? (header as any).storefront : undefined) ?? (site as any).storefront;
+  if (rawStorefront !== undefined) {
+    const normalizedStorefront = normalizeStorefrontSettings(rawStorefront);
+    const nextHeader = header && typeof header === "object" ? { ...(header as any), storefront: normalizedStorefront } : { storefront: normalizedStorefront };
+    return { ...site, header: nextHeader, footer };
+  }
   return { ...site, header, footer };
 }
 
