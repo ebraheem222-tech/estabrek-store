@@ -1946,7 +1946,7 @@ export const SpotlightButton: React.FC<SpotlightButtonProps> = ({
 // SPOTLIGHT INPUT WRAPPER COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-interface SpotlightInputProps extends SpotlightProps {
+interface SpotlightInputProps extends Omit<SpotlightProps, "children"> {
   inputClassName?: string;
   placeholder?: string;
   type?: string;
