@@ -212,6 +212,9 @@ export type TwTokensExtended = {
   scrollAnim?: ScrollAnimPreset;
   containerStyleId?: string;
   dividerStyleId?: string;
+  spotlightThemeId?: string;
+  spotlightSize?: number;
+  spotlightOpacity?: number;
 
   // Counter animation
   counter?: {
