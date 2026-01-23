@@ -13,6 +13,13 @@ interface ProductPageEnhancementsProps {
     compareAtPrice?: number;
     originalPrice?: number;
     images?: Array<{ url: string }>;
+    items?: Array<{
+      images?: Array<{
+        url: string;
+        position?: number | null;
+        isPrimary?: boolean | null;
+      }>;
+    }>;
     stock?: number;
     quantity?: number;
     inStock?: boolean;
@@ -44,7 +51,31 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
   if (!mounted) return null;
 
   // Extract data
-  const images = product.images?.map((img) => img.url) || [];
+  const images = (() => {
+    const output: string[] = [];
+    const seen = new Set<string>();
+    const add = (value?: string | null) => {
+      if (!value) return;
+      const url = value.trim();
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      output.push(url);
+    };
+
+    const productImages = Array.isArray(product.images) ? product.images : [];
+    for (const img of productImages) add((img as any)?.url ?? (img as any));
+
+    const items = Array.isArray(product.items) ? product.items : [];
+    for (const item of items) {
+      const itemImages = Array.isArray(item?.images) ? item.images : [];
+      const ordered = [...itemImages].sort(
+        (a, b) => (a?.position ?? 0) - (b?.position ?? 0)
+      );
+      for (const img of ordered) add(img?.url);
+    }
+
+    return output;
+  })();
   const price = product.price || 0;
   const compareEnabled = settings.productCompareEnabled;
   const comparePrice = compareEnabled ? (product.compareAtPrice || product.originalPrice) : undefined;

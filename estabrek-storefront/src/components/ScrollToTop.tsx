@@ -23,6 +23,7 @@ export function ScrollToTop() {
     };
 
     window.addEventListener("scroll", toggleVisibility, { passive: true });
+    toggleVisibility();
     return () => window.removeEventListener("scroll", toggleVisibility);
   }, []);
 

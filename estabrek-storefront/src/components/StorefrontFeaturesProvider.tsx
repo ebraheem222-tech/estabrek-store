@@ -8,7 +8,7 @@ import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThe
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
-import { ScrollProgress } from "@/components/ScrollProgress";
+import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import {
   DEFAULT_STOREFRONT_SETTINGS,
   normalizeStorefrontSettings,
@@ -147,7 +147,7 @@ export function StorefrontFeaturesProvider({
               offlineMessage={settings.liveChatOfflineMessage}
             />
           )}
-          {settings.scrollProgressEnabled && <ScrollProgress />}
+          {settings.scrollProgressEnabled && <ScrollProgressBar />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
           {settings.scrollToTopEnabled && <ScrollToTop />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}

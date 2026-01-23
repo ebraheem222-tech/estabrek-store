@@ -309,16 +309,31 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     }
   }
 
+  const stripNavPosition = (value: string) => {
+    const tokens = value.split(/\s+/).filter(Boolean);
+    return tokens
+      .filter((token) => {
+        if (["static", "fixed", "absolute", "relative", "sticky"].includes(token)) return false;
+        if (/^(top|bottom|left|right|inset|inset-x|inset-y)-/.test(token)) return false;
+        if (/^-?translate-[xy]-/.test(token)) return false;
+        return true;
+      })
+      .join(" ");
+  };
+
   const headerClassName = (() => {
     if (!navTemplate) {
       return (sticky ? "sticky top-0 z-40 " : "relative z-40 ") + "border-b border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur";
     }
 
-    const navCls = navTemplate.styles.nav ?? "";
+    const rawNavCls = navTemplate.styles.nav ?? "";
+    const isSidebar = navTemplate.category === "sidebar";
+    const navCls = isSidebar ? rawNavCls : stripNavPosition(rawNavCls);
     const hasZIndex = /\bz-(?:\d+|auto)\b|\bz-\[/.test(navCls);
 
-    // Ensure sticky/relative wins even if template includes a position class like "relative".
-    const extra: string[] = [sticky ? "sticky top-0" : "relative"];
+    // Ensure sticky toggle wins over template positioning.
+    const extra: string[] = [];
+    if (!isSidebar) extra.push(sticky ? "sticky top-0" : "relative");
     if (!hasZIndex) extra.push("z-40");
     return [navCls, ...extra].filter(Boolean).join(" ");
   })();
