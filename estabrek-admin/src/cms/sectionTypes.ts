@@ -23,6 +23,8 @@ export type HeroSlide = {
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";
 
 export type HeroData = HeroSlide & {
+  /** Optional hero theme id (uses hero-themes renderer when set). */
+  themeId?: string;
   /** Slider mode */
   slides?: HeroSlide[];
   /** Autoplay interval ms (e.g. 5000). 0/undefined disables autoplay */
@@ -161,6 +163,8 @@ export type PricingData = {
 };
 
 export type ContactData = {
+  /** Optional contact form theme id (uses contact-forms renderer when set). */
+  themeId?: string;
   title?: string;
   subtitle?: string;
   items?: Array<{
