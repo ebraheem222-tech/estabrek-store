@@ -1166,8 +1166,8 @@ export default function PageEditorPage() {
   const canvasViewportClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "max-h-[70vh]";
   const canvasPreviewHeightClass = canvasFullScreen ? "h-[calc(100vh-240px)]" : "h-[70vh]";
   const canvasPanelClass = canvasFullScreen
-    ? "fixed inset-0 z-40 flex flex-col border border-white/10 bg-black/90 p-4"
-    : "rounded-2xl border border-white/10 bg-white/5 p-4";
+    ? "fixed inset-0 z-40 flex flex-col border border-white/10 bg-black/90 p-4 relative"
+    : "rounded-2xl border border-white/10 bg-white/5 p-4 relative";
   const leftPanelStyle = leftPanelCollapsed ? undefined : { width: `min(100%, ${leftPanelWidth}px)` };
   const rightPanelStyle = canvasFullScreen || leftPanelFullScreen ? undefined : { width: `min(100%, ${rightPanelWidth}px)` };
 
@@ -3780,6 +3780,17 @@ export default function PageEditorPage() {
         {!leftPanelFullScreen ? (
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className={canvasPanelClass}>
+          {canvasFullScreen ? (
+            <Button
+              type="button"
+              size="xs"
+              variant="secondary"
+              className="absolute right-4 top-4 z-20"
+              onClick={() => setCanvasFullScreen(false)}
+            >
+              Exit full screen
+            </Button>
+          ) : null}
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-semibold">Canvas</div>
             <div className="flex items-center gap-2">

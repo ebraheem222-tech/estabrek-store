@@ -29,6 +29,7 @@ import type {
 import { CmsComponentsRenderer } from "./CmsComponentsRenderer";
 import { TypewriterText } from "../../components/effects/TypewriterText";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
+import { SpotlightContainer } from "../../cms/spotlight-themes";
 import type { TwTokens } from "../../cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
 import { heroComponents, HeroRenderer } from "../../cms/hero-themes";
@@ -660,9 +661,30 @@ const VOID_ELEMENTS = new Set([
   "wbr",
 ]);
 
+function wrapSpotlight(node: React.ReactElement, tokens?: TwTokens) {
+  const themeId = (tokens as any)?.spotlightThemeId;
+  if (!themeId) return node;
+  if (typeof node.type !== "string") return node;
+  const tagName = node.type as keyof JSX.IntrinsicElements;
+  const { className, style, children, ...rest } = node.props ?? {};
+  return (
+    <SpotlightContainer
+      as={tagName}
+      theme={themeId}
+      spotlightSize={(tokens as any)?.spotlightSize}
+      spotlightOpacity={(tokens as any)?.spotlightOpacity}
+      className={className}
+      style={style}
+      {...(rest as any)}
+    >
+      {children}
+    </SpotlightContainer>
+  );
+}
+
 function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
   const decorations = sectionDecorations(tokens);
-  if (!decorations) return node;
+  if (!decorations) return wrapSpotlight(node, tokens);
   const className = node.props?.className;
   const wantsOverflowHidden = typeof className === "string" && className.includes("overflow-hidden");
   const cleanedClassName =
@@ -681,7 +703,7 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
   const innerStyle = wantsOverflowHidden ? { borderRadius: "inherit" } : undefined;
   if (typeof node.type !== "string") {
     const Wrapper = isInline ? "span" : "div";
-    return (
+    const wrapped = (
       <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
         <SectionDecorations decorations={decorations} className="z-0" />
         <span className={innerClassName} style={innerStyle}>
@@ -689,10 +711,11 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
         </span>
       </Wrapper>
     );
+    return wrapSpotlight(wrapped, tokens);
   }
   if (isVoid) {
     const Wrapper = isInline ? "span" : "div";
-    return (
+    const wrapped = (
       <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
         <SectionDecorations decorations={decorations} className="z-0" />
         <span className={innerClassName} style={innerStyle}>
@@ -700,8 +723,9 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
         </span>
       </Wrapper>
     );
+    return wrapSpotlight(wrapped, tokens);
   }
-  return React.cloneElement(
+  const wrapped = React.cloneElement(
     node,
     { className: mergedClassName },
     <>
@@ -711,6 +735,7 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
       </span>
     </>
   );
+  return wrapSpotlight(wrapped, tokens);
 }
 
 function sectionComponents(data: any) {
