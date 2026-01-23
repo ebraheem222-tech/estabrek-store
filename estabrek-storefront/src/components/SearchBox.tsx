@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
@@ -622,17 +621,20 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                     تصنيفات
                   </div>
                   {categories.slice(0, 5).map((c) => (
-                    <Link
+                    <button
                       key={c.id}
-                      href={`/c/${c.slug}`}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        router.push(`/c/${c.slug}`);
+                      }}
+                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
                     >
                       <span className="truncate">{c.name}</span>
                       <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               ) : null}
@@ -646,17 +648,20 @@ export function SearchBox({ styleId }: { styleId?: string }) {
                     منتجات
                   </div>
                   {products.slice(0, 6).map((p) => (
-                    <Link
+                    <button
                       key={p.id}
-                      href={`/p/${p.slug}`}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        router.push(`/p/${p.slug}`);
+                      }}
+                      className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text)]/80 hover:bg-white/[0.06] transition-colors"
                     >
                       <span className="truncate">{p.title}</span>
                       <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               ) : null}

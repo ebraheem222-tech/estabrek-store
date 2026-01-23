@@ -8,7 +8,6 @@ import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThe
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
-import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 
 type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
 
@@ -126,6 +125,15 @@ export function StorefrontFeaturesProvider({
   children, 
   initialSettings 
 }: StorefrontFeaturesProviderProps) {
+  const parseMaybeJson = (value: unknown) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  };
+
   const mergeSettings = (base: StorefrontSettings, patch?: Partial<StorefrontSettings>) => {
     if (!patch || typeof patch !== "object") return base;
     const next = { ...base } as StorefrontSettings;
@@ -158,11 +166,12 @@ export function StorefrontFeaturesProvider({
           rawBase ? (rawBase.endsWith("/v1") ? rawBase : `${rawBase}/v1`) : `${window.location.origin}/v1`;
         if (!resolvedBase) return;
 
-          const res = await fetch(`${resolvedBase}/storefront/bootstrap`);
+          const res = await fetch(`${resolvedBase}/storefront/bootstrap`, { cache: "no-store" });
           if (res.ok) {
             const data = await res.json();
             // Settings are in data.site.header.storefront
-            const storefrontConfig = data?.site?.header?.storefront;
+            const header = parseMaybeJson(data?.site?.header);
+            const storefrontConfig = (header as any)?.storefront ?? data?.site?.header?.storefront;
             if (storefrontConfig) {
               setSettings(prev => mergeSettings(prev, storefrontConfig));
             }
@@ -228,7 +237,6 @@ export function StorefrontFeaturesProvider({
               offlineMessage={settings.liveChatOfflineMessage}
             />
           )}
-          {settings.scrollProgressEnabled && <ScrollProgressBar placement="auto" />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
           {settings.scrollToTopEnabled && <ScrollToTop />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
