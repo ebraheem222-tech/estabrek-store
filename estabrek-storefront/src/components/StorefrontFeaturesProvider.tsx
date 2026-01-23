@@ -126,6 +126,16 @@ export function StorefrontFeaturesProvider({
   children, 
   initialSettings 
 }: StorefrontFeaturesProviderProps) {
+  const mergeSettings = (base: StorefrontSettings, patch?: Partial<StorefrontSettings>) => {
+    if (!patch || typeof patch !== "object") return base;
+    const next = { ...base } as StorefrontSettings;
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined || value === null) continue;
+      (next as any)[key] = value;
+    }
+    return next;
+  };
+
   const [settings, setSettings] = useState<StorefrontSettings>(() => ({
     ...DEFAULT_SETTINGS,
     ...initialSettings,
@@ -134,7 +144,7 @@ export function StorefrontFeaturesProvider({
 
   useEffect(() => {
     if (!initialSettings) return;
-    setSettings(prev => ({ ...prev, ...initialSettings }));
+    setSettings(prev => mergeSettings(prev, initialSettings));
   }, [initialSettings]);
 
   useEffect(() => {
@@ -148,15 +158,15 @@ export function StorefrontFeaturesProvider({
           rawBase ? (rawBase.endsWith("/v1") ? rawBase : `${rawBase}/v1`) : `${window.location.origin}/v1`;
         if (!resolvedBase) return;
 
-        const res = await fetch(`${resolvedBase}/storefront/bootstrap`);
-        if (res.ok) {
-          const data = await res.json();
-          // Settings are in data.site.header.storefront
-          const storefrontConfig = data?.site?.header?.storefront;
-          if (storefrontConfig) {
-            setSettings(prev => ({ ...prev, ...storefrontConfig }));
+          const res = await fetch(`${resolvedBase}/storefront/bootstrap`);
+          if (res.ok) {
+            const data = await res.json();
+            // Settings are in data.site.header.storefront
+            const storefrontConfig = data?.site?.header?.storefront;
+            if (storefrontConfig) {
+              setSettings(prev => mergeSettings(prev, storefrontConfig));
+            }
           }
-        }
       } catch (error) {
         // Use default settings on error
         console.warn("Failed to fetch storefront settings:", error);
