@@ -8,7 +8,6 @@ import { SearchBox } from "@/components/SearchBox";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { LoadingImg } from "@/components/LoadingImg";
 import { StorefrontMiniCart } from "@/components/StorefrontMiniCart";
-import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import type { MenuTree, SitePublicSettings, NavItem } from "@/lib/types";
 import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -559,10 +558,6 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
             </div>
           </div>
         </div>
-      ) : null}
-
-      {settings.scrollProgressEnabled ? (
-        <ScrollProgressBar placement={sticky ? "under-header" : "overlay"} />
       ) : null}
 
       {allowMiniCart ? (

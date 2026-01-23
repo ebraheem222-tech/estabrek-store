@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ScrollProgressBarProps = {
-  placement?: "overlay" | "under-header";
+  placement?: "overlay" | "under-header" | "auto";
 };
 
-export function ScrollProgressBar({ placement = "overlay" }: ScrollProgressBarProps) {
+type ResolvedPlacement = "overlay" | "under-header";
+
+export function ScrollProgressBar({ placement = "auto" }: ScrollProgressBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [resolvedPlacement, setResolvedPlacement] = useState<ResolvedPlacement>(
+    placement === "under-header" ? "under-header" : "overlay"
+  );
 
   useEffect(() => {
     const bar = barRef.current;
@@ -22,9 +27,10 @@ export function ScrollProgressBar({ placement = "overlay" }: ScrollProgressBarPr
 
     const update = () => {
       rafId = null;
-      const scrollTop = root.scrollTop || document.body.scrollTop || 0;
-      const scrollHeight = root.scrollHeight || document.body.scrollHeight || 0;
-      const clientHeight = root.clientHeight || window.innerHeight || 0;
+      const scrollRoot = document.scrollingElement ?? root;
+      const scrollTop = scrollRoot.scrollTop || document.body.scrollTop || 0;
+      const scrollHeight = scrollRoot.scrollHeight || document.body.scrollHeight || 0;
+      const clientHeight = scrollRoot.clientHeight || window.innerHeight || 0;
       const max = Math.max(1, scrollHeight - clientHeight);
       const progress = Math.min(1, Math.max(0, scrollTop / max));
       bar.style.transform = `scaleX(${progress})`;
@@ -47,10 +53,31 @@ export function ScrollProgressBar({ placement = "overlay" }: ScrollProgressBarPr
   }, []);
 
   useEffect(() => {
+    if (placement !== "auto") {
+      setResolvedPlacement(placement === "under-header" ? "under-header" : "overlay");
+      return;
+    }
+
+    const resolve = () => {
+      const header = document.querySelector("header");
+      if (!header) {
+        setResolvedPlacement("overlay");
+        return;
+      }
+      const position = window.getComputedStyle(header).position;
+      setResolvedPlacement(position === "sticky" || position === "fixed" ? "under-header" : "overlay");
+    };
+
+    resolve();
+    window.addEventListener("resize", resolve);
+    return () => window.removeEventListener("resize", resolve);
+  }, [placement]);
+
+  useEffect(() => {
     const wrapper = wrapRef.current;
     if (!wrapper) return;
 
-    if (placement !== "under-header") {
+    if (resolvedPlacement !== "under-header") {
       wrapper.style.top = "0px";
       return;
     }
@@ -63,11 +90,21 @@ export function ScrollProgressBar({ placement = "overlay" }: ScrollProgressBarPr
 
     updateOffset();
     window.addEventListener("resize", updateOffset);
-    return () => window.removeEventListener("resize", updateOffset);
-  }, [placement]);
+    let observer: ResizeObserver | null = null;
+    const header = document.querySelector("header");
+    if (header && "ResizeObserver" in window) {
+      observer = new ResizeObserver(updateOffset);
+      observer.observe(header);
+    }
+
+    return () => {
+      window.removeEventListener("resize", updateOffset);
+      observer?.disconnect();
+    };
+  }, [resolvedPlacement]);
 
   const rootClass =
-    placement === "under-header" ? "scroll-progress scroll-progress--under-header" : "scroll-progress";
+    resolvedPlacement === "under-header" ? "scroll-progress scroll-progress--under-header" : "scroll-progress";
 
   return (
     <div ref={wrapRef} className={rootClass} aria-hidden="true">

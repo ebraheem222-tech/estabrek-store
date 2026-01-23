@@ -8,6 +8,7 @@ import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThe
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
+import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 
 type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
 
@@ -132,6 +133,11 @@ export function StorefrontFeaturesProvider({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    if (!initialSettings) return;
+    setSettings(prev => ({ ...prev, ...initialSettings }));
+  }, [initialSettings]);
+
+  useEffect(() => {
     setMounted(true);
     
     // Try to fetch settings from API
@@ -212,6 +218,7 @@ export function StorefrontFeaturesProvider({
               offlineMessage={settings.liveChatOfflineMessage}
             />
           )}
+          {settings.scrollProgressEnabled && <ScrollProgressBar placement="auto" />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
           {settings.scrollToTopEnabled && <ScrollToTop />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
