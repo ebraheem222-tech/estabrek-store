@@ -1,0 +1,1985 @@
+"use client";
+
+import React, { useRef, useState, useCallback } from 'react';
+
+// ═══════════════════════════════════════════════════════════════
+// TYPES & INTERFACES
+// ═══════════════════════════════════════════════════════════════
+
+export interface SpotlightTheme {
+  id: string;
+  name: string;
+  nameAr: string;
+  category: string;
+  baseClassName: string;
+  spotlightColor: string;
+  spotlightSize?: number;
+  spotlightOpacity?: number;
+  borderGlow?: boolean;
+  borderColor?: string;
+  hoverScale?: boolean;
+  tags?: string[];
+}
+
+export interface SpotlightProps extends React.HTMLAttributes<HTMLElement> {
+  children: React.ReactNode;
+  theme?: string | SpotlightTheme;
+  className?: string;
+  as?: 'div' | 'button' | 'section' | 'article' | 'aside' | 'form';
+  disabled?: boolean;
+  spotlightSize?: number;
+  spotlightOpacity?: number;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 150 SPOTLIGHT THEMES
+// ═══════════════════════════════════════════════════════════════
+
+export const spotlightThemes: SpotlightTheme[] = [
+  // ═══════════════════════════════════════════════════════════════
+  // 🌟 BASIC / MINIMAL (1-15)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'basic-white',
+    name: 'Basic White',
+    nameAr: 'أساسي أبيض',
+    category: 'Basic',
+    tags: ['basic', 'clean', 'minimal'],
+    baseClassName: 'bg-white border border-gray-200 rounded-xl',
+    spotlightColor: 'rgba(0, 0, 0, 0.05)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-gray',
+    name: 'Basic Gray',
+    nameAr: 'أساسي رمادي',
+    category: 'Basic',
+    tags: ['basic', 'neutral'],
+    baseClassName: 'bg-gray-50 border border-gray-200 rounded-xl',
+    spotlightColor: 'rgba(0, 0, 0, 0.08)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-dark',
+    name: 'Basic Dark',
+    nameAr: 'أساسي داكن',
+    category: 'Basic',
+    tags: ['basic', 'dark'],
+    baseClassName: 'bg-gray-900 border border-gray-700 rounded-xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.1)',
+    spotlightSize: 250,
+  },
+  {
+    id: 'basic-shadow',
+    name: 'Basic Shadow',
+    nameAr: 'أساسي ظل',
+    category: 'Basic',
+    tags: ['basic', 'shadow'],
+    baseClassName: 'bg-white rounded-xl shadow-lg',
+    spotlightColor: 'rgba(99, 102, 241, 0.1)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-rounded',
+    name: 'Basic Rounded',
+    nameAr: 'أساسي دائري',
+    category: 'Basic',
+    tags: ['basic', 'rounded'],
+    baseClassName: 'bg-white border border-gray-200 rounded-3xl',
+    spotlightColor: 'rgba(0, 0, 0, 0.05)',
+    spotlightSize: 180,
+  },
+  {
+    id: 'basic-sharp',
+    name: 'Basic Sharp',
+    nameAr: 'أساسي حاد',
+    category: 'Basic',
+    tags: ['basic', 'sharp'],
+    baseClassName: 'bg-white border border-gray-300 rounded-none',
+    spotlightColor: 'rgba(0, 0, 0, 0.06)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-soft',
+    name: 'Basic Soft',
+    nameAr: 'أساسي ناعم',
+    category: 'Basic',
+    tags: ['basic', 'soft'],
+    baseClassName: 'bg-gray-100 rounded-2xl',
+    spotlightColor: 'rgba(255, 255, 255, 0.8)',
+    spotlightSize: 220,
+  },
+  {
+    id: 'basic-bordered',
+    name: 'Basic Bordered',
+    nameAr: 'أساسي محدد',
+    category: 'Basic',
+    tags: ['basic', 'bordered'],
+    baseClassName: 'bg-white border-2 border-gray-300 rounded-xl',
+    spotlightColor: 'rgba(0, 0, 0, 0.05)',
+    spotlightSize: 200,
+    borderGlow: true,
+    borderColor: 'rgba(156, 163, 175, 0.5)',
+  },
+  {
+    id: 'basic-elevated',
+    name: 'Basic Elevated',
+    nameAr: 'أساسي مرتفع',
+    category: 'Basic',
+    tags: ['basic', 'elevated'],
+    baseClassName: 'bg-white rounded-xl shadow-xl',
+    spotlightColor: 'rgba(59, 130, 246, 0.08)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'basic-glass',
+    name: 'Basic Glass',
+    nameAr: 'أساسي زجاجي',
+    category: 'Basic',
+    tags: ['basic', 'glass'],
+    baseClassName: 'bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl',
+    spotlightColor: 'rgba(255, 255, 255, 0.5)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-slate',
+    name: 'Basic Slate',
+    nameAr: 'أساسي أردوازي',
+    category: 'Basic',
+    tags: ['basic', 'slate'],
+    baseClassName: 'bg-slate-100 border border-slate-200 rounded-xl',
+    spotlightColor: 'rgba(71, 85, 105, 0.1)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-zinc',
+    name: 'Basic Zinc',
+    nameAr: 'أساسي زنك',
+    category: 'Basic',
+    tags: ['basic', 'zinc'],
+    baseClassName: 'bg-zinc-100 border border-zinc-200 rounded-xl',
+    spotlightColor: 'rgba(113, 113, 122, 0.1)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-stone',
+    name: 'Basic Stone',
+    nameAr: 'أساسي حجري',
+    category: 'Basic',
+    tags: ['basic', 'stone'],
+    baseClassName: 'bg-stone-100 border border-stone-200 rounded-xl',
+    spotlightColor: 'rgba(120, 113, 108, 0.1)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-paper',
+    name: 'Basic Paper',
+    nameAr: 'أساسي ورقي',
+    category: 'Basic',
+    tags: ['basic', 'paper'],
+    baseClassName: 'bg-amber-50 border border-amber-100 rounded-lg shadow-sm',
+    spotlightColor: 'rgba(251, 191, 36, 0.1)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'basic-cream',
+    name: 'Basic Cream',
+    nameAr: 'أساسي كريمي',
+    category: 'Basic',
+    tags: ['basic', 'cream'],
+    baseClassName: 'bg-orange-50 border border-orange-100 rounded-xl',
+    spotlightColor: 'rgba(251, 146, 60, 0.1)',
+    spotlightSize: 200,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🎮 GAMING (16-35)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'gaming-neon-green',
+    name: 'Gaming Neon Green',
+    nameAr: 'ألعاب نيون أخضر',
+    category: 'Gaming',
+    tags: ['gaming', 'neon', 'green'],
+    baseClassName: 'bg-gray-950 border border-green-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(34, 197, 94, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.8)',
+  },
+  {
+    id: 'gaming-neon-purple',
+    name: 'Gaming Neon Purple',
+    nameAr: 'ألعاب نيون بنفسجي',
+    category: 'Gaming',
+    tags: ['gaming', 'neon', 'purple'],
+    baseClassName: 'bg-gray-950 border border-purple-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(168, 85, 247, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(168, 85, 247, 0.8)',
+  },
+  {
+    id: 'gaming-neon-cyan',
+    name: 'Gaming Neon Cyan',
+    nameAr: 'ألعاب نيون سماوي',
+    category: 'Gaming',
+    tags: ['gaming', 'neon', 'cyan'],
+    baseClassName: 'bg-gray-950 border border-cyan-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(34, 211, 238, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(34, 211, 238, 0.8)',
+  },
+  {
+    id: 'gaming-neon-pink',
+    name: 'Gaming Neon Pink',
+    nameAr: 'ألعاب نيون وردي',
+    category: 'Gaming',
+    tags: ['gaming', 'neon', 'pink'],
+    baseClassName: 'bg-gray-950 border border-pink-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(236, 72, 153, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(236, 72, 153, 0.8)',
+  },
+  {
+    id: 'gaming-neon-red',
+    name: 'Gaming Neon Red',
+    nameAr: 'ألعاب نيون أحمر',
+    category: 'Gaming',
+    tags: ['gaming', 'neon', 'red'],
+    baseClassName: 'bg-gray-950 border border-red-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(239, 68, 68, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(239, 68, 68, 0.8)',
+  },
+  {
+    id: 'gaming-neon-orange',
+    name: 'Gaming Neon Orange',
+    nameAr: 'ألعاب نيون برتقالي',
+    category: 'Gaming',
+    tags: ['gaming', 'neon', 'orange'],
+    baseClassName: 'bg-gray-950 border border-orange-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(249, 115, 22, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(249, 115, 22, 0.8)',
+  },
+  {
+    id: 'gaming-neon-yellow',
+    name: 'Gaming Neon Yellow',
+    nameAr: 'ألعاب نيون أصفر',
+    category: 'Gaming',
+    tags: ['gaming', 'neon', 'yellow'],
+    baseClassName: 'bg-gray-950 border border-yellow-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(234, 179, 8, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(234, 179, 8, 0.8)',
+  },
+  {
+    id: 'gaming-rgb',
+    name: 'Gaming RGB',
+    nameAr: 'ألعاب RGB',
+    category: 'Gaming',
+    tags: ['gaming', 'rgb', 'rainbow'],
+    baseClassName: 'bg-gray-950 border border-violet-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(139, 92, 246, 0.4)',
+    spotlightSize: 280,
+    borderGlow: true,
+    borderColor: 'rgba(139, 92, 246, 0.8)',
+  },
+  {
+    id: 'gaming-cyberpunk',
+    name: 'Gaming Cyberpunk',
+    nameAr: 'ألعاب سايبربانك',
+    category: 'Gaming',
+    tags: ['gaming', 'cyberpunk', 'futuristic'],
+    baseClassName: 'bg-black border-2 border-yellow-500/50 rounded-none text-yellow-400',
+    spotlightColor: 'rgba(234, 179, 8, 0.25)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(236, 72, 153, 0.9)',
+  },
+  {
+    id: 'gaming-matrix',
+    name: 'Gaming Matrix',
+    nameAr: 'ألعاب ماتريكس',
+    category: 'Gaming',
+    tags: ['gaming', 'matrix', 'hacker'],
+    baseClassName: 'bg-black border border-green-600/40 rounded-none text-green-500',
+    spotlightColor: 'rgba(34, 197, 94, 0.2)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.7)',
+  },
+  {
+    id: 'gaming-fire',
+    name: 'Gaming Fire',
+    nameAr: 'ألعاب ناري',
+    category: 'Gaming',
+    tags: ['gaming', 'fire', 'hot'],
+    baseClassName: 'bg-gray-950 border border-orange-600/40 rounded-xl text-orange-400',
+    spotlightColor: 'rgba(249, 115, 22, 0.35)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(239, 68, 68, 0.8)',
+  },
+  {
+    id: 'gaming-ice',
+    name: 'Gaming Ice',
+    nameAr: 'ألعاب جليدي',
+    category: 'Gaming',
+    tags: ['gaming', 'ice', 'cold'],
+    baseClassName: 'bg-slate-950 border border-sky-400/30 rounded-xl text-sky-300',
+    spotlightColor: 'rgba(56, 189, 248, 0.25)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(56, 189, 248, 0.7)',
+  },
+  {
+    id: 'gaming-toxic',
+    name: 'Gaming Toxic',
+    nameAr: 'ألعاب سام',
+    category: 'Gaming',
+    tags: ['gaming', 'toxic', 'poison'],
+    baseClassName: 'bg-gray-950 border border-lime-500/30 rounded-xl text-lime-400',
+    spotlightColor: 'rgba(132, 204, 22, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(132, 204, 22, 0.8)',
+  },
+  {
+    id: 'gaming-blood',
+    name: 'Gaming Blood',
+    nameAr: 'ألعاب دموي',
+    category: 'Gaming',
+    tags: ['gaming', 'blood', 'horror'],
+    baseClassName: 'bg-black border border-red-900/50 rounded-xl text-red-500',
+    spotlightColor: 'rgba(185, 28, 28, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(185, 28, 28, 0.8)',
+  },
+  {
+    id: 'gaming-hologram',
+    name: 'Gaming Hologram',
+    nameAr: 'ألعاب هولوغرام',
+    category: 'Gaming',
+    tags: ['gaming', 'hologram', 'scifi'],
+    baseClassName: 'bg-cyan-950/30 backdrop-blur-md border border-cyan-400/20 rounded-xl text-cyan-300',
+    spotlightColor: 'rgba(34, 211, 238, 0.2)',
+    spotlightSize: 280,
+    borderGlow: true,
+    borderColor: 'rgba(34, 211, 238, 0.6)',
+  },
+  {
+    id: 'gaming-arcade',
+    name: 'Gaming Arcade',
+    nameAr: 'ألعاب آركيد',
+    category: 'Gaming',
+    tags: ['gaming', 'arcade', 'retro'],
+    baseClassName: 'bg-purple-900 border-4 border-yellow-400 rounded-xl text-yellow-300',
+    spotlightColor: 'rgba(250, 204, 21, 0.3)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(250, 204, 21, 0.9)',
+  },
+  {
+    id: 'gaming-pixel',
+    name: 'Gaming Pixel',
+    nameAr: 'ألعاب بكسل',
+    category: 'Gaming',
+    tags: ['gaming', 'pixel', 'retro'],
+    baseClassName: 'bg-gray-900 border-4 border-gray-600 rounded-none text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.15)',
+    spotlightSize: 200,
+    borderGlow: true,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  {
+    id: 'gaming-legendary',
+    name: 'Gaming Legendary',
+    nameAr: 'ألعاب أسطوري',
+    category: 'Gaming',
+    tags: ['gaming', 'legendary', 'gold'],
+    baseClassName: 'bg-gradient-to-br from-gray-950 to-orange-950/30 border border-orange-500/40 rounded-xl text-orange-400',
+    spotlightColor: 'rgba(249, 115, 22, 0.35)',
+    spotlightSize: 270,
+    borderGlow: true,
+    borderColor: 'rgba(249, 115, 22, 0.9)',
+  },
+  {
+    id: 'gaming-epic',
+    name: 'Gaming Epic',
+    nameAr: 'ألعاب ملحمي',
+    category: 'Gaming',
+    tags: ['gaming', 'epic', 'purple'],
+    baseClassName: 'bg-gradient-to-br from-gray-950 to-purple-950/30 border border-purple-500/40 rounded-xl text-purple-400',
+    spotlightColor: 'rgba(168, 85, 247, 0.35)',
+    spotlightSize: 270,
+    borderGlow: true,
+    borderColor: 'rgba(168, 85, 247, 0.9)',
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🚀 TECH / STARTUP (36-55)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'tech-modern',
+    name: 'Tech Modern',
+    nameAr: 'تقنية حديث',
+    category: 'Tech',
+    tags: ['tech', 'modern', 'startup'],
+    baseClassName: 'bg-white border border-gray-200 rounded-2xl shadow-sm',
+    spotlightColor: 'rgba(99, 102, 241, 0.15)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+  },
+  {
+    id: 'tech-dark',
+    name: 'Tech Dark',
+    nameAr: 'تقنية داكن',
+    category: 'Tech',
+    tags: ['tech', 'dark', 'developer'],
+    baseClassName: 'bg-gray-900 border border-gray-700 rounded-xl text-white',
+    spotlightColor: 'rgba(139, 92, 246, 0.2)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(139, 92, 246, 0.6)',
+  },
+  {
+    id: 'tech-gradient-purple',
+    name: 'Tech Gradient Purple',
+    nameAr: 'تقنية متدرج بنفسجي',
+    category: 'Tech',
+    tags: ['tech', 'gradient', 'purple'],
+    baseClassName: 'bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.2)',
+    spotlightSize: 250,
+  },
+  {
+    id: 'tech-gradient-blue',
+    name: 'Tech Gradient Blue',
+    nameAr: 'تقنية متدرج أزرق',
+    category: 'Tech',
+    tags: ['tech', 'gradient', 'blue'],
+    baseClassName: 'bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.2)',
+    spotlightSize: 250,
+  },
+  {
+    id: 'tech-ai',
+    name: 'Tech AI',
+    nameAr: 'تقنية ذكاء اصطناعي',
+    category: 'Tech',
+    tags: ['tech', 'ai', 'futuristic'],
+    baseClassName: 'bg-slate-950 border border-cyan-500/20 rounded-xl text-cyan-300',
+    spotlightColor: 'rgba(34, 211, 238, 0.2)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(34, 211, 238, 0.5)',
+  },
+  {
+    id: 'tech-saas',
+    name: 'Tech SaaS',
+    nameAr: 'تقنية SaaS',
+    category: 'Tech',
+    tags: ['tech', 'saas', 'product'],
+    baseClassName: 'bg-indigo-50 border border-indigo-200 rounded-2xl',
+    spotlightColor: 'rgba(99, 102, 241, 0.15)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(99, 102, 241, 0.4)',
+  },
+  {
+    id: 'tech-crypto',
+    name: 'Tech Crypto',
+    nameAr: 'تقنية كريبتو',
+    category: 'Tech',
+    tags: ['tech', 'crypto', 'blockchain'],
+    baseClassName: 'bg-gray-950 border border-amber-500/30 rounded-xl text-amber-400',
+    spotlightColor: 'rgba(245, 158, 11, 0.25)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(245, 158, 11, 0.7)',
+  },
+  {
+    id: 'tech-fintech',
+    name: 'Tech Fintech',
+    nameAr: 'تقنية مالية',
+    category: 'Tech',
+    tags: ['tech', 'fintech', 'finance'],
+    baseClassName: 'bg-white border-2 border-emerald-500 rounded-xl',
+    spotlightColor: 'rgba(16, 185, 129, 0.15)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(16, 185, 129, 0.5)',
+  },
+  {
+    id: 'tech-developer',
+    name: 'Tech Developer',
+    nameAr: 'تقنية مطور',
+    category: 'Tech',
+    tags: ['tech', 'developer', 'code'],
+    baseClassName: 'bg-gray-950 border border-gray-700 rounded-lg text-green-400 font-mono',
+    spotlightColor: 'rgba(34, 197, 94, 0.15)',
+    spotlightSize: 200,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.5)',
+  },
+  {
+    id: 'tech-terminal',
+    name: 'Tech Terminal',
+    nameAr: 'تقنية طرفية',
+    category: 'Tech',
+    tags: ['tech', 'terminal', 'cli'],
+    baseClassName: 'bg-black border border-green-700 rounded-none text-green-500 font-mono',
+    spotlightColor: 'rgba(34, 197, 94, 0.15)',
+    spotlightSize: 180,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.6)',
+  },
+  {
+    id: 'tech-cloud',
+    name: 'Tech Cloud',
+    nameAr: 'تقنية سحابة',
+    category: 'Tech',
+    tags: ['tech', 'cloud', 'hosting'],
+    baseClassName: 'bg-sky-50 border border-sky-200 rounded-2xl',
+    spotlightColor: 'rgba(14, 165, 233, 0.15)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(14, 165, 233, 0.4)',
+  },
+  {
+    id: 'tech-data',
+    name: 'Tech Data',
+    nameAr: 'تقنية بيانات',
+    category: 'Tech',
+    tags: ['tech', 'data', 'analytics'],
+    baseClassName: 'bg-blue-950 border border-blue-500/30 rounded-xl text-blue-300',
+    spotlightColor: 'rgba(59, 130, 246, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(59, 130, 246, 0.6)',
+  },
+  {
+    id: 'tech-security',
+    name: 'Tech Security',
+    nameAr: 'تقنية أمان',
+    category: 'Tech',
+    tags: ['tech', 'security', 'cyber'],
+    baseClassName: 'bg-gray-950 border border-red-600/30 rounded-xl text-red-400',
+    spotlightColor: 'rgba(220, 38, 38, 0.2)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(220, 38, 38, 0.6)',
+  },
+  {
+    id: 'tech-mobile',
+    name: 'Tech Mobile',
+    nameAr: 'تقنية موبايل',
+    category: 'Tech',
+    tags: ['tech', 'mobile', 'app'],
+    baseClassName: 'bg-white border border-gray-200 rounded-3xl shadow-lg',
+    spotlightColor: 'rgba(59, 130, 246, 0.12)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'tech-iot',
+    name: 'Tech IoT',
+    nameAr: 'تقنية إنترنت الأشياء',
+    category: 'Tech',
+    tags: ['tech', 'iot', 'smart'],
+    baseClassName: 'bg-teal-950 border border-teal-500/30 rounded-xl text-teal-300',
+    spotlightColor: 'rgba(20, 184, 166, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(20, 184, 166, 0.6)',
+  },
+  {
+    id: 'tech-vr',
+    name: 'Tech VR',
+    nameAr: 'تقنية واقع افتراضي',
+    category: 'Tech',
+    tags: ['tech', 'vr', 'metaverse'],
+    baseClassName: 'bg-purple-950 border border-purple-500/30 rounded-xl text-purple-300',
+    spotlightColor: 'rgba(168, 85, 247, 0.25)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(168, 85, 247, 0.6)',
+  },
+  {
+    id: 'tech-quantum',
+    name: 'Tech Quantum',
+    nameAr: 'تقنية كمية',
+    category: 'Tech',
+    tags: ['tech', 'quantum', 'advanced'],
+    baseClassName: 'bg-fuchsia-950/50 border border-fuchsia-500/30 rounded-xl text-fuchsia-300',
+    spotlightColor: 'rgba(217, 70, 239, 0.25)',
+    spotlightSize: 280,
+    borderGlow: true,
+    borderColor: 'rgba(217, 70, 239, 0.6)',
+  },
+  {
+    id: 'tech-neural',
+    name: 'Tech Neural',
+    nameAr: 'تقنية عصبي',
+    category: 'Tech',
+    tags: ['tech', 'neural', 'ml'],
+    baseClassName: 'bg-violet-950 border border-violet-500/30 rounded-xl text-violet-300',
+    spotlightColor: 'rgba(139, 92, 246, 0.25)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(139, 92, 246, 0.6)',
+  },
+  {
+    id: 'tech-api',
+    name: 'Tech API',
+    nameAr: 'تقنية API',
+    category: 'Tech',
+    tags: ['tech', 'api', 'integration'],
+    baseClassName: 'bg-gray-900 border border-orange-500/30 rounded-lg text-orange-400',
+    spotlightColor: 'rgba(249, 115, 22, 0.2)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(249, 115, 22, 0.5)',
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🛒 E-COMMERCE (56-75)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'ecommerce-modern',
+    name: 'E-commerce Modern',
+    nameAr: 'متجر حديث',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'modern', 'clean'],
+    baseClassName: 'bg-white border border-gray-200 rounded-xl shadow-sm',
+    spotlightColor: 'rgba(99, 102, 241, 0.1)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-minimal',
+    name: 'E-commerce Minimal',
+    nameAr: 'متجر بسيط',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'minimal', 'clean'],
+    baseClassName: 'bg-white border border-gray-100 rounded-lg',
+    spotlightColor: 'rgba(0, 0, 0, 0.05)',
+    spotlightSize: 180,
+  },
+  {
+    id: 'ecommerce-elegant',
+    name: 'E-commerce Elegant',
+    nameAr: 'متجر أنيق',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'elegant', 'luxury'],
+    baseClassName: 'bg-white border border-gray-300 rounded-none shadow-md',
+    spotlightColor: 'rgba(0, 0, 0, 0.08)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-soft',
+    name: 'E-commerce Soft',
+    nameAr: 'متجر ناعم',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'soft', 'friendly'],
+    baseClassName: 'bg-rose-50 border border-rose-100 rounded-2xl',
+    spotlightColor: 'rgba(244, 63, 94, 0.1)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-premium',
+    name: 'E-commerce Premium',
+    nameAr: 'متجر فاخر',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'premium', 'gold'],
+    baseClassName: 'bg-white border-2 border-amber-300 rounded-xl shadow-lg',
+    spotlightColor: 'rgba(245, 158, 11, 0.15)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-dark',
+    name: 'E-commerce Dark',
+    nameAr: 'متجر داكن',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'dark', 'modern'],
+    baseClassName: 'bg-gray-900 border border-gray-700 rounded-xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.1)',
+    spotlightSize: 220,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-fashion',
+    name: 'E-commerce Fashion',
+    nameAr: 'متجر أزياء',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'fashion', 'elegant'],
+    baseClassName: 'bg-white border-b-2 border-black rounded-none',
+    spotlightColor: 'rgba(0, 0, 0, 0.08)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-tech',
+    name: 'E-commerce Tech',
+    nameAr: 'متجر تقنية',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'tech', 'gadgets'],
+    baseClassName: 'bg-blue-50 border border-blue-200 rounded-xl',
+    spotlightColor: 'rgba(59, 130, 246, 0.12)',
+    spotlightSize: 220,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-organic',
+    name: 'E-commerce Organic',
+    nameAr: 'متجر عضوي',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'organic', 'natural'],
+    baseClassName: 'bg-green-50 border-2 border-green-200 rounded-2xl',
+    spotlightColor: 'rgba(34, 197, 94, 0.12)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-kids',
+    name: 'E-commerce Kids',
+    nameAr: 'متجر أطفال',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'kids', 'playful'],
+    baseClassName: 'bg-pink-50 border-3 border-pink-300 rounded-3xl',
+    spotlightColor: 'rgba(236, 72, 153, 0.15)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-sports',
+    name: 'E-commerce Sports',
+    nameAr: 'متجر رياضة',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'sports', 'athletic'],
+    baseClassName: 'bg-white border-2 border-orange-400 rounded-xl',
+    spotlightColor: 'rgba(249, 115, 22, 0.15)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(249, 115, 22, 0.4)',
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-jewelry',
+    name: 'E-commerce Jewelry',
+    nameAr: 'متجر مجوهرات',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'jewelry', 'luxury'],
+    baseClassName: 'bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl',
+    spotlightColor: 'rgba(245, 158, 11, 0.2)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-beauty',
+    name: 'E-commerce Beauty',
+    nameAr: 'متجر جمال',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'beauty', 'cosmetics'],
+    baseClassName: 'bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-200 rounded-2xl',
+    spotlightColor: 'rgba(236, 72, 153, 0.12)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-furniture',
+    name: 'E-commerce Furniture',
+    nameAr: 'متجر أثاث',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'furniture', 'home'],
+    baseClassName: 'bg-amber-50 border border-amber-200 rounded-xl',
+    spotlightColor: 'rgba(180, 83, 9, 0.1)',
+    spotlightSize: 220,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-books',
+    name: 'E-commerce Books',
+    nameAr: 'متجر كتب',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'books', 'education'],
+    baseClassName: 'bg-orange-50 border border-orange-200 rounded-lg shadow-sm',
+    spotlightColor: 'rgba(194, 65, 12, 0.1)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-grocery',
+    name: 'E-commerce Grocery',
+    nameAr: 'متجر بقالة',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'grocery', 'food'],
+    baseClassName: 'bg-lime-50 border border-lime-200 rounded-xl',
+    spotlightColor: 'rgba(132, 204, 22, 0.12)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-pet',
+    name: 'E-commerce Pet',
+    nameAr: 'متجر حيوانات',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'pet', 'animals'],
+    baseClassName: 'bg-amber-50 border-2 border-amber-300 rounded-2xl',
+    spotlightColor: 'rgba(180, 83, 9, 0.12)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-automotive',
+    name: 'E-commerce Automotive',
+    nameAr: 'متجر سيارات',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'automotive', 'cars'],
+    baseClassName: 'bg-slate-100 border border-slate-300 rounded-xl',
+    spotlightColor: 'rgba(71, 85, 105, 0.12)',
+    spotlightSize: 220,
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-gaming-store',
+    name: 'E-commerce Gaming Store',
+    nameAr: 'متجر ألعاب',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'gaming', 'store'],
+    baseClassName: 'bg-gray-900 border border-purple-500/30 rounded-xl text-white',
+    spotlightColor: 'rgba(168, 85, 247, 0.2)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(168, 85, 247, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'ecommerce-marketplace',
+    name: 'E-commerce Marketplace',
+    nameAr: 'متجر سوق',
+    category: 'E-commerce',
+    tags: ['ecommerce', 'marketplace', 'multi'],
+    baseClassName: 'bg-white border border-gray-200 rounded-xl shadow-md',
+    spotlightColor: 'rgba(59, 130, 246, 0.1)',
+    spotlightSize: 220,
+    hoverScale: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 💎 LUXURY / PREMIUM (76-90)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'luxury-gold',
+    name: 'Luxury Gold',
+    nameAr: 'فاخر ذهبي',
+    category: 'Luxury',
+    tags: ['luxury', 'gold', 'premium'],
+    baseClassName: 'bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 border-2 border-amber-400 rounded-xl',
+    spotlightColor: 'rgba(245, 158, 11, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(245, 158, 11, 0.7)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-black',
+    name: 'Luxury Black',
+    nameAr: 'فاخر أسود',
+    category: 'Luxury',
+    tags: ['luxury', 'black', 'elegant'],
+    baseClassName: 'bg-black border-2 border-gray-800 rounded-xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.1)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-silver',
+    name: 'Luxury Silver',
+    nameAr: 'فاخر فضي',
+    category: 'Luxury',
+    tags: ['luxury', 'silver', 'elegant'],
+    baseClassName: 'bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100 border border-gray-400 rounded-xl',
+    spotlightColor: 'rgba(156, 163, 175, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(156, 163, 175, 0.6)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-rose-gold',
+    name: 'Luxury Rose Gold',
+    nameAr: 'فاخر ذهبي وردي',
+    category: 'Luxury',
+    tags: ['luxury', 'rosegold', 'feminine'],
+    baseClassName: 'bg-gradient-to-br from-rose-50 via-pink-50 to-rose-100 border-2 border-rose-300 rounded-xl',
+    spotlightColor: 'rgba(244, 63, 94, 0.2)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(244, 63, 94, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-platinum',
+    name: 'Luxury Platinum',
+    nameAr: 'فاخر بلاتيني',
+    category: 'Luxury',
+    tags: ['luxury', 'platinum', 'premium'],
+    baseClassName: 'bg-gradient-to-br from-slate-100 via-white to-slate-100 border border-slate-300 rounded-xl shadow-xl',
+    spotlightColor: 'rgba(148, 163, 184, 0.2)',
+    spotlightSize: 250,
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-diamond',
+    name: 'Luxury Diamond',
+    nameAr: 'فاخر ألماسي',
+    category: 'Luxury',
+    tags: ['luxury', 'diamond', 'sparkle'],
+    baseClassName: 'bg-white border-2 border-cyan-200 rounded-xl shadow-lg',
+    spotlightColor: 'rgba(34, 211, 238, 0.2)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(34, 211, 238, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-velvet',
+    name: 'Luxury Velvet',
+    nameAr: 'فاخر مخملي',
+    category: 'Luxury',
+    tags: ['luxury', 'velvet', 'rich'],
+    baseClassName: 'bg-purple-950 border-2 border-purple-700 rounded-xl text-purple-200',
+    spotlightColor: 'rgba(168, 85, 247, 0.2)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(168, 85, 247, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-marble',
+    name: 'Luxury Marble',
+    nameAr: 'فاخر رخامي',
+    category: 'Luxury',
+    tags: ['luxury', 'marble', 'classic'],
+    baseClassName: 'bg-gradient-to-br from-gray-100 via-white to-gray-200 border border-gray-300 rounded-xl',
+    spotlightColor: 'rgba(107, 114, 128, 0.15)',
+    spotlightSize: 240,
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-emerald',
+    name: 'Luxury Emerald',
+    nameAr: 'فاخر زمردي',
+    category: 'Luxury',
+    tags: ['luxury', 'emerald', 'green'],
+    baseClassName: 'bg-emerald-950 border-2 border-emerald-600 rounded-xl text-emerald-200',
+    spotlightColor: 'rgba(16, 185, 129, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(16, 185, 129, 0.6)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-sapphire',
+    name: 'Luxury Sapphire',
+    nameAr: 'فاخر ياقوتي',
+    category: 'Luxury',
+    tags: ['luxury', 'sapphire', 'blue'],
+    baseClassName: 'bg-blue-950 border-2 border-blue-600 rounded-xl text-blue-200',
+    spotlightColor: 'rgba(59, 130, 246, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(59, 130, 246, 0.6)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-ruby',
+    name: 'Luxury Ruby',
+    nameAr: 'فاخر ياقوتي أحمر',
+    category: 'Luxury',
+    tags: ['luxury', 'ruby', 'red'],
+    baseClassName: 'bg-rose-950 border-2 border-rose-600 rounded-xl text-rose-200',
+    spotlightColor: 'rgba(244, 63, 94, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(244, 63, 94, 0.6)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-onyx',
+    name: 'Luxury Onyx',
+    nameAr: 'فاخر عقيق',
+    category: 'Luxury',
+    tags: ['luxury', 'onyx', 'black'],
+    baseClassName: 'bg-black border border-gray-800 rounded-xl text-gray-200 shadow-2xl',
+    spotlightColor: 'rgba(255, 255, 255, 0.08)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-champagne',
+    name: 'Luxury Champagne',
+    nameAr: 'فاخر شامبانيا',
+    category: 'Luxury',
+    tags: ['luxury', 'champagne', 'elegant'],
+    baseClassName: 'bg-gradient-to-br from-yellow-50 via-amber-50 to-yellow-100 border-2 border-yellow-300 rounded-xl',
+    spotlightColor: 'rgba(234, 179, 8, 0.2)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(234, 179, 8, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-pearl',
+    name: 'Luxury Pearl',
+    nameAr: 'فاخر لؤلؤي',
+    category: 'Luxury',
+    tags: ['luxury', 'pearl', 'soft'],
+    baseClassName: 'bg-gradient-to-br from-gray-50 via-white to-gray-100 border border-gray-200 rounded-full shadow-lg',
+    spotlightColor: 'rgba(229, 231, 235, 0.4)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'luxury-burgundy',
+    name: 'Luxury Burgundy',
+    nameAr: 'فاخر عنابي',
+    category: 'Luxury',
+    tags: ['luxury', 'burgundy', 'wine'],
+    baseClassName: 'bg-red-950 border-2 border-red-800 rounded-xl text-red-200',
+    spotlightColor: 'rgba(153, 27, 27, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(153, 27, 27, 0.6)',
+    hoverScale: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🪟 GLASS / GLASSMORPHISM (91-105)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'glass-white',
+    name: 'Glass White',
+    nameAr: 'زجاج أبيض',
+    category: 'Glass',
+    tags: ['glass', 'white', 'blur'],
+    baseClassName: 'bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  {
+    id: 'glass-dark',
+    name: 'Glass Dark',
+    nameAr: 'زجاج داكن',
+    category: 'Glass',
+    tags: ['glass', 'dark', 'blur'],
+    baseClassName: 'bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.15)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  {
+    id: 'glass-blue',
+    name: 'Glass Blue',
+    nameAr: 'زجاج أزرق',
+    category: 'Glass',
+    tags: ['glass', 'blue', 'blur'],
+    baseClassName: 'bg-blue-500/20 backdrop-blur-xl border border-blue-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(59, 130, 246, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(59, 130, 246, 0.5)',
+  },
+  {
+    id: 'glass-purple',
+    name: 'Glass Purple',
+    nameAr: 'زجاج بنفسجي',
+    category: 'Glass',
+    tags: ['glass', 'purple', 'blur'],
+    baseClassName: 'bg-purple-500/20 backdrop-blur-xl border border-purple-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(168, 85, 247, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(168, 85, 247, 0.5)',
+  },
+  {
+    id: 'glass-pink',
+    name: 'Glass Pink',
+    nameAr: 'زجاج وردي',
+    category: 'Glass',
+    tags: ['glass', 'pink', 'blur'],
+    baseClassName: 'bg-pink-500/20 backdrop-blur-xl border border-pink-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(236, 72, 153, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(236, 72, 153, 0.5)',
+  },
+  {
+    id: 'glass-green',
+    name: 'Glass Green',
+    nameAr: 'زجاج أخضر',
+    category: 'Glass',
+    tags: ['glass', 'green', 'blur'],
+    baseClassName: 'bg-green-500/20 backdrop-blur-xl border border-green-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(34, 197, 94, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.5)',
+  },
+  {
+    id: 'glass-cyan',
+    name: 'Glass Cyan',
+    nameAr: 'زجاج سماوي',
+    category: 'Glass',
+    tags: ['glass', 'cyan', 'blur'],
+    baseClassName: 'bg-cyan-500/20 backdrop-blur-xl border border-cyan-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(34, 211, 238, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(34, 211, 238, 0.5)',
+  },
+  {
+    id: 'glass-orange',
+    name: 'Glass Orange',
+    nameAr: 'زجاج برتقالي',
+    category: 'Glass',
+    tags: ['glass', 'orange', 'blur'],
+    baseClassName: 'bg-orange-500/20 backdrop-blur-xl border border-orange-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(249, 115, 22, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(249, 115, 22, 0.5)',
+  },
+  {
+    id: 'glass-red',
+    name: 'Glass Red',
+    nameAr: 'زجاج أحمر',
+    category: 'Glass',
+    tags: ['glass', 'red', 'blur'],
+    baseClassName: 'bg-red-500/20 backdrop-blur-xl border border-red-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(239, 68, 68, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+  },
+  {
+    id: 'glass-yellow',
+    name: 'Glass Yellow',
+    nameAr: 'زجاج أصفر',
+    category: 'Glass',
+    tags: ['glass', 'yellow', 'blur'],
+    baseClassName: 'bg-yellow-500/20 backdrop-blur-xl border border-yellow-300/30 rounded-2xl text-white',
+    spotlightColor: 'rgba(234, 179, 8, 0.3)',
+    spotlightSize: 250,
+    borderGlow: true,
+    borderColor: 'rgba(234, 179, 8, 0.5)',
+  },
+  {
+    id: 'glass-frosted',
+    name: 'Glass Frosted',
+    nameAr: 'زجاج مصنفر',
+    category: 'Glass',
+    tags: ['glass', 'frosted', 'blur'],
+    baseClassName: 'bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl text-white shadow-2xl',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 280,
+    borderGlow: true,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  {
+    id: 'glass-holographic',
+    name: 'Glass Holographic',
+    nameAr: 'زجاج هولوغرافي',
+    category: 'Glass',
+    tags: ['glass', 'holographic', 'rainbow'],
+    baseClassName: 'bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-cyan-500/10 backdrop-blur-xl border border-white/20 rounded-2xl text-white',
+    spotlightColor: 'rgba(168, 85, 247, 0.25)',
+    spotlightSize: 270,
+    borderGlow: true,
+    borderColor: 'rgba(236, 72, 153, 0.5)',
+  },
+  {
+    id: 'glass-neon',
+    name: 'Glass Neon',
+    nameAr: 'زجاج نيون',
+    category: 'Glass',
+    tags: ['glass', 'neon', 'glow'],
+    baseClassName: 'bg-black/40 backdrop-blur-xl border border-green-500/30 rounded-2xl text-green-400',
+    spotlightColor: 'rgba(34, 197, 94, 0.3)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.7)',
+  },
+  {
+    id: 'glass-smoke',
+    name: 'Glass Smoke',
+    nameAr: 'زجاج ضبابي',
+    category: 'Glass',
+    tags: ['glass', 'smoke', 'dark'],
+    baseClassName: 'bg-gray-900/50 backdrop-blur-xl border border-gray-500/20 rounded-2xl text-gray-200',
+    spotlightColor: 'rgba(156, 163, 175, 0.2)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(156, 163, 175, 0.4)',
+  },
+  {
+    id: 'glass-aurora',
+    name: 'Glass Aurora',
+    nameAr: 'زجاج شفق',
+    category: 'Glass',
+    tags: ['glass', 'aurora', 'colorful'],
+    baseClassName: 'bg-gradient-to-br from-green-500/10 via-blue-500/10 to-purple-500/10 backdrop-blur-xl border border-white/20 rounded-2xl text-white',
+    spotlightColor: 'rgba(34, 211, 238, 0.25)',
+    spotlightSize: 270,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.5)',
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🔘 NEUMORPHISM (106-120)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'neu-light',
+    name: 'Neumorphic Light',
+    nameAr: 'نيومورفيك فاتح',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'light', 'soft'],
+    baseClassName: 'bg-gray-100 rounded-2xl shadow-[8px_8px_16px_#bebebe,-8px_-8px_16px_#ffffff]',
+    spotlightColor: 'rgba(255, 255, 255, 0.5)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-dark',
+    name: 'Neumorphic Dark',
+    nameAr: 'نيومورفيك داكن',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'dark', 'soft'],
+    baseClassName: 'bg-gray-800 rounded-2xl shadow-[8px_8px_16px_#1a1a1a,-8px_-8px_16px_#363636] text-gray-200',
+    spotlightColor: 'rgba(255, 255, 255, 0.1)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-blue',
+    name: 'Neumorphic Blue',
+    nameAr: 'نيومورفيك أزرق',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'blue'],
+    baseClassName: 'bg-blue-100 rounded-2xl shadow-[8px_8px_16px_#9cb8d9,-8px_-8px_16px_#ffffff] text-blue-900',
+    spotlightColor: 'rgba(59, 130, 246, 0.2)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-purple',
+    name: 'Neumorphic Purple',
+    nameAr: 'نيومورفيك بنفسجي',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'purple'],
+    baseClassName: 'bg-purple-100 rounded-2xl shadow-[8px_8px_16px_#c4b5d9,-8px_-8px_16px_#ffffff] text-purple-900',
+    spotlightColor: 'rgba(168, 85, 247, 0.2)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-green',
+    name: 'Neumorphic Green',
+    nameAr: 'نيومورفيك أخضر',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'green'],
+    baseClassName: 'bg-green-100 rounded-2xl shadow-[8px_8px_16px_#a3d9b5,-8px_-8px_16px_#ffffff] text-green-900',
+    spotlightColor: 'rgba(34, 197, 94, 0.2)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-pink',
+    name: 'Neumorphic Pink',
+    nameAr: 'نيومورفيك وردي',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'pink'],
+    baseClassName: 'bg-pink-100 rounded-2xl shadow-[8px_8px_16px_#e8b4c8,-8px_-8px_16px_#ffffff] text-pink-900',
+    spotlightColor: 'rgba(236, 72, 153, 0.2)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-orange',
+    name: 'Neumorphic Orange',
+    nameAr: 'نيومورفيك برتقالي',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'orange'],
+    baseClassName: 'bg-orange-100 rounded-2xl shadow-[8px_8px_16px_#e8c4a3,-8px_-8px_16px_#ffffff] text-orange-900',
+    spotlightColor: 'rgba(249, 115, 22, 0.2)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-cyan',
+    name: 'Neumorphic Cyan',
+    nameAr: 'نيومورفيك سماوي',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'cyan'],
+    baseClassName: 'bg-cyan-100 rounded-2xl shadow-[8px_8px_16px_#a3d9e8,-8px_-8px_16px_#ffffff] text-cyan-900',
+    spotlightColor: 'rgba(34, 211, 238, 0.2)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-inset-light',
+    name: 'Neumorphic Inset Light',
+    nameAr: 'نيومورفيك داخلي فاتح',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'inset', 'light'],
+    baseClassName: 'bg-gray-100 rounded-2xl shadow-[inset_8px_8px_16px_#bebebe,inset_-8px_-8px_16px_#ffffff]',
+    spotlightColor: 'rgba(255, 255, 255, 0.4)',
+    spotlightSize: 180,
+  },
+  {
+    id: 'neu-inset-dark',
+    name: 'Neumorphic Inset Dark',
+    nameAr: 'نيومورفيك داخلي داكن',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'inset', 'dark'],
+    baseClassName: 'bg-gray-800 rounded-2xl shadow-[inset_8px_8px_16px_#1a1a1a,inset_-8px_-8px_16px_#363636] text-gray-200',
+    spotlightColor: 'rgba(255, 255, 255, 0.08)',
+    spotlightSize: 180,
+  },
+  {
+    id: 'neu-flat',
+    name: 'Neumorphic Flat',
+    nameAr: 'نيومورفيك مسطح',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'flat'],
+    baseClassName: 'bg-gray-200 rounded-2xl shadow-[4px_4px_8px_#b8b8b8,-4px_-4px_8px_#ffffff]',
+    spotlightColor: 'rgba(255, 255, 255, 0.5)',
+    spotlightSize: 180,
+  },
+  {
+    id: 'neu-elevated',
+    name: 'Neumorphic Elevated',
+    nameAr: 'نيومورفيك مرتفع',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'elevated'],
+    baseClassName: 'bg-gray-100 rounded-3xl shadow-[12px_12px_24px_#a0a0a0,-12px_-12px_24px_#ffffff]',
+    spotlightColor: 'rgba(255, 255, 255, 0.6)',
+    spotlightSize: 220,
+    hoverScale: true,
+  },
+  {
+    id: 'neu-slate',
+    name: 'Neumorphic Slate',
+    nameAr: 'نيومورفيك أردوازي',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'slate'],
+    baseClassName: 'bg-slate-200 rounded-2xl shadow-[8px_8px_16px_#a8b0ba,-8px_-8px_16px_#ffffff] text-slate-800',
+    spotlightColor: 'rgba(148, 163, 184, 0.25)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-amber',
+    name: 'Neumorphic Amber',
+    nameAr: 'نيومورفيك كهرماني',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'amber'],
+    baseClassName: 'bg-amber-100 rounded-2xl shadow-[8px_8px_16px_#d9c4a3,-8px_-8px_16px_#ffffff] text-amber-900',
+    spotlightColor: 'rgba(245, 158, 11, 0.2)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'neu-rose',
+    name: 'Neumorphic Rose',
+    nameAr: 'نيومورفيك وردي',
+    category: 'Neumorphism',
+    tags: ['neumorphism', 'rose'],
+    baseClassName: 'bg-rose-100 rounded-2xl shadow-[8px_8px_16px_#e8b4b4,-8px_-8px_16px_#ffffff] text-rose-900',
+    spotlightColor: 'rgba(244, 63, 94, 0.2)',
+    spotlightSize: 200,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🎨 CREATIVE / ARTISTIC (121-135)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'creative-gradient-sunset',
+    name: 'Creative Sunset',
+    nameAr: 'إبداعي غروب',
+    category: 'Creative',
+    tags: ['creative', 'gradient', 'sunset'],
+    baseClassName: 'bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 250,
+    hoverScale: true,
+  },
+  {
+    id: 'creative-gradient-ocean',
+    name: 'Creative Ocean',
+    nameAr: 'إبداعي محيط',
+    category: 'Creative',
+    tags: ['creative', 'gradient', 'ocean'],
+    baseClassName: 'bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 250,
+    hoverScale: true,
+  },
+  {
+    id: 'creative-gradient-forest',
+    name: 'Creative Forest',
+    nameAr: 'إبداعي غابة',
+    category: 'Creative',
+    tags: ['creative', 'gradient', 'forest'],
+    baseClassName: 'bg-gradient-to-br from-green-400 via-emerald-500 to-teal-600 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 250,
+    hoverScale: true,
+  },
+  {
+    id: 'creative-gradient-aurora',
+    name: 'Creative Aurora',
+    nameAr: 'إبداعي شفق',
+    category: 'Creative',
+    tags: ['creative', 'gradient', 'aurora'],
+    baseClassName: 'bg-gradient-to-br from-green-400 via-cyan-500 to-purple-600 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+  {
+    id: 'creative-gradient-candy',
+    name: 'Creative Candy',
+    nameAr: 'إبداعي حلوى',
+    category: 'Creative',
+    tags: ['creative', 'gradient', 'candy'],
+    baseClassName: 'bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-500 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 250,
+    hoverScale: true,
+  },
+  {
+    id: 'creative-watercolor',
+    name: 'Creative Watercolor',
+    nameAr: 'إبداعي مائي',
+    category: 'Creative',
+    tags: ['creative', 'watercolor', 'soft'],
+    baseClassName: 'bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 border border-purple-200 rounded-2xl',
+    spotlightColor: 'rgba(168, 85, 247, 0.15)',
+    spotlightSize: 220,
+  },
+  {
+    id: 'creative-pastel',
+    name: 'Creative Pastel',
+    nameAr: 'إبداعي باستيل',
+    category: 'Creative',
+    tags: ['creative', 'pastel', 'soft'],
+    baseClassName: 'bg-gradient-to-br from-rose-100 via-purple-100 to-cyan-100 rounded-2xl',
+    spotlightColor: 'rgba(236, 72, 153, 0.12)',
+    spotlightSize: 220,
+  },
+  {
+    id: 'creative-neon-art',
+    name: 'Creative Neon Art',
+    nameAr: 'إبداعي نيون فني',
+    category: 'Creative',
+    tags: ['creative', 'neon', 'vibrant'],
+    baseClassName: 'bg-black border-2 border-fuchsia-500 rounded-2xl text-fuchsia-400',
+    spotlightColor: 'rgba(217, 70, 239, 0.35)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(217, 70, 239, 0.8)',
+  },
+  {
+    id: 'creative-pop-art',
+    name: 'Creative Pop Art',
+    nameAr: 'إبداعي بوب آرت',
+    category: 'Creative',
+    tags: ['creative', 'popart', 'bold'],
+    baseClassName: 'bg-cyan-400 border-4 border-black rounded-none text-black',
+    spotlightColor: 'rgba(0, 0, 0, 0.15)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'creative-graffiti',
+    name: 'Creative Graffiti',
+    nameAr: 'إبداعي جرافيتي',
+    category: 'Creative',
+    tags: ['creative', 'graffiti', 'urban'],
+    baseClassName: 'bg-yellow-400 border-4 border-black rounded-none text-black',
+    spotlightColor: 'rgba(0, 0, 0, 0.15)',
+    spotlightSize: 200,
+    hoverScale: true,
+  },
+  {
+    id: 'creative-vintage',
+    name: 'Creative Vintage',
+    nameAr: 'إبداعي كلاسيكي',
+    category: 'Creative',
+    tags: ['creative', 'vintage', 'retro'],
+    baseClassName: 'bg-amber-100 border-2 border-amber-700 rounded-lg text-amber-900',
+    spotlightColor: 'rgba(180, 83, 9, 0.15)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'creative-noir',
+    name: 'Creative Noir',
+    nameAr: 'إبداعي نوار',
+    category: 'Creative',
+    tags: ['creative', 'noir', 'dramatic'],
+    baseClassName: 'bg-gray-950 border border-gray-700 rounded-none text-gray-300',
+    spotlightColor: 'rgba(255, 255, 255, 0.1)',
+    spotlightSize: 220,
+  },
+  {
+    id: 'creative-bohemian',
+    name: 'Creative Bohemian',
+    nameAr: 'إبداعي بوهيمي',
+    category: 'Creative',
+    tags: ['creative', 'bohemian', 'eclectic'],
+    baseClassName: 'bg-orange-50 border-2 border-orange-400 rounded-2xl text-orange-900',
+    spotlightColor: 'rgba(249, 115, 22, 0.15)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'creative-geometric',
+    name: 'Creative Geometric',
+    nameAr: 'إبداعي هندسي',
+    category: 'Creative',
+    tags: ['creative', 'geometric', 'modern'],
+    baseClassName: 'bg-white border-2 border-indigo-500 rounded-none',
+    spotlightColor: 'rgba(99, 102, 241, 0.15)',
+    spotlightSize: 200,
+    borderGlow: true,
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+  },
+  {
+    id: 'creative-abstract',
+    name: 'Creative Abstract',
+    nameAr: 'إبداعي تجريدي',
+    category: 'Creative',
+    tags: ['creative', 'abstract', 'modern'],
+    baseClassName: 'bg-gradient-to-br from-rose-500 via-violet-500 to-cyan-500 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🎭 SPECIAL EFFECTS (136-150)
+  // ═══════════════════════════════════════════════════════════════
+  {
+    id: 'special-holographic',
+    name: 'Special Holographic',
+    nameAr: 'خاص هولوغرافي',
+    category: 'Special',
+    tags: ['special', 'holographic', 'iridescent'],
+    baseClassName: 'bg-gradient-to-br from-pink-300 via-purple-300 via-blue-300 to-cyan-300 rounded-2xl',
+    spotlightColor: 'rgba(255, 255, 255, 0.4)',
+    spotlightSize: 280,
+    hoverScale: true,
+  },
+  {
+    id: 'special-chrome',
+    name: 'Special Chrome',
+    nameAr: 'خاص كروم',
+    category: 'Special',
+    tags: ['special', 'chrome', 'metallic'],
+    baseClassName: 'bg-gradient-to-br from-gray-300 via-gray-100 to-gray-400 border border-gray-400 rounded-xl',
+    spotlightColor: 'rgba(255, 255, 255, 0.6)',
+    spotlightSize: 240,
+    hoverScale: true,
+  },
+  {
+    id: 'special-rainbow',
+    name: 'Special Rainbow',
+    nameAr: 'خاص قوس قزح',
+    category: 'Special',
+    tags: ['special', 'rainbow', 'colorful'],
+    baseClassName: 'bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.3)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+  {
+    id: 'special-lava',
+    name: 'Special Lava',
+    nameAr: 'خاص حمم',
+    category: 'Special',
+    tags: ['special', 'lava', 'hot'],
+    baseClassName: 'bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+  {
+    id: 'special-galaxy',
+    name: 'Special Galaxy',
+    nameAr: 'خاص مجرة',
+    category: 'Special',
+    tags: ['special', 'galaxy', 'space'],
+    baseClassName: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.2)',
+    spotlightSize: 280,
+    hoverScale: true,
+  },
+  {
+    id: 'special-northern-lights',
+    name: 'Special Northern Lights',
+    nameAr: 'خاص شفق قطبي',
+    category: 'Special',
+    tags: ['special', 'aurora', 'nature'],
+    baseClassName: 'bg-gradient-to-br from-green-400 via-teal-500 to-blue-600 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 270,
+    hoverScale: true,
+  },
+  {
+    id: 'special-sunrise',
+    name: 'Special Sunrise',
+    nameAr: 'خاص شروق',
+    category: 'Special',
+    tags: ['special', 'sunrise', 'warm'],
+    baseClassName: 'bg-gradient-to-br from-yellow-400 via-orange-400 to-pink-500 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.3)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+  {
+    id: 'special-midnight',
+    name: 'Special Midnight',
+    nameAr: 'خاص منتصف الليل',
+    category: 'Special',
+    tags: ['special', 'midnight', 'dark'],
+    baseClassName: 'bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 border border-purple-800/30 rounded-2xl text-purple-200',
+    spotlightColor: 'rgba(168, 85, 247, 0.2)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(168, 85, 247, 0.4)',
+  },
+  {
+    id: 'special-retro-wave',
+    name: 'Special Retro Wave',
+    nameAr: 'خاص ريترو ويف',
+    category: 'Special',
+    tags: ['special', 'retrowave', 'synthwave'],
+    baseClassName: 'bg-gradient-to-br from-purple-900 via-pink-600 to-orange-500 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.25)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+  {
+    id: 'special-vaporwave',
+    name: 'Special Vaporwave',
+    nameAr: 'خاص فيبروويف',
+    category: 'Special',
+    tags: ['special', 'vaporwave', 'retro'],
+    baseClassName: 'bg-gradient-to-br from-pink-400 via-purple-500 to-cyan-400 rounded-2xl text-white',
+    spotlightColor: 'rgba(255, 255, 255, 0.3)',
+    spotlightSize: 260,
+    hoverScale: true,
+  },
+  {
+    id: 'special-brutalist',
+    name: 'Special Brutalist',
+    nameAr: 'خاص وحشي',
+    category: 'Special',
+    tags: ['special', 'brutalist', 'bold'],
+    baseClassName: 'bg-white border-4 border-black rounded-none shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]',
+    spotlightColor: 'rgba(0, 0, 0, 0.1)',
+    spotlightSize: 200,
+  },
+  {
+    id: 'special-terminal-green',
+    name: 'Special Terminal',
+    nameAr: 'خاص طرفية',
+    category: 'Special',
+    tags: ['special', 'terminal', 'hacker'],
+    baseClassName: 'bg-black border border-green-600 rounded-none text-green-500 font-mono',
+    spotlightColor: 'rgba(34, 197, 94, 0.2)',
+    spotlightSize: 220,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.6)',
+  },
+  {
+    id: 'special-paper',
+    name: 'Special Paper',
+    nameAr: 'خاص ورقي',
+    category: 'Special',
+    tags: ['special', 'paper', 'classic'],
+    baseClassName: 'bg-amber-50 border border-amber-200 rounded-sm shadow-md',
+    spotlightColor: 'rgba(180, 83, 9, 0.1)',
+    spotlightSize: 180,
+  },
+  {
+    id: 'special-blueprint',
+    name: 'Special Blueprint',
+    nameAr: 'خاص مخطط',
+    category: 'Special',
+    tags: ['special', 'blueprint', 'technical'],
+    baseClassName: 'bg-blue-900 border border-blue-400 rounded-none text-blue-200 font-mono',
+    spotlightColor: 'rgba(96, 165, 250, 0.2)',
+    spotlightSize: 200,
+    borderGlow: true,
+    borderColor: 'rgba(96, 165, 250, 0.5)',
+  },
+  {
+    id: 'special-matrix-rain',
+    name: 'Special Matrix Rain',
+    nameAr: 'خاص مطر ماتريكس',
+    category: 'Special',
+    tags: ['special', 'matrix', 'digital'],
+    baseClassName: 'bg-black border border-green-700 rounded-xl text-green-400 font-mono',
+    spotlightColor: 'rgba(34, 197, 94, 0.25)',
+    spotlightSize: 240,
+    borderGlow: true,
+    borderColor: 'rgba(34, 197, 94, 0.7)',
+  },
+  {
+    id: 'special-cosmic',
+    name: 'Special Cosmic',
+    nameAr: 'خاص كوني',
+    category: 'Special',
+    tags: ['special', 'cosmic', 'space'],
+    baseClassName: 'bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 rounded-2xl text-indigo-200',
+    spotlightColor: 'rgba(99, 102, 241, 0.25)',
+    spotlightSize: 280,
+    borderGlow: true,
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+    hoverScale: true,
+  },
+  {
+    id: 'special-electric',
+    name: 'Special Electric',
+    nameAr: 'خاص كهربائي',
+    category: 'Special',
+    tags: ['special', 'electric', 'energy'],
+    baseClassName: 'bg-gray-950 border-2 border-yellow-500/50 rounded-xl text-yellow-400',
+    spotlightColor: 'rgba(234, 179, 8, 0.3)',
+    spotlightSize: 260,
+    borderGlow: true,
+    borderColor: 'rgba(234, 179, 8, 0.8)',
+    hoverScale: true,
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
+// Get unique categories
+export const spotlightCategories = [...new Set(spotlightThemes.map(t => t.category))];
+
+// Get theme by ID
+export const getSpotlightTheme = (themeId: string): SpotlightTheme | undefined => {
+  return spotlightThemes.find(t => t.id === themeId);
+};
+
+// Get themes by category
+export const getThemesByCategory = (category: string): SpotlightTheme[] => {
+  return spotlightThemes.filter(t => t.category === category);
+};
+
+// Get themes by tag
+export const getThemesByTag = (tag: string): SpotlightTheme[] => {
+  return spotlightThemes.filter(t => t.tags?.includes(tag));
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SPOTLIGHT CONTAINER COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
+export const SpotlightContainer: React.FC<SpotlightProps> = ({
+  children,
+  theme = 'basic-white',
+  className = '',
+  as = 'div',
+  disabled = false,
+  spotlightSize: customSize,
+  spotlightOpacity: customOpacity,
+  style,
+  onClick,
+  ...rest
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  // Get theme config
+  const themeConfig: SpotlightTheme = typeof theme === 'string' 
+    ? getSpotlightTheme(theme) || spotlightThemes[0]
+    : theme;
+
+  const spotlightSize = customSize || themeConfig.spotlightSize || 200;
+  const spotlightOpacity = customOpacity || themeConfig.spotlightOpacity || 1;
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (disabled || !containerRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    setMousePosition({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }, [disabled]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (!disabled) setIsHovering(true);
+  }, [disabled]);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsHovering(false);
+  }, []);
+
+  const Component = as as keyof JSX.IntrinsicElements;
+
+  const spotlightStyle: React.CSSProperties = isHovering ? {
+    background: `radial-gradient(${spotlightSize}px circle at ${mousePosition.x}px ${mousePosition.y}px, ${themeConfig.spotlightColor}, transparent)`,
+    opacity: spotlightOpacity,
+  } : {};
+
+  const borderGlowStyle: React.CSSProperties = isHovering && themeConfig.borderGlow ? {
+    boxShadow: `0 0 20px ${themeConfig.borderColor}, 0 0 40px ${themeConfig.borderColor}`,
+  } : {};
+  const mergedStyle = borderGlowStyle ? { ...style, ...borderGlowStyle } : style;
+
+  return (
+    <Component
+      ref={containerRef as any}
+      className={`
+        relative overflow-hidden transition-all duration-300
+        ${themeConfig.baseClassName}
+        ${themeConfig.hoverScale && isHovering ? 'scale-[1.02]' : ''}
+        ${onClick ? 'cursor-pointer' : ''}
+        ${className}
+      `}
+      style={mergedStyle}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={onClick}
+      {...rest}
+    >
+      {/* Spotlight Overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-0"
+        style={spotlightStyle}
+      />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {children}
+      </div>
+    </Component>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SPOTLIGHT CARD COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
+interface SpotlightCardProps extends SpotlightProps {
+  padding?: string;
+}
+
+export const SpotlightCard: React.FC<SpotlightCardProps> = ({
+  children,
+  padding = 'p-6',
+  ...props
+}) => {
+  return (
+    <SpotlightContainer {...props}>
+      <div className={padding}>
+        {children}
+      </div>
+    </SpotlightContainer>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SPOTLIGHT BUTTON COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
+interface SpotlightButtonProps extends Omit<SpotlightProps, 'as'> {
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export const SpotlightButton: React.FC<SpotlightButtonProps> = ({
+  children,
+  size = 'md',
+  className = '',
+  ...props
+}) => {
+  const sizeClasses = {
+    sm: 'px-4 py-2 text-sm',
+    md: 'px-6 py-3 text-base',
+    lg: 'px-8 py-4 text-lg',
+  };
+
+  return (
+    <SpotlightContainer
+      as="button"
+      className={`${sizeClasses[size]} font-medium ${className}`}
+      spotlightSize={150}
+      {...props}
+    >
+      {children}
+    </SpotlightContainer>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SPOTLIGHT INPUT WRAPPER COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
+interface SpotlightInputProps extends SpotlightProps {
+  inputClassName?: string;
+  placeholder?: string;
+  type?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+export const SpotlightInput: React.FC<SpotlightInputProps> = ({
+  theme,
+  inputClassName = '',
+  placeholder,
+  type = 'text',
+  value,
+  onChange,
+  className = '',
+  ...props
+}) => {
+  return (
+    <SpotlightContainer
+      theme={theme}
+      className={`${className}`}
+      spotlightSize={180}
+      {...props}
+    >
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className={`w-full bg-transparent outline-none px-4 py-3 ${inputClassName}`}
+      />
+    </SpotlightContainer>
+  );
+};
+
+export default SpotlightContainer;
