@@ -130,17 +130,32 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
         <div className="view-360-section glass-card rounded-2xl p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </div>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
+            >
+              <svg
+                className="w-4 h-4"
+                style={{ color: "var(--accent-contrast, #0B0B0B)" }}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
               <div>
                 <h3 className="text-sm font-bold text-[var(--text)]">عرض 360°</h3>
                 <p className="text-xs text-[var(--muted)]">اسحب للتدوير • انقر للتكبير</p>
               </div>
             </div>
-            <span className="text-xs px-2 py-1 bg-violet-500/20 text-violet-400 rounded-full">
+            <span
+              className="text-xs px-2 py-1 rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--accent) 18%, transparent)",
+                color: "var(--accent)",
+              }}
+            >
               {images.length} صور
             </span>
           </div>
