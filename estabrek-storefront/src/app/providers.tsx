@@ -12,6 +12,7 @@ import MotionProvider from "@/motion/MotionProvider";
 import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
+import { RouteProgress } from "@/components/RouteProgress";
 
 function StorefrontToastProvider({ children }: { children: React.ReactNode }) {
   const settings = useStorefrontSettings();
@@ -60,6 +61,7 @@ export default function Providers({
           <RecentlyViewedProvider>
             {/* Storefront Features (reads settings from API) */}
             <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings}>
+              <RouteProgress />
               <StorefrontToastProvider>
                 <QuickViewProvider>
                   <StorefrontMotionProvider>

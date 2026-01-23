@@ -82,6 +82,32 @@ body {
   transition: transform 0.08s linear;
 }
 
+/* Route progress bar */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.route-progress[data-active="true"] {
+  opacity: 1;
+}
+
+.route-progress__bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: width 180ms ease;
+}
+
 /* Small helper for nicer scrollbars on desktop */
 * {
   scrollbar-width: thin;
