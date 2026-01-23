@@ -13,22 +13,26 @@ export function ScrollToTop() {
 
   useEffect(() => {
     const toggleVisibility = () => {
-      if (window.scrollY > 400) {
+      const root = document.scrollingElement || document.documentElement;
+      const y = root?.scrollTop ?? window.scrollY ?? 0;
+      if (y > 400) {
         setIsVisible(true);
       } else {
         setIsVisible(false);
       }
     };
 
-    window.addEventListener("scroll", toggleVisibility);
+    window.addEventListener("scroll", toggleVisibility, { passive: true });
     return () => window.removeEventListener("scroll", toggleVisibility);
   }, []);
 
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    const root = document.scrollingElement || document.documentElement;
+    if (root && typeof (root as HTMLElement).scrollTo === "function") {
+      (root as HTMLElement).scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (

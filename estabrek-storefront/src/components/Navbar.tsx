@@ -315,13 +315,12 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     }
 
     const navCls = navTemplate.styles.nav ?? "";
-    const hasPosition = /\b(sticky|fixed|absolute)\b/.test(navCls);
     const hasZIndex = /\bz-(?:\d+|auto)\b|\bz-\[/.test(navCls);
 
-    const extra: string[] = [];
-    if (!hasPosition) extra.push(sticky ? "sticky top-0" : "relative");
+    // Ensure sticky/relative wins even if template includes a position class like "relative".
+    const extra: string[] = [sticky ? "sticky top-0" : "relative"];
     if (!hasZIndex) extra.push("z-40");
-    return [...extra, navCls].filter(Boolean).join(" ");
+    return [navCls, ...extra].filter(Boolean).join(" ");
   })();
 
   const siteNameClass = navTemplate?.styles.logo ?? `text-sm font-semibold tracking-wide ${navTextBase}`;
