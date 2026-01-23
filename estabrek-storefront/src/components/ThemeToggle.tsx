@@ -7,6 +7,7 @@ type Theme = "dark" | "light" | "system";
 interface ThemeContextValue {
   theme: Theme;
   resolvedTheme: "dark" | "light";
+  darkModeDisabled?: boolean;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
@@ -18,9 +19,11 @@ const STORAGE_KEY = "estabrek_theme";
 export function ThemeProvider({
   children,
   defaultTheme = "dark",
+  disableDarkMode = false,
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
+  disableDarkMode?: boolean;
 }) {
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
@@ -40,6 +43,12 @@ export function ThemeProvider({
 
   // Load theme from storage
   useEffect(() => {
+    if (disableDarkMode) {
+      setThemeState("light");
+      setResolvedTheme("light");
+      setMounted(true);
+      return;
+    }
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
       if (stored && ["dark", "light", "system"].includes(stored)) {
@@ -55,12 +64,28 @@ export function ThemeProvider({
       setResolvedTheme(resolveTheme(defaultTheme));
     }
     setMounted(true);
-  }, [defaultTheme]);
+  }, [defaultTheme, disableDarkMode]);
 
   // Apply theme to document
   useEffect(() => {
     if (!mounted) return;
     
+    if (disableDarkMode) {
+      if (theme !== "light") {
+        setThemeState("light");
+      }
+      setResolvedTheme("light");
+      document.documentElement.classList.remove("dark", "light");
+      document.documentElement.classList.add("light");
+      document.documentElement.setAttribute("data-theme", "light");
+      try {
+        localStorage.setItem(STORAGE_KEY, "light");
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
     const resolved = resolveTheme(theme);
     setResolvedTheme(resolved);
     
@@ -73,10 +98,11 @@ export function ThemeProvider({
     } catch (e) {
       console.error("Failed to save theme:", e);
     }
-  }, [theme, mounted]);
+  }, [theme, mounted, disableDarkMode]);
 
   // Listen for system theme changes
   useEffect(() => {
+    if (disableDarkMode) return;
     if (theme !== "system") return;
     
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -84,13 +110,18 @@ export function ThemeProvider({
     
     mediaQuery.addEventListener("change", handler);
     return () => mediaQuery.removeEventListener("change", handler);
-  }, [theme]);
+  }, [theme, disableDarkMode]);
 
   const setTheme = (newTheme: Theme) => {
+    if (disableDarkMode) {
+      setThemeState("light");
+      return;
+    }
     setThemeState(newTheme);
   };
 
   const toggleTheme = () => {
+    if (disableDarkMode) return;
     setThemeState((prev) => {
       if (prev === "dark") return "light";
       if (prev === "light") return "dark";
@@ -99,7 +130,7 @@ export function ThemeProvider({
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, darkModeDisabled: disableDarkMode, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -133,7 +164,9 @@ const SystemIcon = () => (
 );
 
 export function ThemeToggle({ showLabel = false }: { showLabel?: boolean }) {
-  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme, darkModeDisabled } = useTheme();
+
+  if (darkModeDisabled) return null;
 
   return (
     <button
@@ -158,7 +191,9 @@ export function ThemeToggle({ showLabel = false }: { showLabel?: boolean }) {
 
 // Theme Selector (with system option)
 export function ThemeSelector() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, darkModeDisabled } = useTheme();
+
+  if (darkModeDisabled) return null;
 
   const options: { value: Theme; label: string; icon: React.ReactNode }[] = [
     { value: "light", label: "فاتح", icon: <SunIcon /> },

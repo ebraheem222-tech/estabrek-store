@@ -98,6 +98,7 @@ const DEFAULT_SETTINGS = {
   accentColor: "#8b5cf6",
   accentColor2: "#f59e0b",
   glassEffectsEnabled: true,
+  darkModeEnabled: true,
   darkModeDefault: true,
   
   // Performance

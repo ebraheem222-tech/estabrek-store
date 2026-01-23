@@ -46,7 +46,9 @@ function NavNode({
         .filter(Boolean)
         .join(" ")
     : "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition " +
-      (active ? "bg-white/[0.10] text-white" : "text-white/85 hover:bg-white/[0.06]");
+      (active
+        ? "bg-black/5 dark:bg-white/10 text-[color:var(--text)]"
+        : "text-[color:var(--text)] opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10");
 
   const iconPaths: Record<string, string> = {
     home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
@@ -222,6 +224,17 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const allowMiniCart = settings.miniCartEnabled && isDesktop;
   const padMap: Record<string, string> = { compact: "py-2", normal: "py-3", comfortable: "py-4" };
   const padCls = `${padMap[heightMobile]} md:${padMap[heightDesktop]}`;
+  const navTextBase = "text-[color:var(--text)]";
+  const navTextMuted = "text-[color:var(--text)] opacity-80 hover:opacity-100";
+  const navPill =
+    "rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 px-3 py-2 text-sm " +
+    navTextMuted +
+    " hover:bg-black/10 dark:hover:bg-white/15";
+  const navCtaBase =
+    "rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[color:var(--accent-contrast)] hover:opacity-90";
+  const navDrawerItem = "rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 p-3";
+  const navDrawerLink = "font-semibold text-[color:var(--text)]";
+  const navDrawerSubLink = "block text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
 
   function SearchControl({ withLabel }: { withLabel?: boolean }) {
     if (searchStyle !== "icon") return <SearchBox styleId={searchInputStyleId} />;
@@ -230,7 +243,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
         <Link
           href="/search"
           prefetch={settings.prefetchLinks}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+          className={`inline-flex items-center gap-2 ${navPill}`}
           aria-label="Search"
         >
           <span aria-hidden>🔎</span>
@@ -239,7 +252,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
         {settings.voiceSearchEnabled ? (
           <VoiceSearchButton
             withLabel={withLabel}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+            className={`inline-flex items-center gap-2 ${navPill}`}
           />
         ) : null}
       </div>
@@ -284,15 +297,15 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     return [...extra, navCls].filter(Boolean).join(" ");
   })();
 
-  const siteNameClass = navTemplate?.styles.logo ?? "text-sm font-semibold tracking-wide text-white/90";
+  const siteNameClass = navTemplate?.styles.logo ?? `text-sm font-semibold tracking-wide ${navTextBase}`;
   const desktopLinksClass = navTemplate?.styles.links ?? "hidden items-center gap-1 md:flex";
   const desktopLinksClassCentered = navTemplate?.styles.links ? `${navTemplate.styles.links} justify-center` : "hidden items-center justify-center gap-1 md:flex";
   const ctaClassName = navTemplate?.styles.button
     ? `hidden md:inline-flex items-center ${navTemplate.styles.button}`
-    : "hidden md:inline-flex items-center rounded-xl bg-white text-black px-3 py-2 text-sm font-semibold hover:opacity-90";
+    : `hidden md:inline-flex items-center ${navCtaBase}`;
   const ctaMobileClassName = navTemplate?.styles.button
     ? `inline-flex w-full justify-center ${navTemplate.styles.button}`
-    : "inline-flex w-full justify-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black";
+    : `inline-flex w-full justify-center ${navCtaBase}`;
 
   return (
     <header className={headerClassName}>
@@ -303,7 +316,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               <button
                 type="button"
                 onClick={() => setMobileOpen((v) => !v)}
-                className="md:hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                className={`md:hidden ${navPill}`}
                 aria-label="Toggle menu"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -333,7 +346,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   <Link
                     href="/account"
                     prefetch={settings.prefetchLinks}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                    className={navPill}
                   >
                     ??
                   </Link>
@@ -343,7 +356,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     <button
                       type="button"
                       onClick={() => setMiniCartOpen(true)}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                      className={navPill}
                     >
                       ?? <span className="hidden sm:inline">Cart</span> <CartBadge />
                     </button>
@@ -351,7 +364,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     <Link
                       href="/cart"
                       prefetch={settings.prefetchLinks}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                      className={navPill}
                     >
                       ?? <span className="hidden sm:inline">Cart</span> <CartBadge />
                     </Link>
@@ -393,7 +406,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               <button
                 type="button"
                 onClick={() => setMobileOpen((v) => !v)}
-                className="md:hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                className={`md:hidden ${navPill}`}
                 aria-label="Toggle menu"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -449,7 +462,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 <Link
                   href="/account"
                   prefetch={settings.prefetchLinks}
-                  className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                  className={navPill}
                 >
                   ??
                 </Link>
@@ -459,7 +472,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   <button
                     type="button"
                     onClick={() => setMiniCartOpen(true)}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                    className={navPill}
                   >
                     <CartControl />
                   </button>
@@ -467,7 +480,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   <Link
                     href="/cart"
                     prefetch={settings.prefetchLinks}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.08]"
+                    className={navPill}
                   >
                     <CartControl />
                   </Link>
@@ -494,14 +507,14 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
             ) : null}
             <div className="space-y-2">
               {navItems.map((it: any) => (
-                <div key={it.id ?? it.href ?? it.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <a href={it.href ?? "#"} className="font-semibold text-white/90">
+                <div key={it.id ?? it.href ?? it.label} className={navDrawerItem}>
+                  <a href={it.href ?? "#"} className={navDrawerLink}>
                     {it.label}
                   </a>
                   {(it.children ?? []).length ? (
                     <div className="mt-2 space-y-1 pl-3">
                       {(it.children ?? []).map((ch: any) => (
-                        <a key={ch.id ?? ch.href ?? ch.label} href={ch.href ?? "#"} className="block text-sm text-white/75 hover:text-white">
+                        <a key={ch.id ?? ch.href ?? ch.label} href={ch.href ?? "#"} className={navDrawerSubLink}>
                           {ch.label}
                         </a>
                       ))}

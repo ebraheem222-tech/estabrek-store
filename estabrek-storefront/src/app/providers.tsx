@@ -41,7 +41,12 @@ export default function Providers({
   children: React.ReactNode;
   initialStorefrontSettings?: Partial<StorefrontSettings>;
 }) {
-  const defaultTheme = initialStorefrontSettings?.darkModeDefault === false ? "light" : "dark";
+  const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
+  const defaultTheme = darkModeDisabled
+    ? "light"
+    : initialStorefrontSettings?.darkModeDefault === false
+    ? "light"
+    : "dark";
   const pathname = usePathname();
 
   useEffect(() => {
@@ -49,7 +54,7 @@ export default function Providers({
   }, [pathname]);
 
   return (
-    <ThemeProvider defaultTheme={defaultTheme}>
+    <ThemeProvider defaultTheme={defaultTheme} disableDarkMode={darkModeDisabled}>
       <CartProvider>
         <WishlistProvider>
           <RecentlyViewedProvider>

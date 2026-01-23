@@ -11,7 +11,12 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const settings = await getPublicSettings().catch(() => null);
   const initialStorefrontSettings = (settings?.site as any)?.header?.storefront ?? undefined;
-  const defaultTheme = initialStorefrontSettings?.darkModeDefault === false ? "light" : "dark";
+  const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
+  const defaultTheme = darkModeDisabled
+    ? "light"
+    : initialStorefrontSettings?.darkModeDefault === false
+    ? "light"
+    : "dark";
 
   return (
     <html lang="ar" dir="rtl" data-theme={defaultTheme} className={defaultTheme} suppressHydrationWarning>
