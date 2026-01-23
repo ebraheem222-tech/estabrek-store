@@ -1815,7 +1815,7 @@ export const SpotlightContainer: React.FC<SpotlightProps> = ({
   onClick,
   ...rest
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
 
@@ -1827,7 +1827,7 @@ export const SpotlightContainer: React.FC<SpotlightProps> = ({
   const spotlightSize = customSize || themeConfig.spotlightSize || 200;
   const spotlightOpacity = customOpacity || themeConfig.spotlightOpacity || 1;
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
     if (disabled || !containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
@@ -1845,7 +1845,7 @@ export const SpotlightContainer: React.FC<SpotlightProps> = ({
     setIsHovering(false);
   }, []);
 
-  const Component = as as keyof JSX.IntrinsicElements;
+  const Component = (as ?? "div") as React.ElementType;
 
   const spotlightStyle: React.CSSProperties = isHovering ? {
     background: `radial-gradient(${spotlightSize}px circle at ${mousePosition.x}px ${mousePosition.y}px, ${themeConfig.spotlightColor}, transparent)`,
