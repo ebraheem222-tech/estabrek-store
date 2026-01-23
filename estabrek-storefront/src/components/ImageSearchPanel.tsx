@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { ProductTile } from "@/components/ProductTile";
 import { LoadingImg } from "@/components/LoadingImg";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import type { CatalogProduct } from "@/lib/catalog";
 import {
   clearImageSearchPayload,
@@ -60,6 +61,9 @@ function validateFile(file: File): string | null {
 }
 
 export function ImageSearchPanel() {
+  const settings = useStorefrontSettings();
+  if (!settings.imageSearchEnabled) return null;
+
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

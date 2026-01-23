@@ -12,6 +12,7 @@ import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import type { MenuTree, SitePublicSettings, NavItem } from "@/lib/types";
 import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useTheme } from "@/components/ThemeToggle";
 
 
 function NavNode({
@@ -22,6 +23,7 @@ function NavNode({
   gradient,
   template,
   prefetchLinks,
+  forceTextStyle,
 }: {
   item: any;
   pathname: string;
@@ -30,6 +32,7 @@ function NavNode({
   gradient: "none" | "sunset" | "ocean" | "neon";
   template?: NavTemplate;
   prefetchLinks: boolean;
+  forceTextStyle?: React.CSSProperties;
 }) {
   const hasChildren = !!(item.children && item.children.length);
   const href = item.href || "#";
@@ -93,12 +96,18 @@ function NavNode({
 
   if (!hasChildren) {
     return external ? (
-      <a href={href} target={item.target || "_blank"} rel="noopener noreferrer" className={baseLink}>
+      <a
+        href={href}
+        target={item.target || "_blank"}
+        rel="noopener noreferrer"
+        className={baseLink}
+        style={forceTextStyle}
+      >
         <Icon name={item.icon} />
         <span>{item.label}</span>
       </a>
     ) : (
-      <Link href={href} className={baseLink} prefetch={prefetchLinks}>
+      <Link href={href} className={baseLink} prefetch={prefetchLinks} style={forceTextStyle}>
         <Icon name={item.icon} />
         <span>{item.label}</span>
       </Link>
@@ -107,7 +116,7 @@ function NavNode({
 
   return (
     <div className="relative group">
-      <a href={href} className={baseLink} aria-haspopup="menu" aria-expanded="false">
+      <a href={href} className={baseLink} style={forceTextStyle} aria-haspopup="menu" aria-expanded="false">
         <Icon name={item.icon} />
         <span>{item.label}</span>
         <Icon name="chev" />
@@ -128,6 +137,7 @@ function NavNode({
                   gradient={gradient}
                   template={template}
                   prefetchLinks={prefetchLinks}
+                  forceTextStyle={forceTextStyle}
                 />
               ))}
             </div>
@@ -143,6 +153,7 @@ function NavNode({
                   gradient={gradient}
                   template={template}
                   prefetchLinks={prefetchLinks}
+                  forceTextStyle={forceTextStyle}
                 />
               ))}
             </div>
@@ -164,6 +175,8 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     return window.matchMedia("(min-width: 768px)").matches;
   });
   const settings = useStorefrontSettings();
+  const { resolvedTheme } = useTheme();
+  const [domTheme, setDomTheme] = useState<"light" | "dark" | null>(null);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -182,6 +195,19 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   useEffect(() => {
     if (!isDesktop) setMiniCartOpen(false);
   }, [isDesktop]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    const read = () => {
+      const attr = root.getAttribute("data-theme");
+      if (attr === "dark" || attr === "light") setDomTheme(attr);
+    };
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "class"] });
+    return () => observer.disconnect();
+  }, []);
 
   const cmsNavCfg = cmsNav && typeof cmsNav === "object" ? cmsNav : null;
   const cmsNavEnabled = cmsNavCfg ? (cmsNavCfg.enabled ?? cmsNavCfg?.props?.enabled ?? true) : false;
@@ -203,6 +229,8 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const navGradient: "none" | "sunset" | "ocean" | "neon" =
     (["none","sunset","ocean","neon"].includes(cmsNavCfg?.gradient) ? cmsNavCfg.gradient : "none");
   const navShowIcons: boolean = cmsNavCfg?.showIcons !== false;
+  const forceLightText = settings.darkModeEnabled === false || (domTheme ?? resolvedTheme) === "light";
+  const navTemplateTextStyle = navTemplate && forceLightText ? ({ color: "var(--text)" } as React.CSSProperties) : undefined;
 
   const preset: "classic" | "minimal" | "centered" = (header?.preset === "minimal" || header?.preset === "centered") ? header.preset : "classic";
   const sticky: boolean = settings.stickyHeaderEnabled && header?.sticky !== false;
@@ -338,7 +366,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 ) : (
                   <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
                 )}
-                <div className={siteNameClass}>{site.siteName || "Store"}</div>
+                <div className={siteNameClass} style={navTemplateTextStyle}>
+                  {site.siteName || "Store"}
+                </div>
               </Link>
 
               <div className="flex items-center gap-2">
@@ -385,6 +415,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     gradient={navGradient}
                     template={navTemplate}
                     prefetchLinks={settings.prefetchLinks}
+                    forceTextStyle={navTemplateTextStyle}
                   />
                 ))}
               </nav>
@@ -428,7 +459,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 ) : (
                   <div className="h-8 w-8 rounded-lg bg-white/[0.08]" />
                 )}
-                <div className={siteNameClass}>{site.siteName || "Store"}</div>
+                <div className={siteNameClass} style={navTemplateTextStyle}>
+                  {site.siteName || "Store"}
+                </div>
               </Link>
             </div>
 
@@ -443,6 +476,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   gradient={navGradient}
                   template={navTemplate}
                   prefetchLinks={settings.prefetchLinks}
+                  forceTextStyle={navTemplateTextStyle}
                 />
               ))}
             </nav>
