@@ -10,6 +10,8 @@ import { listCategories, type CatalogCategory } from "../../api/catalog.api";
 import DOMPurify from "dompurify";
 import type { TwTokens } from "../../cms/style/tokens";
 import type { CmsComponent } from "../../cms/types";
+import { heroThemes, heroCategories } from "../../cms/hero-themes";
+import { contactFormThemes, contactFormCategories } from "../../cms/contact-forms";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import {
   DndContext,
@@ -91,6 +93,24 @@ function TextAreaInput({
       />
     </div>
   );
+}
+
+type ThemeOption = { id: string; name: string; nameAr?: string; category: string };
+
+function renderThemeOptions(categories: string[], themes: ThemeOption[]) {
+  return categories.map((category) => {
+    const list = themes.filter((theme) => theme.category === category);
+    if (!list.length) return null;
+    return (
+      <optgroup key={category} label={category}>
+        {list.map((theme) => (
+          <option key={theme.id} value={theme.id} className="bg-surface-900 text-white">
+            {theme.name || theme.id}
+          </option>
+        ))}
+      </optgroup>
+    );
+  });
 }
 
 function TokensPanel({
@@ -314,6 +334,8 @@ export type HeroSlide = {
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";
 
 export type HeroData = HeroSlide & {
+  /** Theme id to render from hero-themes */
+  themeId?: string;
   /** Slider mode */
   slides?: HeroSlide[];
   /** Autoplay interval ms (e.g. 5000). 0/undefined disables autoplay */
@@ -462,6 +484,8 @@ export type ContactFormField = {
 };
 
 export type ContactData = {
+  /** Theme id to render from contact-forms */
+  themeId?: string;
   title?: string;
   subtitle?: string;
   items?: Array<{
@@ -1350,6 +1374,7 @@ const HERO_DELAY_OPTIONS = [0, 75, 100, 150, 200, 300, 500, 700, 1000];
 function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v: HeroData) => void; errors?: CommonErrors }) {
   const [mediaOpen, setMediaOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const themeId = value.themeId ?? "";
 
   const slides = Array.isArray((value as any).slides) ? ((value as any).slides as HeroSlide[]) : [];
   const isSlider = slides.length > 0;
@@ -1430,6 +1455,26 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Hero Theme" />
+        <Select
+          label="Hero theme"
+          value={themeId}
+          placeholder="Default (classic hero)"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...(value as any), themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(heroCategories, heroThemes)}
+        </Select>
+        {themeId ? (
+          <div className="text-xs opacity-70">
+            Theme mode renders the selected template and ignores slider settings.
+          </div>
+        ) : null}
+      </div>
+
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
         <DividerTitle title="وضع الهيرو" />
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2849,6 +2894,7 @@ function ContactEditor({ value, onChange, errors }: { value: ContactData; onChan
   const items = Array.isArray(value.items) ? value.items : [];
   const form = value.form ?? { fields: [] };
   const fields = Array.isArray(form.fields) ? form.fields : [];
+  const themeId = value.themeId ?? "";
 
   const updateItem = (idx: number, patch: any) => {
     const next = items.slice();
@@ -2862,6 +2908,26 @@ function ContactEditor({ value, onChange, errors }: { value: ContactData; onChan
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Contact Form Theme" />
+        <Select
+          label="Form theme"
+          value={themeId}
+          placeholder="Default (classic contact)"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(contactFormCategories, contactFormThemes)}
+        </Select>
+        {themeId ? (
+          <div className="text-xs opacity-70">
+            Theme mode renders the selected template and maps form fields automatically.
+          </div>
+        ) : null}
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
         <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />

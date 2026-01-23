@@ -32,6 +32,8 @@ import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import { DECOR_SIZE_HEIGHTS } from "../../cms/shapes/shapeRegistry";
 import type { TwTokens } from "../../cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
+import { heroThemes } from "../../cms/hero-themes";
+import { contactFormThemes } from "../../cms/contact-forms";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -395,6 +397,18 @@ function renderComponentsBlock(data: any) {
 }
 
 function HeroPreview({ data }: { data: HeroData }) {
+  const themeId = typeof (data as any).themeId === "string" ? (data as any).themeId.trim() : "";
+  if (themeId) {
+    const theme = heroThemes.find((t) => t.id === themeId);
+    return (
+      <SectionShell data={data} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+        <div className="text-[10px] uppercase tracking-wide opacity-60">Hero Theme</div>
+        <div className="mt-1 text-sm font-semibold">{theme?.name ?? themeId}</div>
+        <div className="mt-2 text-xs opacity-60">Rendered in canvas preview.</div>
+      </SectionShell>
+    );
+  }
+
   const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
   const hasSlides = slides.length > 0;
   const [activeSlide, setActiveSlide] = useState(0);
@@ -1207,6 +1221,18 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "CONTACT") {
     const d = data as ContactData;
+    const themeId = typeof (d as any).themeId === "string" ? (d as any).themeId.trim() : "";
+    if (themeId) {
+      const theme = contactFormThemes.find((t) => t.id === themeId);
+      return wrapPreview(d, (
+        <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className="text-[10px] uppercase tracking-wide opacity-60">Contact Form Theme</div>
+          <div className="mt-1 text-sm font-semibold">{theme?.name ?? themeId}</div>
+          <div className="mt-2 text-xs opacity-60">Rendered in canvas preview.</div>
+        </div>
+      ));
+    }
+
     const items = Array.isArray(d.items) ? d.items : [];
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;

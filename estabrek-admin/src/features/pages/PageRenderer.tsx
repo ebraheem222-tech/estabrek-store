@@ -31,6 +31,8 @@ import { TypewriterText } from "../../components/effects/TypewriterText";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
 import type { TwTokens } from "../../cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
+import { heroComponents, HeroRenderer } from "../../cms/hero-themes";
+import { contactFormComponents, additionalFormComponents } from "../../cms/contact-forms";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -47,6 +49,170 @@ function isItemVisible(item: any): boolean {
   if ("hidden" in item) return item.hidden !== true;
   if ("isVisible" in item) return item.isVisible !== false;
   return true;
+}
+
+function normalizeText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
+}
+
+function resolveThemeId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function heroThemePropsFromData(data: HeroData) {
+  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
+  const source = slides.length ? (slides[0] ?? data) : data;
+  const title = String((source as any).title ?? "").trim();
+  const subtitle = (source as any).subtitle;
+  const primaryButton = (source as any).primaryButton;
+  const secondaryButton = (source as any).secondaryButton;
+
+  return {
+    theme: resolveThemeId((data as any).themeId) ?? undefined,
+    badge: (source as any).badge,
+    headline: title || "Hero headline",
+    subheadline: subtitle ?? undefined,
+    description: subtitle ?? undefined,
+    primaryCta: primaryButton?.label
+      ? { text: String(primaryButton.label) }
+      : undefined,
+    secondaryCta: secondaryButton?.label
+      ? { text: String(secondaryButton.label) }
+      : undefined,
+    imageSrc: (source as any).backgroundImageUrl ?? (data as any).backgroundImageUrl,
+    imageAlt: title || "Hero",
+  };
+}
+
+function contactThemePropsFromData(data: ContactData) {
+  const form = (data as any).form ?? {};
+  const fields = Array.isArray(form.fields) ? form.fields : [];
+  const items = Array.isArray((data as any).items) ? (data as any).items : [];
+  const hasFieldConfig = fields.length > 0;
+
+  let showName: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showEmail: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showPhone: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showSubject: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showCompany: boolean | undefined = hasFieldConfig ? false : undefined;
+  let showMessage: boolean | undefined = hasFieldConfig ? false : undefined;
+
+  let nameLabel: string | undefined;
+  let emailLabel: string | undefined;
+  let phoneLabel: string | undefined;
+  let subjectLabel: string | undefined;
+  let companyLabel: string | undefined;
+  let messageLabel: string | undefined;
+
+  let namePlaceholder: string | undefined;
+  let emailPlaceholder: string | undefined;
+  let phonePlaceholder: string | undefined;
+  let subjectPlaceholder: string | undefined;
+  let companyPlaceholder: string | undefined;
+  let messagePlaceholder: string | undefined;
+
+  const matchField = (field: any, terms: string[]) => {
+    const nameText = normalizeText(field?.name);
+    const labelText = normalizeText(field?.label);
+    return terms.some((t) => nameText.includes(t) || labelText.includes(t));
+  };
+
+  for (const field of fields) {
+    const type = normalizeText(field?.type);
+    const isEmail = type === "email" || matchField(field, ["email", "e-mail", "بريد"]);
+    const isPhone = type === "tel" || matchField(field, ["phone", "tel", "mobile", "جوال", "هاتف", "رقم"]);
+    const isMessage = type === "textarea" || matchField(field, ["message", "رسالة", "تفاصيل", "ملاحظات"]);
+    const isSubject = matchField(field, ["subject", "موضوع", "العنوان"]);
+    const isCompany = matchField(field, ["company", "organization", "شركة", "مؤسسة"]);
+    const isName = matchField(field, ["name", "اسم"]);
+
+    if (isName) {
+      showName = true;
+      if (field.label) nameLabel = field.label;
+      if (field.placeholder) namePlaceholder = field.placeholder;
+    }
+    if (isEmail) {
+      showEmail = true;
+      if (field.label) emailLabel = field.label;
+      if (field.placeholder) emailPlaceholder = field.placeholder;
+    }
+    if (isPhone) {
+      showPhone = true;
+      if (field.label) phoneLabel = field.label;
+      if (field.placeholder) phonePlaceholder = field.placeholder;
+    }
+    if (isSubject) {
+      showSubject = true;
+      if (field.label) subjectLabel = field.label;
+      if (field.placeholder) subjectPlaceholder = field.placeholder;
+    }
+    if (isCompany) {
+      showCompany = true;
+      if (field.label) companyLabel = field.label;
+      if (field.placeholder) companyPlaceholder = field.placeholder;
+    }
+    if (isMessage) {
+      showMessage = true;
+      if (field.label) messageLabel = field.label;
+      if (field.placeholder) messagePlaceholder = field.placeholder;
+    }
+  }
+
+  let email: string | undefined;
+  let phone: string | undefined;
+  let address: string | undefined;
+
+  for (const item of items) {
+    const label = normalizeText(item?.label);
+    const value = typeof item?.value === "string" ? item.value.trim() : "";
+    if (!value) continue;
+    if (!email && (value.includes("@") || label.includes("email") || label.includes("بريد"))) {
+      email = value;
+      continue;
+    }
+    if (!phone && (/\d{3,}/.test(value) || label.includes("phone") || label.includes("هاتف") || label.includes("جوال"))) {
+      phone = value;
+      continue;
+    }
+    if (!address && (label.includes("address") || label.includes("عنوان"))) {
+      address = value;
+    }
+  }
+
+  const title = (data as any).title ?? form.title;
+  const subtitle = (data as any).subtitle ?? form.subtitle;
+
+  return {
+    theme: resolveThemeId((data as any).themeId) ?? undefined,
+    title: title ? String(title) : undefined,
+    subtitle: subtitle ? String(subtitle) : undefined,
+    description: subtitle ? String(subtitle) : undefined,
+    showName,
+    showEmail,
+    showPhone,
+    showSubject,
+    showCompany,
+    showMessage,
+    nameLabel,
+    emailLabel,
+    phoneLabel,
+    subjectLabel,
+    companyLabel,
+    messageLabel,
+    submitLabel: form.submitLabel ? String(form.submitLabel) : undefined,
+    namePlaceholder,
+    emailPlaceholder,
+    phonePlaceholder,
+    subjectPlaceholder,
+    companyPlaceholder,
+    messagePlaceholder,
+    email,
+    phone,
+    address,
+  };
 }
 
 const HERO_ANIM_CLASS: Record<string, string> = {
@@ -663,6 +829,27 @@ function HeroSection({
     }, autoplayMs);
     return () => clearInterval(id);
   }, [autoplayMs, hasSlides, slides.length]);
+
+  const themeId = resolveThemeId((data as any).themeId);
+  if (themeId) {
+    const componentsBlock = renderComponentsBlock(data);
+    const sectionTokens = (data as any)?.twTokens;
+    const themeProps = { ...heroThemePropsFromData(data), className: uiContainerClass(data) } as any;
+    const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[themeId];
+    const themeNode = ThemeComponent ? (
+      <ThemeComponent {...themeProps} />
+    ) : (
+      <HeroRenderer themeId={themeId} {...themeProps} />
+    );
+
+    return wrapDecorations(
+      <section className={cls("overflow-hidden rounded-3xl border border-white/[0.08]", uiSectionClass(data))} style={uiSectionStyle(data)}>
+        {themeNode}
+        {componentsBlock}
+      </section>,
+      sectionTokens
+    );
+  }
 
   const s = hasSlides ? slides[activeSlide] ?? slides[0] : data;
   const overlay = Math.min(1, Math.max(0, safeNum((s as any).overlay ?? data.overlay, 0.35)));
@@ -2198,6 +2385,23 @@ function Section({
 
   if (type === "CONTACT") {
     const d = data as ContactData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d);
+      const sectionTokens = (d as any)?.twTokens;
+      const themeMap = { ...contactFormComponents, ...additionalFormComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? contactFormComponents["basic-simple"];
+      const themeProps = { ...contactThemePropsFromData(d), className: uiContainerClass(d) } as any;
+
+      return wrapDecorations(
+        <section className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          {componentsBlock}
+        </section>,
+        sectionTokens
+      );
+    }
+
     const items = Array.isArray(d.items) ? d.items : [];
     const form = d.form ?? {};
     const fields = Array.isArray(form.fields) ? form.fields : [];
