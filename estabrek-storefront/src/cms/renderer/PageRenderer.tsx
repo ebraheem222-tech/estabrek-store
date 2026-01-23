@@ -223,6 +223,7 @@ function contactThemePropsFromData(data: ContactData) {
 
   const title = (data as any).title ?? form.title;
   const subtitle = (data as any).subtitle ?? form.subtitle;
+  const submitLabelRaw = typeof form.submitLabel === "string" ? form.submitLabel.trim() : "";
 
   return {
     theme: resolveThemeId((data as any).themeId) ?? undefined,
@@ -241,7 +242,7 @@ function contactThemePropsFromData(data: ContactData) {
     subjectLabel,
     companyLabel,
     messageLabel,
-    submitLabel: form.submitLabel ? String(form.submitLabel) : undefined,
+    submitLabel: submitLabelRaw || "إرسال",
     namePlaceholder,
     emailPlaceholder,
     phonePlaceholder,
