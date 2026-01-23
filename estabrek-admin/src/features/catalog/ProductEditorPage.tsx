@@ -35,6 +35,7 @@ type DBImage = {
   alt?: string | null;
   position: number;
   isPrimary: boolean;
+  view?: string | null;
 };
 
 type DBSize = { id: string; name: string };
@@ -94,6 +95,7 @@ type DeepUpdateBody = {
       alt?: string | null;
       position?: number;
       isPrimary?: boolean;
+      view?: string | null;
     }>;
     variants?: Array<{
       id?: string;
@@ -140,6 +142,7 @@ function makeLocalImages(db: DBImage[]): LocalImage[] {
       alt: im.alt ?? null,
       position: im.position ?? 0,
       isPrimary: !!im.isPrimary,
+      view: im.view ?? null,
     }))
   );
 }
@@ -733,6 +736,7 @@ export default function ProductEditorPage() {
           alt: (im.alt ?? "").trim() ? (im.alt ?? "").trim() : null,
           position: im.position ?? 0,
           isPrimary: !!im.isPrimary,
+          view: im.view ?? null,
         })),
         variants: (it.variants ?? []).map((v) => ({
           id: v.id,

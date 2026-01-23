@@ -709,6 +709,8 @@ function AssetThumb({
             title="View"
           >
             <option value="">View</option>
+            <option value="360">360°</option>
+            <option value="3d">3D</option>
             <option value="Front">Front</option>
             <option value="Back">Back</option>
             <option value="Side">Side</option>

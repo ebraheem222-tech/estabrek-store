@@ -16,6 +16,7 @@ export type LocalImage = {
   alt?: string | null;
   position: number;
   isPrimary: boolean;
+  view?: string | null;
 };
 
 function normalizePositions(images: LocalImage[]) {
@@ -41,6 +42,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
   const [paletteBusy, setPaletteBusy] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [modelUrl, setModelUrl] = useState("");
 
   const sorted = useMemo(() => normalizePositions(images ?? []), [images]);
 
@@ -66,6 +68,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
       alt: null,
       position: 0,
       isPrimary: false,
+      view: null,
     }));
 
     let next = normalizePositions([...sorted, ...added]);
@@ -136,6 +139,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
         alt: null,
         position: 0,
         isPrimary: false,
+        view: null,
       }));
 
       let next = normalizePositions([...sorted, ...uploaded]);
@@ -150,8 +154,37 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     }
   };
 
+  const addModelUrl = () => {
+    const raw = modelUrl.trim();
+    if (!raw) return;
+    try {
+      const url = new URL(raw);
+      const next = normalizePositions([
+        ...sorted,
+        {
+          localId: `model_${Date.now()}`,
+          url: url.toString(),
+          alt: null,
+          position: 0,
+          isPrimary: false,
+          view: "3d",
+        },
+      ]);
+      onChange(next);
+      setModelUrl("");
+      toast.success("تم إضافة نموذج 3D");
+    } catch {
+      toast.error("رابط غير صالح");
+    }
+  };
+
   const updateAlt = (localId: string, alt: string) => {
     const next = sorted.map((im) => (im.localId === localId ? { ...im, alt } : im));
+    onChange(next);
+  };
+
+  const updateView = (localId: string, view: string | null) => {
+    const next = sorted.map((im) => (im.localId === localId ? { ...im, view } : im));
     onChange(next);
   };
 
@@ -242,6 +275,20 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
         </div>
       </div>
 
+      <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+        <Input
+          label="رابط نموذج 3D (glb/gltf)"
+          value={modelUrl}
+          onChange={(e) => setModelUrl(e.target.value)}
+          placeholder="https://example.com/model.glb"
+        />
+        <div className="flex items-end">
+          <Button variant="secondary" onClick={addModelUrl} disabled={!modelUrl.trim()}>
+            إضافة 3D
+          </Button>
+        </div>
+      </div>
+
       <MediaLibraryModal
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
@@ -288,6 +335,23 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
                     value={im.alt ?? ""}
                     onChange={(e) => updateAlt(im.localId, e.target.value)}
                   />
+
+                  <div className="mt-2">
+                    <label className="mb-1 block text-xs opacity-70">نوع الصورة</label>
+                    <select
+                      className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm outline-none"
+                      value={im.view ?? ""}
+                      onChange={(e) => updateView(im.localId, e.target.value || null)}
+                    >
+                      <option value="">عادي</option>
+                      <option value="360">360°</option>
+                      <option value="3d">3D</option>
+                      <option value="Front">أمام</option>
+                      <option value="Back">خلف</option>
+                      <option value="Side">جانب</option>
+                      <option value="Detail">تفاصيل</option>
+                    </select>
+                  </div>
 
                   <div className="mt-2 text-xs opacity-60 break-all" dir="ltr">
                     {im.url}

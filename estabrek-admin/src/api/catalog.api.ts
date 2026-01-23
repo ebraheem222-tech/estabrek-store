@@ -213,6 +213,7 @@ export type ProductDeepUpdateBody = {
       alt?: string | null;
       position?: number;
       isPrimary?: boolean;
+      view?: string | null;
     }>;
     variants?: Array<{
       id?: string;
