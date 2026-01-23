@@ -95,6 +95,8 @@ function resolveThemeId(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
+const HERO_SUBHEADLINE_ONLY_THEMES = new Set(["ecommerce-fashion"]);
+
 function heroThemePropsFromData(data: HeroData) {
   const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
   const source = slides.length ? (slides[0] ?? data) : data;
@@ -102,13 +104,16 @@ function heroThemePropsFromData(data: HeroData) {
   const subtitle = (source as any).subtitle;
   const primaryButton = (source as any).primaryButton;
   const secondaryButton = (source as any).secondaryButton;
+  const themeId = resolveThemeId((data as any).themeId);
+  const subtitleText = subtitle != null ? String(subtitle) : undefined;
+  const useSubheadline = themeId ? HERO_SUBHEADLINE_ONLY_THEMES.has(themeId) : false;
 
   return {
-    theme: resolveThemeId((data as any).themeId) ?? undefined,
+    theme: themeId ?? undefined,
     badge: (source as any).badge,
     headline: title || "Hero headline",
-    subheadline: subtitle ?? undefined,
-    description: subtitle ?? undefined,
+    subheadline: useSubheadline ? subtitleText : undefined,
+    description: useSubheadline ? undefined : subtitleText,
     primaryCta: primaryButton?.label
       ? { text: String(primaryButton.label), href: primaryButton.href || undefined }
       : undefined,
@@ -668,7 +673,7 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d, productLookup);
       const sectionTokens = (d as any)?.twTokens;
-      const themeProps = { ...heroThemePropsFromData(d), className: uiContainerClass(d) } as any;
+      const themeProps = { ...heroThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
       const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[themeId];
       const themeNode = ThemeComponent ? (
         <ThemeComponent {...themeProps} />
@@ -1580,7 +1585,7 @@ function Section({
       const sectionTokens = (d as any)?.twTokens;
       const themeMap = { ...contactFormComponents, ...additionalFormComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? contactFormComponents["basic-simple"];
-      const themeProps = { ...contactThemePropsFromData(d), className: uiContainerClass(d) } as any;
+      const themeProps = { ...contactThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
 
       return wrapDecorations(
         <section {...attrs} data-section-type="CONTACT" className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
