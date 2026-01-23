@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 // Icons
 const HomeIcon = ({ active }: { active?: boolean }) => (
@@ -48,6 +49,21 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const { count: cartCount } = useCart();
   const { count: wishlistCount } = useWishlist();
+  const settings = useStorefrontSettings();
+  const prevCartCount = useRef(cartCount);
+  const [cartAnimate, setCartAnimate] = useState(false);
+
+  useEffect(() => {
+    const shouldAnimate =
+      settings.cartAnimationsEnabled &&
+      settings.cartShakeOnAdd &&
+      cartCount > prevCartCount.current;
+    prevCartCount.current = cartCount;
+    if (!shouldAnimate) return;
+    setCartAnimate(true);
+    const t = window.setTimeout(() => setCartAnimate(false), 450);
+    return () => window.clearTimeout(t);
+  }, [cartCount, settings.cartAnimationsEnabled, settings.cartShakeOnAdd]);
 
   const navItems: NavItem[] = [
     { href: "/", label: "الرئيسية", icon: HomeIcon },
@@ -66,6 +82,8 @@ export function MobileBottomNav() {
     <nav className="mobile-bottom-nav" dir="rtl">
       {navItems.map((item) => {
         const active = isActive(item.href);
+        const badgeStyle =
+          item.href === "/cart" && cartAnimate ? { animation: "cart-bounce 0.45s ease" } : undefined;
         return (
           <Link
             key={item.href}
@@ -75,7 +93,9 @@ export function MobileBottomNav() {
             <div className="mobile-nav-icon">
               {item.icon({ active })}
               {item.badge && item.badge > 0 && (
-                <span className="mobile-nav-badge">{item.badge > 99 ? "99+" : item.badge}</span>
+                <span className="mobile-nav-badge" style={badgeStyle}>
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
               )}
             </div>
             <span className="mobile-nav-label">{item.label}</span>

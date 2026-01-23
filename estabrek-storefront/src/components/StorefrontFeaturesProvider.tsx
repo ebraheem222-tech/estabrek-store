@@ -8,6 +8,7 @@ import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThe
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
+import { ScrollProgress } from "@/components/ScrollProgress";
 import {
   DEFAULT_STOREFRONT_SETTINGS,
   normalizeStorefrontSettings,
@@ -57,6 +58,17 @@ export function StorefrontFeaturesProvider({
     setMounted(true);
     
     // Try to fetch settings from API
+    const extractStorefrontConfig = (payload: any) => {
+      const header = parseMaybeJson(payload?.site?.header);
+      return (header as any)?.storefront ?? payload?.site?.header?.storefront;
+    };
+
+    const applyStorefrontConfig = (config: unknown) => {
+      if (!config) return false;
+      setSettings((prev) => mergeSettings(prev, config as Partial<StorefrontSettings>));
+      return true;
+    };
+
     const fetchSettings = async () => {
       try {
         const rawBase = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
@@ -67,13 +79,13 @@ export function StorefrontFeaturesProvider({
         const res = await fetch(`${resolvedBase}/storefront/bootstrap`, { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
-          // Settings are in data.site.header.storefront
-          const header = parseMaybeJson(data?.site?.header);
-          const storefrontConfig = (header as any)?.storefront ?? data?.site?.header?.storefront;
-          if (storefrontConfig) {
-            setSettings((prev) => mergeSettings(prev, storefrontConfig));
-          }
+          if (applyStorefrontConfig(extractStorefrontConfig(data))) return;
         }
+
+        const fallback = await fetch(`${resolvedBase}/settings`, { cache: "no-store" });
+        if (!fallback.ok) return;
+        const fallbackData = await fallback.json();
+        applyStorefrontConfig(extractStorefrontConfig(fallbackData));
       } catch (error) {
         // Use default settings on error
         console.warn("Failed to fetch storefront settings:", error);
@@ -135,6 +147,7 @@ export function StorefrontFeaturesProvider({
               offlineMessage={settings.liveChatOfflineMessage}
             />
           )}
+          {settings.scrollProgressEnabled && <ScrollProgress />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
           {settings.scrollToTopEnabled && <ScrollToTop />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
