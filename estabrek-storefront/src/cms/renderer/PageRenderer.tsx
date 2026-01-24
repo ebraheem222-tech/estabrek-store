@@ -21,6 +21,8 @@ import type {
   FeaturedProductsData,
   CollectionsGridData,
   GridData,
+  ProductsSliderData,
+  BrandsSliderData,
   ButtonData,
   InputData,
   HeroData,
@@ -31,6 +33,7 @@ import type {
   VideoData,
 } from "../sectionTypes";
 import { SectionDecorations } from "@/cms/decorations/DecorationLayer";
+import { AnimatedShapeLayer } from "@/cms/animated-shapes/AnimatedShapeLayer";
 import { SpotlightContainer } from "@/cms/spotlight-themes";
 import type { DecorLayer, TwTokens } from "@/cms/style/tokens";
 import { DECOR_PRESETS } from "@/cms/style/tokens";
@@ -39,6 +42,10 @@ import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 import { DEFAULT_MOTION_BY_SECTION_TYPE } from "@/motion/gsapPresets";
 import { heroComponents, HeroRenderer } from "../hero-themes";
 import { contactFormComponents, additionalFormComponents } from "../contact-forms";
+import { featureComponents, additionalFeatureComponents } from "../feature-themes";
+import { pricingComponents, additionalPricingComponents } from "../pricing-themes";
+import { sliderComponents, additionalSliderComponents } from "../slider-themes";
+import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
 
 type QuickAddRef = { productId?: string; slug?: string };
 
@@ -252,6 +259,126 @@ function contactThemePropsFromData(data: ContactData) {
     email,
     phone,
     address,
+  };
+}
+
+function featureThemePropsFromData(data: FeaturesData) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  const columns = Math.min(6, Math.max(2, safeNum(data.columns, 3))) as 2 | 3 | 4 | 5 | 6;
+  const features = items.map((item, idx) => {
+    const title = item.title || `Feature ${idx + 1}`;
+    const iconNode = item.iconUrl ? (
+      <img src={item.iconUrl} alt="" className="h-6 w-6 object-contain" />
+    ) : (
+      item.icon
+    );
+    return {
+      id: item.title ?? idx + 1,
+      title,
+      description: item.text,
+      icon: iconNode,
+      image: item.iconUrl,
+      link: item.href,
+    };
+  });
+  return {
+    title: data.title,
+    subtitle: data.subtitle,
+    features,
+    columns,
+  };
+}
+
+function pricingThemePropsFromData(data: PricingData) {
+  const plans = Array.isArray(data.plans) ? data.plans : [];
+  const mappedPlans = plans.map((plan, idx) => ({
+    id: plan.name ?? idx + 1,
+    name: plan.name || `Plan ${idx + 1}`,
+    description: plan.description,
+    price: plan.price ?? "",
+    period: plan.period,
+    badge: plan.badge,
+    popular: plan.highlight ?? false,
+    features: Array.isArray(plan.features) ? plan.features : [],
+    buttonText: plan.ctaLabel,
+    onSelect: plan.ctaHref
+      ? () => {
+          if (typeof window !== "undefined") window.location.href = plan.ctaHref;
+        }
+      : undefined,
+  }));
+  return {
+    title: data.title,
+    subtitle: data.subtitle,
+    plans: mappedPlans,
+  };
+}
+
+function productSliderThemeSlides(
+  data: ProductsSliderData,
+  productLookup: Record<string, ProductMini> | undefined,
+  label: string
+) {
+  const ids = Array.isArray((data as any).productIds) ? (data as any).productIds.filter(Boolean) : [];
+  const limit = Math.max(1, Math.min(50, safeNum(data.limit, ids.length || 12)));
+  return ids.slice(0, limit).map((rawId: string, idx: number) => {
+    const id = String(rawId);
+    const product = productLookup?.[id] ?? productLookup?.[`slug:${id}`];
+    const title = product?.title ?? `${label} ${idx + 1}`;
+    const image = product?.imageUrl ?? undefined;
+    const price = product?.priceText ?? undefined;
+    const link = product?.slug ? `/p/${product.slug}` : undefined;
+    return {
+      id,
+      title,
+      image,
+      price,
+      link,
+    };
+  });
+}
+
+function brandSliderThemeSlides(data: BrandsSliderData) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  return items.map((item, idx) => ({
+    id: item.name ?? idx + 1,
+    title: item.name || `Brand ${idx + 1}`,
+    image: item.logoUrl,
+    link: item.href,
+  }));
+}
+
+function bannerAlertType(variant?: string): AlertType {
+  switch (variant) {
+    case "success":
+      return "success";
+    case "warning":
+      return "warning";
+    case "danger":
+      return "error";
+    case "info":
+    default:
+      return "info";
+  }
+}
+
+function bannerThemePropsFromData(data: BannerData) {
+  const message = data.text || "Banner message";
+  const rawLabel = typeof data.linkLabel === "string" ? data.linkLabel.trim() : "";
+  const rawHref = typeof data.linkHref === "string" ? data.linkHref.trim() : "";
+  const actionLabel = rawLabel || rawHref;
+  const action = actionLabel
+    ? {
+        label: actionLabel,
+        onClick: () => {
+          if (rawHref && typeof window !== "undefined") window.location.href = rawHref;
+        },
+      }
+    : undefined;
+  return {
+    type: bannerAlertType(data.variant),
+    message,
+    action,
   };
 }
 
@@ -481,7 +608,9 @@ function wrapSpotlight(node: React.ReactElement, tokens?: TwTokens) {
 
 function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
   const decorations = sectionDecorations(tokens);
-  if (!decorations) return wrapSpotlight(node, tokens);
+  const animatedShapeConfig = tokens?.animatedShape;
+  const hasAnimatedShape = !!animatedShapeConfig?.themeId;
+  if (!decorations && !hasAnimatedShape) return wrapSpotlight(node, tokens);
   const className = node.props?.className;
   const wantsOverflowHidden = typeof className === "string" && className.includes("overflow-hidden");
   const cleanedClassName =
@@ -502,7 +631,8 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     const Wrapper = isInline ? "span" : "div";
     const wrapped = (
       <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
-        <SectionDecorations decorations={decorations} className="z-0" />
+        {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
+        {decorations ? <SectionDecorations decorations={decorations} className="z-0" /> : null}
         <span className={innerClassName} style={innerStyle}>
           {node}
         </span>
@@ -514,7 +644,8 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     node,
     { className: mergedClassName },
     <>
-      <SectionDecorations decorations={decorations} className="z-0" />
+      {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
+      {decorations ? <SectionDecorations decorations={decorations} className="z-0" /> : null}
       <span className={innerClassName} style={innerStyle}>
         {node.props?.children}
       </span>
@@ -910,6 +1041,23 @@ function Section({
 
   if (type === "BANNER") {
     const d = data as BannerData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d, productLookup);
+      const sectionTokens = (d as any)?.twTokens;
+      const themeMap = { ...alertComponents, ...additionalAlertComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? alertComponents["banner-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = bannerThemePropsFromData(d) as any;
+      return wrapDecorations(
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto", uiContainerClass(d))}>
+            {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          </div>
+          {componentsBlock}
+        </section>,
+        sectionTokens
+      );
+    }
     const variant = d.variant ?? d.tone ?? "info";
     const linkLabel = d.linkLabel ?? d.buttonText;
     const linkHref = d.linkHref ?? d.href;
@@ -1167,6 +1315,21 @@ function Section({
 
   if (type === "FEATURES") {
     const d = data as FeaturesData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d, productLookup);
+      const sectionTokens = (d as any)?.twTokens;
+      const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = featureThemePropsFromData(d) as any;
+      return wrapDecorations(
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          {componentsBlock}
+        </section>,
+        sectionTokens
+      );
+    }
     const items = Array.isArray(d.items) ? d.items : [];
     const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const gridCols =
@@ -1466,6 +1629,21 @@ function Section({
 
   if (type === "PRICING") {
     const d = data as PricingData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d, productLookup);
+      const sectionTokens = (d as any)?.twTokens;
+      const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = pricingThemePropsFromData(d) as any;
+      return wrapDecorations(
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          {componentsBlock}
+        </section>,
+        sectionTokens
+      );
+    }
     const plans = Array.isArray(d.plans) ? d.plans : [];
     const cols = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
     const gridCols = cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
@@ -2193,13 +2371,44 @@ function Section({
   }
 
   if (type === "NEW_ARRIVALS_SLIDER" || type === "BEST_SELLERS_SLIDER") {
-    const d = data as any;
-    const title = d?.title ?? (type === "NEW_ARRIVALS_SLIDER" ? "وصل حديثاً" : "الأكثر مبيعاً");
-    const ids = Array.isArray(d?.productIds) ? d.productIds.filter(Boolean) : [];
+    const d = data as ProductsSliderData;
+    const themeId = resolveThemeId((d as any).themeId);
+    const title = (d as any)?.title ?? (type === "NEW_ARRIVALS_SLIDER" ? "وصل حديثاً" : "الأكثر مبيعاً");
+    const ids = Array.isArray((d as any)?.productIds) ? (d as any).productIds.filter(Boolean) : [];
     const componentsBlock = renderComponentsBlock(d, productLookup);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = textContent(String(title), sectionTokens);
     const emptyData = textContent("(لا يوجد منتجات - تأكد من الـlimit أو وجود طلبات/منتجات)", sectionTokens);
+    if (themeId) {
+      const label = type === "NEW_ARRIVALS_SLIDER" ? "New arrival" : "Best seller";
+      const slides = productSliderThemeSlides(d, productLookup, label);
+      if (slides.length) {
+        const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+        const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+        const themeProps = {
+          slides,
+          showArrows: true,
+          showDots: true,
+          autoPlay: false,
+        } as any;
+        return wrapDecorations(
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+              <SectionTextScope data={d}>
+                {titleData ? (
+                  <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                    {titleData.content}
+                  </h3>
+                ) : null}
+              </SectionTextScope>
+              {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+              {componentsBlock}
+            </div>
+          </section>,
+          sectionTokens
+        );
+      }
+    }
 
     return wrapDecorations(
       <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
@@ -2248,12 +2457,42 @@ function Section({
   }
 
   if (type === "BRANDS_SLIDER") {
-    const d = data as any;
+    const d = data as BrandsSliderData;
+    const themeId = resolveThemeId((d as any).themeId);
     const title = d?.title ?? "علامات تجارية";
     const items = Array.isArray(d?.items) ? d.items : [];
     const componentsBlock = renderComponentsBlock(d, productLookup);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = textContent(String(title), sectionTokens);
+    if (themeId) {
+      const slides = brandSliderThemeSlides(d);
+      if (slides.length) {
+        const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+        const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+        const themeProps = {
+          slides,
+          showArrows: true,
+          showDots: true,
+          autoPlay: false,
+        } as any;
+        return wrapDecorations(
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+              <SectionTextScope data={d}>
+                {titleData ? (
+                  <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                    {titleData.content}
+                  </h3>
+                ) : null}
+              </SectionTextScope>
+              {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+              {componentsBlock}
+            </div>
+          </section>,
+          sectionTokens
+        );
+      }
+    }
     return wrapDecorations(
       <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>

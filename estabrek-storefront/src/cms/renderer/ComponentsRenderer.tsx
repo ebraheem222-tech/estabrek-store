@@ -4,6 +4,7 @@ import type { DecorLayer } from "@/cms/style/tokens";
 import { getContainerById, getDividerById } from "@/cms/style/containerStyles";
 import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 import { SHAPES } from "@/cms/shapes/shapeRegistry";
+import { AnimatedShapeLayer } from "@/cms/animated-shapes/AnimatedShapeLayer";
 import ProductCard from "@/components/ProductCard";
 import { buildCanonicalQuery, type CatalogFilters } from "@/lib/filtersUrl";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
@@ -66,12 +67,14 @@ function wrapWithDecor(
   inline = false,
   key?: React.Key
 ): React.ReactNode {
-  if (!hasDecorLayers(tokens)) {
+  const hasAnimatedShape = !!tokens?.animatedShape?.themeId;
+  if (!hasDecorLayers(tokens) && !hasAnimatedShape) {
     return React.cloneElement(content, { key });
   }
   const Wrapper: React.ElementType = inline ? "span" : "div";
   return (
     <Wrapper key={key} className={cn("relative", inline ? "inline-block" : undefined)}>
+      {hasAnimatedShape ? <AnimatedShapeLayer config={tokens?.animatedShape} className="z-0" /> : null}
       {renderDecorLayer(tokens?.decor?.before, "before")}
       {content}
       {renderDecorLayer(tokens?.decor?.after, "after")}
@@ -405,8 +408,11 @@ function RenderBox({ tokens, className, children }: { tokens?: any; className?: 
   const cls = cn(tokensToClassName(tokens), className, textScopeClass);
   const inlineStyle = tokensToInlineStyle(tokens);
   const hasDecor = hasDecorLayers(tokens);
+  const hasAnimatedShape = !!tokens?.animatedShape?.themeId;
+  const hasOverlays = hasDecor || hasAnimatedShape;
   return (
-    <div className={cn(hasDecor ? "relative" : undefined, cls)} style={inlineStyle}>
+    <div className={cn(hasOverlays ? "relative" : undefined, cls)} style={inlineStyle}>
+      {hasAnimatedShape ? <AnimatedShapeLayer config={tokens?.animatedShape} className="z-0" /> : null}
       {hasDecor ? renderDecorLayer(tokens?.decor?.before, "before") : null}
       {children}
       {hasDecor ? renderDecorLayer(tokens?.decor?.after, "after") : null}

@@ -265,6 +265,29 @@ export const DECOR_PRESETS = {
 export type DecorPresetKey = keyof typeof DECOR_PRESETS;
 
 // ============================================================
+// ANIMATED SHAPES (Theme overlays)
+// ============================================================
+
+export const ANIMATED_SHAPE_PLACEMENTS = [
+  "background",
+  "top-left",
+  "top-right",
+  "bottom-left",
+  "bottom-right",
+  "center",
+] as const;
+export type AnimatedShapePlacementPreset = typeof ANIMATED_SHAPE_PLACEMENTS[number];
+
+export type AnimatedShapeConfig = {
+  themeId?: string;
+  placement?: AnimatedShapePlacementPreset;
+  color?: string;
+  size?: "sm" | "md" | "lg" | "xl";
+  speed?: "slow" | "normal" | "fast";
+  opacity?: number;
+};
+
+// ============================================================
 // MOTION CONFIG (GSAP ANIMATIONS)
 // ============================================================
 
@@ -400,6 +423,8 @@ export type TwTokens = {
     after?: DecorLayer;
     preset?: DecorPresetKey;
   };
+
+  animatedShape?: AnimatedShapeConfig;
 };
 
 // ============================================================
