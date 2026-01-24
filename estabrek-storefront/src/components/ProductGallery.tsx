@@ -20,17 +20,25 @@ function is360View(value?: string | null) {
   return v === "360" || v === "spin" || v.includes("360");
 }
 
-function is3dView(value?: string | null, url?: string | null) {
-  const v = (value ?? "").toString().trim().toLowerCase();
-  if (v) {
-    if (v === "3d" || v.includes("3d") || v.includes("model") || v.includes("glb") || v.includes("gltf")) {
-      return true;
-    }
-  }
+function isImageAsset(url?: string | null) {
+  const u = String(url ?? "").trim().toLowerCase();
+  if (!u) return false;
+  const clean = u.split("?")[0].split("#")[0];
+  return [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif"].some((ext) => clean.endsWith(ext));
+}
+
+function isModelAsset(url?: string | null) {
   const u = String(url ?? "").trim().toLowerCase();
   if (!u) return false;
   const clean = u.split("?")[0].split("#")[0];
   return clean.endsWith(".glb") || clean.endsWith(".gltf");
+}
+
+function is3dView(value?: string | null, url?: string | null) {
+  if (isImageAsset(url)) return false;
+  if (isModelAsset(url)) return true;
+  const v = (value ?? "").toString().trim().toLowerCase();
+  return v === "3d" || v.includes("3d") || v.includes("model") || v.includes("glb") || v.includes("gltf");
 }
 
 type ItemKey = string;
