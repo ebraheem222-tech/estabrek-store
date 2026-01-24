@@ -291,22 +291,28 @@ function featureThemePropsFromData(data: FeaturesData) {
 
 function pricingThemePropsFromData(data: PricingData) {
   const plans = Array.isArray(data.plans) ? data.plans : [];
-  const mappedPlans = plans.map((plan, idx) => ({
-    id: plan.name ?? idx + 1,
-    name: plan.name || `Plan ${idx + 1}`,
-    description: plan.description,
-    price: plan.price ?? "",
-    period: plan.period,
-    badge: plan.badge,
-    popular: plan.highlight ?? false,
-    features: Array.isArray(plan.features) ? plan.features : [],
-    buttonText: plan.ctaLabel,
-    onSelect: plan.ctaHref
-      ? () => {
-          if (typeof window !== "undefined") window.location.href = plan.ctaHref;
-        }
-      : undefined,
-  }));
+
+  const mappedPlans = plans.map((plan, idx) => {
+    const href = typeof plan.ctaHref === "string" ? plan.ctaHref : undefined;
+
+    return {
+      id: plan.name ?? idx + 1,
+      name: plan.name || `Plan ${idx + 1}`,
+      description: plan.description,
+      price: plan.price ?? "",
+      period: plan.period,
+      badge: plan.badge,
+      popular: plan.highlight ?? false,
+      features: Array.isArray(plan.features) ? plan.features : [],
+      buttonText: plan.ctaLabel,
+      onSelect: href
+        ? () => {
+            if (typeof window !== "undefined") window.location.href = href;
+          }
+        : undefined,
+    };
+  });
+
   return {
     title: data.title,
     subtitle: data.subtitle,
