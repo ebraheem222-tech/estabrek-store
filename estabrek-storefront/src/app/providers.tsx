@@ -20,6 +20,7 @@ function StorefrontToastProvider({ children }: { children: React.ReactNode }) {
     <ToastProvider
       enabled={settings.toastNotificationsEnabled}
       position={settings.toastPosition}
+      themeId={settings.toastThemeId}
     >
       {children}
     </ToastProvider>
