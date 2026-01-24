@@ -15,6 +15,7 @@ export type CatalogImage = {
   isPrimary?: boolean;
   position?: number;
   blurDataUrl?: string | null;
+  view?: string | null;
 };
 
 export type CatalogSize = { id: string; name: string; value?: string | null };
