@@ -22,6 +22,7 @@ import FallbackShop from "@/components/FallbackShop";
 import FallbackContact from "@/components/FallbackContact";
 import CartClient from "@/components/CartClient";
 import { normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
+import type { ProductMini } from "@/cms/types";
 
 
 function walkComponents(list: any[] | undefined, visit: (c: any) => void, seen = new Set<any>()) {
@@ -73,7 +74,7 @@ export async function renderCmsPageBySlug(
   const currencyCode = (bootstrap.site as any)?.currencyCode || "ILS";
 
   // Prefetch minimal product info for CMS-linked cards (e.g., CARDS linking to /p/:slug)
-  const productLookup: Record<string, { title: string; imageUrl?: string | null; priceText?: string | null }> = {};
+  const productLookup: Record<string, ProductMini> = {};
   const wantSlugs = new Set<string>();
   const wantIds = new Set<string>();
   const slugToId = new Map<string, string>();
@@ -158,6 +159,11 @@ export async function renderCmsPageBySlug(
         try {
           const ids = kind === "new" ? await getNewArrivalsIds(limit) : await getBestSellersIds(limit);
           sec.data = { ...(sec.data ?? {}), productIds: ids };
+          if (Array.isArray(ids)) {
+            for (const id of ids) {
+              if (typeof id === "string" && id.trim()) wantIds.add(id.trim());
+            }
+          }
         } catch {
           // ignore errors; renderer will show fallback text
         }
@@ -171,6 +177,11 @@ export async function renderCmsPageBySlug(
         try {
           const ids = kind === "new" ? await getNewArrivalsIds(limit) : await getBestSellersIds(limit);
           comp.props = { ...(comp.props ?? {}), productIds: ids };
+          if (Array.isArray(ids)) {
+            for (const id of ids) {
+              if (typeof id === "string" && id.trim()) wantIds.add(id.trim());
+            }
+          }
         } catch {
           // ignore errors; CMS will render empty grid/slider
         }
@@ -291,8 +302,9 @@ export async function renderCmsPageBySlug(
       const minPrice = getProductMinPrice(p);
       const priceText = minPrice != null ? formatMoney(minPrice, currencyCode) : null;
 
-      productLookup[p.id] = { title: p.title, imageUrl, priceText };
-      if (p.slug) productLookup[`slug:${p.slug}`] = { title: p.title, imageUrl, priceText };
+      const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, priceText };
+      productLookup[p.id] = entry;
+      if (p.slug) productLookup[`slug:${p.slug}`] = entry;
     }),
     ...Array.from(wantSlugs).map(async (slug) => {
       const p = await getProductBySlug(slug);
@@ -303,8 +315,9 @@ export async function renderCmsPageBySlug(
 
       slugToId.set(slug, p.id);
       if (p.slug) slugToId.set(p.slug, p.id);
-      productLookup[p.id] = { title: p.title, imageUrl, priceText };
-      if (p.slug) productLookup[`slug:${p.slug}`] = { title: p.title, imageUrl, priceText };
+      const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, priceText };
+      productLookup[p.id] = entry;
+      if (p.slug) productLookup[`slug:${p.slug}`] = entry;
     }),
   ]);
 
