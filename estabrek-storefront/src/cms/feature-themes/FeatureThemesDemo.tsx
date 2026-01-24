@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { 
   featureThemes, 
@@ -340,3 +342,4 @@ const FeatureSection = featureComponents['${selectedTheme}'];
 };
 
 export default FeatureThemesDemo;
+

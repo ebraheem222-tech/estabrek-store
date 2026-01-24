@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 
 // ═══════════════════════════════════════════════════════════════
@@ -865,3 +867,4 @@ export const pricingComponents: Record<string, React.FC<any>> = {
 };
 
 export default pricingComponents;
+

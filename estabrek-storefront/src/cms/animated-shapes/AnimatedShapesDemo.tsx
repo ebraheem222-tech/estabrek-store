@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { 
   animatedShapeThemes, 
@@ -311,3 +313,4 @@ const AnimatedShape = animatedShapeComponents['${selectedTheme}'];
 };
 
 export default AnimatedShapesDemo;
+

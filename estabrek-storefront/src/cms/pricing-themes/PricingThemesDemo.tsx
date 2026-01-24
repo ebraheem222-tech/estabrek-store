@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { 
   pricingThemes, 
@@ -389,3 +391,4 @@ const PricingTable = pricingComponents['${selectedTheme}'];
 };
 
 export default PricingThemesDemo;
+

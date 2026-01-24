@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 
 // ═══════════════════════════════════════════════════════════════
@@ -546,3 +548,4 @@ export const additionalSliderComponents = {
 };
 
 export default additionalSliderComponents;
+

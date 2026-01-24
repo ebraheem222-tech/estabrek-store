@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { 
   alertThemes, 
@@ -367,3 +369,4 @@ const Alert = alertComponents['${selectedTheme}'];
 };
 
 export default AlertThemesDemo;
+

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { 
   contactFormThemes, 
@@ -309,3 +311,4 @@ const ContactForm = contactFormComponents['${selectedTheme}'];
 };
 
 export default ContactFormThemesDemo;
+

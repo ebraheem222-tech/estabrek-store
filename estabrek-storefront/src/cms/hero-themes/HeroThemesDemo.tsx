@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { heroThemes, heroCategories, HeroTheme } from './HeroThemes';
 import { heroComponents } from './HeroComponents';
@@ -306,3 +308,4 @@ const Hero = heroComponents['${selectedTheme}'];
 };
 
 export default HeroThemesDemo;
+

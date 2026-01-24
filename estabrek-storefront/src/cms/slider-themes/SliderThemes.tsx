@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 
 // ═══════════════════════════════════════════════════════════════
@@ -841,3 +843,4 @@ export const sliderComponents: Record<string, React.FC<SliderProps>> = {
 };
 
 export default sliderComponents;
+

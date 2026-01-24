@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { 
   sliderThemes, 
@@ -317,3 +319,4 @@ const slides = [
 };
 
 export default SliderThemesDemo;
+
