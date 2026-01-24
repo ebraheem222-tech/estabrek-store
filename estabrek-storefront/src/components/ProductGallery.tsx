@@ -14,6 +14,25 @@ function normalizeHex(v?: string | null): string | null {
   return s.startsWith("#") ? s : `#${s}`;
 }
 
+function is360View(value?: string | null) {
+  const v = (value ?? "").toString().trim().toLowerCase();
+  if (!v) return false;
+  return v === "360" || v === "spin" || v.includes("360");
+}
+
+function is3dView(value?: string | null, url?: string | null) {
+  const v = (value ?? "").toString().trim().toLowerCase();
+  if (v) {
+    if (v === "3d" || v.includes("3d") || v.includes("model") || v.includes("glb") || v.includes("gltf")) {
+      return true;
+    }
+  }
+  const u = String(url ?? "").trim().toLowerCase();
+  if (!u) return false;
+  const clean = u.split("?")[0].split("#")[0];
+  return clean.endsWith(".glb") || clean.endsWith(".gltf");
+}
+
 type ItemKey = string;
 
 function makeItemKey(it: any, idx: number): ItemKey {
@@ -39,7 +58,9 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const item = itemsWithKeys.find((it) => it.__key === itemId) ?? itemsWithKeys[0];
 
   const images = useMemo(() => {
-    const imgs = (item?.images ?? []) as Array<{ id?: string | null; url?: string | null; blurDataUrl?: string | null; isPrimary?: boolean }>;
+    const raw = (item?.images ?? []) as Array<{ id?: string | null; url?: string | null; blurDataUrl?: string | null; isPrimary?: boolean; view?: string | null }>;
+    const filtered = raw.filter((im) => !is360View(im?.view) && !is3dView(im?.view, im?.url));
+    const imgs = filtered.length ? filtered : raw.filter((im) => !is3dView(im?.view, im?.url));
     const primaryIdx = imgs.findIndex((im: { isPrimary?: boolean }) => im.isPrimary);
     if (primaryIdx > 0) {
       const copy = [...imgs];

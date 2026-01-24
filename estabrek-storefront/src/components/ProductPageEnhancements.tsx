@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Product360View } from "./Product360View";
+import { ProductModelViewer } from "./ProductModelViewer";
 import { ProductBadges, StockIndicator, PriceDisplay, SizeRecommender } from "./ProductEnhancements";
 import { useStorefrontSettings } from "./StorefrontFeaturesProvider";
 
@@ -12,12 +13,13 @@ interface ProductPageEnhancementsProps {
     price: number;
     compareAtPrice?: number;
     originalPrice?: number;
-    images?: Array<{ url: string }>;
+    images?: Array<{ url: string; view?: string | null }>;
     items?: Array<{
       images?: Array<{
         url: string;
         position?: number | null;
         isPrimary?: boolean | null;
+        view?: string | null;
       }>;
     }>;
     stock?: number;
@@ -50,31 +52,70 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
 
   if (!mounted) return null;
 
-  // Extract data
-  const images = (() => {
-    const output: string[] = [];
-    const seen = new Set<string>();
-    const add = (value?: string | null) => {
-      if (!value) return;
-      const url = value.trim();
-      if (!url || seen.has(url)) return;
-      seen.add(url);
-      output.push(url);
+  const is360View = (value?: string | null) => {
+    const v = (value ?? "").toString().trim().toLowerCase();
+    if (!v) return false;
+    return v === "360" || v === "spin" || v.includes("360");
+  };
+
+  const is3dView = (value?: string | null, url?: string | null) => {
+    const v = (value ?? "").toString().trim().toLowerCase();
+    if (v) {
+      if (v === "3d" || v.includes("3d") || v.includes("model") || v.includes("glb") || v.includes("gltf")) {
+        return true;
+      }
+    }
+    const u = String(url ?? "").trim().toLowerCase();
+    if (!u) return false;
+    const clean = u.split("?")[0].split("#")[0];
+    return clean.endsWith(".glb") || clean.endsWith(".gltf");
+  };
+
+  const modelUrl = (() => {
+    const items = Array.isArray(product.items) ? product.items : [];
+    const findModel = (images: Array<{ url?: string | null; view?: string | null }>) => {
+      for (const im of images) {
+        const url = String(im?.url ?? "").trim();
+        if (!url) continue;
+        if (is3dView(im?.view, url)) return url;
+      }
+      return null;
     };
 
-    const productImages = Array.isArray(product.images) ? product.images : [];
-    for (const img of productImages) add((img as any)?.url ?? (img as any));
-
-    const items = Array.isArray(product.items) ? product.items : [];
     for (const item of items) {
       const itemImages = Array.isArray(item?.images) ? item.images : [];
-      const ordered = [...itemImages].sort(
-        (a, b) => (a?.position ?? 0) - (b?.position ?? 0)
-      );
-      for (const img of ordered) add(img?.url);
+      const hit = findModel(itemImages as Array<{ url?: string | null; view?: string | null }>);
+      if (hit) return hit;
     }
 
-    return output;
+    const productImages = Array.isArray(product.images) ? product.images : [];
+    return findModel(productImages as Array<{ url?: string | null; view?: string | null }>);
+  })();
+
+  const images360 = (() => {
+    const items = Array.isArray(product.items) ? product.items : [];
+    const seen = new Set<string>();
+    const toUrls = (images: Array<{ url?: string | null }>) => {
+      const out: string[] = [];
+      for (const im of images) {
+        const url = String(im?.url ?? "").trim();
+        if (!url || seen.has(url)) continue;
+        seen.add(url);
+        out.push(url);
+      }
+      return out;
+    };
+
+    for (const item of items) {
+      const itemImages = Array.isArray(item?.images) ? item.images : [];
+      const frames = itemImages
+        .filter((im) => is360View(im?.view))
+        .sort((a, b) => (a?.position ?? 0) - (b?.position ?? 0));
+      const urls = toUrls(frames as Array<{ url?: string | null }>);
+      if (urls.length) return urls;
+    }
+
+    return [];
   })();
   const price = product.price || 0;
   const compareEnabled = settings.productCompareEnabled;
@@ -125,8 +166,56 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
         </div>
       )}
 
+      {/* 3D Model Section */}
+      {modelUrl && (
+        <div className="view-3d-section glass-card rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
+              >
+                <svg
+                  className="w-4 h-4"
+                  style={{ color: "var(--accent-contrast, #0B0B0B)" }}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 7.5l-9 5.25L3 7.5m18 0l-9-5.25L3 7.5m18 0v9l-9 5.25L3 16.5v-9m9 5.25v9"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text)]">عرض 3D</h3>
+                <p className="text-xs text-[var(--muted)]">اسحب للتدوير • كبّر للتفاصيل</p>
+              </div>
+            </div>
+            <span
+              className="text-xs px-2 py-1 rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--accent) 18%, transparent)",
+                color: "var(--accent)",
+              }}
+            >
+              3D
+            </span>
+          </div>
+          <ProductModelViewer
+            modelUrl={modelUrl}
+            autoRotate={settings.product360AutoRotate}
+            autoRotateSpeed={settings.product360RotateSpeed}
+            enableZoom={settings.productZoomEnabled}
+          />
+        </div>
+      )}
+
       {/* 360° View Section */}
-      {settings.product360ViewEnabled && images.length >= 1 && (
+      {settings.product360ViewEnabled && images360.length >= 2 && (
         <div className="view-360-section glass-card rounded-2xl p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -156,11 +245,11 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
                 color: "var(--accent)",
               }}
             >
-              {images.length} صور
+              {images360.length} صور
             </span>
           </div>
           <Product360View
-            images={images}
+            images={images360}
             autoRotate={settings.product360AutoRotate}
             autoRotateSpeed={settings.product360RotateSpeed}
             showControls={true}
