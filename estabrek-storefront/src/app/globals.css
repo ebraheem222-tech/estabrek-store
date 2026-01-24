@@ -8752,6 +8752,12 @@ html {
   transition: width 0.1s linear;
 }
 
+@media (max-width: 768px), (pointer: coarse) {
+  .scroll-progress {
+    display: none !important;
+  }
+}
+
 .text-reveal {
   overflow: hidden;
 }
