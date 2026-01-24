@@ -12,6 +12,10 @@ import type { TwTokens } from "../../cms/style/tokens";
 import type { CmsComponent } from "../../cms/types";
 import { heroThemes, heroCategories } from "../../cms/hero-themes";
 import { contactFormThemes, contactFormCategories } from "../../cms/contact-forms";
+import { featureThemes, featureCategories } from "../../cms/feature-themes";
+import { pricingThemes, pricingCategories } from "../../cms/pricing-themes";
+import { sliderThemes, sliderCategories } from "../../cms/slider-themes";
+import { alertThemes } from "../../cms/alert-themes";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import {
   DndContext,
@@ -386,6 +390,7 @@ export type GridData = {
 };
 
 export type FeaturesData = {
+  themeId?: string;
   title?: string;
   subtitle?: string;
   columns?: number; // 2..6
@@ -465,6 +470,7 @@ export type PricingPlan = {
 };
 
 export type PricingData = {
+  themeId?: string;
   title?: string;
   subtitle?: string;
   columns?: number; // 2..4
@@ -553,12 +559,14 @@ export type CollectionsGridData = {
 };
 
 export type ProductsSliderData = {
+  themeId?: string;
   title?: string;
   limit?: number; // 1..50
   ui?: UiTailwind;
 };
 
 export type BrandsSliderData = {
+  themeId?: string;
   title?: string;
   items: Array<{ name: string; logoUrl?: string; href?: string; twTokens?: TwTokens; nameTokens?: TwTokens; logoTokens?: TwTokens; linkTokens?: TwTokens }>;
   ui?: UiTailwind;
@@ -572,6 +580,7 @@ export type ImageGalleryData = {
 };
 
 export type BannerData = {
+  themeId?: string;
   text: string;
   variant?: "info" | "success" | "warning" | "danger";
   linkLabel?: string;
@@ -2325,6 +2334,7 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
 
 function FeaturesEditor({ value, onChange, errors }: { value: FeaturesData; onChange: (v: FeaturesData) => void; errors?: CommonErrors }) {
   const items = Array.isArray(value.items) ? value.items : [];
+  const themeId = value.themeId ?? "";
   useEffect(() => {
     if (!items.length) return;
     if (items.every((it: any) => typeof it.__key === "string" && it.__key)) return;
@@ -2338,6 +2348,24 @@ function FeaturesEditor({ value, onChange, errors }: { value: FeaturesData; onCh
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Feature Theme" />
+        <Select
+          label="Feature theme"
+          value={themeId}
+          placeholder="Default"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(featureCategories, featureThemes)}
+        </Select>
+        {themeId ? (
+          <div className="text-xs opacity-70">Theme mode renders the selected template for the section.</div>
+        ) : null}
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
         <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />
@@ -2793,6 +2821,7 @@ function TeamEditor({ value, onChange, errors }: { value: TeamData; onChange: (v
 function PricingEditor({ value, onChange, errors }: { value: PricingData; onChange: (v: PricingData) => void; errors?: CommonErrors }) {
   const plans = Array.isArray(value.plans) ? value.plans : [];
   const cols = Number(value.columns ?? 3);
+  const themeId = value.themeId ?? "";
 
   function updatePlan(idx: number, patch: Partial<PricingPlan>) {
     const next = plans.slice();
@@ -2812,6 +2841,24 @@ function PricingEditor({ value, onChange, errors }: { value: PricingData; onChan
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Pricing Theme" />
+        <Select
+          label="Pricing theme"
+          value={themeId}
+          placeholder="Default"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(pricingCategories, pricingThemes)}
+        </Select>
+        {themeId ? (
+          <div className="text-xs opacity-70">Theme mode renders the selected template for the section.</div>
+        ) : null}
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
         <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(v) => onChange({ ...value, subtitle: v })} />
@@ -3257,8 +3304,29 @@ function ImageGalleryEditor({ value, onChange, errors }: { value: ImageGalleryDa
 }
 
 function BannerEditor({ value, onChange, errors }: { value: BannerData; onChange: (v: BannerData) => void; errors?: CommonErrors }) {
+  const themeId = value.themeId ?? "";
+  const bannerThemes = alertThemes.filter((theme) => theme.style === "banner");
+  const bannerCategories = Array.from(new Set(bannerThemes.map((theme) => theme.category)));
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Banner Theme" />
+        <Select
+          label="Banner theme"
+          value={themeId}
+          placeholder="Default"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(bannerCategories, bannerThemes)}
+        </Select>
+        {themeId ? (
+          <div className="text-xs opacity-70">Theme mode renders the selected template for the banner.</div>
+        ) : null}
+      </div>
+
       <TextArea label="النص" value={value.text ?? ""} onChange={(v) => onChange({ ...value, text: v })} rows={3} error={errors?.text} />
       <div className="grid gap-3 md:grid-cols-2">
         <Select
@@ -3789,8 +3857,27 @@ function ProductsSliderEditor({
   onChange: (v: ProductsSliderData) => void;
   label: string;
 }) {
+  const themeId = value.themeId ?? "";
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Slider Theme" />
+        <Select
+          label="Slider theme"
+          value={themeId}
+          placeholder="Default"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(sliderCategories, sliderThemes)}
+        </Select>
+        {themeId ? (
+          <div className="text-xs opacity-70">Theme mode renders the selected slider template.</div>
+        ) : null}
+      </div>
+
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
         <div className="text-sm font-semibold">{label}</div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -3817,6 +3904,7 @@ function ProductsSliderEditor({
 
 function BrandsSliderEditor({ value, onChange }: { value: BrandsSliderData; onChange: (v: BrandsSliderData) => void }) {
   const items = Array.isArray(value.items) ? value.items : [];
+  const themeId = value.themeId ?? "";
 
   function update(i: number, patch: Partial<(typeof items)[number]>) {
     const next = items.map((x, idx) => (idx === i ? { ...x, ...patch } : x));
@@ -3831,6 +3919,24 @@ function BrandsSliderEditor({ value, onChange }: { value: BrandsSliderData; onCh
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Slider Theme" />
+        <Select
+          label="Slider theme"
+          value={themeId}
+          placeholder="Default"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(sliderCategories, sliderThemes)}
+        </Select>
+        {themeId ? (
+          <div className="text-xs opacity-70">Theme mode renders the selected slider template.</div>
+        ) : null}
+      </div>
+
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="عنوان (اختياري)" value={value.title ?? ""} onChange={(v) => onChange({ ...value, title: v })} />
         <div className="flex items-end justify-end">

@@ -29,12 +29,17 @@ import { sanitizeHtml } from "../../lib/sanitizeHtml";
 import { CmsComponentsRenderer } from "./CmsComponentsRenderer";
 import { TypewriterText } from "../../components/effects/TypewriterText";
 import { SectionDecorations } from "../../cms/decorations/DecorationLayer";
+import { AnimatedShapeLayer } from "../../cms/animated-shapes/AnimatedShapeLayer";
 import { SpotlightContainer } from "../../cms/spotlight-themes";
 import { DECOR_SIZE_HEIGHTS } from "../../cms/shapes/shapeRegistry";
 import type { TwTokens } from "../../cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
 import { heroThemes, heroComponents, HeroRenderer } from "../../cms/hero-themes";
 import { contactFormThemes, contactFormComponents, additionalFormComponents } from "../../cms/contact-forms";
+import { featureThemes, featureComponents, additionalFeatureComponents } from "../../cms/feature-themes";
+import { pricingThemes, pricingComponents, additionalPricingComponents } from "../../cms/pricing-themes";
+import { sliderThemes, sliderComponents, additionalSliderComponents } from "../../cms/slider-themes";
+import { alertThemes, alertComponents, additionalAlertComponents, type AlertType } from "../../cms/alert-themes";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -376,7 +381,9 @@ function wrapSpotlight(node: React.ReactElement, tokens?: TwTokens) {
 
 function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
   const decorations = sectionDecorations(tokens);
-  if (!decorations) return wrapSpotlight(node, tokens);
+  const animatedShapeConfig = tokens?.animatedShape;
+  const hasAnimatedShape = !!animatedShapeConfig?.themeId;
+  if (!decorations && !hasAnimatedShape) return wrapSpotlight(node, tokens);
   const className = node.props?.className;
   const wantsOverflowHidden = typeof className === "string" && className.includes("overflow-hidden");
   const cleanedClassName =
@@ -397,7 +404,8 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     const Wrapper = isInline ? "span" : "div";
     const wrapped = (
       <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
-        <SectionDecorations decorations={decorations ?? undefined} className="z-0" />
+        {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
+        {decorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
         <span className={innerClassName} style={innerStyle}>
           {node}
         </span>
@@ -409,7 +417,8 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     const Wrapper = isInline ? "span" : "div";
     const wrapped = (
       <Wrapper className={cls("relative overflow-visible", isInline ? "inline-block" : "block")}>
-        <SectionDecorations decorations={decorations ?? undefined} className="z-0" />
+        {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
+        {decorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
         <span className={innerClassName} style={innerStyle}>
           {node}
         </span>
@@ -421,7 +430,8 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
     node,
     { className: mergedClassName },
     <>
-      <SectionDecorations decorations={decorations ?? undefined} className="z-0" />
+      {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
+      {decorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
       <span className={innerClassName} style={innerStyle}>
         {node.props?.children}
       </span>
@@ -466,10 +476,13 @@ function SectionShell({
 }) {
   const tokens = data?.twTokens as TwTokens | undefined;
   const decorations = sectionDecorations(tokens);
+  const animatedShapeConfig = tokens?.animatedShape;
   const hasDecorations = !!decorations;
+  const hasAnimatedShape = !!animatedShapeConfig?.themeId;
+  const hasOverlays = hasDecorations || hasAnimatedShape;
   const wantsOverflowHidden = typeof className === "string" && className.includes("overflow-hidden");
   const baseClassName =
-    hasDecorations && wantsOverflowHidden && typeof className === "string"
+    hasOverlays && wantsOverflowHidden && typeof className === "string"
       ? className.replace(/\boverflow-hidden\b/g, "").trim()
       : className;
   const previewMargins = previewDecorMargins(tokens);
@@ -480,14 +493,15 @@ function SectionShell({
       className={cls(
         baseClassName,
         uiSectionClass(data),
-        hasDecorations ? "relative overflow-visible" : undefined
+        hasOverlays ? "relative overflow-visible" : undefined
       )}
       style={shellStyle}
     >
+      {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
       {hasDecorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
       <div
         className={cls(
-          hasDecorations ? "relative z-10" : undefined,
+          hasOverlays ? "relative z-10" : undefined,
           wantsOverflowHidden ? "overflow-hidden" : undefined
         )}
         style={wantsOverflowHidden ? { borderRadius: "inherit" } : undefined}
@@ -501,11 +515,14 @@ function SectionShell({
 function wrapPreview(data: any, node: React.ReactNode) {
   const tokens = data?.twTokens as TwTokens | undefined;
   const decorations = sectionDecorations(tokens);
-  if (!decorations) return node;
+  const animatedShapeConfig = tokens?.animatedShape;
+  const hasAnimatedShape = !!animatedShapeConfig?.themeId;
+  if (!decorations && !hasAnimatedShape) return node;
   const previewMargins = previewDecorMargins(tokens);
   return (
     <div className="relative overflow-visible" style={previewMargins}>
-      <SectionDecorations decorations={decorations ?? undefined} className="z-0" />
+      {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
+      {decorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
       <div className="relative z-10">{node}</div>
     </div>
   );
@@ -527,6 +544,165 @@ function renderComponentsBlock(data: any) {
       </SectionTextScope>
     </div>
   );
+}
+
+function ThemePreviewShell({
+  data,
+  label,
+  height = 220,
+  scale = 0.75,
+  children,
+}: {
+  data: any;
+  label: string;
+  height?: number;
+  scale?: number;
+  children: React.ReactNode;
+}) {
+  const width = `${(1 / scale) * 100}%`;
+  return (
+    <SectionShell data={data} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+      <div className="px-3 pt-3 text-[10px] uppercase tracking-wide opacity-60">{label}</div>
+      <div className="overflow-hidden" style={{ height }}>
+        <div style={{ transform: `scale(${scale})`, transformOrigin: "top left", width }}>
+          {children}
+        </div>
+      </div>
+    </SectionShell>
+  );
+}
+
+function featureThemePreviewProps(data: FeaturesData) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  const columns = Math.min(6, Math.max(2, safeNum(data.columns, 3))) as 2 | 3 | 4 | 5 | 6;
+  const fallbackCount = Math.max(3, columns);
+  const fallbackItems = Array.from({ length: fallbackCount }).map((_, idx) => ({
+    title: `Feature ${idx + 1}`,
+    text: "Short description",
+  }));
+  const source = items.length ? items : fallbackItems;
+
+  const features = source.map((item: any, idx: number) => {
+    const title = item.title || `Feature ${idx + 1}`;
+    const iconNode = item.iconUrl ? (
+      <img src={item.iconUrl} alt="" className="h-6 w-6 object-contain" />
+    ) : (
+      item.icon
+    );
+    return {
+      id: item.title ?? idx + 1,
+      title,
+      description: item.text,
+      icon: iconNode,
+      image: item.iconUrl,
+      link: item.href,
+    };
+  });
+
+  return {
+    title: data.title,
+    subtitle: data.subtitle,
+    features,
+    columns,
+  };
+}
+
+function pricingThemePreviewProps(data: PricingData) {
+  const plans = Array.isArray(data.plans) ? data.plans : [];
+  const columns = Math.min(4, Math.max(2, safeNum(data.columns, 3)));
+  const fallbackCount = Math.max(2, columns);
+  const defaultFeatures = ["Feature A", "Feature B", "Feature C"];
+  const fallbackPlans = Array.from({ length: fallbackCount }).map((_, idx) => ({
+    name: `Plan ${idx + 1}`,
+    price: `${(idx + 1) * 10}`,
+    period: "mo",
+    description: "Plan description",
+    features: defaultFeatures,
+    highlight: idx === 1,
+  }));
+  const source = plans.length ? plans : fallbackPlans;
+
+  const mappedPlans = source.map((plan: any, idx: number) => ({
+    id: plan.name ?? idx + 1,
+    name: plan.name || `Plan ${idx + 1}`,
+    description: plan.description,
+    price: plan.price ?? `${(idx + 1) * 10}`,
+    period: plan.period,
+    badge: plan.badge,
+    popular: plan.highlight ?? false,
+    features: Array.isArray(plan.features) && plan.features.length ? plan.features : defaultFeatures,
+    buttonText: plan.ctaLabel ?? (plan.ctaHref ? "Select" : "Choose"),
+    onSelect: plan.ctaHref
+      ? () => {
+          if (typeof window !== "undefined") window.location.href = plan.ctaHref;
+        }
+      : undefined,
+  }));
+
+  return {
+    title: data.title,
+    subtitle: data.subtitle,
+    plans: mappedPlans,
+  };
+}
+
+function productSliderPreviewSlides(data: ProductsSliderData, label: string) {
+  const limit = Math.min(8, Math.max(1, safeNum(data.limit, 6)));
+  return Array.from({ length: limit }).map((_, idx) => ({
+    id: `${label}-${idx + 1}`,
+    title: `${label} ${idx + 1}`,
+    description: "Short description",
+  }));
+}
+
+function brandSliderPreviewSlides(data: BrandsSliderData) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  if (!items.length) {
+    return Array.from({ length: 4 }).map((_, idx) => ({
+      id: `Brand-${idx + 1}`,
+      title: `Brand ${idx + 1}`,
+    }));
+  }
+  return items.map((item, idx) => ({
+    id: item.name ?? idx + 1,
+    title: item.name || `Brand ${idx + 1}`,
+    image: item.logoUrl,
+    link: item.href,
+  }));
+}
+
+function bannerAlertType(variant?: string): AlertType {
+  switch (variant) {
+    case "success":
+      return "success";
+    case "warning":
+      return "warning";
+    case "danger":
+      return "error";
+    case "info":
+    default:
+      return "info";
+  }
+}
+
+function bannerThemePreviewProps(data: BannerData) {
+  const message = data.text || "Banner message";
+  const rawLabel = typeof data.linkLabel === "string" ? data.linkLabel.trim() : "";
+  const rawHref = typeof data.linkHref === "string" ? data.linkHref.trim() : "";
+  const actionLabel = rawLabel || rawHref;
+  const action = actionLabel
+    ? {
+        label: actionLabel,
+        onClick: () => {
+          if (rawHref && typeof window !== "undefined") window.location.href = rawHref;
+        },
+      }
+    : undefined;
+  return {
+    type: bannerAlertType(data.variant),
+    message,
+    action,
+  };
 }
 
 function HeroPreview({ data }: { data: HeroData }) {
@@ -961,6 +1137,18 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "FEATURES") {
     const d = data as FeaturesData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const theme = featureThemes.find((t) => t.id === themeId);
+      const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = featureThemePreviewProps(d) as any;
+      return (
+        <ThemePreviewShell data={d} label={theme?.name ?? themeId}>
+          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+        </ThemePreviewShell>
+      );
+    }
     const items = Array.isArray(d.items) ? d.items : [];
     const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const gridCols =
@@ -1246,6 +1434,18 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "PRICING") {
     const d = data as PricingData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const theme = pricingThemes.find((t) => t.id === themeId);
+      const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = pricingThemePreviewProps(d) as any;
+      return (
+        <ThemePreviewShell data={d} label={theme?.name ?? themeId}>
+          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+        </ThemePreviewShell>
+      );
+    }
     const plans = Array.isArray(d.plans) ? d.plans : [];
     const cols = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
     const gridCols = cols === 2 ? "sm:grid-cols-2" : cols === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4";
@@ -1698,6 +1898,29 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "NEW_ARRIVALS_SLIDER" || type === "BEST_SELLERS_SLIDER") {
     const d = data as ProductsSliderData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const theme = sliderThemes.find((t) => t.id === themeId);
+      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const label = type === "NEW_ARRIVALS_SLIDER" ? "New arrival" : "Best seller";
+      const slides = productSliderPreviewSlides(d, label);
+      const themeProps = {
+        slides,
+        showArrows: true,
+        showDots: true,
+        autoPlay: false,
+      } as any;
+      const titleValue = d.title || (type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers");
+      return (
+        <ThemePreviewShell data={d} label={theme?.name ?? themeId}>
+          <div className="p-4">
+            <div className="mb-3 text-xs font-semibold opacity-70">{titleValue}</div>
+            {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          </div>
+        </ThemePreviewShell>
+      );
+    }
     const limit = Math.min(8, Math.max(1, safeNum(d.limit, 6)));
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
@@ -1724,6 +1947,28 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "BRANDS_SLIDER") {
     const d = data as BrandsSliderData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const theme = sliderThemes.find((t) => t.id === themeId);
+      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const slides = brandSliderPreviewSlides(d);
+      const themeProps = {
+        slides,
+        showArrows: true,
+        showDots: true,
+        autoPlay: false,
+      } as any;
+      const titleValue = d.title || "Brands";
+      return (
+        <ThemePreviewShell data={d} label={theme?.name ?? themeId}>
+          <div className="p-4">
+            <div className="mb-3 text-xs font-semibold opacity-70">{titleValue}</div>
+            {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          </div>
+        </ThemePreviewShell>
+      );
+    }
     const items = Array.isArray(d.items) ? d.items : [];
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
@@ -1846,6 +2091,18 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "BANNER") {
     const d = data as BannerData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const theme = alertThemes.find((t) => t.id === themeId);
+      const themeMap = { ...alertComponents, ...additionalAlertComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? alertComponents["banner-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = bannerThemePreviewProps(d) as any;
+      return (
+        <ThemePreviewShell data={d} label={theme?.name ?? themeId} height={120} scale={0.9}>
+          <div className="p-3">{ThemeComponent ? <ThemeComponent {...themeProps} /> : null}</div>
+        </ThemePreviewShell>
+      );
+    }
     const tone = d.variant ?? "info";
     const toneCls =
       tone === "success"

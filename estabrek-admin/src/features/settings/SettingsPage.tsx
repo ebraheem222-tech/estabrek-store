@@ -16,6 +16,7 @@ import {
 import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../cms/effects/loadingAnimations";
 import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../cms/style/searchStyles";
 import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../cms/style/cursorStyles";
+import { alertThemes, getAlertTheme } from "../../cms/alert-themes";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -235,6 +236,7 @@ type StorefrontConfig = {
   // Notifications & Alerts
   toastNotificationsEnabled: boolean;
   toastPosition: "top-right" | "top-left" | "bottom-right" | "bottom-left";
+  toastThemeId: string;
   stockAlertEnabled: boolean;
   priceDropAlertEnabled: boolean;
   
@@ -333,6 +335,12 @@ function normalizeStorefront(v: any): StorefrontConfig {
     // Notifications
     toastNotificationsEnabled: o.toastNotificationsEnabled !== false,
     toastPosition: o.toastPosition || "top-right",
+    toastThemeId: (() => {
+      const raw = typeof o.toastThemeId === "string" ? o.toastThemeId : "default";
+      if (raw === "default") return raw;
+      const theme = getAlertTheme(raw);
+      return theme?.style === "toast" ? raw : "default";
+    })(),
     stockAlertEnabled: o.stockAlertEnabled !== false,
     priceDropAlertEnabled: o.priceDropAlertEnabled !== false,
     
@@ -457,6 +465,16 @@ const CURSOR_THEME_OPTIONS: Array<{ value: string; label: string }> = [
     value: t.id,
     label: `${t.nameAr} — ${t.name}`,
   })),
+];
+
+const TOAST_THEME_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "default", label: "افتراضي" },
+  ...alertThemes
+    .filter((t) => t.style === "toast")
+    .map((t) => ({
+      value: t.id,
+      label: `${t.nameAr} — ${t.name}`,
+    })),
 ];
 
 function normalizeHeader(v: any): HeaderConfig {
@@ -2358,6 +2376,13 @@ export default function SettingsPage() {
                           { value: "bottom-right", label: "أسفل يمين" },
                           { value: "bottom-left", label: "أسفل يسار" },
                         ]}
+                      />
+                      <Select
+                        label="ثيم إشعارات Toast"
+                        value={storefrontCfg.toastThemeId}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, toastThemeId: v }))}
+                        options={TOAST_THEME_OPTIONS}
+                        disabled={!storefrontCfg.toastNotificationsEnabled}
                       />
                     </div>
                   </div>

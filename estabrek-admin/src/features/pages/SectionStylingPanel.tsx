@@ -32,6 +32,7 @@ import {
   TEXT_ALIGN_PRESETS,
   HOVER_PRESETS,
   POSITION_PRESETS,
+  ANIMATED_SHAPE_PLACEMENTS,
   type TwTokens,
   type AnimPreset,
   type DecorLayer,
@@ -59,6 +60,7 @@ import {
 import { INTERACTION_CATEGORY_LABELS_AR, INTERACTION_EFFECTS } from "../../cms/effects/interactionEffects";
 import { SvgLibraryPicker } from "./SvgLibraryPicker";
 import { spotlightThemes } from "../../cms/spotlight-themes";
+import { animatedShapeThemes } from "../../cms/animated-shapes";
 
 // ============================================================
 // TYPES
@@ -98,6 +100,30 @@ const spotlightOptions = [
     label: `${theme.category} - ${theme.nameAr || theme.name}`,
   })),
 ];
+
+const animatedShapeOptions = [
+  { value: "", label: "بدون" },
+  ...animatedShapeThemes.map((theme) => ({
+    value: theme.id,
+    label: `${theme.category} - ${theme.nameAr || theme.name}`,
+  })),
+];
+
+const animatedShapePlacementOptions = ANIMATED_SHAPE_PLACEMENTS.map((p) => ({
+  value: p,
+  label:
+    p === "background"
+      ? "خلفية"
+      : p === "top-left"
+      ? "أعلى يسار"
+      : p === "top-right"
+      ? "أعلى يمين"
+      : p === "bottom-left"
+      ? "أسفل يسار"
+      : p === "bottom-right"
+      ? "أسفل يمين"
+      : "الوسط",
+}));
 
 // ============================================================
 // HELPER COMPONENTS
@@ -1220,6 +1246,10 @@ function AdvancedEditor({ tokens, onChange }: {
   const spotlightTheme = spotlightThemeId
     ? spotlightThemes.find((theme) => theme.id === spotlightThemeId)
     : undefined;
+  const animatedShape = (tokens as any)?.animatedShape ?? {};
+  const animatedShapeThemeId = animatedShape?.themeId ?? "";
+  const animatedOpacity = Number.isFinite(animatedShape?.opacity) ? (animatedShape.opacity as number) : 0.6;
+  const animatedOpacityValue = Math.max(0, Math.min(100, Math.round(animatedOpacity * 100)));
 
   return (
     <div className="space-y-4">
@@ -1262,6 +1292,110 @@ function AdvancedEditor({ tokens, onChange }: {
             />
           </FieldGroup>
         </div>
+      ) : null}
+
+      <Divider title="الأشكال المتحركة" />
+
+      <FieldGroup label="ثيم الأشكال المتحركة" labelAr="Animated Shapes">
+        <Select
+          value={animatedShapeThemeId}
+          onChange={(v) => {
+            const nextId = String(v ?? "").trim();
+            if (!nextId) {
+              const { animatedShape: _removed, ...rest } = tokens ?? {};
+              onChange(rest as any);
+              return;
+            }
+            onChange({
+              ...(tokens ?? {}),
+              animatedShape: { ...animatedShape, themeId: nextId },
+            } as any);
+          }}
+          options={animatedShapeOptions}
+          placeholder="بدون"
+        />
+      </FieldGroup>
+
+      {animatedShapeThemeId ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldGroup label="الموضع">
+              <Select
+                value={animatedShape?.placement ?? "background"}
+                onChange={(v) =>
+                  onChange({
+                    ...(tokens ?? {}),
+                    animatedShape: { ...animatedShape, placement: v as any },
+                  } as any)
+                }
+                options={animatedShapePlacementOptions}
+              />
+            </FieldGroup>
+            <FieldGroup label="الحجم">
+              <ButtonGroup
+                value={animatedShape?.size ?? "md"}
+                onChange={(v) =>
+                  onChange({
+                    ...(tokens ?? {}),
+                    animatedShape: { ...animatedShape, size: v as any },
+                  } as any)
+                }
+                options={[
+                  { value: "sm", label: "صغير" },
+                  { value: "md", label: "متوسط" },
+                  { value: "lg", label: "كبير" },
+                  { value: "xl", label: "ضخم" },
+                ]}
+              />
+            </FieldGroup>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldGroup label="السرعة">
+              <ButtonGroup
+                value={animatedShape?.speed ?? "normal"}
+                onChange={(v) =>
+                  onChange({
+                    ...(tokens ?? {}),
+                    animatedShape: { ...animatedShape, speed: v as any },
+                  } as any)
+                }
+                options={[
+                  { value: "slow", label: "بطيء" },
+                  { value: "normal", label: "متوسط" },
+                  { value: "fast", label: "سريع" },
+                ]}
+              />
+            </FieldGroup>
+            <FieldGroup label="الشفافية">
+              <Slider
+                value={animatedOpacityValue}
+                onChange={(v) =>
+                  onChange({
+                    ...(tokens ?? {}),
+                    animatedShape: { ...animatedShape, opacity: v / 100 },
+                  } as any)
+                }
+                min={0}
+                max={100}
+                step={5}
+                suffix="%"
+              />
+            </FieldGroup>
+          </div>
+
+          <FieldGroup label="اللون" hint="اكتب لون CSS أو اختر لون Hex">
+            <ColorPicker
+              value={animatedShape?.color ?? ""}
+              onChange={(v) =>
+                onChange({
+                  ...(tokens ?? {}),
+                  animatedShape: { ...animatedShape, color: v },
+                } as any)
+              }
+            />
+          </FieldGroup>
+        </>
       ) : null}
 
       <FieldGroup label="CSS مخصص" labelAr="Custom CSS">
