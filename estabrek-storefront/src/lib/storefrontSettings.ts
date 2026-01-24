@@ -67,6 +67,7 @@ export type StorefrontSettings = {
   // Notifications
   toastNotificationsEnabled: boolean;
   toastPosition: ToastPosition;
+  toastThemeId: string;
   stockAlertEnabled: boolean;
   priceDropAlertEnabled: boolean;
 
@@ -163,6 +164,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   // Notifications
   toastNotificationsEnabled: true,
   toastPosition: "top-right",
+  toastThemeId: "default",
   stockAlertEnabled: true,
   priceDropAlertEnabled: true,
 

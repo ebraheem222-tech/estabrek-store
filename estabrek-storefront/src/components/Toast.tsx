@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { alertThemes, alertComponents, additionalAlertComponents, type AlertType } from "@/cms/alert-themes";
 
 // Types
 export type ToastType = "success" | "error" | "warning" | "info";
@@ -19,6 +20,15 @@ interface ToastContextValue {
   addToast: (toast: Omit<Toast, "id">) => void;
   removeToast: (id: string) => void;
 }
+
+const toastThemeMap = { ...alertComponents, ...additionalAlertComponents } as Record<string, React.FC<any>>;
+const toastThemeIds = new Set(alertThemes.filter((t) => t.style === "toast").map((t) => t.id));
+const toastTypeMap: Record<ToastType, AlertType> = {
+  success: "success",
+  error: "error",
+  warning: "warning",
+  info: "info",
+};
 
 // Icons
 const CheckIcon = () => (
@@ -59,10 +69,12 @@ export function ToastProvider({
   children,
   enabled = true,
   position = "bottom-left",
+  themeId,
 }: {
   children: React.ReactNode;
   enabled?: boolean;
   position?: ToastPosition;
+  themeId?: string;
 }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -86,7 +98,14 @@ export function ToastProvider({
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      {enabled ? <ToastContainer toasts={toasts} removeToast={removeToast} position={position} /> : null}
+      {enabled ? (
+        <ToastContainer
+          toasts={toasts}
+          removeToast={removeToast}
+          position={position}
+          themeId={themeId}
+        />
+      ) : null}
     </ToastContext.Provider>
   );
 }
@@ -105,15 +124,28 @@ function ToastContainer({
   toasts,
   removeToast,
   position,
+  themeId,
 }: {
   toasts: Toast[];
   removeToast: (id: string) => void;
   position: ToastPosition;
+  themeId?: string;
 }) {
+  const ThemeComponent = themeId && toastThemeIds.has(themeId) ? toastThemeMap[themeId] : null;
   return (
     <div className={`toast-container toast-${position}`} dir="rtl">
       {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
+        ThemeComponent ? (
+          <ThemedToastItem
+            key={toast.id}
+            toast={toast}
+            onClose={() => removeToast(toast.id)}
+            position={position}
+            ThemeComponent={ThemeComponent}
+          />
+        ) : (
+          <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
+        )
       ))}
     </div>
   );
@@ -154,6 +186,40 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         />
       </div>
     </div>
+  );
+}
+
+function ThemedToastItem({
+  toast,
+  onClose,
+  position,
+  ThemeComponent,
+}: {
+  toast: Toast;
+  onClose: () => void;
+  position: ToastPosition;
+  ThemeComponent: React.FC<any>;
+}) {
+  const [isExiting, setIsExiting] = useState(false);
+  const handleClose = () => {
+    setIsExiting(true);
+    setTimeout(onClose, 300);
+  };
+  const hasMessage = typeof toast.message === "string" && toast.message.trim().length > 0;
+  const message = hasMessage ? toast.message! : toast.title;
+  const title = hasMessage ? toast.title : undefined;
+  return (
+    <ThemeComponent
+      type={toastTypeMap[toast.type]}
+      title={title}
+      message={message}
+      position={position}
+      closable
+      isVisible={!isExiting}
+      onClose={handleClose}
+      autoClose={false}
+      showIcon
+    />
   );
 }
 
