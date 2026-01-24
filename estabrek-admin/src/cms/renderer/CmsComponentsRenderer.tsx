@@ -3,6 +3,7 @@ import type { CmsComponent } from "../types";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
 import { getContainerById, getDividerById } from "../style/containerStyles";
 import { SectionDecorations } from "../decorations/DecorationLayer";
+import { AnimatedShapeLayer } from "../animated-shapes/AnimatedShapeLayer";
 import { TypewriterText } from "../../components/effects/TypewriterText";
 import { SHAPES } from "../shapes/shapeRegistry";
 
@@ -76,12 +77,15 @@ function decorationsFromTokens(tokens?: any) {
 
 function wrapWithDecor(tokens: any, node: React.ReactElement, inline = false) {
   const decorations = decorationsFromTokens(tokens);
-  if (!decorations) return node;
+  const animatedShapeConfig = tokens?.animatedShape;
+  const hasAnimatedShape = !!animatedShapeConfig?.themeId;
+  if (!decorations && !hasAnimatedShape) return node;
   const Wrapper: React.ElementType = inline ? "span" : "div";
   const Inner: React.ElementType = inline ? "span" : "div";
   return (
     <Wrapper className={cx("relative", inline ? "inline-block" : undefined)}>
-      <SectionDecorations decorations={decorations} className="z-0" />
+      {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
+      {decorations ? <SectionDecorations decorations={decorations} className="z-0" /> : null}
       <Inner className="relative z-10">{node}</Inner>
     </Wrapper>
   );

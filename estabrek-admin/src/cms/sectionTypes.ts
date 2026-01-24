@@ -59,6 +59,8 @@ export type CustomHtmlData = {
 };
 
 export type BannerData = {
+  /** Optional alert/banner theme id (uses alert-themes renderer when set). */
+  themeId?: string;
   text: string;
   variant?: "info" | "success" | "warning" | "danger";
   linkLabel?: string;
@@ -80,6 +82,8 @@ export type GridData = {
 };
 
 export type FeaturesData = {
+  /** Optional feature theme id (uses feature-themes renderer when set). */
+  themeId?: string;
   title?: string;
   subtitle?: string;
   columns?: number;
@@ -137,6 +141,8 @@ export type TeamData = {
 };
 
 export type PricingData = {
+  /** Optional pricing theme id (uses pricing-themes renderer when set). */
+  themeId?: string;
   title?: string;
   subtitle?: string;
   columns?: number;
@@ -233,12 +239,16 @@ export type CollectionsGridData = {
 };
 
 export type ProductsSliderData = {
+  /** Optional slider theme id (uses slider-themes renderer when set). */
+  themeId?: string;
   title?: string;
   limit?: number; // 1..50
   ui?: UiTailwind;
 };
 
 export type BrandsSliderData = {
+  /** Optional slider theme id (uses slider-themes renderer when set). */
+  themeId?: string;
   title?: string;
   items: Array<{ name: string; logoUrl?: string; href?: string }>;
   ui?: UiTailwind;

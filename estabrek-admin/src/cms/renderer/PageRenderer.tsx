@@ -27,8 +27,13 @@ import type {
 } from "../sectionTypes";
 import { CmsComponentsRenderer } from "./CmsComponentsRenderer";
 import { SectionDecorations } from "../decorations/DecorationLayer";
+import { AnimatedShapeLayer } from "../animated-shapes/AnimatedShapeLayer";
 import type { TwTokens } from "../style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
+import { featureComponents, additionalFeatureComponents } from "../feature-themes";
+import { pricingComponents, additionalPricingComponents } from "../pricing-themes";
+import { sliderComponents, additionalSliderComponents } from "../slider-themes";
+import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -37,6 +42,12 @@ function safeNum(v: any, fallback: number) {
 
 function cls(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
+}
+
+function resolveThemeId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function isItemVisible(item: any): boolean {
@@ -126,6 +137,117 @@ function renderComponentsBlock(data: any, className?: string) {
       <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
     </div>
   );
+}
+
+function featureThemePropsFromData(data: FeaturesData) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  const columns = Math.min(6, Math.max(2, safeNum(data.columns, 3))) as 2 | 3 | 4 | 5 | 6;
+  const features = items.map((item, idx) => {
+    const title = item.title || `Feature ${idx + 1}`;
+    const iconNode = item.iconUrl ? (
+      <img src={item.iconUrl} alt="" className="h-6 w-6 object-contain" />
+    ) : (
+      item.icon
+    );
+    return {
+      id: item.title ?? idx + 1,
+      title,
+      description: item.text,
+      icon: iconNode,
+      image: item.iconUrl,
+      link: item.href,
+    };
+  });
+  return {
+    title: data.title,
+    subtitle: data.subtitle,
+    features,
+    columns,
+  };
+}
+
+function pricingThemePropsFromData(data: PricingData) {
+  const plans = Array.isArray(data.plans) ? data.plans : [];
+  const mappedPlans = plans.map((plan, idx) => ({
+    id: plan.name ?? idx + 1,
+    name: plan.name || `Plan ${idx + 1}`,
+    description: plan.description,
+    price: plan.price ?? "",
+    period: plan.period,
+    badge: plan.badge,
+    popular: plan.highlight ?? false,
+    features: Array.isArray(plan.features) ? plan.features : [],
+    buttonText: plan.ctaLabel,
+    onSelect: plan.ctaHref
+      ? () => {
+          if (typeof window !== "undefined") window.location.href = plan.ctaHref;
+        }
+      : undefined,
+  }));
+  return {
+    title: data.title,
+    subtitle: data.subtitle,
+    plans: mappedPlans,
+  };
+}
+
+function productSliderThemeSlides(data: ProductsSliderData, label: string) {
+  const limit = Math.min(8, Math.max(1, safeNum(data.limit, 6)));
+  return Array.from({ length: limit }).map((_, idx) => ({
+    id: `${label}-${idx + 1}`,
+    title: `${label} ${idx + 1}`,
+    description: "Short description",
+  }));
+}
+
+function brandSliderThemeSlides(data: BrandsSliderData) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  if (!items.length) {
+    return Array.from({ length: 4 }).map((_, idx) => ({
+      id: `Brand-${idx + 1}`,
+      title: `Brand ${idx + 1}`,
+    }));
+  }
+  return items.map((item, idx) => ({
+    id: item.name ?? idx + 1,
+    title: item.name || `Brand ${idx + 1}`,
+    image: item.logoUrl,
+    link: item.href,
+  }));
+}
+
+function bannerAlertType(variant?: string): AlertType {
+  switch (variant) {
+    case "success":
+      return "success";
+    case "warning":
+      return "warning";
+    case "danger":
+      return "error";
+    case "info":
+    default:
+      return "info";
+  }
+}
+
+function bannerThemePropsFromData(data: BannerData) {
+  const message = data.text || "Banner message";
+  const rawLabel = typeof data.linkLabel === "string" ? data.linkLabel.trim() : "";
+  const rawHref = typeof data.linkHref === "string" ? data.linkHref.trim() : "";
+  const actionLabel = rawLabel || rawHref;
+  const action = actionLabel
+    ? {
+        label: actionLabel,
+        onClick: () => {
+          if (rawHref && typeof window !== "undefined") window.location.href = rawHref;
+        },
+      }
+    : undefined;
+  return {
+    type: bannerAlertType(data.variant),
+    message,
+    action,
+  };
 }
 
 function youtubeId(url: string): string | null {
@@ -314,6 +436,21 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "BANNER") {
     const d = data as BannerData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d);
+      const themeMap = { ...alertComponents, ...additionalAlertComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? alertComponents["banner-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = bannerThemePropsFromData(d) as any;
+      return (
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto", uiContainerClass(d))}>
+            {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          </div>
+          {componentsBlock}
+        </section>
+      );
+    }
     const variant = d.variant ?? d.tone ?? "info";
     const linkLabel = d.linkLabel ?? d.buttonText;
     const linkHref = d.linkHref ?? d.href;
@@ -449,6 +586,19 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "FEATURES") {
     const d = data as FeaturesData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d);
+      const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = featureThemePropsFromData(d) as any;
+      return (
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          {componentsBlock}
+        </section>
+      );
+    }
     const items = Array.isArray(d.items) ? d.items : [];
     const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const gridCols =
@@ -557,6 +707,19 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "PRICING") {
     const d = data as PricingData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d);
+      const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const themeProps = pricingThemePropsFromData(d) as any;
+      return (
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          {componentsBlock}
+        </section>
+      );
+    }
     const plans = Array.isArray(d.plans) ? d.plans : [];
     const cols = Math.min(4, Math.max(2, safeNum(d.columns, 3)));
     const gridCols = cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
@@ -747,12 +910,35 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "NEW_ARRIVALS_SLIDER" || type === "BEST_SELLERS_SLIDER") {
     const d = data as ProductsSliderData;
+    const themeId = resolveThemeId((d as any).themeId);
     const limit = Math.min(8, Math.max(1, safeNum(d.limit, 6)));
     const componentsBlock = renderComponentsBlock(d);
+    const titleValue = d.title || (type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers");
+    if (themeId) {
+      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const label = type === "NEW_ARRIVALS_SLIDER" ? "New arrival" : "Best seller";
+      const slides = productSliderThemeSlides(d, label);
+      const themeProps = {
+        slides,
+        showArrows: true,
+        showDots: true,
+        autoPlay: false,
+      } as any;
+      return (
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+            <h3 className="mb-4 text-lg font-semibold">{titleValue}</h3>
+            {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+            {componentsBlock}
+          </div>
+        </section>
+      );
+    }
     return (
       <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
-          <h3 className="mb-4 text-lg font-semibold">{d.title || (type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers")}</h3>
+          <h3 className="mb-4 text-lg font-semibold">{titleValue}</h3>
           <div className="grid gap-4 md:grid-cols-4">
             {Array.from({ length: limit }).map((_, idx) => (
               <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-xs opacity-70">
@@ -768,8 +954,29 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "BRANDS_SLIDER") {
     const d = data as BrandsSliderData;
+    const themeId = resolveThemeId((d as any).themeId);
     const items = Array.isArray(d.items) ? d.items : [];
     const componentsBlock = renderComponentsBlock(d);
+    if (themeId) {
+      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const slides = brandSliderThemeSlides(d);
+      const themeProps = {
+        slides,
+        showArrows: true,
+        showDots: true,
+        autoPlay: false,
+      } as any;
+      return (
+        <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+            {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
+            {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+            {componentsBlock}
+          </div>
+        </section>
+      );
+    }
     return (
       <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
@@ -1040,12 +1247,17 @@ export function CmsPageRenderer({
   return (
     <div className={cls("space-y-5", className)}>
       {sorted.map((sec) => {
-        const decorations = sectionDecorations((sec as any)?.data?.twTokens);
+        const sectionTokens = (sec as any)?.data?.twTokens as TwTokens | undefined;
+        const decorations = sectionDecorations(sectionTokens);
+        const animatedShapeConfig = sectionTokens?.animatedShape;
         const hasDecorations = !!decorations;
+        const hasAnimatedShape = !!animatedShapeConfig?.themeId;
+        const hasOverlays = hasDecorations || hasAnimatedShape;
         return (
-          <div key={sec.id} className={hasDecorations ? "relative" : undefined}>
+          <div key={sec.id} className={hasOverlays ? "relative" : undefined}>
+            {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
             {hasDecorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
-            <div className={hasDecorations ? "relative z-10" : undefined}>
+            <div className={hasOverlays ? "relative z-10" : undefined}>
               <Section section={sec as any} renderProductCard={renderProductCard} />
             </div>
           </div>
