@@ -1,77 +1,128 @@
 "use client";
 
-import React, { useState } from 'react';
-import { 
-  featureThemes, 
-  featureCategories, 
+import React, { useState } from "react";
+import {
+  featureThemes,
+  featureCategories,
   featureComponents,
-  FeatureTheme 
-} from './FeatureThemes';
-import { additionalFeatureComponents } from './FeatureComponents';
+  FeatureTheme,
+} from "./FeatureThemes";
+import { additionalFeatureComponents } from "./FeatureComponents";
 
-// Merge all components
-const allFeatureComponents = { ...featureComponents, ...additionalFeatureComponents };
+// Merge all components (typed)
+const allFeatureComponents = {
+  ...featureComponents,
+  ...additionalFeatureComponents,
+} as const;
+
+type FeatureComponentMap = typeof allFeatureComponents;
+
+// Type Guard
+function hasFeatureComponent(
+  map: FeatureComponentMap,
+  key: string
+): key is keyof FeatureComponentMap {
+  return key in map;
+}
 
 // Category Icons
 const categoryIcons: Record<string, string> = {
-  'Basic': '🎯',
-  'Cards': '🃏',
-  'Modern': '🎨',
-  'Tech': '🚀',
-  'E-commerce': '🛒',
-  'Corporate': '🏢',
-  'Creative': '🎨',
-  'Gaming': '🎮',
-  'Food': '🍔',
-  'Travel': '✈️',
+  Basic: "🎯",
+  Cards: "🃏",
+  Modern: "🎨",
+  Tech: "🚀",
+  "E-commerce": "🛒",
+  Corporate: "🏢",
+  Creative: "🎨",
+  Gaming: "🎮",
+  Food: "🍔",
+  Travel: "✈️",
 };
 
 // Layout Icons
 const layoutIcons: Record<string, string> = {
-  'grid': '📊',
-  'list': '📋',
-  'cards': '🃏',
-  'icons': '🔣',
-  'split': '⬜',
-  'bento': '🍱',
-  'timeline': '📅',
-  'tabs': '📑',
+  grid: "📊",
+  list: "📋",
+  cards: "🃏",
+  icons: "🔣",
+  split: "⬜",
+  bento: "🍱",
+  timeline: "📅",
+  tabs: "📑",
 };
 
 // Sample features data
 const sampleFeatures = [
-  { id: 1, title: 'Lightning Fast', description: 'Experience blazing fast performance with our optimized infrastructure.', stats: '99.9%' },
-  { id: 2, title: 'Secure by Default', description: 'Enterprise-grade security built into every layer of our platform.', stats: '256-bit' },
-  { id: 3, title: 'Global Scale', description: 'Deploy worldwide with our distributed network of data centers.', stats: '50+' },
-  { id: 4, title: '24/7 Support', description: 'Our expert team is always here to help you succeed.', stats: '< 1hr' },
-  { id: 5, title: 'Easy Integration', description: 'Connect with your favorite tools in just a few clicks.', stats: '100+' },
-  { id: 6, title: 'Analytics', description: 'Get deep insights into your data with powerful analytics.', stats: 'Real-time' },
+  {
+    id: 1,
+    title: "Lightning Fast",
+    description:
+      "Experience blazing fast performance with our optimized infrastructure.",
+    stats: "99.9%",
+  },
+  {
+    id: 2,
+    title: "Secure by Default",
+    description: "Enterprise-grade security built into every layer of our platform.",
+    stats: "256-bit",
+  },
+  {
+    id: 3,
+    title: "Global Scale",
+    description: "Deploy worldwide with our distributed network of data centers.",
+    stats: "50+",
+  },
+  {
+    id: 4,
+    title: "24/7 Support",
+    description: "Our expert team is always here to help you succeed.",
+    stats: "< 1hr",
+  },
+  {
+    id: 5,
+    title: "Easy Integration",
+    description: "Connect with your favorite tools in just a few clicks.",
+    stats: "100+",
+  },
+  {
+    id: 6,
+    title: "Analytics",
+    description: "Get deep insights into your data with powerful analytics.",
+    stats: "Real-time",
+  },
 ];
 
 const FeatureThemesDemo: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [previewMode, setPreviewMode] = useState<'grid' | 'full'>('grid');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [previewMode, setPreviewMode] = useState<"grid" | "full">("grid");
 
-  const filteredThemes = featureThemes.filter(theme => {
-    const matchesCategory = activeCategory === 'all' || theme.category === activeCategory;
-    const matchesSearch = searchQuery === '' ||
+  const filteredThemes = featureThemes.filter((theme) => {
+    const matchesCategory =
+      activeCategory === "all" || theme.category === activeCategory;
+    const matchesSearch =
+      searchQuery === "" ||
       theme.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       theme.nameAr.includes(searchQuery) ||
-      theme.tags?.some(t => t.includes(searchQuery.toLowerCase()));
+      theme.tags?.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
 
+  // ---------- FIXED ----------
   const renderFeaturePreview = (theme: FeatureTheme) => {
-    const Component = allFeatureComponents[theme.id];
-    if (Component) {
+    if (hasFeatureComponent(allFeatureComponents, theme.id)) {
+      const Component = allFeatureComponents[theme.id];
       return (
-        <Component 
-          features={sampleFeatures.slice(0, theme.layout === 'bento' ? 6 : theme.layout === 'icons' ? 4 : 3)}
+        <Component
+          features={sampleFeatures.slice(
+            0,
+            theme.layout === "bento" ? 6 : theme.layout === "icons" ? 4 : 3
+          )}
         />
       );
     }
+
     // Default fallback
     return (
       <div className="py-12 px-4 bg-gray-100 text-center">
@@ -80,6 +131,7 @@ const FeatureThemesDemo: React.FC = () => {
       </div>
     );
   };
+  // ----------------------------
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -87,7 +139,9 @@ const FeatureThemesDemo: React.FC = () => {
       <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">✨ Feature Section Themes</h1>
-          <p className="text-emerald-100 text-lg">100 Ready-to-Use Feature Section Components</p>
+          <p className="text-emerald-100 text-lg">
+            100 Ready-to-Use Feature Section Components
+          </p>
           <p className="text-emerald-200 mt-1">100 مكون أقسام ميزات جاهز للاستخدام</p>
 
           {/* Stats */}
@@ -114,17 +168,21 @@ const FeatureThemesDemo: React.FC = () => {
           {/* View Mode Toggle */}
           <div className="flex bg-white rounded-lg border border-gray-200 p-1">
             <button
-              onClick={() => setPreviewMode('grid')}
+              onClick={() => setPreviewMode("grid")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                previewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'
+                previewMode === "grid"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
               📊 Grid View
             </button>
             <button
-              onClick={() => setPreviewMode('full')}
+              onClick={() => setPreviewMode("full")}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                previewMode === 'full' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'
+                previewMode === "full"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
               📺 Full Preview
@@ -146,28 +204,29 @@ const FeatureThemesDemo: React.FC = () => {
         {/* Category Filter */}
         <div className="flex flex-wrap gap-2 mb-8 sticky top-0 bg-gray-50 py-4 z-20">
           <button
-            onClick={() => setActiveCategory('all')}
+            onClick={() => setActiveCategory("all")}
             className={`px-5 py-2 rounded-full font-medium transition-all duration-200 ${
-              activeCategory === 'all'
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                : 'bg-white text-gray-700 border border-gray-200 hover:border-emerald-300'
+              activeCategory === "all"
+                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                : "bg-white text-gray-700 border border-gray-200 hover:border-emerald-300"
             }`}
           >
             ✨ All ({featureThemes.length})
           </button>
-          {featureCategories.map(category => {
-            const count = featureThemes.filter(t => t.category === category).length;
+
+          {featureCategories.map((category) => {
+            const count = featureThemes.filter((t) => t.category === category).length;
             return (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
                 className={`px-5 py-2 rounded-full font-medium transition-all duration-200 ${
                   activeCategory === category
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                    : 'bg-white text-gray-700 border border-gray-200 hover:border-emerald-300'
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                    : "bg-white text-gray-700 border border-gray-200 hover:border-emerald-300"
                 }`}
               >
-                {categoryIcons[category] || '🔸'} {category} ({count})
+                {categoryIcons[category] || "🔸"} {category} ({count})
               </button>
             );
           })}
@@ -179,17 +238,19 @@ const FeatureThemesDemo: React.FC = () => {
         </p>
 
         {/* Grid View */}
-        {previewMode === 'grid' && (
+        {previewMode === "grid" && (
           <div className="grid grid-cols-1 gap-6">
             {filteredThemes.map((theme, index) => (
               <div
                 key={theme.id}
                 className={`bg-white rounded-2xl border-2 overflow-hidden transition-all duration-300 cursor-pointer ${
                   selectedTheme === theme.id
-                    ? 'border-emerald-500 shadow-xl shadow-emerald-500/20'
-                    : 'border-gray-200 hover:border-emerald-300 hover:shadow-lg'
+                    ? "border-emerald-500 shadow-xl shadow-emerald-500/20"
+                    : "border-gray-200 hover:border-emerald-300 hover:shadow-lg"
                 }`}
-                onClick={() => setSelectedTheme(selectedTheme === theme.id ? null : theme.id)}
+                onClick={() =>
+                  setSelectedTheme(selectedTheme === theme.id ? null : theme.id)
+                }
               >
                 {/* Info Bar */}
                 <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -222,7 +283,7 @@ const FeatureThemesDemo: React.FC = () => {
                 {/* Tags */}
                 <div className="p-4 border-t border-gray-100 flex items-center justify-between">
                   <div className="flex flex-wrap gap-1">
-                    {theme.tags?.slice(0, 4).map(tag => (
+                    {theme.tags?.slice(0, 4).map((tag) => (
                       <span
                         key={tag}
                         className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600"
@@ -232,7 +293,10 @@ const FeatureThemesDemo: React.FC = () => {
                     ))}
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(theme.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(theme.id);
+                    }}
                     className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
                   >
                     Copy ID
@@ -244,10 +308,13 @@ const FeatureThemesDemo: React.FC = () => {
         )}
 
         {/* Full Preview Mode */}
-        {previewMode === 'full' && (
+        {previewMode === "full" && (
           <div className="space-y-8">
             {filteredThemes.map((theme, index) => (
-              <div key={theme.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div
+                key={theme.id}
+                className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
+              >
                 {/* Header */}
                 <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -273,9 +340,7 @@ const FeatureThemesDemo: React.FC = () => {
                 </div>
 
                 {/* Full Preview */}
-                <div>
-                  {renderFeaturePreview(theme)}
-                </div>
+                <div>{renderFeaturePreview(theme)}</div>
               </div>
             ))}
           </div>
@@ -284,9 +349,14 @@ const FeatureThemesDemo: React.FC = () => {
         {/* No Results */}
         {filteredThemes.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No feature sections found matching your search.</p>
+            <p className="text-gray-500 text-lg">
+              No feature sections found matching your search.
+            </p>
             <button
-              onClick={() => { setSearchQuery(''); setActiveCategory('all'); }}
+              onClick={() => {
+                setSearchQuery("");
+                setActiveCategory("all");
+              }}
               className="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
             >
               Clear Filters
@@ -300,7 +370,7 @@ const FeatureThemesDemo: React.FC = () => {
             <div className="max-w-7xl mx-auto">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-white font-semibold">
-                  Selected: {featureThemes.find(t => t.id === selectedTheme)?.name}
+                  Selected: {featureThemes.find((t) => t.id === selectedTheme)?.name}
                 </h3>
                 <button
                   onClick={() => setSelectedTheme(null)}
@@ -309,21 +379,13 @@ const FeatureThemesDemo: React.FC = () => {
                   ✕ Close
                 </button>
               </div>
+
               <pre className="bg-gray-800 rounded-lg p-4 overflow-x-auto text-sm">
                 <code className="text-green-400">
 {`import { featureComponents } from '@/components/feature-themes';
 
-// Define your features
-const features = [
-  { id: 1, title: 'Fast Performance', description: 'Lightning fast speeds...' },
-  { id: 2, title: 'Secure', description: 'Enterprise-grade security...' },
-  { id: 3, title: '24/7 Support', description: 'Always here to help...' },
-];
-
-// Get the feature section component
 const FeatureSection = featureComponents['${selectedTheme}'];
 
-// Use in your page
 <FeatureSection
   title="Why Choose Us"
   subtitle="Our Features"
@@ -342,4 +404,3 @@ const FeatureSection = featureComponents['${selectedTheme}'];
 };
 
 export default FeatureThemesDemo;
-
