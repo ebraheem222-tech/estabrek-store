@@ -55,6 +55,13 @@ function normalizeHex(h: string) {
   return ("#" + x).toUpperCase();
 }
 
+function isModelUrl(url?: string | null) {
+  const raw = String(url ?? "").trim().toLowerCase();
+  if (!raw) return false;
+  const clean = raw.split("?")[0].split("#")[0];
+  return clean.endsWith(".glb") || clean.endsWith(".gltf");
+}
+
 function newId() {
   return "g_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
@@ -394,6 +401,15 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
     );
   }
 
+  function setAssetView(groupId: string, asset: WizardAssetState, next: string | null) {
+    const nextView = next?.trim() ?? "";
+    if (nextView.toLowerCase() === "3d" && !isModelUrl(asset.url)) {
+      toast.error("اختيار 3D يتطلب رابط .glb أو .gltf");
+      return;
+    }
+    setAssetMeta(groupId, asset.id, { view: nextView || null });
+  }
+
   const busy = mUpload.isPending || mAutoGroup.isPending || mCommit.isPending;
 
   return (
@@ -494,7 +510,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                             isPrimary={idx === 0}
                             onDragStart={(e, assetId) => onDragStart(e, assetId, g.id)}
                             onDrop={onDropToGroup}
-                            onChangeView={(next) => setAssetMeta(g.id, a.id, { view: next })}
+                            onChangeView={(next) => setAssetView(g.id, a, next)}
                           />
                         ))}
                       </div>
