@@ -19,6 +19,13 @@ export type LocalImage = {
   view?: string | null;
 };
 
+function isModelUrl(url?: string | null) {
+  const raw = String(url ?? "").trim().toLowerCase();
+  if (!raw) return false;
+  const clean = raw.split("?")[0].split("#")[0];
+  return clean.endsWith(".glb") || clean.endsWith(".gltf");
+}
+
 function normalizePositions(images: LocalImage[]) {
   const sorted = images
     .slice()
@@ -159,6 +166,10 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     if (!raw) return;
     try {
       const url = new URL(raw);
+      if (!isModelUrl(url.toString())) {
+        toast.error("رابط نموذج 3D يجب أن ينتهي بـ .glb أو .gltf");
+        return;
+      }
       const next = normalizePositions([
         ...sorted,
         {
@@ -184,7 +195,15 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
   };
 
   const updateView = (localId: string, view: string | null) => {
-    const next = sorted.map((im) => (im.localId === localId ? { ...im, view } : im));
+    const nextView = view?.trim() ?? "";
+    const target = sorted.find((im) => im.localId === localId);
+    if (nextView.toLowerCase() === "3d" && !isModelUrl(target?.url)) {
+      toast.error("اختيار 3D يتطلب رابط .glb أو .gltf");
+      return;
+    }
+    const next = sorted.map((im) =>
+      im.localId === localId ? { ...im, view: nextView || null } : im
+    );
     onChange(next);
   };
 
