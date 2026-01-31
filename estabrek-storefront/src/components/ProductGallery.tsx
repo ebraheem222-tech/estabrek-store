@@ -148,7 +148,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
 
   const swatches = useMemo(() => {
     return itemsWithKeys
-      .map((it) => {
+      .map((it, idx) => {
         const hex = normalizeHex(it.colorHex) ?? normalizeHex(it.suggestedColors?.[0] ?? null);
         return { id: String(it.__key), name: catalogItemLabel(it, idx), hex };
       })
