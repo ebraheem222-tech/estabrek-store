@@ -56,7 +56,8 @@ type DeepInput = {
 };
 
 export async function updateProductDeep(productId: string, input: DeepInput, ctx?: { adminUserId?: string | null; reason?: string }) {
-  return prisma.$transaction(async (tx) => {
+  await prisma.$transaction(
+    async (tx) => {
     let resolvedAdminUserId: string | null = null;
     if (ctx?.adminUserId) {
       const u = await tx.adminUser.findUnique({ where: { id: ctx.adminUserId }, select: { id: true } });
@@ -191,6 +192,14 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
       await tx.productItem.deleteMany({ where: { id: { in: input.deleteItemIds } } });
     }
 
-    return getProductDeep(productId);
-  });
+    },
+    {
+      // This endpoint can touch many rows; give the transaction more time.
+      timeout: 20_000,
+      maxWait: 5_000,
+    }
+  );
+
+  // Fetch outside the transaction to avoid holding it open longer than needed.
+  return getProductDeep(productId);
 }
