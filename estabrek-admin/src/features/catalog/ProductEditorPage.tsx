@@ -807,6 +807,9 @@ export default function ProductEditorPage() {
     if (!title.trim()) return setPageError("عنوان المنتج مطلوب");
     if (!slug.trim()) return setPageError("Slug مطلوب");
     if (!categoryId) return setPageError("اختر تصنيف");
+    if (categories.length && !categories.some((c) => c.id === categoryId)) {
+      return setPageError("التصنيف غير موجود أو تم حذفه. اختر تصنيفًا صالحًا.");
+    }
 
     // extra validation: each item should have unique colorName already handled, but re-check quickly
     const names = items.map((x) => x.colorName.trim().toLowerCase()).filter(Boolean);
@@ -832,6 +835,17 @@ export default function ProductEditorPage() {
         const key = sku.toUpperCase();
         if (skuSeen.has(key)) return setPageError(`SKU مكرر: ${sku}`);
         skuSeen.add(key);
+      }
+    }
+
+    if (qSizes.data?.length) {
+      const validSizeIds = new Set(qSizes.data.map((s) => s.id));
+      for (const it of items) {
+        for (const v of (it.variants ?? [])) {
+          if (!validSizeIds.has(v.sizeId)) {
+            return setPageError(`المقاس غير موجود أو تم حذفه. رجاءً عدّل المقاسات في اللون: ${it.colorName || "بدون اسم"}`);
+          }
+        }
       }
     }
 
