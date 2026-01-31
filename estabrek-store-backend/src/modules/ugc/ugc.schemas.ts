@@ -38,7 +38,7 @@ export const ContactMessageBody = z.object({
   phone: z.string().max(50).optional(),
   subject: z.string().max(200).optional(),
   message: z.string().max(5000).optional(),
-  fields: z.record(z.string()).optional(),
+  fields: z.record(z.string(), z.string()).optional(),
   pageUrl: z.string().max(2000).optional(),
   source: z.string().max(100).optional(),
 }).refine((v) => {
