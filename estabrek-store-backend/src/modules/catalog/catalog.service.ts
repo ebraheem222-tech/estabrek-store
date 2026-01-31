@@ -491,7 +491,8 @@ export async function listProducts(params: {
     let minPrice: number | null = null;
     for (const it of p.items) {
       for (const v of it.variants) {
-        const price = Number(v.price);
+        const price = num((v as any).price);
+        if (price == null) continue;
         if (minPrice == null || price < minPrice) minPrice = price;
       }
     }
