@@ -14,7 +14,6 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 
 import ItemImagesManager, { type LocalImage } from "../../components/catalog/ItemImagesManager";
 import { normalizeHex } from "../../lib/colorDetect";
-import { useDebounce } from "../../hooks/useDebounce";
 import ProductImagesWizardModal from "./ProductImagesWizardModal";
 
 // === Backend endpoints (حسب مشروعك) ===
@@ -707,13 +706,6 @@ export default function ProductEditorPage() {
     setEditingItemLocalId(null);
   };
 
-  // === Autosave (keeps manual Save button) ===
-  const [autoState, setAutoState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const lastSavedHashRef = useRef<string>("");
-  const skipNextAutoRef = useRef(true);
-  const autosaveInFlight = useRef(false);
-
   const draftBody = useMemo<DeepUpdateBody>(() => {
     return {
       product: {
@@ -755,70 +747,6 @@ export default function ProductEditorPage() {
     };
   }, [title, slug, description, isActive, categoryId, items, deleteItemIds, deleteImageIds, deleteVariantIds]);
 
-  const debouncedDraftBody = useDebounce(draftBody, 1500);
-
-  // baseline after initial fetch/hydration
-  useEffect(() => {
-    if (!qProduct.data?.id) return;
-    skipNextAutoRef.current = true;
-    setAutoState("idle");
-  }, [qProduct.data?.id]);
-
-  useEffect(() => {
-    if (!qProduct.data?.id) return;
-    // first time after hydration: set baseline, don't autosave
-    if (skipNextAutoRef.current) {
-      lastSavedHashRef.current = JSON.stringify(draftBody);
-      setLastSavedAt(new Date().toISOString());
-      skipNextAutoRef.current = false;
-      setAutoState("saved");
-    }
-  }, [draftBody, qProduct.data?.id]);
-
-  const canAutosave = (b: DeepUpdateBody) => {
-    if (!productId) return false;
-    if (!b.product?.title) return false;
-    if (!b.product?.slug) return false;
-    if (!b.product?.categoryId) return false;
-    // Avoid autosaving invalid variant setups (user can still save manually and get the error)
-    const names = (b.items ?? []).map((x) => x.colorName.trim().toLowerCase()).filter(Boolean);
-    if (new Set(names).size !== names.length) return false;
-    for (const it of (b.items ?? [])) {
-      const seen = new Set<string>();
-      for (const v of (it.variants ?? [])) {
-        if (!v.sizeId) return false;
-        if (seen.has(v.sizeId)) return false;
-        seen.add(v.sizeId);
-      }
-    }
-    return true;
-  };
-
-  useEffect(() => {
-    if (!qProduct.data?.id) return;
-    if (autosaveInFlight.current) return;
-    const hash = JSON.stringify(debouncedDraftBody);
-    if (!hash) return;
-    if (hash === lastSavedHashRef.current) return;
-    if (!canAutosave(debouncedDraftBody)) return;
-
-    autosaveInFlight.current = true;
-    setAutoState("saving");
-
-    mSave.mutate(debouncedDraftBody, {
-      onSuccess: () => {
-        lastSavedHashRef.current = hash;
-        setLastSavedAt(new Date().toISOString());
-        setAutoState("saved");
-        autosaveInFlight.current = false;
-      },
-      onError: () => {
-        setAutoState("error");
-        autosaveInFlight.current = false;
-      },
-    });
-  }, [debouncedDraftBody, qProduct.data?.id]);
-
   // === Save whole product ===
   const onSaveAll = async () => {
     setPageError(null);
@@ -840,6 +768,22 @@ export default function ProductEditorPage() {
         if (!v.sizeId) return setPageError(`في Variant بدون size داخل item: ${it.colorName}`);
         if (seen.has(v.sizeId)) return setPageError(`تكرار size داخل item: ${it.colorName}`);
         seen.add(v.sizeId);
+      }
+    }
+
+    if (isActive) {
+      const activeItems = items.filter((it) => it.isActive);
+      if (activeItems.length === 0) {
+        return setPageError("لا يوجد أي لون (Item) فعّال للمنتج.");
+      }
+      for (const it of activeItems) {
+        const label = it.colorName?.trim() || "بدون اسم";
+        if (!(it.images ?? []).length) {
+          return setPageError(`اللون "${label}" بدون صور. أضف صورة واحدة على الأقل قبل النشر.`);
+        }
+        if (!(it.variants ?? []).length) {
+          return setPageError(`اللون "${label}" بدون مقاسات (Variants). أضف مقاس واحد على الأقل قبل النشر.`);
+        }
       }
     }
 
@@ -967,11 +911,8 @@ export default function ProductEditorPage() {
               حفظ الكل
             </Button>
 
-            <div className="self-center text-xs opacity-70">
-              {autoState === "saving" ? "يتم الحفظ تلقائياً..." : autoState === "error" ? "فشل الحفظ التلقائي" : lastSavedAt ? `آخر حفظ: ${new Date(lastSavedAt).toLocaleTimeString()}` : ""}
             </div>
           </div>
-        </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           <Input label="العنوان" value={title} onChange={(e) => setTitle(e.target.value)} />
