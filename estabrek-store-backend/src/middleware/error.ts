@@ -12,6 +12,13 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === "P2002") return res.status(409).json({ error: "UNIQUE_CONSTRAINT", target: err.meta?.target });
     if (err.code === "P2025") return res.status(404).json({ error: "NOT_FOUND", message: (err.meta as any)?.cause || "Record not found" });
+    if (err.code === "P2003") {
+      return res.status(400).json({
+        error: "FOREIGN_KEY",
+        field: (err.meta as any)?.field_name ?? null,
+        message: "Invalid reference (foreign key).",
+      });
+    }
   }
 
   if ((err as any)?.type === "entity.parse.failed") {
