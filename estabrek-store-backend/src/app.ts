@@ -28,7 +28,31 @@ app.set("trust proxy", env.TRUST_PROXY);
 app.use(requestId);
 app.use(securityHeaders);
 app.use(httpsOnly);
-app.use(cors({ origin: corsOrigins, credentials: true }));
+function isOriginAllowed(origin: string) {
+  if (corsOrigins === "*") return true;
+  return corsOrigins.some((rule) => {
+    if (typeof rule === "string") return rule === origin;
+    return rule.test(origin);
+  });
+}
+
+function isExtraOriginAllowed(origin: string) {
+  const o = origin.toLowerCase();
+  if (o.endsWith(".pages.dev")) return true;
+  if (o.startsWith("http://localhost") || o.startsWith("http://127.0.0.1")) return true;
+  return false;
+}
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (isOriginAllowed(origin) || isExtraOriginAllowed(origin)) return cb(null, true);
+      return cb(null, false);
+    },
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 app.use(ipAccess);
 app.use(originGuard);
@@ -55,4 +79,3 @@ app.use((req, res) => res.status(404).json({ error: "NOT_FOUND", path: req.path 
 app.use(errorHandler);
 
 export default app;
-
