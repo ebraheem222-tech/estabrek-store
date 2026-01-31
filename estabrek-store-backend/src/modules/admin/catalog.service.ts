@@ -27,6 +27,7 @@ type DeepInput = {
   items?: Array<{
     id?: string;
     colorName: string;
+    boxLabel?: string;
     colorHex?: string | null;
     suggestedColors?: string[];
     skuBase: string;
@@ -45,6 +46,10 @@ type DeepInput = {
       sku: string;
       price: number;
       compareAt?: number | null;
+      originalPrice?: number | null;
+      salePrice?: number | null;
+      saleStartsAt?: Date | string | null;
+      saleEndsAt?: Date | string | null;
       stock?: number;
       lowStockThreshold?: number;
       weightGrams?: number | null;
@@ -78,6 +83,7 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
           data: {
             productId,
             colorName: it.colorName,
+            boxLabel: it.boxLabel ?? "",
             colorHex: it.colorHex ?? null,
             suggestedColors: it.suggestedColors ?? undefined,
             skuBase: it.skuBase,
@@ -90,6 +96,7 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
           where: { id: itemId },
           data: {
             colorName: it.colorName,
+            boxLabel: it.boxLabel ?? "",
             colorHex: it.colorHex ?? null,
             suggestedColors: it.suggestedColors ?? undefined,
             skuBase: it.skuBase,
@@ -134,37 +141,63 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
       // variants
       for (const v of it.variants ?? []) {
         if (v.id) {
-                  const before =
-                    typeof v.stock === "number"
-                      ? await tx.productVariant.findUnique({ where: { id: v.id }, select: { stock: true } })
-                      : null;
+          const shouldCheckStock = typeof v.stock === "number";
+          const shouldResolveOriginal =
+            v.salePrice !== undefined && v.salePrice !== null && v.originalPrice === undefined;
 
-                  const updated = await tx.productVariant.update({
-                    where: { id: v.id },
-                    data: {
-                      sizeId: v.sizeId,
-                      sku: v.sku,
-                      price: v.price,
-                      compareAt: v.compareAt ?? null,
-                      stock: typeof v.stock === "number" ? v.stock : undefined,
-                      lowStockThreshold: typeof v.lowStockThreshold === "number" ? v.lowStockThreshold : undefined,
-                      weightGrams: v.weightGrams ?? null,
-                    },
-                  });
+          const before = shouldCheckStock || shouldResolveOriginal
+            ? await tx.productVariant.findUnique({
+                where: { id: v.id },
+                select: { stock: true, price: true, originalPrice: true },
+              })
+            : null;
 
-                  if (typeof v.stock === "number" && before && before.stock !== updated.stock) {
-                    await tx.inventoryAdjustment.create({
-                      data: {
-                        variantId: v.id,
-                        delta: updated.stock - before.stock,
-                        beforeStock: before.stock,
-                        afterStock: updated.stock,
-                        reason: reasonBase,
-                        adminUserId: resolvedAdminUserId,
-                      },
-                    });
-                  }
-                } else {
+          const baseOriginal =
+            v.originalPrice ??
+            (typeof v.price === "number" ? v.price : null) ??
+            (before?.originalPrice as any)?.toNumber?.() ??
+            (before?.price as any)?.toNumber?.() ??
+            null;
+
+          const data = {
+            sizeId: v.sizeId,
+            sku: v.sku,
+            price: v.price,
+            compareAt: v.compareAt ?? null,
+            originalPrice:
+              v.originalPrice !== undefined
+                ? v.originalPrice ?? null
+                : shouldResolveOriginal
+                ? baseOriginal
+                : undefined,
+            salePrice: v.salePrice !== undefined ? v.salePrice ?? null : undefined,
+            saleStartsAt: v.saleStartsAt !== undefined ? (v.saleStartsAt ?? null) : undefined,
+            saleEndsAt: v.saleEndsAt !== undefined ? (v.saleEndsAt ?? null) : undefined,
+            stock: typeof v.stock === "number" ? v.stock : undefined,
+            lowStockThreshold: typeof v.lowStockThreshold === "number" ? v.lowStockThreshold : undefined,
+            weightGrams: v.weightGrams ?? null,
+          } as any;
+
+          const updated = await tx.productVariant.update({
+            where: { id: v.id },
+            data,
+          });
+
+          if (typeof v.stock === "number" && before && before.stock !== updated.stock) {
+            await tx.inventoryAdjustment.create({
+              data: {
+                variantId: v.id,
+                delta: updated.stock - before.stock,
+                beforeStock: before.stock,
+                afterStock: updated.stock,
+                reason: reasonBase,
+                adminUserId: resolvedAdminUserId,
+              },
+            });
+          }
+        } else {
+          const baseOriginal =
+            v.originalPrice ?? (typeof v.price === "number" ? v.price : null);
           await tx.productVariant.create({
             data: {
               productItemId: itemId!,
@@ -172,6 +205,12 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
               sku: v.sku,
               price: v.price,
               compareAt: v.compareAt ?? null,
+              originalPrice:
+                v.originalPrice ??
+                (v.salePrice != null ? baseOriginal : null),
+              salePrice: v.salePrice ?? null,
+              saleStartsAt: v.saleStartsAt ?? null,
+              saleEndsAt: v.saleEndsAt ?? null,
               stock: typeof v.stock === "number" ? v.stock : undefined,
               lowStockThreshold: typeof v.lowStockThreshold === "number" ? v.lowStockThreshold : undefined,
               weightGrams: v.weightGrams ?? null,

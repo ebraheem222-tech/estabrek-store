@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import type { Prisma, ReviewStatus, CommentStatus } from "@prisma/client";
+import { enqueueMessage } from "../outbox/outbox.service.js";
 
 export async function listReviews(params: {
   status?: ReviewStatus;
@@ -111,4 +112,54 @@ export async function subscribeNewsletter(email: string, source?: string) {
     data: { email: normalized, source: source?.trim() || null },
   });
   return { ok: true, created: true };
+}
+
+export async function submitContactMessage(input: {
+  name?: string;
+  email?: string;
+  phone?: string;
+  subject?: string;
+  message?: string;
+  fields?: Record<string, string>;
+  pageUrl?: string;
+  source?: string;
+}) {
+  const site = await prisma.siteSettings.findFirst({
+    select: { siteName: true, contactEmail: true },
+  });
+
+  let to = site?.contactEmail?.trim() || "";
+  if (!to) {
+    const admin = await prisma.adminUser.findFirst({
+      select: { email: true },
+      where: { role: "SUPERADMIN" },
+    });
+    to = admin?.email?.trim() || "";
+  }
+
+  if (!to) {
+    return { ok: false as const, error: "NO_CONTACT_EMAIL" };
+  }
+
+  const payload = {
+    siteName: site?.siteName ?? "Storefront",
+    name: input.name?.trim() || null,
+    email: input.email?.trim() || null,
+    phone: input.phone?.trim() || null,
+    subject: input.subject?.trim() || null,
+    message: input.message?.trim() || null,
+    fields: input.fields ?? {},
+    pageUrl: input.pageUrl?.trim() || null,
+    source: input.source?.trim() || "contact_form",
+    submittedAt: new Date().toISOString(),
+  };
+
+  const msg = await enqueueMessage({
+    channel: "EMAIL",
+    to,
+    template: "contact",
+    payloadJson: payload,
+  });
+
+  return { ok: true as const, queued: true as const, messageId: msg.id };
 }

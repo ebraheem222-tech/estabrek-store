@@ -118,6 +118,7 @@ r.post("/products", validate({ body: CreateProductBody }), asyncHandler(async (r
       data: {
         productId: product.id,
         colorName: "Default",
+        boxLabel: "",
         colorHex: null,
         skuBase,
         isActive: true,
@@ -218,6 +219,7 @@ r.post("/products/import", validate({ body: ImportProductsBody }), asyncHandler(
           : await ensureDefaultSize(tx);
 
         const colorName = (row.colorName ? String(row.colorName) : "Default").trim() || "Default";
+        const boxLabel = row.boxLabel ? String(row.boxLabel).trim() : "";
         const colorHex = row.colorHex ? String(row.colorHex) : null;
 
         const skuBase = ((row.skuBase ? String(row.skuBase) : makeSkuBaseFromSlugOrTitle(slug, title)) + "-DEFAULT")
@@ -253,12 +255,13 @@ r.post("/products/import", validate({ body: ImportProductsBody }), asyncHandler(
 
         const action: "created" | "updated" = existing ? "updated" : "created";
 
-        // Ensure default Item always exists (upsert by (productId,colorName))
+        // Ensure default Item always exists (upsert by (productId,colorName,boxLabel))
         const item = await tx.productItem.upsert({
-          where: { productId_colorName: { productId: product.id, colorName } },
+          where: { productId_colorName_boxLabel: { productId: product.id, colorName, boxLabel } },
           create: {
             productId: product.id,
             colorName,
+            boxLabel,
             colorHex,
             skuBase,
             isActive: true,
@@ -835,6 +838,7 @@ r.post(
 
     const groups = req.body.groups as Array<{
       colorName: string;
+      boxLabel?: string;
       colorHex?: string | null;
       assets: Array<{ assetId: string; view?: string | null; alt?: string | null }>;
       variants?:
@@ -857,14 +861,17 @@ r.post(
       for (const g of groups) {
         const colorName = g.colorName.trim();
         if (!colorName) continue;
+        const boxLabel = (g.boxLabel ?? "").trim();
 
-        const skuBase = `${product.slug}-${slugifySkuPart(colorName)}`.slice(0, 60);
+        const skuLabel = boxLabel ? `${colorName}-${boxLabel}` : colorName;
+        const skuBase = `${product.slug}-${slugifySkuPart(skuLabel)}`.slice(0, 60);
 
         const item = await tx.productItem.upsert({
-          where: { productId_colorName: { productId, colorName } },
+          where: { productId_colorName_boxLabel: { productId, colorName, boxLabel } },
           create: {
             productId,
             colorName,
+            boxLabel,
             colorHex: g.colorHex ?? null,
             skuBase,
           },

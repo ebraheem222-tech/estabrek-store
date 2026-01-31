@@ -31,6 +31,143 @@ function num(v: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+type ExpiredSale = { id: string; originalPrice: number };
+
+function toDate(value: any): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function isSaleActive(now: Date, startsAt: Date | null, endsAt: Date | null): boolean {
+  if (startsAt && now < startsAt) return false;
+  if (endsAt && now > endsAt) return false;
+  return true;
+}
+
+function isSaleExpired(now: Date, endsAt: Date | null): boolean {
+  return !!(endsAt && now > endsAt);
+}
+
+function buildVariantPriceFilter(minPrice?: number, maxPrice?: number, now?: Date): Prisma.ProductVariantWhereInput | null {
+  if (minPrice == null && maxPrice == null) return null;
+  const priceRange: Prisma.DecimalFilter<"ProductVariant"> = {};
+  if (minPrice != null) priceRange.gte = minPrice;
+  if (maxPrice != null) priceRange.lte = maxPrice;
+
+  const at = now ?? new Date();
+  const saleActive: Prisma.ProductVariantWhereInput = {
+    AND: [
+      { salePrice: priceRange as any },
+      { salePrice: { gt: 0 } },
+      { OR: [{ saleStartsAt: null }, { saleStartsAt: { lte: at } }] },
+      { OR: [{ saleEndsAt: null }, { saleEndsAt: { gte: at } }] },
+    ],
+  };
+  const saleInactive: Prisma.ProductVariantWhereInput = {
+    AND: [
+      { price: priceRange as any },
+      {
+        OR: [
+          { salePrice: null },
+          { salePrice: { lte: 0 } },
+          { saleStartsAt: { gt: at } },
+          { saleEndsAt: { lt: at } },
+        ],
+      },
+    ],
+  };
+
+  return { OR: [saleActive, saleInactive] };
+}
+
+function normalizeVariantPricing<T extends { id?: string; price?: any; compareAt?: any; originalPrice?: any; salePrice?: any; saleStartsAt?: any; saleEndsAt?: any }>(
+  v: T,
+  now: Date,
+  expired: ExpiredSale[]
+): T {
+  const basePrice = num((v as any).price);
+  const compareAt = num((v as any).compareAt);
+  const originalPrice = num((v as any).originalPrice) ?? basePrice;
+  const salePrice = num((v as any).salePrice);
+  const saleStartsAt = toDate((v as any).saleStartsAt);
+  const saleEndsAt = toDate((v as any).saleEndsAt);
+
+  const active = salePrice != null && salePrice > 0 && isSaleActive(now, saleStartsAt, saleEndsAt);
+  const expiredSale = salePrice != null && salePrice > 0 && isSaleExpired(now, saleEndsAt);
+
+  let effectivePrice = basePrice;
+  let effectiveCompareAt = compareAt;
+
+  if (active && salePrice != null) {
+    effectivePrice = salePrice;
+    if (effectiveCompareAt == null && originalPrice != null && originalPrice > salePrice) {
+      effectiveCompareAt = originalPrice;
+    }
+  }
+
+  if (expiredSale && v.id && originalPrice != null && Number.isFinite(originalPrice)) {
+    expired.push({ id: v.id, originalPrice });
+  }
+
+  return {
+    ...(v as any),
+    price: effectivePrice ?? (v as any).price,
+    compareAt: effectiveCompareAt ?? null,
+    originalPrice: originalPrice ?? null,
+  };
+}
+
+function applySalePricingToItems<T extends { variants?: any[] }>(
+  items: T[],
+  now: Date,
+  expired: ExpiredSale[]
+): T[] {
+  return (items ?? []).map((it: any) => ({
+    ...it,
+    variants: (it.variants ?? []).map((v: any) => normalizeVariantPricing(v, now, expired)),
+  }));
+}
+
+function computeMinPriceFromItems(items: Array<{ variants?: Array<{ price?: any }> }>): number | null {
+  let minPrice: number | null = null;
+  for (const it of items ?? []) {
+    for (const v of it.variants ?? []) {
+      const price = num((v as any).price);
+      if (price == null) continue;
+      if (minPrice == null || price < minPrice) minPrice = price;
+    }
+  }
+  return minPrice;
+}
+
+async function resetExpiredSales(db: typeof prisma, expired: ExpiredSale[]) {
+  if (!expired.length) return;
+  const byId = new Map<string, number>();
+  for (const v of expired) {
+    if (!v?.id) continue;
+    if (!Number.isFinite(v.originalPrice)) continue;
+    byId.set(v.id, v.originalPrice);
+  }
+  const updates = Array.from(byId.entries());
+  if (!updates.length) return;
+  await Promise.all(
+    updates.map(([id, originalPrice]) =>
+      db.productVariant.update({
+        where: { id },
+        data: {
+          price: originalPrice,
+          originalPrice: null,
+          salePrice: null,
+          saleStartsAt: null,
+          saleEndsAt: null,
+        },
+      })
+    )
+  );
+}
+
 const baseProductSelect = {
   id: true,
   title: true,
@@ -127,6 +264,7 @@ async function buildFacetsForProductIds(args: {
   maxPrice?: number;
   colorsArr?: string[];
   sizeArr?: string[];
+  now?: Date;
 }) {
   const ids = Array.from(new Set(args.productIds.map((id) => String(id)).filter(Boolean)));
   if (!ids.length) {
@@ -151,21 +289,14 @@ async function buildFacetsForProductIds(args: {
     _count: { _all: true },
   });
 
-  const price: Prisma.DecimalFilter<"ProductVariant"> = {};
-  if (args.minPrice != null) price.gte = args.minPrice;
-  if (args.maxPrice != null) price.lte = args.maxPrice;
-  const hasPrice = args.minPrice != null || args.maxPrice != null;
+  const priceFilter = buildVariantPriceFilter(args.minPrice, args.maxPrice, args.now);
+  const hasPrice = !!priceFilter;
 
   const sizeRows = await prisma.productVariant.groupBy({
     by: ["sizeId"],
     where: {
-      ...(hasPrice ? { price } : {}),
-      item: {
-        AND: [
-          args.itemWhereNoSize,
-          { productId: { in: ids } },
-        ],
-      },
+      ...(hasPrice ? { AND: [priceFilter as Prisma.ProductVariantWhereInput] } : {}),
+      item: { AND: [args.itemWhereNoSize, { productId: { in: ids } }] },
     },
     _count: { _all: true },
   });
@@ -230,6 +361,7 @@ function buildItemWhere(input: {
   minPrice?: number;
   maxPrice?: number;
   inStock?: boolean;
+  now?: Date;
 }): Prisma.ProductItemWhereInput {
   const and: Prisma.ProductItemWhereInput[] = [{ isActive: true }];
 
@@ -241,23 +373,21 @@ function buildItemWhere(input: {
 
   // Build a single variants.some filter so one variant satisfies ALL constraints
   const variantSome: Prisma.ProductVariantWhereInput = {};
+  const variantAnd: Prisma.ProductVariantWhereInput[] = [];
 
   if (input.sizeIds?.length) {
-    variantSome.sizeId = { in: input.sizeIds };
+    variantAnd.push({ sizeId: { in: input.sizeIds } });
   }
 
-  if (input.minPrice != null || input.maxPrice != null) {
-    const price: Prisma.DecimalFilter<"ProductVariant"> = {};
-    if (input.minPrice != null) price.gte = input.minPrice;
-    if (input.maxPrice != null) price.lte = input.maxPrice;
-    variantSome.price = price as any;
-  }
+  const priceFilter = buildVariantPriceFilter(input.minPrice, input.maxPrice, input.now);
+  if (priceFilter) variantAnd.push(priceFilter);
 
   if (input.inStock) {
-    variantSome.stock = { gt: 0 };
+    variantAnd.push({ stock: { gt: 0 } });
   }
 
-  if (Object.keys(variantSome).length) {
+  if (variantAnd.length) {
+    variantSome.AND = variantAnd;
     and.push({ variants: { some: variantSome } });
   }
 
@@ -284,8 +414,10 @@ function buildProductsWhere(input: {
 
   minPrice?: number;
   maxPrice?: number;
+  now?: Date;
 }) {
   const baseProductWhere = buildBaseProductWhere({ q: input.q, category: input.category, categoryId: input.categoryId });
+  const now = input.now ?? new Date();
 
   const colorsArr = parseCsv(input.colors ?? input.color);
   const sizeArr = parseCsv(input.sizeIds ?? input.sizeId);
@@ -296,6 +428,7 @@ function buildProductsWhere(input: {
     minPrice: input.minPrice,
     maxPrice: input.maxPrice,
     inStock: input.inStock,
+    now,
   });
 
   const hasItemFilters = !!(colorsArr?.length || sizeArr?.length || input.minPrice != null || input.maxPrice != null || input.inStock);
@@ -311,6 +444,7 @@ function buildProductsWhere(input: {
     minPrice: input.minPrice,
     maxPrice: input.maxPrice,
     inStock: input.inStock,
+    now,
   });
   const itemWhereNoSize = buildItemWhere({
     colors: colorsArr,
@@ -318,6 +452,7 @@ function buildProductsWhere(input: {
     minPrice: input.minPrice,
     maxPrice: input.maxPrice,
     inStock: input.inStock,
+    now,
   });
 
   return { productWhere, baseProductWhere, itemWhereFull, itemWhereNoColor, itemWhereNoSize, colorsArr, sizeArr };
@@ -341,6 +476,7 @@ async function listProductsSemantic(params: {
   const query = params.q?.trim() ?? "";
   if (!query || query.length < SEMANTIC_MIN_QUERY_LENGTH) return null;
 
+  const now = new Date();
   const embedded = await openaiEmbedText(query);
   if (!embedded.ok) return null;
 
@@ -350,7 +486,7 @@ async function listProductsSemantic(params: {
     itemWhereNoSize,
     colorsArr,
     sizeArr,
-  } = buildProductsWhere({ ...params, q: undefined });
+  } = buildProductsWhere({ ...params, q: undefined, now });
 
   const candidates = await prisma.product.findMany({
     where: productWhere,
@@ -391,6 +527,7 @@ async function listProductsSemantic(params: {
     maxPrice: params.maxPrice,
     colorsArr,
     sizeArr,
+    now,
   });
 
   return {
@@ -423,6 +560,7 @@ export async function listProducts(params: {
 }) {
   const sort = params.sort ?? "latest";
   const query = params.q?.trim() ?? "";
+  const now = new Date();
   const useSemantic = !!query && sort === "latest";
   if (useSemantic) {
     const semantic = await listProductsSemantic(params);
@@ -436,7 +574,7 @@ export async function listProducts(params: {
     itemWhereNoSize,
     colorsArr,
     sizeArr,
-  } = buildProductsWhere(params);
+  } = buildProductsWhere({ ...params, now });
 
   const pageSize: number = params.limit ?? params.pageSize;
   const orderBy: Prisma.ProductOrderByWithRelationInput =
@@ -486,17 +624,12 @@ export async function listProducts(params: {
     }),
   ]);
 
-  // compute a min price per product (from items/variants)
+  const expiredSales: ExpiredSale[] = [];
+
   const items = products.map((p) => {
-    let minPrice: number | null = null;
-    for (const it of p.items) {
-      for (const v of it.variants) {
-        const price = num((v as any).price);
-        if (price == null) continue;
-        if (minPrice == null || price < minPrice) minPrice = price;
-      }
-    }
-    return { ...p, minPrice };
+    const pricedItems = applySalePricingToItems(p.items ?? [], now, expiredSales);
+    const minPrice = computeMinPriceFromItems(pricedItems);
+    return { ...p, items: pricedItems, minPrice };
   });
 
   // Optional in-page price sorting (minPrice is computed above)
@@ -508,6 +641,7 @@ export async function listProducts(params: {
       : items;
 
 
+  await resetExpiredSales(prisma, expiredSales);
   return {
     items: sortedItems,
     total,
@@ -528,15 +662,13 @@ export async function listProducts(params: {
       });
 
       // SIZES facets (ignore selected sizes, keep color + price)
-      const price: Prisma.DecimalFilter<"ProductVariant"> = {};
-      if (params.minPrice != null) price.gte = params.minPrice;
-      if (params.maxPrice != null) price.lte = params.maxPrice;
-      const hasPrice = params.minPrice != null || params.maxPrice != null;
+      const priceFilter = buildVariantPriceFilter(params.minPrice, params.maxPrice, now);
+      const hasPrice = !!priceFilter;
 
       const sizeRows = await prisma.productVariant.groupBy({
         by: ["sizeId"],
         where: {
-          ...(hasPrice ? { price } : {}),
+          ...(hasPrice ? { AND: [priceFilter as Prisma.ProductVariantWhereInput] } : {}),
           item: {
             AND: [
               itemWhereNoSize,
@@ -580,9 +712,9 @@ export async function listProducts(params: {
   };
 }
 
-export function getProductById(id: string) {
+export async function getProductById(id: string) {
   // `findUnique` cannot include extra filters; use findFirst for id + isActive.
-  return prisma.product.findFirst({
+  const product = await prisma.product.findFirst({
     where: { id, isActive: true },
     select: {
       ...baseProductSelect,
@@ -611,10 +743,17 @@ export function getProductById(id: string) {
       comments: true,
     },
   });
+  if (!product) return null;
+  const now = new Date();
+  const expiredSales: ExpiredSale[] = [];
+  const pricedItems = applySalePricingToItems(product.items ?? [], now, expiredSales);
+  const minPrice = computeMinPriceFromItems(pricedItems);
+  await resetExpiredSales(prisma, expiredSales);
+  return { ...product, items: pricedItems, minPrice };
 }
 
-export function getProductBySlug(slug: string) {
-  return prisma.product.findFirst({
+export async function getProductBySlug(slug: string) {
+  const product = await prisma.product.findFirst({
     where: { slug, isActive: true },
     select: {
       ...baseProductSelect,
@@ -643,6 +782,13 @@ export function getProductBySlug(slug: string) {
       comments: true,
     },
   });
+  if (!product) return null;
+  const now = new Date();
+  const expiredSales: ExpiredSale[] = [];
+  const pricedItems = applySalePricingToItems(product.items ?? [], now, expiredSales);
+  const minPrice = computeMinPriceFromItems(pricedItems);
+  await resetExpiredSales(prisma, expiredSales);
+  return { ...product, items: pricedItems, minPrice };
 }
 
 export async function getCategoriesTree() {
@@ -667,8 +813,8 @@ export function listSizes() {
   return prisma.size.findMany({ where: { active: true }, orderBy: [{ order: "asc" }, { name: "asc" }] });
 }
 
-export function listProductItems(productId: string) {
-  return prisma.productItem.findMany({
+export async function listProductItems(productId: string) {
+  const items = await prisma.productItem.findMany({
     where: { productId, isActive: true },
     include: {
       images: {
@@ -689,10 +835,15 @@ export function listProductItems(productId: string) {
     },
     orderBy: { createdAt: "asc" },
   });
+  const now = new Date();
+  const expiredSales: ExpiredSale[] = [];
+  const priced = applySalePricingToItems(items ?? [], now, expiredSales);
+  await resetExpiredSales(prisma, expiredSales);
+  return priced;
 }
 
-export function getVariant(id: string) {
-  return prisma.productVariant.findUnique({
+export async function getVariant(id: string) {
+  const v = await prisma.productVariant.findUnique({
     where: { id },
     include: {
       item: {
@@ -716,6 +867,12 @@ export function getVariant(id: string) {
       size: true,
     },
   });
+  if (!v) return v;
+  const now = new Date();
+  const expiredSales: ExpiredSale[] = [];
+  const normalized = normalizeVariantPricing(v as any, now, expiredSales);
+  await resetExpiredSales(prisma, expiredSales);
+  return normalized as any;
 }
 
 export function listProductImages(productId: string) {
@@ -774,19 +931,17 @@ export async function listProductsByIds(ids: string[]) {
     },
   });
 
+  const now = new Date();
+  const expiredSales: ExpiredSale[] = [];
+
   const items = products.map((p) => {
-    let minPrice: number | null = null;
-    for (const it of p.items ?? []) {
-      for (const v of it.variants ?? []) {
-        const price = num((v as any).price);
-        if (price == null) continue;
-        if (minPrice == null || price < minPrice) minPrice = price;
-      }
-    }
-    return { ...p, minPrice };
+    const pricedItems = applySalePricingToItems(p.items ?? [], now, expiredSales);
+    const minPrice = computeMinPriceFromItems(pricedItems);
+    return { ...p, items: pricedItems, minPrice };
   });
 
   const byId = new Map(items.map((p) => [p.id, p]));
+  await resetExpiredSales(prisma, expiredSales);
   return clean.map((id) => byId.get(id)).filter(Boolean);
 }
 
@@ -902,6 +1057,7 @@ type CartLine = {
   productSlug?: string | null;
   itemId?: string | null;
   colorName?: string | null;
+  boxLabel?: string | null;
   colorHex?: string | null;
   sizeId?: string | null;
   sizeName?: string | null;
@@ -932,6 +1088,8 @@ async function loadLinesForItems(
 
   const byId = new Map(variants.map((v) => [v.id, v]));
   const out: CartLine[] = [];
+  const now = new Date();
+  const expiredSales: ExpiredSale[] = [];
 
   for (const it of normalized) {
     const v = byId.get(it.variantId);
@@ -939,7 +1097,8 @@ async function loadLinesForItems(
       throw httpError("VARIANT_NOT_AVAILABLE", "Variant not available", 400, { variantId: it.variantId });
     }
 
-    const unitPrice = Number(v.price);
+    const pricedVariant = normalizeVariantPricing(v as any, now, expiredSales);
+    const unitPrice = Number((pricedVariant as any).price ?? v.price);
     const lineSubtotal = round2(unitPrice * it.quantity);
 
     const imgs = (v.item as any).images ?? [];
@@ -957,6 +1116,7 @@ async function loadLinesForItems(
       productSlug: v.item.product.slug,
       itemId: v.productItemId,
       colorName: v.item.colorName,
+      boxLabel: (v.item as any).boxLabel ?? null,
       colorHex: v.item.colorHex,
       sizeId: v.sizeId,
       sizeName: v.size?.name ?? null,
@@ -966,6 +1126,7 @@ async function loadLinesForItems(
     });
   }
 
+  await resetExpiredSales(db, expiredSales);
   return out;
 }
 

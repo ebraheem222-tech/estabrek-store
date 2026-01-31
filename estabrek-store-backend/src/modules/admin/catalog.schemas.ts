@@ -20,6 +20,7 @@ export const UpdateProductBody = CreateProductBody.partial();
 export const CreateItemBody = z.object({
   productId: z.string().cuid(),
   colorName: z.string().min(1),
+  boxLabel: z.string().optional(),
   colorHex: z.string().regex(/^#?[0-9a-fA-F]{3,6}$/).nullable().optional(),
   suggestedColors: z.array(z.string().regex(/^#?[0-9a-fA-F]{3,6}$/)).optional(),
   skuBase: z.string().min(1),
@@ -40,6 +41,10 @@ export const CreateVariantBody = z.object({
   sku: z.string().min(1),
   price: PriceNumber,
   compareAt: PriceNumber.nullable().optional(),
+  originalPrice: PriceNumber.nullable().optional(),
+  salePrice: PriceNumber.nullable().optional(),
+  saleStartsAt: z.coerce.date().nullable().optional(),
+  saleEndsAt: z.coerce.date().nullable().optional(),
   stock: z.number().int().min(0).optional().default(0),
   lowStockThreshold: z.number().int().min(0).optional().default(0),
   weightGrams: z.number().int().min(0).nullable().optional(),
@@ -50,6 +55,10 @@ export const UpdateVariantBody = z.object({
   sku: z.string().min(1).optional(),
   price: PriceNumber.optional(),
   compareAt: PriceNumber.nullable().optional(),
+  originalPrice: PriceNumber.nullable().optional(),
+  salePrice: PriceNumber.nullable().optional(),
+  saleStartsAt: z.coerce.date().nullable().optional(),
+  saleEndsAt: z.coerce.date().nullable().optional(),
   stock: z.number().int().min(0).optional(),
   lowStockThreshold: z.number().int().min(0).optional(),
   weightGrams: z.number().int().min(0).nullable().optional(),
@@ -79,6 +88,7 @@ export const ProductDeepUpdateBody = z.object({
   items: z.array(z.object({
     id: z.string().cuid().optional(),
     colorName: z.string().min(1),
+    boxLabel: z.string().optional(),
     colorHex: z.string().nullable().optional(),
     suggestedColors: z.array(z.string().regex(/^#?[0-9a-fA-F]{3,6}$/)).optional(),
     skuBase: z.string().min(1),
@@ -97,8 +107,12 @@ export const ProductDeepUpdateBody = z.object({
       sku: z.string().min(1),
       price: PriceNumber,
       compareAt: PriceNumber.nullable().optional(),
+      originalPrice: PriceNumber.nullable().optional(),
+      salePrice: PriceNumber.nullable().optional(),
+      saleStartsAt: z.coerce.date().nullable().optional(),
+      saleEndsAt: z.coerce.date().nullable().optional(),
       stock: z.number().int().min(0).optional().default(0),
-  lowStockThreshold: z.number().int().min(0).optional().default(0),
+      lowStockThreshold: z.number().int().min(0).optional().default(0),
       weightGrams: z.number().int().min(0).nullable().optional(),
     })).optional(),
   })).optional(),
@@ -138,6 +152,7 @@ export const ImportProductsBody = z.object({
 
         // default Item/Variant optional overrides
         colorName: z.string().optional(),
+        boxLabel: z.string().optional(),
         colorHex: z.string().nullable().optional(),
         skuBase: z.string().optional(),
         sizeName: z.string().optional(),
@@ -154,6 +169,7 @@ export const CommitImageGroupsBody = z.object({
   groups: z.array(
     z.object({
       colorName: z.string().min(1),
+      boxLabel: z.string().optional(),
       colorHex: z.string().nullable().optional(),
       assets: z.array(
         z.object({

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
-import { NewsletterSubscribeBody } from "./ugc.schemas.js";
-import { subscribeNewsletter } from "./ugc.service.js";
+import { NewsletterSubscribeBody, ContactMessageBody } from "./ugc.schemas.js";
+import { subscribeNewsletter, submitContactMessage } from "./ugc.service.js";
 import { listApprovedReviewsByProduct, listApprovedCommentsByProduct } from "./ugc.service.js";
 
 const r = Router();
@@ -12,6 +12,12 @@ const r = Router();
 r.post("/newsletter/subscribe", validate({ body: NewsletterSubscribeBody }), asyncHandler(async (req, res) => {
   const out = await subscribeNewsletter(req.body.email, req.body.source);
   res.status(out.created ? 201 : 200).json(out);
+}));
+
+// Contact form submit
+r.post("/contact", validate({ body: ContactMessageBody }), asyncHandler(async (req, res) => {
+  const out = await submitContactMessage(req.body);
+  res.status(out.ok ? 201 : 400).json(out);
 }));
 
 

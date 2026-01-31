@@ -31,3 +31,19 @@ export const NewsletterSubscribeBody = z.object({
   email: z.string().email(),
   source: z.string().max(50).optional(),
 });
+
+export const ContactMessageBody = z.object({
+  name: z.string().max(200).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().max(50).optional(),
+  subject: z.string().max(200).optional(),
+  message: z.string().max(5000).optional(),
+  fields: z.record(z.string()).optional(),
+  pageUrl: z.string().max(2000).optional(),
+  source: z.string().max(100).optional(),
+}).refine((v) => {
+  if (typeof v.message === "string" && v.message.trim()) return true;
+  if (v.fields && Object.keys(v.fields).length > 0) return true;
+  if (typeof v.subject === "string" && v.subject.trim()) return true;
+  return false;
+}, { message: "message or fields required" });
