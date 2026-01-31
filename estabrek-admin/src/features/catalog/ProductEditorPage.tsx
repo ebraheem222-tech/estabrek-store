@@ -45,6 +45,10 @@ type DBVariant = {
   sku: string;
   price: string | number; // prisma Decimal غالبًا بيرجع string
   compareAt?: string | number | null;
+  originalPrice?: string | number | null;
+  salePrice?: string | number | null;
+  saleStartsAt?: string | Date | null;
+  saleEndsAt?: string | Date | null;
   stock: number;
   lowStockThreshold?: number;
   weightGrams?: number | null;
@@ -54,6 +58,7 @@ type DBVariant = {
 type DBItem = {
   id: string;
   colorName: string;
+  boxLabel?: string | null;
   colorHex?: string | null;
   suggestedColors?: string[];
   skuBase: string;
@@ -84,6 +89,7 @@ type DeepUpdateBody = {
   items?: Array<{
     id?: string;
     colorName: string;
+    boxLabel?: string;
     colorHex?: string | null;
     suggestedColors?: string[];
     skuBase: string;
@@ -102,6 +108,10 @@ type DeepUpdateBody = {
       sku: string;
       price: number;
       compareAt?: number | null;
+      originalPrice?: number | null;
+      salePrice?: number | null;
+      saleStartsAt?: string | null;
+      saleEndsAt?: string | null;
       stock: number;
       lowStockThreshold?: number;
       weightGrams?: number | null;
@@ -116,6 +126,22 @@ function toNumber(x: any): number {
   if (x === null || x === undefined || x === "") return 0;
   const n = typeof x === "number" ? x : parseFloat(String(x));
   return Number.isFinite(n) ? n : 0;
+}
+
+function toDateTimeInput(value: any): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDateTimeInput(value: string): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
 }
 
 function normalizeImages(images: LocalImage[]): LocalImage[] {
@@ -216,6 +242,18 @@ function skuSegmentFromName(name: string) {
   return cleaned;
 }
 
+function skuSegmentFromItem(colorName: string, boxLabel?: string) {
+  const base = boxLabel ? `${colorName} ${boxLabel}` : colorName;
+  return skuSegmentFromName(base);
+}
+
+function buildAutoSkuBase(colorName: string, boxLabel: string, skuPrefix: string) {
+  const segment = skuSegmentFromItem(colorName, boxLabel);
+  if (!segment) return "";
+  const prefix = (skuPrefix || "SKU").trim();
+  return `${prefix}-${segment}`;
+}
+
 function normalizeSkuBaseInput(value: string) {
   const cleaned = String(value || "")
     .toUpperCase()
@@ -254,21 +292,37 @@ function normalizeColorNameInput(name: string) {
     .toLowerCase();
 }
 
-function ensureUniqueColorName(name: string, items: Array<{ localId: string; colorName: string }>, excludeLocalId?: string) {
+function normalizeBoxLabelInput(name: string) {
+  return String(name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function itemKeyFromParts(colorName: string, boxLabel?: string) {
+  return `${normalizeColorNameInput(colorName)}::${normalizeBoxLabelInput(boxLabel ?? "")}`;
+}
+
+function ensureUniqueColorName(
+  name: string,
+  boxLabel: string,
+  items: Array<{ localId: string; colorName: string; boxLabel?: string }>,
+  excludeLocalId?: string
+) {
   const base = String(name || "").trim().replace(/\s+/g, " ");
   if (!base) return base;
   const used = new Set(
     items
       .filter((it) => it.localId !== excludeLocalId)
-      .map((it) => normalizeColorNameInput(it.colorName))
+      .map((it) => itemKeyFromParts(it.colorName, it.boxLabel))
       .filter(Boolean)
   );
-  const baseKey = normalizeColorNameInput(base);
+  const baseKey = itemKeyFromParts(base, boxLabel);
   if (!used.has(baseKey)) return base;
 
   let i = 2;
   let candidate = `${base} ${i}`;
-  while (used.has(normalizeColorNameInput(candidate))) {
+  while (used.has(itemKeyFromParts(candidate, boxLabel))) {
     i += 1;
     candidate = `${base} ${i}`;
   }
@@ -330,6 +384,10 @@ export default function ProductEditorPage() {
     sku: string;
     price: number;
     compareAt: number | null;
+    originalPrice?: number | null;
+    salePrice?: number | null;
+    saleStartsAt?: string | null;
+    saleEndsAt?: string | null;
     stock: number;
     lowStockThreshold: number;
     weightGrams: number | null;
@@ -339,6 +397,7 @@ export default function ProductEditorPage() {
     id?: string;
     localId: string;
     colorName: string;
+    boxLabel: string;
     colorHex: string;
     // ألوان مقترحة (مش محفوظة بالـDB) - جاية من تحليل صورة
     detectedColors?: string[];
@@ -374,6 +433,7 @@ export default function ProductEditorPage() {
         id: it.id,
         localId: it.id,
         colorName: it.colorName ?? "",
+        boxLabel: it.boxLabel ?? "",
         colorHex: it.colorHex ?? "",
         detectedColors: undefined,
         skuBase: it.skuBase ?? "",
@@ -385,6 +445,10 @@ export default function ProductEditorPage() {
           sku: v.sku,
           price: toNumber(v.price),
           compareAt: v.compareAt === null || v.compareAt === undefined ? null : toNumber(v.compareAt),
+          originalPrice: v.originalPrice === null || v.originalPrice === undefined ? undefined : toNumber(v.originalPrice),
+          salePrice: v.salePrice === null || v.salePrice === undefined ? null : toNumber(v.salePrice),
+          saleStartsAt: v.saleStartsAt ? toDateTimeInput(v.saleStartsAt) : null,
+          saleEndsAt: v.saleEndsAt ? toDateTimeInput(v.saleEndsAt) : null,
           stock: v.stock ?? 0,
           lowStockThreshold: v.lowStockThreshold ?? 0,
           weightGrams: v.weightGrams ?? null,
@@ -509,25 +573,22 @@ export default function ProductEditorPage() {
           (currentGuess && it.colorName.trim().toLowerCase() === currentGuess.name.trim().toLowerCase()) ||
           (currentHex && normalizeHex(it.colorName) === currentHex);
 
+        const currentAutoBase = buildAutoSkuBase(it.colorName, it.boxLabel, skuPrefix);
         const autoSkuCurrent =
           !it.skuBase.trim() ||
-          (currentGuess && it.skuBase.trim().toUpperCase() === `${skuPrefix}-${currentGuess.sku}`.toUpperCase()) ||
-          (currentHex && it.skuBase.trim().toUpperCase() === `${skuPrefix}-${currentHex.slice(1).toUpperCase()}`.toUpperCase());
+          (currentAutoBase && it.skuBase.trim().toUpperCase() === currentAutoBase.toUpperCase());
 
         let nextName = it.colorName;
         let nextSkuBase = it.skuBase;
 
         if (autoNameCurrent) {
           const baseName = nextGuess?.name ?? normalized.toUpperCase();
-          nextName = ensureUniqueColorName(baseName, prev as any, it.localId);
+          nextName = ensureUniqueColorName(baseName, it.boxLabel, prev as any, it.localId);
         }
 
         if (autoSkuCurrent) {
-          const segment = nextGuess?.sku ?? normalized.slice(1).toUpperCase();
-          if (segment) {
-            const candidate = `${skuPrefix}-${segment}`;
-            nextSkuBase = ensureUniqueSkuBase(candidate, prev as any, it.localId);
-          }
+          const candidate = buildAutoSkuBase(nextName, it.boxLabel, skuPrefix);
+          if (candidate) nextSkuBase = ensureUniqueSkuBase(candidate, prev as any, it.localId);
         }
 
         return {
@@ -545,14 +606,33 @@ export default function ProductEditorPage() {
       prev.map((it) => {
         if (it.localId !== localId) return it;
         let nextSkuBase = it.skuBase;
-        if (!nextSkuBase.trim()) {
-          const segment = skuSegmentFromName(nextName);
-          if (segment) {
-            const candidate = `${skuPrefix}-${segment}`;
-            nextSkuBase = ensureUniqueSkuBase(candidate, prev as any, it.localId);
-          }
+        const currentAutoBase = buildAutoSkuBase(it.colorName, it.boxLabel, skuPrefix);
+        const shouldAuto =
+          !nextSkuBase.trim() ||
+          (currentAutoBase && nextSkuBase.trim().toUpperCase() === currentAutoBase.toUpperCase());
+        if (shouldAuto) {
+          const candidate = buildAutoSkuBase(nextName, it.boxLabel, skuPrefix);
+          if (candidate) nextSkuBase = ensureUniqueSkuBase(candidate, prev as any, it.localId);
         }
         return { ...it, colorName: nextName, skuBase: nextSkuBase };
+      })
+    );
+  };
+
+  const handleBoxLabelChange = (localId: string, nextLabel: string) => {
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.localId !== localId) return it;
+        let nextSkuBase = it.skuBase;
+        const currentAutoBase = buildAutoSkuBase(it.colorName, it.boxLabel, skuPrefix);
+        const shouldAuto =
+          !nextSkuBase.trim() ||
+          (currentAutoBase && nextSkuBase.trim().toUpperCase() === currentAutoBase.toUpperCase());
+        if (shouldAuto) {
+          const candidate = buildAutoSkuBase(it.colorName, nextLabel, skuPrefix);
+          if (candidate) nextSkuBase = ensureUniqueSkuBase(candidate, prev as any, it.localId);
+        }
+        return { ...it, boxLabel: nextLabel, skuBase: nextSkuBase };
       })
     );
   };
@@ -594,6 +674,10 @@ export default function ProductEditorPage() {
   const vSkuAutoRef = useRef("");
   const [vPrice, setVPrice] = useState("0");
   const [vCompareAt, setVCompareAt] = useState("");
+  const [vOriginalPrice, setVOriginalPrice] = useState("");
+  const [vSalePrice, setVSalePrice] = useState("");
+  const [vSaleStartsAt, setVSaleStartsAt] = useState("");
+  const [vSaleEndsAt, setVSaleEndsAt] = useState("");
   const [vStock, setVStock] = useState("0");
   const [vThreshold, setVThreshold] = useState("0");
   const [vWeight, setVWeight] = useState("");
@@ -610,6 +694,10 @@ export default function ProductEditorPage() {
     setVSku(baseSku);
     setVPrice("0");
     setVCompareAt("");
+    setVOriginalPrice("");
+    setVSalePrice("");
+    setVSaleStartsAt("");
+    setVSaleEndsAt("");
     setVStock("0");
     setVThreshold("0");
     setVWeight("");
@@ -626,6 +714,10 @@ export default function ProductEditorPage() {
     setVSku(v.sku);
     setVPrice(String(v.price ?? 0));
     setVCompareAt(v.compareAt === null ? "" : String(v.compareAt));
+    setVOriginalPrice(v.originalPrice === null || v.originalPrice === undefined ? "" : String(v.originalPrice));
+    setVSalePrice(v.salePrice === null || v.salePrice === undefined ? "" : String(v.salePrice));
+    setVSaleStartsAt(v.saleStartsAt ? String(v.saleStartsAt) : "");
+    setVSaleEndsAt(v.saleEndsAt ? String(v.saleEndsAt) : "");
     setVStock(String(v.stock ?? 0));
     setVThreshold(String(v.lowStockThreshold ?? 0));
     setVWeight(v.weightGrams === null ? "" : String(v.weightGrams));
@@ -668,6 +760,18 @@ export default function ProductEditorPage() {
     if (priceN <= 0) return setVarError("السعر لازم يكون أكبر من 0");
     const stockN = Math.max(0, parseInt(vStock || "0", 10) || 0);
     const thresholdN = Math.max(0, parseInt(vThreshold || "0", 10) || 0);
+    const originalRaw = vOriginalPrice.trim();
+    const saleRaw = vSalePrice.trim();
+    const originalN = originalRaw ? toNumber(originalRaw) : editingVarId ? null : undefined;
+    const salePriceN = saleRaw ? toNumber(saleRaw) : null;
+    if (saleRaw && salePriceN != null && salePriceN <= 0) return setVarError("سعر التخفيض لازم يكون أكبر من 0");
+    const saleStartIso = vSaleStartsAt.trim() ? fromDateTimeInput(vSaleStartsAt) : null;
+    const saleEndIso = vSaleEndsAt.trim() ? fromDateTimeInput(vSaleEndsAt) : null;
+    if (vSaleStartsAt.trim() && !saleStartIso) return setVarError("تاريخ بداية الخصم غير صالح");
+    if (vSaleEndsAt.trim() && !saleEndIso) return setVarError("تاريخ نهاية الخصم غير صالح");
+    if (saleStartIso && saleEndIso && new Date(saleStartIso) > new Date(saleEndIso)) {
+      return setVarError("تاريخ نهاية الخصم لازم يكون بعد البداية");
+    }
 
     // منع تكرار size لنفس item
     const duplicate = item.variants.some((x) => x.sizeId === vSizeId && (editingVarId ? x.id !== editingVarId : true));
@@ -685,6 +789,10 @@ export default function ProductEditorPage() {
       lowStockThreshold: thresholdN,
       weightGrams: vWeight.trim() ? Math.max(0, parseInt(vWeight, 10) || 0) : null,
     };
+    if (originalN !== undefined) payload.originalPrice = originalN;
+    payload.salePrice = salePriceN;
+    payload.saleStartsAt = saleStartIso;
+    payload.saleEndsAt = saleEndIso;
 
     setItems((prev) =>
       prev.map((it) => {
@@ -806,6 +914,7 @@ export default function ProductEditorPage() {
         localId,
         id: undefined,
         colorName: "",
+        boxLabel: "",
         colorHex: "",
         detectedColors: undefined,
         skuBase: "",
@@ -833,7 +942,12 @@ export default function ProductEditorPage() {
 
     // if this is a brand new empty draft, remove it to avoid clutter
     if (it && !it.id) {
-      const empty = !it.colorName.trim() && !it.skuBase.trim() && (it.images?.length ?? 0) === 0 && (it.variants?.length ?? 0) === 0;
+      const empty =
+        !it.colorName.trim() &&
+        !it.boxLabel.trim() &&
+        !it.skuBase.trim() &&
+        (it.images?.length ?? 0) === 0 &&
+        (it.variants?.length ?? 0) === 0;
       if (empty) {
         setItems((prev) => prev.filter((x) => x.localId !== it.localId));
       }
@@ -850,16 +964,24 @@ export default function ProductEditorPage() {
     if (!it.colorName.trim()) return setItemError("اسم اللون مطلوب");
       if (!it.skuBase.trim()) return setItemError("skuBase مطلوب");
 
-      // enforce unique colorName per product (matches Prisma @@unique([productId,colorName]))
       const normalizedName = normalizeColorNameInput(it.colorName);
-      const duplicate = items.some((x) => x.localId !== it.localId && normalizeColorNameInput(x.colorName) === normalizedName);
-      if (duplicate) return setItemError("اسم اللون موجود مسبقًا. لازم يكون فريد داخل المنتج.");
+      const normalizedBox = normalizeBoxLabelInput(it.boxLabel);
+      const sameColor = items.some((x) => x.localId !== it.localId && normalizeColorNameInput(x.colorName) === normalizedName);
+      if (sameColor && !normalizedBox) {
+        return setItemError("نفس اللون موجود مسبقًا. أضف اسم/تمييز للعلبة لتمييزه.");
+      }
+
+      // enforce unique colorName + boxLabel per product
+      const key = itemKeyFromParts(it.colorName, it.boxLabel);
+      const duplicate = items.some((x) => x.localId !== it.localId && itemKeyFromParts(x.colorName, x.boxLabel) === key);
+      if (duplicate) return setItemError("هذا اللون مع نفس اسم العلبة موجود مسبقًا.");
 
       const normHex = normalizeHex(it.colorHex.trim()) ?? "";
       const uniqueSkuBase = ensureUniqueSkuBase(it.skuBase.trim(), items as any, it.localId);
 
       updateItem(it.localId, {
         colorName: it.colorName.trim(),
+        boxLabel: it.boxLabel.trim(),
         colorHex: normHex,
         skuBase: uniqueSkuBase || it.skuBase.trim(),
         isActive: !!it.isActive,
@@ -881,6 +1003,7 @@ export default function ProductEditorPage() {
       items: items.map((it) => ({
         id: it.id,
         colorName: it.colorName.trim(),
+        boxLabel: it.boxLabel.trim(),
         colorHex: it.colorHex.trim() ? it.colorHex.trim() : null,
         suggestedColors: it.detectedColors && it.detectedColors.length ? it.detectedColors : undefined,
         skuBase: it.skuBase.trim(),
@@ -899,6 +1022,15 @@ export default function ProductEditorPage() {
           sku: v.sku.trim(),
           price: toNumber(v.price),
           compareAt: v.compareAt === null ? null : toNumber(v.compareAt),
+          originalPrice:
+            v.originalPrice === undefined
+              ? undefined
+              : v.originalPrice === null
+              ? null
+              : toNumber(v.originalPrice),
+          salePrice: v.salePrice === null || v.salePrice === undefined ? null : toNumber(v.salePrice),
+          saleStartsAt: v.saleStartsAt ? fromDateTimeInput(v.saleStartsAt) : null,
+          saleEndsAt: v.saleEndsAt ? fromDateTimeInput(v.saleEndsAt) : null,
           stock: Math.max(0, v.stock ?? 0),
           lowStockThreshold: Math.max(0, v.lowStockThreshold ?? 0),
           weightGrams: v.weightGrams === null ? null : Math.max(0, v.weightGrams ?? 0),
@@ -922,10 +1054,27 @@ export default function ProductEditorPage() {
       return setPageError("التصنيف غير موجود أو تم حذفه. اختر تصنيفًا صالحًا.");
     }
 
-    // extra validation: each item should have unique colorName already handled, but re-check quickly
-    const names = items.map((x) => x.colorName.trim().toLowerCase()).filter(Boolean);
-    const uniq = new Set(names);
-    if (uniq.size !== names.length) return setPageError("في تكرار بأسماء الألوان (items).");
+    // extra validation: each item should have unique colorName + boxLabel
+    const keys = items
+      .map((x) => itemKeyFromParts(x.colorName, x.boxLabel))
+      .filter((k) => k.replace("::", "").trim());
+    const uniq = new Set(keys);
+    if (uniq.size !== keys.length) return setPageError("في تكرار بالألوان مع نفس اسم العلبة (items).");
+
+    // if same color is used multiple times, require boxLabel for distinction
+    const byColor = new Map<string, number>();
+    for (const it of items) {
+      const nameKey = normalizeColorNameInput(it.colorName);
+      if (!nameKey) continue;
+      byColor.set(nameKey, (byColor.get(nameKey) ?? 0) + 1);
+    }
+    for (const it of items) {
+      const nameKey = normalizeColorNameInput(it.colorName);
+      if (!nameKey) continue;
+      if ((byColor.get(nameKey) ?? 0) > 1 && !normalizeBoxLabelInput(it.boxLabel)) {
+        return setPageError(`لون مكرر بدون اسم علبة: ${it.colorName}. أضف تمييز للعلبة.`);
+      }
+    }
 
     // validation: variants must not duplicate size per item
     for (const it of items) {
@@ -1021,6 +1170,7 @@ export default function ProductEditorPage() {
         localId,
         id: undefined,
         colorName: "Default",
+        boxLabel: "",
         colorHex: "",
         detectedColors: undefined,
         skuBase,
@@ -1178,7 +1328,11 @@ export default function ProductEditorPage() {
                       />
                     ) : null}
                     <div className="text-lg font-semibold truncate">
-                      {it.colorName || "(بدون اسم لون)"}
+                      {(() => {
+                        const name = it.colorName || "(بدون اسم لون)";
+                        const box = (it.boxLabel ?? "").trim();
+                        return box ? `${name} — ${box}` : name;
+                      })()}
                       {!it.isActive ? <span className="ms-2 text-xs opacity-60">(غير فعال)</span> : null}
                     </div>
                   </div>
@@ -1258,6 +1412,13 @@ export default function ProductEditorPage() {
                       label="اسم اللون (colorName)"
                       value={it.colorName}
                       onChange={(e) => handleColorNameChange(it.localId, e.target.value)}
+                    />
+
+                    <Input
+                      label="اسم العلبة (boxLabel) اختياري"
+                      value={it.boxLabel}
+                      onChange={(e) => handleBoxLabelChange(it.localId, e.target.value)}
+                      placeholder="مثال: علبة A"
                     />
 
                     <Input
@@ -1477,6 +1638,29 @@ export default function ProductEditorPage() {
 
               <Input label="السعر" value={vPrice} onChange={(e) => setVPrice(e.target.value)} />
               <Input label="compareAt (اختياري)" value={vCompareAt} onChange={(e) => setVCompareAt(e.target.value)} />
+              <Input
+                label="السعر الأصلي (اختياري)"
+                value={vOriginalPrice}
+                onChange={(e) => setVOriginalPrice(e.target.value)}
+                hint="سيعود السعر لهذا الرقم بعد انتهاء التخفيض (إذا مفعّل)"
+              />
+              <Input
+                label="سعر التخفيض (اختياري)"
+                value={vSalePrice}
+                onChange={(e) => setVSalePrice(e.target.value)}
+              />
+              <Input
+                type="datetime-local"
+                label="بداية التخفيض"
+                value={vSaleStartsAt}
+                onChange={(e) => setVSaleStartsAt(e.target.value)}
+              />
+              <Input
+                type="datetime-local"
+                label="نهاية التخفيض"
+                value={vSaleEndsAt}
+                onChange={(e) => setVSaleEndsAt(e.target.value)}
+              />
 
               <Input label="المخزون" value={vStock} onChange={(e) => setVStock(e.target.value)} />
               <div>

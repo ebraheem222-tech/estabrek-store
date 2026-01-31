@@ -208,6 +208,8 @@ type StorefrontConfig = {
   liveChatWelcomeMessage: string;
   liveChatOfflineMessage: string;
   chatbotEnabled: boolean;
+  chatbotPosition: "bottom-left" | "bottom-right" | "bottom-center";
+  chatbotDraggable: boolean;
   whatsappEnabled: boolean;
   whatsappNumber: string;
   
@@ -307,6 +309,8 @@ function normalizeStorefront(v: any): StorefrontConfig {
     liveChatWelcomeMessage: o.liveChatWelcomeMessage || "مرحباً! كيف يمكنني مساعدتك؟",
     liveChatOfflineMessage: o.liveChatOfflineMessage || "نحن غير متصلين حالياً، اترك رسالتك وسنرد عليك قريباً",
     chatbotEnabled: o.chatbotEnabled !== false,
+    chatbotPosition: o.chatbotPosition || "bottom-left",
+    chatbotDraggable: o.chatbotDraggable === true,
     whatsappEnabled: o.whatsappEnabled === true,
     whatsappNumber: o.whatsappNumber || "",
     
@@ -2185,6 +2189,11 @@ export default function SettingsPage() {
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, chatbotEnabled: v }))}
                       />
                       <Toggle
+                        label="سحب الشات بوت"
+                        checked={storefrontCfg.chatbotDraggable}
+                        onChange={(v) => setStorefrontCfg((p) => ({ ...p, chatbotDraggable: v }))}
+                      />
+                      <Toggle
                         label="زر واتساب"
                         checked={storefrontCfg.whatsappEnabled}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, whatsappEnabled: v }))}
@@ -2196,6 +2205,21 @@ export default function SettingsPage() {
                           setStorefrontCfg((p) => ({
                             ...p,
                             liveChatPosition: v as "bottom-left" | "bottom-right" | "bottom-center",
+                          }))
+                        }
+                        options={[
+                          { value: "bottom-left", label: "أسفل يسار" },
+                          { value: "bottom-right", label: "أسفل يمين" },
+                          { value: "bottom-center", label: "أسفل وسط" },
+                        ]}
+                      />
+                      <Select
+                        label="موقع الشات بوت"
+                        value={storefrontCfg.chatbotPosition}
+                        onValueChange={(v) =>
+                          setStorefrontCfg((p) => ({
+                            ...p,
+                            chatbotPosition: v as "bottom-left" | "bottom-right" | "bottom-center",
                           }))
                         }
                         options={[

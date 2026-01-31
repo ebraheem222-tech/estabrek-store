@@ -75,7 +75,8 @@ export default function CouponTesterPage() {
     for (const p of products) {
       for (const it of p.items ?? []) {
         for (const v of it.variants ?? []) {
-          const color = it.colorName ? ` — ${it.colorName}` : "";
+          const colorLabel = [it.colorName, it.boxLabel].filter(Boolean).join(" — ");
+          const color = colorLabel ? ` — ${colorLabel}` : "";
           const size = v.size?.name ? ` — ${v.size.name}` : "";
           const price = Number(v.price);
           out.push({
