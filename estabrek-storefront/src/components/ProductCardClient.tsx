@@ -18,6 +18,21 @@ function normalizeHex(v?: string | null): string | null {
   return s.startsWith("#") ? s : `#${s}`;
 }
 
+function isModelUrl(url?: string | null): boolean {
+  const raw = String(url ?? "").trim().toLowerCase();
+  if (!raw) return false;
+  const clean = raw.split("?")[0].split("#")[0];
+  return clean.endsWith(".glb") || clean.endsWith(".gltf");
+}
+
+function isRenderableImage(im?: { url?: string | null; view?: string | null } | null): boolean {
+  if (!im?.url) return false;
+  if (isModelUrl(im.url)) return false;
+  const view = String(im.view ?? "").trim().toLowerCase();
+  if (view === "3d") return false;
+  return true;
+}
+
 type Swatch = {
   key: string;
   name: string;
@@ -27,7 +42,7 @@ type Swatch = {
 
 function getCardImages(p: CatalogProduct): { primary?: string; secondary?: string } {
   const it = p.items?.[0];
-  const imgs = (it as any)?.images ?? [];
+  const imgs = ((it as any)?.images ?? []).filter((im: any) => isRenderableImage(im));
   const primary = imgs[0]?.url ?? getProductPrimaryImage(p);
   const secondary = imgs[1]?.url;
   return { primary, secondary };
@@ -84,7 +99,7 @@ function buildAutoVariantImages(p: CatalogProduct, primary?: string | null): str
 
   const items = p.items ?? [];
   for (const it of items) {
-    const imgs = it.images ?? [];
+    const imgs = (it.images ?? []).filter((im) => isRenderableImage(im));
     const primaryImg = imgs.find((im) => im.isPrimary)?.url ?? imgs[0]?.url ?? it.primaryImageUrl ?? imgs[1]?.url ?? it.secondaryImageUrl ?? null;
     push(primaryImg);
     if (out.length >= 8) break;

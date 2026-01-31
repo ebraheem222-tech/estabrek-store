@@ -18,23 +18,39 @@ function normalizeHex(v?: string | null): string | null {
   return s.startsWith("#") ? s : `#${s}`;
 }
 
+function isModelUrl(url?: string | null): boolean {
+  const raw = String(url ?? "").trim().toLowerCase();
+  if (!raw) return false;
+  const clean = raw.split("?")[0].split("#")[0];
+  return clean.endsWith(".glb") || clean.endsWith(".gltf");
+}
+
+function isRenderableImage(im?: { url?: string | null; view?: string | null } | null): boolean {
+  if (!im?.url) return false;
+  if (isModelUrl(im.url)) return false;
+  const view = String(im.view ?? "").trim().toLowerCase();
+  if (view === "3d") return false;
+  return true;
+}
+
 function getCardImages(p: CatalogProduct): { primary?: string; secondary?: string } {
-  const productImages = ((p as any).images ?? []) as Array<{ url?: string | null; isPrimary?: boolean }>;
+  const productImages = ((p as any).images ?? []) as Array<{ url?: string | null; isPrimary?: boolean; view?: string | null }>;
 
   if (p.primaryImageUrl || p.secondaryImageUrl) {
     return { primary: p.primaryImageUrl ?? undefined, secondary: p.secondaryImageUrl ?? undefined };
   }
 
   if (productImages.length) {
-    const primary = (productImages.find((im) => im.isPrimary)?.url ?? productImages[0]?.url) ?? undefined;
-    const secondary = productImages[1]?.url ?? undefined;
+    const primary = (productImages.find((im) => im.isPrimary && isRenderableImage(im))?.url ?? productImages.find((im) => isRenderableImage(im))?.url) ?? undefined;
+    const secondary = productImages.filter((im) => isRenderableImage(im))[1]?.url ?? undefined;
     if (primary || secondary) return { primary, secondary };
   }
 
   // Prefer the first visible item
   const it = p.items?.[0];
-  const primary = (it?.primaryImageUrl ?? it?.images?.[0]?.url ?? getProductPrimaryImage(p)) ?? undefined;
-  const secondary = (it?.secondaryImageUrl ?? it?.images?.[1]?.url) ?? undefined;
+  const renderableImages = (it?.images ?? []).filter((im) => isRenderableImage(im));
+  const primary = (it?.primaryImageUrl ?? renderableImages[0]?.url ?? getProductPrimaryImage(p)) ?? undefined;
+  const secondary = (it?.secondaryImageUrl ?? renderableImages[1]?.url) ?? undefined;
   return { primary, secondary };
 }
 

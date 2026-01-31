@@ -89,23 +89,38 @@ function num(v: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function isModelUrl(url?: string | null): boolean {
+  const raw = String(url ?? "").trim().toLowerCase();
+  if (!raw) return false;
+  const clean = raw.split("?")[0].split("#")[0];
+  return clean.endsWith(".glb") || clean.endsWith(".gltf");
+}
+
+function isRenderableImage(im?: { url?: string | null; view?: string | null } | null): boolean {
+  if (!im?.url) return false;
+  if (isModelUrl(im.url)) return false;
+  const view = String(im.view ?? "").trim().toLowerCase();
+  if (view === "3d") return false;
+  return true;
+}
+
 export function getProductPrimaryImage(p: CatalogProduct): string | null {
   const images = (p as any).images as Array<{ url?: string; isPrimary?: boolean }> | undefined;
   if (Array.isArray(images) && images.length) {
-    const primary = images.find((im) => im.isPrimary)?.url ?? images[0]?.url;
+    const primary = images.find((im) => im.isPrimary && isRenderableImage(im))?.url ?? images.find((im) => isRenderableImage(im))?.url;
     if (primary) return primary;
   }
 
   if ((p as any).image) {
     const single = String((p as any).image).trim();
-    if (single) return single;
+    if (single && !isModelUrl(single)) return single;
   }
 
   if (p.primaryImageUrl) return p.primaryImageUrl;
   const items = p.items ?? [];
   for (const it of items) {
     const imgs = it.images ?? [];
-    const primary = imgs.find((im) => im.isPrimary) ?? imgs[0];
+    const primary = imgs.find((im) => im.isPrimary && isRenderableImage(im)) ?? imgs.find((im) => isRenderableImage(im)) ?? null;
     if (primary?.url) return primary.url;
   }
   return null;
@@ -114,6 +129,7 @@ export function getProductPrimaryImage(p: CatalogProduct): string | null {
 export function getProductImageBlurDataUrl(p: CatalogProduct, url?: string | null): string | null {
   const target = String(url ?? "").trim();
   if (!target) return null;
+  if (isModelUrl(target)) return null;
 
   const productImages = (p as any).images as Array<{ url?: string; blurDataUrl?: string | null }> | undefined;
   if (Array.isArray(productImages)) {
