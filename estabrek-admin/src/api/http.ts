@@ -77,6 +77,7 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const status = error.response?.status;
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const errCode = (error.response?.data as any)?.error as string | undefined;
 
     // If we don't have original request, just throw
     if (!original) throw error;
@@ -90,7 +91,26 @@ api.interceptors.response.use(
       url.includes(ENDPOINTS.auth.mfaFinalize) ||
       url.includes(ENDPOINTS.auth.mfaTokensFromSession);
 
+    const authError = errCode === "NO_TOKEN" || errCode === "INVALID_TOKEN" || errCode === "TOKEN_EXPIRED" || errCode === "UNAUTHORIZED";
+    // If backend signals auth error (even if status is wrong), force re-login.
+    if (authError) {
+      clearTokens();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      throw error;
+    }
+
     if (status !== 401 || original._retry || isAuthEndpoint) {
+      throw error;
+    }
+
+    // If no refresh token, force re-login.
+    if (!getRefreshToken()) {
+      clearTokens();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
       throw error;
     }
 
