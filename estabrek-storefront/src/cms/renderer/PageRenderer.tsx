@@ -5,6 +5,7 @@ import { FormSection } from "./sections/FormSection";
 import { ComponentsRenderer } from "./ComponentsRenderer";
 import { TypewriterText } from "@/components/effects/TypewriterText";
 import { LoadingImg } from "@/components/LoadingImg";
+import { baseUrl } from "@/lib/serverBaseUrl";
 import type { CmsSection, PageSectionType, ProductMini } from "../types";
 import { sanitizeHtml } from "../sanitizeHtml";
 import type {
@@ -1812,6 +1813,8 @@ function Section({
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    const contactAction = String(form.action ?? "").trim() || `${baseUrl()}/ugc/contact`;
+    const contactMethod = form.method || "POST";
 
     return wrapDecorations(
       <section {...attrs} data-section-type="CONTACT" className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
@@ -1931,7 +1934,8 @@ function Section({
                         formSubtitleTokens
                       );
                     })() : null}
-                    <form className="mt-4 space-y-3" action={form.action || "#"} method={form.method || "POST"}>
+                    <form className="mt-4 space-y-3" action={contactAction} method={contactMethod}>
+                      <input type="hidden" name="source" value="contact_page" />
                       {fields.map((f, idx) => {
                         const fieldTokens = resolveFieldTokens((f as any).twTokens, formFieldTokens ?? formTokens ?? sectionTokens);
                         const labelTokens = resolveFieldTokens((f as any).labelTokens, formLabelTokens ?? fieldTokens ?? formTokens ?? sectionTokens);

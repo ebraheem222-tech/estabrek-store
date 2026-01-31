@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { createContactSubmitHandler } from '@/lib/contactForm';
 
 // ═══════════════════════════════════════════════════════════════
 // ADDITIONAL CONTACT FORM COMPONENTS
@@ -23,6 +24,9 @@ function resolveSubmitLabel(props: FormProps, fallback: string) {
   return raw || fallback;
 }
 
+const formSubmit = (props: FormProps) =>
+  createContactSubmitHandler({ onSubmit: props.onSubmit, source: "contact_component" });
+
 // ═══════════════════════════════════════════════════════════════
 // BASIC FORMS (More Variations)
 // ═══════════════════════════════════════════════════════════════
@@ -32,7 +36,7 @@ export const Form3: React.FC<FormProps> = (props) => (
   <section className={`py-16 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-xl mx-auto">
       {props.title && <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">{props.title}</h2>}
-      <form className="space-y-5 border-2 border-gray-200 rounded-xl p-8">
+      <form className="space-y-5 border-2 border-gray-200 rounded-xl p-8" onSubmit={formSubmit(props)}>
         <input type="text" placeholder="Your name" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-gray-900 focus:ring-0" />
         <input type="email" placeholder="Email address" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-gray-900 focus:ring-0" />
         <input type="tel" placeholder="Phone number" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-gray-900 focus:ring-0" />
@@ -48,7 +52,7 @@ export const Form4: React.FC<FormProps> = (props) => (
   <section className={`py-16 px-4 bg-gray-100 ${props.className || ''}`}>
     <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-lg p-10">
       {props.title && <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">{props.title}</h2>}
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={formSubmit(props)}>
         <input type="text" placeholder="Name" className="w-full px-5 py-4 bg-gray-50 rounded-2xl border-0 focus:ring-2 focus:ring-blue-500" />
         <input type="email" placeholder="Email" className="w-full px-5 py-4 bg-gray-50 rounded-2xl border-0 focus:ring-2 focus:ring-blue-500" />
         <textarea rows={4} placeholder="Message" className="w-full px-5 py-4 bg-gray-50 rounded-2xl border-0 focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
@@ -63,7 +67,7 @@ export const Form7: React.FC<FormProps> = (props) => (
   <section className={`py-16 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-xl mx-auto">
       {props.title && <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">{props.title}</h2>}
-      <form className="space-y-6">
+      <form className="space-y-6" onSubmit={formSubmit(props)}>
         <div className="relative">
           <input type="text" id="name" className="peer w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-transparent focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Name" />
           <label htmlFor="name" className="absolute left-4 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600">Name</label>
@@ -87,7 +91,7 @@ export const Form10: React.FC<FormProps> = (props) => (
   <section className={`py-16 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-3xl mx-auto">
       {props.title && <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">{props.title}</h2>}
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={formSubmit(props)}>
         <div className="grid grid-cols-2 gap-5">
           <input type="text" placeholder="First name" className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
           <input type="text" placeholder="Last name" className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
@@ -110,7 +114,7 @@ export const Form14: React.FC<FormProps> = (props) => (
     <div className="max-w-xl mx-auto">
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20">
         {props.title && <h2 className="text-3xl font-bold text-white mb-6 text-center">{props.title}</h2>}
-        <form className="space-y-5">
+        <form className="space-y-5" onSubmit={formSubmit(props)}>
           <input type="text" placeholder="Name" className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 focus:ring-2 focus:ring-white/50" />
           <input type="email" placeholder="Email" className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 focus:ring-2 focus:ring-white/50" />
           <textarea rows={4} placeholder="Message" className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 resize-none"></textarea>
@@ -143,7 +147,7 @@ export const Form21: React.FC<FormProps> = (props) => (
         </div>
       </div>
       <div className="bg-gray-900/50 rounded-2xl p-8 border border-cyan-500/20">
-        <form className="space-y-5">
+        <form className="space-y-5" onSubmit={formSubmit(props)}>
           <input type="text" placeholder="Name" className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-cyan-500" />
           <input type="email" placeholder="Email" className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-cyan-500" />
           <select className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500">
@@ -173,7 +177,7 @@ export const Form19: React.FC<FormProps> = (props) => (
         </div>
         <div className="p-8">
           {props.title && <h2 className="text-2xl font-mono text-white mb-6">{props.title}</h2>}
-          <form className="space-y-5">
+          <form className="space-y-5" onSubmit={formSubmit(props)}>
             <div>
               <label className="block text-green-400 text-sm font-mono mb-1">// your_name</label>
               <input type="text" placeholder="string" className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded text-white font-mono placeholder-gray-600 focus:ring-2 focus:ring-green-500" />
@@ -201,7 +205,7 @@ export const Form22: React.FC<FormProps> = (props) => (
       <div className="bg-gradient-to-b from-gray-900 to-gray-950 rounded-2xl p-8 border border-amber-500/30">
         {props.title && <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-500 mb-2 text-center">{props.title}</h2>}
         {props.subtitle && <p className="text-gray-500 mb-8 text-center">{props.subtitle}</p>}
-        <form className="space-y-5">
+        <form className="space-y-5" onSubmit={formSubmit(props)}>
           <input type="text" placeholder="Name" className="w-full px-4 py-3 bg-gray-800/50 border border-amber-500/30 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500" />
           <input type="email" placeholder="Email" className="w-full px-4 py-3 bg-gray-800/50 border border-amber-500/30 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500" />
           <input type="text" placeholder="Wallet Address (optional)" className="w-full px-4 py-3 bg-gray-800/50 border border-amber-500/30 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500" />
@@ -224,7 +228,7 @@ export const Form34: React.FC<FormProps> = (props) => (
       <div className="border border-amber-400/30 p-10">
         {props.title && <h2 className="text-3xl font-light text-white tracking-widest mb-2 text-center uppercase">{props.title}</h2>}
         {props.subtitle && <p className="text-amber-400/60 mb-10 text-center tracking-wider">{props.subtitle}</p>}
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={formSubmit(props)}>
           <input type="text" placeholder="NAME" className="w-full px-4 py-4 bg-transparent border-b border-gray-700 text-white placeholder-gray-600 tracking-widest focus:border-amber-400 focus:outline-none" />
           <input type="email" placeholder="EMAIL" className="w-full px-4 py-4 bg-transparent border-b border-gray-700 text-white placeholder-gray-600 tracking-widest focus:border-amber-400 focus:outline-none" />
           <input type="tel" placeholder="PHONE" className="w-full px-4 py-4 bg-transparent border-b border-gray-700 text-white placeholder-gray-600 tracking-widest focus:border-amber-400 focus:outline-none" />
@@ -242,7 +246,7 @@ export const Form35: React.FC<FormProps> = (props) => (
     <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl p-8 border-4 border-pink-200">
       {props.title && <h2 className="text-3xl font-bold text-purple-600 mb-2 text-center">{props.title} 🎈</h2>}
       {props.subtitle && <p className="text-purple-400 mb-8 text-center">{props.subtitle}</p>}
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={formSubmit(props)}>
         <input type="text" placeholder="Your Name 😊" className="w-full px-5 py-4 border-3 border-pink-200 rounded-2xl focus:ring-4 focus:ring-pink-300 focus:border-pink-400" />
         <input type="email" placeholder="Email Address 📧" className="w-full px-5 py-4 border-3 border-purple-200 rounded-2xl focus:ring-4 focus:ring-purple-300 focus:border-purple-400" />
         <textarea rows={4} placeholder="Your Message 💬" className="w-full px-5 py-4 border-3 border-cyan-200 rounded-2xl focus:ring-4 focus:ring-cyan-300 focus:border-cyan-400 resize-none"></textarea>
@@ -261,7 +265,7 @@ export const Form44: React.FC<FormProps> = (props) => (
   <section className={`py-16 px-4 bg-purple-900 ${props.className || ''}`}>
     <div className="max-w-xl mx-auto bg-gray-900 border-4 border-yellow-400 p-8">
       {props.title && <h2 className="text-3xl font-bold text-yellow-400 mb-6 text-center uppercase" style={{ fontFamily: 'monospace' }}>{props.title}</h2>}
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={formSubmit(props)}>
         <input type="text" placeholder="PLAYER NAME" className="w-full px-4 py-3 bg-purple-900 border-2 border-yellow-400 text-yellow-400 placeholder-yellow-600 focus:ring-2 focus:ring-yellow-400" style={{ fontFamily: 'monospace' }} />
         <input type="email" placeholder="EMAIL" className="w-full px-4 py-3 bg-purple-900 border-2 border-yellow-400 text-yellow-400 placeholder-yellow-600 focus:ring-2 focus:ring-yellow-400" style={{ fontFamily: 'monospace' }} />
         <textarea rows={4} placeholder="MESSAGE" className="w-full px-4 py-3 bg-purple-900 border-2 border-yellow-400 text-yellow-400 placeholder-yellow-600 focus:ring-2 focus:ring-yellow-400 resize-none" style={{ fontFamily: 'monospace' }}></textarea>
@@ -296,7 +300,7 @@ export const Form42: React.FC<FormProps> = (props) => (
         </div>
       </div>
       <div className="bg-gray-900 rounded-xl p-8 border border-red-600/30">
-        <form className="space-y-5">
+        <form className="space-y-5" onSubmit={formSubmit(props)}>
           <input type="text" placeholder="Gamer Tag" className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-red-500" />
           <input type="email" placeholder="Email" className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-red-500" />
           <select className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-red-500">
@@ -327,7 +331,7 @@ export const Form66: React.FC<FormProps> = (props) => (
       <div>
         {props.title && <h2 className="text-4xl font-light text-white mb-4">{props.title}</h2>}
         {props.description && <p className="text-gray-500 mb-8">{props.description}</p>}
-        <form className="space-y-5">
+        <form className="space-y-5" onSubmit={formSubmit(props)}>
           <input type="text" placeholder="Name" className="w-full px-0 py-3 bg-transparent border-b border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-none" />
           <input type="email" placeholder="Email" className="w-full px-0 py-3 bg-transparent border-b border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-none" />
           <input type="text" placeholder="Event Type" className="w-full px-0 py-3 bg-transparent border-b border-gray-700 text-white placeholder-gray-600 focus:border-white focus:outline-none" />
@@ -346,7 +350,7 @@ export const Form63: React.FC<FormProps> = (props) => (
     <div className="max-w-2xl mx-auto">
       {props.title && <h2 className="text-6xl font-light text-gray-900 mb-4">{props.title}</h2>}
       {props.subtitle && <p className="text-gray-500 mb-12">{props.subtitle}</p>}
-      <form className="space-y-8">
+      <form className="space-y-8" onSubmit={formSubmit(props)}>
         <div className="grid md:grid-cols-2 gap-8">
           <div>
             <label className="block text-xs uppercase tracking-widest text-gray-400 mb-2">Name</label>
@@ -377,7 +381,7 @@ export const Form86: React.FC<FormProps> = (props) => (
     <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-lg p-10">
       {props.title && <h2 className="text-3xl font-light text-teal-800 mb-2 text-center">{props.title}</h2>}
       {props.subtitle && <p className="text-teal-600/60 mb-8 text-center">{props.subtitle}</p>}
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={formSubmit(props)}>
         <input type="text" placeholder="Your name" className="w-full px-5 py-4 bg-teal-50/50 border border-teal-100 rounded-2xl text-teal-900 placeholder-teal-400 focus:ring-2 focus:ring-teal-300" />
         <input type="email" placeholder="Email" className="w-full px-5 py-4 bg-teal-50/50 border border-teal-100 rounded-2xl text-teal-900 placeholder-teal-400 focus:ring-2 focus:ring-teal-300" />
         <input type="tel" placeholder="Phone" className="w-full px-5 py-4 bg-teal-50/50 border border-teal-100 rounded-2xl text-teal-900 placeholder-teal-400 focus:ring-2 focus:ring-teal-300" />
@@ -400,7 +404,7 @@ export const Form100: React.FC<FormProps> = (props) => (
     <div className="max-w-xl mx-auto text-center">
       {props.title && <h2 className="text-3xl font-bold text-white mb-4">{props.title}</h2>}
       {props.subtitle && <p className="text-gray-400 mb-8">{props.subtitle}</p>}
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={formSubmit(props)}>
         <div className="flex flex-col sm:flex-row gap-4">
           <input type="email" placeholder="Enter your email" className="flex-1 px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500" />
           <button type="submit" className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-xl hover:shadow-lg whitespace-nowrap">{resolveSubmitLabel(props, "Subscribe")}</button>

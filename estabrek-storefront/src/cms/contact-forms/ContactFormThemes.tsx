@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
+import { createContactSubmitHandler } from '@/lib/contactForm';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -240,6 +241,9 @@ const defaultProps: Partial<ContactFormProps> = {
   messagePlaceholder: 'Your message...',
 };
 
+const formSubmit = (p: ContactFormProps) =>
+  createContactSubmitHandler({ onSubmit: p.onSubmit, source: "contact_theme" });
+
 // 1. Basic Simple Form
 export const ContactFormBasicSimple: React.FC<ContactFormProps> = (props) => {
   const p = { ...defaultProps, ...props };
@@ -248,7 +252,7 @@ export const ContactFormBasicSimple: React.FC<ContactFormProps> = (props) => {
       <div className="max-w-xl mx-auto">
         {p.title && <h2 className="text-3xl font-bold text-gray-900 mb-2 text-center">{p.title}</h2>}
         {p.subtitle && <p className="text-gray-600 mb-8 text-center">{p.subtitle}</p>}
-        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+        <form className="space-y-6" onSubmit={formSubmit(p)}>
           {p.showName && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{p.nameLabel}</label>
@@ -296,7 +300,7 @@ export const ContactFormBasicCard: React.FC<ContactFormProps> = (props) => {
       <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl p-8">
         {p.title && <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{p.title}</h2>}
         {p.subtitle && <p className="text-gray-600 mb-8 text-center">{p.subtitle}</p>}
-        <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+        <form className="space-y-5" onSubmit={formSubmit(p)}>
           <div className="grid grid-cols-2 gap-4">
             {p.showName && <input type="text" placeholder={p.namePlaceholder} className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" />}
             {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" />}
@@ -359,7 +363,7 @@ export const ContactFormBasicSplit: React.FC<ContactFormProps> = (props) => {
         </div>
         {/* Form Side */}
         <div className="bg-gray-50 rounded-2xl p-8">
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             {p.showName && <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500" />}
             {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500" />}
             {p.showPhone && <input type="tel" placeholder={p.phonePlaceholder} className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500" />}
@@ -381,7 +385,7 @@ export const ContactFormDark: React.FC<ContactFormProps> = (props) => {
       <div className="max-w-xl mx-auto">
         {p.title && <h2 className="text-3xl font-bold text-white mb-2 text-center">{p.title}</h2>}
         {p.subtitle && <p className="text-gray-400 mb-8 text-center">{p.subtitle}</p>}
-        <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+        <form className="space-y-5" onSubmit={formSubmit(p)}>
           {p.showName && <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />}
           {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />}
           {p.showPhone && <input type="tel" placeholder={p.phonePlaceholder} className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />}
@@ -402,7 +406,7 @@ export const ContactFormTechGradient: React.FC<ContactFormProps> = (props) => {
         {p.title && <h2 className="text-3xl font-bold text-white mb-2 text-center">{p.title}</h2>}
         {p.subtitle && <p className="text-purple-200 mb-8 text-center">{p.subtitle}</p>}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             <div className="grid grid-cols-2 gap-4">
               {p.showName && <input type="text" placeholder={p.namePlaceholder} className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-200 focus:ring-2 focus:ring-white/50" />}
               {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-200 focus:ring-2 focus:ring-white/50" />}
@@ -430,7 +434,7 @@ export const ContactFormGamingNeon: React.FC<ContactFormProps> = (props) => {
         <div className="relative bg-gray-900/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/30">
           {p.title && <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 mb-2 text-center">{p.title}</h2>}
           {p.subtitle && <p className="text-gray-400 mb-8 text-center">{p.subtitle}</p>}
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             {p.showName && <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 bg-gray-800/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />}
             {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="w-full px-4 py-3 bg-gray-800/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />}
             {p.showSubject && (
@@ -490,7 +494,7 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
         </div>
         {/* Form Side */}
         <div className="md:col-span-3 bg-white rounded-xl shadow-lg p-8">
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             <div className="grid md:grid-cols-2 gap-4">
               {p.showName && (
                 <div>
@@ -547,7 +551,7 @@ export const ContactFormCorporate: React.FC<ContactFormProps> = (props) => {
 
 // 8. Food/Restaurant Form
 export const ContactFormFood: React.FC<ContactFormProps> = (props) => {
-  const p = { ...defaultProps, ...props };
+  const p = { ...defaultProps, submitLabel: "Book Table", ...props };
   return (
     <section className={`py-16 px-4 bg-amber-50 ${p.className || ''}`}>
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
@@ -561,7 +565,7 @@ export const ContactFormFood: React.FC<ContactFormProps> = (props) => {
           </div>
         </div>
         <div className="bg-white rounded-2xl shadow-lg p-8 border-2 border-amber-200">
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             {p.showName && <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />}
             {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="w-full px-4 py-3 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />}
             {p.showPhone && <input type="tel" placeholder={p.phonePlaceholder} className="w-full px-4 py-3 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />}
@@ -582,7 +586,7 @@ export const ContactFormFood: React.FC<ContactFormProps> = (props) => {
               </select>
             </div>
             {p.showMessage && <textarea rows={3} placeholder="Special requests..." className="w-full px-4 py-3 border-2 border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 resize-none"></textarea>}
-            <button type="submit" className="w-full py-3 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700">Book Table</button>
+            <button type="submit" className="w-full py-3 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700">{p.submitLabel}</button>
           </form>
         </div>
       </div>
@@ -607,7 +611,7 @@ export const ContactFormFitness: React.FC<ContactFormProps> = (props) => {
         </div>
         <div className="bg-gray-800 rounded-xl p-8 border border-gray-700">
           <h3 className="text-xl font-bold text-white mb-6">Get Your Free Trial</h3>
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             {p.showName && <input type="text" placeholder={p.namePlaceholder} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500" />}
             {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500" />}
             {p.showPhone && <input type="tel" placeholder={p.phonePlaceholder} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500" />}
@@ -632,7 +636,7 @@ export const ContactFormFitness: React.FC<ContactFormProps> = (props) => {
 
 // 10. Travel/Hotel Form
 export const ContactFormTravel: React.FC<ContactFormProps> = (props) => {
-  const p = { ...defaultProps, ...props };
+  const p = { ...defaultProps, submitLabel: "Get Quote", ...props };
   return (
     <section className={`py-16 px-4 bg-sky-50 ${p.className || ''}`}>
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12">
@@ -647,7 +651,7 @@ export const ContactFormTravel: React.FC<ContactFormProps> = (props) => {
         </div>
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h3 className="text-xl font-semibold text-sky-900 mb-6">Plan Your Trip</h3>
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             <div className="grid grid-cols-2 gap-4">
               {p.showName && <input type="text" placeholder={p.namePlaceholder} className="px-4 py-3 border border-sky-200 rounded-lg focus:ring-2 focus:ring-sky-500" />}
               {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="px-4 py-3 border border-sky-200 rounded-lg focus:ring-2 focus:ring-sky-500" />}
@@ -677,7 +681,7 @@ export const ContactFormTravel: React.FC<ContactFormProps> = (props) => {
               </select>
             </div>
             {p.showMessage && <textarea rows={3} placeholder="Special requests..." className="w-full px-4 py-3 border border-sky-200 rounded-lg focus:ring-2 focus:ring-sky-500 resize-none"></textarea>}
-            <button type="submit" className="w-full py-3 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700">Get Quote</button>
+            <button type="submit" className="w-full py-3 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700">{p.submitLabel}</button>
           </form>
         </div>
       </div>
@@ -695,7 +699,7 @@ export const ContactFormCreative: React.FC<ContactFormProps> = (props) => {
           {p.title && <h2 className="text-5xl md:text-6xl font-black text-white mb-4">{p.title}</h2>}
           {p.subtitle && <p className="text-xl text-gray-400">{p.subtitle}</p>}
         </div>
-        <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+        <form className="space-y-8" onSubmit={formSubmit(p)}>
           <div className="grid md:grid-cols-2 gap-8">
             {p.showName && (
               <div>
@@ -767,7 +771,7 @@ export const ContactFormEcommerceSupport: React.FC<ContactFormProps> = (props) =
         <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-8 border border-gray-200">
           {p.title && <h2 className="text-2xl font-bold text-gray-900 mb-2">{p.title}</h2>}
           {p.subtitle && <p className="text-gray-600 mb-6">{p.subtitle}</p>}
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); p.onSubmit?.({}); }}>
+          <form className="space-y-5" onSubmit={formSubmit(p)}>
             <div className="grid md:grid-cols-2 gap-4">
               {p.showName && <input type="text" placeholder={p.namePlaceholder} className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" />}
               {p.showEmail && <input type="email" placeholder={p.emailPlaceholder} className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500" />}
