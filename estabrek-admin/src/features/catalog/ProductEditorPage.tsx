@@ -216,6 +216,37 @@ function skuSegmentFromName(name: string) {
   return cleaned;
 }
 
+function normalizeSkuBaseInput(value: string) {
+  const cleaned = String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return cleaned;
+}
+
+function ensureUniqueSkuBase(base: string, items: Array<{ localId: string; skuBase: string }>, excludeLocalId?: string) {
+  const normalized = normalizeSkuBaseInput(base);
+  if (!normalized) return normalized;
+  const used = new Set(
+    items
+      .filter((it) => it.localId !== excludeLocalId)
+      .map((it) => normalizeSkuBaseInput(it.skuBase))
+      .filter(Boolean)
+  );
+  if (!used.has(normalized)) return normalized;
+
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (let i = 0; i < letters.length; i += 1) {
+    const candidate = `${normalized}-${letters[i]}`;
+    if (!used.has(candidate)) return candidate;
+  }
+
+  let n = 2;
+  while (used.has(`${normalized}-${n}`)) n += 1;
+  return `${normalized}-${n}`;
+}
+
 export default function ProductEditorPage() {
   const nav = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -387,7 +418,10 @@ export default function ProductEditorPage() {
 
         if (autoSkuCurrent) {
           const segment = nextGuess?.sku ?? normalized.slice(1).toUpperCase();
-          if (segment) nextSkuBase = `${skuPrefix}-${segment}`;
+          if (segment) {
+            const candidate = `${skuPrefix}-${segment}`;
+            nextSkuBase = ensureUniqueSkuBase(candidate, prev as any, it.localId);
+          }
         }
 
         return {
@@ -407,7 +441,10 @@ export default function ProductEditorPage() {
         let nextSkuBase = it.skuBase;
         if (!nextSkuBase.trim()) {
           const segment = skuSegmentFromName(nextName);
-          if (segment) nextSkuBase = `${skuPrefix}-${segment}`;
+          if (segment) {
+            const candidate = `${skuPrefix}-${segment}`;
+            nextSkuBase = ensureUniqueSkuBase(candidate, prev as any, it.localId);
+          }
         }
         return { ...it, colorName: nextName, skuBase: nextSkuBase };
       })
@@ -692,33 +729,34 @@ export default function ProductEditorPage() {
     }
   };
 
-  const saveItemModal = () => {
-    setItemError(null);
-    if (!editingItemLocalId) return setOpenItemModal(false);
+    const saveItemModal = () => {
+      setItemError(null);
+      if (!editingItemLocalId) return setOpenItemModal(false);
 
     const it = items.find((x) => x.localId === editingItemLocalId);
     if (!it) return setOpenItemModal(false);
 
     if (!it.colorName.trim()) return setItemError("اسم اللون مطلوب");
-    if (!it.skuBase.trim()) return setItemError("skuBase مطلوب");
+      if (!it.skuBase.trim()) return setItemError("skuBase مطلوب");
 
-    // enforce unique colorName per product (matches Prisma @@unique([productId,colorName]))
-    const normalizedName = it.colorName.trim().toLowerCase();
-    const duplicate = items.some((x) => x.localId !== it.localId && x.colorName.trim().toLowerCase() === normalizedName);
-    if (duplicate) return setItemError("اسم اللون موجود مسبقًا. لازم يكون فريد داخل المنتج.");
+      // enforce unique colorName per product (matches Prisma @@unique([productId,colorName]))
+      const normalizedName = it.colorName.trim().toLowerCase();
+      const duplicate = items.some((x) => x.localId !== it.localId && x.colorName.trim().toLowerCase() === normalizedName);
+      if (duplicate) return setItemError("اسم اللون موجود مسبقًا. لازم يكون فريد داخل المنتج.");
 
-    const normHex = normalizeHex(it.colorHex.trim()) ?? "";
+      const normHex = normalizeHex(it.colorHex.trim()) ?? "";
+      const uniqueSkuBase = ensureUniqueSkuBase(it.skuBase.trim(), items as any, it.localId);
 
-    updateItem(it.localId, {
-      colorName: it.colorName.trim(),
-      colorHex: normHex,
-      skuBase: it.skuBase.trim(),
-      isActive: !!it.isActive,
-    });
+      updateItem(it.localId, {
+        colorName: it.colorName.trim(),
+        colorHex: normHex,
+        skuBase: uniqueSkuBase || it.skuBase.trim(),
+        isActive: !!it.isActive,
+      });
 
-    setOpenItemModal(false);
-    setEditingItemLocalId(null);
-  };
+      setOpenItemModal(false);
+      setEditingItemLocalId(null);
+    };
 
   const draftBody = useMemo<DeepUpdateBody>(() => {
     return {
@@ -849,7 +887,7 @@ export default function ProductEditorPage() {
     }
 
     const localId = genLocalId("item");
-    const skuBase = `${defaultSkuBase}-DEFAULT`;
+    const skuBase = ensureUniqueSkuBase(`${defaultSkuBase}-DEFAULT`, items as any);
     const sku = `${skuBase}-${sizes.find((s) => s.id === sizeId)?.name?.toUpperCase().replace(/\s+/g, "") || "SIZE"}`;
 
     // أنشئ Item جديد بشكل فوري عشان تظهر أقسام الصور والسعر
