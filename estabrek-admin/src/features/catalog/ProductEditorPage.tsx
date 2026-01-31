@@ -247,6 +247,45 @@ function ensureUniqueSkuBase(base: string, items: Array<{ localId: string; skuBa
   return `${normalized}-${n}`;
 }
 
+function normalizeColorNameInput(name: string) {
+  return String(name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function ensureUniqueColorName(name: string, items: Array<{ localId: string; colorName: string }>, excludeLocalId?: string) {
+  const base = String(name || "").trim().replace(/\s+/g, " ");
+  if (!base) return base;
+  const used = new Set(
+    items
+      .filter((it) => it.localId !== excludeLocalId)
+      .map((it) => normalizeColorNameInput(it.colorName))
+      .filter(Boolean)
+  );
+  const baseKey = normalizeColorNameInput(base);
+  if (!used.has(baseKey)) return base;
+
+  let i = 2;
+  let candidate = `${base} ${i}`;
+  while (used.has(normalizeColorNameInput(candidate))) {
+    i += 1;
+    candidate = `${base} ${i}`;
+  }
+  return candidate;
+}
+
+function makeUniqueSku(base: string, usedUpper: Set<string>) {
+  let candidate = base;
+  let i = 2;
+  while (usedUpper.has(candidate.toUpperCase())) {
+    candidate = `${base}-${i}`;
+    i += 1;
+  }
+  usedUpper.add(candidate.toUpperCase());
+  return candidate;
+}
+
 export default function ProductEditorPage() {
   const nav = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -387,6 +426,72 @@ export default function ProductEditorPage() {
     setItems((prev) => prev.map((it) => (it.localId === localId ? { ...it, ...patch } : it)));
   };
 
+  const getVariantSkuPrefix = (it: LocalItem) => {
+    const prefix = (it.skuBase || skuPrefix || "SKU").trim();
+    return prefix || "SKU";
+  };
+
+  const getVariantSkuSuffix = (sizeId: string) => {
+    const sizeName = sizes.find((s) => s.id === sizeId)?.name ?? sizeId;
+    const suffix =
+      String(sizeName)
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "")
+        .slice(0, 18) || "SIZE";
+    return suffix;
+  };
+
+  const buildVariantSku = (it: LocalItem, sizeId: string) => {
+    const prefix = getVariantSkuPrefix(it);
+    if (!sizeId) return prefix;
+    const rawSku = `${prefix}-${getVariantSkuSuffix(sizeId)}`;
+
+    const usedUpper = new Set<string>();
+    for (const item of items) {
+      for (const v of item.variants ?? []) {
+        const sku = (v.sku ?? "").trim();
+        if (!sku) continue;
+        usedUpper.add(sku.toUpperCase());
+      }
+    }
+
+    return makeUniqueSku(rawSku, usedUpper);
+  };
+
+  const applyAutoVariantSku = (itemLocalId: string, sizeId: string, force = false) => {
+    const it = items.find((x) => x.localId === itemLocalId);
+    if (!it) return;
+
+    const suggested = buildVariantSku(it, sizeId);
+    if (!suggested) return;
+
+    const current = vSku.trim();
+    const autoKey = vSkuAutoRef.current.trim();
+    const canAuto =
+      force || !current || !vSkuTouchedRef.current || (autoKey && current.toUpperCase() === autoKey.toUpperCase());
+
+    if (!canAuto) return;
+    vSkuAutoRef.current = suggested;
+    setVSku(suggested);
+  };
+
+  const handleVariantSizeChange = (nextSizeId: string) => {
+    setVSizeId(nextSizeId);
+    if (editingVarId) return;
+    if (!varItemLocalId) return;
+    applyAutoVariantSku(varItemLocalId, nextSizeId);
+  };
+
+  const handleVariantSkuChange = (nextSku: string) => {
+    setVSku(nextSku);
+    if (!nextSku.trim()) {
+      vSkuTouchedRef.current = false;
+      vSkuAutoRef.current = "";
+      return;
+    }
+    vSkuTouchedRef.current = true;
+  };
+
   const applyColorHex = (localId: string, rawHex: string) => {
     setItems((prev) =>
       prev.map((it) => {
@@ -413,7 +518,8 @@ export default function ProductEditorPage() {
         let nextSkuBase = it.skuBase;
 
         if (autoNameCurrent) {
-          nextName = nextGuess?.name ?? normalized.toUpperCase();
+          const baseName = nextGuess?.name ?? normalized.toUpperCase();
+          nextName = ensureUniqueColorName(baseName, prev as any, it.localId);
         }
 
         if (autoSkuCurrent) {
@@ -484,6 +590,8 @@ export default function ProductEditorPage() {
 
   const [vSizeId, setVSizeId] = useState("");
   const [vSku, setVSku] = useState("");
+  const vSkuTouchedRef = useRef(false);
+  const vSkuAutoRef = useRef("");
   const [vPrice, setVPrice] = useState("0");
   const [vCompareAt, setVCompareAt] = useState("");
   const [vStock, setVStock] = useState("0");
@@ -492,10 +600,14 @@ export default function ProductEditorPage() {
   const [varError, setVarError] = useState<string | null>(null);
 
   const openCreateVariant = (itemLocalId: string) => {
+    const it = items.find((x) => x.localId === itemLocalId);
+    const baseSku = (it?.skuBase ?? "").trim();
     setVarItemLocalId(itemLocalId);
     setEditingVarId(null);
     setVSizeId("");
-    setVSku("");
+    vSkuTouchedRef.current = false;
+    vSkuAutoRef.current = baseSku;
+    setVSku(baseSku);
     setVPrice("0");
     setVCompareAt("");
     setVStock("0");
@@ -509,6 +621,8 @@ export default function ProductEditorPage() {
     setVarItemLocalId(itemLocalId);
     setEditingVarId(v.id ?? "__noid__");
     setVSizeId(v.sizeId);
+    vSkuTouchedRef.current = true;
+    vSkuAutoRef.current = v.sku;
     setVSku(v.sku);
     setVPrice(String(v.price ?? 0));
     setVCompareAt(v.compareAt === null ? "" : String(v.compareAt));
@@ -527,8 +641,16 @@ export default function ProductEditorPage() {
     if (!item) return;
 
     if (!vSizeId) return setVarError("اختر المقاس");
-    if (!vSku.trim()) return setVarError("SKU مطلوب");
-    const skuKey = vSku.trim().toUpperCase();
+    let nextSku = vSku.trim();
+    if (!nextSku && !editingVarId) {
+      nextSku = buildVariantSku(item, vSizeId);
+      if (nextSku) {
+        vSkuAutoRef.current = nextSku;
+        setVSku(nextSku);
+      }
+    }
+    if (!nextSku) return setVarError("SKU مطلوب");
+    const skuKey = nextSku.toUpperCase();
     const duplicateSku = items.some((it) =>
       (it.variants ?? []).some((v) => {
         const existingSku = (v.sku ?? "").trim().toUpperCase();
@@ -556,7 +678,7 @@ export default function ProductEditorPage() {
     const payload: LocalVariant = {
       id: editingVarId && editingVarId !== "__noid__" ? editingVarId : undefined,
       sizeId: vSizeId,
-      sku: vSku.trim(),
+      sku: nextSku,
       price: priceN,
       compareAt: vCompareAt.trim() ? toNumber(vCompareAt) : null,
       stock: stockN,
@@ -623,17 +745,6 @@ export default function ProductEditorPage() {
 
   const clearBulkSizes = () => setBulkSelectedSizeIds([]);
 
-  const makeUniqueSku = (base: string, used: Set<string>) => {
-    let candidate = base;
-    let i = 2;
-    while (used.has(candidate)) {
-      candidate = `${base}-${i}`;
-      i += 1;
-    }
-    used.add(candidate);
-    return candidate;
-  };
-
   const saveBulkAddSizes = () => {
     setBulkError(null);
     if (!bulkItemLocalId) return;
@@ -651,7 +762,7 @@ export default function ProductEditorPage() {
     const thresholdN = Math.max(0, parseInt(bulkThreshold || "0", 10) || 0);
     const weightN = bulkWeight.trim() ? Math.max(0, parseInt(bulkWeight, 10) || 0) : null;
 
-    const usedSkus = new Set((it.variants ?? []).map((v) => v.sku).filter(Boolean));
+    const usedSkus = new Set((it.variants ?? []).map((v) => v.sku).filter(Boolean).map((sku) => String(sku).toUpperCase()));
     const prefix = (bulkSkuPrefix || it.skuBase || "").trim() || "SKU";
 
     const newVars: LocalVariant[] = pickIds.map((sizeId) => {
@@ -740,8 +851,8 @@ export default function ProductEditorPage() {
       if (!it.skuBase.trim()) return setItemError("skuBase مطلوب");
 
       // enforce unique colorName per product (matches Prisma @@unique([productId,colorName]))
-      const normalizedName = it.colorName.trim().toLowerCase();
-      const duplicate = items.some((x) => x.localId !== it.localId && x.colorName.trim().toLowerCase() === normalizedName);
+      const normalizedName = normalizeColorNameInput(it.colorName);
+      const duplicate = items.some((x) => x.localId !== it.localId && normalizeColorNameInput(x.colorName) === normalizedName);
       if (duplicate) return setItemError("اسم اللون موجود مسبقًا. لازم يكون فريد داخل المنتج.");
 
       const normHex = normalizeHex(it.colorHex.trim()) ?? "";
@@ -902,7 +1013,6 @@ export default function ProductEditorPage() {
 
     const localId = genLocalId("item");
     const skuBase = ensureUniqueSkuBase(`${defaultSkuBase}-DEFAULT`, items as any);
-    const sku = `${skuBase}-${sizes.find((s) => s.id === sizeId)?.name?.toUpperCase().replace(/\s+/g, "") || "SIZE"}`;
 
     // أنشئ Item جديد بشكل فوري عشان تظهر أقسام الصور والسعر
     setItems((prev) => [
@@ -925,7 +1035,7 @@ export default function ProductEditorPage() {
     setTimeout(() => {
       openCreateVariant(localId);
       setVSizeId(sizeId);
-      setVSku(sku);
+      applyAutoVariantSku(localId, sizeId, true);
       setVPrice("0");
       setVStock("0");
       setVThreshold("0");
@@ -1355,7 +1465,7 @@ export default function ProductEditorPage() {
               <Select
                 label="المقاس"
                 value={vSizeId}
-                onChange={(e) => setVSizeId(e.target.value)}
+                onChange={(e) => handleVariantSizeChange(e.target.value)}
                 options={[
                   ...(editingVarId ? [{ value: vSizeId, label: sizes.find((s) => s.id === vSizeId)?.name ?? "المقاس الحالي" }] : []),
                   ...options,
@@ -1363,7 +1473,7 @@ export default function ProductEditorPage() {
                 placeholder="اختر المقاس"
               />
 
-              <Input label="SKU" value={vSku} onChange={(e) => setVSku(e.target.value)} />
+              <Input label="SKU" value={vSku} onChange={(e) => handleVariantSkuChange(e.target.value)} />
 
               <Input label="السعر" value={vPrice} onChange={(e) => setVPrice(e.target.value)} />
               <Input label="compareAt (اختياري)" value={vCompareAt} onChange={(e) => setVCompareAt(e.target.value)} />
