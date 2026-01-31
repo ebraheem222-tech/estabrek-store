@@ -491,6 +491,20 @@ export default function ProductEditorPage() {
 
     if (!vSizeId) return setVarError("اختر المقاس");
     if (!vSku.trim()) return setVarError("SKU مطلوب");
+    const skuKey = vSku.trim().toUpperCase();
+    const duplicateSku = items.some((it) =>
+      (it.variants ?? []).some((v) => {
+        const existingSku = (v.sku ?? "").trim().toUpperCase();
+        if (!existingSku) return false;
+        // ignore the current variant being edited
+        if (editingVarId && v.id === editingVarId) return false;
+        if (!v.id && editingVarId === "__noid__" && it.localId === varItemLocalId && v.sizeId === vSizeId) {
+          return false;
+        }
+        return existingSku === skuKey;
+      })
+    );
+    if (duplicateSku) return setVarError("SKU مكرر. لازم يكون فريد لكل المقاسات/الألوان.");
     const priceN = toNumber(vPrice);
     if (priceN <= 0) return setVarError("السعر لازم يكون أكبر من 0");
     const stockN = Math.max(0, parseInt(vStock || "0", 10) || 0);
@@ -768,6 +782,18 @@ export default function ProductEditorPage() {
         if (!v.sizeId) return setPageError(`في Variant بدون size داخل item: ${it.colorName}`);
         if (seen.has(v.sizeId)) return setPageError(`تكرار size داخل item: ${it.colorName}`);
         seen.add(v.sizeId);
+      }
+    }
+
+    // validation: SKU must be unique across all variants
+    const skuSeen = new Set<string>();
+    for (const it of items) {
+      for (const v of (it.variants ?? [])) {
+        const sku = (v.sku ?? "").trim();
+        if (!sku) return setPageError(`في Variant بدون SKU داخل item: ${it.colorName}`);
+        const key = sku.toUpperCase();
+        if (skuSeen.has(key)) return setPageError(`SKU مكرر: ${sku}`);
+        skuSeen.add(key);
       }
     }
 
