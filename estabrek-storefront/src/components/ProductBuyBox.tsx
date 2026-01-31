@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog";
-import { formatMoney } from "@/lib/catalog";
+import { catalogItemKey, catalogItemLabel, formatMoney } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
@@ -12,11 +12,6 @@ type Selection = {
   colorKey: string; // either colorName or a fallback key
   sizeKey: string; // size name or "default"
 };
-
-function itemKey(it: CatalogItem, idx: number) {
-  const c = (it.colorName ?? "").trim();
-  return c || `__item_${idx}`;
-}
 
 function variantSizeKey(v: CatalogVariant) {
   const n = (v.size?.name ?? "").trim();
@@ -50,7 +45,7 @@ export default function ProductBuyBox({
 
   const byColor = useMemo(() => {
     const map = new Map<string, CatalogItem>();
-    items.forEach((it, idx) => map.set(itemKey(it, idx), it));
+    items.forEach((it, idx) => map.set(catalogItemKey(it, idx), it));
     return map;
   }, [items]);
 
@@ -114,8 +109,7 @@ export default function ProductBuyBox({
 
   const colorLabel = (key: string, idx: number) => {
     const it = byColor.get(key);
-    const name = (it?.colorName ?? "").trim();
-    return name || `Color ${idx + 1}`;
+    return it ? catalogItemLabel(it, idx) : `Color ${idx + 1}`;
   };
 
   const colorSwatchHex = (key: string): string | null => {

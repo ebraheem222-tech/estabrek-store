@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
-import { formatMoney, getProductPrimaryImage, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
+import { catalogItemKey, catalogItemLabel, formatMoney, getProductPrimaryImage, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -56,9 +56,9 @@ function buildSwatches(p: CatalogProduct): Swatch[] {
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     const hex = normalizeHex(it.colorHex) ?? normalizeHex(it.suggestedColors?.[0] ?? null);
-    const name = String(it.colorName ?? "").trim();
+    const name = catalogItemLabel(it, i);
     if (!hex && !name) continue;
-    const dedup = (hex ?? name).toLowerCase();
+    const dedup = catalogItemKey(it, i).toLowerCase();
     if (seen.has(dedup)) continue;
     seen.add(dedup);
 
@@ -66,7 +66,7 @@ function buildSwatches(p: CatalogProduct): Swatch[] {
     const img = imgs[0]?.url ?? imgs[1]?.url ?? null;
 
     out.push({
-      key: String(it.id ?? i),
+      key: catalogItemKey(it, i),
       name: name || hex || `Color ${i + 1}`,
       hex,
       imageUrl: img,

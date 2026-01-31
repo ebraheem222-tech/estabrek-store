@@ -1,5 +1,6 @@
 type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black-friday" | "summer";
 type LiveChatPosition = "bottom-left" | "bottom-right" | "bottom-center";
+type ChatbotPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ToastPosition = "top-right" | "top-left" | "bottom-right" | "bottom-left";
 
 export type StorefrontSettings = {
@@ -39,6 +40,8 @@ export type StorefrontSettings = {
   liveChatWelcomeMessage: string;
   liveChatOfflineMessage: string;
   chatbotEnabled: boolean;
+  chatbotPosition: ChatbotPosition;
+  chatbotDraggable: boolean;
   whatsappEnabled: boolean;
   whatsappNumber: string;
 
@@ -136,6 +139,8 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   liveChatWelcomeMessage: "مرحباً! كيف يمكنني مساعدتك؟",
   liveChatOfflineMessage: "نحن غير متصلين حالياً",
   chatbotEnabled: true,
+  chatbotPosition: "bottom-left",
+  chatbotDraggable: false,
   whatsappEnabled: false,
   whatsappNumber: "",
 
@@ -198,8 +203,9 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
 
 const seasonalThemes = ["auto", "none", "winter", "ramadan", "eid", "black-friday", "summer"] as const;
 const liveChatPositions = ["bottom-left", "bottom-right", "bottom-center"] as const;
+const chatbotPositions = ["bottom-left", "bottom-right", "bottom-center"] as const;
 const toastPositions = ["top-right", "top-left", "bottom-right", "bottom-left"] as const;
-const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "toastPosition"]);
+const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition"]);
 
 const boolKeys = Object.entries(DEFAULT_STOREFRONT_SETTINGS)
   .filter(([, value]) => typeof value === "boolean")
@@ -263,6 +269,7 @@ export function normalizeStorefrontSettings(
 
   next.seasonalTheme = toEnum(raw.seasonalTheme, seasonalThemes, base.seasonalTheme);
   next.liveChatPosition = toEnum(raw.liveChatPosition, liveChatPositions, base.liveChatPosition);
+  next.chatbotPosition = toEnum(raw.chatbotPosition, chatbotPositions, base.chatbotPosition);
   next.toastPosition = toEnum(raw.toastPosition, toastPositions, base.toastPosition);
 
   return next;

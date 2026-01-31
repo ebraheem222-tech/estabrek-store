@@ -13,6 +13,7 @@ type Quote = {
     productId?: string;
     productTitle?: string;
     colorName?: string | null;
+    boxLabel?: string | null;
     sizeName?: string | null;
     imageUrl?: string | null;
     imageBlurDataUrl?: string | null;
@@ -81,7 +82,8 @@ export function StorefrontMiniCart({
   const cartItems = useMemo(() => {
     const lines = quote?.lines ?? [];
     return lines.map((line) => {
-      const variantLabel = [line.colorName, line.sizeName].filter(Boolean).join(" / ");
+      const colorLabel = [line.colorName, line.boxLabel].filter(Boolean).join(" — ");
+      const variantLabel = [colorLabel, line.sizeName].filter(Boolean).join(" / ");
       return {
         id: line.variantId,
         variantId: line.variantId,

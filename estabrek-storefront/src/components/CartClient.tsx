@@ -94,6 +94,7 @@ type Quote = {
     productTitle?: string;
     productSlug?: string | null;
     colorName?: string | null;
+    boxLabel?: string | null;
     sizeName?: string | null;
     sku?: string | null;
     imageUrl?: string | null;
@@ -340,7 +341,8 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
             {items.map((it, idx) => {
               const line = lineByVariant.get(it.variantId);
               const title = line?.productTitle ?? "منتج";
-              const metaParts = [line?.colorName, line?.sizeName].filter(Boolean) as string[];
+              const colorLabel = [line?.colorName, line?.boxLabel].filter(Boolean).join(" — ");
+              const metaParts = [colorLabel, line?.sizeName].filter(Boolean) as string[];
               if (line?.sku) metaParts.push(`SKU ${line.sku}`);
               const meta = metaParts.join(" • ");
               const lineAmount =
@@ -589,7 +591,8 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                     const total = quote?.total ?? "";
                     const textLines = lines.map((l) => {
                       const title = l.productTitle || l.title || "منتج";
-                      const color = l.colorName ? `, ${l.colorName}` : "";
+                      const colorLabel = [l.colorName, l.boxLabel].filter(Boolean).join(" — ");
+                      const color = colorLabel ? `, ${colorLabel}` : "";
                       const size = l.sizeName ? `, ${l.sizeName}` : "";
                       const lineTotal = formatAmount(l.lineTotal ?? l.subtotal ?? l.lineSubtotal ?? "", currency);
                       return `• ${title}${color}${size} x${l.quantity} = ${lineTotal}`.trim();
@@ -703,7 +706,8 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                       const total = quote?.total ?? "";
                       const textLines = lines.map((l) => {
                         const title = l.productTitle || l.title || "منتج";
-                        const color = l.colorName ? `, ${l.colorName}` : "";
+                        const colorLabel = [l.colorName, l.boxLabel].filter(Boolean).join(" — ");
+                        const color = colorLabel ? `, ${colorLabel}` : "";
                         const size = l.sizeName ? `, ${l.sizeName}` : "";
                         const lineTotal = formatAmount(l.lineTotal ?? l.subtotal ?? l.lineSubtotal ?? "", currency);
                         return `- ${title}${color}${size} x${l.quantity} = ${lineTotal}`.trim();

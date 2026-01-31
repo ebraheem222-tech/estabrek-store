@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
+import { catalogItemKey } from "@/lib/catalog";
 import { ProductGallery } from "@/components/ProductGallery";
 import ProductBuyBox from "@/components/ProductBuyBox";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage, getProductImageBlurDataUrl } from "@/lib/catalog";
@@ -11,8 +12,7 @@ import { useRecentlyViewed } from "@/store/recentlyViewed";
 function initialColorKey(product: CatalogProduct): string | undefined {
   const items = (product as any).items ?? [];
   if (!Array.isArray(items) || items.length === 0) return undefined;
-  const c = String(items[0]?.colorName ?? "").trim();
-  return c || `__item_0`;
+  return catalogItemKey(items[0], 0);
 }
 
 export default function ProductDetail({ product }: { product: CatalogProduct }) {

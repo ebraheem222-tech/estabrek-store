@@ -25,6 +25,10 @@ export type CatalogVariant = {
   sku?: string | null;
   price: any;
   compareAt?: any;
+  originalPrice?: any;
+  salePrice?: any;
+  saleStartsAt?: string | Date | null;
+  saleEndsAt?: string | Date | null;
   stock?: number | null;
   size?: CatalogSize | null;
 };
@@ -32,6 +36,7 @@ export type CatalogVariant = {
 export type CatalogItem = {
   id: string;
   colorName?: string | null;
+  boxLabel?: string | null;
   colorHex?: string | null;
   // Palette extracted / suggested for UI swatches (array of hex strings)
   suggestedColors?: string[] | null;
@@ -68,6 +73,29 @@ export type CatalogProductsList = {
   };
 };
 
+function normalizeLabel(value?: string | null): string {
+  return String(value ?? "").trim();
+}
+
+export function catalogItemKey(
+  it: { colorName?: string | null; boxLabel?: string | null },
+  idx = 0
+): string {
+  const name = normalizeLabel(it.colorName);
+  const box = normalizeLabel(it.boxLabel);
+  if (name) return box ? `${name}::${box}` : name;
+  return `__item_${idx}`;
+}
+
+export function catalogItemLabel(
+  it: { colorName?: string | null; boxLabel?: string | null },
+  idx = 0
+): string {
+  const name = normalizeLabel(it.colorName) || `Color ${idx + 1}`;
+  const box = normalizeLabel(it.boxLabel);
+  return box ? `${name} — ${box}` : name;
+}
+
 function num(v: any): number | null {
   if (v == null) return null;
 
@@ -102,6 +130,28 @@ function isRenderableImage(im?: { url?: string | null; view?: string | null } | 
   const view = String(im.view ?? "").trim().toLowerCase();
   if (view === "3d") return false;
   return true;
+}
+
+function toDate(value: any): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function isSaleActive(now: Date, startsAt: Date | null, endsAt: Date | null) {
+  if (startsAt && now < startsAt) return false;
+  if (endsAt && now > endsAt) return false;
+  return true;
+}
+
+function getEffectiveVariantPrice(v: CatalogVariant, now = new Date()): number | null {
+  const base = num(v.price);
+  const salePrice = num((v as any).salePrice);
+  if (salePrice == null || salePrice <= 0) return base;
+  const start = toDate((v as any).saleStartsAt);
+  const end = toDate((v as any).saleEndsAt);
+  return isSaleActive(now, start, end) ? salePrice : base;
 }
 
 export function getProductPrimaryImage(p: CatalogProduct): string | null {
@@ -151,7 +201,7 @@ export function getProductMinPrice(p: CatalogProduct): number | null {
   let out: number | null = null;
   for (const it of p.items ?? []) {
     for (const v of it.variants ?? []) {
-      const price = num(v.price);
+      const price = getEffectiveVariantPrice(v);
       if (price == null) continue;
       if (out == null || price < out) out = price;
     }

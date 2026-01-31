@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
+import { catalogItemKey, catalogItemLabel } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { LqipImage } from "@/components/LqipImage";
@@ -43,16 +44,11 @@ function is3dView(value?: string | null, url?: string | null) {
 
 type ItemKey = string;
 
-function makeItemKey(it: any, idx: number): ItemKey {
-  const c = String(it?.colorName ?? "").trim();
-  return c || `__item_${idx}`;
-}
-
 export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: { product: CatalogProduct; selectedColorKey?: string; onSelectColorKey?: (k: string) => void }) {
   const settings = useStorefrontSettings();
   const items = (product.items ?? []) as any[];
   const itemsWithKeys = useMemo(() => {
-    return items.map((it, idx) => ({ ...it, __key: makeItemKey(it, idx) }));
+    return items.map((it, idx) => ({ ...it, __key: catalogItemKey(it, idx) }));
   }, [items]);
 
   const defaultKey = useMemo<ItemKey>(() => {
@@ -154,7 +150,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
     return itemsWithKeys
       .map((it) => {
         const hex = normalizeHex(it.colorHex) ?? normalizeHex(it.suggestedColors?.[0] ?? null);
-        return { id: String(it.__key), name: String(it.colorName ?? "").trim(), hex };
+        return { id: String(it.__key), name: catalogItemLabel(it, idx), hex };
       })
       .filter((x) => x.hex || x.name);
   }, [itemsWithKeys]);

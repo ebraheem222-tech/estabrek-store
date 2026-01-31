@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { submitContactMessage } from "@/lib/contactForm";
 
 const PhoneIcon = () => (
   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -49,22 +50,37 @@ export default function FallbackContact() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    
-    // Reset after showing success
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormState({ name: "", email: "", phone: "", subject: "", message: "" });
-    }, 3000);
+
+    try {
+      setSubmitError(null);
+      await submitContactMessage({
+        name: formState.name,
+        email: formState.email,
+        phone: formState.phone,
+        subject: formState.subject,
+        message: formState.message,
+        fields: { ...formState },
+        pageUrl: typeof window !== "undefined" ? window.location.href : undefined,
+        source: "contact_fallback",
+      });
+
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+
+      // Reset after showing success
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormState({ name: "", email: "", phone: "", subject: "", message: "" });
+      }, 3000);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setSubmitError(err?.message ?? "فشل إرسال الرسالة");
+    }
   };
 
   const contactInfo = [
@@ -158,6 +174,11 @@ export default function FallbackContact() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="contact-form">
+                {submitError ? (
+                  <div className="form-error">
+                    {submitError}
+                  </div>
+                ) : null}
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="name">الاسم *</label>

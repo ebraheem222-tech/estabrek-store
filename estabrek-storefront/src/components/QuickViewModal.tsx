@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
-import { getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
+import { catalogItemLabel, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -250,7 +250,7 @@ export function QuickViewModal({
                         setSelectedVariantIndex(0);
                         setSelectedImageIndex(0);
                       }}
-                      title={item.colorName || undefined}
+                      title={catalogItemLabel(item, idx)}
                     />
                   ))}
                 </div>

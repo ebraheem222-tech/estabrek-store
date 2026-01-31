@@ -151,7 +151,9 @@ export function StorefrontFeaturesProvider({
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
           {settings.scrollToTopEnabled && <ScrollToTop />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
-          {settings.chatbotEnabled && <ChatWidget />}
+          {settings.chatbotEnabled && (
+            <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} />
+          )}
           {settings.recentPurchasesPopup && <RecentActivityPopup />}
           
           {/* WhatsApp Button */}

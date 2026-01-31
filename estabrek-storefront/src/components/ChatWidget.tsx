@@ -33,6 +33,7 @@ type ApiResponse = {
 };
 
 const STORAGE_KEY = "estabrek_chatbot_v1";
+const POSITION_KEY = "estabrek_chatbot_pos_v1";
 
 function uid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -53,7 +54,14 @@ function safeParse<T>(raw: string | null): T | null {
   }
 }
 
-export default function ChatWidget() {
+type ChatWidgetPosition = "bottom-left" | "bottom-right" | "bottom-center";
+
+type ChatWidgetProps = {
+  position?: ChatWidgetPosition;
+  draggable?: boolean;
+};
+
+export default function ChatWidget({ position = "bottom-left", draggable = false }: ChatWidgetProps) {
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -62,6 +70,10 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const saved = safeParse<{ sessionId?: string; conversationId?: string | null; messages?: Msg[] }>(
@@ -88,6 +100,53 @@ export default function ChatWidget() {
   }, []);
 
   useEffect(() => {
+    if (!draggable) {
+      setDragPos(null);
+      return;
+    }
+    const savedPos = safeParse<{ x: number; y: number }>(
+      typeof window !== "undefined" ? window.localStorage.getItem(POSITION_KEY) : null
+    );
+    if (savedPos && Number.isFinite(savedPos.x) && Number.isFinite(savedPos.y)) {
+      setDragPos(savedPos);
+    }
+  }, [draggable]);
+
+  useEffect(() => {
+    if (!draggable || !dragging) return;
+    const handleMove = (e: PointerEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const nextX = e.clientX - dragOffset.current.x;
+      const nextY = e.clientY - dragOffset.current.y;
+      const maxX = window.innerWidth - rect.width - 8;
+      const maxY = window.innerHeight - rect.height - 8;
+      setDragPos({
+        x: Math.min(maxX, Math.max(8, nextX)),
+        y: Math.min(maxY, Math.max(8, nextY)),
+      });
+    };
+    const handleUp = () => setDragging(false);
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, [draggable, dragging]);
+
+  useEffect(() => {
+    if (!draggable) return;
+    if (!dragging && dragPos) {
+      try {
+        window.localStorage.setItem(POSITION_KEY, JSON.stringify(dragPos));
+      } catch {
+        // ignore
+      }
+    }
+  }, [draggable, dragging, dragPos]);
+
+  useEffect(() => {
     if (!sessionId) return;
     try {
       window.localStorage.setItem(
@@ -106,6 +165,26 @@ export default function ChatWidget() {
   }, [open, messages, loading]);
 
   const canSend = useMemo(() => !loading && text.trim().length > 0, [loading, text]);
+
+  const positionStyle = useMemo(() => {
+    if (dragPos) {
+      return { left: dragPos.x, top: dragPos.y, right: "auto", bottom: "auto", transform: "none" as const };
+    }
+    if (position === "bottom-right") {
+      return { right: "1rem", bottom: "1rem", left: "auto", transform: "none" as const };
+    }
+    if (position === "bottom-center") {
+      return { left: "50%", bottom: "1rem", transform: "translateX(-50%)" as const };
+    }
+    return { left: "1rem", bottom: "1rem", transform: "none" as const };
+  }, [dragPos, position]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!draggable || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setDragging(true);
+  };
 
   async function send() {
     const t = text.trim();
@@ -166,12 +245,14 @@ export default function ChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-[60]">
+    <div ref={containerRef} className="fixed z-[60]" style={positionStyle}>
       {/* Launcher */}
       {!open ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
+          onPointerDown={handlePointerDown}
+          style={draggable ? { touchAction: "none" } : undefined}
           className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 px-4 py-3 shadow-lg backdrop-blur hover:bg-white transition"
         >
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[color:var(--accent-2)] text-black shadow-sm">
@@ -194,7 +275,11 @@ export default function ChatWidget() {
           dir="rtl"
           className="mt-3 w-[92vw] max-w-sm overflow-hidden rounded-2xl border border-black/10 bg-white/95 shadow-xl backdrop-blur"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3">
+          <div
+            className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3"
+            onPointerDown={handlePointerDown}
+            style={draggable ? { touchAction: "none", cursor: "move" } : undefined}
+          >
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-black">مساعد المتجر</div>
               <div className="truncate text-[11px] text-black/60">مبني على قاعدة المعرفة + دعم</div>
