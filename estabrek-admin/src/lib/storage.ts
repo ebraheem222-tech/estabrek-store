@@ -1,6 +1,32 @@
 // src/lib/storage.ts
 const ACCESS_KEY = "estabrek_admin_accessToken";
 const REFRESH_KEY = "estabrek_admin_refreshToken";
+let memoryAccessToken: string | null = null;
+let memoryRefreshToken: string | null = null;
+
+function safeGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSet(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore storage failures (e.g., tracking prevention)
+  }
+}
+
+function safeRemove(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
 
 export type StoredTokens = {
   accessToken: string;
@@ -8,21 +34,25 @@ export type StoredTokens = {
 };
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_KEY);
+  return safeGet(ACCESS_KEY) ?? memoryAccessToken;
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY);
+  return safeGet(REFRESH_KEY) ?? memoryRefreshToken;
 }
 
 export function setTokens(tokens: StoredTokens) {
-  localStorage.setItem(ACCESS_KEY, tokens.accessToken);
-  localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
+  memoryAccessToken = tokens.accessToken;
+  memoryRefreshToken = tokens.refreshToken;
+  safeSet(ACCESS_KEY, tokens.accessToken);
+  safeSet(REFRESH_KEY, tokens.refreshToken);
 }
 
 export function clearTokens() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+  memoryAccessToken = null;
+  memoryRefreshToken = null;
+  safeRemove(ACCESS_KEY);
+  safeRemove(REFRESH_KEY);
 }
 
 export function hasTokens(): boolean {

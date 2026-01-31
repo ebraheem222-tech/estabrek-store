@@ -4,24 +4,9 @@ import type { InternalAxiosRequestConfig } from "axios";
 import type { AxiosInstance } from "axios";
 import { env } from "../config/env";
 import { ENDPOINTS } from "./endpoints";
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "../lib/storage";
 
-const ACCESS_KEY = "estabrek_admin_accessToken";
-const REFRESH_KEY = "estabrek_admin_refreshToken";
-
-export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_KEY);
-}
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY);
-}
-export function setTokens(tokens: { accessToken: string; refreshToken: string }) {
-  localStorage.setItem(ACCESS_KEY, tokens.accessToken);
-  localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
-}
-export function clearTokens() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-}
+export { getAccessToken, getRefreshToken, setTokens, clearTokens };
 
 /**
  * Axios instance used for normal API calls (has interceptors)
@@ -96,7 +81,7 @@ api.interceptors.response.use(
     if (authError) {
       clearTokens();
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        window.location.href = "/login?reason=expired";
       }
       throw error;
     }
@@ -109,7 +94,7 @@ api.interceptors.response.use(
     if (!getRefreshToken()) {
       clearTokens();
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        window.location.href = "/login?reason=expired";
       }
       throw error;
     }
