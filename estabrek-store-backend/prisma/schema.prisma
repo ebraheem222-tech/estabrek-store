@@ -539,6 +539,8 @@ model ProductItem {
   productId String
   product   Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
   colorName String
+  /** label to distinguish same-color items (e.g., box/packaging) */
+  boxLabel  String             @default("")
   colorHex  String?
   // Palette extracted / suggested for UI swatches (array of hex strings)
   suggestedColors Json?
@@ -549,7 +551,7 @@ model ProductItem {
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
 
-  @@unique([productId, colorName])
+  @@unique([productId, colorName, boxLabel])
 }
 
 model Size {
@@ -569,6 +571,14 @@ model ProductVariant {
   sku           String      @unique
   price         Decimal     @db.Decimal(10, 2)
   compareAt     Decimal?    @db.Decimal(10, 2)
+  /** Original price before scheduled sale (optional) */
+  originalPrice Decimal?    @db.Decimal(10, 2)
+  /** Scheduled sale price (optional) */
+  salePrice     Decimal?    @db.Decimal(10, 2)
+  /** Sale window start (optional) */
+  saleStartsAt  DateTime?
+  /** Sale window end (optional) */
+  saleEndsAt    DateTime?
   stock         Int         @default(0)
   lowStockThreshold Int     @default(0)
   weightGrams   Int?
