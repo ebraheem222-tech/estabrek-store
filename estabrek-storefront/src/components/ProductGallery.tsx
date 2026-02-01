@@ -229,7 +229,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
 
             <LqipImage
               key={active.url}
-              src={cldUrl(active.url, { w: 1400, c: "fit" })}
+              src={cldUrl(active.url, { w: 1000, h: 1250, c: "fill", g: "auto" })}
               alt={product.title}
               fill
               blurDataUrl={active.blurDataUrl ?? undefined}
@@ -247,7 +247,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
             {/* Hover swap to secondary */}
               {!galleryMode && secondary?.url && activeIdx === 0 ? (
                 <LqipImage
-                  src={cldUrl(secondary.url, { w: 1400, c: "fit" })}
+                  src={cldUrl(secondary.url, { w: 1000, h: 1250, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
                   blurDataUrl={secondary.blurDataUrl ?? undefined}
@@ -457,7 +457,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
             <div className="lightbox-image relative flex-1 overflow-hidden rounded-3xl bg-black/30">
               {active?.url ? (
                 <LqipImage
-                  src={cldUrl(active.url, { w: 2000, c: "fit" })}
+                  src={cldUrl(active.url, { w: 1600, c: "fit" })}
                   alt={product.title}
                   fill
                   blurDataUrl={active.blurDataUrl ?? undefined}
