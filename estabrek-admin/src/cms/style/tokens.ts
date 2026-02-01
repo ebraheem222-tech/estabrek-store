@@ -281,6 +281,7 @@ export type AnimatedShapePlacementPreset = typeof ANIMATED_SHAPE_PLACEMENTS[numb
 export type AnimatedShapeConfig = {
   themeId?: string;
   placement?: AnimatedShapePlacementPreset;
+  layer?: "below" | "above";
   color?: string;
   size?: "sm" | "md" | "lg" | "xl";
   speed?: "slow" | "normal" | "fast";
