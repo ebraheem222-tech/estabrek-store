@@ -285,6 +285,7 @@ export type AnimatedShapeConfig = {
   size?: "sm" | "md" | "lg" | "xl";
   speed?: "slow" | "normal" | "fast";
   opacity?: number;
+  blur?: BlurPreset;
 };
 
 // ============================================================
