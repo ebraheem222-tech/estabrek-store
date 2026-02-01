@@ -9,7 +9,7 @@ export type CloudinaryTransform = {
   dpr?: number;
 };
 
-function isCloudinaryUrl(url: string): boolean {
+export function isCloudinaryUrl(url: string): boolean {
   try {
     const u = new URL(url);
     return u.hostname.includes("res.cloudinary.com") || url.includes("/upload/");
@@ -67,7 +67,7 @@ export function cldUrl(url: string, t: CloudinaryTransform = {}): string {
   const alreadyTransformed = /\/upload\/[^/]*(f_|q_)/.test(normalized);
   if (alreadyTransformed) return normalized;
 
-  const parts: string[] = ["f_auto", "q_auto"];
+  const parts: string[] = ["f_auto", "q_auto:eco", "fl_progressive", "dpr_auto"];
 
   if (typeof t.w === "number") parts.push(`w_${Math.round(t.w)}`);
   if (typeof t.h === "number") parts.push(`h_${Math.round(t.h)}`);

@@ -92,6 +92,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const mainImageRef = useRef<HTMLDivElement>(null);
   const zoomEnabled = settings.productZoomEnabled;
   const imageLoading: "lazy" = "lazy";
+  const mainPriority = activeIdx === 0;
 
   useEffect(() => {
     setActiveIdx(0);
@@ -232,6 +233,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               alt={product.title}
               fill
               blurDataUrl={active.blurDataUrl ?? undefined}
+              priority={mainPriority}
               className={
                 "object-cover will-change-transform transition-transform duration-500 " +
                 (dir === "next" ? "anim-slide-in-right" : "anim-slide-in-left") +
