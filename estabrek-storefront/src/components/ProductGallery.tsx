@@ -125,6 +125,18 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   }, [images.length, activeIdx]);
 
   useEffect(() => {
+    if (!images.length) return;
+    const start = Math.max(0, activeIdx);
+    const list = images.slice(start, start + 3);
+    list.forEach((im) => {
+      if (!im?.url) return;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = cldUrl(im.url, { w: 1000, h: 1250, c: "fill", g: "auto" });
+    });
+  }, [images, activeIdx]);
+
+  useEffect(() => {
     const prev = lastIdxRef.current;
     if (activeIdx > prev) setDir("next");
     else if (activeIdx < prev) setDir("prev");
