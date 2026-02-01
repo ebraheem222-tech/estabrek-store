@@ -18,6 +18,7 @@ import {
   DECOR_COLOR_PRESETS,
   DECOR_FILL_PRESETS,
   DECOR_BLUR_PRESETS,
+  BLUR_PRESETS,
   ANIM_LABELS,
   SHAPE_LABELS,
   BG_PRESETS,
@@ -1250,6 +1251,10 @@ function AdvancedEditor({ tokens, onChange }: {
   const animatedShapeThemeId = animatedShape?.themeId ?? "";
   const animatedOpacity = Number.isFinite(animatedShape?.opacity) ? (animatedShape.opacity as number) : 0.6;
   const animatedOpacityValue = Math.max(0, Math.min(100, Math.round(animatedOpacity * 100)));
+  const animatedBlurOptions = BLUR_PRESETS.map((b) => ({
+    value: b,
+    label: b === "none" ? "بدون" : b,
+  }));
 
   return (
     <div className="space-y-4">
@@ -1383,6 +1388,19 @@ function AdvancedEditor({ tokens, onChange }: {
               />
             </FieldGroup>
           </div>
+
+          <FieldGroup label="الضبابية">
+            <Select
+              value={animatedShape?.blur ?? "none"}
+              onChange={(v) =>
+                onChange({
+                  ...(tokens ?? {}),
+                  animatedShape: { ...animatedShape, blur: v as any },
+                } as any)
+              }
+              options={animatedBlurOptions}
+            />
+          </FieldGroup>
 
           <FieldGroup label="اللون" hint="اكتب لون CSS أو اختر لون Hex">
             <ColorPicker
