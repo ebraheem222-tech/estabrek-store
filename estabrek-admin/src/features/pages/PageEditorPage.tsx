@@ -3348,7 +3348,7 @@ export default function PageEditorPage() {
             className={
               leftPanelFullScreen
                 ? "fixed inset-0 z-50 flex flex-col gap-4 overflow-auto bg-black/90 p-6"
-                : "flex w-full flex-col gap-4 lg:shrink-0"
+                : "flex w-full flex-col gap-4 lg:shrink-0 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-120px)] lg:overflow-auto"
             }
             style={leftPanelFullScreen ? undefined : leftPanelStyle}
           >
