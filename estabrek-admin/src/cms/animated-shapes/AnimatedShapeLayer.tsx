@@ -91,9 +91,19 @@ export function AnimatedShapeLayer({
   const boxSize = BOX_SIZES[sizeKey];
   const scale = SIZE_SCALE[sizeKey] ?? 1;
   const layerClass = config?.layer === "above" ? "z-20" : "z-0";
+  const clipToBounds = placementKey === "background";
 
   return (
-    <div className={cls("pointer-events-none absolute inset-0 overflow-visible", className, layerClass)} aria-hidden="true">
+    <div
+      className={cls(
+        "pointer-events-none absolute inset-0",
+        clipToBounds ? "overflow-hidden" : "overflow-visible",
+        className,
+        layerClass
+      )}
+      style={clipToBounds ? { borderRadius: "inherit" } : undefined}
+      aria-hidden="true"
+    >
       <div
         className={cls("absolute", placement)}
         style={{
