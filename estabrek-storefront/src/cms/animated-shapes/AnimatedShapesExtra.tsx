@@ -34,7 +34,7 @@ export const TriangleFloat: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <svg
         width={sizes[size]}
         height={sizes[size]}
@@ -66,7 +66,7 @@ export const TrianglesScatter: React.FC<AnimatedShapeProps & { count?: number }>
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {triangles.map((tri, i) => (
         <svg
           key={i}
@@ -111,7 +111,7 @@ export const Confetti: React.FC<AnimatedShapeProps & { count?: number }> = ({
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {pieces.map((piece, i) => (
         <div
           key={i}
@@ -151,7 +151,7 @@ export const Snow: React.FC<AnimatedShapeProps & { count?: number }> = ({
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {flakes.map((flake, i) => (
         <div
           key={i}
@@ -184,7 +184,7 @@ export const Rain: React.FC<AnimatedShapeProps & { count?: number }> = ({
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {drops.map((drop, i) => (
         <div
           key={i}
@@ -222,7 +222,7 @@ export const Fireflies: React.FC<AnimatedShapeProps & { count?: number }> = ({
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {flies.map((fly, i) => (
         <div
           key={i}
@@ -309,7 +309,7 @@ export const TechGrid: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       <svg className="w-full h-full" style={{ opacity }}>
         <defs>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -345,7 +345,7 @@ export const GradientOrbs: React.FC<AnimatedShapeProps> = ({
   opacity = 0.5,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       <div
         className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full blur-3xl"
         style={{ opacity, animation: 'float 8s ease-in-out infinite' }}
@@ -371,7 +371,7 @@ export const CyberShapes: React.FC<AnimatedShapeProps> = ({
   opacity = 0.6,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {/* Hexagon */}
       <svg
         className="absolute top-10 left-10 w-20 h-20"
@@ -432,7 +432,7 @@ export const RetroShapes: React.FC<AnimatedShapeProps> = ({
   opacity = 0.5,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {/* Sunburst lines */}
       {Array.from({ length: 12 }, (_, i) => (
         <div
@@ -479,7 +479,7 @@ export const MinimalShapes: React.FC<AnimatedShapeProps> = ({
   opacity = 0.3,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {/* Thin circles */}
       <div
         className="absolute top-10 right-10 w-32 h-32 border border-gray-400 rounded-full"
@@ -527,7 +527,7 @@ export const CosmicShapes: React.FC<AnimatedShapeProps & { count?: number }> = (
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none bg-gray-950 ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none bg-gray-950 ${className}`}>
       {/* Stars */}
       {stars.map((star, i) => (
         <div
@@ -575,7 +575,7 @@ export const NatureShapes: React.FC<AnimatedShapeProps> = ({
   opacity = 0.4,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {/* Leaves */}
       <svg
         className="absolute top-10 left-10 w-16 h-16"
@@ -650,3 +650,4 @@ export const additionalShapeComponents = {
 };
 
 export default additionalShapeComponents;
+

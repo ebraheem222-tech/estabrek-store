@@ -290,7 +290,7 @@ export const CircleFloatSimple: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div
         className={`${sizes[size]} ${colors[color] || color} rounded-full`}
         style={{
@@ -318,7 +318,7 @@ export const CirclesMultiple: React.FC<AnimatedShapeProps & { count?: number }> 
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {circles.map((circle, i) => (
         <div
           key={i}
@@ -357,7 +357,7 @@ export const CirclePulseGlow: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div
         className={`${sizes[size]} rounded-full`}
         style={{
@@ -386,7 +386,7 @@ export const CirclesRipple: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div className="relative">
         {[0, 1, 2].map((i) => (
           <div
@@ -421,7 +421,7 @@ export const StarFloat: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <svg
         width={sizes[size]}
         height={sizes[size]}
@@ -453,7 +453,7 @@ export const StarsScatter: React.FC<AnimatedShapeProps & { count?: number }> = (
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {stars.map((star, i) => (
         <svg
           key={i}
@@ -495,7 +495,7 @@ export const RectangleRotate: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div
         className={`${sizes[size]} ${colors[color] || color} rounded-lg`}
         style={{
@@ -524,7 +524,7 @@ export const SquaresScatter: React.FC<AnimatedShapeProps & { count?: number }> =
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {squares.map((sq, i) => (
         <div
           key={i}
@@ -563,7 +563,7 @@ export const BlobMorph: React.FC<AnimatedShapeProps> = ({
   };
 
   return (
-    <div className={`absolute pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div
         className={`${sizes[size]} bg-gradient-to-br ${gradients[color] || gradients.purple} rounded-[60%_40%_30%_70%/60%_30%_70%_40%]`}
         style={{
@@ -581,7 +581,7 @@ export const BlobsMultiple: React.FC<AnimatedShapeProps> = ({
   opacity = 0.4,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       <div
         className="absolute -top-20 -left-20 w-72 h-72 bg-gradient-to-br from-purple-500 to-pink-500 rounded-[60%_40%_30%_70%/60%_30%_70%_40%]"
         style={{ opacity, animation: 'morph 8s ease-in-out infinite' }}
@@ -617,7 +617,7 @@ export const DotsGrid: React.FC<AnimatedShapeProps & { rows?: number; cols?: num
   }
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {dots.map((dot, i) => (
         <div
           key={i}
@@ -651,7 +651,7 @@ export const ParticlesFloat: React.FC<AnimatedShapeProps & { count?: number }> =
   }));
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {particles.map((p, i) => (
         <div
           key={i}
@@ -686,7 +686,7 @@ export const LinesWave: React.FC<AnimatedShapeProps & { count?: number }> = ({
   };
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
@@ -712,7 +712,7 @@ export const GeometricMix: React.FC<AnimatedShapeProps> = ({
   opacity = 0.4,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {/* Circles */}
       <div
         className="absolute top-10 left-10 w-20 h-20 bg-blue-500 rounded-full"
@@ -749,7 +749,7 @@ export const NeonShapes: React.FC<AnimatedShapeProps> = ({
   opacity = 0.8,
 }) => {
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       <div
         className="absolute top-20 left-20 w-24 h-24 rounded-full border-2 border-cyan-400"
         style={{
@@ -808,3 +808,4 @@ export const animatedShapeComponents: Record<string, React.FC<any>> = {
 };
 
 export default animatedShapeComponents;
+

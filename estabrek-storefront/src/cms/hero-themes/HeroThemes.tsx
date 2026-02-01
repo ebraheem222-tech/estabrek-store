@@ -298,7 +298,7 @@ export const HeroBasicSplit: React.FC<HeroProps> = ({
       </div>
       <div className="relative">
         {imageSrc ? (
-          <img src={imageSrc} alt={imageAlt} className="w-full rounded-2xl shadow-2xl" />
+          <img src={imageSrc} alt={imageAlt} className="w-full rounded-2xl shadow-2xl" loading="eager" decoding="async" />
         ) : (
           <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
             <span className="text-gray-400">Image Placeholder</span>
@@ -415,7 +415,7 @@ export const HeroGamingNeon: React.FC<HeroProps> = ({
       </div>
       <div className="relative">
         {imageSrc ? (
-          <img src={imageSrc} alt="Game" className="w-full rounded-2xl" />
+          <img src={imageSrc} alt="Game" className="w-full rounded-2xl" loading="eager" decoding="async" />
         ) : (
           <div className="aspect-video bg-gradient-to-br from-purple-900/50 to-cyan-900/50 rounded-2xl border border-purple-500/30 flex items-center justify-center">
             <span className="text-purple-400">Game Preview</span>
@@ -439,7 +439,7 @@ export const HeroEcommerceFashion: React.FC<HeroProps> = ({
     {/* Background Image */}
     <div className="absolute inset-0 bg-gray-900">
       {imageSrc ? (
-        <img src={imageSrc} alt="Fashion" className="w-full h-full object-cover opacity-60" />
+        <img src={imageSrc} alt="Fashion" className="w-full h-full object-cover opacity-60" loading="eager" decoding="async" />
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
       )}
@@ -527,7 +527,7 @@ export const HeroCorporateProfessional: React.FC<HeroProps> = ({
       </div>
       <div>
         {imageSrc ? (
-          <img src={imageSrc} alt="Business" className="w-full rounded-lg shadow-xl" />
+          <img src={imageSrc} alt="Business" className="w-full rounded-lg shadow-xl" loading="eager" decoding="async" />
         ) : (
           <div className="aspect-[4/3] bg-gradient-to-br from-blue-100 to-slate-100 rounded-lg flex items-center justify-center">
             <span className="text-slate-400">Business Image</span>
@@ -588,7 +588,7 @@ export const HeroFoodRestaurant: React.FC<HeroProps> = ({
     {/* Background */}
     <div className="absolute inset-0">
       {imageSrc ? (
-        <img src={imageSrc} alt="Restaurant" className="w-full h-full object-cover" />
+        <img src={imageSrc} alt="Restaurant" className="w-full h-full object-cover" loading="eager" decoding="async" />
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-amber-900 to-orange-900" />
       )}
@@ -643,7 +643,7 @@ export const HeroFitnessGym: React.FC<HeroProps> = ({
     {/* Background */}
     <div className="absolute inset-0">
       {imageSrc ? (
-        <img src={imageSrc} alt="Gym" className="w-full h-full object-cover" />
+        <img src={imageSrc} alt="Gym" className="w-full h-full object-cover" loading="eager" decoding="async" />
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black" />
       )}
@@ -685,7 +685,7 @@ export const HeroTravelHotel: React.FC<HeroProps> = ({
     {/* Background */}
     <div className="absolute inset-0">
       {imageSrc ? (
-        <img src={imageSrc} alt="Hotel" className="w-full h-full object-cover" />
+        <img src={imageSrc} alt="Hotel" className="w-full h-full object-cover" loading="eager" decoding="async" />
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-sky-900 to-blue-900" />
       )}
@@ -802,7 +802,7 @@ export const HeroAppDownload: React.FC<HeroProps> = ({
       
       <div className="relative flex justify-center">
         {imageSrc ? (
-          <img src={imageSrc} alt="App" className="max-w-sm w-full" />
+          <img src={imageSrc} alt="App" className="max-w-sm w-full" loading="eager" decoding="async" />
         ) : (
           <div className="w-64 h-[500px] bg-gray-900 rounded-[3rem] border-4 border-gray-800 flex items-center justify-center">
             <span className="text-gray-600">Phone Mockup</span>

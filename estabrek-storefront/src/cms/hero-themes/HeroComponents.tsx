@@ -70,7 +70,7 @@ export const Hero3: React.FC<HeroTemplateProps> = (props) => (
         </div>
       </div>
       <div className="relative">
-        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-2xl shadow-2xl" /> : <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center"><span className="text-gray-400">Image</span></div>}
+        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-2xl shadow-2xl" loading="eager" decoding="async" /> : <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center"><span className="text-gray-400">Image</span></div>}
       </div>
     </div>
   </section>
@@ -136,7 +136,7 @@ export const Hero8: React.FC<HeroTemplateProps> = (props) => (
   <section className={`py-20 px-4 bg-gray-100 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
       <div className="order-2 md:order-1">
-        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-3xl" /> : <div className="aspect-square bg-gradient-to-br from-blue-200 to-purple-200 rounded-3xl"></div>}
+        {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-3xl" loading="eager" decoding="async" /> : <div className="aspect-square bg-gradient-to-br from-blue-200 to-purple-200 rounded-3xl"></div>}
       </div>
       <div className="order-1 md:order-2">
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-600 text-white rounded-full">{props.badge}</span>}
@@ -303,7 +303,7 @@ export const Hero25: React.FC<HeroTemplateProps> = (props) => (
 export const Hero26: React.FC<HeroTemplateProps> = (props) => (
   <section className={`relative min-h-screen flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0 bg-black">
-      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover opacity-60" /> : <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black"></div>}
+      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover opacity-60" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black"></div>}
     </div>
     <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
       {props.badge && <span className="inline-block px-6 py-2 mb-8 text-sm tracking-[0.3em] uppercase border border-white/30">{props.badge}</span>}
@@ -407,7 +407,7 @@ export const Hero60: React.FC<HeroTemplateProps> = (props) => (
 export const Hero71: React.FC<HeroTemplateProps> = (props) => (
   <section className={`relative min-h-[80vh] flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0">
-      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-amber-900 to-orange-900"></div>}
+      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-amber-900 to-orange-900"></div>}
       <div className="absolute inset-0 bg-black/50"></div>
     </div>
     <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
@@ -430,7 +430,7 @@ export const Hero81: React.FC<HeroTemplateProps> = (props) => (
   <section className={`relative min-h-screen flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent z-10"></div>
     <div className="absolute inset-0 bg-gray-900">
-      {props.imageSrc && <img src={props.imageSrc} alt="" className="w-full h-full object-cover" />}
+      {props.imageSrc && <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" />}
     </div>
     <div className="relative z-20 max-w-7xl mx-auto px-4 py-24">
       <div className="max-w-2xl">
@@ -449,7 +449,7 @@ export const Hero81: React.FC<HeroTemplateProps> = (props) => (
 export const Hero89: React.FC<HeroTemplateProps> = (props) => (
   <section className={`relative min-h-[90vh] flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0">
-      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-sky-900 to-blue-900"></div>}
+      {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-sky-900 to-blue-900"></div>}
       <div className="absolute inset-0 bg-black/40"></div>
     </div>
     <div className="relative z-10 max-w-4xl mx-auto px-4 text-center text-white">
