@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 
 type FacetColor = { name: string; hex?: string | null; count: number };
 type FacetSize = { id: string; name: string; count: number };
@@ -79,15 +80,6 @@ const CheckIcon = () => (
   </svg>
 );
 
-function parseCsv(v: string | null | undefined): string[] {
-  if (!v) return [];
-  return v.split(",").map((s) => s.trim()).filter(Boolean);
-}
-
-function toCsv(arr: string[]): string {
-  return arr.join(",");
-}
-
 function uniqCaseInsensitive(arr: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -105,41 +97,74 @@ export function ProductFiltersBar({
   sizes,
   categories,
   className,
+  filters,
+  onFiltersChange,
+  syncUrl = true,
 }: {
   colors: FacetColor[];
   sizes: FacetSize[];
   categories: { id: string; name: string; parentId?: string | null }[];
   className?: string;
+  filters?: CatalogFilters;
+  onFiltersChange?: (next: CatalogFilters) => void;
+  syncUrl?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const sp = useSearchParams();
+  const [, startTransition] = useTransition();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     colors: true,
     sizes: true,
   });
 
-  const sortParam = useMemo(() => sp?.get("sort") ?? "latest", [sp]);
-  const minPriceParam = useMemo(() => sp?.get("minPrice") ?? "", [sp]);
-  const maxPriceParam = useMemo(() => sp?.get("maxPrice") ?? "", [sp]);
-  const qParam = useMemo(() => sp?.get("q") ?? "", [sp]);
-  const inStockParam = useMemo(() => sp?.get("inStock") === "1", [sp]);
-  const categoryIdParam = useMemo(() => sp?.get("categoryId") ?? "", [sp]);
-
-  const selectedColors = useMemo(() => {
-    const v = sp?.get("colors") ?? sp?.get("color");
-    return uniqCaseInsensitive(parseCsv(v));
+  const urlFilters = useMemo(() => {
+    const obj: Record<string, string> = {};
+    sp?.forEach((v, k) => {
+      obj[k] = v;
+    });
+    return normalizeFiltersFromSearchParams(obj);
   }, [sp]);
 
-  const selectedSizes = useMemo(() => {
-    const v = sp?.get("sizeIds") ?? sp?.get("sizeId");
-    return Array.from(new Set(parseCsv(v)));
-  }, [sp]);
+  const currentFilters = useMemo(() => {
+    const src = filters ?? urlFilters;
+    return {
+      ...src,
+      colors: src.colors ?? [],
+      sizeIds: src.sizeIds ?? [],
+    } as CatalogFilters;
+  }, [filters, urlFilters]);
+
+  const sortParam = currentFilters.sort ?? "latest";
+  const minPriceParam = currentFilters.minPrice != null ? String(currentFilters.minPrice) : "";
+  const maxPriceParam = currentFilters.maxPrice != null ? String(currentFilters.maxPrice) : "";
+  const qParam = currentFilters.q ?? "";
+  const inStockParam = !!currentFilters.inStock;
+  const categoryIdParam = currentFilters.categoryId ?? "";
+
+  const selectedColors = currentFilters.colors ?? [];
+  const selectedSizes = currentFilters.sizeIds ?? [];
 
   const selectedCategory = useMemo(() => {
     return categories.find(c => c.id === categoryIdParam);
   }, [categories, categoryIdParam]);
+
+  const [qInput, setQInput] = useState(qParam);
+  const [minInput, setMinInput] = useState(minPriceParam);
+  const [maxInput, setMaxInput] = useState(maxPriceParam);
+
+  useEffect(() => {
+    setQInput(qParam);
+  }, [qParam]);
+
+  useEffect(() => {
+    setMinInput(minPriceParam);
+  }, [minPriceParam]);
+
+  useEffect(() => {
+    setMaxInput(maxPriceParam);
+  }, [maxPriceParam]);
 
   // Build active filters array for tags display
   const activeFilters = useMemo(() => {
@@ -160,68 +185,140 @@ export function ProductFiltersBar({
   const activeFiltersCount = activeFilters.length;
   const hasAny = activeFiltersCount > 0;
 
-  function push(next: URLSearchParams) {
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (qInput !== qParam) setSimple("q", qInput.trim() || undefined, { replace: true });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [qInput, qParam]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (minInput !== minPriceParam) setSimple("minPrice", minInput.trim() || undefined, { replace: true });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [minInput, minPriceParam]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (maxInput !== maxPriceParam) setSimple("maxPrice", maxInput.trim() || undefined, { replace: true });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [maxInput, maxPriceParam]);
+
+  function normalizeFilters(next: CatalogFilters): CatalogFilters {
+    const colorsNorm = uniqCaseInsensitive(next.colors ?? []).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" })
+    );
+    const sizesNorm = uniqCaseInsensitive(next.sizeIds ?? []).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base" })
+    );
+    const out: CatalogFilters = { colors: colorsNorm, sizeIds: sizesNorm };
+    if (next.minPrice != null && Number.isFinite(next.minPrice as any)) out.minPrice = next.minPrice;
+    if (next.maxPrice != null && Number.isFinite(next.maxPrice as any)) out.maxPrice = next.maxPrice;
+    if (out.minPrice != null && out.maxPrice != null && out.minPrice > out.maxPrice) {
+      const t = out.minPrice;
+      out.minPrice = out.maxPrice;
+      out.maxPrice = t;
+    }
+    if (next.sort) out.sort = next.sort;
+    if (next.q) out.q = next.q;
+    if (next.inStock) out.inStock = true;
+    if (next.categoryId) out.categoryId = next.categoryId;
+    if (next.page && next.page > 1) out.page = next.page;
+    if (next.lm) out.lm = next.lm;
+    return out;
+  }
+
+  function push(next: CatalogFilters, opts?: { replace?: boolean }) {
     if (!pathname) return;
-    const qs = next.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    const qs = buildCanonicalQuery(next);
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    if (onFiltersChange) {
+      if (syncUrl && typeof window !== "undefined") {
+        window.history.replaceState({}, "", url);
+      }
+      return;
+    }
+    startTransition(() => {
+      if (opts?.replace) router.replace(url);
+      else router.push(url);
+    });
   }
 
   function removeFilter(type: string, value: string) {
-    const next = new URLSearchParams(sp?.toString() ?? "");
+    const next: CatalogFilters = {
+      ...currentFilters,
+      colors: [...(currentFilters.colors ?? [])],
+      sizeIds: [...(currentFilters.sizeIds ?? [])],
+    };
     if (type === "color") {
-      const cur = uniqCaseInsensitive(parseCsv(next.get("colors")));
-      const updated = cur.filter(c => c.toLowerCase() !== value.toLowerCase());
-      if (updated.length) next.set("colors", toCsv(updated));
-      else next.delete("colors");
+      next.colors = next.colors.filter((c) => c.toLowerCase() !== value.toLowerCase());
     } else if (type === "size") {
-      const cur = Array.from(new Set(parseCsv(next.get("sizeIds"))));
-      const updated = cur.filter(s => s !== value);
-      if (updated.length) next.set("sizeIds", toCsv(updated));
-      else next.delete("sizeIds");
+      next.sizeIds = next.sizeIds.filter((s) => s !== value);
     } else {
-      next.delete(type);
+      (next as any)[type] = undefined;
     }
-    next.set("page", "1");
-    push(next);
+    next.page = undefined;
+    const normalized = normalizeFilters(next);
+    onFiltersChange?.(normalized);
+    push(normalized);
   }
 
   function toggleColor(name: string) {
-    const next = new URLSearchParams(sp?.toString() ?? "");
-    next.delete("color");
-    const cur = uniqCaseInsensitive(parseCsv(next.get("colors")));
-    const exists = cur.some((c) => c.toLowerCase() === name.toLowerCase());
-    const updated = exists ? cur.filter((c) => c.toLowerCase() !== name.toLowerCase()) : [...cur, name];
-    if (updated.length) next.set("colors", toCsv(updated));
-    else next.delete("colors");
-    next.set("page", "1");
-    push(next);
+    const next: CatalogFilters = {
+      ...currentFilters,
+      colors: [...(currentFilters.colors ?? [])],
+      sizeIds: [...(currentFilters.sizeIds ?? [])],
+    };
+    const exists = next.colors.some((c) => c.toLowerCase() === name.toLowerCase());
+    next.colors = exists ? next.colors.filter((c) => c.toLowerCase() !== name.toLowerCase()) : [...next.colors, name];
+    next.page = undefined;
+    const normalized = normalizeFilters(next);
+    onFiltersChange?.(normalized);
+    push(normalized);
   }
 
   function toggleSize(id: string) {
-    const next = new URLSearchParams(sp?.toString() ?? "");
-    next.delete("sizeId");
-    const cur = Array.from(new Set(parseCsv(next.get("sizeIds"))));
-    const exists = cur.includes(id);
-    const updated = exists ? cur.filter((s) => s !== id) : [...cur, id];
-    if (updated.length) next.set("sizeIds", toCsv(updated));
-    else next.delete("sizeIds");
-    next.set("page", "1");
-    push(next);
+    const next: CatalogFilters = {
+      ...currentFilters,
+      colors: [...(currentFilters.colors ?? [])],
+      sizeIds: [...(currentFilters.sizeIds ?? [])],
+    };
+    const exists = next.sizeIds.includes(id);
+    next.sizeIds = exists ? next.sizeIds.filter((s) => s !== id) : [...next.sizeIds, id];
+    next.page = undefined;
+    const normalized = normalizeFilters(next);
+    onFiltersChange?.(normalized);
+    push(normalized);
   }
 
-  function setSimple(key: string, value?: string) {
-    const next = new URLSearchParams(sp?.toString() ?? "");
-    if (!value) next.delete(key);
-    else next.set(key, value);
-    next.set("page", "1");
-    if (!pathname) return;
-    router.push(`${pathname}?${next.toString()}`);
+  function setSimple(key: string, value?: string, opts?: { replace?: boolean }) {
+    const next: CatalogFilters = {
+      ...currentFilters,
+      colors: [...(currentFilters.colors ?? [])],
+      sizeIds: [...(currentFilters.sizeIds ?? [])],
+    };
+    if (!value) {
+      (next as any)[key] = undefined;
+    } else if (key === "minPrice" || key === "maxPrice") {
+      const num = Number(value);
+      (next as any)[key] = Number.isFinite(num) ? num : undefined;
+    } else if (key === "inStock") {
+      (next as any)[key] = value ? true : undefined;
+    } else {
+      (next as any)[key] = value;
+    }
+    next.page = undefined;
+    const normalized = normalizeFilters(next);
+    onFiltersChange?.(normalized);
+    push(normalized, opts);
   }
 
   function clearAll() {
-    const next = new URLSearchParams(sp?.toString() ?? "");
-    ["colors", "sizeIds", "color", "sizeId", "page", "sort", "minPrice", "maxPrice", "q", "inStock", "categoryId"].forEach(k => next.delete(k));
-    push(next);
+    const normalized = normalizeFilters({ colors: [], sizeIds: [] });
+    onFiltersChange?.(normalized);
+    push(normalized);
   }
 
   function toggleSection(section: string) {
@@ -257,8 +354,8 @@ export function ProductFiltersBar({
         <div className="relative">
           <input
             className="filter-input pr-10"
-            value={qParam}
-            onChange={(e) => setSimple("q", e.target.value)}
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
             placeholder="ابحث عن منتج..."
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
@@ -315,8 +412,8 @@ export function ProductFiltersBar({
           <div className="relative flex-1">
             <input
               className="price-range-input"
-              value={minPriceParam}
-              onChange={(e) => setSimple("minPrice", e.target.value)}
+              value={minInput}
+              onChange={(e) => setMinInput(e.target.value)}
               placeholder="الحد الأدنى"
               inputMode="numeric"
               dir="ltr"
@@ -329,8 +426,8 @@ export function ProductFiltersBar({
           <div className="relative flex-1">
             <input
               className="price-range-input"
-              value={maxPriceParam}
-              onChange={(e) => setSimple("maxPrice", e.target.value)}
+              value={maxInput}
+              onChange={(e) => setMaxInput(e.target.value)}
               placeholder="الحد الأقصى"
               inputMode="numeric"
               dir="ltr"

@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 
 type SortKey = "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc";
 
@@ -17,24 +18,53 @@ function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(" ");
 }
 
-export function ShopToolbar({ total }: { total: number }) {
+export function ShopToolbar({
+  total,
+  filters,
+  onFiltersChange,
+  syncUrl = true,
+  hideModeToggle = false,
+}: {
+  total: number;
+  filters?: CatalogFilters;
+  onFiltersChange?: (next: CatalogFilters) => void;
+  syncUrl?: boolean;
+  hideModeToggle?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
 
-  const sort = (sp.get("sort") as SortKey | null) ?? "latest";
-  const lm = sp.get("lm") === "1";
+  const urlFilters = useMemo(() => {
+    const obj: Record<string, string> = {};
+    sp?.forEach((v, k) => {
+      obj[k] = v;
+    });
+    return normalizeFiltersFromSearchParams(obj);
+  }, [sp]);
 
-  const url = useMemo(() => {
-    const u = new URL(pathname, "http://local");
-    // NOTE: Next's useSearchParams is read-only. We'll clone it.
-    for (const [k, v] of sp.entries()) u.searchParams.set(k, v);
-    return u;
-  }, [pathname, sp]);
+  const currentFilters = useMemo(() => {
+    const src = filters ?? urlFilters;
+    return {
+      ...src,
+      colors: src.colors ?? [],
+      sizeIds: src.sizeIds ?? [],
+    } as CatalogFilters;
+  }, [filters, urlFilters]);
 
-  function push(next: URL) {
-    // remove fake origin
-    router.push(next.pathname + (next.search ? next.search : ""));
+  const sort = (currentFilters.sort as SortKey | undefined) ?? "latest";
+  const lm = !!currentFilters.lm;
+
+  function push(next: CatalogFilters) {
+    const qs = buildCanonicalQuery(next);
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    if (onFiltersChange) {
+      if (syncUrl && typeof window !== "undefined") {
+        window.history.replaceState({}, "", url);
+      }
+      return;
+    }
+    router.push(url);
   }
 
   return (
@@ -49,9 +79,10 @@ export function ShopToolbar({ total }: { total: number }) {
           <select
             value={sort}
             onChange={(e) => {
-              const next = new URL(url.toString());
-              next.searchParams.set("sort", e.target.value);
-              next.searchParams.delete("page");
+              const next: CatalogFilters = { ...currentFilters, colors: [...currentFilters.colors], sizeIds: [...currentFilters.sizeIds] };
+              next.sort = e.target.value as SortKey;
+              next.page = undefined;
+              onFiltersChange?.(next);
               push(next);
             }}
             className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
@@ -63,41 +94,46 @@ export function ShopToolbar({ total }: { total: number }) {
             ))}
           </select>
 
-          <div className="ms-2 hidden sm:flex rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
-            <button
-              type="button"
-              onClick={() => {
-                const next = new URL(url.toString());
-                next.searchParams.delete("lm");
-                push(next);
-              }}
-              className={cx(
-                "h-9 rounded-lg px-3 text-sm",
-                !lm && "bg-[var(--text)] text-[var(--bg)]",
-                lm && "text-[var(--muted)] hover:opacity-90"
-              )}
-              aria-pressed={!lm}
-            >
-              صفحات
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const next = new URL(url.toString());
-                next.searchParams.set("lm", "1");
-                next.searchParams.delete("page");
-                push(next);
-              }}
-              className={cx(
-                "h-9 rounded-lg px-3 text-sm",
-                lm && "bg-[var(--text)] text-[var(--bg)]",
-                !lm && "text-[var(--muted)] hover:opacity-90"
-              )}
-              aria-pressed={lm}
-            >
-              تحميل المزيد
-            </button>
-          </div>
+          {!hideModeToggle && (
+            <div className="ms-2 hidden sm:flex rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const next: CatalogFilters = { ...currentFilters, colors: [...currentFilters.colors], sizeIds: [...currentFilters.sizeIds] };
+                  next.lm = undefined;
+                  next.page = undefined;
+                  onFiltersChange?.(next);
+                  push(next);
+                }}
+                className={cx(
+                  "h-9 rounded-lg px-3 text-sm",
+                  !lm && "bg-[var(--text)] text-[var(--bg)]",
+                  lm && "text-[var(--muted)] hover:opacity-90"
+                )}
+                aria-pressed={!lm}
+              >
+                صفحات
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next: CatalogFilters = { ...currentFilters, colors: [...currentFilters.colors], sizeIds: [...currentFilters.sizeIds] };
+                  next.lm = 1;
+                  next.page = undefined;
+                  onFiltersChange?.(next);
+                  push(next);
+                }}
+                className={cx(
+                  "h-9 rounded-lg px-3 text-sm",
+                  lm && "bg-[var(--text)] text-[var(--bg)]",
+                  !lm && "text-[var(--muted)] hover:opacity-90"
+                )}
+                aria-pressed={lm}
+              >
+                تحميل المزيد
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -2,14 +2,7 @@
 
 import React, { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
-function parseCsv(v: string | null): string[] {
-  if (!v) return [];
-  return v
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 
 function chipClass(variant: "default" | "danger" = "default") {
   const base =
@@ -25,35 +18,74 @@ function chipClass(variant: "default" | "danger" = "default") {
 
 export function FiltersChips({
   categories,
+  filters,
+  onFiltersChange,
+  syncUrl = true,
 }: {
   categories: { id: string; name: string }[];
+  filters?: CatalogFilters;
+  onFiltersChange?: (next: CatalogFilters) => void;
+  syncUrl?: boolean;
 }) {
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
+  const urlFilters = useMemo(() => {
+    const obj: Record<string, string> = {};
+    sp?.forEach((v, k) => {
+      obj[k] = v;
+    });
+    return normalizeFiltersFromSearchParams(obj);
+  }, [sp]);
+
+  const currentFilters = useMemo(() => {
+    const src = filters ?? urlFilters;
+    return {
+      ...src,
+      colors: src.colors ?? [],
+      sizeIds: src.sizeIds ?? [],
+    } as CatalogFilters;
+  }, [filters, urlFilters]);
+
+  function push(next: CatalogFilters) {
+    const qs = buildCanonicalQuery(next);
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    if (onFiltersChange) {
+      if (syncUrl && typeof window !== "undefined") {
+        window.history.replaceState({}, "", url);
+      }
+      return;
+    }
+    router.push(url);
+  }
+
   const chips = useMemo(() => {
     const out: { key: string; label: string; remove: () => void; variant?: "default" | "danger" }[] = [];
-    const base = () => new URLSearchParams(sp.toString());
-    const nav = (n: URLSearchParams) => {
-      n.set("page", "1");
-      const qs = n.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
+    const base = () => ({
+      ...currentFilters,
+      colors: [...(currentFilters.colors ?? [])],
+      sizeIds: [...(currentFilters.sizeIds ?? [])],
+    });
+    const nav = (n: CatalogFilters) => {
+      n.page = undefined;
+      onFiltersChange?.(n);
+      push(n);
     };
 
-    const q = sp.get("q");
+    const q = currentFilters.q;
     if (q)
       out.push({
         key: "q",
         label: `بحث: ${q}`,
         remove: () => {
           const n = base();
-          n.delete("q");
+          n.q = undefined;
           nav(n);
         },
       });
 
-    const categoryId = sp.get("categoryId");
+    const categoryId = currentFilters.categoryId;
     if (categoryId) {
       const name = categories.find((c) => c.id === categoryId)?.name ?? "تصنيف";
       out.push({
@@ -61,62 +93,58 @@ export function FiltersChips({
         label: `تصنيف: ${name}`,
         remove: () => {
           const n = base();
-          n.delete("categoryId");
+          n.categoryId = undefined;
           nav(n);
         },
       });
     }
 
-    if (sp.get("inStock") === "1") {
+    if (currentFilters.inStock) {
       out.push({
         key: "inStock",
         label: "متوفر فقط",
         remove: () => {
           const n = base();
-          n.delete("inStock");
+          n.inStock = undefined;
           nav(n);
         },
       });
     }
 
-    const minPrice = sp.get("minPrice");
-    const maxPrice = sp.get("maxPrice");
+    const minPrice = currentFilters.minPrice != null ? String(currentFilters.minPrice) : "";
+    const maxPrice = currentFilters.maxPrice != null ? String(currentFilters.maxPrice) : "";
     if (minPrice || maxPrice) {
       out.push({
         key: "price",
         label: `السعر: ${minPrice ?? "0"} - ${maxPrice ?? "∞"}`,
         remove: () => {
           const n = base();
-          n.delete("minPrice");
-          n.delete("maxPrice");
+          n.minPrice = undefined;
+          n.maxPrice = undefined;
           nav(n);
         },
       });
     }
 
-    parseCsv(sp.get("colors")).forEach((c) => {
+    (currentFilters.colors ?? []).forEach((c) => {
       out.push({
         key: `color:${c}`,
         label: `لون: ${c}`,
         remove: () => {
           const n = base();
-          const arr = parseCsv(n.get("colors")).filter((x) => x.toLowerCase() !== c.toLowerCase());
-          if (arr.length) n.set("colors", arr.join(","));
-          else n.delete("colors");
+          n.colors = n.colors.filter((x) => x.toLowerCase() !== c.toLowerCase());
           nav(n);
         },
       });
     });
 
-    parseCsv(sp.get("sizeIds")).forEach((id) => {
+    (currentFilters.sizeIds ?? []).forEach((id) => {
       out.push({
         key: `size:${id}`,
         label: `مقاس: ${id}`,
         remove: () => {
           const n = base();
-          const arr = parseCsv(n.get("sizeIds")).filter((x) => x !== id);
-          if (arr.length) n.set("sizeIds", arr.join(","));
-          else n.delete("sizeIds");
+          n.sizeIds = n.sizeIds.filter((x) => x !== id);
           nav(n);
         },
       });
@@ -125,11 +153,11 @@ export function FiltersChips({
     const hasAny =
       !!q ||
       !!categoryId ||
-      sp.get("inStock") === "1" ||
+      !!currentFilters.inStock ||
       !!minPrice ||
       !!maxPrice ||
-      parseCsv(sp.get("colors")).length > 0 ||
-      parseCsv(sp.get("sizeIds")).length > 0;
+      (currentFilters.colors ?? []).length > 0 ||
+      (currentFilters.sizeIds ?? []).length > 0;
 
     if (hasAny) {
       out.unshift({
@@ -138,18 +166,18 @@ export function FiltersChips({
         variant: "danger",
         remove: () => {
           const n = base();
-          const keepSort = n.get("sort");
-          const keepLm = n.get("lm");
-          n.forEach((_, k) => n.delete(k));
-          if (keepSort) n.set("sort", keepSort);
-          if (keepLm) n.set("lm", keepLm);
-          nav(n);
+          const keepSort = n.sort;
+          const keepLm = n.lm;
+          const cleared: CatalogFilters = { colors: [], sizeIds: [] };
+          if (keepSort) cleared.sort = keepSort;
+          if (keepLm) cleared.lm = keepLm;
+          nav(cleared);
         },
       });
     }
 
     return out;
-  }, [sp, router, pathname, categories]);
+  }, [currentFilters, categories, onFiltersChange, syncUrl, pathname, router]);
 
   if (!chips.length) return null;
 
