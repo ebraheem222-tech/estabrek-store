@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPublicSettings, listProducts, listCategories } from "@/lib/api";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import ShopBrowseClient from "@/components/ShopBrowseClient";
-import { normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
+import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import { ImageSearchPanel } from "@/components/ImageSearchPanel";
 import { AIRecommendations } from "@/components/AIRecommendations";
 import type { Metadata } from "next";
