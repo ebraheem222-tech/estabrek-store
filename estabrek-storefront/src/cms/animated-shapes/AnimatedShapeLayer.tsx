@@ -90,9 +90,10 @@ export function AnimatedShapeLayer({
   const isBackground = placementKey === "background";
   const boxSize = BOX_SIZES[sizeKey];
   const scale = SIZE_SCALE[sizeKey] ?? 1;
+  const layerClass = config?.layer === "above" ? "z-20" : "z-0";
 
   return (
-    <div className={cls("pointer-events-none absolute inset-0 overflow-visible", className)} aria-hidden="true">
+    <div className={cls("pointer-events-none absolute inset-0 overflow-visible", className, layerClass)} aria-hidden="true">
       <div
         className={cls("absolute", placement)}
         style={{
