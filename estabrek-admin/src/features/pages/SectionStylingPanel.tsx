@@ -1389,6 +1389,22 @@ function AdvancedEditor({ tokens, onChange }: {
             </FieldGroup>
           </div>
 
+          <FieldGroup label="ترتيب الظهور">
+            <ButtonGroup
+              value={animatedShape?.layer ?? "below"}
+              onChange={(v) =>
+                onChange({
+                  ...(tokens ?? {}),
+                  animatedShape: { ...animatedShape, layer: v as any },
+                } as any)
+              }
+              options={[
+                { value: "below", label: "تحت المحتوى" },
+                { value: "above", label: "فوق المحتوى" },
+              ]}
+            />
+          </FieldGroup>
+
           <FieldGroup label="الضبابية">
             <Select
               value={animatedShape?.blur ?? "none"}
