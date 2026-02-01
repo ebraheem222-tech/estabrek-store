@@ -232,7 +232,11 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const navTemplateTextStyle = navTemplate && forceLightText ? ({ color: "var(--text)" } as React.CSSProperties) : undefined;
 
   const preset: "classic" | "minimal" | "centered" = (header?.preset === "minimal" || header?.preset === "centered") ? header.preset : "classic";
-  const sticky: boolean = cmsNavEnabled ? true : settings.stickyHeaderEnabled !== false;
+  const headerSticky = typeof header?.sticky === "boolean" ? header.sticky : undefined;
+  const sticky: boolean =
+    headerSticky !== undefined
+      ? headerSticky
+      : (cmsNavEnabled ? true : settings.stickyHeaderEnabled !== false);
   const showSearch: boolean = header?.showSearch !== false;
   const showCart: boolean = header?.showCart !== false;
   const showAccount: boolean = !!header?.showAccount;
