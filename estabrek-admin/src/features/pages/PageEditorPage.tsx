@@ -4670,7 +4670,7 @@ export default function PageEditorPage() {
               )}
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 md:sticky md:top-6 md:self-start md:max-h-[calc(100vh-220px)] md:overflow-auto">
+            <div className="min-w-0 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sticky top-4 self-start max-h-[calc(100vh-200px)] overflow-auto">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-sm font-semibold">Preview</div>
                 <div className="text-xs opacity-60">{componentsOnlyMode ? "COMPONENTS" : sectionType}</div>
@@ -4838,7 +4838,7 @@ export default function PageEditorPage() {
               />
             </div>
 
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3 lg:sticky lg:top-4 lg:self-start lg:max-h-[70vh] lg:overflow-auto">
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3 sticky top-4 self-start max-h-[70vh] overflow-auto">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-sm font-semibold">Preview</div>
                 <div className="text-xs opacity-60">{selectedSection.type}</div>
