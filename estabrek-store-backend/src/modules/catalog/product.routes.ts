@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import {
   ProductListQuery,
+  ProductIdsBody,
   CreateReviewBody,
   CreateCommentBody,
   CreateOrderRequestBody,
@@ -11,6 +12,7 @@ import {
 } from "./catalog.schemas.js";
 import {
   listProducts,
+  listProductsByIds,
   getProductById,
   getProductBySlug,
   createReview,
@@ -26,6 +28,12 @@ const r = Router();
 r.get("/products", validate({ query: ProductListQuery }), asyncHandler(async (req, res) => {
   const q = ProductListQuery.parse(req.query);
   res.json(await listProducts(q));
+}));
+
+// batch by ids (for CMS + landing sections)
+r.post("/products/by-ids", validate({ body: ProductIdsBody }), asyncHandler(async (req, res) => {
+  const { ids, lite } = ProductIdsBody.parse(req.body);
+  res.json({ items: await listProductsByIds(ids, { lite }) });
 }));
 
 // detail by slug
