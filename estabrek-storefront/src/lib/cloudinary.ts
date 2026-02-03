@@ -62,10 +62,14 @@ export function cldUrl(url: string, t: CloudinaryTransform = {}): string {
   const normalized = normalizePublicUrl(url);
   if (!isCloudinaryUrl(normalized)) return normalized;
 
-  // If caller already provided a fully transformed url, do not double-inject.
-  // We detect this by checking for "/upload/<something>/" where <something> contains "f_" or "q_".
-  const alreadyTransformed = /\/upload\/[^/]*(f_|q_)/.test(normalized);
-  if (alreadyTransformed) return normalized;
+  // If caller already provided a transformed url, inject missing auto-orientation only.
+  const alreadyTransformed = /\/upload\/[^/]*(f_|q_|w_|h_|c_|g_|dpr_|fl_|a_)/.test(normalized);
+  if (alreadyTransformed) {
+    return normalized.replace(/\/upload\/([^/]+)/, (_m, seg: string) => {
+      if (/(^|,)a_/.test(seg)) return `/upload/${seg}`;
+      return `/upload/a_auto,${seg}`;
+    });
+  }
 
   const parts: string[] = ["f_auto", "q_auto:good", "fl_progressive", "dpr_auto", "a_auto"];
 
