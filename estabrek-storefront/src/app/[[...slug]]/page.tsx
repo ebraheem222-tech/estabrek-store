@@ -9,6 +9,7 @@ import {
   getProductBySlug,
   getPublicSettings,
   listProducts,
+  listProductsByIds,
   listCategories,
 } from "@/lib/api";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
@@ -213,6 +214,7 @@ export async function renderCmsPageBySlug(
         pageSize: first.kind === "grid" ? Math.min(24, first.limit) : first.limit,
         take: first.limit,
         cursorMode: false,
+        lite: true,
         sort,
         q: f.q,
         inStock: f.inStock,
@@ -265,6 +267,7 @@ export async function renderCmsPageBySlug(
               pageSize: kind === "grid" ? Math.min(24, limit) : limit,
               take: limit,
               cursorMode: false,
+              lite: true,
               sort,
               q: f.q,
               inStock: f.inStock,
@@ -294,18 +297,25 @@ export async function renderCmsPageBySlug(
     }
   }
 
-  await Promise.all([
-    ...Array.from(wantIds).map(async (id) => {
-      const p = await getProductById(id);
-      if (!p) return;
+  const idsList = Array.from(wantIds);
+  if (idsList.length) {
+    const products = await listProductsByIds(idsList);
+    for (const p of products) {
+      if (!p) continue;
       const imageUrl = getProductPrimaryImage(p);
       const minPrice = getProductMinPrice(p);
       const priceText = minPrice != null ? formatMoney(minPrice, currencyCode) : null;
 
       const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, priceText };
       productLookup[p.id] = entry;
-      if (p.slug) productLookup[`slug:${p.slug}`] = entry;
-    }),
+      if (p.slug) {
+        productLookup[`slug:${p.slug}`] = entry;
+        slugToId.set(p.slug, p.id);
+      }
+    }
+  }
+
+  await Promise.all([
     ...Array.from(wantSlugs).map(async (slug) => {
       const p = await getProductBySlug(slug);
       if (!p) return;
