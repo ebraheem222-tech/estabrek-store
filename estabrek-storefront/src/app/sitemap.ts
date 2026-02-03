@@ -16,7 +16,7 @@ const getCategoriesCached = unstable_cache(async () => {
 
 function getProductsPageCached(page: number, pageSize: number) {
   return unstable_cache(
-    async () => listProducts({ page, pageSize }),
+    async () => listProducts({ page, pageSize, includeFacets: false, lite: true }),
     ["sitemap-products-page", String(page), String(pageSize)],
     { revalidate: 60 * 60 }
   )();

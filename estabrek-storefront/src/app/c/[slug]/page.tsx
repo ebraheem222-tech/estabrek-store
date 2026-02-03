@@ -83,6 +83,8 @@ export default async function CategoryPage({
       sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
       minPrice: f.minPrice,
       maxPrice: f.maxPrice,
+      includeFacets: true,
+      lite: true,
       // legacy
       color: pick(searchParams, "color"),
       sizeId: pick(searchParams, "sizeId"),

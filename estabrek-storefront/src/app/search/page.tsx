@@ -50,6 +50,8 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       maxPrice: f.maxPrice,
       categoryId: f.categoryId,
       inStock: f.inStock,
+      includeFacets: true,
+      lite: true,
     }),
   ]);
 

@@ -17,6 +17,7 @@ const PageZ = z.any();
 const CategoriesTreeZ = z.any();
 const ProductsListZ = z.any();
 const ProductZ = z.any();
+const ProductsByIdsZ = z.any();
 const SettingsZ = z.any();
 const IdsZ = z.any();
 const RecommendZ = z.any();
@@ -107,6 +108,8 @@ export const listProducts = cache(
     cursorMode?: boolean;
     cursor?: string;
     take?: number;
+    lite?: boolean;
+    includeFacets?: boolean;
   }): Promise<CatalogProductsList> => {
     const usp = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {
@@ -137,6 +140,21 @@ export const getProductBySlug = cache(async (slug: string): Promise<CatalogProdu
   if (!res.ok) throw new Error(`product failed (${res.status})`);
   const json = await res.json();
   return ProductZ.parse(json) as CatalogProduct;
+});
+
+export const listProductsByIds = cache(async (ids: string[]): Promise<CatalogProduct[]> => {
+  const url = `${baseUrl()}/catalog/products/by-ids`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+    next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
+  });
+  if (!res.ok) throw new Error(`products by ids failed (${res.status})`);
+  const json = await res.json();
+  const parsed = ProductsByIdsZ.parse(json) as any;
+  const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
+  return Array.isArray(items) ? (items as CatalogProduct[]) : [];
 });
 
 // -------------------------------

@@ -28,10 +28,11 @@ export function apiBaseClient() {
   );
 }
 
-async function fetchJson(url: string) {
+async function fetchJson(url: string, opts?: { signal?: AbortSignal }) {
   const res = await fetch(url, {
     // do not cache on the client for fresh stock/pricing
     cache: "no-store",
+    signal: opts?.signal,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -89,12 +90,12 @@ export async function prefetchProductQuickAdd(opts: { slug?: string; id?: string
 }
 
 
-export async function listProductsClient(params: Record<string, any>) {
+export async function listProductsClient(params: Record<string, any>, opts?: { signal?: AbortSignal }) {
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(params || {})) {
     if (v === undefined || v === null || v === "") continue;
     usp.set(k, String(v));
   }
   const url = `${apiBaseClient()}/catalog/products?${usp.toString()}`;
-  return (await fetchJson(url)) as any;
+  return (await fetchJson(url, opts)) as any;
 }
