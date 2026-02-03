@@ -52,6 +52,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       inStock: f.inStock,
       includeFacets: true,
       lite: true,
+      semantic: false,
     }),
   ]);
 
