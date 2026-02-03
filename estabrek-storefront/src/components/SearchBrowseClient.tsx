@@ -148,6 +148,7 @@ export default function SearchBrowseClient({
         showHeader={false}
         onData={setData}
         onLoading={setLoading}
+        extraParams={{ semantic: false }}
       />
     </main>
   );

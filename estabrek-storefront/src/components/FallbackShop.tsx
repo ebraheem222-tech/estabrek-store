@@ -43,7 +43,7 @@ const EmptyIcon = () => (
 export default async function FallbackShop() {
   const [cats, products] = await Promise.all([
     getCategoriesTree(),
-    listProducts({ sort: "latest", page: 1, pageSize: 16 }),
+    listProducts({ sort: "latest", page: 1, pageSize: 16, includeFacets: false, lite: true }),
   ]);
 
   return (

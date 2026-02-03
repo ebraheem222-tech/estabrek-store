@@ -122,7 +122,10 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
         className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300"
         onMouseEnter={() => {
           if (prefetchEnabled) {
-            prefetchProductQuickAdd({ slug: product.slug, id: product.id });
+            const hasSizeNames = (product.items ?? []).some((it) => (it.variants ?? []).some((v: any) => v?.size?.name));
+            if (hasSizeNames) {
+              prefetchProductQuickAdd({ slug: product.slug, id: product.id });
+            }
           }
           setIsHovered(true);
         }}

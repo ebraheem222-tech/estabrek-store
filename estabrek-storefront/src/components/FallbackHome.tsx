@@ -87,7 +87,7 @@ export default async function FallbackHome() {
   const [bootstrap, cats, products] = await Promise.all([
     getBootstrap(),
     getCategoriesTree(),
-    listProducts({ sort: "latest", page: 1, pageSize: 8 }),
+    listProducts({ sort: "latest", page: 1, pageSize: 8, includeFacets: false, lite: true }),
   ]);
 
   const top = (cats ?? []).slice(0, 6);

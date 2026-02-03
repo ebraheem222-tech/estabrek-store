@@ -16,13 +16,15 @@ type Props = {
   showHeader?: boolean;
   onData?: (data: any) => void;
   onLoading?: (loading: boolean) => void;
+  extraParams?: Record<string, any>;
 };
 
-export default function ShopResultsClient({ initial, filters, basePath, showHeader = true, onData, onLoading }: Props) {
+export default function ShopResultsClient({ initial, filters, basePath, showHeader = true, onData, onLoading, extraParams }: Props) {
   const isCursor = String(filters?.lm ?? "") === "1" || filters?.lm === 1 || filters?.lm === true;
 
   const [pages, setPages] = useState<any[]>([initial]);
   const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const items = useMemo(() => pages.flatMap((p) => p?.items ?? []), [pages]);
   const total = (pages[0]?.total ?? items.length) as number;
@@ -47,6 +49,9 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
   useEffect(() => {
     if (filtersKey === initialKeyRef.current) return;
     let active = true;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     onLoading?.(true);
     (async () => {
@@ -62,12 +67,19 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
           sizeIds: filters.sizeIds?.length ? filters.sizeIds.join(",") : undefined,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
+          includeFacets: true,
+          lite: true,
           // legacy
           color: filters.color,
           sizeId: filters.sizeId,
-        });
+          ...extraParams,
+        }, { signal: controller.signal });
         if (!active) return;
         setPages([res]);
+      } catch (e) {
+        if (!controller.signal.aborted) {
+          console.error(e);
+        }
       } finally {
         if (active) {
           setLoading(false);
@@ -77,6 +89,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
     })();
     return () => {
       active = false;
+      controller.abort();
     };
   }, [filtersKey, filters, onLoading]);
 
@@ -106,9 +119,12 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
         sizeIds: filters.sizeIds?.length ? filters.sizeIds.join(",") : undefined,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
+        includeFacets: false,
+        lite: true,
         // legacy
         color: filters.color,
         sizeId: filters.sizeId,
+        ...extraParams,
       });
       setPages((prev) => [...prev, res]);
     } finally {

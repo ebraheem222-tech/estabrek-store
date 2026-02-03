@@ -110,6 +110,7 @@ export const listProducts = cache(
     take?: number;
     lite?: boolean;
     includeFacets?: boolean;
+    semantic?: boolean;
   }): Promise<CatalogProductsList> => {
     const usp = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {

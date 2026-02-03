@@ -26,8 +26,17 @@ type Selection = {
 };
 
 function variantSizeKey(v: CatalogVariant) {
-  const n = (v.size?.name ?? "").trim();
+  const n = (v.size?.name ?? v.sizeId ?? "").trim();
   return n || "default";
+}
+
+function needsFullProduct(p: CatalogProduct | null): boolean {
+  if (!p) return true;
+  const items = p.items ?? [];
+  if (!items.length) return true;
+  const variants = flattenVariants(p);
+  if (!variants.length) return true;
+  return variants.some((v) => !v.size?.name);
 }
 
 function flattenVariants(p: CatalogProduct) {
@@ -58,16 +67,19 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
 
   const variantsCount = useMemo(() => (p ? flattenVariants(p).length : 0), [p]);
 
-  async function ensureProduct(opts?: { silent?: boolean }): Promise<CatalogProduct | null> {
-    if (p) return p;
+  async function ensureProduct(opts?: { silent?: boolean; allowPartial?: boolean }): Promise<CatalogProduct | null> {
+    const current = p ?? product ?? null;
+    if (current && (opts?.allowPartial || !needsFullProduct(current))) return current;
     if (!opts?.silent) {
       setLoading(true);
       setErr(null);
     }
     try {
       let full: CatalogProduct | null = null;
-      if (slug) full = await getProductBySlugClient(slug);
-      else if (productId) full = await getProductByIdClient(productId);
+      const slugToUse = slug ?? current?.slug ?? product?.slug;
+      const idToUse = productId ?? current?.id ?? product?.id;
+      if (slugToUse) full = await getProductBySlugClient(slugToUse);
+      else if (idToUse) full = await getProductByIdClient(idToUse);
       setP(full);
       return full;
     } catch (e: any) {
@@ -128,9 +140,15 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
         onMouseEnter={async () => {
           if (!settings.prefetchLinks) return;
           if (prefetchedRef.current) return;
-          if (p || loading) return;
+          const current = p ?? product ?? null;
+          if (!current) {
+            prefetchedRef.current = true;
+            await ensureProduct({ silent: true, allowPartial: true });
+            return;
+          }
+          if (needsFullProduct(current)) return;
           prefetchedRef.current = true;
-          await ensureProduct({ silent: true });
+          await ensureProduct({ silent: true, allowPartial: true });
         }}
         className={
           "w-full rounded-xl px-3 py-2 text-sm font-semibold transition " +
