@@ -717,7 +717,7 @@ export async function listProducts(params: {
   const expiredSales: ExpiredSale[] = [];
 
   const items = products.map((p) => {
-    const pricedItems = applySalePricingToItems(p.items ?? [], now, expiredSales);
+    const pricedItems = applySalePricingToItems((p.items ?? []) as any[], now, expiredSales);
     const minPrice = computeMinPriceFromItems(pricedItems);
     return { ...p, items: pricedItems, minPrice };
   });
@@ -1005,7 +1005,7 @@ export async function listProductsByIds(ids: string[], opts?: { lite?: boolean }
   const expiredSales: ExpiredSale[] = [];
 
   const items = products.map((p) => {
-    const pricedItems = applySalePricingToItems(p.items ?? [], now, expiredSales);
+    const pricedItems = applySalePricingToItems((p.items ?? []) as any[], now, expiredSales);
     const minPrice = computeMinPriceFromItems(pricedItems);
     return { ...p, items: pricedItems, minPrice };
   });
