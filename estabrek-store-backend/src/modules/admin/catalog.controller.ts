@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
+import { isCloudinaryEnabled } from "../../lib/cloudinary.js";
 
 import { extractDominantAndPaletteFromFile, autoGroupByColor, nameColor, rgbToHex } from "../../lib/colorAnalysis.js";
 import { prisma } from "../../lib/prisma.js";
@@ -599,21 +600,29 @@ function makePublicUrl(req: any, rel: string) {
 async function optimizeImageInPlace(filePath: string) {
   try {
     const ext = path.extname(filePath).toLowerCase();
-    let img = sharp(filePath, { failOnError: false }).rotate();
-    const meta = await img.metadata();
+    const isCloud = isCloudinaryEnabled();
+    const meta = await sharp(filePath, { failOnError: false }).metadata();
     if (!meta.format || !["jpeg", "png", "webp"].includes(meta.format)) {
       return { ok: false, width: null, height: null, size: 0 };
     }
 
-    const maxW = 2000;
-    const maxH = 2000;
-    if (meta.width && meta.height && (meta.width > maxW || meta.height > maxH)) {
+    const maxW = isCloud ? 4000 : 2000;
+    const maxH = isCloud ? 4000 : 2000;
+    const needsResize = !!(meta.width && meta.height && (meta.width > maxW || meta.height > maxH));
+
+    if (isCloud && !needsResize) {
+      const st = await fs.stat(filePath);
+      return { ok: true, width: meta.width ?? null, height: meta.height ?? null, size: st.size };
+    }
+
+    let img = sharp(filePath, { failOnError: false }).rotate();
+    if (needsResize) {
       img = img.resize({ width: maxW, height: maxH, fit: "inside", withoutEnlargement: true });
     }
 
-    if (ext === ".png") img = img.png({ compressionLevel: 9, palette: true });
-    else if (ext === ".webp") img = img.webp({ quality: 82 });
-    else img = img.jpeg({ quality: 82, mozjpeg: true });
+    if (ext === ".png") img = isCloud ? img.png({ compressionLevel: 6, palette: false }) : img.png({ compressionLevel: 9, palette: true });
+    else if (ext === ".webp") img = img.webp({ quality: isCloud ? 90 : 82 });
+    else img = img.jpeg({ quality: isCloud ? 90 : 82, mozjpeg: true });
 
     const tmp = `${filePath}.tmp`;
     await img.toFile(tmp);
