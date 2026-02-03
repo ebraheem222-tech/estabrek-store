@@ -40,6 +40,7 @@ export const ProductListQuery = z.object({
 
 export const ProductIdsBody = z.object({
   ids: z.array(z.string().cuid()).min(1).max(200),
+  lite: Boolish.optional(),
 });
 
 export const CreateReviewBody = z.object({

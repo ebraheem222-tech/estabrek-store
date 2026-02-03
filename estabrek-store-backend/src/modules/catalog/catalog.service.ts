@@ -119,11 +119,11 @@ function normalizeVariantPricing<T extends { id?: string; price?: any; compareAt
   };
 }
 
-function applySalePricingToItems<T extends { variants?: any[] }>(
-  items: T[],
+function applySalePricingToItems(
+  items: any[],
   now: Date,
   expired: ExpiredSale[]
-): T[] {
+): any[] {
   return (items ?? []).map((it: any) => ({
     ...it,
     variants: (it.variants ?? []).map((v: any) => normalizeVariantPricing(v, now, expired)),

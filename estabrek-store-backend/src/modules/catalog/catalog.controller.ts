@@ -40,8 +40,8 @@ r.get("/products", validate({ query: ProductListQuery }), asyncHandler(async (re
 
 /** products by ids (batch) */
 r.post("/products/by-ids", validate({ body: ProductIdsBody }), asyncHandler(async (req, res) => {
-  const { ids } = ProductIdsBody.parse(req.body);
-  res.json({ items: await listProductsByIds(ids) });
+  const { ids, lite } = ProductIdsBody.parse(req.body);
+  res.json({ items: await listProductsByIds(ids, { lite }) });
 }));
 
 /** product detail (by slug or id) */
