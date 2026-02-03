@@ -142,12 +142,12 @@ export const getProductBySlug = cache(async (slug: string): Promise<CatalogProdu
   return ProductZ.parse(json) as CatalogProduct;
 });
 
-export const listProductsByIds = cache(async (ids: string[]): Promise<CatalogProduct[]> => {
+export const listProductsByIds = cache(async (ids: string[], opts?: { lite?: boolean }): Promise<CatalogProduct[]> => {
   const url = `${baseUrl()}/catalog/products/by-ids`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify({ ids, lite: opts?.lite }),
     next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
   });
   if (!res.ok) throw new Error(`products by ids failed (${res.status})`);
