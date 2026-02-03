@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { PriceNumber } from "../../schemas/common.js";
 
+const Boolish = z.preprocess((v) => {
+  if (v === undefined || v === null || v === "") return undefined;
+  if (typeof v === "boolean") return v;
+  const s = String(v).trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(s)) return true;
+  if (["0", "false", "no", "n", "off"].includes(s)) return false;
+  return v;
+}, z.boolean());
+
 const CartItemBody = z.object({
   variantId: z.string().cuid(),
   quantity: z.number().int().min(1).default(1),
@@ -12,7 +21,7 @@ export const ProductListQuery = z.object({
   q: z.string().trim().optional(),
   category: z.string().trim().optional(), // category slug
   categoryId: z.string().cuid().optional(),
-  inStock: z.coerce.boolean().optional(),
+  inStock: Boolish.optional(),
   color: z.string().trim().optional(),
   sizeId: z.string().cuid().optional(),
   // multi-select (comma separated)
@@ -25,6 +34,12 @@ export const ProductListQuery = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(12),
   // alias
   limit: z.coerce.number().int().min(1).max(50).optional(),
+  lite: Boolish.optional(),
+  includeFacets: Boolish.optional(),
+});
+
+export const ProductIdsBody = z.object({
+  ids: z.array(z.string().cuid()).min(1).max(200),
 });
 
 export const CreateReviewBody = z.object({

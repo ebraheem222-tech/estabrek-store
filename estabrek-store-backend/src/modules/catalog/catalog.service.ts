@@ -179,9 +179,114 @@ const baseProductSelect = {
   updatedAt: true,
 };
 
+function buildItemsSelect(lite: boolean) {
+  if (!lite) {
+    return {
+      where: { isActive: true },
+      include: {
+        // two images per item (primary first)
+        images: {
+          orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+          take: 2,
+          select: {
+            id: true,
+            url: true,
+            alt: true,
+            position: true,
+            isPrimary: true,
+            view: true,
+            dominantColorHex: true,
+            palette: true,
+            blurDataUrl: true,
+          },
+        },
+        variants: {
+          include: { size: true },
+          orderBy: { size: { order: "asc" } },
+        },
+      },
+    } as const;
+  }
+  return {
+    where: { isActive: true },
+    select: {
+      id: true,
+      colorName: true,
+      boxLabel: true,
+      colorHex: true,
+      suggestedColors: true,
+      images: {
+        orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+        take: 2,
+        select: {
+          id: true,
+          url: true,
+          alt: true,
+          position: true,
+          isPrimary: true,
+          view: true,
+          dominantColorHex: true,
+          palette: true,
+          blurDataUrl: true,
+        },
+      },
+      variants: {
+        select: {
+          id: true,
+          sizeId: true,
+          price: true,
+          compareAt: true,
+          originalPrice: true,
+          salePrice: true,
+          saleStartsAt: true,
+          saleEndsAt: true,
+          stock: true,
+        },
+      },
+    },
+  } as const;
+}
+
 const SEMANTIC_MIN_QUERY_LENGTH = 3;
 const SEMANTIC_MAX_CANDIDATES = 2000;
 const SEMANTIC_MAX_RESULTS = 1200;
+
+const EMBED_CACHE_TTL_MS = 10 * 60_000;
+const EMBED_CACHE_MAX = 500;
+const EMBED_CACHE = new Map<string, { v: number[]; t: number }>();
+
+function normalizeEmbedKey(query: string) {
+  return query.trim().toLowerCase();
+}
+
+function getCachedEmbedding(query: string): number[] | null {
+  const key = normalizeEmbedKey(query);
+  const hit = EMBED_CACHE.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.t > EMBED_CACHE_TTL_MS) {
+    EMBED_CACHE.delete(key);
+    return null;
+  }
+  return hit.v;
+}
+
+function setCachedEmbedding(query: string, embedding: number[]) {
+  const key = normalizeEmbedKey(query);
+  if (EMBED_CACHE.size >= EMBED_CACHE_MAX && !EMBED_CACHE.has(key)) {
+    const oldest = EMBED_CACHE.keys().next().value;
+    if (oldest) EMBED_CACHE.delete(oldest);
+  }
+  EMBED_CACHE.set(key, { v: embedding, t: Date.now() });
+}
+
+async function getQueryEmbedding(query: string): Promise<number[] | null> {
+  const cached = getCachedEmbedding(query);
+  if (cached) return cached;
+  const embedded = await openaiEmbedText(query);
+  if (!embedded.ok) return null;
+  setCachedEmbedding(query, embedded.embedding);
+  return embedded.embedding;
+}
 
 type SemanticCandidate = {
   id: string;
@@ -472,13 +577,17 @@ async function listProductsSemantic(params: {
   page: number;
   pageSize: number;
   limit?: number;
+  lite?: boolean;
+  includeFacets?: boolean;
 }) {
   const query = params.q?.trim() ?? "";
+  const includeFacets = params.includeFacets !== false;
+  const lite = !!params.lite;
   if (!query || query.length < SEMANTIC_MIN_QUERY_LENGTH) return null;
 
   const now = new Date();
-  const embedded = await openaiEmbedText(query);
-  if (!embedded.ok) return null;
+  const embedded = await getQueryEmbedding(query);
+  if (!embedded) return null;
 
   const {
     productWhere,
@@ -505,7 +614,7 @@ async function listProductsSemantic(params: {
 
   if (!candidates.length) return null;
 
-  const ranked = rankSemanticCandidates(query, embedded.embedding, candidates);
+  const ranked = rankSemanticCandidates(query, embedded, candidates);
   if (!ranked.length) return null;
 
   const minScore = minScoreForQuery(query);
@@ -518,8 +627,8 @@ async function listProductsSemantic(params: {
   const skip = (params.page - 1) * pageSize;
   const pageIds = orderedIds.slice(skip, skip + pageSize);
 
-  const items = await listProductsByIds(pageIds);
-  const facets = await buildFacetsForProductIds({
+  const items = await listProductsByIds(pageIds, { lite });
+  const facets = includeFacets ? await buildFacetsForProductIds({
     productIds: orderedIds,
     itemWhereNoColor,
     itemWhereNoSize,
@@ -528,7 +637,7 @@ async function listProductsSemantic(params: {
     colorsArr,
     sizeArr,
     now,
-  });
+  }) : undefined;
 
   return {
     items,
@@ -557,9 +666,13 @@ export async function listProducts(params: {
   page: number;
   pageSize: number;
   limit?: number;
+  lite?: boolean;
+  includeFacets?: boolean;
 }) {
   const sort = params.sort ?? "latest";
   const query = params.q?.trim() ?? "";
+  const includeFacets = params.includeFacets !== false;
+  const lite = !!params.lite;
   const now = new Date();
   const useSemantic = !!query && sort === "latest";
   if (useSemantic) {
@@ -585,6 +698,7 @@ export async function listProducts(params: {
       : { createdAt: "desc" };
 
   const skip = (params.page - 1) * pageSize;
+  const itemSelect: any = buildItemsSelect(lite);
   const [total, products] = await Promise.all([
     prisma.product.count({ where: productWhere }),
     prisma.product.findMany({
@@ -595,31 +709,7 @@ export async function listProducts(params: {
       select: {
         ...baseProductSelect,
         category: true,
-        items: {
-          where: { isActive: true },
-          include: {
-            // two images per item (primary first)
-            images: {
-              orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
-              take: 2,
-              select: {
-                id: true,
-                url: true,
-                alt: true,
-                position: true,
-                isPrimary: true,
-                view: true,
-                dominantColorHex: true,
-                palette: true,
-                blurDataUrl: true,
-              },
-            },
-            variants: {
-              include: { size: true },
-              orderBy: { size: { order: "asc" } },
-            },
-          },
-        },
+        items: itemSelect,
       },
     }),
   ]);
@@ -648,7 +738,7 @@ export async function listProducts(params: {
     page: params.page,
     pageSize: pageSize,
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    facets: await (async () => {
+    facets: includeFacets ? await (async () => {
       // COLORS facets (ignore selected colors, keep size + price)
       const colorRows = await prisma.productItem.groupBy({
         by: ["colorName", "colorHex"],
@@ -708,7 +798,7 @@ export async function listProducts(params: {
           sizeIds: sizeArr ?? [],
         },
       };
-    })(),
+    })() : undefined,
   };
 }
 
@@ -895,39 +985,19 @@ export function listProductImages(productId: string) {
   });
 }
 
-export async function listProductsByIds(ids: string[]) {
+export async function listProductsByIds(ids: string[], opts?: { lite?: boolean }) {
   const clean = ids.map((x) => String(x)).filter(Boolean);
   if (!clean.length) return [];
+
+  const lite = !!opts?.lite;
+  const itemSelect: any = buildItemsSelect(lite);
 
   const products = await prisma.product.findMany({
     where: { id: { in: clean }, isActive: true },
     select: {
       ...baseProductSelect,
       category: true,
-      items: {
-        where: { isActive: true },
-        include: {
-          images: {
-            orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
-            take: 2,
-            select: {
-              id: true,
-              url: true,
-              alt: true,
-              position: true,
-              isPrimary: true,
-              view: true,
-              dominantColorHex: true,
-              palette: true,
-              blurDataUrl: true,
-            },
-          },
-          variants: {
-            include: { size: true },
-            orderBy: { size: { order: "asc" } },
-          },
-        },
-      },
+      items: itemSelect,
     },
   });
 

@@ -3,12 +3,14 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import {
   ProductListQuery,
+  ProductIdsBody,
   CreateReviewBody,
   CreateCommentBody,
   CreateOrderRequestBody,
 } from "./catalog.schemas.js";
 import {
   listProducts,
+  listProductsByIds,
   getProductById,
   getProductBySlug,
   getCategoriesTree,
@@ -34,6 +36,12 @@ r.get("/sizes", asyncHandler(async (_req, res) => {
 r.get("/products", validate({ query: ProductListQuery }), asyncHandler(async (req, res) => {
   const q = ProductListQuery.parse(req.query); // typesafe
   res.json(await listProducts(q));
+}));
+
+/** products by ids (batch) */
+r.post("/products/by-ids", validate({ body: ProductIdsBody }), asyncHandler(async (req, res) => {
+  const { ids } = ProductIdsBody.parse(req.body);
+  res.json({ items: await listProductsByIds(ids) });
 }));
 
 /** product detail (by slug or id) */
