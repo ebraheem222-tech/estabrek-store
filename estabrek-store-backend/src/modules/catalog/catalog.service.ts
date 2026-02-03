@@ -683,13 +683,24 @@ export async function listProducts(params: {
   limit?: number;
   lite?: boolean;
   includeFacets?: boolean;
+  semantic?: boolean;
 }) {
   const sort = params.sort ?? "latest";
   const query = params.q?.trim() ?? "";
   const includeFacets = params.includeFacets !== false;
   const lite = !!params.lite;
   const now = new Date();
-  const useSemantic = !!query && sort === "latest";
+  const hasFilters =
+    !!params.categoryId ||
+    !!params.category ||
+    !!params.inStock ||
+    !!params.minPrice ||
+    !!params.maxPrice ||
+    !!params.color ||
+    !!params.sizeId ||
+    !!params.colors ||
+    !!params.sizeIds;
+  const useSemantic = !!query && sort === "latest" && !hasFilters && params.semantic !== false;
   if (useSemantic) {
     const semantic = await listProductsSemantic(params);
     if (semantic) return semantic;

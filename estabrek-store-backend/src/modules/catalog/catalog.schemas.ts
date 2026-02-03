@@ -36,6 +36,7 @@ export const ProductListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
   lite: Boolish.optional(),
   includeFacets: Boolish.optional(),
+  semantic: Boolish.optional(),
 });
 
 export const ProductIdsBody = z.object({
