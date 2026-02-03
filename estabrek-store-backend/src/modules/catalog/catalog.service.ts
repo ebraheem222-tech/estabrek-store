@@ -179,6 +179,15 @@ const baseProductSelect = {
   updatedAt: true,
 };
 
+const categorySelect = {
+  select: {
+    id: true,
+    name: true,
+    slug: true,
+    parentId: true,
+  },
+};
+
 function buildItemsSelect(lite: boolean) {
   if (!lite) {
     return {
@@ -627,17 +636,23 @@ async function listProductsSemantic(params: {
   const skip = (params.page - 1) * pageSize;
   const pageIds = orderedIds.slice(skip, skip + pageSize);
 
-  const items = await listProductsByIds(pageIds, { lite });
-  const facets = includeFacets ? await buildFacetsForProductIds({
-    productIds: orderedIds,
-    itemWhereNoColor,
-    itemWhereNoSize,
-    minPrice: params.minPrice,
-    maxPrice: params.maxPrice,
-    colorsArr,
-    sizeArr,
-    now,
-  }) : undefined;
+  const facetsPromise = includeFacets
+    ? buildFacetsForProductIds({
+        productIds: orderedIds,
+        itemWhereNoColor,
+        itemWhereNoSize,
+        minPrice: params.minPrice,
+        maxPrice: params.maxPrice,
+        colorsArr,
+        sizeArr,
+        now,
+      })
+    : Promise.resolve(undefined);
+
+  const [items, facets] = await Promise.all([
+    listProductsByIds(pageIds, { lite }),
+    facetsPromise,
+  ]);
 
   return {
     items,
@@ -699,7 +714,71 @@ export async function listProducts(params: {
 
   const skip = (params.page - 1) * pageSize;
   const itemSelect: any = buildItemsSelect(lite);
-  const [total, products] = await Promise.all([
+  const facetsPromise = includeFacets
+    ? (async () => {
+        // COLORS facets (ignore selected colors, keep size + price)
+        const colorRows = await prisma.productItem.groupBy({
+          by: ["colorName", "colorHex"],
+          where: {
+            AND: [
+              itemWhereNoColor,
+              { product: baseProductWhere },
+            ],
+          },
+          _count: { _all: true },
+        });
+
+        // SIZES facets (ignore selected sizes, keep color + price)
+        const priceFilter = buildVariantPriceFilter(params.minPrice, params.maxPrice, now);
+        const hasPrice = !!priceFilter;
+
+        const sizeRows = await prisma.productVariant.groupBy({
+          by: ["sizeId"],
+          where: {
+            ...(hasPrice ? { AND: [priceFilter as Prisma.ProductVariantWhereInput] } : {}),
+            item: {
+              AND: [
+                itemWhereNoSize,
+                { product: baseProductWhere },
+              ],
+            },
+          },
+          _count: { _all: true },
+        });
+        const sizeIds = sizeRows.map((r) => r.sizeId);
+        const sizes = sizeIds.length
+          ? await prisma.size.findMany({
+              where: { id: { in: sizeIds }, active: true },
+              select: { id: true, name: true, order: true },
+            })
+          : [];
+        const sizeById = new Map(sizes.map((s) => [s.id, s]));
+
+        return {
+          colors: colorRows
+            .map((r) => ({
+              name: r.colorName,
+              colorHex: r.colorHex,
+              count: r._count._all,
+            }))
+            .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+          sizes: sizeRows
+            .map((r) => ({
+              id: r.sizeId,
+              name: sizeById.get(r.sizeId)?.name ?? r.sizeId,
+              order: sizeById.get(r.sizeId)?.order ?? 0,
+              count: r._count._all,
+            }))
+            .sort((a, b) => b.count - a.count || a.order - b.order || a.name.localeCompare(b.name)),
+          selected: {
+            colors: colorsArr ?? [],
+            sizeIds: sizeArr ?? [],
+          },
+        };
+      })()
+    : Promise.resolve(undefined);
+
+  const [total, products, facets] = await Promise.all([
     prisma.product.count({ where: productWhere }),
     prisma.product.findMany({
       where: productWhere,
@@ -708,10 +787,11 @@ export async function listProducts(params: {
       take: pageSize,
       select: {
         ...baseProductSelect,
-        category: true,
+        category: categorySelect,
         items: itemSelect,
       },
     }),
+    facetsPromise,
   ]);
 
   const expiredSales: ExpiredSale[] = [];
@@ -738,67 +818,7 @@ export async function listProducts(params: {
     page: params.page,
     pageSize: pageSize,
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    facets: includeFacets ? await (async () => {
-      // COLORS facets (ignore selected colors, keep size + price)
-      const colorRows = await prisma.productItem.groupBy({
-        by: ["colorName", "colorHex"],
-        where: {
-          AND: [
-            itemWhereNoColor,
-            { product: baseProductWhere },
-          ],
-        },
-        _count: { _all: true },
-      });
-
-      // SIZES facets (ignore selected sizes, keep color + price)
-      const priceFilter = buildVariantPriceFilter(params.minPrice, params.maxPrice, now);
-      const hasPrice = !!priceFilter;
-
-      const sizeRows = await prisma.productVariant.groupBy({
-        by: ["sizeId"],
-        where: {
-          ...(hasPrice ? { AND: [priceFilter as Prisma.ProductVariantWhereInput] } : {}),
-          item: {
-            AND: [
-              itemWhereNoSize,
-              { product: baseProductWhere },
-            ],
-          },
-        },
-        _count: { _all: true },
-      });
-      const sizeIds = sizeRows.map((r) => r.sizeId);
-      const sizes = sizeIds.length
-        ? await prisma.size.findMany({
-            where: { id: { in: sizeIds }, active: true },
-            select: { id: true, name: true, order: true },
-          })
-        : [];
-      const sizeById = new Map(sizes.map((s) => [s.id, s]));
-
-      return {
-        colors: colorRows
-          .map((r) => ({
-            name: r.colorName,
-            colorHex: r.colorHex,
-            count: r._count._all,
-          }))
-          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
-        sizes: sizeRows
-          .map((r) => ({
-            id: r.sizeId,
-            name: sizeById.get(r.sizeId)?.name ?? r.sizeId,
-            order: sizeById.get(r.sizeId)?.order ?? 0,
-            count: r._count._all,
-          }))
-          .sort((a, b) => b.count - a.count || a.order - b.order || a.name.localeCompare(b.name)),
-        selected: {
-          colors: colorsArr ?? [],
-          sizeIds: sizeArr ?? [],
-        },
-      };
-    })() : undefined,
+    facets,
   };
 }
 
@@ -996,7 +1016,7 @@ export async function listProductsByIds(ids: string[], opts?: { lite?: boolean }
     where: { id: { in: clean }, isActive: true },
     select: {
       ...baseProductSelect,
-      category: true,
+      category: categorySelect,
       items: itemSelect,
     },
   });
