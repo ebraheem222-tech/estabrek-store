@@ -299,7 +299,7 @@ export async function renderCmsPageBySlug(
 
   const idsList = Array.from(wantIds);
   if (idsList.length) {
-    const products = await listProductsByIds(idsList);
+    const products = await listProductsByIds(idsList, { lite: true });
     for (const p of products) {
       if (!p) continue;
       const imageUrl = getProductPrimaryImage(p);
