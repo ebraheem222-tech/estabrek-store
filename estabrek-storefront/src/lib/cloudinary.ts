@@ -67,7 +67,7 @@ export function cldUrl(url: string, t: CloudinaryTransform = {}): string {
   const alreadyTransformed = /\/upload\/[^/]*(f_|q_)/.test(normalized);
   if (alreadyTransformed) return normalized;
 
-  const parts: string[] = ["f_auto", "q_auto:eco", "fl_progressive", "dpr_auto"];
+  const parts: string[] = ["f_auto", "q_auto:good", "fl_progressive", "dpr_auto", "a_auto"];
 
   if (typeof t.w === "number") parts.push(`w_${Math.round(t.w)}`);
   if (typeof t.h === "number") parts.push(`h_${Math.round(t.h)}`);
