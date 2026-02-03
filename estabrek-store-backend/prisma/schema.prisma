@@ -532,6 +532,7 @@ model Product {
   updatedAt   DateTime         @updatedAt
 
   @@index([categoryId])
+  @@index([isActive, categoryId])
 }
 
 model ProductItem {
@@ -552,6 +553,8 @@ model ProductItem {
   updatedAt DateTime           @updatedAt
 
   @@unique([productId, colorName, boxLabel])
+  @@index([productId, isActive])
+  @@index([colorName])
 }
 
 model Size {
@@ -589,6 +592,11 @@ model ProductVariant {
   orderRequests OrderRequest[]
   orderRequestItems OrderRequestItem[]
   @@unique([productItemId, sizeId])
+  @@index([productItemId])
+  @@index([sizeId])
+  @@index([price])
+  @@index([salePrice])
+  @@index([stock])
 }
 model InventoryAdjustment {
   id          String        @id @default(cuid())
