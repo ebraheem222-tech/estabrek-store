@@ -442,6 +442,7 @@ model MediaAsset {
   size        Int
   width       Int?
   height      Int?
+  imageHash   String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -450,10 +451,11 @@ model MediaAsset {
 dominantColorHex String?
 /** palette extracted (array of hex strings) */
 palette          Json?
-/** low-res placeholder (base64 data URL) */
+  /** low-res placeholder (base64 data URL) */
   blurDataUrl      String?
   @@index([folder])
   @@index([kind, folder, createdAt])
+  @@index([imageHash])
 }
 
 model MediaFolder {
@@ -642,6 +644,8 @@ dominantColorHex String?
 palette          Json?
 /** low-res placeholder (base64 data URL) */
 blurDataUrl      String?
+/** perceptual hash for deduplication */
+imageHash       String?
 /** image embedding (vector as JSON array) */
 embedding        Json?
 /** text used to generate embedding */
