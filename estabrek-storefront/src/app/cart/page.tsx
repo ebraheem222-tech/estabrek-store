@@ -12,13 +12,21 @@ export default async function CartPage() {
   const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
   if (storefrontCfg.cmsOverrideCart !== false) {
     const cms = await renderCmsPageBySlug("/cart", undefined, { allowFallback: false, allowNotFound: false });
-    if (cms) return cms;
+    if (cms) {
+      return (
+        <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">
+          {cms}
+        </main>
+      );
+    }
   }
   return (
-    <CartClient
-      checkoutMode={(site as any).checkoutMode ?? "WHATSAPP"}
-      whatsappNumber={(site as any).whatsappNumber ?? (site as any).contactPhone ?? null}
-      ordersEmail={(site as any).ordersEmail ?? (site as any).contactEmail ?? null}
-    />
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">
+      <CartClient
+        checkoutMode={(site as any).checkoutMode ?? "WHATSAPP"}
+        whatsappNumber={(site as any).whatsappNumber ?? (site as any).contactPhone ?? null}
+        ordersEmail={(site as any).ordersEmail ?? (site as any).contactEmail ?? null}
+      />
+    </main>
   );
 }

@@ -37,7 +37,7 @@ export default async function PoliciesLayout({ children }: { children: React.Rea
           header={navbarHeader}
           cmsNav={header?.cmsNav}
         />
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         <Footer site={bootstrap.site} footerMenu={bootstrap.footerMenu} footer={(settings.site as any)?.footer} />
         <ScriptTags scripts={bootstrap.site.scriptsBody} />
       </UiSettingsProvider>

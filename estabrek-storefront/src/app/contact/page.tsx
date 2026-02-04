@@ -9,7 +9,11 @@ export default async function ContactPage({ searchParams }: { searchParams?: SP 
   const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
   if (storefrontCfg.cmsOverrideContact !== false) {
     const cms = await renderCmsPageBySlug("/contact", searchParams, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
   }
-  return <FallbackContact />;
+  return (
+    <main id="main-content" tabIndex={-1}>
+      <FallbackContact />
+    </main>
+  );
 }

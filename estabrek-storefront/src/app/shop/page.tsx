@@ -66,7 +66,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   const aiRecommendationsEnabled = storefrontCfg.aiRecommendationsEnabled !== false;
   if (storefrontCfg.cmsOverrideShop !== false) {
     const cms = await renderCmsPageBySlug("/shop", searchParams, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
   }
 
   const f = normalizeFiltersFromSearchParams(searchParams);
@@ -96,7 +96,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   ]);
 
   return (
-    <main className="mx-auto max-w-7xl space-y-8 px-4 py-8" dir="rtl">
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl space-y-8 px-4 py-8" dir="rtl">
       <NormalizeFilters basePath="/shop" />
       
       {/* Breadcrumb */}

@@ -58,14 +58,14 @@ export default async function AboutPage() {
   const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
   if (storefrontCfg.cmsOverrideAbout !== false) {
     const cms = await renderCmsPageBySlug("/about", undefined, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
   }
 
   const bootstrap = await getBootstrap();
   const siteName = bootstrap?.site?.siteName || "Estabrek Store";
 
   return (
-    <main className="about-page" dir="rtl">
+    <main id="main-content" tabIndex={-1} className="about-page" dir="rtl">
       {/* Breadcrumb */}
       {breadcrumbsEnabled ? (
         <nav className="about-breadcrumb">

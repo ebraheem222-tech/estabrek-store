@@ -144,7 +144,7 @@ const productLd: any = {
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
 
   return (
-    <div className="space-y-8">
+    <main id="main-content" tabIndex={-1} className="space-y-8">
       {breadcrumbsEnabled ? <Breadcrumbs items={crumbs} /> : null}
 
       {breadcrumbsEnabled ? (
@@ -188,6 +188,6 @@ const productLd: any = {
       
       {/* Share Button */}
       <ShareButton title={product.title} />
-    </div>
+    </main>
   );
 }

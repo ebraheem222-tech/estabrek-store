@@ -32,7 +32,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
   const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
   if (storefrontCfg.cmsOverrideSearch !== false) {
     const cms = await renderCmsPageBySlug("/search", searchParams, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
   }
 
   const f = normalizeFiltersFromSearchParams(searchParams);

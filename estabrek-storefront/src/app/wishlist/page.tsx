@@ -49,7 +49,7 @@ export default function WishlistPage() {
   const breadcrumbsEnabled = settings.breadcrumbsEnabled !== false;
 
   return (
-    <main className="wishlist-page" dir="rtl">
+    <main id="main-content" tabIndex={-1} className="wishlist-page" dir="rtl">
       {/* Breadcrumb */}
       {breadcrumbsEnabled ? (
         <nav className="wishlist-breadcrumb">

@@ -136,7 +136,7 @@ const breadcrumbLd = {
 
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <NormalizeFilters basePath={`/c/${params.slug}`} />
 
       {breadcrumbsEnabled ? <Breadcrumbs items={crumbs} /> : null}

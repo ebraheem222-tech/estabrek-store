@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="mx-auto w-full max-w-3xl font-arabic" dir="rtl">
+    <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-3xl font-arabic" dir="rtl">
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-8 text-center">
         <div className="text-5xl font-bold text-white/90">404</div>
         <h1 className="mt-3 text-xl font-semibold">الصفحة غير موجودة</h1>
@@ -22,6 +22,6 @@ export default function NotFound() {
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -25,6 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body>
+        <a href="#main-content" className="skip-link">تخطي إلى المحتوى</a>
         <Providers initialStorefrontSettings={initialStorefrontSettings}>{children}</Providers>
       </body>
     </html>
