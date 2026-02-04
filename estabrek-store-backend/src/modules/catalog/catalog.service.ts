@@ -1,5 +1,6 @@
 // src/modules/catalog/catalog.service.ts
 import { prisma } from "../../lib/prisma.js";
+import { cacheGet, cacheSet } from "../../lib/cache.js";
 import type { Prisma } from "@prisma/client";
 import { annotateLinesWithDiscount } from "../../utils/money.js";
 import { openaiEmbedText } from "../../lib/openai.js";
@@ -125,6 +126,9 @@ let CATEGORY_CACHE: {
   childrenByParent: Map<string, string[]>;
   idBySlug: Map<string, string>;
 } | null = null;
+
+const CATEGORY_TREE_TTL_MS = 60_000;
+const SIZES_CACHE_TTL_MS = 60_000;
 
 async function getCategoryIndex() {
   if (CATEGORY_CACHE && Date.now() - CATEGORY_CACHE.t < CATEGORY_CACHE_TTL_MS) {
@@ -995,6 +999,8 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getCategoriesTree() {
+  const cached = await cacheGet<any[]>("catalog:categories:tree");
+  if (cached) return cached;
   const all = await prisma.category.findMany({ orderBy: [{ parentId: "asc" }, { name: "asc" }] });
   const byParent = new Map<string | null, typeof all>();
   for (const c of all) {
@@ -1009,11 +1015,17 @@ export async function getCategoriesTree() {
       children: build(c.id),
     }));
   }
-  return build(null);
+  const tree = build(null);
+  await cacheSet("catalog:categories:tree", tree, CATEGORY_TREE_TTL_MS);
+  return tree;
 }
 
-export function listSizes() {
-  return prisma.size.findMany({ where: { active: true }, orderBy: [{ order: "asc" }, { name: "asc" }] });
+export async function listSizes() {
+  const cached = await cacheGet<any[]>("catalog:sizes:active");
+  if (cached) return cached;
+  const sizes = await prisma.size.findMany({ where: { active: true }, orderBy: [{ order: "asc" }, { name: "asc" }] });
+  await cacheSet("catalog:sizes:active", sizes, SIZES_CACHE_TTL_MS);
+  return sizes;
 }
 
 export async function listProductItems(productId: string) {

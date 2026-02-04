@@ -1,5 +1,8 @@
 import { prisma } from "../../lib/prisma.js";
+import { cacheGet, cacheSet } from "../../lib/cache.js";
 import type { NavigationItem, SiteSettings } from "@prisma/client";
+
+const PUBLIC_SETTINGS_TTL_MS = 30_000;
 
 /** Build a nested tree from a flat list of nav items */
 function buildMenuTree(items: NavigationItem[]) {
@@ -45,6 +48,8 @@ export async function getOrCreateSiteSettings() {
 
 /** Public settings payload: site + header/footer menu trees */
 export async function getPublicSettings() {
+  const cached = await cacheGet<any>("settings:public");
+  if (cached) return cached;
   const s: SiteSettings = await getOrCreateSiteSettings();
 
   // If linked in settings, prefer those menus; otherwise fall back to default menus by location
@@ -65,7 +70,7 @@ export async function getPublicSettings() {
     if (m) footerMenu = { menuId: m.menu.id, tree: m.tree };
   }
 
-  return {
+  const out = {
     site: {
       id: s.id,
       siteName: s.siteName,
@@ -96,4 +101,6 @@ export async function getPublicSettings() {
     primaryMenu,
     footerMenu,
   };
+  await cacheSet("settings:public", out, PUBLIC_SETTINGS_TTL_MS);
+  return out;
 }

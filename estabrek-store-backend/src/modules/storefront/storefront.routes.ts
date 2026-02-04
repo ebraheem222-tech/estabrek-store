@@ -10,8 +10,56 @@ import recommend from "./recommend.routes.js";
 import { searchProductsByImageBuffer } from "./imageSearch.service.js";
 import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
 import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
+import { cacheGet, cacheSet } from "../../lib/cache.js";
 
 const r = Router();
+
+const PUBLISHED_PAGES_TTL_MS = 60_000;
+const PAGE_BY_SLUG_TTL_MS = 30_000;
+
+async function getPublishedPagesCached() {
+  const cached = await cacheGet<any[]>("storefront:pages:published");
+  if (cached) return cached;
+  const pages = await prisma.page.findMany({
+    where: { status: "PUBLISHED" },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      updatedAt: true,
+      canonicalUrl: true,
+      seoTitle: true,
+      seoDescription: true,
+      ogImageUrl: true,
+      noIndex: true,
+    },
+    orderBy: { slug: "asc" },
+  });
+  await cacheSet("storefront:pages:published", pages, PUBLISHED_PAGES_TTL_MS);
+  return pages;
+}
+
+async function getPageBySlugCached(slug: string, locale: "ar" | "he" | "en") {
+  const key = `storefront:page:${locale}:${slug}`;
+  const cached = await cacheGet<any>(key);
+  if (cached) return cached;
+
+  const page = await prisma.page.findUnique({
+    where: { slug },
+    include: {
+      translations: { where: { locale } },
+      sections: {
+        where: { isVisible: true },
+        orderBy: { order: "asc" },
+        include: { translations: { where: { locale } } },
+      },
+    },
+  });
+  if (page && page.status === "PUBLISHED") {
+    await cacheSet(key, page, PAGE_BY_SLUG_TTL_MS);
+  }
+  return page;
+}
 
 const ALLOWED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const imageUpload = multer({
@@ -45,22 +93,14 @@ r.use("/recommend", recommend);
 r.get("/bootstrap", asyncHandler(async (_req, res) => {
   const [settings, pages] = await Promise.all([
     getPublicSettings(),
-    prisma.page.findMany({
-      where: { status: "PUBLISHED" },
-      select: { id: true, name: true, slug: true, updatedAt: true, canonicalUrl: true, seoTitle: true, seoDescription: true, ogImageUrl: true, noIndex: true },
-      orderBy: { slug: "asc" },
-    }),
+    getPublishedPagesCached(),
   ]);
 
   res.json({ ...settings, pages });
 }));
 
 r.get("/pages", asyncHandler(async (_req, res) => {
-  const pages = await prisma.page.findMany({
-    where: { status: "PUBLISHED" },
-    select: { id: true, name: true, slug: true, updatedAt: true, canonicalUrl: true, seoTitle: true, seoDescription: true, ogImageUrl: true, noIndex: true },
-    orderBy: { slug: "asc" },
-  });
+  const pages = await getPublishedPagesCached();
   res.json({ pages });
 }));
 
@@ -68,17 +108,7 @@ r.get("/page", validate({ query: PageBySlugQuery }), asyncHandler(async (req, re
   const slug = String((req.query as any).slug);
   const locale = String((req.query as any).locale ?? "ar") as ("ar"|"he"|"en");
 
-  const page = await prisma.page.findUnique({
-    where: { slug },
-    include: {
-      translations: { where: { locale } },
-      sections: {
-        where: { isVisible: true },
-        orderBy: { order: "asc" },
-        include: { translations: { where: { locale } } },
-      },
-    },
-  });
+  const page = await getPageBySlugCached(slug, locale);
 
   if (!page || page.status !== "PUBLISHED") return res.status(404).json({ error: "NOT_FOUND" });
 
