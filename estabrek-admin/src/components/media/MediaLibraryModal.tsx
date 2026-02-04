@@ -14,12 +14,16 @@ import {
   deleteImagesBulk,
   getImageUsage,
   listImageFolders,
+  listImageDuplicates,
   listImageTags,
   listImages,
   renameImageFolder,
   updateImageMeta,
   updateImagesBulk,
   uploadImages,
+  type DuplicatesMode,
+  type DuplicateGroupExact,
+  type DuplicateGroupNear,
   type MediaFolder,
   type MediaImage,
   type MediaUsage,
@@ -133,8 +137,17 @@ export function MediaLibraryModal({
   const [usageList, setUsageList] = useState<MediaUsage[]>([]);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Duplicates view
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
+  const [duplicatesMode, setDuplicatesMode] = useState<DuplicatesMode>("exact");
+  const [duplicatesLoading, setDuplicatesLoading] = useState(false);
+  const [duplicatesLimit, setDuplicatesLimit] = useState(30);
+  const [duplicateGroups, setDuplicateGroups] = useState<Array<DuplicateGroupExact | DuplicateGroupNear>>([]);
+  const [duplicateSelected, setDuplicateSelected] = useState<string[]>([]);
+
   const pickedSet = useMemo(() => new Set(picked), [picked]);
   const bulkSet = useMemo(() => new Set(bulkSelected), [bulkSelected]);
+  const duplicateSelectedSet = useMemo(() => new Set(duplicateSelected), [duplicateSelected]);
 
   async function fetchMeta() {
     const [f, t] = await Promise.all([listImageFolders(), listImageTags()]);
@@ -163,6 +176,25 @@ export function MediaLibraryModal({
     }
   }
 
+  async function loadDuplicates() {
+    try {
+      setDuplicatesLoading(true);
+      const res = await listImageDuplicates({
+        mode: duplicatesMode,
+        limit: duplicatesLimit,
+        perGroup: 30,
+        maxDistance: 6,
+        scanLimit: 400,
+      });
+      setDuplicateGroups(res.groups as Array<DuplicateGroupExact | DuplicateGroupNear>);
+      setDuplicateSelected([]);
+    } catch (e: any) {
+      toastApiError(e, "فشل تحميل التكرارات");
+    } finally {
+      setDuplicatesLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
     // Reset per open
@@ -183,6 +215,12 @@ export function MediaLibraryModal({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, folder, tag]);
+
+  useEffect(() => {
+    if (!duplicatesOpen) return;
+    loadDuplicates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duplicatesOpen, duplicatesMode, duplicatesLimit]);
 
   function togglePicked(url: string) {
     setPicked((prev) => {
@@ -206,6 +244,66 @@ export function MediaLibraryModal({
       else set.add(id);
       return Array.from(set);
     });
+  }
+
+  function toggleDuplicate(id: string) {
+    setDuplicateSelected((prev) => {
+      const set = new Set(prev);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      return Array.from(set);
+    });
+  }
+
+  function selectGroupOlderExact(items: MediaImage[]) {
+    if (items.length <= 1) return;
+    const keepId = items[0]?.id;
+    setDuplicateSelected((prev) => {
+      const set = new Set(prev);
+      for (const item of items) {
+        if (item.id !== keepId) set.add(item.id);
+      }
+      return Array.from(set);
+    });
+  }
+
+  function selectGroupOlderNear(items: Array<{ distance: number; item: MediaImage }>) {
+    if (items.length <= 1) return;
+    const keepId = items[0]?.item.id;
+    setDuplicateSelected((prev) => {
+      const set = new Set(prev);
+      for (const entry of items) {
+        if (entry.item.id !== keepId) set.add(entry.item.id);
+      }
+      return Array.from(set);
+    });
+  }
+
+  async function deleteSelectedDuplicates() {
+    if (!duplicateSelected.length) return;
+    try {
+      setDeleting(true);
+      await deleteImagesBulk(duplicateSelected);
+      toast.success("تم حذف الصور المحددة");
+      setDuplicateSelected([]);
+      await fetchMeta();
+      await load(true);
+      await loadDuplicates();
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const data = e?.response?.data;
+      if (status === 409 && data?.usageById) {
+        const usageById = data.usageById as Record<string, MediaUsage[]>;
+        const merged = Object.values(usageById).flat();
+        setUsageList(merged);
+        setUsageOpen(true);
+        toast.error("في صور مستخدمة — ما انحذفت");
+        return;
+      }
+      toastApiError(e, "فشل حذف الصور");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function onUpload(files: FileList | null) {
@@ -475,6 +573,10 @@ export function MediaLibraryModal({
                 />
                 وضع الإدارة
               </label>
+
+              <Button variant="ghost" onClick={() => setDuplicatesOpen(true)}>
+                التكرارات
+              </Button>
 
               <div className="inline-flex items-center">
                 <input
@@ -818,6 +920,143 @@ export function MediaLibraryModal({
         onCancel={() => setDeleteConfirm(null)}
         onConfirm={confirmDelete}
       />
+
+      {/* Duplicates modal */}
+      <Modal
+        open={duplicatesOpen}
+        onClose={() => setDuplicatesOpen(false)}
+        title="الصور المكررة"
+        widthClassName="max-w-6xl"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-3 md:items-center">
+            <div className="flex-1 flex items-center gap-2">
+              <Select
+                value={duplicatesMode}
+                onChange={(e) => setDuplicatesMode(e.target.value as DuplicatesMode)}
+                options={[
+                  { value: "exact", label: "تطابق كامل" },
+                  { value: "near", label: "قريب (تشابه)" },
+                ]}
+              />
+              <Input
+                type="number"
+                min={1}
+                max={200}
+                value={duplicatesLimit}
+                onChange={(e) => setDuplicatesLimit(Math.max(1, Math.min(200, Number(e.target.value) || 30)))}
+                placeholder="عدد المجموعات"
+              />
+              <Button variant="ghost" onClick={loadDuplicates} isLoading={duplicatesLoading}>
+                تحديث
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="danger" onClick={deleteSelectedDuplicates} disabled={!duplicateSelected.length} isLoading={deleting}>
+                حذف المحدد ({duplicateSelected.length})
+              </Button>
+              <Button variant="ghost" onClick={() => setDuplicateSelected([])}>
+                إلغاء التحديد
+              </Button>
+            </div>
+          </div>
+
+          {duplicatesLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner />
+            </div>
+          ) : duplicateGroups.length === 0 ? (
+            <div className="text-center text-white/60 py-16">لا يوجد تكرارات</div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {duplicatesMode === "exact"
+                ? (duplicateGroups as DuplicateGroupExact[]).map((group) => (
+                    <div key={group.hash} className="border border-white/[0.06] rounded-2xl p-4 bg-white/[0.02]">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm text-white/80">
+                          Hash: <span className="text-white/60">{group.hash}</span> • عدد:{" "}
+                          <span className="text-white">{group.count}</span>
+                        </div>
+                        <Button variant="ghost" onClick={() => selectGroupOlderExact(group.items)}>
+                          تحديد الأقدم
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {group.items.map((img) => (
+                          <div key={img.id} className="border border-white/[0.06] rounded-xl overflow-hidden">
+                            <div className="relative">
+                              <img src={img.url} className="w-full h-24 object-cover" />
+                              <button
+                                className={`absolute top-2 left-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
+                                  duplicateSelectedSet.has(img.id)
+                                    ? "bg-white/20 border-white/30"
+                                    : "bg-black/40 border-white/20"
+                                }`}
+                                onClick={() => toggleDuplicate(img.id)}
+                                title="تحديد للحذف"
+                              >
+                                {duplicateSelectedSet.has(img.id) ? "✓" : ""}
+                              </button>
+                            </div>
+                            <div className="p-2">
+                              <div className="text-[11px] text-white/70 truncate">{img.displayName || img.filename}</div>
+                              <div className="text-[10px] text-white/40 flex items-center justify-between">
+                                <span>{formatSize(img.size)}</span>
+                                <span>{img.width && img.height ? `${img.width}×${img.height}` : ""}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                : (duplicateGroups as DuplicateGroupNear[]).map((group) => (
+                    <div key={group.baseId} className="border border-white/[0.06] rounded-2xl p-4 bg-white/[0.02]">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm text-white/80">
+                          Base: <span className="text-white/60">{group.baseId}</span>
+                        </div>
+                        <Button variant="ghost" onClick={() => selectGroupOlderNear(group.items)}>
+                          تحديد الأقدم
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {group.items.map((entry) => (
+                          <div key={entry.item.id} className="border border-white/[0.06] rounded-xl overflow-hidden">
+                            <div className="relative">
+                              <img src={entry.item.url} className="w-full h-24 object-cover" />
+                              <button
+                                className={`absolute top-2 left-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
+                                  duplicateSelectedSet.has(entry.item.id)
+                                    ? "bg-white/20 border-white/30"
+                                    : "bg-black/40 border-white/20"
+                                }`}
+                                onClick={() => toggleDuplicate(entry.item.id)}
+                                title="تحديد للحذف"
+                              >
+                                {duplicateSelectedSet.has(entry.item.id) ? "✓" : ""}
+                              </button>
+                              <div className="absolute bottom-2 right-2 text-[10px] bg-black/50 text-white/80 px-1.5 py-0.5 rounded">
+                                d={entry.distance}
+                              </div>
+                            </div>
+                            <div className="p-2">
+                              <div className="text-[11px] text-white/70 truncate">{entry.item.displayName || entry.item.filename}</div>
+                              <div className="text-[10px] text-white/40 flex items-center justify-between">
+                                <span>{formatSize(entry.item.size)}</span>
+                                <span>{entry.item.width && entry.item.height ? `${entry.item.width}×${entry.item.height}` : ""}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* Usage dialog */}
       <Modal open={usageOpen} onClose={() => setUsageOpen(false)} title="الصورة مستخدمة" widthClassName="max-w-lg">

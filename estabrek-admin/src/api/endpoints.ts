@@ -75,6 +75,7 @@ export const ENDPOINTS = {
         imageFolders: "/admin/uploads/images/folders",
         imageFolderById: (id: string) => `/admin/uploads/images/folders/${id}`,
         imageTags: "/admin/uploads/images/tags",
+        imageDuplicates: "/admin/uploads/images/duplicates",
       },
 
       inventory: {
