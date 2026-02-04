@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import type { CatalogFilters } from "@/lib/filtersUrl";
+import React, { useEffect, useMemo, useState } from "react";
+import { buildCanonicalQuery, normalizeFiltersFromSearchParams, type CatalogFilters } from "@/lib/filtersUrl";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import ShopResultsClient from "@/components/ShopResultsClient";
 import { ImageSearchPanel } from "@/components/ImageSearchPanel";
@@ -63,13 +63,47 @@ export default function SearchBrowseClient({
   const [data, setData] = useState<any>(initial);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncFromUrl = () => {
+      const search = window.location.search ?? "";
+      const obj: Record<string, string> = {};
+      new URLSearchParams(search).forEach((v, k) => {
+        obj[k] = v;
+      });
+      const next = normalizeFiltersFromSearchParams(obj);
+      const normalized: CatalogFilters = {
+        ...next,
+        colors: next.colors ?? [],
+        sizeIds: next.sizeIds ?? [],
+      };
+      setFilters((prev) => {
+        const prevKey = buildCanonicalQuery({
+          ...prev,
+          colors: prev.colors ?? [],
+          sizeIds: prev.sizeIds ?? [],
+        });
+        const nextKey = buildCanonicalQuery({
+          ...normalized,
+          colors: normalized.colors ?? [],
+          sizeIds: normalized.sizeIds ?? [],
+        });
+        if (prevKey === nextKey) return prev;
+        return normalized;
+      });
+    };
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
+
   const total = (data?.total ?? initial?.total ?? data?.items?.length ?? 0) as number;
   const facets = useMemo(() => data?.facets ?? initial?.facets ?? {}, [data, initial]);
   const query = filters.q?.trim();
   const hasItems = (data?.items ?? []).length > 0;
 
   return (
-    <main className="mx-auto max-w-7xl space-y-8 px-4 py-8" dir="rtl">
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl space-y-8 px-4 py-8" dir="rtl">
       {/* Breadcrumb */}
       {breadcrumbsEnabled ? (
         <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">

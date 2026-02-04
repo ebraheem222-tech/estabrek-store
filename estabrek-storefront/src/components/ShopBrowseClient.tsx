@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import type { CatalogFilters } from "@/lib/filtersUrl";
+import React, { useEffect, useMemo, useState } from "react";
+import { buildCanonicalQuery, normalizeFiltersFromSearchParams, type CatalogFilters } from "@/lib/filtersUrl";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import { FiltersChips } from "@/components/FiltersChips";
 import { ShopToolbar } from "@/components/ShopToolbar";
@@ -23,6 +23,41 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
   }));
 
   const [data, setData] = useState<any>(initial);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncFromUrl = () => {
+      const search = window.location.search ?? "";
+      const obj: Record<string, string> = {};
+      new URLSearchParams(search).forEach((v, k) => {
+        obj[k] = v;
+      });
+      const next = normalizeFiltersFromSearchParams(obj);
+      const normalized: CatalogFilters = {
+        ...next,
+        colors: next.colors ?? [],
+        sizeIds: next.sizeIds ?? [],
+        lm: next.lm ?? 1,
+      };
+      setFilters((prev) => {
+        const prevKey = buildCanonicalQuery({
+          ...prev,
+          colors: prev.colors ?? [],
+          sizeIds: prev.sizeIds ?? [],
+        });
+        const nextKey = buildCanonicalQuery({
+          ...normalized,
+          colors: normalized.colors ?? [],
+          sizeIds: normalized.sizeIds ?? [],
+        });
+        if (prevKey === nextKey) return prev;
+        return normalized;
+      });
+    };
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, []);
 
   const facets = useMemo(() => data?.facets ?? initial?.facets ?? {}, [data, initial]);
   const total = (data?.total ?? initial?.total ?? data?.items?.length ?? 0) as number;

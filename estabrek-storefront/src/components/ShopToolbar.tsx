@@ -60,7 +60,7 @@ export function ShopToolbar({
     const url = qs ? `${pathname}?${qs}` : pathname;
     if (onFiltersChange) {
       if (syncUrl && typeof window !== "undefined") {
-        window.history.replaceState({}, "", url);
+        window.history.pushState({}, "", url);
       }
       return;
     }

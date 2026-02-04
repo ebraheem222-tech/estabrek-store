@@ -236,7 +236,8 @@ export function ProductFiltersBar({
     const url = qs ? `${pathname}?${qs}` : pathname;
     if (onFiltersChange) {
       if (syncUrl && typeof window !== "undefined") {
-        window.history.replaceState({}, "", url);
+        const method = opts?.replace ? "replaceState" : "pushState";
+        window.history[method]({}, "", url);
       }
       return;
     }
