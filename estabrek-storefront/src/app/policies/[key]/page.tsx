@@ -17,9 +17,5 @@ export default async function PolicyPage({ params }: { params: { key: string } }
   const page = await getPageBySlug(slug);
   if (!page) return notFound();
 
-  return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <CmsPageRenderer sections={page.sections as any} />
-    </main>
-  );
+  return <CmsPageRenderer sections={page.sections as any} />;
 }
