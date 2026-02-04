@@ -25,6 +25,12 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
   const [pages, setPages] = useState<any[]>([initial]);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const lastAppliedKeyRef = useRef<string>("");
+  const extraParamsRef = useRef<Record<string, any> | undefined>(extraParams);
+
+  useEffect(() => {
+    extraParamsRef.current = extraParams;
+  }, [extraParams]);
 
   const items = useMemo(() => pages.flatMap((p) => p?.items ?? []), [pages]);
   const total = (pages[0]?.total ?? items.length) as number;
@@ -47,49 +53,55 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
   }, [pages, initial, onData]);
 
   useEffect(() => {
-    if (filtersKey === initialKeyRef.current) return;
+    if (!lastAppliedKeyRef.current) lastAppliedKeyRef.current = initialKeyRef.current;
+    if (filtersKey === lastAppliedKeyRef.current) return;
     let active = true;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    setLoading(true);
-    onLoading?.(true);
-    (async () => {
-      try {
-        const res = await listProductsClient({
-          page: 1,
-          pageSize: 24,
-          sort: filters.sort,
-          q: filters.q,
-          inStock: filters.inStock,
-          categoryId: filters.categoryId,
-          colors: filters.colors?.length ? filters.colors.join(",") : undefined,
-          sizeIds: filters.sizeIds?.length ? filters.sizeIds.join(",") : undefined,
-          minPrice: filters.minPrice,
-          maxPrice: filters.maxPrice,
-          includeFacets: true,
-          lite: true,
-          // legacy
-          color: filters.color,
-          sizeId: filters.sizeId,
-          ...extraParams,
-        }, { signal: controller.signal });
-        if (!active) return;
-        setPages([res]);
-      } catch (e) {
-        if (!controller.signal.aborted) {
-          console.error(e);
+    const debounceMs = filters?.q ? 250 : 0;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      onLoading?.(true);
+      (async () => {
+        try {
+          const res = await listProductsClient({
+            page: 1,
+            pageSize: 24,
+            sort: filters.sort,
+            q: filters.q,
+            inStock: filters.inStock,
+            categoryId: filters.categoryId,
+            colors: filters.colors?.length ? filters.colors.join(",") : undefined,
+            sizeIds: filters.sizeIds?.length ? filters.sizeIds.join(",") : undefined,
+            minPrice: filters.minPrice,
+            maxPrice: filters.maxPrice,
+            includeFacets: true,
+            lite: true,
+            // legacy
+            color: filters.color,
+            sizeId: filters.sizeId,
+            ...(extraParamsRef.current ?? {}),
+          }, { signal: controller.signal, cacheMs: 15000 });
+          if (!active) return;
+          setPages([res]);
+          lastAppliedKeyRef.current = filtersKey;
+        } catch (e) {
+          if (!controller.signal.aborted) {
+            console.error(e);
+          }
+        } finally {
+          if (active) {
+            setLoading(false);
+            onLoading?.(false);
+          }
         }
-      } finally {
-        if (active) {
-          setLoading(false);
-          onLoading?.(false);
-        }
-      }
-    })();
+      })();
+    }, debounceMs);
     return () => {
       active = false;
       controller.abort();
+      clearTimeout(timer);
     };
   }, [filtersKey, filters, onLoading]);
 
@@ -124,8 +136,8 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
         // legacy
         color: filters.color,
         sizeId: filters.sizeId,
-        ...extraParams,
-      });
+        ...(extraParamsRef.current ?? {}),
+      }, { cacheMs: 15000 });
       setPages((prev) => [...prev, res]);
     } finally {
       setLoading(false);
