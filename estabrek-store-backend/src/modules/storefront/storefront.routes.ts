@@ -17,6 +17,23 @@ const r = Router();
 const PUBLISHED_PAGES_TTL_MS = 60_000;
 const PAGE_BY_SLUG_TTL_MS = 30_000;
 
+function mergeTranslatedData(base: any, override: any): any {
+  if (override === undefined || override === null) return base;
+  if (base === undefined || base === null) return override;
+  if (Array.isArray(base) || Array.isArray(override)) {
+    return Array.isArray(override) ? override : base;
+  }
+  if (typeof base === "object" && typeof override === "object") {
+    const out: any = { ...base };
+    for (const [k, v] of Object.entries(override)) {
+      if (v === undefined) continue;
+      out[k] = mergeTranslatedData((base as any)[k], v);
+    }
+    return out;
+  }
+  return override;
+}
+
 async function getPublishedPagesCached() {
   const cached = await cacheGet<any[]>("storefront:pages:published");
   if (cached) return cached;
@@ -127,10 +144,10 @@ r.get("/page", validate({ query: PageBySlugQuery }), asyncHandler(async (req, re
     outPage.customCss = pt.customCss ?? outPage.customCss;
   }
 
-  // sections: replace data where translated
+  // sections: merge translated data over base to preserve missing fields (e.g., themeId)
   const outSections = (page as any).sections.map((s: any) => {
     const st = s.translations?.[0];
-    if (st?.data) return { ...s, data: st.data };
+    if (st?.data) return { ...s, data: mergeTranslatedData(s.data, st.data) };
     return s;
   });
 
