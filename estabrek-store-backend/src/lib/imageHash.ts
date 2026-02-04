@@ -2,9 +2,9 @@ import sharp from "sharp";
 
 const NIBBLE_POPCOUNT = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4];
 
-export async function computeDhashHex(filePath: string): Promise<string | null> {
+async function computeDhashFromSharp(instance: sharp.Sharp): Promise<string | null> {
   try {
-    const { data, info } = await sharp(filePath, { failOnError: false })
+    const { data, info } = await instance
       .rotate()
       .grayscale()
       .resize(9, 8, { fit: "fill" })
@@ -34,6 +34,22 @@ export async function computeDhashHex(filePath: string): Promise<string | null> 
     }
 
     return hex.length ? hex : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function computeDhashHex(filePath: string): Promise<string | null> {
+  try {
+    return await computeDhashFromSharp(sharp(filePath, { failOnError: false }));
+  } catch {
+    return null;
+  }
+}
+
+export async function computeDhashHexFromBuffer(buffer: Buffer): Promise<string | null> {
+  try {
+    return await computeDhashFromSharp(sharp(buffer, { failOnError: false }));
   } catch {
     return null;
   }

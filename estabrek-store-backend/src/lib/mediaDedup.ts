@@ -6,6 +6,7 @@ export type MediaDuplicateQuery = {
   width?: number | null;
   height?: number | null;
   folder?: string | null;
+  scope?: "global" | "folder";
   maxDistance?: number;
   limit?: number;
 };
@@ -53,10 +54,12 @@ export async function findDuplicateMediaAsset(query: MediaDuplicateQuery): Promi
     imageHash: { not: null },
   };
 
-  if (query.folder === null) {
-    where.folder = null;
-  } else if (query.folder) {
-    where.folder = query.folder;
+  if (query.scope === "folder") {
+    if (query.folder === null) {
+      where.folder = null;
+    } else if (query.folder) {
+      where.folder = query.folder;
+    }
   }
 
   if (width && height) {
