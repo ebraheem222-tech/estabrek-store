@@ -97,10 +97,16 @@ export default function ProductDetail({ product }: { product: CatalogProduct }) 
 
             {/* Price Display */}
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
-                {minPrice != null ? formatMoney(minPrice, (product as any).currencyCode ?? "ILS") : "—"}
-              </span>
-              <span className="text-sm text-[var(--muted)]">شامل الضريبة</span>
+              {minPrice != null && minPrice > 0 ? (
+                <>
+                  <span className="text-3xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+                    {formatMoney(minPrice, (product as any).currencyCode ?? "ILS")}
+                  </span>
+                  <span className="text-sm text-[var(--muted)]">شامل الضريبة</span>
+                </>
+              ) : (
+                <span className="text-sm text-[var(--muted)]">تواصل للسعر</span>
+              )}
             </div>
 
             {/* Quick Stats */}

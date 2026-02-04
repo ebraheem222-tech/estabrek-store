@@ -82,14 +82,20 @@ export default function ProductBuyBox({
   const selectedItem = sel.colorKey ? byColor.get(sel.colorKey) : undefined;
   const variants = selectedItem?.variants ?? [];
 
+  const allVariants = useMemo(
+    () => (items ?? []).flatMap((it) => it?.variants ?? []),
+    [items]
+  );
+
   const sizeKeys = useMemo(() => {
     const out: string[] = [];
-    for (const v of variants) {
+    const source = allVariants.length ? allVariants : variants;
+    for (const v of source) {
       const k = variantSizeKey(v);
       if (!out.includes(k)) out.push(k);
     }
     return out;
-  }, [variants]);
+  }, [allVariants, variants]);
 
   const selectedVariant = useMemo(() => {
     if (!variants.length) return null;
@@ -184,14 +190,16 @@ export default function ProductBuyBox({
           </h3>
           <p className="mt-1 text-sm text-[color:var(--muted)]">اختر اللون والمقاس ثم أضف للسلة</p>
         </div>
-        {selectedPrice != null ? (
+        {selectedPrice != null && selectedPrice > 0 ? (
           <div className="text-right">
             <div className="text-2xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
               {formatMoney(selectedPrice, undefined)}
             </div>
             <div className="text-xs text-[color:var(--muted)]">شامل الضريبة</div>
           </div>
-        ) : null}
+        ) : (
+          <div className="text-right text-sm text-[color:var(--muted)]">تواصل للسعر</div>
+        )}
       </div>
 
       {/* Colors Section */}
@@ -371,7 +379,7 @@ export default function ProductBuyBox({
             <svg className="w-4 h-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
-            <span className="text-sm font-semibold">المقاسات</span>
+            <span className="text-sm font-semibold">المقاسات المتوفرة</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {sizeKeys.map((k) => {

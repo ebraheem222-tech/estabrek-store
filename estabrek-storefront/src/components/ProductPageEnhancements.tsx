@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Product360View } from "./Product360View";
 import { ProductModelViewer } from "./ProductModelViewer";
 import { ProductBadges, StockIndicator, PriceDisplay, SizeRecommender } from "./ProductEnhancements";
+import { getProductMinPrice } from "@/lib/catalog";
 import { useStorefrontSettings } from "./StorefrontFeaturesProvider";
 
 interface ProductPageEnhancementsProps {
@@ -125,7 +126,9 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
 
     return [];
   })();
-  const price = product.price || 0;
+  const priceRaw = Number((product as any).price ?? NaN);
+  const priceFromMin = getProductMinPrice(product as any);
+  const price = Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : (priceFromMin && priceFromMin > 0 ? priceFromMin : null);
   const compareEnabled = settings.productCompareEnabled;
   const comparePrice = compareEnabled ? (product.compareAtPrice || product.originalPrice) : undefined;
   const stock = product.stock ?? product.quantity ?? 50;
@@ -278,13 +281,17 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
               showProgress={true}
               maxStock={100}
             />
-            <PriceDisplay
-              price={price}
-              originalPrice={compareEnabled ? comparePrice : undefined}
-              currency="₪"
-              size="lg"
-              showSavings={compareEnabled}
-            />
+            {price != null ? (
+              <PriceDisplay
+                price={price}
+                originalPrice={compareEnabled ? comparePrice : undefined}
+                currency="₪"
+                size="lg"
+                showSavings={compareEnabled}
+              />
+            ) : (
+              <div className="text-sm text-[var(--muted)]">تواصل للسعر</div>
+            )}
           </div>
         </div>
       )}

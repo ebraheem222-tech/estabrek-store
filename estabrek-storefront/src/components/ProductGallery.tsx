@@ -91,6 +91,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const mainImageRef = useRef<HTMLDivElement>(null);
   const [mainInView, setMainInView] = useState(true);
+  const [touchPreviewIdx, setTouchPreviewIdx] = useState<number | null>(null);
   const zoomEnabled = settings.productZoomEnabled;
   const imageLoading: "lazy" = "lazy";
   const mainPriority = activeIdx === 0;
@@ -370,7 +371,14 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
             {images.map((im, idx) => {
               const selected = idx === activeIdx;
               return (
-                <div key={im.id ?? im.url ?? idx} className="relative group shrink-0">
+                <div
+                  key={im.id ?? im.url ?? idx}
+                  className="relative group shrink-0"
+                  onTouchStart={() => setTouchPreviewIdx(idx)}
+                  onTouchEnd={() => setTouchPreviewIdx(null)}
+                  onTouchCancel={() => setTouchPreviewIdx(null)}
+                  onTouchMove={() => setTouchPreviewIdx(null)}
+                >
                   <button
                     type="button"
                     onClick={() => setActiveIdx(idx)}
@@ -398,7 +406,13 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                   </button>
 
                   {im.url ? (
-                    <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 hidden -translate-x-1/2 opacity-0 scale-95 transition-all duration-200 md:block group-hover:opacity-100 group-hover:scale-100">
+                    <div
+                      className={[
+                        "pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 opacity-0 scale-95 transition-all duration-200",
+                        "md:group-hover:opacity-100 md:group-hover:scale-100",
+                        touchPreviewIdx === idx ? "opacity-100 scale-100" : "",
+                      ].join(" ")}
+                    >
                       <div className="relative h-44 w-36 overflow-hidden rounded-2xl bg-black/20 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/20 backdrop-blur-md md:h-56 md:w-44">
                         <LqipImage
                           src={cldUrl(im.url, { w: 520, h: 650, c: "fill", g: "auto" })}
@@ -406,7 +420,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                           fill
                           blurDataUrl={im.blurDataUrl ?? undefined}
                           className="object-cover"
-                          sizes="(max-width: 768px) 0px, 200px"
+                          sizes="(max-width: 768px) 200px, 200px"
                           loading={imageLoading}
                         />
                       </div>
