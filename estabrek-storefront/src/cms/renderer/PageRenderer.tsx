@@ -1982,13 +1982,30 @@ function Section({
                         return wrapDecorations(fieldNode, fieldTokens);
                       })}
                       {(() => {
-                        const submitText = form.submitLabel || "إرسال";
+                        const submitLabelRaw = typeof form.submitLabel === "string" ? form.submitLabel.trim() : "";
+                        const submitText = submitLabelRaw || "إرسال";
                         const submitData = textContent(String(submitText), submitTokens);
+                        const submitStyle = tokensStyle(submitTokens) ?? undefined;
+                        const submitTypography = (submitTokens as any)?.typography ?? {};
+                        const explicitTextColor =
+                          (typeof submitTypography?.color === "string" && submitTypography.color !== "default") ||
+                          !!submitTypography?.colorCustom;
+                        const hasInlineColor = !!submitStyle && Object.prototype.hasOwnProperty.call(submitStyle, "color");
+                        const forceColor = !explicitTextColor && !hasInlineColor;
+                        const finalStyle = forceColor
+                          ? submitStyle
+                            ? { ...submitStyle, color: "var(--accent-contrast, #fff)" }
+                            : { color: "var(--accent-contrast, #fff)" }
+                          : submitStyle;
                         return wrapDecorations(
                           <button
                             type="submit"
-                            className={cls("inline-flex w-full items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm", tokensClass(submitTokens), submitData.className)}
-                            style={tokensStyle(submitTokens)}
+                            className={cls(
+                              "inline-flex w-full items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm",
+                              tokensClass(submitTokens),
+                              submitData.className
+                            )}
+                            style={finalStyle}
                             aria-label={submitData.ariaLabel}
                           >
                             {submitData.content}

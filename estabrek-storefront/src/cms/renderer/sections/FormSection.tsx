@@ -134,7 +134,7 @@ export function FormSection({ data }: { data: FormData }) {
               type="submit"
               className="inline-flex w-full items-center justify-center rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white hover:opacity-90"
             >
-              {data?.submitLabel ?? "إرسال"}
+              {(typeof data?.submitLabel === "string" ? data.submitLabel.trim() : "") || "إرسال"}
             </button>
 
             {submitted ? <div className="text-xs opacity-70">تم فتح قناة الإرسال. إذا بدك، ارجع وعدّل البيانات.</div> : null}
