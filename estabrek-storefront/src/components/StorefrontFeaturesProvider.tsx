@@ -9,6 +9,7 @@ import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
 import { ScrollProgressBar } from "@/components/ScrollProgressBar";
+import { AccessibilityTools } from "@/components/AccessibilityTools";
 import {
   DEFAULT_STOREFRONT_SETTINGS,
   normalizeStorefrontSettings,
@@ -149,7 +150,8 @@ export function StorefrontFeaturesProvider({
           )}
           {settings.scrollProgressEnabled && <ScrollProgressBar />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
-          {settings.scrollToTopEnabled && <ScrollToTop />}
+          <ScrollToTop />
+          {settings.accessibilityToolsEnabled !== false && <AccessibilityTools />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
           {settings.chatbotEnabled && (
             <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} />

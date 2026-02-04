@@ -68,7 +68,7 @@ export function ShopToolbar({
   }
 
   return (
-    <div className="sticky top-[72px] z-20 -mx-4 border-y border-[var(--border)] bg-[var(--bg)]/90 px-4 py-3 backdrop-blur md:static md:mx-0 md:border md:rounded-2xl md:bg-[var(--surface)]">
+    <div className="sticky top-[72px] z-20 -mx-4 border-y border-[var(--border)] bg-[var(--bg)]/90 px-4 py-3 backdrop-blur md:mx-0 md:border md:rounded-2xl md:bg-[var(--surface)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-[var(--muted)]">
           <span className="font-semibold text-[var(--text)]">{total}</span> منتج
