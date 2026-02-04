@@ -21,6 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [bootstrap, settings] = await Promise.all([getBootstrap(), getPublicSettings()]);
   const header = (settings.site as any)?.header ?? null;
   const theme = header?.theme ?? null;
+  const customCss = bootstrap.site.customCss?.trim() || "";
   const initialStorefrontSettings = (settings.site as any)?.header?.storefront ?? undefined;
   const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
   const defaultTheme = darkModeDisabled
@@ -47,6 +48,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers initialStorefrontSettings={initialStorefrontSettings}>
           <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId} storefrontSettings={initialStorefrontSettings}>
             <UiSettingsProvider loading={loading}>
+              {customCss ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}
+              <ScriptTags scripts={bootstrap.site.scriptsHead} />
               <div id="site-header" className="site-header">
                 <AnnouncementBar site={settings.site} />
                 <Topbar header={header} />
