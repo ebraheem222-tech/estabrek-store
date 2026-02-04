@@ -366,36 +366,53 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
       {/* Thumbnails + gallery mode toggle */}
       {images.length > 1 ? (
         <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-2 overflow-x-auto pb-1 pr-1 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto overflow-y-visible pb-1 pr-1 scrollbar-hide">
             {images.map((im, idx) => {
               const selected = idx === activeIdx;
               return (
-                <button
-                  key={im.id ?? im.url ?? idx}
-                  type="button"
-                  onClick={() => setActiveIdx(idx)}
-                  className={[
-                    "relative h-16 w-14 overflow-hidden rounded-xl border-2 transition-all shrink-0",
-                    selected
-                      ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/20 scale-105"
-                      : "border-white/15 hover:border-white/30",
-                  ].join(" ")}
-                >
+                <div key={im.id ?? im.url ?? idx} className="relative group shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setActiveIdx(idx)}
+                    className={[
+                      "relative h-16 w-14 overflow-hidden rounded-xl border-2 transition-all",
+                      selected
+                        ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/20 scale-105"
+                        : "border-white/15 hover:border-white/30",
+                    ].join(" ")}
+                  >
+                    {im.url ? (
+                      <LqipImage 
+                        src={cldUrl(im.url, { w: 160, h: 160, c: "fill", g: "auto" })} 
+                        alt={product.title} 
+                        fill 
+                        blurDataUrl={im.blurDataUrl ?? undefined}
+                        className="object-cover" 
+                        sizes="56px"
+                        loading={imageLoading}
+                      />
+                    ) : null}
+                    {selected && (
+                      <div className="absolute inset-0 bg-[var(--accent)]/10" />
+                    )}
+                  </button>
+
                   {im.url ? (
-                    <LqipImage 
-                      src={cldUrl(im.url, { w: 160, h: 160, c: "fill", g: "auto" })} 
-                      alt={product.title} 
-                      fill 
-                      blurDataUrl={im.blurDataUrl ?? undefined}
-                      className="object-cover" 
-                      sizes="56px"
-                      loading={imageLoading}
-                    />
+                    <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 hidden -translate-x-1/2 opacity-0 scale-95 transition-all duration-200 md:block group-hover:opacity-100 group-hover:scale-100">
+                      <div className="relative h-44 w-36 overflow-hidden rounded-2xl bg-black/20 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/20 backdrop-blur-md md:h-56 md:w-44">
+                        <LqipImage
+                          src={cldUrl(im.url, { w: 520, h: 650, c: "fill", g: "auto" })}
+                          alt={product.title}
+                          fill
+                          blurDataUrl={im.blurDataUrl ?? undefined}
+                          className="object-cover"
+                          sizes="(max-width: 768px) 0px, 200px"
+                          loading={imageLoading}
+                        />
+                      </div>
+                    </div>
                   ) : null}
-                  {selected && (
-                    <div className="absolute inset-0 bg-[var(--accent)]/10" />
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>

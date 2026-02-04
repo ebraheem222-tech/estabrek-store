@@ -207,7 +207,7 @@ export function AccessibilityTools() {
         }
       >
         <span aria-hidden>♿</span>
-        <span className="a11y-fab-label">إمكانية الوصول</span>
+        <span className="sr-only">إمكانية الوصول</span>
       </button>
 
       {open ? (

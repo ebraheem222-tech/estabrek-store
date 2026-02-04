@@ -114,6 +114,7 @@ export function ProductFiltersBar({
   const sp = useSearchParams();
   const [, startTransition] = useTransition();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<CatalogFilters | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     colors: true,
     sizes: true,
@@ -136,15 +137,29 @@ export function ProductFiltersBar({
     } as CatalogFilters;
   }, [filters, urlFilters]);
 
-  const sortParam = currentFilters.sort ?? "latest";
-  const minPriceParam = currentFilters.minPrice != null ? String(currentFilters.minPrice) : "";
-  const maxPriceParam = currentFilters.maxPrice != null ? String(currentFilters.maxPrice) : "";
-  const qParam = currentFilters.q ?? "";
-  const inStockParam = !!currentFilters.inStock;
-  const categoryIdParam = currentFilters.categoryId ?? "";
+  useEffect(() => {
+    if (!mobileOpen) {
+      setDraftFilters(null);
+      return;
+    }
+    setDraftFilters({
+      ...currentFilters,
+      colors: currentFilters.colors ?? [],
+      sizeIds: currentFilters.sizeIds ?? [],
+    });
+  }, [mobileOpen, currentFilters]);
 
-  const selectedColors = currentFilters.colors ?? [];
-  const selectedSizes = currentFilters.sizeIds ?? [];
+  const workingFilters = mobileOpen && draftFilters ? draftFilters : currentFilters;
+
+  const sortParam = workingFilters.sort ?? "latest";
+  const minPriceParam = workingFilters.minPrice != null ? String(workingFilters.minPrice) : "";
+  const maxPriceParam = workingFilters.maxPrice != null ? String(workingFilters.maxPrice) : "";
+  const qParam = workingFilters.q ?? "";
+  const inStockParam = !!workingFilters.inStock;
+  const categoryIdParam = workingFilters.categoryId ?? "";
+
+  const selectedColors = workingFilters.colors ?? [];
+  const selectedSizes = workingFilters.sizeIds ?? [];
 
   const selectedCategory = useMemo(() => {
     return categories.find(c => c.id === categoryIdParam);
@@ -258,9 +273,9 @@ export function ProductFiltersBar({
 
   function removeFilter(type: string, value: string) {
     const next: CatalogFilters = {
-      ...currentFilters,
-      colors: [...(currentFilters.colors ?? [])],
-      sizeIds: [...(currentFilters.sizeIds ?? [])],
+      ...workingFilters,
+      colors: [...(workingFilters.colors ?? [])],
+      sizeIds: [...(workingFilters.sizeIds ?? [])],
     };
     if (type === "color") {
       next.colors = next.colors.filter((c) => c.toLowerCase() !== value.toLowerCase());
@@ -271,43 +286,55 @@ export function ProductFiltersBar({
     }
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    onFiltersChange?.(normalized);
-    push(normalized);
+    if (mobileOpen) {
+      setDraftFilters(normalized);
+    } else {
+      onFiltersChange?.(normalized);
+      push(normalized);
+    }
   }
 
   function toggleColor(name: string) {
     const next: CatalogFilters = {
-      ...currentFilters,
-      colors: [...(currentFilters.colors ?? [])],
-      sizeIds: [...(currentFilters.sizeIds ?? [])],
+      ...workingFilters,
+      colors: [...(workingFilters.colors ?? [])],
+      sizeIds: [...(workingFilters.sizeIds ?? [])],
     };
     const exists = next.colors.some((c) => c.toLowerCase() === name.toLowerCase());
     next.colors = exists ? next.colors.filter((c) => c.toLowerCase() !== name.toLowerCase()) : [...next.colors, name];
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    onFiltersChange?.(normalized);
-    push(normalized);
+    if (mobileOpen) {
+      setDraftFilters(normalized);
+    } else {
+      onFiltersChange?.(normalized);
+      push(normalized);
+    }
   }
 
   function toggleSize(id: string) {
     const next: CatalogFilters = {
-      ...currentFilters,
-      colors: [...(currentFilters.colors ?? [])],
-      sizeIds: [...(currentFilters.sizeIds ?? [])],
+      ...workingFilters,
+      colors: [...(workingFilters.colors ?? [])],
+      sizeIds: [...(workingFilters.sizeIds ?? [])],
     };
     const exists = next.sizeIds.includes(id);
     next.sizeIds = exists ? next.sizeIds.filter((s) => s !== id) : [...next.sizeIds, id];
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    onFiltersChange?.(normalized);
-    push(normalized);
+    if (mobileOpen) {
+      setDraftFilters(normalized);
+    } else {
+      onFiltersChange?.(normalized);
+      push(normalized);
+    }
   }
 
   function setSimple(key: string, value?: string, opts?: { replace?: boolean }) {
     const next: CatalogFilters = {
-      ...currentFilters,
-      colors: [...(currentFilters.colors ?? [])],
-      sizeIds: [...(currentFilters.sizeIds ?? [])],
+      ...workingFilters,
+      colors: [...(workingFilters.colors ?? [])],
+      sizeIds: [...(workingFilters.sizeIds ?? [])],
     };
     if (!value) {
       (next as any)[key] = undefined;
@@ -321,14 +348,35 @@ export function ProductFiltersBar({
     }
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    onFiltersChange?.(normalized);
-    push(normalized, opts);
+    if (mobileOpen) {
+      setDraftFilters(normalized);
+    } else {
+      onFiltersChange?.(normalized);
+      push(normalized, opts);
+    }
   }
 
   function clearAll() {
     const normalized = normalizeFilters({ colors: [], sizeIds: [] });
+    if (mobileOpen) {
+      setDraftFilters(normalized);
+    } else {
+      onFiltersChange?.(normalized);
+      push(normalized);
+    }
+  }
+
+  function closeMobile() {
+    setMobileOpen(false);
+    setDraftFilters(null);
+  }
+
+  function applyMobile() {
+    const normalized = normalizeFilters(draftFilters ?? workingFilters);
     onFiltersChange?.(normalized);
     push(normalized);
+    setMobileOpen(false);
+    setDraftFilters(null);
   }
 
   function toggleSection(section: string) {
@@ -603,7 +651,7 @@ export function ProductFiltersBar({
         <div className="fixed inset-0 z-[1100] md:hidden" role="dialog" aria-modal="true">
           <div 
             className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
-            onClick={() => setMobileOpen(false)} 
+            onClick={closeMobile} 
           />
           <div 
             className="absolute inset-y-0 right-0 w-full max-w-sm bg-[var(--surface)] overflow-y-auto"
@@ -624,7 +672,7 @@ export function ProductFiltersBar({
               </div>
               <button 
                 type="button" 
-                onClick={() => setMobileOpen(false)} 
+                onClick={closeMobile} 
                 className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-[var(--text)] hover:bg-white/10 transition-colors"
                 aria-label="Close filters"
               >
@@ -651,7 +699,7 @@ export function ProductFiltersBar({
               )}
               <button 
                 type="button" 
-                onClick={() => setMobileOpen(false)} 
+                onClick={applyMobile} 
                 className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 transition-opacity"
               >
                 تطبيق الفلاتر

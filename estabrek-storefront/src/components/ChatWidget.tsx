@@ -253,7 +253,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
           onClick={() => setOpen(true)}
           onPointerDown={handlePointerDown}
           style={draggable ? { touchAction: "none" } : undefined}
-          className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 px-4 py-3 shadow-lg backdrop-blur hover:bg-white transition"
+          className="group inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/95 p-3 shadow-lg backdrop-blur hover:bg-white transition"
         >
           <span className="grid h-9 w-9 place-items-center rounded-full bg-[color:var(--accent-2)] text-black shadow-sm">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -265,7 +265,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
               <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h9M7.5 13.5h5.25" />
             </svg>
           </span>
-          <span className="text-sm font-semibold text-black">مساعدة</span>
+          <span className="sr-only">مساعدة</span>
         </button>
       ) : null}
 
