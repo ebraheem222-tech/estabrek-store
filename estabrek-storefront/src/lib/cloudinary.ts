@@ -65,10 +65,25 @@ export function cldUrl(url: string, t: CloudinaryTransform = {}): string {
   // If caller already provided a transformed url, inject missing auto-orientation only.
   const alreadyTransformed = /\/upload\/[^/]*(f_|q_|w_|h_|c_|g_|dpr_|fl_|a_)/.test(normalized);
   if (alreadyTransformed) {
-    return normalized.replace(/\/upload\/([^/]+)/, (_m, seg: string) => {
-      if (/(^|,)a_/.test(seg)) return `/upload/${seg}`;
-      return `/upload/a_auto,${seg}`;
-    });
+    const marker = "/upload/";
+    const idx = normalized.indexOf(marker);
+    if (idx === -1) return normalized;
+    const base = normalized.slice(0, idx + marker.length);
+    const tail = normalized.slice(idx + marker.length);
+    const segments = tail.split("/");
+    // Signed URLs cannot be safely modified (signature would be invalid)
+    if (segments[0]?.startsWith("s--")) return normalized;
+
+    const transformIdx = segments.findIndex((seg) => /(^|,)(f_|q_|w_|h_|c_|g_|dpr_|fl_|a_|t_)/.test(seg));
+    if (transformIdx === -1) {
+      segments.unshift("a_auto");
+    } else {
+      const parts = segments[transformIdx]!.split(",").filter(Boolean);
+      const filtered = parts.filter((p) => !p.startsWith("a_"));
+      filtered.unshift("a_auto");
+      segments[transformIdx] = filtered.join(",");
+    }
+    return `${base}${segments.join("/")}`;
   }
 
   const parts: string[] = ["f_auto", "q_auto:good", "fl_progressive", "dpr_auto", "a_auto"];

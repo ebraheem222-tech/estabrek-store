@@ -12,6 +12,7 @@ import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
 import { LqipImage } from "@/components/LqipImage";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
+import { cldUrl } from "@/lib/cloudinary";
 
 // Icons
 const XIcon = () => (
@@ -147,7 +148,7 @@ export function QuickViewModal({
             <div className="quick-view-main-image">
               {currentImage && (
                 <LqipImage
-                  src={currentImage}
+                  src={cldUrl(currentImage, { w: 1000, h: 1250, c: "fill", g: "auto" })}
                   alt={product.title}
                   fill
                   blurDataUrl={currentBlur ?? undefined}
@@ -187,7 +188,7 @@ export function QuickViewModal({
                     onClick={() => setSelectedImageIndex(idx)}
                   >
                     <LqipImage
-                      src={img.url}
+                      src={cldUrl(img.url, { w: 160, h: 160, c: "fill", g: "auto" })}
                       alt={`${product.title} ${idx + 1}`}
                       fill
                       blurDataUrl={img.blurDataUrl ?? undefined}
