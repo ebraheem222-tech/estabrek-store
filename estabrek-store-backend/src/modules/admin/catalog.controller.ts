@@ -6,6 +6,8 @@ import sharp from "sharp";
 import { isCloudinaryEnabled } from "../../lib/cloudinary.js";
 
 import { extractDominantAndPaletteFromFile, autoGroupByColor, nameColor, rgbToHex } from "../../lib/colorAnalysis.js";
+import { computeDhashHex } from "../../lib/imageHash.js";
+import { findDuplicateMediaAsset } from "../../lib/mediaDedup.js";
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
 import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
@@ -597,6 +599,28 @@ function makePublicUrl(req: any, rel: string) {
   return `${proto}://${host}${rel}`;
 }
 
+function pendingAssetToResponse(req: any, asset: any) {
+  const rel = `/uploads/images/${asset.filename}`;
+  return {
+    id: asset.id,
+    filename: asset.filename,
+    displayName: asset.displayName,
+    folder: asset.folder,
+    tags: asset.tags,
+    mimetype: asset.mime,
+    size: asset.size,
+    width: asset.width,
+    height: asset.height,
+    blurDataUrl: asset.blurDataUrl ?? null,
+    path: rel,
+    url: makePublicUrl(req, rel),
+    dominantColorHex: (asset as any).dominantColorHex ?? null,
+    palette: (asset as any).palette ?? null,
+    createdAt: asset.createdAt,
+    updatedAt: asset.updatedAt,
+  };
+}
+
 async function optimizeImageInPlace(filePath: string) {
   try {
     const ext = path.extname(filePath).toLowerCase();
@@ -673,6 +697,7 @@ r.post("/products/:id/images/batch", (req, res) => {
         opt: { ok: boolean; width: number | null; height: number | null; size: number };
         colors: { dominantColorHex: string | null; palette: string[] };
         blurDataUrl: string | null;
+        imageHash: string | null;
       }> = [];
       const tempFiles: string[] = [];
 
@@ -694,14 +719,43 @@ r.post("/products/:id/images/batch", (req, res) => {
         }
         const colors = await extractDominantAndPaletteFromFile(fullPath, 6);
         const blurDataUrl = await createBlurDataUrlFromFile(fullPath);
-        processed.push({ file: f, opt, colors, blurDataUrl });
+        const imageHash = await computeDhashHex(fullPath);
+        processed.push({ file: f, opt, colors, blurDataUrl, imageHash });
       }
 
       if (!processed.length) {
         return res.status(415).json({ error: "INVALID_FILE_TYPE", message: "Only PNG, JPG, or WebP images are allowed" });
       }
 
-      for (const { file: f, opt, colors, blurDataUrl } of processed) {
+      const dedupCache = new Map<string, any>();
+
+      for (const { file: f, opt, colors, blurDataUrl, imageHash } of processed) {
+        const fullPath = path.join(IMAGES_DIR, f.filename);
+
+        if (imageHash) {
+          const cached = dedupCache.get(imageHash);
+          if (cached) {
+            await fs.unlink(fullPath).catch(() => undefined);
+            out.push(cached);
+            continue;
+          }
+
+          const duplicate = await findDuplicateMediaAsset({
+            hash: imageHash,
+            width: opt.width,
+            height: opt.height,
+            folder,
+          });
+
+          if (duplicate) {
+            await fs.unlink(fullPath).catch(() => undefined);
+            const response = pendingAssetToResponse(req, duplicate);
+            out.push(response);
+            dedupCache.set(imageHash, response);
+            continue;
+          }
+        }
+
         const created = await prisma.mediaAsset.create({
           data: {
             kind: "IMAGE",
@@ -716,28 +770,12 @@ r.post("/products/:id/images/batch", (req, res) => {
             dominantColorHex: colors.dominantColorHex,
             palette: colors.palette as any,
             blurDataUrl: blurDataUrl ?? null,
+            imageHash: imageHash ?? null,
           },
         });
-
-        const rel = `/uploads/images/${created.filename}`;
-        out.push({
-          id: created.id,
-          filename: created.filename,
-          displayName: created.displayName,
-          folder: created.folder,
-          tags: created.tags,
-          mimetype: created.mime,
-          size: created.size,
-          width: created.width,
-          height: created.height,
-          blurDataUrl: created.blurDataUrl,
-          path: rel,
-          url: makePublicUrl(req, rel),
-          dominantColorHex: created.dominantColorHex,
-          palette: created.palette,
-          createdAt: created.createdAt,
-          updatedAt: created.updatedAt,
-        });
+        const response = pendingAssetToResponse(req, created);
+        out.push(response);
+        if (imageHash) dedupCache.set(imageHash, response);
       }
 
       return res.status(201).json({ files: out });
@@ -911,6 +949,7 @@ r.post(
               dominantColorHex: (a as any).dominantColorHex ?? null,
               palette: (a as any).palette ?? null,
               blurDataUrl: (a as any).blurDataUrl ?? null,
+              imageHash: (a as any).imageHash ?? null,
             },
           });
           createdImageIds.push(createdImg.id);

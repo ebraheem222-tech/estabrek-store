@@ -9,6 +9,8 @@ import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
 import { deleteFromCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
 import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
+import { computeDhashHex } from "../../lib/imageHash.js";
+import { findDuplicateMediaAsset } from "../../lib/mediaDedup.js";
 
 const r = Router();
 
@@ -88,6 +90,19 @@ function parseTags(raw: any): string[] {
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);
+}
+
+function mergeTags(current: string[] | null | undefined, incoming: string[]) {
+  if (!incoming.length) return current ?? [];
+  const out = [...(current ?? [])];
+  const set = new Set(out);
+  for (const tag of incoming) {
+    if (!set.has(tag)) {
+      set.add(tag);
+      out.push(tag);
+    }
+  }
+  return out;
 }
 
 async function optimizeImageInPlace(filePath: string) {
@@ -304,6 +319,29 @@ async function findUsageByFilename(filename: string): Promise<MediaUsage[]> {
 
 function makeCursor(createdAt: Date, id: string) {
   return `${createdAt.toISOString()}|${id}`;
+}
+
+function mediaAssetToResponse(req: any, asset: any) {
+  const rel = `/uploads/images/${asset.filename}`;
+  const url = asset.url ? asset.url : makePublicUrl(req, rel);
+  return {
+    id: asset.id,
+    url,
+    path: asset.url ? asset.url : rel,
+    filename: asset.filename,
+    displayName: asset.displayName,
+    folder: asset.folder,
+    tags: asset.tags,
+    mimetype: asset.mime,
+    size: asset.size,
+    width: asset.width,
+    height: asset.height,
+    blurDataUrl: asset.blurDataUrl ?? null,
+    createdAt: asset.createdAt,
+    updatedAt: asset.updatedAt,
+    provider: asset.provider,
+    providerId: asset.providerId,
+  };
 }
 
 // GET /admin/uploads/images
@@ -727,6 +765,7 @@ r.post("/images", (req, res) => {
         file: any;
         opt: { ok: boolean; width: number | null; height: number | null; size: number };
         blurDataUrl: string | null;
+        imageHash: string | null;
       }> = [];
       const tempFiles: string[] = [];
       for (const file of files) {
@@ -746,15 +785,59 @@ r.post("/images", (req, res) => {
           continue;
         }
         const blurDataUrl = await createBlurDataUrlFromFile(fullPath);
-        processed.push({ file, opt, blurDataUrl });
+        const imageHash = await computeDhashHex(fullPath);
+        processed.push({ file, opt, blurDataUrl, imageHash });
       }
 
       if (!processed.length) {
         return res.status(415).json({ error: "INVALID_FILE_TYPE", message: "Only PNG, JPG, or WebP images are allowed" });
       }
 
-      for (const { file, opt, blurDataUrl } of processed) {
+      const dedupCache = new Map<string, any>();
+
+      for (const { file, opt, blurDataUrl, imageHash } of processed) {
         const fullPath = path.join(IMAGES_DIR, file.filename);
+
+        if (imageHash) {
+          const cached = dedupCache.get(imageHash);
+          if (cached) {
+            await fs.unlink(fullPath).catch(() => undefined);
+            out.push(cached);
+            continue;
+          }
+
+          let duplicate = await findDuplicateMediaAsset({
+            hash: imageHash,
+            width: opt.width,
+            height: opt.height,
+            folder,
+          });
+
+          if (duplicate) {
+            const updates: any = {};
+            if (!duplicate.displayName && (file.originalname || file.filename)) {
+              updates.displayName = file.originalname || file.filename;
+            }
+            if (tags.length) {
+              const merged = mergeTags(duplicate.tags, tags);
+              if (merged.length !== (duplicate.tags?.length ?? 0)) {
+                updates.tags = merged;
+              }
+            }
+            if (!duplicate.blurDataUrl && blurDataUrl) {
+              updates.blurDataUrl = blurDataUrl;
+            }
+            if (Object.keys(updates).length) {
+              duplicate = await prisma.mediaAsset.update({ where: { id: duplicate.id }, data: updates });
+            }
+
+            await fs.unlink(fullPath).catch(() => undefined);
+            const response = mediaAssetToResponse(req, duplicate);
+            out.push(response);
+            dedupCache.set(imageHash, response);
+            continue;
+          }
+        }
 
         if (isCloudinaryEnabled()) {
           const uploaded = await uploadImageToCloudinary({
@@ -782,27 +865,13 @@ r.post("/images", (req, res) => {
               width: uploaded.width ?? opt.width,
               height: uploaded.height ?? opt.height,
               blurDataUrl: blurDataUrl ?? null,
+              imageHash: imageHash ?? null,
             },
           });
 
-          out.push({
-            id: created.id,
-            url: created.url,
-            path: created.url,
-            filename: created.filename,
-            displayName: created.displayName,
-            folder: created.folder,
-            tags: created.tags,
-            mimetype: created.mime,
-            size: created.size,
-            width: created.width,
-            height: created.height,
-            blurDataUrl: created.blurDataUrl,
-            createdAt: created.createdAt,
-            updatedAt: created.updatedAt,
-            provider: created.provider,
-            providerId: created.providerId,
-          });
+          const response = mediaAssetToResponse(req, created);
+          out.push(response);
+          if (imageHash) dedupCache.set(imageHash, response);
         } else {
           const created = await prisma.mediaAsset.create({
             data: {
@@ -816,28 +885,13 @@ r.post("/images", (req, res) => {
               width: opt.width,
               height: opt.height,
               blurDataUrl: blurDataUrl ?? null,
+              imageHash: imageHash ?? null,
             },
           });
 
-          const rel = `/uploads/images/${file.filename}`;
-          out.push({
-            id: created.id,
-            url: makePublicUrl(req, rel),
-            path: rel,
-            filename: created.filename,
-            displayName: created.displayName,
-            folder: created.folder,
-            tags: created.tags,
-            mimetype: created.mime,
-            size: created.size,
-            width: created.width,
-            height: created.height,
-            blurDataUrl: created.blurDataUrl,
-            createdAt: created.createdAt,
-            updatedAt: created.updatedAt,
-            provider: created.provider,
-            providerId: created.providerId,
-          });
+          const response = mediaAssetToResponse(req, created);
+          out.push(response);
+          if (imageHash) dedupCache.set(imageHash, response);
         }
       }
 
