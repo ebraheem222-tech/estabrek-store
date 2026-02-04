@@ -437,7 +437,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
       {/* Lightbox */}
       {lightbox ? (
         <div
-          className="lightbox-overlay fixed inset-0 z-[80]"
+          className="lightbox-overlay fixed inset-0 z-[1200]"
           role="dialog"
           aria-modal="true"
         >
@@ -458,6 +458,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                 type="button"
                 onClick={() => setLightbox(false)}
                 className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                aria-label="Close gallery"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
