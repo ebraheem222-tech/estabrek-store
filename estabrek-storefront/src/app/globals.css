@@ -767,8 +767,8 @@ html {
 
 /* Lightbox Styles */
 .lightbox-overlay {
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.85), rgba(0,0,0,0.95));
-  backdrop-filter: blur(20px);
+  background: rgba(10, 12, 20, 0.35);
+  backdrop-filter: blur(22px) saturate(140%);
 }
 
 .lightbox-image {
