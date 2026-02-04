@@ -4,6 +4,7 @@ import { validate } from "../../utils/validate.js";
 import { asyncHandler } from "../../utils/async.js";
 import { UpdateSettingsBody, LinkNavsBody } from "./settings.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
+import { cacheDel } from "../../lib/cache.js";
 
 const r = Router();
 
@@ -14,9 +15,12 @@ async function getOrCreateSettings() {
 }
 
 function triggerSettingsRevalidate() {
-  void revalidateStorefront({
-    tags: ["cms", "cms:settings", "cms:bootstrap"],
-  });
+  void (async () => {
+    await cacheDel("settings:public");
+    await revalidateStorefront({
+      tags: ["cms", "cms:settings", "cms:bootstrap"],
+    });
+  })();
 }
 
 // GET /v1/admin/settings

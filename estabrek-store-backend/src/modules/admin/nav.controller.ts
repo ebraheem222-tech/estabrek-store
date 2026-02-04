@@ -4,13 +4,17 @@ import { validate } from "../../utils/validate.js";
 import { asyncHandler } from "../../utils/async.js";
 import { CreateMenuBody, UpdateMenuBody, CreateItemBody, UpdateItemBody, MoveItemBody } from "./nav.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
+import { cacheDel } from "../../lib/cache.js";
 
 const r = Router();
 
 function triggerNavRevalidate() {
-  void revalidateStorefront({
-    tags: ["cms", "cms:settings", "cms:bootstrap"],
-  });
+  void (async () => {
+    await cacheDel("settings:public");
+    await revalidateStorefront({
+      tags: ["cms", "cms:settings", "cms:bootstrap"],
+    });
+  })();
 }
 
 // menus

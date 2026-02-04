@@ -6,6 +6,7 @@ import { CreatePageBody, UpdatePageBody, CreateSectionBody, UpdateSectionBody, M
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import { validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
+import { cacheDel, cacheDelPrefix } from "../../lib/cache.js";
 
 const r = Router();
 
@@ -13,10 +14,22 @@ type SuggestedSection = { type: string; data: any; isVisible?: boolean };
 
 function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []) {
   const paths = Array.from(new Set(slugs.filter(Boolean))) as string[];
-  void revalidateStorefront({
-    tags: ["cms", "cms:pages", "cms:bootstrap"],
-    paths,
-  });
+  void (async () => {
+    await cacheDel("storefront:pages:published");
+    if (paths.length) {
+      for (const slug of paths) {
+        for (const locale of ["ar", "he", "en"] as const) {
+          await cacheDel(`storefront:page:${locale}:${slug}`);
+        }
+      }
+    } else {
+      await cacheDelPrefix("storefront:page:");
+    }
+    await revalidateStorefront({
+      tags: ["cms", "cms:pages", "cms:bootstrap"],
+      paths,
+    });
+  })();
 }
 
 function fallbackLanding(locale: "ar"|"he"|"en", brandName?: string, storeCategory?: string): { sections: SuggestedSection[]; seo: { seoTitle: string; seoDescription: string } } {

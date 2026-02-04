@@ -71,3 +71,34 @@ export async function cacheSet<T>(key: string, value: T, ttlMs: number): Promise
     // ignore cache set failures
   }
 }
+
+export async function cacheDel(key: string): Promise<void> {
+  MEM_CACHE.delete(key);
+  const r = getRedis();
+  if (!r) return;
+  try {
+    await r.del(key);
+  } catch {
+    // ignore cache delete failures
+  }
+}
+
+export async function cacheDelPrefix(prefix: string): Promise<void> {
+  for (const k of Array.from(MEM_CACHE.keys())) {
+    if (k.startsWith(prefix)) MEM_CACHE.delete(k);
+  }
+  const r = getRedis();
+  if (!r) return;
+  try {
+    let cursor = "0";
+    do {
+      const [next, keys] = (await r.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 200)) as [string, string[]];
+      cursor = next;
+      if (keys.length) {
+        await r.del(...keys);
+      }
+    } while (cursor !== "0");
+  } catch {
+    // ignore scan/delete failures
+  }
+}
