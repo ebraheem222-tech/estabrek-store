@@ -600,7 +600,7 @@ export function ProductFiltersBar({
 
       {/* Mobile Filters Modal */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-[1100] md:hidden" role="dialog" aria-modal="true">
           <div 
             className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
             onClick={() => setMobileOpen(false)} 
@@ -610,7 +610,7 @@ export function ProductFiltersBar({
             style={{ animation: "slideInRight 0.3s ease" }}
           >
             {/* Mobile Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-white/10 bg-[var(--surface)]">
+            <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-white/10 bg-[var(--surface)]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
                   <FilterIcon />
@@ -625,10 +625,11 @@ export function ProductFiltersBar({
               <button 
                 type="button" 
                 onClick={() => setMobileOpen(false)} 
-                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[var(--text)] hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-[var(--text)] hover:bg-white/10 transition-colors"
                 aria-label="Close filters"
               >
                 <CloseIcon />
+                <span className="text-sm font-medium">إغلاق</span>
               </button>
             </div>
 
@@ -638,7 +639,7 @@ export function ProductFiltersBar({
             </div>
 
             {/* Mobile Footer */}
-            <div className="sticky bottom-0 p-4 border-t border-white/10 bg-[var(--surface)] flex gap-3">
+            <div className="sticky bottom-0 z-20 p-4 border-t border-white/10 bg-[var(--surface)] flex gap-3">
               {hasAny && (
                 <button 
                   type="button" 
@@ -653,7 +654,7 @@ export function ProductFiltersBar({
                 onClick={() => setMobileOpen(false)} 
                 className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 transition-opacity"
               >
-                عرض النتائج
+                تطبيق الفلاتر
               </button>
             </div>
           </div>

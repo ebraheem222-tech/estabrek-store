@@ -457,19 +457,19 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
             mainImageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
           className={[
-            "fixed bottom-24 left-3 z-40 rounded-xl border border-white/15 bg-black/30 backdrop-blur-sm p-1 shadow-lg transition-all duration-300 md:hidden",
+            "fixed bottom-24 left-3 z-40 rounded-3xl bg-white/10 p-2 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/15 backdrop-blur-xl transition-all duration-300 md:hidden",
             !lightbox && !galleryMode && !mainInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none",
           ].join(" ")}
           aria-label="عودة لصورة المنتج"
         >
-          <div className="relative h-20 w-16 overflow-hidden rounded-lg bg-black/20">
+          <div className="relative h-28 w-24 overflow-hidden rounded-2xl">
             <LqipImage
               src={cldUrl(active.url, { w: 200, h: 260, c: "fill", g: "auto" })}
               alt={product.title}
               fill
               blurDataUrl={active.blurDataUrl ?? undefined}
               className="object-cover"
-              sizes="64px"
+              sizes="96px"
               loading={imageLoading}
             />
           </div>
