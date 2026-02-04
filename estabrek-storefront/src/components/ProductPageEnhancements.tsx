@@ -140,7 +140,7 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
   
   const isBestseller = product.isBestseller ?? false;
   const isTrending = product.isTrending ?? false;
-  const hasDiscount = compareEnabled && comparePrice && comparePrice > price;
+  const hasDiscount = compareEnabled && price != null && comparePrice != null && comparePrice > price;
   const discountPercent = hasDiscount ? Math.round((1 - price / comparePrice) * 100) : 0;
   const lowStockThreshold = settings.productStockThreshold;
 
