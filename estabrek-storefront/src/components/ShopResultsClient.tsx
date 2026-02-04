@@ -53,6 +53,16 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
   }, [pages, initial, onData]);
 
   useEffect(() => {
+    if (filtersKey === initialKeyRef.current) {
+      if (lastAppliedKeyRef.current !== filtersKey || pages[0] !== initial) {
+        abortRef.current?.abort();
+        setLoading(false);
+        onLoading?.(false);
+        setPages([initial]);
+        lastAppliedKeyRef.current = filtersKey;
+      }
+      return;
+    }
     if (!lastAppliedKeyRef.current) lastAppliedKeyRef.current = initialKeyRef.current;
     if (filtersKey === lastAppliedKeyRef.current) return;
     let active = true;

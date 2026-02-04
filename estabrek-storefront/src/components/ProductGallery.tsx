@@ -90,6 +90,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const mainImageRef = useRef<HTMLDivElement>(null);
+  const [mainInView, setMainInView] = useState(true);
   const zoomEnabled = settings.productZoomEnabled;
   const imageLoading: "lazy" = "lazy";
   const mainPriority = activeIdx === 0;
@@ -142,6 +143,20 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
     else if (activeIdx < prev) setDir("prev");
     lastIdxRef.current = activeIdx;
   }, [activeIdx]);
+
+  useEffect(() => {
+    const el = mainImageRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        setMainInView(!!entry?.isIntersecting);
+      },
+      { threshold: 0.2 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [mainImageRef]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!mainImageRef.current || !isZoomed || !zoomEnabled) return;
@@ -432,6 +447,33 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
             </button>
           ))}
         </div>
+      ) : null}
+
+      {/* Mobile floating preview */}
+      {active?.url ? (
+        <button
+          type="button"
+          onClick={() => {
+            mainImageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          className={[
+            "fixed bottom-24 left-3 z-40 rounded-xl border border-white/15 bg-black/30 backdrop-blur-sm p-1 shadow-lg transition-all duration-300 md:hidden",
+            !lightbox && !galleryMode && !mainInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none",
+          ].join(" ")}
+          aria-label="عودة لصورة المنتج"
+        >
+          <div className="relative h-20 w-16 overflow-hidden rounded-lg bg-black/20">
+            <LqipImage
+              src={cldUrl(active.url, { w: 200, h: 260, c: "fill", g: "auto" })}
+              alt={product.title}
+              fill
+              blurDataUrl={active.blurDataUrl ?? undefined}
+              className="object-cover"
+              sizes="64px"
+              loading={imageLoading}
+            />
+          </div>
+        </button>
       ) : null}
 
       {/* Lightbox */}

@@ -166,6 +166,15 @@ export function ProductFiltersBar({
     setMaxInput(maxPriceParam);
   }, [maxPriceParam]);
 
+  useEffect(() => {
+    if (!mobileOpen || typeof window === "undefined") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
+
   // Build active filters array for tags display
   const activeFilters = useMemo(() => {
     const filters: Array<{ type: string; label: string; value: string }> = [];
@@ -617,13 +626,14 @@ export function ProductFiltersBar({
                 type="button" 
                 onClick={() => setMobileOpen(false)} 
                 className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[var(--text)] hover:bg-white/10 transition-colors"
+                aria-label="Close filters"
               >
                 <CloseIcon />
               </button>
             </div>
 
             {/* Mobile Content */}
-            <div className="p-4">
+            <div className="p-4 pb-28">
               {filtersContent}
             </div>
 
