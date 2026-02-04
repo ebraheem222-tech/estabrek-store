@@ -356,6 +356,7 @@ model NavigationMenu {
   updatedAt DateTime @updatedAt
 
   @@unique([name, location])
+  @@index([location, isDefault])
 }
 
 model NavigationItem {
@@ -379,6 +380,7 @@ model NavigationItem {
   updatedAt DateTime @updatedAt
 
   @@index([menuId, parentId, order])
+  @@index([menuId, isActive])
 }
 
 model Page {
@@ -403,6 +405,8 @@ model Page {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status, slug])
 }
 
 /**
@@ -447,8 +451,9 @@ dominantColorHex String?
 /** palette extracted (array of hex strings) */
 palette          Json?
 /** low-res placeholder (base64 data URL) */
-blurDataUrl      String?
+  blurDataUrl      String?
   @@index([folder])
+  @@index([kind, folder, createdAt])
 }
 
 model MediaFolder {
@@ -665,6 +670,7 @@ model Review {
   updatedAt DateTime     @updatedAt
 
   @@index([productId])
+  @@index([status, createdAt])
 }
 
 model ProductComment {
@@ -678,6 +684,7 @@ model ProductComment {
   createdAt DateTime      @default(now())
 
   @@index([productId])
+  @@index([status, createdAt])
 }
 
 /**
@@ -723,6 +730,7 @@ model OrderRequest {
   history  OrderRequestHistory[]
 
   @@index([status])
+  @@index([status, createdAt])
 }
 
 model OutboxMessage {
@@ -739,6 +747,7 @@ model OutboxMessage {
   updatedAt      DateTime      @updatedAt
 
   @@index([status])
+  @@index([status, createdAt])
 }
 
 model OrderRequestHistory {
@@ -838,6 +847,8 @@ model NewsletterSubscriber {
   email     String   @unique
   source    String?  // e.g. "footer", "newsletter_section"
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 
