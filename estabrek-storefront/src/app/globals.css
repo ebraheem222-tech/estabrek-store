@@ -47,6 +47,13 @@ body {
   color: var(--text, rgba(255,255,255,0.92));
 }
 
+/* Sticky header wrapper */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+}
+
 /* Skip link */
 .skip-link {
   position: absolute;
