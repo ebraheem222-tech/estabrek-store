@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 type A11yState = {
   fontLarge: boolean;
@@ -10,6 +10,7 @@ type A11yState = {
 };
 
 const STORAGE_KEY = "storefront_a11y";
+const POSITION_KEY = "storefront_a11y_pos";
 
 const DEFAULT_STATE: A11yState = {
   fontLarge: false,
@@ -43,9 +44,20 @@ function applyA11yState(state: A11yState) {
   root.classList.toggle("a11y-underline-links", state.underlineLinks);
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function AccessibilityTools() {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<A11yState>(DEFAULT_STATE);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [panelPosition, setPanelPosition] = useState<{ x: number; y: number } | null>(null);
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
+  const movedRef = useRef(false);
 
   useEffect(() => {
     const saved = safeParse(typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null);
@@ -56,11 +68,35 @@ export function AccessibilityTools() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(POSITION_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.x === "number" && typeof parsed.y === "number") {
+          setPosition({ x: parsed.x, y: parsed.y });
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const defaultX = 20;
+    const defaultY = Math.max(20, window.innerHeight - 120);
+    setPosition({ x: defaultX, y: defaultY });
+  }, []);
+
+  useEffect(() => {
     applyA11yState(state);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
   }, [state]);
+
+  useEffect(() => {
+    if (!position || typeof window === "undefined") return;
+    window.localStorage.setItem(POSITION_KEY, JSON.stringify(position));
+  }, [position]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,6 +106,21 @@ export function AccessibilityTools() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !position || typeof window === "undefined") return;
+    const updatePanel = () => {
+      const panel = panelRef.current;
+      const panelWidth = panel?.offsetWidth ?? 320;
+      const panelHeight = panel?.offsetHeight ?? 280;
+      const x = clamp(position.x, 8, window.innerWidth - panelWidth - 8);
+      const y = clamp(position.y - panelHeight - 12, 8, window.innerHeight - panelHeight - 8);
+      setPanelPosition({ x, y });
+    };
+    updatePanel();
+    window.addEventListener("resize", updatePanel);
+    return () => window.removeEventListener("resize", updatePanel);
+  }, [open, position]);
 
   const items = useMemo(
     () => [
@@ -97,6 +148,40 @@ export function AccessibilityTools() {
     []
   );
 
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (typeof window === "undefined") return;
+    if (!position) return;
+    pointerIdRef.current = e.pointerId;
+    movedRef.current = false;
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      left: position.x,
+      top: position.y,
+    };
+    (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    if (!dragStartRef.current || typeof window === "undefined") return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    const nextX = dragStartRef.current.left + dx;
+    const nextY = dragStartRef.current.top + dy;
+    const clampedX = clamp(nextX, 8, window.innerWidth - 56);
+    const clampedY = clamp(nextY, 8, window.innerHeight - 56);
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) movedRef.current = true;
+    setPosition({ x: clampedX, y: clampedY });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    pointerIdRef.current = null;
+    dragStartRef.current = null;
+    (e.currentTarget as HTMLButtonElement).releasePointerCapture(e.pointerId);
+  };
+
   return (
     <>
       <button
@@ -104,14 +189,39 @@ export function AccessibilityTools() {
         className="a11y-fab"
         aria-label="أدوات إمكانية الوصول"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        ref={fabRef}
+        onClick={() => {
+          if (movedRef.current) {
+            movedRef.current = false;
+            return;
+          }
+          setOpen((v) => !v);
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        style={
+          position
+            ? { left: `${position.x}px`, top: `${position.y}px`, bottom: "auto", right: "auto" }
+            : undefined
+        }
       >
         <span aria-hidden>♿</span>
         <span className="a11y-fab-label">إمكانية الوصول</span>
       </button>
 
       {open ? (
-        <div className="a11y-panel" role="dialog" aria-label="أدوات إمكانية الوصول">
+        <div
+          ref={panelRef}
+          className="a11y-panel"
+          role="dialog"
+          aria-label="أدوات إمكانية الوصول"
+          style={
+            panelPosition
+              ? { left: `${panelPosition.x}px`, top: `${panelPosition.y}px`, bottom: "auto", right: "auto" }
+              : undefined
+          }
+        >
           <div className="a11y-panel-header">
             <div className="a11y-panel-title">أدوات إمكانية الوصول</div>
             <button type="button" className="a11y-close" onClick={() => setOpen(false)} aria-label="إغلاق">
