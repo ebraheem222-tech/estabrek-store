@@ -66,6 +66,166 @@ body {
   transform: translateY(0);
 }
 
+/* Accessibility tools */
+.a11y-fab {
+  position: fixed;
+  left: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.55);
+  color: white;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 26px -14px rgba(0,0,0,0.7);
+  font-size: 0.9rem;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.a11y-fab:hover {
+  transform: translateY(-2px);
+  background: rgba(0,0,0,0.7);
+}
+
+.a11y-fab-label {
+  font-weight: 600;
+}
+
+.a11y-panel {
+  position: fixed;
+  left: 1.25rem;
+  bottom: 4.5rem;
+  width: min(320px, 92vw);
+  z-index: 95;
+  background: rgba(10,10,20,0.9);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px -20px rgba(0,0,0,0.8);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.a11y-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.a11y-panel-title {
+  font-weight: 700;
+}
+
+.a11y-close {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: inherit;
+}
+
+.a11y-panel-body {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+}
+
+.a11y-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: start;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: inherit;
+  transition: border 160ms ease, background 160ms ease;
+}
+
+.a11y-toggle.active {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.a11y-toggle-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.a11y-toggle-desc {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.65);
+}
+
+.a11y-toggle-indicator {
+  width: 46px;
+  height: 24px;
+  border-radius: 999px;
+  padding: 2px;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  transition: background 160ms ease, justify-content 160ms ease;
+}
+
+.a11y-toggle-indicator.on {
+  background: rgba(139, 92, 246, 0.8);
+  justify-content: flex-end;
+}
+
+.a11y-toggle-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+@media (max-width: 1023px) {
+  .a11y-fab {
+    bottom: calc(1.25rem + 80px);
+  }
+  .a11y-panel {
+    bottom: calc(4.5rem + 80px);
+  }
+}
+
+:root.a11y-font-lg {
+  font-size: 112.5%;
+}
+
+:root.a11y-underline-links a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+:root.a11y-contrast [data-theme] {
+  --bg: #000 !important;
+  --text: #fff !important;
+  --surface: #000 !important;
+  --surface-2: #0b0b0b !important;
+  --border: rgba(255,255,255,0.35) !important;
+  --muted: rgba(255,255,255,0.7) !important;
+}
+
+:root.a11y-reduce-motion *,
+:root.a11y-reduce-motion *::before,
+:root.a11y-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* Global focus-visible styles */
 :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
   outline: 2px solid var(--accent, #8b5cf6);

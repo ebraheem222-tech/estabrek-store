@@ -66,6 +66,7 @@ export type StorefrontSettings = {
   breadcrumbsEnabled: boolean;
   stickyHeaderEnabled: boolean;
   scrollProgressEnabled: boolean;
+  accessibilityToolsEnabled: boolean;
 
   // Notifications
   toastNotificationsEnabled: boolean;
@@ -165,6 +166,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   breadcrumbsEnabled: true,
   stickyHeaderEnabled: true,
   scrollProgressEnabled: true,
+  accessibilityToolsEnabled: true,
 
   // Notifications
   toastNotificationsEnabled: true,
