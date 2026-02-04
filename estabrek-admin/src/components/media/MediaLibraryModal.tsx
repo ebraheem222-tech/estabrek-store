@@ -144,6 +144,8 @@ export function MediaLibraryModal({
   const [duplicatesLimit, setDuplicatesLimit] = useState(30);
   const [duplicateGroups, setDuplicateGroups] = useState<Array<DuplicateGroupExact | DuplicateGroupNear>>([]);
   const [duplicateSelected, setDuplicateSelected] = useState<string[]>([]);
+  const [deleteOlderConfirmOpen, setDeleteOlderConfirmOpen] = useState(false);
+  const [deleteOlderIds, setDeleteOlderIds] = useState<string[]>([]);
 
   const pickedSet = useMemo(() => new Set(picked), [picked]);
   const bulkSet = useMemo(() => new Set(bulkSelected), [bulkSelected]);
@@ -301,6 +303,60 @@ export function MediaLibraryModal({
         return;
       }
       toastApiError(e, "فشل حذف الصور");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function parseDate(value: string | null | undefined) {
+    if (!value) return 0;
+    const t = Date.parse(value);
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  function collectOlderDuplicateIds() {
+    const ids: string[] = [];
+    if (duplicatesMode === "exact") {
+      for (const group of duplicateGroups as DuplicateGroupExact[]) {
+        const sorted = [...group.items].sort((a, b) => parseDate(b.createdAt) - parseDate(a.createdAt));
+        for (let i = 1; i < sorted.length; i++) {
+          ids.push(sorted[i]!.id);
+        }
+      }
+    } else {
+      for (const group of duplicateGroups as DuplicateGroupNear[]) {
+        const sorted = [...group.items].sort((a, b) => parseDate(b.item.createdAt) - parseDate(a.item.createdAt));
+        for (let i = 1; i < sorted.length; i++) {
+          ids.push(sorted[i]!.item.id);
+        }
+      }
+    }
+    return uniq(ids);
+  }
+
+  async function confirmDeleteOlderDuplicates() {
+    if (!deleteOlderIds.length) return;
+    try {
+      setDeleting(true);
+      await deleteImagesBulk(deleteOlderIds);
+      toast.success("تم حذف الأقدم من كل المجموعات");
+      setDeleteOlderIds([]);
+      setDeleteOlderConfirmOpen(false);
+      await fetchMeta();
+      await load(true);
+      await loadDuplicates();
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const data = e?.response?.data;
+      if (status === 409 && data?.usageById) {
+        const usageById = data.usageById as Record<string, MediaUsage[]>;
+        const merged = Object.values(usageById).flat();
+        setUsageList(merged);
+        setUsageOpen(true);
+        toast.error("في صور مستخدمة — ما انحذفت");
+        return;
+      }
+      toastApiError(e, "فشل حذف التكرارات");
     } finally {
       setDeleting(false);
     }
@@ -921,6 +977,22 @@ export function MediaLibraryModal({
         onConfirm={confirmDelete}
       />
 
+      {/* Delete older duplicates confirm */}
+      <ConfirmDialog
+        open={deleteOlderConfirmOpen}
+        title="حذف التكرارات"
+        variant="warning"
+        message={`بدك تحذف ${deleteOlderIds.length} صورة مكررة (الأقدم)؟`}
+        confirmText="حذف"
+        cancelText="إلغاء"
+        isLoading={deleting}
+        onCancel={() => {
+          setDeleteOlderConfirmOpen(false);
+          setDeleteOlderIds([]);
+        }}
+        onConfirm={confirmDeleteOlderDuplicates}
+      />
+
       {/* Duplicates modal */}
       <Modal
         open={duplicatesOpen}
@@ -955,6 +1027,20 @@ export function MediaLibraryModal({
             <div className="flex items-center gap-2">
               <Button variant="danger" onClick={deleteSelectedDuplicates} disabled={!duplicateSelected.length} isLoading={deleting}>
                 حذف المحدد ({duplicateSelected.length})
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const ids = collectOlderDuplicateIds();
+                  if (!ids.length) {
+                    toast.error("لا يوجد تكرارات للحذف");
+                    return;
+                  }
+                  setDeleteOlderIds(ids);
+                  setDeleteOlderConfirmOpen(true);
+                }}
+              >
+                حذف الأقدم في كل المجموعات
               </Button>
               <Button variant="ghost" onClick={() => setDuplicateSelected([])}>
                 إلغاء التحديد
