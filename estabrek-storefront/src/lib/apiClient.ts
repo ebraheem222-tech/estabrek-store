@@ -5,7 +5,9 @@ import type { CatalogProduct } from "./catalog";
 type CacheEntry<T> = { v: T; t: number };
 const SLUG_CACHE = new Map<string, CacheEntry<CatalogProduct | null>>();
 const ID_CACHE = new Map<string, CacheEntry<CatalogProduct | null>>();
+const LIST_CACHE = new Map<string, CacheEntry<any>>();
 const MAX_AGE_MS = 60_000; // 60s - speeds up hover/quick add while keeping it fairly fresh
+const LIST_CACHE_DEFAULT_MS = 15_000; // short cache to smooth repeated searches/filters
 
 function getFresh<T>(m: Map<string, CacheEntry<T>>, key: string): T | undefined {
   const e = m.get(key);
@@ -19,6 +21,16 @@ function getFresh<T>(m: Map<string, CacheEntry<T>>, key: string): T | undefined 
 
 function setFresh<T>(m: Map<string, CacheEntry<T>>, key: string, v: T) {
   m.set(key, { v, t: Date.now() });
+}
+
+function getFreshWithMaxAge<T>(m: Map<string, CacheEntry<T>>, key: string, maxAgeMs: number): T | undefined {
+  const e = m.get(key);
+  if (!e) return undefined;
+  if (Date.now() - e.t > maxAgeMs) {
+    m.delete(key);
+    return undefined;
+  }
+  return e.v;
 }
 
 export function apiBaseClient() {
@@ -90,12 +102,23 @@ export async function prefetchProductQuickAdd(opts: { slug?: string; id?: string
 }
 
 
-export async function listProductsClient(params: Record<string, any>, opts?: { signal?: AbortSignal }) {
+export async function listProductsClient(
+  params: Record<string, any>,
+  opts?: { signal?: AbortSignal; cacheMs?: number; bypassCache?: boolean }
+) {
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(params || {})) {
     if (v === undefined || v === null || v === "") continue;
     usp.set(k, String(v));
   }
   const url = `${apiBaseClient()}/catalog/products?${usp.toString()}`;
-  return (await fetchJson(url, opts)) as any;
+  const cacheMs = opts?.cacheMs ?? LIST_CACHE_DEFAULT_MS;
+  const bypassCache = opts?.bypassCache === true;
+  if (!bypassCache && cacheMs > 0) {
+    const cached = getFreshWithMaxAge(LIST_CACHE, url, cacheMs);
+    if (cached !== undefined) return cached;
+  }
+  const data = (await fetchJson(url, opts)) as any;
+  if (!bypassCache && cacheMs > 0) setFresh(LIST_CACHE, url, data);
+  return data;
 }
