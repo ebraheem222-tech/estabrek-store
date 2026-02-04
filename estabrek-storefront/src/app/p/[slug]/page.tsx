@@ -144,7 +144,7 @@ const productLd: any = {
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
 
   return (
-    <main id="main-content" tabIndex={-1} className="space-y-8">
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 space-y-8">
       {breadcrumbsEnabled ? <Breadcrumbs items={crumbs} /> : null}
 
       {breadcrumbsEnabled ? (
