@@ -744,7 +744,7 @@ r.post("/products/:id/images/batch", (req, res) => {
             hash: imageHash,
             width: opt.width,
             height: opt.height,
-            folder,
+            scope: "global",
           });
 
           if (duplicate) {

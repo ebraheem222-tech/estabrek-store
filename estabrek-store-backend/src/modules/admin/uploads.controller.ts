@@ -9,7 +9,7 @@ import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
 import { deleteFromCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
 import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
-import { computeDhashHex } from "../../lib/imageHash.js";
+import { computeDhashHex, hammingHex } from "../../lib/imageHash.js";
 import { findDuplicateMediaAsset } from "../../lib/mediaDedup.js";
 
 const r = Router();
@@ -546,6 +546,125 @@ r.get("/images/tags", async (_req, res) => {
   }
 });
 
+// GET /admin/uploads/images/duplicates
+// Query:
+//  - mode: exact | near (default exact)
+//  - limit: number of groups (default 30, max 200)
+//  - perGroup: number of items per group (default 30, max 200)
+//  - maxDistance: for near (default 6)
+//  - scanLimit: for near, max items to scan (default 400, max 2000)
+r.get("/images/duplicates", async (req, res) => {
+  try {
+    const mode = (req.query.mode?.toString() ?? "exact").toLowerCase() === "near" ? "near" : "exact";
+    const limitRaw = Number(req.query.limit ?? 30);
+    const perGroupRaw = Number(req.query.perGroup ?? 30);
+    const maxDistanceRaw = Number(req.query.maxDistance ?? 6);
+    const scanLimitRaw = Number(req.query.scanLimit ?? 400);
+
+    const limit = Math.max(1, Math.min(200, Number.isFinite(limitRaw) ? limitRaw : 30));
+    const perGroup = Math.max(1, Math.min(200, Number.isFinite(perGroupRaw) ? perGroupRaw : 30));
+    const maxDistance = Math.max(1, Math.min(20, Number.isFinite(maxDistanceRaw) ? maxDistanceRaw : 6));
+    const scanLimit = Math.max(50, Math.min(2000, Number.isFinite(scanLimitRaw) ? scanLimitRaw : 400));
+
+    if (mode === "exact") {
+      const rows: Array<{ imageHash: string; count: bigint }> = await prisma.$queryRaw`
+        SELECT "imageHash", COUNT(*) AS count
+        FROM "MediaAsset"
+        WHERE "kind" = 'IMAGE' AND "imageHash" IS NOT NULL
+        GROUP BY "imageHash"
+        HAVING COUNT(*) > 1
+        ORDER BY count DESC
+        LIMIT ${limit};
+      `;
+
+      const groups = [];
+      for (const row of rows) {
+        const assets = await prisma.mediaAsset.findMany({
+          where: { kind: "IMAGE", imageHash: row.imageHash },
+          orderBy: { createdAt: "desc" },
+          take: perGroup,
+        });
+        groups.push({
+          hash: row.imageHash,
+          count: Number(row.count),
+          items: assets.map((a) => mediaAssetToResponse(req, a)),
+        });
+      }
+
+      return res.json({ mode, groups });
+    }
+
+    // near-duplicate scan (best-effort, limited)
+    const candidates = await prisma.mediaAsset.findMany({
+      where: { kind: "IMAGE", imageHash: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: scanLimit,
+      select: {
+        id: true,
+        filename: true,
+        url: true,
+        provider: true,
+        providerId: true,
+        displayName: true,
+        folder: true,
+        tags: true,
+        mime: true,
+        size: true,
+        width: true,
+        height: true,
+        blurDataUrl: true,
+        imageHash: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    const used = new Set<string>();
+    const groups: any[] = [];
+
+    function sizeClose(a: number | null, b: number | null) {
+      if (!a || !b) return true;
+      const tol = Math.max(64, Math.round(a * 0.12));
+      return Math.abs(a - b) <= tol;
+    }
+
+    for (let i = 0; i < candidates.length; i++) {
+      const base = candidates[i]!;
+      if (!base.imageHash || used.has(base.id)) continue;
+
+      const items: any[] = [
+        { distance: 0, asset: base },
+      ];
+
+      for (let j = i + 1; j < candidates.length; j++) {
+        const other = candidates[j]!;
+        if (!other.imageHash || used.has(other.id)) continue;
+        if (!sizeClose(base.width, other.width) || !sizeClose(base.height, other.height)) continue;
+
+        const dist = hammingHex(base.imageHash, other.imageHash);
+        if (dist <= maxDistance) {
+          items.push({ distance: dist, asset: other });
+          if (items.length >= perGroup) break;
+        }
+      }
+
+      if (items.length > 1) {
+        for (const it of items) used.add(it.asset.id);
+        groups.push({
+          baseId: base.id,
+          baseHash: base.imageHash,
+          items: items.map((it) => ({ distance: it.distance, item: mediaAssetToResponse(req, it.asset) })),
+        });
+        if (groups.length >= limit) break;
+      }
+    }
+
+    return res.json({ mode, maxDistance, scanLimit, groups });
+  } catch (e: any) {
+    return res.status(500).json({ error: "LIST_DUPLICATES_FAILED", message: e?.message ?? String(e) });
+  }
+});
+
 // PATCH /admin/uploads/images/:id
 r.patch("/images/:id", async (req, res) => {
   try {
@@ -810,13 +929,16 @@ r.post("/images", (req, res) => {
             hash: imageHash,
             width: opt.width,
             height: opt.height,
-            folder,
+            scope: "global",
           });
 
           if (duplicate) {
             const updates: any = {};
             if (!duplicate.displayName && (file.originalname || file.filename)) {
               updates.displayName = file.originalname || file.filename;
+            }
+            if (!duplicate.folder && folder) {
+              updates.folder = folder;
             }
             if (tags.length) {
               const merged = mergeTags(duplicate.tags, tags);
