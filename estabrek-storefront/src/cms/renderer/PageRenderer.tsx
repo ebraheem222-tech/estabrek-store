@@ -2002,13 +2002,12 @@ function Section({
                             type="submit"
                             className={cls(
                               "inline-flex w-full items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm",
-                              tokensClass(submitTokens),
-                              submitData.className
+                              tokensClass(submitTokens)
                             )}
                             style={finalStyle}
                             aria-label={submitData.ariaLabel}
                           >
-                            {submitData.content}
+                            <span className={submitData.className}>{submitData.content}</span>
                           </button>,
                           submitTokens
                         );
