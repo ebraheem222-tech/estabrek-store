@@ -119,6 +119,56 @@ function normalizeVariantPricing<T extends { id?: string; price?: any; compareAt
   };
 }
 
+const CATEGORY_CACHE_TTL_MS = 60_000;
+let CATEGORY_CACHE: {
+  t: number;
+  childrenByParent: Map<string, string[]>;
+  idBySlug: Map<string, string>;
+} | null = null;
+
+async function getCategoryIndex() {
+  if (CATEGORY_CACHE && Date.now() - CATEGORY_CACHE.t < CATEGORY_CACHE_TTL_MS) {
+    return CATEGORY_CACHE;
+  }
+  const rows = await prisma.category.findMany({
+    select: { id: true, parentId: true, slug: true },
+  });
+  const childrenByParent = new Map<string, string[]>();
+  const idBySlug = new Map<string, string>();
+
+  for (const c of rows) {
+    if (c.slug) idBySlug.set(c.slug, c.id);
+    if (c.parentId) {
+      const list = childrenByParent.get(c.parentId) ?? [];
+      list.push(c.id);
+      childrenByParent.set(c.parentId, list);
+    }
+  }
+
+  CATEGORY_CACHE = { t: Date.now(), childrenByParent, idBySlug };
+  return CATEGORY_CACHE;
+}
+
+async function getCategoryIdsForFilter(input: { categoryId?: string; category?: string }): Promise<string[] | null | undefined> {
+  if (!input.categoryId && !input.category) return undefined;
+  const index = await getCategoryIndex();
+  const rootId = input.categoryId ?? (input.category ? index.idBySlug.get(input.category) : undefined);
+  if (!rootId) return null;
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const stack = [rootId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    const kids = index.childrenByParent.get(id);
+    if (kids?.length) stack.push(...kids);
+  }
+  return out;
+}
+
 function applySalePricingToItems(
   items: any[],
   now: Date,
@@ -447,7 +497,7 @@ async function buildFacetsForProductIds(args: {
   };
 }
 
-function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string }): Prisma.ProductWhereInput {
+function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string; categoryIds?: string[] }): Prisma.ProductWhereInput {
   const and: Prisma.ProductWhereInput[] = [{ isActive: true }];
 
   if (input.q) {
@@ -460,7 +510,9 @@ function buildBaseProductWhere(input: { q?: string; category?: string; categoryI
     });
   }
 
-  if (input.categoryId) {
+  if (input.categoryIds && input.categoryIds.length) {
+    and.push({ categoryId: { in: input.categoryIds } });
+  } else if (input.categoryId) {
     and.push({ categoryId: input.categoryId });
   } else if (input.category) {
     and.push({ category: { slug: input.category } });
@@ -516,6 +568,7 @@ function buildProductsWhere(input: {
   q?: string;
   category?: string; // category slug
   categoryId?: string;
+  categoryIds?: string[];
   inStock?: boolean;
 
   // legacy single
@@ -530,7 +583,12 @@ function buildProductsWhere(input: {
   maxPrice?: number;
   now?: Date;
 }) {
-  const baseProductWhere = buildBaseProductWhere({ q: input.q, category: input.category, categoryId: input.categoryId });
+  const baseProductWhere = buildBaseProductWhere({
+    q: input.q,
+    category: input.category,
+    categoryId: input.categoryId,
+    categoryIds: input.categoryIds,
+  });
   const now = input.now ?? new Date();
 
   const colorsArr = parseCsv(input.colors ?? input.color);
@@ -594,6 +652,18 @@ async function listProductsSemantic(params: {
   const lite = !!params.lite;
   if (!query || query.length < SEMANTIC_MIN_QUERY_LENGTH) return null;
 
+  const categoryIds = await getCategoryIdsForFilter({ categoryId: params.categoryId, category: params.category });
+  if (categoryIds === null) {
+    return {
+      items: [],
+      total: 0,
+      page: params.page,
+      pageSize: params.limit ?? params.pageSize,
+      totalPages: 1,
+      facets: includeFacets ? { colors: [], sizes: [], selected: { colors: [], sizeIds: [] } } : undefined,
+    };
+  }
+
   const now = new Date();
   const embedded = await getQueryEmbedding(query);
   if (!embedded) return null;
@@ -604,7 +674,7 @@ async function listProductsSemantic(params: {
     itemWhereNoSize,
     colorsArr,
     sizeArr,
-  } = buildProductsWhere({ ...params, q: undefined, now });
+  } = buildProductsWhere({ ...params, q: undefined, now, categoryIds });
 
   const candidates = await prisma.product.findMany({
     where: productWhere,
@@ -706,6 +776,18 @@ export async function listProducts(params: {
     if (semantic) return semantic;
   }
 
+  const categoryIds = await getCategoryIdsForFilter({ categoryId: params.categoryId, category: params.category });
+  if (categoryIds === null) {
+    return {
+      items: [],
+      total: 0,
+      page: params.page,
+      pageSize: params.limit ?? params.pageSize,
+      totalPages: 1,
+      facets: includeFacets ? { colors: [], sizes: [], selected: { colors: [], sizeIds: [] } } : undefined,
+    };
+  }
+
   const {
     productWhere,
     baseProductWhere,
@@ -713,7 +795,7 @@ export async function listProducts(params: {
     itemWhereNoSize,
     colorsArr,
     sizeArr,
-  } = buildProductsWhere({ ...params, now });
+  } = buildProductsWhere({ ...params, now, categoryIds });
 
   const pageSize: number = params.limit ?? params.pageSize;
   const orderBy: Prisma.ProductOrderByWithRelationInput =
