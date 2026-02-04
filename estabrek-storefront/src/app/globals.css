@@ -45,13 +45,21 @@ html, body {
 body {
   background: var(--bg, #05060a);
   color: var(--text, rgba(255,255,255,0.92));
+  padding-top: var(--site-header-height, 0px);
+}
+
+html {
+  scroll-padding-top: var(--site-header-height, 0px);
 }
 
 /* Sticky header wrapper */
 .site-header {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 60;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  width: 100%;
 }
 
 /* Skip link */
@@ -77,7 +85,7 @@ body {
 .a11y-fab {
   position: fixed;
   left: 1.25rem;
-  bottom: 1.25rem;
+  top: calc(100vh - 4.5rem);
   z-index: 90;
   display: inline-flex;
   align-items: center;
@@ -91,6 +99,7 @@ body {
   box-shadow: 0 12px 26px -14px rgba(0,0,0,0.7);
   font-size: 0.9rem;
   transition: transform 160ms ease, background 160ms ease;
+  touch-action: none;
 }
 
 .a11y-fab:hover {
@@ -105,7 +114,7 @@ body {
 .a11y-panel {
   position: fixed;
   left: 1.25rem;
-  bottom: 4.5rem;
+  top: calc(100vh - 20rem);
   width: min(320px, 92vw);
   z-index: 95;
   background: rgba(10,10,20,0.9);
@@ -199,10 +208,10 @@ body {
 
 @media (max-width: 1023px) {
   .a11y-fab {
-    bottom: calc(1.25rem + 80px);
+    top: calc(100vh - 9.5rem);
   }
   .a11y-panel {
-    bottom: calc(4.5rem + 80px);
+    top: calc(100vh - 24rem);
   }
 }
 
