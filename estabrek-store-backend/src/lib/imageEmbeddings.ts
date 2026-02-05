@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { getOpenAIVisionModel, openaiEmbedText, openaiResponsesJson } from "./openai.js";
+import { clipEmbedImage } from "./clipEmbeddings.js";
 
 type Locale = "ar" | "he" | "en";
 
@@ -113,8 +114,17 @@ function buildEmbeddingText(input: {
   return parts.filter(Boolean).join(" | ");
 }
 
-async function describeImageFromBuffer(buffer: Buffer, mime: string, locale?: Locale) {
-  if (!buffer?.length) return null;
+type ImageDescribeResult = {
+  ok: true;
+  caption: string;
+  tags: string[];
+} | {
+  ok: false;
+  error: string;
+};
+
+async function describeImageFromBuffer(buffer: Buffer, mime: string, locale?: Locale): Promise<ImageDescribeResult> {
+  if (!buffer?.length) return { ok: false, error: "IMAGE_BUFFER_EMPTY" };
   const dataUrl = bufferToDataUrl(buffer, mime);
   const model = getOpenAIVisionModel();
   const sys = [
@@ -143,13 +153,14 @@ async function describeImageFromBuffer(buffer: Buffer, mime: string, locale?: Lo
     ],
     max_output_tokens: 250,
     temperature: 0.2,
+    response_format: { type: "json_object" },
   });
 
-  if (!result.ok) return null;
+  if (!result.ok) return { ok: false, error: result.error };
   const caption = typeof result.data?.caption === "string" ? result.data.caption.trim() : "";
   const tags = normalizeTags(result.data?.tags);
-  if (!caption) return null;
-  return { caption, tags };
+  if (!caption) return { ok: false, error: "IMAGE_DESCRIPTION_EMPTY" };
+  return { ok: true, caption, tags };
 }
 
 export async function createImageEmbeddingFromBuffer(
@@ -163,9 +174,23 @@ export async function createImageEmbeddingFromBuffer(
     description?: string | null;
   }
 ): Promise<ImageEmbeddingResult> {
+  const provider = (process.env.IMAGE_SEARCH_PROVIDER ?? "").toLowerCase();
+  if (provider === "clip") {
+    const clip = await clipEmbedImage(buffer);
+    if (!clip.ok) return { ok: false, error: clip.error };
+    return {
+      ok: true,
+      embedding: clip.embedding,
+      embeddingText: "clip:image",
+      caption: "",
+      tags: [],
+      model: clip.model,
+    };
+  }
+
   const desc = await describeImageFromBuffer(buffer, mime, opts?.locale);
-  if (!desc) {
-    return { ok: false, error: "IMAGE_DESCRIPTION_FAILED" };
+  if (!desc.ok) {
+    return { ok: false, error: desc.error || "IMAGE_DESCRIPTION_FAILED" };
   }
 
   const embeddingText = buildEmbeddingText({

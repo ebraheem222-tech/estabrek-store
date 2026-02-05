@@ -18,6 +18,11 @@ export async function indexProductImageEmbedding(
   imageId: string,
   opts?: { force?: boolean; locale?: Locale }
 ): Promise<ProductImageIndexResult> {
+  const provider = (process.env.IMAGE_SEARCH_PROVIDER ?? "").toLowerCase();
+  if (provider === "hash") {
+    return { ok: true, imageId, updated: false, skipped: true };
+  }
+
   const img = await prisma.productItemImage.findUnique({
     where: { id: imageId },
     select: {
