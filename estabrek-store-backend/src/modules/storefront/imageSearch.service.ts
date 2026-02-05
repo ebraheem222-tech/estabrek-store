@@ -9,7 +9,7 @@ type Locale = "ar" | "he" | "en";
 
 export type ImageSearchResult = {
   ok: true;
-  source: "openai" | "fallback" | "hash";
+  source: "openai" | "fallback" | "hash" | "clip";
   caption: string;
   tags: string[];
   products: any[];
