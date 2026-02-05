@@ -167,6 +167,31 @@ export async function extractDominantAndPaletteFromFile(filePath: string, k = 5)
   return { dominantColorHex, palette };
 }
 
+export async function extractDominantAndPaletteFromBuffer(buffer: Buffer, k = 5) {
+  const { data, info } = await sharp(buffer, { failOnError: false })
+    .rotate()
+    .resize({ width: 80, height: 80, fit: "inside", withoutEnlargement: true })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const channels = info.channels ?? 3;
+  const step = 2;
+  const pixels = samplePixels(data, channels, step);
+  if (!pixels.length) return { dominantColorHex: null as string | null, palette: [] as string[] };
+
+  const { centers, counts } = kmeans(pixels, k, 8);
+  if (!centers.length) return { dominantColorHex: null, palette: [] };
+
+  const ordered = centers
+    .map((c, i) => ({ hex: rgbToHex(c), count: counts[i] ?? 0 }))
+    .sort((a, b) => b.count - a.count);
+
+  const palette = Array.from(new Set(ordered.map((x) => x.hex))).slice(0, k);
+  const dominantColorHex = palette[0] ?? ordered[0]?.hex ?? null;
+
+  return { dominantColorHex, palette };
+}
+
 export function autoGroupByColor<T extends { dominantColorHex?: string | null }>(
   items: T[],
   opts?: { threshold?: number }
