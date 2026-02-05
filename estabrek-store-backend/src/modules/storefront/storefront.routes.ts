@@ -383,7 +383,24 @@ r.post("/search/image", (req, res, next) => {
 
   const result = await searchProductsByImageBuffer(buffer, mime, { limit, locale });
   if (!result.ok) {
-    return res.status(503).json({ error: result.error });
+    const err = String(result.error || "IMAGE_SEARCH_FAILED");
+    let message = "فشل البحث بالصورة. يرجى المحاولة لاحقاً.";
+    if (err.includes("OPENAI_API_KEY")) {
+      message = "ميزة البحث بالصورة تحتاج إعداد مفتاح OpenAI في الباك اند (OPENAI_API_KEY).";
+    } else if (err.includes("OpenAI error 401")) {
+      message = "فشل التحقق من مفتاح OpenAI. تأكد من صحة المفتاح.";
+    } else if (err.includes("OpenAI error 429")) {
+      message = "تم تجاوز حد OpenAI مؤقتاً. حاول لاحقاً.";
+    } else if (err.includes("IMAGE_HASH_FAILED")) {
+      message = "تعذر توليد بصمة للصورة. جرب صورة مختلفة.";
+    } else if (err.includes("CLIP_")) {
+      message = "تعذر تحليل الصورة محلياً. حاول صورة مختلفة أو أعد المحاولة.";
+    } else if (err.includes("IMAGE_DESCRIPTION_EMPTY")) {
+      message = "تعذر وصف الصورة. جرب صورة أوضح.";
+    } else if (err.includes("Model did not return JSON")) {
+      message = "فشل تحليل وصف الصورة. حاول مرة أخرى.";
+    }
+    return res.status(503).json({ error: err, message });
   }
 
   res.json(result);
