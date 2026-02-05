@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { createImageEmbeddingFromBuffer } from "../../lib/imageEmbeddings.js";
 import { clipEmbedImage } from "../../lib/clipEmbeddings.js";
 import { computeDhashHexFromBuffer, hammingHex } from "../../lib/imageHash.js";
+import { extractDominantAndPaletteFromBuffer, hexToRgb, colorDistance } from "../../lib/colorAnalysis.js";
 import { listProductsByIds } from "../catalog/catalog.service.js";
 
 type Locale = "ar" | "he" | "en";
@@ -43,12 +44,55 @@ function cosineSimilarity(a: number[], b: number[]) {
   return denom ? dot / denom : 0;
 }
 
+function clamp01(n: number) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+function computeColorSimilarity(queryColors: string[], candidateColors: string[]): number | null {
+  if (!queryColors.length || !candidateColors.length) return null;
+  const qrgbs = queryColors.map((c) => hexToRgb(c)).filter(Boolean) as Array<{ r: number; g: number; b: number }>;
+  const crgbs = candidateColors.map((c) => hexToRgb(c)).filter(Boolean) as Array<{ r: number; g: number; b: number }>;
+  if (!qrgbs.length || !crgbs.length) return null;
+  const maxDist = Math.sqrt(255 * 255 * 3);
+  let best = 0;
+  for (const q of qrgbs) {
+    for (const c of crgbs) {
+      const dist = colorDistance(q, c);
+      const score = clamp01(1 - dist / maxDist);
+      if (score > best) best = score;
+    }
+  }
+  return best;
+}
+
 async function searchByEmbedding(
   query: number[],
-  opts: { limit: number; source: "openai" | "clip"; caption?: string; tags?: string[]; model?: string }
+  opts: {
+    limit: number;
+    source: "openai" | "clip";
+    caption?: string;
+    tags?: string[];
+    model?: string;
+    queryColors?: string[];
+    queryHash?: string | null;
+  }
 ): Promise<ImageSearchResult> {
   const minScoreDefault = opts.source === "clip" ? 0.23 : 0.2;
   const minScore = Number(process.env.IMAGE_SEARCH_MIN_SCORE ?? minScoreDefault);
+  const colorWeightRaw = Number(process.env.IMAGE_SEARCH_COLOR_WEIGHT ?? 0.28);
+  const hashWeightRaw = Number(process.env.IMAGE_SEARCH_HASH_WEIGHT ?? 0.15);
+  const minColorScore = Number(process.env.IMAGE_SEARCH_COLOR_MIN_SCORE ?? 0.2);
+  const colorFilter = String(process.env.IMAGE_SEARCH_COLOR_FILTER ?? "") === "1";
+  const strongHash = Number(process.env.IMAGE_SEARCH_HASH_STRONG ?? 0.92);
+  let colorWeight = clamp01(colorWeightRaw);
+  let hashWeight = clamp01(hashWeightRaw);
+  if (colorWeight + hashWeight > 0.85) {
+    const scale = 0.85 / (colorWeight + hashWeight);
+    colorWeight *= scale;
+    hashWeight *= scale;
+  }
+  const baseWeight = Math.max(0, 1 - colorWeight - hashWeight);
   const images = await prisma.productItemImage.findMany({
     where: {
       embedding: { not: Prisma.DbNull },
@@ -60,6 +104,9 @@ async function searchByEmbedding(
     },
     select: {
       embedding: true,
+      imageHash: true,
+      dominantColorHex: true,
+      palette: true,
       item: { select: { productId: true } },
     },
   });
@@ -85,11 +132,27 @@ async function searchByEmbedding(
     if (vec.length !== query.length) continue;
     const score = cosineSimilarity(query, vec);
     if (!Number.isFinite(score)) continue;
-    if (Number.isFinite(minScore) && score < minScore) continue;
+    const hashScore = opts.queryHash && img.imageHash
+      ? clamp01(1 - hammingHex(String(opts.queryHash), String(img.imageHash)) / (String(opts.queryHash).length * 4))
+      : null;
+    const allowByHash = hashScore != null && hashScore >= strongHash;
+    if (!allowByHash && Number.isFinite(minScore) && score < minScore) continue;
+
+    const candidateColors = [
+      img.dominantColorHex ? String(img.dominantColorHex) : null,
+      ...(Array.isArray(img.palette) ? img.palette.map((x: any) => String(x)) : []),
+    ].filter(Boolean) as string[];
+    const colorScore = opts.queryColors ? computeColorSimilarity(opts.queryColors, candidateColors) : null;
+    if (colorFilter && colorScore != null && colorScore < minColorScore) continue;
+
+    const finalScore =
+      score * baseWeight +
+      (colorScore != null ? colorScore : 0) * colorWeight +
+      (hashScore != null ? hashScore : 0) * hashWeight;
     const productId = img.item?.productId ? String(img.item.productId) : null;
     if (!productId) continue;
     const prev = scores.get(productId);
-    if (prev == null || score > prev) scores.set(productId, score);
+    if (prev == null || finalScore > prev) scores.set(productId, finalScore);
   }
 
   const ranked = Array.from(scores.entries())
@@ -117,6 +180,16 @@ export async function searchProductsByImageBuffer(
 ): Promise<ImageSearchResult> {
   const limit = Math.min(48, Math.max(1, Number(opts?.limit ?? 24)));
   const provider = (process.env.IMAGE_SEARCH_PROVIDER ?? "").toLowerCase();
+  const queryHash = await computeDhashHexFromBuffer(buffer);
+  const queryColors = await (async () => {
+    try {
+      const c = await extractDominantAndPaletteFromBuffer(buffer);
+      const colors = [c.dominantColorHex, ...(c.palette ?? [])].filter(Boolean) as string[];
+      return Array.from(new Set(colors));
+    } catch {
+      return [] as string[];
+    }
+  })();
   if (provider === "clip") {
     const clip = await clipEmbedImage(buffer);
     if (!clip.ok) {
@@ -130,11 +203,13 @@ export async function searchProductsByImageBuffer(
       caption: "",
       tags: [],
       model: clip.model,
+      queryColors,
+      queryHash,
     });
   }
   const useHashOnly = provider === "hash" || (!process.env.OPENAI_API_KEY && provider !== "openai");
   if (useHashOnly) {
-    const hash = await computeDhashHexFromBuffer(buffer);
+    const hash = queryHash ?? (await computeDhashHexFromBuffer(buffer));
     if (!hash) return { ok: false, error: "IMAGE_HASH_FAILED" };
     return await searchByHash(hash, limit);
   }
@@ -152,6 +227,8 @@ export async function searchProductsByImageBuffer(
     caption: embedded.caption,
     tags: embedded.tags,
     model: embedded.model,
+    queryColors,
+    queryHash,
   });
 }
 
