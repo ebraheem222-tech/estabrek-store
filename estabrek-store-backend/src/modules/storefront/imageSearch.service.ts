@@ -47,6 +47,8 @@ async function searchByEmbedding(
   query: number[],
   opts: { limit: number; source: "openai" | "clip"; caption?: string; tags?: string[]; model?: string }
 ): Promise<ImageSearchResult> {
+  const minScoreDefault = opts.source === "clip" ? 0.23 : 0.2;
+  const minScore = Number(process.env.IMAGE_SEARCH_MIN_SCORE ?? minScoreDefault);
   const images = await prisma.productItemImage.findMany({
     where: {
       embedding: { not: Prisma.DbNull },
@@ -83,6 +85,7 @@ async function searchByEmbedding(
     if (vec.length !== query.length) continue;
     const score = cosineSimilarity(query, vec);
     if (!Number.isFinite(score)) continue;
+    if (Number.isFinite(minScore) && score < minScore) continue;
     const productId = img.item?.productId ? String(img.item.productId) : null;
     if (!productId) continue;
     const prev = scores.get(productId);
@@ -153,6 +156,7 @@ export async function searchProductsByImageBuffer(
 }
 
 async function searchByHash(hash: string, limit: number): Promise<ImageSearchResult> {
+  const minScore = Number(process.env.IMAGE_HASH_MIN_SCORE ?? 0.65);
   const images = await prisma.productItemImage.findMany({
     where: {
       imageHash: { not: null },
@@ -188,6 +192,7 @@ async function searchByHash(hash: string, limit: number): Promise<ImageSearchRes
     const dist = hammingHex(hash, other);
     if (!Number.isFinite(dist)) continue;
     const score = maxBits > 0 ? 1 - dist / maxBits : 0;
+    if (Number.isFinite(minScore) && score < minScore) continue;
     const productId = img.item?.productId ? String(img.item.productId) : null;
     if (!productId) continue;
     const prev = scores.get(productId);
