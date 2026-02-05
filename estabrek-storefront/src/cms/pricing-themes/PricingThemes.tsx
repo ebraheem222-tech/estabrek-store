@@ -35,6 +35,7 @@ export interface PricingPlan {
   buttonText?: string;
   buttonVariant?: 'primary' | 'secondary' | 'outline';
   onSelect?: () => void;
+  buttonHref?: string;
 }
 
 export interface PricingTableProps {
@@ -45,6 +46,16 @@ export interface PricingTableProps {
   billingToggle?: boolean;
   onBillingChange?: (isAnnual: boolean) => void;
   className?: string;
+}
+
+function handlePlanSelect(plan: PricingPlan) {
+  if (plan.onSelect) {
+    plan.onSelect();
+    return;
+  }
+  if (plan.buttonHref && typeof window !== "undefined") {
+    window.location.href = plan.buttonHref;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -281,7 +292,7 @@ export const PricingBasicSimple: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                   plan.popular
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -382,7 +393,7 @@ export const PricingBasicWithToggle: React.FC<PricingTableProps & { isAnnual?: b
                   })}
                 </ul>
                 <button
-                  onClick={plan.onSelect}
+                  onClick={() => handlePlanSelect(plan)}
                   className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                     plan.popular
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -451,7 +462,7 @@ export const PricingModernGlass: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                   plan.popular
                     ? 'bg-white text-purple-600 hover:bg-gray-100'
@@ -522,7 +533,7 @@ export const PricingModernDark: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                   plan.popular
                     ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90'
@@ -597,7 +608,7 @@ export const PricingTechGradient: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold bg-gradient-to-r ${gradients[index % gradients.length]} text-white hover:opacity-90 transition-opacity`}
               >
                 {plan.buttonText || 'Get Started'}
@@ -667,7 +678,7 @@ export const PricingGamingNeon: React.FC<PricingTableProps> = ({
                   })}
                 </ul>
                 <button
-                  onClick={plan.onSelect}
+                  onClick={() => handlePlanSelect(plan)}
                   className={`w-full mt-8 py-3 px-4 rounded-lg font-bold ${neon.bg} text-white hover:opacity-90 transition-opacity`}
                 >
                   {plan.buttonText || 'SUBSCRIBE'}
@@ -732,7 +743,7 @@ export const PricingEcommerceLuxury: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-10 py-4 px-4 font-medium tracking-wide transition-colors ${
                   plan.popular
                     ? 'bg-amber-600 text-white hover:bg-amber-700'
@@ -819,7 +830,7 @@ export const PricingComparisonTable: React.FC<PricingTableProps> = ({
                 {plans.map((plan) => (
                   <td key={plan.id} className="py-6 px-6 text-center">
                     <button
-                      onClick={plan.onSelect}
+                      onClick={() => handlePlanSelect(plan)}
                       className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
                         plan.popular
                           ? 'bg-blue-600 text-white hover:bg-blue-700'
