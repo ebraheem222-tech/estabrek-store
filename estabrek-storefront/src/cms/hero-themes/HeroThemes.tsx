@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { heroComponents } from "./HeroComponents";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -826,6 +827,11 @@ export const HeroRenderer: React.FC<HeroRendererProps> = ({ themeId, ...props })
   
   if (!theme) {
     return <HeroBasicCentered {...props} />;
+  }
+
+  const ThemeComponent = (heroComponents as Record<string, React.FC<HeroProps>>)[themeId];
+  if (ThemeComponent) {
+    return <ThemeComponent {...props} />;
   }
 
   // Map themes to components

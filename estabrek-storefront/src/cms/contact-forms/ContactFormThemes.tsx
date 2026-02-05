@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { additionalFormComponents } from "./ContactFormComponents";
 import { createContactSubmitHandler } from '@/lib/contactForm';
 
 // ═══════════════════════════════════════════════════════════════
@@ -835,3 +836,14 @@ export const contactFormComponents: Record<string, React.FC<ContactFormProps>> =
 };
 
 export default contactFormComponents;
+
+interface ContactFormRendererProps extends ContactFormProps {
+  themeId: string;
+}
+
+export const ContactFormRenderer: React.FC<ContactFormRendererProps> = ({ themeId, ...props }) => {
+  const themeMap = { ...contactFormComponents, ...additionalFormComponents } as Record<string, React.FC<ContactFormProps>>;
+  const ThemeComponent = themeMap[themeId] ?? contactFormComponents["basic-simple"] ?? Object.values(themeMap)[0];
+  if (!ThemeComponent) return null;
+  return <ThemeComponent {...props} />;
+};

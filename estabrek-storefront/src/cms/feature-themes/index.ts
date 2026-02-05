@@ -26,6 +26,7 @@ export {
   FeatureCorporateStats,
   FeatureCreativeBold,
   FeatureSplitScreen,
+  FeatureRenderer,
   featureComponents,
 } from './FeatureThemes';
 

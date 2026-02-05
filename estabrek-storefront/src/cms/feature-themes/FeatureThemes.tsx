@@ -1,4 +1,7 @@
+"use client";
+
 import React from 'react';
+import { additionalFeatureComponents } from "./FeatureComponents";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -704,3 +707,14 @@ export const featureComponents: Record<string, React.FC<any>> = {
 };
 
 export default featureComponents;
+
+interface FeatureRendererProps extends FeatureSectionProps {
+  themeId: string;
+}
+
+export const FeatureRenderer: React.FC<FeatureRendererProps> = ({ themeId, ...props }) => {
+  const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<FeatureSectionProps>>;
+  const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
+  if (!ThemeComponent) return null;
+  return <ThemeComponent {...props} />;
+};

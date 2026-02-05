@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 
 // ═══════════════════════════════════════════════════════════════
@@ -21,6 +23,7 @@ interface PricingPlan {
   popular?: boolean;
   features: (string | PricingFeature)[];
   buttonText?: string;
+  buttonHref?: string;
   onSelect?: () => void;
 }
 
@@ -44,6 +47,16 @@ const XIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
   </svg>
 );
+
+function handlePlanSelect(plan: PricingPlan) {
+  if (plan.onSelect) {
+    plan.onSelect();
+    return;
+  }
+  if (plan.buttonHref && typeof window !== "undefined") {
+    window.location.href = plan.buttonHref;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // BASIC BORDERED
@@ -101,7 +114,7 @@ export const PricingBasicBordered: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors border-2 ${
                   plan.popular
                     ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
@@ -171,7 +184,7 @@ export const PricingModernGradientBorder: React.FC<PricingTableProps> = ({
                   })}
                 </ul>
                 <button
-                  onClick={plan.onSelect}
+                  onClick={() => handlePlanSelect(plan)}
                   className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                     plan.popular
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90'
@@ -245,7 +258,7 @@ export const PricingModernNeumorphism: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className="w-full mt-8 py-3 px-4 rounded-xl font-semibold bg-blue-600 text-white shadow-[4px_4px_8px_#bebebe,-4px_-4px_8px_#ffffff] hover:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.1)] transition-shadow"
               >
                 {plan.buttonText || 'Get Started'}
@@ -318,7 +331,7 @@ export const PricingModernColorful: React.FC<PricingTableProps> = ({
                   })}
                 </ul>
                 <button
-                  onClick={plan.onSelect}
+                  onClick={() => handlePlanSelect(plan)}
                   className="w-full mt-8 py-3 px-4 rounded-lg font-semibold bg-white text-gray-900 hover:bg-gray-100 transition-colors"
                 >
                   {plan.buttonText || 'Get Started'}
@@ -401,7 +414,7 @@ export const PricingTechFreemium: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                   plan.popular
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -479,7 +492,7 @@ export const PricingEcommerceDiscount: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded-lg font-semibold transition-colors ${
                   plan.popular
                     ? 'bg-red-600 text-white hover:bg-red-700'
@@ -553,7 +566,7 @@ export const PricingCorporateProfessional: React.FC<PricingTableProps> = ({
                 })}
               </ul>
               <button
-                onClick={plan.onSelect}
+                onClick={() => handlePlanSelect(plan)}
                 className={`w-full mt-8 py-3 px-4 rounded font-medium transition-colors ${
                   plan.popular
                     ? 'bg-slate-900 text-white hover:bg-slate-800'
@@ -627,7 +640,7 @@ export const PricingCreativeBold: React.FC<PricingTableProps> = ({
                   })}
                 </ul>
                 <button
-                  onClick={plan.onSelect}
+                  onClick={() => handlePlanSelect(plan)}
                   className={`w-full mt-8 py-4 px-4 font-black transition-colors ${
                     index === 0
                       ? 'bg-black text-white hover:bg-gray-900'
@@ -709,7 +722,7 @@ export const PricingAppLifetime: React.FC<PricingTableProps> = ({
                     <p className="text-gray-400 text-sm">one-time payment</p>
                   </div>
                   <button
-                    onClick={plan.onSelect}
+                    onClick={() => handlePlanSelect(plan)}
                     className="px-8 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors whitespace-nowrap"
                   >
                     {plan.buttonText || 'Buy Now'}

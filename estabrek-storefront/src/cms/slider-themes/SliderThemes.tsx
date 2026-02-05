@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import { additionalSliderComponents } from "./SliderComponents";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -843,4 +844,15 @@ export const sliderComponents: Record<string, React.FC<SliderProps>> = {
 };
 
 export default sliderComponents;
+
+interface SliderRendererProps extends SliderProps {
+  themeId: string;
+}
+
+export const SliderRenderer: React.FC<SliderRendererProps> = ({ themeId, ...props }) => {
+  const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<SliderProps>>;
+  const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+  if (!ThemeComponent) return null;
+  return <ThemeComponent {...props} />;
+};
 

@@ -25,6 +25,7 @@ export {
   ContactFormTravel,
   ContactFormCreative,
   ContactFormEcommerceSupport,
+  ContactFormRenderer,
   contactFormComponents,
 } from './ContactFormThemes';
 

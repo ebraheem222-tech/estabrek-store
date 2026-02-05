@@ -23,6 +23,7 @@ export {
   PricingGamingNeon,
   PricingEcommerceLuxury,
   PricingComparisonTable,
+  PricingRenderer,
   pricingComponents,
 } from './PricingThemes';
 

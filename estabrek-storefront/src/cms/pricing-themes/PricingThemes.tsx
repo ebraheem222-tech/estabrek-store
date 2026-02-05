@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { additionalPricingComponents } from "./PricingComponents";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -878,4 +879,15 @@ export const pricingComponents: Record<string, React.FC<any>> = {
 };
 
 export default pricingComponents;
+
+interface PricingRendererProps extends PricingTableProps {
+  themeId: string;
+}
+
+export const PricingRenderer: React.FC<PricingRendererProps> = ({ themeId, ...props }) => {
+  const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<PricingTableProps>>;
+  const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
+  if (!ThemeComponent) return null;
+  return <ThemeComponent {...props} />;
+};
 

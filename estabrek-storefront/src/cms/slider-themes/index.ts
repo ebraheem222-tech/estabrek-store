@@ -25,6 +25,7 @@ export {
   SliderGamingNeon,
   SliderCorporateClients,
   SliderCreativeSplit,
+  SliderRenderer,
   sliderComponents,
 } from './SliderThemes';
 

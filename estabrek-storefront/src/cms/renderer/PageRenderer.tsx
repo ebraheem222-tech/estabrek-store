@@ -41,11 +41,11 @@ import { DECOR_PRESETS } from "@/cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 
 import { DEFAULT_MOTION_BY_SECTION_TYPE } from "@/motion/gsapPresets";
-import { heroComponents, HeroRenderer } from "../hero-themes";
-import { contactFormComponents, additionalFormComponents } from "../contact-forms";
-import { featureComponents, additionalFeatureComponents } from "../feature-themes";
-import { pricingComponents, additionalPricingComponents } from "../pricing-themes";
-import { sliderComponents, additionalSliderComponents } from "../slider-themes";
+import { HeroRenderer } from "../hero-themes";
+import { ContactFormRenderer } from "../contact-forms";
+import { FeatureRenderer } from "../feature-themes";
+import { PricingRenderer } from "../pricing-themes";
+import { SliderRenderer } from "../slider-themes";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
 
 type QuickAddRef = { productId?: string; slug?: string };
@@ -833,12 +833,7 @@ function Section({
       const componentsBlock = renderComponentsBlock(d, productLookup);
       const sectionTokens = (d as any)?.twTokens;
       const themeProps = { ...heroThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
-      const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[themeId];
-      const themeNode = ThemeComponent ? (
-        <ThemeComponent {...themeProps} />
-      ) : (
-        <HeroRenderer themeId={themeId} {...themeProps} />
-      );
+      const themeNode = <HeroRenderer themeId={themeId} {...themeProps} />;
 
       return wrapDecorations(
         <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
@@ -1322,12 +1317,10 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d, productLookup);
       const sectionTokens = (d as any)?.twTokens;
-      const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<any>>;
-      const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
       const themeProps = featureThemePropsFromData(d) as any;
       return wrapDecorations(
         <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
-          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          <FeatureRenderer themeId={themeId} {...themeProps} />
           {componentsBlock}
         </section>,
         sectionTokens
@@ -1636,12 +1629,10 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d, productLookup);
       const sectionTokens = (d as any)?.twTokens;
-      const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<any>>;
-      const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
       const themeProps = pricingThemePropsFromData(d) as any;
       return wrapDecorations(
         <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
-          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          <PricingRenderer themeId={themeId} {...themeProps} />
           {componentsBlock}
         </section>,
         sectionTokens
@@ -1789,13 +1780,11 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d, productLookup);
       const sectionTokens = (d as any)?.twTokens;
-      const themeMap = { ...contactFormComponents, ...additionalFormComponents } as Record<string, React.FC<any>>;
-      const ThemeComponent = themeMap[themeId] ?? contactFormComponents["basic-simple"];
       const themeProps = { ...contactThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
 
       return wrapDecorations(
         <section {...attrs} data-section-type="CONTACT" className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
-          {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+          <ContactFormRenderer themeId={themeId} {...themeProps} />
           {componentsBlock}
         </section>,
         sectionTokens
@@ -2405,8 +2394,6 @@ function Section({
       const label = type === "NEW_ARRIVALS_SLIDER" ? "New arrival" : "Best seller";
       const slides = productSliderThemeSlides(d, productLookup, label);
       if (slides.length) {
-        const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
-        const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
         const themeProps = {
           slides,
           showArrows: true,
@@ -2423,7 +2410,7 @@ function Section({
                   </h3>
                 ) : null}
               </SectionTextScope>
-              {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+              <SliderRenderer themeId={themeId} {...themeProps} />
               {componentsBlock}
             </div>
           </section>,
@@ -2489,8 +2476,6 @@ function Section({
     if (themeId) {
       const slides = brandSliderThemeSlides(d);
       if (slides.length) {
-        const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
-        const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
         const themeProps = {
           slides,
           showArrows: true,
@@ -2507,7 +2492,7 @@ function Section({
                   </h3>
                 ) : null}
               </SectionTextScope>
-              {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
+              <SliderRenderer themeId={themeId} {...themeProps} />
               {componentsBlock}
             </div>
           </section>,
