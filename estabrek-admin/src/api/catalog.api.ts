@@ -57,6 +57,7 @@ export type ProductItem = {
   id: string;
   productId: string;
   colorName: string;
+  boxLabel?: string | null;
   colorHex?: string | null;
   // Palette extracted / suggested for UI swatches (array of hex strings)
   suggestedColors?: string[];
@@ -130,6 +131,7 @@ export type ProductImportRow = {
   categorySlug?: string;
   categoryName?: string;
   colorName?: string;
+  boxLabel?: string;
   colorHex?: string | null;
   skuBase?: string;
   sizeName?: string;
@@ -203,6 +205,7 @@ export type ProductDeepUpdateBody = {
   items?: Array<{
     id?: string;
     colorName: string;
+    boxLabel?: string;
     colorHex?: string | null;
     suggestedColors?: string[];
     skuBase: string;
@@ -213,6 +216,7 @@ export type ProductDeepUpdateBody = {
       alt?: string | null;
       position?: number;
       isPrimary?: boolean;
+      view?: string | null;
     }>;
     variants?: Array<{
       id?: string;

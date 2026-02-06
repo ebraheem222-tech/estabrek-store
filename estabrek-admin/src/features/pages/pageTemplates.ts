@@ -51,33 +51,34 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
               id: "c-hero-h1",
               kind: "text",
               props: { as: "h1", text: "عنوان قوي للـLanding" },
-              tw: { typography: { size: "5xl", weight: "bold", align: "center" }, spacing: { mb: "6" } },
+              twTokens: { typography: { size: "5xl", weight: "bold", align: "center" }, spacing: { marginBottom: "lg" } },
             },
             {
               id: "c-hero-p",
               kind: "text",
               props: { as: "p", text: "جملة واحدة بتشرح ليش الزبون لازم يشتري منك." },
-              tw: { typography: { size: "lg", align: "center", muted: true }, spacing: { mb: "8" } },
+              twTokens: { typography: { size: "lg", align: "center", color: "muted" }, spacing: { marginBottom: "xl" } },
             },
             {
               id: "c-hero-actions",
               kind: "row",
-              props: {},
-              tw: { layout: { display: "flex", justify: "center" }, spacing: { gap: "3" } },
-              children: [
-                {
-                  id: "c-hero-btn1",
-                  kind: "button",
-                  props: { label: "تسوق الآن", href: "/shop" },
-                  tw: { style: { bgPreset: "gradient-sunset", radius: "2xl", shadow: "md" }, hover: { preset: "lift" } },
-                },
-                {
-                  id: "c-hero-btn2",
-                  kind: "button",
-                  props: { label: "اعرف أكثر", href: "/about" },
-                  tw: { style: { bgPreset: "solid-white", radius: "2xl", shadow: "sm" }, hover: { preset: "glow" } },
-                },
-              ],
+              props: {
+                children: [
+                  {
+                    id: "c-hero-btn1",
+                    kind: "button",
+                    props: { label: "تسوق الآن", href: "/shop" },
+                    twTokens: { style: { bg: "gradient-sunset", radius: "2xl", shadow: "md" }, state: { hover: "lift" } },
+                  },
+                  {
+                    id: "c-hero-btn2",
+                    kind: "button",
+                    props: { label: "اعرف أكثر", href: "/about" },
+                    twTokens: { style: { bg: "solid-white", radius: "2xl", shadow: "sm" }, state: { hover: "glow" } },
+                  },
+                ],
+              },
+              twTokens: { layout: { display: "flex", flex: { justify: "center" } }, spacing: { gap: "sm" } },
             },
           ],
         },
@@ -87,17 +88,19 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
         data: {
           title: "ليش احنا؟",
           components: [
-            { id: "c-feat-h2", kind: "text", props: { as: "h2", text: "مميزات سريعة" }, tw: { typography: { size: "3xl", weight: "bold", align: "center" }, spacing: { mb: "6" } } },
+            { id: "c-feat-h2", kind: "text", props: { as: "h2", text: "مميزات سريعة" }, twTokens: { typography: { size: "3xl", weight: "bold", align: "center" }, spacing: { marginBottom: "lg" } } },
             {
               id: "c-feat-grid",
               kind: "grid",
-              props: { cols: 3 },
-              tw: { layout: { display: "grid" }, spacing: { gap: "4" } },
-              children: [
-                { id: "c-feat-1", kind: "card", props: { title: "شحن سريع", text: "خلال 24-72 ساعة." }, tw: { style: { bgPreset: "glass-md", radius: "2xl", shadow: "sm" } } },
-                { id: "c-feat-2", kind: "card", props: { title: "جودة عالية", text: "مواد ممتازة وتفاصيل نظيفة." }, tw: { style: { bgPreset: "glass-md", radius: "2xl", shadow: "sm" } } },
-                { id: "c-feat-3", kind: "card", props: { title: "دعم ممتاز", text: "رد سريع عبر واتساب." }, tw: { style: { bgPreset: "glass-md", radius: "2xl", shadow: "sm" } } },
-              ],
+              props: {
+                cols: 3,
+                children: [
+                  { id: "c-feat-1", kind: "card", props: { title: "شحن سريع", text: "خلال 24-72 ساعة." }, twTokens: { style: { bg: "glass-md", radius: "2xl", shadow: "sm" } } },
+                  { id: "c-feat-2", kind: "card", props: { title: "جودة عالية", text: "مواد ممتازة وتفاصيل نظيفة." }, twTokens: { style: { bg: "glass-md", radius: "2xl", shadow: "sm" } } },
+                  { id: "c-feat-3", kind: "card", props: { title: "دعم ممتاز", text: "رد سريع عبر واتساب." }, twTokens: { style: { bg: "glass-md", radius: "2xl", shadow: "sm" } } },
+                ],
+              },
+              twTokens: { layout: { display: "grid" }, spacing: { gap: "md" } },
             },
           ],
         },
@@ -108,8 +111,8 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
           title: "الأكثر مبيعًا",
           // our Data Component (Step 7+) also works via components
           components: [
-            { id: "c-best-h2", kind: "text", props: { as: "h2", text: "الأكثر مبيعًا" }, tw: { typography: { size: "3xl", weight: "bold" }, spacing: { mb: "4" } } },
-            { id: "c-best-slider", kind: "productSlider", props: { source: "bestSellers", limit: 12 }, tw: {} },
+            { id: "c-best-h2", kind: "text", props: { as: "h2", text: "الأكثر مبيعًا" }, twTokens: { typography: { size: "3xl", weight: "bold" }, spacing: { marginBottom: "md" } } },
+            { id: "c-best-slider", kind: "productSlider", props: { source: "bestSellers", limit: 12 }, twTokens: {} },
           ],
         },
       },
@@ -161,9 +164,9 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
         type: "GRID",
         data: {
           components: [
-            { id: "c-shop-h1", kind: "text", props: { as: "h1", text: "المتجر" }, tw: { typography: { size: "4xl", weight: "bold" }, spacing: { mb: "4" } } },
-            { id: "c-shop-filters", kind: "filtersBar", props: {}, tw: {} },
-            { id: "c-shop-grid", kind: "productGrid", props: { source: "all", limit: 24, cols: 3 }, tw: {} },
+            { id: "c-shop-h1", kind: "text", props: { as: "h1", text: "المتجر" }, twTokens: { typography: { size: "4xl", weight: "bold" }, spacing: { marginBottom: "md" } } },
+            { id: "c-shop-filters", kind: "filtersBar", props: {}, twTokens: {} },
+            { id: "c-shop-grid", kind: "productGrid", props: { source: "all", limit: 24, cols: 3 }, twTokens: {} },
           ],
         },
       },

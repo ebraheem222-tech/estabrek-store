@@ -75,6 +75,7 @@ export const ENDPOINTS = {
         imageFolders: "/admin/uploads/images/folders",
         imageFolderById: (id: string) => `/admin/uploads/images/folders/${id}`,
         imageTags: "/admin/uploads/images/tags",
+        imageDuplicates: "/admin/uploads/images/duplicates",
       },
 
       inventory: {
@@ -150,6 +151,13 @@ export const ENDPOINTS = {
         comments: "/admin/ugc/comments",
         commentStatus: (id: string) => `/admin/ugc/comments/${id}/status`,
         commentById: (id: string) => `/admin/ugc/comments/${id}`,
+      },
+
+      chatbot: {
+        entries: "/admin/chatbot/entries",
+        entryById: (id: string) => `/admin/chatbot/entries/${id}`,
+        conversations: "/admin/chatbot/conversations",
+        conversationById: (id: string) => `/admin/chatbot/conversations/${id}`,
       },
       
     },

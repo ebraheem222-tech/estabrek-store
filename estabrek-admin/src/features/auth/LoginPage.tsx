@@ -37,6 +37,11 @@ export default function LoginPage() {
     return st?.from?.pathname ?? "/admin/dashboard";
   }, [location.state]);
 
+  const loginReason = useMemo(() => {
+    const qs = new URLSearchParams(location.search);
+    return qs.get("reason");
+  }, [location.search]);
+
   useEffect(() => {
     if (admin && isSuperAdmin()) {
       nav(from, { replace: true });
@@ -139,6 +144,12 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-white">مرحباً بعودتك</h1>
           <p className="mt-2 text-sm text-white/50">سجل دخولك للوصول إلى لوحة التحكم</p>
         </div>
+
+        {loginReason === "expired" && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+            انتهت الجلسة أو التوكن غير صالح. يرجى تسجيل الدخول من جديد.
+          </div>
+        )}
 
         {/* Mode tabs */}
         <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-2">

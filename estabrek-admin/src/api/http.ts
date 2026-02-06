@@ -4,24 +4,9 @@ import type { InternalAxiosRequestConfig } from "axios";
 import type { AxiosInstance } from "axios";
 import { env } from "../config/env";
 import { ENDPOINTS } from "./endpoints";
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "../lib/storage";
 
-const ACCESS_KEY = "estabrek_admin_accessToken";
-const REFRESH_KEY = "estabrek_admin_refreshToken";
-
-export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_KEY);
-}
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY);
-}
-export function setTokens(tokens: { accessToken: string; refreshToken: string }) {
-  localStorage.setItem(ACCESS_KEY, tokens.accessToken);
-  localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
-}
-export function clearTokens() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-}
+export { getAccessToken, getRefreshToken, setTokens, clearTokens };
 
 /**
  * Axios instance used for normal API calls (has interceptors)
@@ -77,6 +62,7 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const status = error.response?.status;
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const errCode = (error.response?.data as any)?.error as string | undefined;
 
     // If we don't have original request, just throw
     if (!original) throw error;
@@ -90,7 +76,26 @@ api.interceptors.response.use(
       url.includes(ENDPOINTS.auth.mfaFinalize) ||
       url.includes(ENDPOINTS.auth.mfaTokensFromSession);
 
+    const authError = errCode === "NO_TOKEN" || errCode === "INVALID_TOKEN" || errCode === "TOKEN_EXPIRED" || errCode === "UNAUTHORIZED";
+    // If backend signals auth error (even if status is wrong), force re-login.
+    if (authError) {
+      clearTokens();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login?reason=expired";
+      }
+      throw error;
+    }
+
     if (status !== 401 || original._retry || isAuthEndpoint) {
+      throw error;
+    }
+
+    // If no refresh token, force re-login.
+    if (!getRefreshToken()) {
+      clearTokens();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login?reason=expired";
+      }
       throw error;
     }
 

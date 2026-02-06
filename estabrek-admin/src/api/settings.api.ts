@@ -5,6 +5,8 @@ import { ENDPOINTS } from "./endpoints";
 export type SiteSettings = {
   id: string;
   siteName?: string | null;
+  currencyCode?: string | null;
+  storeCountryCode?: string | null;
   logoUrl?: string | null;
   faviconUrl?: string | null;
   header?: any | null;
@@ -16,6 +18,17 @@ export type SiteSettings = {
   contactPhone?: string | null;
   primaryNavId?: string | null;
   footerNavId?: string | null;
+  checkoutMode?: "WHATSAPP" | "STRIPE" | "PAYPAL" | "PAYMENTS";
+  ordersEmail?: string | null;
+  whatsappNumber?: string | null;
+  stripeEnabled?: boolean;
+  stripePublicKey?: string | null;
+  stripeSecretKey?: string | null;
+  stripeWebhookSecret?: string | null;
+  paypalEnabled?: boolean;
+  paypalClientId?: string | null;
+  paypalClientSecret?: string | null;
+  paypalWebhookId?: string | null;
 
   // Phase 1A: Global announcement bar
   announcementIsActive?: boolean;

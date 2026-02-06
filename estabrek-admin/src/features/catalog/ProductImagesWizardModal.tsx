@@ -38,6 +38,7 @@ type GroupVariantsDraft = {
 type GroupState = {
   id: string;
   colorName: string;
+  boxLabel: string;
   colorHex: string;
   assets: WizardAssetState[];
   variants: GroupVariantsDraft;
@@ -53,6 +54,13 @@ function normalizeHex(h: string) {
   if (!x) return "#000000";
   if (x.startsWith("#")) return x.toUpperCase();
   return ("#" + x).toUpperCase();
+}
+
+function isModelUrl(url?: string | null) {
+  const raw = String(url ?? "").trim().toLowerCase();
+  if (!raw) return false;
+  const clean = raw.split("?")[0].split("#")[0];
+  return clean.endsWith(".glb") || clean.endsWith(".gltf");
 }
 
 function newId() {
@@ -120,6 +128,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       const next: GroupState[] = data.groups.map((g) => ({
         id: g.groupId || newId(),
         colorName: g.colorName || "Color",
+        boxLabel: "",
         colorHex: normalizeHex(g.colorHex || "#000000"),
         assets: (g.assets || []).map((x) => ({ ...x, view: null, alt: null })),
         variants: defaultVariantsDraft(),
@@ -138,7 +147,8 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
         if (g.variants.sizeIds.length) {
           const price = Number(g.variants.price);
           if (!Number.isFinite(price) || price <= 0) {
-            throw new Error(`حدد سعر للقياسات داخل اللون: ${g.colorName}`);
+            const label = g.boxLabel?.trim() ? `${g.colorName} — ${g.boxLabel}` : g.colorName;
+            throw new Error(`حدد سعر للقياسات داخل اللون: ${label}`);
           }
         }
       }
@@ -165,6 +175,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
 
             return {
               colorName: g.colorName.trim(),
+              boxLabel: g.boxLabel?.trim() || undefined,
               colorHex: g.colorHex || null,
               assets: g.assets.map((a) => ({ assetId: a.id, view: a.view ?? null, alt: a.alt ?? null })),
               variants,
@@ -192,7 +203,14 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
   function addGroup() {
     setGroups((prev) => [
       ...prev,
-      { id: newId(), colorName: `Color ${prev.length + 1}`, colorHex: "#111111", assets: [], variants: defaultVariantsDraft() },
+      {
+        id: newId(),
+        colorName: `Color ${prev.length + 1}`,
+        boxLabel: "",
+        colorHex: "#111111",
+        assets: [],
+        variants: defaultVariantsDraft(),
+      },
     ]);
   }
 
@@ -394,6 +412,15 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
     );
   }
 
+  function setAssetView(groupId: string, asset: WizardAssetState, next: string | null) {
+    const nextView = next?.trim() ?? "";
+    if (nextView.toLowerCase() === "3d" && !isModelUrl(asset.url)) {
+      toast.error("اختيار 3D يتطلب رابط .glb أو .gltf");
+      return;
+    }
+    setAssetMeta(groupId, asset.id, { view: nextView || null });
+  }
+
   const busy = mUpload.isPending || mAutoGroup.isPending || mCommit.isPending;
 
   return (
@@ -454,7 +481,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
             <div className="lg:col-span-3 grid gap-3 lg:grid-cols-3">
               {groups.map((g) => (
                 <div key={g.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="color"
                       value={normalizeHex(g.colorHex)}
@@ -469,6 +496,11 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                       label="Color name"
                       value={g.colorName}
                       onChange={(e) => setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, colorName: e.target.value } : x)))}
+                    />
+                    <Input
+                      label="Box label (optional)"
+                      value={g.boxLabel}
+                      onChange={(e) => setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, boxLabel: e.target.value } : x)))}
                     />
                     <Button variant="ghost" onClick={() => removeGroup(g.id)} disabled={busy} title="Remove group">
                       ✕
@@ -494,7 +526,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                             isPrimary={idx === 0}
                             onDragStart={(e, assetId) => onDragStart(e, assetId, g.id)}
                             onDrop={onDropToGroup}
-                            onChangeView={(next) => setAssetMeta(g.id, a.id, { view: next })}
+                            onChangeView={(next) => setAssetView(g.id, a, next)}
                           />
                         ))}
                       </div>
@@ -614,7 +646,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
           </div>
 
           <div className="text-xs opacity-70">
-            ملاحظة: لما تعمل Create Items، بننشئ Item لكل group (colorName) وبنربط الصور كـ ProductItemImage.
+            ملاحظة: لما تعمل Create Items، بننشئ Item لكل group (colorName). استخدم Box label لما يكون نفس اللون مكرر (نفس اللون، علبة مختلفة).
           </div>
         </div>
       )}
@@ -709,6 +741,8 @@ function AssetThumb({
             title="View"
           >
             <option value="">View</option>
+            <option value="360">360°</option>
+            <option value="3d">3D</option>
             <option value="Front">Front</option>
             <option value="Back">Back</option>
             <option value="Side">Side</option>

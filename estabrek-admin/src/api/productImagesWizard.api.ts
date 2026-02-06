@@ -53,6 +53,7 @@ export async function autoGroupProductImages(productId: string, assetIds?: strin
 export type CommitGroupsInput = {
   groups: Array<{
     colorName: string;
+    boxLabel?: string;
     colorHex?: string | null;
     assets: Array<{ assetId: string; view?: string | null; alt?: string | null }>;
     /** Optional: create variants during commit (bulk sizes per color) */

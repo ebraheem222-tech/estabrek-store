@@ -30,6 +30,23 @@ export type UploadImagesResponse = { files: MediaImage[] };
 export type MediaFolder = { id: string; name: string; folder: string; count: number };
 export type ListFoldersResponse = { folders: MediaFolder[]; unfiledCount?: number };
 export type ListTagsResponse = { tags: Array<{ tag: string; count: number }> };
+export type DuplicatesMode = "exact" | "near";
+
+export type DuplicateGroupExact = {
+  hash: string;
+  count: number;
+  items: MediaImage[];
+};
+
+export type DuplicateGroupNear = {
+  baseId: string;
+  baseHash: string;
+  items: Array<{ distance: number; item: MediaImage }>;
+};
+
+export type ListDuplicatesResponse =
+  | { mode: "exact"; groups: DuplicateGroupExact[] }
+  | { mode: "near"; maxDistance: number; scanLimit: number; groups: DuplicateGroupNear[] };
 
 export type MediaUsage =
   | { kind: "settings"; field: string }
@@ -96,6 +113,25 @@ export async function deleteImageFolder(id: string) {
 export async function listImageTags() {
   const res = await api.get(ENDPOINTS.admin.uploads.imageTags);
   return res.data as ListTagsResponse;
+}
+
+export async function listImageDuplicates(params?: {
+  mode?: DuplicatesMode;
+  limit?: number;
+  perGroup?: number;
+  maxDistance?: number;
+  scanLimit?: number;
+}) {
+  const res = await api.get(ENDPOINTS.admin.uploads.imageDuplicates, {
+    params: {
+      mode: params?.mode,
+      limit: params?.limit,
+      perGroup: params?.perGroup,
+      maxDistance: params?.maxDistance,
+      scanLimit: params?.scanLimit,
+    },
+  });
+  return res.data as ListDuplicatesResponse;
 }
 
 export async function updateImageMeta(id: string, body: { displayName?: string | null; folder?: string | null; tags?: string[] }) {
