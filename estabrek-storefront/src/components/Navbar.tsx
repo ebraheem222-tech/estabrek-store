@@ -258,7 +258,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const navTextBase = "text-[color:var(--text)]";
   const navTextMuted = "text-[color:var(--text)] opacity-80 hover:opacity-100";
   const navPill =
-    "rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 px-3 py-2 text-sm " +
+    "inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 px-3 py-2 text-sm " +
     navTextMuted +
     " hover:bg-black/10 dark:hover:bg-white/15";
   const navCtaBase =

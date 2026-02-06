@@ -25,7 +25,7 @@ export function CartBadge() {
   if (!count) return null;
   return (
     <span
-      className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80"
+      className="inline-flex min-w-6 shrink-0 items-center justify-center rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80"
       style={animate ? { animation: "cart-bounce 0.45s ease" } : undefined}
     >
       {count}
