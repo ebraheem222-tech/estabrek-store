@@ -8,4 +8,4 @@ cmds = ["npm ci --legacy-peer-deps --include=dev"]
 cmds = ["npx prisma generate", "npm run build"]
 
 [start]
-cmd = "npx prisma migrate deploy && (test -f dist/server.js || npm run build) && node dist/server.js"
+cmd = "(test -f dist/server.js || npm run build) && node dist/server.js"
