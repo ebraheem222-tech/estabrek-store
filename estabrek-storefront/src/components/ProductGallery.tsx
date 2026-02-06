@@ -263,7 +263,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
               blurDataUrl={active.blurDataUrl ?? undefined}
               priority={mainPriority}
               className={
-                "object-cover will-change-transform transition-transform duration-500 " +
+                "object-contain sm:object-cover object-center will-change-transform transition-transform duration-500 " +
                 (dir === "next" ? "anim-slide-in-right" : "anim-slide-in-left") +
                 (zoomActive ? " scale-150" : "")
               }
@@ -279,7 +279,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                   alt={product.title}
                   fill
                   blurDataUrl={secondary.blurDataUrl ?? undefined}
-                  className="object-cover opacity-0 transition duration-500 hover:opacity-100"
+                  className="object-contain sm:object-cover object-center opacity-0 transition duration-500 hover:opacity-100"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   loading={imageLoading}
                 />
