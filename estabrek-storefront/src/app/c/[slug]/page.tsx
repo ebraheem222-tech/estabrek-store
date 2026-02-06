@@ -73,10 +73,13 @@ export default async function CategoryPage({
   )
     ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
     : undefined;
+  const selectedCategoryId = f.categoryId ?? undefined;
+  const categorySlug = selectedCategoryId ? undefined : params.slug;
   const [cats, out, settings] = await Promise.all([
     listCategories(),
     listProducts({
-      category: params.slug,
+      category: categorySlug,
+      categoryId: selectedCategoryId,
       page: f.page ?? 1,
       sort,
       colors: f.colors.length ? f.colors.join(",") : undefined,
