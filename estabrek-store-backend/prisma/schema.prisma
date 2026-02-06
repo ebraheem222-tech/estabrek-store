@@ -71,6 +71,11 @@ enum PageSectionType {
   RICH_TEXT
   CUSTOM_HTML
   GRID
+  FEATURES
+  STATS
+  TEAM
+  PRICING
+  CONTACT
   BANNER
   FEATURED_CATEGORIES
   COLLECTIONS_GRID
@@ -301,6 +306,7 @@ model SiteSettings {
   id         String  @id @default(cuid())
   siteName   String  @default("My Store")
   currencyCode String @default("ILS")
+  storeCountryCode String @default("IL")
   logoUrl    String?
   faviconUrl String?
 
@@ -331,6 +337,21 @@ model SiteSettings {
   contactEmail String?
   contactPhone String?
 
+  // Checkout & Payments
+  checkoutMode String @default("WHATSAPP")
+  ordersEmail String?
+  whatsappNumber String?
+
+  stripeEnabled Boolean @default(false)
+  stripePublicKey String?
+  stripeSecretKey String?
+  stripeWebhookSecret String?
+
+  paypalEnabled Boolean @default(false)
+  paypalClientId String?
+  paypalClientSecret String?
+  paypalWebhookId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -351,6 +372,7 @@ model NavigationMenu {
   updatedAt DateTime @updatedAt
 
   @@unique([name, location])
+  @@index([location, isDefault])
 }
 
 model NavigationItem {
@@ -374,6 +396,7 @@ model NavigationItem {
   updatedAt DateTime @updatedAt
 
   @@index([menuId, parentId, order])
+  @@index([menuId, isActive])
 }
 
 model Page {
@@ -398,6 +421,8 @@ model Page {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status, slug])
 }
 
 /**
@@ -410,6 +435,15 @@ model MediaAsset {
 
   /** stored filename on disk (uploads/images/<filename>) */
   filename    String   @unique
+
+  /** absolute public URL (e.g. Cloudinary secure_url). Optional for local-disk provider. */
+  url         String?
+
+  /** storage provider (LOCAL | CLOUDINARY) */
+  provider    String   @default("LOCAL")
+
+  /** provider identifier (e.g. Cloudinary public_id). Optional. */
+  providerId  String?
 
   /** user-friendly name shown in admin UI (renaming doesn't break URLs) */
   displayName String?
@@ -424,6 +458,7 @@ model MediaAsset {
   size        Int
   width       Int?
   height      Int?
+  imageHash   String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -432,7 +467,11 @@ model MediaAsset {
 dominantColorHex String?
 /** palette extracted (array of hex strings) */
 palette          Json?
+  /** low-res placeholder (base64 data URL) */
+  blurDataUrl      String?
   @@index([folder])
+  @@index([kind, folder, createdAt])
+  @@index([imageHash])
 }
 
 model MediaFolder {
@@ -473,6 +512,7 @@ model User {
 
   reviews  Review[]
   comments ProductComment[]
+  chatbotConversations ChatbotConversation[]
 }
 
 /**
@@ -497,6 +537,14 @@ model Product {
   title       String
   slug        String           @unique
   description String?
+  /** semantic search embedding (vector as JSON array) */
+  embedding        Json?
+  /** text used to generate embedding */
+  embeddingText    String?
+  /** embedding model id */
+  embeddingModel   String?
+  /** last embedding timestamp */
+  embeddingUpdatedAt DateTime?
   isActive    Boolean          @default(true)
   categoryId  String
   category    Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -507,6 +555,7 @@ model Product {
   updatedAt   DateTime         @updatedAt
 
   @@index([categoryId])
+  @@index([isActive, categoryId])
 }
 
 model ProductItem {
@@ -514,6 +563,8 @@ model ProductItem {
   productId String
   product   Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
   colorName String
+  /** label to distinguish same-color items (e.g., box/packaging) */
+  boxLabel  String             @default("")
   colorHex  String?
   // Palette extracted / suggested for UI swatches (array of hex strings)
   suggestedColors Json?
@@ -524,7 +575,9 @@ model ProductItem {
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
 
-  @@unique([productId, colorName])
+  @@unique([productId, colorName, boxLabel])
+  @@index([productId, isActive])
+  @@index([colorName])
 }
 
 model Size {
@@ -544,6 +597,14 @@ model ProductVariant {
   sku           String      @unique
   price         Decimal     @db.Decimal(10, 2)
   compareAt     Decimal?    @db.Decimal(10, 2)
+  /** Original price before scheduled sale (optional) */
+  originalPrice Decimal?    @db.Decimal(10, 2)
+  /** Scheduled sale price (optional) */
+  salePrice     Decimal?    @db.Decimal(10, 2)
+  /** Sale window start (optional) */
+  saleStartsAt  DateTime?
+  /** Sale window end (optional) */
+  saleEndsAt    DateTime?
   stock         Int         @default(0)
   lowStockThreshold Int     @default(0)
   weightGrams   Int?
@@ -554,6 +615,11 @@ model ProductVariant {
   orderRequests OrderRequest[]
   orderRequestItems OrderRequestItem[]
   @@unique([productItemId, sizeId])
+  @@index([productItemId])
+  @@index([sizeId])
+  @@index([price])
+  @@index([salePrice])
+  @@index([stock])
 }
 model InventoryAdjustment {
   id          String        @id @default(cuid())
@@ -592,6 +658,18 @@ view             String?
 dominantColorHex String?
 /** palette extracted (array of hex strings) */
 palette          Json?
+/** low-res placeholder (base64 data URL) */
+blurDataUrl      String?
+/** perceptual hash for deduplication */
+imageHash       String?
+/** image embedding (vector as JSON array) */
+embedding        Json?
+/** text used to generate embedding */
+embeddingText    String?
+/** embedding model id */
+embeddingModel   String?
+/** last embedding timestamp */
+embeddingUpdatedAt DateTime?
   @@index([productItemId])
 }
 
@@ -612,6 +690,7 @@ model Review {
   updatedAt DateTime     @updatedAt
 
   @@index([productId])
+  @@index([status, createdAt])
 }
 
 model ProductComment {
@@ -625,6 +704,7 @@ model ProductComment {
   createdAt DateTime      @default(now())
 
   @@index([productId])
+  @@index([status, createdAt])
 }
 
 /**
@@ -660,6 +740,9 @@ model OrderRequest {
   note         String?
   status       OrderReqStatus @default(NEW)
   source       String?
+  paymentProvider String?
+  paymentStatus   String?
+  paymentReference String?
   contactedAt  DateTime?
   acceptedAt   DateTime?
   rejectedAt   DateTime?
@@ -670,6 +753,20 @@ model OrderRequest {
   history  OrderRequestHistory[]
 
   @@index([status])
+  @@index([status, createdAt])
+}
+
+model CheckoutSession {
+  id         String   @id @default(cuid())
+  provider   String
+  status     String   @default("PENDING")
+  payload    Json
+  sessionRef String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([provider, status])
+  @@index([sessionRef])
 }
 
 model OutboxMessage {
@@ -686,6 +783,7 @@ model OutboxMessage {
   updatedAt      DateTime      @updatedAt
 
   @@index([status])
+  @@index([status, createdAt])
 }
 
 model OrderRequestHistory {
@@ -785,6 +883,8 @@ model NewsletterSubscriber {
   email     String   @unique
   source    String?  // e.g. "footer", "newsletter_section"
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 
@@ -825,4 +925,61 @@ model PageSectionTranslation {
   updatedAt DateTime @updatedAt
 
   @@unique([sectionId, locale])
+}
+
+/**
+ * ====================== Chatbot / Support Assistant ======================
+ * Admin manages a knowledge base; Storefront can query it via /v1/storefront/chatbot.
+ */
+model ChatbotEntry {
+  id        String @id @default(cuid())
+  locale    Locale @default(ar)
+
+  /** short title / question */
+  title     String
+  /** answer text (markdown/plain) */
+  answer    String
+  tags      String[] @default([])
+  isEnabled Boolean  @default(true)
+  /** higher = more likely to be used when multiple matches */
+  priority  Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([locale, isEnabled, priority])
+}
+
+model ChatbotConversation {
+  id        String @id @default(cuid())
+
+  /** client-generated id stored in localStorage/cookie */
+  sessionId String?
+
+  /** optional link to registered storefront user */
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  source  String @default("storefront")
+  status  String @default("OPEN")
+
+  /** Array<{ role: "user"|"assistant", content: string, at: string }> */
+  messages Json
+
+  // convenience fields for admin list
+  lastMessage String?
+  lastRole    String?
+  lastAt      DateTime?
+
+  // lightweight context
+  pageUrl   String?
+  ip        String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([userId])
 }
