@@ -143,6 +143,13 @@ export function QuickViewModal({
         </button>
 
         <div className="quick-view-content">
+          <div className="quick-view-mobile-bar">
+            <span className="quick-view-mobile-title">معاينة سريعة</span>
+            <button className="quick-view-close-inline" onClick={handleClose}>
+              <XIcon />
+              <span>إغلاق</span>
+            </button>
+          </div>
           {/* Image Gallery */}
           <div className="quick-view-gallery">
             <div className="quick-view-main-image">
