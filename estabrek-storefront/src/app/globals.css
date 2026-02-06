@@ -4794,6 +4794,23 @@ html {
   transition: all 0.2s ease;
 }
 
+.quick-view-close-fallback {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 0.75rem);
+  right: 0.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+}
+
 .quick-view-close:hover {
   background: rgba(255,255,255,0.1);
 }
@@ -4870,6 +4887,11 @@ html {
     display: none;
   }
 
+  .quick-view-close-fallback {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
   .quick-view-mobile-bar {
     display: flex;
   }
@@ -4900,6 +4922,12 @@ html {
   .quick-view-details-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (min-width: 1024px) {
+  .quick-view-close-fallback {
+    display: none;
   }
 }
 
