@@ -4784,7 +4784,9 @@ html {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 0.75rem;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.35);
   color: white;
   display: flex;
   align-items: center;
@@ -4834,10 +4836,11 @@ html {
   .quick-view-close {
     position: fixed;
     top: calc(env(safe-area-inset-top) + 0.75rem);
-    left: 0.75rem;
+    right: 0.75rem;
+    left: auto;
     width: 2.5rem;
     height: 2.5rem;
-    z-index: 30;
+    z-index: 120;
   }
 
   .quick-view-gallery,
