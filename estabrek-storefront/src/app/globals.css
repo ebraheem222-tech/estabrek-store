@@ -4809,6 +4809,39 @@ html {
   }
 }
 
+@media (max-width: 640px) {
+  .quick-view-overlay {
+    align-items: flex-start;
+    padding: calc(env(safe-area-inset-top) + 0.75rem) 0.75rem 0.75rem;
+  }
+
+  .quick-view-modal {
+    max-width: 100%;
+    max-height: calc(100vh - env(safe-area-inset-top) - 1.5rem);
+    border-radius: 1rem;
+  }
+
+  .quick-view-content {
+    max-height: calc(100vh - env(safe-area-inset-top) - 1.5rem);
+  }
+
+  .quick-view-close {
+    top: calc(env(safe-area-inset-top) + 0.5rem);
+    left: 0.5rem;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .quick-view-gallery,
+  .quick-view-info {
+    padding: 1rem;
+  }
+
+  .quick-view-actions {
+    flex-direction: column;
+  }
+}
+
 .quick-view-gallery {
   position: relative;
   padding: 1.5rem;
