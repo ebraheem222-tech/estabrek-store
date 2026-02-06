@@ -64,6 +64,18 @@ const SendIcon = () => (
   </svg>
 );
 
+const CreditCardIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M4 7h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2zm2 6h4" />
+  </svg>
+);
+
+const PayPalIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7.2 4h7.4c3.1 0 5.4 2.5 4.9 5.6-.4 2.7-2.8 4.6-5.6 4.6h-3l-.9 5.1H6.1L7.2 4zM10.6 8l-.6 3.6h3.1c1.3 0 2.4-1 2.6-2.3.2-1-0.6-1.3-1.6-1.3h-3.5z" />
+  </svg>
+);
+
 const EmptyCartIcon = () => (
   <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -146,10 +158,22 @@ function formatAmount(value: string | number | null | undefined, currencyCode?: 
   return `₪${n.toFixed(2)}`;
 }
 
-export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE" | null; whatsappNumber?: string | null; ordersEmail?: string | null }) {
+export default function CartClient(props: {
+  checkoutMode?: "WHATSAPP" | "STRIPE" | "PAYPAL" | "PAYMENTS" | null;
+  whatsappNumber?: string | null;
+  ordersEmail?: string | null;
+  stripeEnabled?: boolean;
+  paypalEnabled?: boolean;
+}) {
   const checkoutMode = props.checkoutMode ?? "WHATSAPP";
   const whatsappNumber = props.whatsappNumber ?? null;
   const ordersEmail = props.ordersEmail ?? null;
+  const stripeEnabled = !!props.stripeEnabled;
+  const paypalEnabled = !!props.paypalEnabled;
+  const wantsStripe = (checkoutMode === "STRIPE" || checkoutMode === "PAYMENTS") && stripeEnabled;
+  const wantsPaypal = (checkoutMode === "PAYPAL" || checkoutMode === "PAYMENTS") && paypalEnabled;
+  const wantsPayments = wantsStripe || wantsPaypal;
+  const allowManual = checkoutMode === "WHATSAPP" || settings.allowManualCheckoutWithPayments === true;
   const settings = useStorefrontSettings();
 
   const { items, setQty, removeItem, clear } = useCart();
@@ -287,6 +311,42 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
     setCouponCode("");
     setAppliedCoupon(null);
     refreshQuote("");
+  };
+
+  const startCheckout = async (provider: "stripe" | "paypal") => {
+    if (!customerName.trim() || customerName.trim().length < 2) return setErr("يرجى إدخال الاسم.");
+    if (!phone.trim() || phone.trim().length < 5) return setErr("يرجى إدخال رقم هاتف صحيح.");
+    setErr(null);
+    setSuccessMsg(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${apiBase()}/storefront/checkout/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          items: payloadItems,
+          customerName: customerName.trim(),
+          phone: phone.trim(),
+          address: address.trim() || undefined,
+          note: note.trim() || undefined,
+          couponCode: couponCode.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "تعذر بدء الدفع");
+      }
+      if (data?.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
+      throw new Error("تعذر تحويلك لبوابة الدفع.");
+    } catch (e: any) {
+      setErr(e?.message || "حدث خطأ");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -557,6 +617,38 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
 
             {/* Action Buttons */}
             <div className="space-y-3">
+              {wantsPayments && (
+                <>
+                  {wantsStripe && (
+                    <button
+                      disabled={submitting || !items.length || !quote?.lines?.length}
+                      onClick={() => void startCheckout("stripe")}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      <CreditCardIcon />
+                      {submitting ? "جارٍ التحويل للدفع..." : "الدفع بالبطاقة"}
+                    </button>
+                  )}
+                  {wantsPaypal && (
+                    <button
+                      disabled={submitting || !items.length || !quote?.lines?.length}
+                      onClick={() => void startCheckout("paypal")}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#003087] text-white font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      <PayPalIcon />
+                      {submitting ? "جارٍ التحويل للدفع..." : "الدفع عبر PayPal"}
+                    </button>
+                  )}
+                </>
+              )}
+              {!allowManual && !wantsPayments && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-300">
+                  بوابات الدفع غير مفعلة حالياً. يرجى تحديث الإعدادات من لوحة التحكم.
+                </div>
+              )}
+
+              {allowManual && (
+                <>
               {/* WhatsApp Button */}
               <button
                 disabled={submitting || !items.length || !quote?.lines?.length}
@@ -635,7 +727,7 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
 
               {/* Direct Order Button */}
               <button
-                disabled={checkoutMode === "STRIPE" || submitting || !items.length || !quote?.lines?.length}
+                disabled={submitting || !items.length || !quote?.lines?.length}
                 onClick={async () => {
                   if (!customerName.trim() || customerName.trim().length < 2) return setErr("يرجى إدخال الاسم.");
                   if (!phone.trim() || phone.trim().length < 5) return setErr("يرجى إدخال رقم هاتف صحيح.");
@@ -739,6 +831,8 @@ export default function CartClient(props: { checkoutMode?: "WHATSAPP" | "STRIPE"
                   <MailIcon />
                   إرسال عبر البريد
                 </button>
+              )}
+                </>
               )}
             </div>
 

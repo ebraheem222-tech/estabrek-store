@@ -165,6 +165,49 @@ export function ProductFiltersBar({
     return categories.find(c => c.id === categoryIdParam);
   }, [categories, categoryIdParam]);
 
+  const categoryOptions = useMemo(() => {
+    const byParent = new Map<string | null, { id: string; name: string; parentId?: string | null }[]>();
+    const byId = new Map<string, { id: string; name: string; parentId?: string | null }>();
+    for (const c of categories) {
+      byId.set(c.id, c);
+      const pid = c.parentId ?? null;
+      const list = byParent.get(pid) ?? [];
+      list.push(c);
+      byParent.set(pid, list);
+    }
+
+    const out: Array<{ id: string; name: string; depth: number }> = [];
+    const seen = new Set<string>();
+    const walk = (pid: string | null, depth: number) => {
+      const list = byParent.get(pid) ?? [];
+      for (const c of list) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        out.push({ id: c.id, name: c.name, depth });
+        walk(c.id, depth + 1);
+      }
+    };
+
+    // Start with root categories (parentId is null)
+    walk(null, 0);
+
+    // Add any orphans (parentId exists but missing in list)
+    for (const c of categories) {
+      if (!c.parentId || byId.has(c.parentId)) continue;
+      if (seen.has(c.id)) continue;
+      out.push({ id: c.id, name: c.name, depth: 0 });
+      walk(c.id, 1);
+    }
+
+    // Add any remaining items
+    for (const c of categories) {
+      if (seen.has(c.id)) continue;
+      out.push({ id: c.id, name: c.name, depth: 0 });
+    }
+
+    return out;
+  }, [categories]);
+
   const [qInput, setQInput] = useState(qParam);
   const [minInput, setMinInput] = useState(minPriceParam);
   const [maxInput, setMaxInput] = useState(maxPriceParam);
@@ -435,8 +478,10 @@ export function ProductFiltersBar({
             onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
           >
             <option value="">جميع التصنيفات</option>
-            {categories.filter((c) => !c.parentId).map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {categoryOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.depth > 0 ? `${"— ".repeat(c.depth)}${c.name}` : c.name}
+              </option>
             ))}
           </select>
         </div>
