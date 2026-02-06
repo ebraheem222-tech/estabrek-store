@@ -165,6 +165,7 @@ export default function CartClient(props: {
   stripeEnabled?: boolean;
   paypalEnabled?: boolean;
 }) {
+  const settings = useStorefrontSettings();
   const checkoutMode = props.checkoutMode ?? "WHATSAPP";
   const whatsappNumber = props.whatsappNumber ?? null;
   const ordersEmail = props.ordersEmail ?? null;
@@ -174,7 +175,6 @@ export default function CartClient(props: {
   const wantsPaypal = (checkoutMode === "PAYPAL" || checkoutMode === "PAYMENTS") && paypalEnabled;
   const wantsPayments = wantsStripe || wantsPaypal;
   const allowManual = checkoutMode === "WHATSAPP" || settings.allowManualCheckoutWithPayments === true;
-  const settings = useStorefrontSettings();
 
   const { items, setQty, removeItem, clear } = useCart();
   const [couponCode, setCouponCode] = useState("");
