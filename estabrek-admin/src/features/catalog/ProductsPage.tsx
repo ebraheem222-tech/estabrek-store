@@ -117,7 +117,6 @@ function mapCsvRowToImportRow(row: Record<string, string>): ProductImportRow {
     categoryName: r.categoryname || undefined,
     // optional default item/variant hints (backend safely ignores if not used)
     colorName: r.colorname || r.color || undefined,
-    boxLabel: r.boxlabel || r.box_label || r.box || r.pack || undefined,
     colorHex: r.colorhex || r.hex || undefined,
     skuBase: r.skubase || r.sku || undefined,
     sizeName: r.sizename || r.size || undefined,
@@ -612,7 +611,7 @@ const doImport = async () => {
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm opacity-90">
             <div className="font-semibold">الأعمدة المدعومة</div>
             <div className="mt-1 opacity-80">
-              title, slug, categoryId أو categorySlug, description, isActive (true/false), price, stock, skuBase, colorName, boxLabel, colorHex, size, images (comma separated)
+              title, slug, categoryId أو categorySlug, description, isActive (true/false), price, stock, skuBase, colorName, colorHex, size, images (comma separated)
             </div>
           </div>
 

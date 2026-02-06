@@ -54,15 +54,10 @@ export default function OrderDetailsPage() {
 
     try {
       // Open the popup synchronously to avoid browser popup blockers.
-      w = window.open("", "_blank");
+      w = window.open("", "_blank", "noopener,noreferrer");
       if (!w) {
         toast.error("المتصفح منع فتح نافذة الطباعة. فعّل Popups للموقع.");
         return;
-      }
-      try {
-        w.opener = null;
-      } catch {
-        // ignore
       }
 
       // Minimal loading screen while we fetch the invoice HTML.
