@@ -62,7 +62,19 @@ export async function renderCmsPageBySlug(
     if (allowFallback) {
       if (slug === "/") return <FallbackHome />;
       if (slug === "/shop") return <FallbackShop />;
-      if (slug === "/cart") return <CartClient />;
+      if (slug === "/cart") {
+        const settings = await getPublicSettings().catch(() => null);
+        const site = settings?.site || {};
+        return (
+          <CartClient
+            checkoutMode={(site as any).checkoutMode ?? "WHATSAPP"}
+            whatsappNumber={(site as any).whatsappNumber ?? (site as any).contactPhone ?? null}
+            ordersEmail={(site as any).ordersEmail ?? (site as any).contactEmail ?? null}
+            stripeEnabled={(site as any).stripeEnabled ?? false}
+            paypalEnabled={(site as any).paypalEnabled ?? false}
+          />
+        );
+      }
       if (slug === "/contact") return <FallbackContact />;
       if (allowNotFound) notFound();
       return null;
