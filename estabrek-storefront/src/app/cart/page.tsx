@@ -26,6 +26,8 @@ export default async function CartPage() {
         checkoutMode={(site as any).checkoutMode ?? "WHATSAPP"}
         whatsappNumber={(site as any).whatsappNumber ?? (site as any).contactPhone ?? null}
         ordersEmail={(site as any).ordersEmail ?? (site as any).contactEmail ?? null}
+        stripeEnabled={(site as any).stripeEnabled ?? false}
+        paypalEnabled={(site as any).paypalEnabled ?? false}
       />
     </main>
   );

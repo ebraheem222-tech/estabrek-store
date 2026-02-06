@@ -34,10 +34,14 @@ export type SitePublicSettings = {
   customCss?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
-  checkoutMode?: "WHATSAPP" | "STRIPE" | null;
+  checkoutMode?: "WHATSAPP" | "STRIPE" | "PAYPAL" | "PAYMENTS" | null;
   whatsappNumber?: string | null;
   ordersEmail?: string | null;
-  stripePublishableKey?: string | null;
+  stripeEnabled?: boolean;
+  stripePublicKey?: string | null;
+  paypalEnabled?: boolean;
+  paypalClientId?: string | null;
+  storeCountryCode?: string | null;
 };
 
 export type StorefrontBootstrap = {

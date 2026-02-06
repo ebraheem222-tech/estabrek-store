@@ -59,6 +59,7 @@ export type StorefrontSettings = {
   cartShakeOnAdd: boolean;
   checkoutProgressEnabled: boolean;
   couponAnimationsEnabled: boolean;
+  allowManualCheckoutWithPayments: boolean;
 
   // Navigation
   mobileBottomNavEnabled: boolean;
@@ -159,6 +160,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   cartShakeOnAdd: true,
   checkoutProgressEnabled: true,
   couponAnimationsEnabled: true,
+  allowManualCheckoutWithPayments: false,
 
   // Navigation
   mobileBottomNavEnabled: true,
