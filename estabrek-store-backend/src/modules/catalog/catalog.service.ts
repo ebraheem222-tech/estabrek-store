@@ -1389,6 +1389,9 @@ export async function submitOrderRequest(data: {
   note?: string;
   couponCode?: string;
   source?: string;
+  paymentProvider?: string;
+  paymentStatus?: string;
+  paymentReference?: string;
 }) {
   const now = new Date();
 
@@ -1402,7 +1405,9 @@ export async function submitOrderRequest(data: {
   const req = await prisma.$transaction(async (tx) => {
     const lines = await loadLinesForItems(tx as any, normalized);
     const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
-    const currencyCode = (await tx.siteSettings.findFirst({ select: { currencyCode: true } }))?.currencyCode ?? "ILS";
+    const site = await tx.siteSettings.findFirst({ select: { currencyCode: true, storeCountryCode: true } });
+    const currencyCode = site?.currencyCode ?? "ILS";
+    const defaultCountry = site?.storeCountryCode ?? null;
 
     let couponId: string | null = null;
     let couponCode: string | null = null;
@@ -1453,11 +1458,14 @@ export async function submitOrderRequest(data: {
         customerName: data.customerName,
         phone: data.phone,
         whatsapp: data.whatsapp,
-        country: data.country,
+        country: data.country ?? defaultCountry,
         city: data.city,
         address: data.address,
         note: data.note,
         source: data.source ?? "storefront",
+        paymentProvider: data.paymentProvider ?? null,
+        paymentStatus: data.paymentStatus ?? null,
+        paymentReference: data.paymentReference ?? null,
 
         currencyCode,
 

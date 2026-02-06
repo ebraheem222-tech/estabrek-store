@@ -4,18 +4,43 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { getPublicSettings } from "../settings/settings.service.js";
-import { PageBySlugQuery, StorefrontListProductsQuery, StorefrontSearchSuggestQuery } from "./storefront.schemas.js";
+import {
+  PageBySlugQuery,
+  StorefrontListProductsQuery,
+  StorefrontSearchSuggestQuery,
+  StorefrontCheckoutCreateBody,
+  StorefrontCheckoutVerifyQuery,
+} from "./storefront.schemas.js";
 import chatbot from "./chatbot.routes.js";
 import recommend from "./recommend.routes.js";
 import { searchProductsByImageBuffer } from "./imageSearch.service.js";
 import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
 import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
+import { createCheckoutSession, verifyCheckoutSession } from "./checkout.service.js";
 
 const r = Router();
 
 const PUBLISHED_PAGES_TTL_MS = 60_000;
 const PAGE_BY_SLUG_TTL_MS = 30_000;
+
+function resolveStorefrontBaseUrl(req: any) {
+  const envUrl =
+    process.env.STOREFRONT_PUBLIC_URL ||
+    process.env.PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL;
+  if (envUrl) return String(envUrl).replace(/\/+$/, "");
+
+  const origin = req?.headers?.origin;
+  if (origin) return String(origin).replace(/\/+$/, "");
+
+  const forwardedHost = req?.headers?.["x-forwarded-host"] || req?.headers?.host;
+  const forwardedProto = req?.headers?.["x-forwarded-proto"];
+  const proto = forwardedProto ? String(forwardedProto) : req?.protocol || "https";
+  if (forwardedHost) return `${proto}://${forwardedHost}`;
+
+  return "http://localhost:3000";
+}
 
 function mergeTranslatedData(base: any, override: any): any {
   if (override === undefined || override === null) return base;
@@ -404,6 +429,33 @@ r.post("/search/image", (req, res, next) => {
   }
 
   res.json(result);
+}));
+
+/**
+ * Checkout (redirect)
+ *
+ * POST /v1/storefront/checkout/session
+ *  - create a Stripe/PayPal checkout session and return redirectUrl
+ *
+ * GET /v1/storefront/checkout/verify?provider=stripe&sessionId=...
+ *  - verify payment and finalize order
+ */
+r.post("/checkout/session", validate({ body: StorefrontCheckoutCreateBody }), asyncHandler(async (req, res) => {
+  const baseUrl = resolveStorefrontBaseUrl(req);
+  const out = await createCheckoutSession({
+    ...(req.body as any),
+    baseUrl,
+  });
+  res.json(out);
+}));
+
+r.get("/checkout/verify", validate({ query: StorefrontCheckoutVerifyQuery }), asyncHandler(async (req, res) => {
+  const q = StorefrontCheckoutVerifyQuery.parse(req.query);
+  const out = await verifyCheckoutSession({
+    provider: q.provider,
+    sessionId: q.sessionId,
+  });
+  res.json(out);
 }));
 
 export default r;
