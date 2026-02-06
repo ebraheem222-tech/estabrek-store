@@ -4811,25 +4811,33 @@ html {
 
 @media (max-width: 640px) {
   .quick-view-overlay {
-    align-items: flex-start;
-    padding: calc(env(safe-area-inset-top) + 0.75rem) 0.75rem 0.75rem;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
   }
 
   .quick-view-modal {
-    max-width: 100%;
-    max-height: calc(100vh - env(safe-area-inset-top) - 1.5rem);
-    border-radius: 1rem;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
   }
 
   .quick-view-content {
-    max-height: calc(100vh - env(safe-area-inset-top) - 1.5rem);
+    height: 100%;
+    max-height: 100%;
+    overflow-y: auto;
+    padding-top: calc(env(safe-area-inset-top) + 3.25rem);
+    -webkit-overflow-scrolling: touch;
   }
 
   .quick-view-close {
-    top: calc(env(safe-area-inset-top) + 0.5rem);
-    left: 0.5rem;
-    width: 2.25rem;
-    height: 2.25rem;
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 0.75rem);
+    left: 0.75rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    z-index: 30;
   }
 
   .quick-view-gallery,
@@ -4837,8 +4845,42 @@ html {
     padding: 1rem;
   }
 
+  .quick-view-main-image {
+    aspect-ratio: 4 / 5;
+  }
+
+  .quick-view-thumbnails {
+    gap: 0.4rem;
+  }
+
+  .quick-view-thumb {
+    width: 54px;
+    height: 54px;
+  }
+
   .quick-view-actions {
     flex-direction: column;
+  }
+
+  .quick-view-add-btn,
+  .quick-view-details-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 400px) {
+  .quick-view-title {
+    font-size: 1.25rem;
+  }
+
+  .quick-view-current-price {
+    font-size: 1.25rem;
+  }
+
+  .quick-view-close {
+    width: 2.25rem;
+    height: 2.25rem;
   }
 }
 
