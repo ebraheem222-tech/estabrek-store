@@ -263,9 +263,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     " hover:bg-black/10 dark:hover:bg-white/15";
   const navCtaBase =
     "rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[color:var(--accent-contrast)] hover:opacity-90";
-  const navDrawerItem = "rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 p-3";
-  const navDrawerLink = "font-semibold text-[color:var(--text)]";
-  const navDrawerSubLink = "block text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
+  const navDrawerItem = "rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 overflow-hidden";
+  const navDrawerLink = "block w-full px-4 py-3 font-semibold text-[color:var(--text)]";
+  const navDrawerSubLink = "block w-full px-4 py-2 text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
 
   function SearchControl({ withLabel }: { withLabel?: boolean }) {
     if (searchStyle !== "icon") return <SearchBox styleId={searchInputStyleId} />;
@@ -563,7 +563,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                     {it.label}
                   </a>
                   {(it.children ?? []).length ? (
-                    <div className="mt-2 space-y-1 pl-3">
+                    <div className="border-t border-white/10 dark:border-white/10">
                       {(it.children ?? []).map((ch: any) => (
                         <a key={ch.id ?? ch.href ?? ch.label} href={ch.href ?? "#"} className={navDrawerSubLink}>
                           {ch.label}
