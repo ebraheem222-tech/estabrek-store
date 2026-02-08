@@ -85,9 +85,10 @@ export function CategorySidebar({
     const hasChildren = node.children.length > 0;
     const isOpen = expanded.has(node.id);
     const isActive = node.id === selectedId;
+    const depthClass = depth === 0 ? "cat-depth-0" : depth === 1 ? "cat-depth-1" : "cat-depth-2";
     return (
       <div key={node.id} className="space-y-1">
-        <div className={`flex items-center gap-2 rounded-lg px-2 py-2 ${isActive ? "bg-[var(--accent)]/10 text-[var(--accent)]" : "hover:bg-white/5"}`}>
+        <div className={`category-node ${depthClass} ${isActive ? "category-node-active" : ""}`}>
           {hasChildren ? (
             <button
               type="button"
@@ -118,7 +119,7 @@ export function CategorySidebar({
           </button>
         </div>
         {hasChildren && isOpen ? (
-          <div className="mr-2 border-r border-white/10 pr-2 space-y-1">
+          <div className="category-children mr-2 pr-2 space-y-1">
             {node.children.map((child) => renderNode(child, depth + 1))}
           </div>
         ) : null}

@@ -121,6 +121,7 @@ export function ProductFiltersBar({
   const sp = useSearchParams();
   const [, startTransition] = useTransition();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [draftFilters, setDraftFilters] = useState<CatalogFilters | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     colors: true,
@@ -234,7 +235,7 @@ export function ProductFiltersBar({
   useEffect(() => {
     if (!mobileOpen || typeof window === "undefined") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileOpen(false);
+      if (e.key === "Escape") closeMobile();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -417,8 +418,13 @@ export function ProductFiltersBar({
   }
 
   function closeMobile() {
-    setMobileOpen(false);
-    setDraftFilters(null);
+    if (!mobileOpen || isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(() => {
+      setMobileOpen(false);
+      setDraftFilters(null);
+      setIsClosing(false);
+    }, 240);
   }
 
   function applyMobile() {
@@ -670,7 +676,10 @@ export function ProductFiltersBar({
       {/* Mobile Filter Toggle */}
       <button 
         type="button" 
-        onClick={() => setMobileOpen(true)} 
+        onClick={() => {
+          setIsClosing(false);
+          setMobileOpen(true);
+        }} 
         className={`mobile-filter-toggle md:hidden ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
       >
         <FilterIcon />
@@ -708,12 +717,11 @@ export function ProductFiltersBar({
       {mobileOpen && (
         <div className="fixed inset-0 z-[1300] md:hidden" role="dialog" aria-modal="true">
           <div 
-            className="absolute inset-0 bg-black/20 backdrop-blur-lg" 
+            className="absolute inset-0 bg-black/20 filter-backdrop" 
             onClick={closeMobile} 
           />
           <div 
-            className="absolute inset-y-0 right-0 w-[80vw] max-w-[520px] bg-[var(--surface)] overflow-y-auto"
-            style={{ animation: "slideInRight 0.3s ease" }}
+            className={`absolute inset-y-0 right-0 w-[80vw] max-w-[520px] bg-[var(--surface)] overflow-y-auto ${isClosing ? "filter-drawer-closing" : "filter-drawer-opening"}`}
           >
             {/* Mobile Header */}
             <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-white/10 bg-[var(--surface)]">
@@ -788,6 +796,25 @@ export function ProductFiltersBar({
             transform: translateX(0);
             opacity: 1;
           }
+        }
+
+        @keyframes slideOutRight {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+        }
+
+        .filter-drawer-opening {
+          animation: slideInRight 0.3s ease;
+        }
+
+        .filter-drawer-closing {
+          animation: slideOutRight 0.24s ease forwards;
         }
         
         .filter-accordion-content {
