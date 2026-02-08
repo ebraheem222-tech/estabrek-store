@@ -2331,59 +2331,50 @@ html {
   gap: 0.5rem;
   border-radius: 0.6rem;
   padding: 0.5rem 0.6rem;
-  border: 1px solid transparent;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   position: relative;
 }
 
 .category-node:hover {
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cat-accent, var(--accent)) 18%, var(--surface) 82%) 0 45%,
+    color-mix(in srgb, var(--surface) 96%, transparent) 45% 100%
+  );
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent)) 55%, transparent);
+  box-shadow: 0 10px 24px -16px color-mix(in srgb, var(--cat-accent, var(--accent)) 60%, transparent);
 }
 
 .category-node.cat-depth-0 {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent) 18%, var(--surface) 82%) 0 50%,
-    color-mix(in srgb, var(--surface) 96%, transparent) 50% 100%
-  );
+  --cat-accent: var(--accent);
   border-radius: 0.45rem;
 }
 
 .category-node.cat-depth-1 {
-  border-color: color-mix(in srgb, var(--accent-2) 45%, transparent);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent-2) 16%, var(--surface) 84%) 0 50%,
-    color-mix(in srgb, var(--surface) 96%, transparent) 50% 100%
-  );
+  --cat-accent: var(--accent-2);
   border-radius: 0.85rem;
 }
 
 .category-node.cat-depth-2 {
-  border-color: color-mix(in srgb, var(--accent-3, #ec4899) 40%, transparent);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--accent-3, #ec4899) 14%, var(--surface) 86%) 0 50%,
-    color-mix(in srgb, var(--surface) 96%, transparent) 50% 100%
-  );
+  --cat-accent: var(--accent-3, #ec4899);
   border-radius: 1.1rem;
 }
 
 .category-node-active {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: color-mix(in srgb, var(--cat-accent, var(--accent)) 65%, transparent);
+  color: var(--cat-accent, var(--accent));
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--accent) 26%, var(--surface) 74%) 0 50%,
+    color-mix(in srgb, var(--cat-accent, var(--accent)) 26%, var(--surface) 74%) 0 50%,
     color-mix(in srgb, var(--surface) 94%, transparent) 50% 100%
   );
-  box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 6px 18px -12px color-mix(in srgb, var(--cat-accent, var(--accent)) 70%, transparent);
 }
 
 .category-children {
-  border-right: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-right: 2px solid color-mix(in srgb, var(--text) 14%, transparent);
   position: relative;
 }
 
@@ -2394,7 +2385,7 @@ html {
   top: 0.4rem;
   bottom: 0.4rem;
   width: 2px;
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  background: color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 .category-children .category-node::before {
@@ -2404,7 +2395,7 @@ html {
   top: 50%;
   width: 10px;
   height: 1px;
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--text) 18%, transparent);
 }
 
 /* ============================================
