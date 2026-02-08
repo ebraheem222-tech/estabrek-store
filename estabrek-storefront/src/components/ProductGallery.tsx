@@ -91,7 +91,8 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const mainImageRef = useRef<HTMLDivElement>(null);
   const [mainInView, setMainInView] = useState(true);
-  const [touchPreviewIdx, setTouchPreviewIdx] = useState<number | null>(null);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
+  const previewTimerRef = useRef<number | null>(null);
   const zoomEnabled = settings.productZoomEnabled;
   const imageLoading: "lazy" = "lazy";
   const mainPriority = activeIdx === 0;
@@ -183,6 +184,37 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
       })
       .filter((x) => x.hex || x.name);
   }, [itemsWithKeys]);
+
+  const showPreview = useCallback((idx: number) => {
+    if (previewTimerRef.current) {
+      window.clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setPreviewIdx(idx);
+  }, []);
+
+  const hidePreview = useCallback((delayMs = 0) => {
+    if (previewTimerRef.current) {
+      window.clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    if (delayMs <= 0) {
+      setPreviewIdx(null);
+      return;
+    }
+    previewTimerRef.current = window.setTimeout(() => {
+      setPreviewIdx(null);
+      previewTimerRef.current = null;
+    }, delayMs);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewTimerRef.current) {
+        window.clearTimeout(previewTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <section className="grid gap-4">
@@ -374,10 +406,14 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                 <div
                   key={im.id ?? im.url ?? idx}
                   className="relative group shrink-0"
-                  onTouchStart={() => setTouchPreviewIdx(idx)}
-                  onTouchEnd={() => setTouchPreviewIdx(null)}
-                  onTouchCancel={() => setTouchPreviewIdx(null)}
-                  onTouchMove={() => setTouchPreviewIdx(null)}
+                  onPointerEnter={() => showPreview(idx)}
+                  onPointerLeave={() => hidePreview()}
+                  onFocus={() => showPreview(idx)}
+                  onBlur={() => hidePreview()}
+                  onTouchStart={() => showPreview(idx)}
+                  onTouchEnd={() => hidePreview(650)}
+                  onTouchCancel={() => hidePreview()}
+                  onTouchMove={() => hidePreview()}
                 >
                   <button
                     type="button"
@@ -408,9 +444,8 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                   {im.url ? (
                     <div
                       className={[
-                        "pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 opacity-0 scale-95 transition-all duration-200",
-                        "md:group-hover:opacity-100 md:group-hover:scale-100",
-                        touchPreviewIdx === idx ? "opacity-100 scale-100" : "",
+                        "thumb-preview pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2",
+                        previewIdx === idx ? "thumb-preview--active" : "",
                       ].join(" ")}
                     >
                       <div className="relative h-44 w-36 overflow-hidden rounded-2xl bg-black/20 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] ring-1 ring-white/20 backdrop-blur-md md:h-56 md:w-44">
@@ -419,7 +454,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                           alt={product.title}
                           fill
                           blurDataUrl={im.blurDataUrl ?? undefined}
-                          className="object-cover"
+                          className="thumb-preview-image object-cover"
                           sizes="(max-width: 768px) 200px, 200px"
                           loading={imageLoading}
                         />
