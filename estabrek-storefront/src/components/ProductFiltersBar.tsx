@@ -103,6 +103,7 @@ export function ProductFiltersBar({
   syncUrl = true,
   hideCategory = false,
   mobileCategoryTree = false,
+  categoryTree = false,
   mobileAutoApply = false,
 }: {
   colors: FacetColor[];
@@ -114,6 +115,7 @@ export function ProductFiltersBar({
   syncUrl?: boolean;
   hideCategory?: boolean;
   mobileCategoryTree?: boolean;
+  categoryTree?: boolean;
   mobileAutoApply?: boolean;
 }) {
   const router = useRouter();
@@ -482,9 +484,26 @@ export function ProductFiltersBar({
         </div>
       </div>
 
+      {/* Category Tree */}
+      {categoryTree ? (
+        <div className="filter-section">
+          <label className="filter-label">
+            <CategoryIcon />
+            التصنيف
+          </label>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <CategorySidebar
+              categories={categories}
+              selectedId={categoryIdParam || undefined}
+              onSelect={(id) => setSimple("categoryId", id || undefined)}
+            />
+          </div>
+        </div>
+      ) : null}
+
       {/* Category & Sort Row */}
       <div className="grid gap-4 sm:grid-cols-2">
-        {!hideCategory ? (
+        {!hideCategory && !categoryTree ? (
           <div className="filter-section">
             <label className="filter-label">
               <CategoryIcon />
@@ -749,7 +768,7 @@ export function ProductFiltersBar({
 
             {/* Mobile Content */}
             <div className="p-4 pb-28">
-              {mobileCategoryTree && categories?.length ? (
+              {mobileCategoryTree && !categoryTree && categories?.length ? (
                 <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 p-3">
                   <CategorySidebar
                     categories={categories}
