@@ -4820,16 +4820,20 @@ html {
   grid-template-columns: 1fr;
   max-height: 90vh;
   overflow-y: auto;
+  padding-top: 0;
 }
 
 .quick-view-mobile-bar {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: calc(env(safe-area-inset-top) + 0.75rem) 1rem 0.75rem;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 120;
   background: rgba(15, 15, 20, 0.92);
   backdrop-filter: blur(14px);
@@ -4873,6 +4877,11 @@ html {
 @media (min-width: 768px) {
   .quick-view-content {
     grid-template-columns: 1fr 1fr;
+    padding-top: 0;
+  }
+
+  .quick-view-mobile-bar {
+    display: none;
   }
 }
 
@@ -4912,11 +4921,6 @@ html {
 
   .quick-view-mobile-bar {
     display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    width: 100%;
-    z-index: 140;
   }
 
   .quick-view-gallery,
@@ -4948,7 +4952,8 @@ html {
   }
 
   .quick-view-close-bottom {
-    display: none;
+    display: inline-flex;
+    width: 100%;
   }
 }
 
@@ -4963,15 +4968,10 @@ html {
 
   .quick-view-mobile-bar {
     display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    width: 100%;
-    z-index: 140;
   }
 
   .quick-view-close-bottom {
-    display: none;
+    display: inline-flex;
   }
 }
 
