@@ -708,11 +708,11 @@ export function ProductFiltersBar({
       {mobileOpen && (
         <div className="fixed inset-0 z-[1300] md:hidden" role="dialog" aria-modal="true">
           <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-md" 
+            className="absolute inset-0 bg-black/20 backdrop-blur-lg" 
             onClick={closeMobile} 
           />
           <div 
-            className="absolute inset-y-0 right-0 w-[50vw] bg-[var(--surface)] overflow-y-auto"
+            className="absolute inset-y-0 right-0 w-[80vw] max-w-[520px] bg-[var(--surface)] overflow-y-auto"
             style={{ animation: "slideInRight 0.3s ease" }}
           >
             {/* Mobile Header */}
