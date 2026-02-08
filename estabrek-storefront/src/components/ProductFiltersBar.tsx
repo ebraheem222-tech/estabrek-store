@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
+import { CategorySidebar } from "@/components/CategorySidebar";
 
 type FacetColor = { name: string; hex?: string | null; count: number };
 type FacetSize = { id: string; name: string; count: number };
@@ -101,6 +102,7 @@ export function ProductFiltersBar({
   onFiltersChange,
   syncUrl = true,
   hideCategory = false,
+  mobileCategoryTree = false,
 }: {
   colors: FacetColor[];
   sizes: FacetSize[];
@@ -110,6 +112,7 @@ export function ProductFiltersBar({
   onFiltersChange?: (next: CatalogFilters) => void;
   syncUrl?: boolean;
   hideCategory?: boolean;
+  mobileCategoryTree?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -732,6 +735,15 @@ export function ProductFiltersBar({
 
             {/* Mobile Content */}
             <div className="p-4 pb-28">
+              {mobileCategoryTree && categories?.length ? (
+                <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <CategorySidebar
+                    categories={categories}
+                    selectedId={categoryIdParam || undefined}
+                    onSelect={(id) => setSimple("categoryId", id || undefined)}
+                  />
+                </div>
+              ) : null}
               {filtersContent}
             </div>
 
