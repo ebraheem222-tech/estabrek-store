@@ -4897,7 +4897,7 @@ html {
     height: 100%;
     max-height: 100%;
     overflow-y: auto;
-    padding-top: 0;
+    padding-top: calc(env(safe-area-inset-top) + 3.5rem);
     -webkit-overflow-scrolling: touch;
   }
 
@@ -4912,6 +4912,11 @@ html {
 
   .quick-view-mobile-bar {
     display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 140;
   }
 
   .quick-view-gallery,
@@ -4943,8 +4948,7 @@ html {
   }
 
   .quick-view-close-bottom {
-    display: inline-flex;
-    width: 100%;
+    display: none;
   }
 }
 
@@ -4959,10 +4963,15 @@ html {
 
   .quick-view-mobile-bar {
     display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 140;
   }
 
   .quick-view-close-bottom {
-    display: inline-flex;
+    display: none;
   }
 }
 
