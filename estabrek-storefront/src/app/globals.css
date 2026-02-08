@@ -4907,6 +4907,8 @@ html {
     max-height: 100%;
     overflow-y: auto;
     padding-top: calc(env(safe-area-inset-top) + 3.5rem);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
+    scroll-padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
     -webkit-overflow-scrolling: touch;
   }
 
@@ -4943,6 +4945,13 @@ html {
 
   .quick-view-actions {
     flex-direction: column;
+    position: sticky;
+    bottom: 0;
+    z-index: 110;
+    background: rgba(15, 15, 20, 0.95);
+    backdrop-filter: blur(12px);
+    padding: 0.75rem 0.75rem calc(env(safe-area-inset-bottom) + 0.75rem);
+    margin: 0 -1rem;
   }
 
   .quick-view-add-btn,
@@ -12821,11 +12830,18 @@ html {
   box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
   z-index: 1000;
   transition: all 0.3s ease;
+  touch-action: none;
+  will-change: transform, left, top;
 }
 
 .whatsapp-floating-btn:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 30px rgba(37, 211, 102, 0.5);
+}
+
+.whatsapp-floating-btn.dragging {
+  transition: none;
+  transform: none;
 }
 
 [dir="rtl"] .whatsapp-floating-btn {
