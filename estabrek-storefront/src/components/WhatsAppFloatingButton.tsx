@@ -14,6 +14,9 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
   const pointerIdRef = useRef<number | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const movedRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
+  const pendingRef = useRef<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -50,8 +53,10 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
 
   const handlePointerDown = (e: React.PointerEvent<HTMLAnchorElement>) => {
     if (!position) return;
+    e.preventDefault();
     pointerIdRef.current = e.pointerId;
     movedRef.current = false;
+    setDragging(true);
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -64,6 +69,7 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
   const handlePointerMove = (e: React.PointerEvent<HTMLAnchorElement>) => {
     if (pointerIdRef.current !== e.pointerId) return;
     if (!dragStartRef.current || typeof window === "undefined") return;
+    e.preventDefault();
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
     if (Math.abs(dx) > 4 || Math.abs(dy) > 4) movedRef.current = true;
@@ -75,13 +81,22 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
     const nextY = dragStartRef.current.top + dy;
     const clampedX = clamp(nextX, 8, window.innerWidth - width - 8);
     const clampedY = clamp(nextY, 8, window.innerHeight - height - 8);
-    setPosition({ x: clampedX, y: clampedY });
+    pendingRef.current = { x: clampedX, y: clampedY };
+    if (rafRef.current == null) {
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (pendingRef.current) {
+          setPosition(pendingRef.current);
+        }
+      });
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLAnchorElement>) => {
     if (pointerIdRef.current !== e.pointerId) return;
     pointerIdRef.current = null;
     dragStartRef.current = null;
+    setDragging(false);
     (e.currentTarget as HTMLAnchorElement).releasePointerCapture(e.pointerId);
   };
 
@@ -101,7 +116,7 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="whatsapp-floating-btn"
+      className={`whatsapp-floating-btn${dragging ? " dragging" : ""}`}
       aria-label="تواصل عبر واتساب"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -109,7 +124,7 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
       onClick={handleClick}
       style={
         position
-          ? { left: `${position.x}px`, top: `${position.y}px`, right: "auto", bottom: "auto", touchAction: "none", cursor: "grab" }
+          ? { left: `${position.x}px`, top: `${position.y}px`, right: "auto", bottom: "auto", touchAction: "none", cursor: dragging ? "grabbing" : "grab" }
           : undefined
       }
     >
