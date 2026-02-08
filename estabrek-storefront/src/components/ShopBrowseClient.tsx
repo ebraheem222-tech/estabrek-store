@@ -95,6 +95,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
               onFiltersChange={setFilters}
               hideCategory
               mobileCategoryTree
+              mobileAutoApply
             />
           </div>
         </div>
@@ -112,6 +113,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
             onFiltersChange={setFilters}
             hideCategory
             mobileCategoryTree
+            mobileAutoApply
           />
         </div>
 

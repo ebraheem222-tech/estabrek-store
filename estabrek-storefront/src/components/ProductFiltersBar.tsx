@@ -103,6 +103,7 @@ export function ProductFiltersBar({
   syncUrl = true,
   hideCategory = false,
   mobileCategoryTree = false,
+  mobileAutoApply = false,
 }: {
   colors: FacetColor[];
   sizes: FacetSize[];
@@ -113,6 +114,7 @@ export function ProductFiltersBar({
   syncUrl?: boolean;
   hideCategory?: boolean;
   mobileCategoryTree?: boolean;
+  mobileAutoApply?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -143,7 +145,7 @@ export function ProductFiltersBar({
   }, [filters, urlFilters]);
 
   useEffect(() => {
-    if (!mobileOpen) {
+    if (!mobileOpen || mobileAutoApply) {
       setDraftFilters(null);
       return;
     }
@@ -152,9 +154,9 @@ export function ProductFiltersBar({
       colors: currentFilters.colors ?? [],
       sizeIds: currentFilters.sizeIds ?? [],
     });
-  }, [mobileOpen, currentFilters]);
+  }, [mobileOpen, currentFilters, mobileAutoApply]);
 
-  const workingFilters = mobileOpen && draftFilters ? draftFilters : currentFilters;
+  const workingFilters = mobileOpen && draftFilters && !mobileAutoApply ? draftFilters : currentFilters;
 
   const sortParam = workingFilters.sort ?? "latest";
   const minPriceParam = workingFilters.minPrice != null ? String(workingFilters.minPrice) : "";
@@ -334,7 +336,7 @@ export function ProductFiltersBar({
     }
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    if (mobileOpen) {
+    if (mobileOpen && !mobileAutoApply) {
       setDraftFilters(normalized);
     } else {
       onFiltersChange?.(normalized);
@@ -352,7 +354,7 @@ export function ProductFiltersBar({
     next.colors = exists ? next.colors.filter((c) => c.toLowerCase() !== name.toLowerCase()) : [...next.colors, name];
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    if (mobileOpen) {
+    if (mobileOpen && !mobileAutoApply) {
       setDraftFilters(normalized);
     } else {
       onFiltersChange?.(normalized);
@@ -370,7 +372,7 @@ export function ProductFiltersBar({
     next.sizeIds = exists ? next.sizeIds.filter((s) => s !== id) : [...next.sizeIds, id];
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    if (mobileOpen) {
+    if (mobileOpen && !mobileAutoApply) {
       setDraftFilters(normalized);
     } else {
       onFiltersChange?.(normalized);
@@ -396,7 +398,7 @@ export function ProductFiltersBar({
     }
     next.page = undefined;
     const normalized = normalizeFilters(next);
-    if (mobileOpen) {
+    if (mobileOpen && !mobileAutoApply) {
       setDraftFilters(normalized);
     } else {
       onFiltersChange?.(normalized);
@@ -406,7 +408,7 @@ export function ProductFiltersBar({
 
   function clearAll() {
     const normalized = normalizeFilters({ colors: [], sizeIds: [] });
-    if (mobileOpen) {
+    if (mobileOpen && !mobileAutoApply) {
       setDraftFilters(normalized);
     } else {
       onFiltersChange?.(normalized);
@@ -420,6 +422,10 @@ export function ProductFiltersBar({
   }
 
   function applyMobile() {
+    if (mobileAutoApply) {
+      closeMobile();
+      return;
+    }
     const normalized = normalizeFilters(draftFilters ?? workingFilters);
     onFiltersChange?.(normalized);
     push(normalized);
@@ -665,7 +671,7 @@ export function ProductFiltersBar({
       <button 
         type="button" 
         onClick={() => setMobileOpen(true)} 
-        className="mobile-filter-toggle md:hidden"
+        className={`mobile-filter-toggle md:hidden ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
       >
         <FilterIcon />
         <span>الفلاتر</span>
@@ -700,13 +706,13 @@ export function ProductFiltersBar({
 
       {/* Mobile Filters Modal */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-[1100] md:hidden" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[1300] md:hidden" role="dialog" aria-modal="true">
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
+            className="absolute inset-0 bg-black/50 backdrop-blur-md" 
             onClick={closeMobile} 
           />
           <div 
-            className="absolute inset-y-0 right-0 w-full max-w-sm bg-[var(--surface)] overflow-y-auto"
+            className="absolute inset-y-0 right-0 w-[50vw] bg-[var(--surface)] overflow-y-auto"
             style={{ animation: "slideInRight 0.3s ease" }}
           >
             {/* Mobile Header */}
@@ -758,13 +764,15 @@ export function ProductFiltersBar({
                   مسح الكل
                 </button>
               )}
-              <button 
-                type="button" 
-                onClick={applyMobile} 
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 transition-opacity"
-              >
-                تطبيق الفلاتر
-              </button>
+              {!mobileAutoApply && (
+                <button 
+                  type="button" 
+                  onClick={applyMobile} 
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 transition-opacity"
+                >
+                  تطبيق الفلاتر
+                </button>
+              )}
             </div>
           </div>
         </div>

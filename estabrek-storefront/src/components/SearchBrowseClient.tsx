@@ -154,6 +154,7 @@ export default function SearchBrowseClient({
         categories={categories ?? []}
         filters={filters}
         onFiltersChange={setFilters}
+        mobileAutoApply
       />
 
       {!hasItems && !loading ? (
