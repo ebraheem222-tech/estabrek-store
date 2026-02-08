@@ -4830,10 +4830,11 @@ html {
   padding: calc(env(safe-area-inset-top) + 0.75rem) 1rem 0.75rem;
   position: sticky;
   top: 0;
-  z-index: 25;
+  z-index: 120;
   background: rgba(15, 15, 20, 0.92);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.25);
 }
 
 .quick-view-mobile-title {
@@ -4852,6 +4853,19 @@ html {
   border: 1px solid rgba(255,255,255,0.18);
   color: var(--text, #fff);
   font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.quick-view-close-bottom {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.875rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: var(--text, #fff);
   font-weight: 600;
 }
 
@@ -4922,6 +4936,25 @@ html {
   .quick-view-details-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .quick-view-close-bottom {
+    display: inline-flex;
+    width: 100%;
+  }
+}
+
+@media (pointer: coarse) {
+  .quick-view-close {
+    display: none;
+  }
+
+  .quick-view-mobile-bar {
+    display: flex;
+  }
+
+  .quick-view-close-bottom {
+    display: inline-flex;
   }
 }
 
