@@ -4907,8 +4907,7 @@ html {
     max-height: 100%;
     overflow-y: auto;
     padding-top: calc(env(safe-area-inset-top) + 3.5rem);
-    padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
-    scroll-padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 2rem);
     -webkit-overflow-scrolling: touch;
   }
 
@@ -4945,13 +4944,9 @@ html {
 
   .quick-view-actions {
     flex-direction: column;
-    position: sticky;
-    bottom: 0;
-    z-index: 110;
-    background: rgba(15, 15, 20, 0.95);
-    backdrop-filter: blur(12px);
-    padding: 0.75rem 0.75rem calc(env(safe-area-inset-bottom) + 0.75rem);
-    margin: 0 -1rem;
+    background: transparent;
+    padding: 0;
+    margin: 0;
   }
 
   .quick-view-add-btn,
