@@ -1002,7 +1002,12 @@ export function ComponentsRenderer({
                 FiltersBar (needs facets)
               </div>
             ) : (
-              <ProductFiltersBar colors={colors} sizes={sizes} categories={categories} />
+              <ProductFiltersBar
+                colors={colors}
+                sizes={sizes}
+                categories={categories}
+                mobileAutoApply
+              />
             )}
           </div>
         );

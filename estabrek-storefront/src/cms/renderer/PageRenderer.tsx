@@ -518,6 +518,12 @@ function uiContainerClass(data: any) {
   return typeof ui?.containerClass === "string" ? ui.containerClass : "";
 }
 
+function stripPadding(style?: React.CSSProperties): React.CSSProperties | undefined {
+  if (!style) return undefined;
+  const { padding, paddingLeft, paddingRight, paddingTop, paddingBottom, ...rest } = style;
+  return rest;
+}
+
 function sectionTextScopeProps(data: any) {
   const tokens = data?.twTokens;
   const typography = tokens?.typography;
@@ -832,12 +838,21 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d, productLookup);
       const sectionTokens = (d as any)?.twTokens;
-      const themeProps = { ...heroThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
+      const sectionStyle = uiSectionStyle(d);
+      const themeProps = {
+        ...heroThemePropsFromData(d),
+        className: cls("mx-auto", uiContainerClass(d)),
+        style: sectionStyle,
+      } as any;
       const themeNode = <HeroRenderer themeId={themeId} {...themeProps} />;
 
       return wrapDecorations(
-        <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
-          {themeNode}
+        <section
+          {...attrs}
+          className={cls("overflow-hidden rounded-3xl border border-white/[0.08]", uiSectionClass(d))}
+          style={stripPadding(sectionStyle)}
+        >
+          <SectionTextScope data={d}>{themeNode}</SectionTextScope>
           {componentsBlock}
         </section>,
         sectionTokens

@@ -17,6 +17,7 @@ interface HeroTemplateProps {
   features?: string[];
   stats?: { value: string; label: string }[];
   className?: string;
+  style?: React.CSSProperties;
   children?: React.ReactNode;
 }
 
@@ -26,7 +27,7 @@ interface HeroTemplateProps {
 
 // 1. Basic Centered
 export const Hero1: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center">
       {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-100 text-blue-700 rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">{props.headline}</h1>
@@ -41,7 +42,7 @@ export const Hero1: React.FC<HeroTemplateProps> = (props) => (
 
 // 2. Basic Left Aligned
 export const Hero2: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto">
       <div className="max-w-2xl">
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-gray-100 text-gray-700 rounded-full">{props.badge}</span>}
@@ -58,7 +59,7 @@ export const Hero2: React.FC<HeroTemplateProps> = (props) => (
 
 // 3. Basic Split
 export const Hero3: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-100 text-blue-700 rounded-full">{props.badge}</span>}
@@ -78,7 +79,7 @@ export const Hero3: React.FC<HeroTemplateProps> = (props) => (
 
 // 4. Basic Minimal
 export const Hero4: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-32 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-32 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-3xl mx-auto text-center">
       <h1 className="text-5xl md:text-6xl lg:text-7xl font-light text-gray-900 mb-8 leading-tight">{props.headline}</h1>
       {props.description && <p className="text-xl text-gray-500 mb-12">{props.description}</p>}
@@ -89,7 +90,7 @@ export const Hero4: React.FC<HeroTemplateProps> = (props) => (
 
 // 5. Basic Dark
 export const Hero5: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-gray-900 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-gray-900 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center">
       {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/10 text-white rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">{props.headline}</h1>
@@ -104,7 +105,7 @@ export const Hero5: React.FC<HeroTemplateProps> = (props) => (
 
 // 6. Basic Gradient
 export const Hero6: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-24 px-4 bg-gradient-to-r from-blue-600 to-purple-600 ${props.className || ''}`}>
+  <section style={props.style} className={`py-24 px-4 bg-gradient-to-r from-blue-600 to-purple-600 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center text-white">
       {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">{props.headline}</h1>
@@ -119,7 +120,7 @@ export const Hero6: React.FC<HeroTemplateProps> = (props) => (
 
 // 7. Basic Fullscreen
 export const Hero7: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`min-h-screen flex items-center justify-center px-4 bg-gray-50 ${props.className || ''}`}>
+  <section style={props.style} className={`min-h-screen flex items-center justify-center px-4 bg-gray-50 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center">
       <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-8">{props.headline}</h1>
       {props.description && <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">{props.description}</p>}
@@ -133,7 +134,7 @@ export const Hero7: React.FC<HeroTemplateProps> = (props) => (
 
 // 8-12: More Basic Variants
 export const Hero8: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-gray-100 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-gray-100 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
       <div className="order-2 md:order-1">
         {props.imageSrc ? <img src={props.imageSrc} alt={props.imageAlt || ''} className="w-full rounded-3xl" loading="eager" decoding="async" /> : <div className="aspect-square bg-gradient-to-br from-blue-200 to-purple-200 rounded-3xl"></div>}
@@ -149,7 +150,7 @@ export const Hero8: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero9: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center">
       <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">{props.headline}</h1>
       {props.description && <p className="text-lg text-gray-600 mb-12">{props.description}</p>}
@@ -169,7 +170,7 @@ export const Hero9: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero10: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center">
       <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">{props.headline}</h1>
       {props.description && <p className="text-lg text-gray-600 mb-8">{props.description}</p>}
@@ -193,7 +194,7 @@ export const Hero10: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero13: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-24 px-4 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 ${props.className || ''}`}>
+  <section style={props.style} className={`py-24 px-4 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center text-white">
       {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 backdrop-blur-sm rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">{props.headline}</h1>
@@ -207,7 +208,7 @@ export const Hero13: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero14: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`relative py-24 px-4 bg-slate-950 overflow-hidden ${props.className || ''}`}>
+  <section style={props.style} className={`relative py-24 px-4 bg-slate-950 overflow-hidden ${props.className || ''}`}>
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(34,211,238,0.1),transparent_50%)]"></div>
     <div className="relative max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
@@ -226,7 +227,7 @@ export const Hero14: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero15: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-gray-950 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-gray-950 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto">
       <div className="bg-gray-900 rounded-2xl p-8 md:p-12 border border-gray-800">
         <div className="flex items-center gap-2 mb-6 text-gray-400 font-mono text-sm">
@@ -248,7 +249,7 @@ export const Hero15: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero37: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`relative min-h-screen flex items-center px-4 bg-gray-950 overflow-hidden ${props.className || ''}`}>
+  <section style={props.style} className={`relative min-h-screen flex items-center px-4 bg-gray-950 overflow-hidden ${props.className || ''}`}>
     <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
     <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl"></div>
     <div className="relative max-w-4xl mx-auto text-center">
@@ -261,7 +262,7 @@ export const Hero37: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero38: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-black ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-black ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
         {props.badge && <span className="inline-block px-4 py-1 mb-6 text-xs font-bold bg-red-600 text-white uppercase tracking-wider">{props.badge}</span>}
@@ -284,7 +285,7 @@ export const Hero38: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero25: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-gray-50 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-gray-50 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-pink-100 text-pink-700 rounded-full">{props.badge}</span>}
@@ -301,7 +302,7 @@ export const Hero25: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero26: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`relative min-h-screen flex items-center ${props.className || ''}`}>
+  <section style={props.style} className={`relative min-h-screen flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0 bg-black">
       {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover opacity-60" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black"></div>}
     </div>
@@ -315,7 +316,7 @@ export const Hero26: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero27: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-16 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-16 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 items-center">
       <div>
         <h1 className="text-3xl md:text-4xl font-light text-gray-900 mb-4">{props.headline}</h1>
@@ -332,7 +333,7 @@ export const Hero27: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero47: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-slate-50 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-slate-50 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div>
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-blue-600 text-white rounded">{props.badge}</span>}
@@ -359,7 +360,7 @@ export const Hero47: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero48: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto">
       <div className="max-w-3xl">
         {props.badge && <span className="text-blue-600 font-medium mb-4 block">{props.badge}</span>}
@@ -379,7 +380,7 @@ export const Hero48: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero59: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`relative py-32 px-4 bg-black overflow-hidden ${props.className || ''}`}>
+  <section style={props.style} className={`relative py-32 px-4 bg-black overflow-hidden ${props.className || ''}`}>
     <div className="absolute top-20 left-10 w-64 h-64 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full blur-3xl opacity-30"></div>
     <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full blur-3xl opacity-30"></div>
     <div className="relative max-w-6xl mx-auto text-center">
@@ -391,7 +392,7 @@ export const Hero59: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero60: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`min-h-screen flex items-center px-4 bg-white ${props.className || ''}`}>
+  <section style={props.style} className={`min-h-screen flex items-center px-4 bg-white ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto w-full">
       <h1 className="text-[15vw] font-black text-gray-900 leading-none">{props.headline}</h1>
       {props.description && <p className="text-xl text-gray-600 mt-8 max-w-xl">{props.description}</p>}
@@ -405,7 +406,7 @@ export const Hero60: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero71: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`relative min-h-[80vh] flex items-center ${props.className || ''}`}>
+  <section style={props.style} className={`relative min-h-[80vh] flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0">
       {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-amber-900 to-orange-900"></div>}
       <div className="absolute inset-0 bg-black/50"></div>
@@ -427,7 +428,7 @@ export const Hero71: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero81: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`relative min-h-screen flex items-center ${props.className || ''}`}>
+  <section style={props.style} className={`relative min-h-screen flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent z-10"></div>
     <div className="absolute inset-0 bg-gray-900">
       {props.imageSrc && <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" />}
@@ -447,7 +448,7 @@ export const Hero81: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero89: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`relative min-h-[90vh] flex items-center ${props.className || ''}`}>
+  <section style={props.style} className={`relative min-h-[90vh] flex items-center ${props.className || ''}`}>
     <div className="absolute inset-0">
       {props.imageSrc ? <img src={props.imageSrc} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" /> : <div className="w-full h-full bg-gradient-to-br from-sky-900 to-blue-900"></div>}
       <div className="absolute inset-0 bg-black/40"></div>
@@ -475,7 +476,7 @@ export const Hero89: React.FC<HeroTemplateProps> = (props) => (
 // ═══════════════════════════════════════════════════════════════
 
 export const Hero97: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 ${props.className || ''}`}>
+  <section style={props.style} className={`min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 ${props.className || ''}`}>
     <div className="max-w-2xl mx-auto px-4 text-center text-white">
       <div className="text-6xl mb-8">🚀</div>
       <h1 className="text-5xl md:text-6xl font-bold mb-6">{props.headline}</h1>
@@ -489,7 +490,7 @@ export const Hero97: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero98: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-24 px-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 ${props.className || ''}`}>
+  <section style={props.style} className={`py-24 px-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 ${props.className || ''}`}>
     <div className="max-w-4xl mx-auto text-center text-white">
       {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 rounded-full">{props.badge}</span>}
       <h1 className="text-4xl md:text-6xl font-bold mb-6">{props.headline}</h1>
@@ -514,7 +515,7 @@ export const Hero98: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero99: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-gradient-to-br from-blue-600 to-indigo-700 ${props.className || ''}`}>
     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
       <div className="text-white">
         {props.badge && <span className="inline-block px-4 py-1.5 mb-6 text-sm font-medium bg-white/20 rounded-full">{props.badge}</span>}
@@ -547,7 +548,7 @@ export const Hero99: React.FC<HeroTemplateProps> = (props) => (
 );
 
 export const Hero100: React.FC<HeroTemplateProps> = (props) => (
-  <section className={`py-20 px-4 bg-gray-900 ${props.className || ''}`}>
+  <section style={props.style} className={`py-20 px-4 bg-gray-900 ${props.className || ''}`}>
     <div className="max-w-2xl mx-auto text-center">
       <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">{props.headline}</h1>
       {props.description && <p className="text-lg text-gray-400 mb-8">{props.description}</p>}
