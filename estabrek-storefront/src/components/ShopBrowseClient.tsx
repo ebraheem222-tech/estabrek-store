@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams, type CatalogFilters } from "@/lib/filtersUrl";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
+import { CategorySidebar } from "@/components/CategorySidebar";
 import { FiltersChips } from "@/components/FiltersChips";
 import { ShopToolbar } from "@/components/ShopToolbar";
 import ShopResultsClient from "@/components/ShopResultsClient";
@@ -61,6 +62,17 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
 
   const facets = useMemo(() => data?.facets ?? initial?.facets ?? {}, [data, initial]);
   const total = (data?.total ?? initial?.total ?? data?.items?.length ?? 0) as number;
+  const selectedCategoryId = filters.categoryId;
+
+  const handleCategorySelect = (id?: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      categoryId: id,
+      page: undefined,
+      colors: prev.colors ?? [],
+      sizeIds: prev.sizeIds ?? [],
+    }));
+  };
 
   return (
     <div className="lg:grid lg:grid-cols-[300px,1fr] lg:gap-8">
@@ -68,12 +80,20 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
       <aside className="hidden lg:block filters-sidebar">
         <div className="sticky top-24 space-y-6">
           <div className="sidebar-filters-card">
+            <CategorySidebar
+              categories={categories ?? []}
+              selectedId={selectedCategoryId}
+              onSelect={handleCategorySelect}
+            />
+          </div>
+          <div className="sidebar-filters-card">
             <ProductFiltersBar
               colors={facets?.colors ?? []}
               sizes={facets?.sizes ?? []}
               categories={categories ?? []}
               filters={filters}
               onFiltersChange={setFilters}
+              hideCategory
             />
           </div>
         </div>

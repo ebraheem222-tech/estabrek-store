@@ -100,6 +100,7 @@ export function ProductFiltersBar({
   filters,
   onFiltersChange,
   syncUrl = true,
+  hideCategory = false,
 }: {
   colors: FacetColor[];
   sizes: FacetSize[];
@@ -108,6 +109,7 @@ export function ProductFiltersBar({
   filters?: CatalogFilters;
   onFiltersChange?: (next: CatalogFilters) => void;
   syncUrl?: boolean;
+  hideCategory?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -467,24 +469,26 @@ export function ProductFiltersBar({
 
       {/* Category & Sort Row */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="filter-section">
-          <label className="filter-label">
-            <CategoryIcon />
-            التصنيف
-          </label>
-          <select
-            className="filter-select"
-            value={categoryIdParam}
-            onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
-          >
-            <option value="">جميع التصنيفات</option>
-            {categoryOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.depth > 0 ? `${"— ".repeat(c.depth)}${c.name}` : c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!hideCategory ? (
+          <div className="filter-section">
+            <label className="filter-label">
+              <CategoryIcon />
+              التصنيف
+            </label>
+            <select
+              className="filter-select"
+              value={categoryIdParam}
+              onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
+            >
+              <option value="">جميع التصنيفات</option>
+              {categoryOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.depth > 0 ? `${"— ".repeat(c.depth)}${c.name}` : c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="filter-section">
           <label className="filter-label">
