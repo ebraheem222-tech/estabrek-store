@@ -2398,6 +2398,30 @@ html {
   background: color-mix(in srgb, var(--text) 18%, transparent);
 }
 
+/* Thumbnail hover preview */
+.thumb-preview {
+  opacity: 0;
+  transform: translateY(8px) scale(0.92);
+  filter: blur(2px);
+  transition: opacity 180ms ease, transform 220ms ease, filter 200ms ease;
+  z-index: 30;
+}
+
+.thumb-preview--active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+.thumb-preview-image {
+  transform: scale(1.02);
+  transition: transform 220ms ease;
+}
+
+.thumb-preview--active .thumb-preview-image {
+  transform: scale(1.06);
+}
+
 /* ============================================
    ADVANCED FILTER CONTROLS
    ============================================ */
