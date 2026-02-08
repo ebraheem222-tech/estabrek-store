@@ -133,6 +133,17 @@ export function QuickViewModal({
 
   return (
     <div className="quick-view-overlay" onClick={handleClose} dir="rtl">
+      <button
+        type="button"
+        className="quick-view-close-fallback"
+        aria-label="إغلاق المعاينة السريعة"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleClose();
+        }}
+      >
+        <XIcon />
+      </button>
       <div 
         className={`quick-view-modal ${isClosing ? "closing" : ""}`}
         onClick={(e) => e.stopPropagation()}
@@ -325,6 +336,10 @@ export function QuickViewModal({
                 <span>التفاصيل</span>
                 <ArrowIcon />
               </Link>
+              <button className="quick-view-close-bottom" onClick={handleClose}>
+                <XIcon />
+                <span>إغلاق</span>
+              </button>
             </div>
           </div>
         </div>
