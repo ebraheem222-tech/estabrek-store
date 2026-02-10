@@ -1,4 +1,5 @@
 import { Redis } from "ioredis";
+import { recordCacheHit, recordCacheMiss, recordCacheWrite } from "./requestMetrics.js";
 
 type CacheEntry = { v: any; exp: number };
 
@@ -45,16 +46,26 @@ function memSet<T>(key: string, value: T, ttlMs: number) {
 
 export async function cacheGet<T>(key: string): Promise<T | undefined> {
   const mem = memGet<T>(key);
-  if (mem !== undefined) return mem;
+  if (mem !== undefined) {
+    recordCacheHit();
+    return mem;
+  }
 
   const r = getRedis();
-  if (!r) return undefined;
+  if (!r) {
+    recordCacheMiss();
+    return undefined;
+  }
   try {
     const raw = await r.get(key);
-    if (!raw) return undefined;
+    if (!raw) {
+      recordCacheMiss();
+      return undefined;
+    }
     const parsed = JSON.parse(raw) as T;
     // Keep a short in-memory copy to avoid repeated Redis hits.
     memSet(key, parsed, 10_000);
+    recordCacheHit();
     return parsed;
   } catch {
     return undefined;
@@ -63,6 +74,7 @@ export async function cacheGet<T>(key: string): Promise<T | undefined> {
 
 export async function cacheSet<T>(key: string, value: T, ttlMs: number): Promise<void> {
   memSet(key, value, ttlMs);
+  recordCacheWrite();
   const r = getRedis();
   if (!r) return;
   try {
