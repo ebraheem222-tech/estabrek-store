@@ -2,9 +2,18 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams, type CatalogFilters } from "@/lib/filtersUrl";
-import { ProductFiltersBar } from "@/components/ProductFiltersBar";
+import dynamic from "next/dynamic";
 import ShopResultsClient from "@/components/ShopResultsClient";
-import { ImageSearchPanel } from "@/components/ImageSearchPanel";
+
+const ImageSearchPanel = dynamic(
+  () => import("@/components/ImageSearchPanel").then((m) => m.ImageSearchPanel),
+  { ssr: false, loading: () => null }
+);
+
+const ProductFiltersBar = dynamic(
+  () => import("@/components/ProductFiltersBar").then((m) => m.ProductFiltersBar),
+  { ssr: false, loading: () => <div className="h-24 rounded-2xl bg-white/5" /> }
+);
 
 // Icons
 const SearchIcon = () => (

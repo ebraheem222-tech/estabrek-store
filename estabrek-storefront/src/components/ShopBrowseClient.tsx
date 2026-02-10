@@ -1,12 +1,17 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams, type CatalogFilters } from "@/lib/filtersUrl";
-import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import { CategorySidebar } from "@/components/CategorySidebar";
 import { FiltersChips } from "@/components/FiltersChips";
 import { ShopToolbar } from "@/components/ShopToolbar";
 import ShopResultsClient from "@/components/ShopResultsClient";
+
+const ProductFiltersBar = dynamic(
+  () => import("@/components/ProductFiltersBar").then((m) => m.ProductFiltersBar),
+  { ssr: false, loading: () => <div className="h-24 rounded-2xl bg-white/5" /> }
+);
 
 type Props = {
   initial: any;

@@ -85,9 +85,26 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
   const [isHovered, setIsHovered] = useState(false);
   const tiltEnabled = settings.cardTiltEffectEnabled;
   const prefetchEnabled = settings.prefetchLinks;
+  const [allowPrefetch, setAllowPrefetch] = useState(false);
   const quickViewEnabled = settings.productQuickView;
   const primaryBlur = getProductImageBlurDataUrl(product, primary ?? null);
   const secondaryBlur = getProductImageBlurDataUrl(product, secondary ?? null);
+
+  useEffect(() => {
+    if (!prefetchEnabled || typeof window === "undefined") {
+      setAllowPrefetch(false);
+      return;
+    }
+    const hoverable = window.matchMedia?.("(hover:hover) and (pointer:fine)")?.matches ?? false;
+    const connection = (navigator as any).connection;
+    const saveData = Boolean(connection?.saveData);
+    const effectiveType = String(connection?.effectiveType || "");
+    const slow =
+      saveData ||
+      effectiveType.includes("2g") ||
+      effectiveType.includes("slow-2g");
+    setAllowPrefetch(hoverable && !slow);
+  }, [prefetchEnabled]);
 
   // 3D tilt effect
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -121,7 +138,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
         ref={cardRef}
         className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300"
         onMouseEnter={() => {
-          if (prefetchEnabled) {
+          if (allowPrefetch) {
             const hasSizeNames = (product.items ?? []).some((it) => (it.variants ?? []).some((v: any) => v?.size?.name));
             if (hasSizeNames) {
               prefetchProductQuickAdd({ slug: product.slug, id: product.id });
