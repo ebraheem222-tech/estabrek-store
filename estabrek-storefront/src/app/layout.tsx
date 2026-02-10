@@ -11,6 +11,7 @@ import { ThemeWrap } from "@/components/ThemeWrap";
 import { UiSettingsProvider } from "@/components/UiSettingsProvider";
 import { HeaderOffset } from "@/components/HeaderOffset";
 import { getLoadingById } from "@/cms/effects/loadingAnimations";
+import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 
 export const metadata = {
   title: "Estabrak Store",
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Footer site={bootstrap.site} footerMenu={bootstrap.footerMenu} footer={(settings.site as any)?.footer} />
               {/* Global body scripts from site settings */}
               <ScriptTags scripts={bootstrap.site.scriptsBody} />
+              <WebVitalsReporter />
             </UiSettingsProvider>
           </ThemeWrap>
         </Providers>

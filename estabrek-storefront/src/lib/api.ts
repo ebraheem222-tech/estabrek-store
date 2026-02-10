@@ -164,7 +164,7 @@ export const listProductsByIds = cache(async (ids: string[], opts?: { lite?: boo
 
 export const getPublicSettings = cache(async (): Promise<{ site: SitePublicSettings }> => {
   const url = `${baseUrl()}/settings`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { next: { revalidate: 30, tags: ["settings"] } });
   if (!res.ok) throw new Error(`settings failed (${res.status})`);
   const json = await res.json();
   const parsed = SettingsZ.parse(json) as { site: SitePublicSettings };

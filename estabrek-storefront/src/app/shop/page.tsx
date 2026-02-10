@@ -3,12 +3,22 @@ import { getPublicSettings, listProducts, listCategories } from "@/lib/api";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import ShopBrowseClient from "@/components/ShopBrowseClient";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
-import { ImageSearchPanel } from "@/components/ImageSearchPanel";
-import { AIRecommendations } from "@/components/AIRecommendations";
 import type { Metadata } from "next";
 import { renderCmsPageBySlug } from "../[[...slug]]/page";
+import dynamic from "next/dynamic";
+
+const ImageSearchPanel = dynamic(
+  () => import("@/components/ImageSearchPanel").then((m) => m.ImageSearchPanel),
+  { ssr: false, loading: () => null }
+);
+
+const AIRecommendations = dynamic(
+  () => import("@/components/AIRecommendations").then((m) => m.AIRecommendations),
+  { ssr: false, loading: () => null }
+);
 
 type SP = Record<string, string | string[] | undefined>;
+export const revalidate = 60;
 
 // Icons
 const ShopIcon = () => (

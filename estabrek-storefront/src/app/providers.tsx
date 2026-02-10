@@ -2,17 +2,23 @@
 
 import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import { CartProvider } from "@/store/cart";
 import { WishlistProvider } from "@/store/wishlist";
 import { RecentlyViewedProvider } from "@/store/recentlyViewed";
 import { ToastProvider } from "@/components/Toast";
-import { QuickViewProvider, QuickViewLayer } from "@/components/QuickViewModal";
+import { QuickViewProvider } from "@/components/QuickViewModal";
 import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
 import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { RouteProgress } from "@/components/RouteProgress";
+
+const QuickViewLayer = dynamic(
+  () => import("@/components/QuickViewModal").then((m) => m.QuickViewLayer),
+  { ssr: false, loading: () => null }
+);
 
 function StorefrontToastProvider({ children }: { children: React.ReactNode }) {
   const settings = useStorefrontSettings();

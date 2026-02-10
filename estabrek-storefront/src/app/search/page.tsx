@@ -6,6 +6,7 @@ import { renderCmsPageBySlug } from "../[[...slug]]/page";
 import SearchBrowseClient from "@/components/SearchBrowseClient";
 
 type SP = Record<string, string | string[] | undefined>;
+export const revalidate = 60;
 
 export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
   const f = normalizeFiltersFromSearchParams(searchParams);
