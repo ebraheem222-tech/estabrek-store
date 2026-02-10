@@ -1,5 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-import { performance } from "node:perf_hooks";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { getRequestMetrics } from "./requestMetrics.js";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
@@ -7,19 +6,17 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 const client =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn", { emit: "event", level: "query" }]
+        : ["error", "warn", { emit: "event", level: "query" }],
   });
 
-client.$use(async (params, next) => {
-  const start = performance.now();
-  const result = await next(params);
-  const duration = performance.now() - start;
+client.$on("query", (e: Prisma.QueryEvent) => {
   const metrics = getRequestMetrics();
-  if (metrics) {
-    metrics.dbMs += duration;
-    metrics.dbCount += 1;
-  }
-  return result;
+  if (!metrics) return;
+  metrics.dbMs += e.duration ?? 0;
+  metrics.dbCount += 1;
 });
 
 // Hardening: disable Prisma *Unsafe raw methods* to reduce accidental SQL injection
