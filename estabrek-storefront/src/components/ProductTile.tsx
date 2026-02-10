@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatMoney, getProductPrimaryImage, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
