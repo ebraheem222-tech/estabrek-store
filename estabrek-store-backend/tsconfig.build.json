@@ -3,7 +3,9 @@
     "exclude": [
       "src/tests/**",
       "**/*.spec.ts",
-      "vitest.config.ts"
+      "vitest.config.ts",
+      "**/*.tsx",
+      "src/components/**"
     ]
   }
   
