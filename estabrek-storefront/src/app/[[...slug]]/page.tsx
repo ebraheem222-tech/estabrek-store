@@ -25,6 +25,7 @@ import CartClient from "@/components/CartClient";
 import { normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { ProductMini } from "@/cms/types";
 
+export const revalidate = 60;
 
 function walkComponents(list: any[] | undefined, visit: (c: any) => void, seen = new Set<any>()) {
   if (!Array.isArray(list)) return;
@@ -55,7 +56,9 @@ export async function renderCmsPageBySlug(
   // URL-driven filters for CMS data components (ProductGrid/ProductSlider + FiltersBar)
   const f = normalizeFiltersFromSearchParams(searchParams ?? {});
 
-  const page = await getPageBySlug(slug);
+  const pagePromise = getPageBySlug(slug);
+  const bootstrapPromise = getBootstrap();
+  const page = await pagePromise;
 
   // ✅ Fallback pages if CMS page isn't published yet
   if (!page) {
@@ -83,7 +86,7 @@ export async function renderCmsPageBySlug(
     return null;
   }
 
-  const bootstrap = await getBootstrap();
+  const bootstrap = await bootstrapPromise;
   const currencyCode = (bootstrap.site as any)?.currencyCode || "ILS";
 
   // Prefetch minimal product info for CMS-linked cards (e.g., CARDS linking to /p/:slug)
