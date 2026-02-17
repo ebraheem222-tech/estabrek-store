@@ -288,8 +288,6 @@ function buildItemsSelect(lite: boolean) {
           position: true,
           isPrimary: true,
           view: true,
-          dominantColorHex: true,
-          palette: true,
           blurDataUrl: true,
         },
       },
@@ -1115,6 +1113,9 @@ export async function listProductsByIds(ids: string[], opts?: { lite?: boolean }
   if (!clean.length) return [];
 
   const lite = !!opts?.lite;
+  const cacheKey = `catalog:products:ids:${lite ? "lite" : "full"}:${clean.join(",")}`;
+  const cached = await cacheGet<any[]>(cacheKey);
+  if (cached !== undefined) return cached;
   const itemSelect: any = buildItemsSelect(lite);
 
   const products = await prisma.product.findMany({
@@ -1137,7 +1138,44 @@ export async function listProductsByIds(ids: string[], opts?: { lite?: boolean }
 
   const byId = new Map(items.map((p) => [p.id, p]));
   await resetExpiredSales(prisma, expiredSales);
-  return clean.map((id) => byId.get(id)).filter(Boolean);
+  const ordered = clean.map((id) => byId.get(id)).filter(Boolean);
+  await cacheSet(cacheKey, ordered, 60_000);
+  return ordered;
+}
+
+export async function listProductsBySlugs(slugs: string[], opts?: { lite?: boolean }) {
+  const clean = slugs.map((x) => String(x).trim()).filter(Boolean);
+  if (!clean.length) return [];
+
+  const lite = !!opts?.lite;
+  const cacheKey = `catalog:products:slugs:${lite ? "lite" : "full"}:${clean.join(",")}`;
+  const cached = await cacheGet<any[]>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const itemSelect: any = buildItemsSelect(lite);
+  const products = await prisma.product.findMany({
+    where: { slug: { in: clean }, isActive: true },
+    select: {
+      ...baseProductSelect,
+      category: categorySelect,
+      items: itemSelect,
+    },
+  });
+
+  const now = new Date();
+  const expiredSales: ExpiredSale[] = [];
+
+  const items = products.map((p) => {
+    const pricedItems = applySalePricingToItems((p.items ?? []) as any[], now, expiredSales);
+    const minPrice = computeMinPriceFromItems(pricedItems);
+    return { ...p, items: pricedItems, minPrice };
+  });
+
+  const bySlug = new Map(items.map((p) => [p.slug, p]));
+  await resetExpiredSales(prisma, expiredSales);
+  const ordered = clean.map((slug) => bySlug.get(slug)).filter(Boolean);
+  await cacheSet(cacheKey, ordered, 60_000);
+  return ordered;
 }
 
 export function createReview(productId: string, data: { rating: number; title?: string; body: string; userId?: string }) {

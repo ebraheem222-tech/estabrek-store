@@ -44,6 +44,11 @@ export const ProductIdsBody = z.object({
   lite: Boolish.optional(),
 });
 
+export const ProductSlugsBody = z.object({
+  slugs: z.array(z.string().trim().min(1)).min(1).max(200),
+  lite: Boolish.optional(),
+});
+
 export const CreateReviewBody = z.object({
   rating: z.number().int().min(1).max(5),
   title: z.string().trim().max(120).optional(),

@@ -5,6 +5,7 @@ export const CreateCategoryBody = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   parentId: z.string().cuid().nullable().optional(),
+  iconUrl: z.string().min(1).nullable().optional(),
 });
 export const UpdateCategoryBody = CreateCategoryBody.partial();
 

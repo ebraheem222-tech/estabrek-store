@@ -4,6 +4,7 @@ import { validate } from "../../utils/validate.js";
 import {
   ProductListQuery,
   ProductIdsBody,
+  ProductSlugsBody,
   CreateReviewBody,
   CreateCommentBody,
   CreateOrderRequestBody,
@@ -11,6 +12,7 @@ import {
 import {
   listProducts,
   listProductsByIds,
+  listProductsBySlugs,
   getProductById,
   getProductBySlug,
   getCategoriesTree,
@@ -42,6 +44,12 @@ r.get("/products", validate({ query: ProductListQuery }), asyncHandler(async (re
 r.post("/products/by-ids", validate({ body: ProductIdsBody }), asyncHandler(async (req, res) => {
   const { ids, lite } = ProductIdsBody.parse(req.body);
   res.json({ items: await listProductsByIds(ids, { lite }) });
+}));
+
+/** products by slugs (batch) */
+r.post("/products/by-slugs", validate({ body: ProductSlugsBody }), asyncHandler(async (req, res) => {
+  const { slugs, lite } = ProductSlugsBody.parse(req.body);
+  res.json({ items: await listProductsBySlugs(slugs, { lite }) });
 }));
 
 /** product detail (by slug or id) */
