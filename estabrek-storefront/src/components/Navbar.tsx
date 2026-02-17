@@ -13,6 +13,23 @@ import { getNavTemplateById, type NavTemplate } from "@/cms/nav/navTemplates";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useTheme } from "@/components/ThemeToggle";
 
+const EXTERNAL_PROTOCOL_RE = /^[a-z][a-z0-9+.-]*:/i;
+
+function isExternalHref(href: string) {
+  return EXTERNAL_PROTOCOL_RE.test(href) || href.startsWith("//");
+}
+
+function normalizeNavHref(value?: string) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "#";
+  if (raw.startsWith("#")) return raw;
+  if (isExternalHref(raw)) return raw;
+  if (raw.startsWith("/")) return raw.replace(/\/{2,}/g, "/");
+  if (raw.startsWith("?")) return raw;
+  const cleaned = raw.replace(/^(\.\/)+/, "").replace(/^\/+/, "");
+  return `/${cleaned}`;
+}
+
 
 function NavNode({
   item,
@@ -34,9 +51,10 @@ function NavNode({
   forceTextStyle?: React.CSSProperties;
 }) {
   const hasChildren = !!(item.children && item.children.length);
-  const href = item.href || "#";
-  const external = !!item.isExternal || /^https?:\/\//.test(href);
-  const active = !external && href !== "#" && (pathname === href || pathname.startsWith(href + "/"));
+  const href = normalizeNavHref(item.href);
+  const external = !!item.isExternal || isExternalHref(href);
+  const hrefPath = href.startsWith("/") ? href.split(/[?#]/)[0] : href;
+  const active = !external && hrefPath !== "#" && (pathname === hrefPath || pathname.startsWith(hrefPath + "/"));
 
   const baseLink = template
     ? [
@@ -115,11 +133,34 @@ function NavNode({
 
   return (
     <div className="relative group">
-      <a href={href} className={baseLink} style={forceTextStyle} aria-haspopup="menu" aria-expanded="false">
-        <Icon name={item.icon} />
-        <span>{item.label}</span>
-        <Icon name="chev" />
-      </a>
+      {external ? (
+        <a
+          href={href}
+          className={baseLink}
+          style={forceTextStyle}
+          aria-haspopup="menu"
+          aria-expanded="false"
+          target={item.target || "_blank"}
+          rel="noopener noreferrer"
+        >
+          <Icon name={item.icon} />
+          <span>{item.label}</span>
+          <Icon name="chev" />
+        </a>
+      ) : (
+        <Link
+          href={href}
+          className={baseLink}
+          style={forceTextStyle}
+          aria-haspopup="menu"
+          aria-expanded="false"
+          prefetch={prefetchLinks}
+        >
+          <Icon name={item.icon} />
+          <span>{item.label}</span>
+          <Icon name="chev" />
+        </Link>
+      )}
 
       <div className="absolute left-0 top-full z-50 hidden min-w-[240px] pt-2 group-hover:block">
         <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur p-3">
@@ -559,15 +600,52 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
             <div className="space-y-2">
               {navItems.map((it: any) => (
                 <div key={it.id ?? it.href ?? it.label} className={navDrawerItem}>
-                  <a href={it.href ?? "#"} className={navDrawerLink}>
-                    {it.label}
-                  </a>
+                  {(() => {
+                    const href = normalizeNavHref(it.href);
+                    const external = !!it.isExternal || isExternalHref(href);
+                    if (external) {
+                      return (
+                        <a
+                          href={href}
+                          className={navDrawerLink}
+                          target={it.target || "_blank"}
+                          rel="noopener noreferrer"
+                        >
+                          {it.label}
+                        </a>
+                      );
+                    }
+                    return (
+                      <Link href={href} prefetch={settings.prefetchLinks} className={navDrawerLink}>
+                        {it.label}
+                      </Link>
+                    );
+                  })()}
                   {(it.children ?? []).length ? (
                     <div className="border-t border-white/10 dark:border-white/10">
                       {(it.children ?? []).map((ch: any) => (
-                        <a key={ch.id ?? ch.href ?? ch.label} href={ch.href ?? "#"} className={navDrawerSubLink}>
-                          {ch.label}
-                        </a>
+                        (() => {
+                          const href = normalizeNavHref(ch.href);
+                          const external = !!ch.isExternal || isExternalHref(href);
+                          if (external) {
+                            return (
+                              <a
+                                key={ch.id ?? ch.href ?? ch.label}
+                                href={href}
+                                className={navDrawerSubLink}
+                                target={ch.target || "_blank"}
+                                rel="noopener noreferrer"
+                              >
+                                {ch.label}
+                              </a>
+                            );
+                          }
+                          return (
+                            <Link key={ch.id ?? ch.href ?? ch.label} href={href} prefetch={settings.prefetchLinks} className={navDrawerSubLink}>
+                              {ch.label}
+                            </Link>
+                          );
+                        })()
                       ))}
                     </div>
                   ) : null}
