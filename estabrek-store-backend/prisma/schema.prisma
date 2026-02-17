@@ -522,6 +522,7 @@ model Category {
   id        String     @id @default(cuid())
   name      String
   slug      String     @unique
+  iconUrl   String?
   parentId  String?
   parent    Category?  @relation("CategoryToChildren", fields: [parentId], references: [id], onDelete: SetNull)
   children  Category[] @relation("CategoryToChildren")
@@ -556,6 +557,7 @@ model Product {
 
   @@index([categoryId])
   @@index([isActive, categoryId])
+  @@index([isActive, createdAt])
 }
 
 model ProductItem {
