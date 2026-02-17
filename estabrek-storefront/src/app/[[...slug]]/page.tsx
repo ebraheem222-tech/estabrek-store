@@ -6,10 +6,10 @@ import {
   getNewArrivalsIds,
   getPageBySlug,
   getProductById,
-  getProductBySlug,
   getPublicSettings,
   listProducts,
   listProductsByIds,
+  listProductsBySlugs,
   listCategories,
 } from "@/lib/api";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
@@ -238,13 +238,16 @@ export async function renderCmsPageBySlug(
         sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
         minPrice: f.minPrice,
         maxPrice: f.maxPrice,
+        includeFacets: hasFiltersBar,
       });
 
-      injectedFacets = {
-        colors: (listForFacets as any)?.facets?.colors ?? [],
-        sizes: (listForFacets as any)?.facets?.sizes ?? [],
-        categories: categories ?? [],
-      };
+      if (hasFiltersBar) {
+        injectedFacets = {
+          colors: (listForFacets as any)?.facets?.colors ?? [],
+          sizes: (listForFacets as any)?.facets?.sizes ?? [],
+          categories: categories ?? [],
+        };
+      }
 
       const applyProductIds = (
         task: { comp: any; categoryId?: string; limit: number; kind: "grid" | "slider" },
@@ -291,6 +294,7 @@ export async function renderCmsPageBySlug(
               sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
               minPrice: f.minPrice,
               maxPrice: f.maxPrice,
+              includeFacets: false,
             });
             applyProductIds({ comp, categoryId, limit, kind }, out);
           })
@@ -330,21 +334,23 @@ export async function renderCmsPageBySlug(
     }
   }
 
-  await Promise.all([
-    ...Array.from(wantSlugs).map(async (slug) => {
-      const p = await getProductBySlug(slug);
-      if (!p) return;
+  const slugList = Array.from(wantSlugs);
+  if (slugList.length) {
+    const products = await listProductsBySlugs(slugList, { lite: true });
+    for (const p of products) {
+      if (!p) continue;
       const imageUrl = getProductPrimaryImage(p);
       const minPrice = getProductMinPrice(p);
       const priceText = minPrice != null ? formatMoney(minPrice, currencyCode) : null;
 
-      slugToId.set(slug, p.id);
+      const slug = p.slug ?? "";
+      if (slug) slugToId.set(slug, p.id);
       if (p.slug) slugToId.set(p.slug, p.id);
       const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, priceText };
       productLookup[p.id] = entry;
       if (p.slug) productLookup[`slug:${p.slug}`] = entry;
-    }),
-  ]);
+    }
+  }
 
   if (slugSections.length) {
     for (const { sec, slugs } of slugSections) {
