@@ -1,8 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
+import type { RequestHandler } from "express";
 import { performance } from "node:perf_hooks";
 import { metricsStore, type RequestMetrics } from "../lib/requestMetrics.js";
 
-export function requestMetrics(req: Request, res: Response, next: NextFunction) {
+export const requestMetrics: RequestHandler = (req, res, next) => {
   const start = performance.now();
   const metrics: RequestMetrics = {
     start,
@@ -52,4 +52,4 @@ export function requestMetrics(req: Request, res: Response, next: NextFunction) 
 
     next();
   });
-}
+};
