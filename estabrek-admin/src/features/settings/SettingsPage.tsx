@@ -136,6 +136,8 @@ type CmsNavItem = {
   children?: CmsNavItem[];
 };
 
+type CmsNavPath = number[];
+
 type CmsNavConfig = {
   enabled: boolean;
   mode: "dropdown" | "mega";
@@ -150,6 +152,58 @@ const cryptoId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 };
+const CMS_NAV_ICON_IMAGE_RE = /^(https?:\/\/|\/|data:image\/)/i;
+
+function createCmsNavItem(label = "جديد"): CmsNavItem {
+  return { id: cryptoId(), label, href: "/", icon: "", children: [] };
+}
+
+function isCmsNavIconImage(value?: string) {
+  const v = String(value ?? "").trim();
+  return v.length > 0 && CMS_NAV_ICON_IMAGE_RE.test(v);
+}
+
+function normalizeCmsNavItems(list: any[]): CmsNavItem[] {
+  return list.map((it: any) => ({
+    id: String(it?.id ?? cryptoId()),
+    label: String(it?.label ?? ""),
+    href: typeof it?.href === "string" ? it.href : "",
+    icon: typeof it?.icon === "string" ? it.icon : "",
+    children: normalizeCmsNavItems(Array.isArray(it?.children) ? it.children : []),
+  }));
+}
+
+function updateCmsNavItemsAtPath(
+  items: CmsNavItem[],
+  path: CmsNavPath,
+  updater: (item: CmsNavItem) => CmsNavItem
+): CmsNavItem[] {
+  if (!Array.isArray(items) || path.length === 0) return items;
+  const [head, ...rest] = path;
+  return items.map((item, idx) => {
+    if (idx !== head) return item;
+    if (rest.length === 0) return updater(item);
+    return {
+      ...item,
+      children: updateCmsNavItemsAtPath(item.children ?? [], rest, updater),
+    };
+  });
+}
+
+function removeCmsNavItemAtPath(items: CmsNavItem[], path: CmsNavPath): CmsNavItem[] {
+  if (!Array.isArray(items) || path.length === 0) return items;
+  if (path.length === 1) {
+    return items.filter((_, idx) => idx !== path[0]);
+  }
+  const [head, ...rest] = path;
+  return items.map((item, idx) => {
+    if (idx !== head) return item;
+    return {
+      ...item,
+      children: removeCmsNavItemAtPath(item.children ?? [], rest),
+    };
+  });
+}
 
 const THEME_PRESETS: Array<{ id: ThemePresetId; label: string }> = [
   { id: "estabrak_soft_gold", label: "Estabrak Soft (Teal + Gold)" },
@@ -541,18 +595,7 @@ function normalizeCmsNav(v: any): CmsNavConfig {
     gradient: (["none","sunset","ocean","neon"].includes(o.gradient) ? o.gradient : "none"),
     templateId,
     showIcons: o.showIcons !== false,
-    items: items.map((it: any) => ({
-      id: String(it.id ?? cryptoId()),
-      label: String(it.label ?? ""),
-      href: it.href ?? "",
-      icon: it.icon ?? "",
-      children: Array.isArray(it.children) ? it.children.map((ch: any) => ({
-        id: String(ch.id ?? cryptoId()),
-        label: String(ch.label ?? ""),
-        href: ch.href ?? "",
-        icon: ch.icon ?? "",
-      })) : [],
-    })),
+    items: normalizeCmsNavItems(items),
   };
 }
 
@@ -919,6 +962,97 @@ export default function SettingsPage() {
     }));
   };
 
+  const updateCmsNavNode = (path: CmsNavPath, updater: (item: CmsNavItem) => CmsNavItem) => {
+    setCmsNavCfg((p) => ({
+      ...p,
+      items: updateCmsNavItemsAtPath(p.items ?? [], path, updater),
+    }));
+  };
+
+  const removeCmsNavNode = (path: CmsNavPath) => {
+    setCmsNavCfg((p) => ({
+      ...p,
+      items: removeCmsNavItemAtPath(p.items ?? [], path),
+    }));
+  };
+
+  const addCmsNavRootItem = () => {
+    setCmsNavCfg((p) => ({
+      ...p,
+      items: [...(p.items ?? []), createCmsNavItem()],
+    }));
+  };
+
+  const addCmsNavChild = (path: CmsNavPath) => {
+    updateCmsNavNode(path, (item) => ({
+      ...item,
+      children: [...(item.children ?? []), createCmsNavItem("فرعي")],
+    }));
+  };
+
+  function renderCmsNavItemEditor(item: CmsNavItem, path: CmsNavPath, depth = 0): React.ReactNode {
+    const titleLabel = depth === 0 ? "العنوان" : "عنوان فرعي";
+    const hrefLabel = depth === 0 ? "الرابط" : "رابط فرعي";
+    const iconLabel = depth === 0
+      ? "الأيقونة (name أو URL صورة)"
+      : "أيقونة فرعية (name أو URL صورة)";
+    const levelLabel = depth === 0 ? "رئيسي" : depth === 1 ? "فرعي" : `فرعي مستوى ${depth}`;
+    const children = item.children ?? [];
+
+    return (
+      <div
+        key={item.id || path.join("-")}
+        className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+        style={{ marginInlineStart: depth > 0 ? Math.min(depth * 18, 72) : 0 }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs text-white/60">مستوى: {levelLabel}</div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => addCmsNavChild(path)}>
+              + عنصر فرعي
+            </Button>
+            <Button size="sm" variant="danger" onClick={() => removeCmsNavNode(path)}>
+              حذف
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <Input
+            label={titleLabel}
+            value={item.label ?? ""}
+            onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, label: value }))}
+          />
+          <Input
+            label={hrefLabel}
+            value={item.href ?? ""}
+            onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, href: value }))}
+          />
+          <Input
+            label={iconLabel}
+            value={item.icon ?? ""}
+            onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, icon: value }))}
+            placeholder="home أو https://.../icon.png"
+          />
+        </div>
+
+        {isCmsNavIconImage(item.icon) ? (
+          <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
+            <img src={item.icon} className="h-5 w-5 rounded object-contain" />
+            <span className="text-xs text-white/60">معاينة أيقونة الصورة</span>
+          </div>
+        ) : null}
+
+        {children.length > 0 ? (
+          <div className="space-y-3 border-r border-white/10 pr-3">
+            {children.map((child, idx) => renderCmsNavItemEditor(child, [...path, idx], depth + 1))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div dir="rtl" className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -992,148 +1126,18 @@ export default function SettingsPage() {
                       />
                       <Button
                         variant="secondary"
-                        onClick={() =>
-                          setCmsNavCfg((p) => ({
-                            ...p,
-                            items: [
-                              ...(p.items ?? []),
-                              { id: cryptoId(), label: "جديد", href: "/", icon: "home", children: [] },
-                            ],
-                          }))
-                        }
+                        onClick={addCmsNavRootItem}
                       >
                         + إضافة عنصر رئيسي
                       </Button>
                     </div>
 
-                    <div className="space-y-3">
-                      {(cmsNavCfg.items ?? []).map((it, i) => (
-                        <div key={it.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                          <div className="grid gap-3 md:grid-cols-4">
-                            <Input
-                              label="العنوان"
-                              value={it.label}
-                              onValueChange={(value) =>
-                                setCmsNavCfg((p) => {
-                                  const next = [...(p.items ?? [])];
-                                  next[i] = { ...next[i], label: value };
-                                  return { ...p, items: next };
-                                })
-                              }
-                            />
-                            <Input
-                              label="الرابط"
-                              value={it.href ?? ""}
-                              onValueChange={(value) =>
-                                setCmsNavCfg((p) => {
-                                  const next = [...(p.items ?? [])];
-                                  next[i] = { ...next[i], href: value };
-                                  return { ...p, items: next };
-                                })
-                              }
-                            />
-                            <Input
-                              label="الأيقونة (home/shop/phone/star/sparkle)"
-                              value={it.icon ?? ""}
-                              onValueChange={(value) =>
-                                setCmsNavCfg((p) => {
-                                  const next = [...(p.items ?? [])];
-                                  next[i] = { ...next[i], icon: value };
-                                  return { ...p, items: next };
-                                })
-                              }
-                            />
-                            <div className="flex items-end gap-2">
-                              <Button
-                                variant="secondary"
-                                onClick={() =>
-                                  setCmsNavCfg((p) => {
-                                    const next = [...(p.items ?? [])];
-                                    next[i] = {
-                                      ...next[i],
-                                      children: [...(next[i].children ?? []), { id: cryptoId(), label: "فرعي", href: "/", icon: "" }],
-                                    };
-                                    return { ...p, items: next };
-                                  })
-                                }
-                              >
-                                + عنصر فرعي
-                              </Button>
-                              <Button
-                                variant="danger"
-                                onClick={() =>
-                                  setCmsNavCfg((p) => ({ ...p, items: (p.items ?? []).filter((_, idx) => idx !== i) }))
-                                }
-                              >
-                                حذف
-                              </Button>
-                            </div>
-                          </div>
+                    <div className="text-xs text-white/60">
+                      الأيقونة تدعم اسم أيقونة (home/shop/phone/star/sparkle) أو رابط صورة.
+                    </div>
 
-                          {(it.children ?? []).length ? (
-                            <div className="space-y-2">
-                              {(it.children ?? []).map((ch, j) => (
-                                <div key={ch.id} className="grid gap-3 md:grid-cols-4">
-                                  <Input
-                                    label="عنوان فرعي"
-                                    value={ch.label}
-                                    onValueChange={(value) =>
-                                      setCmsNavCfg((p) => {
-                                        const next = [...(p.items ?? [])];
-                                        const kids = [...(next[i].children ?? [])];
-                                        kids[j] = { ...kids[j], label: value };
-                                        next[i] = { ...next[i], children: kids };
-                                        return { ...p, items: next };
-                                      })
-                                    }
-                                  />
-                                  <Input
-                                    label="رابط فرعي"
-                                    value={ch.href ?? ""}
-                                    onValueChange={(value) =>
-                                      setCmsNavCfg((p) => {
-                                        const next = [...(p.items ?? [])];
-                                        const kids = [...(next[i].children ?? [])];
-                                        kids[j] = { ...kids[j], href: value };
-                                        next[i] = { ...next[i], children: kids };
-                                        return { ...p, items: next };
-                                      })
-                                    }
-                                  />
-                                  <Input
-                                    label="أيقونة فرعية"
-                                    value={ch.icon ?? ""}
-                                    onValueChange={(value) =>
-                                      setCmsNavCfg((p) => {
-                                        const next = [...(p.items ?? [])];
-                                        const kids = [...(next[i].children ?? [])];
-                                        kids[j] = { ...kids[j], icon: value };
-                                        next[i] = { ...next[i], children: kids };
-                                        return { ...p, items: next };
-                                      })
-                                    }
-                                  />
-                                  <div className="flex items-end">
-                                    <Button
-                                      variant="danger"
-                                      onClick={() =>
-                                        setCmsNavCfg((p) => {
-                                          const next = [...(p.items ?? [])];
-                                          const kids = (next[i].children ?? []).filter((_, k) => k !== j);
-                                          next[i] = { ...next[i], children: kids };
-                                          return { ...p, items: next };
-                                        })
-                                      }
-                                    >
-                                      حذف
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {(cmsNavCfg.items ?? []).map((it, i) => renderCmsNavItemEditor(it, [i]))}
                     </div>
                   </div>
                 </div>
