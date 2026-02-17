@@ -9,6 +9,7 @@ import { corsOrigins, env } from "./config/env.js";
 import routes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.js";
 import { requestId } from "./middleware/requestId.js";
+import { requestMetrics } from "./middleware/requestMetrics.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { cacheControl } from "./middleware/cacheControl.js";
 import { securityHeaders } from "./middleware/securityHeaders.js";
@@ -26,6 +27,7 @@ app.set("trust proxy", env.TRUST_PROXY);
 
 // global middleware
 app.use(requestId);
+app.use(requestMetrics);
 app.use(securityHeaders);
 app.use(httpsOnly);
 function isOriginAllowed(origin: string) {
