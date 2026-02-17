@@ -1,5 +1,4 @@
 import "./globals.css";
-import "../cms/effects/effects.css";
 import Providers from "./providers";
 import { getBootstrap, getPublicSettings } from "@/lib/api";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
@@ -12,6 +11,7 @@ import { UiSettingsProvider } from "@/components/UiSettingsProvider";
 import { HeaderOffset } from "@/components/HeaderOffset";
 import { getLoadingById } from "@/cms/effects/loadingAnimations";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
+import { EffectsStyles } from "@/components/EffectsStyles";
 
 export const metadata = {
   title: "Estabrak Store",
@@ -47,6 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <a href="#main-content" className="skip-link">تخطي إلى المحتوى</a>
         <Providers initialStorefrontSettings={initialStorefrontSettings}>
+          <EffectsStyles />
           <ThemeWrap theme={theme} cursorThemeId={header?.ui?.cursorThemeId} storefrontSettings={initialStorefrontSettings}>
             <UiSettingsProvider loading={loading}>
               {customCss ? <style dangerouslySetInnerHTML={{ __html: customCss }} /> : null}

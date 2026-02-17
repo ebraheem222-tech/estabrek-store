@@ -5,6 +5,7 @@ export type CatalogCategory = {
   name: string;
   slug: string;
   parentId?: string | null;
+  iconUrl?: string | null;
   children?: CatalogCategory[];
 };
 

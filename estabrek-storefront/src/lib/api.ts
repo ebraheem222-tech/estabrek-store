@@ -18,6 +18,7 @@ const CategoriesTreeZ = z.any();
 const ProductsListZ = z.any();
 const ProductZ = z.any();
 const ProductsByIdsZ = z.any();
+const ProductsBySlugsZ = z.any();
 const SettingsZ = z.any();
 const IdsZ = z.any();
 const RecommendZ = z.any();
@@ -154,6 +155,21 @@ export const listProductsByIds = cache(async (ids: string[], opts?: { lite?: boo
   if (!res.ok) throw new Error(`products by ids failed (${res.status})`);
   const json = await res.json();
   const parsed = ProductsByIdsZ.parse(json) as any;
+  const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
+  return Array.isArray(items) ? (items as CatalogProduct[]) : [];
+});
+
+export const listProductsBySlugs = cache(async (slugs: string[], opts?: { lite?: boolean }): Promise<CatalogProduct[]> => {
+  const url = `${baseUrl()}/catalog/products/by-slugs`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slugs, lite: opts?.lite }),
+    next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
+  });
+  if (!res.ok) throw new Error(`products by slugs failed (${res.status})`);
+  const json = await res.json();
+  const parsed = ProductsBySlugsZ.parse(json) as any;
   const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
   return Array.isArray(items) ? (items as CatalogProduct[]) : [];
 });
