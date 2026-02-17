@@ -12,18 +12,22 @@ function FooterItem({ item }: { item: NavItem }) {
   const href = item.href || "#";
   const external = !!item.isExternal || /^https?:\/\//.test(href);
 
+  const linkClassName = "text-sm text-white/70 hover:text-white transition-all duration-200 hover:translate-x-1 inline-block relative group";
+
   const LinkEl = external ? (
     <a
       href={href}
       target={item.target || "_blank"}
       rel="noopener noreferrer"
-      className="text-sm text-white/70 hover:text-white"
+      className={linkClassName}
     >
-      {item.label}
+      <span className="relative z-10">{item.label}</span>
+      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
     </a>
   ) : (
-    <Link href={href} className="text-sm text-white/70 hover:text-white">
-      {item.label}
+    <Link href={href} className={linkClassName}>
+      <span className="relative z-10">{item.label}</span>
+      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
     </Link>
   );
 
@@ -62,9 +66,9 @@ export function Footer({
 
   const bgClass =
     bgPreset === "glass"
-      ? "border-t border-white/[0.08] bg-white/[0.04]"
+      ? "border-t border-white/[0.08] bg-white/[0.04] backdrop-blur-xl"
       : bgPreset === "gradient"
-      ? "border-t border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-black/50"
+      ? "border-t border-[var(--accent)]/20 bg-gradient-to-b from-[var(--surface)]/80 via-[var(--surface-2)]/60 to-black/70 backdrop-blur-md"
       : "border-t border-white/[0.08] bg-black/30";
 
   const columns: any[] = Array.isArray(cfg?.columns) ? cfg.columns : [];
@@ -108,12 +112,14 @@ export function Footer({
                       {(Array.isArray(col.links) ? col.links : []).map((l: any) => (
                         <div key={l.id || l.href}>
                           {/^https?:\/\//.test(String(l.href || "")) ? (
-                            <a href={String(l.href)} target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-white">
-                              {l.label || l.href}
+                            <a href={String(l.href)} target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-white transition-all duration-200 hover:translate-x-1 inline-block relative group">
+                              <span className="relative z-10">{l.label || l.href}</span>
+                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
                             </a>
                           ) : (
-                            <Link href={String(l.href || "#")} className="text-sm text-white/70 hover:text-white">
-                              {l.label || l.href}
+                            <Link href={String(l.href || "#")} className="text-sm text-white/70 hover:text-white transition-all duration-200 hover:translate-x-1 inline-block relative group">
+                              <span className="relative z-10">{l.label || l.href}</span>
+                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] group-hover:w-full transition-all duration-300"></span>
                             </Link>
                           )}
                         </div>
