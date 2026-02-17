@@ -23,6 +23,33 @@ const SettingsZ = z.any();
 const IdsZ = z.any();
 const RecommendZ = z.any();
 
+const DEFAULT_SITE_SETTINGS: SitePublicSettings = {
+  id: "default",
+  siteName: "Store",
+  currencyCode: "ILS",
+};
+
+const DEFAULT_BOOTSTRAP: StorefrontBootstrap = {
+  site: DEFAULT_SITE_SETTINGS,
+  primaryMenu: null,
+  footerMenu: null,
+  pages: [],
+};
+
+const EMPTY_PRODUCTS_LIST: CatalogProductsList = {
+  items: [],
+  total: 0,
+  page: 1,
+  pageSize: 24,
+  totalPages: 1,
+  facets: { colors: [], sizes: [] },
+};
+
+function warnApiFallback(name: string, error?: unknown) {
+  const detail = error instanceof Error ? error.message : String(error ?? "");
+  console.warn(`[api:fallback] ${name}${detail ? ` - ${detail}` : ""}`);
+}
+
 function parseMaybeJson<T>(value: T) {
   if (typeof value !== "string") return value;
   try {
@@ -47,23 +74,31 @@ function normalizeSiteSettings(site: any) {
 }
 
 export const getBootstrap = cache(async (): Promise<StorefrontBootstrap> => {
-  const url = `${baseUrl()}/storefront/bootstrap`;
-  const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:bootstrap"] } });
-  if (!res.ok) {
-    throw new Error(`bootstrap failed (${res.status})`);
+  try {
+    const url = `${baseUrl()}/storefront/bootstrap`;
+    const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:bootstrap"] } });
+    if (!res.ok) throw new Error(`bootstrap failed (${res.status})`);
+    const json = await res.json();
+    const parsed = BootstrapZ.parse(json) as StorefrontBootstrap;
+    return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as StorefrontBootstrap;
+  } catch (error) {
+    warnApiFallback("getBootstrap", error);
+    return { ...DEFAULT_BOOTSTRAP };
   }
-  const json = await res.json();
-  const parsed = BootstrapZ.parse(json) as StorefrontBootstrap;
-  return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as StorefrontBootstrap;
 });
 
 export const getPageBySlug = cache(async (slug: string): Promise<StorefrontPage | null> => {
-  const url = `${baseUrl()}/storefront/page?slug=${encodeURIComponent(slug)}`;
-  const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:pages"] } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`page failed (${res.status})`);
-  const json = await res.json();
-  return PageZ.parse(json) as StorefrontPage;
+  try {
+    const url = `${baseUrl()}/storefront/page?slug=${encodeURIComponent(slug)}`;
+    const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:pages"] } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`page failed (${res.status})`);
+    const json = await res.json();
+    return PageZ.parse(json) as StorefrontPage;
+  } catch (error) {
+    warnApiFallback("getPageBySlug", error);
+    return null;
+  }
 });
 
 // -------------------------------
@@ -71,19 +106,29 @@ export const getPageBySlug = cache(async (slug: string): Promise<StorefrontPage 
 // -------------------------------
 
 export const getCategoriesTree = cache(async (): Promise<CatalogCategory[]> => {
-  const url = `${baseUrl()}/catalog/categories/tree`;
-  const res = await fetch(url, { next: { revalidate: 300, tags: ["catalog", "catalog:categories"] } });
-  if (!res.ok) throw new Error(`categories tree failed (${res.status})`);
-  const json = await res.json();
-  return CategoriesTreeZ.parse(json) as CatalogCategory[];
+  try {
+    const url = `${baseUrl()}/catalog/categories/tree`;
+    const res = await fetch(url, { next: { revalidate: 300, tags: ["catalog", "catalog:categories"] } });
+    if (!res.ok) throw new Error(`categories tree failed (${res.status})`);
+    const json = await res.json();
+    return CategoriesTreeZ.parse(json) as CatalogCategory[];
+  } catch (error) {
+    warnApiFallback("getCategoriesTree", error);
+    return [];
+  }
 });
 
 export const listCategories = cache(async (): Promise<CatalogCategory[]> => {
-  const url = `${baseUrl()}/catalog/categories`;
-  const res = await fetch(url, { next: { revalidate: 300, tags: ["catalog", "catalog:categories"] } });
-  if (!res.ok) throw new Error(`categories failed (${res.status})`);
-  const json = await res.json();
-  return CategoriesTreeZ.parse(json) as CatalogCategory[];
+  try {
+    const url = `${baseUrl()}/catalog/categories`;
+    const res = await fetch(url, { next: { revalidate: 300, tags: ["catalog", "catalog:categories"] } });
+    if (!res.ok) throw new Error(`categories failed (${res.status})`);
+    const json = await res.json();
+    return CategoriesTreeZ.parse(json) as CatalogCategory[];
+  } catch (error) {
+    warnApiFallback("listCategories", error);
+    return [];
+  }
 });
 
 
@@ -113,65 +158,90 @@ export const listProducts = cache(
     includeFacets?: boolean;
     semantic?: boolean;
   }): Promise<CatalogProductsList> => {
-    const usp = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) {
-      if (v === undefined || v === null || v === "") continue;
-      usp.set(k, String(v));
+    try {
+      const usp = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) {
+        if (v === undefined || v === null || v === "") continue;
+        usp.set(k, String(v));
+      }
+      const url = `${baseUrl()}/catalog/products?${usp.toString()}`;
+      const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
+      if (!res.ok) throw new Error(`products failed (${res.status})`);
+      const json = await res.json();
+      return ProductsListZ.parse(json) as CatalogProductsList;
+    } catch (error) {
+      warnApiFallback("listProducts", error);
+      return { ...EMPTY_PRODUCTS_LIST };
     }
-    const url = `${baseUrl()}/catalog/products?${usp.toString()}`;
-    const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
-    if (!res.ok) throw new Error(`products failed (${res.status})`);
-    const json = await res.json();
-    return ProductsListZ.parse(json) as CatalogProductsList;
   }
 );
 
 export const getProductById = cache(async (id: string): Promise<CatalogProduct | null> => {
-  const url = `${baseUrl()}/catalog/products/${encodeURIComponent(id)}`;
-  const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`product failed (${res.status})`);
-  const json = await res.json();
-  return ProductZ.parse(json) as CatalogProduct;
+  try {
+    const url = `${baseUrl()}/catalog/products/${encodeURIComponent(id)}`;
+    const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`product failed (${res.status})`);
+    const json = await res.json();
+    return ProductZ.parse(json) as CatalogProduct;
+  } catch (error) {
+    warnApiFallback("getProductById", error);
+    return null;
+  }
 });
 
 export const getProductBySlug = cache(async (slug: string): Promise<CatalogProduct | null> => {
-  const url = `${baseUrl()}/catalog/products/slug/${encodeURIComponent(slug)}`;
-  const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`product failed (${res.status})`);
-  const json = await res.json();
-  return ProductZ.parse(json) as CatalogProduct;
+  try {
+    const url = `${baseUrl()}/catalog/products/slug/${encodeURIComponent(slug)}`;
+    const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`product failed (${res.status})`);
+    const json = await res.json();
+    return ProductZ.parse(json) as CatalogProduct;
+  } catch (error) {
+    warnApiFallback("getProductBySlug", error);
+    return null;
+  }
 });
 
 export const listProductsByIds = cache(async (ids: string[], opts?: { lite?: boolean }): Promise<CatalogProduct[]> => {
-  const url = `${baseUrl()}/catalog/products/by-ids`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids, lite: opts?.lite }),
-    next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
-  });
-  if (!res.ok) throw new Error(`products by ids failed (${res.status})`);
-  const json = await res.json();
-  const parsed = ProductsByIdsZ.parse(json) as any;
-  const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
-  return Array.isArray(items) ? (items as CatalogProduct[]) : [];
+  try {
+    const url = `${baseUrl()}/catalog/products/by-ids`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, lite: opts?.lite }),
+      next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
+    });
+    if (!res.ok) throw new Error(`products by ids failed (${res.status})`);
+    const json = await res.json();
+    const parsed = ProductsByIdsZ.parse(json) as any;
+    const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
+    return Array.isArray(items) ? (items as CatalogProduct[]) : [];
+  } catch (error) {
+    warnApiFallback("listProductsByIds", error);
+    return [];
+  }
 });
 
 export const listProductsBySlugs = cache(async (slugs: string[], opts?: { lite?: boolean }): Promise<CatalogProduct[]> => {
-  const url = `${baseUrl()}/catalog/products/by-slugs`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slugs, lite: opts?.lite }),
-    next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
-  });
-  if (!res.ok) throw new Error(`products by slugs failed (${res.status})`);
-  const json = await res.json();
-  const parsed = ProductsBySlugsZ.parse(json) as any;
-  const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
-  return Array.isArray(items) ? (items as CatalogProduct[]) : [];
+  try {
+    const url = `${baseUrl()}/catalog/products/by-slugs`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slugs, lite: opts?.lite }),
+      next: { revalidate: 60, tags: ["catalog", "catalog:products"] },
+    });
+    if (!res.ok) throw new Error(`products by slugs failed (${res.status})`);
+    const json = await res.json();
+    const parsed = ProductsBySlugsZ.parse(json) as any;
+    const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
+    return Array.isArray(items) ? (items as CatalogProduct[]) : [];
+  } catch (error) {
+    warnApiFallback("listProductsBySlugs", error);
+    return [];
+  }
 });
 
 // -------------------------------
@@ -179,12 +249,17 @@ export const listProductsBySlugs = cache(async (slugs: string[], opts?: { lite?:
 // -------------------------------
 
 export const getPublicSettings = cache(async (): Promise<{ site: SitePublicSettings }> => {
-  const url = `${baseUrl()}/settings`;
-  const res = await fetch(url, { next: { revalidate: 30, tags: ["settings"] } });
-  if (!res.ok) throw new Error(`settings failed (${res.status})`);
-  const json = await res.json();
-  const parsed = SettingsZ.parse(json) as { site: SitePublicSettings };
-  return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as { site: SitePublicSettings };
+  try {
+    const url = `${baseUrl()}/settings`;
+    const res = await fetch(url, { next: { revalidate: 30, tags: ["settings"] } });
+    if (!res.ok) throw new Error(`settings failed (${res.status})`);
+    const json = await res.json();
+    const parsed = SettingsZ.parse(json) as { site: SitePublicSettings };
+    return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as { site: SitePublicSettings };
+  } catch (error) {
+    warnApiFallback("getPublicSettings", error);
+    return { site: { ...DEFAULT_SITE_SETTINGS } };
+  }
 });
 
 // -------------------------------
@@ -192,21 +267,31 @@ export const getPublicSettings = cache(async (): Promise<{ site: SitePublicSetti
 // -------------------------------
 
 export const getNewArrivalsIds = cache(async (limit: number = 12): Promise<string[]> => {
-  const url = `${baseUrl()}/storefront/products/new-arrivals?limit=${encodeURIComponent(String(limit))}`;
-  const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
-  if (!res.ok) throw new Error(`new-arrivals failed (${res.status})`);
-  const json = await res.json();
-  const parsed = IdsZ.parse(json) as any;
-  return Array.isArray(parsed?.productIds) ? parsed.productIds : [];
+  try {
+    const url = `${baseUrl()}/storefront/products/new-arrivals?limit=${encodeURIComponent(String(limit))}`;
+    const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
+    if (!res.ok) throw new Error(`new-arrivals failed (${res.status})`);
+    const json = await res.json();
+    const parsed = IdsZ.parse(json) as any;
+    return Array.isArray(parsed?.productIds) ? parsed.productIds : [];
+  } catch (error) {
+    warnApiFallback("getNewArrivalsIds", error);
+    return [];
+  }
 });
 
 export const getBestSellersIds = cache(async (limit: number = 12): Promise<string[]> => {
-  const url = `${baseUrl()}/storefront/products/best-sellers?limit=${encodeURIComponent(String(limit))}`;
-  const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
-  if (!res.ok) throw new Error(`best-sellers failed (${res.status})`);
-  const json = await res.json();
-  const parsed = IdsZ.parse(json) as any;
-  return Array.isArray(parsed?.productIds) ? parsed.productIds : [];
+  try {
+    const url = `${baseUrl()}/storefront/products/best-sellers?limit=${encodeURIComponent(String(limit))}`;
+    const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
+    if (!res.ok) throw new Error(`best-sellers failed (${res.status})`);
+    const json = await res.json();
+    const parsed = IdsZ.parse(json) as any;
+    return Array.isArray(parsed?.productIds) ? parsed.productIds : [];
+  } catch (error) {
+    warnApiFallback("getBestSellersIds", error);
+    return [];
+  }
 });
 
 // -------------------------------
@@ -256,13 +341,18 @@ export const recommendProducts = cache(async (params: {
 
 // List CMS pages (for sitemap)
 export const listPages = cache(async (): Promise<Array<{ slug: string }>> => {
-  const url = `${baseUrl()}/storefront/pages`;
-  const res = await fetch(url, { next: { revalidate: 300, tags: ["cms", "cms:pages"] } });
-  if (!res.ok) return [];
-  const json = await res.json();
-  const arr = Array.isArray((json as any)?.pages) ? (json as any).pages : json;
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((p: any) => ({ slug: String(p?.slug || "") }))
-    .filter((p: any) => p.slug);
+  try {
+    const url = `${baseUrl()}/storefront/pages`;
+    const res = await fetch(url, { next: { revalidate: 300, tags: ["cms", "cms:pages"] } });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const arr = Array.isArray((json as any)?.pages) ? (json as any).pages : json;
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map((p: any) => ({ slug: String(p?.slug || "") }))
+      .filter((p: any) => p.slug);
+  } catch (error) {
+    warnApiFallback("listPages", error);
+    return [];
+  }
 });
