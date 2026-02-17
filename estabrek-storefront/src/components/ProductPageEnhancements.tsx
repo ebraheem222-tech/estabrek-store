@@ -327,7 +327,7 @@ export function ProductPageEnhancements({ product }: ProductPageEnhancementsProp
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[var(--text)]">المقاسات المتوفرة</h3>
+              <h3 className="text-sm font-bold text-[var(--text)]">المقاسات</h3>
               <p className="text-xs text-[var(--muted)]">اختر المقاس المناسب لك</p>
             </div>
           </div>
