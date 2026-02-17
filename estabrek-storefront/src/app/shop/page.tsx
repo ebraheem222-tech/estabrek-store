@@ -106,7 +106,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   ]);
 
   return (
-    <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl space-y-8 px-4 py-8" dir="rtl">
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl space-y-8 px-4 py-8 bg-dots" dir="rtl">
       <NormalizeFilters basePath="/shop" />
       
       {/* Breadcrumb */}
@@ -121,24 +121,29 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
         </nav>
       ) : null}
 
-      {/* Shop Header */}
-      <div className="shop-hero">
+      {/* Shop Header - Enhanced with Premium Design */}
+      <div className="shop-hero relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[var(--accent)]/10 via-[var(--accent-2)]/10 to-transparent border border-[var(--accent)]/20 backdrop-blur-sm">
+        {/* Animated Background Shapes */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/10 rounded-full blur-3xl float-animation pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[var(--accent-2)]/10 rounded-full blur-3xl float-animation pointer-events-none" style={{animationDelay: '1s'}}></div>
+
         <div className="relative z-10">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white shadow-premium">
                 <ShopIcon />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-[var(--text)]">المتجر</h1>
-                <p className="text-[var(--muted)] text-sm mt-1">
+                <h1 className="text-2xl md:text-3xl font-bold text-gradient-animated">المتجر</h1>
+                <p className="text-[var(--muted)] text-sm mt-1 slide-in-up">
                   تصفح جميع منتجاتنا المميزة
                 </p>
               </div>
             </div>
-            <div className="search-results-count">
+            <div className="search-results-count flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--accent)]/20 to-[var(--accent-2)]/20 border border-[var(--accent)]/30 backdrop-blur-sm card-lift">
               <ProductsIcon />
-              {out.total ?? 0} منتج
+              <span className="font-bold text-gradient-primary">{out.total ?? 0}</span>
+              <span className="text-sm">منتج</span>
             </div>
           </div>
         </div>
