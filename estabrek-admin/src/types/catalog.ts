@@ -7,6 +7,7 @@ export type Category = WithTimestamps & {
   name: string;
   slug: string;
   parentId?: ID | null;
+  iconUrl?: string | null;
 
   parent?: Category | null;
   children?: Category[];
@@ -91,7 +92,7 @@ export type ProductFull = Product & {
 };
 
 /** Inputs used in admin editors (handy for forms) */
-export type CreateCategoryInput = { name: string; slug: string; parentId?: ID | null };
+export type CreateCategoryInput = { name: string; slug: string; parentId?: ID | null; iconUrl?: string | null };
 export type UpdateCategoryInput = Partial<CreateCategoryInput>;
 
 export type CreateProductInput = {

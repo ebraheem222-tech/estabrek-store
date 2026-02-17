@@ -7,6 +7,8 @@ export type SiteSettings = {
   id: ID;
 
   siteName: string;
+  currencyCode?: string | null;
+  storeCountryCode?: string | null;
   logoUrl?: string | null;
   faviconUrl?: string | null;
 
@@ -26,6 +28,17 @@ export type SiteSettings = {
 
   contactEmail?: string | null;
   contactPhone?: string | null;
+  checkoutMode?: "WHATSAPP" | "STRIPE" | "PAYPAL" | "PAYMENTS";
+  ordersEmail?: string | null;
+  whatsappNumber?: string | null;
+  stripeEnabled?: boolean;
+  stripePublicKey?: string | null;
+  stripeSecretKey?: string | null;
+  stripeWebhookSecret?: string | null;
+  paypalEnabled?: boolean;
+  paypalClientId?: string | null;
+  paypalClientSecret?: string | null;
+  paypalWebhookId?: string | null;
 
   // Phase 1A: Global announcement bar
   announcementIsActive?: boolean;
@@ -40,6 +53,8 @@ export type UpdateSettingsInput = Partial<
   Pick<
     SiteSettings,
     | "siteName"
+    | "currencyCode"
+    | "storeCountryCode"
     | "logoUrl"
     | "faviconUrl"
     | "header"
@@ -49,6 +64,17 @@ export type UpdateSettingsInput = Partial<
     | "customCss"
     | "contactEmail"
     | "contactPhone"
+    | "checkoutMode"
+    | "ordersEmail"
+    | "whatsappNumber"
+    | "stripeEnabled"
+    | "stripePublicKey"
+    | "stripeSecretKey"
+    | "stripeWebhookSecret"
+    | "paypalEnabled"
+    | "paypalClientId"
+    | "paypalClientSecret"
+    | "paypalWebhookId"
     | "announcementIsActive"
     | "announcementText"
     | "announcementLinkUrl"

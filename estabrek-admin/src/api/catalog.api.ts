@@ -8,6 +8,7 @@ export type CatalogCategory = {
   name: string;
   slug: string;
   parentId?: string | null;
+  iconUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -77,12 +78,12 @@ export async function listCategories() {
   return res.data as CatalogCategory[];
 }
 
-export async function createCategory(body: { name: string; slug: string; parentId?: string | null }) {
+export async function createCategory(body: { name: string; slug: string; parentId?: string | null; iconUrl?: string | null }) {
   const res = await api.post(ENDPOINTS.admin.catalog.categories.base, body);
   return res.data as CatalogCategory;
 }
 
-export async function updateCategory(id: string, body: Partial<{ name: string; slug: string; parentId?: string | null }>) {
+export async function updateCategory(id: string, body: Partial<{ name: string; slug: string; parentId?: string | null; iconUrl?: string | null }>) {
   const res = await api.patch(ENDPOINTS.admin.catalog.categories.byId(id), body);
   return res.data as CatalogCategory;
 }

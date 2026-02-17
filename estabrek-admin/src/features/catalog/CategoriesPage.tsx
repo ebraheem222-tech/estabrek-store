@@ -8,6 +8,7 @@ import { Select } from "../../components/ui/Select";
 import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Spinner } from "../../components/ui/Spinner";
+import { MediaUrlInput } from "../../components/media/MediaUrlInput";
 
 function slugify(input: string) {
   return input
@@ -41,6 +42,7 @@ export default function CategoriesPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [parentId, setParentId] = useState<string>("");
+  const [iconUrl, setIconUrl] = useState("");
 
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -50,6 +52,7 @@ export default function CategoriesPage() {
     setName("");
     setSlug("");
     setParentId("");
+    setIconUrl("");
     setErrors({});
     setOpen(true);
   };
@@ -60,6 +63,7 @@ export default function CategoriesPage() {
     setName(c?.name ?? "");
     setSlug(c?.slug ?? "");
     setParentId(c?.parentId ?? "");
+    setIconUrl(c?.iconUrl ?? "");
     setErrors({});
     setOpen(true);
   };
@@ -69,6 +73,7 @@ export default function CategoriesPage() {
       name: name.trim(),
       slug: slug.trim(),
       parentId: parentId ? parentId : null,
+      iconUrl: iconUrl.trim() ? iconUrl.trim() : null,
     };
 
     const nextErrors: FieldErrors = {};
@@ -103,6 +108,67 @@ export default function CategoriesPage() {
     }
   };
 
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string | null, any[]>();
+    categories.forEach((c) => {
+      const key = c.parentId ?? null;
+      const arr = m.get(key) ?? [];
+      arr.push(c);
+      m.set(key, arr);
+    });
+    return m;
+  }, [categories]);
+
+  const treeList = useMemo(() => {
+    const out: Array<{ cat: any; depth: number }> = [];
+    const walk = (parent: string | null, depth: number) => {
+      const list = (childrenByParent.get(parent) ?? []).slice();
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      for (const c of list) {
+        out.push({ cat: c, depth });
+        walk(c.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+    return out;
+  }, [childrenByParent]);
+
+  const descendantsOf = useMemo(() => {
+    const collect = (rootId: string) => {
+      const out = new Set<string>();
+      const stack = [rootId];
+      while (stack.length) {
+        const id = stack.pop()!;
+        const kids = childrenByParent.get(id) ?? [];
+        for (const k of kids) {
+          if (out.has(k.id)) continue;
+          out.add(k.id);
+          stack.push(k.id);
+        }
+      }
+      return out;
+    };
+    return collect;
+  }, [childrenByParent]);
+
+  const blockedIds = useMemo(() => {
+    if (!editingId) return new Set<string>();
+    const d = descendantsOf(editingId);
+    d.add(editingId);
+    return d;
+  }, [descendantsOf, editingId]);
+
+  const parentOptions = useMemo(
+    () =>
+      treeList
+        .filter(({ cat }) => !blockedIds.has(cat.id))
+        .map(({ cat, depth }) => ({
+          value: cat.id,
+          label: `${"—".repeat(depth)} ${cat.name}`,
+        })),
+    [blockedIds, treeList]
+  );
+
   return (
     <div dir="rtl" className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -128,11 +194,16 @@ export default function CategoriesPage() {
         ) : (
                     <>
             <div className="space-y-3 sm:hidden">
-              {categories.map((c) => (
+              {treeList.map(({ cat: c, depth }) => (
                 <div key={c.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <div className="text-sm font-semibold">{c.name}</div>
+                      <div className="flex items-center gap-2 text-sm font-semibold" style={{ paddingRight: depth * 12 }}>
+                        {c.iconUrl ? (
+                          <img src={c.iconUrl} alt="" className="h-6 w-6 rounded-lg border border-white/10 object-cover" />
+                        ) : null}
+                        <span>{c.name}</span>
+                      </div>
                       <div dir="ltr" className="mt-1 text-xs opacity-70">{c.slug}</div>
                       <div className="mt-1 text-xs opacity-70">
                         {c.parentId ? byId.get(c.parentId)?.name ?? "-" : "-"}
@@ -157,17 +228,35 @@ export default function CategoriesPage() {
                     <TH>الاسم</TH>
                     <TH>Slug</TH>
                     <TH>الأب</TH>
+                    <TH>الأيقونة</TH>
                     <TH className="w-40">الإجراءات</TH>
                   </TR>
                 </THead>
                 <TBody>
-                  {categories.map((c) => (
+                  {treeList.map(({ cat: c, depth }) => (
                     <TR key={c.id}>
-                      <TD className="font-medium">{c.name}</TD>
+                      <TD className="font-medium">
+                        <div className="flex items-center gap-2" style={{ paddingRight: depth * 12 }}>
+                          {c.iconUrl ? (
+                            <img src={c.iconUrl} alt="" className="h-7 w-7 rounded-lg border border-white/10 object-cover" />
+                          ) : null}
+                          <span>{c.name}</span>
+                        </div>
+                      </TD>
                       <TD dir="ltr" className="text-left opacity-80">
                         {c.slug}
                       </TD>
                       <TD className="opacity-80">{c.parentId ? byId.get(c.parentId)?.name ?? "-" : "-"}</TD>
+                      <TD className="opacity-80">
+                        {c.iconUrl ? (
+                          <span className="inline-flex items-center gap-2">
+                            <img src={c.iconUrl} alt="" className="h-7 w-7 rounded-lg border border-white/10 object-cover" />
+                            <span className="text-xs">تم</span>
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </TD>
                       <TD>
                         <div className="flex gap-2">
                           <Button variant="secondary" onClick={() => openEdit(c.id)}>
@@ -232,7 +321,15 @@ export default function CategoriesPage() {
             value={parentId}
             onChange={(e) => setParentId(e.target.value)}
             placeholder="بدون"
-            options={categories.map((x) => ({ value: x.id, label: x.name }))}
+            options={parentOptions}
+          />
+
+          <MediaUrlInput
+            label="أيقونة التصنيف (اختياري)"
+            value={iconUrl}
+            onChange={setIconUrl}
+            placeholder="https://... أو /uploads/..."
+            showPreview
           />
         </div>
       </Modal>
