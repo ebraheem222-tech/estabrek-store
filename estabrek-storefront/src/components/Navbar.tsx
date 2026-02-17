@@ -14,6 +14,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useTheme } from "@/components/ThemeToggle";
 
 const EXTERNAL_PROTOCOL_RE = /^[a-z][a-z0-9+.-]*:/i;
+const NAV_ICON_IMAGE_RE = /^(https?:\/\/|\/|data:image\/)/i;
 
 function isExternalHref(href: string) {
   return EXTERNAL_PROTOCOL_RE.test(href) || href.startsWith("//");
@@ -28,6 +29,11 @@ function normalizeNavHref(value?: string) {
   if (raw.startsWith("?")) return raw;
   const cleaned = raw.replace(/^(\.\/)+/, "").replace(/^\/+/, "");
   return `/${cleaned}`;
+}
+
+function isNavImageIcon(value?: string) {
+  const raw = String(value ?? "").trim();
+  return raw.length > 0 && NAV_ICON_IMAGE_RE.test(raw);
 }
 
 
@@ -80,7 +86,20 @@ function NavNode({
   };
   function Icon({ name }: { name?: string }) {
     if (!showIcons) return null;
-    const d = iconPaths[String(name ?? "")];
+    const rawName = String(name ?? "").trim();
+    if (!rawName) return null;
+    if (isNavImageIcon(rawName)) {
+      return (
+        // eslint-disable-next-line jsx-a11y/alt-text
+        <img
+          src={rawName}
+          className="h-4 w-4 rounded-sm object-contain"
+          loading="lazy"
+          decoding="async"
+        />
+      );
+    }
+    const d = iconPaths[rawName];
     if (!d) return null;
     return (
       <svg viewBox="0 0 24 24" className="h-4 w-4 opacity-90" fill="none" stroke="currentColor" strokeWidth="2">
@@ -307,6 +326,43 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const navDrawerItem = "rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 overflow-hidden";
   const navDrawerLink = "block w-full px-4 py-3 font-semibold text-[color:var(--text)]";
   const navDrawerSubLink = "block w-full px-4 py-2 text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
+
+  function renderMobileNavNode(item: any, depth = 0, nodeKey = "node"): React.ReactNode {
+    const key = item?.id ?? item?.href ?? item?.label ?? nodeKey;
+    const href = normalizeNavHref(item?.href);
+    const external = !!item?.isExternal || isExternalHref(href);
+    const children = Array.isArray(item?.children) ? item.children : [];
+    const hasChildren = children.length > 0;
+    const marginInlineStart = depth > 0 ? Math.min(depth * 14, 56) : 0;
+    const containerClass =
+      depth === 0
+        ? navDrawerItem
+        : "rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 overflow-hidden";
+    const linkClass = depth === 0 ? navDrawerLink : `${navDrawerSubLink} font-medium`;
+    const nestedWrapClass = depth === 0 ? "border-t border-white/10 dark:border-white/10" : "border-t border-white/10";
+
+    return (
+      <div key={key} className={containerClass} style={{ marginInlineStart }}>
+        {external ? (
+          <a href={href} className={linkClass} target={item?.target || "_blank"} rel="noopener noreferrer">
+            {item?.label}
+          </a>
+        ) : (
+          <Link href={href} prefetch={settings.prefetchLinks} className={linkClass}>
+            {item?.label}
+          </Link>
+        )}
+
+        {hasChildren ? (
+          <div className={`${nestedWrapClass} space-y-1 p-2`}>
+            {children.map((child: any, idx: number) =>
+              renderMobileNavNode(child, depth + 1, `${nodeKey}-${idx}`)
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   function SearchControl({ withLabel }: { withLabel?: boolean }) {
     if (searchStyle !== "icon") return <SearchBox styleId={searchInputStyleId} />;
@@ -598,59 +654,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
               </Link>
             ) : null}
             <div className="space-y-2">
-              {navItems.map((it: any) => (
-                <div key={it.id ?? it.href ?? it.label} className={navDrawerItem}>
-                  {(() => {
-                    const href = normalizeNavHref(it.href);
-                    const external = !!it.isExternal || isExternalHref(href);
-                    if (external) {
-                      return (
-                        <a
-                          href={href}
-                          className={navDrawerLink}
-                          target={it.target || "_blank"}
-                          rel="noopener noreferrer"
-                        >
-                          {it.label}
-                        </a>
-                      );
-                    }
-                    return (
-                      <Link href={href} prefetch={settings.prefetchLinks} className={navDrawerLink}>
-                        {it.label}
-                      </Link>
-                    );
-                  })()}
-                  {(it.children ?? []).length ? (
-                    <div className="border-t border-white/10 dark:border-white/10">
-                      {(it.children ?? []).map((ch: any) => (
-                        (() => {
-                          const href = normalizeNavHref(ch.href);
-                          const external = !!ch.isExternal || isExternalHref(href);
-                          if (external) {
-                            return (
-                              <a
-                                key={ch.id ?? ch.href ?? ch.label}
-                                href={href}
-                                className={navDrawerSubLink}
-                                target={ch.target || "_blank"}
-                                rel="noopener noreferrer"
-                              >
-                                {ch.label}
-                              </a>
-                            );
-                          }
-                          return (
-                            <Link key={ch.id ?? ch.href ?? ch.label} href={href} prefetch={settings.prefetchLinks} className={navDrawerSubLink}>
-                              {ch.label}
-                            </Link>
-                          );
-                        })()
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+              {navItems.map((it: any, idx: number) => renderMobileNavNode(it, 0, `root-${idx}`))}
             </div>
           </div>
         </div>
