@@ -241,7 +241,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
     <div className="perspective-container">
       <div
         ref={cardRef}
-        className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300 hover:shadow-premium"
+        className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300"
         onMouseEnter={() => {
           if (prefetchEnabled) {
             router.prefetch(`/p/${product.slug}`);
@@ -264,7 +264,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
                     (badge.tone === "danger"
                       ? "bg-gradient-to-r from-red-500 to-red-600 text-white"
                       : badge.tone === "gold"
-                      ? "bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-black pulse-glow"
+                      ? "bg-gradient-to-r from-amber-400 to-orange-500 text-black"
                       : "bg-[var(--text)]/90 text-[var(--bg)]")
                   }
                 >
@@ -316,8 +316,8 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
               </div>
             )}
 
-            {/* Gradient Overlay - Enhanced for dramatic effect */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
 
             {/* Shimmer Effect on Hover */}
             <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 z-10">
@@ -339,10 +339,10 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
               </button>
             ) : null}
 
-            {/* Quick Add Button - Slides up on hover with gradient */}
+            {/* Quick Add Button - Slides up on hover */}
             <div className="absolute inset-x-0 bottom-0 p-3 z-20">
               <div className="quick-add-slide">
-                <QuickAddButton product={product} buttonLabel="إضافة سريعة" className="w-full backdrop-blur-sm bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] hover:shadow-glow-medium transition-all duration-300" />
+                <QuickAddButton product={product} buttonLabel="إضافة سريعة" className="w-full backdrop-blur-sm" />
               </div>
             </div>
 
@@ -393,10 +393,10 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
                   <button
                     key={s.key}
                     type="button"
-                    className={`color-swatch h-5 w-5 rounded-full border-2 transition-all duration-200 ${
-                      activeSwatch === s.key
-                        ? 'border-[var(--accent)] scale-110 active ring-2 ring-[var(--accent)] ring-opacity-30'
-                        : 'border-[var(--border)] hover:border-white/30 hover:scale-105 hover:shadow-md'
+                    className={`color-swatch h-5 w-5 rounded-full border-2 transition-all ${
+                      activeSwatch === s.key 
+                        ? 'border-[var(--accent)] scale-110 active' 
+                        : 'border-[var(--border)] hover:border-white/30'
                     }`}
                     style={{ background: s.hex ?? "linear-gradient(135deg, #ddd, #999)" }}
                     title={s.name}

@@ -1,434 +1,262 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { getCategoriesTree, listProducts, getBootstrap } from "@/lib/api";
-import { ProductTile } from "@/components/ProductTile";
-import { CountdownTimer } from "@/components/CountdownTimer";
+import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
+import type { CatalogProduct, CatalogCategory } from "@/lib/catalog";
+import {
+  GsapReveal,
+  GsapStagger,
+  GsapCounter,
+  FloatingOrbs,
+  CandyTicker,
+} from "./candy/GsapAnimations";
 
-// Icons
 const ShoppingBagIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
   </svg>
 );
-
-const SparklesIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-  </svg>
-);
-
 const ArrowLeftIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
   </svg>
 );
-
-const TagIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+const SparklesIcon = () => (
+  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+    <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+  </svg>
+);
+const StarFill = () => (
+  <svg className="w-3 h-3" fill="#F59E0B" viewBox="0 0 20 20">
+    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
   </svg>
 );
 
-const TruckIcon = () => (
-  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-  </svg>
-);
+const CATEGORY_GRADIENTS = [
+  "linear-gradient(135deg, #7C3AED, #EC4899)",
+  "linear-gradient(135deg, #06B6D4, #7C3AED)",
+  "linear-gradient(135deg, #10B981, #06B6D4)",
+  "linear-gradient(135deg, #F59E0B, #EF4444)",
+  "linear-gradient(135deg, #EF4444, #EC4899)",
+  "linear-gradient(135deg, #F97316, #F59E0B)",
+  "linear-gradient(135deg, #EC4899, #F97316)",
+  "linear-gradient(135deg, #A78BFA, #7C3AED)",
+];
+const CAT_EMOJIS = ["👗","👟","💄","🎒","⌚","💎","🛍","🎯"];
 
-const ShieldIcon = () => (
-  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-  </svg>
-);
-
-const RefreshIcon = () => (
-  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-  </svg>
-);
-
-const HeartIcon = () => (
-  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-  </svg>
-);
-
-const GridIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-  </svg>
-);
-
-const ChevronLeftIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-  </svg>
-);
-
-const StarIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-);
-
-const FireIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-  </svg>
-);
-
-const GiftIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-  </svg>
-);
+function ProductCard({ product, idx = 0, currencyCode = "ILS" }: { product: CatalogProduct; idx?: number; currencyCode?: string }) {
+  const imageUrl = getProductPrimaryImage(product);
+  const price = getProductMinPrice(product);
+  return (
+    <Link href={`/p/${product.slug}`} className="candy-product-card reveal-up" style={{ transitionDelay: `${idx * 60}ms` }}>
+      <div className="candy-product-image-wrap">
+        {imageUrl ? (
+          <img src={imageUrl} alt={product.title} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.6s ease" }} loading="lazy" />
+        ) : (
+          <div className="candy-product-no-image">🛍</div>
+        )}
+        <div className="candy-product-overlay">
+          <span className="candy-btn candy-btn-primary candy-btn-sm">
+            <ShoppingBagIcon /> أضف للسلة
+          </span>
+        </div>
+        {idx < 4 && <span className="candy-product-badge candy-product-badge-new">جديد ✨</span>}
+      </div>
+      <div className="candy-product-body">
+        {product.category && <div className="candy-product-category">{product.category.name}</div>}
+        <h3 className="candy-product-title">{product.title}</h3>
+        <div className="candy-product-price-row">
+          <span className="candy-product-price">{price != null ? formatMoney(price, currencyCode) : "السعر عند الطلب"}</span>
+          <div style={{ display: "flex", gap: "2px" }}>{[0,1,2,3,4].map(i => <StarFill key={i} />)}</div>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default async function FallbackHome() {
-  const [bootstrap, cats, products] = await Promise.all([
-    getBootstrap(),
-    getCategoriesTree(),
-    listProducts({ sort: "latest", page: 1, pageSize: 8, includeFacets: false, lite: true }),
+  const [bootstrap, cats, productsResult] = await Promise.all([
+    getBootstrap().catch(() => null),
+    getCategoriesTree().catch(() => []),
+    listProducts({ page: 1, limit: 12, sort: "newest" as any, lite: true }).catch(() => ({ items: [], total: 0 })),
   ]);
 
-  const top = (cats ?? []).slice(0, 6);
-  const siteName = bootstrap?.site?.siteName || "Estabrak Store";
+  const siteName = bootstrap?.site?.siteName || "Estabrek Store";
+  const currencyCode = bootstrap?.site?.currencyCode || "ILS";
+  const products = (productsResult as any).items || [];
+  const categories = ((cats as any[]) || []).slice(0, 8);
+
+  const tickerItems = ["شحن مجاني للطلبات فوق 200 ₪","ضمان الجودة على جميع المنتجات","إرجاع مجاني خلال 30 يوم","دعم عملاء 24/7","منتجات أصلية 100%","توصيل سريع لجميع المناطق"];
 
   return (
-    <div className="home-page space-y-20" dir="rtl">
-      {/* ========== MEGA HERO SECTION ========== */}
-      <section className="hero-mega">
-        {/* Animated Background Orbs */}
-        <div className="hero-orb hero-orb-1" />
-        <div className="hero-orb hero-orb-2" />
-        <div className="hero-orb hero-orb-3" />
-        
-        {/* Geometric Shapes */}
-        <div className="hero-shape hero-shape-1" />
-        <div className="hero-shape hero-shape-2" />
-        <div className="hero-shape hero-shape-3" />
-        
-        {/* Glowing Lines */}
-        <div className="hero-line hero-line-1" />
-        <div className="hero-line hero-line-2" />
-        <div className="hero-line hero-line-3" />
+    <main id="main-content" tabIndex={-1} className="candy-page" dir="rtl">
+      <FloatingOrbs />
 
-        {/* Floating Sparkles */}
-        {[...Array(12)].map((_, i) => (
-          <div 
-            key={i}
-            className="sparkle"
-            style={{
-              top: `${10 + Math.random() * 80}%`,
-              left: `${5 + Math.random() * 90}%`,
-              animationDelay: `${i * 0.3}s`,
-              animationDuration: `${2 + Math.random() * 2}s`,
-            }}
-          />
-        ))}
+      {/* ═══ HERO ═══ */}
+      <section className="candy-hero">
+        <div className="candy-hero-bg" />
+        <div className="candy-hero-mesh" />
+        {/* Floating shapes */}
+        <div aria-hidden="true" style={{ position:"absolute",top:"15%",right:"5%",width:"clamp(80px,12vw,160px)",height:"clamp(80px,12vw,160px)",borderRadius:"30% 70% 70% 30% / 30% 30% 70% 70%",background:"linear-gradient(135deg,rgba(124,58,237,0.3),rgba(236,72,153,0.2))",border:"1px solid rgba(124,58,237,0.2)",animation:"orbFloat 8s ease-in-out infinite",backdropFilter:"blur(2px)" }} />
+        <div aria-hidden="true" style={{ position:"absolute",bottom:"20%",left:"8%",width:"clamp(50px,8vw,100px)",height:"clamp(50px,8vw,100px)",borderRadius:"70% 30% 30% 70% / 70% 70% 30% 30%",background:"linear-gradient(135deg,rgba(6,182,212,0.3),rgba(124,58,237,0.2))",border:"1px solid rgba(6,182,212,0.2)",animation:"orbFloat 10s ease-in-out infinite reverse" }} />
 
-        {/* Hero Content */}
-        <div className="hero-mega-content">
-          {/* Animated Badge */}
-          <div className="hero-mega-badge">
-            <SparklesIcon />
-            <span>مرحباً بك في {siteName}</span>
-            <span className="badge-shine" />
-          </div>
-
-          {/* Main Title with Gradient Animation */}
-          <h1 className="hero-mega-title">
-            <span className="block text-[var(--text)]">اكتشف عالماً من</span>
-            <span className="block gradient-text">المنتجات المميزة</span>
+        <div className="candy-hero-content">
+          <div className="candy-hero-badge reveal-up" style={{ transitionDelay:"0ms" }}><SparklesIcon />مجموعة الموسم الجديدة</div>
+          <h1 className="candy-hero-title reveal-up" style={{ transitionDelay:"120ms" }}>
+            تسوّق بذوق<br /><span style={{ display:"block" }}>وبسعر يناسبك</span>
           </h1>
-
-          {/* Subtitle */}
-          <p className="hero-mega-subtitle">
-            تشكيلة واسعة من أفضل المنتجات بأسعار منافسة.
-            <br className="hidden sm:block" />
-            توصيل سريع لجميع المناطق وخدمة عملاء على مدار الساعة.
+          <p className="candy-hero-subtitle reveal-up" style={{ transitionDelay:"240ms" }}>
+            اكتشف أحدث صيحات الموضة والمنتجات الفريدة في {siteName}. جودة لا تُضاهى بأسعار تُسعد.
           </p>
-
-          {/* CTA Buttons */}
-          <div className="hero-mega-cta">
-            <Link href="/shop" className="hero-mega-btn-primary group">
-              <ShoppingBagIcon />
-              <span>تسوّق الآن</span>
-              <ArrowLeftIcon />
-              <span className="btn-shine" />
-            </Link>
-            <Link href="/search" className="hero-mega-btn-secondary">
-              <span>استكشف المزيد</span>
-              <ChevronLeftIcon />
-            </Link>
+          <div className="candy-hero-actions reveal-up" style={{ transitionDelay:"360ms" }}>
+            <Link href="/shop" className="candy-btn candy-btn-primary candy-btn-lg"><ShoppingBagIcon />تسوق الآن</Link>
+            <Link href="/about" className="candy-btn candy-btn-ghost candy-btn-lg">اعرف أكثر <ArrowLeftIcon /></Link>
           </div>
-
-          {/* Stats */}
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <div className="hero-stat-value">{products.total || "100"}+</div>
-              <div className="hero-stat-label">منتج متوفر</div>
-            </div>
-            <div className="hero-stat">
-              <div className="hero-stat-value">{top.length || "10"}+</div>
-              <div className="hero-stat-label">تصنيف مختلف</div>
-            </div>
-            <div className="hero-stat">
-              <div className="hero-stat-value">24/7</div>
-              <div className="hero-stat-label">دعم متواصل</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Decorative Elements */}
-        <div className="hero-decoration">
-          <div className="hero-decoration-circle" />
-          <div className="hero-decoration-ring" />
-        </div>
-      </section>
-
-      {/* ========== QUICK FEATURES BAR ========== */}
-      <section className="quick-features">
-        <div className="quick-feature">
-          <div className="quick-feature-icon emerald">
-            <TruckIcon />
-          </div>
-          <div className="quick-feature-text">
-            <span className="quick-feature-title">توصيل سريع</span>
-            <span className="quick-feature-desc">لجميع المناطق</span>
-          </div>
-        </div>
-        <div className="quick-feature-divider" />
-        <div className="quick-feature">
-          <div className="quick-feature-icon blue">
-            <ShieldIcon />
-          </div>
-          <div className="quick-feature-text">
-            <span className="quick-feature-title">دفع آمن</span>
-            <span className="quick-feature-desc">100% محمي</span>
-          </div>
-        </div>
-        <div className="quick-feature-divider" />
-        <div className="quick-feature">
-          <div className="quick-feature-icon amber">
-            <RefreshIcon />
-          </div>
-          <div className="quick-feature-text">
-            <span className="quick-feature-title">إرجاع مجاني</span>
-            <span className="quick-feature-desc">خلال 14 يوم</span>
-          </div>
-        </div>
-        <div className="quick-feature-divider" />
-        <div className="quick-feature">
-          <div className="quick-feature-icon purple">
-            <HeartIcon />
-          </div>
-          <div className="quick-feature-text">
-            <span className="quick-feature-title">ضمان الجودة</span>
-            <span className="quick-feature-desc">منتجات أصلية</span>
+          <div className="candy-hero-stats reveal-up" style={{ transitionDelay:"480ms" }}>
+            <div className="candy-hero-stat"><div className="candy-hero-stat-value"><GsapCounter target={10000} suffix="+" /></div><div className="candy-hero-stat-label">عميل سعيد</div></div>
+            <div className="candy-hero-stat"><div className="candy-hero-stat-value"><GsapCounter target={500} suffix="+" /></div><div className="candy-hero-stat-label">منتج مميز</div></div>
+            <div className="candy-hero-stat"><div className="candy-hero-stat-value"><GsapCounter target={99} suffix="%" /></div><div className="candy-hero-stat-label">رضا العملاء</div></div>
           </div>
         </div>
       </section>
 
-      {/* ========== SPECIAL OFFER COUNTDOWN ========== */}
-      <section className="countdown-section">
-        <div className="countdown-bg">
-          <div className="countdown-orb countdown-orb-1" />
-          <div className="countdown-orb countdown-orb-2" />
-        </div>
-        <div className="countdown-content">
-          <div className="countdown-header">
-            <span className="countdown-badge">
-              <GiftIcon />
-              عرض محدود
-            </span>
-            <h2 className="countdown-title">خصم 30% على جميع المنتجات!</h2>
-            <p className="countdown-desc">استغل العرض قبل انتهاء الوقت</p>
-          </div>
-          <CountdownTimer
-            targetDate={new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()}
-            title=""
-            variant="default"
-            showLabels={true}
-          />
-          <Link 
-            href="/shop" 
-            className="countdown-cta"
-          >
-            تسوق الآن
-            <ArrowLeftIcon />
-          </Link>
-        </div>
-      </section>
+      <CandyTicker items={tickerItems} />
 
-      {/* ========== CATEGORIES SECTION ========== */}
-      {top.length > 0 && (
-        <section className="categories-section">
-          <div className="section-header-fancy">
-            <div className="section-header-content">
-              <span className="section-badge">
-                <TagIcon />
-                تصفح حسب
-              </span>
-              <h2 className="section-title-fancy">التصنيفات</h2>
-              <p className="section-desc">اختر من بين مجموعة متنوعة من التصنيفات</p>
-            </div>
-            <Link href="/shop" className="section-link">
-              عرض الكل
-              <ArrowLeftIcon />
-            </Link>
-          </div>
-
-          <div className="categories-fancy-grid">
-            {top.map((c, idx) => (
-              <Link
-                key={c.id}
-                href={`/c/${c.slug}`}
-                className="category-fancy-card"
-                style={{ animationDelay: `${idx * 100}ms` }}
-              >
-                <div className="category-fancy-icon">
-                  <GridIcon />
-                </div>
-                <div className="category-fancy-content">
-                  <h3 className="category-fancy-name">{c.name}</h3>
-                  <span className="category-fancy-action">
-                    تصفح المنتجات
-                    <ChevronLeftIcon />
-                  </span>
-                </div>
-                <div className="category-fancy-bg" />
-              </Link>
+      {/* ═══ FEATURES ═══ */}
+      <section className="candy-section">
+        <div className="candy-container">
+          <GsapStagger className="candy-features-grid">
+            {[
+              { emoji:"🚀", gradient:"linear-gradient(135deg,#10B981,#06B6D4)", title:"توصيل سريع", desc:"شحن مجاني للطلبات فوق 200 ₪" },
+              { emoji:"🔒", gradient:"linear-gradient(135deg,#7C3AED,#EC4899)", title:"دفع آمن 100%", desc:"حماية كاملة لبياناتك" },
+              { emoji:"♻️", gradient:"linear-gradient(135deg,#F59E0B,#EF4444)", title:"إرجاع مجاني", desc:"استرداد كامل خلال 30 يوم" },
+              { emoji:"💝", gradient:"linear-gradient(135deg,#EC4899,#F97316)", title:"خدمة متميزة", desc:"دعم على مدار الساعة" },
+            ].map((f,i) => (
+              <div key={i} className="candy-feature-card reveal-scale">
+                <div className="candy-feature-icon" style={{ background: f.gradient }}><span style={{ fontSize:"1.5rem" }}>{f.emoji}</span></div>
+                <div className="candy-feature-title">{f.title}</div>
+                <div className="candy-feature-desc">{f.desc}</div>
+              </div>
             ))}
+          </GsapStagger>
+        </div>
+      </section>
+
+      <div className="candy-divider" />
+
+      {/* ═══ CATEGORIES ═══ */}
+      {categories.length > 0 && (
+        <section className="candy-section">
+          <div className="candy-container">
+            <GsapReveal>
+              <div className="candy-section-eyebrow"><SparklesIcon />تصفح حسب الفئة</div>
+              <h2 className="candy-section-title">استكشف <span className="grad">التشكيلة</span></h2>
+              <p className="candy-section-desc" style={{ marginBottom:"2rem" }}>من الملابس العصرية إلى الإكسسوارات الفاخرة — كل ما تحتاجه في مكان واحد</p>
+            </GsapReveal>
+            <GsapStagger className="candy-cat-grid">
+              {categories.map((cat: any, i: number) => (
+                <Link key={cat.id} href={`/c/${cat.slug}`} className="candy-cat-card reveal-scale">
+                  <div className="candy-cat-icon" style={{ background: CATEGORY_GRADIENTS[i % CATEGORY_GRADIENTS.length] }}>
+                    {cat.iconUrl ? <img src={cat.iconUrl} alt="" style={{ width:"28px",height:"28px",objectFit:"contain" }} /> : <span>{CAT_EMOJIS[i % CAT_EMOJIS.length]}</span>}
+                  </div>
+                  <span className="candy-cat-name">{cat.name}</span>
+                </Link>
+              ))}
+              <Link href="/shop" className="candy-cat-card reveal-scale">
+                <div className="candy-cat-icon" style={{ background:"rgba(255,255,255,0.05)",border:"1px dashed rgba(255,255,255,0.2)" }}><span style={{ fontSize:"1.25rem",color:"rgba(255,255,255,0.4)" }}>→</span></div>
+                <span className="candy-cat-name" style={{ color:"var(--text-muted)" }}>عرض الكل</span>
+              </Link>
+            </GsapStagger>
           </div>
         </section>
       )}
 
-      {/* ========== PRODUCTS SECTION ========== */}
-      <section className="products-section">
-        <div className="section-header-fancy">
-          <div className="section-header-content">
-            <span className="section-badge hot">
-              <FireIcon />
-              الأكثر طلباً
-            </span>
-            <h2 className="section-title-fancy">أحدث المنتجات</h2>
-            <p className="section-desc">اكتشف أحدث ما وصلنا من منتجات مميزة</p>
-          </div>
-          <Link href="/shop" className="section-link">
-            عرض المزيد
-            <ArrowLeftIcon />
-          </Link>
-        </div>
+      <div className="candy-divider" />
 
-        {products.items?.length ? (
-          <div className="products-fancy-grid">
-            {products.items.map((p, idx) => (
-              <div 
-                key={p.id} 
-                className="product-wrapper"
-                style={{ animationDelay: `${idx * 80}ms` }}
-              >
-                <ProductTile product={p} />
+      {/* ═══ PRODUCTS ═══ */}
+      {products.length > 0 && (
+        <section className="candy-section">
+          <div className="candy-container">
+            <div style={{ display:"flex",alignItems:"flex-end",justifyContent:"space-between",flexWrap:"wrap",gap:"1rem",marginBottom:"2rem" }}>
+              <GsapReveal>
+                <div className="candy-section-eyebrow"><SparklesIcon />وصل حديثاً</div>
+                <h2 className="candy-section-title">أحدث <span className="grad">المنتجات</span></h2>
+              </GsapReveal>
+              <GsapReveal><Link href="/shop" className="candy-btn candy-btn-ghost candy-btn-sm">عرض الكل <ArrowLeftIcon /></Link></GsapReveal>
+            </div>
+            <div className="candy-product-grid">
+              {products.slice(0,8).map((p: any, i: number) => <ProductCard key={p.id} product={p} idx={i} currencyCode={currencyCode} />)}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ═══ PROMO BANNER ═══ */}
+      <section className="candy-promo">
+        <div style={{ position:"relative",zIndex:1 }}>
+          <GsapReveal>
+            <div style={{ display:"inline-flex",alignItems:"center",gap:"0.4rem",padding:"0.35rem 1rem",borderRadius:"9999px",background:"rgba(245,158,11,0.2)",border:"1px solid rgba(245,158,11,0.4)",color:"#FCD34D",fontSize:"0.75rem",fontWeight:700,letterSpacing:"0.08em",marginBottom:"1rem" }}>🔥 عرض محدود</div>
+          </GsapReveal>
+          <GsapReveal>
+            <h2 className="candy-promo-title">خصم حتى <span className="text-gradient-fire">50%</span></h2>
+            <p className="candy-promo-sub">على مجموعة مختارة من أفضل المنتجات. لا تفوّت الفرصة!</p>
+          </GsapReveal>
+          <GsapReveal>
+            <div className="candy-countdown">
+              {[{num:"02",label:"يوم"},{num:"14",label:"ساعة"},{num:"38",label:"دقيقة"},{num:"55",label:"ثانية"}].map(u => (
+                <div key={u.label} className="candy-countdown-unit">
+                  <div className="candy-countdown-num">{u.num}</div>
+                  <div className="candy-countdown-label">{u.label}</div>
+                </div>
+              ))}
+            </div>
+          </GsapReveal>
+          <GsapReveal><Link href="/shop" className="candy-btn candy-btn-primary candy-btn-lg"><ShoppingBagIcon />اشترِ الآن</Link></GsapReveal>
+        </div>
+      </section>
+
+      {/* ═══ STATS ═══ */}
+      <section className="candy-section" style={{ background:"linear-gradient(135deg,rgba(124,58,237,0.08),rgba(236,72,153,0.05),rgba(6,182,212,0.05))",borderTop:"1px solid rgba(124,58,237,0.15)",borderBottom:"1px solid rgba(124,58,237,0.15)" }}>
+        <div className="candy-container">
+          <GsapReveal className="text-center" style={{ marginBottom:"2.5rem" }}>
+            <h2 className="candy-section-title">نتائج <span className="grad">نفخر بها</span></h2>
+          </GsapReveal>
+          <GsapStagger className="candy-stats-grid">
+            {[
+              { num:10000, suffix:"+", label:"عميل سعيد", gradient:"linear-gradient(135deg,#7C3AED,#EC4899)" },
+              { num:500, suffix:"+", label:"منتج متوفر", gradient:"linear-gradient(135deg,#06B6D4,#7C3AED)" },
+              { num:50, suffix:"+", label:"علامة تجارية", gradient:"linear-gradient(135deg,#10B981,#06B6D4)" },
+              { num:99, suffix:"%", label:"رضا العملاء", gradient:"linear-gradient(135deg,#F59E0B,#EF4444)" },
+            ].map((stat,i) => (
+              <div key={i} className="candy-stat-card reveal-scale">
+                <div className="candy-stat-number" style={{ background:stat.gradient,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text" }}>
+                  <GsapCounter target={stat.num} suffix={stat.suffix} />
+                </div>
+                <div className="candy-stat-label">{stat.label}</div>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="empty-state-fancy">
-            <div className="empty-state-icon">
-              <GiftIcon />
-            </div>
-            <h3>لا توجد منتجات حالياً</h3>
-            <p>تابعونا قريباً لمنتجات جديدة!</p>
-          </div>
-        )}
-
-        <div className="products-section-cta">
-          <Link href="/shop" className="view-all-btn">
-            <span>عرض جميع المنتجات</span>
-            <ArrowLeftIcon />
-          </Link>
+          </GsapStagger>
         </div>
       </section>
 
-      {/* ========== FEATURES SECTION ========== */}
-      <section className="features-section">
-        <div className="section-header-fancy centered">
-          <span className="section-badge">
-            <StarIcon />
-            لماذا نحن؟
-          </span>
-          <h2 className="section-title-fancy">مميزاتنا</h2>
-          <p className="section-desc">نقدم لك أفضل تجربة تسوق ممكنة</p>
-        </div>
-
-        <div className="features-fancy-grid">
-          <div className="feature-fancy-card">
-            <div className="feature-fancy-icon emerald">
-              <TruckIcon />
-            </div>
-            <h3 className="feature-fancy-title">شحن سريع وآمن</h3>
-            <p className="feature-fancy-desc">
-              نوصل طلبك بأسرع وقت ممكن مع تتبع كامل للشحنة
-            </p>
-          </div>
-
-          <div className="feature-fancy-card">
-            <div className="feature-fancy-icon blue">
-              <ShieldIcon />
-            </div>
-            <h3 className="feature-fancy-title">دفع آمن ومحمي</h3>
-            <p className="feature-fancy-desc">
-              طرق دفع متعددة مع حماية كاملة لبياناتك
-            </p>
-          </div>
-
-          <div className="feature-fancy-card">
-            <div className="feature-fancy-icon amber">
-              <RefreshIcon />
-            </div>
-            <h3 className="feature-fancy-title">سياسة إرجاع مرنة</h3>
-            <p className="feature-fancy-desc">
-              استرجع منتجك خلال 14 يوم مع استرداد كامل
-            </p>
-          </div>
-
-          <div className="feature-fancy-card">
-            <div className="feature-fancy-icon purple">
-              <HeartIcon />
-            </div>
-            <h3 className="feature-fancy-title">دعم على مدار الساعة</h3>
-            <p className="feature-fancy-desc">
-              فريقنا جاهز لمساعدتك في أي وقت
-            </p>
-          </div>
+      {/* ═══ NEWSLETTER ═══ */}
+      <section className="candy-section">
+        <div className="candy-container" style={{ maxWidth:"700px" }}>
+          <GsapReveal className="text-center">
+            <div style={{ display:"inline-flex",alignItems:"center",gap:"0.4rem",padding:"0.4rem 1rem",borderRadius:"9999px",background:"rgba(124,58,237,0.15)",border:"1px solid rgba(124,58,237,0.3)",color:"var(--candy-violet-light)",fontSize:"0.75rem",fontWeight:700,marginBottom:"1rem" }}>💌 ابقَ على اطلاع</div>
+            <h2 className="candy-section-title" style={{ marginBottom:"0.75rem" }}>اشترك في <span className="grad">نشرتنا البريدية</span></h2>
+            <p className="candy-section-desc" style={{ margin:"0 auto 1.75rem",textAlign:"center" }}>احصل على أول خبر عن العروض الحصرية والمنتجات الجديدة مباشرة على بريدك</p>
+            <form className="candy-newsletter" onSubmit={(e) => e.preventDefault()}>
+              <input type="email" placeholder="بريدك الإلكتروني" className="candy-newsletter-input" dir="rtl" />
+              <button type="submit" className="candy-btn candy-btn-primary">اشتراك</button>
+            </form>
+            <p style={{ marginTop:"0.75rem",fontSize:"0.72rem",color:"var(--text-muted)" }}>لن نرسل لك بريداً غير مرغوب فيه. يمكنك إلغاء الاشتراك في أي وقت.</p>
+          </GsapReveal>
         </div>
       </section>
 
-      {/* ========== NEWSLETTER SECTION ========== */}
-      <section className="newsletter-fancy">
-        <div className="newsletter-fancy-bg" />
-        <div className="newsletter-fancy-content">
-          <span className="newsletter-badge">
-            <GiftIcon />
-            عروض حصرية
-          </span>
-          <h3 className="newsletter-title">اشترك في نشرتنا البريدية</h3>
-          <p className="newsletter-desc">
-            احصل على آخر العروض والخصومات الحصرية مباشرة في بريدك
-          </p>
-          <div className="newsletter-form-fancy">
-            <input 
-              type="email" 
-              placeholder="البريد الإلكتروني"
-              className="newsletter-input-fancy"
-              dir="ltr"
-            />
-            <button className="newsletter-btn-fancy">
-              اشترك الآن
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
+      <div style={{ height:"env(safe-area-inset-bottom,0px)" }} />
+    </main>
   );
 }

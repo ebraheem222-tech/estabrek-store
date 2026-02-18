@@ -64,17 +64,17 @@ function NavNode({
 
   const baseLink = template
     ? [
-        "inline-flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200 relative overflow-hidden group",
+        "inline-flex items-center gap-2 rounded-xl px-3 py-2 transition-colors duration-200",
         template.styles.link,
         template.styles.linkHover,
         active ? template.styles.linkActive : "",
       ]
         .filter(Boolean)
         .join(" ")
-    : "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 relative overflow-hidden group " +
+    : "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition " +
       (active
-        ? "bg-gradient-to-r from-[var(--accent)]/10 to-[var(--accent-2)]/10 text-[color:var(--accent)]"
-        : "text-[color:var(--text)] opacity-80 hover:opacity-100 hover:bg-gradient-to-r hover:from-[var(--accent)]/5 hover:to-[var(--accent-2)]/5");
+        ? "bg-black/5 dark:bg-white/10 text-[color:var(--text)]"
+        : "text-[color:var(--text)] opacity-80 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10");
 
   const iconPaths: Record<string, string> = {
     home: "M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-10.5Z",
@@ -233,7 +233,6 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     if (typeof window === "undefined") return false;
     return window.matchMedia("(min-width: 768px)").matches;
   });
-  const [scrolled, setScrolled] = useState(false);
   const settings = useStorefrontSettings();
   const { resolvedTheme } = useTheme();
   const [domTheme, setDomTheme] = useState<"light" | "dark" | null>(null);
@@ -267,21 +266,6 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     const observer = new MutationObserver(read);
     observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "class"] });
     return () => observer.disconnect();
-  }, []);
-
-  // Scroll detection for dynamic navbar styling
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
-    // Set initial state
-    handleScroll();
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const cmsNavCfg = cmsNav && typeof cmsNav === "object" ? cmsNav : null;
@@ -440,11 +424,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
   const headerClassName = (() => {
     if (!navTemplate) {
-      const basePos = sticky ? "sticky top-0 z-40 " : "relative z-40 ";
-      const scrollStyles = scrolled
-        ? "bg-[color:var(--surface)]/95 backdrop-blur-xl border-b-2 border-[color:var(--accent)]/20 shadow-lg"
-        : "bg-[color:var(--surface)]/80 backdrop-blur-md border-b border-[color:var(--border)]";
-      return basePos + scrollStyles + " transition-all duration-300";
+      return (sticky ? "sticky top-0 z-40 " : "relative z-40 ") + "border-b border-[color:var(--border)] bg-[color:var(--surface)]/80 backdrop-blur";
     }
 
     const rawNavCls = navTemplate.styles.nav ?? "";
