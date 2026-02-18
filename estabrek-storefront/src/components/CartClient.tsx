@@ -164,8 +164,6 @@ export default function CartClient(props: {
   ordersEmail?: string | null;
   stripeEnabled?: boolean;
   paypalEnabled?: boolean;
-  paypalClientId?: string | null;
-  currencyCode?: string | null;
 }) {
   const settings = useStorefrontSettings();
   const checkoutMode = props.checkoutMode ?? "WHATSAPP";
@@ -209,7 +207,7 @@ export default function CartClient(props: {
     () => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
     [items]
   );
-  const currencyCode = quote?.currencyCode ?? props.currencyCode ?? null;
+  const currencyCode = quote?.currencyCode ?? null;
   const currencySymbol =
     currencyCode === "USD"
       ? "$"

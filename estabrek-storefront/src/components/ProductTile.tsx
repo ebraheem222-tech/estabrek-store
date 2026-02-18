@@ -136,7 +136,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
     <div className="perspective-container">
       <div
         ref={cardRef}
-        className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300"
+        className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300 hover:shadow-premium"
         onMouseEnter={() => {
           if (allowPrefetch) {
             const hasSizeNames = (product.items ?? []).some((it) => (it.variants ?? []).some((v: any) => v?.size?.name));
@@ -186,8 +186,8 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
               </div>
             )}
 
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
+            {/* Gradient Overlay - Enhanced */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none z-10" />
 
             {/* Shimmer Effect */}
             <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 z-10">
@@ -241,7 +241,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                 {swatches.map((hex) => (
                   <span
                     key={hex}
-                    className="color-swatch h-5 w-5 rounded-full border-2 border-[var(--border)] transition-all hover:scale-110"
+                    className="color-swatch h-5 w-5 rounded-full border-2 border-[var(--border)] transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer"
                     style={{ background: hex }}
                     title={hex}
                   />
@@ -255,12 +255,12 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
             ) : null}
           </div>
 
-          {/* Quick Add on Hover */}
+          {/* Quick Add on Hover with Gradient */}
           <div className="absolute inset-x-0 bottom-0 p-3 z-20">
             <div className="quick-add-slide">
               <QuickAddButton
                 product={product}
-                className="w-full backdrop-blur-sm"
+                className="w-full backdrop-blur-sm bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] hover:shadow-glow-medium transition-all duration-300"
                 buttonLabel="إضافة سريعة"
               />
             </div>
