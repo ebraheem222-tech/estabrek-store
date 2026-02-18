@@ -1,182 +1,249 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { formatMoney } from "@/lib/catalog";
 import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog";
+import { CandyGallery } from "./GsapAnimations";
 
-function getImages(product: CatalogProduct): string[] {
-  const imgs: string[] = [];
-  const seen = new Set<string>();
-  const productImages = (product as any).images as Array<{url?:string;isPrimary?:boolean}> | undefined;
-  if (Array.isArray(productImages)) {
-    for (const im of productImages) {
-      if (im?.url && !seen.has(im.url)) { seen.add(im.url); imgs.push(im.url); }
-    }
-  }
-  for (const item of product.items ?? []) {
-    for (const im of item.images ?? []) {
-      if (im?.url && !seen.has(im.url)) { seen.add(im.url); imgs.push(im.url); }
-    }
-  }
-  if (product.primaryImageUrl && !seen.has(product.primaryImageUrl)) {
-    imgs.push(product.primaryImageUrl);
-  }
-  return imgs;
+/* ── Helpers ── */
+function getPrice(v?: CatalogVariant | null): number | null {
+  if (!v) return null;
+  const base = Number(v.price ?? 0);
+  const sale = v.salePrice ? Number(v.salePrice) : null;
+  return sale && sale > 0 && sale < base ? sale : base;
 }
-
-function getPrice(variant?: CatalogVariant): number | null {
-  if (!variant) return null;
-  const base = typeof variant.price === "number" ? variant.price : Number(variant.price?.toString?.() ?? "0");
-  const sale = typeof variant.salePrice === "number" ? variant.salePrice : variant.salePrice ? Number(variant.salePrice.toString()) : null;
-  return (sale && sale > 0 && sale < base) ? sale : base;
-}
-
-function getCompare(variant?: CatalogVariant): number | null {
-  if (!variant) return null;
-  const base = typeof variant.price === "number" ? variant.price : Number(variant.price?.toString?.() ?? "0");
-  const sale = typeof variant.salePrice === "number" ? variant.salePrice : variant.salePrice ? Number(variant.salePrice.toString()) : null;
+function getCompare(v?: CatalogVariant | null): number | null {
+  if (!v) return null;
+  const base = Number(v.price ?? 0);
+  const sale = v.salePrice ? Number(v.salePrice) : null;
   if (sale && sale > 0 && sale < base) return base;
-  const comp = variant.compareAt ? Number(variant.compareAt.toString()) : null;
+  const comp = v.compareAt ? Number(v.compareAt) : null;
   return comp && comp > base ? comp : null;
 }
 
-export default function ProductPageCandy({ product, currencyCode = "ILS" }: { product: CatalogProduct; currencyCode?: string }) {
-  const images = getImages(product);
+/* 
+  CRITICAL: get images ONLY for the given item (color).
+  Fall back to product-level images only if item has none.
+*/
+function getItemImages(item: CatalogItem | null, product: CatalogProduct): string[] {
+  const seen = new Set<string>();
+  const imgs: string[] = [];
+
+  const push = (url?: string | null) => {
+    if (url && !seen.has(url)) { seen.add(url); imgs.push(url); }
+  };
+
+  if (item) {
+    // Primary/secondary convenience fields first
+    push(item.primaryImageUrl);
+    push(item.secondaryImageUrl);
+    // All item images
+    for (const im of item.images ?? []) push(im.url);
+  }
+
+  // If item had no images, fall back to product-level images
+  if (imgs.length === 0) {
+    const productImages = (product as any).images as Array<{url?:string}> | undefined;
+    if (Array.isArray(productImages)) {
+      for (const im of productImages) push(im.url);
+    }
+    push(product.primaryImageUrl);
+    push(product.secondaryImageUrl);
+  }
+
+  return imgs;
+}
+
+function getItemColor(item: CatalogItem): string {
+  if (item.colorHex) return item.colorHex;
+  if (item.suggestedColors?.length) return `#${item.suggestedColors[0].replace("#", "")}`;
+  return "#9CA3AF";
+}
+
+export default function ProductPageCandy({
+  product,
+  currencyCode = "ILS",
+}: {
+  product: CatalogProduct;
+  currencyCode?: string;
+}) {
   const items = product.items ?? [];
-  const [selectedImg, setSelectedImg] = useState(0);
+
+  // ── Initial state ──
   const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(items[0] ?? null);
-  const [selectedVariant, setSelectedVariant] = useState<CatalogVariant | null>(items[0]?.variants?.[0] ?? null);
+  const [selectedVariant, setSelectedVariant] = useState<CatalogVariant | null>(
+    items[0]?.variants?.[0] ?? null
+  );
+  const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [qty, setQty] = useState(1);
   const [addedAnim, setAddedAnim] = useState(false);
+  const [wishAnim, setWishAnim] = useState(false);
+  const [activeTab, setActiveTab] = useState<"desc" | "shipping" | "returns">("desc");
 
   const { addItem } = useCart();
   const { addItem: addWish, removeItem: removeWish, isInWishlist } = useWishlist();
   const inWish = isInWishlist(product.id);
 
-  const price = getPrice(selectedVariant ?? undefined);
-  const compare = getCompare(selectedVariant ?? undefined);
-  const discount = (price && compare) ? Math.round(((compare - price) / compare) * 100) : null;
+  // ── Images for SELECTED COLOR ONLY ──
+  const images = useMemo(
+    () => getItemImages(selectedItem, product),
+    [selectedItem, product]
+  );
 
-  const handleAddToCart = () => {
+  const price   = getPrice(selectedVariant);
+  const compare = getCompare(selectedVariant);
+  const discount = price && compare ? Math.round(((compare - price) / compare) * 100) : null;
+
+  // ── Select a color → reset to first image of that color ──
+  const handleSelectItem = useCallback((item: CatalogItem) => {
+    setSelectedItem(item);
+    setSelectedVariant(item.variants?.[0] ?? null);
+    setActiveImgIdx(0); // ← reset to first image of new color
+  }, []);
+
+  const handleAddToCart = useCallback(() => {
     if (!selectedVariant) return;
     addItem(selectedVariant.id, qty);
     setAddedAnim(true);
-    setTimeout(() => setAddedAnim(false), 2000);
-  };
+    setTimeout(() => setAddedAnim(false), 2200);
+  }, [selectedVariant, qty, addItem]);
 
-  const toggleWish = () => {
-    if (inWish) removeWish(product.id);
-    else addWish(product as any);
-  };
+  const toggleWish = useCallback(() => {
+    if (inWish) { removeWish(product.id); }
+    else { addWish(product as any); setWishAnim(true); setTimeout(() => setWishAnim(false), 600); }
+  }, [inWish, product, addWish, removeWish]);
 
   return (
-    <div className="candy-product-page" dir="rtl">
-      {/* GALLERY */}
-      <div className="candy-product-gallery">
-        {/* Main image */}
-        <div className="candy-gallery-main" style={{ position:"relative" }}>
-          {images[selectedImg] ? (
-            <img src={images[selectedImg]} alt={product.title} style={{ width:"100%",height:"100%",objectFit:"cover",transition:"opacity 0.3s" }} />
-          ) : (
-            <div style={{ width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"5rem",background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(236,72,153,0.08))" }}>🛍</div>
-          )}
-          {discount && (
-            <div style={{ position:"absolute",top:"1rem",right:"1rem",padding:"0.4rem 0.75rem",borderRadius:"9999px",background:"linear-gradient(135deg,#EF4444,#F59E0B)",color:"white",fontWeight:800,fontSize:"0.85rem" }}>
-              -{discount}%
-            </div>
-          )}
-          {/* Wishlist */}
-          <button onClick={toggleWish} style={{ position:"absolute",top:"1rem",left:"1rem",width:40,height:40,borderRadius:"50%",background:"rgba(0,0,0,0.5)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:"1.1rem",transition:"transform 0.2s",transform:inWish?"scale(1.2)":"scale(1)" }}>
-            {inWish ? "❤️" : "🤍"}
-          </button>
-        </div>
-
-        {/* Thumbnails */}
-        {images.length > 1 && (
-          <div className="candy-gallery-thumbs">
-            {images.map((url, i) => (
-              <button key={i} className={`candy-gallery-thumb${selectedImg===i?" active":""}`} onClick={() => setSelectedImg(i)}>
-                <img src={url} alt="" style={{ width:"100%",height:"100%",objectFit:"cover" }} />
-              </button>
-            ))}
+    <div className="ppg-wrap" dir="rtl">
+      {/* ════════════════ GALLERY COLUMN ════════════════ */}
+      <div className="ppg-gallery-col">
+        {/* Color indicator strip above gallery */}
+        {selectedItem && (
+          <div className="ppg-color-indicator">
+            <span className="ppg-color-dot" style={{ background: getItemColor(selectedItem) }} />
+            <span className="ppg-color-label">
+              اللون: <strong>{selectedItem.colorName ?? "الافتراضي"}</strong>
+            </span>
+            <span className="ppg-img-count">{images.length} صور</span>
           </div>
         )}
+
+        {/* Gallery with color-filtered images */}
+        <CandyGallery images={images} activeIdx={activeImgIdx} onSelect={setActiveImgIdx} colorName={selectedItem?.colorName ?? undefined} />
+
+        {/* Discount badge floating */}
+        {discount && (
+          <div className="ppg-discount-badge">
+            -{discount}%
+          </div>
+        )}
+
+        {/* Wishlist button */}
+        <button
+          onClick={toggleWish}
+          className={`ppg-wish-btn ${inWish ? "ppg-wish-active" : ""} ${wishAnim ? "ppg-wish-pop" : ""}`}
+          aria-label={inWish ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+        >
+          {inWish ? "❤️" : "🤍"}
+        </button>
       </div>
 
-      {/* INFO */}
-      <div className="candy-product-info">
+      {/* ════════════════ INFO COLUMN ════════════════ */}
+      <div className="ppg-info-col">
+        {/* Category */}
         {product.category && (
-          <div className="candy-product-category" style={{ marginBottom:"0.5rem",fontSize:"0.8rem" }}>{product.category.name}</div>
+          <Link href={`/c/${product.category.slug}`} className="ppg-category-tag">
+            {product.category.name}
+          </Link>
         )}
 
-        <h1 className="candy-product-info-title">{product.title}</h1>
+        {/* Title */}
+        <h1 className="ppg-title">{product.title}</h1>
 
-        {/* Reviews row */}
-        <div style={{ display:"flex",alignItems:"center",gap:"0.5rem",marginBottom:"1rem" }}>
-          <div style={{ display:"flex",gap:"2px" }}>
-            {[0,1,2,3,4].map(i => <span key={i} style={{ color:"#F59E0B",fontSize:"0.85rem" }}>★</span>)}
+        {/* Stars + reviews */}
+        <div className="ppg-meta-row">
+          <div className="ppg-stars">
+            {[0,1,2,3,4].map(i => <span key={i}>★</span>)}
           </div>
-          <span style={{ fontSize:"0.8rem",color:"var(--text-muted)" }}>4.9 (128 تقييم)</span>
-          <span style={{ fontSize:"0.75rem",color:"var(--candy-mint)",fontWeight:700 }}>✓ متوفر</span>
+          <span className="ppg-review-count">(128 تقييم)</span>
+          <span className="ppg-in-stock">✓ متوفر في المخزن</span>
         </div>
 
         {/* Price */}
-        <div className="candy-product-info-price">
+        <div className="ppg-price-area">
           {price != null ? (
-            <span className="candy-product-big-price">{formatMoney(price, currencyCode)}</span>
+            <span className="ppg-price">{formatMoney(price, currencyCode)}</span>
           ) : (
-            <span className="candy-product-big-price" style={{ fontSize:"1.25rem" }}>السعر عند الطلب</span>
+            <span className="ppg-price-na">السعر عند الطلب</span>
           )}
           {compare != null && (
-            <span className="candy-product-old-price">{formatMoney(compare, currencyCode)}</span>
+            <>
+              <span className="ppg-old-price">{formatMoney(compare, currencyCode)}</span>
+              {discount && <span className="ppg-discount-pill">وفّر {discount}%</span>}
+            </>
           )}
         </div>
 
-        {/* Description snippet */}
-        {(product as any).description && (
-          <p style={{ fontSize:"0.875rem",color:"var(--text-secondary)",lineHeight:1.7,marginBottom:"1.25rem",padding:"1rem",background:"rgba(124,58,237,0.06)",borderRadius:"var(--radius-md)",border:"1px solid rgba(124,58,237,0.15)" }}>
-            {String((product as any).description).slice(0, 180)}{String((product as any).description).length > 180 ? "..." : ""}
-          </p>
-        )}
+        {/* Divider */}
+        <div className="ppg-divider" />
 
-        {/* Color swatches */}
+        {/* COLOR SELECTION — shows only images for selected color */}
         {items.length > 1 && (
-          <div style={{ marginBottom:"1.25rem" }}>
-            <div style={{ fontSize:"0.82rem",fontWeight:700,color:"var(--text-secondary)",marginBottom:"0.6rem" }}>
-              اللون: <span style={{ color:"var(--text-primary)" }}>{selectedItem?.colorName || "—"}</span>
+          <div className="ppg-option-block">
+            <div className="ppg-option-label">
+              اللون:
+              <span className="ppg-option-value">{selectedItem?.colorName ?? "—"}</span>
             </div>
-            <div className="candy-color-swatches">
-              {items.map((item) => (
-                <button
-                  key={item.id}
-                  className={`candy-color-swatch${selectedItem?.id===item.id?" active":""}`}
-                  onClick={() => { setSelectedItem(item); setSelectedVariant(item.variants?.[0]??null); }}
-                  title={item.colorName ?? ""}
-                  style={{ background: item.colorHex ?? (item.suggestedColors?.[0] ? `#${item.suggestedColors[0].replace("#","")}` : "#888") }}
-                />
-              ))}
+            <div className="ppg-swatches">
+              {items.map((item) => {
+                const colorVal = getItemColor(item);
+                const isActive = selectedItem?.id === item.id;
+                // Count images for this color
+                const imgCount = getItemImages(item, product).length;
+                return (
+                  <button
+                    key={item.id}
+                    className={`ppg-swatch ${isActive ? "ppg-swatch-active" : ""}`}
+                    onClick={() => handleSelectItem(item)}
+                    title={`${item.colorName ?? "لون"} (${imgCount} صور)`}
+                    style={{ "--swatch-color": colorVal } as any}
+                  >
+                    <span className="ppg-swatch-inner" style={{ background: colorVal }} />
+                    {isActive && <span className="ppg-swatch-check">✓</span>}
+                  </button>
+                );
+              })}
             </div>
+            {/* Image count for selected color */}
+            {selectedItem && (
+              <p className="ppg-color-img-hint">
+                📸 يعرض {images.length} صورة للون {selectedItem.colorName ?? "المحدد"} فقط
+              </p>
+            )}
           </div>
         )}
 
-        {/* Size chips */}
+        {/* SIZE SELECTION */}
         {(selectedItem?.variants ?? []).length > 1 && (
-          <div style={{ marginBottom:"1.5rem" }}>
-            <div style={{ fontSize:"0.82rem",fontWeight:700,color:"var(--text-secondary)",marginBottom:"0.6rem" }}>
-              المقاس: <span style={{ color:"var(--text-primary)" }}>{selectedVariant?.size?.name || "—"}</span>
+          <div className="ppg-option-block">
+            <div className="ppg-option-label">
+              المقاس:
+              <span className="ppg-option-value">{selectedVariant?.size?.name ?? "—"}</span>
+              <a href="#size-guide" className="ppg-size-guide">دليل المقاسات →</a>
             </div>
-            <div className="candy-size-chips">
+            <div className="ppg-sizes">
               {(selectedItem?.variants ?? []).map((v) => {
-                const outOfStock = (v.stock ?? 1) <= 0;
+                const oos = (v.stock ?? 1) <= 0;
                 return (
                   <button
                     key={v.id}
-                    className={`candy-size-chip${selectedVariant?.id===v.id?" active":""}${outOfStock?" out-of-stock":""}`}
-                    onClick={() => !outOfStock && setSelectedVariant(v)}
-                    disabled={outOfStock}
+                    className={`ppg-size${selectedVariant?.id === v.id ? " ppg-size-active" : ""}${oos ? " ppg-size-oos" : ""}`}
+                    onClick={() => !oos && setSelectedVariant(v)}
+                    disabled={oos}
+                    title={oos ? "نفد المخزون" : ""}
                   >
                     {v.size?.name ?? v.sku ?? "—"}
                   </button>
@@ -186,30 +253,93 @@ export default function ProductPageCandy({ product, currencyCode = "ILS" }: { pr
           </div>
         )}
 
-        {/* Qty */}
-        <div style={{ display:"flex",alignItems:"center",gap:"0.75rem",marginBottom:"1.25rem" }}>
-          <span style={{ fontSize:"0.82rem",fontWeight:700,color:"var(--text-secondary)" }}>الكمية:</span>
-          <div style={{ display:"flex",alignItems:"center",gap:"0",background:"var(--bg-card)",border:"1px solid var(--border-glass)",borderRadius:"var(--radius-full)",overflow:"hidden" }}>
-            <button onClick={() => setQty(q => Math.max(1,q-1))} style={{ width:40,height:40,border:"none",background:"none",color:"var(--text-primary)",fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
-            <span style={{ minWidth:32,textAlign:"center",fontWeight:800,fontSize:"0.95rem",color:"var(--text-primary)" }}>{qty}</span>
-            <button onClick={() => setQty(q => q+1)} style={{ width:40,height:40,border:"none",background:"none",color:"var(--text-primary)",fontSize:"1.1rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>+</button>
+        {/* QUANTITY */}
+        <div className="ppg-option-block ppg-qty-row">
+          <div className="ppg-option-label">الكمية:</div>
+          <div className="ppg-qty-ctrl">
+            <button className="ppg-qty-btn" onClick={() => setQty(q => Math.max(1, q - 1))}>−</button>
+            <span className="ppg-qty-val">{qty}</span>
+            <button className="ppg-qty-btn" onClick={() => setQty(q => q + 1)}>+</button>
           </div>
         </div>
 
-        {/* Add to cart */}
-        <button onClick={handleAddToCart} className="candy-add-to-cart-btn" style={{ marginBottom:"0.75rem" }}>
-          {addedAnim ? "✅ تمت الإضافة للسلة!" : "🛒 أضف إلى السلة"}
-        </button>
+        <div className="ppg-divider" />
+
+        {/* ADD TO CART */}
+        <div className="ppg-actions">
+          <button
+            onClick={handleAddToCart}
+            className={`ppg-add-btn ${addedAnim ? "ppg-add-success" : ""}`}
+            disabled={!selectedVariant}
+          >
+            {addedAnim ? (
+              <><span className="ppg-checkmark">✓</span> تمت الإضافة للسلة!</>
+            ) : (
+              <>🛒 أضف إلى السلة</>
+            )}
+            <span className="ppg-btn-ripple" />
+          </button>
+          <button
+            onClick={toggleWish}
+            className={`ppg-wish-big-btn ${inWish ? "ppg-wish-big-active" : ""}`}
+            aria-label={inWish ? "إزالة من المفضلة" : "أضف للمفضلة"}
+          >
+            {inWish ? "❤️" : "🤍"}
+          </button>
+        </div>
 
         {/* Trust badges */}
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"0.5rem",marginTop:"1.25rem" }}>
-          {[{emoji:"🚀",label:"توصيل سريع"},{emoji:"🔒",label:"دفع آمن"},{emoji:"♻️",label:"إرجاع مجاني"}].map(b => (
-            <div key={b.label} style={{ textAlign:"center",padding:"0.6rem",background:"var(--bg-card)",border:"1px solid var(--border-glass)",borderRadius:"var(--radius-md)" }}>
-              <div style={{ fontSize:"1.1rem" }}>{b.emoji}</div>
-              <div style={{ fontSize:"0.65rem",color:"var(--text-muted)",fontWeight:600,marginTop:"0.2rem" }}>{b.label}</div>
+        <div className="ppg-trust-badges">
+          {[
+            { emoji:"🚀", title:"توصيل سريع",  desc:"خلال 2-3 أيام عمل" },
+            { emoji:"🔒", title:"دفع آمن",     desc:"تشفير SSL كامل" },
+            { emoji:"♻️", title:"إرجاع مجاني", desc:"خلال 30 يوماً" },
+          ].map(b => (
+            <div key={b.title} className="ppg-trust-card">
+              <span className="ppg-trust-emoji">{b.emoji}</span>
+              <div>
+                <div className="ppg-trust-title">{b.title}</div>
+                <div className="ppg-trust-desc">{b.desc}</div>
+              </div>
             </div>
           ))}
         </div>
+
+        {/* Description tabs */}
+        {((product as any).description) && (
+          <div className="ppg-tabs">
+            <div className="ppg-tab-btns">
+              {(["desc","shipping","returns"] as const).map(tab => (
+                <button
+                  key={tab}
+                  className={`ppg-tab-btn ${activeTab === tab ? "ppg-tab-active" : ""}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab === "desc" ? "الوصف" : tab === "shipping" ? "الشحن" : "الإرجاع"}
+                </button>
+              ))}
+            </div>
+            <div className="ppg-tab-content">
+              {activeTab === "desc" && (
+                <p className="ppg-desc-text">{String((product as any).description)}</p>
+              )}
+              {activeTab === "shipping" && (
+                <div className="ppg-tab-info">
+                  <p>🚀 توصيل سريع: 2–3 أيام عمل</p>
+                  <p>📦 توصيل مجاني للطلبات فوق 200 ₪</p>
+                  <p>🌍 نشحن لجميع المناطق داخل فلسطين</p>
+                </div>
+              )}
+              {activeTab === "returns" && (
+                <div className="ppg-tab-info">
+                  <p>♻️ يمكنك إرجاع المنتج خلال 30 يوماً</p>
+                  <p>✅ الإرجاع مجاني إذا كان المنتج معيباً</p>
+                  <p>📞 تواصل مع خدمة العملاء لبدء طلب الإرجاع</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

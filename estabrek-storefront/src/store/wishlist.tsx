@@ -15,6 +15,8 @@ interface WishlistItem {
 interface WishlistContextValue {
   items: WishlistItem[];
   isInWishlist: (id: string) => boolean;
+  addItem: (item: Omit<WishlistItem, "addedAt">) => void;
+  removeItem: (id: string) => void;
   addToWishlist: (item: Omit<WishlistItem, "addedAt">) => void;
   removeFromWishlist: (id: string) => void;
   toggleWishlist: (item: Omit<WishlistItem, "addedAt">) => boolean; // returns new state
@@ -92,6 +94,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       value={{
         items,
         isInWishlist,
+        addItem: addToWishlist,
+        removeItem: removeFromWishlist,
         addToWishlist,
         removeFromWishlist,
         toggleWishlist,
