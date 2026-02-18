@@ -1,12 +1,49 @@
 import Link from "next/link";
 import { getPublicSettings, listProducts, listCategories } from "@/lib/api";
+import NormalizeFilters from "@/components/NormalizeFilters";
+import ShopBrowseClient from "@/components/ShopBrowseClient";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
-import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
-import { GsapReveal, FloatingOrbs, SuperProductCard } from "@/components/candy/GsapAnimations";
+import { renderCmsPageBySlug } from "../[[...slug]]/page";
+import dynamic from "next/dynamic";
+
+const ImageSearchPanel = dynamic(
+  () => import("@/components/ImageSearchPanel").then((m) => m.ImageSearchPanel),
+  { ssr: false, loading: () => null }
+);
+
+const AIRecommendations = dynamic(
+  () => import("@/components/AIRecommendations").then((m) => m.AIRecommendations),
+  { ssr: false, loading: () => null }
+);
 
 type SP = Record<string, string | string[] | undefined>;
 export const revalidate = 60;
+
+// Icons
+const ShopIcon = () => (
+  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+  </svg>
+);
+
+const ProductsIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+  </svg>
+);
+
+const HomeIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
+const ChevronLeftIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+  </svg>
+);
 
 function pick(sp: SP, key: string): string | undefined {
   const v = sp[key];
@@ -18,141 +55,107 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
   const f = normalizeFiltersFromSearchParams(searchParams);
   const qs = buildCanonicalQuery(f);
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  return { title: "المتجر | إستبرق", description: "تصفح جميع منتجاتنا", alternates: { canonical: new URL(qs ? `/shop?${qs}` : "/shop", base).toString() } };
+  const canonical = new URL(qs ? `/shop?${qs}` : "/shop", base).toString();
+
+  const title = "المتجر";
+  const description = "تصفح جميع المنتجات";
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: { index: true, follow: true },
+  };
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   const settings = await getPublicSettings().catch(() => null);
-  const currencyCode = (settings?.site as any)?.currencyCode || "ILS";
-  const f = normalizeFiltersFromSearchParams(searchParams);
-  const q = pick(searchParams, "q") ?? "";
-  const sort = pick(searchParams, "sort") ?? "newest";
-  const catId = pick(searchParams, "categoryId");
-  const page = Number(pick(searchParams, "page") ?? "1");
+  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
+  const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
+  const aiRecommendationsEnabled = storefrontCfg.aiRecommendationsEnabled !== false;
+  if (storefrontCfg.cmsOverrideShop !== false) {
+    const cms = await renderCmsPageBySlug("/shop", searchParams, { allowFallback: false, allowNotFound: false });
+    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+  }
 
-  const [cats, out] = await Promise.all([
+  const f = normalizeFiltersFromSearchParams(searchParams);
+  const sort = ["latest", "title_asc", "title_desc", "price_asc", "price_desc"].includes(
+    f.sort as string
+  )
+    ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
+    : undefined;
+  const [categories, out] = await Promise.all([
     listCategories(),
-    listProducts({ page, limit: 24, q: q || undefined, sort: sort as any, categoryId: catId, lite: true, includeFacets: true }).catch(() => ({ items:[],total:0,totalPages:1 })),
+    listProducts({
+      page: f.page ?? 1,
+      pageSize: 24,
+      sort,
+      q: f.q,
+      inStock: f.inStock,
+      categoryId: f.categoryId,
+      colors: f.colors.length ? f.colors.join(",") : undefined,
+      sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
+      minPrice: f.minPrice,
+      maxPrice: f.maxPrice,
+      includeFacets: true,
+      lite: true,
+      color: pick(searchParams, "color"),
+      sizeId: pick(searchParams, "sizeId"),
+    }),
   ]);
 
-  const products = (out as any).items || [];
-  const total = (out as any).total || 0;
-  const totalPages = (out as any).totalPages || 1;
-  const allCats = ((cats as any[]) || []);
-
-  const SORT_OPTIONS = [
-    {val:"newest",label:"✨ الأحدث"},
-    {val:"price_asc",label:"💸 السعر: الأقل"},
-    {val:"price_desc",label:"💎 السعر: الأعلى"},
-    {val:"bestsellers",label:"🔥 الأكثر مبيعاً"},
-  ];
-
   return (
-    <main id="main-content" tabIndex={-1} className="candy-page" dir="rtl">
-      <FloatingOrbs />
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl space-y-8 px-4 py-8 bg-dots" dir="rtl">
+      <NormalizeFilters basePath="/shop" />
+      
+      {/* Breadcrumb */}
+      {breadcrumbsEnabled ? (
+        <nav className="flex items-center gap-2 text-sm text-[var(--muted)]">
+          <Link href="/" className="flex items-center gap-1 hover:text-[var(--text)] transition-colors">
+            <HomeIcon />
+            الرئيسية
+          </Link>
+          <ChevronLeftIcon />
+          <span className="text-[var(--text)]">المتجر</span>
+        </nav>
+      ) : null}
 
-      <nav className="candy-breadcrumb">
-        <Link href="/">🏠 الرئيسية</Link>
-        <span className="candy-breadcrumb-sep">/</span>
-        <span className="candy-breadcrumb-current">المتجر</span>
-      </nav>
+      {/* Shop Header - Enhanced with Premium Design */}
+      <div className="shop-hero relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[var(--accent)]/10 via-[var(--accent-2)]/10 to-transparent border border-[var(--accent)]/20 backdrop-blur-sm">
+        {/* Animated Background Shapes */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/10 rounded-full blur-3xl float-animation pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[var(--accent-2)]/10 rounded-full blur-3xl float-animation pointer-events-none" style={{animationDelay: '1s'}}></div>
 
-      {/* Page Hero */}
-      <section className="candy-page-hero">
-        <div className="candy-page-hero-bg" />
-        <div className="candy-page-hero-content">
-          <GsapReveal>
-            <div className="candy-section-eyebrow">🛍 كل ما تحتاجه</div>
-            <h1 className="candy-section-title" style={{ fontSize:"clamp(1.9rem,5vw,3.2rem)" }}>
-              تصفح <span className="grad">متجرنا</span>
-            </h1>
-            <p className="candy-section-desc">
-              {total > 0 ? `${total.toLocaleString("ar")} منتج مميز في انتظارك` : "أحدث وأجمل المنتجات المختارة بعناية"}
-            </p>
-          </GsapReveal>
-        </div>
-      </section>
-
-      <section className="candy-section" style={{ paddingTop:"1.5rem" }}>
-        <div className="candy-container">
-
-          {/* Category chips */}
-          {allCats.length > 0 && (
-            <div style={{ marginBottom:"1rem" }}>
-              <div style={{ fontSize:"0.72rem",fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:"0.6rem" }}>الفئات</div>
-              <div className="candy-chips-row">
-                <Link href="/shop" className={`candy-filter-chip${!catId ? " active" : ""}`}>📦 الكل</Link>
-                {allCats.map((cat:any) => (
-                  <Link key={cat.id} href={`/shop?categoryId=${cat.id}${sort ? `&sort=${sort}` : ""}`} className={`candy-filter-chip${catId===cat.id?" active":""}`}>{cat.name}</Link>
-                ))}
+        <div className="relative z-10">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white shadow-premium">
+                <ShopIcon />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gradient-animated">المتجر</h1>
+                <p className="text-[var(--muted)] text-sm mt-1 slide-in-up">
+                  تصفح جميع منتجاتنا المميزة
+                </p>
               </div>
             </div>
-          )}
-
-          {/* Sort + Search row */}
-          <div style={{ display:"flex",flexWrap:"wrap",gap:"0.85rem",alignItems:"center",marginBottom:"2rem" }}>
-            <div className="candy-chips-row" style={{ flex:1,minWidth:0 }}>
-              <span style={{ fontSize:"0.72rem",fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",alignSelf:"center" }}>ترتيب:</span>
-              {SORT_OPTIONS.map(opt=>(
-                <Link key={opt.val} href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort:opt.val})}`} className={`candy-filter-chip${sort===opt.val?" active":""}`}>{opt.label}</Link>
-              ))}
+            <div className="search-results-count flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--accent)]/20 to-[var(--accent-2)]/20 border border-[var(--accent)]/30 backdrop-blur-sm card-lift">
+              <ProductsIcon />
+              <span className="font-bold text-gradient-primary">{out.total ?? 0}</span>
+              <span className="text-sm">منتج</span>
             </div>
-            <form method="get" action="/shop" style={{ display:"flex",gap:"0.6rem",flexShrink:0 }}>
-              {catId && <input type="hidden" name="categoryId" value={catId} />}
-              {sort && <input type="hidden" name="sort" value={sort} />}
-              <div className="candy-search-box" style={{ margin:0,maxWidth:280,minWidth:0 }}>
-                <span style={{ color:"var(--text-muted)" }}>🔍</span>
-                <input name="q" type="search" defaultValue={q} className="candy-search-input" placeholder="بحث في المتجر..." />
-              </div>
-              <button type="submit" className="candy-btn candy-btn-primary candy-btn-sm">بحث</button>
-            </form>
           </div>
-
-          {/* Grid */}
-          {products.length > 0 ? (
-            <div className="super-product-grid">
-              {products.map((product:any, i:number) => {
-                const img = getProductPrimaryImage(product);
-                const price = getProductMinPrice(product);
-                const secondImg = product.secondaryImageUrl || product.items?.[0]?.images?.[1]?.url || null;
-                const swatches = (product.items ?? []).map((it:any) => it.colorHex || it.suggestedColors?.[0] || null).filter(Boolean);
-                return (
-                  <SuperProductCard
-                    key={product.id}
-                    href={`/p/${product.slug}`}
-                    image={img}
-                    hoverImage={secondImg}
-                    title={product.title}
-                    price={price!=null ? formatMoney(price,currencyCode) : null}
-                    category={product.category?.name}
-                    isNew={i < 3}
-                    colorSwatches={swatches}
-                    idx={i}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <div className="candy-empty">
-              <div className="candy-empty-icon">📦</div>
-              <div className="candy-empty-title">لا توجد منتجات</div>
-              <div className="candy-empty-desc">لم نجد منتجات تطابق بحثك. جرب تغيير الفلاتر.</div>
-              <Link href="/shop" className="candy-btn candy-btn-primary" style={{ marginTop:"1rem" }}>عرض جميع المنتجات</Link>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div style={{ display:"flex",justifyContent:"center",gap:"0.5rem",marginTop:"2.5rem",flexWrap:"wrap" }}>
-              {page > 1 && <Link href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort,page:String(page-1)})}`} className="candy-filter-chip">← السابق</Link>}
-              {Array.from({length:Math.min(totalPages,10)},(_,i)=>i+1).map(p=>(
-                <Link key={p} href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort,page:String(p)})}`} className={`candy-filter-chip${p===page?" active":""}`} style={{ minWidth:38,justifyContent:"center" }}>{p}</Link>
-              ))}
-              {page < totalPages && <Link href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort,page:String(page+1)})}`} className="candy-filter-chip">التالي →</Link>}
-            </div>
-          )}
         </div>
-      </section>
+      </div>
+
+      {/* AI-Powered Search Tools */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {imageSearchEnabled ? <ImageSearchPanel /> : null}
+        {aiRecommendationsEnabled ? <AIRecommendations title="منتجات مقترحة لك" /> : null}
+      </div>
+
+      <ShopBrowseClient initial={out} initialFilters={f} categories={categories ?? []} basePath="/shop" />
     </main>
   );
 }

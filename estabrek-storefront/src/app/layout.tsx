@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const loading = preset ? { enabled, animationId: preset.id, html: preset.html, css: preset.css } : null;
 
   return (
-    <html lang="ar" dir="rtl" data-theme="light" className="light" suppressHydrationWarning>
+    <html lang="ar" dir="rtl" data-theme={defaultTheme} className={defaultTheme} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
