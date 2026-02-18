@@ -3,7 +3,7 @@ import { getPublicSettings, listProducts, listCategories } from "@/lib/api";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
-import { GsapReveal, GsapStagger, FloatingOrbs } from "@/components/candy/GsapAnimations";
+import { GsapReveal, FloatingOrbs, SuperProductCard } from "@/components/candy/GsapAnimations";
 
 type SP = Record<string, string | string[] | undefined>;
 export const revalidate = 60;
@@ -18,8 +18,7 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
   const f = normalizeFiltersFromSearchParams(searchParams);
   const qs = buildCanonicalQuery(f);
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const canonical = new URL(qs ? `/shop?${qs}` : "/shop", base).toString();
-  return { title: "المتجر", description: "تصفح جميع منتجاتنا", alternates: { canonical } };
+  return { title: "المتجر | إستبرق", description: "تصفح جميع منتجاتنا", alternates: { canonical: new URL(qs ? `/shop?${qs}` : "/shop", base).toString() } };
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: SP }) {
@@ -33,7 +32,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
 
   const [cats, out] = await Promise.all([
     listCategories(),
-    listProducts({ page, limit: 24, q: q || undefined, sort: sort as any, categoryId: catId, lite: true, includeFacets: true }).catch(() => ({ items:[], total:0, totalPages:1 })),
+    listProducts({ page, limit: 24, q: q || undefined, sort: sort as any, categoryId: catId, lite: true, includeFacets: true }).catch(() => ({ items:[],total:0,totalPages:1 })),
   ]);
 
   const products = (out as any).items || [];
@@ -42,10 +41,10 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   const allCats = ((cats as any[]) || []);
 
   const SORT_OPTIONS = [
-    { val:"newest", label:"الأحدث" },
-    { val:"price_asc", label:"السعر: الأقل" },
-    { val:"price_desc", label:"السعر: الأعلى" },
-    { val:"bestsellers", label:"الأكثر مبيعاً" },
+    {val:"newest",label:"✨ الأحدث"},
+    {val:"price_asc",label:"💸 السعر: الأقل"},
+    {val:"price_desc",label:"💎 السعر: الأعلى"},
+    {val:"bestsellers",label:"🔥 الأكثر مبيعاً"},
   ];
 
   return (
@@ -64,10 +63,12 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
         <div className="candy-page-hero-content">
           <GsapReveal>
             <div className="candy-section-eyebrow">🛍 كل ما تحتاجه</div>
-            <h1 className="candy-section-title" style={{ fontSize:"clamp(1.8rem,5vw,3rem)" }}>
-              تصفح <span className="text-gradient-hero">متجرنا</span>
+            <h1 className="candy-section-title" style={{ fontSize:"clamp(1.9rem,5vw,3.2rem)" }}>
+              تصفح <span className="grad">متجرنا</span>
             </h1>
-            <p className="candy-section-desc">{total > 0 ? `${total} منتج متوفر لك` : "تصفح أحدث المنتجات"}</p>
+            <p className="candy-section-desc">
+              {total > 0 ? `${total.toLocaleString("ar")} منتج مميز في انتظارك` : "أحدث وأجمل المنتجات المختارة بعناية"}
+            </p>
           </GsapReveal>
         </div>
       </section>
@@ -75,55 +76,59 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
       <section className="candy-section" style={{ paddingTop:"1.5rem" }}>
         <div className="candy-container">
 
-          {/* Filters row */}
-          <div style={{ display:"flex",flexWrap:"wrap",gap:"0.75rem",alignItems:"center",marginBottom:"1.5rem" }}>
-            {/* Categories */}
+          {/* Category chips */}
+          {allCats.length > 0 && (
+            <div style={{ marginBottom:"1rem" }}>
+              <div style={{ fontSize:"0.72rem",fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:"0.6rem" }}>الفئات</div>
+              <div className="candy-chips-row">
+                <Link href="/shop" className={`candy-filter-chip${!catId ? " active" : ""}`}>📦 الكل</Link>
+                {allCats.map((cat:any) => (
+                  <Link key={cat.id} href={`/shop?categoryId=${cat.id}${sort ? `&sort=${sort}` : ""}`} className={`candy-filter-chip${catId===cat.id?" active":""}`}>{cat.name}</Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sort + Search row */}
+          <div style={{ display:"flex",flexWrap:"wrap",gap:"0.85rem",alignItems:"center",marginBottom:"2rem" }}>
             <div className="candy-chips-row" style={{ flex:1,minWidth:0 }}>
-              <Link href="/shop" className={`candy-filter-chip${!catId ? " active" : ""}`}>الكل</Link>
-              {allCats.map((cat:any) => (
-                <Link key={cat.id} href={`/shop?categoryId=${cat.id}`} className={`candy-filter-chip${catId === cat.id ? " active" : ""}`}>{cat.name}</Link>
+              <span style={{ fontSize:"0.72rem",fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:"0.08em",whiteSpace:"nowrap",alignSelf:"center" }}>ترتيب:</span>
+              {SORT_OPTIONS.map(opt=>(
+                <Link key={opt.val} href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort:opt.val})}`} className={`candy-filter-chip${sort===opt.val?" active":""}`}>{opt.label}</Link>
               ))}
             </div>
-            {/* Sort */}
-            <div style={{ display:"flex",gap:"0.5rem",flexShrink:0 }}>
-              {SORT_OPTIONS.map(opt => (
-                <Link key={opt.val} href={`/shop?${new URLSearchParams({ ...(catId ? {categoryId:catId} : {}), sort:opt.val }).toString()}`} className={`candy-filter-chip${sort===opt.val?" active":""}`}>{opt.label}</Link>
-              ))}
-            </div>
+            <form method="get" action="/shop" style={{ display:"flex",gap:"0.6rem",flexShrink:0 }}>
+              {catId && <input type="hidden" name="categoryId" value={catId} />}
+              {sort && <input type="hidden" name="sort" value={sort} />}
+              <div className="candy-search-box" style={{ margin:0,maxWidth:280,minWidth:0 }}>
+                <span style={{ color:"var(--text-muted)" }}>🔍</span>
+                <input name="q" type="search" defaultValue={q} className="candy-search-input" placeholder="بحث في المتجر..." />
+              </div>
+              <button type="submit" className="candy-btn candy-btn-primary candy-btn-sm">بحث</button>
+            </form>
           </div>
 
-          {/* Search row */}
-          <form method="get" action="/shop" style={{ marginBottom:"2rem",display:"flex",gap:"0.75rem",maxWidth:480 }}>
-            {catId && <input type="hidden" name="categoryId" value={catId} />}
-            {sort && <input type="hidden" name="sort" value={sort} />}
-            <div className="candy-search-box" style={{ flex:1,margin:0 }}>
-              <span style={{ color:"var(--text-muted)" }}>🔍</span>
-              <input name="q" type="search" defaultValue={q} className="candy-search-input" placeholder="ابحث في المتجر..." />
-            </div>
-            <button type="submit" className="candy-btn candy-btn-primary candy-btn-sm">بحث</button>
-          </form>
-
-          {/* Product grid */}
+          {/* Grid */}
           {products.length > 0 ? (
-            <div className="candy-product-grid">
-              {products.map((product: any, i: number) => {
+            <div className="super-product-grid">
+              {products.map((product:any, i:number) => {
                 const img = getProductPrimaryImage(product);
                 const price = getProductMinPrice(product);
+                const secondImg = product.secondaryImageUrl || product.items?.[0]?.images?.[1]?.url || null;
+                const swatches = (product.items ?? []).map((it:any) => it.colorHex || it.suggestedColors?.[0] || null).filter(Boolean);
                 return (
-                  <Link key={product.id} href={`/p/${product.slug}`} className="candy-product-card reveal-up" style={{ transitionDelay:`${i*50}ms` }}>
-                    <div className="candy-product-image-wrap">
-                      {img ? <img src={img} alt={product.title} style={{ width:"100%",height:"100%",objectFit:"cover" }} loading="lazy" /> : <div className="candy-product-no-image">🛍</div>}
-                      <div className="candy-product-overlay">
-                        <span className="candy-btn candy-btn-primary candy-btn-sm">أضف للسلة</span>
-                      </div>
-                      {i < 3 && <span className="candy-product-badge candy-product-badge-new">جديد</span>}
-                    </div>
-                    <div className="candy-product-body">
-                      {product.category && <div className="candy-product-category">{product.category.name}</div>}
-                      <h3 className="candy-product-title">{product.title}</h3>
-                      <span className="candy-product-price">{price != null ? formatMoney(price,currencyCode) : "السعر عند الطلب"}</span>
-                    </div>
-                  </Link>
+                  <SuperProductCard
+                    key={product.id}
+                    href={`/p/${product.slug}`}
+                    image={img}
+                    hoverImage={secondImg}
+                    title={product.title}
+                    price={price!=null ? formatMoney(price,currencyCode) : null}
+                    category={product.category?.name}
+                    isNew={i < 3}
+                    colorSwatches={swatches}
+                    idx={i}
+                  />
                 );
               })}
             </div>
@@ -131,7 +136,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
             <div className="candy-empty">
               <div className="candy-empty-icon">📦</div>
               <div className="candy-empty-title">لا توجد منتجات</div>
-              <div className="candy-empty-desc">لم نجد منتجات تطابق بحثك. جرب تغيير الفلاتر أو اعرض الكل.</div>
+              <div className="candy-empty-desc">لم نجد منتجات تطابق بحثك. جرب تغيير الفلاتر.</div>
               <Link href="/shop" className="candy-btn candy-btn-primary" style={{ marginTop:"1rem" }}>عرض جميع المنتجات</Link>
             </div>
           )}
@@ -139,12 +144,11 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
           {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ display:"flex",justifyContent:"center",gap:"0.5rem",marginTop:"2.5rem",flexWrap:"wrap" }}>
-              {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => i + 1).map(p => {
-                const params = new URLSearchParams({ ...(catId ? {categoryId:catId} : {}), ...(sort ? {sort} : {}), ...(q ? {q} : {}), page:String(p) });
-                return (
-                  <Link key={p} href={`/shop?${params}`} className={`candy-filter-chip${p === page ? " active" : ""}`} style={{ minWidth:36,justifyContent:"center" }}>{p}</Link>
-                );
-              })}
+              {page > 1 && <Link href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort,page:String(page-1)})}`} className="candy-filter-chip">← السابق</Link>}
+              {Array.from({length:Math.min(totalPages,10)},(_,i)=>i+1).map(p=>(
+                <Link key={p} href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort,page:String(p)})}`} className={`candy-filter-chip${p===page?" active":""}`} style={{ minWidth:38,justifyContent:"center" }}>{p}</Link>
+              ))}
+              {page < totalPages && <Link href={`/shop?${new URLSearchParams({...(catId?{categoryId:catId}:{}),sort,page:String(page+1)})}`} className="candy-filter-chip">التالي →</Link>}
             </div>
           )}
         </div>
