@@ -9,6 +9,8 @@ export type Page = {
   name: string;
   slug: string; // "/", "/about"
   status: PageStatus;
+  publishAt?: string | null;
+  unpublishAt?: string | null;
   canonicalUrl?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
@@ -59,6 +61,19 @@ export type PageSection = {
 
 export type PageWithSections = Page & { sections: PageSection[] };
 
+export type PageRevision = {
+  id: string;
+  pageId: string;
+  name: string;
+  slug: string;
+  status: PageStatus;
+  publishAt?: string | null;
+  unpublishAt?: string | null;
+  reason?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+};
+
 function safeJsonParse(v: unknown) {
   if (typeof v !== "string") return v;
   try {
@@ -90,7 +105,17 @@ export async function listPages() {
   return res.data as Page[];
 }
 
-export async function createPage(body: { name: string; slug: string; status?: PageStatus; canonicalUrl?: string; customCss?: string; headScripts?: any; bodyScripts?: any }) {
+export async function createPage(body: {
+  name: string;
+  slug: string;
+  status?: PageStatus;
+  publishAt?: string | null;
+  unpublishAt?: string | null;
+  canonicalUrl?: string;
+  customCss?: string;
+  headScripts?: any;
+  bodyScripts?: any;
+}) {
   const res = await api.post(ENDPOINTS.admin.pages.base, body);
   return res.data as Page;
 }
@@ -102,7 +127,21 @@ export async function getPage(id: string) {
 
 export async function updatePage(
   id: string,
-  body: Partial<{ name: string; slug: string; status: PageStatus; canonicalUrl: string | null; seoTitle: string | null; seoDescription: string | null; ogImageUrl: string | null; noIndex: boolean | null; customCss: string | null; headScripts: any; bodyScripts: any }>
+  body: Partial<{
+    name: string;
+    slug: string;
+    status: PageStatus;
+    publishAt: string | null;
+    unpublishAt: string | null;
+    canonicalUrl: string | null;
+    seoTitle: string | null;
+    seoDescription: string | null;
+    ogImageUrl: string | null;
+    noIndex: boolean | null;
+    customCss: string | null;
+    headScripts: any;
+    bodyScripts: any;
+  }>
 ) {
   const res = await api.patch(ENDPOINTS.admin.pages.byId(id), body);
   return res.data as Page;
@@ -172,5 +211,19 @@ export async function aiTranslatePage(body: {
 
 export async function deleteSection(sectionId: string) {
   const res = await api.delete(ENDPOINTS.admin.pages.sectionById(sectionId));
+  return res.data as { ok: true };
+}
+
+export async function listPageRevisions(pageId: string, limit = 20) {
+  const res = await api.get(ENDPOINTS.admin.pages.revisions(pageId), {
+    params: { limit },
+  });
+  return (res.data?.revisions ?? []) as PageRevision[];
+}
+
+export async function restorePageRevision(pageId: string, revisionId: string, reason?: string) {
+  const res = await api.post(ENDPOINTS.admin.pages.restoreRevision(pageId, revisionId), {
+    reason,
+  });
   return res.data as { ok: true };
 }

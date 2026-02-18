@@ -59,6 +59,8 @@ export const ENDPOINTS = {
       pages: {
         base: "/admin/pages",
         byId: (id: string) => `/admin/pages/${id}`,
+        revisions: (id: string) => `/admin/pages/${id}/revisions`,
+        restoreRevision: (id: string, revisionId: string) => `/admin/pages/${id}/revisions/${revisionId}/restore`,
         sections: (pageId: string) => `/admin/pages/${pageId}/sections`,
         sectionById: (sectionId: string) => `/admin/pages/sections/${sectionId}`,
         moveSection: (sectionId: string) => `/admin/pages/sections/${sectionId}/move`,
