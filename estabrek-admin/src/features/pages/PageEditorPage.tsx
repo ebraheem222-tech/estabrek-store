@@ -33,8 +33,11 @@ import {
   aiTranslatePage,
   createSection as createSectionApi,
   deleteSection as deleteSectionApi,
+  listPageRevisions,
   moveSection as moveSectionApi,
+  restorePageRevision,
   updateSection as updateSectionApi,
+  type PageRevision,
   type PageSection,
   type PageSectionType,
   type PageStatus,
@@ -45,10 +48,11 @@ import { PageRenderer, type SelectedElement } from "./PageRenderer";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import { ThemePreview } from "../../components/ThemePreview";
 import { toast } from "../../lib/toast";
-import { scopeCss } from "../../lib/scopeCss";
 import { PAGE_TEMPLATES } from "./pageTemplates";
 import type { CmsComponentKind } from "../../cms/types";
 import type { TwTokens } from "../../cms/style/tokens";
+
+type ScopeCssFn = (css: string, scopeSelector: string) => string;
 
 const LazySectionPreview = React.lazy(() =>
   import("./SectionPreview").then((m) => ({ default: m.SectionPreview }))
@@ -345,6 +349,8 @@ function SortableSectionCard({
 type PageFieldErrors = {
   name?: string;
   slug?: string;
+  publishAt?: string;
+  unpublishAt?: string;
 };
 
 type InlineEditPayload = {
@@ -461,9 +467,43 @@ const LIBRARY_CATEGORIES: Array<{ id: LibraryCategory; label: string }> = [
 ];
 
 function normalizeSlug(v: string) {
-  const t = (v ?? "").trim();
+  const t = (v ?? "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\s+/g, "-")
+    .replace(/\/{2,}/g, "/");
   if (!t) return "";
-  return t.startsWith("/") ? t : `/${t}`;
+  const next = t.startsWith("/") ? t : `/${t}`;
+  return next.length > 1 && next.endsWith("/") ? next.slice(0, -1) : next;
+}
+
+function isValidSlug(v: string) {
+  if (!v) return false;
+  if (!v.startsWith("/")) return false;
+  if (/\s/.test(v)) return false;
+  if (v.includes("//")) return false;
+  return true;
+}
+
+function toDateTimeLocal(iso?: string | null) {
+  if (!iso) return "";
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const yyyy = dt.getFullYear();
+  const mm = pad(dt.getMonth() + 1);
+  const dd = pad(dt.getDate());
+  const hh = pad(dt.getHours());
+  const min = pad(dt.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+}
+
+function fromDateTimeLocal(value: string): string | null {
+  const raw = (value ?? "").trim();
+  if (!raw) return null;
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toISOString();
 }
 
 function setDeepValue(target: any, path: Array<string | number>, value: any): any {
@@ -1012,8 +1052,11 @@ export default function PageEditorPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("/");
   const [status, setStatus] = useState<PageStatus>("DRAFT");
+  const [publishAtLocal, setPublishAtLocal] = useState("");
+  const [unpublishAtLocal, setUnpublishAtLocal] = useState("");
   const [canonicalUrl, setCanonicalUrl] = useState("");
   const [customCss, setCustomCss] = useState("");
+  const [scopeCssFn, setScopeCssFn] = useState<ScopeCssFn | null>(null);
   const [headScripts, setHeadScripts] = useState("");
   const [bodyScripts, setBodyScripts] = useState("");
   const [pageErrors, setPageErrors] = useState<PageFieldErrors>({});
@@ -1066,6 +1109,10 @@ export default function PageEditorPage() {
   const [elementModalOpen, setElementModalOpen] = useState(false);
   const [elementModalFields, setElementModalFields] = useState<QuickEditField[]>([]);
   const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [revisionsOpen, setRevisionsOpen] = useState(false);
+  const [revisionsBusy, setRevisionsBusy] = useState(false);
+  const [revisions, setRevisions] = useState<PageRevision[]>([]);
+  const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
   const autosaveTimersRef = React.useRef<Map<string, number>>(new Map());
   const autosaveSavedTimerRef = React.useRef<number | null>(null);
   const historyRef = React.useRef<HistoryEntry[]>([]);
@@ -1073,6 +1120,29 @@ export default function PageEditorPage() {
   const lastHistoryAtRef = React.useRef(0);
   const suppressHistoryRef = React.useRef(false);
   const [historyVersion, setHistoryVersion] = useState(0);
+
+  const hasCustomPreviewCss = customCss.trim().length > 0;
+
+  useEffect(() => {
+    if (!hasCustomPreviewCss || scopeCssFn) return;
+    let cancelled = false;
+    import("../../lib/scopeCss")
+      .then((mod) => {
+        if (cancelled) return;
+        setScopeCssFn(() => mod.scopeCss);
+      })
+      .catch(() => {
+        // Keep editor usable even if CSS scoper chunk fails to load.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasCustomPreviewCss, scopeCssFn]);
+
+  const scopedPreviewCss = useMemo(() => {
+    if (!hasCustomPreviewCss || !scopeCssFn) return "";
+    return scopeCssFn(customCss, "#cms-preview-root");
+  }, [customCss, hasCustomPreviewCss, scopeCssFn]);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const clipboardSectionRef = React.useRef<ClipboardSection | null>(null);
   const clipboardElementRef = React.useRef<ClipboardElement | null>(null);
@@ -1358,6 +1428,8 @@ export default function PageEditorPage() {
     setName(page.name ?? "");
     setSlug(page.slug ?? "/");
     setStatus(page.status ?? "DRAFT");
+    setPublishAtLocal(toDateTimeLocal((page as any).publishAt ?? null));
+    setUnpublishAtLocal(toDateTimeLocal((page as any).unpublishAt ?? null));
     setCanonicalUrl(page.canonicalUrl ?? "");
     setCustomCss(page.customCss ?? "");
     setHeadScripts(normalizeScripts(page.headScripts));
@@ -1372,12 +1444,14 @@ export default function PageEditorPage() {
       (name ?? "").trim() !== String(page.name ?? "") ||
       normalized !== String(page.slug ?? "") ||
       status !== (page.status ?? "DRAFT") ||
+      (fromDateTimeLocal(publishAtLocal) ?? "") !== String((page as any).publishAt ?? "") ||
+      (fromDateTimeLocal(unpublishAtLocal) ?? "") !== String((page as any).unpublishAt ?? "") ||
       (canonicalUrl ?? "") !== String(page.canonicalUrl ?? "") ||
       (customCss ?? "") !== String(page.customCss ?? "") ||
       (headScripts ?? "") !== normalizeScripts(page.headScripts) ||
       (bodyScripts ?? "") !== normalizeScripts(page.bodyScripts)
     );
-  }, [page, name, slug, status, canonicalUrl, customCss, headScripts, bodyScripts]);
+  }, [page, name, slug, status, publishAtLocal, unpublishAtLocal, canonicalUrl, customCss, headScripts, bodyScripts]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -2728,9 +2802,15 @@ export default function PageEditorPage() {
     if (!id) return;
 
     const normalized = normalizeSlug(slug);
+    const publishAtIso = fromDateTimeLocal(publishAtLocal);
+    const unpublishAtIso = fromDateTimeLocal(unpublishAtLocal);
     const nextErrors: PageFieldErrors = {};
     if (!name.trim()) nextErrors.name = "اسم الصفحة مطلوب";
     if (!normalized) nextErrors.slug = "slug مطلوب";
+    if (normalized && !isValidSlug(normalized)) nextErrors.slug = "Slug غير صالح. لازم يبدأ بـ / وبدون مسافات";
+    if (publishAtIso && unpublishAtIso && new Date(unpublishAtIso) <= new Date(publishAtIso)) {
+      nextErrors.unpublishAt = "وقت إلغاء النشر لازم يكون بعد وقت النشر";
+    }
 
     if (Object.keys(nextErrors).length) {
       setPageErrors(nextErrors);
@@ -2751,6 +2831,8 @@ export default function PageEditorPage() {
           name: name.trim(),
           slug: normalized,
           status,
+          publishAt: publishAtIso,
+          unpublishAt: unpublishAtIso,
           // Backend expects strings (not null); send empty string when unset.
           canonicalUrl: canonical,
           customCss: css,
@@ -2775,8 +2857,9 @@ export default function PageEditorPage() {
   const publishNow = async () => {
     if (!id) return;
     try {
-      await actions.updatePage.mutateAsync({ id, body: { status: "PUBLISHED" } });
+      await actions.updatePage.mutateAsync({ id, body: { status: "PUBLISHED", publishAt: null } });
       setStatus("PUBLISHED");
+      setPublishAtLocal("");
     } catch {
       // toast handled in hook
     }
@@ -2785,10 +2868,47 @@ export default function PageEditorPage() {
   const unpublishNow = async () => {
     if (!id) return;
     try {
-      await actions.updatePage.mutateAsync({ id, body: { status: "DRAFT" } });
+      await actions.updatePage.mutateAsync({ id, body: { status: "DRAFT", publishAt: null, unpublishAt: null } });
       setStatus("DRAFT");
+      setPublishAtLocal("");
+      setUnpublishAtLocal("");
     } catch {
       // toast handled in hook
+    }
+  };
+
+  const loadRevisions = async () => {
+    if (!id) return;
+    try {
+      setRevisionsBusy(true);
+      const items = await listPageRevisions(id, 30);
+      setRevisions(items);
+    } catch {
+      toast.error("فشل تحميل الإصدارات");
+    } finally {
+      setRevisionsBusy(false);
+    }
+  };
+
+  const openRevisionsModal = async () => {
+    setRevisionsOpen(true);
+    await loadRevisions();
+  };
+
+  const handleRestoreRevision = async (revision: PageRevision) => {
+    if (!id) return;
+    const ok = window.confirm(`استعادة نسخة بتاريخ ${new Date(revision.createdAt).toLocaleString()} ؟`);
+    if (!ok) return;
+    try {
+      setRestoringRevisionId(revision.id);
+      await restorePageRevision(id, revision.id, "Restore from admin");
+      await qc.invalidateQueries({ queryKey: ["pages", id] });
+      await loadRevisions();
+      toast.success("تمت الاستعادة");
+    } catch {
+      toast.error("فشل استعادة النسخة");
+    } finally {
+      setRestoringRevisionId(null);
     }
   };
 
@@ -3252,6 +3372,9 @@ export default function PageEditorPage() {
                 {autosaveState === "saving" ? "Autosaving..." : "Saved"}
               </div>
             ) : null}
+            <Button variant="ghost" size="sm" onClick={openRevisionsModal}>
+              الإصدارات
+            </Button>
             {page.status !== "PUBLISHED" ? (
               <Button variant="secondary" onClick={() => setPageStatus("PUBLISHED")}>نشر</Button>
             ) : (
@@ -3261,7 +3384,7 @@ export default function PageEditorPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input
             label="اسم الصفحة"
             value={name}
@@ -3287,6 +3410,29 @@ export default function PageEditorPage() {
             onChange={(e) => setStatus(e.target.value as any)}
             options={STATUSES.map((s) => ({ value: s.value, label: s.label }))}
           />
+          <Input
+            label="وقت النشر (اختياري)"
+            type="datetime-local"
+            value={publishAtLocal}
+            error={pageErrors.publishAt}
+            onValueChange={(value) => {
+              setPublishAtLocal(value);
+              setPageErrors((p) => ({ ...p, publishAt: undefined, unpublishAt: undefined }));
+            }}
+          />
+          <Input
+            label="وقت إلغاء النشر (اختياري)"
+            type="datetime-local"
+            value={unpublishAtLocal}
+            error={pageErrors.unpublishAt}
+            onValueChange={(value) => {
+              setUnpublishAtLocal(value);
+              setPageErrors((p) => ({ ...p, unpublishAt: undefined }));
+            }}
+          />
+        </div>
+        <div className="mt-2 text-xs opacity-70">
+          إذا الحالة `PUBLISHED`، سيتم إظهار الصفحة فقط داخل نافذة الوقت بين النشر وإلغاء النشر.
         </div>
       </div>
 
@@ -3964,7 +4110,7 @@ export default function PageEditorPage() {
             ) : (
               <div ref={canvasScrollRef} className={`relative ${canvasViewportClass} overflow-auto`}>
                 <ThemePreview key={`live-${previewBump}`} theme={theme} className="min-h-[60vh] p-4">
-                  {customCss && customCss.trim() ? <style>{scopeCss(customCss, "#cms-preview-root")}</style> : null}
+                  {scopedPreviewCss ? <style>{scopedPreviewCss}</style> : null}
                   <div
                     id="cms-preview-root"
                     className={`mx-auto w-full ${previewWidthClass}`}
@@ -4856,6 +5002,64 @@ export default function PageEditorPage() {
         ) : (
           <div className="text-sm text-white/60">No section selected.</div>
         )}
+      </Modal>
+
+      <Modal
+        open={revisionsOpen}
+        title="إصدارات الصفحة"
+        description="استرجاع نسخة سابقة كاملة (البيانات + الأقسام)."
+        onCancel={() => setRevisionsOpen(false)}
+        widthClassName="max-w-3xl"
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="ghost" onClick={loadRevisions} disabled={revisionsBusy}>
+              تحديث
+            </Button>
+            <Button variant="secondary" onClick={() => setRevisionsOpen(false)}>
+              إغلاق
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {revisionsBusy ? (
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+              <Spinner />
+              جاري تحميل الإصدارات...
+            </div>
+          ) : revisions.length === 0 ? (
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+              لا توجد إصدارات محفوظة بعد.
+            </div>
+          ) : (
+            revisions.map((rev) => (
+              <div key={rev.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-1 text-sm">
+                    <div className="font-semibold text-white">
+                      {new Date(rev.createdAt).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-white/60">
+                      {rev.reason || "Update"} • {rev.status} • {rev.slug}
+                    </div>
+                    {rev.createdBy ? (
+                      <div className="text-xs text-white/50">by {rev.createdBy}</div>
+                    ) : null}
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    isLoading={restoringRevisionId === rev.id}
+                    disabled={!!restoringRevisionId}
+                    onClick={() => handleRestoreRevision(rev)}
+                  >
+                    استعادة
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </Modal>
 
       <ConfirmDialog

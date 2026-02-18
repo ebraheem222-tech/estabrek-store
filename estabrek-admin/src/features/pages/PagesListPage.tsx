@@ -10,12 +10,16 @@ import { Spinner } from "../../components/ui/Spinner";
 import { PAGE_TEMPLATES } from "./pageTemplates";
 
 function slugify(input: string) {
-  return input
+  const core = input
     .toLowerCase()
     .trim()
+    .replace(/^\/+/, "")
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .replace(/\/{2,}/g, "/");
+  if (!core) return "/";
+  return `/${core}`;
 }
 
 type FieldErrors = {
@@ -84,6 +88,30 @@ const PageCard = ({
     cardRef.current.style.setProperty('--rotate-y', '0deg');
   }, []);
 
+  const now = Date.now();
+  const publishAt = page?.publishAt ? new Date(page.publishAt).getTime() : null;
+  const unpublishAt = page?.unpublishAt ? new Date(page.unpublishAt).getTime() : null;
+  const isPublished = page.status === "PUBLISHED";
+  const isScheduled = isPublished && !!publishAt && publishAt > now;
+  const isExpired = isPublished && !!unpublishAt && unpublishAt <= now;
+  const isLive = isPublished && !isScheduled && !isExpired;
+
+  const statusLabel = isScheduled ? "مجدول" : isExpired ? "منتهي" : isLive ? "منشور" : "مسودة";
+  const statusClass = isScheduled
+    ? "bg-amber-500/15 text-amber-300 border border-amber-500/25 shadow-sm shadow-amber-500/10"
+    : isExpired
+      ? "bg-zinc-500/20 text-zinc-300 border border-zinc-500/30"
+      : isLive
+        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shadow-sm shadow-emerald-500/10"
+        : "bg-white/[0.06] text-white/50 border border-white/10";
+  const statusDotClass = isScheduled
+    ? "bg-amber-300"
+    : isExpired
+      ? "bg-zinc-300"
+      : isLive
+        ? "bg-emerald-400 animate-pulse"
+        : "bg-white/30";
+
   return (
     <div
       ref={cardRef}
@@ -110,13 +138,9 @@ const PageCard = ({
               <p dir="ltr" className="mt-0.5 text-xs text-white/40 font-mono truncate">/{page.slug}</p>
             </div>
           </div>
-          <span className={`flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-            page.status === 'PUBLISHED' 
-              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shadow-sm shadow-emerald-500/10' 
-              : 'bg-white/[0.06] text-white/50 border border-white/10'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${page.status === 'PUBLISHED' ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'}`} />
-            {page.status === 'PUBLISHED' ? 'منشور' : 'مسودة'}
+          <span className={`flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${statusClass}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
+            {statusLabel}
           </span>
         </div>
       </div>
@@ -237,7 +261,20 @@ export default function PagesListPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
 
   // Stats
-  const publishedCount = pages.filter(p => p.status === 'PUBLISHED').length;
+  const nowTs = Date.now();
+  const publishedCount = pages.filter((p) => {
+    if (p.status !== "PUBLISHED") return false;
+    const publishAt = p.publishAt ? new Date(p.publishAt).getTime() : null;
+    const unpublishAt = p.unpublishAt ? new Date(p.unpublishAt).getTime() : null;
+    if (publishAt && publishAt > nowTs) return false;
+    if (unpublishAt && unpublishAt <= nowTs) return false;
+    return true;
+  }).length;
+  const scheduledCount = pages.filter((p) => {
+    if (p.status !== "PUBLISHED") return false;
+    const publishAt = p.publishAt ? new Date(p.publishAt).getTime() : null;
+    return !!publishAt && publishAt > nowTs;
+  }).length;
   const draftCount = pages.filter(p => p.status !== 'PUBLISHED').length;
 
   const openCreate = () => {
@@ -271,11 +308,13 @@ export default function PagesListPage() {
   }
 
 const onSave = async () => {
-    const body = { name: name.trim(), slug: slug.trim() };
+    const rawSlug = slug.trim();
+    const body = { name: name.trim(), slug: slugify(rawSlug) };
 
     const nextErrors: FieldErrors = {};
     if (!body.name) nextErrors.name = "الاسم مطلوب";
-    if (!body.slug) nextErrors.slug = "الـ slug مطلوب (بالإنجليزي)";
+    if (!rawSlug) nextErrors.slug = "الـ slug مطلوب";
+    if (!body.slug || !body.slug.startsWith("/")) nextErrors.slug = "الـ slug مطلوب ويبدأ بـ /";
 
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
@@ -345,6 +384,11 @@ const onSave = async () => {
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 <span className="text-white/40">منشور:</span>
                 <span className="font-semibold text-emerald-400">{publishedCount}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-300" />
+                <span className="text-white/40">مجدول:</span>
+                <span className="font-semibold text-amber-300">{scheduledCount}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-white/40" />
@@ -439,8 +483,8 @@ const onSave = async () => {
             label="Slug (بالإنجليزية)"
             value={slug}
             error={errors.slug}
-            placeholder="home"
-            hint="سيظهر في رابط الصفحة: /pages/home"
+            placeholder="/home"
+            hint="مثال: /about أو /shop"
             onChange={(e) => {
               setSlug(slugify(e.target.value));
               setErrors((p) => ({ ...p, slug: undefined }));

@@ -7,16 +7,7 @@ import { Select } from "../../components/ui/Select";
 import { MediaUrlInput } from "../../components/media/MediaUrlInput";
 import { Card, CardContent, CardHeader } from "../../components/ui/Card";
 import { useSettings, useSettingsActions } from "../../hooks/useSettings";
-import { ALL_NAV_TEMPLATES, NAV_CATEGORY_LABELS_AR, getNavTemplateById } from "../../cms/nav/navTemplates";
-import {
-  ALL_WEBSITE_THEMES,
-  WEBSITE_THEME_CATEGORY_LABELS_AR,
-  getWebsiteThemeById,
-} from "../../cms/themes/websiteThemes";
-import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } from "../../cms/effects/loadingAnimations";
-import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../cms/style/searchStyles";
-import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../cms/style/cursorStyles";
-import { alertThemes, getAlertTheme } from "../../cms/alert-themes";
+import type { CmsSettingsCatalog } from "./cmsSettingsCatalog";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -147,12 +138,32 @@ type CmsNavConfig = {
   items: CmsNavItem[];
 };
 
+const DEFAULT_OPTION = [{ value: "default", label: "افتراضي" }];
+const DEFAULT_CMS_SETTINGS_CATALOG: CmsSettingsCatalog = {
+  navTemplateOptions: DEFAULT_OPTION,
+  websiteThemeOptions: DEFAULT_OPTION,
+  loadingAnimationOptions: [{ value: "spinner-simple", label: "افتراضي" }],
+  searchInputStyleOptions: DEFAULT_OPTION,
+  cursorThemeOptions: DEFAULT_OPTION,
+  toastThemeOptions: DEFAULT_OPTION,
+  hasNavTemplate: () => true,
+  hasWebsiteTheme: () => true,
+  hasLoadingAnimation: () => true,
+  hasSearchInputStyle: () => true,
+  hasCursorTheme: () => true,
+  getSearchInputStyleById: () => null,
+  getLoadingAnimationById: () => null,
+  getAlertThemeById: () => null,
+};
+let cmsSettingsCatalogRuntime: CmsSettingsCatalog = DEFAULT_CMS_SETTINGS_CATALOG;
+
 const safeObj = (v: any) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
 const cryptoId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 };
 const CMS_NAV_ICON_IMAGE_RE = /^(https?:\/\/|\/|data:image\/)/i;
+const CMS_NAV_EXTERNAL_PROTOCOL_RE = /^[a-z][a-z0-9+.-]*:/i;
 
 function createCmsNavItem(label = "جديد"): CmsNavItem {
   return { id: cryptoId(), label, href: "/", icon: "", children: [] };
@@ -163,11 +174,34 @@ function isCmsNavIconImage(value?: string) {
   return v.length > 0 && CMS_NAV_ICON_IMAGE_RE.test(v);
 }
 
+function isCmsNavExternalHref(href: string) {
+  return CMS_NAV_EXTERNAL_PROTOCOL_RE.test(href) || href.startsWith("//");
+}
+
+function normalizeCmsNavHref(value?: string) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "/";
+  if (raw.startsWith("#")) return raw;
+  if (isCmsNavExternalHref(raw)) return raw;
+  if (raw.startsWith("?")) return raw;
+  if (raw.startsWith("/")) return raw.replace(/\/{2,}/g, "/");
+  const cleaned = raw.replace(/^(\.\/)+/, "").replace(/^\/+/, "");
+  return `/${cleaned}`;
+}
+
+function normalizeCmsNavItemsForSave(items: CmsNavItem[]): CmsNavItem[] {
+  return (items ?? []).map((item) => ({
+    ...item,
+    href: normalizeCmsNavHref(item.href),
+    children: normalizeCmsNavItemsForSave(item.children ?? []),
+  }));
+}
+
 function normalizeCmsNavItems(list: any[]): CmsNavItem[] {
   return list.map((it: any) => ({
     id: String(it?.id ?? cryptoId()),
     label: String(it?.label ?? ""),
-    href: typeof it?.href === "string" ? it.href : "",
+    href: normalizeCmsNavHref(typeof it?.href === "string" ? it.href : ""),
     icon: typeof it?.icon === "string" ? it.icon : "",
     children: normalizeCmsNavItems(Array.isArray(it?.children) ? it.children : []),
   }));
@@ -203,6 +237,59 @@ function removeCmsNavItemAtPath(items: CmsNavItem[], path: CmsNavPath): CmsNavIt
       children: removeCmsNavItemAtPath(item.children ?? [], rest),
     };
   });
+}
+
+function cloneCmsNavItem(item: CmsNavItem): CmsNavItem {
+  return {
+    id: cryptoId(),
+    label: String(item.label ?? ""),
+    href: String(item.href ?? ""),
+    icon: String(item.icon ?? ""),
+    children: Array.isArray(item.children) ? item.children.map(cloneCmsNavItem) : [],
+  };
+}
+
+function duplicateCmsNavItemAtPath(items: CmsNavItem[], path: CmsNavPath): CmsNavItem[] {
+  if (!Array.isArray(items) || path.length === 0) return items;
+  const [head, ...rest] = path;
+  if (head < 0 || head >= items.length) return items;
+  if (rest.length === 0) {
+    const next = [...items];
+    next.splice(head + 1, 0, cloneCmsNavItem(items[head]));
+    return next;
+  }
+  return items.map((item, idx) => {
+    if (idx !== head) return item;
+    return {
+      ...item,
+      children: duplicateCmsNavItemAtPath(item.children ?? [], rest),
+    };
+  });
+}
+
+function moveCmsNavItemAtPath(items: CmsNavItem[], path: CmsNavPath, direction: -1 | 1): CmsNavItem[] {
+  if (!Array.isArray(items) || path.length === 0) return items;
+  const [head, ...rest] = path;
+  if (head < 0 || head >= items.length) return items;
+  if (rest.length === 0) {
+    const target = head + direction;
+    if (target < 0 || target >= items.length) return items;
+    const next = [...items];
+    const [moved] = next.splice(head, 1);
+    next.splice(target, 0, moved);
+    return next;
+  }
+  return items.map((item, idx) => {
+    if (idx !== head) return item;
+    return {
+      ...item,
+      children: moveCmsNavItemAtPath(item.children ?? [], rest, direction),
+    };
+  });
+}
+
+function cmsNavPathKey(path: CmsNavPath) {
+  return path.join(".");
 }
 
 const THEME_PRESETS: Array<{ id: ThemePresetId; label: string }> = [
@@ -398,7 +485,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     toastThemeId: (() => {
       const raw = typeof o.toastThemeId === "string" ? o.toastThemeId : "default";
       if (raw === "default") return raw;
-      const theme = getAlertTheme(raw);
+      const theme = cmsSettingsCatalogRuntime.getAlertThemeById(raw);
       return theme?.style === "toast" ? raw : "default";
     })(),
     stockAlertEnabled: o.stockAlertEnabled !== false,
@@ -436,7 +523,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
 function normalizeLoading(v: any): LoadingConfig {
   const o = safeObj(v);
   const rawId = typeof o.animationId === "string" ? o.animationId : "spinner-simple";
-  const animationId = getLoadingById(rawId) ? rawId : "spinner-simple";
+  const animationId = cmsSettingsCatalogRuntime.hasLoadingAnimation(rawId) ? rawId : "spinner-simple";
   return {
     enabled: o.enabled === true,
     animationId,
@@ -454,14 +541,16 @@ function normalizeAdminTheme(v: any): AdminThemeConfig {
 function normalizeCursorThemeId(v: any): CursorThemeId {
   const raw = typeof v === "string" ? v : "default";
   if (raw === "default") return "default";
-  return getCursorThemeById(raw) ? raw : "default";
+  return cmsSettingsCatalogRuntime.hasCursorTheme(raw) ? raw : "default";
 }
 
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
   const o = safeObj(v);
   const rawWebsiteThemeId = typeof o.websiteThemeId === "string" ? o.websiteThemeId : "default";
   const websiteThemeId =
-    rawWebsiteThemeId === "default" || getWebsiteThemeById(rawWebsiteThemeId) ? rawWebsiteThemeId : "default";
+    rawWebsiteThemeId === "default" || cmsSettingsCatalogRuntime.hasWebsiteTheme(rawWebsiteThemeId)
+      ? rawWebsiteThemeId
+      : "default";
   return {
     mode: o.mode === "light" ? "light" : "dark",
     presetId: isThemePresetId(o.presetId) ? o.presetId : "estabrak_soft_gold",
@@ -478,7 +567,9 @@ function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
 }
 
 
-const THEME_PRESET_CARDS: CustomTheme[] = [
+type ThemePresetCard = Omit<CustomTheme, "id"> & { id: ThemePresetId };
+
+const THEME_PRESET_CARDS: ThemePresetCard[] = [
   { id: "estabrak_soft_gold", name: "Estabrak Soft", bg: "#F7F4E9", text: "#1A1A1A", accent: "#6FA6A1" },
   { id: "luxury_gold", name: "Luxury Paper", bg: "#F7F4E9", text: "#0B0B0B", accent: "#C6A75E" },
   { id: "clean_tech", name: "Clean Tech", bg: "#F6F8FC", text: "#0F172A", accent: "#2563EB" },
@@ -490,58 +581,13 @@ const THEME_PRESET_CARDS: CustomTheme[] = [
   { id: "plum_night", name: "Plum Night", bg: "#F8F5FF", text: "#1C102A", accent: "#A855F7" },
 ] as const;
 
-const CMS_NAV_TEMPLATE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "default", label: "افتراضي" },
-  ...ALL_NAV_TEMPLATES.map((tpl) => ({
-    value: tpl.id,
-    label: `${NAV_CATEGORY_LABELS_AR[tpl.category] ?? tpl.category} — ${tpl.nameAr}`,
-  })),
-];
-
-const WEBSITE_THEME_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "default", label: "افتراضي" },
-  ...ALL_WEBSITE_THEMES.map((t) => ({
-    value: t.id,
-    label: `${WEBSITE_THEME_CATEGORY_LABELS_AR[t.category] ?? t.category} — ${t.nameAr}`,
-  })),
-];
-
-const LOADING_ANIMATION_OPTIONS: Array<{ value: string; label: string }> = ALL_LOADING_ANIMATIONS.map((l) => ({
-  value: l.id,
-  label: `${LOADING_CATEGORY_LABELS_AR[l.category] ?? l.category} - ${l.nameAr}`,
-}));
-
-const SEARCH_INPUT_STYLE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "default", label: "افتراضي" },
-  ...ALL_SEARCH_INPUTS.map((s) => ({
-    value: s.id,
-    label: `${SEARCH_INPUT_CATEGORY_LABELS_AR[s.category] ?? s.category} - ${s.nameAr}`,
-  })),
-];
-
-const CURSOR_THEME_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "default", label: "افتراضي" },
-  ...ALL_CURSOR_THEMES.map((t) => ({
-    value: t.id,
-    label: `${t.nameAr} — ${t.name}`,
-  })),
-];
-
-const TOAST_THEME_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "default", label: "افتراضي" },
-  ...alertThemes
-    .filter((t) => t.style === "toast")
-    .map((t) => ({
-      value: t.id,
-      label: `${t.nameAr} — ${t.name}`,
-    })),
-];
-
 function normalizeHeader(v: any): HeaderConfig {
   const o = safeObj(v);
   const rawSearchInputStyleId = typeof o.searchInputStyleId === "string" ? o.searchInputStyleId : "default";
   const searchInputStyleId =
-    rawSearchInputStyleId === "default" || getSearchInputById(rawSearchInputStyleId) ? rawSearchInputStyleId : "default";
+    rawSearchInputStyleId === "default" || cmsSettingsCatalogRuntime.hasSearchInputStyle(rawSearchInputStyleId)
+      ? rawSearchInputStyleId
+      : "default";
   return {
     ...o,
     preset: (o.preset === "minimal" || o.preset === "centered") ? o.preset : "classic",
@@ -588,7 +634,10 @@ function normalizeCmsNav(v: any): CmsNavConfig {
   const o = safeObj(v);
   const items = Array.isArray(o.items) ? o.items : [];
   const rawTemplateId = typeof o.templateId === "string" ? o.templateId : "default";
-  const templateId = rawTemplateId === "default" || getNavTemplateById(rawTemplateId) ? rawTemplateId : "default";
+  const templateId =
+    rawTemplateId === "default" || cmsSettingsCatalogRuntime.hasNavTemplate(rawTemplateId)
+      ? rawTemplateId
+      : "default";
   return {
     enabled: !!o.enabled,
     mode: (o.mode === "mega" ? "mega" : "dropdown"),
@@ -750,19 +799,39 @@ export default function SettingsPage() {
   const [headerCfg, setHeaderCfg] = useState<HeaderConfig>(() => normalizeHeader(null));
   const [footerCfg, setFooterCfg] = useState<FooterConfig>(() => normalizeFooter(null));
   const [cmsNavCfg, setCmsNavCfg] = useState<CmsNavConfig>(() => normalizeCmsNav(null));
+  const [cmsNavCollapsedMap, setCmsNavCollapsedMap] = useState<Record<string, boolean>>({});
   const [storefrontCfg, setStorefrontCfg] = useState<StorefrontConfig>(() => normalizeStorefront(null));
   const [showHeaderJson, setShowHeaderJson] = useState(false);
   const [showFooterJson, setShowFooterJson] = useState(false);
   const [headerJsonDraft, setHeaderJsonDraft] = useState<string>("");
   const [footerJsonDraft, setFooterJsonDraft] = useState<string>("");
+  const [cmsCatalog, setCmsCatalog] = useState<CmsSettingsCatalog>(() => DEFAULT_CMS_SETTINGS_CATALOG);
 
   const [errors, setErrors] = useState<Errors>({});
 
+  useEffect(() => {
+    let cancelled = false;
+    import("./cmsSettingsCatalog")
+      .then((mod) => {
+        if (cancelled) return;
+        const loadedCatalog = mod.createCmsSettingsCatalog();
+        cmsSettingsCatalogRuntime = loadedCatalog;
+        setCmsCatalog(loadedCatalog);
+      })
+      .catch(() => {
+        // Keep page usable if optional catalog chunk fails.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const selectedSearchInputStyle = useMemo(() => {
+    const defaultSearchStyle = cmsCatalog.getSearchInputStyleById("search-basic-simple") ?? null;
     const id = headerCfg.searchInputStyleId;
-    if (id && id !== "default") return getSearchInputById(id) ?? getSearchInputById("search-basic-simple") ?? null;
-    return getSearchInputById("search-basic-simple") ?? null;
-  }, [headerCfg.searchInputStyleId]);
+    if (id && id !== "default") return cmsCatalog.getSearchInputStyleById(id) ?? defaultSearchStyle;
+    return defaultSearchStyle;
+  }, [cmsCatalog, headerCfg.searchInputStyleId]);
 
   useEffect(() => {
     if (!settings) return;
@@ -798,6 +867,7 @@ export default function SettingsPage() {
 
     setHeaderCfg(normalizeHeader(settings.header));
     setCmsNavCfg(normalizeCmsNav((settings.header as any)?.cmsNav));
+    setCmsNavCollapsedMap({});
     setStorefrontCfg(normalizeStorefront((settings.header as any)?.storefront));
     setFooterCfg(normalizeFooter(settings.footer));
     setShowHeaderJson(false);
@@ -887,6 +957,11 @@ export default function SettingsPage() {
 
     setErrors({});
 
+    const normalizedCmsNav = {
+      ...cmsNavCfg,
+      items: normalizeCmsNavItemsForSave(cmsNavCfg.items ?? []),
+    };
+
     try {
       await actions.updateSettings.mutateAsync({
         siteName: siteName.trim(),
@@ -907,7 +982,7 @@ export default function SettingsPage() {
         paypalClientSecret: paypalClientSecret.trim() || null,
         paypalWebhookId: paypalWebhookId.trim() || null,
         customCss: customCss,
-        header: { ...headerCfg, cmsNav: cmsNavCfg, storefront: storefrontCfg },
+        header: { ...headerCfg, cmsNav: normalizedCmsNav, storefront: storefrontCfg },
         footer: footerCfg,
         scriptsHead,
         scriptsBody,
@@ -926,7 +1001,7 @@ export default function SettingsPage() {
   const loading = normalizeLoading((headerCfg.ui as any)?.loading);
   const adminTheme = normalizeAdminTheme((headerCfg.ui as any)?.adminTheme);
   const cursorThemeId = normalizeCursorThemeId((headerCfg.ui as any)?.cursorThemeId);
-  const loadingPreset = getLoadingById(loading.animationId) ?? null;
+  const loadingPreset = cmsCatalog.getLoadingAnimationById(loading.animationId) ?? null;
 
   const updateTheme = (patch: Partial<NonNullable<HeaderConfig["theme"]>>) => {
     setHeaderCfg((p) => ({ ...p, theme: { ...normalizeTheme(p.theme), ...patch } }));
@@ -974,6 +1049,14 @@ export default function SettingsPage() {
       ...p,
       items: removeCmsNavItemAtPath(p.items ?? [], path),
     }));
+    const key = cmsNavPathKey(path);
+    setCmsNavCollapsedMap((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k === key || k.startsWith(`${key}.`)) delete next[k];
+      });
+      return next;
+    });
   };
 
   const addCmsNavRootItem = () => {
@@ -988,16 +1071,68 @@ export default function SettingsPage() {
       ...item,
       children: [...(item.children ?? []), createCmsNavItem("فرعي")],
     }));
+    setCmsNavCollapsedMap((prev) => ({ ...prev, [cmsNavPathKey(path)]: false }));
   };
 
-  function renderCmsNavItemEditor(item: CmsNavItem, path: CmsNavPath, depth = 0): React.ReactNode {
+  const duplicateCmsNavNode = (path: CmsNavPath) => {
+    setCmsNavCfg((p) => ({
+      ...p,
+      items: duplicateCmsNavItemAtPath(p.items ?? [], path),
+    }));
+  };
+
+  const moveCmsNavNode = (path: CmsNavPath, direction: -1 | 1) => {
+    setCmsNavCfg((p) => ({
+      ...p,
+      items: moveCmsNavItemAtPath(p.items ?? [], path, direction),
+    }));
+  };
+
+  const toggleCmsNavNodeCollapsed = (path: CmsNavPath) => {
+    const key = cmsNavPathKey(path);
+    setCmsNavCollapsedMap((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const collapseAllCmsNavNodes = () => {
+    const next: Record<string, boolean> = {};
+    const walk = (items: CmsNavItem[], path: CmsNavPath = []) => {
+      items.forEach((node, idx) => {
+        const p = [...path, idx];
+        if ((node.children ?? []).length > 0) {
+          next[cmsNavPathKey(p)] = true;
+          walk(node.children ?? [], p);
+        }
+      });
+    };
+    walk(cmsNavCfg.items ?? []);
+    setCmsNavCollapsedMap(next);
+  };
+
+  const expandAllCmsNavNodes = () => {
+    setCmsNavCollapsedMap({});
+  };
+
+  function renderCmsNavItemEditor(
+    item: CmsNavItem,
+    path: CmsNavPath,
+    depth = 0,
+    siblingCount = 1
+  ): React.ReactNode {
     const titleLabel = depth === 0 ? "العنوان" : "عنوان فرعي";
     const hrefLabel = depth === 0 ? "الرابط" : "رابط فرعي";
-    const iconLabel = depth === 0
-      ? "الأيقونة (name أو URL صورة)"
-      : "أيقونة فرعية (name أو URL صورة)";
+    const iconLabel = depth === 0 ? "اسم الأيقونة" : "اسم الأيقونة الفرعية";
     const levelLabel = depth === 0 ? "رئيسي" : depth === 1 ? "فرعي" : `فرعي مستوى ${depth}`;
     const children = item.children ?? [];
+    const indexInLevel = path[path.length - 1] ?? 0;
+    const canMoveUp = indexInLevel > 0;
+    const canMoveDown = indexInLevel < siblingCount - 1;
+    const hasChildren = children.length > 0;
+    const nodePathKey = cmsNavPathKey(path);
+    const collapsed = cmsNavCollapsedMap[nodePathKey] === true;
+    const iconValue = String(item.icon ?? "");
+    const isImageIcon = isCmsNavIconImage(iconValue);
+    const iconNameValue = isImageIcon ? "" : iconValue;
+    const iconImageValue = isImageIcon ? iconValue : "";
 
     return (
       <div
@@ -1006,47 +1141,123 @@ export default function SettingsPage() {
         style={{ marginInlineStart: depth > 0 ? Math.min(depth * 18, 72) : 0 }}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs text-white/60">مستوى: {levelLabel}</div>
+          <div className="text-xs text-white/60">
+            مستوى: {levelLabel}
+            {hasChildren ? ` • عناصر فرعية: ${children.length}` : ""}
+          </div>
           <div className="flex items-center gap-2">
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="نقل لأعلى"
+              onClick={() => moveCmsNavNode(path, -1)}
+              disabled={!canMoveUp}
+            >
+              ↑
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="نقل لأسفل"
+              onClick={() => moveCmsNavNode(path, 1)}
+              disabled={!canMoveDown}
+            >
+              ↓
+            </Button>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              title="نسخ العنصر"
+              onClick={() => duplicateCmsNavNode(path)}
+            >
+              ⎘
+            </Button>
             <Button size="sm" variant="secondary" onClick={() => addCmsNavChild(path)}>
               + عنصر فرعي
             </Button>
+            {hasChildren ? (
+              <Button size="sm" variant="ghost" onClick={() => toggleCmsNavNodeCollapsed(path)}>
+                {collapsed ? "توسيع" : "طي"}
+              </Button>
+            ) : null}
             <Button size="sm" variant="danger" onClick={() => removeCmsNavNode(path)}>
               حذف
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <Input
-            label={titleLabel}
-            value={item.label ?? ""}
-            onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, label: value }))}
-          />
-          <Input
-            label={hrefLabel}
-            value={item.href ?? ""}
-            onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, href: value }))}
-          />
-          <Input
-            label={iconLabel}
-            value={item.icon ?? ""}
-            onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, icon: value }))}
-            placeholder="home أو https://.../icon.png"
-          />
-        </div>
-
-        {isCmsNavIconImage(item.icon) ? (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <img src={item.icon} className="h-5 w-5 rounded object-contain" />
-            <span className="text-xs text-white/60">معاينة أيقونة الصورة</span>
+        {collapsed ? (
+          <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/70">
+            <div>العنوان: {item.label || "-"}</div>
+            <div>الرابط: {item.href || "-"}</div>
           </div>
-        ) : null}
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-3">
+              <Input
+                label={titleLabel}
+                value={item.label ?? ""}
+                onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, label: value }))}
+              />
+              <Input
+                label={hrefLabel}
+                value={item.href ?? ""}
+                onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, href: value }))}
+                onBlur={() =>
+                  updateCmsNavNode(path, (node) => ({
+                    ...node,
+                    href: normalizeCmsNavHref(node.href),
+                  }))
+                }
+              />
+              <Input
+                label={iconLabel}
+                value={iconNameValue}
+                onValueChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, icon: value }))}
+                placeholder="home / shop / phone / star / sparkle"
+              />
+            </div>
 
-        {children.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <MediaUrlInput
+                label="صورة الأيقونة (اختياري)"
+                value={iconImageValue}
+                onChange={(value) => updateCmsNavNode(path, (node) => ({ ...node, icon: value }))}
+                placeholder="https://.../icon.png"
+                showPreview
+              />
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-white/80">اختصارات أيقونات</div>
+                <div className="flex flex-wrap gap-2">
+                  {["home", "shop", "phone", "star", "sparkle"].map((preset) => (
+                    <Button
+                      key={preset}
+                      size="sm"
+                      variant={iconNameValue === preset ? "secondary" : "ghost"}
+                      onClick={() => updateCmsNavNode(path, (node) => ({ ...node, icon: preset }))}
+                    >
+                      {preset}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {isImageIcon ? (
+              <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <img src={iconValue} className="h-5 w-5 rounded object-contain" />
+                <span className="text-xs text-white/60">معاينة أيقونة الصورة</span>
+              </div>
+            ) : null}
+          </>
+        )}
+
+        {hasChildren ? (
           <div className="space-y-3 border-r border-white/10 pr-3">
-            {children.map((child, idx) => renderCmsNavItemEditor(child, [...path, idx], depth + 1))}
+            {children.map((child, idx) =>
+              renderCmsNavItemEditor(child, [...path, idx], depth + 1, children.length)
+            )}
           </div>
         ) : null}
       </div>
@@ -1113,7 +1324,7 @@ export default function SettingsPage() {
                         label="قالب التنقل"
                         value={cmsNavCfg.templateId}
                         onValueChange={(value) => setCmsNavCfg((p) => ({ ...p, templateId: value }))}
-                        options={CMS_NAV_TEMPLATE_OPTIONS}
+                        options={cmsCatalog.navTemplateOptions}
                       />
                       <Select
                         label="الأيقونات"
@@ -1132,12 +1343,24 @@ export default function SettingsPage() {
                       </Button>
                     </div>
 
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="ghost" onClick={collapseAllCmsNavNodes}>
+                        طي كل العناصر
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={expandAllCmsNavNodes}>
+                        توسيع كل العناصر
+                      </Button>
+                    </div>
+
                     <div className="text-xs text-white/60">
                       الأيقونة تدعم اسم أيقونة (home/shop/phone/star/sparkle) أو رابط صورة.
                     </div>
+                    <div className="text-xs text-white/50">
+                      الروابط تُطبّع تلقائيًا إلى صيغة تبدأ بـ "/" لتجنب مشاكل المسارات النسبية.
+                    </div>
 
                     <div className="space-y-3">
-                      {(cmsNavCfg.items ?? []).map((it, i) => renderCmsNavItemEditor(it, [i]))}
+                      {(cmsNavCfg.items ?? []).map((it, i, arr) => renderCmsNavItemEditor(it, [i], 0, arr.length))}
                     </div>
                   </div>
                 </div>
@@ -1363,7 +1586,7 @@ export default function SettingsPage() {
 	                      label="نمط مربع البحث"
 	                      value={headerCfg.searchInputStyleId ?? "default"}
 	                      onValueChange={(value) => setHeaderCfg((p) => ({ ...p, searchInputStyleId: value }))}
-	                      options={SEARCH_INPUT_STYLE_OPTIONS}
+	                      options={cmsCatalog.searchInputStyleOptions}
 	                      disabled={headerCfg.showSearch === false || headerCfg.searchStyle === "icon"}
 	                    />
 	                    <Select
@@ -1429,7 +1652,7 @@ export default function SettingsPage() {
                         label="ثيم الموقع"
                         value={theme.websiteThemeId ?? "default"}
                         onValueChange={(value) => updateTheme({ websiteThemeId: value })}
-                        options={WEBSITE_THEME_OPTIONS}
+                        options={cmsCatalog.websiteThemeOptions}
                       />
                       <Select
                         label="ثيم لوحة التحكم"
@@ -1444,7 +1667,7 @@ export default function SettingsPage() {
                         label="ثيم المؤشر (Cursor)"
                         value={cursorThemeId}
                         onValueChange={(value) => updateCursorThemeId(value as CursorThemeId)}
-                        options={CURSOR_THEME_OPTIONS}
+                        options={cmsCatalog.cursorThemeOptions}
                       />
                       <Select
                         label="البريست"
@@ -1551,7 +1774,7 @@ export default function SettingsPage() {
                           label="النوع"
                           value={loading.animationId}
                           onValueChange={(value) => updateLoading({ animationId: value })}
-                          options={LOADING_ANIMATION_OPTIONS}
+                          options={cmsCatalog.loadingAnimationOptions}
                         />
 
                         {loadingPreset ? (
@@ -2558,7 +2781,7 @@ export default function SettingsPage() {
                         label="ثيم إشعارات Toast"
                         value={storefrontCfg.toastThemeId}
                         onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, toastThemeId: v }))}
-                        options={TOAST_THEME_OPTIONS}
+                        options={cmsCatalog.toastThemeOptions}
                         disabled={!storefrontCfg.toastNotificationsEnabled}
                       />
                     </div>

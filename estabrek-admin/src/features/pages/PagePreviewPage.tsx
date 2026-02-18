@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Spinner } from "../../components/ui/Spinner";
@@ -7,8 +7,9 @@ import { useSettings } from "../../hooks/useSettings";
 import { useNavMenus } from "../../hooks/useNav";
 import type { NavigationItem, NavigationMenu } from "../../api/nav.api";
 import { PageRenderer } from "./PageRenderer";
-import { scopeCss } from "../../lib/scopeCss";
 import { ThemePreview } from "../../components/ThemePreview";
+
+type ScopeCssFn = (css: string, scopeSelector: string) => string;
 
 type HeaderConfig = {
   sticky?: boolean;
@@ -175,6 +176,7 @@ export default function PagePreviewPage() {
   const menus: NavigationMenu[] = (qNav.data as any) ?? [];
   const [contentLocale, setContentLocale] = useState<"ar" | "he" | "en">("ar");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scopeCssFn, setScopeCssFn] = useState<ScopeCssFn | null>(null);
 
   const i18nMeta = useMemo(() => {
     try {
@@ -215,6 +217,29 @@ export default function PagePreviewPage() {
 
   const previewName = (translatedFields as any)?.name ?? page?.name;
   const previewDir = contentLocale === "en" ? "ltr" : "rtl";
+  const previewCustomCss = typeof page?.customCss === "string" ? page.customCss : "";
+  const hasCustomPreviewCss = previewCustomCss.trim().length > 0;
+
+  useEffect(() => {
+    if (!hasCustomPreviewCss || scopeCssFn) return;
+    let cancelled = false;
+    import("../../lib/scopeCss")
+      .then((mod) => {
+        if (cancelled) return;
+        setScopeCssFn(() => mod.scopeCss);
+      })
+      .catch(() => {
+        // Keep preview usable even if CSS scoper chunk fails to load.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasCustomPreviewCss, scopeCssFn]);
+
+  const scopedPreviewCss = useMemo(() => {
+    if (!hasCustomPreviewCss || !scopeCssFn) return "";
+    return scopeCssFn(previewCustomCss, "#cms-preview-root");
+  }, [hasCustomPreviewCss, previewCustomCss, scopeCssFn]);
 
   const headerCfg: HeaderConfig = (settings?.header ?? {}) as any;
   const footerCfg: FooterConfig = (settings?.footer ?? {}) as any;
@@ -374,7 +399,7 @@ export default function PagePreviewPage() {
         {/* Content */}
         <main className="px-3 py-6 sm:px-4 sm:py-8">
           <div id="cms-preview-root" className="mx-auto max-w-6xl storefront-preview">
-            {page.customCss ? <style>{scopeCss(page.customCss, "#cms-preview-root")}</style> : null}
+            {scopedPreviewCss ? <style>{scopedPreviewCss}</style> : null}
             <PageRenderer sections={previewSections} />
           </div>
         </main>
