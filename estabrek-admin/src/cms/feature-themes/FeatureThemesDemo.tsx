@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { 
   featureThemes, 
   featureCategories, 
-  featureComponents,
-  FeatureTheme 
+  featureComponents
 } from './FeatureThemes';
+import type { FeatureTheme } from './FeatureThemes';
 import { additionalFeatureComponents } from './FeatureComponents';
 
 // Merge all components

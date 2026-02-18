@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { 
   alertThemes, 
   alertCategories, 
-  alertComponents,
-  AlertTheme,
-  AlertType
+  alertComponents
 } from './AlertThemes';
+import type { AlertTheme, AlertType } from './AlertThemes';
 import { additionalAlertComponents } from './AlertComponents';
 
 // Merge all components

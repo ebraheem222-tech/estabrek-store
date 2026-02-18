@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { 
   pricingThemes, 
   pricingCategories, 
-  pricingComponents,
-  PricingTheme 
+  pricingComponents
 } from './PricingThemes';
+import type { PricingTheme } from './PricingThemes';
 import { additionalPricingComponents } from './PricingComponents';
 
 // Merge all components

@@ -44,6 +44,3 @@ export {
   Hero89,
   Hero97, Hero98, Hero99, Hero100,
 } from './HeroComponents';
-
-// Demo
-export { default as HeroThemesDemo } from './HeroThemesDemo';

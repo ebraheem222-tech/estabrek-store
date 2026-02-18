@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { 
   contactFormThemes, 
   contactFormCategories, 
-  contactFormComponents,
-  ContactFormTheme 
+  contactFormComponents
 } from './ContactFormThemes';
+import type { ContactFormTheme } from './ContactFormThemes';
 import { additionalFormComponents } from './ContactFormComponents';
 
 // Merge all components

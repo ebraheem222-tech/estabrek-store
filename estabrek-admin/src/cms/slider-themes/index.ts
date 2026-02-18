@@ -41,6 +41,3 @@ export {
   SliderRetroGaming,
   additionalSliderComponents,
 } from './SliderComponents';
-
-// Demo
-export { default as SliderThemesDemo } from './SliderThemesDemo';

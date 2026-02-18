@@ -6,8 +6,8 @@ import {
   SpotlightCard,
   SpotlightButton,
   SpotlightInput,
-  SpotlightTheme,
 } from './SpotlightThemes';
+import type { SpotlightTheme } from './SpotlightThemes';
 
 // Category Icons
 const categoryIcons: Record<string, string> = {

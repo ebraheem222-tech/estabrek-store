@@ -20,5 +20,4 @@ export {
   type SpotlightProps,
 } from './SpotlightThemes';
 
-export { default as SpotlightThemesDemo } from './SpotlightThemesDemo';
 export { default } from './SpotlightThemes';

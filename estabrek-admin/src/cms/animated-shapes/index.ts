@@ -52,6 +52,3 @@ export {
 } from './AnimatedShapesExtra';
 
 export { AnimatedShapeLayer } from "./AnimatedShapeLayer";
-
-// Demo
-export { default as AnimatedShapesDemo } from './AnimatedShapesDemo';

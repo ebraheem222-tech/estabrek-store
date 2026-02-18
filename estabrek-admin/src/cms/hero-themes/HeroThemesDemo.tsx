@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { heroThemes, heroCategories, HeroTheme } from './HeroThemes';
+import { heroThemes, heroCategories } from './HeroThemes';
+import type { HeroTheme } from './HeroThemes';
 import { heroComponents } from './HeroComponents';
 
 // Category Icons

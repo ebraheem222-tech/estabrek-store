@@ -47,6 +47,3 @@ export {
   FeatureTravelDestinations,
   additionalFeatureComponents,
 } from './FeatureComponents';
-
-// Demo
-export { default as FeatureThemesDemo } from './FeatureThemesDemo';

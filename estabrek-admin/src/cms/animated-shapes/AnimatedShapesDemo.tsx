@@ -3,9 +3,9 @@ import {
   animatedShapeThemes, 
   shapeCategories, 
   animatedShapeComponents,
-  animationKeyframes,
-  AnimatedShapeTheme 
+  animationKeyframes
 } from './AnimatedShapes';
+import type { AnimatedShapeTheme } from './AnimatedShapes';
 import { additionalShapeComponents } from './AnimatedShapesExtra';
 
 // Merge all components

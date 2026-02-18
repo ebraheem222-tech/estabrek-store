@@ -54,6 +54,3 @@ export {
   AlertLevelUp,
   additionalAlertComponents,
 } from './AlertComponents';
-
-// Demo
-export { default as AlertThemesDemo } from './AlertThemesDemo';

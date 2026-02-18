@@ -48,6 +48,3 @@ export {
   Form100,
   additionalFormComponents,
 } from './ContactFormComponents';
-
-// Demo
-export { default as ContactFormThemesDemo } from './ContactFormThemesDemo';

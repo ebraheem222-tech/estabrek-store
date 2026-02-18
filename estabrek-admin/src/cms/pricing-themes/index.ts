@@ -39,6 +39,3 @@ export {
   PricingAppLifetime,
   additionalPricingComponents,
 } from './PricingComponents';
-
-// Demo
-export { default as PricingThemesDemo } from './PricingThemesDemo';

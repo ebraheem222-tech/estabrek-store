@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { 
   sliderThemes, 
   sliderCategories, 
-  sliderComponents,
-  SliderTheme 
+  sliderComponents
 } from './SliderThemes';
+import type { SliderTheme } from './SliderThemes';
 import { additionalSliderComponents } from './SliderComponents';
 
 // Merge all components
