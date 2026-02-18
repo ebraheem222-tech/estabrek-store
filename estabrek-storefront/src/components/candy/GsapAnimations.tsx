@@ -7,17 +7,18 @@ import { useEffect, useRef } from "react";
    pure IntersectionObserver for SSR safety)
    ────────────────────────────────────────── */
 
+type GsapRevealProps = React.HTMLAttributes<HTMLDivElement> & {
+  delay?: number;
+  type?: "up" | "left" | "scale";
+};
+
 export function GsapReveal({
   children,
   className = "",
   delay = 0,
   type = "up",
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-  type?: "up" | "left" | "scale";
-}) {
+  ...rest
+}: GsapRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export function GsapReveal({
   const cls = type === "left" ? "reveal-left" : type === "scale" ? "reveal-scale" : "reveal-up";
 
   return (
-    <div ref={ref} className={`${cls} ${className}`}>
+    <div ref={ref} className={`${cls} ${className}`.trim()} {...rest}>
       {children}
     </div>
   );

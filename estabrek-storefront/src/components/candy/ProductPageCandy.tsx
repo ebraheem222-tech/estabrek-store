@@ -62,17 +62,7 @@ export default function ProductPageCandy({ product, currencyCode = "ILS" }: { pr
 
   const handleAddToCart = () => {
     if (!selectedVariant) return;
-    addItem({
-      id: product.id,
-      variantId: selectedVariant.id,
-      title: product.title,
-      price: price ?? 0,
-      image: images[0] ?? undefined,
-      slug: product.slug,
-      quantity: qty,
-      colorName: selectedItem?.colorName ?? undefined,
-      sizeName: selectedVariant?.size?.name ?? undefined,
-    });
+    addItem(selectedVariant.id, qty);
     setAddedAnim(true);
     setTimeout(() => setAddedAnim(false), 2000);
   };
