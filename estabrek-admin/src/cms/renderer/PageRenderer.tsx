@@ -30,9 +30,10 @@ import { SectionDecorations } from "../decorations/DecorationLayer";
 import { AnimatedShapeLayer } from "../animated-shapes/AnimatedShapeLayer";
 import type { TwTokens } from "../style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
+import { heroThemes, heroComponents, HeroRenderer } from "../hero-themes";
 import { featureComponents, additionalFeatureComponents } from "../feature-themes";
 import { pricingComponents, additionalPricingComponents } from "../pricing-themes";
-import { sliderComponents, additionalSliderComponents } from "../slider-themes";
+import { sliderThemes, sliderComponents, additionalSliderComponents } from "../slider-themes";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
 
 function safeNum(v: any, fallback: number) {
@@ -137,6 +138,122 @@ function renderComponentsBlock(data: any, className?: string) {
       <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
     </div>
   );
+}
+
+const HERO_SUBHEADLINE_ONLY_THEMES = new Set(["ecommerce-fashion"]);
+
+const HERO_LAYOUT_FALLBACK: Record<string, string[]> = {
+  centered: ["basic-centered", "basic-with-stats"],
+  left: ["basic-left", "corporate-consulting"],
+  right: ["basic-left"],
+  split: ["basic-split", "ecommerce-modern"],
+  fullscreen: ["basic-fullscreen", "ecommerce-fashion", "gaming-neon"],
+  minimal: ["basic-minimal", "creative-portfolio"],
+  asymmetric: ["basic-with-image", "creative-agency"],
+};
+
+const HERO_CATEGORY_FALLBACK: Record<string, string[]> = {
+  Basic: ["basic-centered", "basic-split"],
+  Tech: ["tech-saas", "tech-ai", "tech-developer"],
+  "E-commerce": ["ecommerce-modern", "ecommerce-fashion", "ecommerce-minimal"],
+  Gaming: ["gaming-neon", "gaming-esports"],
+  Corporate: ["corporate-professional", "corporate-consulting"],
+  Creative: ["creative-agency", "creative-portfolio"],
+  Food: ["food-restaurant"],
+  Fitness: ["fitness-gym"],
+  Travel: ["travel-hotel"],
+  Special: ["special-coming-soon", "special-event", "special-newsletter", "special-app-download"],
+};
+
+const SLIDER_STYLE_FALLBACK: Record<string, string[]> = {
+  basic: ["basic-simple", "basic-dark", "basic-gradient"],
+  cards: ["basic-card", "testimonial-grid"],
+  fade: ["basic-fade", "creative-minimal"],
+  carousel: ["basic-centered", "product-carousel"],
+  gallery: ["gallery-thumbnails", "gallery-lightbox"],
+  hero: ["hero-fullscreen", "creative-split", "hero-tech"],
+  testimonial: ["testimonial-simple", "testimonial-card", "testimonial-grid"],
+  product: ["product-carousel", "product-grid", "product-featured"],
+};
+
+const SLIDER_CATEGORY_FALLBACK: Record<string, string[]> = {
+  Basic: ["basic-simple", "basic-dark", "basic-gradient"],
+  "E-commerce": ["product-carousel", "product-grid", "product-featured", "product-luxury"],
+  Hero: ["hero-fullscreen", "creative-split", "hero-tech"],
+  Testimonial: ["testimonial-simple", "testimonial-card", "testimonial-grid"],
+  Gallery: ["gallery-thumbnails", "gallery-lightbox"],
+  Gaming: ["gaming-neon", "gaming-cyberpunk", "gaming-retro"],
+  Corporate: ["corporate-clients", "corporate-partners"],
+  Creative: ["creative-split", "creative-agency", "creative-motion"],
+  Food: ["food-menu", "basic-card"],
+  Travel: ["travel-destinations", "basic-fade"],
+  Tech: ["hero-tech", "basic-fade"],
+};
+
+function heroThemePropsFromData(data: HeroData) {
+  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
+  const source = slides.length ? (slides[0] ?? data) : data;
+  const title = String((source as any).title ?? "").trim();
+  const subtitle = (source as any).subtitle;
+  const themeId = resolveThemeId((data as any).themeId);
+  const subtitleText = subtitle != null ? String(subtitle) : undefined;
+  const useSubheadline = themeId ? HERO_SUBHEADLINE_ONLY_THEMES.has(themeId) : false;
+  const primaryButton = (source as any).primaryButton;
+  const secondaryButton = (source as any).secondaryButton;
+  const createAction = (href?: string) => {
+    if (!href) return undefined;
+    return () => {
+      if (typeof window !== "undefined") window.location.href = href;
+    };
+  };
+
+  return {
+    theme: themeId ?? undefined,
+    badge: (source as any).badge,
+    headline: title || "Hero headline",
+    subheadline: useSubheadline ? subtitleText : undefined,
+    description: useSubheadline ? undefined : subtitleText,
+    primaryCta: primaryButton?.label
+      ? { text: String(primaryButton.label), href: primaryButton.href, onClick: createAction(primaryButton.href) }
+      : undefined,
+    secondaryCta: secondaryButton?.label
+      ? { text: String(secondaryButton.label), href: secondaryButton.href, onClick: createAction(secondaryButton.href) }
+      : undefined,
+    imageSrc: (source as any).backgroundImageUrl ?? (data as any).backgroundImageUrl,
+    imageAlt: title || "Hero",
+  };
+}
+
+function resolveHeroThemeComponent(themeId: string): React.FC<any> | null {
+  const map = heroComponents as Record<string, React.FC<any>>;
+  if (map[themeId]) return map[themeId];
+  const theme = heroThemes.find((item) => item.id === themeId);
+  const candidates: string[] = [];
+  if (theme) {
+    candidates.push(...(HERO_CATEGORY_FALLBACK[theme.category] ?? []));
+    candidates.push(...(HERO_LAYOUT_FALLBACK[theme.layout] ?? []));
+  }
+  candidates.push("basic-centered");
+  for (const id of candidates) {
+    if (map[id]) return map[id];
+  }
+  return null;
+}
+
+function resolveSliderThemeComponent(themeId: string): React.FC<any> | null {
+  const map = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+  if (map[themeId]) return map[themeId];
+  const theme = sliderThemes.find((item) => item.id === themeId);
+  const candidates: string[] = [];
+  if (theme) {
+    candidates.push(...(SLIDER_CATEGORY_FALLBACK[theme.category] ?? []));
+    candidates.push(...(SLIDER_STYLE_FALLBACK[theme.style] ?? []));
+  }
+  candidates.push("basic-simple");
+  for (const id of candidates) {
+    if (map[id]) return map[id];
+  }
+  return null;
 }
 
 function featureThemePropsFromData(data: FeaturesData) {
@@ -295,6 +412,19 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "HERO") {
     const d = data as HeroData;
+    const themeId = resolveThemeId((d as any).themeId);
+    if (themeId) {
+      const componentsBlock = renderComponentsBlock(d);
+      const ThemeComponent = resolveHeroThemeComponent(themeId);
+      const themeProps = heroThemePropsFromData(d) as any;
+      const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={themeId} {...themeProps} />;
+      return (
+        <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto overflow-hidden rounded-2xl", uiContainerClass(d))}>{themeNode}</div>
+          {componentsBlock}
+        </section>
+      );
+    }
     const slides = Array.isArray((d as any).slides) ? ((d as any).slides as any[]) : [];
     const hasSlides = slides.length > 0;
     const [activeSlide, setActiveSlide] = useState(0);
@@ -484,6 +614,9 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     const align = d.align ?? "center";
     const justify = align === "left" ? "text-left items-start" : align === "right" ? "text-right items-end" : "text-center items-center";
     const componentsBlock = renderComponentsBlock(d);
+    const legacyPrimary = (d as any).primaryButton;
+    const buttonLabel = d.buttonLabel ?? legacyPrimary?.label;
+    const buttonHref = d.buttonHref ?? legacyPrimary?.href;
 
     return (
       <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
@@ -494,17 +627,17 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
             {d.imageUrl ? (
               <img src={d.imageUrl} alt={d.title ?? ""} className="mt-2 w-full max-w-md rounded-2xl border border-white/[0.08]" />
             ) : null}
-            {d.buttonLabel ? (
-              d.buttonHref ? (
+            {buttonLabel ? (
+              buttonHref ? (
                 <a
-                  href={d.buttonHref}
+                  href={buttonHref}
                   className="mt-2 inline-flex w-fit rounded-xl bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-500"
                 >
-                  {d.buttonLabel}
+                  {buttonLabel}
                 </a>
               ) : (
                 <span className="mt-2 inline-flex w-fit rounded-xl bg-accent-600/80 px-4 py-2 text-sm font-semibold text-white/90">
-                  {d.buttonLabel}
+                  {buttonLabel}
                 </span>
               )
             ) : null}
@@ -525,8 +658,8 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
           <div className="space-y-3">
             {(d.items ?? []).map((it, idx) => (!isItemVisible(it) ? null : (
               <div key={idx} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                <div className="text-sm font-semibold">{it.question}</div>
-                <div className="mt-1 text-sm opacity-80">{it.answer}</div>
+                <div className="text-sm font-semibold">{(it as any).question ?? (it as any).q}</div>
+                <div className="mt-1 text-sm opacity-80">{(it as any).answer ?? (it as any).a}</div>
               </div>
             )))}
           </div>
@@ -915,8 +1048,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     const componentsBlock = renderComponentsBlock(d);
     const titleValue = d.title || (type === "NEW_ARRIVALS_SLIDER" ? "New arrivals" : "Best sellers");
     if (themeId) {
-      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
-      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const ThemeComponent = resolveSliderThemeComponent(themeId);
       const label = type === "NEW_ARRIVALS_SLIDER" ? "New arrival" : "Best seller";
       const slides = productSliderThemeSlides(d, label);
       const themeProps = {
@@ -958,8 +1090,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     const items = Array.isArray(d.items) ? d.items : [];
     const componentsBlock = renderComponentsBlock(d);
     if (themeId) {
-      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
-      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const ThemeComponent = resolveSliderThemeComponent(themeId);
       const slides = brandSliderThemeSlides(d);
       const themeProps = {
         slides,
@@ -1067,7 +1198,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                     {t.role ? <div className="text-xs opacity-70">{t.role}</div> : null}
                   </div>
                 </div>
-                <div className="mt-3 text-sm opacity-90">"{t.quote}"</div>
+                <div className="mt-3 text-sm opacity-90">"{(t as any).quote ?? (t as any).text}"</div>
               </div>
             )))}
           </div>
