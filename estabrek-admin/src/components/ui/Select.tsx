@@ -23,7 +23,31 @@ type Props = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange"> & {
 };
 
 export const Select = forwardRef<HTMLSelectElement, Props>(
-  ({ className, label, error, options, placeholder, children, onValueChange, onChange, ...rest }, ref) => {
+  ({ className, label, error, options, placeholder, children, onValueChange, onChange, style, ...rest }, ref) => {
+    const themedOptionStyle: React.CSSProperties = {
+      backgroundColor: "var(--surface)",
+      color: "var(--text)",
+    };
+
+    const themedChildren = React.Children.map(children, (child) => {
+      if (!React.isValidElement(child)) return child;
+      if (child.type === "option") {
+        return React.cloneElement(child as React.ReactElement<any>, {
+          style: { ...themedOptionStyle, ...((child.props as any)?.style ?? {}) },
+        });
+      }
+      if (child.type === "optgroup") {
+        const optChildren = React.Children.map((child.props as any)?.children, (opt) => {
+          if (!React.isValidElement(opt) || opt.type !== "option") return opt;
+          return React.cloneElement(opt as React.ReactElement<any>, {
+            style: { ...themedOptionStyle, ...((opt.props as any)?.style ?? {}) },
+          });
+        });
+        return React.cloneElement(child as React.ReactElement<any>, { children: optChildren });
+      }
+      return child;
+    });
+
     return (
       <div className="space-y-2">
         {label && (
@@ -44,6 +68,11 @@ export const Select = forwardRef<HTMLSelectElement, Props>(
                 : "border-white/[0.08] hover:border-white/[0.12]",
               className
             )}
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--surface) 94%, transparent)",
+              color: "var(--text)",
+              ...style,
+            }}
             onChange={(e) => {
               const value = e.target.value;
 
@@ -68,15 +97,15 @@ export const Select = forwardRef<HTMLSelectElement, Props>(
             {...rest}
           >
             {placeholder && (
-              <option value="" className="bg-surface-900 text-white/50">
+              <option value="" className="bg-surface-900 text-white/50" style={themedOptionStyle}>
                 {placeholder}
               </option>
             )}
             {children ? (
-              children
+              themedChildren
             ) : (
               (options ?? []).map((opt) => (
-                <option key={opt.value} value={opt.value} className="bg-surface-900 text-white">
+                <option key={opt.value} value={opt.value} className="bg-surface-900 text-white" style={themedOptionStyle}>
                   {opt.label}
                 </option>
               ))
