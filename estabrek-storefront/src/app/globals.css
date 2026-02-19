@@ -13622,7 +13622,6 @@ html {
    ============================================ */
 
 .lqip-image-shell {
-  position: relative;
   overflow: hidden;
   isolation: isolate;
 }
