@@ -5,7 +5,7 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { catalogItemKey } from "@/lib/catalog";
 import { ProductGallery } from "@/components/ProductGallery";
 import ProductBuyBox from "@/components/ProductBuyBox";
-import { formatMoney, getProductMinPrice, getProductPrimaryImage, getProductImageBlurDataUrl } from "@/lib/catalog";
+import { formatMoney, getProductMinPrice, getProductPrimaryImage, getProductImageBlurDataUrl, getProductDiscountPercent } from "@/lib/catalog";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
 
@@ -21,6 +21,7 @@ export default function ProductDetail({ product }: { product: CatalogProduct }) 
   const minPrice = useMemo(() => getProductMinPrice(product), [product]);
   const primaryImage = useMemo(() => getProductPrimaryImage(product), [product]);
   const primaryBlur = useMemo(() => getProductImageBlurDataUrl(product, primaryImage), [product, primaryImage]);
+  const discountPercent = useMemo(() => getProductDiscountPercent(product), [product]);
   const settings = useStorefrontSettings();
   const { addToRecentlyViewed } = useRecentlyViewed();
 
@@ -96,13 +97,18 @@ export default function ProductDetail({ product }: { product: CatalogProduct }) 
             </h1>
 
             {/* Price Display */}
-            <div className="flex items-baseline gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               {minPrice != null && minPrice > 0 ? (
                 <>
                   <span className="text-3xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
                     {formatMoney(minPrice, (product as any).currencyCode ?? "ILS")}
                   </span>
                   <span className="text-sm text-[var(--muted)]">شامل الضريبة</span>
+                  {discountPercent ? (
+                    <span className="discount-shape-badge discount-shape-badge--md inline-flex border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
+                      -{discountPercent}%
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <span className="text-sm text-[var(--muted)]">تواصل للسعر</span>

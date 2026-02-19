@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
-import { catalogItemLabel, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
+import { catalogItemLabel, getProductMinPrice, getProductImageBlurDataUrl, getVariantCompareAtPrice, getVariantEffectivePrice } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -111,9 +111,21 @@ export function QuickViewModal({
   const images = selectedItem?.images ?? [];
   const currentImage = images[selectedImageIndex]?.url || product.items?.[0]?.images?.[0]?.url;
   const currentBlur = images[selectedImageIndex]?.blurDataUrl ?? getProductImageBlurDataUrl(product, currentImage ?? null);
-  const price = selectedVariant?.price ?? product.items?.[0]?.variants?.[0]?.price;
-  const compareAt = compareEnabled ? selectedVariant?.compareAt : undefined;
-  const showCompare = compareEnabled && compareAt && Number(compareAt) > Number(price);
+  const fallbackVariant = product.items?.[0]?.variants?.[0];
+  const price = selectedVariant
+    ? getVariantEffectivePrice(selectedVariant)
+    : fallbackVariant
+    ? getVariantEffectivePrice(fallbackVariant)
+    : null;
+  const compareAt = compareEnabled
+    ? selectedVariant
+      ? getVariantCompareAtPrice(selectedVariant)
+      : fallbackVariant
+      ? getVariantCompareAtPrice(fallbackVariant)
+      : null
+    : null;
+  const showCompare = compareEnabled && compareAt != null && price != null && compareAt > price;
+  const discountPercent = showCompare ? Math.max(1, Math.round((1 - Number(price) / Number(compareAt)) * 100)) : null;
   const stock = selectedVariant?.stock ?? 0;
   const isOutOfStock = stock <= 0;
 
@@ -190,8 +202,8 @@ export function QuickViewModal({
 
               {/* Discount Badge */}
               {showCompare && (
-                <span className="quick-view-badge">
-                  خصم {Math.round((1 - Number(price) / Number(compareAt)) * 100)}%
+                <span className="quick-view-badge discount-shape-badge discount-shape-badge--sm">
+                  خصم {discountPercent}%
                 </span>
               )}
             </div>
@@ -240,7 +252,7 @@ export function QuickViewModal({
             {/* Price */}
             <div className="quick-view-price">
               <span className="quick-view-current-price">
-                {Number(price).toFixed(2)} ₪
+                {price != null ? `${Number(price).toFixed(2)} ₪` : "—"}
               </span>
               {showCompare && (
                 <span className="quick-view-compare-price">

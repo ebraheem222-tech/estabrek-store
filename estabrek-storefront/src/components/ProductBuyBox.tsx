@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog";
-import { catalogItemKey, catalogItemLabel, formatMoney } from "@/lib/catalog";
+import { catalogItemKey, catalogItemLabel, formatMoney, getVariantCompareAtPrice, getVariantEffectivePrice } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
@@ -104,12 +104,11 @@ export default function ProductBuyBox({
   }, [variants, sel.sizeKey]);
 
   const canAdd = !!selectedVariant && (selectedVariant.stock == null || selectedVariant.stock > 0);
-  const selectedPrice = selectedVariant ? Number(selectedVariant.price) : null;
-  const compareAt = selectedVariant
-    ? Number((selectedVariant as any).compareAt ?? (selectedVariant as any).compareAtPrice ?? NaN)
-    : NaN;
+  const selectedPrice = selectedVariant ? getVariantEffectivePrice(selectedVariant) : null;
+  const compareAt = selectedVariant ? getVariantCompareAtPrice(selectedVariant) ?? NaN : NaN;
   const hasCompareDiscount =
     Number.isFinite(compareAt) && selectedPrice != null && compareAt > selectedPrice;
+  const discountPercent = hasCompareDiscount ? Math.max(1, Math.round((1 - Number(selectedPrice) / compareAt) * 100)) : null;
   const showStockAlert = settings.stockAlertEnabled && !canAdd && variants.length > 0;
   const showPriceAlert = settings.priceDropAlertEnabled && selectedPrice != null && !hasCompareDiscount;
 
@@ -195,6 +194,16 @@ export default function ProductBuyBox({
             <div className="text-2xl font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
               {formatMoney(selectedPrice, undefined)}
             </div>
+            {hasCompareDiscount ? (
+              <div className="mt-1 flex items-center justify-end gap-2">
+                <span className="text-xs text-[color:var(--muted)] line-through">
+                  {formatMoney(compareAt, undefined)}
+                </span>
+                <span className="discount-shape-badge discount-shape-badge--sm inline-flex border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
+                  -{discountPercent}%
+                </span>
+              </div>
+            ) : null}
             <div className="text-xs text-[color:var(--muted)]">شامل الضريبة</div>
           </div>
         ) : (

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CatalogProduct } from "@/lib/catalog";
-import { catalogItemKey, catalogItemLabel, formatMoney, getProductPrimaryImage, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
+import { catalogItemKey, catalogItemLabel, formatMoney, getProductPrimaryImage, getProductMinPrice, getProductImageBlurDataUrl, getProductDiscountPercent } from "@/lib/catalog";
 import { cldUrl } from "@/lib/cloudinary";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -119,6 +119,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
   const [hoverImg, setHoverImg] = useState<string | null>(null);
   const [activeSwatch, setActiveSwatch] = useState<string | null>(null);
   const minPrice = useMemo(() => getProductMinPrice(product), [product]);
+  const discountPercent = useMemo(() => getProductDiscountPercent(product), [product]);
   const autoVariantImages = useMemo(() => buildAutoVariantImages(product, primary), [product, primary]);
   const canAutoRotate = autoVariantImages.length > 1;
   const [autoIndex, setAutoIndex] = useState(0);
@@ -255,6 +256,12 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
         <Link href={`/p/${product.slug}`} className="block" prefetch={prefetchEnabled}>
           {/* Image Container */}
           <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
+            {discountPercent ? (
+              <span className="discount-shape-badge discount-shape-badge--sm pointer-events-none absolute right-3 top-3 z-20 border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
+                -{discountPercent}%
+              </span>
+            ) : null}
+
             {/* Badge */}
             {badge ? (
               <div className="absolute left-3 top-3 z-20">
@@ -434,5 +441,4 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
     </div>
   );
 }
-
 
