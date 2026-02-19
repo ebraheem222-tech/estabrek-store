@@ -311,6 +311,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                   alt={product.title}
                   fill
                   blurDataUrl={secondary.blurDataUrl ?? undefined}
+                  showSkeleton={false}
                   className="object-contain sm:object-cover object-center opacity-0 transition duration-500 hover:opacity-100"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   loading={imageLoading}

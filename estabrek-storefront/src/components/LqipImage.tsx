@@ -1,7 +1,7 @@
 "use client";
 
 import Image, { type ImageProps } from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { isCloudinaryUrl } from "@/lib/cloudinary";
 
@@ -28,9 +28,11 @@ export function LqipImage({
   fallback,
   onLoad,
   onError,
+  onLoadingComplete,
   className,
   ...rest
 }: LqipImageProps) {
+  const shellRef = useRef<HTMLSpanElement | null>(null);
   const sourceKey =
     typeof rest.src === "string"
       ? rest.src
@@ -45,6 +47,37 @@ export function LqipImage({
     setHasError(false);
   }, [sourceKey]);
 
+  // Cached images may finish before handlers attach. Detect completed <img> proactively.
+  useEffect(() => {
+    if (!isLoading || !sourceKey) return;
+    let raf = 0;
+    let ticks = 0;
+
+    const check = () => {
+      const img = shellRef.current?.querySelector("img");
+      if (img?.complete) {
+        if (img.naturalWidth > 0) {
+          setIsLoading(false);
+          return;
+        }
+        if (img.naturalWidth === 0) {
+          setHasError(true);
+          setIsLoading(false);
+          return;
+        }
+      }
+      ticks += 1;
+      if (ticks < 24) {
+        raf = window.requestAnimationFrame(check);
+      }
+    };
+
+    raf = window.requestAnimationFrame(check);
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [isLoading, sourceKey]);
+
   const hasBlur = typeof blurDataUrl === "string" && blurDataUrl.trim().length > 0;
   const src = typeof rest.src === "string" ? rest.src : sourceKey;
   const unoptimized = src ? isCloudinaryUrl(src) : false;
@@ -53,6 +86,7 @@ export function LqipImage({
 
   return (
     <span
+      ref={shellRef}
       className={cx(
         "lqip-image-shell",
         fillMode ? "block h-full w-full" : "relative inline-block align-middle",
@@ -76,6 +110,10 @@ export function LqipImage({
           onLoad={(event) => {
             setIsLoading(false);
             onLoad?.(event);
+          }}
+          onLoadingComplete={(img) => {
+            setIsLoading(false);
+            onLoadingComplete?.(img);
           }}
           onError={(event) => {
             setHasError(true);

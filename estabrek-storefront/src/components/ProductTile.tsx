@@ -180,6 +180,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                     fill
                     loading="lazy"
                     blurDataUrl={secondaryBlur ?? undefined}
+                    showSkeleton={false}
                     className="object-cover product-image-zoom opacity-0 transition duration-500 group-hover:opacity-100 will-change-transform"
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   />

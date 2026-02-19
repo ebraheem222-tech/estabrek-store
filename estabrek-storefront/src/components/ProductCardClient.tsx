@@ -295,6 +295,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
                       fill
                       loading="lazy"
                       blurDataUrl={prevBlur ?? undefined}
+                      showSkeleton={false}
                       className={
                         "object-cover product-image-zoom will-change-transform " +
                         (fadeIn ? "opacity-0" : "opacity-100")
@@ -441,4 +442,3 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
     </div>
   );
 }
-
