@@ -52,7 +52,14 @@ export function LqipImage({
   const fillMode = Boolean(rest.fill);
 
   return (
-    <span className={cx("lqip-image-shell", fillMode ? "absolute inset-0 block" : "relative inline-block align-middle", wrapperClassName)}>
+    <span
+      className={cx(
+        "lqip-image-shell",
+        fillMode ? "block h-full w-full" : "relative inline-block align-middle",
+        wrapperClassName
+      )}
+      style={fillMode ? { position: "absolute", inset: 0 } : undefined}
+    >
       {showSkeleton && isLoading ? (
         <span className={cx("lqip-image-skeleton", skeletonClassName)} aria-hidden />
       ) : null}
