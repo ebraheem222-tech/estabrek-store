@@ -13616,3 +13616,80 @@ html {
     animation: none !important;
   }
 }
+
+/* ============================================
+   IMAGE LOADING + DISCOUNT SHAPES
+   ============================================ */
+
+.lqip-image-shell {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.lqip-image-skeleton {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--surface-2, #1f1f23) 94%, transparent) 8%,
+      color-mix(in srgb, var(--text, #ffffff) 8%, transparent) 26%,
+      color-mix(in srgb, var(--surface-2, #1f1f23) 94%, transparent) 42%
+    );
+  background-size: 220% 100%;
+  animation: lqip-image-shimmer 1.25s linear infinite;
+}
+
+@keyframes lqip-image-shimmer {
+  from {
+    background-position-x: 180%;
+  }
+  to {
+    background-position-x: -60%;
+  }
+}
+
+.lqip-image-state-loading {
+  opacity: 0;
+}
+
+.lqip-image-state-ready {
+  opacity: 1;
+  transition: opacity 0.28s ease;
+}
+
+.lqip-image-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: color-mix(in srgb, var(--surface-2, #1f1f23) 86%, transparent);
+  color: color-mix(in srgb, var(--muted, #9ca3af) 88%, transparent);
+  font-size: 0.7rem;
+  text-align: center;
+  z-index: 1;
+}
+
+.discount-shape-badge {
+  clip-path: polygon(12% 0%, 88% 0%, 100% 44%, 84% 100%, 16% 100%, 0% 44%);
+  letter-spacing: 0.01em;
+  line-height: 1;
+  backdrop-filter: blur(4px);
+}
+
+.discount-shape-badge--sm {
+  min-height: 1.45rem;
+  padding: 0.4rem 0.62rem;
+  font-size: 0.7rem;
+}
+
+.discount-shape-badge--md {
+  min-height: 1.65rem;
+  padding: 0.44rem 0.75rem;
+  font-size: 0.76rem;
+}

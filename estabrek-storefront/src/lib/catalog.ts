@@ -156,6 +156,34 @@ function getEffectiveVariantPrice(v: CatalogVariant, now = new Date()): number |
   return isSaleActive(now, start, end) ? salePrice : base;
 }
 
+export function getVariantEffectivePrice(v: CatalogVariant, now = new Date()): number | null {
+  return getEffectiveVariantPrice(v, now);
+}
+
+export function getVariantCompareAtPrice(v: CatalogVariant): number | null {
+  const compare = num((v as any).compareAt ?? (v as any).compareAtPrice ?? (v as any).originalPrice);
+  if (compare == null || compare <= 0) return null;
+  return compare;
+}
+
+export function getProductDiscountPercent(p: CatalogProduct): number | null {
+  let maxPercent: number | null = null;
+  const now = new Date();
+
+  for (const it of p.items ?? []) {
+    for (const v of it.variants ?? []) {
+      const price = getEffectiveVariantPrice(v, now);
+      const compareAt = getVariantCompareAtPrice(v);
+      if (price == null || compareAt == null || compareAt <= price || price <= 0) continue;
+      const percent = Math.round((1 - price / compareAt) * 100);
+      if (percent <= 0) continue;
+      if (maxPercent == null || percent > maxPercent) maxPercent = percent;
+    }
+  }
+
+  return maxPercent;
+}
+
 export function getProductPrimaryImage(p: CatalogProduct): string | null {
   const images = (p as any).images as Array<{ url?: string; isPrimary?: boolean }> | undefined;
   if (Array.isArray(images) && images.length) {
