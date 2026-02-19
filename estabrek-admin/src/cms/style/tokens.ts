@@ -177,6 +177,24 @@ export type OpacityPreset = typeof OPACITY_PRESETS[number];
 export const BLUR_PRESETS = ["none","sm","md","lg","xl","2xl","3xl"] as const;
 export type BlurPreset = typeof BLUR_PRESETS[number];
 
+export const MEDIA_SHAPE_PRESETS = [
+  "none",
+  "rectangle",
+  "rounded",
+  "circle",
+  "pill",
+  "diamond",
+  "hexagon",
+  "blob",
+  "arch",
+  "parallelogram",
+  "octagon",
+  "star",
+  "rhombus",
+  "leaf",
+] as const;
+export type MediaShapePreset = typeof MEDIA_SHAPE_PRESETS[number];
+
 // ============================================================
 // DECORATION TOKENS (SVG SHAPES)
 // ============================================================
@@ -388,6 +406,8 @@ export type TwTokens = {
   
   typography?: {
     family?: FontFamilyPreset;
+    familyPresetId?: string;
+    familyCustom?: string;
     size?: TextSizePreset;
     align?: TextAlignPreset;
     weight?: FontWeightPreset;
@@ -413,6 +433,7 @@ export type TwTokens = {
   effects?: {
     opacity?: OpacityPreset;
     blur?: BlurPreset;
+    mediaShape?: MediaShapePreset;
     backdropBlur?: BlurPreset;
     backdropBrightness?: "0"|"50"|"75"|"90"|"95"|"100"|"105"|"110"|"125"|"150"|"200";
     grayscale?: boolean;

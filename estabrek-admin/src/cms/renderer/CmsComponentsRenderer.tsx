@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import type { CmsComponent } from "../types";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
+import { collectGoogleFontsFromValue, ensureGoogleFontsLoaded } from "../style/googleFontsLoader";
 import { getContainerById, getDividerById } from "../style/containerStyles";
 import { SectionDecorations } from "../decorations/DecorationLayer";
 import { AnimatedShapeLayer } from "../animated-shapes/AnimatedShapeLayer";
@@ -171,6 +172,8 @@ function textEffectClass(tokens?: any) {
 function hasTypographyOverrides(typography?: any) {
   if (!typography) return false;
   if (typography.family) return true;
+  if (typography.familyPresetId) return true;
+  if (typography.familyCustom) return true;
   if (typography.size && typography.size !== "base") return true;
   if (typography.align && typography.align !== "left") return true;
   if (typography.weight && typography.weight !== "normal") return true;
@@ -848,14 +851,14 @@ function ComponentNode({
         const preset = getDividerById(tokens?.dividerStyleId);
         const node = preset?.svg ? (
           <div
-            className={cx(className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            className={cx(preset.className, className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
             style={inlineStyle}
             {...baseState?.attrs}
             dangerouslySetInnerHTML={{ __html: preset.svg }}
           />
         ) : preset ? (
           <div
-            className={cx(className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+            className={cx(preset.className, className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
             style={inlineStyle}
             {...baseState?.attrs}
           />
@@ -1090,6 +1093,13 @@ function ComponentNode({
 
 export function CmsComponentsRenderer({ components, className, inheritTokens, selection }: CmsComponentsRendererProps) {
   const list = Array.isArray(components) ? components : [];
+  const googleFonts = useMemo(() => collectGoogleFontsFromValue({ components: list, inheritTokens }), [list, inheritTokens]);
+  const googleFontsKey = googleFonts.join("|");
+
+  useEffect(() => {
+    ensureGoogleFontsLoaded(googleFonts);
+  }, [googleFonts, googleFontsKey]);
+
   if (!list.length) return null;
   return (
     <div className={className}>

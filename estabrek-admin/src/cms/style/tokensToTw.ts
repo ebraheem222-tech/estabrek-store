@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import type { TwTokens } from "./tokens";
 import type { CardTemplatePreset, HoverPresetExtended, TextEffectPreset, TwTokensExtended } from "./tokens-extended";
-import { getContainerById, getDividerById } from "./containerStyles";
+import { getContainerById } from "./containerStyles";
+import { getFontFamilyPresetById } from "./fontFamilyPresets";
 import { getInteractionEffectById } from "../effects/interactionEffects";
 import {
   bgMap,
@@ -207,10 +208,23 @@ function hoverExtendedClass(preset?: HoverPresetExtended): string {
   }
 }
 
+function resolveTypographyFamilyValue(
+  typography?: TwTokens["typography"] & { familyPresetId?: string; familyCustom?: string },
+): string | undefined {
+  if (!typography || typeof typography !== "object") return undefined;
+  const custom = typeof typography.familyCustom === "string" ? typography.familyCustom.trim() : "";
+  if (custom) return custom;
+  const presetId = typeof typography.familyPresetId === "string" ? typography.familyPresetId.trim() : "";
+  if (!presetId) return undefined;
+  return getFontFamilyPresetById(presetId)?.family;
+}
+
 function hasTypographyOverrides(tokens?: CmsTokens): boolean {
   const typography = tokens?.typography as any;
   if (!typography || typeof typography !== "object") return false;
   if (typography.family) return true;
+  if (typography.familyPresetId) return true;
+  if (typography.familyCustom) return true;
   if (typography.size && typography.size !== "base") return true;
   if (typography.align && typography.align !== "left") return true;
   if (typography.weight && typography.weight !== "normal") return true;
@@ -240,9 +254,6 @@ function tokensToClassNameBase(tokens?: CmsTokens): string {
 
   const containerPreset = getContainerById(tokens.containerStyleId);
   if (containerPreset?.className) parts.push(containerPreset.className);
-
-  const dividerPreset = getDividerById(tokens.dividerStyleId);
-  if (dividerPreset?.className) parts.push(dividerPreset.className);
 
   // layout
   if (tokens.layout?.display) parts.push(displayMap[tokens.layout.display]);
@@ -301,6 +312,10 @@ function tokensToClassNameBase(tokens?: CmsTokens): string {
   const typography = tokens.typography;
   if (typography?.family) {
     parts.push(fontFamilyMap[typography.family]);
+    parts.push("cms-typography-family-override");
+  }
+  const customFamily = resolveTypographyFamilyValue(typography as any);
+  if (customFamily) {
     parts.push("cms-typography-family-override");
   }
   if (typography?.size) {
@@ -385,6 +400,9 @@ function tokensToClassNameBase(tokens?: CmsTokens): string {
   // effects
   if (tokens.effects?.opacity) parts.push(opacityMap[tokens.effects.opacity]);
   if (tokens.effects?.blur) parts.push(blurMap[tokens.effects.blur]);
+  if (tokens.effects?.mediaShape && tokens.effects.mediaShape !== "none") {
+    parts.push(`cms-media-shape-${tokens.effects.mediaShape}`);
+  }
   if (tokens.effects?.backdropBlur) parts.push(backdropBlurMap[tokens.effects.backdropBlur]);
   if (tokens.effects?.backdropBrightness) parts.push(`backdrop-brightness-${tokens.effects.backdropBrightness}`);
   if (tokens.effects?.grayscale) parts.push("grayscale");
@@ -445,12 +463,13 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
   const style: CSSProperties = {};
   const hasResponsiveOverrides = !!(tokens.responsive && (tokens.responsive.tablet || tokens.responsive.desktop));
   const styleTokens = tokens.style as (TwTokens["style"] & { bgColor?: string; bgCustom?: string; borderCustomColor?: string }) | undefined;
-  const textTokens = tokens.typography as (TwTokens["typography"] & { colorCustom?: string }) | undefined;
+  const textTokens = tokens.typography as (TwTokens["typography"] & { colorCustom?: string; familyPresetId?: string; familyCustom?: string }) | undefined;
   const motionTokens = tokens.motion;
   const spacingTokens = tokens.spacing;
   const sizeTokens = tokens.size;
   const customBg = resolveCustomBackground(styleTokens?.bgCustom ?? styleTokens?.bgColor ?? styleTokens?.bg);
   const textColor = resolveCustomColor(textTokens?.colorCustom ?? textTokens?.color);
+  const textFamily = resolveTypographyFamilyValue(textTokens);
   const borderColor = resolveCustomColor(styleTokens?.borderCustomColor ?? styleTokens?.borderColor);
 
   if (customBg?.type === "gradient") {
@@ -465,6 +484,10 @@ export function tokensToInlineStyle(tokens?: CmsTokens): CSSProperties | undefin
   if (textColor) {
     style.color = textColor;
     (style as Record<string, string>)["--cms-text-color"] = textColor;
+  }
+  if (textFamily) {
+    style.fontFamily = textFamily;
+    (style as Record<string, string>)["--cms-font-family"] = textFamily;
   }
   if (borderColor) {
     style.borderColor = borderColor;

@@ -37,7 +37,7 @@ const HeroThemesDemo: React.FC = () => {
     badge: 'New Release',
     headline: 'Build Amazing Products',
     subheadline: 'The future of design is here',
-    description: 'Create stunning websites with our collection of 100 hero section templates. Perfect for any industry.',
+    description: 'Create stunning websites with our collection of 150 hero section templates. Perfect for any industry.',
     primaryCta: { text: 'Get Started', onClick: () => {} },
     secondaryCta: { text: 'Learn More', onClick: () => {} },
     features: ['Fast Performance', 'Modern Design', 'Easy to Use'],
@@ -67,8 +67,8 @@ const HeroThemesDemo: React.FC = () => {
       <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl font-bold mb-2">🎯 Hero Section Templates</h1>
-          <p className="text-orange-100 text-lg">100 Ready-to-Use Hero Sections for All Industries</p>
-          <p className="text-orange-200 mt-1">100 قالب قسم رئيسي جاهز لجميع الصناعات</p>
+          <p className="text-orange-100 text-lg">150 Ready-to-Use Hero Sections for All Industries</p>
+          <p className="text-orange-200 mt-1">150 قالب قسم رئيسي جاهز لجميع الصناعات</p>
 
           {/* Stats */}
           <div className="flex flex-wrap gap-4 mt-6">

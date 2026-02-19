@@ -37,7 +37,7 @@ export interface HeroProps {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 100 HERO THEMES DATA
+// 150 HERO THEMES DATA
 // ═══════════════════════════════════════════════════════════════
 
 export const heroThemes: HeroTheme[] = [
@@ -180,6 +180,69 @@ export const heroThemes: HeroTheme[] = [
   { id: 'special-event', name: 'Event', nameAr: 'حدث', category: 'Special', layout: 'centered', tags: ['special', 'event', 'conference'] },
   { id: 'special-app-download', name: 'App Download', nameAr: 'تحميل تطبيق', category: 'Special', layout: 'split', tags: ['special', 'app', 'download'] },
   { id: 'special-newsletter', name: 'Newsletter', nameAr: 'نشرة بريدية', category: 'Special', layout: 'centered', tags: ['special', 'newsletter', 'subscribe'] },
+
+  // ═══════════════════════════════════════════════════════════════
+  // ✨ EXPANSION PACK (101-150)
+  // ═══════════════════════════════════════════════════════════════
+  { id: 'basic-glassmorphism', name: 'Basic Glassmorphism', nameAr: 'أساسي زجاجي', category: 'Basic', layout: 'centered', tags: ['basic', 'glass', 'modern'] },
+  { id: 'basic-mesh-gradient', name: 'Basic Mesh Gradient', nameAr: 'أساسي شبكة متدرجة', category: 'Basic', layout: 'fullscreen', tags: ['basic', 'gradient', 'mesh'] },
+  { id: 'basic-soft-shadow', name: 'Basic Soft Shadow', nameAr: 'أساسي ظل ناعم', category: 'Basic', layout: 'split', tags: ['basic', 'soft', 'clean'] },
+  { id: 'basic-editorial', name: 'Basic Editorial', nameAr: 'أساسي تحريري', category: 'Basic', layout: 'left', tags: ['basic', 'editorial', 'minimal'] },
+  { id: 'basic-outline', name: 'Basic Outline', nameAr: 'أساسي حدود', category: 'Basic', layout: 'centered', tags: ['basic', 'outline', 'simple'] },
+
+  { id: 'tech-devops', name: 'Tech DevOps', nameAr: 'تقنية DevOps', category: 'Tech', layout: 'split', tags: ['tech', 'devops', 'platform'] },
+  { id: 'tech-mlops', name: 'Tech MLOps', nameAr: 'تقنية MLOps', category: 'Tech', layout: 'split', tags: ['tech', 'mlops', 'ai'] },
+  { id: 'tech-quantum', name: 'Tech Quantum', nameAr: 'تقنية كمومية', category: 'Tech', layout: 'fullscreen', tags: ['tech', 'quantum', 'future'] },
+  { id: 'tech-automation', name: 'Tech Automation', nameAr: 'تقنية أتمتة', category: 'Tech', layout: 'centered', tags: ['tech', 'automation', 'workflow'] },
+  { id: 'tech-iot', name: 'Tech IoT', nameAr: 'تقنية إنترنت الأشياء', category: 'Tech', layout: 'left', tags: ['tech', 'iot', 'devices'] },
+
+  { id: 'ecommerce-boutique', name: 'E-commerce Boutique', nameAr: 'متجر بوتيك', category: 'E-commerce', layout: 'split', tags: ['ecommerce', 'boutique', 'fashion'] },
+  { id: 'ecommerce-marketplace', name: 'E-commerce Marketplace', nameAr: 'متجر سوق', category: 'E-commerce', layout: 'fullscreen', tags: ['ecommerce', 'marketplace', 'multi-vendor'] },
+  { id: 'ecommerce-b2b', name: 'E-commerce B2B', nameAr: 'متجر B2B', category: 'E-commerce', layout: 'left', tags: ['ecommerce', 'b2b', 'wholesale'] },
+  { id: 'ecommerce-subscription', name: 'E-commerce Subscription', nameAr: 'متجر اشتراك', category: 'E-commerce', layout: 'centered', tags: ['ecommerce', 'subscription', 'recurring'] },
+  { id: 'ecommerce-home-decor', name: 'E-commerce Home Decor', nameAr: 'متجر ديكور منزلي', category: 'E-commerce', layout: 'split', tags: ['ecommerce', 'home', 'decor'] },
+
+  { id: 'gaming-indie', name: 'Gaming Indie', nameAr: 'ألعاب إندي', category: 'Gaming', layout: 'centered', tags: ['gaming', 'indie', 'launch'] },
+  { id: 'gaming-battlepass', name: 'Gaming Battle Pass', nameAr: 'ألعاب باتل باس', category: 'Gaming', layout: 'fullscreen', tags: ['gaming', 'battlepass', 'season'] },
+  { id: 'gaming-clan', name: 'Gaming Clan', nameAr: 'ألعاب كلان', category: 'Gaming', layout: 'split', tags: ['gaming', 'clan', 'community'] },
+  { id: 'gaming-speedrun', name: 'Gaming Speedrun', nameAr: 'ألعاب سبيدرن', category: 'Gaming', layout: 'left', tags: ['gaming', 'speedrun', 'challenge'] },
+  { id: 'gaming-arena', name: 'Gaming Arena', nameAr: 'ألعاب أرينا', category: 'Gaming', layout: 'fullscreen', tags: ['gaming', 'arena', 'competitive'] },
+
+  { id: 'corporate-sustainability', name: 'Corporate Sustainability', nameAr: 'شركات استدامة', category: 'Corporate', layout: 'split', tags: ['corporate', 'sustainability', 'esg'] },
+  { id: 'corporate-enterprise', name: 'Corporate Enterprise', nameAr: 'شركات مؤسسية', category: 'Corporate', layout: 'left', tags: ['corporate', 'enterprise', 'solutions'] },
+  { id: 'corporate-b2b', name: 'Corporate B2B', nameAr: 'شركات B2B', category: 'Corporate', layout: 'centered', tags: ['corporate', 'b2b', 'growth'] },
+  { id: 'corporate-investor-relations', name: 'Corporate Investor Relations', nameAr: 'شركات علاقات المستثمرين', category: 'Corporate', layout: 'split', tags: ['corporate', 'investors', 'finance'] },
+  { id: 'corporate-compliance', name: 'Corporate Compliance', nameAr: 'شركات امتثال', category: 'Corporate', layout: 'left', tags: ['corporate', 'compliance', 'trust'] },
+
+  { id: 'creative-magazine', name: 'Creative Magazine', nameAr: 'إبداعي مجلة', category: 'Creative', layout: 'asymmetric', tags: ['creative', 'magazine', 'editorial'] },
+  { id: 'creative-illustration', name: 'Creative Illustration', nameAr: 'إبداعي رسم', category: 'Creative', layout: 'centered', tags: ['creative', 'illustration', 'art'] },
+  { id: 'creative-uiux', name: 'Creative UI/UX', nameAr: 'إبداعي واجهات وتجربة', category: 'Creative', layout: 'split', tags: ['creative', 'uiux', 'product'] },
+  { id: 'creative-copywriting', name: 'Creative Copywriting', nameAr: 'إبداعي كتابة تسويقية', category: 'Creative', layout: 'left', tags: ['creative', 'copywriting', 'content'] },
+  { id: 'creative-film-festival', name: 'Creative Film Festival', nameAr: 'إبداعي مهرجان أفلام', category: 'Creative', layout: 'fullscreen', tags: ['creative', 'film', 'festival'] },
+
+  { id: 'food-brunch', name: 'Food Brunch', nameAr: 'طعام برانش', category: 'Food', layout: 'split', tags: ['food', 'brunch', 'cafe'] },
+  { id: 'food-dessert', name: 'Food Dessert', nameAr: 'طعام حلويات', category: 'Food', layout: 'centered', tags: ['food', 'dessert', 'sweet'] },
+  { id: 'food-seafood', name: 'Food Seafood', nameAr: 'طعام مأكولات بحرية', category: 'Food', layout: 'fullscreen', tags: ['food', 'seafood', 'restaurant'] },
+  { id: 'food-meal-prep', name: 'Food Meal Prep', nameAr: 'طعام تجهيز وجبات', category: 'Food', layout: 'left', tags: ['food', 'mealprep', 'healthy'] },
+  { id: 'food-farm-to-table', name: 'Food Farm to Table', nameAr: 'طعام من المزرعة للمائدة', category: 'Food', layout: 'split', tags: ['food', 'organic', 'fresh'] },
+
+  { id: 'fitness-pilates', name: 'Fitness Pilates', nameAr: 'لياقة بيلاتس', category: 'Fitness', layout: 'centered', tags: ['fitness', 'pilates', 'wellness'] },
+  { id: 'fitness-recovery', name: 'Fitness Recovery', nameAr: 'لياقة تعافي', category: 'Fitness', layout: 'split', tags: ['fitness', 'recovery', 'health'] },
+  { id: 'fitness-running-club', name: 'Fitness Running Club', nameAr: 'لياقة نادي جري', category: 'Fitness', layout: 'left', tags: ['fitness', 'running', 'community'] },
+  { id: 'fitness-boxing', name: 'Fitness Boxing', nameAr: 'لياقة ملاكمة', category: 'Fitness', layout: 'fullscreen', tags: ['fitness', 'boxing', 'strength'] },
+  { id: 'fitness-home-workout', name: 'Fitness Home Workout', nameAr: 'لياقة تمرين منزلي', category: 'Fitness', layout: 'centered', tags: ['fitness', 'home', 'workout'] },
+
+  { id: 'travel-city-break', name: 'Travel City Break', nameAr: 'سفر عطلة مدينة', category: 'Travel', layout: 'split', tags: ['travel', 'city', 'weekend'] },
+  { id: 'travel-safari', name: 'Travel Safari', nameAr: 'سفر سفاري', category: 'Travel', layout: 'fullscreen', tags: ['travel', 'safari', 'adventure'] },
+  { id: 'travel-backpacking', name: 'Travel Backpacking', nameAr: 'سفر رحلات ظهرية', category: 'Travel', layout: 'left', tags: ['travel', 'backpacking', 'budget'] },
+  { id: 'travel-family', name: 'Travel Family', nameAr: 'سفر عائلي', category: 'Travel', layout: 'centered', tags: ['travel', 'family', 'holiday'] },
+  { id: 'travel-luxury-villa', name: 'Travel Luxury Villa', nameAr: 'سفر فيلا فاخرة', category: 'Travel', layout: 'fullscreen', tags: ['travel', 'luxury', 'villa'] },
+
+  { id: 'special-waitlist', name: 'Special Waitlist', nameAr: 'خاص قائمة انتظار', category: 'Special', layout: 'centered', tags: ['special', 'waitlist', 'launch'] },
+  { id: 'special-webinar', name: 'Special Webinar', nameAr: 'خاص ندوة ويب', category: 'Special', layout: 'split', tags: ['special', 'webinar', 'event'] },
+  { id: 'special-black-friday', name: 'Special Black Friday', nameAr: 'خاص بلاك فرايدي', category: 'Special', layout: 'fullscreen', tags: ['special', 'sale', 'blackfriday'] },
+  { id: 'special-ramadan-campaign', name: 'Special Ramadan Campaign', nameAr: 'خاص حملة رمضان', category: 'Special', layout: 'centered', tags: ['special', 'ramadan', 'campaign'] },
+  { id: 'special-product-hunt', name: 'Special Product Hunt', nameAr: 'خاص إطلاق منتج', category: 'Special', layout: 'left', tags: ['special', 'product', 'launch'] },
 ];
 
 // ═══════════════════════════════════════════════════════════════

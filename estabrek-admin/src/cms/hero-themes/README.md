@@ -1,8 +1,8 @@
 # 🎯 Hero Section Templates
 
-100 Ready-to-Use Hero Sections for All Industries
+150 Ready-to-Use Hero Sections for All Industries
 
-100 قالب قسم رئيسي جاهز لجميع الصناعات
+150 قالب قسم رئيسي جاهز لجميع الصناعات
 
 ---
 
@@ -10,18 +10,18 @@
 
 | Category | Count | Description |
 |----------|-------|-------------|
-| 🎯 **Basic** | 12 | Clean, minimal hero sections |
-| 🚀 **Tech** | 12 | SaaS, AI, developer, startup |
-| 🛒 **E-commerce** | 12 | Fashion, products, sales |
-| 🎮 **Gaming** | 10 | Neon, esports, game launches |
-| 🏢 **Corporate** | 12 | Business, finance, consulting |
-| 🎨 **Creative** | 12 | Agency, portfolio, studio |
-| 🍔 **Food** | 10 | Restaurant, cafe, delivery |
-| 🏋️ **Fitness** | 8 | Gym, yoga, wellness |
-| ✈️ **Travel** | 8 | Hotel, booking, destinations |
-| 🎭 **Special** | 4 | Coming soon, events, newsletter |
+| 🎯 **Basic** | 17 | Clean, minimal hero sections |
+| 🚀 **Tech** | 17 | SaaS, AI, developer, startup |
+| 🛒 **E-commerce** | 17 | Fashion, products, sales |
+| 🎮 **Gaming** | 15 | Neon, esports, game launches |
+| 🏢 **Corporate** | 17 | Business, finance, consulting |
+| 🎨 **Creative** | 17 | Agency, portfolio, studio |
+| 🍔 **Food** | 15 | Restaurant, cafe, delivery |
+| 🏋️ **Fitness** | 13 | Gym, yoga, wellness |
+| ✈️ **Travel** | 13 | Hotel, booking, destinations |
+| 🎭 **Special** | 9 | Coming soon, events, newsletter |
 
-**Total: 100 hero templates**
+**Total: 150 hero templates**
 
 ---
 
@@ -311,7 +311,7 @@ const TravelHotel = heroComponents['travel-hotel'];
 
 ---
 
-## 🎭 Special Heroes (97-100)
+## 🎭 Special Heroes (97+)
 
 ```tsx
 // Coming Soon
@@ -358,7 +358,7 @@ import {
 } from '@/components/hero-themes';
 
 // All themes
-console.log(heroThemes.length); // 100
+console.log(heroThemes.length); // 150
 
 // Get theme by ID
 const theme = getHeroTheme('tech-saas');
@@ -410,7 +410,7 @@ interface HeroTheme {
 
 ## ✅ Features
 
-- ✅ 100 unique hero templates
+- ✅ 150 unique hero templates
 - ✅ 10 industry categories
 - ✅ 7 layout variations
 - ✅ Arabic + English names

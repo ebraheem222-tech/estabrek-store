@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { CmsSection, PageSectionType } from "../types";
 import { sanitizeHtml } from "../sanitizeHtml";
 import type {
   BannerData,
+  GlobalAnnouncementData,
+  GlobalHeaderData,
+  GlobalFooterData,
   CtaData,
   CustomHtmlData,
   FaqData,
@@ -30,6 +33,8 @@ import { SectionDecorations } from "../decorations/DecorationLayer";
 import { AnimatedShapeLayer } from "../animated-shapes/AnimatedShapeLayer";
 import type { TwTokens } from "../style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
+import { collectGoogleFontsFromValue, ensureGoogleFontsLoaded } from "../style/googleFontsLoader";
+import { getDividerById } from "../style/containerStyles";
 import { heroThemes, heroComponents, HeroRenderer } from "../hero-themes";
 import { featureComponents, additionalFeatureComponents } from "../feature-themes";
 import { pricingComponents, additionalPricingComponents } from "../pricing-themes";
@@ -82,6 +87,8 @@ function hasTypographyOverrides(tokens?: any): boolean {
   const typography = tokens?.typography;
   if (!typography || typeof typography !== "object") return false;
   if (typography.family) return true;
+  if (typography.familyPresetId) return true;
+  if (typography.familyCustom) return true;
   if (typography.size && typography.size !== "base") return true;
   if (typography.align && typography.align !== "left") return true;
   if (typography.weight && typography.weight !== "normal") return true;
@@ -124,6 +131,33 @@ function sectionDecorations(tokens?: TwTokens) {
   return { before: hasBefore ? before : undefined, after: hasAfter ? after : undefined };
 }
 
+function renderSectionDivider(tokens?: TwTokens) {
+  const preset = getDividerById(tokens?.dividerStyleId);
+  if (!preset) return null;
+  return (
+    <div className="mt-3">
+      {preset.svg ? <div className={preset.className} dangerouslySetInnerHTML={{ __html: preset.svg }} /> : <div className={preset.className} />}
+    </div>
+  );
+}
+
+function heroSplitRatio(value?: string): [number, number] {
+  const input = typeof value === "string" ? value : "";
+  const match = /^(\d+):(\d+)$/.exec(input);
+  const left = Math.max(1, Number(match?.[1] ?? 1));
+  const right = Math.max(1, Number(match?.[2] ?? 1));
+  return [left, right];
+}
+
+function heroTripleRatio(value?: string): [number, number, number] {
+  const input = typeof value === "string" ? value : "";
+  const match = /^(\d+):(\d+):(\d+)$/.exec(input);
+  const left = Math.max(1, Number(match?.[1] ?? 4));
+  const center = Math.max(1, Number(match?.[2] ?? 5));
+  const right = Math.max(1, Number(match?.[3] ?? 1));
+  return [left, center, right];
+}
+
 function sectionComponents(data: any) {
   const list = data?.components;
   return Array.isArray(list) ? list : [];
@@ -138,6 +172,75 @@ function renderComponentsBlock(data: any, className?: string) {
       <CmsComponentsRenderer components={components} inheritTokens={inheritTokens} />
     </div>
   );
+}
+
+type SectionLayoutMode = "stack" | "row" | "grid";
+
+type SectionLayoutConfig = {
+  mode: SectionLayoutMode;
+  group?: string;
+  columns: number;
+  span: number;
+};
+
+type SectionGroup = {
+  key: string;
+  groupKey?: string;
+  mode: SectionLayoutMode;
+  columns: number;
+  sections: any[];
+};
+
+const SECTION_GRID_COLS: Record<number, string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-1 md:grid-cols-2",
+  3: "grid-cols-1 md:grid-cols-3",
+  4: "grid-cols-1 md:grid-cols-4",
+  5: "grid-cols-1 md:grid-cols-5",
+  6: "grid-cols-1 md:grid-cols-6",
+};
+
+const SECTION_COL_SPAN: Record<number, string> = {
+  1: "col-span-1",
+  2: "col-span-2",
+  3: "col-span-3",
+  4: "col-span-4",
+  5: "col-span-5",
+  6: "col-span-6",
+};
+
+function clampInt(value: unknown, min: number, max: number, fallback: number) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function normalizeSectionLayout(raw: any): SectionLayoutConfig {
+  const layout = raw && typeof raw === "object" ? raw : {};
+  const mode = layout.mode === "row" || layout.mode === "grid" ? layout.mode : "stack";
+  const group = typeof layout.group === "string" ? layout.group.trim() : "";
+  const columns = clampInt(layout.columns, 1, 6, 2);
+  const span = clampInt(layout.span, 1, columns, 1);
+  return { mode, group: group || undefined, columns, span };
+}
+
+function buildSectionGroups(sections: any[]): SectionGroup[] {
+  const groups: SectionGroup[] = [];
+  for (const sec of sections) {
+    const layout = normalizeSectionLayout((sec as any)?.data?.layout);
+    const groupKey =
+      layout.mode !== "stack"
+        ? (layout.group ? `${layout.mode}:${layout.group}` : `auto:${layout.mode}:${layout.columns}`)
+        : "";
+    const last = groups[groups.length - 1];
+    if (groupKey && last && last.groupKey === groupKey) {
+      last.sections.push(sec);
+    } else {
+      const key = groupKey ? `${groupKey}:${sec.id}` : `${layout.mode}:${sec.id}`;
+      groups.push({ key, groupKey: groupKey || undefined, mode: layout.mode, columns: layout.columns, sections: [sec] });
+    }
+  }
+  return groups;
 }
 
 const HERO_SUBHEADLINE_ONLY_THEMES = new Set(["ecommerce-fashion"]);
@@ -190,16 +293,13 @@ const SLIDER_CATEGORY_FALLBACK: Record<string, string[]> = {
   Tech: ["hero-tech", "basic-fade"],
 };
 
-function heroThemePropsFromData(data: HeroData) {
-  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
-  const source = slides.length ? (slides[0] ?? data) : data;
-  const title = String((source as any).title ?? "").trim();
-  const subtitle = (source as any).subtitle;
-  const themeId = resolveThemeId((data as any).themeId);
+function heroThemePropsFromSource(source: any, themeId?: string | null) {
+  const title = String(source?.title ?? "").trim();
+  const subtitle = source?.subtitle;
   const subtitleText = subtitle != null ? String(subtitle) : undefined;
   const useSubheadline = themeId ? HERO_SUBHEADLINE_ONLY_THEMES.has(themeId) : false;
-  const primaryButton = (source as any).primaryButton;
-  const secondaryButton = (source as any).secondaryButton;
+  const primaryButton = source?.primaryButton;
+  const secondaryButton = source?.secondaryButton;
   const createAction = (href?: string) => {
     if (!href) return undefined;
     return () => {
@@ -209,7 +309,7 @@ function heroThemePropsFromData(data: HeroData) {
 
   return {
     theme: themeId ?? undefined,
-    badge: (source as any).badge,
+    badge: source?.badge,
     headline: title || "Hero headline",
     subheadline: useSubheadline ? subtitleText : undefined,
     description: useSubheadline ? undefined : subtitleText,
@@ -219,8 +319,18 @@ function heroThemePropsFromData(data: HeroData) {
     secondaryCta: secondaryButton?.label
       ? { text: String(secondaryButton.label), href: secondaryButton.href, onClick: createAction(secondaryButton.href) }
       : undefined,
-    imageSrc: (source as any).backgroundImageUrl ?? (data as any).backgroundImageUrl,
+    imageSrc: source?.backgroundImageUrl,
     imageAlt: title || "Hero",
+  };
+}
+
+function heroThemePropsFromData(data: HeroData) {
+  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
+  const source = slides.length ? (slides[0] ?? data) : data;
+  const themeId = resolveThemeId((data as any).themeId);
+  return {
+    ...heroThemePropsFromSource(source, themeId),
+    imageSrc: (source as any)?.backgroundImageUrl ?? (data as any)?.backgroundImageUrl,
   };
 }
 
@@ -410,8 +520,262 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (!data || typeof data !== "object") return null;
 
+  if (type === "GLOBAL_ANNOUNCEMENT") {
+    const d = data as GlobalAnnouncementData;
+    const textValue = String(d.text ?? "").trim() || "(Global announcement text)";
+    return (
+      <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto", uiContainerClass(d))}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">
+            Global Announcement {d.enabled === false ? "(disabled)" : ""}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+            <div className="text-sm">{textValue}</div>
+            {d.href ? (
+              <a href={d.href} className="inline-flex items-center rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-medium">
+                {d.buttonText || "تفاصيل"}
+              </a>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (type === "GLOBAL_HEADER") {
+    const d = data as GlobalHeaderData;
+    const brandValue = String(d.brandText ?? "").trim() || "Store";
+    return (
+      <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto", uiContainerClass(d))}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">
+            Global Header {d.sticky !== false ? "(sticky)" : ""}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-xl bg-white/10" />
+              <div className="text-sm font-semibold">{brandValue}</div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs opacity-85">
+              {d.showMenu !== false ? <span className="rounded-lg border border-white/10 px-2 py-1">Menu</span> : null}
+              {d.showSearch !== false ? <span className="rounded-lg border border-white/10 px-2 py-1">Search</span> : null}
+              {d.showCta ? (
+                <a href={d.ctaHref || "#"} className="rounded-lg border border-white/10 bg-white/10 px-2 py-1">
+                  {d.ctaLabel || "CTA"}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (type === "GLOBAL_FOOTER") {
+    const d = data as GlobalFooterData;
+    return (
+      <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto", uiContainerClass(d))}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">Global Footer</div>
+          <div className="grid gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 md:grid-cols-3">
+            <div>
+              <div className="text-sm font-semibold">{d.aboutTitle || "عن المتجر"}</div>
+              {d.aboutText ? <div className="mt-2 text-xs opacity-80">{d.aboutText}</div> : null}
+            </div>
+            <div className="text-xs opacity-80">{d.showSocial === false ? "Social hidden" : "Social links"}</div>
+            <div className="text-xs opacity-80">{d.showNewsletter === false ? "Newsletter hidden" : (d.newsletterTitle || "Newsletter")}</div>
+          </div>
+          <div className="mt-3 text-[11px] opacity-70">{d.copyright || "© Store"}</div>
+        </div>
+      </section>
+    );
+  }
+
   if (type === "HERO") {
     const d = data as HeroData;
+    const tripleMode = (d as any).tripleMode === true;
+    if (tripleMode) {
+      const componentsBlock = renderComponentsBlock(d);
+      const [leftRatio, centerRatio, rightRatio] = heroTripleRatio((d as any).tripleLayout);
+      const tripleGap = Math.max(0, Math.min(64, safeNum((d as any).tripleGap, 24)));
+      const align = (d as any).align ?? "left";
+      const justify = align === "center" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left";
+      const primaryButton = (d as any).primaryButton;
+      const secondaryButton = (d as any).secondaryButton;
+      const rightIndicators = Math.max(1, Math.min(10, safeNum((d as any).rightIndicators, 4)));
+      const rightActiveIndicator = Math.max(1, Math.min(rightIndicators, safeNum((d as any).rightActiveIndicator, 1)));
+
+      return (
+        <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto flex flex-col md:flex-row md:items-stretch", uiContainerClass(d))} style={{ gap: `${tripleGap}px` }}>
+            <div className="min-w-0" style={{ flex: `${leftRatio} 1 0%` }}>
+              <div className={cls("flex h-full min-h-[260px] flex-col justify-center gap-3", justify)}>
+                {(d as any).eyebrow ? <div className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300/90">{(d as any).eyebrow}</div> : null}
+                <h2 className="text-3xl font-bold leading-tight">{(d as any).title}</h2>
+                {(d as any).subtitle ? <p className="max-w-[48ch] text-sm opacity-85">{(d as any).subtitle}</p> : null}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {primaryButton?.label ? (
+                    primaryButton?.href ? (
+                      <a href={primaryButton.href} className="rounded-xl bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-500">
+                        {primaryButton.label}
+                      </a>
+                    ) : (
+                      <span className="rounded-xl bg-accent-600/80 px-4 py-2 text-sm font-semibold text-white/90">{primaryButton.label}</span>
+                    )
+                  ) : null}
+                  {secondaryButton?.label ? (
+                    secondaryButton?.href ? (
+                      <a href={secondaryButton.href} className="rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]">
+                        {secondaryButton.label}
+                      </a>
+                    ) : (
+                      <span className="rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90">{secondaryButton.label}</span>
+                    )
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-0" style={{ flex: `${centerRatio} 1 0%` }}>
+              <div className="flex h-full min-h-[260px] items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+                {(d as any).centerImageUrl ? (
+                  <img
+                    src={(d as any).centerImageUrl}
+                    alt={(d as any).centerImageAlt || (d as any).title || "Hero"}
+                    className="h-full max-h-[360px] w-auto object-contain"
+                  />
+                ) : (
+                  <div className="text-xs opacity-60">(ضع صورة الوسط)</div>
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-[28px] md:min-w-[42px]" style={{ flex: `${rightRatio} 1 0%` }}>
+              <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3">
+                {Array.from({ length: rightIndicators }).map((_, idx) => {
+                  const active = idx + 1 === rightActiveIndicator;
+                  return <span key={idx} className={cls("rounded-full", active ? "h-2 w-2 bg-amber-300" : "h-1.5 w-1.5 bg-white/35")} />;
+                })}
+              </div>
+            </div>
+          </div>
+          {componentsBlock}
+        </section>
+      );
+    }
+
+    const splitMode = (d as any).splitMode === true;
+    if (splitMode) {
+      const componentsBlock = renderComponentsBlock(d);
+      const [leftRatio, rightRatio] = heroSplitRatio((d as any).splitRatio);
+      const splitGap = Math.max(0, Math.min(64, safeNum((d as any).splitGap, 24)));
+      const splitRight = (
+        (d as any).splitRight && typeof (d as any).splitRight === "object"
+          ? (d as any).splitRight
+          : {
+              title: "",
+              subtitle: "",
+              backgroundImageUrl: "",
+              overlay: 0.35,
+              align: "center",
+              primaryButton: { label: "", href: "" },
+              secondaryButton: { label: "", href: "" },
+            }
+      ) as any;
+
+      const leftPane = {
+        title: (d as any).title,
+        subtitle: (d as any).subtitle,
+        backgroundImageUrl: (d as any).backgroundImageUrl,
+        overlay: (d as any).overlay,
+        align: (d as any).align,
+        primaryButton: (d as any).primaryButton,
+        secondaryButton: (d as any).secondaryButton,
+        themeId: (d as any).themeId,
+      } as any;
+
+      const renderPane = (pane: any) => {
+        const paneThemeId = resolveThemeId(pane?.themeId);
+        if (paneThemeId) {
+          const ThemeComponent = resolveHeroThemeComponent(paneThemeId);
+          const themeProps = heroThemePropsFromSource(pane, paneThemeId) as any;
+          const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={paneThemeId} {...themeProps} />;
+          return <div className="h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">{themeNode}</div>;
+        }
+
+        const overlay = Math.min(1, Math.max(0, safeNum(pane?.overlay, 0.35)));
+        const align = pane?.align ?? "center";
+        const justify = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
+        const primaryButton = pane?.primaryButton;
+        const secondaryButton = pane?.secondaryButton;
+
+        return (
+          <div
+            className="relative min-h-[260px] overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]"
+          >
+            {pane?.backgroundImageUrl ? (
+              <img
+                src={pane.backgroundImageUrl}
+                alt=""
+                aria-hidden="true"
+                className="cms-media-target absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : null}
+            <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
+            <div className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify)}>
+              <h2 className="text-2xl font-bold">{pane?.title}</h2>
+              {pane?.subtitle ? <p className="max-w-[60ch] text-sm opacity-90">{pane.subtitle}</p> : null}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {primaryButton?.label ? (
+                  primaryButton?.href ? (
+                    <a
+                      href={primaryButton.href}
+                      className="rounded-xl bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-500"
+                    >
+                      {primaryButton.label}
+                    </a>
+                  ) : (
+                    <span className="rounded-xl bg-accent-600/80 px-4 py-2 text-sm font-semibold text-white/90">
+                      {primaryButton.label}
+                    </span>
+                  )
+                ) : null}
+                {secondaryButton?.label ? (
+                  secondaryButton?.href ? (
+                    <a
+                      href={secondaryButton.href}
+                      className="rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]"
+                    >
+                      {secondaryButton.label}
+                    </a>
+                  ) : (
+                    <span className="rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90">
+                      {secondaryButton.label}
+                    </span>
+                  )
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03] p-3", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <div className={cls("mx-auto flex flex-col md:flex-row", uiContainerClass(d))} style={{ gap: `${splitGap}px` }}>
+            <div className="min-w-0" style={{ flex: `${leftRatio} 1 0%` }}>
+              {renderPane(leftPane)}
+            </div>
+            <div className="min-w-0" style={{ flex: `${rightRatio} 1 0%` }}>
+              {renderPane(splitRight)}
+            </div>
+          </div>
+          {componentsBlock}
+        </section>
+      );
+    }
+
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
@@ -466,16 +830,16 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
         <div
           key={slideKey}
           className={cls("relative min-h-[260px]", uiContainerClass(d), slideAnimClass)}
-          style={
-            (s as any).backgroundImageUrl
-              ? {
-                  backgroundImage: `url(${(s as any).backgroundImageUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }
-              : undefined
-          }
         >
+          {(s as any).backgroundImageUrl ? (
+            <img
+              src={(s as any).backgroundImageUrl}
+              alt=""
+              aria-hidden="true"
+              className="cms-media-target absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : null}
           <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
           <div key={contentKey} className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify, contentAnimClass)}>
             <h2 className="text-2xl font-bold">{(s as any).title}</h2>
@@ -675,20 +1039,55 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
     if ((d as any)?.mode === "container") {
       const blocks = Array.isArray((d as any).blocks) ? (d as any).blocks : [];
+      const nestedSections = blocks
+        .filter((b: any) => b && b.type && b.isVisible !== false)
+        .map((b: any, i: number) => ({
+          id: `${section.id}-b-${i}`,
+          type: b.type as PageSectionType,
+          data: b.data ?? {},
+          order: i,
+          isVisible: b.isVisible !== false,
+        }));
+      const groups = buildSectionGroups(nestedSections);
       return (
         <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
           <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
             {d.title ? <h3 className="mb-4 text-lg font-semibold">{d.title}</h3> : null}
             <div className="space-y-5">
-              {blocks
-                .filter((b: any) => b && b.type)
-                .map((b: any, i: number) => (
-                  <Section
-                    key={`${section.id}-b-${i}`}
-                    section={{ id: `${section.id}-b-${i}`, type: b.type, data: b.data, order: i, isVisible: b.isVisible !== false } as any}
-                    renderProductCard={renderProductCard}
-                  />
-                ))}
+              {groups.map((group) => {
+                const renderNested = (nested: any) => {
+                  const layout = normalizeSectionLayout((nested as any)?.data?.layout);
+                  const span = clampInt(layout.span, 1, group.columns, 1);
+                  const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
+                  const rowStyle =
+                    group.mode === "row" && group.columns > 0
+                      ? {
+                          flex: `0 0 ${(span / group.columns) * 100}%`,
+                          maxWidth: `${(span / group.columns) * 100}%`,
+                        }
+                      : undefined;
+                  return (
+                    <div key={nested.id} className={colSpanClass} style={rowStyle}>
+                      <Section section={nested as any} renderProductCard={renderProductCard} />
+                    </div>
+                  );
+                };
+
+                if (group.mode === "stack") {
+                  return <div key={group.key} className="space-y-5">{group.sections.map(renderNested)}</div>;
+                }
+
+                const groupClass =
+                  group.mode === "row"
+                    ? "flex flex-wrap items-stretch gap-5"
+                    : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
+
+                return (
+                  <div key={group.key} className={groupClass}>
+                    {group.sections.map(renderNested)}
+                  </div>
+                );
+              })}
             </div>
             {componentsBlock}
           </div>
@@ -1373,7 +1772,16 @@ export function CmsPageRenderer({
   renderProductCard?: (productId: string) => React.ReactNode;
   className?: string;
 }) {
-  const sorted = (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const sorted = useMemo(
+    () => (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [sections],
+  );
+  const googleFonts = useMemo(() => collectGoogleFontsFromValue(sorted), [sorted]);
+  const googleFontsKey = googleFonts.join("|");
+
+  useEffect(() => {
+    ensureGoogleFontsLoaded(googleFonts);
+  }, [googleFonts, googleFontsKey]);
 
   return (
     <div className={cls("space-y-5", className)}>
@@ -1381,6 +1789,7 @@ export function CmsPageRenderer({
         const sectionTokens = (sec as any)?.data?.twTokens as TwTokens | undefined;
         const decorations = sectionDecorations(sectionTokens);
         const animatedShapeConfig = sectionTokens?.animatedShape;
+        const dividerNode = renderSectionDivider(sectionTokens);
         const hasDecorations = !!decorations;
         const hasAnimatedShape = !!animatedShapeConfig?.themeId;
         const hasOverlays = hasDecorations || hasAnimatedShape;
@@ -1390,6 +1799,7 @@ export function CmsPageRenderer({
             {hasDecorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
             <div className={hasOverlays ? "relative z-10" : undefined}>
               <Section section={sec as any} renderProductCard={renderProductCard} />
+              {dividerNode}
             </div>
           </div>
         );
