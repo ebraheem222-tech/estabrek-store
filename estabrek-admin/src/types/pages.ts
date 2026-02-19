@@ -4,6 +4,9 @@ import type { ID, ISODateString, JsonValue } from "./common";
 export type PageStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
 export type PageSectionType =
+  | "GLOBAL_ANNOUNCEMENT"
+  | "GLOBAL_HEADER"
+  | "GLOBAL_FOOTER"
   | "HERO"
   | "RICH_TEXT"
   | "CUSTOM_HTML"

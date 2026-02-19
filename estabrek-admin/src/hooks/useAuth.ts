@@ -8,6 +8,7 @@ import { authStore, useAuthStore } from "../store/auth.store";
 import { hasTokens } from "../lib/storage";
 import { toast } from "../lib/toast";
 import type { AdminUser } from "../types/auth";
+import { getPermissionsForRole, type AdminPermission } from "../lib/authz";
 
 export function useAuth() {
   const status = useAuthStore((s) => s.status);
@@ -72,12 +73,14 @@ export function useAuth() {
   });
 
   const role = admin?.role ?? null;
+  const permissions = useMemo(() => getPermissionsForRole(role), [role]);
 
   return useMemo(
     () => ({
       status,
       admin,
       role,
+      permissions,
       isAuthenticated,
       isTokenOnly,
       meQuery,
@@ -89,7 +92,8 @@ export function useAuth() {
       sync: () => authStore.syncFromStorage(),
       clear: () => authStore.clear(),
       isSuperAdmin: () => authStore.isSuperAdmin(),
+      hasPermission: (permission: AdminPermission) => authStore.hasPermission(permission),
     }),
-    [status, admin, role, isAuthenticated, isTokenOnly, meQuery, loginMutation, mfaFinalizeMutation, logoutMutation]
+    [status, admin, role, permissions, isAuthenticated, isTokenOnly, meQuery, loginMutation, mfaFinalizeMutation, logoutMutation]
   );
 }

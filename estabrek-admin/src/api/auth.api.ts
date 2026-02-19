@@ -2,7 +2,7 @@
 import { api, setTokens, clearTokens } from "./http";
 import { ENDPOINTS } from "./endpoints";
 
-export type AdminRole = "SUPERADMIN";
+export type AdminRole = "SUPERADMIN" | "ADMIN" | "EDITOR" | "MARKETING" | "SUPPORT";
 
 export type AdminUser = {
   id: string;

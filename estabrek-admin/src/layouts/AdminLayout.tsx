@@ -8,6 +8,8 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Spinner } from "../components/ui/Spinner";
 import { applyAdminTheme } from "../theme/adminTheme";
 import { applyCursorTheme } from "../theme/cursorTheme";
+import { applyButtonTheme } from "../theme/buttonTheme";
+import type { AdminPermission } from "../lib/authz";
 
 // Icons as inline SVGs for modern look
 const Icons = {
@@ -118,42 +120,43 @@ type NavItem = {
   to: string;
   label: string;
   icon: React.ReactNode;
+  requirePermissions?: AdminPermission[];
 };
 
 const NAV_MAIN: NavItem[] = [
-  { to: "/admin/dashboard", label: "لوحة التحكم", icon: Icons.dashboard },
-  { to: "/admin/orders", label: "الطلبات", icon: Icons.orders },
-  { to: "/admin/outbox", label: "الرسائل", icon: Icons.outbox },
+  { to: "/admin/dashboard", label: "لوحة التحكم", icon: Icons.dashboard, requirePermissions: ["dashboard:read"] },
+  { to: "/admin/orders", label: "الطلبات", icon: Icons.orders, requirePermissions: ["orders:read"] },
+  { to: "/admin/outbox", label: "الرسائل", icon: Icons.outbox, requirePermissions: ["outbox:read"] },
 ];
 
 const NAV_CATALOG: NavItem[] = [
-  { to: "/admin/catalog/categories", label: "التصنيفات", icon: Icons.categories },
-  { to: "/admin/catalog/products", label: "المنتجات", icon: Icons.products },
-  { to: "/admin/catalog/sizes", label: "المقاسات", icon: Icons.sizes },
+  { to: "/admin/catalog/categories", label: "التصنيفات", icon: Icons.categories, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/products", label: "المنتجات", icon: Icons.products, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/sizes", label: "المقاسات", icon: Icons.sizes, requirePermissions: ["catalog:read"] },
 ];
 
 const NAV_INVENTORY: NavItem[] = [
-  { to: "/admin/inventory/low-stock", label: "تنبيهات المخزون", icon: Icons.inventory },
-  { to: "/admin/inventory/adjustments", label: "سجل المخزون", icon: Icons.inventory },
+  { to: "/admin/inventory/low-stock", label: "تنبيهات المخزون", icon: Icons.inventory, requirePermissions: ["inventory:read"] },
+  { to: "/admin/inventory/adjustments", label: "سجل المخزون", icon: Icons.inventory, requirePermissions: ["inventory:write"] },
 ];
 
 const NAV_DISCOUNTS: NavItem[] = [
-  { to: "/admin/discounts/coupons", label: "الكوبونات", icon: Icons.coupon },
-  { to: "/admin/discounts/coupons/test", label: "تجربة كوبون", icon: Icons.coupon },
+  { to: "/admin/discounts/coupons", label: "الكوبونات", icon: Icons.coupon, requirePermissions: ["discounts:read"] },
+  { to: "/admin/discounts/coupons/test", label: "تجربة كوبون", icon: Icons.coupon, requirePermissions: ["discounts:write"] },
 ];
 
 const NAV_SITE: NavItem[] = [
-  { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings },
-  { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot },
-  { to: "/admin/nav", label: "القوائم", icon: Icons.nav },
-  { to: "/admin/pages", label: "الصفحات", icon: Icons.pages },
-  { to: "/admin/ugc/reviews", label: "التقييمات", icon: Icons.reviews },
+  { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings, requirePermissions: ["settings:read"] },
+  { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
+  { to: "/admin/nav", label: "القوائم", icon: Icons.nav, requirePermissions: ["nav:write"] },
+  { to: "/admin/pages", label: "الصفحات", icon: Icons.pages, requirePermissions: ["pages:read"] },
+  { to: "/admin/ugc/reviews", label: "التقييمات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
 ];
 
 const NAV_ACCOUNT: NavItem[] = [
-  { to: "/admin/account/profile", label: "الملف الشخصي", icon: Icons.profile },
-  { to: "/admin/account/email", label: "تغيير البريد", icon: Icons.email },
-  { to: "/admin/account/security", label: "الأمان", icon: Icons.security },
+  { to: "/admin/account/profile", label: "الملف الشخصي", icon: Icons.profile, requirePermissions: ["account:read"] },
+  { to: "/admin/account/email", label: "تغيير البريد", icon: Icons.email, requirePermissions: ["account:write"] },
+  { to: "/admin/account/security", label: "الأمان", icon: Icons.security, requirePermissions: ["security:read", "audit:read"] },
 ];
 
 // Sidebar context
@@ -218,7 +221,7 @@ function NavGroup({ title, items, collapsed }: { title: string; items: NavItem[]
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { admin, logout } = useAuth();
+  const { admin, logout, hasPermission } = useAuth();
   const qSettings = useSettings();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -228,6 +231,8 @@ export default function AdminLayout() {
     applyAdminTheme(cfg);
     const cursorThemeId = (qSettings.data as any)?.header?.ui?.cursorThemeId;
     applyCursorTheme(cursorThemeId);
+    const buttonThemeId = (qSettings.data as any)?.header?.storefront?.buttonThemeId;
+    applyButtonTheme(buttonThemeId);
   }, [qSettings.data]);
 
   useEffect(() => {
@@ -260,6 +265,18 @@ export default function AdminLayout() {
     if (path.includes("/email")) return "تغيير البريد";
     return "لوحة التحكم";
   };
+
+  const canViewNavItem = (item: NavItem): boolean =>
+    !item.requirePermissions?.length || item.requirePermissions.every((permission) => hasPermission(permission));
+
+  const navGroups = [
+    { id: "main", title: "الإدارة", items: NAV_MAIN.filter(canViewNavItem) },
+    { id: "catalog", title: "الكتالوج", items: NAV_CATALOG.filter(canViewNavItem) },
+    { id: "inventory", title: "المخزون", items: NAV_INVENTORY.filter(canViewNavItem) },
+    { id: "discounts", title: "التسويق", items: NAV_DISCOUNTS.filter(canViewNavItem) },
+    { id: "site", title: "الموقع", items: NAV_SITE.filter(canViewNavItem) },
+    { id: "account", title: "الحساب", items: NAV_ACCOUNT.filter(canViewNavItem) },
+  ].filter((group) => group.items.length > 0);
 
   return (
     <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
@@ -310,12 +327,9 @@ export default function AdminLayout() {
               className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-6 no-scrollbar"
               onClick={() => setMobileOpen(false)}
             >
-              <NavGroup title="الإدارة" items={NAV_MAIN} collapsed={collapsed} />
-              <NavGroup title="الكتالوج" items={NAV_CATALOG} collapsed={collapsed} />
-              <NavGroup title="المخزون" items={NAV_INVENTORY} collapsed={collapsed} />
-              <NavGroup title="التسويق" items={NAV_DISCOUNTS} collapsed={collapsed} />
-              <NavGroup title="الموقع" items={NAV_SITE} collapsed={collapsed} />
-              <NavGroup title="الحساب" items={NAV_ACCOUNT} collapsed={collapsed} />
+              {navGroups.map((group) => (
+                <NavGroup key={group.id} title={group.title} items={group.items} collapsed={collapsed} />
+              ))}
             </div>
 
             {/* User section */}

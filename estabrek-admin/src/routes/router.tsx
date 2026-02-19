@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminLayout from "../layouts/AdminLayout";
 import AuthLayout from "../layouts/AuthLayout";
+import type { AdminPermission } from "../lib/authz";
 
 // features pages
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
@@ -60,6 +61,12 @@ function NotFound() {
 }
 
 export default function AppRouter() {
+  const withPermissions = (element: React.ReactNode, permissions: AdminPermission[]) => (
+    <ProtectedRoute requireSuperAdmin={false} requirePermissions={permissions}>
+      {element}
+    </ProtectedRoute>
+  );
+
   return (
     <BrowserRouter>
       <Routes>
@@ -104,72 +111,75 @@ export default function AppRouter() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSuperAdmin={false} requirePermissions={["dashboard:read"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
 
-          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="dashboard" element={withPermissions(<DashboardPage />, ["dashboard:read"])} />
 
           {/* account */}
-          <Route path="account/profile" element={<ProfilePage />} />
-          <Route path="account/email" element={<EmailChangePage />} />
-          <Route path="account/security" element={<SecurityCenterPage />} />
+          <Route path="account/profile" element={withPermissions(<ProfilePage />, ["account:read"])} />
+          <Route path="account/email" element={withPermissions(<EmailChangePage />, ["account:write"])} />
+          <Route path="account/security" element={withPermissions(<SecurityCenterPage />, ["security:read", "audit:read"])} />
 
           {/* orders */}
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="orders/:id" element={<OrderDetailsPage />} />
+          <Route path="orders" element={withPermissions(<OrdersPage />, ["orders:read"])} />
+          <Route path="orders/:id" element={withPermissions(<OrderDetailsPage />, ["orders:read"])} />
 
           {/* outbox */}
-          <Route path="outbox" element={<OutboxPage />} />
-          <Route path="outbox/:id" element={<OutboxDetailsPage />} />
+          <Route path="outbox" element={withPermissions(<OutboxPage />, ["outbox:read"])} />
+          <Route path="outbox/:id" element={withPermissions(<OutboxDetailsPage />, ["outbox:read"])} />
 
           {/* catalog */}
-          <Route path="catalog/categories" element={<CategoriesPage />} />
-          <Route path="catalog/products" element={<ProductsPage />} />
-          <Route path="catalog/products/:id" element={<ProductEditorPage />} />
-          <Route path="catalog/sizes" element={<SizesPage />} />
+          <Route path="catalog/categories" element={withPermissions(<CategoriesPage />, ["catalog:read"])} />
+          <Route path="catalog/products" element={withPermissions(<ProductsPage />, ["catalog:read"])} />
+          <Route path="catalog/products/:id" element={withPermissions(<ProductEditorPage />, ["catalog:write"])} />
+          <Route path="catalog/sizes" element={withPermissions(<SizesPage />, ["catalog:read"])} />
 
           {/* inventory */}
-          <Route path="inventory/low-stock" element={<LowStockPage />} />
-          <Route path="inventory/adjustments" element={<InventoryAdjustmentsPage />} />
+          <Route path="inventory/low-stock" element={withPermissions(<LowStockPage />, ["inventory:read"])} />
+          <Route path="inventory/adjustments" element={withPermissions(<InventoryAdjustmentsPage />, ["inventory:write"])} />
 
           {/* discounts */}
-          <Route path="discounts/coupons" element={<CouponsPage />} />
+          <Route path="discounts/coupons" element={withPermissions(<CouponsPage />, ["discounts:read"])} />
 
           
-              <Route path="discounts/coupons/test" element={<CouponTesterPage />} />{/* settings */}
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="chatbot" element={<ChatbotPage />} />
+              <Route path="discounts/coupons/test" element={withPermissions(<CouponTesterPage />, ["discounts:write"])} />{/* settings */}
+          <Route path="settings" element={withPermissions(<SettingsPage />, ["settings:read"])} />
+          <Route path="chatbot" element={withPermissions(<ChatbotPage />, ["chatbot:read"])} />
 
           {/* nav + pages */}
-          <Route path="nav" element={<NavPage />} />
+          <Route path="nav" element={withPermissions(<NavPage />, ["nav:write"])} />
           {/* ugc */}
-          <Route path="ugc/reviews" element={<ReviewsPage />} />
+          <Route path="ugc/reviews" element={withPermissions(<ReviewsPage />, ["ugc:read"])} />
           <Route
             path="pages"
-            element={(
+            element={withPermissions(
               <ErrorBoundary title="Pages">
                 <PagesListPage />
-              </ErrorBoundary>
+              </ErrorBoundary>,
+              ["pages:read"]
             )}
           />
           <Route
             path="pages/:id"
-            element={(
+            element={withPermissions(
               <ErrorBoundary title="Page editor">
                 <PageEditorPage />
-              </ErrorBoundary>
+              </ErrorBoundary>,
+              ["pages:write"]
             )}
           />
           <Route
             path="pages/:id/preview"
-            element={(
+            element={withPermissions(
               <ErrorBoundary title="Page preview">
                 <PagePreviewPage />
-              </ErrorBoundary>
+              </ErrorBoundary>,
+              ["pages:read"]
             )}
           />
         </Route>

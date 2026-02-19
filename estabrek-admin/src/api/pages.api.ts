@@ -24,6 +24,9 @@ export type Page = {
 };
 
 export type PageSectionType =
+  | "GLOBAL_ANNOUNCEMENT"
+  | "GLOBAL_HEADER"
+  | "GLOBAL_FOOTER"
   | "HERO"
   | "RICH_TEXT"
   | "CUSTOM_HTML"
@@ -73,6 +76,23 @@ export type PageRevision = {
   createdBy?: string | null;
   createdAt: string;
 };
+
+export type SectionValidationIssue = {
+  path?: string;
+  message: string;
+  code?: string;
+};
+
+export type SectionValidationResult = {
+  ok: boolean;
+  issues: SectionValidationIssue[];
+  source: "server" | "fallback";
+};
+
+function isEndpointUnavailable(error: any) {
+  const status = Number(error?.response?.status ?? 0);
+  return status === 404 || status === 405 || status === 501;
+}
 
 function safeJsonParse(v: unknown) {
   if (typeof v !== "string") return v;
@@ -165,6 +185,38 @@ export async function updateSection(sectionId: string, body: Partial<{ type: Pag
 export async function moveSection(sectionId: string, body: { order: number }) {
   const res = await api.post(ENDPOINTS.admin.pages.moveSection(sectionId), body);
   return (normalizeSection(res.data) ?? res.data) as PageSection;
+}
+
+export async function validateSectionPayload(input: {
+  type: PageSectionType;
+  data: any;
+  pageId?: string;
+  sectionId?: string;
+}): Promise<SectionValidationResult> {
+  try {
+    const res = await api.post(ENDPOINTS.admin.pages.validateSection, input);
+    const payload = res.data ?? {};
+    const issuesRaw = Array.isArray(payload?.issues) ? payload.issues : [];
+    const issues: SectionValidationIssue[] = issuesRaw
+      .map((issue: any) => {
+        const message = String(issue?.message ?? "").trim();
+        if (!message) return null;
+        return {
+          path: typeof issue?.path === "string" ? issue.path : undefined,
+          code: typeof issue?.code === "string" ? issue.code : undefined,
+          message,
+        } as SectionValidationIssue;
+      })
+      .filter((issue: SectionValidationIssue | null): issue is SectionValidationIssue => !!issue);
+
+    const ok = payload?.ok === false ? false : issues.length === 0;
+    return { ok, issues, source: "server" };
+  } catch (error) {
+    if (isEndpointUnavailable(error)) {
+      return { ok: true, issues: [], source: "fallback" };
+    }
+    throw error;
+  }
 }
 
 // -----------------------------

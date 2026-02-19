@@ -3,16 +3,18 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { hasTokens } from "../lib/storage";
+import type { AdminPermission } from "../lib/authz";
 
 type Props = {
   children: React.ReactNode;
   /** if you ever want to allow non-superadmin roles later */
   requireSuperAdmin?: boolean;
+  requirePermissions?: AdminPermission[];
 };
 
-export default function ProtectedRoute({ children, requireSuperAdmin = true }: Props) {
+export default function ProtectedRoute({ children, requireSuperAdmin = true, requirePermissions }: Props) {
   const location = useLocation();
-  const { admin, meQuery, isSuperAdmin } = useAuth();
+  const { admin, meQuery, isSuperAdmin, hasPermission } = useAuth();
 
   // No tokens at all => go login
   if (!hasTokens()) {
@@ -60,6 +62,29 @@ export default function ProtectedRoute({ children, requireSuperAdmin = true }: P
         </div>
       </div>
     );
+  }
+
+  if (requirePermissions?.length) {
+    const missing = requirePermissions.filter((permission) => !hasPermission(permission));
+    if (missing.length) {
+      return (
+        <div dir="rtl" className="min-h-screen flex items-center justify-center p-6">
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="text-xl font-semibold">غير مصرح</div>
+            <div className="mt-2 text-sm opacity-80">الحساب لا يملك الصلاحيات المطلوبة لهذه الصفحة.</div>
+            <div className="mt-3 text-xs opacity-70 break-words">Missing: {missing.join(", ")}</div>
+            <div className="mt-6">
+              <a
+                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
+                href="/admin/dashboard"
+              >
+                رجوع للوحة التحكم
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
 
   return <>{children}</>;

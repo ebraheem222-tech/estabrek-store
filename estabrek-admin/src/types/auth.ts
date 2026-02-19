@@ -1,7 +1,7 @@
 // src/types/auth.ts
 import type { ID, ISODateString } from "./common";
 
-export type Role = "SUPERADMIN";
+export type Role = "SUPERADMIN" | "ADMIN" | "EDITOR" | "MARKETING" | "SUPPORT";
 
 /**
  * Admin user fields (from Prisma model AdminUser) - excluding secrets like passwordHash.

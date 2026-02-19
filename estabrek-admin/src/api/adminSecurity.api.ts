@@ -25,6 +25,11 @@ export type SecurityEvent = {
   createdAt: string;
 };
 
+function isEndpointUnavailable(error: any) {
+  const status = Number(error?.response?.status ?? 0);
+  return status === 404 || status === 405 || status === 501;
+}
+
 export async function listSessions(params?: { take?: number; skip?: number; status?: SessionStatus }) {
   const res = await api.get(ENDPOINTS.admin.account.sessions, { params });
   return res.data as { items: AdminSession[]; total: number; take: number; skip: number };
@@ -48,6 +53,23 @@ export async function revokeOtherSessions(currentSessionId: string) {
 }
 
 export async function listSecurityEvents(params?: { take?: number; skip?: number; type?: string }) {
-  const res = await api.get(ENDPOINTS.admin.account.securityEvents, { params });
-  return res.data as { items: SecurityEvent[]; total: number; take: number; skip: number };
+  try {
+    const res = await api.get(ENDPOINTS.admin.audit.events, { params });
+    return res.data as { items: SecurityEvent[]; total: number; take: number; skip: number };
+  } catch (error) {
+    if (!isEndpointUnavailable(error)) throw error;
+    const fallback = await api.get(ENDPOINTS.admin.account.securityEvents, { params });
+    return fallback.data as { items: SecurityEvent[]; total: number; take: number; skip: number };
+  }
+}
+
+export async function logSecurityEvent(input: { type: string; metadata?: any }) {
+  try {
+    const res = await api.post(ENDPOINTS.admin.audit.events, input);
+    return res.data as { ok: true; event?: SecurityEvent };
+  } catch (error) {
+    if (!isEndpointUnavailable(error)) throw error;
+    const fallback = await api.post(ENDPOINTS.admin.account.securityEvents, input);
+    return fallback.data as { ok: true; event?: SecurityEvent };
+  }
 }

@@ -2,6 +2,8 @@
 import { useSyncExternalStore } from "react";
 import type { AdminUser, Role } from "../types/auth";
 import { getAccessToken, getRefreshToken, setTokens as saveTokens, clearTokens as clearStoredTokens } from "../lib/storage";
+import type { AdminPermission } from "../lib/authz";
+import { hasRolePermission } from "../lib/authz";
 
 type AuthStatus = "anonymous" | "authenticated" | "token_only";
 
@@ -91,6 +93,10 @@ export const authStore = {
 
   isSuperAdmin(): boolean {
     return state.admin?.role === ("SUPERADMIN" satisfies Role);
+  },
+
+  hasPermission(permission: AdminPermission): boolean {
+    return hasRolePermission(state.admin?.role ?? null, permission);
   },
 };
 

@@ -64,10 +64,14 @@ export const ENDPOINTS = {
         sections: (pageId: string) => `/admin/pages/${pageId}/sections`,
         sectionById: (sectionId: string) => `/admin/pages/sections/${sectionId}`,
         moveSection: (sectionId: string) => `/admin/pages/sections/${sectionId}/move`,
+        validateSection: "/admin/pages/sections/validate",
         aiSuggestSections: "/admin/pages/ai/suggest-sections",
         aiTranslate: "/admin/pages/ai/translate",
         aiImproveSeo: "/admin/pages/ai/improve-seo",
         i18n: (id: string, locale: string) => `/admin/pages/${id}/i18n/${locale}`,
+      },
+      audit: {
+        events: "/admin/audit/events",
       },
       uploads: {
         images: "/admin/uploads/images",
