@@ -1,9 +1,11 @@
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { PageSection, PageSectionType } from "../../api/pages.api";
 import { sanitizeHtml } from "../../lib/sanitizeHtml";
 import type {
   BannerData,
+  GlobalAnnouncementData,
+  GlobalHeaderData,
+  GlobalFooterData,
   CtaData,
   CustomHtmlData,
   FaqData,
@@ -33,6 +35,8 @@ import { AnimatedShapeLayer } from "../../cms/animated-shapes/AnimatedShapeLayer
 import { SpotlightContainer } from "../../cms/spotlight-themes";
 import type { TwTokens } from "../../cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
+import { collectGoogleFontsFromValue, ensureGoogleFontsLoaded } from "../../cms/style/googleFontsLoader";
+import { getDividerById } from "../../cms/style/containerStyles";
 import { heroComponents, HeroRenderer } from "../../cms/hero-themes";
 import { contactFormComponents, additionalFormComponents } from "../../cms/contact-forms";
 import { featureComponents, additionalFeatureComponents } from "../../cms/feature-themes";
@@ -70,20 +74,17 @@ function resolveThemeId(value: unknown): string | null {
 
 const HERO_SUBHEADLINE_ONLY_THEMES = new Set(["ecommerce-fashion"]);
 
-function heroThemePropsFromData(data: HeroData) {
-  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
-  const source = slides.length ? (slides[0] ?? data) : data;
-  const title = String((source as any).title ?? "").trim();
-  const subtitle = (source as any).subtitle;
-  const primaryButton = (source as any).primaryButton;
-  const secondaryButton = (source as any).secondaryButton;
-  const themeId = resolveThemeId((data as any).themeId);
+function heroThemePropsFromSource(source: any, themeId?: string | null) {
+  const title = String(source?.title ?? "").trim();
+  const subtitle = source?.subtitle;
+  const primaryButton = source?.primaryButton;
+  const secondaryButton = source?.secondaryButton;
   const subtitleText = subtitle != null ? String(subtitle) : undefined;
   const useSubheadline = themeId ? HERO_SUBHEADLINE_ONLY_THEMES.has(themeId) : false;
 
   return {
     theme: themeId ?? undefined,
-    badge: (source as any).badge,
+    badge: source?.badge,
     headline: title || "Hero headline",
     subheadline: useSubheadline ? subtitleText : undefined,
     description: useSubheadline ? undefined : subtitleText,
@@ -93,9 +94,36 @@ function heroThemePropsFromData(data: HeroData) {
     secondaryCta: secondaryButton?.label
       ? { text: String(secondaryButton.label) }
       : undefined,
-    imageSrc: (source as any).backgroundImageUrl ?? (data as any).backgroundImageUrl,
+    imageSrc: source?.backgroundImageUrl,
     imageAlt: title || "Hero",
   };
+}
+
+function heroThemePropsFromData(data: HeroData) {
+  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
+  const source = slides.length ? (slides[0] ?? data) : data;
+  const themeId = resolveThemeId((data as any).themeId);
+  return {
+    ...heroThemePropsFromSource(source, themeId),
+    imageSrc: (source as any)?.backgroundImageUrl ?? (data as any)?.backgroundImageUrl,
+  };
+}
+
+function heroSplitRatio(value?: string): [number, number] {
+  const input = typeof value === "string" ? value : "";
+  const match = /^(\d+):(\d+)$/.exec(input);
+  const left = Math.max(1, Number(match?.[1] ?? 1));
+  const right = Math.max(1, Number(match?.[2] ?? 1));
+  return [left, right];
+}
+
+function heroTripleRatio(value?: string): [number, number, number] {
+  const input = typeof value === "string" ? value : "";
+  const match = /^(\d+):(\d+):(\d+)$/.exec(input);
+  const left = Math.max(1, Number(match?.[1] ?? 4));
+  const center = Math.max(1, Number(match?.[2] ?? 5));
+  const right = Math.max(1, Number(match?.[3] ?? 1));
+  return [left, center, right];
 }
 
 function contactThemePropsFromData(data: ContactData) {
@@ -411,6 +439,8 @@ function hasTypographyOverrides(tokens?: any): boolean {
   const typography = tokens?.typography;
   if (!typography || typeof typography !== "object") return false;
   if (typography.family) return true;
+  if (typography.familyPresetId) return true;
+  if (typography.familyCustom) return true;
   if (typography.size && typography.size !== "base") return true;
   if (typography.align && typography.align !== "left") return true;
   if (typography.weight && typography.weight !== "normal") return true;
@@ -763,6 +793,16 @@ function sectionDecorations(tokens?: TwTokens) {
   return { before: hasBefore ? before : undefined, after: hasAfter ? after : undefined };
 }
 
+function renderSectionDivider(tokens?: TwTokens) {
+  const preset = getDividerById(tokens?.dividerStyleId);
+  if (!preset) return null;
+  return (
+    <div className="mt-3">
+      {preset.svg ? <div className={preset.className} dangerouslySetInnerHTML={{ __html: preset.svg }} /> : <div className={preset.className} />}
+    </div>
+  );
+}
+
 const INLINE_DECOR_TAGS = new Set([
   "span",
   "a",
@@ -1003,6 +1043,432 @@ function HeroSection({
     return () => clearInterval(id);
   }, [autoplayMs, hasSlides, slides.length]);
 
+  const tripleMode = (data as any).tripleMode === true;
+  if (tripleMode) {
+    const sectionTokens = (data as any)?.twTokens;
+    const componentsBlock = renderComponentsBlock(data);
+    const [leftRatio, centerRatio, rightRatio] = heroTripleRatio((data as any).tripleLayout);
+    const tripleGap = Math.max(0, Math.min(64, safeNum((data as any).tripleGap, 24)));
+    const align = ((data as any).align ?? "left") as "left" | "center" | "right";
+    const justify = align === "center" ? "items-center text-center" : align === "right" ? "items-end text-right" : "items-start text-left";
+    const titleData = textContent(String((data as any).title ?? ""), sectionTokens);
+    const subtitleValue = String((data as any).subtitle ?? "");
+    const subtitleData = subtitleValue ? textContent(subtitleValue, sectionTokens) : null;
+    const eyebrowValue = String((data as any).eyebrow ?? "");
+    const eyebrowData = eyebrowValue ? textContent(eyebrowValue, sectionTokens) : null;
+    const primaryButton = (data as any).primaryButton;
+    const secondaryButton = (data as any).secondaryButton;
+    const primaryButtonData = primaryButton?.label ? textContent(String(primaryButton.label), sectionTokens) : null;
+    const secondaryButtonData = secondaryButton?.label ? textContent(String(secondaryButton.label), sectionTokens) : null;
+    const centerImageUrl = String((data as any).centerImageUrl ?? "");
+    const centerImageAlt = String((data as any).centerImageAlt ?? (data as any).title ?? "Hero");
+    const rightIndicators = Math.max(1, Math.min(10, safeNum((data as any).rightIndicators, 4)));
+    const rightActiveIndicator = Math.max(1, Math.min(rightIndicators, safeNum((data as any).rightActiveIndicator, 1)));
+
+    return wrapDecorations(
+      <section className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(data))} style={uiSectionStyle(data)}>
+        <div className={cls("mx-auto flex flex-col md:flex-row md:items-stretch", uiContainerClass(data))} style={{ gap: `${tripleGap}px` }}>
+          <SectionTextScope data={data}>
+            <div className="min-w-0" style={{ flex: `${leftRatio} 1 0%` }}>
+              <div className={cls("flex h-full min-h-[260px] flex-col justify-center gap-3", justify)}>
+                {eyebrowData ? (
+                  <InlineEditableText
+                    as="div"
+                    value={eyebrowValue}
+                    path={["eyebrow"]}
+                    textData={eyebrowData}
+                    className={cls("text-xs font-semibold uppercase tracking-[0.2em] text-amber-300/90", eyebrowData.className)}
+                    ariaLabel={eyebrowData.ariaLabel}
+                    placeholder="Eyebrow"
+                  />
+                ) : null}
+                <InlineEditableText
+                  as="h2"
+                  value={String((data as any).title ?? "")}
+                  path={["title"]}
+                  textData={titleData}
+                  className={cls("text-3xl font-bold leading-tight", titleData.className)}
+                  ariaLabel={titleData.ariaLabel}
+                  placeholder="Hero title"
+                />
+                {subtitleData ? (
+                  <InlineEditableText
+                    as="p"
+                    value={subtitleValue}
+                    path={["subtitle"]}
+                    textData={subtitleData}
+                    className={cls("max-w-[48ch] text-sm opacity-85", subtitleData.className)}
+                    ariaLabel={subtitleData.ariaLabel}
+                    placeholder="Hero subtitle"
+                    multiline
+                  />
+                ) : null}
+
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {primaryButton?.label ? (
+                    primaryButton?.href ? (
+                      <a
+                        href={primaryButton.href}
+                        className="rounded-xl bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-500"
+                      >
+                        <InlineEditableText
+                          as="span"
+                          value={String(primaryButton.label)}
+                          path={["primaryButton", "label"]}
+                          textData={primaryButtonData ?? undefined}
+                          className={primaryButtonData?.className}
+                          ariaLabel={primaryButtonData?.ariaLabel}
+                          placeholder="Primary button"
+                          selectKind="button"
+                          selectHighlight={false}
+                        />
+                      </a>
+                    ) : (
+                      <InlineEditableText
+                        as="span"
+                        value={String(primaryButton.label)}
+                        path={["primaryButton", "label"]}
+                        textData={primaryButtonData ?? undefined}
+                        className={cls("rounded-xl bg-accent-600/80 px-4 py-2 text-sm font-semibold text-white/90", primaryButtonData?.className)}
+                        ariaLabel={primaryButtonData?.ariaLabel}
+                        placeholder="Primary button"
+                        selectKind="button"
+                      />
+                    )
+                  ) : null}
+
+                  {secondaryButton?.label ? (
+                    secondaryButton?.href ? (
+                      <a
+                        href={secondaryButton.href}
+                        className="rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]"
+                      >
+                        <InlineEditableText
+                          as="span"
+                          value={String(secondaryButton.label)}
+                          path={["secondaryButton", "label"]}
+                          textData={secondaryButtonData ?? undefined}
+                          className={secondaryButtonData?.className}
+                          ariaLabel={secondaryButtonData?.ariaLabel}
+                          placeholder="Secondary button"
+                          selectKind="button"
+                          selectHighlight={false}
+                        />
+                      </a>
+                    ) : (
+                      <InlineEditableText
+                        as="span"
+                        value={String(secondaryButton.label)}
+                        path={["secondaryButton", "label"]}
+                        textData={secondaryButtonData ?? undefined}
+                        className={cls("rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90", secondaryButtonData?.className)}
+                        ariaLabel={secondaryButtonData?.ariaLabel}
+                        placeholder="Secondary button"
+                        selectKind="button"
+                      />
+                    )
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </SectionTextScope>
+
+          <div className="min-w-0" style={{ flex: `${centerRatio} 1 0%` }}>
+            <div className="flex h-full min-h-[260px] items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+              {centerImageUrl ? (
+                (() => {
+                  const imageState = elementState(sectionId, selectedElement, {
+                    kind: "image",
+                    valuePath: ["centerImageUrl"],
+                    label: centerImageAlt || "Center image",
+                  });
+                  return (
+                    <img
+                      {...imageState.attrs}
+                      src={centerImageUrl}
+                      alt={centerImageAlt}
+                      className={cls("h-full max-h-[360px] w-auto object-contain", imageState.selected ? SELECTED_ELEMENT_CLASS : undefined)}
+                    />
+                  );
+                })()
+              ) : (
+                <div className="text-xs opacity-60">(ضع صورة الوسط)</div>
+              )}
+            </div>
+          </div>
+
+          <div className="min-w-[28px] md:min-w-[42px]" style={{ flex: `${rightRatio} 1 0%` }}>
+            <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3">
+              {Array.from({ length: rightIndicators }).map((_, idx) => {
+                const active = idx + 1 === rightActiveIndicator;
+                return <span key={idx} className={cls("rounded-full", active ? "h-2 w-2 bg-amber-300" : "h-1.5 w-1.5 bg-white/35")} />;
+              })}
+            </div>
+          </div>
+        </div>
+        {componentsBlock}
+      </section>,
+      sectionTokens
+    );
+  }
+
+  const splitMode = (data as any).splitMode === true;
+  if (splitMode) {
+    const sectionTokens = (data as any)?.twTokens;
+    const componentsBlock = renderComponentsBlock(data);
+    const splitGap = Math.max(0, Math.min(64, safeNum((data as any).splitGap, 24)));
+    const [leftRatio, rightRatio] = heroSplitRatio((data as any).splitRatio);
+    const splitRight = (
+      (data as any).splitRight && typeof (data as any).splitRight === "object"
+        ? (data as any).splitRight
+        : {
+            title: "",
+            subtitle: "",
+            backgroundImageUrl: "",
+            overlay: 0.35,
+            align: "center",
+            primaryButton: { label: "", href: "" },
+            secondaryButton: { label: "", href: "" },
+          }
+    ) as any;
+    const leftPane = {
+      title: (data as any).title,
+      subtitle: (data as any).subtitle,
+      backgroundImageUrl: (data as any).backgroundImageUrl,
+      overlay: (data as any).overlay,
+      align: (data as any).align,
+      primaryButton: (data as any).primaryButton,
+      secondaryButton: (data as any).secondaryButton,
+      themeId: (data as any).themeId,
+      slideTokens: (data as any).slideTokens,
+      titleTokens: (data as any).titleTokens,
+      subtitleTokens: (data as any).subtitleTokens,
+      primaryButtonTokens: (data as any).primaryButtonTokens,
+      secondaryButtonTokens: (data as any).secondaryButtonTokens,
+    } as any;
+
+    const renderPane = (pane: any, side: "left" | "right") => {
+      const paneThemeId = resolveThemeId(pane?.themeId);
+      if (paneThemeId) {
+        const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[paneThemeId];
+        const themeProps = { ...heroThemePropsFromSource(pane, paneThemeId), className: "h-full" } as any;
+        const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={paneThemeId} {...themeProps} />;
+        return (
+          <div className="h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+            {themeNode}
+          </div>
+        );
+      }
+
+      const overlay = Math.min(1, Math.max(0, safeNum(pane?.overlay, 0.35)));
+      const align = pane?.align ?? "center";
+      const justify = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
+      const paneTokens = resolveFieldTokens(pane?.slideTokens);
+      const basePaneTokens = paneTokens ?? sectionTokens;
+      const titleTokens = resolveFieldTokens(pane?.titleTokens, basePaneTokens);
+      const subtitleTokens = resolveFieldTokens(pane?.subtitleTokens, basePaneTokens);
+      const primaryButtonTokens = resolveFieldTokens(pane?.primaryButtonTokens, basePaneTokens);
+      const secondaryButtonTokens = resolveFieldTokens(pane?.secondaryButtonTokens, basePaneTokens);
+      const titlePath = side === "left" ? ["title"] : ["splitRight", "title"];
+      const subtitlePath = side === "left" ? ["subtitle"] : ["splitRight", "subtitle"];
+      const primaryLabelPath = side === "left" ? ["primaryButton", "label"] : ["splitRight", "primaryButton", "label"];
+      const secondaryLabelPath = side === "left" ? ["secondaryButton", "label"] : ["splitRight", "secondaryButton", "label"];
+      const primaryTokensPath = side === "left" ? ["primaryButtonTokens"] : ["splitRight", "primaryButtonTokens"];
+      const secondaryTokensPath = side === "left" ? ["secondaryButtonTokens"] : ["splitRight", "secondaryButtonTokens"];
+      const titleData = textContent(String(pane?.title ?? ""), titleTokens);
+      const subtitleValue = pane?.subtitle;
+      const subtitleData = subtitleValue ? textContent(String(subtitleValue), subtitleTokens) : null;
+      const primaryButton = pane?.primaryButton;
+      const secondaryButton = pane?.secondaryButton;
+      const primaryLabelData = primaryButton?.label ? textContent(String(primaryButton.label), primaryButtonTokens) : null;
+      const secondaryLabelData = secondaryButton?.label ? textContent(String(secondaryButton.label), secondaryButtonTokens) : null;
+      const primaryButtonState = elementState(sectionId, selectedElement, {
+        kind: "button",
+        valuePath: primaryLabelPath,
+        tokensPath: primaryTokensPath,
+        label: primaryButton?.label ?? "Primary button",
+      });
+      const secondaryButtonState = elementState(sectionId, selectedElement, {
+        kind: "button",
+        valuePath: secondaryLabelPath,
+        tokensPath: secondaryTokensPath,
+        label: secondaryButton?.label ?? "Secondary button",
+      });
+
+      return (
+        <div
+          className={cls("relative min-h-[260px] overflow-hidden rounded-2xl border border-white/[0.08]", tokensClass(paneTokens))}
+          style={
+            pane?.backgroundImageUrl
+              ? {
+                  ...(tokensStyle(paneTokens) ?? {}),
+                }
+              : tokensStyle(paneTokens)
+          }
+        >
+          {pane?.backgroundImageUrl ? (
+            <img
+              src={pane.backgroundImageUrl}
+              alt=""
+              aria-hidden="true"
+              className="cms-media-target absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : null}
+          <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
+          <div className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify)}>
+            {wrapDecorations(
+              <InlineEditableText
+                as="h2"
+                value={String(pane?.title ?? "")}
+                path={titlePath}
+                textData={titleData}
+                className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)}
+                style={tokensStyle(titleTokens)}
+                ariaLabel={titleData.ariaLabel}
+                placeholder={`Hero ${side} title`}
+              />,
+              titleTokens
+            )}
+            {subtitleData ? wrapDecorations(
+              <InlineEditableText
+                as="p"
+                value={String(subtitleValue ?? "")}
+                path={subtitlePath}
+                textData={subtitleData}
+                className={cls("max-w-[60ch] text-sm opacity-90", tokensClass(subtitleTokens), subtitleData.className)}
+                style={tokensStyle(subtitleTokens)}
+                ariaLabel={subtitleData.ariaLabel}
+                placeholder={`Hero ${side} subtitle`}
+                multiline
+              />,
+              subtitleTokens
+            ) : null}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {primaryButton?.label ? (
+                primaryButton?.href ? (
+                  wrapDecorations(
+                    <a
+                      href={primaryButton.href}
+                      className={cls(
+                        "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
+                        tokensClass(primaryButtonTokens),
+                        primaryButtonState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
+                      style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                      {...primaryButtonState.attrs}
+                    >
+                      <InlineEditableText
+                        as="span"
+                        value={String(primaryButton.label)}
+                        path={primaryLabelPath}
+                        textData={primaryLabelData ?? undefined}
+                        className={primaryLabelData?.className}
+                        ariaLabel={primaryLabelData?.ariaLabel}
+                        placeholder="Button"
+                        selectKind="button"
+                        selectTokensPath={primaryTokensPath}
+                        selectHighlight={false}
+                      />
+                    </a>,
+                    primaryButtonTokens
+                  )
+                ) : (
+                  wrapDecorations(
+                    <InlineEditableText
+                      as="span"
+                      value={String(primaryButton.label)}
+                      path={primaryLabelPath}
+                      textData={primaryLabelData ?? undefined}
+                      className={cls(
+                        "rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90",
+                        tokensClass(primaryButtonTokens),
+                        primaryLabelData?.className
+                      )}
+                      style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                      ariaLabel={primaryLabelData?.ariaLabel}
+                      placeholder="Button"
+                      selectKind="button"
+                      selectTokensPath={primaryTokensPath}
+                    />,
+                    primaryButtonTokens
+                  )
+                )
+              ) : null}
+              {secondaryButton?.label ? (
+                secondaryButton?.href ? (
+                  wrapDecorations(
+                    <a
+                      href={secondaryButton.href}
+                      className={cls(
+                        "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]",
+                        tokensClass(secondaryButtonTokens),
+                        secondaryButtonState.selected ? SELECTED_ELEMENT_CLASS : undefined
+                      )}
+                      style={tokensStyle(secondaryButtonTokens)}
+                      {...secondaryButtonState.attrs}
+                    >
+                      <InlineEditableText
+                        as="span"
+                        value={String(secondaryButton.label)}
+                        path={secondaryLabelPath}
+                        textData={secondaryLabelData ?? undefined}
+                        className={secondaryLabelData?.className}
+                        ariaLabel={secondaryLabelData?.ariaLabel}
+                        placeholder="Button"
+                        selectKind="button"
+                        selectTokensPath={secondaryTokensPath}
+                        selectHighlight={false}
+                      />
+                    </a>,
+                    secondaryButtonTokens
+                  )
+                ) : (
+                  wrapDecorations(
+                    <InlineEditableText
+                      as="span"
+                      value={String(secondaryButton.label)}
+                      path={secondaryLabelPath}
+                      textData={secondaryLabelData ?? undefined}
+                      className={cls(
+                        "rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90",
+                        tokensClass(secondaryButtonTokens),
+                        secondaryLabelData?.className
+                      )}
+                      style={tokensStyle(secondaryButtonTokens)}
+                      ariaLabel={secondaryLabelData?.ariaLabel}
+                      placeholder="Button"
+                      selectKind="button"
+                      selectTokensPath={secondaryTokensPath}
+                    />,
+                    secondaryButtonTokens
+                  )
+                )
+              ) : null}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    return wrapDecorations(
+      <section className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03] p-3", uiSectionClass(data))} style={uiSectionStyle(data)}>
+        <SectionTextScope data={data}>
+          <div className={cls("mx-auto flex flex-col md:flex-row", uiContainerClass(data))} style={{ gap: `${splitGap}px` }}>
+            <div className="min-w-0" style={{ flex: `${leftRatio} 1 0%` }}>
+              {renderPane(leftPane, "left")}
+            </div>
+            <div className="min-w-0" style={{ flex: `${rightRatio} 1 0%` }}>
+              {renderPane(splitRight, "right")}
+            </div>
+          </div>
+        </SectionTextScope>
+        {componentsBlock}
+      </section>,
+      sectionTokens
+    );
+  }
+
   const themeId = resolveThemeId((data as any).themeId);
   if (themeId) {
     const componentsBlock = renderComponentsBlock(data);
@@ -1069,14 +1535,20 @@ function HeroSection({
         style={
           (s as any).backgroundImageUrl
             ? {
-                backgroundImage: `url(${(s as any).backgroundImageUrl})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
                 ...(tokensStyle(slideTokens) ?? {}),
               }
             : tokensStyle(slideTokens)
         }
       >
+        {(s as any).backgroundImageUrl ? (
+          <img
+            src={(s as any).backgroundImageUrl}
+            alt=""
+            aria-hidden="true"
+            className="cms-media-target absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : null}
         <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
         <SectionTextScope data={data}>
           <div key={contentKey} className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify, contentAnimClass)}>
@@ -1304,6 +1776,126 @@ function Section({
 }) {
   const getElementState = (meta: ElementMeta) => elementState(sectionId, selectedElement, meta);
   if (!data || typeof data !== "object") return null;
+
+  if (type === "GLOBAL_ANNOUNCEMENT") {
+    const d = data as GlobalAnnouncementData;
+    const sectionTokens = (d as any)?.twTokens;
+    const textValue = String(d.text ?? "").trim() || "(Global announcement text)";
+    const textData = textContent(textValue, sectionTokens);
+    const buttonValue = String(d.buttonText ?? "").trim() || "تفاصيل";
+    const buttonData = textContent(buttonValue, sectionTokens);
+
+    return wrapDecorations(
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-5", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">
+            Global Announcement {d.enabled === false ? "(disabled)" : ""}
+          </div>
+          <div className={cls("flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3", uiContainerClass(d))}>
+            <div className={cls("text-sm", textData.className)} aria-label={textData.ariaLabel}>
+              {textData.content}
+            </div>
+            {d.href ? (
+              <a href={d.href} className="inline-flex items-center rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-medium">
+                <span className={buttonData.className} aria-label={buttonData.ariaLabel}>
+                  {buttonData.content}
+                </span>
+              </a>
+            ) : null}
+          </div>
+        </SectionTextScope>
+      </section>,
+      sectionTokens
+    );
+  }
+
+  if (type === "GLOBAL_HEADER") {
+    const d = data as GlobalHeaderData;
+    const sectionTokens = (d as any)?.twTokens;
+    const brandValue = String(d.brandText ?? "").trim() || "Store";
+    const brandData = textContent(brandValue, sectionTokens);
+    const ctaValue = String(d.ctaLabel ?? "").trim() || "CTA";
+    const ctaData = textContent(ctaValue, sectionTokens);
+
+    return wrapDecorations(
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-5", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">
+            Global Header {d.sticky !== false ? "(sticky)" : ""}
+          </div>
+          <div className={cls("flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-4 py-3", uiContainerClass(d))}>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-xl bg-white/10" />
+              <div className={cls("text-sm font-semibold", brandData.className)} aria-label={brandData.ariaLabel}>
+                {brandData.content}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs opacity-85">
+              {d.showMenu !== false ? <span className="rounded-lg border border-white/10 px-2 py-1">Menu</span> : null}
+              {d.showSearch !== false ? <span className="rounded-lg border border-white/10 px-2 py-1">Search</span> : null}
+              {d.showCta ? (
+                <a href={d.ctaHref || "#"} className="rounded-lg border border-white/10 bg-white/10 px-2 py-1">
+                  <span className={ctaData.className} aria-label={ctaData.ariaLabel}>
+                    {ctaData.content}
+                  </span>
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </SectionTextScope>
+      </section>,
+      sectionTokens
+    );
+  }
+
+  if (type === "GLOBAL_FOOTER") {
+    const d = data as GlobalFooterData;
+    const sectionTokens = (d as any)?.twTokens;
+    const aboutTitleValue = String(d.aboutTitle ?? "").trim() || "عن المتجر";
+    const aboutTitleData = textContent(aboutTitleValue, sectionTokens);
+    const aboutTextData = textContent(String(d.aboutText ?? "").trim(), sectionTokens);
+    const newsletterTitleValue = String(d.newsletterTitle ?? "").trim() || "النشرة البريدية";
+    const newsletterTitleData = textContent(newsletterTitleValue, sectionTokens);
+    const copyrightValue = String(d.copyright ?? "").trim() || "© Store";
+    const copyrightData = textContent(copyrightValue, sectionTokens);
+
+    return wrapDecorations(
+      <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-5", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">Global Footer</div>
+          <div className={cls("grid gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 md:grid-cols-3", uiContainerClass(d))}>
+            <div>
+              <div className={cls("text-sm font-semibold", aboutTitleData.className)} aria-label={aboutTitleData.ariaLabel}>
+                {aboutTitleData.content}
+              </div>
+              {String(d.aboutText ?? "").trim() ? (
+                <div className={cls("mt-2 text-xs opacity-80", aboutTextData.className)} aria-label={aboutTextData.ariaLabel}>
+                  {aboutTextData.content}
+                </div>
+              ) : null}
+            </div>
+            <div className="text-xs opacity-80">{d.showSocial === false ? "Social hidden" : "Social links"}</div>
+            <div>
+              {d.showNewsletter !== false ? (
+                <>
+                  <div className={cls("text-xs font-semibold", newsletterTitleData.className)} aria-label={newsletterTitleData.ariaLabel}>
+                    {newsletterTitleData.content}
+                  </div>
+                  <div className="mt-2 h-8 rounded-lg border border-white/10 bg-white/[0.03]" />
+                </>
+              ) : (
+                <div className="text-xs opacity-80">Newsletter hidden</div>
+              )}
+            </div>
+          </div>
+          <div className={cls("mt-3 text-[11px] opacity-70", copyrightData.className)} aria-label={copyrightData.ariaLabel}>
+            {copyrightData.content}
+          </div>
+        </SectionTextScope>
+      </section>,
+      sectionTokens
+    );
+  }
 
   if (type === "HERO") {
     return <HeroSection data={data as HeroData} sectionId={sectionId} selectedElement={selectedElement} />;
@@ -1673,6 +2265,16 @@ function Section({
       const componentsBlock = renderComponentsBlock(d);
       const sectionTokens = (d as any)?.twTokens;
       const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+      const nestedSections = blocks
+        .filter((b: any) => b && b.type && b.isVisible !== false)
+        .map((b: any, i: number) => ({
+          id: `${sectionId}-b-${i}`,
+          type: b.type as PageSectionType,
+          data: b.data ?? {},
+          order: i,
+          isVisible: b.isVisible !== false,
+        }));
+      const groups = buildSectionGroups(nestedSections as any);
       return wrapDecorations(
         <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
           <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
@@ -1689,11 +2291,46 @@ function Section({
                 />
               ) : null}
               <div className="space-y-5">
-                {blocks
-                  .filter((b: any) => b && b.type && b.isVisible !== false)
-                  .map((b: any, i: number) => (
-                    <Section key={b.id ?? `${type}-block-${i}`} type={b.type as PageSectionType} data={b.data} />
-                  ))}
+                {groups.map((group) => {
+                  const renderNested = (nested: any) => {
+                    const layout = normalizeSectionLayout((nested as any)?.data?.layout);
+                    const span = clampInt(layout.span, 1, group.columns, 1);
+                    const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
+                    const rowStyle =
+                      group.mode === "row" && group.columns > 0
+                        ? {
+                            flex: `0 0 ${(span / group.columns) * 100}%`,
+                            maxWidth: `${(span / group.columns) * 100}%`,
+                          }
+                        : undefined;
+                    const nestedSectionId = String(nested.id);
+                    return (
+                      <div key={nested.id} className={colSpanClass} style={rowStyle}>
+                        <Section
+                          type={nested.type as PageSectionType}
+                          data={nested.data}
+                          sectionId={nestedSectionId}
+                          selectedElement={selectedElement}
+                        />
+                      </div>
+                    );
+                  };
+
+                  if (group.mode === "stack") {
+                    return <div key={group.key} className="space-y-5">{group.sections.map(renderNested)}</div>;
+                  }
+
+                  const groupClass =
+                    group.mode === "row"
+                      ? "flex flex-wrap items-stretch gap-5"
+                      : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
+
+                  return (
+                    <div key={group.key} className={groupClass}>
+                      {group.sections.map(renderNested)}
+                    </div>
+                  );
+                })}
               </div>
             </SectionTextScope>
             {componentsBlock}
@@ -4176,7 +4813,15 @@ export const PageRenderer = React.memo(function PageRenderer({
   onElementSelect?: ElementSelectHandler;
   highlightSelectedElement?: boolean;
 }) {
-  const sorted = (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const sorted = useMemo(
+    () => (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [sections],
+  );
+  const googleFonts = useMemo(() => collectGoogleFontsFromValue(sorted), [sorted]);
+  const googleFontsKey = googleFonts.join("|");
+  useEffect(() => {
+    ensureGoogleFontsLoaded(googleFonts);
+  }, [googleFonts, googleFontsKey]);
   const groups = buildSectionGroups(sorted);
   const inlineContext = { enabled: !!inlineEditing && !!onInlineEdit, onCommit: onInlineEdit };
   const selectContext = {
@@ -4202,6 +4847,7 @@ export const PageRenderer = React.memo(function PageRenderer({
                   : undefined;
               const stringId = String(sec.id);
               const isSelected = highlightSelected && selectedSectionId != null && String(selectedSectionId) === stringId;
+              const dividerNode = renderSectionDivider(((sec as any)?.data?.twTokens as TwTokens | undefined));
 
               return (
                 <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
@@ -4246,6 +4892,7 @@ export const PageRenderer = React.memo(function PageRenderer({
                       ) : null}
                       <Section type={sec.type} data={sec.data} sectionId={stringId} selectedElement={highlightSelectedElement ? selectedElement : null} />
                     </div>
+                    {dividerNode}
                   </InlineSectionContext.Provider>
                 </div>
               );

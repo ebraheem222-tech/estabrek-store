@@ -121,8 +121,8 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
         data: {
           title: "أسئلة شائعة",
           items: [
-            { q: "كم مدة الشحن؟", a: "عادة 2-4 أيام عمل." },
-            { q: "هل في تبديل/إرجاع؟", a: "نعم حسب سياسة المتجر." },
+            { question: "كم مدة الشحن؟", answer: "عادة 2-4 أيام عمل." },
+            { question: "هل في تبديل/إرجاع؟", answer: "نعم حسب سياسة المتجر." },
           ],
         },
       },
@@ -131,8 +131,8 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
         data: {
           title: "جاهز تبدأ؟",
           subtitle: "ابدأ التسوق أو احكي معنا الآن",
-          primaryButton: { label: "افتح المتجر", href: "/shop" },
-          secondaryButton: { label: "واتساب", href: "https://wa.me/" },
+          buttonLabel: "افتح المتجر",
+          buttonHref: "/shop",
         },
       },
     ],
@@ -149,8 +149,8 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
         type: "RICH_TEXT",
         data: { html: "<h2>قصتنا</h2><p>اكتب قصة البراند هون...</p><h3>قيمنا</h3><ul><li>جودة</li><li>شفافية</li><li>خدمة</li></ul>" },
       },
-      { type: "TESTIMONIALS", data: { title: "شو بحكوا عنا", items: [{ name: "زبون", text: "تجربة ممتازة!" }] } },
-      { type: "CTA", data: { title: "تواصل معنا", subtitle: "إذا عندك سؤال — احنا جاهزين", primaryButton: { label: "اتصل", href: "/contact" } } },
+      { type: "TESTIMONIALS", data: { title: "شو بحكوا عنا", items: [{ name: "زبون", quote: "تجربة ممتازة!" }] } },
+      { type: "CTA", data: { title: "تواصل معنا", subtitle: "إذا عندك سؤال — احنا جاهزين", buttonLabel: "اتصل", buttonHref: "/contact" } },
     ],
   },
   {

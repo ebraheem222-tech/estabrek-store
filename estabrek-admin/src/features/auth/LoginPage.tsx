@@ -15,7 +15,7 @@ type Mode = "email" | "phone";
 export default function LoginPage() {
   const nav = useNavigate();
   const location = useLocation();
-  const { admin, login, isSuperAdmin } = useAuth();
+  const { admin, login, hasPermission } = useAuth();
 
   const [mode, setMode] = useState<Mode>("email");
 
@@ -43,10 +43,10 @@ export default function LoginPage() {
   }, [location.search]);
 
   useEffect(() => {
-    if (admin && isSuperAdmin()) {
+    if (admin && hasPermission("dashboard:read")) {
       nav(from, { replace: true });
     }
-  }, [admin, isSuperAdmin, nav, from]);
+  }, [admin, hasPermission, nav, from]);
 
   const phoneStart = useMutation({ mutationFn: AuthAPI.phoneStart });
   const phoneVerify = useMutation({ mutationFn: AuthAPI.phoneVerify });

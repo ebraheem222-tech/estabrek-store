@@ -8,6 +8,11 @@ import { ALL_LOADING_ANIMATIONS, LOADING_CATEGORY_LABELS_AR, getLoadingById } fr
 import { ALL_SEARCH_INPUTS, SEARCH_INPUT_CATEGORY_LABELS_AR, getSearchInputById } from "../../cms/style/searchStyles";
 import { ALL_CURSOR_THEMES, getCursorThemeById } from "../../cms/style/cursorStyles";
 import { alertThemes, getAlertTheme } from "../../cms/alert-themes";
+import {
+  buttonThemes,
+  BUTTON_THEME_CATEGORY_LABELS_AR,
+  getButtonTheme,
+} from "../../cms/button-themes";
 
 type SelectOption = { value: string; label: string };
 
@@ -18,14 +23,17 @@ export type CmsSettingsCatalog = {
   searchInputStyleOptions: SelectOption[];
   cursorThemeOptions: SelectOption[];
   toastThemeOptions: SelectOption[];
+  buttonThemeOptions: SelectOption[];
   hasNavTemplate: (id: string) => boolean;
   hasWebsiteTheme: (id: string) => boolean;
   hasLoadingAnimation: (id: string) => boolean;
   hasSearchInputStyle: (id: string) => boolean;
   hasCursorTheme: (id: string) => boolean;
+  hasButtonTheme: (id: string) => boolean;
   getSearchInputStyleById: (id: string) => any | null;
   getLoadingAnimationById: (id: string) => any | null;
   getAlertThemeById: (id: string) => any | null;
+  getButtonThemeById: (id: string) => any | null;
 };
 
 export function createCmsSettingsCatalog(): CmsSettingsCatalog {
@@ -71,13 +79,22 @@ export function createCmsSettingsCatalog(): CmsSettingsCatalog {
           label: `${theme.nameAr} — ${theme.name}`,
         })),
     ],
+    buttonThemeOptions: [
+      { value: "default", label: "افتراضي" },
+      ...buttonThemes.map((theme) => ({
+        value: theme.id,
+        label: `${BUTTON_THEME_CATEGORY_LABELS_AR[theme.category] ?? theme.category} — ${theme.nameAr}`,
+      })),
+    ],
     hasNavTemplate: (id: string) => Boolean(getNavTemplateById(id)),
     hasWebsiteTheme: (id: string) => Boolean(getWebsiteThemeById(id)),
     hasLoadingAnimation: (id: string) => Boolean(getLoadingById(id)),
     hasSearchInputStyle: (id: string) => Boolean(getSearchInputById(id)),
     hasCursorTheme: (id: string) => Boolean(getCursorThemeById(id)),
+    hasButtonTheme: (id: string) => Boolean(getButtonTheme(id)),
     getSearchInputStyleById: (id: string) => getSearchInputById(id) ?? null,
     getLoadingAnimationById: (id: string) => getLoadingById(id) ?? null,
     getAlertThemeById: (id: string) => getAlertTheme(id) ?? null,
+    getButtonThemeById: (id: string) => getButtonTheme(id) ?? null,
   };
 }

@@ -21,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { usePageDetails, usePagesActions } from "../../hooks/usePages";
 import { useSettings } from "../../hooks/useSettings";
+import { useAuth } from "../../hooks/useAuth";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -37,6 +38,7 @@ import {
   moveSection as moveSectionApi,
   restorePageRevision,
   updateSection as updateSectionApi,
+  validateSectionPayload,
   type PageRevision,
   type PageSection,
   type PageSectionType,
@@ -48,6 +50,8 @@ import { PageRenderer, type SelectedElement } from "./PageRenderer";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import { ThemePreview } from "../../components/ThemePreview";
 import { toast } from "../../lib/toast";
+import { getApiErrorMessage } from "../../api/http";
+import { recordAdminAuditEvent } from "../../lib/adminAudit";
 import { PAGE_TEMPLATES } from "./pageTemplates";
 import type { CmsComponentKind } from "../../cms/types";
 import type { TwTokens } from "../../cms/style/tokens";
@@ -65,6 +69,9 @@ const STATUSES: Array<{ value: PageStatus; label: string }> = [
 ];
 
 const SECTION_TYPES: Array<{ value: PageSectionType; label: string }> = [
+  { value: "GLOBAL_ANNOUNCEMENT", label: "GLOBAL_ANNOUNCEMENT (Global Bar)" },
+  { value: "GLOBAL_HEADER", label: "GLOBAL_HEADER (Global Header)" },
+  { value: "GLOBAL_FOOTER", label: "GLOBAL_FOOTER (Global Footer)" },
   { value: "HERO", label: "HERO" },
   { value: "RICH_TEXT", label: "RICH_TEXT" },
   { value: "CUSTOM_HTML", label: "CUSTOM_HTML" },
@@ -89,6 +96,18 @@ const SECTION_TYPES: Array<{ value: PageSectionType; label: string }> = [
   { value: "CARDS", label: "CARDS (Flex Cards)" },
   { value: "VIDEO", label: "VIDEO" },
 ];
+
+const GLOBAL_SINGLETON_SECTION_TYPES: ReadonlySet<PageSectionType> = new Set([
+  "GLOBAL_ANNOUNCEMENT",
+  "GLOBAL_HEADER",
+  "GLOBAL_FOOTER",
+]);
+
+const GLOBAL_SECTION_LABELS: Record<Extract<PageSectionType, "GLOBAL_ANNOUNCEMENT" | "GLOBAL_HEADER" | "GLOBAL_FOOTER">, string> = {
+  GLOBAL_ANNOUNCEMENT: "Global announcement",
+  GLOBAL_HEADER: "Global header",
+  GLOBAL_FOOTER: "Global footer",
+};
 
 const COMPONENT_KIND_OPTIONS: Array<{ value: CmsComponentKind; label: string }> = [
   { value: "text", label: "Text" },
@@ -417,7 +436,7 @@ type SavedSectionTemplate = {
   createdAt: number;
 };
 
-type LibraryCategory = "all" | "hero" | "content" | "commerce" | "media" | "layout" | "saved";
+type LibraryCategory = "all" | "hero" | "content" | "commerce" | "media" | "layout" | "global" | "saved";
 
 type ClipboardSection = {
   type: PageSectionType;
@@ -431,6 +450,9 @@ type ClipboardElement = {
 };
 
 const SECTION_TYPE_CATEGORY: Record<PageSectionType, LibraryCategory> = {
+  GLOBAL_ANNOUNCEMENT: "global",
+  GLOBAL_HEADER: "global",
+  GLOBAL_FOOTER: "global",
   HERO: "hero",
   RICH_TEXT: "content",
   CUSTOM_HTML: "content",
@@ -458,6 +480,7 @@ const SECTION_TYPE_CATEGORY: Record<PageSectionType, LibraryCategory> = {
 
 const LIBRARY_CATEGORIES: Array<{ id: LibraryCategory; label: string }> = [
   { id: "all", label: "All" },
+  { id: "global", label: "Global" },
   { id: "hero", label: "Hero" },
   { id: "content", label: "Content" },
   { id: "commerce", label: "Commerce" },
@@ -1045,6 +1068,10 @@ export default function PageEditorPage() {
   const q = usePageDetails(id ?? null);
   const qSettings = useSettings();
   const actions = usePagesActions();
+  const auth = useAuth();
+  const role = auth.role;
+  const canWritePages = auth.hasPermission("pages:write");
+  const canPublishPages = auth.hasPermission("pages:publish");
 
   const page: any = q.data;
   const theme = (qSettings.data as any)?.header?.theme ?? null;
@@ -1108,13 +1135,15 @@ export default function PageEditorPage() {
   const [canvasGuides, setCanvasGuides] = useState<{ x: number; y: number; snapX: boolean; snapY: boolean } | null>(null);
   const [elementModalOpen, setElementModalOpen] = useState(false);
   const [elementModalFields, setElementModalFields] = useState<QuickEditField[]>([]);
-  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [pendingSectionSaves, setPendingSectionSaves] = useState(0);
   const [revisionsOpen, setRevisionsOpen] = useState(false);
   const [revisionsBusy, setRevisionsBusy] = useState(false);
   const [revisions, setRevisions] = useState<PageRevision[]>([]);
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
   const autosaveTimersRef = React.useRef<Map<string, number>>(new Map());
   const autosaveSavedTimerRef = React.useRef<number | null>(null);
+  const autosaveHadErrorRef = React.useRef(false);
   const historyRef = React.useRef<HistoryEntry[]>([]);
   const historyIndexRef = React.useRef(-1);
   const lastHistoryAtRef = React.useRef(0);
@@ -1215,7 +1244,7 @@ export default function PageEditorPage() {
     return Array.isArray(arr) ? arr : null;
   }, [i18nMeta, contentLocale]);
 
-  const inlineEditingAvailable = contentLocale === "ar";
+  const inlineEditingAvailable = contentLocale === "ar" && canWritePages;
   useEffect(() => {
     if (!inlineEditingAvailable) {
       setInlineEditing(false);
@@ -1452,16 +1481,60 @@ export default function PageEditorPage() {
       (bodyScripts ?? "") !== normalizeScripts(page.bodyScripts)
     );
   }, [page, name, slug, status, publishAtLocal, unpublishAtLocal, canonicalUrl, customCss, headScripts, bodyScripts]);
+  const hasPendingEditorChanges =
+    isDirty || pendingSectionSaves > 0 || autosaveState === "saving" || autosaveState === "error";
+
+  const confirmLeaveWithUnsavedChanges = React.useCallback(() => {
+    if (!hasPendingEditorChanges) return true;
+    return window.confirm("There are unsaved changes. Leave this page?");
+  }, [hasPendingEditorChanges]);
+
+  const navigateWithUnsavedGuard = React.useCallback(
+    (to: string) => {
+      if (!confirmLeaveWithUnsavedChanges()) return;
+      nav(to);
+    },
+    [confirmLeaveWithUnsavedChanges, nav]
+  );
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (!isDirty) return;
+      if (!hasPendingEditorChanges) return;
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
+  }, [hasPendingEditorChanges]);
+
+  useEffect(() => {
+    const onDocumentClick = (event: MouseEvent) => {
+      if (!hasPendingEditorChanges) return;
+      if (event.defaultPrevented) return;
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.closest("#cms-preview-root")) return;
+      if (anchor.hasAttribute("download")) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      const nextUrl = new URL(anchor.href, window.location.origin);
+      if (nextUrl.origin !== window.location.origin) return;
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const next = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+      if (current === next) return;
+      if (confirmLeaveWithUnsavedChanges()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    document.addEventListener("click", onDocumentClick, true);
+    return () => document.removeEventListener("click", onDocumentClick, true);
+  }, [hasPendingEditorChanges, confirmLeaveWithUnsavedChanges]);
 
   const sections = useMemo(() => {
     const raw: any[] = Array.isArray((page as any)?.sections) ? ((page as any).sections as any[]) : [];
@@ -1497,6 +1570,75 @@ export default function PageEditorPage() {
   useEffect(() => {
     setLocalSections(sections as any);
   }, [sections]);
+
+  const sectionMutationErrorMessage = React.useCallback((error: unknown) => {
+    const message = getApiErrorMessage(error);
+    const lower = message.toLowerCase();
+    if (
+      lower.includes("global_") &&
+      (lower.includes("enum") || lower.includes("invalid") || lower.includes("unsupported") || lower.includes("not allowed"))
+    ) {
+      return "Backend does not support this global section type yet.";
+    }
+    return message || "Request failed";
+  }, []);
+
+  const ensureCanWritePages = React.useCallback(() => {
+    if (canWritePages) return true;
+    toast.error("You do not have permission to edit pages.");
+    return false;
+  }, [canWritePages]);
+
+  const audit = React.useCallback(
+    (event: Parameters<typeof recordAdminAuditEvent>[0]) => {
+      void recordAdminAuditEvent({
+        ...event,
+        role: role ?? null,
+      });
+    },
+    [role]
+  );
+
+  const getExistingGlobalSection = React.useCallback(
+    (type: PageSectionType, ignoreSectionId?: string | null) =>
+      localSections.find(
+        (section) =>
+          section.type === type &&
+          (ignoreSectionId == null || String(section.id) !== String(ignoreSectionId))
+      ) ?? null,
+    [localSections]
+  );
+
+  const isGlobalSectionTypeTaken = React.useCallback(
+    (type: PageSectionType, ignoreSectionId?: string | null) => {
+      if (!GLOBAL_SINGLETON_SECTION_TYPES.has(type)) return false;
+      return !!getExistingGlobalSection(type, ignoreSectionId);
+    },
+    [getExistingGlobalSection]
+  );
+
+  const globalTypeConflictMessage = React.useCallback(
+    (type: PageSectionType) => {
+      if (!GLOBAL_SINGLETON_SECTION_TYPES.has(type)) return "";
+      const key = type as keyof typeof GLOBAL_SECTION_LABELS;
+      const label = GLOBAL_SECTION_LABELS[key] ?? type;
+      return `${label} already exists on this page.`;
+    },
+    []
+  );
+
+  const ensureGlobalSectionSlot = React.useCallback(
+    (type: PageSectionType, options?: { ignoreSectionId?: string | null; silent?: boolean }) => {
+      if (!GLOBAL_SINGLETON_SECTION_TYPES.has(type)) return true;
+      const existing = getExistingGlobalSection(type, options?.ignoreSectionId);
+      if (!existing) return true;
+      if (!options?.silent) {
+        toast.error(globalTypeConflictMessage(type));
+      }
+      return false;
+    },
+    [getExistingGlobalSection, globalTypeConflictMessage]
+  );
 
   useEffect(() => {
     historyRef.current = [];
@@ -1659,6 +1801,7 @@ export default function PageEditorPage() {
 
   const persistOrder = async (next: PageSection[]) => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
     try {
       await Promise.all(
         next.map((s, idx) =>
@@ -1666,12 +1809,19 @@ export default function PageEditorPage() {
         )
       );
       await qc.invalidateQueries({ queryKey: ["pages", id] });
+      audit({
+        action: "section.move",
+        entity: "section",
+        pageId: id,
+        metadata: { scope: "drag-sort", count: next.length },
+      });
     } catch (e: any) {
-      toast.error("فشل حفظ ترتيب الـ Sections");
+      toast.error("Failed to save section order.", { description: sectionMutationErrorMessage(e) });
     }
   };
 
   const onDragEnd = (event: DragEndEvent) => {
+    if (!canWritePages) return;
     const { active, over } = event;
     if (!over) return;
     if (active.id === over.id) return;
@@ -1687,7 +1837,7 @@ export default function PageEditorPage() {
   };
 
   const renderInsertZone = (index: number, isEmpty = false) => {
-    if (!showInsertPoints) return null;
+    if (!showInsertPoints || !canWritePages) return null;
     const isActive = libraryDragOverIndex === index || sectionInsertIndex === index;
     const label = libraryDragItem
       ? "Drop to insert here"
@@ -1745,6 +1895,19 @@ export default function PageEditorPage() {
   const [sectionErrors, setSectionErrors] = useState<SectionFieldErrors>({});
   const [componentsOnlyMode, setComponentsOnlyMode] = useState(false);
   const [componentsSectionKind, setComponentsSectionKind] = useState<CmsComponentKind>("text");
+
+  const sectionTypeOptions = useMemo(
+    () =>
+      SECTION_TYPES.map((item) => {
+        const disabled = isGlobalSectionTypeTaken(item.value, editingSectionId);
+        return {
+          ...item,
+          disabled,
+          reason: disabled ? globalTypeConflictMessage(item.value) : "",
+        };
+      }),
+    [editingSectionId, isGlobalSectionTypeTaken, globalTypeConflictMessage]
+  );
 
   useEffect(() => {
     if (openSection) {
@@ -1807,15 +1970,24 @@ export default function PageEditorPage() {
     const existing = timers.get(sectionId);
     if (existing) window.clearTimeout(existing);
 
+    autosaveHadErrorRef.current = false;
+    if (autosaveSavedTimerRef.current) {
+      window.clearTimeout(autosaveSavedTimerRef.current);
+      autosaveSavedTimerRef.current = null;
+    }
     setAutosaveState("saving");
     const timer = window.setTimeout(async () => {
       timers.delete(sectionId);
+      setPendingSectionSaves(timers.size);
       try {
         await updateSectionApi(sectionId, { data: nextData });
-      } catch {
-        toast.error("???? ??? ???????.");
+      } catch (e) {
+        autosaveHadErrorRef.current = true;
+        setAutosaveState("error");
+        toast.error("Failed to autosave section.", { description: sectionMutationErrorMessage(e) });
       }
       if (timers.size === 0) {
+        if (autosaveHadErrorRef.current) return;
         setAutosaveState("saved");
         if (autosaveSavedTimerRef.current) {
           window.clearTimeout(autosaveSavedTimerRef.current);
@@ -1827,6 +1999,7 @@ export default function PageEditorPage() {
     }, 650);
 
     timers.set(sectionId, timer);
+    setPendingSectionSaves(timers.size);
   };
 
   const recordHistory = (entry: HistoryEntry) => {
@@ -1909,6 +2082,7 @@ export default function PageEditorPage() {
   }, [canvasView, selectedElement, previewMode, previewBump, inlineEditing, contentLocale, canvasFullScreen]);
 
   const openCreateSection = () => {
+    if (!ensureCanWritePages()) return;
     setEditingSectionId(null);
     setComponentsOnlyMode(false);
     setSectionType("RICH_TEXT");
@@ -1923,6 +2097,7 @@ export default function PageEditorPage() {
   };
 
   const openCreateComponentsSection = (initialKind?: CmsComponentKind) => {
+    if (!ensureCanWritePages()) return;
     setEditingSectionId(null);
     setComponentsOnlyMode(true);
     setSectionType("RICH_TEXT");
@@ -1981,6 +2156,7 @@ export default function PageEditorPage() {
 
   const applyPageTemplate = async (mode: "append" | "replace") => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
     const template = selectedTemplate;
     if (!template) return;
     setTemplateBusy(true);
@@ -2004,18 +2180,54 @@ export default function PageEditorPage() {
         mode === "append"
           ? localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1
           : 0;
+      const occupiedGlobalTypes = new Set<PageSectionType>();
+      if (mode !== "replace") {
+        localSections.forEach((section) => {
+          if (GLOBAL_SINGLETON_SECTION_TYPES.has(section.type)) {
+            occupiedGlobalTypes.add(section.type);
+          }
+        });
+      }
+      const skippedGlobalTypes = new Set<PageSectionType>();
+      let createdCount = 0;
       for (const [idx, s] of sectionsToCreate.entries()) {
+        if (GLOBAL_SINGLETON_SECTION_TYPES.has(s.type)) {
+          if (occupiedGlobalTypes.has(s.type)) {
+            skippedGlobalTypes.add(s.type);
+            continue;
+          }
+          occupiedGlobalTypes.add(s.type);
+        }
         await createSectionApi(id, {
           type: s.type,
           data: s.data ?? {},
           isVisible: s.isVisible ?? true,
           order: offset + idx,
         });
+        createdCount += 1;
+      }
+      if (skippedGlobalTypes.size) {
+        toast.info(
+          `Skipped ${Array.from(skippedGlobalTypes)
+            .map((type) => GLOBAL_SECTION_LABELS[type as keyof typeof GLOBAL_SECTION_LABELS] ?? type)
+            .join(", ")} because each global section can exist only once.`
+        );
       }
       await qc.invalidateQueries({ queryKey: ["pages", id] });
       toast.success("تم تطبيق القالب.");
-    } catch {
-      toast.error("تعذر تطبيق القالب.");
+      audit({
+        action: "template.apply",
+        entity: "template",
+        entityId: template.id,
+        pageId: id,
+        metadata: {
+          mode,
+          createdCount,
+          skippedGlobalTypes: Array.from(skippedGlobalTypes),
+        },
+      });
+    } catch (e) {
+      toast.error("تعذر تطبيق القالب.", { description: sectionMutationErrorMessage(e) });
     } finally {
       setTemplateBusy(false);
       setConfirmTemplateReplace(false);
@@ -2060,8 +2272,14 @@ export default function PageEditorPage() {
     if (options?.immediate) {
       try {
         await updateSectionApi(sectionId, { data: nextData });
-      } catch {
-        if (errorMessage) toast.error(errorMessage);
+      } catch (e) {
+        setAutosaveState("error");
+        const description = sectionMutationErrorMessage(e);
+        if (errorMessage) {
+          toast.error(errorMessage, { description });
+        } else {
+          toast.error("Failed to update section.", { description });
+        }
       }
       return;
     }
@@ -2245,6 +2463,8 @@ export default function PageEditorPage() {
       return;
     }
     if (clipboardSectionRef.current && id) {
+      if (!ensureCanWritePages()) return;
+      if (!ensureGlobalSectionSlot(clipboardSectionRef.current.type)) return;
       const insertAt = selectedSectionIndex >= 0 ? selectedSectionIndex + 1 : localSections.length;
       const order = calculateInsertOrder(insertAt);
       try {
@@ -2258,8 +2478,15 @@ export default function PageEditorPage() {
         setSelectedSectionId(String(created.id));
         setMultiSelectedSectionIds([String(created.id)]);
         setShowInlineStyling(true);
-      } catch {
-        toast.error("Failed to paste section.");
+        audit({
+          action: "section.create",
+          entity: "section",
+          entityId: String(created.id),
+          pageId: id,
+          metadata: { source: "clipboard", type: clipboardSectionRef.current.type },
+        });
+      } catch (e) {
+        toast.error("Failed to paste section.", { description: sectionMutationErrorMessage(e) });
       }
       return;
     }
@@ -2371,6 +2598,8 @@ export default function PageEditorPage() {
   };
 
   const persistSectionVisibility = async (sectionId: string, isVisible: boolean) => {
+    if (!ensureCanWritePages()) return;
+    const prevVisible = localSections.find((s) => String(s.id) === String(sectionId))?.isVisible ?? !isVisible;
     setLocalSections((prev) =>
       prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, isVisible } : s))
     );
@@ -2385,8 +2614,29 @@ export default function PageEditorPage() {
     }
     try {
       await updateSectionApi(sectionId, { isVisible });
-    } catch {
-      toast.error("???? ????? ??? ??????");
+      if (id) {
+        audit({
+          action: "section.visibility",
+          entity: "section",
+          entityId: String(sectionId),
+          pageId: id,
+          metadata: { isVisible },
+        });
+      }
+    } catch (e) {
+      setLocalSections((prev) =>
+        prev.map((s) => (String(s.id) === String(sectionId) ? { ...s, isVisible: prevVisible } : s))
+      );
+      if (id) {
+        qc.setQueryData(["pages", id], (prev: any) => {
+          if (!prev || !Array.isArray(prev.sections)) return prev;
+          const nextSections = prev.sections.map((s: any) =>
+            String(s.id) === String(sectionId) ? { ...s, isVisible: prevVisible } : s
+          );
+          return { ...prev, sections: nextSections };
+        });
+      }
+      toast.error("Failed to update visibility.", { description: sectionMutationErrorMessage(e) });
     }
   };
 
@@ -2402,20 +2652,29 @@ export default function PageEditorPage() {
 
   const duplicateSelectedSection = async () => {
     if (!id || !selectedSection) return;
+    if (!ensureCanWritePages()) return;
+    if (!ensureGlobalSectionSlot(selectedSection.type)) return;
     setSelectionBusy(true);
     try {
       const nextOrder = localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1;
       const created = await createSectionApi(id, {
         type: selectedSection.type,
-        data: selectedSection.data ?? {},
+        data: cloneData(selectedSection.data ?? {}),
         isVisible: selectedSection.isVisible ?? true,
         order: nextOrder,
       });
       await qc.invalidateQueries({ queryKey: ["pages", id] });
       setSelectedSectionId(String(created.id));
       setShowInlineStyling(true);
-    } catch {
-      toast.error("???? ??? ?????? ?????.");
+      audit({
+        action: "section.duplicate",
+        entity: "section",
+        entityId: String(created.id),
+        pageId: id,
+        metadata: { sourceSectionId: String(selectedSection.id), type: selectedSection.type },
+      });
+    } catch (e) {
+      toast.error("Failed to duplicate section.", { description: sectionMutationErrorMessage(e) });
     } finally {
       setSelectionBusy(false);
     }
@@ -2436,6 +2695,8 @@ export default function PageEditorPage() {
 
   const insertSectionFromLibrary = async (item: LibraryItem, index: number | null) => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
+    if (!ensureGlobalSectionSlot(item.type)) return;
     const insertAt = index == null ? localSections.length : Math.min(Math.max(index, 0), localSections.length);
     const order = calculateInsertOrder(insertAt);
     setLibraryBusy(true);
@@ -2448,6 +2709,13 @@ export default function PageEditorPage() {
       setSelectedElement(null);
       setShowInlineStyling(true);
       setSectionInsertIndex(null);
+      audit({
+        action: "section.create",
+        entity: "section",
+        entityId: String(created.id),
+        pageId: id,
+        metadata: { source: item.source ?? "library", type: item.type, templateId: item.id },
+      });
     } catch {
       // toast handled in mutation
     } finally {
@@ -2459,6 +2727,7 @@ export default function PageEditorPage() {
 
   const duplicateSectionsBulk = async () => {
     if (!id || !multiSelectedSections.length) return;
+    if (!ensureCanWritePages()) return;
     setSelectionBusy(true);
     try {
       const sorted = multiSelectedSections
@@ -2466,7 +2735,20 @@ export default function PageEditorPage() {
         .sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0));
       let nextOrder = localSections.reduce((max, s) => Math.max(max, s.order ?? 0), -1) + 1;
       let lastCreatedId: string | null = null;
+      let createdCount = 0;
+      const occupiedGlobalTypes = new Set<PageSectionType>();
+      localSections.forEach((section) => {
+        if (GLOBAL_SINGLETON_SECTION_TYPES.has(section.type)) occupiedGlobalTypes.add(section.type);
+      });
+      const skippedGlobalTypes = new Set<PageSectionType>();
       for (const section of sorted) {
+        if (GLOBAL_SINGLETON_SECTION_TYPES.has(section.type)) {
+          if (occupiedGlobalTypes.has(section.type)) {
+            skippedGlobalTypes.add(section.type);
+            continue;
+          }
+          occupiedGlobalTypes.add(section.type);
+        }
         const created = await createSectionApi(id, {
           type: section.type,
           data: cloneData(section.data ?? {}),
@@ -2475,14 +2757,28 @@ export default function PageEditorPage() {
         });
         lastCreatedId = String(created.id);
         nextOrder += 1;
+        createdCount += 1;
       }
       await qc.invalidateQueries({ queryKey: ["pages", id] });
       if (lastCreatedId) {
         setSelectedSectionId(lastCreatedId);
         setMultiSelectedSectionIds([lastCreatedId]);
       }
-    } catch {
-      toast.error("Failed to duplicate sections.");
+      if (skippedGlobalTypes.size) {
+        toast.info(
+          `Skipped ${Array.from(skippedGlobalTypes)
+            .map((type) => GLOBAL_SECTION_LABELS[type as keyof typeof GLOBAL_SECTION_LABELS] ?? type)
+            .join(", ")} because each global section can exist only once.`
+        );
+      }
+      audit({
+        action: "section.duplicate",
+        entity: "section",
+        pageId: id,
+        metadata: { source: "bulk", selected: sorted.length, createdCount },
+      });
+    } catch (e) {
+      toast.error("Failed to duplicate sections.", { description: sectionMutationErrorMessage(e) });
     } finally {
       setSelectionBusy(false);
     }
@@ -2500,14 +2796,22 @@ export default function PageEditorPage() {
 
   const deleteSectionsBulk = async () => {
     if (!id || !multiSelectedSections.length) return;
+    if (!ensureCanWritePages()) return;
+    const deletingIds = multiSelectedSections.map((section) => String(section.id));
     setSelectionBusy(true);
     try {
       await Promise.all(multiSelectedSections.map((section) => deleteSectionApi(section.id)));
       await qc.invalidateQueries({ queryKey: ["pages", id] });
       setSelectedSectionId(null);
       setMultiSelectedSectionIds([]);
-    } catch {
-      toast.error("Failed to delete sections.");
+      audit({
+        action: "section.delete",
+        entity: "section",
+        pageId: id,
+        metadata: { count: deletingIds.length, ids: deletingIds },
+      });
+    } catch (e) {
+      toast.error("Failed to delete sections.", { description: sectionMutationErrorMessage(e) });
     } finally {
       setSelectionBusy(false);
     }
@@ -2623,6 +2927,10 @@ export default function PageEditorPage() {
   };
 
   const handleLibraryDragStart = (item: LibraryItem) => (event: React.DragEvent<HTMLDivElement>) => {
+    if (!canWritePages || isGlobalSectionTypeTaken(item.type)) {
+      event.preventDefault();
+      return;
+    }
     setLibraryDragItem(item);
     setLibraryDragOverIndex(null);
     event.dataTransfer.effectAllowed = "copy";
@@ -2664,6 +2972,19 @@ export default function PageEditorPage() {
 
   const validateSection = (type: PageSectionType, data: any) => {
     const fields: Record<string, string | undefined> = {};
+
+    if (type === "GLOBAL_ANNOUNCEMENT") {
+      if (data?.enabled !== false && !String(data?.text ?? "").trim()) {
+        fields.text = "نص الشريط مطلوب عند التفعيل";
+      }
+    }
+
+    if (type === "GLOBAL_HEADER") {
+      if (data?.showCta) {
+        if (!String(data?.ctaLabel ?? "").trim()) fields.cta = "CTA label مطلوب";
+        if (!String(data?.ctaHref ?? "").trim()) fields.cta = "CTA href مطلوب";
+      }
+    }
 
     if (type === "HERO") {
       if (!String(data?.title ?? "").trim()) fields.title = "العنوان مطلوب";
@@ -2800,6 +3121,7 @@ export default function PageEditorPage() {
 
   const savePage = async () => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
 
     const normalized = normalizeSlug(slug);
     const publishAtIso = fromDateTimeLocal(publishAtLocal);
@@ -2840,6 +3162,13 @@ export default function PageEditorPage() {
           bodyScripts: body,
         },
       });
+      audit({
+        action: "page.update",
+        entity: "page",
+        entityId: id,
+        pageId: id,
+        metadata: { status, slug: normalized },
+      });
     } catch {
       // toast handled inside hook
     }
@@ -2847,8 +3176,20 @@ export default function PageEditorPage() {
 
   const setPageStatus = async (nextStatus: PageStatus) => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
+    if (nextStatus === "PUBLISHED" && !canPublishPages) {
+      toast.error("You do not have permission to publish pages.");
+      return;
+    }
     try {
       await actions.updatePage.mutateAsync({ id, body: { status: nextStatus } });
+      audit({
+        action: "page.status.change",
+        entity: "page",
+        entityId: id,
+        pageId: id,
+        metadata: { status: nextStatus },
+      });
     } catch {
       // toast handled inside hook
     }
@@ -2856,10 +3197,22 @@ export default function PageEditorPage() {
 
   const publishNow = async () => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
+    if (!canPublishPages) {
+      toast.error("You do not have permission to publish pages.");
+      return;
+    }
     try {
       await actions.updatePage.mutateAsync({ id, body: { status: "PUBLISHED", publishAt: null } });
       setStatus("PUBLISHED");
       setPublishAtLocal("");
+      audit({
+        action: "page.status.change",
+        entity: "page",
+        entityId: id,
+        pageId: id,
+        metadata: { status: "PUBLISHED", mode: "immediate" },
+      });
     } catch {
       // toast handled in hook
     }
@@ -2867,11 +3220,19 @@ export default function PageEditorPage() {
 
   const unpublishNow = async () => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
     try {
       await actions.updatePage.mutateAsync({ id, body: { status: "DRAFT", publishAt: null, unpublishAt: null } });
       setStatus("DRAFT");
       setPublishAtLocal("");
       setUnpublishAtLocal("");
+      audit({
+        action: "page.status.change",
+        entity: "page",
+        entityId: id,
+        pageId: id,
+        metadata: { status: "DRAFT", mode: "immediate" },
+      });
     } catch {
       // toast handled in hook
     }
@@ -2917,6 +3278,7 @@ export default function PageEditorPage() {
   // -----------------------------
   const runAiSuggestSections = async () => {
     if (!page || !id) return;
+    if (!ensureCanWritePages()) return;
     try {
       setAiBusy("sections");
       const res = await aiSuggestSections({
@@ -2930,13 +3292,25 @@ export default function PageEditorPage() {
       // Append suggested sections to the end (keep existing)
       const startOrder = (page.sections?.length ? Math.max(...page.sections.map((s: any) => Number(s.order ?? 0))) : 0) + 1;
       let order = startOrder;
+      const skippedGlobalTypes = new Set<PageSectionType>();
       for (const sec of res.sections ?? []) {
+        if (!ensureGlobalSectionSlot(sec.type as PageSectionType, { silent: true })) {
+          skippedGlobalTypes.add(sec.type as PageSectionType);
+          continue;
+        }
         await actions.createSection.mutateAsync({
           pageId: id,
           body: { type: sec.type as any, data: sec.data ?? {}, order: order++, isVisible: sec.isVisible ?? true },
         });
       }
       toast.success(`تم إضافة ${res.sections?.length ?? 0} Sections (AI: ${res.source})`);
+      if (skippedGlobalTypes.size) {
+        toast.info(
+          `Skipped ${Array.from(skippedGlobalTypes)
+            .map((type) => GLOBAL_SECTION_LABELS[type as keyof typeof GLOBAL_SECTION_LABELS] ?? type)
+            .join(", ")} because each global section can exist only once.`
+        );
+      }
     } catch (e: any) {
       toast.error(e?.message ? String(e.message) : "فشل تشغيل AI");
     } finally {
@@ -2946,6 +3320,7 @@ export default function PageEditorPage() {
 
   const runAiImproveSeo = async () => {
     if (!page || !id) return;
+    if (!ensureCanWritePages()) return;
     try {
       setAiBusy("seo");
       const res = await aiImproveSeo({
@@ -2968,6 +3343,7 @@ export default function PageEditorPage() {
 
   const runAiTranslate = async (to: "he" | "en") => {
     if (!page || !id) return;
+    if (!ensureCanWritePages()) return;
     try {
       setAiBusy(to === "he" ? "translate-he" : "translate-en");
       const res = await aiTranslatePage({
@@ -2998,6 +3374,7 @@ export default function PageEditorPage() {
 
   const saveSection = async () => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
 
     setSectionErrors({});
 
@@ -3018,10 +3395,40 @@ export default function PageEditorPage() {
       return;
     }
 
+    if (!ensureGlobalSectionSlot(sectionType, { ignoreSectionId: editingSectionId })) {
+      setSectionErrors({ data: globalTypeConflictMessage(sectionType) });
+      return;
+    }
+
+    try {
+      const serverValidation = await validateSectionPayload({
+        type: sectionType,
+        data: dataJson,
+        pageId: id,
+        sectionId: editingSectionId ?? undefined,
+      });
+      if (!serverValidation.ok) {
+        const fieldsFromServer: Record<string, string | undefined> = {};
+        for (const issue of serverValidation.issues) {
+          const path = String(issue.path ?? "").replace(/^data\./, "").trim();
+          const key = path ? path.split(".")[0] : "";
+          if (key && !fieldsFromServer[key]) fieldsFromServer[key] = issue.message;
+        }
+        setSectionErrors({
+          data: serverValidation.issues[0]?.message ?? "Section validation failed on server.",
+          fields: fieldsFromServer,
+        });
+        return;
+      }
+    } catch (e) {
+      toast.error("Failed to validate section on server.", { description: sectionMutationErrorMessage(e) });
+      return;
+    }
+
     try {
       if (editingSectionId) {
         const current = sections.find((x: any) => x.id === editingSectionId);
-        await actions.updateSection.mutateAsync({
+        const updated = await actions.updateSection.mutateAsync({
           pageId: id,
           sectionId: editingSectionId,
           body: {
@@ -3031,11 +3438,25 @@ export default function PageEditorPage() {
             order: current?.order ?? 0,
           },
         });
+        audit({
+          action: "section.update",
+          entity: "section",
+          entityId: String(updated.id),
+          pageId: id,
+          metadata: { type: sectionType },
+        });
       } else {
         const nextOrder = sections.length ? (sections[sections.length - 1].order ?? sections.length - 1) + 1 : 0;
-        await actions.createSection.mutateAsync({
+        const created = await actions.createSection.mutateAsync({
           pageId: id,
           body: { type: sectionType, data: dataJson, isVisible: sectionVisible, order: nextOrder },
+        });
+        audit({
+          action: "section.create",
+          entity: "section",
+          entityId: String(created.id),
+          pageId: id,
+          metadata: { type: sectionType, source: "modal" },
         });
       }
       setOpenSection(false);
@@ -3046,6 +3467,7 @@ export default function PageEditorPage() {
 
   const moveSection = async (sectionId: string, direction: "UP" | "DOWN") => {
     if (!id) return;
+    if (!ensureCanWritePages()) return;
     const idx = sections.findIndex((x: any) => x.id === sectionId);
     const swapWith = direction === "UP" ? idx - 1 : idx + 1;
     if (idx < 0 || swapWith < 0 || swapWith >= sections.length) return;
@@ -3059,6 +3481,13 @@ export default function PageEditorPage() {
     try {
       await actions.moveSection.mutateAsync({ pageId: id, sectionId: cur.id, order: otherOrder });
       await actions.moveSection.mutateAsync({ pageId: id, sectionId: other.id, order: curOrder });
+      audit({
+        action: "section.move",
+        entity: "section",
+        entityId: String(sectionId),
+        pageId: id,
+        metadata: { direction },
+      });
     } catch {
       // toast handled inside hook
     }
@@ -3066,8 +3495,16 @@ export default function PageEditorPage() {
 
   const deleteSection = async () => {
     if (!id || !confirmDeleteSectionId) return;
+    if (!ensureCanWritePages()) return;
+    const sectionId = confirmDeleteSectionId;
     await actions.deleteSection.mutateAsync({ pageId: id, sectionId: confirmDeleteSectionId });
     setConfirmDeleteSectionId(null);
+    audit({
+      action: "section.delete",
+      entity: "section",
+      entityId: String(sectionId),
+      pageId: id,
+    });
   };
 
   const canMoveUp = selectedSectionIndex > 0;
@@ -3190,7 +3627,7 @@ export default function PageEditorPage() {
             <h3 className="text-lg font-semibold text-red-300">فشل تحميل الصفحة</h3>
             <p className="mt-1 text-sm text-red-400/70">حدث خطأ أثناء تحميل بيانات الصفحة</p>
           </div>
-          <Button variant="ghost" onClick={() => nav("/admin/pages")} className="mt-2 btn-shine">
+          <Button variant="ghost" onClick={() => navigateWithUnsavedGuard("/admin/pages")} className="mt-2 btn-shine">
             <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
@@ -3229,7 +3666,7 @@ export default function PageEditorPage() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-xl font-bold text-gradient-premium">تحرير الصفحة</h1>
-                {isDirty ? (
+                {hasPendingEditorChanges ? (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/25 text-xs text-amber-400 animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                     غير محفوظ
@@ -3253,13 +3690,13 @@ export default function PageEditorPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="ghost" onClick={() => nav("/admin/pages")} className="btn-shine">
+            <Button variant="ghost" onClick={() => navigateWithUnsavedGuard("/admin/pages")} className="btn-shine">
               <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
               رجوع
             </Button>
-            <Button variant="ghost" onClick={() => nav(`/admin/pages/${page.id}/preview`)}>
+            <Button variant="ghost" onClick={() => navigateWithUnsavedGuard(`/admin/pages/${page.id}/preview`)}>
               <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -3267,7 +3704,7 @@ export default function PageEditorPage() {
               معاينة
             </Button>
             
-            <Button variant="accent" onClick={openCreateSection} className="btn-shine">
+            <Button variant="accent" onClick={openCreateSection} disabled={!canWritePages} className="btn-shine">
               <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -3285,7 +3722,7 @@ export default function PageEditorPage() {
                 </option>
               ))}
             </select>
-            <Button variant="secondary" onClick={openCreateComponentsSection}>
+            <Button variant="secondary" onClick={openCreateComponentsSection} disabled={!canWritePages}>
               <svg className="w-4 h-4 ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
               </svg>
@@ -3317,28 +3754,28 @@ export default function PageEditorPage() {
             <Button
               variant="ghost"
               onClick={runAiSuggestSections}
-              disabled={!!aiBusy}
+              disabled={!!aiBusy || !canWritePages}
             >
               ✨ AI أقسام
             </Button>
             <Button
               variant="ghost"
               onClick={runAiImproveSeo}
-              disabled={!!aiBusy}
+              disabled={!!aiBusy || !canWritePages}
             >
               ✨ AI SEO
             </Button>
             <Button
               variant="ghost"
               onClick={() => runAiTranslate("he")}
-              disabled={!!aiBusy}
+              disabled={!!aiBusy || !canWritePages}
             >
               ✨ ترجمة HE
             </Button>
             <Button
               variant="ghost"
               onClick={() => runAiTranslate("en")}
-              disabled={!!aiBusy}
+              disabled={!!aiBusy || !canWritePages}
             >
               ✨ ترجمة EN
             </Button>
@@ -3366,21 +3803,29 @@ export default function PageEditorPage() {
                   "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs",
                   autosaveState === "saving"
                     ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+                    : autosaveState === "error"
+                      ? "border-red-500/30 bg-red-500/10 text-red-200"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
                 ].join(" ")}
               >
-                {autosaveState === "saving" ? "Autosaving..." : "Saved"}
+                {autosaveState === "saving" ? "Autosaving..." : autosaveState === "error" ? "Save failed" : "Saved"}
               </div>
             ) : null}
             <Button variant="ghost" size="sm" onClick={openRevisionsModal}>
               الإصدارات
             </Button>
             {page.status !== "PUBLISHED" ? (
-              <Button variant="secondary" onClick={() => setPageStatus("PUBLISHED")}>نشر</Button>
+              <Button variant="secondary" onClick={() => setPageStatus("PUBLISHED")} disabled={!canWritePages || !canPublishPages}>
+                نشر
+              </Button>
             ) : (
-              <Button variant="ghost" onClick={() => setPageStatus("DRAFT")}>إلغاء النشر</Button>
+              <Button variant="ghost" onClick={() => setPageStatus("DRAFT")} disabled={!canWritePages}>
+                إلغاء النشر
+              </Button>
             )}
-            <Button variant="primary" onClick={savePage} isLoading={actions.updatePage.isPending}>حفظ الصفحة</Button>
+            <Button variant="primary" onClick={savePage} disabled={!canWritePages} isLoading={actions.updatePage.isPending}>
+              حفظ الصفحة
+            </Button>
           </div>
         </div>
 
@@ -3805,13 +4250,29 @@ export default function PageEditorPage() {
                     <Select
                       label="Type"
                       value={sectionLibraryType}
-                      onChange={(e) => setSectionLibraryType(e.target.value as PageSectionType)}
-                      options={filteredSectionTypes.map((t) => ({ value: t.value, label: t.label }))}
-                    />
+                      onValueChange={(value) => setSectionLibraryType(value as PageSectionType)}
+                    >
+                      {filteredSectionTypes.map((item) => {
+                        const blocked = isGlobalSectionTypeTaken(item.value);
+                        return (
+                          <option
+                            key={item.value}
+                            value={item.value}
+                            disabled={blocked}
+                            title={blocked ? globalTypeConflictMessage(item.value) : undefined}
+                            className="bg-surface-900 text-white"
+                          >
+                            {item.label}
+                            {blocked ? " (Already used)" : ""}
+                          </option>
+                        );
+                      })}
+                    </Select>
                   )}
                   <Button
                     type="button"
                     variant="secondary"
+                    disabled={!canWritePages}
                     onClick={() => setSectionInsertIndex(localSections.length)}
                   >
                     Insert at end
@@ -3830,11 +4291,12 @@ export default function PageEditorPage() {
                 {libraryItems.map((item) => {
                   const isSaved = item.source === "saved";
                   const templateId = item.id.startsWith("saved:") ? item.id.slice(6) : item.id;
+                  const itemBlocked = isGlobalSectionTypeTaken(item.type);
                   return (
                     <div
                       key={item.id}
                       className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 hover:border-accent-500/40 transition"
-                      draggable
+                      draggable={!itemBlocked && canWritePages}
                       onDragStart={handleLibraryDragStart(item)}
                       onDragEnd={handleLibraryDragEnd}
                     >
@@ -3858,13 +4320,15 @@ export default function PageEditorPage() {
                           type="button"
                           size="xs"
                           variant="secondary"
-                          disabled={libraryBusy}
+                          disabled={libraryBusy || itemBlocked || !canWritePages}
                           onClick={() => insertSectionFromLibrary(item, sectionInsertIndex)}
                         >
                           Insert
                         </Button>
                       </div>
-                      <div className="mt-1 text-[10px] text-white/50">Drag to insert between sections.</div>
+                      <div className="mt-1 text-[10px] text-white/50">
+                        {itemBlocked ? globalTypeConflictMessage(item.type) : "Drag to insert between sections."}
+                      </div>
                       {isSaved ? (
                         <>
                           {item.tags?.length ? (
@@ -4070,7 +4534,7 @@ export default function PageEditorPage() {
 
           <div className="mt-3 flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] p-2">
             <div className="text-xs opacity-70">
-              Inline edit{inlineEditingAvailable ? "" : " (AR only)"}
+              Inline edit{inlineEditingAvailable ? "" : canWritePages ? " (AR only)" : " (requires write access)"}
             </div>
             <button
               type="button"
@@ -4653,7 +5117,12 @@ export default function PageEditorPage() {
         widthClassName="w-[94vw] max-w-[1900px] max-h-[95vh]"
         footer={
           <div className="flex gap-2">
-            <Button variant="primary" onClick={saveSection} isLoading={actions.createSection.isPending || actions.updateSection.isPending}>
+            <Button
+              variant="primary"
+              onClick={saveSection}
+              disabled={!canWritePages}
+              isLoading={actions.createSection.isPending || actions.updateSection.isPending}
+            >
               حفظ
             </Button>
           </div>
@@ -4665,8 +5134,12 @@ export default function PageEditorPage() {
               <Select
                 label="Type"
                 value={sectionType}
-                onChange={(e) => {
-                  const t = e.target.value as any;
+                onValueChange={(value) => {
+                  const t = value as PageSectionType;
+                  if (!ensureGlobalSectionSlot(t, { ignoreSectionId: editingSectionId })) {
+                    setSectionErrors({ data: globalTypeConflictMessage(t) });
+                    return;
+                  }
                   setComponentsOnlyMode(false);
                   setSectionType(t);
                   const d = defaultDataForType(t);
@@ -4675,8 +5148,20 @@ export default function PageEditorPage() {
                   setSectionTemplateId("__blank__");
                   setSectionErrors({});
                 }}
-                options={SECTION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
-              />
+              >
+                {sectionTypeOptions.map((item) => (
+                  <option
+                    key={item.value}
+                    value={item.value}
+                    disabled={item.disabled}
+                    title={item.reason || undefined}
+                    className="bg-surface-900 text-white"
+                  >
+                    {item.label}
+                    {item.disabled ? " (Already used)" : ""}
+                  </option>
+                ))}
+              </Select>
 
               {templates.length ? (
                 <div className="grid gap-3 sm:grid-cols-3 items-end">

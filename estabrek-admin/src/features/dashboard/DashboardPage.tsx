@@ -2,12 +2,14 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../../hooks/useDashboard";
+import { useAuth } from "../../hooks/useAuth";
 import { Spinner, Skeleton } from "../../components/ui/Spinner";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/Table";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { formatDateTime } from "../../lib/format";
 import { cn } from "../../components/ui/cn";
+import type { AdminPermission } from "../../lib/authz";
 
 // Icons
 const Icons = {
@@ -176,6 +178,7 @@ function LoadingSkeleton() {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const { overviewQuery } = useDashboard();
 
   if (overviewQuery.isLoading) {
@@ -203,117 +206,147 @@ export default function DashboardPage() {
   const counts = data.counts ?? {};
   const latestOrders = data.latestOrders ?? [];
   const ordersByStatus = counts.ordersByStatus ?? {};
+  const canReadOrders = hasPermission("orders:read");
+  const canReadCatalog = hasPermission("catalog:read");
+  const canReadOutbox = hasPermission("outbox:read");
+  const canReadUgc = hasPermission("ugc:read");
+
+  const can = (permission: AdminPermission) => hasPermission(permission);
 
   const mainStats = [
-    { label: "إجمالي الطلبات", value: counts.orders ?? 0, icon: Icons.orders, color: "accent" as const },
-    { label: "المنتجات", value: counts.products ?? 0, icon: Icons.products, color: "default" as const },
-    { label: "رسائل معلقة", value: counts.outboxQueued ?? 0, icon: Icons.outbox, color: counts.outboxQueued > 0 ? "warning" as const : "default" as const },
-    { label: "تقييمات معلقة", value: counts.reviewsPending ?? 0, icon: Icons.reviews, color: counts.reviewsPending > 0 ? "accent" as const : "default" as const },
-  ];
+    canReadOrders
+      ? { label: "إجمالي الطلبات", value: counts.orders ?? 0, icon: Icons.orders, color: "accent" as const }
+      : null,
+    canReadCatalog
+      ? { label: "المنتجات", value: counts.products ?? 0, icon: Icons.products, color: "default" as const }
+      : null,
+    canReadOutbox
+      ? { label: "رسائل معلقة", value: counts.outboxQueued ?? 0, icon: Icons.outbox, color: counts.outboxQueued > 0 ? "warning" as const : "default" as const }
+      : null,
+    canReadUgc
+      ? { label: "تقييمات معلقة", value: counts.reviewsPending ?? 0, icon: Icons.reviews, color: counts.reviewsPending > 0 ? "accent" as const : "default" as const }
+      : null,
+  ].filter(Boolean);
+
+  const quickActions = [
+    can("catalog:read") ? { label: "إدارة المنتجات", to: "/admin/catalog/products" } : null,
+    can("orders:read") ? { label: "عرض الطلبات", to: "/admin/orders" } : null,
+    can("outbox:read") ? { label: "صندوق الرسائل", to: "/admin/outbox" } : null,
+    can("settings:read") ? { label: "الإعدادات", to: "/admin/settings" } : null,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-6">
       {/* Main Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {mainStats.map((stat, i) => (
-          <StatCard
-            key={stat.label}
-            {...stat}
-            delay={i * 50}
-          />
-        ))}
-      </div>
+      {mainStats.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {mainStats.map((stat, i) => (
+            <StatCard
+              key={stat.label}
+              {...stat}
+              delay={i * 50}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="glass rounded-2xl p-5 text-sm text-white/60">
+          لا توجد إحصائيات متاحة لحسابك حالياً.
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Latest Orders */}
-        <div className="lg:col-span-2 glass rounded-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-            <div>
-              <h2 className="text-base font-semibold text-white">آخر الطلبات</h2>
-              <p className="text-xs text-white/40 mt-0.5">آخر 10 طلبات وردت</p>
+        {canReadOrders && (
+          <div className="lg:col-span-2 glass rounded-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div>
+                <h2 className="text-base font-semibold text-white">آخر الطلبات</h2>
+                <p className="text-xs text-white/40 mt-0.5">آخر 10 طلبات وردت</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/admin/orders")}>
+                عرض الكل
+              </Button>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/orders")}>
-              عرض الكل
-            </Button>
-          </div>
 
-          <div className="overflow-x-auto">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>الحالة</TH>
-                  <TH>العميل</TH>
-                  <TH>المنتج</TH>
-                  <TH>التاريخ</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {latestOrders.length ? (
-                  latestOrders.slice(0, 5).map((o: any) => (
-                    <TR
-                      key={o.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/admin/orders/${o.id}`)}
-                    >
-                      <TD>
-                        <Badge variant={statusVariant(o.status) as any} dot>
-                          {statusLabel(o.status)}
-                        </Badge>
-                      </TD>
-                      <TD className="font-medium text-white">{o.customerName ?? "-"}</TD>
-                      <TD className="text-white/60 text-xs">
-                        {o.variant?.item?.product?.title ?? "-"}
-                      </TD>
-                      <TD className="text-white/50 text-xs tabular-nums">
-                        {formatDateTime(o.createdAt)}
+            <div className="overflow-x-auto">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>الحالة</TH>
+                    <TH>العميل</TH>
+                    <TH>المنتج</TH>
+                    <TH>التاريخ</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {latestOrders.length ? (
+                    latestOrders.slice(0, 5).map((o: any) => (
+                      <TR
+                        key={o.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/admin/orders/${o.id}`)}
+                      >
+                        <TD>
+                          <Badge variant={statusVariant(o.status) as any} dot>
+                            {statusLabel(o.status)}
+                          </Badge>
+                        </TD>
+                        <TD className="font-medium text-white">{o.customerName ?? "-"}</TD>
+                        <TD className="text-white/60 text-xs">
+                          {o.variant?.item?.product?.title ?? "-"}
+                        </TD>
+                        <TD className="text-white/50 text-xs tabular-nums">
+                          {formatDateTime(o.createdAt)}
+                        </TD>
+                      </TR>
+                    ))
+                  ) : (
+                    <TR>
+                      <TD className="text-center py-8 text-white/40" colSpan={4}>
+                        لا يوجد طلبات بعد
                       </TD>
                     </TR>
-                  ))
-                ) : (
-                  <TR>
-                    <TD className="text-center py-8 text-white/40" colSpan={4}>
-                      لا يوجد طلبات بعد
-                    </TD>
-                  </TR>
-                )}
-              </TBody>
-            </Table>
+                  )}
+                </TBody>
+              </Table>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Order Status Breakdown */}
-        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-          <h2 className="text-base font-semibold text-white">حالات الطلبات</h2>
-          <p className="text-xs text-white/40 mt-0.5">توزيع الطلبات حسب الحالة</p>
+        {canReadOrders && (
+          <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
+            <h2 className="text-base font-semibold text-white">حالات الطلبات</h2>
+            <p className="text-xs text-white/40 mt-0.5">توزيع الطلبات حسب الحالة</p>
 
-          <div className="mt-4 divide-y divide-white/[0.04]">
-            <OrderStatusCard label="جديد" value={ordersByStatus.NEW ?? 0} color="NEW" delay={350} />
-            <OrderStatusCard label="تم التواصل" value={ordersByStatus.CONTACTED ?? 0} color="CONTACTED" delay={400} />
-            <OrderStatusCard label="مقبول" value={ordersByStatus.ACCEPTED ?? 0} color="ACCEPTED" delay={450} />
-            <OrderStatusCard label="مرفوض" value={ordersByStatus.REJECTED ?? 0} color="REJECTED" delay={500} />
-            <OrderStatusCard label="تم الشحن" value={ordersByStatus.SHIPPED ?? 0} color="SHIPPED" delay={550} />
-            <OrderStatusCard label="مغلق" value={ordersByStatus.CLOSED ?? 0} color="CLOSED" delay={600} />
+            <div className="mt-4 divide-y divide-white/[0.04]">
+              <OrderStatusCard label="جديد" value={ordersByStatus.NEW ?? 0} color="NEW" delay={350} />
+              <OrderStatusCard label="تم التواصل" value={ordersByStatus.CONTACTED ?? 0} color="CONTACTED" delay={400} />
+              <OrderStatusCard label="مقبول" value={ordersByStatus.ACCEPTED ?? 0} color="ACCEPTED" delay={450} />
+              <OrderStatusCard label="مرفوض" value={ordersByStatus.REJECTED ?? 0} color="REJECTED" delay={500} />
+              <OrderStatusCard label="تم الشحن" value={ordersByStatus.SHIPPED ?? 0} color="SHIPPED" delay={550} />
+              <OrderStatusCard label="مغلق" value={ordersByStatus.CLOSED ?? 0} color="CLOSED" delay={600} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Quick Actions */}
       <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
         <h2 className="text-base font-semibold text-white mb-4">إجراءات سريعة</h2>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => navigate("/admin/catalog/products")}>
-            إدارة المنتجات
-          </Button>
-          <Button variant="secondary" onClick={() => navigate("/admin/orders")}>
-            عرض الطلبات
-          </Button>
-          <Button variant="secondary" onClick={() => navigate("/admin/outbox")}>
-            صندوق الرسائل
-          </Button>
-          <Button variant="secondary" onClick={() => navigate("/admin/settings")}>
-            الإعدادات
-          </Button>
-        </div>
+        {quickActions.length > 0 ? (
+          <div className="flex flex-wrap gap-3">
+            {quickActions.map((action) => (
+              <Button key={action.to} variant="secondary" onClick={() => navigate(action.to)}>
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-white/60">
+            لا توجد إجراءات سريعة متاحة بحسب الصلاحيات الحالية.
+          </p>
+        )}
       </div>
     </div>
   );

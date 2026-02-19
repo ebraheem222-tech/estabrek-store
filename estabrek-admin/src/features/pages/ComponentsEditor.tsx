@@ -409,6 +409,8 @@ function spacerClass(h?: string): string {
 function hasTypographyOverrides(typography?: TwTokens["typography"] & { colorCustom?: string }) {
   if (!typography) return false;
   if (typography.family) return true;
+  if ((typography as any).familyPresetId) return true;
+  if ((typography as any).familyCustom) return true;
   if (typography.size && typography.size !== "base") return true;
   if (typography.align && typography.align !== "left") return true;
   if (typography.weight && typography.weight !== "normal") return true;
@@ -2359,10 +2361,10 @@ export function ComponentsEditor({
                       {selected.kind === "divider" && (() => {
                         const preset = getDividerById(previewTokens?.dividerStyleId);
                         if (preset?.svg) {
-                          return <div className={previewClassName} style={previewStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />;
+                          return <div className={cn(preset.className, previewClassName)} style={previewStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />;
                         }
                         if (preset) {
-                          return <div className={previewClassName} style={previewStyle} />;
+                          return <div className={cn(preset.className, previewClassName)} style={previewStyle} />;
                         }
                         return <hr className={cn("border-white/15", previewClassName)} style={previewStyle} />;
                       })()}

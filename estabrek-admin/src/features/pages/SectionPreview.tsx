@@ -1,8 +1,10 @@
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { PageSectionType } from "../../api/pages.api";
 import type {
   BannerData,
+  GlobalAnnouncementData,
+  GlobalHeaderData,
+  GlobalFooterData,
   CtaData,
   CustomHtmlData,
   FaqData,
@@ -34,6 +36,7 @@ import { SpotlightContainer } from "../../cms/spotlight-themes";
 import { DECOR_SIZE_HEIGHTS } from "../../cms/shapes/shapeRegistry";
 import type { TwTokens } from "../../cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../../cms/style/tokensToTw";
+import { collectGoogleFontsFromValue, ensureGoogleFontsLoaded } from "../../cms/style/googleFontsLoader";
 import { heroThemes, heroComponents, HeroRenderer } from "../../cms/hero-themes";
 import { contactFormThemes, contactFormComponents, additionalFormComponents } from "../../cms/contact-forms";
 import { featureThemes, featureComponents, additionalFeatureComponents } from "../../cms/feature-themes";
@@ -85,6 +88,86 @@ function heroThemePreviewProps(data: HeroData) {
     imageSrc: (source as any).backgroundImageUrl ?? (data as any).backgroundImageUrl,
     imageAlt: title || "Hero",
   };
+}
+
+const HERO_LAYOUT_FALLBACK: Record<string, string[]> = {
+  centered: ["basic-centered", "basic-with-stats"],
+  left: ["basic-left", "corporate-consulting"],
+  right: ["basic-left"],
+  split: ["basic-split", "ecommerce-modern"],
+  fullscreen: ["basic-fullscreen", "ecommerce-fashion", "gaming-neon"],
+  minimal: ["basic-minimal", "creative-portfolio"],
+  asymmetric: ["basic-with-image", "creative-agency"],
+};
+
+const HERO_CATEGORY_FALLBACK: Record<string, string[]> = {
+  Basic: ["basic-centered", "basic-split"],
+  Tech: ["tech-saas", "tech-ai", "tech-developer"],
+  "E-commerce": ["ecommerce-modern", "ecommerce-fashion", "ecommerce-minimal"],
+  Gaming: ["gaming-neon", "gaming-esports"],
+  Corporate: ["corporate-professional", "corporate-consulting"],
+  Creative: ["creative-agency", "creative-portfolio"],
+  Food: ["food-restaurant"],
+  Fitness: ["fitness-gym"],
+  Travel: ["travel-hotel"],
+  Special: ["special-coming-soon", "special-event", "special-newsletter", "special-app-download"],
+};
+
+const SLIDER_STYLE_FALLBACK: Record<string, string[]> = {
+  basic: ["basic-simple", "basic-dark", "basic-gradient"],
+  cards: ["basic-card", "testimonial-grid"],
+  fade: ["basic-fade", "creative-minimal"],
+  carousel: ["basic-centered", "product-carousel"],
+  gallery: ["gallery-thumbnails", "gallery-lightbox"],
+  hero: ["hero-fullscreen", "creative-split", "hero-tech"],
+  testimonial: ["testimonial-simple", "testimonial-card", "testimonial-grid"],
+  product: ["product-carousel", "product-grid", "product-featured"],
+};
+
+const SLIDER_CATEGORY_FALLBACK: Record<string, string[]> = {
+  Basic: ["basic-simple", "basic-dark", "basic-gradient"],
+  "E-commerce": ["product-carousel", "product-grid", "product-featured", "product-luxury"],
+  Hero: ["hero-fullscreen", "creative-split", "hero-tech"],
+  Testimonial: ["testimonial-simple", "testimonial-card", "testimonial-grid"],
+  Gallery: ["gallery-thumbnails", "gallery-lightbox"],
+  Gaming: ["gaming-neon", "gaming-cyberpunk", "gaming-retro"],
+  Corporate: ["corporate-clients", "corporate-partners"],
+  Creative: ["creative-split", "creative-agency", "creative-motion"],
+  Food: ["food-menu", "basic-card"],
+  Travel: ["travel-destinations", "basic-fade"],
+  Tech: ["hero-tech", "basic-fade"],
+};
+
+function resolveHeroThemeComponent(themeId: string): React.FC<any> | null {
+  const map = heroComponents as Record<string, React.FC<any>>;
+  if (map[themeId]) return map[themeId];
+  const theme = heroThemes.find((item) => item.id === themeId);
+  const candidates: string[] = [];
+  if (theme) {
+    candidates.push(...(HERO_CATEGORY_FALLBACK[theme.category] ?? []));
+    candidates.push(...(HERO_LAYOUT_FALLBACK[theme.layout] ?? []));
+  }
+  candidates.push("basic-centered");
+  for (const id of candidates) {
+    if (map[id]) return map[id];
+  }
+  return null;
+}
+
+function resolveSliderThemeComponent(themeId: string): React.FC<any> | null {
+  const map = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
+  if (map[themeId]) return map[themeId];
+  const theme = sliderThemes.find((item) => item.id === themeId);
+  const candidates: string[] = [];
+  if (theme) {
+    candidates.push(...(SLIDER_CATEGORY_FALLBACK[theme.category] ?? []));
+    candidates.push(...(SLIDER_STYLE_FALLBACK[theme.style] ?? []));
+  }
+  candidates.push("basic-simple");
+  for (const id of candidates) {
+    if (map[id]) return map[id];
+  }
+  return null;
 }
 
 function contactThemePreviewProps(data: ContactData) {
@@ -203,6 +286,8 @@ function hasTypographyOverrides(tokens?: any): boolean {
   const typography = tokens?.typography;
   if (!typography || typeof typography !== "object") return false;
   if (typography.family) return true;
+  if (typography.familyPresetId) return true;
+  if (typography.familyCustom) return true;
   if (typography.size && typography.size !== "base") return true;
   if (typography.align && typography.align !== "left") return true;
   if (typography.weight && typography.weight !== "normal") return true;
@@ -709,7 +794,7 @@ function HeroPreview({ data }: { data: HeroData }) {
   const themeId = resolveThemeId((data as any).themeId);
   if (themeId) {
     const theme = heroThemes.find((t) => t.id === themeId);
-    const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[themeId];
+    const ThemeComponent = resolveHeroThemeComponent(themeId);
     const themeProps = heroThemePreviewProps(data) as any;
     const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={themeId} {...themeProps} />;
 
@@ -779,14 +864,20 @@ function HeroPreview({ data }: { data: HeroData }) {
           style={
             (s as any).backgroundImageUrl
               ? {
-                  backgroundImage: `url(${(s as any).backgroundImageUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
                   ...(tokensStyle(slideTokens) ?? {}),
                 }
               : tokensStyle(slideTokens)
           }
         >
+          {(s as any).backgroundImageUrl ? (
+            <img
+              src={(s as any).backgroundImageUrl}
+              alt=""
+              aria-hidden="true"
+              className="cms-media-target absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : null}
           <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
           <SectionTextScope data={data}>
           <div key={contentKey} className={cls("relative p-6 flex flex-col gap-3", justify, contentAnimClass)}>
@@ -907,9 +998,102 @@ function HeroPreview({ data }: { data: HeroData }) {
 }
 
 export function SectionPreview({ type, data }: { type: PageSectionType; data: any }) {
+  const googleFonts = useMemo(() => collectGoogleFontsFromValue(data), [data]);
+  const googleFontsKey = googleFonts.join("|");
+
+  useEffect(() => {
+    ensureGoogleFontsLoaded(googleFonts);
+  }, [googleFonts, googleFontsKey]);
+
   if (!data || typeof data !== "object") {
     return <div className="text-xs opacity-70">?? ???? ?????? ????????.</div>;
   }
+
+  if (type === "GLOBAL_ANNOUNCEMENT") {
+    const d = data as GlobalAnnouncementData;
+    const sectionTokens = (d as any)?.twTokens;
+    const textValue = String(d.text ?? "").trim() || "(Global announcement text)";
+    const textData = textContent(textValue, sectionTokens);
+    const buttonValue = String(d.buttonText ?? "").trim() || "تفاصيل";
+    const buttonData = textContent(buttonValue, sectionTokens);
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">
+            Global Announcement {d.enabled === false ? "(disabled)" : ""}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+            <div className={cls("text-xs", textData.className)} aria-label={textData.ariaLabel}>
+              {textData.content}
+            </div>
+            {d.href ? (
+              <span className="rounded-md border border-white/10 bg-white/10 px-2 py-1 text-[11px]">
+                <span className={buttonData.className} aria-label={buttonData.ariaLabel}>
+                  {buttonData.content}
+                </span>
+              </span>
+            ) : null}
+          </div>
+        </SectionTextScope>
+      </div>
+    ));
+  }
+
+  if (type === "GLOBAL_HEADER") {
+    const d = data as GlobalHeaderData;
+    const sectionTokens = (d as any)?.twTokens;
+    const brandValue = String(d.brandText ?? "").trim() || "Store";
+    const brandData = textContent(brandValue, sectionTokens);
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">
+            Global Header {d.sticky !== false ? "(sticky)" : ""}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+            <div className={cls("text-xs font-semibold", brandData.className)} aria-label={brandData.ariaLabel}>
+              {brandData.content}
+            </div>
+            <div className="flex flex-wrap gap-1 text-[11px] opacity-80">
+              {d.showMenu !== false ? <span className="rounded-md border border-white/10 px-2 py-1">Menu</span> : null}
+              {d.showSearch !== false ? <span className="rounded-md border border-white/10 px-2 py-1">Search</span> : null}
+              {d.showCta ? <span className="rounded-md border border-white/10 px-2 py-1">{d.ctaLabel || "CTA"}</span> : null}
+            </div>
+          </div>
+        </SectionTextScope>
+      </div>
+    ));
+  }
+
+  if (type === "GLOBAL_FOOTER") {
+    const d = data as GlobalFooterData;
+    const sectionTokens = (d as any)?.twTokens;
+    const aboutTitleValue = String(d.aboutTitle ?? "").trim() || "عن المتجر";
+    const aboutTitleData = textContent(aboutTitleValue, sectionTokens);
+    const aboutTextData = textContent(String(d.aboutText ?? "").trim(), sectionTokens);
+    return wrapPreview(d, (
+      <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <SectionTextScope data={d}>
+          <div className="mb-2 text-[10px] uppercase tracking-wider opacity-60">Global Footer</div>
+          <div className="grid gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 md:grid-cols-3">
+            <div>
+              <div className={cls("text-xs font-semibold", aboutTitleData.className)} aria-label={aboutTitleData.ariaLabel}>
+                {aboutTitleData.content}
+              </div>
+              {String(d.aboutText ?? "").trim() ? (
+                <div className={cls("mt-1 text-[11px] opacity-75", aboutTextData.className)} aria-label={aboutTextData.ariaLabel}>
+                  {aboutTextData.content}
+                </div>
+              ) : null}
+            </div>
+            <div className="text-[11px] opacity-75">{d.showSocial === false ? "Social hidden" : "Social links"}</div>
+            <div className="text-[11px] opacity-75">{d.showNewsletter === false ? "Newsletter hidden" : (d.newsletterTitle || "Newsletter")}</div>
+          </div>
+        </SectionTextScope>
+      </div>
+    ));
+  }
+
   if (type === "HERO") {
     return <HeroPreview data={data as HeroData} />;
   }
@@ -992,9 +1176,10 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
               const baseItemTokens = itemTokens ?? sectionTokens;
               const questionTokens = resolveFieldTokens((it as any).questionTokens, baseItemTokens);
               const answerTokens = resolveFieldTokens((it as any).answerTokens, baseItemTokens);
-              const questionText = it.question || "(سؤال)";
+              const questionText = (it as any).question ?? (it as any).q ?? "(سؤال)";
               const questionData = textContent(String(questionText), questionTokens);
-              const answerData = it.answer ? textContent(String(it.answer ?? ""), answerTokens) : null;
+              const answerText = (it as any).answer ?? (it as any).a;
+              const answerData = answerText ? textContent(String(answerText), answerTokens) : null;
               return wrapDecorations(
                 <details
                   key={i}
@@ -1901,8 +2086,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const theme = sliderThemes.find((t) => t.id === themeId);
-      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
-      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const ThemeComponent = resolveSliderThemeComponent(themeId);
       const label = type === "NEW_ARRIVALS_SLIDER" ? "New arrival" : "Best seller";
       const slides = productSliderPreviewSlides(d, label);
       const themeProps = {
@@ -1950,8 +2134,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const theme = sliderThemes.find((t) => t.id === themeId);
-      const themeMap = { ...sliderComponents, ...additionalSliderComponents } as Record<string, React.FC<any>>;
-      const ThemeComponent = themeMap[themeId] ?? sliderComponents["basic-simple"] ?? Object.values(themeMap)[0];
+      const ThemeComponent = resolveSliderThemeComponent(themeId);
       const slides = brandSliderPreviewSlides(d);
       const themeProps = {
         slides,
@@ -2142,9 +2325,12 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const imageAlign = align === "left" ? "self-start" : align === "right" ? "self-end" : "self-center";
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
+    const legacyPrimary = (d as any).primaryButton;
+    const buttonLabel = d.buttonLabel ?? legacyPrimary?.label;
+    const buttonHref = d.buttonHref ?? legacyPrimary?.href;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
-    const buttonData = d.buttonLabel ? textContent(String(d.buttonLabel), sectionTokens) : null;
+    const buttonData = buttonLabel ? textContent(String(buttonLabel), sectionTokens) : null;
     return wrapPreview(d, (
       <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("flex flex-col gap-3", justify, uiContainerClass(d))}>
@@ -2168,10 +2354,10 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
               {subtitleData.content}
             </div>
           ) : null}
-          {d.buttonLabel ? (
-            d.buttonHref ? (
+          {buttonLabel ? (
+            buttonHref ? (
               <a
-                href={d.buttonHref}
+                href={buttonHref}
                 className={cls(
                   "inline-flex items-center rounded-xl px-3 py-1 text-xs font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95",
                   buttonData?.className
@@ -2179,7 +2365,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
                 aria-label={buttonData?.ariaLabel}
               >
-                {buttonData?.content ?? d.buttonLabel}
+                {buttonData?.content ?? buttonLabel}
               </a>
             ) : (
               <span
@@ -2190,7 +2376,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                 style={{ backgroundColor: "var(--accent-2, #ffffff)" }}
                 aria-label={buttonData?.ariaLabel}
               >
-                {buttonData?.content ?? d.buttonLabel}
+                {buttonData?.content ?? buttonLabel}
               </span>
             )
           ) : null}
@@ -2226,7 +2412,8 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
                   const avatarTokens = resolveFieldTokens((it as any).avatarTokens);
                   const nameData = textContent(String(it.name || "(Name)"), nameTokens);
                   const roleData = it.role ? textContent(String(it.role), roleTokens) : null;
-                  const quoteData = it.quote ? textContent(String(it.quote), quoteTokens) : null;
+                  const quoteValue = (it as any).quote ?? (it as any).text;
+                  const quoteData = quoteValue ? textContent(String(quoteValue), quoteTokens) : null;
                   return wrapDecorations(
                     <div
                       key={i}

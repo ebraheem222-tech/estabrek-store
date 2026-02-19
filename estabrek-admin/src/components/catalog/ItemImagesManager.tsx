@@ -2,6 +2,8 @@
 import React, { useMemo, useState } from "react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Skeleton } from "../ui/Spinner";
+import { AsyncImage } from "../ui/AsyncImage";
 import { uploadImages } from "../../api/uploads.api";
 import { MediaLibraryModal } from "../media/MediaLibraryModal";
 import { extractPaletteFromFile, extractPaletteFromUrl } from "../../lib/colorDetect";
@@ -317,7 +319,24 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
       />
 
       {sorted.length === 0 ? (
-        <div className="text-sm opacity-70">لا توجد صور بعد.</div>
+        busy ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                <div className="flex gap-3">
+                  <Skeleton className="h-20 w-20 shrink-0 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm opacity-70">لا توجد صور بعد.</div>
+        )
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {sorted.map((im) => (
@@ -333,7 +352,12 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
             >
               <div className="flex gap-3">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                  <img src={im.url} alt={im.alt ?? ""} className="h-full w-full object-cover" />
+                  <AsyncImage
+                    src={im.url}
+                    alt={im.alt ?? ""}
+                    wrapperClassName="h-full w-full"
+                    className="h-full w-full object-cover"
+                  />
                 </div>
 
                 <div className="flex-1">

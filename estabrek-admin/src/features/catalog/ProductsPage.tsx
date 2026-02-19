@@ -8,7 +8,8 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { Spinner } from "../../components/ui/Spinner";
+import { Skeleton, Spinner } from "../../components/ui/Spinner";
+import { AsyncImage } from "../../components/ui/AsyncImage";
 import type { ProductImportRow } from "../../api/catalog.api";
 import { toast } from "@/lib/toast";
 
@@ -138,6 +139,33 @@ function validateImportRows(rows: ProductImportRow[], opts: { defaultCategoryId?
     if (errs.length) issues[idx] = errs;
   });
   return issues;
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function productThumbUrl(product: any): string | undefined {
+  const fromKnown = [
+    product?.thumbnailUrl,
+    product?.imageUrl,
+    product?.coverUrl,
+    product?.image,
+    product?.thumb,
+  ].find((value) => typeof value === "string" && value.trim());
+  return fromKnown ? String(fromKnown) : undefined;
+}
+
+function productDiscountPercent(product: any): number | undefined {
+  const explicit = toFiniteNumber(product?.discountPercent ?? product?.discount_percentage ?? product?.discount);
+  if (explicit && explicit > 0) return Math.round(explicit);
+
+  const base = toFiniteNumber(product?.price ?? product?.basePrice ?? product?.minPrice);
+  const sale = toFiniteNumber(product?.salePrice ?? product?.discountPrice ?? product?.minSalePrice);
+  if (!base || !sale || base <= 0 || sale <= 0 || sale >= base) return undefined;
+  return Math.max(1, Math.round(((base - sale) / base) * 100));
 }
 
 export default function ProductsPage() {
@@ -372,9 +400,56 @@ const doImport = async () => {
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         {q.isLoading ? (
-          <div className="flex items-center gap-2">
-            <Spinner />
-            <div className="text-sm opacity-80">جاري التحميل…</div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Spinner />
+              <div className="text-sm opacity-80">جاري التحميل…</div>
+            </div>
+            <div className="space-y-3 sm:hidden">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-14 w-14 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <Skeleton className="h-8 rounded-lg" />
+                    <Skeleton className="h-8 rounded-lg" />
+                    <Skeleton className="h-8 rounded-lg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden sm:block">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH className="w-10" />
+                    <TH>المنتج</TH>
+                    <TH>Slug</TH>
+                    <TH>التصنيف</TH>
+                    <TH>الحالة</TH>
+                    <TH className="w-72">الإجراءات</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {Array.from({ length: 6 }).map((_, idx) => (
+                    <TR key={idx}>
+                      <TD><Skeleton className="h-4 w-4 rounded" /></TD>
+                      <TD><Skeleton className="h-4 w-40" /></TD>
+                      <TD><Skeleton className="h-4 w-48" /></TD>
+                      <TD><Skeleton className="h-4 w-28" /></TD>
+                      <TD><Skeleton className="h-6 w-16 rounded-full" /></TD>
+                      <TD><Skeleton className="h-8 w-full rounded-lg" /></TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            </div>
           </div>
         ) : q.isError ? (
           <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">فشل تحميل المنتجات.</div>
@@ -425,10 +500,31 @@ const doImport = async () => {
                 {products.map((p: any) => (
                   <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <div className="relative h-14 w-14 shrink-0 overflow-visible">
+                          <div className="h-14 w-14 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                            <AsyncImage
+                              src={productThumbUrl(p)}
+                              alt={p.title ?? ""}
+                              wrapperClassName="h-full w-full"
+                              className="h-full w-full object-cover"
+                              fallback={<span className="text-[9px] opacity-60">IMG</span>}
+                            />
+                          </div>
+                          {productDiscountPercent(p) ? (
+                            <span
+                              className="discount-shape-badge pointer-events-none absolute -right-2 -top-2 inline-flex border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg"
+                              title="منتج بخصم"
+                            >
+                              -{productDiscountPercent(p)}%
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="min-w-0">
                         <div className="text-sm font-semibold">{p.title}</div>
                         <div dir="ltr" className="mt-1 text-xs opacity-70">{p.slug}</div>
                         <div className="mt-1 text-xs opacity-70">{p.category?.name ?? byId.get(p.categoryId)?.name ?? "-"}</div>
+                      </div>
                       </div>
                       <input
                         type="checkbox"
@@ -494,7 +590,30 @@ const doImport = async () => {
                             onChange={(e) => setSelected((s) => ({ ...s, [p.id]: e.target.checked }))}
                           />
                         </TD>
-                        <TD className="font-medium">{p.title}</TD>
+                        <TD className="font-medium">
+                          <div className="flex items-center gap-3">
+                            <div className="relative h-10 w-10 shrink-0 overflow-visible">
+                              <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-black/20">
+                                <AsyncImage
+                                  src={productThumbUrl(p)}
+                                  alt={p.title ?? ""}
+                                  wrapperClassName="h-full w-full"
+                                  className="h-full w-full object-cover"
+                                  fallback={<span className="text-[9px] opacity-60">IMG</span>}
+                                />
+                              </div>
+                              {productDiscountPercent(p) ? (
+                                <span
+                                  className="discount-shape-badge pointer-events-none absolute -right-2 -top-2 inline-flex border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg"
+                                  title="منتج بخصم"
+                                >
+                                  -{productDiscountPercent(p)}%
+                                </span>
+                              ) : null}
+                            </div>
+                            <span className="truncate">{p.title}</span>
+                          </div>
+                        </TD>
                         <TD dir="ltr" className="text-left opacity-80">
                           {p.slug}
                         </TD>

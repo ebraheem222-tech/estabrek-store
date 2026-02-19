@@ -328,6 +328,8 @@ export type HeroSlide = {
   align?: "left" | "center" | "right";
   primaryButton?: { label: string; href: string };
   secondaryButton?: { label: string; href: string };
+  /** Optional per-pane/per-slide theme id (used by split hero mode). */
+  themeId?: string;
   slideTokens?: TwTokens;
   titleTokens?: TwTokens;
   subtitleTokens?: TwTokens;
@@ -340,6 +342,28 @@ export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scal
 export type HeroData = HeroSlide & {
   /** Theme id to render from hero-themes */
   themeId?: string;
+  /** Render hero in 3 columns (left content + center media + right indicators). */
+  tripleMode?: boolean;
+  /** Triple layout proportions. */
+  tripleLayout?: "4:5:1" | "3:4:1" | "5:6:1";
+  /** Gap between triple columns in px. */
+  tripleGap?: number;
+  /** Small heading above title in triple mode. */
+  eyebrow?: string;
+  /** Center media image for triple mode. */
+  centerImageUrl?: string;
+  centerImageAlt?: string;
+  /** Right-side indicators in triple mode. */
+  rightIndicators?: number;
+  rightActiveIndicator?: number;
+  /** Render two hero panes in one section (left/right). */
+  splitMode?: boolean;
+  /** Left/right width ratio for split mode. */
+  splitRatio?: "1:1" | "3:2" | "2:3" | "7:5" | "5:7";
+  /** Gap between left/right panes in px. */
+  splitGap?: number;
+  /** Right-side hero pane data (left pane uses root hero fields). */
+  splitRight?: HeroSlide;
   /** Slider mode */
   slides?: HeroSlide[];
   /** Autoplay interval ms (e.g. 5000). 0/undefined disables autoplay */
@@ -588,6 +612,37 @@ export type BannerData = {
   ui?: UiTailwind;
 };
 
+export type GlobalAnnouncementData = {
+  enabled?: boolean;
+  text?: string;
+  href?: string;
+  buttonText?: string;
+  ui?: UiTailwind;
+};
+
+export type GlobalHeaderData = {
+  sticky?: boolean;
+  showSearch?: boolean;
+  showMenu?: boolean;
+  showCta?: boolean;
+  ctaLabel?: string;
+  ctaHref?: string;
+  brandText?: string;
+  ui?: UiTailwind;
+};
+
+export type GlobalFooterData = {
+  aboutTitle?: string;
+  aboutText?: string;
+  showNewsletter?: boolean;
+  newsletterTitle?: string;
+  newsletterPlaceholder?: string;
+  newsletterButtonLabel?: string;
+  showSocial?: boolean;
+  copyright?: string;
+  ui?: UiTailwind;
+};
+
 export type CtaData = {
   title: string;
   subtitle?: string;
@@ -663,15 +718,57 @@ export type CardsData = {
 // eslint-disable-next-line react-refresh/only-export-components
 export function defaultDataForType(type: PageSectionType): any {
   switch (type) {
+    case "GLOBAL_ANNOUNCEMENT":
+      return {
+        enabled: true,
+        text: "",
+        href: "",
+        buttonText: "تفاصيل",
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies GlobalAnnouncementData;
+    case "GLOBAL_HEADER":
+      return {
+        sticky: true,
+        showSearch: true,
+        showMenu: true,
+        showCta: false,
+        ctaLabel: "",
+        ctaHref: "",
+        brandText: "",
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies GlobalHeaderData;
+    case "GLOBAL_FOOTER":
+      return {
+        aboutTitle: "عن المتجر",
+        aboutText: "",
+        showNewsletter: true,
+        newsletterTitle: "النشرة البريدية",
+        newsletterPlaceholder: "اكتب بريدك",
+        newsletterButtonLabel: "اشترك",
+        showSocial: true,
+        copyright: "",
+        ui: { sectionClass: "", containerClass: "" },
+      } satisfies GlobalFooterData;
     case "HERO":
       return {
         title: "",
         subtitle: "",
+        eyebrow: "",
         backgroundImageUrl: "",
         overlay: 0.35,
         align: "center",
         primaryButton: { label: "", href: "" },
         secondaryButton: { label: "", href: "" },
+        tripleMode: false,
+        tripleLayout: "4:5:1",
+        tripleGap: 24,
+        centerImageUrl: "",
+        centerImageAlt: "",
+        rightIndicators: 4,
+        rightActiveIndicator: 1,
+        splitMode: false,
+        splitRatio: "1:1",
+        splitGap: 24,
         slideAnim: "none",
         slideDuration: 600,
         contentAnim: "fade-up",
@@ -890,6 +987,58 @@ export type SectionTemplate = {
 // eslint-disable-next-line react-refresh/only-export-components
 export function templatesForType(type: PageSectionType): SectionTemplate[] {
   switch (type) {
+    case "GLOBAL_ANNOUNCEMENT":
+      return [
+        {
+          id: "global_announcement_promo",
+          label: "Global Announcement - Promo",
+          data: {
+            enabled: true,
+            text: "شحن مجاني للطلبات فوق 199 شيكل",
+            href: "/shop",
+            buttonText: "تسوق الآن",
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies GlobalAnnouncementData,
+        },
+      ];
+
+    case "GLOBAL_HEADER":
+      return [
+        {
+          id: "global_header_store",
+          label: "Global Header - Store",
+          data: {
+            sticky: true,
+            showSearch: true,
+            showMenu: true,
+            showCta: true,
+            ctaLabel: "تواصل معنا",
+            ctaHref: "/contact",
+            brandText: "",
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies GlobalHeaderData,
+        },
+      ];
+
+    case "GLOBAL_FOOTER":
+      return [
+        {
+          id: "global_footer_store",
+          label: "Global Footer - Store",
+          data: {
+            aboutTitle: "عن المتجر",
+            aboutText: "اكتب نبذة قصيرة عن البراند أو المتجر.",
+            showNewsletter: true,
+            newsletterTitle: "اشترك بالنشرة البريدية",
+            newsletterPlaceholder: "اكتب بريدك",
+            newsletterButtonLabel: "اشترك",
+            showSocial: true,
+            copyright: "",
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies GlobalFooterData,
+        },
+      ];
+
     case "HERO":
       return [
         {
@@ -1161,6 +1310,50 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
         },
       ];
 
+    case "NEW_ARRIVALS_SLIDER":
+      return [
+        {
+          id: "new_arrivals_slider",
+          label: "وصل حديثا (Products Slider)",
+          data: {
+            title: "وصل حديثا",
+            limit: 12,
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies ProductsSliderData,
+        },
+      ];
+
+    case "BEST_SELLERS_SLIDER":
+      return [
+        {
+          id: "best_sellers_slider",
+          label: "الأكثر مبيعا (Products Slider)",
+          data: {
+            title: "الأكثر مبيعا",
+            limit: 12,
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies ProductsSliderData,
+        },
+      ];
+
+    case "BRANDS_SLIDER":
+      return [
+        {
+          id: "brands_slider",
+          label: "Brands Slider",
+          data: {
+            title: "علاماتنا المفضلة",
+            items: [
+              { name: "Brand One", logoUrl: "", href: "" },
+              { name: "Brand Two", logoUrl: "", href: "" },
+              { name: "Brand Three", logoUrl: "", href: "" },
+              { name: "Brand Four", logoUrl: "", href: "" },
+            ],
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies BrandsSliderData,
+        },
+      ];
+
     case "IMAGE_GALLERY":
       return [
         {
@@ -1235,6 +1428,21 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             columns: 4,
             ui: { sectionClass: "", containerClass: "" },
           } satisfies FeaturedProductsData,
+        },
+      ];
+
+    case "NEWSLETTER":
+      return [
+        {
+          id: "newsletter_simple",
+          label: "Newsletter - بسيط",
+          data: {
+            title: "انضم للنشرة البريدية",
+            text: "اشترك ليصلك كل جديد والعروض الخاصة.",
+            ctaLabel: "اشترك الآن",
+            ctaHref: "/contact",
+            ui: { sectionClass: "", containerClass: "" },
+          } satisfies NewsletterData,
         },
       ];
 
@@ -1379,14 +1587,45 @@ const HERO_ANIM_OPTIONS = [
 
 const HERO_DURATION_OPTIONS = [150, 200, 300, 400, 600, 800, 1000];
 const HERO_DELAY_OPTIONS = [0, 75, 100, 150, 200, 300, 500, 700, 1000];
+const HERO_SPLIT_RATIO_OPTIONS = [
+  { value: "1:1", label: "50 / 50" },
+  { value: "3:2", label: "60 / 40" },
+  { value: "2:3", label: "40 / 60" },
+  { value: "7:5", label: "58 / 42" },
+  { value: "5:7", label: "42 / 58" },
+];
+const HERO_TRIPLE_LAYOUT_OPTIONS = [
+  { value: "4:5:1", label: "40 / 50 / 10" },
+  { value: "3:4:1", label: "37 / 50 / 13" },
+  { value: "5:6:1", label: "42 / 50 / 8" },
+];
 
 function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v: HeroData) => void; errors?: CommonErrors }) {
   const [mediaOpen, setMediaOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [mediaTarget, setMediaTarget] = useState<"left" | "right" | "center">("left");
   const themeId = value.themeId ?? "";
+  const tripleMode = (value as any).tripleMode === true;
+  const tripleLayout = (value as any).tripleLayout ?? "4:5:1";
+  const tripleGap = Math.max(0, Math.min(64, Number((value as any).tripleGap ?? 24) || 24));
+  const splitMode = (value as any).splitMode === true;
+  const splitRatio = (value as any).splitRatio ?? "1:1";
+  const splitGap = Math.max(0, Math.min(64, Number((value as any).splitGap ?? 24) || 24));
+  const splitRight = ((value as any).splitRight && typeof (value as any).splitRight === "object"
+    ? (value as any).splitRight
+    : {
+        title: "",
+        subtitle: "",
+        backgroundImageUrl: "",
+        overlay: 0.35,
+        align: "center",
+        primaryButton: { label: "", href: "" },
+        secondaryButton: { label: "", href: "" },
+      }) as HeroSlide;
+  const rightThemeId = splitRight.themeId ?? "";
 
   const slides = Array.isArray((value as any).slides) ? ((value as any).slides as HeroSlide[]) : [];
-  const isSlider = slides.length > 0;
+  const isSlider = !splitMode && !tripleMode && slides.length > 0;
 
   const pickFromRoot = (): HeroSlide => ({
     title: (value as any).title ?? "",
@@ -1437,6 +1676,42 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
     }
   };
 
+  const updateSplitRight = (patch: Partial<HeroSlide>) => {
+    onChange({ ...(value as any), splitRight: { ...splitRight, ...patch } });
+  };
+
+  const setSplitMode = (enabled: boolean) => {
+    if (enabled) {
+      const next: any = { ...(value as any), splitMode: true, splitRatio, splitGap, splitRight, tripleMode: false };
+      delete next.slides;
+      delete next.autoplayMs;
+      delete next.showDots;
+      onChange(next);
+      return;
+    }
+    onChange({ ...(value as any), splitMode: false });
+  };
+
+  const setTripleMode = (enabled: boolean) => {
+    if (enabled) {
+      const next: any = {
+        ...(value as any),
+        tripleMode: true,
+        tripleLayout,
+        tripleGap,
+        splitMode: false,
+        rightIndicators: Number((value as any).rightIndicators ?? 4),
+        rightActiveIndicator: Number((value as any).rightActiveIndicator ?? 1),
+      };
+      delete next.slides;
+      delete next.autoplayMs;
+      delete next.showDots;
+      onChange(next);
+      return;
+    }
+    onChange({ ...(value as any), tripleMode: false });
+  };
+
   const removeSlide = (idx: number) => {
     const nextSlides = slides.slice();
     nextSlides.splice(idx, 1);
@@ -1456,6 +1731,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
 
   const s = isSlider ? (slides[activeSlide] ?? slides[0]) : pickFromRoot();
   const align = (s.align ?? "center") as any;
+  const rightAlign = (splitRight.align ?? "center") as any;
   const slideAnim = (value as any).slideAnim ?? "none";
   const contentAnim = (value as any).contentAnim ?? "fade-up";
   const slideDuration = Number((value as any).slideDuration ?? 600);
@@ -1466,20 +1742,47 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
         <DividerTitle title="Hero Theme" />
-        <Select
-          label="Hero theme"
-          value={themeId}
-          placeholder="Default (classic hero)"
-          onChange={(v) => {
-            const nextTheme = String(v ?? "").trim();
-            onChange({ ...(value as any), themeId: nextTheme || undefined });
-          }}
-        >
-          {renderThemeOptions(heroCategories, heroThemes)}
-        </Select>
-        {themeId ? (
+        {!splitMode ? (
+          <Select
+            label="Hero theme"
+            value={themeId}
+            placeholder="Default (classic hero)"
+            onChange={(v) => {
+              const nextTheme = String(v ?? "").trim();
+              onChange({ ...(value as any), themeId: nextTheme || undefined });
+            }}
+          >
+            {renderThemeOptions(heroCategories, heroThemes)}
+          </Select>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            <Select
+              label="Left hero theme"
+              value={themeId}
+              placeholder="Default"
+              onChange={(v) => {
+                const nextTheme = String(v ?? "").trim();
+                onChange({ ...(value as any), themeId: nextTheme || undefined });
+              }}
+            >
+              {renderThemeOptions(heroCategories, heroThemes)}
+            </Select>
+            <Select
+              label="Right hero theme"
+              value={rightThemeId}
+              placeholder="Default"
+              onChange={(v) => {
+                const nextTheme = String(v ?? "").trim();
+                updateSplitRight({ themeId: nextTheme || undefined });
+              }}
+            >
+              {renderThemeOptions(heroCategories, heroThemes)}
+            </Select>
+          </div>
+        )}
+        {themeId || rightThemeId ? (
           <div className="text-xs opacity-70">
-            Theme mode renders the selected template and ignores slider settings.
+            Theme mode renders the selected template. In split mode, each pane can use a different theme.
           </div>
         ) : null}
       </div>
@@ -1487,23 +1790,79 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
         <DividerTitle title="وضع الهيرو" />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm opacity-80">{isSlider ? "سلايدر (عدة سلايدات)" : "سلايد واحد"}</div>
+          <div className="text-sm opacity-80">
+            {tripleMode ? "ثلاثة أعمدة (Left / Center / Right)" : splitMode ? "تقسيم عمودين (Left / Right)" : isSlider ? "سلايدر (عدة سلايدات)" : "سلايد واحد"}
+          </div>
           <div className="flex flex-wrap gap-2">
-            {!isSlider ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onChange({ ...(value as any), slides: [pickFromRoot()], autoplayMs: 5000, showDots: true })}
-              >
-                تحويل إلى سلايدر
+            {!tripleMode ? (
+              <Button type="button" variant="ghost" onClick={() => setTripleMode(true)}>
+                تفعيل 3 أعمدة
               </Button>
             ) : (
-              <Button type="button" variant="ghost" onClick={() => applyToRoot(slides[0] ?? pickFromRoot())}>
-                تعطيل السلايدر (سلايد واحد)
+              <Button type="button" variant="ghost" onClick={() => setTripleMode(false)}>
+                تعطيل 3 أعمدة
               </Button>
             )}
+            {!splitMode ? (
+              <Button type="button" variant="ghost" onClick={() => setSplitMode(true)}>
+                تفعيل تقسيم عمودين
+              </Button>
+            ) : (
+              <Button type="button" variant="ghost" onClick={() => setSplitMode(false)}>
+                تعطيل التقسيم
+              </Button>
+            )}
+            {!splitMode && !tripleMode ? (
+              !isSlider ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onChange({ ...(value as any), slides: [pickFromRoot()], autoplayMs: 5000, showDots: true })}
+                >
+                  تحويل إلى سلايدر
+                </Button>
+              ) : (
+                <Button type="button" variant="ghost" onClick={() => applyToRoot(slides[0] ?? pickFromRoot())}>
+                  تعطيل السلايدر (سلايد واحد)
+                </Button>
+              )
+            ) : null}
           </div>
         </div>
+
+        {tripleMode ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            <Select
+              label="Triple layout"
+              value={tripleLayout}
+              onChange={(v) => onChange({ ...(value as any), tripleLayout: (v as any) ?? "4:5:1" })}
+              options={HERO_TRIPLE_LAYOUT_OPTIONS}
+            />
+            <Input
+              label="Gap بين الأعمدة (px)"
+              value={String(tripleGap)}
+              onChange={(v) => onChange({ ...(value as any), tripleGap: Math.max(0, Math.min(64, Number(v) || 0)) })}
+              dir="ltr"
+            />
+          </div>
+        ) : null}
+
+        {splitMode ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            <Select
+              label="Split ratio"
+              value={splitRatio}
+              onChange={(v) => onChange({ ...(value as any), splitRatio: (v as any) ?? "1:1" })}
+              options={HERO_SPLIT_RATIO_OPTIONS}
+            />
+            <Input
+              label="Gap بين الأعمدة (px)"
+              value={String(splitGap)}
+              onChange={(v) => onChange({ ...(value as any), splitGap: Math.max(0, Math.min(64, Number(v) || 0)) })}
+              dir="ltr"
+            />
+          </div>
+        ) : null}
 
         {isSlider ? (
           <div className="grid gap-3 md:grid-cols-2">
@@ -1526,41 +1885,43 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
         ) : null}
       </div>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
-        <DividerTitle title="Animations" />
-        <div className="grid gap-3 md:grid-cols-2">
-          <Select
-            label="Slide animation"
-            value={slideAnim}
-            onChange={(v) => onChange({ ...(value as any), slideAnim: v as any })}
-            options={HERO_ANIM_OPTIONS}
-          />
-          <Select
-            label="Slide duration (ms)"
-            value={String(slideDuration)}
-            onChange={(v) => onChange({ ...(value as any), slideDuration: Number(v) })}
-            options={HERO_DURATION_OPTIONS.map((v) => ({ value: String(v), label: String(v) }))}
-          />
-          <Select
-            label="Content animation"
-            value={contentAnim}
-            onChange={(v) => onChange({ ...(value as any), contentAnim: v as any })}
-            options={HERO_ANIM_OPTIONS}
-          />
-          <Select
-            label="Content duration (ms)"
-            value={String(contentDuration)}
-            onChange={(v) => onChange({ ...(value as any), contentDuration: Number(v) })}
-            options={HERO_DURATION_OPTIONS.map((v) => ({ value: String(v), label: String(v) }))}
-          />
-          <Select
-            label="Content delay (ms)"
-            value={String(contentDelay)}
-            onChange={(v) => onChange({ ...(value as any), contentDelay: Number(v) })}
-            options={HERO_DELAY_OPTIONS.map((v) => ({ value: String(v), label: String(v) }))}
-          />
+      {!splitMode && !tripleMode ? (
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+          <DividerTitle title="Animations" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Select
+              label="Slide animation"
+              value={slideAnim}
+              onChange={(v) => onChange({ ...(value as any), slideAnim: v as any })}
+              options={HERO_ANIM_OPTIONS}
+            />
+            <Select
+              label="Slide duration (ms)"
+              value={String(slideDuration)}
+              onChange={(v) => onChange({ ...(value as any), slideDuration: Number(v) })}
+              options={HERO_DURATION_OPTIONS.map((v) => ({ value: String(v), label: String(v) }))}
+            />
+            <Select
+              label="Content animation"
+              value={contentAnim}
+              onChange={(v) => onChange({ ...(value as any), contentAnim: v as any })}
+              options={HERO_ANIM_OPTIONS}
+            />
+            <Select
+              label="Content duration (ms)"
+              value={String(contentDuration)}
+              onChange={(v) => onChange({ ...(value as any), contentDuration: Number(v) })}
+              options={HERO_DURATION_OPTIONS.map((v) => ({ value: String(v), label: String(v) }))}
+            />
+            <Select
+              label="Content delay (ms)"
+              value={String(contentDelay)}
+              onChange={(v) => onChange({ ...(value as any), contentDelay: Number(v) })}
+              options={HERO_DELAY_OPTIONS.map((v) => ({ value: String(v), label: String(v) }))}
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {isSlider ? (
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
@@ -1664,7 +2025,14 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="ghost" onClick={() => setMediaOpen(true)}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setMediaTarget("left");
+              setMediaOpen(true);
+            }}
+          >
             اختر من المكتبة
           </Button>
           {s.backgroundImageUrl ? (
@@ -1678,8 +2046,15 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
           open={mediaOpen}
           onClose={() => setMediaOpen(false)}
           onSelect={(url) => {
-            if (isSlider) updateSlide(activeSlide, { backgroundImageUrl: url });
-            else onChange({ ...value, backgroundImageUrl: url });
+            if (tripleMode && mediaTarget === "center") {
+              onChange({ ...(value as any), centerImageUrl: url });
+            } else if (splitMode && mediaTarget === "right") {
+              updateSplitRight({ backgroundImageUrl: url });
+            } else if (isSlider) {
+              updateSlide(activeSlide, { backgroundImageUrl: url });
+            } else {
+              onChange({ ...value, backgroundImageUrl: url });
+            }
             setMediaOpen(false);
           }}
         />
@@ -1751,6 +2126,169 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
           <TokensPanel label="زر ثانوي" tokens={s.secondaryButtonTokens} onChange={(t) => updateSlideTokens({ secondaryButtonTokens: t })} />
         </div>
       </div>
+
+      {tripleMode ? (
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+          <DividerTitle title="Triple Mode (Center / Right)" />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              label="Eyebrow (اختياري)"
+              value={String((value as any).eyebrow ?? "")}
+              onChange={(v) => onChange({ ...(value as any), eyebrow: v })}
+            />
+            <Input
+              label="Center image alt (اختياري)"
+              value={String((value as any).centerImageAlt ?? "")}
+              onChange={(v) => onChange({ ...(value as any), centerImageAlt: v })}
+            />
+            <MediaUrlInput
+              label="Center image URL"
+              value={String((value as any).centerImageUrl ?? "")}
+              onChange={(v) => onChange({ ...(value as any), centerImageUrl: v })}
+              placeholder="https://..."
+            />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                label="Right indicators"
+                value={String((value as any).rightIndicators ?? 4)}
+                onChange={(v) => onChange({ ...(value as any), rightIndicators: Math.max(1, Math.min(10, Number(v) || 4)) })}
+                dir="ltr"
+              />
+              <Input
+                label="Active index"
+                value={String((value as any).rightActiveIndicator ?? 1)}
+                onChange={(v) => onChange({ ...(value as any), rightActiveIndicator: Math.max(1, Math.min(10, Number(v) || 1)) })}
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setMediaTarget("center");
+                setMediaOpen(true);
+              }}
+            >
+              اختر صورة الوسط من المكتبة
+            </Button>
+            {(value as any).centerImageUrl ? (
+              <Button type="button" variant="danger" onClick={() => onChange({ ...(value as any), centerImageUrl: "" })}>
+                إزالة صورة الوسط
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {splitMode ? (
+        <>
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <DividerTitle title="Hero Right (المحتوى)" />
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <Input
+                label="العنوان"
+                value={splitRight.title ?? ""}
+                onChange={(v) => updateSplitRight({ title: v })}
+              />
+              <Select
+                label="المحاذاة"
+                value={rightAlign}
+                onChange={(v) => updateSplitRight({ align: (v as any) ?? "center" })}
+                options={[
+                  { value: "left", label: "يسار" },
+                  { value: "center", label: "وسط" },
+                  { value: "right", label: "يمين" },
+                ]}
+              />
+            </div>
+          </div>
+
+          <TextArea
+            label="Hero Right - وصف مختصر"
+            value={splitRight.subtitle ?? ""}
+            onChange={(v) => updateSplitRight({ subtitle: v })}
+            rows={3}
+          />
+
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <DividerTitle title="Hero Right - الخلفية" />
+            <div className="grid gap-3 md:grid-cols-2">
+              <MediaUrlInput
+                label="Background Image URL"
+                value={splitRight.backgroundImageUrl ?? ""}
+                onChange={(v) => updateSplitRight({ backgroundImageUrl: v })}
+                placeholder="https://..."
+              />
+              <Input
+                label="Overlay (0..1)"
+                value={String(splitRight.overlay ?? 0.35)}
+                onChange={(v) => updateSplitRight({ overlay: Number(v) })}
+                dir="ltr"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setMediaTarget("right");
+                  setMediaOpen(true);
+                }}
+              >
+                اختر من المكتبة
+              </Button>
+              {splitRight.backgroundImageUrl ? (
+                <Button type="button" variant="danger" onClick={() => updateSplitRight({ backgroundImageUrl: "" })}>
+                  إزالة
+                </Button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <DividerTitle title="Hero Right - الأزرار" />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                label="زر أساسي - Label"
+                value={splitRight.primaryButton?.label ?? ""}
+                onChange={(v) => updateSplitRight({ primaryButton: { ...(splitRight.primaryButton ?? { label: "", href: "" }), label: v } })}
+              />
+              <Input
+                label="زر أساسي - Link"
+                value={splitRight.primaryButton?.href ?? ""}
+                onChange={(v) => updateSplitRight({ primaryButton: { ...(splitRight.primaryButton ?? { label: "", href: "" }), href: v } })}
+                dir="ltr"
+              />
+              <Input
+                label="زر ثانوي - Label"
+                value={splitRight.secondaryButton?.label ?? ""}
+                onChange={(v) => updateSplitRight({ secondaryButton: { ...(splitRight.secondaryButton ?? { label: "", href: "" }), label: v } })}
+              />
+              <Input
+                label="زر ثانوي - Link"
+                value={splitRight.secondaryButton?.href ?? ""}
+                onChange={(v) => updateSplitRight({ secondaryButton: { ...(splitRight.secondaryButton ?? { label: "", href: "" }), href: v } })}
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <DividerTitle title="Hero Right - تنسيق متقدم" />
+            <div className="space-y-3">
+              <TokensPanel label="السلايد" tokens={splitRight.slideTokens} onChange={(t) => updateSplitRight({ slideTokens: t })} />
+              <TokensPanel label="العنوان" tokens={splitRight.titleTokens} onChange={(t) => updateSplitRight({ titleTokens: t })} />
+              <TokensPanel label="الوصف" tokens={splitRight.subtitleTokens} onChange={(t) => updateSplitRight({ subtitleTokens: t })} />
+              <TokensPanel label="زر أساسي" tokens={splitRight.primaryButtonTokens} onChange={(t) => updateSplitRight({ primaryButtonTokens: t })} />
+              <TokensPanel label="زر ثانوي" tokens={splitRight.secondaryButtonTokens} onChange={(t) => updateSplitRight({ secondaryButtonTokens: t })} />
+            </div>
+          </div>
+        </>
+      ) : null}
 
       <UiClassesEditor value={value} onChange={onChange as any} />
     </div>
@@ -2080,6 +2618,52 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
     setOpenBlockKey((next[next.length - 1] as any).__key ?? null);
   };
 
+  const addThreeContentPreset = () => {
+    const groupId = `hero-3-${Date.now().toString(36)}`;
+    const nextBlocks = [
+      {
+        type: "RICH_TEXT" as PageSectionType,
+        isVisible: true,
+        __key: uid("block"),
+        data: {
+          ...defaultDataForType("RICH_TEXT"),
+          title: "HEADER",
+          html: "<h2 style='margin:0 0 12px;font-size:40px;line-height:1.05;font-weight:800'>YOUR TITLE<br/>IS HERE</h2><p style='margin:0 0 18px;opacity:.75'>Subtitle, you can describe your product here.</p><p style='margin:0'><a href='/shop' style='display:inline-block;padding:10px 16px;border-radius:9999px;border:1px solid rgba(255,255,255,.25);margin-inline-end:8px'>Shop now</a><a href='/video' style='display:inline-block;padding:10px 16px;border-radius:9999px;border:1px solid rgba(255,255,255,.25)'>Watch video</a></p>",
+          layout: { mode: "grid", group: groupId, columns: 10, span: 4 },
+        },
+      },
+      {
+        type: "IMAGE_GALLERY" as PageSectionType,
+        isVisible: true,
+        __key: uid("block"),
+        data: {
+          ...defaultDataForType("IMAGE_GALLERY"),
+          title: "",
+          columns: 1,
+          images: [{ url: "", alt: "hero-center-image" }],
+          layout: { mode: "grid", group: groupId, columns: 10, span: 5 },
+        },
+      },
+      {
+        type: "CUSTOM_HTML" as PageSectionType,
+        isVisible: true,
+        __key: uid("block"),
+        data: {
+          ...defaultDataForType("CUSTOM_HTML"),
+          title: "",
+          html: "<div style='display:flex;flex-direction:column;align-items:center;gap:10px;justify-content:center;height:100%'><span style='width:8px;height:8px;border-radius:9999px;background:#d77f59'></span><span style='width:6px;height:6px;border-radius:9999px;background:rgba(255,255,255,.45)'></span><span style='width:6px;height:6px;border-radius:9999px;background:rgba(255,255,255,.45)'></span><span style='width:6px;height:6px;border-radius:9999px;background:rgba(255,255,255,.45)'></span></div>",
+          layout: { mode: "grid", group: groupId, columns: 10, span: 1 },
+        },
+      },
+    ];
+    onChange({
+      ...value,
+      mode: "container",
+      blocks: [...blocks, ...nextBlocks] as any,
+    });
+    setOpenBlockKey((nextBlocks[0] as any).__key ?? null);
+  };
+
   const updateBlock = (idx: number, patch: any) => {
     const next = blocks.slice();
     next[idx] = { ...next[idx], ...patch };
@@ -2139,51 +2723,72 @@ function GridEditor({ value, onChange, errors }: { value: GridData; onChange: (v
               options={SECTION_TYPE_OPTIONS}
             />
             <Button variant="secondary" onClick={addBlock}>+ إضافة Section</Button>
+            <Button variant="ghost" onClick={addThreeContentPreset}>+ قالب 3 محتوى (Left/Center/Right)</Button>
           </div>
 
           {blocks.length ? (
-            <div className="space-y-3">
-              {blocks.map((block: any, idx: number) => {
-                const key = block.__key ?? String(idx);
-                const isOpen = openBlockKey === key;
-                return (
-                  <div key={key} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        className="text-sm font-semibold hover:underline"
-                        onClick={() => setOpenBlockKey(isOpen ? null : key)}
-                      >
-                        {block.type} #{idx + 1}
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-2 text-xs opacity-80">
-                          <input
-                            type="checkbox"
-                            checked={block.isVisible !== false}
-                            onChange={(e) => updateBlock(idx, { isVisible: e.target.checked })}
-                          />
-                          ظاهر
-                        </label>
-                        <Button size="sm" variant="ghost" onClick={() => moveBlock(idx, -1)} disabled={idx === 0}>↑</Button>
-                        <Button size="sm" variant="ghost" onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1}>↓</Button>
-                        <Button size="sm" variant="danger" onClick={() => removeBlock(idx)}>حذف</Button>
-                      </div>
-                    </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
+                const oldIndex = blocks.findIndex((x: any, i: number) => (x.__key ?? `block-${i}`) === active.id);
+                const newIndex = blocks.findIndex((x: any, i: number) => (x.__key ?? `block-${i}`) === over.id);
+                if (oldIndex < 0 || newIndex < 0) return;
+                onChange({ ...value, blocks: arrayMove(blocks as any[], oldIndex, newIndex) as any });
+              }}
+            >
+              <SortableContext
+                items={(blocks as any[]).map((x: any, i: number) => x.__key ?? `block-${i}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3">
+                  {blocks.map((block: any, idx: number) => {
+                    const key = String(block.__key ?? `block-${idx}`);
+                    const isOpen = openBlockKey === key;
+                    return (
+                      <SortableRow key={key} id={key}>
+                        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              className="text-sm font-semibold hover:underline"
+                              onClick={() => setOpenBlockKey(isOpen ? null : key)}
+                            >
+                              {block.type} #{idx + 1}
+                            </button>
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-2 text-xs opacity-80">
+                                <input
+                                  type="checkbox"
+                                  checked={block.isVisible !== false}
+                                  onChange={(e) => updateBlock(idx, { isVisible: e.target.checked })}
+                                />
+                                ظاهر
+                              </label>
+                              <Button size="sm" variant="ghost" onClick={() => moveBlock(idx, -1)} disabled={idx === 0}>↑</Button>
+                              <Button size="sm" variant="ghost" onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1}>↓</Button>
+                              <Button size="sm" variant="danger" onClick={() => removeBlock(idx)}>حذف</Button>
+                            </div>
+                          </div>
 
-                    {isOpen ? (
-                      <div className="mt-4">
-                        <SectionEditor
-                          type={block.type as PageSectionType}
-                          value={block.data ?? {}}
-                          onChange={(next) => updateBlock(idx, { data: next })}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
+                          {isOpen ? (
+                            <div className="mt-4">
+                              <SectionEditor
+                                type={block.type as PageSectionType}
+                                value={block.data ?? {}}
+                                onChange={(next) => updateBlock(idx, { data: next })}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      </SortableRow>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
           ) : (
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 text-sm opacity-70">
               لا يوجد Sections داخل الـContainer بعد.
@@ -3349,6 +3954,201 @@ function BannerEditor({ value, onChange, errors }: { value: BannerData; onChange
   );
 }
 
+function GlobalAnnouncementEditor({
+  value,
+  onChange,
+  errors,
+}: {
+  value: GlobalAnnouncementData;
+  onChange: (v: GlobalAnnouncementData) => void;
+  errors?: CommonErrors;
+}) {
+  return (
+    <div className="space-y-4">
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={value.enabled !== false}
+          onChange={(e) => onChange({ ...value, enabled: e.target.checked })}
+        />
+        تفعيل الشريط العلوي
+      </label>
+
+      <TextArea
+        label="نص الشريط"
+        value={value.text ?? ""}
+        onChange={(v) => onChange({ ...value, text: v })}
+        rows={3}
+        error={errors?.text}
+      />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input
+          label="الرابط (اختياري)"
+          value={value.href ?? ""}
+          onChange={(v) => onChange({ ...value, href: v })}
+          dir="ltr"
+        />
+        <Input
+          label="نص الزر (اختياري)"
+          value={value.buttonText ?? ""}
+          onChange={(v) => onChange({ ...value, buttonText: v })}
+        />
+      </div>
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
+function GlobalHeaderEditor({
+  value,
+  onChange,
+}: {
+  value: GlobalHeaderData;
+  onChange: (v: GlobalHeaderData) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input
+          label="اسم المتجر (اختياري)"
+          value={value.brandText ?? ""}
+          onChange={(v) => onChange({ ...value, brandText: v })}
+        />
+        <div />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.sticky !== false}
+            onChange={(e) => onChange({ ...value, sticky: e.target.checked })}
+          />
+          Sticky Header
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.showMenu !== false}
+            onChange={(e) => onChange({ ...value, showMenu: e.target.checked })}
+          />
+          إظهار القائمة
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.showSearch !== false}
+            onChange={(e) => onChange({ ...value, showSearch: e.target.checked })}
+          />
+          إظهار البحث
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={!!value.showCta}
+            onChange={(e) => onChange({ ...value, showCta: e.target.checked })}
+          />
+          إظهار زر CTA
+        </label>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input
+          label="CTA Label"
+          value={value.ctaLabel ?? ""}
+          onChange={(v) => onChange({ ...value, ctaLabel: v })}
+          disabled={!value.showCta}
+        />
+        <Input
+          label="CTA Link"
+          value={value.ctaHref ?? ""}
+          onChange={(v) => onChange({ ...value, ctaHref: v })}
+          dir="ltr"
+          disabled={!value.showCta}
+        />
+      </div>
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
+function GlobalFooterEditor({
+  value,
+  onChange,
+}: {
+  value: GlobalFooterData;
+  onChange: (v: GlobalFooterData) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input
+          label="عنوان قسم عن المتجر"
+          value={value.aboutTitle ?? ""}
+          onChange={(v) => onChange({ ...value, aboutTitle: v })}
+        />
+        <Input
+          label="حقوق النشر (اختياري)"
+          value={value.copyright ?? ""}
+          onChange={(v) => onChange({ ...value, copyright: v })}
+        />
+      </div>
+
+      <TextArea
+        label="نص عن المتجر"
+        value={value.aboutText ?? ""}
+        onChange={(v) => onChange({ ...value, aboutText: v })}
+        rows={3}
+      />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.showNewsletter !== false}
+            onChange={(e) => onChange({ ...value, showNewsletter: e.target.checked })}
+          />
+          إظهار النشرة البريدية
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.showSocial !== false}
+            onChange={(e) => onChange({ ...value, showSocial: e.target.checked })}
+          />
+          إظهار روابط السوشال
+        </label>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <Input
+          label="عنوان النشرة"
+          value={value.newsletterTitle ?? ""}
+          onChange={(v) => onChange({ ...value, newsletterTitle: v })}
+          disabled={value.showNewsletter === false}
+        />
+        <Input
+          label="Placeholder"
+          value={value.newsletterPlaceholder ?? ""}
+          onChange={(v) => onChange({ ...value, newsletterPlaceholder: v })}
+          disabled={value.showNewsletter === false}
+        />
+        <Input
+          label="زر الاشتراك"
+          value={value.newsletterButtonLabel ?? ""}
+          onChange={(v) => onChange({ ...value, newsletterButtonLabel: v })}
+          disabled={value.showNewsletter === false}
+        />
+      </div>
+
+      <UiClassesEditor value={value} onChange={onChange as any} />
+    </div>
+  );
+}
+
 function CtaEditor({ value, onChange, errors }: { value: CtaData; onChange: (v: CtaData) => void; errors?: CommonErrors }) {
   const [mediaOpen, setMediaOpen] = useState(false);
   return (
@@ -4233,6 +5033,15 @@ export function SectionEditor({
 
   let content: React.ReactNode;
   switch (type) {
+    case "GLOBAL_ANNOUNCEMENT":
+      content = <GlobalAnnouncementEditor value={value as GlobalAnnouncementData} onChange={onChange} errors={errors} />;
+      break;
+    case "GLOBAL_HEADER":
+      content = <GlobalHeaderEditor value={value as GlobalHeaderData} onChange={onChange} />;
+      break;
+    case "GLOBAL_FOOTER":
+      content = <GlobalFooterEditor value={value as GlobalFooterData} onChange={onChange} />;
+      break;
     case "HERO":
       content = <HeroEditor value={value as HeroData} onChange={onChange} errors={errors} />;
       break;
@@ -4270,10 +5079,10 @@ export function SectionEditor({
       content = <CollectionsGridEditor value={value as CollectionsGridData} onChange={onChange} errors={errors} />;
       break;
     case "NEW_ARRIVALS_SLIDER":
-      content = <ProductsSliderEditor value={value as ProductsSliderData} onChange={onChange as any} label="??? ?????? (?????? ??????)" />;
+      content = <ProductsSliderEditor value={value as ProductsSliderData} onChange={onChange as any} label="New Arrivals (Products Slider)" />;
       break;
     case "BEST_SELLERS_SLIDER":
-      content = <ProductsSliderEditor value={value as ProductsSliderData} onChange={onChange as any} label="?????? ?????? (?????? ??????)" />;
+      content = <ProductsSliderEditor value={value as ProductsSliderData} onChange={onChange as any} label="Best Sellers (Products Slider)" />;
       break;
     case "BRANDS_SLIDER":
       content = <BrandsSliderEditor value={value as BrandsSliderData} onChange={onChange as any} />;

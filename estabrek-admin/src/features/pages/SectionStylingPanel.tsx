@@ -19,6 +19,7 @@ import {
   DECOR_FILL_PRESETS,
   DECOR_BLUR_PRESETS,
   BLUR_PRESETS,
+  MEDIA_SHAPE_PRESETS,
   ANIM_LABELS,
   SHAPE_LABELS,
   BG_PRESETS,
@@ -40,6 +41,13 @@ import {
   type MotionConfig,
 } from "../../cms/style/tokens";
 import {
+  FONT_FAMILY_CATEGORY_LABELS_AR,
+  FONT_FAMILY_LIBRARY,
+  FONT_FAMILY_LIBRARY_COUNT,
+  formatFontFamilyPresetLabel,
+  getFontFamilyPresetById,
+} from "../../cms/style/fontFamilyPresets";
+import {
   TEXT_EFFECT_PRESETS,
   CARD_TEMPLATE_PRESETS,
   HOVER_PRESETS_EXTENDED,
@@ -60,6 +68,7 @@ import {
 } from "../../cms/style/containerStyles";
 import { INTERACTION_CATEGORY_LABELS_AR, INTERACTION_EFFECTS } from "../../cms/effects/interactionEffects";
 import { SvgLibraryPicker } from "./SvgLibraryPicker";
+import { DividerStylePicker } from "./DividerStylePicker";
 import { spotlightThemes } from "../../cms/spotlight-themes";
 import { animatedShapeThemes } from "../../cms/animated-shapes";
 
@@ -90,10 +99,6 @@ const containerOptions = ALL_CONTAINER_STYLES.map((c) => ({
   label: `${CONTAINER_CATEGORY_LABELS_AR[c.category] ?? c.category} - ${c.nameAr}`,
 }));
 
-const dividerOptions = ALL_DIVIDER_STYLES.map((d) => ({
-  value: d.id,
-  label: `${DIVIDER_CATEGORY_LABELS_AR[d.category] ?? d.category} - ${d.nameAr}`,
-}));
 const spotlightOptions = [
   { value: "", label: "بدون" },
   ...spotlightThemes.map((theme) => ({
@@ -316,11 +321,11 @@ function LayoutEditor({ tokens, onChange }: {
       </FieldGroup>
 
       <FieldGroup label="نمط الفاصل" labelAr="Divider Style" hint="اختر نمط جاهز للفواصل">
-        <Select
+        <DividerStylePicker
           value={tokens?.dividerStyleId ?? ""}
           onChange={(v) => onChange({ ...tokens, dividerStyleId: v || undefined })}
-          options={dividerOptions}
-          placeholder="بدون"
+          styles={ALL_DIVIDER_STYLES}
+          categoryLabels={DIVIDER_CATEGORY_LABELS_AR}
         />
       </FieldGroup>
 
@@ -544,10 +549,41 @@ function TypographyEditor({ tokens, onChange }: {
   tokens?: TwTokens & TwTokensExtended;
   onChange: (t: TwTokens & TwTokensExtended) => void;
 }) {
+  const [fontQuery, setFontQuery] = useState("");
   const sizeOptions = TEXT_SIZE_PRESETS.map(p => ({ value: p, label: p }));
   const weightOptions = FONT_WEIGHT_PRESETS.map(p => ({ value: p, label: p }));
   const alignOptions = TEXT_ALIGN_PRESETS.map(p => ({ value: p, label: p === "right" ? "يمين" : p === "left" ? "يسار" : p === "center" ? "وسط" : "ضبط" }));
   const colorOptions = TEXT_COLOR_PRESETS.map(p => ({ value: p, label: p }));
+  const typography = tokens?.typography;
+  const selectedFontPresetId = typography?.familyPresetId ?? "";
+  const selectedFontPreset = getFontFamilyPresetById(selectedFontPresetId);
+  const baseFamilyOptions = [
+    { value: "", label: "افتراضي (Theme)" },
+    { value: "sans", label: "Sans" },
+    { value: "serif", label: "Serif" },
+    { value: "mono", label: "Mono" },
+    { value: "arabic", label: "Arabic" },
+    { value: "display", label: "Display" },
+  ];
+  const fontQueryRaw = fontQuery.trim();
+  const fontQueryValue = fontQueryRaw.toLowerCase();
+  const filteredFontOptions = FONT_FAMILY_LIBRARY
+    .filter((font) => {
+      if (!fontQueryRaw) return true;
+      const categoryLabelAr = FONT_FAMILY_CATEGORY_LABELS_AR[font.category];
+      return (
+        font.label.toLowerCase().includes(fontQueryValue)
+        || font.family.toLowerCase().includes(fontQueryValue)
+        || categoryLabelAr.includes(fontQueryRaw)
+      );
+    })
+    .map((font) => ({
+      value: font.id,
+      label: formatFontFamilyPresetLabel(font, "ar"),
+    }));
+  const fontLibraryOptions = selectedFontPreset && !filteredFontOptions.some((opt) => opt.value === selectedFontPreset.id)
+    ? [{ value: selectedFontPreset.id, label: formatFontFamilyPresetLabel(selectedFontPreset, "ar") }, ...filteredFontOptions]
+    : filteredFontOptions;
   const textGradient = tokens?.textGradient;
   const gradientKind = textGradient?.kind ?? "linear";
   const gradientMode = textGradient?.mode ?? 2;
@@ -579,6 +615,99 @@ function TypographyEditor({ tokens, onChange }: {
 
   return (
     <div className="space-y-4">
+      <Divider title="عائلات الخط" />
+
+      <FieldGroup label="عائلة الخط الأساسية" labelAr="Base Family">
+        <Select
+          value={typography?.family || ""}
+          onChange={(v) => {
+            const nextFamily = String(v ?? "").trim();
+            onChange({
+              ...tokens,
+              typography: {
+                ...typography,
+                family: (nextFamily || undefined) as any,
+                familyPresetId: undefined,
+                familyCustom: undefined,
+              },
+            });
+          }}
+          options={baseFamilyOptions}
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        label={`مكتبة عائلات الخط (${FONT_FAMILY_LIBRARY_COUNT}+)`}
+        labelAr="Font Library"
+        hint="130+ عائلة خط. ابحث بالاسم أو اختر مباشرة."
+      >
+        <Input
+          value={fontQuery}
+          onChange={setFontQuery}
+          placeholder="ابحث عن عائلة خط..."
+        />
+        <Select
+          value={selectedFontPresetId}
+          onChange={(v) => {
+            const nextId = String(v ?? "").trim();
+            if (!nextId) {
+              onChange({
+                ...tokens,
+                typography: {
+                  ...typography,
+                  familyPresetId: undefined,
+                  familyCustom: undefined,
+                },
+              });
+              return;
+            }
+            const preset = getFontFamilyPresetById(nextId);
+            if (!preset) return;
+            onChange({
+              ...tokens,
+              typography: {
+                ...typography,
+                family: undefined,
+                familyPresetId: preset.id,
+                familyCustom: preset.family,
+              },
+            });
+          }}
+          options={[
+            { value: "", label: "بدون" },
+            ...fontLibraryOptions,
+          ]}
+        />
+        {selectedFontPreset ? (
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2">
+            <div className="text-[11px] text-white/50">{selectedFontPreset.label}</div>
+            <div className="text-sm text-white/90" style={{ fontFamily: selectedFontPreset.family }}>
+              Aa بسم الله 0123 - The quick brown fox
+            </div>
+          </div>
+        ) : null}
+      </FieldGroup>
+
+      <FieldGroup label="عائلة خط مخصصة (CSS)" labelAr="Custom Font Family">
+        <Input
+          value={typography?.familyCustom || ""}
+          onChange={(v) => {
+            const nextCustom = String(v ?? "").trim();
+            onChange({
+              ...tokens,
+              typography: {
+                ...typography,
+                family: undefined,
+                familyPresetId: undefined,
+                familyCustom: nextCustom || undefined,
+              },
+            });
+          }}
+          dir="ltr"
+          placeholder={'"Poppins", "Segoe UI", sans-serif'}
+        />
+      </FieldGroup>
+
       <FieldGroup label="حجم الخط" labelAr="Font Size">
         <ButtonGroup
           value={tokens?.typography?.size || "base"}
@@ -1091,6 +1220,38 @@ function EffectsEditor({ tokens, onChange }: {
   tokens?: TwTokens & TwTokensExtended;
   onChange: (t: TwTokens & TwTokensExtended) => void;
 }) {
+  const mediaShapeOptions = MEDIA_SHAPE_PRESETS.map((shape) => ({
+    value: shape,
+    label:
+      shape === "none"
+        ? "بدون"
+        : shape === "rectangle"
+        ? "مستطيل"
+        : shape === "rounded"
+        ? "مستطيل ناعم"
+        : shape === "circle"
+        ? "دائرة"
+        : shape === "pill"
+        ? "كبسولة"
+        : shape === "diamond"
+        ? "ماسي"
+        : shape === "hexagon"
+        ? "سداسي"
+        : shape === "blob"
+        ? "عضوي"
+        : shape === "arch"
+        ? "قوس"
+        : shape === "parallelogram"
+        ? "متوازي أضلاع"
+        : shape === "octagon"
+        ? "ثماني"
+        : shape === "star"
+        ? "نجمة"
+        : shape === "rhombus"
+        ? "معين"
+        : "ورقة",
+  }));
+
   const interactionOptions = INTERACTION_EFFECTS.map((e) => ({
     value: e.id,
     label: `${INTERACTION_CATEGORY_LABELS_AR[e.category]} - ${e.nameAr}`,
@@ -1108,6 +1269,21 @@ function EffectsEditor({ tokens, onChange }: {
 
   return (
     <div className="space-y-4">
+      <Divider title="أشكال الصور" />
+
+      <FieldGroup label="شكل الصور" labelAr="Image Shape" hint="يطبّق على كل الصور داخل القسم (Hero + Galleries + Cards)">
+        <Select
+          value={tokens?.effects?.mediaShape ?? "none"}
+          onChange={(v) =>
+            onChange({
+              ...tokens,
+              effects: { ...tokens?.effects, mediaShape: v as any },
+            })
+          }
+          options={mediaShapeOptions}
+        />
+      </FieldGroup>
+
       <Divider title="تأثيرات Hover / Focus" />
 
       <FieldGroup label="تأثير Hover" labelAr="Hover (Library)" hint="100+ تأثير hover">

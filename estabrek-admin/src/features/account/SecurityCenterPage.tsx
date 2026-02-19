@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -14,8 +14,29 @@ import * as SecAPI from "../../api/adminSecurity.api";
 import * as AccountAPI from "../../api/account.api";
 import { useAuth } from "../../hooks/useAuth";
 import { useAdminSessions, useAdminSecurityEvents, useSecurityActions } from "../../hooks/useSecurity";
+import { listLocalAdminAuditEvents, type LocalAdminAuditEvent } from "../../lib/adminAudit";
 
 type Tab = "SECURITY" | "SESSIONS" | "AUDIT";
+
+type AuditRow = {
+  id: string;
+  type: string;
+  ip?: string | null;
+  metadata?: any;
+  createdAt: string;
+  source: "server" | "local";
+};
+
+const LOCAL_AUDIT_STORAGE_KEY = "estabrek.admin.audit.v1";
+
+function mapLocalAuditType(event: LocalAdminAuditEvent) {
+  return `CMS_${event.action.toUpperCase().replace(/\./g, "_")}`;
+}
+
+function toTime(value: string) {
+  const stamp = new Date(value).getTime();
+  return Number.isFinite(stamp) ? stamp : 0;
+}
 
 export default function SecurityCenterPage() {
   const { admin } = useAuth();
@@ -45,11 +66,16 @@ export default function SecurityCenterPage() {
 
   const [eventType, setEventType] = useState<string>("");
   const eventsQuery = useAdminSecurityEvents({ take: 100, skip: 0, ...(eventType ? { type: eventType } : {}) });
+  const [localAuditEvents, setLocalAuditEvents] = useState<LocalAdminAuditEvent[]>(() => listLocalAdminAuditEvents());
 
   const actions = useSecurityActions();
 
   // Confirm revoke single session
   const [revokeId, setRevokeId] = useState<string | null>(null);
+
+  const refreshLocalAuditEvents = () => {
+    setLocalAuditEvents(listLocalAdminAuditEvents());
+  };
 
   async function refreshMe() {
     try {
@@ -127,13 +153,61 @@ export default function SecurityCenterPage() {
   }
 
   const sessionRows = sessionsQuery.data?.items ?? [];
-  const eventRows = eventsQuery.data?.items ?? [];
+  const serverEventRows = (eventsQuery.data?.items ?? []).map((event) => ({
+    ...event,
+    source: "server" as const,
+  }));
+
+  const localEventRows = useMemo<AuditRow[]>(() => {
+    const rows = localAuditEvents.map((event) => ({
+      id: `local:${event.id}`,
+      type: mapLocalAuditType(event),
+      ip: null,
+      metadata: {
+        action: event.action,
+        entity: event.entity,
+        entityId: event.entityId ?? null,
+        pageId: event.pageId ?? null,
+        role: event.role ?? null,
+        ...(event.metadata ?? {}),
+      },
+      createdAt: event.createdAt,
+      source: "local" as const,
+    }));
+    if (!eventType) return rows;
+    return rows.filter((event) => event.type === eventType);
+  }, [localAuditEvents, eventType]);
+
+  const auditRows = useMemo<AuditRow[]>(() => {
+    const rows: AuditRow[] = [...serverEventRows, ...localEventRows];
+    rows.sort((a, b) => toTime(b.createdAt) - toTime(a.createdAt));
+    return rows;
+  }, [serverEventRows, localEventRows]);
+
+  const hasLocalAuditFallback = localEventRows.length > 0;
+  const showLocalFallbackHint = eventsQuery.isError || !serverEventRows.length;
 
   const knownEventTypes = useMemo(() => {
     const s = new Set<string>();
-    for (const e of eventRows) s.add(e.type);
+    for (const e of serverEventRows) s.add(e.type);
+    for (const e of localEventRows) s.add(e.type);
     return Array.from(s).sort();
-  }, [eventRows]);
+  }, [serverEventRows, localEventRows]);
+
+  useEffect(() => {
+    refreshLocalAuditEvents();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === LOCAL_AUDIT_STORAGE_KEY) {
+        refreshLocalAuditEvents();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    if (tab === "AUDIT") refreshLocalAuditEvents();
+  }, [tab]);
 
   return (
     <div className="space-y-4">
@@ -403,28 +477,53 @@ export default function SecurityCenterPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Select
                 value={eventType}
-                onChange={(e) => setEventType(e.target.value)}
+                onValueChange={(value) => setEventType(value)}
                 placeholder="كل الأنواع"
                 options={knownEventTypes.map((t) => ({ value: t, label: t }))}
               />
-              <Button variant="secondary" onClick={() => eventsQuery.refetch()}>تحديث</Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void eventsQuery.refetch();
+                  refreshLocalAuditEvents();
+                }}
+              >
+                تحديث
+              </Button>
             </div>
           </div>
+          {showLocalFallbackHint ? (
+            <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              {eventsQuery.isError
+                ? "تعذر تحميل سجل التدقيق من الخادم. يتم عرض السجل المحلي (fallback)."
+                : "يتم عرض السجل المحلي (fallback) إلى جانب سجل الخادم."}
+            </div>
+          ) : null}
+          {hasLocalAuditFallback ? (
+            <div className="mt-2 text-[11px] text-white/60">
+              Browser fallback events: {localEventRows.length}
+            </div>
+          ) : null}
 
           <div className="mt-4">
                         <>
               <div className="space-y-3 sm:hidden">
-                {eventsQuery.isLoading && (
+                {eventsQuery.isLoading && auditRows.length === 0 && (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">جارٍ التحميل...</div>
                 )}
-                {!eventsQuery.isLoading && eventRows.length === 0 && (
+                {!eventsQuery.isLoading && auditRows.length === 0 && (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">لا يوجد سجل.</div>
                 )}
-                {eventRows.map((e) => (
+                {auditRows.map((e) => (
                   <div key={e.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-xs opacity-70">{formatDateTime(e.createdAt)}</div>
-                      <Badge variant="default">{e.type}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default">{e.type}</Badge>
+                        <Badge variant={e.source === "local" ? "warning" : "info"}>
+                          {e.source === "local" ? "LOCAL" : "SERVER"}
+                        </Badge>
+                      </div>
                     </div>
                     <div className="mt-2 text-xs opacity-80">IP: {e.ip ?? "-"}</div>
                     {e.metadata ? (
@@ -443,25 +542,31 @@ export default function SecurityCenterPage() {
                     <TR>
                       <TH>الوقت</TH>
                       <TH>النوع</TH>
+                      <TH>المصدر</TH>
                       <TH>IP</TH>
                       <TH>البيانات</TH>
                     </TR>
                   </THead>
                   <TBody>
-                    {eventsQuery.isLoading && (
+                    {eventsQuery.isLoading && auditRows.length === 0 && (
                       <TR>
-                        <TD colSpan={4} className="text-center py-6 text-white/60">جارٍ التحميل...</TD>
+                        <TD colSpan={5} className="text-center py-6 text-white/60">جارٍ التحميل...</TD>
                       </TR>
                     )}
-                    {!eventsQuery.isLoading && eventRows.length === 0 && (
+                    {!eventsQuery.isLoading && auditRows.length === 0 && (
                       <TR>
-                        <TD colSpan={4} className="text-center py-6 text-white/60">لا يوجد سجل.</TD>
+                        <TD colSpan={5} className="text-center py-6 text-white/60">لا يوجد سجل.</TD>
                       </TR>
                     )}
-                    {eventRows.map((e) => (
+                    {auditRows.map((e) => (
                       <TR key={e.id}>
                         <TD className="text-xs">{formatDateTime(e.createdAt)}</TD>
                         <TD className="text-xs"><Badge variant="default">{e.type}</Badge></TD>
+                        <TD className="text-xs">
+                          <Badge variant={e.source === "local" ? "warning" : "info"}>
+                            {e.source === "local" ? "LOCAL" : "SERVER"}
+                          </Badge>
+                        </TD>
                         <TD className="text-xs">{e.ip ?? "-"}</TD>
                         <TD className="text-xs">
                           {e.metadata ? (

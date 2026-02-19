@@ -56,6 +56,7 @@ import {
 } from "../../cms/style/containerStyles";
 import { INTERACTION_CATEGORY_LABELS_AR, INTERACTION_EFFECTS } from "../../cms/effects/interactionEffects";
 import { SvgLibraryPicker } from "./SvgLibraryPicker";
+import { DividerStylePicker } from "./DividerStylePicker";
 import { spotlightThemes } from "../../cms/spotlight-themes";
 
 // ============================================================
@@ -85,10 +86,6 @@ const containerOptions = ALL_CONTAINER_STYLES.map((c) => ({
   label: `${CONTAINER_CATEGORY_LABELS_AR[c.category] ?? c.category} - ${c.nameAr}`,
 }));
 
-const dividerOptions = ALL_DIVIDER_STYLES.map((d) => ({
-  value: d.id,
-  label: `${DIVIDER_CATEGORY_LABELS_AR[d.category] ?? d.category} - ${d.nameAr}`,
-}));
 const spotlightOptions = [
   { value: "", label: "بدون" },
   ...spotlightThemes.map((theme) => ({
@@ -263,11 +260,11 @@ function LayoutEditor({ tokens, onChange }: {
       </FieldGroup>
 
       <FieldGroup label="نمط الفاصل" labelAr="Divider Style" hint="اختر نمط جاهز للفواصل">
-        <Select
+        <DividerStylePicker
           value={tokens?.dividerStyleId ?? ""}
           onChange={(v) => onChange({ ...tokens, dividerStyleId: v || undefined })}
-          options={dividerOptions}
-          placeholder="بدون"
+          styles={ALL_DIVIDER_STYLES}
+          categoryLabels={DIVIDER_CATEGORY_LABELS_AR}
         />
       </FieldGroup>
 

@@ -21,9 +21,39 @@ type HeaderConfig = {
 type FooterConfig = {
   about?: { title?: string; text?: string };
   social?: Record<string, string>;
-  newsletter?: { enabled?: boolean; title?: string; placeholder?: string };
+  newsletter?: { enabled?: boolean; title?: string; placeholder?: string; buttonLabel?: string };
   bottom?: { copyright?: string };
 };
+
+type GlobalAnnouncementData = {
+  enabled?: boolean;
+  text?: string;
+  href?: string;
+  buttonText?: string;
+};
+
+type GlobalHeaderData = {
+  sticky?: boolean;
+  showSearch?: boolean;
+  showMenu?: boolean;
+  showCta?: boolean;
+  ctaLabel?: string;
+  ctaHref?: string;
+  brandText?: string;
+};
+
+type GlobalFooterData = {
+  aboutTitle?: string;
+  aboutText?: string;
+  showNewsletter?: boolean;
+  newsletterTitle?: string;
+  newsletterPlaceholder?: string;
+  newsletterButtonLabel?: string;
+  showSocial?: boolean;
+  copyright?: string;
+};
+
+const GLOBAL_SECTION_TYPES = new Set(["GLOBAL_ANNOUNCEMENT", "GLOBAL_HEADER", "GLOBAL_FOOTER"]);
 
 function buildTree(items: NavigationItem[]) {
   const byParent = new Map<string | null, NavigationItem[]>();
@@ -241,8 +271,69 @@ export default function PagePreviewPage() {
     return scopeCssFn(previewCustomCss, "#cms-preview-root");
   }, [hasCustomPreviewCss, previewCustomCss, scopeCssFn]);
 
-  const headerCfg: HeaderConfig = (settings?.header ?? {}) as any;
-  const footerCfg: FooterConfig = (settings?.footer ?? {}) as any;
+  const sortedPreviewSections = useMemo(
+    () =>
+      [...previewSections]
+        .filter((s: any) => s && typeof s === "object")
+        .sort((a: any, b: any) => (a?.order ?? 0) - (b?.order ?? 0)),
+    [previewSections]
+  );
+
+  const globalAnnouncementData = useMemo(() => {
+    const sec = sortedPreviewSections.find((s: any) => s?.isVisible !== false && s?.type === "GLOBAL_ANNOUNCEMENT");
+    return (sec?.data ?? null) as GlobalAnnouncementData | null;
+  }, [sortedPreviewSections]);
+
+  const globalHeaderData = useMemo(() => {
+    const sec = sortedPreviewSections.find((s: any) => s?.isVisible !== false && s?.type === "GLOBAL_HEADER");
+    return (sec?.data ?? null) as GlobalHeaderData | null;
+  }, [sortedPreviewSections]);
+
+  const globalFooterData = useMemo(() => {
+    const sec = sortedPreviewSections.find((s: any) => s?.isVisible !== false && s?.type === "GLOBAL_FOOTER");
+    return (sec?.data ?? null) as GlobalFooterData | null;
+  }, [sortedPreviewSections]);
+
+  const contentSections = useMemo(
+    () => previewSections.filter((s: any) => !GLOBAL_SECTION_TYPES.has(String(s?.type ?? ""))),
+    [previewSections]
+  );
+
+  const headerCfgBase: HeaderConfig = (settings?.header ?? {}) as any;
+  const footerCfgBase: FooterConfig = (settings?.footer ?? {}) as any;
+
+  const headerCfg: HeaderConfig = {
+    ...headerCfgBase,
+    sticky: globalHeaderData?.sticky ?? headerCfgBase.sticky,
+    showSearch: globalHeaderData?.showSearch ?? headerCfgBase.showSearch,
+    cta: {
+      ...(headerCfgBase.cta ?? {}),
+      enabled: globalHeaderData?.showCta ?? headerCfgBase.cta?.enabled,
+      label: globalHeaderData?.ctaLabel ?? headerCfgBase.cta?.label,
+      href: globalHeaderData?.ctaHref ?? headerCfgBase.cta?.href,
+    },
+  };
+
+  const footerCfg: FooterConfig = {
+    ...footerCfgBase,
+    about: {
+      ...(footerCfgBase.about ?? {}),
+      title: globalFooterData?.aboutTitle ?? footerCfgBase.about?.title,
+      text: globalFooterData?.aboutText ?? footerCfgBase.about?.text,
+    },
+    newsletter: {
+      ...(footerCfgBase.newsletter ?? {}),
+      enabled: globalFooterData?.showNewsletter ?? footerCfgBase.newsletter?.enabled,
+      title: globalFooterData?.newsletterTitle ?? footerCfgBase.newsletter?.title,
+      placeholder: globalFooterData?.newsletterPlaceholder ?? footerCfgBase.newsletter?.placeholder,
+      buttonLabel: globalFooterData?.newsletterButtonLabel ?? footerCfgBase.newsletter?.buttonLabel,
+    },
+    bottom: {
+      ...(footerCfgBase.bottom ?? {}),
+      copyright: globalFooterData?.copyright ?? footerCfgBase.bottom?.copyright,
+    },
+  };
+
   const theme = (settings?.header as any)?.theme ?? null;
 
   const primaryMenu = useMemo(() => {
@@ -281,14 +372,23 @@ export default function PagePreviewPage() {
     );
   }
 
-  const announcement = headerCfg.announcement;
+  const announcement = globalAnnouncementData
+    ? {
+        enabled: globalAnnouncementData.enabled ?? true,
+        text: globalAnnouncementData.text ?? headerCfg.announcement?.text,
+        href: globalAnnouncementData.href ?? headerCfg.announcement?.href,
+        buttonText: globalAnnouncementData.buttonText ?? headerCfg.announcement?.buttonText,
+      }
+    : headerCfg.announcement;
   const showAnnouncement = Boolean(announcement?.enabled) && Boolean(String(announcement?.text ?? "").trim());
 
   const headerSticky = Boolean(headerCfg.sticky);
+  const showMenu = globalHeaderData?.showMenu !== false;
+  const siteTitle = String(globalHeaderData?.brandText ?? "").trim() || settings?.siteName || "Store";
   const cta = headerCfg.cta;
   const showCta = Boolean(cta?.enabled) && Boolean(String(cta?.label ?? "").trim());
 
-  const social = footerCfg.social ?? {};
+  const social = globalFooterData?.showSocial === false ? {} : (footerCfg.social ?? {});
 
   return (
     <div dir={previewDir} className="space-y-4">
@@ -343,7 +443,7 @@ export default function PagePreviewPage() {
         <header className={(headerSticky ? "sticky top-0 z-10 " : "") + "border-b border-white/10 bg-[color:var(--bg)]/95 backdrop-blur"}>
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
             <div className="flex items-center gap-3">
-              {(primaryMenu?.items ?? []).length ? (
+              {showMenu && (primaryMenu?.items ?? []).length ? (
                 <button
                   type="button"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08] md:hidden"
@@ -363,11 +463,11 @@ export default function PagePreviewPage() {
                 ) : (
                   <div className="h-8 w-8 rounded-xl bg-white/10" />
                 )}
-                <div className="text-sm md:text-base font-bold">{settings?.siteName || "Store"}</div>
+                <div className="text-sm md:text-base font-bold">{siteTitle}</div>
               </a>
             </div>
 
-            <div className="hidden md:block">
+            <div className={showMenu ? "hidden md:block" : "hidden"}>
               <MenuInline items={primaryMenu?.items ?? []} />
             </div>
 
@@ -387,7 +487,7 @@ export default function PagePreviewPage() {
               ) : null}
             </div>
           </div>
-          {(primaryMenu?.items ?? []).length ? (
+          {showMenu && (primaryMenu?.items ?? []).length ? (
             <div className={mobileMenuOpen ? "md:hidden border-t border-white/10 bg-[color:var(--bg)]/95" : "hidden"}>
               <div className="mx-auto max-w-6xl px-4 py-4">
                 <MenuMobile items={primaryMenu?.items ?? []} onNavigate={() => setMobileMenuOpen(false)} />
@@ -400,7 +500,7 @@ export default function PagePreviewPage() {
         <main className="px-3 py-6 sm:px-4 sm:py-8">
           <div id="cms-preview-root" className="mx-auto max-w-6xl storefront-preview">
             {scopedPreviewCss ? <style>{scopedPreviewCss}</style> : null}
-            <PageRenderer sections={previewSections} />
+            <PageRenderer sections={contentSections} />
           </div>
         </main>
 
@@ -446,7 +546,9 @@ export default function PagePreviewPage() {
                       placeholder={footerCfg.newsletter?.placeholder || "اكتب بريدك"}
                       className="h-10 flex-1 rounded-2xl border border-white/10 bg-white/[0.03] px-3 text-sm outline-none focus:ring-2 focus:ring-white/10"
                     />
-                    <button className="h-10 rounded-2xl bg-white px-4 text-sm font-semibold text-black hover:opacity-90">اشترك</button>
+                    <button className="h-10 rounded-2xl bg-white px-4 text-sm font-semibold text-black hover:opacity-90">
+                      {footerCfg.newsletter?.buttonLabel || "اشترك"}
+                    </button>
                   </div>
                 </div>
               ) : null}

@@ -8,6 +8,8 @@ import { MediaUrlInput } from "../../components/media/MediaUrlInput";
 import { Card, CardContent, CardHeader } from "../../components/ui/Card";
 import { useSettings, useSettingsActions } from "../../hooks/useSettings";
 import type { CmsSettingsCatalog } from "./cmsSettingsCatalog";
+import { DEFAULT_BUTTON_THEME_ID, getButtonTheme } from "../../cms/button-themes";
+import { buttonThemeToCssVars } from "../../theme/buttonTheme";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -146,14 +148,17 @@ const DEFAULT_CMS_SETTINGS_CATALOG: CmsSettingsCatalog = {
   searchInputStyleOptions: DEFAULT_OPTION,
   cursorThemeOptions: DEFAULT_OPTION,
   toastThemeOptions: DEFAULT_OPTION,
+  buttonThemeOptions: DEFAULT_OPTION,
   hasNavTemplate: () => true,
   hasWebsiteTheme: () => true,
   hasLoadingAnimation: () => true,
   hasSearchInputStyle: () => true,
   hasCursorTheme: () => true,
+  hasButtonTheme: () => true,
   getSearchInputStyleById: () => null,
   getLoadingAnimationById: () => null,
   getAlertThemeById: () => null,
+  getButtonThemeById: () => null,
 };
 let cmsSettingsCatalogRuntime: CmsSettingsCatalog = DEFAULT_CMS_SETTINGS_CATALOG;
 
@@ -399,6 +404,7 @@ type StorefrontConfig = {
   
   // Theme & Colors
   themeColorsEnabled: boolean;
+  buttonThemeId: string;
   accentColor: string;
   accentColor2: string;
   glassEffectsEnabled: boolean;
@@ -506,6 +512,11 @@ function normalizeStorefront(v: any): StorefrontConfig {
     
     // Theme
     themeColorsEnabled: o.themeColorsEnabled !== false,
+    buttonThemeId: (() => {
+      const raw = typeof o.buttonThemeId === "string" ? o.buttonThemeId : "default";
+      if (raw === "default") return raw;
+      return cmsSettingsCatalogRuntime.hasButtonTheme(raw) ? raw : "default";
+    })(),
     accentColor: o.accentColor || "#8b5cf6",
     accentColor2: o.accentColor2 || "#f59e0b",
     glassEffectsEnabled: o.glassEffectsEnabled !== false,
@@ -832,6 +843,22 @@ export default function SettingsPage() {
     if (id && id !== "default") return cmsCatalog.getSearchInputStyleById(id) ?? defaultSearchStyle;
     return defaultSearchStyle;
   }, [cmsCatalog, headerCfg.searchInputStyleId]);
+
+  const selectedButtonTheme = useMemo(() => {
+    const requestedId = storefrontCfg.buttonThemeId;
+    if (requestedId && requestedId !== "default") {
+      return cmsCatalog.getButtonThemeById(requestedId) ?? getButtonTheme(DEFAULT_BUTTON_THEME_ID);
+    }
+    return getButtonTheme(DEFAULT_BUTTON_THEME_ID);
+  }, [cmsCatalog, storefrontCfg.buttonThemeId]);
+
+  const buttonThemePreviewVars = useMemo(
+    () =>
+      selectedButtonTheme
+        ? ({ ...buttonThemeToCssVars(selectedButtonTheme.tokens) } as React.CSSProperties)
+        : undefined,
+    [selectedButtonTheme]
+  );
 
   useEffect(() => {
     if (!settings) return;
@@ -2875,6 +2902,32 @@ export default function SettingsPage() {
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, darkModeDefault: v }))}
                         disabled={!storefrontCfg.themeColorsEnabled || !storefrontCfg.darkModeEnabled}
                       />
+                      <Select
+                        label="ثيم الأزرار"
+                        value={storefrontCfg.buttonThemeId}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, buttonThemeId: v }))}
+                        options={cmsCatalog.buttonThemeOptions}
+                        disabled={!storefrontCfg.themeColorsEnabled}
+                      />
+                    </div>
+                    <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                      <div className="mb-2 text-xs text-white/70">
+                        معاينة الأزرار {selectedButtonTheme ? `(${selectedButtonTheme.nameAr})` : ""}
+                      </div>
+                      <div className="flex flex-wrap gap-2" style={buttonThemePreviewVars}>
+                        <Button size="sm" variant="primary">
+                          رئيسي
+                        </Button>
+                        <Button size="sm" variant="accent">
+                          Accent
+                        </Button>
+                        <Button size="sm" variant="secondary">
+                          ثانوي
+                        </Button>
+                        <Button size="sm" variant="ghost">
+                          Ghost
+                        </Button>
+                      </div>
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
                       <div className="space-y-2">

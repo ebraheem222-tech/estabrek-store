@@ -8,9 +8,10 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Modal } from "../../components/ui/Modal";
-import { Spinner } from "../../components/ui/Spinner";
+import { Skeleton, Spinner } from "../../components/ui/Spinner";
 import { Table, TBody, TH, THead, TR } from "../../components/ui/Table";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { AsyncImage } from "../../components/ui/AsyncImage";
 
 import ItemImagesManager, { type LocalImage } from "../../components/catalog/ItemImagesManager";
 import { normalizeHex } from "../../lib/colorDetect";
@@ -338,6 +339,93 @@ function makeUniqueSku(base: string, usedUpper: Set<string>) {
   }
   usedUpper.add(candidate.toUpperCase());
   return candidate;
+}
+
+type DiscountState = "active" | "scheduled";
+
+type DiscountInfo = {
+  state: DiscountState;
+  basePrice: number;
+  salePrice: number;
+  percent: number;
+};
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const num = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function parseMaybeDate(value: unknown): Date | undefined {
+  if (!value) return undefined;
+  const dt = new Date(String(value));
+  if (Number.isNaN(dt.getTime())) return undefined;
+  return dt;
+}
+
+function resolveVariantDiscountInfo(variant: {
+  price?: unknown;
+  salePrice?: unknown;
+  saleStartsAt?: unknown;
+  saleEndsAt?: unknown;
+}): DiscountInfo | null {
+  const basePrice = toFiniteNumber(variant.price);
+  const salePrice = toFiniteNumber(variant.salePrice);
+  if (!basePrice || !salePrice || basePrice <= 0 || salePrice <= 0 || salePrice >= basePrice) return null;
+
+  const now = new Date();
+  const startsAt = parseMaybeDate(variant.saleStartsAt);
+  const endsAt = parseMaybeDate(variant.saleEndsAt);
+  const isScheduled = !!(startsAt && startsAt.getTime() > now.getTime());
+  const isEnded = !!(endsAt && endsAt.getTime() < now.getTime());
+  if (isEnded) return null;
+
+  const percent = Math.max(1, Math.round(((basePrice - salePrice) / basePrice) * 100));
+  return {
+    state: isScheduled ? "scheduled" : "active",
+    basePrice,
+    salePrice,
+    percent,
+  };
+}
+
+function resolveItemDiscountInfo(item: { variants?: Array<{ price?: unknown; salePrice?: unknown; saleStartsAt?: unknown; saleEndsAt?: unknown }> }) {
+  const discounts = (item.variants ?? [])
+    .map((variant) => resolveVariantDiscountInfo(variant))
+    .filter(Boolean) as DiscountInfo[];
+  if (!discounts.length) return null;
+  const active = discounts
+    .filter((discount) => discount.state === "active")
+    .sort((a, b) => b.percent - a.percent);
+  if (active.length) return active[0];
+  return discounts
+    .filter((discount) => discount.state === "scheduled")
+    .sort((a, b) => b.percent - a.percent)[0] ?? null;
+}
+
+function formatNumericPrice(value: number) {
+  if (!Number.isFinite(value)) return "0";
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function DiscountShapeBadge({ discount, compact = false }: { discount: DiscountInfo; compact?: boolean }) {
+  const tone =
+    discount.state === "active"
+      ? "bg-rose-500/90 text-white border-rose-200/40"
+      : "bg-amber-500/90 text-black border-amber-100/70";
+  const label = discount.state === "active" ? `-${discount.percent}%` : "خصم قريب";
+  return (
+    <span
+      className={[
+        "discount-shape-badge inline-flex items-center border font-semibold shadow-lg backdrop-blur-sm",
+        compact ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs",
+        tone,
+      ].join(" ")}
+      title={discount.state === "active" ? `خصم ${discount.percent}%` : "يوجد خصم مجدول"}
+    >
+      {label}
+    </span>
+  );
 }
 
 export default function ProductEditorPage() {
@@ -1196,10 +1284,37 @@ export default function ProductEditorPage() {
 
   if (qProduct.isLoading) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div className="flex items-center gap-2">
-          <Spinner />
-          <div className="text-sm opacity-80">جاري تحميل المنتج…</div>
+      <div dir="rtl" className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Spinner />
+            <div className="text-sm opacity-80">جاري تحميل المنتج…</div>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Skeleton className="h-11" />
+            <Skeleton className="h-11" />
+            <Skeleton className="h-11" />
+            <Skeleton className="h-11" />
+            <Skeleton className="h-36 lg:col-span-2" />
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, idx) => (
+            <div key={idx} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-28" />
+                </div>
+                <Skeleton className="h-10 w-10 rounded-xl" />
+              </div>
+              <div className="mt-4 space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-4 w-3/5" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -1315,6 +1430,7 @@ export default function ProductEditorPage() {
       <div className="space-y-3">
         {items.map((it) => {
           const primary = (it.images ?? []).find((x) => x.isPrimary) ?? (it.images ?? [])[0];
+          const itemDiscount = resolveItemDiscountInfo(it);
           return (
             <div key={it.localId} className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1339,12 +1455,25 @@ export default function ProductEditorPage() {
                   <div className="mt-1 text-xs opacity-70">skuBase: {it.skuBase || "—"}</div>
 
                   <div className="mt-3 flex items-center gap-3">
-                    <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                      {primary?.url ? (
-                        <img src={primary.url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] opacity-60">No image</div>
-                      )}
+                    <div className="relative h-12 w-12 overflow-visible">
+                      <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                        {primary?.url ? (
+                          <AsyncImage
+                            src={primary.url}
+                            alt=""
+                            wrapperClassName="h-full w-full"
+                            className="h-full w-full object-cover"
+                            fallback={<span className="text-[9px] opacity-60">IMG</span>}
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[10px] opacity-60">No image</div>
+                        )}
+                      </div>
+                      {itemDiscount ? (
+                        <div className="pointer-events-none absolute -right-2 -top-2 z-10">
+                          <DiscountShapeBadge discount={itemDiscount} compact />
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="text-xs opacity-80">
@@ -1565,6 +1694,9 @@ export default function ProductEditorPage() {
                             sizes.find((s) => s.id === v.sizeId)?.name ??
                             qProduct.data?.items?.find((x) => x.id === it.id)?.variants?.find((vv) => vv.id === v.id)?.size?.name ??
                             v.sizeId;
+                          const discount = resolveVariantDiscountInfo(v);
+                          const activeDiscount = discount?.state === "active" ? discount : null;
+                          const displayPrice = activeDiscount ? activeDiscount.salePrice : toFiniteNumber(v.price) ?? 0;
 
                           return (
                             <TR key={v.id ?? `${it.localId}_v_${idx}`}>
@@ -1572,7 +1704,15 @@ export default function ProductEditorPage() {
                               <td className="px-3 py-2 text-sm break-all" dir="ltr">
                                 {v.sku}
                               </td>
-                              <td className="px-3 py-2 text-sm">{v.price}</td>
+                              <td className="px-3 py-2 text-sm">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={activeDiscount ? "font-semibold text-rose-200" : undefined}>{formatNumericPrice(displayPrice)}</span>
+                                  {activeDiscount ? (
+                                    <span className="text-xs opacity-60 line-through">{formatNumericPrice(activeDiscount.basePrice)}</span>
+                                  ) : null}
+                                  {discount ? <DiscountShapeBadge discount={discount} compact /> : null}
+                                </div>
+                              </td>
                               <td className="px-3 py-2 text-sm">{v.stock}</td>
                               <td className="px-3 py-2">
                                 <div className="flex flex-wrap gap-2">

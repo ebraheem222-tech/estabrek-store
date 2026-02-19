@@ -1,6 +1,8 @@
 // src/components/ui/Button.tsx
 import React from "react";
 import { cn } from "./cn";
+import { resolveButtonTheme } from "../../cms/button-themes";
+import { buttonThemeToCssVars } from "../../theme/buttonTheme";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "success" | "accent";
 type Size = "xs" | "sm" | "md" | "lg" | "icon" | "icon-sm";
@@ -11,6 +13,7 @@ type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  themeId?: string;
 };
 
 const base = [
@@ -22,22 +25,24 @@ const base = [
 
 const variants: Record<Variant, string> = {
   primary: [
-    "bg-white text-surface-950 hover:bg-white/90",
+    "bg-[var(--btn-solid-bg)] text-[var(--btn-solid-text)] hover:bg-[var(--btn-solid-hover)]",
+    "border border-[var(--btn-solid-border)]",
     "shadow-[0_1px_2px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)]",
     "hover:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_8px_20px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)]",
   ].join(" "),
   accent: [
-    "bg-gradient-to-b from-accent-500 to-accent-600 text-white",
+    "bg-gradient-to-b from-[var(--btn-accent-from)] to-[var(--btn-accent-to)] text-[var(--btn-accent-text)]",
     "shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(139,92,246,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]",
     "hover:shadow-[0_1px_2px_rgba(0,0,0,0.25),0_8px_20px_rgba(139,92,246,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]",
-    "hover:from-accent-400 hover:to-accent-500",
+    "hover:from-[var(--btn-accent-from-hover)] hover:to-[var(--btn-accent-to-hover)]",
   ].join(" "),
   secondary: [
-    "bg-white/[0.04] text-white border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.12]",
+    "bg-[var(--btn-secondary-bg)] text-[var(--btn-secondary-text)] border border-[var(--btn-secondary-border)]",
+    "hover:bg-[var(--btn-secondary-bg-hover)]",
     "shadow-inner-light",
   ].join(" "),
   ghost: [
-    "bg-transparent text-white/70 hover:bg-white/[0.06] hover:text-white",
+    "bg-transparent text-[var(--btn-ghost-text)] hover:bg-[var(--btn-ghost-bg-hover)] hover:text-[var(--btn-ghost-text-hover)]",
   ].join(" "),
   danger: [
     "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/30",
@@ -65,12 +70,16 @@ export function Button({
   children,
   leftIcon,
   rightIcon,
+  themeId,
+  style,
   ...rest
 }: Props) {
+  const themedVars = themeId ? buttonThemeToCssVars(resolveButtonTheme(themeId).tokens) : null;
   return (
     <button
       className={cn(base, variants[variant], sizes[size], className)}
       disabled={disabled || isLoading}
+      style={themedVars ? ({ ...(themedVars as React.CSSProperties), ...style } as React.CSSProperties) : style}
       {...rest}
     >
       {isLoading ? (
