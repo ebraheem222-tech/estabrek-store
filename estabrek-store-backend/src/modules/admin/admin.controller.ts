@@ -9,6 +9,8 @@ import {
   RevokeSessionParams,
   RevokeOthersBody,
   SecurityEventsQuery,
+  AuditEventsQuery,
+  CreateAuditEventBody,
 } from "./admin.schemas.js";
 import {
   getDashboard,
@@ -20,6 +22,8 @@ import {
   revokeMySession,
   revokeOtherSessions,
   listMySecurityEvents,
+  listMyAuditEvents,
+  createMyAuditEvent,
 } from "./admin.service.js";
 
 const r = Router();
@@ -101,6 +105,30 @@ r.get(
   validate({ query: SecurityEventsQuery }),
   asyncHandler(async (req, res) => {
     res.json(await listMySecurityEvents(req.user!.sub, req.query as any));
+  })
+);
+
+r.post(
+  "/account/security-events",
+  validate({ body: CreateAuditEventBody }),
+  asyncHandler(async (req, res) => {
+    res.json(await createMyAuditEvent(req.user!.sub, req.body, { ip: req.ip, ua: req.get("user-agent") ?? undefined }));
+  })
+);
+
+r.get(
+  "/audit/events",
+  validate({ query: AuditEventsQuery }),
+  asyncHandler(async (req, res) => {
+    res.json(await listMyAuditEvents(req.user!.sub, req.query as any));
+  })
+);
+
+r.post(
+  "/audit/events",
+  validate({ body: CreateAuditEventBody }),
+  asyncHandler(async (req, res) => {
+    res.json(await createMyAuditEvent(req.user!.sub, req.body, { ip: req.ip, ua: req.get("user-agent") ?? undefined }));
   })
 );
 

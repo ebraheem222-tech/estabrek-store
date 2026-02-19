@@ -24,6 +24,20 @@ const r = Router();
 const PUBLISHED_PAGES_TTL_MS = 60_000;
 const PAGE_BY_SLUG_TTL_MS = 30_000;
 
+function buildPublishedWindowWhere(now = new Date()) {
+  return {
+    status: "PUBLISHED" as const,
+    AND: [
+      {
+        OR: [{ publishAt: null }, { publishAt: { lte: now } }],
+      },
+      {
+        OR: [{ unpublishAt: null }, { unpublishAt: { gt: now } }],
+      },
+    ],
+  };
+}
+
 function resolveStorefrontBaseUrl(req: any) {
   const envUrl =
     process.env.STOREFRONT_PUBLIC_URL ||
@@ -62,8 +76,9 @@ function mergeTranslatedData(base: any, override: any): any {
 async function getPublishedPagesCached() {
   const cached = await cacheGet<any[]>("storefront:pages:published");
   if (cached) return cached;
+  const now = new Date();
   const pages = await prisma.page.findMany({
-    where: { status: "PUBLISHED" },
+    where: buildPublishedWindowWhere(now),
     select: {
       id: true,
       name: true,
@@ -85,9 +100,13 @@ async function getPageBySlugCached(slug: string, locale: "ar" | "he" | "en") {
   const key = `storefront:page:${locale}:${slug}`;
   const cached = await cacheGet<any>(key);
   if (cached) return cached;
+  const now = new Date();
 
-  const page = await prisma.page.findUnique({
-    where: { slug },
+  const page = await prisma.page.findFirst({
+    where: {
+      slug,
+      ...buildPublishedWindowWhere(now),
+    },
     include: {
       translations: { where: { locale } },
       sections: {
@@ -97,7 +116,7 @@ async function getPageBySlugCached(slug: string, locale: "ar" | "he" | "en") {
       },
     },
   });
-  if (page && page.status === "PUBLISHED") {
+  if (page) {
     await cacheSet(key, page, PAGE_BY_SLUG_TTL_MS);
   }
   return page;
@@ -152,7 +171,7 @@ r.get("/page", validate({ query: PageBySlugQuery }), asyncHandler(async (req, re
 
   const page = await getPageBySlugCached(slug, locale);
 
-  if (!page || page.status !== "PUBLISHED") return res.status(404).json({ error: "NOT_FOUND" });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
 
   // i18n (DB): apply per-locale overrides from PageTranslation / PageSectionTranslation
   const pt = (page as any).translations?.[0];
@@ -181,6 +200,8 @@ res.json({
     name: outPage.name,
     slug: outPage.slug,
     status: outPage.status,
+    publishAt: outPage.publishAt,
+    unpublishAt: outPage.unpublishAt,
     sections: outSections,
     headScripts: outPage.headScripts,
     bodyScripts: outPage.bodyScripts,

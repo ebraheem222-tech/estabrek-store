@@ -1,16 +1,55 @@
 import { Router } from "express";
+import { ZodError } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { validate } from "../../utils/validate.js";
 import { asyncHandler } from "../../utils/async.js";
-import { CreatePageBody, UpdatePageBody, CreateSectionBody, UpdateSectionBody, MoveSectionBody, AiSuggestSectionsBody, AiImproveSeoBody, AiTranslatePageBody, SavePageTranslationBody } from "./pages.schemas.js";
+import {
+  CreatePageBody,
+  UpdatePageBody,
+  CreateSectionBody,
+  UpdateSectionBody,
+  MoveSectionBody,
+  PageRevisionsQuery,
+  RestorePageRevisionBody,
+  AiSuggestSectionsBody,
+  AiImproveSeoBody,
+  AiTranslatePageBody,
+  SavePageTranslationBody,
+  ValidateSectionBody,
+} from "./pages.schemas.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
-import { validateSectionData } from "./pageSectionData.schemas.js";
+import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
 import { cacheDel, cacheDelPrefix } from "../../lib/cache.js";
+import { BadRequest } from "../../utils/httpError.js";
 
 const r = Router();
+const PAGE_SECTION_TYPES = new Set<string>(PageSectionTypeZ.options as unknown as string[]);
 
 type SuggestedSection = { type: string; data: any; isVisible?: boolean };
+type SectionValidationIssue = { path?: string; code?: string; message: string };
+
+function formatValidationPath(path: Array<PropertyKey>): string | undefined {
+  if (!Array.isArray(path) || !path.length) return "data";
+  return `data.${path
+    .map((part) => (typeof part === "symbol" ? (part.description ?? "symbol") : String(part)))
+    .join(".")}`;
+}
+
+function mapZodIssues(error: ZodError): SectionValidationIssue[] {
+  return error.issues.map((issue) => ({
+    path: formatValidationPath(issue.path),
+    code: issue.code,
+    message: issue.message,
+  }));
+}
+
+function toNullableJsonInput(value: unknown): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return Prisma.JsonNull;
+  return value as Prisma.InputJsonValue;
+}
 
 function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []) {
   const paths = Array.from(new Set(slugs.filter(Boolean))) as string[];
@@ -30,6 +69,19 @@ function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []) {
       paths,
     });
   })();
+}
+
+function normalizeDateInput(value: unknown): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const dt = new Date(String(value));
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function validateScheduleWindow(publishAt?: Date | null, unpublishAt?: Date | null) {
+  if (publishAt && unpublishAt && unpublishAt <= publishAt) {
+    throw BadRequest("unpublishAt must be later than publishAt");
+  }
 }
 
 function fallbackLanding(locale: "ar"|"he"|"en", brandName?: string, storeCategory?: string): { sections: SuggestedSection[]; seo: { seoTitle: string; seoDescription: string } } {
@@ -96,6 +148,142 @@ function validateSuggestedSections(sections: SuggestedSection[]) {
     .filter(Boolean);
 }
 
+type RevisionActor = { email?: string | null; sub?: string | null } | null | undefined;
+
+async function capturePageRevision(pageId: string, reason: string, actor?: RevisionActor) {
+  const normalizedReason = String(reason || "Update page").trim();
+  const recentCutoff = new Date(Date.now() - 45_000);
+  const recent = await prisma.pageRevision.findFirst({
+    where: {
+      pageId,
+      reason: normalizedReason,
+      createdAt: { gte: recentCutoff },
+    },
+    select: { id: true },
+  });
+  if (recent) return;
+
+  const page = await prisma.page.findUnique({
+    where: { id: pageId },
+    include: {
+      sections: {
+        orderBy: { order: "asc" },
+        select: {
+          type: true,
+          data: true,
+          order: true,
+          isVisible: true,
+        },
+      },
+    },
+  });
+  if (!page) return;
+
+  await prisma.pageRevision.create({
+    data: {
+      pageId: page.id,
+      name: page.name,
+      slug: page.slug,
+      status: page.status,
+      publishAt: page.publishAt,
+      unpublishAt: page.unpublishAt,
+      canonicalUrl: page.canonicalUrl,
+      seoTitle: page.seoTitle,
+      seoDescription: page.seoDescription,
+      ogImageUrl: page.ogImageUrl,
+      noIndex: page.noIndex,
+      customCss: page.customCss,
+      headScripts: toNullableJsonInput(page.headScripts),
+      bodyScripts: toNullableJsonInput(page.bodyScripts),
+      sections: page.sections as any,
+      reason: normalizedReason,
+      createdBy: actor?.email || actor?.sub || null,
+    },
+  });
+}
+
+async function restorePageRevision(pageId: string, revisionId: string, reason: string, actor?: RevisionActor) {
+  const revision = await prisma.pageRevision.findFirst({
+    where: { id: revisionId, pageId },
+  });
+  if (!revision) {
+    throw BadRequest("Revision not found");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const current = await tx.page.findUnique({
+      where: { id: pageId },
+      include: {
+        sections: {
+          orderBy: { order: "asc" },
+          select: {
+            type: true,
+            data: true,
+            order: true,
+            isVisible: true,
+          },
+        },
+      },
+    });
+    if (!current) throw BadRequest("Page not found");
+
+    await tx.pageRevision.create({
+      data: {
+        pageId: current.id,
+        name: current.name,
+        slug: current.slug,
+        status: current.status,
+        publishAt: current.publishAt,
+        unpublishAt: current.unpublishAt,
+        canonicalUrl: current.canonicalUrl,
+        seoTitle: current.seoTitle,
+        seoDescription: current.seoDescription,
+        ogImageUrl: current.ogImageUrl,
+        noIndex: current.noIndex,
+        customCss: current.customCss,
+        headScripts: toNullableJsonInput(current.headScripts),
+        bodyScripts: toNullableJsonInput(current.bodyScripts),
+        sections: current.sections as any,
+        reason: reason || `Pre-restore snapshot (${revision.id})`,
+        createdBy: actor?.email || actor?.sub || null,
+      },
+    });
+
+    await tx.page.update({
+      where: { id: pageId },
+      data: {
+        name: revision.name,
+        slug: revision.slug,
+        status: revision.status,
+        publishAt: revision.publishAt,
+        unpublishAt: revision.unpublishAt,
+        canonicalUrl: revision.canonicalUrl,
+        seoTitle: revision.seoTitle,
+        seoDescription: revision.seoDescription,
+        ogImageUrl: revision.ogImageUrl,
+        noIndex: revision.noIndex,
+        customCss: revision.customCss,
+        headScripts: toNullableJsonInput(revision.headScripts),
+        bodyScripts: toNullableJsonInput(revision.bodyScripts),
+      },
+    });
+
+    await tx.pageSection.deleteMany({ where: { pageId } });
+    const sections = Array.isArray(revision.sections) ? (revision.sections as any[]) : [];
+    if (sections.length) {
+      await tx.pageSection.createMany({
+        data: sections.map((section, index) => ({
+          pageId,
+          type: section.type,
+          data: section.data ?? {},
+          order: Number.isFinite(Number(section.order)) ? Number(section.order) : index,
+          isVisible: section.isVisible !== false,
+        })),
+      });
+    }
+  });
+}
+
 // pages
 r.get("/", asyncHandler(async (_req, res) => {
   const pages = await prisma.page.findMany({ orderBy: { createdAt: "desc" } });
@@ -103,7 +291,18 @@ r.get("/", asyncHandler(async (_req, res) => {
 }));
 
 r.post("/", validate({ body: CreatePageBody }), asyncHandler(async (req, res) => {
-  const page = await prisma.page.create({ data: req.body });
+  const body = req.body as any;
+  const publishAt = normalizeDateInput(body.publishAt);
+  const unpublishAt = normalizeDateInput(body.unpublishAt);
+  validateScheduleWindow(publishAt, unpublishAt);
+
+  const page = await prisma.page.create({
+    data: {
+      ...body,
+      publishAt: publishAt ?? null,
+      unpublishAt: unpublishAt ?? null,
+    },
+  });
   triggerCmsRevalidate([page.slug]);
   res.status(201).json(page);
 }));
@@ -125,9 +324,67 @@ r.get("/:id", asyncHandler(async (req, res) => {
     res.json({ ...page, i18n });
 }));
 
+r.get("/:id/revisions", validate({ query: PageRevisionsQuery }), asyncHandler(async (req, res) => {
+  const pageId = String(req.params.id);
+  const limit = Number((req.query as any).limit ?? 20);
+
+  const revisions = await prisma.pageRevision.findMany({
+    where: { pageId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      pageId: true,
+      name: true,
+      slug: true,
+      status: true,
+      publishAt: true,
+      unpublishAt: true,
+      reason: true,
+      createdBy: true,
+      createdAt: true,
+    },
+  });
+
+  res.json({ revisions });
+}));
+
+r.post(
+  "/:id/revisions/:revisionId/restore",
+  validate({ body: RestorePageRevisionBody }),
+  asyncHandler(async (req, res) => {
+    const pageId = String(req.params.id);
+    const revisionId = String(req.params.revisionId);
+    const reason = String((req.body as any)?.reason ?? "Restore revision");
+    await restorePageRevision(pageId, revisionId, reason, req.user as any);
+
+    const page = await prisma.page.findUnique({ where: { id: pageId }, select: { slug: true } });
+    triggerCmsRevalidate([page?.slug]);
+    res.json({ ok: true });
+  })
+);
+
 r.patch("/:id", validate({ body: UpdatePageBody }), asyncHandler(async (req, res) => {
-  const prev = await prisma.page.findUnique({ where: { id: req.params.id }, select: { slug: true } });
-  const page = await prisma.page.update({ where: { id: req.params.id }, data: req.body });
+  const prev = await prisma.page.findUnique({
+    where: { id: req.params.id },
+    select: { slug: true, publishAt: true, unpublishAt: true },
+  });
+  const body = req.body as any;
+  const parsedPublishAt = normalizeDateInput(body.publishAt);
+  const parsedUnpublishAt = normalizeDateInput(body.unpublishAt);
+  const nextPublishAt = parsedPublishAt === undefined ? prev?.publishAt ?? undefined : parsedPublishAt;
+  const nextUnpublishAt = parsedUnpublishAt === undefined ? prev?.unpublishAt ?? undefined : parsedUnpublishAt;
+  validateScheduleWindow(nextPublishAt, nextUnpublishAt);
+  await capturePageRevision(req.params.id, "Update page", req.user as any);
+
+  const page = await prisma.page.update({
+    where: { id: req.params.id },
+    data: {
+      ...body,
+      ...(parsedPublishAt !== undefined ? { publishAt: parsedPublishAt } : {}),
+      ...(parsedUnpublishAt !== undefined ? { unpublishAt: parsedUnpublishAt } : {}),
+    },
+  });
   // shape translations for editor
     const i18n: any = {};
     for (const loc of ["he","en"] as const) {
@@ -145,13 +402,58 @@ r.patch("/:id", validate({ body: UpdatePageBody }), asyncHandler(async (req, res
 }));
 
 r.delete("/:id", asyncHandler(async (req, res) => {
+  await capturePageRevision(req.params.id, "Delete page", req.user as any);
   const page = await prisma.page.delete({ where: { id: req.params.id }, select: { slug: true } });
   triggerCmsRevalidate([page.slug]);
   res.json({ ok: true });
 }));
 
 // sections
+r.post("/sections/validate", validate({ body: ValidateSectionBody }), asyncHandler(async (req, res) => {
+  const rawType = String((req.body as any)?.type ?? "").trim().toUpperCase();
+  if (!PAGE_SECTION_TYPES.has(rawType)) {
+    res.json({
+      ok: false,
+      source: "server",
+      issues: [
+        {
+          path: "type",
+          code: "UNSUPPORTED_TYPE",
+          message: `Unsupported section type: ${rawType || "UNKNOWN"}`,
+        },
+      ],
+    });
+    return;
+  }
+
+  try {
+    const normalized = validateSectionData(rawType as any, (req.body as any)?.data ?? {});
+    const strictIssues = getPublishIssuesForSection(rawType as any, normalized).map((issue) => ({
+      path: "data",
+      code: "PUBLISH_VALIDATION",
+      message: issue.message,
+    }));
+
+    res.json({
+      ok: strictIssues.length === 0,
+      source: "server",
+      issues: strictIssues,
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.json({
+        ok: false,
+        source: "server",
+        issues: mapZodIssues(error),
+      });
+      return;
+    }
+    throw error;
+  }
+}));
+
 r.post("/:id/sections", validate({ body: CreateSectionBody }), asyncHandler(async (req, res) => {
+  await capturePageRevision(req.params.id, `Add section ${(req.body as any)?.type ?? ""}`.trim(), req.user as any);
   const section = await prisma.pageSection.create({
     data: { pageId: req.params.id, ...req.body },
     include: { page: { select: { slug: true } } },
@@ -161,6 +463,13 @@ r.post("/:id/sections", validate({ body: CreateSectionBody }), asyncHandler(asyn
 }));
 
 r.patch("/sections/:sectionId", validate({ body: UpdateSectionBody }), asyncHandler(async (req, res) => {
+  const existing = await prisma.pageSection.findUnique({
+    where: { id: req.params.sectionId },
+    select: { pageId: true, type: true },
+  });
+  if (existing?.pageId) {
+    await capturePageRevision(existing.pageId, `Update section ${existing.type}`, req.user as any);
+  }
   const sec = await prisma.pageSection.update({
     where: { id: req.params.sectionId },
     data: req.body,
@@ -171,6 +480,13 @@ r.patch("/sections/:sectionId", validate({ body: UpdateSectionBody }), asyncHand
 }));
 
 r.post("/sections/:sectionId/move", validate({ body: MoveSectionBody }), asyncHandler(async (req, res) => {
+  const existing = await prisma.pageSection.findUnique({
+    where: { id: req.params.sectionId },
+    select: { pageId: true, type: true },
+  });
+  if (existing?.pageId) {
+    await capturePageRevision(existing.pageId, `Move section ${existing.type}`, req.user as any);
+  }
   const sec = await prisma.pageSection.update({
     where: { id: req.params.sectionId },
     data: { order: req.body.order },
@@ -181,6 +497,13 @@ r.post("/sections/:sectionId/move", validate({ body: MoveSectionBody }), asyncHa
 }));
 
 r.delete("/sections/:sectionId", asyncHandler(async (req, res) => {
+  const existing = await prisma.pageSection.findUnique({
+    where: { id: req.params.sectionId },
+    select: { pageId: true, type: true },
+  });
+  if (existing?.pageId) {
+    await capturePageRevision(existing.pageId, `Delete section ${existing.type}`, req.user as any);
+  }
   const sec = await prisma.pageSection.delete({
     where: { id: req.params.sectionId },
     include: { page: { select: { slug: true } } },

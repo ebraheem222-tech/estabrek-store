@@ -37,3 +37,14 @@ export const SecurityEventsQuery = z.object({
   skip: z.coerce.number().min(0).max(10_000).optional(),
   type: z.string().min(1).optional(),
 });
+
+export const AuditEventsQuery = z.object({
+  take: z.coerce.number().min(1).max(200).optional(),
+  skip: z.coerce.number().min(0).max(10_000).optional(),
+  type: z.string().min(1).optional(),
+});
+
+export const CreateAuditEventBody = z.object({
+  type: z.string().trim().min(1).max(120),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});

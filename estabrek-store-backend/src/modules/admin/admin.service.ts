@@ -5,6 +5,53 @@ import { randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import type { SecurityEventType, SessionStatus } from "@prisma/client";
 
+const SECURITY_EVENT_TYPES: readonly SecurityEventType[] = [
+  "LOGIN_SUCCESS",
+  "LOGIN_FAILURE",
+  "MFA_CHALLENGE_SUCCESS",
+  "MFA_CHALLENGE_FAILURE",
+  "PASSWORD_RESET_REQUESTED",
+  "PASSWORD_RESET_COMPLETED",
+  "PASSWORD_CHANGED",
+  "EMAIL_CHANGE_REQUESTED",
+  "EMAIL_CHANGED",
+  "PHONE_CHANGED",
+  "SESSION_CREATED",
+  "SESSION_REVOKED",
+  "ACCOUNT_LOCKED",
+  "ACCOUNT_UNLOCKED",
+];
+
+const SECURITY_EVENT_TYPE_SET = new Set<string>(SECURITY_EVENT_TYPES as readonly string[]);
+
+type AuditEventRecord = {
+  id: string;
+  type: SecurityEventType;
+  ip: string | null;
+  userAgent: string | null;
+  metadata: unknown;
+  at: Date;
+};
+
+function readAuditTypeFromMetadata(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const value = (metadata as Record<string, unknown>).auditType;
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return normalized || null;
+}
+
+function toAuditEventOutput(event: AuditEventRecord) {
+  return {
+    id: event.id,
+    type: readAuditTypeFromMetadata(event.metadata) ?? event.type,
+    ip: event.ip,
+    userAgent: event.userAgent,
+    metadata: event.metadata ?? null,
+    createdAt: event.at,
+  };
+}
+
 /** url-safe base64 */
 function b64url(buf: Buffer) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -320,4 +367,100 @@ export async function listMySecurityEvents(adminId: string, query: { take?: any;
   ]);
 
   return { items, total, take, skip };
+}
+
+export async function listMyAuditEvents(adminId: string, query: { take?: any; skip?: any; type?: any }) {
+  const take = Math.min(Number(query.take ?? 50), 200);
+  const skip = Math.max(Number(query.skip ?? 0), 0);
+  const typeFilter = typeof query.type === "string" ? query.type.trim().toUpperCase() : "";
+
+  if (!typeFilter) {
+    const [items, total] = await Promise.all([
+      prisma.adminSecurityEvent.findMany({
+        where: { adminUserId: adminId },
+        orderBy: { at: "desc" },
+        take,
+        skip,
+        select: {
+          id: true,
+          type: true,
+          ip: true,
+          userAgent: true,
+          metadata: true,
+          at: true,
+        },
+      }),
+      prisma.adminSecurityEvent.count({ where: { adminUserId: adminId } }),
+    ]);
+
+    return { items: items.map(toAuditEventOutput), total, take, skip };
+  }
+
+  const scanTake = Math.min(skip + take + 500, 5000);
+  const scanned = await prisma.adminSecurityEvent.findMany({
+    where: { adminUserId: adminId },
+    orderBy: { at: "desc" },
+    take: scanTake,
+    select: {
+      id: true,
+      type: true,
+      ip: true,
+      userAgent: true,
+      metadata: true,
+      at: true,
+    },
+  });
+
+  const filtered = scanned
+    .map(toAuditEventOutput)
+    .filter((item) => item.type === typeFilter);
+
+  return {
+    items: filtered.slice(skip, skip + take),
+    total: filtered.length,
+    take,
+    skip,
+  };
+}
+
+export async function createMyAuditEvent(
+  adminId: string,
+  input: { type: string; metadata?: Record<string, unknown> },
+  ctx?: { ip?: string; ua?: string }
+) {
+  const requestedType = String(input.type ?? "").trim().toUpperCase();
+  const isKnownType = SECURITY_EVENT_TYPE_SET.has(requestedType);
+  const persistedType = (isKnownType ? requestedType : "SESSION_CREATED") as SecurityEventType;
+
+  const metadata: Record<string, unknown> = {
+    ...(input.metadata ?? {}),
+  };
+  if (isKnownType) {
+    delete metadata.auditType;
+  } else {
+    metadata.auditType = requestedType;
+  }
+
+  const event = await prisma.adminSecurityEvent.create({
+    data: {
+      adminUserId: adminId,
+      type: persistedType,
+      ip: ctx?.ip,
+      userAgent: ctx?.ua,
+      metadata: metadata as any,
+    },
+    select: {
+      id: true,
+      type: true,
+      ip: true,
+      userAgent: true,
+      metadata: true,
+      at: true,
+    },
+  });
+
+  return {
+    ok: true as const,
+    event: toAuditEventOutput(event),
+  };
 }
