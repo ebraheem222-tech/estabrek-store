@@ -14,7 +14,12 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useTheme } from "@/components/ThemeToggle";
 
 const EXTERNAL_PROTOCOL_RE = /^[a-z][a-z0-9+.-]*:/i;
-const NAV_ICON_IMAGE_RE = /^(https?:\/\/|\/|data:image\/)/i;
+const NAV_ICON_IMAGE_RE = /^(https?:\/\/|data:image\/)/i;
+const NAV_ICON_IMAGE_RELATIVE_RE = /^\/.+\.(?:avif|webp|png|jpe?g|gif|svg)(?:\?.*)?$/i;
+
+function safeTrim(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
 
 function isExternalHref(href: string) {
   return EXTERNAL_PROTOCOL_RE.test(href) || href.startsWith("//");
@@ -33,7 +38,74 @@ function normalizeNavHref(value?: string) {
 
 function isNavImageIcon(value?: string) {
   const raw = String(value ?? "").trim();
-  return raw.length > 0 && NAV_ICON_IMAGE_RE.test(raw);
+  return raw.length > 0 && (NAV_ICON_IMAGE_RE.test(raw) || NAV_ICON_IMAGE_RELATIVE_RE.test(raw));
+}
+
+function readNavArray(value: any): any[] {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  const candidates = [
+    value.items,
+    value.children,
+    value.nodes,
+    value.links,
+    value.menuItems,
+    value.menu,
+    value.tree,
+    value.subItems,
+    value.subMenu,
+    value.submenu,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+  return [];
+}
+
+function readNavString(value: any, keys: string[]) {
+  for (const key of keys) {
+    const raw = safeTrim(value?.[key]);
+    if (raw) return raw;
+  }
+  return "";
+}
+
+function normalizeNavNode(raw: any, depth = 0, index = 0): any | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const label = readNavString(raw, ["label", "title", "name", "text", "displayName", "menuLabel"]);
+  const hrefRaw = readNavString(raw, ["href", "url", "link", "path", "to", "slug"]);
+  const href = normalizeNavHref(hrefRaw || (label ? "#" : ""));
+  const icon = readNavString(raw, ["icon", "iconUrl", "iconSrc", "image", "imageUrl", "thumbnailUrl"]);
+  const targetRaw = readNavString(raw, ["target"]);
+  const forceBlank = raw?.openInNewTab === true || raw?.newTab === true;
+
+  const nested = readNavArray(raw.children ?? raw.items ?? raw.nodes ?? raw.links ?? raw.subItems ?? raw.submenu ?? raw.subMenu);
+  const children = nested
+    .map((child, childIndex) => normalizeNavNode(child, depth + 1, childIndex))
+    .filter(Boolean) as any[];
+
+  const idRaw = readNavString(raw, ["id", "_id", "key", "value"]);
+  const id = idRaw || `nav-${depth}-${index}-${label || href || "item"}`;
+  const isExternal = raw?.isExternal === true || raw?.external === true || forceBlank || isExternalHref(href);
+
+  if (!label && href === "#" && children.length === 0) return null;
+
+  return {
+    id,
+    label: label || (href !== "#" ? href.replace(/^\/+/, "") : "Item"),
+    href,
+    icon: icon || undefined,
+    target: targetRaw || (forceBlank ? "_blank" : undefined),
+    isExternal,
+    children,
+  };
+}
+
+function normalizeNavItems(items: any[]): any[] {
+  return (Array.isArray(items) ? items : [])
+    .map((item, index) => normalizeNavNode(item, 0, index))
+    .filter(Boolean) as any[];
 }
 
 
@@ -378,19 +450,37 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     (typeof cmsNavCfg?.props?.templateId === "string" && cmsNavCfg.props.templateId) ||
     "default";
   const navTemplate = templateIdRaw !== "default" ? getNavTemplateById(templateIdRaw) : undefined;
-  const primaryMenuItems = Array.isArray(primaryMenu?.tree) ? primaryMenu.tree : [];
-  const cmsMenuItems = Array.isArray(cmsNavCfg?.items)
-    ? cmsNavCfg.items
-    : Array.isArray(cmsNavCfg?.props?.items)
-      ? cmsNavCfg.props.items
-      : [];
+  const primaryMenuItemsRaw = Array.isArray(primaryMenu?.tree) ? primaryMenu.tree : [];
+  const cmsMenuItemsRaw = useMemo(() => {
+    if (!cmsNavCfg) return [];
+    const candidates = [
+      cmsNavCfg?.items,
+      cmsNavCfg?.props?.items,
+      cmsNavCfg?.menuItems,
+      cmsNavCfg?.props?.menuItems,
+      cmsNavCfg?.menu,
+      cmsNavCfg?.props?.menu,
+      cmsNavCfg?.tree,
+      cmsNavCfg?.props?.tree,
+      cmsNavCfg?.links,
+      cmsNavCfg?.props?.links,
+      cmsNavCfg?.children,
+      cmsNavCfg?.props?.children,
+    ];
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) return candidate;
+    }
+    return [];
+  }, [cmsNavCfg]);
+  const primaryMenuItems = useMemo(() => normalizeNavItems(primaryMenuItemsRaw), [primaryMenuItemsRaw]);
+  const cmsMenuItems = useMemo(() => normalizeNavItems(cmsMenuItemsRaw), [cmsMenuItemsRaw]);
   const fallbackMenuItems = useMemo(
-    () => [
+    () => normalizeNavItems([
       { id: "nav-home-fallback", label: "الرئيسية", href: "/" },
       { id: "nav-shop-fallback", label: "المتجر", href: "/shop" },
       { id: "nav-about-fallback", label: "من نحن", href: "/about" },
       { id: "nav-contact-fallback", label: "اتصل بنا", href: "/contact" },
-    ],
+    ]),
     [],
   );
   const navItems: any[] = useMemo(() => {
@@ -596,7 +686,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
   const cta = header?.cta && header.cta.enabled ? header.cta : null;
   const mobileMenuLevel = mobileTrail.length ? mobileTrail[mobileTrail.length - 1] : null;
-  const mobileMenuItems = mobileMenuLevel?.items ?? navItems;
+  const mobileMenuItems = (mobileMenuLevel?.items ?? navItems)?.length ? (mobileMenuLevel?.items ?? navItems) : fallbackMenuItems;
   const mobileHasParentLink = !!mobileMenuLevel?.href && mobileMenuLevel.href !== "#";
   const mobileToggleActive = mobileOpen && mobileDrawerStage !== "closing";
   const mobileDrawerTranslateClass =
@@ -966,4 +1056,3 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     </header>
   );
 }
-
