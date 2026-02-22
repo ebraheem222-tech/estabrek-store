@@ -13,6 +13,7 @@ export type UiTailwind = {
 export type HeroSlide = {
   title: string;
   subtitle?: string;
+  badge?: string;
   backgroundImageUrl?: string;
   overlay?: number; // 0..1
   align?: "left" | "center" | "right";
@@ -20,6 +21,11 @@ export type HeroSlide = {
   secondaryButton?: { label: string; href: string };
   /** Optional per-pane/per-slide theme id (used by split hero mode). */
   themeId?: string;
+  slideTokens?: TwTokens;
+  titleTokens?: TwTokens;
+  subtitleTokens?: TwTokens;
+  primaryButtonTokens?: TwTokens;
+  secondaryButtonTokens?: TwTokens;
 };
 
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";

@@ -313,6 +313,12 @@ function heroThemePropsFromSource(source: any, themeId?: string | null) {
     headline: title || "Hero headline",
     subheadline: useSubheadline ? subtitleText : undefined,
     description: useSubheadline ? undefined : subtitleText,
+    overlay: source?.overlay,
+    slideTokens: source?.slideTokens,
+    titleTokens: source?.titleTokens,
+    subtitleTokens: source?.subtitleTokens,
+    primaryButtonTokens: source?.primaryButtonTokens,
+    secondaryButtonTokens: source?.secondaryButtonTokens,
     primaryCta: primaryButton?.label
       ? { text: String(primaryButton.label), href: primaryButton.href, onClick: createAction(primaryButton.href) }
       : undefined,
@@ -330,6 +336,12 @@ function heroThemePropsFromData(data: HeroData) {
   const themeId = resolveThemeId((data as any).themeId);
   return {
     ...heroThemePropsFromSource(source, themeId),
+    overlay: (source as any)?.overlay ?? (data as any)?.overlay,
+    slideTokens: (source as any)?.slideTokens ?? (data as any)?.slideTokens,
+    titleTokens: (source as any)?.titleTokens ?? (data as any)?.titleTokens,
+    subtitleTokens: (source as any)?.subtitleTokens ?? (data as any)?.subtitleTokens,
+    primaryButtonTokens: (source as any)?.primaryButtonTokens ?? (data as any)?.primaryButtonTokens,
+    secondaryButtonTokens: (source as any)?.secondaryButtonTokens ?? (data as any)?.secondaryButtonTokens,
     imageSrc: (source as any)?.backgroundImageUrl ?? (data as any)?.backgroundImageUrl,
   };
 }
@@ -692,13 +704,19 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
         primaryButton: (d as any).primaryButton,
         secondaryButton: (d as any).secondaryButton,
         themeId: (d as any).themeId,
+        badge: (d as any).badge,
+        slideTokens: (d as any).slideTokens,
+        titleTokens: (d as any).titleTokens,
+        subtitleTokens: (d as any).subtitleTokens,
+        primaryButtonTokens: (d as any).primaryButtonTokens,
+        secondaryButtonTokens: (d as any).secondaryButtonTokens,
       } as any;
 
       const renderPane = (pane: any) => {
         const paneThemeId = resolveThemeId(pane?.themeId);
         if (paneThemeId) {
           const ThemeComponent = resolveHeroThemeComponent(paneThemeId);
-          const themeProps = heroThemePropsFromSource(pane, paneThemeId) as any;
+          const themeProps = { ...heroThemePropsFromSource(pane, paneThemeId), className: "h-full" } as any;
           const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={paneThemeId} {...themeProps} />;
           return <div className="h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">{themeNode}</div>;
         }
@@ -780,11 +798,11 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
       const ThemeComponent = resolveHeroThemeComponent(themeId);
-      const themeProps = heroThemePropsFromData(d) as any;
+      const themeProps = { ...heroThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
       const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={themeId} {...themeProps} />;
       return (
         <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03]", uiSectionClass(d))} style={uiSectionStyle(d)}>
-          <div className={cls("mx-auto overflow-hidden rounded-2xl", uiContainerClass(d))}>{themeNode}</div>
+          <div className="overflow-hidden rounded-2xl">{themeNode}</div>
           {componentsBlock}
         </section>
       );

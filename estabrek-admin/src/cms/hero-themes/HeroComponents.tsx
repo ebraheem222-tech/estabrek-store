@@ -18,6 +18,7 @@ interface HeroTemplateProps {
   features?: string[];
   stats?: { value: string; label: string }[];
   className?: string;
+  style?: React.CSSProperties;
   children?: React.ReactNode;
 }
 
