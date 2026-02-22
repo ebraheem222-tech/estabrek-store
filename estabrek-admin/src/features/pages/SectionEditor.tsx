@@ -27,6 +27,7 @@ import {
   externalBannerThemeCategories,
   externalCategoryThemes,
   externalCategoryThemeCategories,
+  type ExternalThemeOption,
 } from "../../cms/theme-packs/externalThemePacks";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import {
@@ -1020,6 +1021,38 @@ export type SectionTemplate = {
   data: any;
 };
 
+function sanitizeTemplateId(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_");
+  return normalized || "theme";
+}
+
+function buildThemeTemplates<TData extends { themeId?: string }>(
+  options: ExternalThemeOption[],
+  idPrefix: string,
+  labelPrefix: string,
+  createData: (theme: ExternalThemeOption) => TData
+): SectionTemplate[] {
+  return options.map((theme) => ({
+    id: `${idPrefix}_${sanitizeTemplateId(theme.id)}`,
+    label: `${labelPrefix}: ${theme.name || theme.id}`,
+    data: createData(theme),
+  }));
+}
+
+const CATEGORY_TEMPLATE_ITEMS: Array<{
+  label: string;
+  href: string;
+  iconKey: string;
+  accentColor: string;
+}> = [
+  { label: "فساتين", href: "/shop?category=dresses", iconKey: "tshirt", accentColor: "#ec4899" },
+  { label: "عبايات", href: "/shop?category=abayas", iconKey: "star", accentColor: "#8b5cf6" },
+  { label: "إكسسوارات", href: "/shop?category=accessories", iconKey: "gem", accentColor: "#f59e0b" },
+  { label: "مباخر", href: "/shop?category=incense", iconKey: "coffee", accentColor: "#06b6d4" },
+  { label: "أطفال", href: "/shop?category=kids", iconKey: "heart", accentColor: "#22c55e" },
+  { label: "معاصم", href: "/shop?category=bracelets", iconKey: "watch", accentColor: "#fb7185" },
+];
+
 // Templates جاهزة لتسريع بناء الصفحات (بدون ما تكتب من الصفر)
 // eslint-disable-next-line react-refresh/only-export-components
 export function templatesForType(type: PageSectionType): SectionTemplate[] {
@@ -1106,6 +1139,17 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             ui: { sectionClass: "", containerClass: "" },
           } satisfies HeroData,
         },
+        ...buildThemeTemplates(externalHeroThemes, "hero_pack", "Hero Pack", (theme) => ({
+          themeId: theme.id,
+          title: "عنوان رئيسي",
+          subtitle: "وصف مختصر لقسم الهيرو",
+          backgroundImageUrl: "",
+          overlay: 0.25,
+          align: "center",
+          primaryButton: { label: "تسوق الآن", href: "/shop" },
+          secondaryButton: { label: "اعرف أكثر", href: "/about" },
+          ui: { sectionClass: "", containerClass: "" },
+        }) satisfies HeroData),
       ];
 
     case "RICH_TEXT":
@@ -1227,6 +1271,18 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             ui: { sectionClass: "", containerClass: "" },
           } satisfies FeaturesData,
         },
+        ...buildThemeTemplates(externalFeatureThemes, "features_pack", "Features Pack", (theme) => ({
+          themeId: theme.id,
+          title: "المميزات",
+          subtitle: "ليش تختارنا؟",
+          columns: 3,
+          items: [
+            { title: "جودة ممتازة", text: "منتجات مختارة بعناية.", icon: "✨" },
+            { title: "توصيل سريع", text: "خلال أيام قليلة.", icon: "🚚" },
+            { title: "دعم سريع", text: "نرد عليك بأسرع وقت.", icon: "💬" },
+          ],
+          ui: { sectionClass: "", containerClass: "" },
+        }) satisfies FeaturesData),
       ];
 
     case "STATS":
@@ -1284,6 +1340,18 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             ui: { sectionClass: "", containerClass: "" },
           } satisfies PricingData,
         },
+        ...buildThemeTemplates(externalPricingThemes, "pricing_pack", "Pricing Pack", (theme) => ({
+          themeId: theme.id,
+          title: "خطط الأسعار",
+          subtitle: "اختر الخطة الأنسب لك",
+          columns: 3,
+          plans: [
+            { name: "أساسية", price: "29$", period: "شهرياً", features: ["ميزة 1", "ميزة 2"], ctaLabel: "ابدأ", ctaHref: "#" },
+            { name: "احترافية", price: "59$", period: "شهرياً", features: ["ميزة 1", "ميزة 2", "ميزة 3"], ctaLabel: "اشترك", ctaHref: "#", highlight: true, badge: "الأفضل" },
+            { name: "شركات", price: "99$", period: "شهرياً", features: ["ميزة 1", "ميزة 2", "ميزة 3", "ميزة 4"], ctaLabel: "تواصل معنا", ctaHref: "#" },
+          ],
+          ui: { sectionClass: "", containerClass: "" },
+        }) satisfies PricingData),
       ];
 
     case "CONTACT":
@@ -1330,6 +1398,14 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             ui: { sectionClass: "", containerClass: "" },
           } satisfies FeaturedCategoriesData,
         },
+        ...buildThemeTemplates(externalCategoryThemes, "featured_categories_pack", "Category Pack", (theme) => ({
+          themeId: theme.id,
+          title: "تسوّق حسب التصنيف",
+          subtitle: "اختار القسم اللي بدك ياه",
+          items: CATEGORY_TEMPLATE_ITEMS.map((item) => ({ ...item })),
+          showArrows: true,
+          ui: { sectionClass: "", containerClass: "" },
+        }) satisfies FeaturedCategoriesData),
       ];
 
     case "COLLECTIONS_GRID":
@@ -1345,6 +1421,14 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             ui: { sectionClass: "", containerClass: "" },
           } satisfies CollectionsGridData,
         },
+        ...buildThemeTemplates(externalCategoryThemes, "collections_pack", "Collections Pack", (theme) => ({
+          themeId: theme.id,
+          title: "مجموعات",
+          subtitle: "أشهر الأقسام",
+          columns: 4,
+          items: CATEGORY_TEMPLATE_ITEMS.map((item) => ({ ...item })),
+          ui: { sectionClass: "", containerClass: "" },
+        }) satisfies CollectionsGridData),
       ];
 
     case "NEW_ARRIVALS_SLIDER":
@@ -1418,6 +1502,14 @@ export function templatesForType(type: PageSectionType): SectionTemplate[] {
             ui: { sectionClass: "", containerClass: "" },
           } satisfies BannerData,
         },
+        ...buildThemeTemplates(externalBannerThemes, "banner_pack", "Banner Pack", (theme) => ({
+          themeId: theme.id,
+          text: "خصم 15% على كل المنتجات هذا الأسبوع!",
+          variant: "success",
+          linkLabel: "تسوق الآن",
+          linkHref: "/shop",
+          ui: { sectionClass: "", containerClass: "" },
+        }) satisfies BannerData),
       ];
 
     case "CTA":
