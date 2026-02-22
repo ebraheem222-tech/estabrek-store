@@ -963,6 +963,33 @@ html {
   .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-transform-override,.cms-text-effects)) { text-transform: inherit; }
   .cms-section-text :where(h1,h2,h3,h4,h5,h6,p,span,li,small,blockquote,div,a,button):not(:where(.cms-typography-decoration-override,.cms-text-effects)) { text-decoration: inherit; }
 
+  .cms-media-shape-rectangle :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-rectangle:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: none; }
+  .cms-media-shape-rounded :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-rounded:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 1.25rem; clip-path: inset(0 round 1.25rem); }
+  .cms-media-shape-circle :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-circle:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 9999px; clip-path: circle(50% at 50% 50%); }
+  .cms-media-shape-pill :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-pill:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 9999px; clip-path: inset(0 round 9999px); }
+  .cms-media-shape-diamond :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-diamond:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+  .cms-media-shape-hexagon :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-hexagon:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(25% 6%, 75% 6%, 100% 50%, 75% 94%, 25% 94%, 0% 50%); }
+  .cms-media-shape-blob :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-blob:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(16% 27%, 31% 8%, 55% 4%, 78% 10%, 92% 28%, 95% 54%, 84% 79%, 62% 93%, 35% 96%, 14% 85%, 5% 58%); }
+  .cms-media-shape-arch :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-arch:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 9999px 9999px 1rem 1rem; clip-path: inset(0 round 9999px 9999px 1rem 1rem); }
+  .cms-media-shape-parallelogram :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-parallelogram:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(12% 0%, 100% 0%, 88% 100%, 0% 100%); }
+  .cms-media-shape-octagon :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-octagon:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%); }
+  .cms-media-shape-star :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-star:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+  .cms-media-shape-rhombus :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-rhombus:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%); }
+  .cms-media-shape-leaf :where(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]),
+  .cms-media-shape-leaf:is(img,video,.cms-media-target,[data-cms-media-surface],[style*="background-image"]) { border-radius: 0; clip-path: polygon(50% 0%, 78% 10%, 92% 36%, 86% 66%, 68% 88%, 50% 100%, 32% 88%, 14% 66%, 8% 36%, 22% 10%); }
+
   .font-arabic { font-family: var(--font-arabic, inherit); }
   .font-display { font-family: var(--font-display, inherit); }
 
@@ -14446,3 +14473,4 @@ html {
   border-color: rgba(148, 163, 184, 0.35) !important;
   color: #0f172a !important;
 }
+
