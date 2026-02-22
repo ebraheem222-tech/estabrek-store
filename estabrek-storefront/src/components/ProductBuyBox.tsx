@@ -297,7 +297,7 @@ export default function ProductBuyBox({
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
               <div className="buy-box-color-overlay-candy absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setColorsOpen(false)} aria-hidden />
 
-              <div className="color-modal color-modal-candy relative w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl glass-card shadow-2xl max-h-[80vh] flex flex-col">
+              <div className="color-modal color-modal-candy relative w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl glass-card shadow-2xl max-h-[72dvh] sm:max-h-[80vh] flex flex-col">
                 {/* Modal Header */}
                 <div className="color-modal-header-candy flex items-start justify-between gap-3 border-b border-white/10 p-5">
                   <div>
