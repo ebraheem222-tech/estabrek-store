@@ -1544,6 +1544,121 @@ html {
   animation: modal-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.buy-box-color-selected-candy {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.84),
+    color-mix(in srgb, var(--accent, #ec4899) 10%, rgba(255, 255, 255, 0.76)),
+    color-mix(in srgb, var(--accent-2, #6366f1) 8%, rgba(255, 255, 255, 0.72))
+  ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 12px 28px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(145%);
+  -webkit-backdrop-filter: blur(14px) saturate(145%);
+}
+
+.buy-box-color-overlay-candy {
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--accent, #ec4899) 26%, transparent), transparent 52%),
+    radial-gradient(circle at 84% 82%, color-mix(in srgb, var(--accent-2, #6366f1) 22%, transparent), transparent 55%),
+    rgba(241, 245, 249, 0.5) !important;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+.color-modal-candy {
+  position: relative;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    color-mix(in srgb, var(--accent, #ec4899) 11%, rgba(255, 255, 255, 0.9)) 52%,
+    color-mix(in srgb, var(--accent-2, #6366f1) 10%, rgba(255, 255, 255, 0.88)) 100%
+  ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.78) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 30px 72px color-mix(in srgb, var(--accent, #ec4899) 18%, rgba(15, 23, 42, 0.22));
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+}
+
+.color-modal-candy::before {
+  content: "";
+  position: absolute;
+  inset: -26% -14% auto auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent, #ec4899) 16%, transparent), transparent 72%);
+  pointer-events: none;
+  filter: blur(12px);
+  opacity: 0.4;
+}
+
+.color-modal-candy::after {
+  content: "";
+  position: absolute;
+  inset: auto auto -30% -18%;
+  width: 280px;
+  height: 280px;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-2, #6366f1) 16%, transparent), transparent 72%);
+  pointer-events: none;
+  filter: blur(12px);
+  opacity: 0.36;
+}
+
+.color-modal-candy > * {
+  position: relative;
+  z-index: 1;
+}
+
+.color-modal-header-candy,
+.color-modal-search-wrap-candy {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.78),
+    color-mix(in srgb, var(--accent, #ec4899) 8%, rgba(255, 255, 255, 0.7))
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.68) !important;
+}
+
+.color-modal-close-candy {
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.82),
+    color-mix(in srgb, var(--accent, #ec4899) 8%, rgba(255, 255, 255, 0.72))
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.64) !important;
+  color: #0f172a !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+}
+
+.color-modal-close-candy:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14);
+}
+
+.color-modal-search-input-candy {
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.86),
+    color-mix(in srgb, var(--accent-2, #6366f1) 7%, rgba(255, 255, 255, 0.76))
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.color-modal-search-input-candy:focus {
+  border-color: color-mix(in srgb, var(--accent, #ec4899) 65%, white 35%) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent, #ec4899) 16%, white 84%),
+    0 10px 24px rgba(15, 23, 42, 0.12) !important;
+}
+
 @keyframes modal-slide {
   from { 
     opacity: 0; 
