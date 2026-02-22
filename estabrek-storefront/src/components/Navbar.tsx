@@ -177,6 +177,7 @@ function NavNode({
   prefetchLinks: boolean;
   forceTextStyle?: React.CSSProperties;
 }) {
+  const settings = useStorefrontSettings();
   const hasChildren = !!(item.children && item.children.length);
   const href = normalizeNavHref(item.href);
   const external = !!item.isExternal || isExternalHref(href);
@@ -255,7 +256,27 @@ function NavNode({
       ? "min-w-[360px] w-[420px] max-w-[calc(100vw-2rem)]"
       : "min-w-[320px] w-[360px] max-w-[calc(100vw-2rem)]";
   const desktopItemClass =
-    "flex w-full items-center justify-between gap-2 rounded-xl border border-white/45 bg-white/65 px-3 py-2.5 text-sm font-medium text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-all duration-200 hover:bg-white";
+    "flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-all duration-200";
+  const desktopPanelToneA = colorToRgba(settings.accentColor, 0.14, [236, 72, 153]);
+  const desktopPanelToneB = colorToRgba(settings.accentColor2, 0.13, [99, 102, 241]);
+  const desktopPanelEdge = colorToRgba(settings.accentColor, 0.2, [236, 72, 153]);
+  const desktopPanelStyle: React.CSSProperties = {
+    background: `linear-gradient(145deg, rgba(255,255,255,0.94) 0%, ${desktopPanelToneA} 52%, ${desktopPanelToneB} 100%)`,
+    borderColor: "rgba(255,255,255,0.72)",
+    boxShadow: `0 22px 56px ${colorToRgba(settings.accentColor, 0.2, [15, 23, 42])}`,
+  };
+  const desktopHeaderStyle: React.CSSProperties = {
+    background: `linear-gradient(140deg, rgba(255,255,255,0.82) 0%, ${colorToRgba(settings.accentColor, 0.09, [236, 72, 153])} 100%)`,
+    borderColor: "rgba(255,255,255,0.62)",
+  };
+  const desktopItemBaseStyle: React.CSSProperties = {
+    background: `linear-gradient(132deg, rgba(255,255,255,0.78) 0%, ${colorToRgba(settings.accentColor, 0.11, [236, 72, 153])} 58%, ${colorToRgba(settings.accentColor2, 0.12, [99, 102, 241])} 100%)`,
+    borderColor: desktopPanelEdge,
+  };
+  const desktopItemActiveStyle: React.CSSProperties = {
+    background: `linear-gradient(132deg, ${colorToRgba(settings.accentColor, 0.25, [236, 72, 153])} 0%, ${colorToRgba(settings.accentColor2, 0.23, [99, 102, 241])} 100%)`,
+    borderColor: colorToRgba(settings.accentColor, 0.46, [236, 72, 153]),
+  };
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [desktopLevelAnim, setDesktopLevelAnim] = useState<"none" | "forward" | "back">("none");
   const [desktopTrail, setDesktopTrail] = useState<Array<{ label: string; items: any[]; href?: string; external?: boolean; target?: string }>>([]);
@@ -339,11 +360,12 @@ function NavNode({
     const nodeHasChildren = nodeChildren.length > 0;
     const nodeHrefPath = nodeHref.startsWith("/") ? nodeHref.split(/[?#]/)[0] : nodeHref;
     const nodeActive = !nodeExternal && nodeHrefPath !== "#" && (pathname === nodeHrefPath || pathname.startsWith(nodeHrefPath + "/"));
-    const rowClass = `${desktopItemClass} ${nodeActive ? "border-[var(--accent)]/35 bg-[var(--accent)]/10 text-[color:var(--accent)]" : ""}`;
+    const rowClass = `${desktopItemClass} ${nodeActive ? "text-[color:var(--accent)]" : "hover:brightness-[1.02]"}`;
+    const rowStyle = nodeActive ? desktopItemActiveStyle : desktopItemBaseStyle;
 
     if (nodeHasChildren) {
       return (
-        <button key={key} type="button" onClick={() => openDesktopChildren(node)} className={rowClass}>
+        <button key={key} type="button" onClick={() => openDesktopChildren(node)} className={rowClass} style={rowStyle}>
           <span className="inline-flex items-center gap-2 truncate">
             <Icon name={node?.icon} />
             <span className="truncate">{node?.label}</span>
@@ -362,6 +384,7 @@ function NavNode({
           rel="noopener noreferrer"
           onClick={closeDesktopPanel}
           className={rowClass}
+          style={rowStyle}
         >
           <span className="inline-flex items-center gap-2 truncate">
             <Icon name={node?.icon} />
@@ -372,7 +395,7 @@ function NavNode({
     }
 
     return (
-      <Link key={key} href={nodeHref} prefetch={prefetchLinks} onClick={closeDesktopPanel} className={rowClass}>
+      <Link key={key} href={nodeHref} prefetch={prefetchLinks} onClick={closeDesktopPanel} className={rowClass} style={rowStyle}>
         <span className="inline-flex items-center gap-2 truncate">
           <Icon name={node?.icon} />
           <span className="truncate">{node?.label}</span>
@@ -467,11 +490,12 @@ function NavNode({
         <div
           ref={desktopPanelRef}
           className={`relative overflow-hidden rounded-2xl border border-white/60 bg-white/88 shadow-[0_22px_56px_rgba(15,23,42,0.18)] backdrop-blur-xl p-3 ${desktopPanelWidthClass}`}
+          style={desktopPanelStyle}
         >
           <GradientBg id={`nav-dd-${item.id ?? item.label}`} />
 
           <div className="relative">
-            <div className="mb-2 rounded-xl border border-white/55 bg-white/72 px-3 py-2 backdrop-blur">
+            <div className="mb-2 rounded-xl border border-white/55 bg-white/72 px-3 py-2 backdrop-blur" style={desktopHeaderStyle}>
               <div className="flex items-center justify-between gap-2">
                 {desktopTrail.length ? (
                   <button
