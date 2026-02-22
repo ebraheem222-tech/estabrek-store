@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { generateThemeCssVars, getThemePreset, type ThemePreset } from "@/theme/presets";
 import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "@/cms/themes/websiteThemes";
+import { GalleryThemeMotionBackdrop } from "@/cms/themes/GalleryThemeMotionBackdrop";
 import { applyCursorTheme } from "@/theme/cursorTheme";
 import { useStorefrontSettings, type StorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
@@ -213,8 +214,9 @@ export function ThemeWrap({
     <div
       data-theme={mode}
       data-glass-effects={glassEnabled ? "1" : "0"}
+      data-gallery-theme-active={websiteTheme && websiteTheme.id.startsWith("theme-gallery-") ? "1" : "0"}
       className={
-        "min-h-screen w-full bg-[var(--bg)] text-[var(--text)] overflow-x-hidden" +
+        "relative isolate min-h-screen w-full bg-[var(--bg)] text-[var(--text)] overflow-x-hidden" +
         (surface === "classic" || !glassEnabled ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")
       }
       style={
@@ -242,7 +244,8 @@ export function ThemeWrap({
         } as React.CSSProperties
       }
     >
-      {children}
+      <GalleryThemeMotionBackdrop websiteThemeId={websiteTheme?.id} />
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
