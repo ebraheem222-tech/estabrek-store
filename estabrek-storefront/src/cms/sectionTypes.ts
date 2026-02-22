@@ -34,6 +34,7 @@ export type InputData = {
 export type HeroSlide = {
   title: string;
   subtitle?: string;
+  badge?: string;
   backgroundImageUrl?: string;
   overlay?: number; // 0..1
   align?: "left" | "center" | "right";

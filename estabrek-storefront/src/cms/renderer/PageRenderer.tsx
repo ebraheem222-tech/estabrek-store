@@ -121,6 +121,12 @@ function heroThemePropsFromSource(source: any, themeId?: string | null) {
     headline: title || "Hero headline",
     subheadline: useSubheadline ? subtitleText : undefined,
     description: useSubheadline ? undefined : subtitleText,
+    overlay: source?.overlay,
+    slideTokens: source?.slideTokens,
+    titleTokens: source?.titleTokens,
+    subtitleTokens: source?.subtitleTokens,
+    primaryButtonTokens: source?.primaryButtonTokens,
+    secondaryButtonTokens: source?.secondaryButtonTokens,
     primaryCta: primaryButton?.label
       ? { text: String(primaryButton.label), href: primaryButton.href || undefined }
       : undefined,
@@ -138,6 +144,12 @@ function heroThemePropsFromData(data: HeroData) {
   const themeId = resolveThemeId((data as any).themeId);
   return {
     ...heroThemePropsFromSource(source, themeId),
+    overlay: (source as any)?.overlay ?? (data as any)?.overlay,
+    slideTokens: (source as any)?.slideTokens ?? (data as any)?.slideTokens,
+    titleTokens: (source as any)?.titleTokens ?? (data as any)?.titleTokens,
+    subtitleTokens: (source as any)?.subtitleTokens ?? (data as any)?.subtitleTokens,
+    primaryButtonTokens: (source as any)?.primaryButtonTokens ?? (data as any)?.primaryButtonTokens,
+    secondaryButtonTokens: (source as any)?.secondaryButtonTokens ?? (data as any)?.secondaryButtonTokens,
     imageSrc: (source as any)?.backgroundImageUrl ?? (data as any)?.backgroundImageUrl,
   };
 }
@@ -1114,6 +1126,7 @@ function Section({
         backgroundImageUrl: (d as any).backgroundImageUrl,
         overlay: (d as any).overlay,
         align: (d as any).align,
+        badge: (d as any).badge,
         primaryButton: (d as any).primaryButton,
         secondaryButton: (d as any).secondaryButton,
         themeId: (d as any).themeId,
