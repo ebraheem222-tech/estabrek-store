@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import { usePathname } from "next/navigation";
 import { useGsapMotion } from "./useGsapMotion";
 
 export default function MotionProvider({
@@ -11,7 +12,8 @@ export default function MotionProvider({
   enabled?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useGsapMotion(ref, enabled);
+  const pathname = usePathname();
+  useGsapMotion(ref, enabled, pathname);
 
   return <div ref={ref}>{children}</div>;
 }
