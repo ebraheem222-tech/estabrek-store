@@ -6,6 +6,26 @@ import {
   type WebsiteThemeGalleryItem,
 } from "../../cms/themes/galleryThemes";
 import { getWebsiteThemeById } from "../../cms/themes/websiteThemes";
+// @ts-expect-error - JS visual gallery module without TS declarations.
+import { CMS_THEME_GALLERY_THEMES } from "../../cms/themes/cms-themes-gallery.jsx";
+
+type GalleryVisualTheme = {
+  id?: unknown;
+  name?: unknown;
+  category?: unknown;
+  render?: () => React.ReactNode;
+};
+
+const GALLERY_VISUALS_BY_THEME_ID = new Map(
+  (Array.isArray(CMS_THEME_GALLERY_THEMES) ? CMS_THEME_GALLERY_THEMES : [])
+    .map((theme) => {
+      const raw = theme as GalleryVisualTheme;
+      const id = Number.parseInt(String(raw.id ?? ""), 10);
+      if (!Number.isFinite(id) || id <= 0 || typeof raw.render !== "function") return null;
+      return [`theme-gallery-${String(id).padStart(2, "0")}`, raw] as const;
+    })
+    .filter((entry): entry is readonly [string, GalleryVisualTheme] => Boolean(entry))
+);
 
 function radiusFromToken(token?: string) {
   switch (token) {
@@ -60,6 +80,7 @@ function ThemeCard({
 }) {
   const theme = getWebsiteThemeById(item.websiteThemeId);
   if (!theme) return null;
+  const hasLiveVisual = GALLERY_VISUALS_BY_THEME_ID.has(item.websiteThemeId);
 
   const c = theme.colors;
   const r = radiusFromToken(theme.borderRadius);
@@ -143,10 +164,28 @@ function ThemeCard({
       </div>
 
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-[11px] text-white/50">{theme.nameAr}</span>
+        <span className="text-[11px] text-white/50">
+          {theme.nameAr}
+          {hasLiveVisual ? " • SVG" : ""}
+        </span>
         {active ? <span className="text-[11px] text-accent-300">مفعّل</span> : null}
       </div>
     </button>
+  );
+}
+
+function ThemeLivePreview({ themeId }: { themeId: string }) {
+  const visual = GALLERY_VISUALS_BY_THEME_ID.get(themeId);
+  if (!visual || typeof visual.render !== "function") return null;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/12">
+      <div className="h-56 overflow-hidden bg-black/20">
+        <div className="origin-top-left scale-[0.56]" style={{ width: "178.57%", height: "178.57%" }}>
+          {visual.render()}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -159,6 +198,9 @@ export function WebsiteThemeGalleryPicker({
 }) {
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
+  const totalThemes = WEBSITE_THEME_GALLERY.length;
+  const selectedTheme = useMemo(() => getWebsiteThemeById(selectedThemeId), [selectedThemeId]);
+  const hasSelectedLivePreview = GALLERY_VISUALS_BY_THEME_ID.has(selectedThemeId);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -178,21 +220,47 @@ export function WebsiteThemeGalleryPicker({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-white/95">معرض ثيمات الموقع</div>
-          <div className="text-xs text-white/60">50 ثيم مدمج من ملف gallery</div>
+          <div className="text-xs text-white/60">
+            {`المعروض ${filtered.length} من ${totalThemes} ثيم`}
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onSelect("default")}
-          className={
-            "rounded-xl border px-3 py-1.5 text-xs transition " +
-            (selectedThemeId === "default"
-              ? "border-accent-500/60 bg-accent-500/20 text-accent-200"
-              : "border-white/15 bg-white/5 text-white/75 hover:border-white/30")
-          }
-        >
-          استخدام الافتراضي
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setCategory("All");
+              setQuery("");
+            }}
+            className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/75 transition hover:border-white/30"
+          >
+            إظهار الكل
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelect("default")}
+            className={
+              "rounded-xl border px-3 py-1.5 text-xs transition " +
+              (selectedThemeId === "default"
+                ? "border-accent-500/60 bg-accent-500/20 text-accent-200"
+                : "border-white/15 bg-white/5 text-white/75 hover:border-white/30")
+            }
+          >
+            استخدام الافتراضي
+          </button>
+        </div>
       </div>
+
+      {hasSelectedLivePreview ? (
+        <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.02] p-2.5">
+          <div className="mb-2 flex items-center justify-between gap-2 px-1">
+            <div className="text-xs text-white/75">
+              معاينة مباشرة من ملف <span className="font-mono text-white/90">cms-themes-gallery.jsx</span>
+            </div>
+            <div className="text-[11px] text-white/55">{selectedTheme?.nameAr ?? selectedTheme?.name ?? ""}</div>
+          </div>
+          <ThemeLivePreview themeId={selectedThemeId} />
+        </div>
+      ) : null}
 
       <div className="mb-3 grid gap-2 md:grid-cols-[1fr_auto]">
         <input
@@ -236,4 +304,3 @@ export function WebsiteThemeGalleryPicker({
     </div>
   );
 }
-
