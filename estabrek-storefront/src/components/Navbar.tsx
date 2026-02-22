@@ -47,6 +47,10 @@ function readNavArray(value: any): any[] {
   const candidates = [
     value.items,
     value.children,
+    value.categories,
+    value.subcategories,
+    value.childCategories,
+    value.childrens,
     value.nodes,
     value.links,
     value.menuItems,
@@ -80,7 +84,19 @@ function normalizeNavNode(raw: any, depth = 0, index = 0): any | null {
   const targetRaw = readNavString(raw, ["target"]);
   const forceBlank = raw?.openInNewTab === true || raw?.newTab === true;
 
-  const nested = readNavArray(raw.children ?? raw.items ?? raw.nodes ?? raw.links ?? raw.subItems ?? raw.submenu ?? raw.subMenu);
+  const nested = readNavArray(
+    raw.children ??
+      raw.items ??
+      raw.nodes ??
+      raw.links ??
+      raw.subItems ??
+      raw.submenu ??
+      raw.subMenu ??
+      raw.subcategories ??
+      raw.categories ??
+      raw.childCategories ??
+      raw.childrens,
+  );
   const children = nested
     .map((child, childIndex) => normalizeNavNode(child, depth + 1, childIndex))
     .filter(Boolean) as any[];
@@ -680,10 +696,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const mobileMenuItems = (mobileMenuLevel?.items ?? navItems)?.length ? (mobileMenuLevel?.items ?? navItems) : fallbackMenuItems;
   const mobileHasParentLink = !!mobileMenuLevel?.href && mobileMenuLevel.href !== "#";
   const mobileToggleActive = mobileOpen && mobileDrawerStage !== "closing";
-  const mobileDrawerTranslateClass =
-    mobileDrawerStage === "open"
-      ? "translate-x-0"
-      : "translate-x-full";
+  const mobileDrawerTranslateClass = mobileDrawerStage === "open" ? "translate-x-0" : "translate-x-full";
   const mobileDrawerVisible = mobileOpen;
 
   function isActiveHref(href?: string) {
@@ -951,10 +964,14 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
           />
 
           <aside
-            className={`absolute inset-y-0 right-0 w-[86vw] max-w-[420px] border-l border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out will-change-transform ${mobileDrawerTranslateClass}`}
+            className={`absolute inset-0 w-screen max-w-none bg-[color:var(--surface)]/98 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out will-change-transform ${mobileDrawerTranslateClass}`}
+            style={{ height: "100dvh" }}
           >
-            <div className="flex h-full flex-col">
-              <div className="border-b border-[color:var(--border)] px-4 py-3">
+            <div className="flex h-full min-h-0 flex-col">
+              <div
+                className="sticky top-0 z-10 border-b border-[color:var(--border)] bg-[color:var(--surface)]/95 px-4 py-3"
+                style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+              >
                 <div className="flex items-center justify-between gap-2">
                   {mobileTrail.length ? (
                     <button
@@ -1011,8 +1028,11 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                 ) : null}
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-                {showSearch ? (
+              <div
+                className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3"
+                style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+              >
+                {showSearch && mobileTrail.length === 0 ? (
                   <div className="w-full">
                     <SearchControl withLabel />
                   </div>
