@@ -355,7 +355,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileDrawerStage, setMobileDrawerStage] = useState<"closed" | "opening" | "open" | "closing">("closed");
+  const [mobileDrawerStage, setMobileDrawerStage] = useState<"closed" | "open" | "closing">("closed");
   const [mobileTrail, setMobileTrail] = useState<Array<{ label: string; items: any[]; href?: string; external?: boolean; target?: string }>>([]);
   const mobileCloseTimerRef = useRef<number | null>(null);
   const [miniCartOpen, setMiniCartOpen] = useState(false);
@@ -547,16 +547,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     }
     setMobileTrail([]);
     setMobileOpen(true);
-    setMobileDrawerStage("opening");
-    if (typeof window !== "undefined") {
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          setMobileDrawerStage("open");
-        });
-      });
-    } else {
-      setMobileDrawerStage("open");
-    }
+    setMobileDrawerStage("open");
   }
 
   function closeMobileDrawer() {
@@ -571,7 +562,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
         setMobileDrawerStage("closed");
         setMobileTrail([]);
         mobileCloseTimerRef.current = null;
-      }, 280);
+      }, 220);
     } else {
       setMobileOpen(false);
       setMobileDrawerStage("closed");
@@ -690,13 +681,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const mobileHasParentLink = !!mobileMenuLevel?.href && mobileMenuLevel.href !== "#";
   const mobileToggleActive = mobileOpen && mobileDrawerStage !== "closing";
   const mobileDrawerTranslateClass =
-    mobileDrawerStage === "opening"
-      ? "-translate-x-full"
-      : mobileDrawerStage === "open"
-        ? "translate-x-0"
-        : mobileDrawerStage === "closing"
-          ? "translate-x-full"
-          : "-translate-x-full";
+    mobileDrawerStage === "open"
+      ? "translate-x-0"
+      : "translate-x-full";
   const mobileDrawerVisible = mobileOpen;
 
   function isActiveHref(href?: string) {
@@ -955,7 +942,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
       {/* Mobile drawer */}
       {mobileDrawerVisible ? (
-        <div className="md:hidden fixed inset-0 z-[80]">
+        <div className="md:hidden fixed inset-0 z-[2200]">
           <button
             type="button"
             className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${mobileDrawerStage === "open" ? "opacity-100" : "opacity-0"}`}
@@ -964,7 +951,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
           />
 
           <aside
-            className={`absolute inset-y-0 left-0 w-[86vw] max-w-[420px] border-r border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out ${mobileDrawerTranslateClass}`}
+            className={`absolute inset-y-0 right-0 w-[86vw] max-w-[420px] border-l border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out will-change-transform ${mobileDrawerTranslateClass}`}
           >
             <div className="flex h-full flex-col">
               <div className="border-b border-[color:var(--border)] px-4 py-3">
@@ -1037,13 +1024,19 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
                   </Link>
                 ) : null}
 
-                <div className="space-y-2">
-                  {mobileMenuItems.map((it: any, idx: number) => (
-                    <div key={it?.id ?? it?.href ?? it?.label ?? `mobile-wrap-${idx}`} className={navDrawerItem}>
-                      {renderMobileItem(it, idx)}
-                    </div>
-                  ))}
-                </div>
+                {mobileMenuItems.length ? (
+                  <div className="space-y-2">
+                    {mobileMenuItems.map((it: any, idx: number) => (
+                      <div key={it?.id ?? it?.href ?? it?.label ?? `mobile-wrap-${idx}`} className={navDrawerItem}>
+                        {renderMobileItem(it, idx)}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[color:var(--border)] bg-black/5 dark:bg-white/10 px-3 py-2 text-sm text-[color:var(--text)]/70">
+                    لا توجد عناصر قائمة حالياً
+                  </div>
+                )}
               </div>
             </div>
           </aside>
