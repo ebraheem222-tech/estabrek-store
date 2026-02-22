@@ -5732,18 +5732,27 @@ html {
 
 :root.light .quick-view-mobile-bar,
 [data-theme="light"] .quick-view-mobile-bar {
-  background: rgba(255, 255, 255, 0.95);
-  border-bottom-color: var(--border);
-  color: var(--text);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.9),
+    color-mix(in srgb, var(--accent, #ec4899) 10%, rgba(255, 255, 255, 0.86))
+  );
+  border-bottom-color: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.1);
+  color: #0f172a;
 }
 
 :root.light .quick-view-close-inline,
 :root.light .quick-view-close-bottom,
 [data-theme="light"] .quick-view-close-inline,
 [data-theme="light"] .quick-view-close-bottom {
-  background: rgba(15, 23, 42, 0.08);
-  border-color: var(--border);
-  color: var(--text);
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.82),
+    color-mix(in srgb, var(--accent, #ec4899) 8%, rgba(255, 255, 255, 0.74))
+  );
+  border-color: rgba(255, 255, 255, 0.68);
+  color: #0f172a;
 }
 
 @media (min-width: 1024px) {
@@ -6935,30 +6944,60 @@ html {
 
 :root.light .quick-view-modal,
 [data-theme="light"] .quick-view-modal {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.99));
-  border-color: var(--border);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    color-mix(in srgb, var(--accent, #ec4899) 11%, rgba(255, 255, 255, 0.9)) 52%,
+    color-mix(in srgb, var(--accent-2, #6366f1) 10%, rgba(255, 255, 255, 0.88)) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 30px 72px color-mix(in srgb, var(--accent, #ec4899) 18%, rgba(15, 23, 42, 0.22));
 }
 
 :root.light .quick-view-overlay,
 [data-theme="light"] .quick-view-overlay {
-  background: rgba(15, 23, 42, 0.25);
+  background:
+    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--accent, #ec4899) 20%, transparent) 0%, transparent 50%),
+    radial-gradient(circle at 84% 85%, color-mix(in srgb, var(--accent-2, #6366f1) 18%, transparent) 0%, transparent 52%),
+    rgba(241, 245, 249, 0.42);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
 
 :root.light .quick-view-close,
 [data-theme="light"] .quick-view-close {
-  background: rgba(15, 23, 42, 0.08);
-  color: var(--text);
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.82),
+    color-mix(in srgb, var(--accent, #ec4899) 8%, rgba(255, 255, 255, 0.72))
+  );
+  border-color: rgba(255, 255, 255, 0.65);
+  color: #0f172a;
 }
 
 :root.light .quick-view-nav,
 [data-theme="light"] .quick-view-nav {
-  background: rgba(15, 23, 42, 0.08);
-  color: var(--text);
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.82),
+    color-mix(in srgb, var(--accent, #ec4899) 8%, rgba(255, 255, 255, 0.72))
+  );
+  border-color: rgba(255, 255, 255, 0.65);
+  color: #0f172a;
 }
 
 :root.light .quick-view-main-image,
 [data-theme="light"] .quick-view-main-image {
-  background: rgba(15, 23, 42, 0.04);
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.7),
+    color-mix(in srgb, var(--accent-2, #6366f1) 10%, rgba(255, 255, 255, 0.58))
+  );
+  border-color: rgba(255, 255, 255, 0.65);
 }
 
 :root.light .quick-view-details-btn,
@@ -6969,9 +7008,13 @@ html {
 [data-theme="light"] .quick-view-size,
 :root.light .quick-view-qty-btn,
 [data-theme="light"] .quick-view-qty-btn {
-  background: rgba(15, 23, 42, 0.04);
-  border-color: var(--border);
-  color: var(--text);
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.78),
+    color-mix(in srgb, var(--accent, #ec4899) 7%, rgba(255, 255, 255, 0.72))
+  );
+  border-color: rgba(255, 255, 255, 0.62);
+  color: #0f172a;
 }
 
 :root.light .quick-view-description,
