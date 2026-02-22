@@ -251,7 +251,9 @@ function NavNode({
   }
 
   const desktopChildLinkClass =
-    "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[color:var(--text)] transition-all duration-200 hover:bg-black/5 hover:dark:bg-white/10";
+    "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-slate-900 transition-all duration-200 hover:bg-white/80";
+  const desktopMaxDepth = mode === "mega" ? 2 : 1;
+  const desktopMaxChildrenPerNode = mode === "mega" ? 8 : 6;
 
   function renderDesktopChildNode(node: any, depth = 0, nodeKey = "child"): React.ReactNode {
     const key = node?.id ?? node?.href ?? node?.label ?? nodeKey;
@@ -287,7 +289,11 @@ function NavNode({
       </Link>
     );
 
-    if (!nodeHasChildren) {
+    const canExpandChildren = nodeHasChildren && depth < desktopMaxDepth;
+    const visibleChildren = canExpandChildren ? nodeChildren.slice(0, desktopMaxChildrenPerNode) : [];
+    const hasTruncatedChildren = canExpandChildren && nodeChildren.length > visibleChildren.length;
+
+    if (!nodeHasChildren || !canExpandChildren) {
       return (
         <div key={key} style={indentStyle}>
           {linkNode}
@@ -298,14 +304,18 @@ function NavNode({
     const hasRealLink = nodeHref !== "#" && nodeHref !== "";
 
     return (
-      <div key={key} style={indentStyle} className={depth === 0 && mode === "mega" ? "rounded-xl border border-[color:var(--border)]/70 bg-black/5 dark:bg-white/5 p-2" : ""}>
+      <div
+        key={key}
+        style={indentStyle}
+        className={depth === 0 ? "rounded-xl border border-white/45 bg-white/55 p-2 shadow-[0_6px_20px_rgba(15,23,42,0.06)]" : ""}
+      >
         {linkNode}
         <div className="mt-1 space-y-1">
-          {hasRealLink ? (
+          {depth === 0 && hasRealLink ? (
             nodeExternal ? (
               <a
                 href={nodeHref}
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[color:var(--text)]/65 hover:text-[color:var(--text)]"
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900"
                 target={node?.target || "_blank"}
                 rel="noopener noreferrer"
                 style={{ marginInlineStart: 8 }}
@@ -316,14 +326,19 @@ function NavNode({
               <Link
                 href={nodeHref}
                 prefetch={prefetchLinks}
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[color:var(--text)]/65 hover:text-[color:var(--text)]"
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900"
                 style={{ marginInlineStart: 8 }}
               >
                 <span>عرض الكل</span>
               </Link>
             )
           ) : null}
-          {nodeChildren.map((sub: any, idx: number) => renderDesktopChildNode(sub, depth + 1, `${nodeKey}-${idx}`))}
+          {visibleChildren.map((sub: any, idx: number) => renderDesktopChildNode(sub, depth + 1, `${nodeKey}-${idx}`))}
+          {hasTruncatedChildren ? (
+            <div className="px-3 py-1 text-xs text-slate-500">
+              +{nodeChildren.length - visibleChildren.length} عناصر إضافية
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -381,15 +396,15 @@ function NavNode({
         </Link>
       )}
 
-      <div className="absolute left-0 top-full z-50 hidden min-w-[240px] pt-2 group-hover:block">
-        <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur p-3">
+      <div className="pointer-events-none absolute left-0 top-full z-[1200] min-w-[260px] pt-2 opacity-0 translate-y-1 scale-[0.98] transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100">
+        <div className="relative overflow-hidden rounded-2xl border border-white/60 bg-white/85 shadow-[0_18px_42px_rgba(15,23,42,0.16)] backdrop-blur-xl p-3">
           <GradientBg id={`nav-dd-${item.id ?? item.label}`} />
           {mode === "mega" ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid max-h-[68vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
               {(item.children ?? []).map((ch: any, idx: number) => renderDesktopChildNode(ch, 0, `mega-${idx}`))}
             </div>
           ) : (
-            <div className="grid gap-1 min-w-[260px]">
+            <div className="grid min-w-[320px] max-w-[420px] max-h-[68vh] gap-2 overflow-y-auto pr-1">
               {(item.children ?? []).map((ch: any, idx: number) => renderDesktopChildNode(ch, 0, `drop-${idx}`))}
             </div>
           )}
