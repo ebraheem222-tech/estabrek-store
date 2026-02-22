@@ -1851,6 +1851,11 @@ export const SpotlightContainer: React.FC<SpotlightProps> = ({
     background: `radial-gradient(${spotlightSize}px circle at ${mousePosition.x}px ${mousePosition.y}px, ${themeConfig.spotlightColor}, transparent)`,
     opacity: spotlightOpacity,
   } : {};
+  // Extra top-layer glow keeps spotlight visible even when children have opaque backgrounds (e.g. banner themes).
+  const topSpotlightStyle: React.CSSProperties = isHovering ? {
+    background: `radial-gradient(${Math.round(spotlightSize * 0.9)}px circle at ${mousePosition.x}px ${mousePosition.y}px, ${themeConfig.spotlightColor}, transparent)`,
+    opacity: Math.min(0.45, spotlightOpacity * 0.45),
+  } : {};
 
   const borderGlowStyle: React.CSSProperties = isHovering && themeConfig.borderGlow ? {
     boxShadow: `0 0 20px ${themeConfig.borderColor}, 0 0 40px ${themeConfig.borderColor}`,
@@ -1874,7 +1879,7 @@ export const SpotlightContainer: React.FC<SpotlightProps> = ({
       onClick={onClick}
       {...rest}
     >
-      {/* Spotlight Overlay */}
+      {/* Spotlight Overlay (under content) */}
       <div
         className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-0"
         style={spotlightStyle}
@@ -1884,6 +1889,12 @@ export const SpotlightContainer: React.FC<SpotlightProps> = ({
       <div className="relative z-10">
         {children}
       </div>
+
+      {/* Spotlight Overlay (over content) */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-20"
+        style={topSpotlightStyle}
+      />
     </Component>
   );
 };

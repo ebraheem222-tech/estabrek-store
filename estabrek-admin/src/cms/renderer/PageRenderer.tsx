@@ -31,6 +31,7 @@ import type {
 import { CmsComponentsRenderer } from "./CmsComponentsRenderer";
 import { SectionDecorations } from "../decorations/DecorationLayer";
 import { AnimatedShapeLayer } from "../animated-shapes/AnimatedShapeLayer";
+import { SpotlightContainer } from "../spotlight-themes";
 import type { TwTokens } from "../style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "../style/tokensToTw";
 import { collectGoogleFontsFromValue, ensureGoogleFontsLoaded } from "../style/googleFontsLoader";
@@ -40,6 +41,7 @@ import { featureComponents, additionalFeatureComponents } from "../feature-theme
 import { pricingComponents, additionalPricingComponents } from "../pricing-themes";
 import { sliderThemes, sliderComponents, additionalSliderComponents } from "../slider-themes";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
+import { DEFAULT_MOTION_BY_SECTION_TYPE } from "../../motion/gsapPresets";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -522,6 +524,28 @@ function vimeoId(url: string): string | null {
   }
 }
 
+function applyMotionAttrs(attrs: Record<string, any>, type: string, data: any) {
+  const tokenMotion = (data as any)?.twTokens?.motion ?? {};
+  const motionPreset =
+    tokenMotion?.anim ??
+    tokenMotion?.preset ??
+    (data as any)?.motionPreset ??
+    DEFAULT_MOTION_BY_SECTION_TYPE[type] ??
+    "none";
+
+  if (!motionPreset || motionPreset === "none") return;
+
+  attrs["data-motion"] = String(motionPreset);
+  if (tokenMotion?.duration !== undefined) attrs["data-motion-duration"] = String(tokenMotion.duration);
+  if (tokenMotion?.delay !== undefined) attrs["data-motion-delay"] = String(tokenMotion.delay);
+  if (tokenMotion?.easing) attrs["data-motion-easing"] = String(tokenMotion.easing);
+  if (tokenMotion?.stagger !== undefined) attrs["data-motion-stagger"] = String(tokenMotion.stagger);
+  if (tokenMotion?.staggerDir) attrs["data-motion-stagger-dir"] = String(tokenMotion.staggerDir);
+  if (tokenMotion?.threshold !== undefined) attrs["data-motion-threshold"] = String(tokenMotion.threshold);
+  if (tokenMotion?.once !== undefined) attrs["data-motion-once"] = String(tokenMotion.once);
+  if (tokenMotion?.scrub !== undefined) attrs["data-motion-scrub"] = String(tokenMotion.scrub);
+}
+
 function Section({ section, renderProductCard }: { section: CmsSection; renderProductCard?: (productId: string) => React.ReactNode }) {
   const { type, data } = section;
   const anchorId = (section.anchorId ?? "").trim();
@@ -529,6 +553,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
   const attrs: any = {};
   if (anchorId) attrs.id = anchorId;
   if (ariaLabel) attrs["aria-label"] = ariaLabel;
+  applyMotionAttrs(attrs, type, data);
 
   if (!data || typeof data !== "object") return null;
 
@@ -1807,18 +1832,36 @@ export function CmsPageRenderer({
         const sectionTokens = (sec as any)?.data?.twTokens as TwTokens | undefined;
         const decorations = sectionDecorations(sectionTokens);
         const animatedShapeConfig = sectionTokens?.animatedShape;
+        const spotlightThemeId = (sectionTokens as any)?.spotlightThemeId as string | undefined;
         const dividerNode = renderSectionDivider(sectionTokens);
         const hasDecorations = !!decorations;
         const hasAnimatedShape = !!animatedShapeConfig?.themeId;
         const hasOverlays = hasDecorations || hasAnimatedShape;
+        const sectionNode = (
+          <Section section={sec as any} renderProductCard={renderProductCard} />
+        );
+        const spotlightNode = spotlightThemeId ? (
+          <SpotlightContainer
+            theme={spotlightThemeId}
+            spotlightSize={(sectionTokens as any)?.spotlightSize}
+            spotlightOpacity={(sectionTokens as any)?.spotlightOpacity}
+          >
+            {sectionNode}
+          </SpotlightContainer>
+        ) : (
+          sectionNode
+        );
+        const content = (
+          <div className={hasOverlays ? "relative z-10" : undefined}>
+            {spotlightNode}
+            {dividerNode}
+          </div>
+        );
         return (
           <div key={sec.id} className={hasOverlays ? "relative" : undefined}>
             {hasAnimatedShape ? <AnimatedShapeLayer config={animatedShapeConfig} className="z-0" /> : null}
             {hasDecorations ? <SectionDecorations decorations={decorations ?? undefined} className="z-0" /> : null}
-            <div className={hasOverlays ? "relative z-10" : undefined}>
-              <Section section={sec as any} renderProductCard={renderProductCard} />
-              {dividerNode}
-            </div>
+            {content}
           </div>
         );
       })}
