@@ -14170,18 +14170,20 @@ html {
 .footer-candy-glass {
   position: relative;
   overflow: hidden;
-  border-top-color: rgba(255, 255, 255, 0.22) !important;
+  border-top-color: rgba(255, 255, 255, 0.78) !important;
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, #0f172a 62%, #ffffff 38%) 0%,
-      color-mix(in srgb, var(--accent, #ec4899) 18%, #0f172a 82%) 50%,
-      color-mix(in srgb, var(--accent-2, #6366f1) 18%, #0f172a 82%) 100%
+      rgba(255, 255, 255, 0.94) 0%,
+      color-mix(in srgb, var(--accent, #ec4899) 11%, rgba(255, 255, 255, 0.9)) 52%,
+      color-mix(in srgb, var(--accent-2, #6366f1) 10%, rgba(255, 255, 255, 0.88)) 100%
     ) !important;
-  backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(18px) saturate(138%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 -14px 34px rgba(15, 23, 42, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 -14px 34px rgba(15, 23, 42, 0.14);
+  color: #0f172a;
+  font-family: var(--font-arabic, "IBM Plex Sans Arabic", "Tajawal", sans-serif);
 }
 
 .footer-candy-glass > * {
@@ -14196,10 +14198,10 @@ html {
   width: 320px;
   height: 320px;
   border-radius: 999px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent, #ec4899) 20%, transparent), transparent 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent, #ec4899) 16%, transparent), transparent 72%);
   pointer-events: none;
-  filter: blur(10px);
-  opacity: 0.48;
+  filter: blur(12px);
+  opacity: 0.4;
 }
 
 .footer-candy-glass::after {
@@ -14209,8 +14211,49 @@ html {
   width: 300px;
   height: 300px;
   border-radius: 999px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent-2, #6366f1) 20%, transparent), transparent 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-2, #6366f1) 16%, transparent), transparent 72%);
   pointer-events: none;
-  filter: blur(10px);
-  opacity: 0.44;
+  filter: blur(12px);
+  opacity: 0.36;
+}
+
+.footer-candy-glass :is(.text-base.font-semibold, .text-sm.font-semibold) {
+  color: #0b1324 !important;
+  font-family: var(--font-arabic, "IBM Plex Sans Arabic", "Tajawal", sans-serif);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.footer-candy-glass :is(
+  .text-white,
+  .text-white\/90,
+  .text-white\/70,
+  .text-white\/60,
+  .text-white\/50
+) {
+  color: #334155 !important;
+}
+
+.footer-candy-glass a {
+  color: #334155 !important;
+  transition: color 220ms ease, transform 220ms ease;
+}
+
+.footer-candy-glass a:hover {
+  color: #0f172a !important;
+}
+
+.footer-candy-glass input {
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.36) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+.footer-candy-glass input::placeholder {
+  color: #64748b !important;
+}
+
+.footer-candy-glass button {
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #0f172a !important;
 }
