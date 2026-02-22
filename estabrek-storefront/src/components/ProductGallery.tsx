@@ -217,12 +217,12 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
   }, []);
 
   return (
-    <section className="grid gap-4">
+    <section className="grid min-w-0 max-w-full gap-4 overflow-hidden">
       {/* Color swatches */}
       {swatches.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-          <span className="text-xs text-[var(--muted)] font-medium">الألوان:</span>
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.03] p-2.5">
+          <span className="shrink-0 text-xs font-medium text-[var(--muted)]">الألوان:</span>
+          <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
             {swatches.map((s) => {
               const selected = s.id === itemId;
               return (
@@ -235,7 +235,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                     onSelectColorKey?.(s.id);
                   }}
                   className={[
-                    "color-swatch h-8 w-8 rounded-xl border-2 transition-all",
+                    "color-swatch h-7 w-7 shrink-0 rounded-full border-2 transition-all sm:h-8 sm:w-8",
                     selected 
                       ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30 scale-110 active" 
                       : "border-white/20 hover:scale-105 hover:border-white/40",
@@ -379,7 +379,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                         e.stopPropagation();
                         setActiveIdx(idx);
                       }}
-                      className={`product-gallery-progress-dot h-1.5 rounded-full transition-all duration-300 ${
+                      className={`product-gallery-progress-dot h-1 rounded-full transition-all duration-300 sm:h-1.5 ${
                         idx === activeIdx ? 'is-active bg-white w-6' : 'is-inactive bg-white/40 w-1.5 hover:bg-white/60'
                       }`}
                     />
@@ -420,7 +420,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                     type="button"
                     onClick={() => setActiveIdx(idx)}
                     className={[
-                      "relative h-16 w-14 overflow-hidden rounded-xl border-2 transition-all",
+                      "gallery-thumb-btn relative h-14 w-12 overflow-hidden rounded-xl border-2 transition-all sm:h-16 sm:w-14",
                       selected
                         ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/20 scale-105"
                         : "border-white/15 hover:border-white/30",
@@ -634,7 +634,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                       type="button"
                       onClick={() => setActiveIdx(idx)}
                       className={[
-                        "relative h-16 w-14 overflow-hidden rounded-xl border-2 transition-all shrink-0",
+                        "gallery-thumb-btn relative h-16 w-14 overflow-hidden rounded-xl border-2 transition-all shrink-0",
                         selected ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30" : "border-white/20 hover:border-white/40",
                       ].join(" ")}
                     >

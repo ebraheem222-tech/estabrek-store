@@ -235,9 +235,9 @@ export default function ProductBuyBox({
           </div>
 
           {/* Selected Color Display */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-black/20 border border-white/[0.06] mb-3">
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-3">
             <span
-              className="h-10 w-10 rounded-xl border-2 border-white/20 shadow-lg"
+              className="h-8 w-8 shrink-0 rounded-xl border-2 border-white/20 shadow-lg sm:h-10 sm:w-10"
               style={{ 
                 backgroundColor: selectedColorHex ?? "transparent",
                 boxShadow: selectedColorHex ? `0 4px 15px ${selectedColorHex}40` : 'none'
@@ -251,7 +251,7 @@ export default function ProductBuyBox({
           </div>
 
           {/* Quick Color Swatches */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex max-w-full items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {colorKeys.slice(0, 10).map((k, idx) => {
               const active = k === sel.colorKey;
               const disabled = !colorHasAvailable(k);
@@ -263,7 +263,7 @@ export default function ProductBuyBox({
                   disabled={disabled}
                   onClick={() => (!disabled ? pickColor(k) : null)}
                   className={
-                    "color-swatch h-9 w-9 shrink-0 rounded-xl border-2 transition-all " +
+                    "color-swatch h-7 w-7 shrink-0 rounded-full border-2 transition-all sm:h-9 sm:w-9 " +
                     (disabled
                       ? "border-white/10 opacity-30 cursor-not-allowed"
                       : active
@@ -282,7 +282,7 @@ export default function ProductBuyBox({
               <button
                 type="button"
                 onClick={() => setColorsOpen(true)}
-                className="shrink-0 h-9 px-4 rounded-xl border border-white/15 bg-white/5 text-xs text-[color:var(--text)] hover:bg-white/10 transition-colors flex items-center gap-1"
+                className="flex h-8 shrink-0 items-center gap-1 rounded-xl border border-white/15 bg-white/5 px-3 text-xs text-[color:var(--text)] transition-colors hover:bg-white/10 sm:h-9 sm:px-4"
               >
                 +{colorKeys.length - 10}
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -337,7 +337,7 @@ export default function ProductBuyBox({
 
                 {/* Color Grid */}
                 <div className="flex-1 overflow-y-auto p-5">
-                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-3">
+                  <div className="grid grid-cols-6 gap-2.5 sm:grid-cols-8 sm:gap-3">
                     {filteredColorKeys.map((k, idx) => {
                       const active = k === sel.colorKey;
                       const disabled = !colorHasAvailable(k);

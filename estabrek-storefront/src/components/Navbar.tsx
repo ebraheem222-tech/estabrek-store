@@ -378,18 +378,39 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     (typeof cmsNavCfg?.props?.templateId === "string" && cmsNavCfg.props.templateId) ||
     "default";
   const navTemplate = templateIdRaw !== "default" ? getNavTemplateById(templateIdRaw) : undefined;
+  const primaryMenuItems = Array.isArray(primaryMenu?.tree) ? primaryMenu.tree : [];
+  const cmsMenuItems = Array.isArray(cmsNavCfg?.items)
+    ? cmsNavCfg.items
+    : Array.isArray(cmsNavCfg?.props?.items)
+      ? cmsNavCfg.props.items
+      : [];
+  const fallbackMenuItems = useMemo(
+    () => [
+      { id: "nav-home-fallback", label: "الرئيسية", href: "/" },
+      { id: "nav-shop-fallback", label: "المتجر", href: "/shop" },
+      { id: "nav-about-fallback", label: "من نحن", href: "/about" },
+      { id: "nav-contact-fallback", label: "اتصل بنا", href: "/contact" },
+    ],
+    [],
+  );
   const navItems: any[] = useMemo(() => {
     if (cmsNavEnabled) {
-      // Admin stores cmsNav as { enabled, mode, gradient, showIcons, items }
-      return Array.isArray(cmsNavCfg.items) ? cmsNavCfg.items : [];
+      // Accept both shapes: { items } and { props: { items } }.
+      if (cmsMenuItems.length) return cmsMenuItems;
+      if (primaryMenuItems.length) return primaryMenuItems;
+      return fallbackMenuItems;
     }
-    return primaryMenu?.tree ?? [];
-  }, [cmsNavCfg, cmsNavEnabled, primaryMenu]);
+    if (primaryMenuItems.length) return primaryMenuItems;
+    return fallbackMenuItems;
+  }, [cmsNavEnabled, cmsMenuItems, fallbackMenuItems, primaryMenuItems]);
 
-  const navMode: "dropdown" | "mega" = (cmsNavCfg?.mode === "mega" ? "mega" : "dropdown");
+  const navModeRaw = cmsNavCfg?.mode ?? cmsNavCfg?.props?.mode;
+  const navMode: "dropdown" | "mega" = (navModeRaw === "mega" ? "mega" : "dropdown");
+  const navGradientRaw = cmsNavCfg?.gradient ?? cmsNavCfg?.props?.gradient;
   const navGradient: "none" | "sunset" | "ocean" | "neon" =
-    (["none","sunset","ocean","neon"].includes(cmsNavCfg?.gradient) ? cmsNavCfg.gradient : "none");
-  const navShowIcons: boolean = cmsNavCfg?.showIcons !== false;
+    (["none","sunset","ocean","neon"].includes(navGradientRaw) ? (navGradientRaw as "none" | "sunset" | "ocean" | "neon") : "none");
+  const navShowIconsRaw = cmsNavCfg?.showIcons ?? cmsNavCfg?.props?.showIcons;
+  const navShowIcons: boolean = navShowIconsRaw !== false;
   const forceLightText = settings.darkModeEnabled === false || (domTheme ?? resolvedTheme) === "light";
   const navTemplateTextStyle = navTemplate && forceLightText ? ({ color: "var(--text)" } as React.CSSProperties) : undefined;
 
@@ -945,5 +966,4 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     </header>
   );
 }
-
 
