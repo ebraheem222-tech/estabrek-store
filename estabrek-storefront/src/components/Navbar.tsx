@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
@@ -379,6 +380,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     if (typeof window === "undefined") return false;
     return window.matchMedia("(min-width: 768px)").matches;
   });
+  const [hasMounted, setHasMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const settings = useStorefrontSettings();
   const { resolvedTheme } = useTheme();
@@ -390,6 +392,10 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     setMobileTrail([]);
     setMiniCartOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -552,7 +558,8 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     " hover:bg-black/10 dark:hover:bg-white/15";
   const navCtaBase =
     "rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-[color:var(--accent-contrast)] hover:opacity-90";
-  const navDrawerItem = "rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 overflow-hidden";
+  const navDrawerItem =
+    "overflow-hidden rounded-2xl border border-white/45 bg-white/65 shadow-[0_10px_28px_rgba(236,72,153,0.12)] backdrop-blur-md dark:border-white/15 dark:bg-white/10";
   const navDrawerLink = "block w-full px-4 py-3 font-semibold text-[color:var(--text)]";
   const navDrawerSubLink = "block w-full px-4 py-2 text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
 
@@ -752,6 +759,117 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const ctaMobileClassName = navTemplate?.styles.button
     ? `inline-flex w-full justify-center ${navTemplate.styles.button}`
     : `inline-flex w-full justify-center ${navCtaBase}`;
+
+  const mobileDrawerNode = mobileDrawerVisible ? (
+    <div className="md:hidden fixed inset-0 z-[2147483000]">
+      <button
+        type="button"
+        className={`absolute inset-0 transition-opacity duration-300 ${mobileDrawerStage === "open" ? "opacity-100" : "opacity-0"} bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.45)_0%,rgba(244,114,182,0.18)_45%,rgba(76,29,149,0.58)_100%)] backdrop-blur-md`}
+        onClick={closeMobileDrawer}
+        aria-label="Close menu backdrop"
+      />
+
+      <aside
+        className={`absolute inset-0 h-[100dvh] w-screen max-w-none overflow-hidden border border-white/40 bg-[linear-gradient(145deg,rgba(255,255,255,0.9)_0%,rgba(254,226,244,0.82)_38%,rgba(233,213,255,0.76)_100%)] shadow-[0_28px_90px_rgba(168,85,247,0.32)] backdrop-blur-2xl transition-transform duration-300 ease-out will-change-transform dark:border-white/20 dark:bg-[linear-gradient(145deg,rgba(31,41,55,0.96)_0%,rgba(88,28,135,0.72)_42%,rgba(76,29,149,0.82)_100%)] ${mobileDrawerTranslateClass}`}
+      >
+        <div className="pointer-events-none absolute -top-24 left-[-18%] h-64 w-64 rounded-full bg-fuchsia-300/35 blur-3xl dark:bg-fuchsia-500/30" />
+        <div className="pointer-events-none absolute right-[-14%] top-1/3 h-72 w-72 rounded-full bg-cyan-200/30 blur-3xl dark:bg-cyan-500/25" />
+
+        <div className="relative flex h-full min-h-0 flex-col">
+          <div
+            className="sticky top-0 z-10 border-b border-white/40 bg-white/58 px-4 py-3 backdrop-blur-xl dark:border-white/20 dark:bg-slate-900/45"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              {mobileTrail.length ? (
+                <button
+                  type="button"
+                  onClick={mobileBack}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/45 bg-white/65 px-3 py-2 text-sm text-[color:var(--text)] shadow-sm backdrop-blur-md dark:border-white/20 dark:bg-slate-800/60"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+                  </svg>
+                  رجوع
+                </button>
+              ) : (
+                <div className="text-sm font-semibold text-[color:var(--text)]">القائمة</div>
+              )}
+
+              <button
+                type="button"
+                onClick={closeMobileDrawer}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/50 bg-white/70 text-[color:var(--text)] shadow-sm backdrop-blur-md transition-transform duration-300 hover:rotate-90 dark:border-white/20 dark:bg-slate-800/60"
+                aria-label="Close menu"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </div>
+
+            {mobileTrail.length ? (
+              <div className="mt-2 text-sm font-semibold text-[color:var(--text)]">{mobileMenuLevel?.label}</div>
+            ) : null}
+
+            {mobileHasParentLink ? (
+              mobileMenuLevel?.external ? (
+                <a
+                  href={mobileMenuLevel.href}
+                  target={mobileMenuLevel?.target || "_blank"}
+                  rel="noopener noreferrer"
+                  onClick={closeMobileDrawer}
+                  className="mt-2 inline-flex items-center rounded-lg text-xs text-[color:var(--text)]/70 hover:text-[color:var(--text)]"
+                >
+                  عرض الكل
+                </a>
+              ) : (
+                <Link
+                  href={mobileMenuLevel?.href || "#"}
+                  prefetch={settings.prefetchLinks}
+                  onClick={closeMobileDrawer}
+                  className="mt-2 inline-flex items-center rounded-lg text-xs text-[color:var(--text)]/70 hover:text-[color:var(--text)]"
+                >
+                  عرض الكل
+                </Link>
+              )
+            ) : null}
+          </div>
+
+          <div
+            className="flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 py-4"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          >
+            {showSearch && mobileTrail.length === 0 ? (
+              <div className="w-full">
+                <SearchControl withLabel />
+              </div>
+            ) : null}
+
+            {cta && mobileTrail.length === 0 ? (
+              <Link href={cta.href || "/"} onClick={closeMobileDrawer} className={ctaMobileClassName}>
+                {cta.label || "CTA"}
+              </Link>
+            ) : null}
+
+            {mobileMenuItems.length ? (
+              <div className="space-y-2">
+                {mobileMenuItems.map((it: any, idx: number) => (
+                  <div key={it?.id ?? it?.href ?? it?.label ?? `mobile-wrap-${idx}`} className={navDrawerItem}>
+                    {renderMobileItem(it, idx)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/35 bg-white/55 px-3 py-2 text-sm text-[color:var(--text)]/70 backdrop-blur dark:border-white/15 dark:bg-white/10">
+                لا توجد عناصر قائمة حالياً
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+    </div>
+  ) : null;
 
   return (
     <header className={headerClassName}>
@@ -954,114 +1072,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
       </div>
 
       {/* Mobile drawer */}
-      {mobileDrawerVisible ? (
-        <div className="md:hidden fixed inset-0 z-[2200]">
-          <button
-            type="button"
-            className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${mobileDrawerStage === "open" ? "opacity-100" : "opacity-0"}`}
-            onClick={closeMobileDrawer}
-            aria-label="Close menu backdrop"
-          />
-
-          <aside
-            className={`absolute inset-0 w-screen max-w-none bg-[color:var(--surface)]/98 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out will-change-transform ${mobileDrawerTranslateClass}`}
-            style={{ height: "100dvh" }}
-          >
-            <div className="flex h-full min-h-0 flex-col">
-              <div
-                className="sticky top-0 z-10 border-b border-[color:var(--border)] bg-[color:var(--surface)]/95 px-4 py-3"
-                style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  {mobileTrail.length ? (
-                    <button
-                      type="button"
-                      onClick={mobileBack}
-                      className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 px-3 py-2 text-sm text-[color:var(--text)]"
-                    >
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
-                      </svg>
-                      رجوع
-                    </button>
-                  ) : (
-                    <div className="text-sm font-semibold text-[color:var(--text)]">القائمة</div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={closeMobileDrawer}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 text-[color:var(--text)] transition-transform duration-300 hover:rotate-90"
-                    aria-label="Close menu"
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
-                    </svg>
-                  </button>
-                </div>
-
-                {mobileTrail.length ? (
-                  <div className="mt-2 text-sm font-semibold text-[color:var(--text)]">{mobileMenuLevel?.label}</div>
-                ) : null}
-
-                {mobileHasParentLink ? (
-                  mobileMenuLevel?.external ? (
-                    <a
-                      href={mobileMenuLevel.href}
-                      target={mobileMenuLevel?.target || "_blank"}
-                      rel="noopener noreferrer"
-                      onClick={closeMobileDrawer}
-                      className="mt-2 inline-flex items-center rounded-lg text-xs text-[color:var(--text)]/70 hover:text-[color:var(--text)]"
-                    >
-                      عرض الكل
-                    </a>
-                  ) : (
-                    <Link
-                      href={mobileMenuLevel?.href || "#"}
-                      prefetch={settings.prefetchLinks}
-                      onClick={closeMobileDrawer}
-                      className="mt-2 inline-flex items-center rounded-lg text-xs text-[color:var(--text)]/70 hover:text-[color:var(--text)]"
-                    >
-                      عرض الكل
-                    </Link>
-                  )
-                ) : null}
-              </div>
-
-              <div
-                className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3"
-                style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
-              >
-                {showSearch && mobileTrail.length === 0 ? (
-                  <div className="w-full">
-                    <SearchControl withLabel />
-                  </div>
-                ) : null}
-
-                {cta && mobileTrail.length === 0 ? (
-                  <Link href={cta.href || "/"} onClick={closeMobileDrawer} className={ctaMobileClassName}>
-                    {cta.label || "CTA"}
-                  </Link>
-                ) : null}
-
-                {mobileMenuItems.length ? (
-                  <div className="space-y-2">
-                    {mobileMenuItems.map((it: any, idx: number) => (
-                      <div key={it?.id ?? it?.href ?? it?.label ?? `mobile-wrap-${idx}`} className={navDrawerItem}>
-                        {renderMobileItem(it, idx)}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-[color:var(--border)] bg-black/5 dark:bg-white/10 px-3 py-2 text-sm text-[color:var(--text)]/70">
-                    لا توجد عناصر قائمة حالياً
-                  </div>
-                )}
-              </div>
-            </div>
-          </aside>
-        </div>
-      ) : null}
+      {hasMounted ? createPortal(mobileDrawerNode, document.body) : null}
 
       {allowMiniCart ? (
         <StorefrontMiniCart open={miniCartOpen} onClose={() => setMiniCartOpen(false)} />
