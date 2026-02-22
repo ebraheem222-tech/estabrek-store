@@ -323,6 +323,7 @@ const SECTION_TYPE_OPTIONS: Array<{ value: PageSectionType; label: string }> = [
 export type HeroSlide = {
   title: string;
   subtitle?: string;
+  badge?: string;
   backgroundImageUrl?: string;
   overlay?: number; // 0..1
   align?: "left" | "center" | "right";
@@ -1616,6 +1617,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
     : {
         title: "",
         subtitle: "",
+        badge: "",
         backgroundImageUrl: "",
         overlay: 0.35,
         align: "center",
@@ -1630,6 +1632,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
   const pickFromRoot = (): HeroSlide => ({
     title: (value as any).title ?? "",
     subtitle: (value as any).subtitle,
+    badge: (value as any).badge,
     backgroundImageUrl: (value as any).backgroundImageUrl,
     overlay: (value as any).overlay,
     align: (value as any).align,
@@ -1646,6 +1649,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
     const next: any = { ...value };
     next.title = s.title ?? "";
     next.subtitle = s.subtitle;
+    next.badge = s.badge;
     next.backgroundImageUrl = s.backgroundImageUrl;
     next.overlay = s.overlay;
     next.align = s.align;
@@ -1980,7 +1984,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
         </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-3">
         <Input
           label="العنوان"
           value={s.title ?? ""}
@@ -1996,6 +2000,11 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
             { value: "center", label: "وسط" },
             { value: "right", label: "يمين" },
           ]}
+        />
+        <Input
+          label="شارة (اختياري)"
+          value={s.badge ?? ""}
+          onChange={(v) => (isSlider ? updateSlide(activeSlide, { badge: v }) : onChange({ ...value, badge: v }))}
         />
       </div>
 
