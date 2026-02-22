@@ -13566,6 +13566,19 @@ html {
     min-width: 44px;
   }
 
+  /* Keep small product controls compact on mobile (swatches, dots, thumbs, qty). */
+  button.color-swatch,
+  button.cms-slider-dot,
+  button.cms-hero-dot,
+  .view-360-dots .dot,
+  button.product-gallery-progress-dot,
+  button.gallery-thumb-btn,
+  button.qty-btn,
+  button.gallery-nav-btn {
+    min-height: 0 !important;
+    min-width: 0 !important;
+  }
+
   /* Optimize spacing for mobile */
   .section-spacing {
     padding-top: 2rem;
