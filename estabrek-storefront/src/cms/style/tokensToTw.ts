@@ -376,6 +376,9 @@ export function tokensToClassName(tokens?: CmsTokens): string {
   // effects
   if (tokens.effects?.opacity) parts.push(opacityMap[tokens.effects.opacity]);
   if (tokens.effects?.blur) parts.push(blurMap[tokens.effects.blur]);
+  if (tokens.effects?.mediaShape && tokens.effects.mediaShape !== "none") {
+    parts.push(`cms-media-shape-${tokens.effects.mediaShape}`);
+  }
   if (tokens.effects?.backdropBlur) parts.push(backdropBlurMap[tokens.effects.backdropBlur]);
   if (tokens.effects?.backdropBrightness) parts.push(`backdrop-brightness-${tokens.effects.backdropBrightness}`);
   if (tokens.effects?.grayscale) parts.push("grayscale");
