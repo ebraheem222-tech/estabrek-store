@@ -1066,3 +1066,61 @@
   background: radial-gradient(ellipse, rgba(139, 92, 246, 0.1), transparent 70%);
   pointer-events: none;
 }
+
+/* Mobile dot controls (hero/slider/product) */
+@media (max-width: 768px) {
+  .cms-slider-dots {
+    gap: 0.35rem !important;
+    margin-top: 0.5rem !important;
+  }
+
+  .cms-slider-dot {
+    width: 0.42rem !important;
+    height: 0.42rem !important;
+    min-width: 0.42rem;
+    min-height: 0.42rem;
+    border-width: 1.5px;
+  }
+
+  .cms-slider-dot.is-active {
+    transform: scale(1.04);
+  }
+
+  .cms-slider-dot--line {
+    height: 0.16rem !important;
+    width: 1rem !important;
+    min-width: 1rem;
+  }
+
+  .cms-slider-dot--line.is-active {
+    width: 1.2rem !important;
+  }
+
+  .cms-hero-dots {
+    bottom: 0.55rem !important;
+    gap: 0.35rem !important;
+  }
+
+  .cms-hero-dot {
+    width: 0.38rem !important;
+    height: 0.38rem !important;
+    min-width: 0.38rem;
+    min-height: 0.38rem;
+  }
+
+  .cms-product-dots {
+    gap: 0.35rem !important;
+    margin-top: 0.45rem !important;
+  }
+
+  .cms-product-dot {
+    width: 0.38rem !important;
+    height: 0.38rem !important;
+    min-width: 0.38rem;
+    min-height: 0.38rem;
+  }
+
+  .cms-product-dot.is-active {
+    width: 0.95rem !important;
+  }
+}
