@@ -39,6 +39,8 @@ export type HeroSlide = {
   align?: "left" | "center" | "right";
   primaryButton?: { label: string; href: string };
   secondaryButton?: { label: string; href: string };
+  /** Optional per-pane/per-slide theme id (used by split hero mode). */
+  themeId?: string;
   slideTokens?: TwTokens;
   titleTokens?: TwTokens;
   subtitleTokens?: TwTokens;
@@ -51,6 +53,28 @@ export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scal
 export type HeroData = HeroSlide & {
   /** Optional hero theme id (uses hero-themes renderer when set). */
   themeId?: string;
+  /** Render hero in 3 columns (left content + center media + right indicators). */
+  tripleMode?: boolean;
+  /** Triple layout proportions. */
+  tripleLayout?: "4:5:1" | "3:4:1" | "5:6:1";
+  /** Gap between triple columns (px). */
+  tripleGap?: number;
+  /** Small heading above title in triple mode. */
+  eyebrow?: string;
+  /** Center media image for triple mode. */
+  centerImageUrl?: string;
+  centerImageAlt?: string;
+  /** Right-side indicators in triple mode. */
+  rightIndicators?: number;
+  rightActiveIndicator?: number;
+  /** Render two hero panes in one section (left/right). */
+  splitMode?: boolean;
+  /** Left/right width ratio for split mode. */
+  splitRatio?: "1:1" | "3:2" | "2:3" | "7:5" | "5:7";
+  /** Gap between left/right panes in px. */
+  splitGap?: number;
+  /** Right-side hero pane data (left pane uses root hero fields). */
+  splitRight?: HeroSlide;
   /** Slider mode */
   slides?: HeroSlide[];
   /** Autoplay interval ms (e.g. 5000). 0/undefined disables autoplay */

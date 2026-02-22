@@ -312,14 +312,14 @@ export default function HeroSlider({ data, textTokens }: { data: HeroData; textT
           </button>
 
           {(data as any).showDots !== false ? (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="cms-hero-dots absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
               {slides.map((_, i) => (
                 <button
                   key={i}
                   type="button"
                   aria-label={`Go to slide ${i + 1}`}
                   className={
-                    "h-2.5 w-2.5 rounded-full border " +
+                    "cms-hero-dot h-2.5 w-2.5 rounded-full border " +
                     (i === index
                       ? "border-[color:var(--accent-2)] bg-[color:var(--accent-2)]"
                       : "border-black/20 bg-black/10 hover:bg-black/20")

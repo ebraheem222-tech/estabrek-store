@@ -1,6 +1,7 @@
 "use client";
 import React from 'react';
 import { heroComponents } from "./HeroComponents";
+import { advancedHeroThemes } from './AdvancedHeroThemes';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -181,6 +182,7 @@ export const heroThemes: HeroTheme[] = [
   { id: 'special-event', name: 'Event', nameAr: 'حدث', category: 'Special', layout: 'centered', tags: ['special', 'event', 'conference'] },
   { id: 'special-app-download', name: 'App Download', nameAr: 'تحميل تطبيق', category: 'Special', layout: 'split', tags: ['special', 'app', 'download'] },
   { id: 'special-newsletter', name: 'Newsletter', nameAr: 'نشرة بريدية', category: 'Special', layout: 'centered', tags: ['special', 'newsletter', 'subscribe'] },
+  ...(advancedHeroThemes as HeroTheme[]),
 ];
 
 // ═══════════════════════════════════════════════════════════════

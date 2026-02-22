@@ -39,6 +39,7 @@ import { SpotlightContainer } from "@/cms/spotlight-themes";
 import type { DecorLayer, TwTokens } from "@/cms/style/tokens";
 import { DECOR_PRESETS } from "@/cms/style/tokens";
 import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
+import { getDividerById } from "@/cms/style/containerStyles";
 
 import { DEFAULT_MOTION_BY_SECTION_TYPE } from "@/motion/gsapPresets";
 import { HeroRenderer } from "../hero-themes";
@@ -106,20 +107,17 @@ function resolveThemeId(value: unknown): string | null {
 
 const HERO_SUBHEADLINE_ONLY_THEMES = new Set(["ecommerce-fashion"]);
 
-function heroThemePropsFromData(data: HeroData) {
-  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
-  const source = slides.length ? (slides[0] ?? data) : data;
-  const title = String((source as any).title ?? "").trim();
-  const subtitle = (source as any).subtitle;
-  const primaryButton = (source as any).primaryButton;
-  const secondaryButton = (source as any).secondaryButton;
-  const themeId = resolveThemeId((data as any).themeId);
+function heroThemePropsFromSource(source: any, themeId?: string | null) {
+  const title = String(source?.title ?? "").trim();
+  const subtitle = source?.subtitle;
+  const primaryButton = source?.primaryButton;
+  const secondaryButton = source?.secondaryButton;
   const subtitleText = subtitle != null ? String(subtitle) : undefined;
   const useSubheadline = themeId ? HERO_SUBHEADLINE_ONLY_THEMES.has(themeId) : false;
 
   return {
     theme: themeId ?? undefined,
-    badge: (source as any).badge,
+    badge: source?.badge,
     headline: title || "Hero headline",
     subheadline: useSubheadline ? subtitleText : undefined,
     description: useSubheadline ? undefined : subtitleText,
@@ -129,9 +127,36 @@ function heroThemePropsFromData(data: HeroData) {
     secondaryCta: secondaryButton?.label
       ? { text: String(secondaryButton.label), href: secondaryButton.href || undefined }
       : undefined,
-    imageSrc: (source as any).backgroundImageUrl ?? (data as any).backgroundImageUrl,
+    imageSrc: source?.backgroundImageUrl,
     imageAlt: title || "Hero",
   };
+}
+
+function heroThemePropsFromData(data: HeroData) {
+  const slides = Array.isArray((data as any).slides) ? ((data as any).slides as any[]) : [];
+  const source = slides.length ? (slides[0] ?? data) : data;
+  const themeId = resolveThemeId((data as any).themeId);
+  return {
+    ...heroThemePropsFromSource(source, themeId),
+    imageSrc: (source as any)?.backgroundImageUrl ?? (data as any)?.backgroundImageUrl,
+  };
+}
+
+function heroSplitRatio(value?: string): [number, number] {
+  const input = typeof value === "string" ? value : "";
+  const match = /^(\d+):(\d+)$/.exec(input);
+  const left = Math.max(1, Number(match?.[1] ?? 1));
+  const right = Math.max(1, Number(match?.[2] ?? 1));
+  return [left, right];
+}
+
+function heroTripleRatio(value?: string): [number, number, number] {
+  const input = typeof value === "string" ? value : "";
+  const match = /^(\d+):(\d+):(\d+)$/.exec(input);
+  const left = Math.max(1, Number(match?.[1] ?? 4));
+  const center = Math.max(1, Number(match?.[2] ?? 5));
+  const right = Math.max(1, Number(match?.[3] ?? 1));
+  return [left, center, right];
 }
 
 function contactThemePropsFromData(data: ContactData) {
@@ -663,6 +688,16 @@ function wrapDecorations(node: React.ReactElement, tokens?: TwTokens) {
   return wrapSpotlight(wrapped, tokens);
 }
 
+function renderSectionDivider(tokens?: TwTokens) {
+  const preset = getDividerById((tokens as any)?.dividerStyleId);
+  if (!preset) return null;
+  return (
+    <div className="mt-3">
+      {preset.svg ? <div className={preset.className} dangerouslySetInnerHTML={{ __html: preset.svg }} /> : <div className={preset.className} />}
+    </div>
+  );
+}
+
 function renderComponentsBlock(data: any, productLookup?: Record<string, ProductMini>) {
   const components = data?.components;
   if (!Array.isArray(components) || !components.length) return null;
@@ -832,8 +867,393 @@ function Section({
 
   if (!data || typeof data !== "object") return null;
 
+  if ((data as any)?.mode === "container" && Array.isArray((data as any).blocks)) {
+    const d = data as any;
+    const blocks = Array.isArray(d.blocks) ? d.blocks : [];
+    const componentsBlock = renderComponentsBlock(d, productLookup);
+    const sectionTokens = d?.twTokens;
+    const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
+    const nestedSections = blocks
+      .filter((b: any) => b && b.type && b.isVisible !== false)
+      .map((b: any, i: number) => ({
+        id: `${section.id}-b-${i}`,
+        type: b.type as PageSectionType,
+        data: b.data ?? {},
+        order: i,
+        isVisible: b.isVisible !== false,
+      }));
+    const nestedGroups = buildSectionGroups(nestedSections as any);
+
+    return wrapDecorations(
+      <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+        <div className={cls("mx-auto max-w-5xl", uiContainerClass(d))}>
+          <SectionTextScope data={d}>
+            {titleData ? (
+              <h3 className={cls("mb-4 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                {titleData.content}
+              </h3>
+            ) : null}
+            <div className="space-y-5">
+              {nestedGroups.map((group) => {
+                const renderNested = (nested: any) => {
+                  const layout = normalizeSectionLayout((nested as any)?.data?.layout);
+                  const span = clampInt(layout.span, 1, group.columns, 1);
+                  const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
+                  const rowStyle =
+                    group.mode === "row" && group.columns > 0
+                      ? {
+                          flex: `0 0 ${(span / group.columns) * 100}%`,
+                          maxWidth: `${(span / group.columns) * 100}%`,
+                        }
+                      : undefined;
+                  return (
+                    <div key={nested.id} className={colSpanClass} style={rowStyle}>
+                      <Section
+                        section={nested as any}
+                        renderProductCard={renderProductCard}
+                        renderQuickAdd={renderQuickAdd}
+                        productLookup={productLookup}
+                        depth={nextDepth}
+                        seen={nextSeen}
+                      />
+                    </div>
+                  );
+                };
+
+                if (group.mode === "stack") {
+                  return <div key={group.key} className="space-y-5">{group.sections.map(renderNested)}</div>;
+                }
+
+                const groupClass =
+                  group.mode === "row"
+                    ? "flex flex-wrap items-stretch gap-5"
+                    : cls("grid gap-5", SECTION_GRID_COLS[group.columns] ?? SECTION_GRID_COLS[2]);
+
+                return (
+                  <div key={group.key} className={groupClass}>
+                    {group.sections.map(renderNested)}
+                  </div>
+                );
+              })}
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </div>
+      </section>,
+      sectionTokens
+    );
+  }
+
   if (type === "HERO") {
     const d = data as HeroData;
+
+    const tripleMode = (d as any).tripleMode === true;
+    if (tripleMode) {
+      const componentsBlock = renderComponentsBlock(d, productLookup);
+      const sectionTokens = (d as any)?.twTokens;
+      const [leftRatio, centerRatio, rightRatio] = heroTripleRatio((d as any).tripleLayout);
+      const tripleGap = Math.max(0, Math.min(64, safeNum((d as any).tripleGap, 24)));
+      const overlay = Math.min(1, Math.max(0, safeNum((d as any).overlay, 0.35)));
+      const align = (d as any).align ?? "left";
+      const justify = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
+      const slideTokens = resolveFieldTokens((d as any).slideTokens);
+      const baseSlideTokens = slideTokens ?? sectionTokens;
+      const titleTokens = resolveFieldTokens((d as any).titleTokens, baseSlideTokens);
+      const subtitleTokens = resolveFieldTokens((d as any).subtitleTokens, baseSlideTokens);
+      const primaryButtonTokens = resolveFieldTokens((d as any).primaryButtonTokens, baseSlideTokens);
+      const secondaryButtonTokens = resolveFieldTokens((d as any).secondaryButtonTokens, baseSlideTokens);
+      const titleData = textContent(String((d as any).title ?? ""), titleTokens);
+      const subtitleData = (d as any).subtitle ? textContent(String((d as any).subtitle), subtitleTokens) : null;
+      const primaryLabelData = (d as any).primaryButton?.label ? textContent(String((d as any).primaryButton.label), primaryButtonTokens) : null;
+      const secondaryLabelData = (d as any).secondaryButton?.label ? textContent(String((d as any).secondaryButton.label), secondaryButtonTokens) : null;
+      const centerImageUrl = String((d as any).centerImageUrl ?? "").trim();
+      const centerImageAlt = String((d as any).centerImageAlt ?? "").trim() || "Hero image";
+      const rightIndicators = Math.max(1, Math.min(10, safeNum((d as any).rightIndicators, 4)));
+      const rightActiveIndicator = Math.max(1, Math.min(rightIndicators, safeNum((d as any).rightActiveIndicator, 1)));
+      const eyebrow = String((d as any).eyebrow ?? "").trim();
+
+      return wrapDecorations(
+        <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03] p-3", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <SectionTextScope data={d}>
+            <div className={cls("mx-auto flex flex-col items-stretch md:flex-row", uiContainerClass(d))} style={{ gap: `${tripleGap}px` }}>
+              <div className="min-w-0" style={{ flex: `${leftRatio} 1 0%` }}>
+                <div
+                  className={cls("relative min-h-[300px] overflow-hidden rounded-2xl border border-white/[0.08]", tokensClass(slideTokens))}
+                  style={
+                    (d as any).backgroundImageUrl
+                      ? {
+                          backgroundImage: `url(${(d as any).backgroundImageUrl})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          ...(tokensStyle(slideTokens) ?? {}),
+                        }
+                      : tokensStyle(slideTokens)
+                  }
+                >
+                  <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
+                  <div className={cls("relative flex h-full min-h-[300px] flex-col justify-center gap-4 p-8", justify)}>
+                    {eyebrow ? <div className="text-xs tracking-[0.28em] uppercase text-white/70">{eyebrow}</div> : null}
+                    {wrapDecorations(
+                      <h2 className={cls("text-balance text-3xl font-black sm:text-4xl", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
+                        {titleData.content}
+                      </h2>,
+                      titleTokens
+                    )}
+                    {subtitleData ? wrapDecorations(
+                      <p className={cls("max-w-[58ch] text-sm opacity-85", tokensClass(subtitleTokens), subtitleData.className)} style={tokensStyle(subtitleTokens)} aria-label={subtitleData.ariaLabel}>
+                        {subtitleData.content}
+                      </p>,
+                      subtitleTokens
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(d as any).primaryButton?.label ? (
+                        (d as any).primaryButton?.href ? (
+                          wrapDecorations(
+                            <a
+                              href={(d as any).primaryButton.href}
+                              className={cls("rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95", tokensClass(primaryButtonTokens), primaryLabelData?.className)}
+                              style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                              aria-label={primaryLabelData?.ariaLabel}
+                            >
+                              {primaryLabelData?.content ?? (d as any).primaryButton.label}
+                            </a>,
+                            primaryButtonTokens
+                          )
+                        ) : (
+                          wrapDecorations(
+                            <span
+                              className={cls("rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90", tokensClass(primaryButtonTokens), primaryLabelData?.className)}
+                              style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                              aria-label={primaryLabelData?.ariaLabel}
+                            >
+                              {primaryLabelData?.content ?? (d as any).primaryButton.label}
+                            </span>,
+                            primaryButtonTokens
+                          )
+                        )
+                      ) : null}
+                      {(d as any).secondaryButton?.label ? (
+                        (d as any).secondaryButton?.href ? (
+                          wrapDecorations(
+                            <a
+                              href={(d as any).secondaryButton.href}
+                              className={cls("rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]", tokensClass(secondaryButtonTokens), secondaryLabelData?.className)}
+                              style={tokensStyle(secondaryButtonTokens)}
+                              aria-label={secondaryLabelData?.ariaLabel}
+                            >
+                              {secondaryLabelData?.content ?? (d as any).secondaryButton.label}
+                            </a>,
+                            secondaryButtonTokens
+                          )
+                        ) : (
+                          wrapDecorations(
+                            <span
+                              className={cls("rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90", tokensClass(secondaryButtonTokens), secondaryLabelData?.className)}
+                              style={tokensStyle(secondaryButtonTokens)}
+                              aria-label={secondaryLabelData?.ariaLabel}
+                            >
+                              {secondaryLabelData?.content ?? (d as any).secondaryButton.label}
+                            </span>,
+                            secondaryButtonTokens
+                          )
+                        )
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="min-w-0" style={{ flex: `${centerRatio} 1 0%` }}>
+                <div className="flex h-full min-h-[300px] items-center justify-center overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+                  {centerImageUrl ? (
+                    <LoadingImg src={centerImageUrl} alt={centerImageAlt} className="h-full max-h-[380px] w-auto object-contain" wrapperClassName="h-full w-full flex items-center justify-center" />
+                  ) : (
+                    <div className="text-xs opacity-60">(ضع صورة الوسط)</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-w-[28px] md:min-w-[42px]" style={{ flex: `${rightRatio} 1 0%` }}>
+                <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3">
+                  {Array.from({ length: rightIndicators }).map((_, idx) => {
+                    const active = idx + 1 === rightActiveIndicator;
+                    return <span key={idx} className={cls("rounded-full", active ? "h-2 w-2 bg-amber-300" : "h-1.5 w-1.5 bg-white/35")} />;
+                  })}
+                </div>
+              </div>
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </section>,
+        sectionTokens
+      );
+    }
+
+    const splitMode = (d as any).splitMode === true;
+    if (splitMode) {
+      const componentsBlock = renderComponentsBlock(d, productLookup);
+      const sectionTokens = (d as any)?.twTokens;
+      const splitGap = Math.max(0, Math.min(64, safeNum((d as any).splitGap, 24)));
+      const [leftRatio, rightRatio] = heroSplitRatio((d as any).splitRatio);
+      const splitRight = (
+        (d as any).splitRight && typeof (d as any).splitRight === "object"
+          ? (d as any).splitRight
+          : {
+              title: "",
+              subtitle: "",
+              backgroundImageUrl: "",
+              overlay: 0.35,
+              align: "center",
+              primaryButton: { label: "", href: "" },
+              secondaryButton: { label: "", href: "" },
+            }
+      ) as any;
+      const leftPane = {
+        title: (d as any).title,
+        subtitle: (d as any).subtitle,
+        backgroundImageUrl: (d as any).backgroundImageUrl,
+        overlay: (d as any).overlay,
+        align: (d as any).align,
+        primaryButton: (d as any).primaryButton,
+        secondaryButton: (d as any).secondaryButton,
+        themeId: (d as any).themeId,
+        slideTokens: (d as any).slideTokens,
+        titleTokens: (d as any).titleTokens,
+        subtitleTokens: (d as any).subtitleTokens,
+        primaryButtonTokens: (d as any).primaryButtonTokens,
+        secondaryButtonTokens: (d as any).secondaryButtonTokens,
+      } as any;
+
+      const renderPane = (pane: any) => {
+        const paneThemeId = resolveThemeId(pane?.themeId);
+        if (paneThemeId) {
+          const themeProps = { ...heroThemePropsFromSource(pane, paneThemeId), className: "h-full" } as any;
+          return (
+            <div className="h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+              <HeroRenderer themeId={paneThemeId} {...themeProps} />
+            </div>
+          );
+        }
+
+        const overlay = Math.min(1, Math.max(0, safeNum(pane?.overlay, 0.35)));
+        const align = pane?.align ?? "center";
+        const justify = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right" : "items-center text-center";
+        const paneTokens = resolveFieldTokens(pane?.slideTokens);
+        const basePaneTokens = paneTokens ?? sectionTokens;
+        const titleTokens = resolveFieldTokens(pane?.titleTokens, basePaneTokens);
+        const subtitleTokens = resolveFieldTokens(pane?.subtitleTokens, basePaneTokens);
+        const primaryButtonTokens = resolveFieldTokens(pane?.primaryButtonTokens, basePaneTokens);
+        const secondaryButtonTokens = resolveFieldTokens(pane?.secondaryButtonTokens, basePaneTokens);
+        const titleData = textContent(String(pane?.title ?? ""), titleTokens);
+        const subtitleData = pane?.subtitle ? textContent(String(pane.subtitle), subtitleTokens) : null;
+        const primaryLabelData = pane?.primaryButton?.label ? textContent(String(pane.primaryButton.label), primaryButtonTokens) : null;
+        const secondaryLabelData = pane?.secondaryButton?.label ? textContent(String(pane.secondaryButton.label), secondaryButtonTokens) : null;
+
+        return (
+          <div
+            className={cls("relative min-h-[260px] overflow-hidden rounded-2xl border border-white/[0.08]", tokensClass(paneTokens))}
+            style={
+              pane?.backgroundImageUrl
+                ? {
+                    backgroundImage: `url(${pane.backgroundImageUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    ...(tokensStyle(paneTokens) ?? {}),
+                  }
+                : tokensStyle(paneTokens)
+            }
+          >
+            <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay})` }} />
+            <div className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify)}>
+              {wrapDecorations(
+                <h2 className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
+                  {titleData.content}
+                </h2>,
+                titleTokens
+              )}
+              {subtitleData ? wrapDecorations(
+                <p className={cls("max-w-[60ch] text-sm opacity-90", tokensClass(subtitleTokens), subtitleData.className)} style={tokensStyle(subtitleTokens)} aria-label={subtitleData.ariaLabel}>
+                  {subtitleData.content}
+                </p>,
+                subtitleTokens
+              ) : null}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {pane?.primaryButton?.label ? (
+                  pane?.primaryButton?.href ? (
+                    wrapDecorations(
+                      <a
+                        href={pane.primaryButton.href}
+                        className={cls("rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] hover:brightness-95", tokensClass(primaryButtonTokens), primaryLabelData?.className)}
+                        style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                        aria-label={primaryLabelData?.ariaLabel}
+                      >
+                        {primaryLabelData?.content ?? pane.primaryButton.label}
+                      </a>,
+                      primaryButtonTokens
+                    )
+                  ) : (
+                    wrapDecorations(
+                      <span
+                        className={cls("rounded-xl px-4 py-2 text-sm font-semibold text-[color:var(--accent-contrast,#0B0B0B)] opacity-90", tokensClass(primaryButtonTokens), primaryLabelData?.className)}
+                        style={{ backgroundColor: "var(--accent-2, #ffffff)", ...(tokensStyle(primaryButtonTokens) ?? {}) }}
+                        aria-label={primaryLabelData?.ariaLabel}
+                      >
+                        {primaryLabelData?.content ?? pane.primaryButton.label}
+                      </span>,
+                      primaryButtonTokens
+                    )
+                  )
+                ) : null}
+                {pane?.secondaryButton?.label ? (
+                  pane?.secondaryButton?.href ? (
+                    wrapDecorations(
+                      <a
+                        href={pane.secondaryButton.href}
+                        className={cls("rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold hover:bg-white/[0.08]", tokensClass(secondaryButtonTokens), secondaryLabelData?.className)}
+                        style={tokensStyle(secondaryButtonTokens)}
+                        aria-label={secondaryLabelData?.ariaLabel}
+                      >
+                        {secondaryLabelData?.content ?? pane.secondaryButton.label}
+                      </a>,
+                      secondaryButtonTokens
+                    )
+                  ) : (
+                    wrapDecorations(
+                      <span
+                        className={cls("rounded-xl border border-white/[0.12] bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/90", tokensClass(secondaryButtonTokens), secondaryLabelData?.className)}
+                        style={tokensStyle(secondaryButtonTokens)}
+                        aria-label={secondaryLabelData?.ariaLabel}
+                      >
+                        {secondaryLabelData?.content ?? pane.secondaryButton.label}
+                      </span>,
+                      secondaryButtonTokens
+                    )
+                  )
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      return wrapDecorations(
+        <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03] p-3", uiSectionClass(d))} style={uiSectionStyle(d)}>
+          <SectionTextScope data={d}>
+            <div className={cls("mx-auto flex flex-col md:flex-row", uiContainerClass(d))} style={{ gap: `${splitGap}px` }}>
+              <div className="min-w-0" style={{ flex: `${leftRatio} 1 0%` }}>
+                {renderPane(leftPane)}
+              </div>
+              <div className="min-w-0" style={{ flex: `${rightRatio} 1 0%` }}>
+                {renderPane(splitRight)}
+              </div>
+            </div>
+          </SectionTextScope>
+          {componentsBlock}
+        </section>,
+        sectionTokens
+      );
+    }
+
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d, productLookup);
@@ -2899,6 +3319,7 @@ export function CmsPageRenderer({
           const layout = normalizeSectionLayout((sec as any)?.data?.layout);
           const span = clampInt(layout.span, 1, group.columns, 1);
           const colSpanClass = group.mode === "grid" ? SECTION_COL_SPAN[span] : undefined;
+          const dividerNode = renderSectionDivider((sec as any)?.data?.twTokens as TwTokens | undefined);
           const rowStyle =
             group.mode === "row" && group.columns > 0
               ? {
@@ -2917,6 +3338,7 @@ export function CmsPageRenderer({
                 depth={0}
                 seen={seen}
               />
+              {dividerNode}
             </div>
           );
         };

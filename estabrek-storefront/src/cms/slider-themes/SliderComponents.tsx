@@ -81,9 +81,9 @@ export const SliderDark: React.FC<SliderProps> = ({
         </>
       )}
       {showDots && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+        <div className="cms-slider-dots absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
           {slides.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`w-2 h-2 rounded-full transition-all ${i === current ? 'bg-white w-6' : 'bg-white/40'}`} />
+            <button key={i} onClick={() => setCurrent(i)} className={`cms-slider-dot rounded-full transition-all ${i === current ? 'is-active bg-white w-6 h-2' : 'is-inactive bg-white/40 w-2 h-2'}`} />
           ))}
         </div>
       )}
@@ -137,9 +137,9 @@ export const SliderGradient: React.FC<SliderProps> = ({
         </>
       )}
       {showDots && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+        <div className="cms-slider-dots absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
           {slides.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`w-3 h-3 rounded-full transition-all ${i === current ? 'bg-white' : 'bg-white/40'}`} />
+            <button key={i} onClick={() => setCurrent(i)} className={`cms-slider-dot w-3 h-3 rounded-full transition-all ${i === current ? 'is-active bg-white' : 'is-inactive bg-white/40'}`} />
           ))}
         </div>
       )}
@@ -234,9 +234,9 @@ export const SliderLuxury: React.FC<SliderProps> = ({
         ))}
       </div>
       {showDots && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
+        <div className="cms-slider-dots cms-slider-dots--line absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
           {slides.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`w-8 h-0.5 transition-all ${i === current ? 'bg-white' : 'bg-white/30'}`} />
+            <button key={i} onClick={() => setCurrent(i)} className={`cms-slider-dot cms-slider-dot--line h-0.5 transition-all ${i === current ? 'is-active w-8 bg-white' : 'is-inactive w-8 bg-white/30'}`} />
           ))}
         </div>
       )}
@@ -407,9 +407,9 @@ export const SliderTravelDestinations: React.FC<SliderProps> = ({
         </>
       )}
       {showDots && (
-        <div className="flex justify-center gap-2 mt-4">
+        <div className="cms-slider-dots flex justify-center gap-2 mt-4">
           {slides.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`w-3 h-3 rounded-full transition-all ${i === current ? 'bg-sky-500' : 'bg-gray-300'}`} />
+            <button key={i} onClick={() => setCurrent(i)} className={`cms-slider-dot w-3 h-3 rounded-full transition-all ${i === current ? 'is-active bg-sky-500' : 'is-inactive bg-gray-300'}`} />
           ))}
         </div>
       )}
@@ -461,9 +461,9 @@ export const SliderTechSaas: React.FC<SliderProps> = ({
           </div>
         </div>
         {showDots && (
-          <div className="flex justify-center gap-3 mt-12">
+          <div className="cms-slider-dots flex justify-center gap-3 mt-12">
             {slides.map((_, i) => (
-              <button key={i} onClick={() => setCurrent(i)} className={`w-3 h-3 rounded-full transition-all ${i === current ? 'bg-white' : 'bg-white/30'}`} />
+              <button key={i} onClick={() => setCurrent(i)} className={`cms-slider-dot w-3 h-3 rounded-full transition-all ${i === current ? 'is-active bg-white' : 'is-inactive bg-white/30'}`} />
             ))}
           </div>
         )}
@@ -513,9 +513,9 @@ export const SliderRetroGaming: React.FC<SliderProps> = ({
           </div>
         )}
         {showDots && (
-          <div className="flex justify-center gap-2 mt-4">
+          <div className="cms-slider-dots flex justify-center gap-2 mt-4">
             {slides.map((_, i) => (
-              <button key={i} onClick={() => setCurrent(i)} className={`w-4 h-4 border-2 border-yellow-400 ${i === current ? 'bg-yellow-400' : 'bg-transparent'}`} />
+              <button key={i} onClick={() => setCurrent(i)} className={`cms-slider-dot w-4 h-4 border-2 border-yellow-400 ${i === current ? 'is-active bg-yellow-400' : 'is-inactive bg-transparent'}`} />
             ))}
           </div>
         )}

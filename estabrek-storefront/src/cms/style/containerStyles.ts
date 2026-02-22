@@ -332,7 +332,7 @@ export const NEON_CONTAINERS: ContainerStyle[] = [
     nameAr: "نيون قوس قزح",
     category: "neon",
     className:
-      "bg-gray-900 rounded-2xl p-6 border-2 border-transparent bg-clip-padding text-white relative before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-r before:from-pink-500 before:via-purple-500 before:to-cyan-500 before:-z-10 shadow-[0_0_30px_rgba(168,85,247,0.4)]",
+      "bg-gray-900 rounded-2xl p-6 border-2 border-transparent bg-clip-padding text-white relative before:content-[''] before:absolute before:inset-0 before:rounded-2xl before:p-[2px] before:bg-gradient-to-r before:from-pink-500 before:via-purple-500 before:to-cyan-500 before:-z-10 before:pointer-events-none shadow-[0_0_30px_rgba(168,85,247,0.4)]",
   },
 ];
 
@@ -505,7 +505,7 @@ export const SPECIAL_CONTAINERS: ContainerStyle[] = [
     nameAr: "ورقي",
     category: "special",
     className:
-      "bg-[#fffef9] rounded-sm p-6 shadow-md border border-[#e8e4d9] relative before:absolute before:inset-0 before:bg-[linear-gradient(90deg,transparent_79px,#e8e4d9_79px,#e8e4d9_81px,transparent_81px)] before:bg-[length:100px_100%]",
+      "bg-[#fffef9] rounded-sm p-6 shadow-md border border-[#e8e4d9] relative before:content-[''] before:absolute before:inset-0 before:bg-[linear-gradient(90deg,transparent_79px,#e8e4d9_79px,#e8e4d9_81px,transparent_81px)] before:bg-[length:100px_100%] before:pointer-events-none before:opacity-60",
   },
   {
     id: "container-special-terminal",
@@ -591,8 +591,8 @@ export const SIMPLE_DIVIDERS: DividerStyle[] = [
   { id: "divider-short-color", name: "Short Color", nameAr: "قصير ملون", category: "simple", className: "w-24 h-1 bg-blue-500 mx-auto rounded-full" },
   { id: "divider-left", name: "Left Aligned", nameAr: "محاذاة يسار", category: "simple", className: "w-24 h-1 bg-gray-300 rounded-full" },
   { id: "divider-right", name: "Right Aligned", nameAr: "محاذاة يمين", category: "simple", className: "w-24 h-1 bg-gray-300 mr-0 ml-auto rounded-full" },
-  { id: "divider-vertical", name: "Vertical", nameAr: "عمودي", category: "simple", className: "w-px h-full bg-gray-300" },
-  { id: "divider-vertical-dashed", name: "Vertical Dashed", nameAr: "عمودي متقطع", category: "simple", className: "w-px h-full border-r border-dashed border-gray-300" },
+  { id: "divider-vertical", name: "Vertical", nameAr: "عمودي", category: "simple", className: "w-px h-12 bg-gray-300" },
+  { id: "divider-vertical-dashed", name: "Vertical Dashed", nameAr: "عمودي متقطع", category: "simple", className: "w-px h-12 border-r border-dashed border-gray-300" },
   { id: "divider-inset", name: "Inset", nameAr: "مدخل", category: "simple", className: "w-[calc(100%-2rem)] h-px bg-gray-200 mx-auto" },
 ];
 
@@ -810,6 +810,199 @@ export const SVG_DIVIDERS: DividerStyle[] = [
   },
 ];
 
+// ============================================================
+// 🌈 DIVIDERS - GRADIENT
+// ============================================================
+
+export const GRADIENT_DIVIDERS: DividerStyle[] = [
+  { id: "divider-gradient-sky", name: "Sky Fade", nameAr: "تدرج سماوي", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-sky-400 to-transparent" },
+  { id: "divider-gradient-sunset", name: "Sunset Fade", nameAr: "تدرج الغروب", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-orange-400 to-transparent" },
+  { id: "divider-gradient-emerald", name: "Emerald Fade", nameAr: "تدرج زمردي", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-emerald-500 to-transparent" },
+  { id: "divider-gradient-rose", name: "Rose Fade", nameAr: "تدرج وردي", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-rose-500 to-transparent" },
+  { id: "divider-gradient-indigo", name: "Indigo Fade", nameAr: "تدرج نيلي", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent" },
+  { id: "divider-gradient-amber", name: "Amber Fade", nameAr: "تدرج كهرماني", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent" },
+  { id: "divider-gradient-teal", name: "Teal Fade", nameAr: "تدرج تركوازي", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-teal-500 to-transparent" },
+  { id: "divider-gradient-fuchsia", name: "Fuchsia Fade", nameAr: "تدرج فوشيا", category: "gradient", className: "w-full h-px bg-gradient-to-r from-transparent via-fuchsia-500 to-transparent" },
+  { id: "divider-gradient-neon", name: "Neon Band", nameAr: "شريط نيون", category: "gradient", className: "w-full h-[2px] bg-gradient-to-r from-cyan-400 via-lime-300 to-fuchsia-400" },
+  { id: "divider-gradient-soft", name: "Soft Band", nameAr: "شريط ناعم", category: "gradient", className: "w-full h-[2px] bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200" },
+  { id: "divider-gradient-dual", name: "Dual Accent", nameAr: "لهجة مزدوجة", category: "gradient", className: "w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full" },
+  { id: "divider-gradient-mid-glow", name: "Mid Glow", nameAr: "وهج وسطي", category: "gradient", className: "w-full h-[3px] bg-gradient-to-r from-transparent via-white/70 to-transparent rounded-full" },
+  { id: "divider-gradient-triple", name: "Triple Blend", nameAr: "مزج ثلاثي", category: "gradient", className: "w-full h-px bg-gradient-to-r from-cyan-400 via-violet-500 to-rose-500" },
+  { id: "divider-gradient-deep", name: "Deep Tone", nameAr: "درجة عميقة", category: "gradient", className: "w-full h-[2px] bg-gradient-to-r from-slate-900 via-indigo-800 to-slate-900" },
+  { id: "divider-gradient-pastel", name: "Pastel Blend", nameAr: "مزج باستيل", category: "gradient", className: "w-full h-[2px] bg-gradient-to-r from-pink-200 via-sky-200 to-emerald-200" },
+];
+
+// ============================================================
+// 🧩 DIVIDERS - PATTERN
+// ============================================================
+
+export const PATTERN_DIVIDERS: DividerStyle[] = [
+  {
+    id: "divider-pattern-stripes",
+    name: "Stripes",
+    nameAr: "خطوط متناوبة",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-2 w-full bg-[repeating-linear-gradient(90deg,#d1d5db_0_12px,transparent_12px_20px)]"></div>`,
+  },
+  {
+    id: "divider-pattern-diagonal",
+    name: "Diagonal Stripes",
+    nameAr: "خطوط مائلة",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-2 w-full bg-[repeating-linear-gradient(135deg,#d1d5db_0_8px,transparent_8px_14px)]"></div>`,
+  },
+  {
+    id: "divider-pattern-dots",
+    name: "Dot Line",
+    nameAr: "خط نقاط",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-2 w-full bg-[radial-gradient(circle,#9ca3af_1px,transparent_1.5px)] bg-[length:12px_6px]"></div>`,
+  },
+  {
+    id: "divider-pattern-dot-grid",
+    name: "Dot Grid",
+    nameAr: "شبكة نقطية",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-3 w-full bg-[radial-gradient(circle,#9ca3af_1px,transparent_1.5px)] bg-[length:10px_10px]"></div>`,
+  },
+  {
+    id: "divider-pattern-checks",
+    name: "Checks",
+    nameAr: "مربعات متتابعة",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-2 w-full bg-[repeating-linear-gradient(90deg,#d1d5db_0_10px,transparent_10px_20px),repeating-linear-gradient(0deg,#d1d5db_0_10px,transparent_10px_20px)]"></div>`,
+  },
+  {
+    id: "divider-pattern-zig-step",
+    name: "Step Zigzag",
+    nameAr: "درج متعرج",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<svg viewBox="0 0 1200 24" class="w-full h-4 stroke-gray-300 fill-none stroke-2"><path d="M0,20 L20,4 L40,20 L60,4 L80,20 L100,4 L120,20 L140,4 L160,20 L180,4 L200,20 L220,4 L240,20 L260,4 L280,20 L300,4 L320,20 L340,4 L360,20 L380,4 L400,20 L420,4 L440,20 L460,4 L480,20 L500,4 L520,20 L540,4 L560,20 L580,4 L600,20 L620,4 L640,20 L660,4 L680,20 L700,4 L720,20 L740,4 L760,20 L780,4 L800,20 L820,4 L840,20 L860,4 L880,20 L900,4 L920,20 L940,4 L960,20 L980,4 L1000,20 L1020,4 L1040,20 L1060,4 L1080,20 L1100,4 L1120,20 L1140,4 L1160,20 L1180,4 L1200,20"/></svg>`,
+  },
+  {
+    id: "divider-pattern-ticks",
+    name: "Ticks",
+    nameAr: "علامات",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="flex h-3 w-full items-end justify-between">${Array(40).fill(`<span class="h-3 w-px bg-gray-300"></span>`).join("")}</div>`,
+  },
+  {
+    id: "divider-pattern-ruler",
+    name: "Ruler",
+    nameAr: "مسطرة",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-3 w-full border-t border-gray-300 bg-[repeating-linear-gradient(90deg,transparent_0_8px,#9ca3af_8px_9px)]"></div>`,
+  },
+  {
+    id: "divider-pattern-tiny-bars",
+    name: "Tiny Bars",
+    nameAr: "أعمدة صغيرة",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-3 w-full bg-[repeating-linear-gradient(90deg,#9ca3af_0_2px,transparent_2px_8px)]"></div>`,
+  },
+  {
+    id: "divider-pattern-crosses",
+    name: "Cross Pattern",
+    nameAr: "نمط تقاطعات",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-3 w-full bg-[repeating-linear-gradient(90deg,#d1d5db_0_10px,transparent_10px_20px),repeating-linear-gradient(45deg,transparent_0_8px,#9ca3af_8px_9px,transparent_9px_17px)]"></div>`,
+  },
+  {
+    id: "divider-pattern-chevrons",
+    name: "Chevrons",
+    nameAr: "شيفرون",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-3 w-full bg-[repeating-linear-gradient(45deg,transparent_0_6px,#9ca3af_6px_8px,transparent_8px_14px),repeating-linear-gradient(-45deg,transparent_0_6px,#9ca3af_6px_8px,transparent_8px_14px)]"></div>`,
+  },
+  {
+    id: "divider-pattern-boxes",
+    name: "Boxes",
+    nameAr: "مربعات",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="flex w-full items-center gap-1">${Array(28).fill(`<span class="h-2 w-2 border border-gray-300"></span>`).join("")}</div>`,
+  },
+  {
+    id: "divider-pattern-arcs",
+    name: "Arcs",
+    nameAr: "أقواس",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<svg viewBox="0 0 1200 30" class="w-full h-4 stroke-gray-300 fill-none"><path d="M0,20 Q20,0 40,20 T80,20 T120,20 T160,20 T200,20 T240,20 T280,20 T320,20 T360,20 T400,20 T440,20 T480,20 T520,20 T560,20 T600,20 T640,20 T680,20 T720,20 T760,20 T800,20 T840,20 T880,20 T920,20 T960,20 T1000,20 T1040,20 T1080,20 T1120,20 T1160,20 T1200,20"/></svg>`,
+  },
+  {
+    id: "divider-pattern-wavelets",
+    name: "Wavelets",
+    nameAr: "تموجات",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<svg viewBox="0 0 1200 20" class="w-full h-3 stroke-gray-300 fill-none stroke-2"><path d="M0,10 Q10,2 20,10 T40,10 T60,10 T80,10 T100,10 T120,10 T140,10 T160,10 T180,10 T200,10 T220,10 T240,10 T260,10 T280,10 T300,10 T320,10 T340,10 T360,10 T380,10 T400,10 T420,10 T440,10 T460,10 T480,10 T500,10 T520,10 T540,10 T560,10 T580,10 T600,10 T620,10 T640,10 T660,10 T680,10 T700,10 T720,10 T740,10 T760,10 T780,10 T800,10 T820,10 T840,10 T860,10 T880,10 T900,10 T920,10 T940,10 T960,10 T980,10 T1000,10 T1020,10 T1040,10 T1060,10 T1080,10 T1100,10 T1120,10 T1140,10 T1160,10 T1180,10 T1200,10"/></svg>`,
+  },
+  {
+    id: "divider-pattern-hatch",
+    name: "Hatch",
+    nameAr: "تظليل",
+    category: "pattern",
+    className: "w-full py-2",
+    svg: `<div class="h-3 w-full bg-[repeating-linear-gradient(135deg,#d1d5db_0_1px,transparent_1px_6px)]"></div>`,
+  },
+];
+
+// ============================================================
+// ✳️ DIVIDERS - ICONIC
+// ============================================================
+
+export const ICONIC_DIVIDERS: DividerStyle[] = [
+  { id: "divider-icon-plus", name: "Plus", nameAr: "إشارة زائد", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-gray-500 text-lg">+</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-starburst", name: "Starburst", nameAr: "نجمة لامعة", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-yellow-400 text-lg">✦</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-hex", name: "Hex", nameAr: "سداسي", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-gray-500">⬢</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-bolt", name: "Bolt", nameAr: "برق", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-amber-400">⚡</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-moon", name: "Moon", nameAr: "قمر", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-indigo-300">☾</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-sun", name: "Sun", nameAr: "شمس", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-amber-400"></div><span class="text-amber-500">☀</span><div class="flex-1 h-px bg-amber-400"></div>` },
+  { id: "divider-icon-knot", name: "Knot", nameAr: "عقدة", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-gray-500">⌁</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-gem", name: "Gem", nameAr: "جوهرة", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-cyan-400">◆</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-circles", name: "Circles", nameAr: "دوائر", category: "iconic", className: "w-full flex items-center justify-center gap-2 py-3", svg: `<span class="text-gray-400">○ ○ ○ ○ ○</span>` },
+  { id: "divider-icon-squares", name: "Squares", nameAr: "مربعات", category: "iconic", className: "w-full flex items-center justify-center gap-2 py-3", svg: `<span class="text-gray-500">■ ■ ■ ■</span>` },
+  { id: "divider-icon-triangles", name: "Triangles", nameAr: "مثلثات", category: "iconic", className: "w-full flex items-center justify-center gap-2 py-3", svg: `<span class="text-gray-500">▲ ▲ ▲ ▲</span>` },
+  { id: "divider-icon-rosette", name: "Rosette", nameAr: "وردة", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-pink-400">❖</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-spark", name: "Spark", nameAr: "شرارة", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-amber-300">✹</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-arrows", name: "Bi Arrows", nameAr: "أسهم مزدوجة", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-gray-500">↔</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-icon-command", name: "Command", nameAr: "أمر", category: "iconic", className: "w-full flex items-center gap-4 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-gray-500">⌘</span><div class="flex-1 h-px bg-gray-300"></div>` },
+];
+
+// ============================================================
+// 🧠 DIVIDERS - MODERN
+// ============================================================
+
+export const MODERN_DIVIDERS: DividerStyle[] = [
+  { id: "divider-modern-pill", name: "Pill", nameAr: "حبّة", category: "modern", className: "w-full py-3", svg: `<div class="mx-auto h-2 w-28 rounded-full bg-gray-300"></div>` },
+  { id: "divider-modern-pill-duo", name: "Dual Pills", nameAr: "حبّتان", category: "modern", className: "w-full py-3 flex items-center justify-center gap-2", svg: `<span class="h-2 w-20 rounded-full bg-gray-300"></span><span class="h-2 w-10 rounded-full bg-gray-400"></span>` },
+  { id: "divider-modern-track", name: "Track", nameAr: "مسار", category: "modern", className: "w-full py-3", svg: `<div class="relative h-1 w-full bg-gray-200"><div class="absolute left-1/4 top-0 h-1 w-1/3 bg-gray-400"></div></div>` },
+  { id: "divider-modern-center-bar", name: "Center Bar", nameAr: "شريط مركزي", category: "modern", className: "w-full py-3", svg: `<div class="mx-auto h-1 w-40 rounded-full bg-gray-400"></div>` },
+  { id: "divider-modern-edge-fade", name: "Edge Fade", nameAr: "تلاشي الحواف", category: "modern", className: "w-full h-px bg-gradient-to-r from-gray-200 via-gray-400 to-gray-200" },
+  { id: "divider-modern-chip", name: "Chip", nameAr: "شريحة", category: "modern", className: "w-full flex items-center gap-3 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="px-2 py-0.5 rounded-md border border-gray-300 text-[10px] text-gray-500">CMS</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-modern-glow-line", name: "Glow Line", nameAr: "خط متوهج", category: "modern", className: "w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-300 to-transparent" },
+  { id: "divider-modern-brackets", name: "Brackets", nameAr: "أقواس", category: "modern", className: "w-full flex items-center gap-3 py-3", svg: `<div class="flex-1 h-px bg-gray-300"></div><span class="text-gray-500">[ ]</span><div class="flex-1 h-px bg-gray-300"></div>` },
+  { id: "divider-modern-half-left", name: "Half Left", nameAr: "نصف يسار", category: "modern", className: "w-1/2 h-[2px] bg-gray-400 rounded-full" },
+  { id: "divider-modern-half-right", name: "Half Right", nameAr: "نصف يمين", category: "modern", className: "w-1/2 h-[2px] bg-gray-400 rounded-full ml-auto" },
+  { id: "divider-modern-stack", name: "Stacked", nameAr: "طبقات", category: "modern", className: "w-full py-3 flex flex-col gap-1", svg: `<span class="h-px w-full bg-gray-300"></span><span class="h-px w-2/3 bg-gray-400"></span><span class="h-px w-1/3 bg-gray-500"></span>` },
+  { id: "divider-modern-soft-curve", name: "Soft Curve", nameAr: "قوس ناعم", category: "modern", className: "w-full py-2", svg: `<svg viewBox="0 0 1200 30" class="w-full h-4 fill-none stroke-gray-300"><path d="M0,20 C200,5 400,35 600,20 C800,5 1000,35 1200,20"/></svg>` },
+  { id: "divider-modern-notches", name: "Notches", nameAr: "شقوق", category: "modern", className: "w-full py-2", svg: `<svg viewBox="0 0 1200 20" class="w-full h-3 fill-current text-gray-300"><path d="M0,10 L30,10 L40,0 L50,10 L80,10 L90,0 L100,10 L130,10 L140,0 L150,10 L180,10 L190,0 L200,10 L230,10 L240,0 L250,10 L280,10 L290,0 L300,10 L330,10 L340,0 L350,10 L380,10 L390,0 L400,10 L430,10 L440,0 L450,10 L480,10 L490,0 L500,10 L530,10 L540,0 L550,10 L580,10 L590,0 L600,10 L630,10 L640,0 L650,10 L680,10 L690,0 L700,10 L730,10 L740,0 L750,10 L780,10 L790,0 L800,10 L830,10 L840,0 L850,10 L880,10 L890,0 L900,10 L930,10 L940,0 L950,10 L980,10 L990,0 L1000,10 L1030,10 L1040,0 L1050,10 L1080,10 L1090,0 L1100,10 L1130,10 L1140,0 L1150,10 L1180,10 L1190,0 L1200,10"/></svg>` },
+  { id: "divider-modern-signal", name: "Signal", nameAr: "إشارة", category: "modern", className: "w-full py-3 flex items-end justify-center gap-1", svg: `<span class="w-1 h-2 bg-gray-300"></span><span class="w-1 h-3 bg-gray-400"></span><span class="w-1 h-4 bg-gray-500"></span><span class="w-1 h-3 bg-gray-400"></span><span class="w-1 h-2 bg-gray-300"></span>` },
+  { id: "divider-modern-split-line", name: "Split Line", nameAr: "خط منقسم", category: "modern", className: "w-full flex items-center py-3 gap-3", svg: `<span class="flex-1 h-px bg-gray-300"></span><span class="h-1 w-1 rounded-full bg-gray-400"></span><span class="flex-1 h-px bg-gray-300"></span>` },
+];
+
 export const ALL_CONTAINER_STYLES: ContainerStyle[] = [
   ...BASIC_CONTAINERS,
   ...GLASS_CONTAINERS,
@@ -824,6 +1017,10 @@ export const ALL_DIVIDER_STYLES: DividerStyle[] = [
   ...SIMPLE_DIVIDERS,
   ...DECORATIVE_DIVIDERS,
   ...SVG_DIVIDERS,
+  ...GRADIENT_DIVIDERS,
+  ...PATTERN_DIVIDERS,
+  ...ICONIC_DIVIDERS,
+  ...MODERN_DIVIDERS,
 ];
 
 export const CONTAINER_CATEGORY_LABELS_AR: Record<string, string> = {
@@ -840,6 +1037,10 @@ export const DIVIDER_CATEGORY_LABELS_AR: Record<string, string> = {
   simple: "بسيط",
   decorative: "زخرفي",
   svg: "SVG",
+  gradient: "متدرج",
+  pattern: "أنماط",
+  iconic: "رموز",
+  modern: "حديث",
 };
 
 export function getContainerById(id?: string): ContainerStyle | undefined {
