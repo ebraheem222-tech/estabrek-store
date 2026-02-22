@@ -10,6 +10,7 @@ import { useSettings, useSettingsActions } from "../../hooks/useSettings";
 import type { CmsSettingsCatalog } from "./cmsSettingsCatalog";
 import { DEFAULT_BUTTON_THEME_ID, getButtonTheme } from "../../cms/button-themes";
 import { buttonThemeToCssVars } from "../../theme/buttonTheme";
+import { WebsiteThemeGalleryPicker } from "./WebsiteThemeGalleryPicker";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -1742,6 +1743,13 @@ export default function SettingsPage() {
                           { value: "glass", label: "زجاجي" },
                           { value: "classic", label: "كلاسيك" },
                         ]}
+                      />
+	                    </div>
+
+                    <div className="mt-4">
+                      <WebsiteThemeGalleryPicker
+                        selectedThemeId={theme.websiteThemeId ?? "default"}
+                        onSelect={(value) => updateTheme({ websiteThemeId: value })}
                       />
                     </div>
 
