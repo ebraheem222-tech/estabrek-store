@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
@@ -129,6 +129,85 @@ function NavNode({
     );
   }
 
+  const desktopChildLinkClass =
+    "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-[color:var(--text)] transition-all duration-200 hover:bg-black/5 hover:dark:bg-white/10";
+
+  function renderDesktopChildNode(node: any, depth = 0, nodeKey = "child"): React.ReactNode {
+    const key = node?.id ?? node?.href ?? node?.label ?? nodeKey;
+    const nodeHref = normalizeNavHref(node?.href);
+    const nodeExternal = !!node?.isExternal || isExternalHref(nodeHref);
+    const nodeChildren = Array.isArray(node?.children) ? node.children : [];
+    const nodeHasChildren = nodeChildren.length > 0;
+    const nodeHrefPath = nodeHref.startsWith("/") ? nodeHref.split(/[?#]/)[0] : nodeHref;
+    const nodeActive = !nodeExternal && nodeHrefPath !== "#" && (pathname === nodeHrefPath || pathname.startsWith(nodeHrefPath + "/"));
+    const indentStyle: React.CSSProperties = depth > 0 ? { marginInlineStart: Math.min(depth * 12, 36) } : {};
+    const linkClass = [
+      desktopChildLinkClass,
+      nodeActive ? "bg-[var(--accent)]/10 text-[color:var(--accent)] font-semibold" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const linkNode = nodeExternal ? (
+      <a href={nodeHref} className={linkClass} target={node?.target || "_blank"} rel="noopener noreferrer" style={forceTextStyle}>
+        <span className="inline-flex items-center gap-2">
+          <Icon name={node?.icon} />
+          <span>{node?.label}</span>
+        </span>
+        {nodeHasChildren ? <Icon name="chev" /> : null}
+      </a>
+    ) : (
+      <Link href={nodeHref} prefetch={prefetchLinks} className={linkClass} style={forceTextStyle}>
+        <span className="inline-flex items-center gap-2">
+          <Icon name={node?.icon} />
+          <span>{node?.label}</span>
+        </span>
+        {nodeHasChildren ? <Icon name="chev" /> : null}
+      </Link>
+    );
+
+    if (!nodeHasChildren) {
+      return (
+        <div key={key} style={indentStyle}>
+          {linkNode}
+        </div>
+      );
+    }
+
+    const hasRealLink = nodeHref !== "#" && nodeHref !== "";
+
+    return (
+      <div key={key} style={indentStyle} className={depth === 0 && mode === "mega" ? "rounded-xl border border-[color:var(--border)]/70 bg-black/5 dark:bg-white/5 p-2" : ""}>
+        {linkNode}
+        <div className="mt-1 space-y-1">
+          {hasRealLink ? (
+            nodeExternal ? (
+              <a
+                href={nodeHref}
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[color:var(--text)]/65 hover:text-[color:var(--text)]"
+                target={node?.target || "_blank"}
+                rel="noopener noreferrer"
+                style={{ marginInlineStart: 8 }}
+              >
+                <span>عرض الكل</span>
+              </a>
+            ) : (
+              <Link
+                href={nodeHref}
+                prefetch={prefetchLinks}
+                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[color:var(--text)]/65 hover:text-[color:var(--text)]"
+                style={{ marginInlineStart: 8 }}
+              >
+                <span>عرض الكل</span>
+              </Link>
+            )
+          ) : null}
+          {nodeChildren.map((sub: any, idx: number) => renderDesktopChildNode(sub, depth + 1, `${nodeKey}-${idx}`))}
+        </div>
+      </div>
+    );
+  }
+
 
   if (!hasChildren) {
     return external ? (
@@ -186,35 +265,11 @@ function NavNode({
           <GradientBg id={`nav-dd-${item.id ?? item.label}`} />
           {mode === "mega" ? (
             <div className="grid gap-2 sm:grid-cols-2">
-              {(item.children ?? []).map((ch: any) => (
-                <NavNode
-                  key={ch.id ?? ch.href ?? ch.label}
-                  item={ch}
-                  pathname={pathname}
-                  showIcons={showIcons}
-                  mode="dropdown"
-                  gradient={gradient}
-                  template={template}
-                  prefetchLinks={prefetchLinks}
-                  forceTextStyle={forceTextStyle}
-                />
-              ))}
+              {(item.children ?? []).map((ch: any, idx: number) => renderDesktopChildNode(ch, 0, `mega-${idx}`))}
             </div>
           ) : (
-            <div className="grid gap-1">
-              {(item.children ?? []).map((ch: any) => (
-                <NavNode
-                  key={ch.id ?? ch.href ?? ch.label}
-                  item={ch}
-                  pathname={pathname}
-                  showIcons={showIcons}
-                  mode="dropdown"
-                  gradient={gradient}
-                  template={template}
-                  prefetchLinks={prefetchLinks}
-                  forceTextStyle={forceTextStyle}
-                />
-              ))}
+            <div className="grid gap-1 min-w-[260px]">
+              {(item.children ?? []).map((ch: any, idx: number) => renderDesktopChildNode(ch, 0, `drop-${idx}`))}
             </div>
           )}
         </div>
@@ -228,6 +283,9 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileDrawerStage, setMobileDrawerStage] = useState<"closed" | "opening" | "open" | "closing">("closed");
+  const [mobileTrail, setMobileTrail] = useState<Array<{ label: string; items: any[]; href?: string; external?: boolean; target?: string }>>([]);
+  const mobileCloseTimerRef = useRef<number | null>(null);
   const [miniCartOpen, setMiniCartOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -240,6 +298,8 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
 
   useEffect(() => {
     setMobileOpen(false);
+    setMobileDrawerStage("closed");
+    setMobileTrail([]);
     setMiniCartOpen(false);
   }, [pathname]);
 
@@ -253,8 +313,34 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   }, []);
 
   useEffect(() => {
-    if (!isDesktop) setMiniCartOpen(false);
+    if (!isDesktop) {
+      setMiniCartOpen(false);
+      return;
+    }
+    setMobileOpen(false);
+    setMobileDrawerStage("closed");
+    setMobileTrail([]);
   }, [isDesktop]);
+
+  useEffect(() => {
+    return () => {
+      if (mobileCloseTimerRef.current && typeof window !== "undefined") {
+        window.clearTimeout(mobileCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (mobileOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+    return;
+  }, [mobileOpen]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -343,40 +429,114 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   const navDrawerLink = "block w-full px-4 py-3 font-semibold text-[color:var(--text)]";
   const navDrawerSubLink = "block w-full px-4 py-2 text-sm text-[color:var(--text)] opacity-75 hover:opacity-100";
 
-  function renderMobileNavNode(item: any, depth = 0, nodeKey = "node"): React.ReactNode {
-    const key = item?.id ?? item?.href ?? item?.label ?? nodeKey;
+  function openMobileDrawer() {
+    if (typeof window !== "undefined" && mobileCloseTimerRef.current) {
+      window.clearTimeout(mobileCloseTimerRef.current);
+      mobileCloseTimerRef.current = null;
+    }
+    setMobileTrail([]);
+    setMobileOpen(true);
+    setMobileDrawerStage("opening");
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          setMobileDrawerStage("open");
+        });
+      });
+    } else {
+      setMobileDrawerStage("open");
+    }
+  }
+
+  function closeMobileDrawer() {
+    if (!mobileOpen) return;
+    setMobileDrawerStage("closing");
+    if (typeof window !== "undefined" && mobileCloseTimerRef.current) {
+      window.clearTimeout(mobileCloseTimerRef.current);
+    }
+    if (typeof window !== "undefined") {
+      mobileCloseTimerRef.current = window.setTimeout(() => {
+        setMobileOpen(false);
+        setMobileDrawerStage("closed");
+        setMobileTrail([]);
+        mobileCloseTimerRef.current = null;
+      }, 280);
+    } else {
+      setMobileOpen(false);
+      setMobileDrawerStage("closed");
+      setMobileTrail([]);
+    }
+  }
+
+  function openMobileChildren(item: any) {
+    const children = Array.isArray(item?.children) ? item.children : [];
+    if (!children.length) return;
+    const href = normalizeNavHref(item?.href);
+    const external = !!item?.isExternal || isExternalHref(href);
+    setMobileTrail((prev) => [
+      ...prev,
+      {
+        label: String(item?.label ?? "Submenu"),
+        items: children,
+        href,
+        external,
+        target: item?.target,
+      },
+    ]);
+  }
+
+  function mobileBack() {
+    setMobileTrail((prev) => prev.slice(0, -1));
+  }
+
+  function renderMobileItem(item: any, idx: number): React.ReactNode {
+    const key = item?.id ?? item?.href ?? item?.label ?? `mobile-${idx}`;
     const href = normalizeNavHref(item?.href);
     const external = !!item?.isExternal || isExternalHref(href);
     const children = Array.isArray(item?.children) ? item.children : [];
     const hasChildren = children.length > 0;
-    const marginInlineStart = depth > 0 ? Math.min(depth * 14, 56) : 0;
-    const containerClass =
-      depth === 0
-        ? navDrawerItem
-        : "rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 overflow-hidden";
-    const linkClass = depth === 0 ? navDrawerLink : `${navDrawerSubLink} font-medium`;
-    const nestedWrapClass = depth === 0 ? "border-t border-white/10 dark:border-white/10" : "border-t border-white/10";
+
+    if (hasChildren) {
+      return (
+        <button
+          key={key}
+          type="button"
+          onClick={() => openMobileChildren(item)}
+          className={`${navDrawerLink} flex items-center justify-between text-start hover:bg-black/5 hover:dark:bg-white/10 transition-colors`}
+        >
+          <span>{item?.label}</span>
+          <svg className="h-4 w-4 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+          </svg>
+        </button>
+      );
+    }
+
+    if (external) {
+      return (
+        <a
+          key={key}
+          href={href}
+          target={item?.target || "_blank"}
+          rel="noopener noreferrer"
+          onClick={closeMobileDrawer}
+          className={`${navDrawerLink} hover:bg-black/5 hover:dark:bg-white/10 transition-colors`}
+        >
+          {item?.label}
+        </a>
+      );
+    }
 
     return (
-      <div key={key} className={containerClass} style={{ marginInlineStart }}>
-        {external ? (
-          <a href={href} className={linkClass} target={item?.target || "_blank"} rel="noopener noreferrer">
-            {item?.label}
-          </a>
-        ) : (
-          <Link href={href} prefetch={settings.prefetchLinks} className={linkClass}>
-            {item?.label}
-          </Link>
-        )}
-
-        {hasChildren ? (
-          <div className={`${nestedWrapClass} space-y-1 p-2`}>
-            {children.map((child: any, idx: number) =>
-              renderMobileNavNode(child, depth + 1, `${nodeKey}-${idx}`)
-            )}
-          </div>
-        ) : null}
-      </div>
+      <Link
+        key={key}
+        href={href}
+        prefetch={settings.prefetchLinks}
+        onClick={closeMobileDrawer}
+        className={`${navDrawerLink} hover:bg-black/5 hover:dark:bg-white/10 transition-colors`}
+      >
+        {item?.label}
+      </Link>
     );
   }
 
@@ -414,6 +574,19 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   }
 
   const cta = header?.cta && header.cta.enabled ? header.cta : null;
+  const mobileMenuLevel = mobileTrail.length ? mobileTrail[mobileTrail.length - 1] : null;
+  const mobileMenuItems = mobileMenuLevel?.items ?? navItems;
+  const mobileHasParentLink = !!mobileMenuLevel?.href && mobileMenuLevel.href !== "#";
+  const mobileToggleActive = mobileOpen && mobileDrawerStage !== "closing";
+  const mobileDrawerTranslateClass =
+    mobileDrawerStage === "opening"
+      ? "-translate-x-full"
+      : mobileDrawerStage === "open"
+        ? "translate-x-0"
+        : mobileDrawerStage === "closing"
+          ? "translate-x-full"
+          : "-translate-x-full";
+  const mobileDrawerVisible = mobileOpen;
 
   function isActiveHref(href?: string) {
     if (!href) return false;
@@ -477,12 +650,17 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={() => setMobileOpen((v) => !v)}
-                className={`md:hidden ${navPill}`}
+                onClick={() => (mobileOpen ? closeMobileDrawer() : openMobileDrawer())}
+                className={`md:hidden ${navPill} transition-all duration-300 ${mobileToggleActive ? "bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-2)]/15" : ""}`}
                 aria-label="Toggle menu"
+                aria-expanded={mobileToggleActive}
               >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                <svg className={`h-5 w-5 transition-transform duration-300 ${mobileToggleActive ? "rotate-90" : "rotate-0"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  {mobileToggleActive ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
                 </svg>
               </button>
 
@@ -570,12 +748,17 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMobileOpen((v) => !v)}
-                className={`md:hidden ${navPill}`}
+                onClick={() => (mobileOpen ? closeMobileDrawer() : openMobileDrawer())}
+                className={`md:hidden ${navPill} transition-all duration-300 ${mobileToggleActive ? "bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent-2)]/15" : ""}`}
                 aria-label="Toggle menu"
+                aria-expanded={mobileToggleActive}
               >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                <svg className={`h-5 w-5 transition-transform duration-300 ${mobileToggleActive ? "rotate-90" : "rotate-0"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  {mobileToggleActive ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
                 </svg>
               </button>
 
@@ -660,23 +843,99 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
       </div>
 
       {/* Mobile drawer */}
-      {mobileOpen ? (
-        <div className="md:hidden border-t border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-4 py-4 space-y-3">
-            {showSearch ? (
-              <div className="w-full">
-                <SearchControl withLabel />
+      {mobileDrawerVisible ? (
+        <div className="md:hidden fixed inset-0 z-[80]">
+          <button
+            type="button"
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${mobileDrawerStage === "open" ? "opacity-100" : "opacity-0"}`}
+            onClick={closeMobileDrawer}
+            aria-label="Close menu backdrop"
+          />
+
+          <aside
+            className={`absolute inset-y-0 left-0 w-[86vw] max-w-[420px] border-r border-[color:var(--border)] bg-[color:var(--surface)]/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out ${mobileDrawerTranslateClass}`}
+          >
+            <div className="flex h-full flex-col">
+              <div className="border-b border-[color:var(--border)] px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  {mobileTrail.length ? (
+                    <button
+                      type="button"
+                      onClick={mobileBack}
+                      className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 px-3 py-2 text-sm text-[color:var(--text)]"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+                      </svg>
+                      رجوع
+                    </button>
+                  ) : (
+                    <div className="text-sm font-semibold text-[color:var(--text)]">القائمة</div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={closeMobileDrawer}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10 text-[color:var(--text)] transition-transform duration-300 hover:rotate-90"
+                    aria-label="Close menu"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                </div>
+
+                {mobileTrail.length ? (
+                  <div className="mt-2 text-sm font-semibold text-[color:var(--text)]">{mobileMenuLevel?.label}</div>
+                ) : null}
+
+                {mobileHasParentLink ? (
+                  mobileMenuLevel?.external ? (
+                    <a
+                      href={mobileMenuLevel.href}
+                      target={mobileMenuLevel?.target || "_blank"}
+                      rel="noopener noreferrer"
+                      onClick={closeMobileDrawer}
+                      className="mt-2 inline-flex items-center rounded-lg text-xs text-[color:var(--text)]/70 hover:text-[color:var(--text)]"
+                    >
+                      عرض الكل
+                    </a>
+                  ) : (
+                    <Link
+                      href={mobileMenuLevel?.href || "#"}
+                      prefetch={settings.prefetchLinks}
+                      onClick={closeMobileDrawer}
+                      className="mt-2 inline-flex items-center rounded-lg text-xs text-[color:var(--text)]/70 hover:text-[color:var(--text)]"
+                    >
+                      عرض الكل
+                    </Link>
+                  )
+                ) : null}
               </div>
-            ) : null}
-            {cta ? (
-              <Link href={cta.href || "/"} className={ctaMobileClassName}>
-                {cta.label || "CTA"}
-              </Link>
-            ) : null}
-            <div className="space-y-2">
-              {navItems.map((it: any, idx: number) => renderMobileNavNode(it, 0, `root-${idx}`))}
+
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                {showSearch ? (
+                  <div className="w-full">
+                    <SearchControl withLabel />
+                  </div>
+                ) : null}
+
+                {cta && mobileTrail.length === 0 ? (
+                  <Link href={cta.href || "/"} onClick={closeMobileDrawer} className={ctaMobileClassName}>
+                    {cta.label || "CTA"}
+                  </Link>
+                ) : null}
+
+                <div className="space-y-2">
+                  {mobileMenuItems.map((it: any, idx: number) => (
+                    <div key={it?.id ?? it?.href ?? it?.label ?? `mobile-wrap-${idx}`} className={navDrawerItem}>
+                      {renderMobileItem(it, idx)}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          </aside>
         </div>
       ) : null}
 
@@ -686,7 +945,5 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
     </header>
   );
 }
-
-
 
 

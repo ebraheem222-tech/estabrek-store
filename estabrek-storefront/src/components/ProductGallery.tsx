@@ -370,7 +370,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                 </div>
 
                 {/* Progress dots */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                <div className="product-gallery-progress-dots absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
                   {images.slice(0, 8).map((_, idx) => (
                     <button
                       key={idx}
@@ -379,8 +379,8 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                         e.stopPropagation();
                         setActiveIdx(idx);
                       }}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        idx === activeIdx ? 'bg-white w-6' : 'bg-white/40 w-1.5 hover:bg-white/60'
+                      className={`product-gallery-progress-dot h-1.5 rounded-full transition-all duration-300 ${
+                        idx === activeIdx ? 'is-active bg-white w-6' : 'is-inactive bg-white/40 w-1.5 hover:bg-white/60'
                       }`}
                     />
                   ))}
