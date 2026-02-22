@@ -3,11 +3,19 @@ import { LIGHT_THEMES } from "./templates/light";
 import { LUXURY_THEMES } from "./templates/luxury";
 import { GRADIENT_THEMES } from "./templates/gradient";
 import { MODERN_THEMES } from "./templates/modern";
+import { GALLERY_EXTRA_THEMES } from "./templates/galleryExtra";
 import type { WebsiteTheme, WebsiteThemeCategory } from "./types";
 
 export type { WebsiteTheme, WebsiteThemeCategory };
 
-export { DARK_THEMES, LIGHT_THEMES, LUXURY_THEMES, GRADIENT_THEMES, MODERN_THEMES };
+export {
+  DARK_THEMES,
+  LIGHT_THEMES,
+  LUXURY_THEMES,
+  GRADIENT_THEMES,
+  MODERN_THEMES,
+  GALLERY_EXTRA_THEMES,
+};
 
 export const ALL_WEBSITE_THEMES: WebsiteTheme[] = [
   ...DARK_THEMES,
@@ -15,6 +23,7 @@ export const ALL_WEBSITE_THEMES: WebsiteTheme[] = [
   ...LUXURY_THEMES,
   ...GRADIENT_THEMES,
   ...MODERN_THEMES,
+  ...GALLERY_EXTRA_THEMES,
 ];
 
 export function getWebsiteThemeById(id: string | null | undefined): WebsiteTheme | undefined {
@@ -69,4 +78,3 @@ export function generateWebsiteThemeCssVars(theme: WebsiteTheme): Record<string,
     "--color-info": c.accent,
   };
 }
-
