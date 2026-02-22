@@ -79,7 +79,7 @@ export function Footer({
 
   if (enabled) {
     return (
-      <footer className={"mt-10 " + bgClass}>
+      <footer className={"footer-candy-glass mt-10 " + bgClass}>
         <div className="mx-auto max-w-6xl px-4 py-10">
           <div className={template === "minimal" ? "grid gap-8 md:grid-cols-2" : template === "columns" ? "grid gap-8 md:grid-cols-3" : "grid gap-8 md:grid-cols-4"}>
             {/* About */}
@@ -196,7 +196,7 @@ export function Footer({
   }
 
   return (
-    <footer className="mt-10 border-t border-white/[0.08] bg-black/30">
+    <footer className="footer-candy-glass mt-10 border-t border-white/[0.08] bg-black/30">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-4">
         <div className="space-y-2">
           <div className="text-base font-semibold">{site.siteName || "Store"}</div>
