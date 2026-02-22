@@ -920,10 +920,11 @@ export function ProductFiltersBar({
           position: relative;
           overflow: hidden;
           background:
-            radial-gradient(140% 100% at 100% 0%, rgba(251, 191, 36, 0.16), transparent 58%),
-            radial-gradient(120% 100% at 0% 0%, rgba(244, 114, 182, 0.18), transparent 54%),
-            linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.62));
-          border: 1px solid rgba(255, 255, 255, 0.72);
+            radial-gradient(130% 100% at 100% 0%, rgba(250, 204, 21, 0.12), transparent 60%),
+            radial-gradient(120% 100% at 0% 0%, rgba(244, 114, 182, 0.2), transparent 58%),
+            radial-gradient(140% 120% at 30% 100%, rgba(236, 72, 153, 0.14), transparent 64%),
+            linear-gradient(150deg, rgba(255, 238, 247, 0.88), rgba(255, 231, 247, 0.74));
+          border: 1px solid rgba(244, 171, 214, 0.58);
           box-shadow:
             0 16px 34px rgba(236, 72, 153, 0.16),
             0 14px 34px rgba(99, 102, 241, 0.1);
@@ -941,10 +942,10 @@ export function ProductFiltersBar({
 
         .filter-mobile-drawer-candy {
           background:
-            radial-gradient(130% 100% at 100% 0%, rgba(251, 191, 36, 0.2), transparent 54%),
-            radial-gradient(130% 110% at 0% 0%, rgba(244, 114, 182, 0.22), transparent 56%),
-            linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72));
-          border-left: 1px solid rgba(255, 255, 255, 0.75);
+            radial-gradient(130% 100% at 100% 0%, rgba(251, 191, 36, 0.14), transparent 58%),
+            radial-gradient(130% 110% at 0% 0%, rgba(244, 114, 182, 0.24), transparent 58%),
+            linear-gradient(165deg, rgba(255, 240, 249, 0.92), rgba(255, 233, 249, 0.78));
+          border-left: 1px solid rgba(243, 169, 212, 0.58);
           box-shadow:
             -16px 0 34px rgba(67, 56, 202, 0.16),
             -10px 0 26px rgba(236, 72, 153, 0.14);
@@ -954,7 +955,7 @@ export function ProductFiltersBar({
 
         .filter-mobile-header-candy,
         .filter-mobile-footer-candy {
-          background: linear-gradient(160deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.54));
+          background: linear-gradient(160deg, rgba(255, 242, 249, 0.88), rgba(255, 232, 248, 0.72));
           backdrop-filter: blur(18px) saturate(140%);
           -webkit-backdrop-filter: blur(18px) saturate(140%);
         }
@@ -1009,45 +1010,41 @@ export function ProductFiltersBar({
         .filter-candy-shell .filter-accordion,
         .filter-candy-shell .color-chip,
         .filter-candy-shell .size-chip {
-          background: linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.62));
-          border-color: rgba(255, 255, 255, 0.75);
+          background: linear-gradient(150deg, rgba(255, 241, 248, 0.86), rgba(255, 233, 248, 0.72));
+          border-color: rgba(243, 169, 212, 0.54);
           color: var(--text);
           box-shadow: 0 8px 18px rgba(99, 102, 241, 0.08);
         }
 
         .filter-candy-shell .filter-accordion {
-          border-radius: 1.25rem;
-          border-color: rgba(255, 255, 255, 0.76);
+          border-radius: 1.55rem;
+          border-color: rgba(243, 169, 212, 0.58);
           background:
-            radial-gradient(120% 100% at 100% 0%, rgba(250, 204, 21, 0.12), transparent 62%),
-            radial-gradient(120% 100% at 0% 0%, rgba(244, 114, 182, 0.16), transparent 66%),
-            linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.66));
+            radial-gradient(120% 100% at 100% 0%, rgba(250, 204, 21, 0.08), transparent 64%),
+            radial-gradient(120% 100% at 0% 0%, rgba(244, 114, 182, 0.2), transparent 68%),
+            linear-gradient(150deg, rgba(255, 241, 248, 0.88), rgba(255, 232, 248, 0.74));
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.82),
             0 12px 26px rgba(15, 23, 42, 0.1);
         }
 
         .filter-candy-shell .filter-accordion-header {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.56);
-          background: linear-gradient(
-            140deg,
-            rgba(255, 255, 255, 0.82),
-            color-mix(in srgb, var(--accent, #f472b6) 8%, rgba(255, 255, 255, 0.74))
-          );
+          border-bottom: 1px solid rgba(243, 169, 212, 0.52);
+          border-top-left-radius: 1.5rem;
+          border-top-right-radius: 1.5rem;
+          background: linear-gradient(140deg, rgba(255, 243, 250, 0.84), rgba(255, 234, 248, 0.72));
         }
 
         .filter-candy-shell .filter-accordion-body {
           padding: 0.9rem 0.95rem 1rem;
-          background: linear-gradient(
-            145deg,
-            rgba(255, 255, 255, 0.72),
-            color-mix(in srgb, var(--accent-2, #f59e0b) 7%, rgba(255, 255, 255, 0.64))
-          );
+          background: linear-gradient(150deg, rgba(255, 240, 248, 0.78), rgba(255, 231, 248, 0.66));
+          border-bottom-left-radius: 1.5rem;
+          border-bottom-right-radius: 1.5rem;
         }
 
         .filter-candy-shell .size-chips-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          display: flex;
+          flex-wrap: wrap;
           gap: 0.58rem;
         }
 
@@ -1107,18 +1104,19 @@ export function ProductFiltersBar({
 
         .filter-candy-shell .size-chip {
           min-width: 0;
-          width: 100%;
+          width: auto;
+          min-width: 4.1rem;
           min-height: 2.7rem;
-          border-radius: 0.95rem;
-          padding: 0.55rem 0.7rem;
+          border-radius: 999px;
+          padding: 0.55rem 0.95rem;
           justify-content: center;
           text-align: center;
           background: linear-gradient(
-            145deg,
-            rgba(255, 255, 255, 0.9),
-            color-mix(in srgb, var(--accent, #f472b6) 7%, rgba(255, 255, 255, 0.78))
+            150deg,
+            rgba(252, 222, 239, 0.88),
+            rgba(248, 222, 245, 0.76)
           );
-          border-color: rgba(255, 255, 255, 0.72);
+          border-color: rgba(242, 160, 207, 0.56);
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.8),
             0 8px 16px rgba(15, 23, 42, 0.08);
@@ -1135,6 +1133,7 @@ export function ProductFiltersBar({
           box-shadow:
             0 12px 24px rgba(236, 72, 153, 0.24),
             0 8px 18px rgba(14, 165, 233, 0.16);
+          border-color: transparent;
         }
 
         .filter-candy-shell .filter-toggle-indicator {
@@ -1193,8 +1192,10 @@ export function ProductFiltersBar({
 
           .filter-candy-shell .size-chip {
             min-height: 2.5rem;
-            border-radius: 0.88rem;
+            border-radius: 999px;
             font-size: 0.8rem;
+            min-width: 3.85rem;
+            padding: 0.5rem 0.82rem;
           }
         }
       `}</style>
