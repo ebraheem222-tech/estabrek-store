@@ -426,7 +426,7 @@ export function ProductFiltersBar({
       setMobileOpen(false);
       setDraftFilters(null);
       setIsClosing(false);
-    }, 240);
+    }, 280);
   }
 
   function applyMobile() {
@@ -691,7 +691,7 @@ export function ProductFiltersBar({
   );
 
   return (
-    <div className={className} dir="rtl">
+    <div className={`filter-candy-shell ${className ?? ""}`.trim()} dir="rtl">
       {/* Mobile Filter Toggle */}
       <button 
         type="button" 
@@ -699,7 +699,7 @@ export function ProductFiltersBar({
           setIsClosing(false);
           setMobileOpen(true);
         }} 
-        className={`mobile-filter-toggle md:hidden ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
+        className={`mobile-filter-toggle filter-mobile-toggle-candy md:hidden ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
       >
         <FilterIcon />
         <span>الفلاتر</span>
@@ -709,7 +709,7 @@ export function ProductFiltersBar({
       </button>
 
       {/* Desktop Filters */}
-      <div className="filters-container hidden md:block">
+      <div className="filters-container filters-candy-surface hidden md:block">
         <div className="filters-header">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
@@ -736,14 +736,14 @@ export function ProductFiltersBar({
       {mobileOpen && (
         <div className="fixed inset-0 z-[1300] md:hidden" role="dialog" aria-modal="true">
           <div 
-            className="absolute inset-0 bg-black/20 filter-backdrop" 
+            className={`absolute inset-0 filter-backdrop filter-backdrop-candy ${isClosing ? "closing" : "opening"}`} 
             onClick={closeMobile} 
           />
           <div 
-            className={`absolute inset-y-0 right-0 w-[80vw] max-w-[520px] bg-[var(--surface)] overflow-y-auto ${isClosing ? "filter-drawer-closing" : "filter-drawer-opening"}`}
+            className={`absolute inset-y-0 right-0 w-[82vw] max-w-[540px] overflow-y-auto filter-mobile-drawer-candy ${isClosing ? "filter-drawer-closing" : "filter-drawer-opening"}`}
           >
             {/* Mobile Header */}
-            <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-white/10 bg-[var(--surface)]">
+            <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-white/40 filter-mobile-header-candy">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
                   <FilterIcon />
@@ -758,7 +758,7 @@ export function ProductFiltersBar({
               <button 
                 type="button" 
                 onClick={closeMobile} 
-                className="inline-flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-[var(--text)] hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[var(--text)] transition-all duration-300 filter-mobile-close-btn"
                 aria-label="Close filters"
               >
                 <CloseIcon />
@@ -769,7 +769,7 @@ export function ProductFiltersBar({
             {/* Mobile Content */}
             <div className="p-4 pb-28">
               {mobileCategoryTree && !categoryTree && categories?.length ? (
-                <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="mb-5 rounded-2xl border border-white/40 p-3 filter-tree-candy">
                   <CategorySidebar
                     categories={categories}
                     selectedId={categoryIdParam || undefined}
@@ -781,12 +781,12 @@ export function ProductFiltersBar({
             </div>
 
             {/* Mobile Footer */}
-            <div className="sticky bottom-0 z-20 p-4 border-t border-white/10 bg-[var(--surface)] flex gap-3">
+            <div className="sticky bottom-0 z-20 p-4 border-t border-white/40 flex gap-3 filter-mobile-footer-candy">
               {hasAny && (
                 <button 
                   type="button" 
                   onClick={clearAll} 
-                  className="flex-1 py-3 rounded-xl border border-white/10 text-[var(--text)] font-medium hover:bg-white/5 transition-colors"
+                  className="flex-1 py-3 rounded-xl border border-white/45 text-[var(--text)] font-medium transition-all duration-300 filter-mobile-clear-btn"
                 >
                   مسح الكل
                 </button>
@@ -795,7 +795,7 @@ export function ProductFiltersBar({
                 <button 
                   type="button" 
                   onClick={applyMobile} 
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white font-semibold hover:opacity-90 transition-opacity"
+                  className="flex-1 py-3 rounded-xl text-white font-semibold transition-all duration-300 filter-mobile-apply-btn"
                 >
                   تطبيق الفلاتر
                 </button>
@@ -808,42 +808,314 @@ export function ProductFiltersBar({
       <style jsx>{`
         @keyframes slideInRight {
           from {
-            transform: translateX(100%);
+            transform: translateX(100%) scale(0.97);
             opacity: 0;
+            filter: blur(8px);
+          }
+          64% {
+            transform: translateX(-1.4%) scale(1.005);
           }
           to {
-            transform: translateX(0);
+            transform: translateX(0) scale(1);
             opacity: 1;
+            filter: blur(0);
           }
         }
 
         @keyframes slideOutRight {
           from {
-            transform: translateX(0);
+            transform: translateX(0) scale(1);
+            opacity: 1;
+            filter: blur(0);
+          }
+          to {
+            transform: translateX(100%) scale(0.98);
+            opacity: 0;
+            filter: blur(8px);
+          }
+        }
+
+        @keyframes candyBackdropIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes candyBackdropOut {
+          from {
             opacity: 1;
           }
           to {
-            transform: translateX(100%);
             opacity: 0;
           }
         }
 
+        @keyframes candyPopUp {
+          from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
         .filter-drawer-opening {
-          animation: slideInRight 0.3s ease;
+          animation: slideInRight 0.36s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
         .filter-drawer-closing {
-          animation: slideOutRight 0.24s ease forwards;
+          animation: slideOutRight 0.28s cubic-bezier(0.4, 0, 1, 1) forwards;
         }
-        
+
+        .filter-backdrop-candy.opening {
+          animation: candyBackdropIn 0.32s ease forwards;
+        }
+
+        .filter-backdrop-candy.closing {
+          animation: candyBackdropOut 0.22s ease forwards;
+        }
+
+        .filter-candy-shell .filter-section,
+        .filter-candy-shell .filter-accordion,
+        .filter-candy-shell .filter-tags {
+          animation: candyPopUp 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .filter-candy-shell .filter-section:nth-of-type(1) { animation-delay: 0ms; }
+        .filter-candy-shell .filter-section:nth-of-type(2) { animation-delay: 40ms; }
+        .filter-candy-shell .filter-section:nth-of-type(3) { animation-delay: 80ms; }
+        .filter-candy-shell .filter-section:nth-of-type(4) { animation-delay: 120ms; }
+
         .filter-accordion-content {
           max-height: 0;
           overflow: hidden;
-          transition: max-height 0.3s ease;
+          transition: max-height 0.36s ease;
         }
         
         .filter-accordion-content.expanded {
-          max-height: 500px;
+          max-height: 560px;
+        }
+
+        .filter-mobile-toggle-candy {
+          background: linear-gradient(
+              160deg,
+              color-mix(in srgb, var(--accent, #f472b6) 72%, white 28%),
+              color-mix(in srgb, var(--accent-2, #f59e0b) 66%, white 34%)
+            ),
+            rgba(255, 255, 255, 0.68);
+          border: 1px solid rgba(255, 255, 255, 0.88);
+          box-shadow:
+            0 16px 34px rgba(244, 114, 182, 0.24),
+            0 10px 24px rgba(56, 189, 248, 0.18);
+          backdrop-filter: blur(20px) saturate(150%);
+          -webkit-backdrop-filter: blur(20px) saturate(150%);
+        }
+
+        .filters-candy-surface {
+          position: relative;
+          overflow: hidden;
+          background:
+            radial-gradient(140% 100% at 100% 0%, rgba(251, 191, 36, 0.16), transparent 58%),
+            radial-gradient(120% 100% at 0% 0%, rgba(244, 114, 182, 0.18), transparent 54%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.62));
+          border: 1px solid rgba(255, 255, 255, 0.72);
+          box-shadow:
+            0 16px 34px rgba(236, 72, 153, 0.16),
+            0 14px 34px rgba(99, 102, 241, 0.1);
+          backdrop-filter: blur(24px) saturate(150%);
+          -webkit-backdrop-filter: blur(24px) saturate(150%);
+        }
+
+        .filters-candy-surface::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: linear-gradient(120deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.02) 52%);
+        }
+
+        .filter-mobile-drawer-candy {
+          background:
+            radial-gradient(130% 100% at 100% 0%, rgba(251, 191, 36, 0.2), transparent 54%),
+            radial-gradient(130% 110% at 0% 0%, rgba(244, 114, 182, 0.22), transparent 56%),
+            linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72));
+          border-left: 1px solid rgba(255, 255, 255, 0.75);
+          box-shadow:
+            -16px 0 34px rgba(67, 56, 202, 0.16),
+            -10px 0 26px rgba(236, 72, 153, 0.14);
+          backdrop-filter: blur(28px) saturate(158%);
+          -webkit-backdrop-filter: blur(28px) saturate(158%);
+        }
+
+        .filter-mobile-header-candy,
+        .filter-mobile-footer-candy {
+          background: linear-gradient(160deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.54));
+          backdrop-filter: blur(18px) saturate(140%);
+          -webkit-backdrop-filter: blur(18px) saturate(140%);
+        }
+
+        .filter-mobile-close-btn,
+        .filter-mobile-clear-btn {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.68));
+          box-shadow: 0 8px 18px rgba(99, 102, 241, 0.1);
+        }
+
+        .filter-mobile-close-btn:hover,
+        .filter-mobile-clear-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 22px rgba(236, 72, 153, 0.16);
+        }
+
+        .filter-mobile-apply-btn {
+          background: linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--accent, #f472b6) 72%, white 28%),
+            color-mix(in srgb, var(--accent-2, #f59e0b) 70%, white 30%)
+          );
+          box-shadow:
+            0 12px 24px rgba(244, 114, 182, 0.24),
+            0 8px 18px rgba(14, 165, 233, 0.18);
+        }
+
+        .filter-mobile-apply-btn:hover {
+          transform: translateY(-1px);
+          box-shadow:
+            0 14px 28px rgba(244, 114, 182, 0.3),
+            0 10px 22px rgba(14, 165, 233, 0.22);
+        }
+
+        .filter-tree-candy {
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5));
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        .filter-candy-shell .filters-header {
+          border-bottom-color: rgba(255, 255, 255, 0.62);
+        }
+
+        .filter-candy-shell .filter-label {
+          color: color-mix(in srgb, var(--text) 62%, white 38%);
+        }
+
+        .filter-candy-shell .filter-input,
+        .filter-candy-shell .filter-select,
+        .filter-candy-shell .price-range-input,
+        .filter-candy-shell .filter-toggle,
+        .filter-candy-shell .filter-accordion,
+        .filter-candy-shell .color-chip,
+        .filter-candy-shell .size-chip {
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.62));
+          border-color: rgba(255, 255, 255, 0.75);
+          color: var(--text);
+          box-shadow: 0 8px 18px rgba(99, 102, 241, 0.08);
+        }
+
+        .filter-candy-shell .filter-input::placeholder,
+        .filter-candy-shell .price-range-input::placeholder,
+        .filter-candy-shell .color-chip-count {
+          color: color-mix(in srgb, var(--text) 44%, white 56%);
+        }
+
+        .filter-candy-shell .filter-select {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        }
+
+        .filter-candy-shell .filter-select option {
+          background: #f8f9ff;
+          color: #1f2937;
+        }
+
+        .filter-candy-shell .filter-input:focus,
+        .filter-candy-shell .filter-select:focus,
+        .filter-candy-shell .price-range-input:focus {
+          border-color: color-mix(in srgb, var(--accent) 65%, white 35%);
+          box-shadow:
+            0 0 0 3px color-mix(in srgb, var(--accent) 18%, white 82%),
+            0 12px 24px rgba(244, 114, 182, 0.18);
+        }
+
+        .filter-candy-shell .filter-toggle:hover,
+        .filter-candy-shell .filter-accordion-header:hover,
+        .filter-candy-shell .color-chip:hover,
+        .filter-candy-shell .size-chip:hover {
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.72));
+          border-color: rgba(255, 255, 255, 0.88);
+          transform: translateY(-1px);
+          box-shadow: 0 12px 24px rgba(56, 189, 248, 0.14);
+        }
+
+        .filter-candy-shell .filter-toggle.active,
+        .filter-candy-shell .color-chip.active {
+          border-color: color-mix(in srgb, var(--accent) 58%, white 42%);
+          background: linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--accent, #f472b6) 24%, white 76%),
+            color-mix(in srgb, var(--accent-2, #f59e0b) 20%, white 80%)
+          );
+          color: color-mix(in srgb, var(--text) 84%, #3f3f46 16%);
+        }
+
+        .filter-candy-shell .size-chip.active {
+          background: linear-gradient(
+            145deg,
+            color-mix(in srgb, var(--accent, #f472b6) 70%, white 30%),
+            color-mix(in srgb, var(--accent-2, #f59e0b) 64%, white 36%)
+          );
+          border-color: transparent;
+        }
+
+        .filter-candy-shell .filter-toggle-indicator {
+          background: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .filter-candy-shell .filter-toggle.active .filter-toggle-indicator {
+          background: linear-gradient(145deg, var(--accent), var(--accent-2));
+          border-color: transparent;
+        }
+
+        .filter-candy-shell .clear-filters-btn {
+          background: linear-gradient(145deg, rgba(254, 226, 226, 0.92), rgba(252, 165, 165, 0.34));
+          border-color: rgba(252, 165, 165, 0.6);
+          color: #be123c;
+        }
+
+        .filter-candy-shell .clear-filters-btn:hover {
+          background: linear-gradient(145deg, rgba(254, 226, 226, 0.98), rgba(252, 165, 165, 0.44));
+          transform: translateY(-1px);
+        }
+
+        .filter-candy-shell .filter-tag {
+          background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72));
+          border-color: rgba(255, 255, 255, 0.8);
+          color: color-mix(in srgb, var(--text) 84%, #334155 16%);
+          box-shadow: 0 8px 16px rgba(99, 102, 241, 0.08);
+        }
+
+        .filter-candy-shell .filter-tag-remove {
+          background: linear-gradient(145deg, rgba(248, 113, 113, 0.22), rgba(239, 68, 68, 0.34));
+          color: #b91c1c;
+        }
+
+        .filter-candy-shell .active-filters-count {
+          box-shadow: 0 8px 16px rgba(244, 114, 182, 0.28);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .filter-drawer-opening,
+          .filter-drawer-closing,
+          .filter-candy-shell .filter-section,
+          .filter-candy-shell .filter-accordion,
+          .filter-candy-shell .filter-tags,
+          .filter-backdrop-candy.opening,
+          .filter-backdrop-candy.closing {
+            animation: none !important;
+          }
         }
       `}</style>
     </div>
