@@ -974,7 +974,7 @@ function HeroPreview({ data }: { data: HeroData }) {
           </div>
           </SectionTextScope>
           {showDots && slides.length > 1 ? (
-            <div className="absolute flex items-center gap-2 -translate-x-1/2 bottom-3 left-1/2">
+            <div className="cms-hero-dots absolute flex items-center gap-2 -translate-x-1/2 bottom-3 left-1/2">
               {slides.map((_: any, idx: number) => (
                 <button
                   key={idx}
@@ -982,8 +982,8 @@ function HeroPreview({ data }: { data: HeroData }) {
                   onClick={() => setActiveSlide(idx)}
                   aria-label={`Slide ${idx + 1}`}
                   className={cls(
-                    "h-2 w-2 rounded-full transition",
-                    idx === activeIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
+                    "cms-hero-dot h-2 w-2 rounded-full transition",
+                    idx === activeIndex ? "is-active bg-white" : "is-inactive bg-white/40 hover:bg-white/70"
                   )}
                 />
               ))}

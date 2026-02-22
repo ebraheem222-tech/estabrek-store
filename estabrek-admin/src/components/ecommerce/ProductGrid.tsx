@@ -259,13 +259,13 @@ export function ProductSlider({
 
       {/* Dots */}
       {showDots && products.length > slidesPerView && (
-        <div className="flex justify-center gap-2 mt-4">
+        <div className="cms-product-dots flex justify-center gap-2 mt-4">
           {Array.from({ length: Math.ceil(products.length / slidesPerView) }).map((_, i) => (
             <button
               key={i}
               className={cn(
-                "w-2 h-2 rounded-full transition-all",
-                i === currentIndex ? "bg-[var(--color-accent)] w-6" : "bg-[var(--color-border)]"
+                "cms-product-dot w-2 h-2 rounded-full transition-all",
+                i === currentIndex ? "is-active bg-[var(--color-accent)] w-6" : "is-inactive bg-[var(--color-border)]"
               )}
               onClick={() => {
                 if (containerRef.current) {
