@@ -667,7 +667,7 @@ export function ProductFiltersBar({
           </button>
           <div className={`filter-accordion-content ${expandedSections.sizes ? "expanded" : ""}`}>
             <div className="filter-accordion-body">
-              <div className="flex flex-wrap gap-2">
+              <div className="size-chips-grid">
                 {sizes.map((s) => {
                   const active = selectedSizes.includes(s.id);
                   return (
@@ -1015,6 +1015,42 @@ export function ProductFiltersBar({
           box-shadow: 0 8px 18px rgba(99, 102, 241, 0.08);
         }
 
+        .filter-candy-shell .filter-accordion {
+          border-radius: 1.25rem;
+          border-color: rgba(255, 255, 255, 0.76);
+          background:
+            radial-gradient(120% 100% at 100% 0%, rgba(250, 204, 21, 0.12), transparent 62%),
+            radial-gradient(120% 100% at 0% 0%, rgba(244, 114, 182, 0.16), transparent 66%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.66));
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.82),
+            0 12px 26px rgba(15, 23, 42, 0.1);
+        }
+
+        .filter-candy-shell .filter-accordion-header {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.56);
+          background: linear-gradient(
+            140deg,
+            rgba(255, 255, 255, 0.82),
+            color-mix(in srgb, var(--accent, #f472b6) 8%, rgba(255, 255, 255, 0.74))
+          );
+        }
+
+        .filter-candy-shell .filter-accordion-body {
+          padding: 0.9rem 0.95rem 1rem;
+          background: linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.72),
+            color-mix(in srgb, var(--accent-2, #f59e0b) 7%, rgba(255, 255, 255, 0.64))
+          );
+        }
+
+        .filter-candy-shell .size-chips-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.58rem;
+        }
+
         .filter-candy-shell .filter-input::placeholder,
         .filter-candy-shell .price-range-input::placeholder,
         .filter-candy-shell .color-chip-count {
@@ -1069,6 +1105,38 @@ export function ProductFiltersBar({
           border-color: transparent;
         }
 
+        .filter-candy-shell .size-chip {
+          min-width: 0;
+          width: 100%;
+          min-height: 2.7rem;
+          border-radius: 0.95rem;
+          padding: 0.55rem 0.7rem;
+          justify-content: center;
+          text-align: center;
+          background: linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.9),
+            color-mix(in srgb, var(--accent, #f472b6) 7%, rgba(255, 255, 255, 0.78))
+          );
+          border-color: rgba(255, 255, 255, 0.72);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.8),
+            0 8px 16px rgba(15, 23, 42, 0.08);
+        }
+
+        .filter-candy-shell .size-chip:hover {
+          border-color: rgba(255, 255, 255, 0.9);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.9),
+            0 12px 22px rgba(236, 72, 153, 0.16);
+        }
+
+        .filter-candy-shell .size-chip.active {
+          box-shadow:
+            0 12px 24px rgba(236, 72, 153, 0.24),
+            0 8px 18px rgba(14, 165, 233, 0.16);
+        }
+
         .filter-candy-shell .filter-toggle-indicator {
           background: rgba(255, 255, 255, 0.9);
           border: 1px solid rgba(255, 255, 255, 0.8);
@@ -1115,6 +1183,18 @@ export function ProductFiltersBar({
           .filter-backdrop-candy.opening,
           .filter-backdrop-candy.closing {
             animation: none !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .filter-candy-shell .size-chips-grid {
+            gap: 0.5rem;
+          }
+
+          .filter-candy-shell .size-chip {
+            min-height: 2.5rem;
+            border-radius: 0.88rem;
+            font-size: 0.8rem;
           }
         }
       `}</style>
