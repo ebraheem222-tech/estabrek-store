@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
-import { formatMoney, getProductPrimaryImage, getProductImageBlurDataUrl, getProductDiscountPercent } from "@/lib/catalog";
+import {
+  catalogItemKey,
+  catalogItemLabel,
+  formatMoney,
+  getProductPrimaryImage,
+  getProductImageBlurDataUrl,
+  getProductDiscountPercent,
+} from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { cldUrl } from "@/lib/cloudinary";
 import { prefetchProductQuickAdd } from "@/lib/apiClient";
@@ -54,18 +61,67 @@ function getCardImages(p: CatalogProduct): { primary?: string; secondary?: strin
   return { primary, secondary };
 }
 
-function getSwatches(p: CatalogProduct): string[] {
-  const out: string[] = [];
+type Swatch = {
+  key: string;
+  name: string;
+  hex: string;
+  imageUrl?: string;
+};
+
+function buildSwatches(p: CatalogProduct): Swatch[] {
+  const out: Swatch[] = [];
   const seen = new Set<string>();
 
-  for (const it of p.items ?? []) {
+  const items = p.items ?? [];
+  for (let i = 0; i < items.length; i += 1) {
+    const it = items[i];
     const hex = normalizeHex(it.colorHex) ?? normalizeHex(it.suggestedColors?.[0] ?? null);
     if (!hex) continue;
-    const key = hex.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(hex);
+
+    const dedup = catalogItemKey(it, i).toLowerCase();
+    if (seen.has(dedup)) continue;
+    seen.add(dedup);
+
+    const imgs = (it.images ?? []).filter((im) => isRenderableImage(im));
+    const imageUrl = (imgs.find((im) => im.isPrimary)?.url ?? imgs[0]?.url ?? it.primaryImageUrl ?? undefined) ?? undefined;
+    out.push({
+      key: dedup,
+      name: catalogItemLabel(it, i) || hex,
+      hex,
+      imageUrl,
+    });
+
     if (out.length >= 6) break;
+  }
+
+  return out;
+}
+
+function buildAutoHoverImages(p: CatalogProduct, primary?: string, secondary?: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (url?: string | null) => {
+    const val = String(url ?? "").trim();
+    if (!val) return;
+    const key = val.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(val);
+  };
+
+  push(primary);
+  push(secondary);
+
+  for (const img of ((p as any).images ?? []) as Array<{ url?: string | null; view?: string | null }>) {
+    if (!isRenderableImage(img)) continue;
+    push(img.url);
+    if (out.length >= 8) return out;
+  }
+
+  for (const it of p.items ?? []) {
+    const imgs = (it.images ?? []).filter((im) => isRenderableImage(im));
+    push(imgs.find((im) => im.isPrimary)?.url ?? imgs[0]?.url ?? it.primaryImageUrl ?? imgs[1]?.url ?? null);
+    if (out.length >= 8) return out;
   }
 
   return out;
@@ -80,16 +136,33 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
   const settings = useStorefrontSettings();
   const { openQuickView } = useQuickView();
   const cardRef = useRef<HTMLDivElement>(null);
-  const { primary, secondary } = getCardImages(product);
-  const swatches = getSwatches(product);
+  const { primary, secondary } = useMemo(() => getCardImages(product), [product]);
+  const swatches = useMemo(() => buildSwatches(product), [product]);
+  const autoHoverImages = useMemo(() => buildAutoHoverImages(product, primary, secondary), [primary, product, secondary]);
+  const canAutoRotate = autoHoverImages.length > 1;
   const [isHovered, setIsHovered] = useState(false);
+  const [hoverImg, setHoverImg] = useState<string | null>(null);
+  const [activeSwatch, setActiveSwatch] = useState<string | null>(null);
+  const [autoIndex, setAutoIndex] = useState(0);
   const tiltEnabled = settings.cardTiltEffectEnabled;
   const prefetchEnabled = settings.prefetchLinks;
   const [allowPrefetch, setAllowPrefetch] = useState(false);
   const quickViewEnabled = settings.productQuickView;
-  const primaryBlur = getProductImageBlurDataUrl(product, primary ?? null);
-  const secondaryBlur = getProductImageBlurDataUrl(product, secondary ?? null);
   const discountPercent = getProductDiscountPercent(product);
+  const targetImg = useMemo(() => {
+    if (hoverImg) return hoverImg;
+    if (isHovered && canAutoRotate) return autoHoverImages[autoIndex] ?? primary ?? "";
+    if (isHovered && secondary) return secondary;
+    return primary ?? "";
+  }, [autoHoverImages, autoIndex, canAutoRotate, hoverImg, isHovered, primary, secondary]);
+  const [shownImg, setShownImg] = useState<string>(targetImg);
+  const [prevImg, setPrevImg] = useState<string | null>(null);
+  const [fadeIn, setFadeIn] = useState(true);
+  const shownBlur = useMemo(() => getProductImageBlurDataUrl(product, shownImg), [product, shownImg]);
+  const prevBlur = useMemo(() => getProductImageBlurDataUrl(product, prevImg), [product, prevImg]);
+  const shownImgRef = useRef(shownImg);
+  const rafRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!prefetchEnabled || typeof window === "undefined") {
@@ -106,6 +179,66 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
       effectiveType.includes("slow-2g");
     setAllowPrefetch(hoverable && !slow);
   }, [prefetchEnabled]);
+
+  useEffect(() => {
+    shownImgRef.current = shownImg;
+  }, [shownImg]);
+
+  useEffect(() => {
+    if (!targetImg) {
+      setShownImg("");
+      setPrevImg(null);
+      setFadeIn(true);
+      return;
+    }
+
+    const current = shownImgRef.current;
+    if (current === targetImg) return;
+
+    if (rafRef.current != null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (timeoutRef.current != null) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    setPrevImg(current || null);
+    setShownImg(targetImg);
+    setFadeIn(false);
+    rafRef.current = window.requestAnimationFrame(() => setFadeIn(true));
+    timeoutRef.current = window.setTimeout(() => {
+      setPrevImg(null);
+      timeoutRef.current = null;
+    }, 520);
+
+    return () => {
+      if (rafRef.current != null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      if (timeoutRef.current != null) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [targetImg]);
+
+  useEffect(() => {
+    if (!isHovered || hoverImg || !canAutoRotate || prefersReducedMotion()) return;
+    const timer = window.setInterval(() => {
+      setAutoIndex((idx) => (idx + 1) % autoHoverImages.length);
+    }, 1350);
+    return () => window.clearInterval(timer);
+  }, [autoHoverImages.length, canAutoRotate, hoverImg, isHovered]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
+      if (timeoutRef.current != null) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   // 3D tilt effect
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -131,6 +264,9 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
     cardRef.current.style.setProperty('--rotate-x', '0deg');
     cardRef.current.style.setProperty('--rotate-y', '0deg');
     setIsHovered(false);
+    setHoverImg(null);
+    setActiveSwatch(null);
+    setAutoIndex(0);
   }, []);
 
   return (
@@ -146,6 +282,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
             }
           }
           setIsHovered(true);
+          setAutoIndex(0);
         }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -159,32 +296,32 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
               </span>
             ) : null}
 
-            {primary ? (
+            {shownImg ? (
               <>
-                <LqipImage
-                  src={cldUrl(primary, { w: 600, h: 750, c: "fill", g: "auto" })}
-                  alt={product.title}
-                  fill
-                  loading="lazy"
-                  blurDataUrl={primaryBlur ?? undefined}
-                  className={[
-                    "object-cover product-image-zoom will-change-transform",
-                    secondary ? "opacity-100 group-hover:opacity-0" : "opacity-100",
-                  ].join(" ")}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                />
-                {secondary ? (
+                {prevImg ? (
                   <LqipImage
-                    src={cldUrl(secondary, { w: 600, h: 750, c: "fill", g: "auto" })}
+                    src={cldUrl(prevImg, { w: 600, h: 750, c: "fill", g: "auto" })}
                     alt={product.title}
                     fill
                     loading="lazy"
-                    blurDataUrl={secondaryBlur ?? undefined}
+                    blurDataUrl={prevBlur ?? undefined}
                     showSkeleton={false}
-                    className="object-cover product-image-zoom opacity-0 transition duration-500 group-hover:opacity-100 will-change-transform"
+                    className={"object-cover product-image-zoom will-change-transform " + (fadeIn ? "opacity-0" : "opacity-100")}
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   />
                 ) : null}
+                <LqipImage
+                  src={cldUrl(shownImg, { w: 600, h: 750, c: "fill", g: "auto" })}
+                  alt={product.title}
+                  fill
+                  loading="lazy"
+                  blurDataUrl={shownBlur ?? undefined}
+                  className={
+                    "object-cover product-image-zoom product-image-active will-change-transform " +
+                    (prevImg ? (fadeIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1") : "opacity-100")
+                  }
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                />
               </>
             ) : (
               <div className="image-skeleton flex h-full w-full items-center justify-center">
@@ -201,6 +338,20 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
             <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 z-10">
               <div className="absolute -inset-24 rotate-12 bg-gradient-to-r from-transparent via-white/10 to-transparent blur-2xl" />
             </div>
+
+            {/* Chroma Wave Effect */}
+            <div className="product-tile-chroma pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.26),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.15),transparent_46%)]" />
+
+            {autoHoverImages.length > 1 && isHovered ? (
+              <div className="absolute top-3 left-3 z-20 flex gap-1.5 rounded-full border border-white/20 bg-black/35 px-2 py-1 backdrop-blur-sm">
+                {autoHoverImages.slice(0, 5).map((_, idx) => (
+                  <span
+                    key={`img-dot-${idx}`}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${idx === autoIndex ? "w-3 bg-white" : "w-1.5 bg-white/45"}`}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* Quick View */}
@@ -219,7 +370,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
           ) : null}
 
           {/* Content */}
-          <div className="relative p-4 space-y-3">
+          <div className="product-tile-meta relative p-4 space-y-3">
             {/* Title & Price */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -246,12 +397,31 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
             {/* Color Swatches */}
             {swatches.length ? (
               <div className="flex items-center gap-2">
-                {swatches.map((hex) => (
-                  <span
-                    key={hex}
-                    className="color-swatch h-5 w-5 rounded-full border-2 border-[var(--border)] transition-all duration-200 hover:scale-105 hover:shadow-md cursor-pointer"
-                    style={{ background: hex }}
-                    title={hex}
+                {swatches.map((swatch) => (
+                  <button
+                    key={swatch.key}
+                    type="button"
+                    className={`color-swatch h-5 w-5 rounded-full border-2 transition-all duration-200 ${
+                      activeSwatch === swatch.key
+                        ? "border-[var(--accent)] scale-110 active ring-2 ring-[var(--accent)]/30"
+                        : "border-[var(--border)] hover:scale-105 hover:shadow-md"
+                    }`}
+                    style={{ background: swatch.hex }}
+                    title={swatch.name}
+                    onMouseEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (swatch.imageUrl) {
+                        setHoverImg(swatch.imageUrl);
+                        setActiveSwatch(swatch.key);
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setHoverImg(null);
+                      setActiveSwatch(null);
+                    }}
                   />
                 ))}
                 {product.items && product.items.length > swatches.length ? (

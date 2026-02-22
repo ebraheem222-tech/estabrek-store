@@ -250,99 +250,169 @@ function NavNode({
     );
   }
 
-  const desktopChildLinkClass =
-    "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm text-slate-900 transition-all duration-200 hover:bg-white/80";
-  const desktopMaxDepth = mode === "mega" ? 2 : 1;
-  const desktopMaxChildrenPerNode = mode === "mega" ? 8 : 6;
+  const desktopPanelWidthClass =
+    mode === "mega"
+      ? "min-w-[360px] w-[420px] max-w-[calc(100vw-2rem)]"
+      : "min-w-[320px] w-[360px] max-w-[calc(100vw-2rem)]";
+  const desktopItemClass =
+    "flex w-full items-center justify-between gap-2 rounded-xl border border-white/45 bg-white/65 px-3 py-2.5 text-sm font-medium text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-all duration-200 hover:bg-white";
+  const [desktopOpen, setDesktopOpen] = useState(false);
+  const [desktopLevelAnim, setDesktopLevelAnim] = useState<"none" | "forward" | "back">("none");
+  const [desktopTrail, setDesktopTrail] = useState<Array<{ label: string; items: any[]; href?: string; external?: boolean; target?: string }>>([]);
+  const desktopTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const desktopPanelRef = useRef<HTMLDivElement | null>(null);
+  const desktopLevelAnimTimerRef = useRef<number | null>(null);
 
-  function renderDesktopChildNode(node: any, depth = 0, nodeKey = "child"): React.ReactNode {
-    const key = node?.id ?? node?.href ?? node?.label ?? nodeKey;
+  const desktopLevel = desktopTrail.length ? desktopTrail[desktopTrail.length - 1] : null;
+  const desktopMenuItems = (desktopLevel?.items ?? item.children ?? []).length ? (desktopLevel?.items ?? item.children ?? []) : [];
+  const desktopHasParentLink = !!desktopLevel?.href && desktopLevel.href !== "#";
+  const desktopRootHasLink = href !== "#" && href !== "";
+  const desktopPanelHref = desktopLevel ? desktopLevel.href : href;
+  const desktopPanelTarget = desktopLevel ? desktopLevel.target : item?.target;
+  const desktopPanelExternal = desktopLevel ? desktopLevel.external : external;
+  const desktopLevelAnimClass =
+    desktopLevelAnim === "forward"
+      ? "mobile-nav-level mobile-nav-level-forward"
+      : desktopLevelAnim === "back"
+      ? "mobile-nav-level mobile-nav-level-back"
+      : "mobile-nav-level";
+
+  function clearDesktopLevelAnimTimer() {
+    if (desktopLevelAnimTimerRef.current && typeof window !== "undefined") {
+      window.clearTimeout(desktopLevelAnimTimerRef.current);
+      desktopLevelAnimTimerRef.current = null;
+    }
+  }
+
+  function triggerDesktopLevelAnimation(direction: "forward" | "back") {
+    clearDesktopLevelAnimTimer();
+    setDesktopLevelAnim(direction);
+    if (typeof window !== "undefined") {
+      desktopLevelAnimTimerRef.current = window.setTimeout(() => {
+        setDesktopLevelAnim("none");
+        desktopLevelAnimTimerRef.current = null;
+      }, 280);
+    }
+  }
+
+  function closeDesktopPanel() {
+    setDesktopOpen(false);
+    setDesktopTrail([]);
+    setDesktopLevelAnim("none");
+    clearDesktopLevelAnimTimer();
+  }
+
+  function openDesktopPanel() {
+    setDesktopOpen(true);
+    setDesktopTrail([]);
+    triggerDesktopLevelAnimation("forward");
+  }
+
+  function openDesktopChildren(node: any) {
+    const children = Array.isArray(node?.children) ? node.children : [];
+    if (!children.length) return;
+    const nodeHref = normalizeNavHref(node?.href);
+    const nodeExternal = !!node?.isExternal || isExternalHref(nodeHref);
+    triggerDesktopLevelAnimation("forward");
+    setDesktopTrail((prev) => [
+      ...prev,
+      {
+        label: String(node?.label ?? "القائمة"),
+        items: children,
+        href: nodeHref,
+        external: nodeExternal,
+        target: node?.target,
+      },
+    ]);
+  }
+
+  function desktopBack() {
+    triggerDesktopLevelAnimation("back");
+    setDesktopTrail((prev) => prev.slice(0, -1));
+  }
+
+  function renderDesktopPanelItem(node: any, idx: number): React.ReactNode {
+    const key = node?.id ?? node?.href ?? node?.label ?? `desktop-item-${idx}`;
     const nodeHref = normalizeNavHref(node?.href);
     const nodeExternal = !!node?.isExternal || isExternalHref(nodeHref);
     const nodeChildren = Array.isArray(node?.children) ? node.children : [];
     const nodeHasChildren = nodeChildren.length > 0;
     const nodeHrefPath = nodeHref.startsWith("/") ? nodeHref.split(/[?#]/)[0] : nodeHref;
     const nodeActive = !nodeExternal && nodeHrefPath !== "#" && (pathname === nodeHrefPath || pathname.startsWith(nodeHrefPath + "/"));
-    const indentStyle: React.CSSProperties = depth > 0 ? { marginInlineStart: Math.min(depth * 12, 36) } : {};
-    const linkClass = [
-      desktopChildLinkClass,
-      nodeActive ? "bg-[var(--accent)]/10 text-[color:var(--accent)] font-semibold" : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const rowClass = `${desktopItemClass} ${nodeActive ? "border-[var(--accent)]/35 bg-[var(--accent)]/10 text-[color:var(--accent)]" : ""}`;
 
-    const linkNode = nodeExternal ? (
-      <a href={nodeHref} className={linkClass} target={node?.target || "_blank"} rel="noopener noreferrer" style={forceTextStyle}>
-        <span className="inline-flex items-center gap-2">
-          <Icon name={node?.icon} />
-          <span>{node?.label}</span>
-        </span>
-        {nodeHasChildren ? <Icon name="chev" /> : null}
-      </a>
-    ) : (
-      <Link href={nodeHref} prefetch={prefetchLinks} className={linkClass} style={forceTextStyle}>
-        <span className="inline-flex items-center gap-2">
-          <Icon name={node?.icon} />
-          <span>{node?.label}</span>
-        </span>
-        {nodeHasChildren ? <Icon name="chev" /> : null}
-      </Link>
-    );
-
-    const canExpandChildren = nodeHasChildren && depth < desktopMaxDepth;
-    const visibleChildren = canExpandChildren ? nodeChildren.slice(0, desktopMaxChildrenPerNode) : [];
-    const hasTruncatedChildren = canExpandChildren && nodeChildren.length > visibleChildren.length;
-
-    if (!nodeHasChildren || !canExpandChildren) {
+    if (nodeHasChildren) {
       return (
-        <div key={key} style={indentStyle}>
-          {linkNode}
-        </div>
+        <button key={key} type="button" onClick={() => openDesktopChildren(node)} className={rowClass}>
+          <span className="inline-flex items-center gap-2 truncate">
+            <Icon name={node?.icon} />
+            <span className="truncate">{node?.label}</span>
+          </span>
+          <Icon name="chev" />
+        </button>
       );
     }
 
-    const hasRealLink = nodeHref !== "#" && nodeHref !== "";
+    if (nodeExternal) {
+      return (
+        <a
+          key={key}
+          href={nodeHref}
+          target={node?.target || "_blank"}
+          rel="noopener noreferrer"
+          onClick={closeDesktopPanel}
+          className={rowClass}
+        >
+          <span className="inline-flex items-center gap-2 truncate">
+            <Icon name={node?.icon} />
+            <span className="truncate">{node?.label}</span>
+          </span>
+        </a>
+      );
+    }
 
     return (
-      <div
-        key={key}
-        style={indentStyle}
-        className={depth === 0 ? "rounded-xl border border-white/45 bg-white/55 p-2 shadow-[0_6px_20px_rgba(15,23,42,0.06)]" : ""}
-      >
-        {linkNode}
-        <div className="mt-1 space-y-1">
-          {depth === 0 && hasRealLink ? (
-            nodeExternal ? (
-              <a
-                href={nodeHref}
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900"
-                target={node?.target || "_blank"}
-                rel="noopener noreferrer"
-                style={{ marginInlineStart: 8 }}
-              >
-                <span>عرض الكل</span>
-              </a>
-            ) : (
-              <Link
-                href={nodeHref}
-                prefetch={prefetchLinks}
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900"
-                style={{ marginInlineStart: 8 }}
-              >
-                <span>عرض الكل</span>
-              </Link>
-            )
-          ) : null}
-          {visibleChildren.map((sub: any, idx: number) => renderDesktopChildNode(sub, depth + 1, `${nodeKey}-${idx}`))}
-          {hasTruncatedChildren ? (
-            <div className="px-3 py-1 text-xs text-slate-500">
-              +{nodeChildren.length - visibleChildren.length} عناصر إضافية
-            </div>
-          ) : null}
-        </div>
-      </div>
+      <Link key={key} href={nodeHref} prefetch={prefetchLinks} onClick={closeDesktopPanel} className={rowClass}>
+        <span className="inline-flex items-center gap-2 truncate">
+          <Icon name={node?.icon} />
+          <span className="truncate">{node?.label}</span>
+        </span>
+      </Link>
     );
   }
+
+  useEffect(() => {
+    closeDesktopPanel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!desktopOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (desktopPanelRef.current?.contains(target)) return;
+      if (desktopTriggerRef.current?.contains(target)) return;
+      closeDesktopPanel();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeDesktopPanel();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [desktopOpen]);
+
+  useEffect(() => {
+    return () => {
+      clearDesktopLevelAnimTimer();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   if (!hasChildren) {
@@ -366,48 +436,118 @@ function NavNode({
   }
 
   return (
-    <div className="relative group">
-      {external ? (
-        <a
-          href={href}
-          className={baseLink}
-          style={forceTextStyle}
-          aria-haspopup="menu"
-          aria-expanded="false"
-          target={item.target || "_blank"}
-          rel="noopener noreferrer"
+    <div className="relative">
+      <button
+        ref={desktopTriggerRef}
+        type="button"
+        onClick={() => (desktopOpen ? closeDesktopPanel() : openDesktopPanel())}
+        className={baseLink}
+        style={forceTextStyle}
+        aria-haspopup="menu"
+        aria-expanded={desktopOpen}
+      >
+        <Icon name={item.icon} />
+        <span>{item.label}</span>
+        <svg
+          className={`h-4 w-4 transition-transform duration-200 ${desktopOpen ? "rotate-90" : "rotate-0"}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
         >
-          <Icon name={item.icon} />
-          <span>{item.label}</span>
-          <Icon name="chev" />
-        </a>
-      ) : (
-        <Link
-          href={href}
-          className={baseLink}
-          style={forceTextStyle}
-          aria-haspopup="menu"
-          aria-expanded="false"
-          prefetch={prefetchLinks}
-        >
-          <Icon name={item.icon} />
-          <span>{item.label}</span>
-          <Icon name="chev" />
-        </Link>
-      )}
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+        </svg>
+      </button>
 
-      <div className="pointer-events-none absolute left-0 top-full z-[1200] min-w-[260px] pt-2 opacity-0 translate-y-1 scale-[0.98] transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100">
-        <div className="relative overflow-hidden rounded-2xl border border-white/60 bg-white/85 shadow-[0_18px_42px_rgba(15,23,42,0.16)] backdrop-blur-xl p-3">
+      <div
+        className={`absolute left-0 top-full z-[1300] hidden pt-2 transition-all duration-200 md:block ${
+          desktopOpen ? "pointer-events-auto opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 translate-y-1 scale-[0.98]"
+        }`}
+      >
+        <div
+          ref={desktopPanelRef}
+          className={`relative overflow-hidden rounded-2xl border border-white/60 bg-white/88 shadow-[0_22px_56px_rgba(15,23,42,0.18)] backdrop-blur-xl p-3 ${desktopPanelWidthClass}`}
+        >
           <GradientBg id={`nav-dd-${item.id ?? item.label}`} />
-          {mode === "mega" ? (
-            <div className="grid max-h-[68vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-              {(item.children ?? []).map((ch: any, idx: number) => renderDesktopChildNode(ch, 0, `mega-${idx}`))}
+
+          <div className="relative">
+            <div className="mb-2 rounded-xl border border-white/55 bg-white/72 px-3 py-2 backdrop-blur">
+              <div className="flex items-center justify-between gap-2">
+                {desktopTrail.length ? (
+                  <button
+                    type="button"
+                    onClick={desktopBack}
+                    className="inline-flex items-center gap-2 rounded-lg border border-white/55 bg-white/75 px-2.5 py-1.5 text-xs text-slate-900"
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+                    </svg>
+                    رجوع
+                  </button>
+                ) : (
+                  <div className="text-sm font-semibold text-slate-900">{item.label}</div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={closeDesktopPanel}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/50 bg-white/75 text-slate-700 transition-transform duration-200 hover:rotate-90"
+                  aria-label="Close submenu"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6 6 18" />
+                  </svg>
+                </button>
+              </div>
+
+              {desktopTrail.length ? (
+                <div className="mt-1 text-xs font-semibold text-slate-700">{desktopLevel?.label}</div>
+              ) : null}
+
+              {desktopPanelHref && desktopPanelHref !== "#" && (desktopHasParentLink || (!desktopTrail.length && desktopRootHasLink)) ? (
+                desktopPanelExternal ? (
+                  <a
+                    href={desktopPanelHref}
+                    target={desktopPanelTarget || "_blank"}
+                    rel="noopener noreferrer"
+                    onClick={closeDesktopPanel}
+                    className="mt-1 inline-flex items-center text-xs text-slate-600 hover:text-slate-900"
+                  >
+                    عرض الكل
+                  </a>
+                ) : (
+                  <Link
+                    href={desktopPanelHref}
+                    prefetch={prefetchLinks}
+                    onClick={closeDesktopPanel}
+                    className="mt-1 inline-flex items-center text-xs text-slate-600 hover:text-slate-900"
+                  >
+                    عرض الكل
+                  </Link>
+                )
+              ) : null}
             </div>
-          ) : (
-            <div className="grid min-w-[320px] max-w-[420px] max-h-[68vh] gap-2 overflow-y-auto pr-1">
-              {(item.children ?? []).map((ch: any, idx: number) => renderDesktopChildNode(ch, 0, `drop-${idx}`))}
+
+            <div className={`max-h-[62vh] overflow-y-auto pr-1 ${desktopLevelAnimClass}`}>
+              {desktopMenuItems.length ? (
+                <div className="space-y-2">
+                  {desktopMenuItems.map((node: any, idx: number) => (
+                    <div
+                      key={node?.id ?? node?.href ?? node?.label ?? `desktop-wrap-${idx}`}
+                      className="mobile-nav-item-pop"
+                      style={{ animationDelay: `${Math.min(idx * 30, 220)}ms` }}
+                    >
+                      {renderDesktopPanelItem(node, idx)}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-white/40 bg-white/55 px-3 py-2 text-sm text-slate-600">
+                  لا توجد عناصر قائمة حالياً
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
