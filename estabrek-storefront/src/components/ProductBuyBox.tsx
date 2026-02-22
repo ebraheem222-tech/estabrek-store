@@ -235,7 +235,7 @@ export default function ProductBuyBox({
           </div>
 
           {/* Selected Color Display */}
-          <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-3">
+          <div className="buy-box-color-selected-candy mb-3 flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-3">
             <span
               className="h-8 w-8 shrink-0 rounded-xl border-2 border-white/20 shadow-lg sm:h-10 sm:w-10"
               style={{ 
@@ -295,11 +295,11 @@ export default function ProductBuyBox({
           {/* Color Picker Modal */}
           {colorsOpen ? (
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setColorsOpen(false)} aria-hidden />
+              <div className="buy-box-color-overlay-candy absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setColorsOpen(false)} aria-hidden />
 
-              <div className="color-modal relative w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl glass-card shadow-2xl max-h-[80vh] flex flex-col">
+              <div className="color-modal color-modal-candy relative w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl glass-card shadow-2xl max-h-[80vh] flex flex-col">
                 {/* Modal Header */}
-                <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
+                <div className="color-modal-header-candy flex items-start justify-between gap-3 border-b border-white/10 p-5">
                   <div>
                     <h4 className="text-lg font-bold flex items-center gap-2">
                       <svg className="w-5 h-5 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -312,7 +312,7 @@ export default function ProductBuyBox({
                   <button
                     type="button"
                     onClick={() => setColorsOpen(false)}
-                    className="w-10 h-10 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center text-[color:var(--text)] hover:bg-white/10 transition-colors"
+                    className="color-modal-close-candy w-10 h-10 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center text-[color:var(--text)] hover:bg-white/10 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -321,7 +321,7 @@ export default function ProductBuyBox({
                 </div>
 
                 {/* Search */}
-                <div className="p-5 border-b border-white/10">
+                <div className="color-modal-search-wrap-candy p-5 border-b border-white/10">
                   <div className="relative">
                     <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -330,7 +330,7 @@ export default function ProductBuyBox({
                       value={colorSearch}
                       onChange={(e) => setColorSearch(e.target.value)}
                       placeholder="ابحث عن لون…"
-                      className="w-full rounded-xl border border-white/15 bg-black/30 pr-10 pl-4 py-3 text-sm text-[color:var(--text)] placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all outline-none"
+                      className="color-modal-search-input-candy w-full rounded-xl border border-white/15 bg-black/30 pr-10 pl-4 py-3 text-sm text-[color:var(--text)] placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all outline-none"
                     />
                   </div>
                 </div>
