@@ -1,4 +1,6 @@
 import type { WebsiteThemeCategory } from "./types";
+// @ts-expect-error - JS visual gallery module without TS declarations.
+import { CMS_THEME_GALLERY_THEMES } from "./cms-themes-gallery.jsx";
 
 export type GalleryThemeSpecCategory =
   | "Glass"
@@ -21,8 +23,46 @@ export type GalleryThemeSpec = {
   category: GalleryThemeSpecCategory;
 };
 
-// Source: c:\Users\newuser\Downloads\cms-themes-gallery.jsx (T(1..50))
-export const GALLERY_THEME_SPECS: GalleryThemeSpec[] = [
+const KNOWN_GALLERY_CATEGORIES: readonly GalleryThemeSpecCategory[] = [
+  "Glass",
+  "Candy",
+  "Aurora",
+  "Space",
+  "Gaming",
+  "Luxury",
+  "Cyberpunk",
+  "Nature",
+  "Abstract",
+  "Modern",
+  "Effects",
+  "Tech",
+  "Minimal",
+] as const;
+
+const GALLERY_CATEGORY_SET = new Set<string>(KNOWN_GALLERY_CATEGORIES);
+
+function coerceGalleryCategory(value: unknown): GalleryThemeSpecCategory {
+  const raw = String(value ?? "").trim();
+  if (GALLERY_CATEGORY_SET.has(raw)) return raw as GalleryThemeSpecCategory;
+  return "Modern";
+}
+
+function coerceGalleryThemeId(value: unknown, fallback: number): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number.parseInt(String(value ?? "").trim(), 10);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return fallback;
+}
+
+function coerceGalleryThemeName(value: unknown, id: number): string {
+  const raw = String(value ?? "").trim();
+  return raw.length > 0 ? raw : `Gallery Theme ${id}`;
+}
+
+// Fallback list used if the gallery JSX file cannot be parsed at runtime.
+const FALLBACK_GALLERY_THEME_SPECS: GalleryThemeSpec[] = [
   { id: 1, name: "Frosted Aurora Glass", category: "Glass" },
   { id: 2, name: "Crystal Ice Glass", category: "Glass" },
   { id: 3, name: "Obsidian Glass", category: "Glass" },
@@ -74,6 +114,28 @@ export const GALLERY_THEME_SPECS: GalleryThemeSpec[] = [
   { id: 49, name: "Desert Dunes", category: "Nature" },
   { id: 50, name: "Zen Garden", category: "Minimal" },
 ];
+
+type RawGalleryTheme = {
+  id?: unknown;
+  name?: unknown;
+  category?: unknown;
+};
+
+const derivedSpecs = (Array.isArray(CMS_THEME_GALLERY_THEMES) ? CMS_THEME_GALLERY_THEMES : [])
+  .map((theme, idx) => {
+    const raw = theme as RawGalleryTheme;
+    const id = coerceGalleryThemeId(raw?.id, idx + 1);
+    return {
+      id,
+      name: coerceGalleryThemeName(raw?.name, id),
+      category: coerceGalleryCategory(raw?.category),
+    } satisfies GalleryThemeSpec;
+  })
+  .filter((theme, idx, list) => list.findIndex((x) => x.id === theme.id) === idx)
+  .sort((a, b) => a.id - b.id);
+
+export const GALLERY_THEME_SPECS: GalleryThemeSpec[] =
+  derivedSpecs.length > 0 ? derivedSpecs : FALLBACK_GALLERY_THEME_SPECS;
 
 export function mapGalleryCategoryToWebsiteThemeCategory(
   category: GalleryThemeSpecCategory
