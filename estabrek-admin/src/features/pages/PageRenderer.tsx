@@ -43,6 +43,16 @@ import { featureComponents, additionalFeatureComponents } from "../../cms/featur
 import { pricingComponents, additionalPricingComponents } from "../../cms/pricing-themes";
 import { sliderComponents, additionalSliderComponents } from "../../cms/slider-themes";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../../cms/alert-themes";
+import {
+  buildBannerPackInputFromBannerData,
+  buildFeaturePackInputFromBannerData,
+  buildFeaturePackInputFromFeaturesData,
+  buildFeaturePackInputFromHeroData,
+  buildFeaturePackInputFromPricingData,
+  renderBannerPackTheme,
+  renderCategoryPackTheme,
+  renderFeaturePackTheme,
+} from "../../cms/theme-packs/externalThemePacks";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -1263,6 +1273,14 @@ function HeroSection({
     const renderPane = (pane: any, side: "left" | "right") => {
       const paneThemeId = resolveThemeId(pane?.themeId);
       if (paneThemeId) {
+        const featurePackNode = renderFeaturePackTheme(paneThemeId, buildFeaturePackInputFromHeroData(pane));
+        if (featurePackNode) {
+          return (
+            <div className="h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+              {featurePackNode}
+            </div>
+          );
+        }
         const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[paneThemeId];
         const themeProps = { ...heroThemePropsFromSource(pane, paneThemeId), className: "h-full" } as any;
         const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={paneThemeId} {...themeProps} />;
@@ -1486,6 +1504,7 @@ function HeroSection({
   if (themeId) {
     const componentsBlock = renderComponentsBlock(data);
     const sectionTokens = (data as any)?.twTokens;
+    const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromHeroData(data));
     const themeProps = { ...heroThemePropsFromData(data), className: cls("mx-auto", uiContainerClass(data)) } as any;
     const ThemeComponent = (heroComponents as Record<string, React.FC<any>>)[themeId];
     const themeNode = ThemeComponent ? (
@@ -1496,7 +1515,7 @@ function HeroSection({
 
     return wrapDecorations(
       <section className={cls("overflow-hidden rounded-3xl border border-white/[0.08]", uiSectionClass(data))} style={uiSectionStyle(data)}>
-        {themeNode}
+        {featurePackNode ?? themeNode}
         {componentsBlock}
       </section>,
       sectionTokens
@@ -1969,6 +1988,27 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
       const sectionTokens = (d as any)?.twTokens;
+      const bannerPackInput = buildBannerPackInputFromBannerData(d);
+      const bannerPackNode = renderBannerPackTheme(themeId, bannerPackInput);
+      if (bannerPackNode) {
+        return wrapDecorations(
+          <section className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{bannerPackNode}</div>
+            {componentsBlock}
+          </section>,
+          sectionTokens
+        );
+      }
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromBannerData(d));
+      if (featurePackNode) {
+        return wrapDecorations(
+          <section className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{featurePackNode}</div>
+            {componentsBlock}
+          </section>,
+          sectionTokens
+        );
+      }
       const themeMap = { ...alertComponents, ...additionalAlertComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? alertComponents["banner-simple"] ?? Object.values(themeMap)[0];
       const themeProps = bannerThemePropsFromData(d) as any;
@@ -2491,6 +2531,16 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
       const sectionTokens = (d as any)?.twTokens;
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromFeaturesData(d));
+      if (featurePackNode) {
+        return wrapDecorations(
+          <section className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{featurePackNode}</div>
+            {componentsBlock}
+          </section>,
+          sectionTokens
+        );
+      }
       const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
       const themeProps = { ...featureThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
@@ -3008,6 +3058,16 @@ function Section({
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
       const sectionTokens = (d as any)?.twTokens;
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromPricingData(d));
+      if (featurePackNode) {
+        return wrapDecorations(
+          <section className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{featurePackNode}</div>
+            {componentsBlock}
+          </section>,
+          sectionTokens
+        );
+      }
       const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
       const themeProps = { ...pricingThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
@@ -3629,12 +3689,71 @@ function Section({
 
   if (type === "FEATURED_CATEGORIES") {
     const d = data as FeaturedCategoriesData;
+    const themeId = resolveThemeId((d as any).themeId);
     const items = Array.isArray(d.items) ? d.items : [];
     const showArrows = !!d.showArrows;
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    if (themeId) {
+      const themedNode = renderCategoryPackTheme(themeId, {
+        items: items.map((item: any) => ({
+          label: item?.label,
+          iconKey: item?.iconKey,
+          accentColor: item?.accentColor,
+        })),
+        selectedLabel: items[0]?.label,
+      });
+      if (themedNode) {
+        return wrapDecorations(
+          <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+              <SectionTextScope data={d}>
+                {(d.title || d.subtitle || showArrows) ? (
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      {titleData ? (
+                        <InlineEditableText
+                          as="h3"
+                          value={String(d.title ?? "")}
+                          path={["title"]}
+                          textData={titleData}
+                          className={cls("text-lg font-semibold", titleData.className)}
+                          ariaLabel={titleData.ariaLabel}
+                          placeholder="Categories title"
+                        />
+                      ) : null}
+                      {subtitleData ? (
+                        <InlineEditableText
+                          as="div"
+                          value={String(d.subtitle ?? "")}
+                          path={["subtitle"]}
+                          textData={subtitleData}
+                          className={cls("mt-1 text-sm opacity-80", subtitleData.className)}
+                          ariaLabel={subtitleData.ariaLabel}
+                          placeholder="Categories subtitle"
+                          multiline
+                        />
+                      ) : null}
+                    </div>
+                    {showArrows ? (
+                      <div className="flex items-center gap-2">
+                        <button type="button" className="h-8 w-8 rounded-full border border-white/10 bg-white/5 text-sm text-white/70">‹</button>
+                        <button type="button" className="h-8 w-8 rounded-full border border-white/10 bg-white/5 text-sm text-white/70">›</button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {themedNode}
+              </SectionTextScope>
+              {componentsBlock}
+            </div>
+          </section>,
+          sectionTokens
+        );
+      }
+    }
     return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
@@ -3777,6 +3896,7 @@ function Section({
 
   if (type === "COLLECTIONS_GRID") {
     const d = data as CollectionsGridData;
+    const themeId = resolveThemeId((d as any).themeId);
     const items = Array.isArray(d.items) ? d.items : [];
     const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const clsCols =
@@ -3785,6 +3905,52 @@ function Section({
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    if (themeId) {
+      const themedNode = renderCategoryPackTheme(themeId, {
+        items: items.map((item: any) => ({
+          label: item?.label,
+          iconKey: item?.iconKey,
+          accentColor: item?.accentColor,
+        })),
+        selectedLabel: items[0]?.label,
+      });
+      if (themedNode) {
+        return wrapDecorations(
+          <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+              <SectionTextScope data={d}>
+                {titleData ? (
+                  <InlineEditableText
+                    as="h3"
+                    value={String(d.title ?? "")}
+                    path={["title"]}
+                    textData={titleData}
+                    className={cls("mb-2 text-lg font-semibold", titleData.className)}
+                    ariaLabel={titleData.ariaLabel}
+                    placeholder="Collections title"
+                  />
+                ) : null}
+                {subtitleData ? (
+                  <InlineEditableText
+                    as="div"
+                    value={String(d.subtitle ?? "")}
+                    path={["subtitle"]}
+                    textData={subtitleData}
+                    className={cls("mb-4 text-sm opacity-80", subtitleData.className)}
+                    ariaLabel={subtitleData.ariaLabel}
+                    placeholder="Collections subtitle"
+                    multiline
+                  />
+                ) : null}
+                {themedNode}
+              </SectionTextScope>
+              {componentsBlock}
+            </div>
+          </section>,
+          sectionTokens
+        );
+      }
+    }
     return wrapDecorations(
       <section className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>

@@ -16,6 +16,18 @@ import { featureThemes, featureCategories } from "../../cms/feature-themes";
 import { pricingThemes, pricingCategories } from "../../cms/pricing-themes";
 import { sliderThemes, sliderCategories } from "../../cms/slider-themes";
 import { alertThemes } from "../../cms/alert-themes";
+import {
+  externalHeroThemes,
+  externalHeroThemeCategories,
+  externalFeatureThemes,
+  externalFeatureThemeCategories,
+  externalPricingThemes,
+  externalPricingThemeCategories,
+  externalBannerThemes,
+  externalBannerThemeCategories,
+  externalCategoryThemes,
+  externalCategoryThemeCategories,
+} from "../../cms/theme-packs/externalThemePacks";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
 import {
   DndContext,
@@ -116,6 +128,24 @@ function renderThemeOptions(categories: string[], themes: ThemeOption[]) {
     );
   });
 }
+
+const HERO_THEME_OPTIONS: ThemeOption[] = [...heroThemes, ...externalHeroThemes];
+const HERO_THEME_CATEGORIES = Array.from(new Set([...heroCategories, ...externalHeroThemeCategories]));
+
+const FEATURE_THEME_OPTIONS: ThemeOption[] = [...featureThemes, ...externalFeatureThemes];
+const FEATURE_THEME_CATEGORIES = Array.from(new Set([...featureCategories, ...externalFeatureThemeCategories]));
+
+const PRICING_THEME_OPTIONS: ThemeOption[] = [...pricingThemes, ...externalPricingThemes];
+const PRICING_THEME_CATEGORIES = Array.from(new Set([...pricingCategories, ...externalPricingThemeCategories]));
+
+const BANNER_BASE_THEMES = alertThemes.filter((theme) => theme.style === "banner") as ThemeOption[];
+const BANNER_THEME_OPTIONS: ThemeOption[] = [...BANNER_BASE_THEMES, ...externalBannerThemes];
+const BANNER_THEME_CATEGORIES = Array.from(
+  new Set([...BANNER_BASE_THEMES.map((theme) => theme.category), ...externalBannerThemeCategories])
+);
+
+const CATEGORY_THEME_OPTIONS: ThemeOption[] = externalCategoryThemes;
+const CATEGORY_THEME_CATEGORIES = externalCategoryThemeCategories;
 
 function TokensPanel({
   label,
@@ -550,6 +580,7 @@ export type ContactData = {
 };
 
 export type FeaturedCategoriesData = {
+  themeId?: string;
   title?: string;
   subtitle?: string;
   items: Array<{
@@ -557,6 +588,8 @@ export type FeaturedCategoriesData = {
     href: string;
     imageUrl?: string;
     categoryId?: string;
+    iconKey?: string;
+    accentColor?: string;
     twTokens?: TwTokens;
     labelTokens?: TwTokens;
     imageTokens?: TwTokens;
@@ -567,6 +600,7 @@ export type FeaturedCategoriesData = {
 };
 
 export type CollectionsGridData = {
+  themeId?: string;
   title?: string;
   subtitle?: string;
   columns?: number; // 2..6
@@ -575,6 +609,8 @@ export type CollectionsGridData = {
     href: string;
     imageUrl?: string;
     categoryId?: string;
+    iconKey?: string;
+    accentColor?: string;
     twTokens?: TwTokens;
     labelTokens?: TwTokens;
     imageTokens?: TwTokens;
@@ -1756,7 +1792,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
               onChange({ ...(value as any), themeId: nextTheme || undefined });
             }}
           >
-            {renderThemeOptions(heroCategories, heroThemes)}
+            {renderThemeOptions(HERO_THEME_CATEGORIES, HERO_THEME_OPTIONS)}
           </Select>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -1769,7 +1805,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
                 onChange({ ...(value as any), themeId: nextTheme || undefined });
               }}
             >
-              {renderThemeOptions(heroCategories, heroThemes)}
+              {renderThemeOptions(HERO_THEME_CATEGORIES, HERO_THEME_OPTIONS)}
             </Select>
             <Select
               label="Right hero theme"
@@ -1780,7 +1816,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
                 updateSplitRight({ themeId: nextTheme || undefined });
               }}
             >
-              {renderThemeOptions(heroCategories, heroThemes)}
+              {renderThemeOptions(HERO_THEME_CATEGORIES, HERO_THEME_OPTIONS)}
             </Select>
           </div>
         )}
@@ -2973,7 +3009,7 @@ function FeaturesEditor({ value, onChange, errors }: { value: FeaturesData; onCh
             onChange({ ...value, themeId: nextTheme || undefined });
           }}
         >
-          {renderThemeOptions(featureCategories, featureThemes)}
+          {renderThemeOptions(FEATURE_THEME_CATEGORIES, FEATURE_THEME_OPTIONS)}
         </Select>
         {themeId ? (
           <div className="text-xs opacity-70">Theme mode renders the selected template for the section.</div>
@@ -3466,7 +3502,7 @@ function PricingEditor({ value, onChange, errors }: { value: PricingData; onChan
             onChange({ ...value, themeId: nextTheme || undefined });
           }}
         >
-          {renderThemeOptions(pricingCategories, pricingThemes)}
+          {renderThemeOptions(PRICING_THEME_CATEGORIES, PRICING_THEME_OPTIONS)}
         </Select>
         {themeId ? (
           <div className="text-xs opacity-70">Theme mode renders the selected template for the section.</div>
@@ -3919,8 +3955,6 @@ function ImageGalleryEditor({ value, onChange, errors }: { value: ImageGalleryDa
 
 function BannerEditor({ value, onChange, errors }: { value: BannerData; onChange: (v: BannerData) => void; errors?: CommonErrors }) {
   const themeId = value.themeId ?? "";
-  const bannerThemes = alertThemes.filter((theme) => theme.style === "banner");
-  const bannerCategories = Array.from(new Set(bannerThemes.map((theme) => theme.category)));
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
@@ -3934,7 +3968,7 @@ function BannerEditor({ value, onChange, errors }: { value: BannerData; onChange
             onChange({ ...value, themeId: nextTheme || undefined });
           }}
         >
-          {renderThemeOptions(bannerCategories, bannerThemes)}
+          {renderThemeOptions(BANNER_THEME_CATEGORIES, BANNER_THEME_OPTIONS)}
         </Select>
         {themeId ? (
           <div className="text-xs opacity-70">Theme mode renders the selected template for the banner.</div>
@@ -4391,6 +4425,7 @@ function useCategoriesList() {
 function FeaturedCategoriesEditor({ value, onChange, errors }: { value: FeaturedCategoriesData; onChange: (v: FeaturedCategoriesData) => void; errors?: CommonErrors }) {
   const { options, byId, loading, error } = useCategoriesList();
   const [pickId, setPickId] = useState<string>("");
+  const themeId = value.themeId ?? "";
 
   const addFromCategory = () => {
     const id = pickId.trim();
@@ -4419,6 +4454,22 @@ function FeaturedCategoriesEditor({ value, onChange, errors }: { value: Featured
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="عنوان" value={value.title ?? ""} onChange={(e: any) => onChange({ ...value, title: e.target.value })} />
         <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(e: any) => onChange({ ...value, subtitle: e.target.value })} />
+      </div>
+
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Category Theme" />
+        <Select
+          label="Category theme"
+          value={themeId}
+          placeholder="Default"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(CATEGORY_THEME_CATEGORIES, CATEGORY_THEME_OPTIONS)}
+        </Select>
+        {themeId ? <div className="text-xs opacity-70">Theme mode renders a category-pack template.</div> : null}
       </div>
 
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
@@ -4496,6 +4547,7 @@ function FeaturedCategoriesEditor({ value, onChange, errors }: { value: Featured
 function CollectionsGridEditor({ value, onChange, errors }: { value: CollectionsGridData; onChange: (v: CollectionsGridData) => void; errors?: CommonErrors }) {
   const { options, byId, loading, error } = useCategoriesList();
   const [pickId, setPickId] = useState<string>("");
+  const themeId = value.themeId ?? "";
 
   const addFromCategory = () => {
     const id = pickId.trim();
@@ -4526,6 +4578,22 @@ function CollectionsGridEditor({ value, onChange, errors }: { value: Collections
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="عنوان" value={value.title ?? ""} onChange={(e: any) => onChange({ ...value, title: e.target.value })} />
         <Input label="Subtitle (اختياري)" value={value.subtitle ?? ""} onChange={(e: any) => onChange({ ...value, subtitle: e.target.value })} />
+      </div>
+
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+        <DividerTitle title="Category Theme" />
+        <Select
+          label="Category theme"
+          value={themeId}
+          placeholder="Default"
+          onChange={(v) => {
+            const nextTheme = String(v ?? "").trim();
+            onChange({ ...value, themeId: nextTheme || undefined });
+          }}
+        >
+          {renderThemeOptions(CATEGORY_THEME_CATEGORIES, CATEGORY_THEME_OPTIONS)}
+        </Select>
+        {themeId ? <div className="text-xs opacity-70">Theme mode renders a category-pack template.</div> : null}
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">

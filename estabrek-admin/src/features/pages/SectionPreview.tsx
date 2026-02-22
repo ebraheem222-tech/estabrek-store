@@ -43,6 +43,17 @@ import { featureThemes, featureComponents, additionalFeatureComponents } from ".
 import { pricingThemes, pricingComponents, additionalPricingComponents } from "../../cms/pricing-themes";
 import { sliderThemes, sliderComponents, additionalSliderComponents } from "../../cms/slider-themes";
 import { alertThemes, alertComponents, additionalAlertComponents, type AlertType } from "../../cms/alert-themes";
+import {
+  buildBannerPackInputFromBannerData,
+  buildFeaturePackInputFromBannerData,
+  buildFeaturePackInputFromFeaturesData,
+  buildFeaturePackInputFromHeroData,
+  buildFeaturePackInputFromPricingData,
+  getExternalThemeName,
+  renderBannerPackTheme,
+  renderCategoryPackTheme,
+  renderFeaturePackTheme,
+} from "../../cms/theme-packs/externalThemePacks";
 
 function safeNum(v: any, fallback: number) {
   const n = Number(v);
@@ -799,6 +810,20 @@ function bannerThemePreviewProps(data: BannerData) {
 function HeroPreview({ data }: { data: HeroData }) {
   const themeId = resolveThemeId((data as any).themeId);
   if (themeId) {
+    const externalThemeName = getExternalThemeName(themeId);
+    const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromHeroData(data));
+    if (featurePackNode) {
+      return (
+        <SectionShell data={data} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
+          <div className="px-3 pt-3 text-[10px] uppercase tracking-wide opacity-60">{externalThemeName ?? themeId}</div>
+          <div className="h-[220px] overflow-hidden">
+            <div className="origin-top-left scale-[0.75]" style={{ width: "133.333%" }}>
+              {featurePackNode}
+            </div>
+          </div>
+        </SectionShell>
+      );
+    }
     const theme = heroThemes.find((t) => t.id === themeId);
     const ThemeComponent = resolveHeroThemeComponent(themeId);
     const themeProps = heroThemePreviewProps(data) as any;
@@ -806,7 +831,7 @@ function HeroPreview({ data }: { data: HeroData }) {
 
     return (
       <SectionShell data={data} className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-        <div className="px-3 pt-3 text-[10px] uppercase tracking-wide opacity-60">{theme?.name ?? themeId}</div>
+        <div className="px-3 pt-3 text-[10px] uppercase tracking-wide opacity-60">{externalThemeName ?? theme?.name ?? themeId}</div>
         <div className="h-[220px] overflow-hidden">
           <div className="origin-top-left scale-[0.75]" style={{ width: "133.333%" }}>
             {themeNode}
@@ -1330,12 +1355,21 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const d = data as FeaturesData;
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
+      const externalThemeName = getExternalThemeName(themeId);
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromFeaturesData(d));
+      if (featurePackNode) {
+        return (
+          <ThemePreviewShell data={d} label={externalThemeName ?? themeId}>
+            {featurePackNode}
+          </ThemePreviewShell>
+        );
+      }
       const theme = featureThemes.find((t) => t.id === themeId);
       const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
       const themeProps = featureThemePreviewProps(d) as any;
       return (
-        <ThemePreviewShell data={d} label={theme?.name ?? themeId}>
+        <ThemePreviewShell data={d} label={externalThemeName ?? theme?.name ?? themeId}>
           {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
         </ThemePreviewShell>
       );
@@ -1627,12 +1661,21 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const d = data as PricingData;
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
+      const externalThemeName = getExternalThemeName(themeId);
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromPricingData(d));
+      if (featurePackNode) {
+        return (
+          <ThemePreviewShell data={d} label={externalThemeName ?? themeId}>
+            {featurePackNode}
+          </ThemePreviewShell>
+        );
+      }
       const theme = pricingThemes.find((t) => t.id === themeId);
       const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
       const themeProps = pricingThemePreviewProps(d) as any;
       return (
-        <ThemePreviewShell data={d} label={theme?.name ?? themeId}>
+        <ThemePreviewShell data={d} label={externalThemeName ?? theme?.name ?? themeId}>
           {ThemeComponent ? <ThemeComponent {...themeProps} /> : null}
         </ThemePreviewShell>
       );
@@ -1931,12 +1974,55 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "FEATURED_CATEGORIES") {
     const d = data as FeaturedCategoriesData;
+    const themeId = resolveThemeId((d as any).themeId);
     const items = Array.isArray(d.items) ? d.items : [];
     const showArrows = !!d.showArrows;
     const componentsBlock = renderComponentsBlock(d);
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    if (themeId) {
+      const themedNode = renderCategoryPackTheme(themeId, {
+        items: items.map((item: any) => ({
+          label: item?.label,
+          iconKey: item?.iconKey,
+          accentColor: item?.accentColor,
+        })),
+        selectedLabel: items[0]?.label,
+      });
+      if (themedNode) {
+        return (
+          <SectionShell data={d} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className={cls("space-y-3", uiContainerClass(d))}>
+              {(d.title || d.subtitle || showArrows) ? (
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    {titleData ? (
+                      <div className={cls("text-sm font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                        {titleData.content}
+                      </div>
+                    ) : null}
+                    {subtitleData ? (
+                      <div className={cls("mt-1 text-xs opacity-70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                        {subtitleData.content}
+                      </div>
+                    ) : null}
+                  </div>
+                  {showArrows ? (
+                    <div className="flex items-center gap-2">
+                      <button type="button" className="text-xs border rounded-full h-7 w-7 border-white/10 bg-white/5 text-white/70">‹</button>
+                      <button type="button" className="text-xs border rounded-full h-7 w-7 border-white/10 bg-white/5 text-white/70">›</button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {themedNode}
+              {componentsBlock}
+            </div>
+          </SectionShell>
+        );
+      }
+    }
     return (
       <SectionShell data={d} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
         <div className={cls("space-y-3", uiContainerClass(d))}>
@@ -2015,6 +2101,7 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
 
   if (type === "COLLECTIONS_GRID") {
     const d = data as CollectionsGridData;
+    const themeId = resolveThemeId((d as any).themeId);
     const items = Array.isArray(d.items) ? d.items : [];
     const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const gridCols =
@@ -2023,6 +2110,36 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const sectionTokens = (d as any)?.twTokens;
     const titleData = d.title ? textContent(String(d.title), sectionTokens) : null;
     const subtitleData = d.subtitle ? textContent(String(d.subtitle), sectionTokens) : null;
+    if (themeId) {
+      const themedNode = renderCategoryPackTheme(themeId, {
+        items: items.map((item: any) => ({
+          label: item?.label,
+          iconKey: item?.iconKey,
+          accentColor: item?.accentColor,
+        })),
+        selectedLabel: items[0]?.label,
+      });
+      if (themedNode) {
+        return wrapPreview(d, (
+          <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <SectionTextScope data={d}>
+              {titleData ? (
+                <div className={cls("mb-2 text-sm font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                  {titleData.content}
+                </div>
+              ) : null}
+              {subtitleData ? (
+                <div className={cls("mb-3 text-xs opacity-70", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                  {subtitleData.content}
+                </div>
+              ) : null}
+              {themedNode}
+            </SectionTextScope>
+            {componentsBlock}
+          </div>
+        ));
+      }
+    }
     return wrapPreview(d, (
       <div className={cls("rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <SectionTextScope data={d}>
@@ -2282,12 +2399,30 @@ export function SectionPreview({ type, data }: { type: PageSectionType; data: an
     const d = data as BannerData;
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
+      const externalThemeName = getExternalThemeName(themeId);
+      const bannerPackInput = buildBannerPackInputFromBannerData(d);
+      const bannerPackNode = renderBannerPackTheme(themeId, bannerPackInput);
+      if (bannerPackNode) {
+        return (
+          <ThemePreviewShell data={d} label={externalThemeName ?? themeId} height={120} scale={0.9}>
+            <div className="p-3">{bannerPackNode}</div>
+          </ThemePreviewShell>
+        );
+      }
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromBannerData(d));
+      if (featurePackNode) {
+        return (
+          <ThemePreviewShell data={d} label={externalThemeName ?? themeId} height={120} scale={0.9}>
+            <div className="p-3">{featurePackNode}</div>
+          </ThemePreviewShell>
+        );
+      }
       const theme = alertThemes.find((t) => t.id === themeId);
       const themeMap = { ...alertComponents, ...additionalAlertComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? alertComponents["banner-simple"] ?? Object.values(themeMap)[0];
       const themeProps = bannerThemePreviewProps(d) as any;
       return (
-        <ThemePreviewShell data={d} label={theme?.name ?? themeId} height={120} scale={0.9}>
+        <ThemePreviewShell data={d} label={externalThemeName ?? theme?.name ?? themeId} height={120} scale={0.9}>
           <div className="p-3">{ThemeComponent ? <ThemeComponent {...themeProps} /> : null}</div>
         </ThemePreviewShell>
       );
