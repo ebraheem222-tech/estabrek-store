@@ -363,7 +363,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                 e.stopPropagation();
                 openQuickView(product);
               }}
-              className="absolute left-3 bottom-3 z-30 rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs text-white backdrop-blur hover:bg-black/60"
+              className="quick-view-trigger-candy absolute left-3 bottom-3 z-30 rounded-full px-3 py-1 text-xs font-semibold"
             >
               معاينة سريعة
             </button>

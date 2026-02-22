@@ -70,6 +70,7 @@ export function QuickViewModal({
   isInWishlist,
   compareEnabled = true,
 }: QuickViewModalProps) {
+  const CLOSE_ANIM_MS = 260;
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -92,7 +93,7 @@ export function QuickViewModal({
     setTimeout(() => {
       setIsClosing(false);
       onClose();
-    }, 200);
+    }, CLOSE_ANIM_MS);
   };
 
   // Close on escape
@@ -144,7 +145,7 @@ export function QuickViewModal({
   };
 
   return (
-    <div className="quick-view-overlay" onClick={handleClose} dir="rtl">
+    <div className={`quick-view-overlay ${isClosing ? "closing" : ""}`} onClick={handleClose} dir="rtl">
       <button
         type="button"
         className="quick-view-close-fallback"
