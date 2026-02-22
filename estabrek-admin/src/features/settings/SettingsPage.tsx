@@ -556,9 +556,22 @@ function normalizeCursorThemeId(v: any): CursorThemeId {
   return cmsSettingsCatalogRuntime.hasCursorTheme(raw) ? raw : "default";
 }
 
+function normalizeWebsiteThemeIdInput(v: unknown): string {
+  const raw = typeof v === "string" ? v.trim() : "default";
+  if (!raw || raw === "default") return "default";
+  const galleryMatch = raw.match(/^theme-gallery-(\d+)$/i);
+  if (galleryMatch) {
+    const index = Number.parseInt(galleryMatch[1] ?? "", 10);
+    if (Number.isFinite(index) && index > 0) {
+      return `theme-gallery-${String(index).padStart(2, "0")}`;
+    }
+  }
+  return raw;
+}
+
 function normalizeTheme(v: any): NonNullable<HeaderConfig["theme"]> {
   const o = safeObj(v);
-  const rawWebsiteThemeId = typeof o.websiteThemeId === "string" ? o.websiteThemeId : "default";
+  const rawWebsiteThemeId = normalizeWebsiteThemeIdInput(o.websiteThemeId);
   const websiteThemeId =
     rawWebsiteThemeId === "default" || cmsSettingsCatalogRuntime.hasWebsiteTheme(rawWebsiteThemeId)
       ? rawWebsiteThemeId
