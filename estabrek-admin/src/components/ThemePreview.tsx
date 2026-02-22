@@ -1,10 +1,13 @@
 import React, { useMemo } from "react";
 import { cn } from "./ui/cn";
 import { generateThemeCssVars, getThemePreset } from "../theme/presets";
+import { generateWebsiteThemeCssVars, getWebsiteThemeById } from "../cms/themes/websiteThemes";
+import { GalleryThemeMotionBackdrop } from "../cms/themes/GalleryThemeMotionBackdrop";
 
 type ThemeCfg = {
   mode?: "dark" | "light";
   presetId?: string;
+  websiteThemeId?: string;
   primary?: string;
   secondary?: string;
   radius?: "md" | "xl" | "2xl";
@@ -70,11 +73,21 @@ export function ThemePreview({
   const preset = useMemo(() => getThemePreset(t.presetId ?? null), [t.presetId]);
   const baseVars = mode === "dark" ? preset.dark : preset.light;
   const themeVars = useMemo(() => generateThemeCssVars(preset, mode), [preset, mode]);
+  const websiteTheme = useMemo(
+    () => getWebsiteThemeById(typeof t.websiteThemeId === "string" ? t.websiteThemeId : null),
+    [t.websiteThemeId]
+  );
+  const websiteVars = useMemo(
+    () => (websiteTheme ? generateWebsiteThemeCssVars(websiteTheme) : null),
+    [websiteTheme]
+  );
   const primary = resolveCustomColor(t.primary);
   const secondary = resolveCustomColor(t.secondary);
-  const accent = primary ?? baseVars["--accent"];
-  const accentSoft = secondary ?? baseVars["--accent-soft"] ?? accent;
-  const accentHover = secondary ?? baseVars["--accent-hover"] ?? accent;
+  const accent = primary ?? websiteTheme?.colors.primary ?? baseVars["--accent"];
+  const accentSoft =
+    secondary ?? websiteTheme?.colors.secondary ?? baseVars["--accent-soft"] ?? accent;
+  const accentHover =
+    secondary ?? websiteTheme?.colors.accent ?? baseVars["--accent-hover"] ?? accent;
   const accentStops: [string, string, string] = [
     accentSoft ?? accent,
     accent ?? accentSoft ?? accent,
@@ -87,11 +100,17 @@ export function ThemePreview({
   return (
     <div
       data-theme={mode}
-      className={cn("theme-preview", surface === "classic" ? undefined : "[--glass-bg:rgba(0,0,0,0.45)]", className)}
+      data-gallery-theme-active={websiteTheme?.id?.startsWith("theme-gallery-") ? "1" : "0"}
+      className={cn(
+        "theme-preview relative isolate",
+        surface === "classic" ? undefined : "[--glass-bg:rgba(0,0,0,0.45)]",
+        className
+      )}
       style={
         {
           ...baseVars,
           ...themeVars,
+          ...(websiteVars ?? {}),
           "--accent": accent,
           "--accent-soft": accentSoft,
           "--accent-hover": accentHover,
@@ -114,7 +133,8 @@ export function ThemePreview({
         } as React.CSSProperties
       }
     >
-      {children}
+      <GalleryThemeMotionBackdrop websiteThemeId={websiteTheme?.id} />
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
