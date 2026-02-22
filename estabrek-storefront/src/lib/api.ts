@@ -251,7 +251,9 @@ export const listProductsBySlugs = cache(async (slugs: string[], opts?: { lite?:
 export const getPublicSettings = cache(async (): Promise<{ site: SitePublicSettings }> => {
   try {
     const url = `${baseUrl()}/settings`;
-    const res = await fetch(url, { next: { revalidate: 30, tags: ["settings"] } });
+    const res = await fetch(url, {
+      next: { revalidate: 30, tags: ["settings", "cms", "cms:settings", "cms:bootstrap"] },
+    });
     if (!res.ok) throw new Error(`settings failed (${res.status})`);
     const json = await res.json();
     const parsed = SettingsZ.parse(json) as { site: SitePublicSettings };

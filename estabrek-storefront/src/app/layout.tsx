@@ -20,10 +20,19 @@ export const metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [bootstrap, settings] = await Promise.all([getBootstrap(), getPublicSettings()]);
-  const header = (settings.site as any)?.header ?? null;
+  const settingsHeader = (settings.site as any)?.header;
+  const bootstrapHeader = (bootstrap.site as any)?.header;
+  const header =
+    (settingsHeader && typeof settingsHeader === "object" ? settingsHeader : null) ??
+    (bootstrapHeader && typeof bootstrapHeader === "object" ? bootstrapHeader : null) ??
+    null;
   const theme = header?.theme ?? null;
   const customCss = bootstrap.site.customCss?.trim() || "";
-  const initialStorefrontSettings = (settings.site as any)?.header?.storefront ?? undefined;
+  const initialStorefrontSettings =
+    header?.storefront ??
+    (settings.site as any)?.storefront ??
+    (bootstrap.site as any)?.storefront ??
+    undefined;
   const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
   const defaultTheme = darkModeDisabled
     ? "light"
@@ -64,7 +73,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </div>
               <HeaderOffset />
               {children}
-              <Footer site={bootstrap.site} footerMenu={bootstrap.footerMenu} footer={(settings.site as any)?.footer} />
+              <Footer
+                site={bootstrap.site}
+                footerMenu={bootstrap.footerMenu}
+                footer={(settings.site as any)?.footer ?? (bootstrap.site as any)?.footer}
+              />
               {/* Global body scripts from site settings */}
               <ScriptTags scripts={bootstrap.site.scriptsBody} />
               <WebVitalsReporter />
