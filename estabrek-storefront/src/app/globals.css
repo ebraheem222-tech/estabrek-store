@@ -13617,6 +13617,68 @@ html {
   }
 }
 
+/* Mobile dot controls (hero/slider/gallery) */
+@media (max-width: 768px) {
+  .cms-slider-dots {
+    gap: 0.35rem !important;
+    margin-top: 0.5rem !important;
+  }
+
+  .cms-slider-dot {
+    width: 0.42rem !important;
+    height: 0.42rem !important;
+    min-width: 0.42rem;
+    min-height: 0.42rem;
+    border-width: 1.5px;
+  }
+
+  .cms-slider-dot.is-active {
+    transform: scale(1.04);
+  }
+
+  .cms-slider-dot--line {
+    height: 0.16rem !important;
+    width: 1rem !important;
+    min-width: 1rem;
+  }
+
+  .cms-slider-dot--line.is-active {
+    width: 1.2rem !important;
+  }
+
+  .cms-hero-dots {
+    bottom: 0.55rem !important;
+    gap: 0.35rem !important;
+  }
+
+  .cms-hero-dot {
+    width: 0.38rem !important;
+    height: 0.38rem !important;
+  }
+
+  .product-gallery-progress-dots {
+    bottom: 0.55rem !important;
+    gap: 0.25rem !important;
+  }
+
+  .product-gallery-progress-dot {
+    height: 0.22rem !important;
+  }
+
+  .product-gallery-progress-dot.is-active {
+    width: 0.9rem !important;
+  }
+
+  .product-gallery-progress-dot.is-inactive {
+    width: 0.22rem !important;
+  }
+
+  .view-360-dots .dot {
+    width: 6px;
+    height: 6px;
+  }
+}
+
 /* ============================================
    IMAGE LOADING + DISCOUNT SHAPES
    ============================================ */
