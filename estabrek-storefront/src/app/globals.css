@@ -1571,6 +1571,8 @@ html {
 
 .color-modal-candy {
   position: relative;
+  width: min(100%, 42rem);
+  max-height: min(72dvh, 640px);
   background: linear-gradient(
     145deg,
     rgba(255, 255, 255, 0.94) 0%,
@@ -1583,6 +1585,12 @@ html {
     0 30px 72px color-mix(in srgb, var(--accent, #ec4899) 18%, rgba(15, 23, 42, 0.22));
   backdrop-filter: blur(24px) saturate(170%);
   -webkit-backdrop-filter: blur(24px) saturate(170%);
+}
+
+@supports not (height: 1dvh) {
+  .color-modal-candy {
+    max-height: min(72vh, 640px);
+  }
 }
 
 .color-modal-candy::before {
@@ -1614,6 +1622,10 @@ html {
 .color-modal-candy > * {
   position: relative;
   z-index: 1;
+}
+
+.color-modal-candy > .flex-1 {
+  min-height: 0;
 }
 
 .color-modal-header-candy,
@@ -1657,6 +1669,20 @@ html {
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--accent, #ec4899) 16%, white 84%),
     0 10px 24px rgba(15, 23, 42, 0.12) !important;
+}
+
+@media (max-width: 640px) {
+  .color-modal-candy {
+    max-height: min(70dvh, 560px);
+  }
+
+  .color-modal-header-candy {
+    padding: 0.9rem 1rem;
+  }
+
+  .color-modal-search-wrap-candy {
+    padding: 0.8rem 1rem;
+  }
 }
 
 @keyframes modal-slide {
