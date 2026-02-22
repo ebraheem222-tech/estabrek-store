@@ -275,12 +275,12 @@ const ArrowRight: React.FC<{ onClick: () => void; className?: string }> = ({ onC
 // Dots Component
 const Dots: React.FC<{ count: number; current: number; onClick: (i: number) => void; className?: string; dotClassName?: string }> = 
   ({ count, current, onClick, className, dotClassName }) => (
-  <div className={`flex justify-center gap-2 mt-4 ${className || ''}`}>
+  <div className={`cms-slider-dots flex justify-center gap-2 mt-4 ${className || ''}`}>
     {Array.from({ length: count }).map((_, i) => (
       <button
         key={i}
         onClick={() => onClick(i)}
-        className={`w-3 h-3 rounded-full transition-all ${i === current ? 'bg-blue-600 scale-110' : 'bg-gray-300 hover:bg-gray-400'} ${dotClassName || ''}`}
+        className={`cms-slider-dot w-3 h-3 rounded-full transition-all ${i === current ? 'is-active bg-blue-600 scale-110' : 'is-inactive bg-gray-300 hover:bg-gray-400'} ${dotClassName || ''}`}
       />
     ))}
   </div>
@@ -473,12 +473,12 @@ export const SliderHeroFullscreen: React.FC<SliderProps> = ({
         </>
       )}
       {showDots && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex gap-3">
+        <div className="cms-slider-dots cms-slider-dots--line absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex gap-3">
           {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => goToSlide(i)}
-              className={`w-12 h-1 rounded-full transition-all ${i === currentIndex ? 'bg-white' : 'bg-white/40 hover:bg-white/60'}`}
+              className={`cms-slider-dot cms-slider-dot--line w-12 h-1 rounded-full transition-all ${i === currentIndex ? 'is-active bg-white' : 'is-inactive bg-white/40 hover:bg-white/60'}`}
             />
           ))}
         </div>
@@ -671,12 +671,12 @@ export const SliderGamingNeon: React.FC<SliderProps> = ({
         )}
 
         {showDots && (
-          <div className="flex justify-center gap-2 mt-6">
+          <div className="cms-slider-dots cms-slider-dots--line flex justify-center gap-2 mt-6">
             {slides.map((_, i) => (
               <button
                 key={i}
                 onClick={() => goToSlide(i)}
-                className={`h-1 rounded-full transition-all ${i === currentIndex ? 'w-8 bg-gradient-to-r from-purple-500 to-cyan-500' : 'w-4 bg-gray-700 hover:bg-gray-600'}`}
+                className={`cms-slider-dot cms-slider-dot--line h-1 rounded-full transition-all ${i === currentIndex ? 'is-active w-8 bg-gradient-to-r from-purple-500 to-cyan-500' : 'is-inactive w-4 bg-gray-700 hover:bg-gray-600'}`}
               />
             ))}
           </div>
@@ -799,12 +799,12 @@ export const SliderCreativeSplit: React.FC<SliderProps> = ({
       </div>
 
       {showDots && (
-        <div className="absolute bottom-8 right-12 md:right-20 z-20 flex gap-2">
+        <div className="cms-slider-dots cms-slider-dots--line absolute bottom-8 right-12 md:right-20 z-20 flex gap-2">
           {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => goToSlide(i)}
-              className={`w-8 h-1 rounded-full transition-all ${i === currentIndex ? 'bg-white' : 'bg-white/30 hover:bg-white/50'}`}
+              className={`cms-slider-dot cms-slider-dot--line w-8 h-1 rounded-full transition-all ${i === currentIndex ? 'is-active bg-white' : 'is-inactive bg-white/30 hover:bg-white/50'}`}
             />
           ))}
         </div>

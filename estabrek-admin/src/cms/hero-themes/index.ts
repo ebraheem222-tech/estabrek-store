@@ -30,6 +30,7 @@ export {
 
 // All Hero Components Map
 export { heroComponents } from './HeroComponents';
+export { advancedHeroThemes, advancedHeroThemeComponents } from './AdvancedHeroThemes';
 
 // Individual Hero Components (1-100)
 export {

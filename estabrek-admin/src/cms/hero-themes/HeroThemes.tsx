@@ -1,5 +1,7 @@
 "use client";
 import React from 'react';
+import { heroComponents } from "./HeroComponents";
+import { advancedHeroThemes } from './AdvancedHeroThemes';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -243,6 +245,7 @@ export const heroThemes: HeroTheme[] = [
   { id: 'special-black-friday', name: 'Special Black Friday', nameAr: 'خاص بلاك فرايدي', category: 'Special', layout: 'fullscreen', tags: ['special', 'sale', 'blackfriday'] },
   { id: 'special-ramadan-campaign', name: 'Special Ramadan Campaign', nameAr: 'خاص حملة رمضان', category: 'Special', layout: 'centered', tags: ['special', 'ramadan', 'campaign'] },
   { id: 'special-product-hunt', name: 'Special Product Hunt', nameAr: 'خاص إطلاق منتج', category: 'Special', layout: 'left', tags: ['special', 'product', 'launch'] },
+  ...(advancedHeroThemes as HeroTheme[]),
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -889,6 +892,11 @@ export const HeroRenderer: React.FC<HeroRendererProps> = ({ themeId, ...props })
   
   if (!theme) {
     return <HeroBasicCentered {...props} />;
+  }
+
+  const ThemeComponent = (heroComponents as Record<string, React.FC<HeroProps>>)[themeId];
+  if (ThemeComponent) {
+    return <ThemeComponent {...props} />;
   }
 
   // Map themes to components

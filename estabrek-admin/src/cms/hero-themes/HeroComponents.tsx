@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { advancedHeroThemeComponents } from './AdvancedHeroThemes';
 
 // ═══════════════════════════════════════════════════════════════
 // ADDITIONAL HERO COMPONENTS FOR ALL 100 THEMES
@@ -594,6 +595,7 @@ export const heroComponents: Record<string, React.FC<HeroTemplateProps>> = {
   'special-event': Hero98,
   'special-app-download': Hero99,
   'special-newsletter': Hero100,
+  ...(advancedHeroThemeComponents as Record<string, React.FC<HeroTemplateProps>>),
 };
 
 export default heroComponents;

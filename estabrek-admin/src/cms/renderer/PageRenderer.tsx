@@ -876,7 +876,7 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
             </div>
           </div>
           {showDots && slides.length > 1 ? (
-            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2">
+            <div className="cms-hero-dots absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2">
               {slides.map((_: any, idx: number) => (
                 <button
                   key={idx}
@@ -884,8 +884,8 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
                   onClick={() => setActiveSlide(idx)}
                   aria-label={`Slide ${idx + 1}`}
                   className={cls(
-                    "h-2 w-2 rounded-full transition",
-                    idx === activeSlide ? "bg-white" : "bg-white/40 hover:bg-white/70"
+                    "cms-hero-dot h-2 w-2 rounded-full transition",
+                    idx === activeSlide ? "is-active bg-white" : "is-inactive bg-white/40 hover:bg-white/70"
                   )}
                 />
               ))}
