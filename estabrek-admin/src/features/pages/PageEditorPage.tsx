@@ -2138,6 +2138,16 @@ export default function PageEditorPage() {
   };
 
   const templates = useMemo(() => templatesForType(sectionType), [sectionType]);
+  const [packSectionTemplates, builtInSectionTemplates] = useMemo(() => {
+    const isPack = (template: { id: string; label: string }) => {
+      const id = String(template.id ?? "").toLowerCase();
+      const label = String(template.label ?? "").toLowerCase();
+      return id.includes("_pack_") || id.includes("pack-") || label.includes(" pack");
+    };
+    const packs = templates.filter(isPack);
+    const builtIn = templates.filter((template) => !isPack(template));
+    return [packs, builtIn];
+  }, [templates]);
 
   const applyTemplate = (templateId: string) => {
     if (templateId === "__blank__") {
@@ -5168,13 +5178,35 @@ export default function PageEditorPage() {
                   <Select
                     label="Template"
                     value={sectionTemplateId}
-                    onChange={(e) => setSectionTemplateId(e.target.value)}
-                    options={[
-                      { value: "__blank__", label: "فارغ" },
-                      ...(editingSectionId ? [{ value: "__custom__", label: "المحتوى الحالي" }] : []),
-                      ...templates.map((t) => ({ value: t.id, label: t.label })),
-                    ]}
-                  />
+                    onValueChange={(value) => setSectionTemplateId(value)}
+                  >
+                    <option value="__blank__" className="bg-surface-900 text-white">
+                      فارغ
+                    </option>
+                    {editingSectionId ? (
+                      <option value="__custom__" className="bg-surface-900 text-white">
+                        المحتوى الحالي
+                      </option>
+                    ) : null}
+                    {packSectionTemplates.length ? (
+                      <optgroup label={`Theme Packs (${packSectionTemplates.length})`}>
+                        {packSectionTemplates.map((template) => (
+                          <option key={template.id} value={template.id} className="bg-surface-900 text-white">
+                            {template.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+                    {builtInSectionTemplates.length ? (
+                      <optgroup label={`Built-in (${builtInSectionTemplates.length})`}>
+                        {builtInSectionTemplates.map((template) => (
+                          <option key={template.id} value={template.id} className="bg-surface-900 text-white">
+                            {template.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+                  </Select>
                   <Button
                     variant="secondary"
                     onClick={() => {

@@ -819,8 +819,19 @@ function renderSectionDivider(tokens?: TwTokens) {
   const preset = getDividerById(tokens?.dividerStyleId);
   if (!preset) return null;
   return (
-    <div className="mt-3">
-      {preset.svg ? <div className={preset.className} dangerouslySetInnerHTML={{ __html: preset.svg }} /> : <div className={preset.className} />}
+    <div
+      className="cms-divider-shell relative isolate w-full max-w-full overflow-hidden pt-3 text-base leading-none"
+      style={{ contain: "layout paint" }}
+      aria-hidden="true"
+    >
+      {preset.svg ? (
+        <div
+          className={cls("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)}
+          dangerouslySetInnerHTML={{ __html: preset.svg }}
+        />
+      ) : (
+        <div className={cls("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)} />
+      )}
     </div>
   );
 }

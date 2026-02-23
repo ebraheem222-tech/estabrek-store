@@ -2360,13 +2360,26 @@ export function ComponentsEditor({
                       })()}
                       {selected.kind === "divider" && (() => {
                         const preset = getDividerById(previewTokens?.dividerStyleId);
+                        const dividerPreviewStyle: React.CSSProperties = { ...(previewStyle ?? {}), contain: "layout paint" };
                         if (preset?.svg) {
-                          return <div className={cn(preset.className, previewClassName)} style={previewStyle} dangerouslySetInnerHTML={{ __html: preset.svg }} />;
+                          return (
+                            <div className={cn("cms-divider-shell relative isolate w-full max-w-full overflow-hidden text-base leading-none", previewClassName)} style={dividerPreviewStyle}>
+                              <div className={cn("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)} dangerouslySetInnerHTML={{ __html: preset.svg }} />
+                            </div>
+                          );
                         }
                         if (preset) {
-                          return <div className={cn(preset.className, previewClassName)} style={previewStyle} />;
+                          return (
+                            <div className={cn("cms-divider-shell relative isolate w-full max-w-full overflow-hidden text-base leading-none", previewClassName)} style={dividerPreviewStyle}>
+                              <div className={cn("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)} />
+                            </div>
+                          );
                         }
-                        return <hr className={cn("border-white/15", previewClassName)} style={previewStyle} />;
+                        return (
+                          <div className={cn("cms-divider-shell relative isolate w-full max-w-full overflow-hidden text-base leading-none", previewClassName)} style={dividerPreviewStyle}>
+                            <hr className="border-white/15" />
+                          </div>
+                        );
                       })()}
                       {selected.kind === "spacer" && <div className={spacerClass(selected.props?.h)} style={previewStyle} />}
 

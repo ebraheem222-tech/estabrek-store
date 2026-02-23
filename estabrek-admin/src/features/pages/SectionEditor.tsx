@@ -114,8 +114,27 @@ function TextAreaInput({
 
 type ThemeOption = { id: string; name: string; nameAr?: string; category: string };
 
+function isPackCategory(category: string): boolean {
+  const value = String(category || "").toLowerCase();
+  return value.includes("feature pack") || value.includes("banner pack") || value.includes("category pack");
+}
+
 function renderThemeOptions(categories: string[], themes: ThemeOption[]) {
-  return categories.map((category) => {
+  const knownCategories = Array.from(
+    new Set([
+      ...categories,
+      ...themes
+        .map((theme) => theme.category)
+        .filter((category): category is string => typeof category === "string" && category.trim().length > 0),
+    ])
+  ).sort((a, b) => {
+    const aPack = isPackCategory(a);
+    const bPack = isPackCategory(b);
+    if (aPack !== bPack) return aPack ? -1 : 1;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+  });
+
+  return knownCategories.map((category) => {
     const list = themes.filter((theme) => theme.category === category);
     if (!list.length) return null;
     return (
