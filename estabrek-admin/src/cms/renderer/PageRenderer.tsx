@@ -41,6 +41,16 @@ import { featureComponents, additionalFeatureComponents } from "../feature-theme
 import { pricingComponents, additionalPricingComponents } from "../pricing-themes";
 import { sliderThemes, sliderComponents, additionalSliderComponents } from "../slider-themes";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
+import {
+  buildBannerPackInputFromBannerData,
+  buildFeaturePackInputFromBannerData,
+  buildFeaturePackInputFromFeaturesData,
+  buildFeaturePackInputFromHeroData,
+  buildFeaturePackInputFromPricingData,
+  renderBannerPackTheme,
+  renderCategoryPackTheme,
+  renderFeaturePackTheme,
+} from "../theme-packs/externalThemePacks";
 import { DEFAULT_MOTION_BY_SECTION_TYPE } from "../../motion/gsapPresets";
 
 function safeNum(v: any, fallback: number) {
@@ -137,8 +147,19 @@ function renderSectionDivider(tokens?: TwTokens) {
   const preset = getDividerById(tokens?.dividerStyleId);
   if (!preset) return null;
   return (
-    <div className="mt-3">
-      {preset.svg ? <div className={preset.className} dangerouslySetInnerHTML={{ __html: preset.svg }} /> : <div className={preset.className} />}
+    <div
+      className="cms-divider-shell relative isolate w-full max-w-full overflow-hidden pt-3 text-base leading-none"
+      style={{ contain: "layout paint" }}
+      aria-hidden="true"
+    >
+      {preset.svg ? (
+        <div
+          className={cls("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)}
+          dangerouslySetInnerHTML={{ __html: preset.svg }}
+        />
+      ) : (
+        <div className={cls("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)} />
+      )}
     </div>
   );
 }
@@ -740,6 +761,10 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
       const renderPane = (pane: any) => {
         const paneThemeId = resolveThemeId(pane?.themeId);
         if (paneThemeId) {
+          const featurePackNode = renderFeaturePackTheme(paneThemeId, buildFeaturePackInputFromHeroData(pane));
+          if (featurePackNode) {
+            return <div className="h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">{featurePackNode}</div>;
+          }
           const ThemeComponent = resolveHeroThemeComponent(paneThemeId);
           const themeProps = { ...heroThemePropsFromSource(pane, paneThemeId), className: "h-full" } as any;
           const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={paneThemeId} {...themeProps} />;
@@ -822,6 +847,15 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromHeroData(d));
+      if (featurePackNode) {
+        return (
+          <section {...attrs} className={cls("overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{featurePackNode}</div>
+            {componentsBlock}
+          </section>
+        );
+      }
       const ThemeComponent = resolveHeroThemeComponent(themeId);
       const themeProps = { ...heroThemePropsFromData(d), className: cls("mx-auto", uiContainerClass(d)) } as any;
       const themeNode = ThemeComponent ? <ThemeComponent {...themeProps} /> : <HeroRenderer themeId={themeId} {...themeProps} />;
@@ -976,6 +1010,25 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
+      const bannerPackInput = buildBannerPackInputFromBannerData(d);
+      const bannerPackNode = renderBannerPackTheme(themeId, bannerPackInput);
+      if (bannerPackNode) {
+        return (
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{bannerPackNode}</div>
+            {componentsBlock}
+          </section>
+        );
+      }
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromBannerData(d));
+      if (featurePackNode) {
+        return (
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{featurePackNode}</div>
+            {componentsBlock}
+          </section>
+        );
+      }
       const themeMap = { ...alertComponents, ...additionalAlertComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? alertComponents["banner-simple"] ?? Object.values(themeMap)[0];
       const themeProps = bannerThemePropsFromData(d) as any;
@@ -1164,6 +1217,15 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromFeaturesData(d));
+      if (featurePackNode) {
+        return (
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{featurePackNode}</div>
+            {componentsBlock}
+          </section>
+        );
+      }
       const themeMap = { ...featureComponents, ...additionalFeatureComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? featureComponents["basic-grid-simple"] ?? Object.values(themeMap)[0];
       const themeProps = featureThemePropsFromData(d) as any;
@@ -1285,6 +1347,15 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
     const themeId = resolveThemeId((d as any).themeId);
     if (themeId) {
       const componentsBlock = renderComponentsBlock(d);
+      const featurePackNode = renderFeaturePackTheme(themeId, buildFeaturePackInputFromPricingData(d));
+      if (featurePackNode) {
+        return (
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08]", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto", uiContainerClass(d))}>{featurePackNode}</div>
+            {componentsBlock}
+          </section>
+        );
+      }
       const themeMap = { ...pricingComponents, ...additionalPricingComponents } as Record<string, React.FC<any>>;
       const ThemeComponent = themeMap[themeId] ?? pricingComponents["basic-simple"] ?? Object.values(themeMap)[0];
       const themeProps = pricingThemePropsFromData(d) as any;
@@ -1413,9 +1484,44 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "FEATURED_CATEGORIES") {
     const d = data as FeaturedCategoriesData;
+    const themeId = resolveThemeId((d as any).themeId);
     const items = Array.isArray(d.items) ? d.items : [];
     const showArrows = !!d.showArrows;
     const componentsBlock = renderComponentsBlock(d);
+    if (themeId) {
+      const themedNode = renderCategoryPackTheme(themeId, {
+        items: items.map((item: any) => ({
+          label: item?.label,
+          iconKey: item?.iconKey,
+          accentColor: item?.accentColor,
+        })),
+        selectedLabel: items[0]?.label,
+      });
+      if (themedNode) {
+        return (
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+              {(d.title || d.subtitle || showArrows) ? (
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    {d.title ? <h3 className="text-lg font-semibold">{d.title}</h3> : null}
+                    {d.subtitle ? <div className="mt-1 text-sm opacity-80">{d.subtitle}</div> : null}
+                  </div>
+                  {showArrows ? (
+                    <div className="flex items-center gap-2">
+                      <button type="button" className="h-8 w-8 rounded-full border border-white/10 bg-white/5 text-sm text-white/70">{"<"}</button>
+                      <button type="button" className="h-8 w-8 rounded-full border border-white/10 bg-white/5 text-sm text-white/70">{">"}</button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {themedNode}
+              {componentsBlock}
+            </div>
+          </section>
+        );
+      }
+    }
     return (
       <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
@@ -1454,11 +1560,34 @@ function Section({ section, renderProductCard }: { section: CmsSection; renderPr
 
   if (type === "COLLECTIONS_GRID") {
     const d = data as CollectionsGridData;
+    const themeId = resolveThemeId((d as any).themeId);
     const items = Array.isArray(d.items) ? d.items : [];
     const cols = Math.min(6, Math.max(2, safeNum(d.columns, 3)));
     const clsCols =
       cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : cols === 4 ? "md:grid-cols-4" : cols === 5 ? "md:grid-cols-5" : "md:grid-cols-6";
     const componentsBlock = renderComponentsBlock(d);
+    if (themeId) {
+      const themedNode = renderCategoryPackTheme(themeId, {
+        items: items.map((item: any) => ({
+          label: item?.label,
+          iconKey: item?.iconKey,
+          accentColor: item?.accentColor,
+        })),
+        selectedLabel: items[0]?.label,
+      });
+      if (themedNode) {
+        return (
+          <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
+            <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>
+              {d.title ? <h3 className="mb-2 text-lg font-semibold">{d.title}</h3> : null}
+              {d.subtitle ? <div className="mb-4 text-sm opacity-80">{d.subtitle}</div> : null}
+              {themedNode}
+              {componentsBlock}
+            </div>
+          </section>
+        );
+      }
+    }
     return (
       <section {...attrs} className={cls("rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6", uiSectionClass(d))} style={uiSectionStyle(d)}>
         <div className={cls("mx-auto max-w-6xl", uiContainerClass(d))}>

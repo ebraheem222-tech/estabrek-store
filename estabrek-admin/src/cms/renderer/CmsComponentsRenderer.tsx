@@ -849,25 +849,28 @@ function ComponentNode({
     case "divider":
       {
         const preset = getDividerById(tokens?.dividerStyleId);
-        const node = preset?.svg ? (
+        const dividerStyle: React.CSSProperties = { ...(inlineStyle ?? {}), contain: "layout paint" };
+        const node = (
           <div
-            className={cx(preset.className, className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
-            style={inlineStyle}
+            className={cx(
+              "cms-divider-shell relative isolate w-full max-w-full overflow-hidden text-base leading-none",
+              className,
+              baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined
+            )}
+            style={dividerStyle}
             {...baseState?.attrs}
-            dangerouslySetInnerHTML={{ __html: preset.svg }}
-          />
-        ) : preset ? (
-          <div
-            className={cx(preset.className, className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
-            style={inlineStyle}
-            {...baseState?.attrs}
-          />
-        ) : (
-          <hr
-            className={cx("border-white/10", className, baseState?.selected ? SELECTED_ELEMENT_CLASS : undefined)}
-            style={inlineStyle}
-            {...baseState?.attrs}
-          />
+          >
+            {preset?.svg ? (
+              <div
+                className={cx("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)}
+                dangerouslySetInnerHTML={{ __html: preset.svg }}
+              />
+            ) : preset ? (
+              <div className={cx("cms-divider-body relative block w-full max-w-full overflow-hidden", preset.className)} />
+            ) : (
+              <hr className="border-white/10" />
+            )}
+          </div>
         );
         return wrapWithDecor(tokens, node, false);
       }
