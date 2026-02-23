@@ -81,8 +81,13 @@ function mergeStyle(...styles: Array<CSSProperties | undefined>): CSSProperties 
 
 function resolveContent(props: AdvancedHeroProps, preset: VariantPreset) {
   const headline = toText(props.headline) ?? preset.headline;
-  const subheadline = toText(props.subheadline) ?? toText(props.description) ?? preset.subtitle;
-  const description = toText(props.description) ?? toText(props.subheadline) ?? preset.description;
+  const subtitleOverride = toText(props.subheadline);
+  const descriptionOverride = toText(props.description);
+  let subheadline = subtitleOverride ?? (descriptionOverride ? undefined : preset.subtitle);
+  const description = descriptionOverride ?? preset.description;
+  if (subheadline && description && subheadline.trim().toLowerCase() === description.trim().toLowerCase()) {
+    subheadline = undefined;
+  }
   const badge = toText(props.badge) ?? preset.badge;
   return { headline, subheadline, description, badge };
 }
