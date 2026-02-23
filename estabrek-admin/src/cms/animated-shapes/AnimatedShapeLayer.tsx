@@ -1,11 +1,144 @@
 import React from "react";
 import type { AnimatedShapeConfig } from "../style/tokens";
-import { animatedShapeComponents, additionalShapeComponents } from "./index";
+import { animatedShapeComponents, getAnimatedShapeTheme } from "./AnimatedShapes";
+import { additionalShapeComponents } from "./AnimatedShapesExtra";
 
 const SHAPE_COMPONENTS: Record<string, React.FC<any>> = {
   ...animatedShapeComponents,
   ...additionalShapeComponents,
 };
+
+const SHAPE_FALLBACKS_BY_TYPE: Record<string, string[]> = {
+  circle: ["circles-multiple", "circle-pulse-glow", "circle-float-simple"],
+  rectangle: ["squares-scatter", "rect-rotate"],
+  star: ["stars-scatter", "star-float"],
+  triangle: ["triangles-scatter", "triangle-float"],
+  blob: ["blob-morph", "blobs-multiple"],
+  dot: ["particles-float", "dots-grid", "confetti"],
+  line: ["lines-wave"],
+  mixed: ["geometric-mix", "gradient-shapes", "minimal-shapes", "neon-shapes"],
+};
+
+function pushUnique(target: string[], ...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    if (!value) continue;
+    if (!target.includes(value)) target.push(value);
+  }
+}
+
+function buildFallbackCandidates(themeId: string): string[] {
+  const normalizedId = themeId.trim().toLowerCase();
+  const themeMeta = getAnimatedShapeTheme(normalizedId) ?? getAnimatedShapeTheme(themeId);
+  const candidates: string[] = [];
+
+  if (normalizedId.startsWith("circle-")) {
+    if (normalizedId.includes("pulse")) pushUnique(candidates, "circle-pulse-glow");
+    pushUnique(candidates, "circle-float-simple");
+  } else if (normalizedId.startsWith("circles-")) {
+    if (normalizedId.includes("ripple")) pushUnique(candidates, "circles-ripple");
+    if (normalizedId.includes("orbit")) pushUnique(candidates, "circles-orbit");
+    pushUnique(candidates, "circles-multiple");
+  }
+
+  if (normalizedId.startsWith("rect-") || normalizedId.startsWith("squares-")) {
+    if (
+      normalizedId.includes("scatter") ||
+      normalizedId.includes("grid") ||
+      normalizedId.includes("cascade")
+    ) {
+      pushUnique(candidates, "squares-scatter");
+    }
+    pushUnique(candidates, "rect-rotate");
+  }
+
+  if (normalizedId.startsWith("star-") || normalizedId.startsWith("stars-")) {
+    if (
+      normalizedId.includes("scatter") ||
+      normalizedId.includes("field") ||
+      normalizedId.includes("constellation") ||
+      normalizedId.includes("sparkle") ||
+      normalizedId.includes("spiral") ||
+      normalizedId.includes("burst")
+    ) {
+      pushUnique(candidates, "stars-scatter");
+    }
+    if (normalizedId.includes("shoot")) pushUnique(candidates, "stars-shooting");
+    pushUnique(candidates, "star-float");
+  }
+
+  if (normalizedId.startsWith("triangle-") || normalizedId.startsWith("triangles-")) {
+    if (
+      normalizedId.includes("scatter") ||
+      normalizedId.includes("geometric") ||
+      normalizedId.includes("pattern") ||
+      normalizedId.includes("cascade") ||
+      normalizedId.includes("pyramid")
+    ) {
+      pushUnique(candidates, "triangles-scatter");
+    }
+    if (normalizedId.includes("rotate") || normalizedId.includes("3d")) {
+      pushUnique(candidates, "triangle-rotate");
+    }
+    pushUnique(candidates, "triangle-float");
+  }
+
+  if (normalizedId.startsWith("blob-") || normalizedId.startsWith("blobs-")) {
+    if (normalizedId.includes("multiple") || normalizedId.includes("lava")) {
+      pushUnique(candidates, "blobs-multiple");
+    }
+    pushUnique(candidates, "blob-morph");
+  }
+
+  if (normalizedId.startsWith("dots-")) {
+    if (normalizedId.includes("grid")) pushUnique(candidates, "dots-grid");
+    pushUnique(candidates, "particles-float");
+  }
+
+  if (normalizedId.startsWith("particles-")) {
+    if (normalizedId.includes("explode")) pushUnique(candidates, "confetti");
+    pushUnique(candidates, "particles-float");
+  }
+
+  if (normalizedId.startsWith("lines-")) pushUnique(candidates, "lines-wave");
+
+  if (normalizedId.includes("glass")) pushUnique(candidates, "gradient-shapes", "minimal-shapes");
+  if (normalizedId.includes("outline")) pushUnique(candidates, "minimal-shapes", "geometric-mix");
+  if (normalizedId.includes("dynamic")) pushUnique(candidates, "geometric-mix", "cyber-shapes");
+  if (normalizedId.includes("tech")) pushUnique(candidates, "tech-grid");
+  if (normalizedId.includes("cyber")) pushUnique(candidates, "cyber-shapes");
+  if (normalizedId.includes("retro")) pushUnique(candidates, "retro-shapes");
+  if (normalizedId.includes("nature")) pushUnique(candidates, "nature-shapes");
+  if (normalizedId.includes("cosmic")) pushUnique(candidates, "cosmic-shapes");
+  if (normalizedId.includes("playful")) pushUnique(candidates, "playful-shapes");
+  if (normalizedId.includes("elegant")) pushUnique(candidates, "elegant-shapes");
+  if (normalizedId.includes("gradient") || normalizedId.includes("abstract")) {
+    pushUnique(candidates, "gradient-shapes");
+  }
+  if (normalizedId.includes("neon")) pushUnique(candidates, "neon-shapes");
+
+  if (themeMeta?.shape) {
+    pushUnique(candidates, ...(SHAPE_FALLBACKS_BY_TYPE[themeMeta.shape] ?? []));
+  }
+
+  // Final guaranteed fallback so never render null for a valid theme id.
+  pushUnique(candidates, "geometric-mix");
+  return candidates;
+}
+
+function resolveShapeComponent(themeId: string): React.FC<any> | null {
+  const trimmed = themeId.trim();
+  if (!trimmed) return null;
+
+  const direct = SHAPE_COMPONENTS[trimmed] ?? SHAPE_COMPONENTS[trimmed.toLowerCase()];
+  if (direct) return direct;
+
+  for (const candidate of buildFallbackCandidates(trimmed)) {
+    const component = SHAPE_COMPONENTS[candidate];
+    if (component) return component;
+  }
+
+  return null;
+}
 
 function cls(...parts: Array<string | undefined | null | false>) {
   return parts.filter(Boolean).join(" ");
@@ -80,7 +213,7 @@ export function AnimatedShapeLayer({
 }) {
   const themeId = typeof config?.themeId === "string" ? config.themeId.trim() : "";
   if (!themeId) return null;
-  const ShapeComponent = SHAPE_COMPONENTS[themeId];
+  const ShapeComponent = resolveShapeComponent(themeId);
   if (!ShapeComponent) return null;
   const placementKey = config?.placement ?? "background";
   const placement = placementClass(placementKey);
