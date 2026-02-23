@@ -281,19 +281,21 @@ export const CircleFloatSimple: React.FC<AnimatedShapeProps> = ({
   const sizes = { sm: 'w-8 h-8', md: 'w-16 h-16', lg: 'w-24 h-24', xl: 'w-32 h-32' };
   const speeds = { slow: '8s', normal: '5s', fast: '3s' };
   const colors: Record<string, string> = {
-    blue: 'bg-blue-500',
-    purple: 'bg-purple-500',
-    pink: 'bg-pink-500',
-    green: 'bg-green-500',
-    orange: 'bg-orange-500',
-    cyan: 'bg-cyan-500',
+    blue: '#3b82f6',
+    purple: '#8b5cf6',
+    pink: '#ec4899',
+    green: '#22c55e',
+    orange: '#f97316',
+    cyan: '#06b6d4',
   };
+  const resolvedColor = colors[color] || color || colors.blue;
 
   return (
     <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div
-        className={`${sizes[size]} ${colors[color] || color} rounded-full`}
+        className={`${sizes[size]} rounded-full`}
         style={{
+          backgroundColor: resolvedColor,
           opacity,
           animation: `float ${speeds[speed]} ease-in-out infinite`,
         }}
@@ -305,16 +307,28 @@ export const CircleFloatSimple: React.FC<AnimatedShapeProps> = ({
 // 2. Circles Multiple
 export const CirclesMultiple: React.FC<AnimatedShapeProps & { count?: number }> = ({
   className = '',
+  color,
   count = 5,
   opacity = 0.4,
 }) => {
+  const palette: Record<string, string> = {
+    blue: '#3b82f6',
+    purple: '#8b5cf6',
+    pink: '#ec4899',
+    cyan: '#06b6d4',
+    green: '#22c55e',
+    orange: '#f97316',
+    yellow: '#fbbf24',
+    white: '#ffffff',
+  };
+  const resolvedColor = color ? palette[color] || color : "";
   const circles = Array.from({ length: count }, (_, i) => ({
     size: Math.random() * 60 + 20,
     x: Math.random() * 100,
     y: Math.random() * 100,
     delay: Math.random() * 5,
     duration: Math.random() * 3 + 4,
-    color: ['bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-cyan-500'][i % 4],
+    color: resolvedColor || ['#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4'][i % 4],
   }));
 
   return (
@@ -322,12 +336,13 @@ export const CirclesMultiple: React.FC<AnimatedShapeProps & { count?: number }> 
       {circles.map((circle, i) => (
         <div
           key={i}
-          className={`absolute rounded-full ${circle.color}`}
+          className="absolute rounded-full"
           style={{
             width: circle.size,
             height: circle.size,
             left: `${circle.x}%`,
             top: `${circle.y}%`,
+            backgroundColor: circle.color,
             opacity,
             animation: `float ${circle.duration}s ease-in-out infinite`,
             animationDelay: `${circle.delay}s`,
@@ -441,9 +456,20 @@ export const StarFloat: React.FC<AnimatedShapeProps> = ({
 // 6. Stars Scatter
 export const StarsScatter: React.FC<AnimatedShapeProps & { count?: number }> = ({
   className = '',
+  color = 'yellow',
   count = 12,
   opacity = 0.7,
 }) => {
+  const colors: Record<string, string> = {
+    yellow: '#fbbf24',
+    gold: '#f59e0b',
+    white: '#ffffff',
+    pink: '#ec4899',
+    blue: '#60a5fa',
+    purple: '#a78bfa',
+    cyan: '#22d3ee',
+  };
+  const resolvedColor = colors[color] || color || colors.yellow;
   const stars = Array.from({ length: count }, (_, i) => ({
     size: Math.random() * 12 + 8,
     x: Math.random() * 100,
@@ -461,7 +487,7 @@ export const StarsScatter: React.FC<AnimatedShapeProps & { count?: number }> = (
           width={star.size}
           height={star.size}
           viewBox="0 0 24 24"
-          fill="#fbbf24"
+          fill={resolvedColor}
           style={{
             left: `${star.x}%`,
             top: `${star.y}%`,
@@ -488,17 +514,19 @@ export const RectangleRotate: React.FC<AnimatedShapeProps> = ({
   const sizes = { sm: 'w-8 h-8', md: 'w-16 h-16', lg: 'w-24 h-24', xl: 'w-32 h-32' };
   const speeds = { slow: '12s', normal: '8s', fast: '4s' };
   const colors: Record<string, string> = {
-    blue: 'bg-blue-500',
-    purple: 'bg-purple-500',
-    pink: 'bg-pink-500',
-    green: 'bg-green-500',
+    blue: '#3b82f6',
+    purple: '#8b5cf6',
+    pink: '#ec4899',
+    green: '#22c55e',
   };
+  const resolvedColor = colors[color] || color || colors.purple;
 
   return (
     <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${className}`}>
       <div
-        className={`${sizes[size]} ${colors[color] || color} rounded-lg`}
+        className={`${sizes[size]} rounded-lg`}
         style={{
+          backgroundColor: resolvedColor,
           opacity,
           animation: `rotate ${speeds[speed]} linear infinite`,
         }}
@@ -601,10 +629,21 @@ export const BlobsMultiple: React.FC<AnimatedShapeProps> = ({
 // 11. Dots Grid
 export const DotsGrid: React.FC<AnimatedShapeProps & { rows?: number; cols?: number }> = ({
   className = '',
+  color = '#94a3b8',
   rows = 8,
   cols = 12,
-  opacity = 0.3,
+  opacity = 0.5,
 }) => {
+  const colors: Record<string, string> = {
+    gray: '#94a3b8',
+    white: '#ffffff',
+    pink: '#f9a8d4',
+    purple: '#c4b5fd',
+    blue: '#93c5fd',
+    cyan: '#67e8f9',
+    green: '#86efac',
+  };
+  const resolvedColor = colors[color] || color || colors.gray;
   const dots = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -621,10 +660,11 @@ export const DotsGrid: React.FC<AnimatedShapeProps & { rows?: number; cols?: num
       {dots.map((dot, i) => (
         <div
           key={i}
-          className="absolute w-1.5 h-1.5 bg-gray-400 rounded-full"
+          className="absolute w-2 h-2 rounded-full"
           style={{
             left: `${dot.x}%`,
             top: `${dot.y}%`,
+            backgroundColor: resolvedColor,
             opacity,
             animation: `fade 3s ease-in-out infinite`,
             animationDelay: `${dot.delay}s`,
@@ -679,22 +719,26 @@ export const LinesWave: React.FC<AnimatedShapeProps & { count?: number }> = ({
   opacity = 0.3,
 }) => {
   const colors: Record<string, string> = {
-    blue: 'bg-blue-500',
-    purple: 'bg-purple-500',
-    pink: 'bg-pink-500',
-    cyan: 'bg-cyan-500',
+    blue: '#3b82f6',
+    purple: '#8b5cf6',
+    pink: '#ec4899',
+    cyan: '#06b6d4',
+    white: '#ffffff',
+    green: '#22c55e',
   };
+  const resolvedColor = colors[color] || color || colors.blue;
 
   return (
     <div className={`absolute inset-0 overflow-visible pointer-events-none ${className}`}>
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
-          className={`absolute h-0.5 ${colors[color] || colors.blue}`}
+          className="absolute h-0.5"
           style={{
             width: '120%',
             left: '-10%',
             top: `${20 + i * 15}%`,
+            backgroundColor: resolvedColor,
             opacity,
             transform: `rotate(${-5 + i * 2}deg)`,
             animation: `float ${4 + i * 0.5}s ease-in-out infinite`,

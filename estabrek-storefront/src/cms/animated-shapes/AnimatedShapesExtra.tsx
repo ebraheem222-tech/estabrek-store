@@ -52,9 +52,20 @@ export const TriangleFloat: React.FC<AnimatedShapeProps> = ({
 
 export const TrianglesScatter: React.FC<AnimatedShapeProps & { count?: number }> = ({
   className = '',
+  color,
   count = 8,
   opacity = 0.4,
 }) => {
+  const palette: Record<string, string> = {
+    green: '#22c55e',
+    blue: '#3b82f6',
+    purple: '#8b5cf6',
+    pink: '#ec4899',
+    orange: '#f97316',
+    yellow: '#fbbf24',
+    white: '#ffffff',
+  };
+  const resolvedColor = color ? palette[color] || color : "";
   const triangles = Array.from({ length: count }, (_, i) => ({
     size: Math.random() * 30 + 20,
     x: Math.random() * 100,
@@ -62,7 +73,7 @@ export const TrianglesScatter: React.FC<AnimatedShapeProps & { count?: number }>
     delay: Math.random() * 4,
     duration: Math.random() * 3 + 5,
     rotation: Math.random() * 360,
-    color: ['#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316'][i % 5],
+    color: resolvedColor || ['#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316'][i % 5],
   }));
 
   return (
