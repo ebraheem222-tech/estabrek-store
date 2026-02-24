@@ -47,7 +47,7 @@ type TransitionArgs = {
   adminUserId?: string | null;
 };
 
-const RESTORE_STOCK_STATUSES = new Set<OrderReqStatus>(["CANCELED", "REFUNDED"]);
+const RESTORE_STOCK_STATUSES = new Set<OrderReqStatus>(["REJECTED", "CANCELED", "REFUNDED"]);
 
 function sanitizeQuantity(value: unknown): number {
   const n = Number(value);
