@@ -8,6 +8,8 @@ export const ORDER_STATUSES: Array<{ value: OrderReqStatus; label: string }> = [
   { value: "REJECTED", label: "مرفوض" },
   { value: "SHIPPED", label: "تم الشحن" },
   { value: "CLOSED", label: "مغلق" },
+  { value: "CANCELED", label: "ملغي" },
+  { value: "REFUNDED", label: "مسترجع" },
 ];
 
 export function validateStatusChange(input: { toStatus: OrderReqStatus; note?: string }) {

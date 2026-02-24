@@ -53,6 +53,8 @@ function statusVariant(status?: string) {
     case "REJECTED": return "danger";
     case "SHIPPED": return "accent";
     case "CLOSED": return "default";
+    case "CANCELED": return "danger";
+    case "REFUNDED": return "warning";
     default: return "default";
   }
 }
@@ -65,6 +67,8 @@ function statusLabel(status?: string) {
     case "REJECTED": return "مرفوض";
     case "SHIPPED": return "تم الشحن";
     case "CLOSED": return "مغلق";
+    case "CANCELED": return "ملغي";
+    case "REFUNDED": return "مسترجع";
     default: return status;
   }
 }
@@ -144,6 +148,8 @@ function OrderStatusCard({ label, value, color, delay }: { label: string; value:
     REJECTED: "bg-red-500",
     SHIPPED: "bg-accent-500",
     CLOSED: "bg-white/30",
+    CANCELED: "bg-rose-500",
+    REFUNDED: "bg-violet-400",
   };
 
   return (
@@ -326,6 +332,8 @@ export default function DashboardPage() {
               <OrderStatusCard label="مرفوض" value={ordersByStatus.REJECTED ?? 0} color="REJECTED" delay={500} />
               <OrderStatusCard label="تم الشحن" value={ordersByStatus.SHIPPED ?? 0} color="SHIPPED" delay={550} />
               <OrderStatusCard label="مغلق" value={ordersByStatus.CLOSED ?? 0} color="CLOSED" delay={600} />
+              <OrderStatusCard label="ملغي" value={ordersByStatus.CANCELED ?? 0} color="CANCELED" delay={650} />
+              <OrderStatusCard label="مسترجع" value={ordersByStatus.REFUNDED ?? 0} color="REFUNDED" delay={700} />
             </div>
           </div>
         )}

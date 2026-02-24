@@ -2,7 +2,15 @@
 import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
 
-export type OrderStatus = "NEW" | "CONTACTED" | "ACCEPTED" | "REJECTED" | "SHIPPED" | "CLOSED";
+export type OrderStatus =
+  | "NEW"
+  | "CONTACTED"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "SHIPPED"
+  | "CLOSED"
+  | "CANCELED"
+  | "REFUNDED";
 export type MessageChannel = "WHATSAPP" | "SMS" | "EMAIL";
 
 export type Paginated<T> = {

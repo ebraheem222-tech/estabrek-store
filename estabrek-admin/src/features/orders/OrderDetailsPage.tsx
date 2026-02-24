@@ -30,6 +30,10 @@ function statusBadgeVariant(status: OrderReqStatus) {
       return "info";
     case "CLOSED":
       return "default";
+    case "CANCELED":
+      return "danger";
+    case "REFUNDED":
+      return "warning";
     default:
       return "default";
   }

@@ -21,6 +21,8 @@ const STATUS_OPTIONS = [
   { value: "REJECTED", label: "مرفوض" },
   { value: "SHIPPED", label: "تم الشحن" },
   { value: "CLOSED", label: "مغلق" },
+  { value: "CANCELED", label: "ملغي" },
+  { value: "REFUNDED", label: "مسترجع" },
 ];
 
 function statusVariant(status?: string) {
@@ -31,6 +33,8 @@ function statusVariant(status?: string) {
     case "REJECTED": return "danger";
     case "SHIPPED": return "accent";
     case "CLOSED": return "default";
+    case "CANCELED": return "danger";
+    case "REFUNDED": return "warning";
     default: return "default";
   }
 }
@@ -43,6 +47,8 @@ function statusLabel(status?: string) {
     case "REJECTED": return "مرفوض";
     case "SHIPPED": return "تم الشحن";
     case "CLOSED": return "مغلق";
+    case "CANCELED": return "ملغي";
+    case "REFUNDED": return "مسترجع";
     default: return status;
   }
 }

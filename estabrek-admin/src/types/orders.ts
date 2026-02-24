@@ -3,7 +3,15 @@ import type { ID, ISODateString, JsonValue, Paginated } from "./common";
 import type { Channel, OutboxStatus, OutboxMessage } from "./outbox";
 import type { ProductVariant } from "./catalog";
 
-export type OrderReqStatus = "NEW" | "CONTACTED" | "ACCEPTED" | "REJECTED" | "SHIPPED" | "CLOSED";
+export type OrderReqStatus =
+  | "NEW"
+  | "CONTACTED"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "SHIPPED"
+  | "CLOSED"
+  | "CANCELED"
+  | "REFUNDED";
 
 export type OrderRequestItem = {
   id: ID;
