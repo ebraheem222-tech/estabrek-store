@@ -103,7 +103,11 @@ export async function getDashboard() {
     prisma.orderRequest.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
-      include: {
+      select: {
+        id: true,
+        status: true,
+        customerName: true,
+        createdAt: true,
         variant: { include: { item: { include: { product: true } }, size: true } },
       },
     }),

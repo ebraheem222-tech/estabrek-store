@@ -2,6 +2,35 @@ import { prisma } from "../../lib/prisma.js";
 import { Prisma, type OrderReqStatus, type Channel } from "@prisma/client";
 import { applyOrderStatusTransition } from "./orderStatusWorkflow.js";
 
+const ORDER_REQUEST_BASE_SELECT = {
+  id: true,
+  variantId: true,
+  quantity: true,
+  unitPrice: true,
+  subtotal: true,
+  discountAmount: true,
+  total: true,
+  currencyCode: true,
+  couponCode: true,
+  customerName: true,
+  phone: true,
+  whatsapp: true,
+  country: true,
+  city: true,
+  address: true,
+  note: true,
+  status: true,
+  source: true,
+  paymentProvider: true,
+  paymentStatus: true,
+  paymentReference: true,
+  contactedAt: true,
+  acceptedAt: true,
+  rejectedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 /** List orders with optional status filter + pagination */
 export async function listOrders(opts: {
   status?: OrderReqStatus;
@@ -18,7 +47,8 @@ export async function listOrders(opts: {
       orderBy: { createdAt: "desc" },
       skip: (opts.page - 1) * opts.pageSize,
       take: opts.pageSize,
-      include: {
+      select: {
+        ...ORDER_REQUEST_BASE_SELECT,
         variant: { include: { item: { include: { product: true } }, size: true } },
       },
     }),
@@ -31,7 +61,8 @@ export async function listOrders(opts: {
 export function getOrder(id: string) {
   return prisma.orderRequest.findUnique({
     where: { id },
-    include: {
+    select: {
+      ...ORDER_REQUEST_BASE_SELECT,
       variant: { include: { item: { include: { product: true } }, size: true } },
       messages: true,
       history: { orderBy: { at: "desc" } },

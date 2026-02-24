@@ -33,7 +33,6 @@ export type ApplyOrderStatusSuccess = {
     id: string;
     status: OrderReqStatus;
     stockCommitted: boolean;
-    stockCommittedAt: Date | null;
   };
   stockAction: "none" | "decremented" | "restored";
 };
@@ -151,18 +150,35 @@ function defaultTransitionNote(actor: "admin" | "webhook", stockAction: "none" |
   return actor === "admin" ? "Updated via admin" : "Updated via webhook";
 }
 
+function computeCommittedFromHistory(history: Array<{ toStatus: OrderReqStatus }>): boolean {
+  let committed = false;
+  for (const h of history) {
+    if (h.toStatus === "ACCEPTED") committed = true;
+    if (RESTORE_STOCK_STATUSES.has(h.toStatus)) committed = false;
+  }
+  return committed;
+}
+
 export async function applyOrderStatusTransition(
   tx: Prisma.TransactionClient,
   args: TransitionArgs
 ): Promise<ApplyOrderStatusResult> {
   const existing = await tx.orderRequest.findUnique({
     where: { id: args.orderId },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      variantId: true,
+      quantity: true,
       items: {
         select: {
           variantId: true,
           quantity: true,
         },
+      },
+      history: {
+        orderBy: { at: "asc" },
+        select: { toStatus: true },
       },
     },
   });
@@ -172,8 +188,9 @@ export async function applyOrderStatusTransition(
   }
 
   const lines = collectStockLines(existing);
-  const shouldDecrement = args.toStatus === "ACCEPTED" && !existing.stockCommitted;
-  const shouldRestore = RESTORE_STOCK_STATUSES.has(args.toStatus) && existing.stockCommitted;
+  const isCommitted = computeCommittedFromHistory(existing.history);
+  const shouldDecrement = args.toStatus === "ACCEPTED" && !isCommitted;
+  const shouldRestore = RESTORE_STOCK_STATUSES.has(args.toStatus) && isCommitted;
   const stockAction: "none" | "decremented" | "restored" = shouldDecrement
     ? "decremented"
     : shouldRestore
@@ -201,21 +218,11 @@ export async function applyOrderStatusTransition(
   }
 
   const now = new Date();
-  const data: Prisma.OrderRequestUpdateInput = {
-    status: args.toStatus,
-  };
+  const data: Prisma.OrderRequestUpdateInput = { status: args.toStatus };
 
   if (args.toStatus === "CONTACTED") data.contactedAt = now;
   if (args.toStatus === "ACCEPTED") data.acceptedAt = now;
   if (args.toStatus === "REJECTED") data.rejectedAt = now;
-
-  if (shouldDecrement) {
-    data.stockCommitted = true;
-    data.stockCommittedAt = now;
-  } else if (shouldRestore) {
-    data.stockCommitted = false;
-    data.stockCommittedAt = null;
-  }
 
   const updated = await tx.orderRequest.update({
     where: { id: existing.id },
@@ -223,8 +230,6 @@ export async function applyOrderStatusTransition(
     select: {
       id: true,
       status: true,
-      stockCommitted: true,
-      stockCommittedAt: true,
     },
   });
 
@@ -239,7 +244,10 @@ export async function applyOrderStatusTransition(
 
   return {
     ok: true,
-    order: updated,
+    order: {
+      ...updated,
+      stockCommitted: shouldDecrement ? true : shouldRestore ? false : isCommitted,
+    },
     stockAction,
   };
 }

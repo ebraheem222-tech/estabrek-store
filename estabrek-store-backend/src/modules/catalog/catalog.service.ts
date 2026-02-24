@@ -1535,6 +1535,13 @@ export async function submitOrderRequest(data: {
           })),
         },
       },
+      select: {
+        id: true,
+        subtotal: true,
+        discountAmount: true,
+        total: true,
+        couponCode: true,
+      },
     });
 
     await tx.orderRequestHistory.create({

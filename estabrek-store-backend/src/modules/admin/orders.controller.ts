@@ -9,6 +9,55 @@ import { ORDER_REQUEST_STATUSES, applyOrderStatusTransition } from "../orders/or
 
 const r = Router();
 
+const ORDER_REQUEST_BASE_SELECT = {
+  id: true,
+  variantId: true,
+  quantity: true,
+  unitPrice: true,
+  subtotal: true,
+  discountAmount: true,
+  total: true,
+  currencyCode: true,
+  couponCode: true,
+  customerName: true,
+  phone: true,
+  whatsapp: true,
+  country: true,
+  city: true,
+  address: true,
+  note: true,
+  status: true,
+  source: true,
+  paymentProvider: true,
+  paymentStatus: true,
+  paymentReference: true,
+  contactedAt: true,
+  acceptedAt: true,
+  rejectedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const ORDER_REQUEST_ITEM_SELECT = {
+  id: true,
+  orderRequestId: true,
+  variantId: true,
+  quantity: true,
+  unitPrice: true,
+  lineSubtotal: true,
+  productId: true,
+  productTitle: true,
+  productSlug: true,
+  itemId: true,
+  colorName: true,
+  colorHex: true,
+  sizeId: true,
+  sizeName: true,
+  sku: true,
+  imageUrl: true,
+  createdAt: true,
+} as const;
+
 // When older orders don\'t have OrderRequestItem rows, synthesize a single line from the snapshot fields.
 function buildVirtualLine(o: any) {
   const v = o?.variant;
@@ -59,29 +108,31 @@ r.get(
         orderBy: { createdAt: "desc" },
         skip,
         take: q.pageSize,
-        include: {
-            variant: {
+        select: {
+          ...ORDER_REQUEST_BASE_SELECT,
+          variant: {
             include: {
               item: { include: { product: true, images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }] } } },
               size: true,
             },
           },
           items: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          variant: {
-            include: {
-              item: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              ...ORDER_REQUEST_ITEM_SELECT,
+              variant: {
                 include: {
-                  product: true,
-                  images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }] },
+                  item: {
+                    include: {
+                      product: true,
+                      images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }] },
+                    },
+                  },
+                  size: true,
                 },
               },
-              size: true,
             },
           },
-        },
-      },
           messages: true,
           history: true,
         },
@@ -103,9 +154,10 @@ r.get(
   asyncHandler(async (req, res) => {
     const o = await prisma.orderRequest.findUnique({
       where: { id: req.params.id },
-      include: {
+      select: {
+        ...ORDER_REQUEST_BASE_SELECT,
         variant: { include: { item: { include: { product: true, images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }] } } }, size: true } },
-        items: { orderBy: { createdAt: "asc" } },
+        items: { orderBy: { createdAt: "asc" }, select: ORDER_REQUEST_ITEM_SELECT },
         messages: true,
         history: true,
       },
@@ -127,10 +179,12 @@ r.get(
   asyncHandler(async (req, res) => {
     const order = await prisma.orderRequest.findUnique({
       where: { id: req.params.id },
-      include: {
+      select: {
+        ...ORDER_REQUEST_BASE_SELECT,
         items: {
           orderBy: { createdAt: "asc" },
-          include: {
+          select: {
+            ...ORDER_REQUEST_ITEM_SELECT,
             variant: {
               include: {
                 item: {
@@ -144,7 +198,6 @@ r.get(
             },
           },
         },
-        coupon: true,
         variant: { include: { item: { include: { product: true, images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }] } } }, size: true } },
       },
     });
@@ -431,7 +484,7 @@ r.post(
       payloadJson?: any;
     };
 
-    const order = await prisma.orderRequest.findUnique({ where: { id: req.params.id } });
+    const order = await prisma.orderRequest.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!order) return res.status(404).json({ error: "NOT_FOUND" });
 
     const msg = await prisma.outboxMessage.create({
