@@ -9,6 +9,7 @@ export async function resetDb() {
     prisma.orderRequestHistory.deleteMany(),
     prisma.outboxMessage.deleteMany(),
     prisma.orderRequest.deleteMany(),
+    prisma.inventoryAdjustment.deleteMany(),
     prisma.review.deleteMany(),
     prisma.productComment.deleteMany(),
     prisma.productVariant.deleteMany(),
