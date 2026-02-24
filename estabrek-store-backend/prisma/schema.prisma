@@ -39,6 +39,8 @@ enum OrderReqStatus {
   REJECTED
   SHIPPED
   CLOSED
+  CANCELED
+  REFUNDED
 }
 
 enum Channel {
@@ -404,9 +406,12 @@ model Page {
   name   String
   slug   String     @unique // "/", "/about", etc.
   status PageStatus @default(DRAFT)
+  publishAt   DateTime?
+  unpublishAt DateTime?
 
   sections PageSection[]
   translations PageTranslation[]
+  revisions PageRevision[]
 
   headScripts Json?
   bodyScripts Json?
@@ -423,6 +428,35 @@ model Page {
   updatedAt DateTime @updatedAt
 
   @@index([status, slug])
+  @@index([status, publishAt, unpublishAt])
+}
+
+model PageRevision {
+  id        String @id @default(cuid())
+  pageId    String
+  page      Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  name      String
+  slug      String
+  status    PageStatus
+  publishAt DateTime?
+  unpublishAt DateTime?
+
+  canonicalUrl   String?
+  seoTitle       String?
+  seoDescription String?
+  ogImageUrl     String?
+  noIndex        Boolean @default(false)
+  customCss      String?
+  headScripts    Json?
+  bodyScripts    Json?
+
+  sections  Json
+  reason    String?
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([pageId, createdAt])
 }
 
 /**
@@ -748,6 +782,8 @@ model OrderRequest {
   contactedAt  DateTime?
   acceptedAt   DateTime?
   rejectedAt   DateTime?
+  stockCommitted   Boolean        @default(false)
+  stockCommittedAt DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
