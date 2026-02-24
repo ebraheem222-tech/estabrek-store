@@ -72,6 +72,8 @@ export async function getDashboard() {
     "REJECTED",
     "SHIPPED",
     "CLOSED",
+    "CANCELED",
+    "REFUNDED",
   ] as const satisfies readonly OrderReqStatus[];
 
   // run main counts concurrently

@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { Prisma, type OrderReqStatus, type Channel } from "@prisma/client";
+import { applyOrderStatusTransition } from "./orderStatusWorkflow.js";
 
 /** List orders with optional status filter + pagination */
 export async function listOrders(opts: {
@@ -44,31 +45,25 @@ export async function updateStatus(args: {
   to: OrderReqStatus;
   note?: string | null;
 }) {
-  const now = new Date();
-
-  const updated = await prisma.$transaction(async (tx) => {
-    const prev = await tx.orderRequest.findUnique({ where: { id: args.id } });
-
-    const data: Prisma.OrderRequestUpdateInput = { status: args.to };
-    if (args.to === "CONTACTED") data.contactedAt = now;
-    if (args.to === "ACCEPTED")  data.acceptedAt = now;
-    if (args.to === "REJECTED")  data.rejectedAt = now;
-
-    const ord = await tx.orderRequest.update({ where: { id: args.id }, data });
-
-    await tx.orderRequestHistory.create({
-      data: {
-        orderRequestId: ord.id,
-        fromStatus: prev?.status ?? null,
+  const result = await prisma.$transaction(
+    async (tx) =>
+      applyOrderStatusTransition(tx, {
+        orderId: args.id,
         toStatus: args.to,
         note: args.note ?? null,
-      },
-    });
+        actor: "admin",
+      }),
+    { isolationLevel: "Serializable" }
+  );
 
-    return ord;
-  });
+  if (!result.ok) {
+    const err = new Error(result.message) as Error & { statusCode: number; code: string };
+    err.statusCode = result.code === "NOT_FOUND" || result.code === "VARIANT_NOT_FOUND" ? 404 : 400;
+    err.code = result.code;
+    throw err;
+  }
 
-  return updated;
+  return result.order;
 }
 
 /** Queue an outbound message (WhatsApp/SMS/Email) */

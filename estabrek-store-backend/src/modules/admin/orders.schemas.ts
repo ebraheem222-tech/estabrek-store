@@ -1,13 +1,14 @@
 import { z } from "zod";
+import { ORDER_REQUEST_STATUSES } from "../orders/orderStatusWorkflow.js";
 
 export const ListOrdersQuery = z.object({
-  status: z.enum(["NEW","CONTACTED","ACCEPTED","REJECTED","SHIPPED","CLOSED"]).optional(),
+  status: z.enum(ORDER_REQUEST_STATUSES).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const UpdateStatusBody = z.object({
-  toStatus: z.enum(["NEW","CONTACTED","ACCEPTED","REJECTED","SHIPPED","CLOSED"]),
+  toStatus: z.enum(ORDER_REQUEST_STATUSES),
   note: z.string().nullable().optional(),
 });
 

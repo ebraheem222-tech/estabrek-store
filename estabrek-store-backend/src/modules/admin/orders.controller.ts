@@ -5,6 +5,7 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { z } from "zod";
 import { annotateLinesWithDiscount, round2 } from "../../utils/money.js";
+import { ORDER_REQUEST_STATUSES, applyOrderStatusTransition } from "../orders/orderStatusWorkflow.js";
 
 const r = Router();
 
@@ -37,7 +38,7 @@ function buildVirtualLine(o: any) {
 }
 
 const ListQuery = z.object({
-  status: z.enum(["NEW","CONTACTED","ACCEPTED","REJECTED","SHIPPED","CLOSED"]).optional(),
+  status: z.enum(ORDER_REQUEST_STATUSES).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -377,30 +378,46 @@ r.get(
 r.patch(
   "/:id/status",
   asyncHandler(async (req, res) => {
-    const toStatus = req.body?.toStatus as
-      | "NEW" | "CONTACTED" | "ACCEPTED" | "REJECTED" | "SHIPPED" | "CLOSED";
-    if (!toStatus) return res.status(400).json({ error: "BAD_REQUEST", message: "toStatus required" });
+    const parsed = z
+      .object({
+        toStatus: z.enum(ORDER_REQUEST_STATUSES),
+        note: z.string().trim().max(500).nullable().optional(),
+      })
+      .safeParse(req.body ?? {});
 
-    const existing = await prisma.orderRequest.findUnique({ where: { id: req.params.id } });
-    if (!existing) return res.status(404).json({ error: "NOT_FOUND" });
+    if (!parsed.success) {
+      return res.status(400).json({ error: "BAD_REQUEST", message: "Invalid toStatus or note" });
+    }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const u = await tx.orderRequest.update({
-        where: { id: req.params.id },
-        data: { status: toStatus },
-      });
-      await tx.orderRequestHistory.create({
-        data: {
-          orderRequestId: req.params.id,
-          fromStatus: existing.status,
-          toStatus,
-          note: "Updated via admin",
-        },
-      });
-      return u;
-    });
+    const result = await prisma.$transaction(
+      async (tx) =>
+        applyOrderStatusTransition(tx, {
+          orderId: req.params.id,
+          toStatus: parsed.data.toStatus,
+          note: parsed.data.note ?? null,
+          actor: "admin",
+          adminUserId: req.user?.sub ?? null,
+        }),
+      { isolationLevel: "Serializable" }
+    );
 
-    res.json(updated);
+    if (!result.ok) {
+      if (result.code === "NOT_FOUND") return res.status(404).json({ error: "NOT_FOUND" });
+      if (result.code === "VARIANT_NOT_FOUND") {
+        return res.status(404).json({ error: "VARIANT_NOT_FOUND", variantId: result.variantId });
+      }
+      if (result.code === "INSUFFICIENT_STOCK") {
+        return res.status(400).json({
+          error: "INSUFFICIENT_STOCK",
+          variantId: result.variantId,
+          requested: result.requested,
+          available: result.available,
+        });
+      }
+      return res.status(400).json({ error: result.code, message: result.message });
+    }
+
+    res.json(result.order);
   })
 );
 
