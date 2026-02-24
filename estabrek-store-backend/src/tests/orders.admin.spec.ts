@@ -87,6 +87,29 @@ describe("Admin Orders", () => {
     expect(adjustments.map((x) => x.delta)).toEqual([-2, 2]);
   });
 
+  test("rejecting after accepted restores stock", async () => {
+    await request(app)
+      .patch("/v1/admin/orders/or1/status")
+      .send({ toStatus: "ACCEPTED" })
+      .expect(200);
+
+    const res = await request(app)
+      .patch("/v1/admin/orders/or1/status")
+      .send({ toStatus: "REJECTED" })
+      .expect(200);
+
+    expect(res.body).toMatchObject({ id: "or1", status: "REJECTED", stockCommitted: false });
+
+    const variant = await prisma.productVariant.findUnique({ where: { id: "cvariant01" }, select: { stock: true } });
+    expect(variant?.stock).toBe(10);
+
+    const adjustments = await prisma.inventoryAdjustment.findMany({
+      where: { variantId: "cvariant01" },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(adjustments.map((x) => x.delta)).toEqual([-2, 2]);
+  });
+
   test("queue an outbox message", async () => {
     const res = await request(app)
       .post("/v1/admin/orders/or1/message")
