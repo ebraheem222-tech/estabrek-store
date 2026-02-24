@@ -94,5 +94,6 @@ export async function seedOrders() {
       status: "NEW",
       source: "test",
     },
+    select: { id: true },
   });
 }
