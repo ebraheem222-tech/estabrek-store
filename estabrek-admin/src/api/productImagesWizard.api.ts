@@ -60,6 +60,7 @@ export type CommitGroupsInput = {
     variants?: {
       sizeIds: string[];
       price: number;
+      priceBySize?: Record<string, number>;
       compareAt?: number | null;
       stock?: number;
       stockBySize?: Record<string, number>;
