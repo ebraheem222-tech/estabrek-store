@@ -1,7 +1,8 @@
 // src/components/catalog/ItemImagesManager.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Modal } from "../ui/Modal";
 import { Skeleton } from "../ui/Spinner";
 import { AsyncImage } from "../ui/AsyncImage";
 import { uploadImages } from "../../api/uploads.api";
@@ -52,8 +53,16 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
   const [dragId, setDragId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [modelUrl, setModelUrl] = useState("");
+  const [cameraReview, setCameraReview] = useState<{ file: File; url: string } | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const sorted = useMemo(() => normalizePositions(images ?? []), [images]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraReview?.url) URL.revokeObjectURL(cameraReview.url);
+    };
+  }, [cameraReview?.url]);
 
   const setPrimary = (localId: string) => {
     const next = sorted.map((im) => ({ ...im, isPrimary: im.localId === localId }));
@@ -114,16 +123,14 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     onChange(next);
   };
 
-  const onUploadFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const uploadFiles = async (files: File[]) => {
+    if (!files.length) return;
 
     setBusy(true);
-        try {
-      const original = Array.from(files);
-
+    try {
       // ضغط/تصغير قبل الرفع (سريع + أوفر)
       const compressed = await Promise.all(
-        original.map(async (f) => {
+        files.map(async (f) => {
           try {
             return await compressImage(f, { maxW: 1800, maxH: 1800, quality: 0.86, mime: "image/jpeg" });
           } catch {
@@ -148,7 +155,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
         alt: null,
         position: 0,
         isPrimary: false,
-        view: null,
+        view: sorted.length === 0 && idx === 0 ? "Front" : null,
       }));
 
       let next = normalizePositions([...sorted, ...uploaded]);
@@ -160,6 +167,35 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
       toast.error(e?.message ?? "فشل رفع الصور");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const onUploadFiles = async (files: FileList | null) => {
+    await uploadFiles(Array.from(files ?? []));
+  };
+
+  const onCameraFile = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    if (cameraReview?.url) URL.revokeObjectURL(cameraReview.url);
+    setCameraReview({ file, url: URL.createObjectURL(file) });
+  };
+
+  const discardCameraShot = () => {
+    if (cameraReview?.url) URL.revokeObjectURL(cameraReview.url);
+    setCameraReview(null);
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+  };
+
+  const acceptCameraShot = async () => {
+    const shot = cameraReview;
+    if (!shot) return;
+    setCameraReview(null);
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    try {
+      await uploadFiles([shot.file]);
+    } finally {
+      URL.revokeObjectURL(shot.url);
     }
   };
 
@@ -290,6 +326,18 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
             {busy ? "جاري الرفع..." : "رفع صور"}
           </label>
 
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10">
+            <input
+              ref={cameraInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => onCameraFile(e.target.files)}
+            />
+            تصوير بالكاميرا
+          </label>
+
           <Button variant="secondary" onClick={() => setLibraryOpen(true)} disabled={busy}>
             اختيار من المكتبة
           </Button>
@@ -317,6 +365,35 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
         title="اختيار صور من المكتبة"
         onSelectMultiple={(urls) => addFromLibrary(urls)}
       />
+
+      <Modal
+        open={!!cameraReview}
+        title="مراجعة الصورة"
+        onClose={discardCameraShot}
+        widthClassName="max-w-2xl"
+        footer={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" onClick={discardCameraShot} disabled={busy}>
+              تجاهل
+            </Button>
+            <Button variant="secondary" onClick={() => cameraInputRef.current?.click()} disabled={busy}>
+              إعادة التصوير
+            </Button>
+            <Button variant="primary" onClick={acceptCameraShot} isLoading={busy}>
+              استخدم الصورة
+            </Button>
+          </div>
+        }
+      >
+        {cameraReview ? (
+          <div className="space-y-3">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+              <img src={cameraReview.url} alt="Camera preview" className="max-h-[62vh] w-full object-contain" />
+            </div>
+            <div className="text-xs opacity-70">بعد التأكيد سيتم رفع الصورة وتحليل اللون تلقائيًا.</div>
+          </div>
+        ) : null}
+      </Modal>
 
       {sorted.length === 0 ? (
         busy ? (
