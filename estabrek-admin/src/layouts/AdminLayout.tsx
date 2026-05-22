@@ -78,6 +78,12 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.75.75 0 011.04 0l2.39 2.32a.75.75 0 00.424.201l3.307.48a.75.75 0 01.415 1.279l-2.39 2.33a.75.75 0 00-.216.664l.564 3.296a.75.75 0 01-1.088.79l-2.96-1.556a.75.75 0 00-.698 0l-2.96 1.556a.75.75 0 01-1.088-.79l.564-3.296a.75.75 0 00-.216-.664l-2.39-2.33a.75.75 0 01.415-1.279l3.307-.48a.75.75 0 00.424-.201l2.39-2.32z" />
     </svg>
   ),
+  media: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25l2.47-2.47a1.5 1.5 0 012.12 0l.66.66 1.72-1.72a1.5 1.5 0 012.12 0l1.91 1.91M8.25 8.25h.008v.008H8.25V8.25z" />
+    </svg>
+  ),
   chatbot: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path
@@ -147,10 +153,12 @@ const NAV_DISCOUNTS: NavItem[] = [
 
 const NAV_SITE: NavItem[] = [
   { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings, requirePermissions: ["settings:read"] },
+  { to: "/admin/media", label: "الوسائط", icon: Icons.media, requirePermissions: ["settings:read"] },
   { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
   { to: "/admin/nav", label: "القوائم", icon: Icons.nav, requirePermissions: ["nav:write"] },
   { to: "/admin/pages", label: "الصفحات", icon: Icons.pages, requirePermissions: ["pages:read"] },
   { to: "/admin/ugc/reviews", label: "التقييمات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
+  { to: "/admin/ugc/comments", label: "التعليقات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
 ];
 
 const NAV_ACCOUNT: NavItem[] = [
@@ -259,8 +267,11 @@ export default function AdminLayout() {
     if (path.includes("/discounts/coupons/test")) return "تجربة كوبون";
     if (path.includes("/discounts/coupons")) return "الكوبونات";
     if (path.includes("/settings")) return "الإعدادات";
+    if (path.includes("/media")) return "الوسائط";
     if (path.includes("/nav")) return "القوائم";
     if (path.includes("/pages")) return "الصفحات";
+    if (path.includes("/ugc/comments")) return "التعليقات";
+    if (path.includes("/ugc/reviews")) return "التقييمات";
     if (path.includes("/profile")) return "الملف الشخصي";
     if (path.includes("/email")) return "تغيير البريد";
     return "لوحة التحكم";

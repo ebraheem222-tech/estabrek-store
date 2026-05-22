@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminPermission } from "../../lib/authz";
 
@@ -49,10 +50,18 @@ vi.mock("../../hooks/useDashboard", () => ({
 import DashboardPage from "./DashboardPage";
 
 function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+
   render(
-    <MemoryRouter>
-      <DashboardPage />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 

@@ -1,6 +1,7 @@
 // src/features/dashboard/DashboardPage.tsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useDashboard } from "../../hooks/useDashboard";
 import { useAuth } from "../../hooks/useAuth";
 import { Spinner, Skeleton } from "../../components/ui/Spinner";
@@ -10,6 +11,10 @@ import { Button } from "../../components/ui/Button";
 import { formatDateTime } from "../../lib/format";
 import { cn } from "../../components/ui/cn";
 import type { AdminPermission } from "../../lib/authz";
+import { getLowStock } from "../../api/inventory.api";
+import { listProducts } from "../../api/catalog.api";
+import { listImageDuplicates } from "../../api/uploads.api";
+import { getSettings } from "../../api/settings.api";
 
 // Icons
 const Icons = {
@@ -182,10 +187,79 @@ function LoadingSkeleton() {
   );
 }
 
+type TaskCardProps = {
+  title: string;
+  subtitle: string;
+  value: number | string;
+  to: string;
+  tone?: "default" | "warning" | "danger" | "success";
+  loading?: boolean;
+};
+
+function TaskCard({ title, subtitle, value, to, tone = "default", loading }: TaskCardProps) {
+  const navigate = useNavigate();
+  const toneClass = {
+    default: "border-white/[0.06] bg-white/[0.03]",
+    warning: "border-amber-400/20 bg-amber-400/10",
+    danger: "border-red-400/20 bg-red-500/10",
+    success: "border-emerald-400/20 bg-emerald-500/10",
+  }[tone];
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(to)}
+      className={cn(
+        "rounded-2xl border p-4 text-right transition hover:border-white/20 hover:bg-white/[0.06]",
+        toneClass
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-white">{title}</div>
+          <div className="mt-1 text-xs text-white/50">{subtitle}</div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-1.5 text-sm font-semibold tabular-nums text-white">
+          {loading ? "..." : value}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { overviewQuery } = useDashboard();
+  const can = (permission: AdminPermission) => hasPermission(permission);
+
+  const lowStockQuery = useQuery({
+    queryKey: ["dashboard", "low-stock-count"],
+    queryFn: () => getLowStock({ onlyBelow: true, take: 1, skip: 0 }),
+    enabled: can("inventory:read"),
+    staleTime: 30_000,
+  });
+
+  const draftProductsQuery = useQuery({
+    queryKey: ["dashboard", "draft-products"],
+    queryFn: () => listProducts("draft"),
+    enabled: can("catalog:read"),
+    staleTime: 30_000,
+  });
+
+  const duplicateImagesQuery = useQuery({
+    queryKey: ["dashboard", "image-duplicates"],
+    queryFn: () => listImageDuplicates({ mode: "exact", limit: 10, perGroup: 2 }),
+    enabled: can("settings:read"),
+    staleTime: 60_000,
+  });
+
+  const settingsQuery = useQuery({
+    queryKey: ["dashboard", "settings-health"],
+    queryFn: getSettings,
+    enabled: can("settings:read"),
+    staleTime: 60_000,
+  });
 
   if (overviewQuery.isLoading) {
     return <LoadingSkeleton />;
@@ -216,8 +290,13 @@ export default function DashboardPage() {
   const canReadCatalog = hasPermission("catalog:read");
   const canReadOutbox = hasPermission("outbox:read");
   const canReadUgc = hasPermission("ugc:read");
-
-  const can = (permission: AdminPermission) => hasPermission(permission);
+  const settings: any = settingsQuery.data ?? {};
+  const stripeEnabled = settings.stripeEnabled === true;
+  const paypalEnabled = settings.paypalEnabled === true;
+  const paymentIssueCount = [
+    stripeEnabled && (!settings.stripePublicKey || !settings.stripeSecretKey || !settings.stripeWebhookSecret),
+    paypalEnabled && (!settings.paypalClientId || !settings.paypalClientSecret || !settings.paypalWebhookId),
+  ].filter(Boolean).length;
 
   const mainStats = [
     canReadOrders
@@ -241,6 +320,85 @@ export default function DashboardPage() {
     can("settings:read") ? { label: "الإعدادات", to: "/admin/settings" } : null,
   ].filter(Boolean);
 
+  const taskCards = [
+    can("orders:read")
+      ? {
+          title: "طلبات جديدة",
+          subtitle: "تحتاج مراجعة أو تواصل",
+          value: ordersByStatus.NEW ?? 0,
+          to: "/admin/orders",
+          tone: (ordersByStatus.NEW ?? 0) > 0 ? "warning" as const : "success" as const,
+        }
+      : null,
+    can("inventory:read")
+      ? {
+          title: "مخزون منخفض",
+          subtitle: "Variants تحت حد التنبيه",
+          value: lowStockQuery.data?.total ?? 0,
+          to: "/admin/inventory/low-stock",
+          loading: lowStockQuery.isLoading,
+          tone: (lowStockQuery.data?.total ?? 0) > 0 ? "danger" as const : "success" as const,
+        }
+      : null,
+    can("outbox:read")
+      ? {
+          title: "رسائل فاشلة اليوم",
+          subtitle: "SMS / WhatsApp / Email",
+          value: counts.outboxFailedToday ?? 0,
+          to: "/admin/outbox",
+          tone: (counts.outboxFailedToday ?? 0) > 0 ? "danger" as const : "success" as const,
+        }
+      : null,
+    can("ugc:read")
+      ? {
+          title: "تقييمات بانتظار الموافقة",
+          subtitle: "مراجعة قبل النشر",
+          value: counts.reviewsPending ?? 0,
+          to: "/admin/ugc/reviews",
+          tone: (counts.reviewsPending ?? 0) > 0 ? "warning" as const : "success" as const,
+        }
+      : null,
+    can("ugc:read")
+      ? {
+          title: "تعليقات بانتظار الموافقة",
+          subtitle: "أسئلة وتعليقات المنتجات",
+          value: counts.commentsPending ?? 0,
+          to: "/admin/ugc/comments",
+          tone: (counts.commentsPending ?? 0) > 0 ? "warning" as const : "success" as const,
+        }
+      : null,
+    can("settings:read")
+      ? {
+          title: "صور مكررة",
+          subtitle: "تنظيف مكتبة الوسائط",
+          value: duplicateImagesQuery.data?.groups?.length ?? 0,
+          to: "/admin/media",
+          loading: duplicateImagesQuery.isLoading,
+          tone: (duplicateImagesQuery.data?.groups?.length ?? 0) > 0 ? "warning" as const : "success" as const,
+        }
+      : null,
+    can("catalog:read")
+      ? {
+          title: "منتجات مسودة",
+          subtitle: "قد تحتاج صور/مقاسات/SEO",
+          value: draftProductsQuery.data?.length ?? 0,
+          to: "/admin/catalog/products",
+          loading: draftProductsQuery.isLoading,
+          tone: (draftProductsQuery.data?.length ?? 0) > 0 ? "warning" as const : "success" as const,
+        }
+      : null,
+    can("settings:read")
+      ? {
+          title: "إعدادات الدفع",
+          subtitle: "Stripe / PayPal ناقصة",
+          value: paymentIssueCount,
+          to: "/admin/settings",
+          loading: settingsQuery.isLoading,
+          tone: paymentIssueCount > 0 ? "danger" as const : "success" as const,
+        }
+      : null,
+  ].filter(Boolean);
+
   return (
     <div className="space-y-6">
       {/* Main Stats */}
@@ -259,6 +417,25 @@ export default function DashboardPage() {
           لا توجد إحصائيات متاحة لحسابك حالياً.
         </div>
       )}
+
+      {taskCards.length > 0 ? (
+        <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-white">مركز العمل</h2>
+              <p className="mt-0.5 text-xs text-white/40">الأشياء التي تحتاج متابعة الآن</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => overviewQuery.refetch()}>
+              تحديث
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {taskCards.map((task) => (
+              <TaskCard key={task.title} {...task} />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Latest Orders */}

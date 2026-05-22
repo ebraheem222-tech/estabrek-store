@@ -39,12 +39,14 @@ const CouponTesterPage = lazy(() => import("../features/discounts/CouponTesterPa
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
 const ChatbotPage = lazy(() => import("../features/chatbot/ChatbotPage"));
 const NavPage = lazy(() => import("../features/nav/NavPage"));
+const MediaCenterPage = lazy(() => import("../features/media/MediaCenterPage"));
 
 const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
 const PageEditorPage = lazy(() => import("../features/pages/PageEditorPage"));
 const PagePreviewPage = lazy(() => import("../features/pages/PagePreviewPage"));
 
 const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
+const CommentsPage = lazy(() => import("../features/ugc/CommentsPage"));
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
 function NotFound() {
@@ -150,11 +152,13 @@ export default function AppRouter() {
               <Route path="discounts/coupons/test" element={withPermissions(<CouponTesterPage />, ["discounts:write"])} />{/* settings */}
           <Route path="settings" element={withPermissions(<SettingsPage />, ["settings:read"])} />
           <Route path="chatbot" element={withPermissions(<ChatbotPage />, ["chatbot:read"])} />
+          <Route path="media" element={withPermissions(<MediaCenterPage />, ["settings:read"])} />
 
           {/* nav + pages */}
           <Route path="nav" element={withPermissions(<NavPage />, ["nav:write"])} />
           {/* ugc */}
           <Route path="ugc/reviews" element={withPermissions(<ReviewsPage />, ["ugc:read"])} />
+          <Route path="ugc/comments" element={withPermissions(<CommentsPage />, ["ugc:read"])} />
           <Route
             path="pages"
             element={withPermissions(
