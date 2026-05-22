@@ -867,12 +867,49 @@ r.post("/products/:id/images/auto-group", asyncHandler(async (req, res) => {
   res.json({ groups });
 }));
 
+const SKU_COLOR_ALIASES: Array<[string, string]> = [
+  ["black", "black"],
+  ["أسود", "black"],
+  ["white", "white"],
+  ["أبيض", "white"],
+  ["gray", "gray"],
+  ["grey", "gray"],
+  ["رمادي", "gray"],
+  ["red", "red"],
+  ["أحمر", "red"],
+  ["orange", "orange"],
+  ["برتقالي", "orange"],
+  ["yellow", "yellow"],
+  ["أصفر", "yellow"],
+  ["green", "green"],
+  ["أخضر", "green"],
+  ["teal", "teal"],
+  ["تركواز", "teal"],
+  ["blue", "blue"],
+  ["أزرق", "blue"],
+  ["indigo", "indigo"],
+  ["نيلي", "indigo"],
+  ["purple", "purple"],
+  ["بنفسجي", "purple"],
+  ["pink", "pink"],
+  ["وردي", "pink"],
+  ["brown", "brown"],
+  ["بني", "brown"],
+];
+
 function slugifySkuPart(s: string) {
-  return String(s || "")
+  const raw = String(s || "").trim();
+  const ascii = raw
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+
+  const normalized = raw.toLowerCase().replace(/\s+/g, " ");
+  const knownColor = SKU_COLOR_ALIASES.find(([name]) => normalized.includes(name))?.[1];
+  if (knownColor && ascii && ascii !== knownColor) return `${knownColor}-${ascii}`.slice(0, 60);
+  if (knownColor) return knownColor;
+  return ascii || "color";
 }
 
 r.post(
@@ -892,6 +929,7 @@ r.post(
         | {
             sizeIds: string[];
             price: number;
+            priceBySize?: Record<string, number>;
             compareAt?: number | null;
             stock?: number;
             stockBySize?: Record<string, number>;
@@ -977,10 +1015,11 @@ r.post(
           const sizeById = new Map(sizes.map((s) => [s.id, s]));
 
           const stockBySize = g.variants.stockBySize || {};
+          const priceBySize = g.variants.priceBySize || {};
           const bulkStock = Number.isFinite(g.variants.stock as any) ? Number(g.variants.stock) : 0;
           const lowStockThreshold = Number.isFinite(g.variants.lowStockThreshold as any) ? Number(g.variants.lowStockThreshold) : 0;
           const weightGrams = g.variants.weightGrams == null ? null : Number(g.variants.weightGrams);
-          const price = Number(g.variants.price);
+          const defaultPrice = Number(g.variants.price);
           const compareAt = g.variants.compareAt == null ? null : Number(g.variants.compareAt);
 
           for (const sizeId of sizeIds) {
@@ -989,6 +1028,7 @@ r.post(
 
             const sizeTag = (size.name || "SIZE").toUpperCase().replace(/\s+/g, "");
             const sku = `${skuBase}-${sizeTag}`;
+            const price = Number.isFinite(priceBySize[sizeId] as any) ? Number(priceBySize[sizeId]) : defaultPrice;
             const stock = Number.isFinite(stockBySize[sizeId] as any) ? Number(stockBySize[sizeId]) : bulkStock;
 
             await tx.productVariant.upsert({

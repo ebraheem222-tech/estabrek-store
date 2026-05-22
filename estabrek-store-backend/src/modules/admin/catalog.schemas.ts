@@ -183,6 +183,10 @@ export const CommitImageGroupsBody = z.object({
         .object({
           sizeIds: z.array(z.string().cuid()).min(1),
           price: PriceNumber,
+          /** per-size price values */
+          priceBySize: z
+            .record(z.string().cuid(), PriceNumber)
+            .optional(),
           compareAt: PriceNumber.nullable().optional(),
           /** bulk default stock (legacy) */
           stock: z.coerce.number().int().min(0).optional(),
