@@ -15,6 +15,8 @@ import { AsyncImage } from "../../components/ui/AsyncImage";
 
 import ItemImagesManager, { type LocalImage } from "../../components/catalog/ItemImagesManager";
 import { normalizeHex } from "../../lib/colorDetect";
+import { isEyeDropperSupported, pickScreenColor } from "../../lib/eyeDropper";
+import { getNearestNamedColor, skuSegmentFromColorName } from "../../lib/colorNames";
 import ProductImagesWizardModal from "./ProductImagesWizardModal";
 
 // === Backend endpoints (حسب مشروعك) ===
@@ -177,52 +179,9 @@ function genLocalId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-type NamedColor = { name: string; sku: string; hex: string };
-
-const NAMED_COLORS: NamedColor[] = [
-  { name: "أسود", sku: "BLACK", hex: "#000000" },
-  { name: "أبيض", sku: "WHITE", hex: "#ffffff" },
-  { name: "رمادي", sku: "GRAY", hex: "#9ca3af" },
-  { name: "أحمر", sku: "RED", hex: "#ef4444" },
-  { name: "برتقالي", sku: "ORANGE", hex: "#f97316" },
-  { name: "أصفر", sku: "YELLOW", hex: "#eab308" },
-  { name: "أخضر", sku: "GREEN", hex: "#22c55e" },
-  { name: "تركواز", sku: "TEAL", hex: "#06b6d4" },
-  { name: "أزرق", sku: "BLUE", hex: "#3b82f6" },
-  { name: "نيلي", sku: "INDIGO", hex: "#6366f1" },
-  { name: "بنفسجي", sku: "PURPLE", hex: "#8b5cf6" },
-  { name: "وردي", sku: "PINK", hex: "#ec4899" },
-  { name: "بني", sku: "BROWN", hex: "#92400e" },
-];
-
-function hexToRgb(hex: string): [number, number, number] {
-  const n = normalizeHex(hex);
-  if (!n) return [0, 0, 0];
-  const v = n.slice(1);
-  return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
-}
-
-function colorDistance(a: [number, number, number], b: [number, number, number]) {
-  const dr = a[0] - b[0];
-  const dg = a[1] - b[1];
-  const db = a[2] - b[2];
-  return dr * dr + dg * dg + db * db;
-}
-
 function guessColorFromHex(hex: string): { name: string; sku: string } | null {
-  const n = normalizeHex(hex);
-  if (!n) return null;
-  const rgb = hexToRgb(n);
-  let best: NamedColor | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  for (const c of NAMED_COLORS) {
-    const d = colorDistance(rgb, hexToRgb(c.hex));
-    if (d < bestDist) {
-      bestDist = d;
-      best = c;
-    }
-  }
-  return best ? { name: best.name, sku: best.sku } : null;
+  const best = getNearestNamedColor(hex);
+  return best ? { name: best.arabicName, sku: best.sku } : null;
 }
 
 function skuPrefixFromTitleSlug(title: string, slug: string) {
@@ -235,6 +194,9 @@ function skuPrefixFromTitleSlug(title: string, slug: string) {
 }
 
 function skuSegmentFromName(name: string) {
+  const knownColorSegment = skuSegmentFromColorName(name);
+  if (knownColorSegment) return knownColorSegment;
+
   const cleaned = String(name || "")
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "-")
@@ -244,8 +206,9 @@ function skuSegmentFromName(name: string) {
 }
 
 function skuSegmentFromItem(colorName: string, boxLabel?: string) {
-  const base = boxLabel ? `${colorName} ${boxLabel}` : colorName;
-  return skuSegmentFromName(base);
+  const colorSegment = skuSegmentFromName(colorName);
+  const boxSegment = boxLabel ? skuSegmentFromName(boxLabel) : "";
+  return [colorSegment, boxSegment].filter(Boolean).join("-");
 }
 
 function buildAutoSkuBase(colorName: string, boxLabel: string, skuPrefix: string) {
@@ -681,12 +644,23 @@ export default function ProductEditorPage() {
 
         return {
           ...it,
-          colorHex: rawHex,
+          colorHex: normalized,
           colorName: nextName,
           skuBase: nextSkuBase,
         };
       })
     );
+  };
+
+  const pickItemColorWithEyeDropper = async (localId: string) => {
+    setItemError(null);
+    if (!isEyeDropperSupported()) {
+      setItemError("القطّارة غير مدعومة على هذا المتصفح.");
+      return;
+    }
+
+    const hex = await pickScreenColor();
+    if (hex) applyColorHex(localId, hex);
   };
 
   const handleColorNameChange = (localId: string, nextName: string) => {
@@ -910,36 +884,112 @@ export default function ProductEditorPage() {
   const [bulkItemLocalId, setBulkItemLocalId] = useState<string | null>(null);
   const [bulkSelectedSizeIds, setBulkSelectedSizeIds] = useState<string[]>([]);
   const [bulkSkuPrefix, setBulkSkuPrefix] = useState<string>("");
+  const [bulkPriceMode, setBulkPriceMode] = useState<"default" | "manual">("default");
   const [bulkPrice, setBulkPrice] = useState<string>("0");
+  const [bulkPriceBySize, setBulkPriceBySize] = useState<Record<string, string>>({});
   const [bulkStock, setBulkStock] = useState<string>("0");
   const [bulkThreshold, setBulkThreshold] = useState<string>("0");
   const [bulkWeight, setBulkWeight] = useState<string>("");
+  const [bulkSuggestionNote, setBulkSuggestionNote] = useState<string>("");
   const [bulkError, setBulkError] = useState<string | null>(null);
 
-  const openBulkAddSizes = (itemLocalId: string) => {
+  const getSuggestedBulkDefaults = (itemLocalId: string) => {
     const it = items.find((x) => x.localId === itemLocalId);
+    const usedSizeIds = new Set((it?.variants ?? []).map((v) => v.sizeId));
+    const availableIds = sizes.filter((s) => s.active !== false && !usedSizeIds.has(s.id)).map((s) => s.id);
+    const variants = [
+      ...(it?.variants ?? []),
+      ...items.flatMap((item) => item.variants ?? []),
+    ];
+    const priced = variants.find((variant) => toNumber(variant.price) > 0);
+    const stocked = variants.find((variant) => typeof variant.stock === "number");
+
+    return {
+      availableIds,
+      price: priced ? String(priced.price ?? 0) : "0",
+      stock: stocked ? String(stocked.stock ?? 0) : "0",
+      threshold: stocked ? String(stocked.lowStockThreshold ?? 0) : "0",
+      weight: stocked?.weightGrams ? String(stocked.weightGrams) : "",
+    };
+  };
+
+  const openBulkAddSizes = (itemLocalId: string, opts?: { preselectAll?: boolean }) => {
+    const it = items.find((x) => x.localId === itemLocalId);
+    const suggested = getSuggestedBulkDefaults(itemLocalId);
     setBulkItemLocalId(itemLocalId);
-    setBulkSelectedSizeIds([]);
+    setBulkSelectedSizeIds(opts?.preselectAll ? suggested.availableIds : []);
     setBulkSkuPrefix(it?.skuBase ?? "");
-    // حاول ناخذ سعر من أول Variant موجود كـ default
-    const defaultPrice = it?.variants?.[0]?.price ?? 0;
-    setBulkPrice(String(defaultPrice || 0));
-    setBulkStock("0");
-    setBulkThreshold("0");
-    setBulkWeight("");
+    setBulkPriceMode("default");
+    setBulkPrice(suggested.price);
+    setBulkPriceBySize(
+      opts?.preselectAll
+        ? Object.fromEntries(suggested.availableIds.map((id) => [id, suggested.price]))
+        : {}
+    );
+    setBulkStock(suggested.stock);
+    setBulkThreshold(suggested.threshold);
+    setBulkWeight(suggested.weight);
+    setBulkSuggestionNote(
+      opts?.preselectAll
+        ? `تم تحديد ${suggested.availableIds.length} مقاس متاح واستخدام أقرب سعر/مخزون كاقتراح.`
+        : ""
+    );
     setBulkError(null);
     setOpenBulkModal(true);
   };
 
+  const openSuggestedBulkAddSizes = (itemLocalId: string) => {
+    const suggested = getSuggestedBulkDefaults(itemLocalId);
+    if (!suggested.availableIds.length) {
+      setItemError("لا يوجد مقاسات متاحة لهذا اللون. كل المقاسات الفعالة موجودة بالفعل.");
+      return;
+    }
+    setItemError(null);
+    openBulkAddSizes(itemLocalId, { preselectAll: true });
+  };
+
   const toggleBulkSize = (sizeId: string) => {
-    setBulkSelectedSizeIds((prev) => (prev.includes(sizeId) ? prev.filter((x) => x !== sizeId) : [...prev, sizeId]));
+    setBulkSelectedSizeIds((prev) => {
+      const has = prev.includes(sizeId);
+      if (has) {
+        setBulkPriceBySize((prices) => {
+          const next = { ...prices };
+          delete next[sizeId];
+          return next;
+        });
+        return prev.filter((x) => x !== sizeId);
+      }
+
+      setBulkPriceBySize((prices) => ({ ...prices, [sizeId]: prices[sizeId] ?? bulkPrice }));
+      return [...prev, sizeId];
+    });
   };
 
   const selectAllBulkSizes = (availableIds: string[]) => {
     setBulkSelectedSizeIds(availableIds);
+    setBulkPriceBySize((prev) => {
+      const next = { ...prev };
+      for (const id of availableIds) next[id] = next[id] ?? bulkPrice;
+      return next;
+    });
   };
 
-  const clearBulkSizes = () => setBulkSelectedSizeIds([]);
+  const clearBulkSizes = () => {
+    setBulkSelectedSizeIds([]);
+    setBulkPriceBySize({});
+  };
+
+  const updateBulkPriceForSize = (sizeId: string, value: string) => {
+    setBulkPriceBySize((prev) => ({ ...prev, [sizeId]: value }));
+  };
+
+  const fillSelectedBulkPrices = () => {
+    setBulkPriceBySize((prev) => {
+      const next = { ...prev };
+      for (const id of bulkSelectedSizeIds) next[id] = bulkPrice;
+      return next;
+    });
+  };
 
   const saveBulkAddSizes = () => {
     setBulkError(null);
@@ -952,8 +1002,19 @@ export default function ProductEditorPage() {
     const pickIds = (bulkSelectedSizeIds ?? []).filter((id) => !usedSizeIds.has(id));
     if (!pickIds.length) return setBulkError("اختر على الأقل مقاس واحد (غير مستخدم).");
 
-    const priceN = toNumber(bulkPrice);
-    if (priceN <= 0) return setBulkError("السعر لازم يكون أكبر من 0");
+    const defaultPriceN = toNumber(bulkPrice);
+    if (bulkPriceMode === "default" && defaultPriceN <= 0) return setBulkError("السعر لازم يكون أكبر من 0");
+    const priceBySize = new Map<string, number>();
+    if (bulkPriceMode === "manual") {
+      for (const sizeId of pickIds) {
+        const price = toNumber(bulkPriceBySize[sizeId]);
+        if (price <= 0) {
+          const label = sizes.find((s) => s.id === sizeId)?.name ?? sizeId;
+          return setBulkError(`حدد سعر صالح للمقاس: ${label}`);
+        }
+        priceBySize.set(sizeId, price);
+      }
+    }
     const stockN = Math.max(0, parseInt(bulkStock || "0", 10) || 0);
     const thresholdN = Math.max(0, parseInt(bulkThreshold || "0", 10) || 0);
     const weightN = bulkWeight.trim() ? Math.max(0, parseInt(bulkWeight, 10) || 0) : null;
@@ -973,7 +1034,7 @@ export default function ProductEditorPage() {
       return {
         sizeId,
         sku,
-        price: priceN,
+        price: bulkPriceMode === "manual" ? priceBySize.get(sizeId) ?? defaultPriceN : defaultPriceN,
         compareAt: null,
         stock: stockN,
         lowStockThreshold: thresholdN,
@@ -1346,7 +1407,7 @@ export default function ProductEditorPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="ghost" onClick={() => nav("/catalog/products")}>
+            <Button variant="ghost" onClick={() => nav("/admin/catalog/products")}>
               رجوع
             </Button>
             {items.length === 0 ? (
@@ -1355,10 +1416,10 @@ export default function ProductEditorPage() {
               </Button>
             ) : null}
             <Button variant="secondary" onClick={() => setWizardOpen(true)} disabled={!productId}>
-              Batch Upload + Group
+              رفع وتجميع الصور
             </Button>
             <Button variant="secondary" onClick={openCreateItem}>
-              إضافة لون (Item)
+              إضافة مجموعة لون
             </Button>
             <Button variant="primary" onClick={onSaveAll} isLoading={mSave.isPending}>
               حفظ الكل
@@ -1426,6 +1487,49 @@ export default function ProductEditorPage() {
           </div>
         </div>
       ) : null}
+
+      {items.length ? (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold">مجموعات الألوان</div>
+              <div className="mt-1 text-xs opacity-70">اختر مجموعة لفتح الصور والمقاسات الخاصة بها.</div>
+            </div>
+            <Button variant="primary" onClick={openCreateItem}>
+              إضافة مجموعة لون
+            </Button>
+          </div>
+
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {items.map((it) => {
+              const safeHex = normalizeHex(it.colorHex);
+              return (
+                <button
+                  key={it.localId}
+                  type="button"
+                  onClick={() => openEditItem(it)}
+                  className="flex min-w-[180px] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-start transition hover:border-white/20 hover:bg-white/[0.08]"
+                >
+                  <span
+                    className="h-7 w-7 shrink-0 rounded-full border border-white/20"
+                    style={{ backgroundColor: safeHex ?? "transparent" }}
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">
+                      {it.colorName || "لون جديد"}
+                      {it.boxLabel ? ` - ${it.boxLabel}` : ""}
+                    </span>
+                    <span className="block truncate text-xs opacity-65" dir="ltr">
+                      {it.skuBase || "SKU"}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       {/* Items */}
       <div className="space-y-3">
         {items.map((it) => {
@@ -1538,7 +1642,7 @@ export default function ProductEditorPage() {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input
-                      label="اسم اللون (colorName)"
+                      label="اسم اللون بالعربي"
                       value={it.colorName}
                       onChange={(e) => handleColorNameChange(it.localId, e.target.value)}
                     />
@@ -1551,7 +1655,7 @@ export default function ProductEditorPage() {
                     />
 
                     <Input
-                      label="skuBase"
+                      label="SKU base (English)"
                       value={it.skuBase}
                       onChange={(e) => updateItem(it.localId, { skuBase: e.target.value })}
                       placeholder="مثال: TSHIRT-BLACK"
@@ -1561,6 +1665,14 @@ export default function ProductEditorPage() {
                       <div className="mb-2 flex items-center justify-between">
                         <div className="text-sm font-semibold">اختيار اللون</div>
                         <div className="flex items-center gap-2" dir="ltr">
+                          <Button
+                            variant="ghost"
+                            onClick={() => pickItemColorWithEyeDropper(it.localId)}
+                            disabled={!isEyeDropperSupported()}
+                            title={isEyeDropperSupported() ? "قطّارة" : "المتصفح لا يدعم EyeDropper"}
+                          >
+                            قطّارة
+                          </Button>
                           <input
                             type="color"
                             value={safeHex}
@@ -1667,6 +1779,9 @@ export default function ProductEditorPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-xs opacity-70">{(it.variants ?? []).length} variants</div>
+                      <Button variant="success" onClick={() => openSuggestedBulkAddSizes(it.localId)}>
+                        اقتراح سريع
+                      </Button>
                       <Button variant="secondary" onClick={() => openBulkAddSizes(it.localId)}>
                         إضافة عدة مقاسات
                       </Button>
@@ -1730,7 +1845,12 @@ export default function ProductEditorPage() {
                       ) : (
                         <TR>
                           <td className="px-3 py-3 text-sm opacity-70" colSpan={5}>
-                            لا يوجد Variants بعد.
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span>لا يوجد Variants بعد.</span>
+                              <Button size="sm" variant="success" onClick={() => openSuggestedBulkAddSizes(it.localId)}>
+                                إنشاء من المقاسات الفعالة
+                              </Button>
+                            </div>
                           </td>
                         </TR>
                       )}
@@ -1821,7 +1941,9 @@ export default function ProductEditorPage() {
             </div>
           );
         })()}
-            {/* Bulk add sizes Modal */}
+      </Modal>
+
+      {/* Bulk add sizes Modal */}
       <Modal
         open={openBulkModal}
         title="إضافة عدة مقاسات دفعة واحدة"
@@ -1851,6 +1973,12 @@ export default function ProductEditorPage() {
 
           return (
             <div dir="rtl" className="space-y-4">
+              {bulkSuggestionNote ? (
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                  {bulkSuggestionNote}
+                </div>
+              ) : null}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input
                   label="SKU Prefix (افتراضي: skuBase)"
@@ -1858,7 +1986,33 @@ export default function ProductEditorPage() {
                   onChange={(e) => setBulkSkuPrefix(e.target.value)}
                   placeholder={it.skuBase || "SKU"}
                 />
-                <Input label="السعر (لكل المقاسات)" value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)} />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">نوع السعر</label>
+                  <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
+                    <button
+                      type="button"
+                      className={`rounded-lg px-3 py-2 ${bulkPriceMode === "default" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                      onClick={() => setBulkPriceMode("default")}
+                    >
+                      سعر لكل المقاسات
+                    </button>
+                    <button
+                      type="button"
+                      className={`rounded-lg px-3 py-2 ${bulkPriceMode === "manual" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                      onClick={() => {
+                        setBulkPriceMode("manual");
+                        fillSelectedBulkPrices();
+                      }}
+                    >
+                      سعر لكل مقاس
+                    </button>
+                  </div>
+                </div>
+                <Input
+                  label={bulkPriceMode === "default" ? "السعر الافتراضي" : "سعر التعبئة"}
+                  value={bulkPrice}
+                  onChange={(e) => setBulkPrice(e.target.value)}
+                />
                 <Input label="المخزون (لكل المقاسات)" value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} />
                 <Input
                   label="حد التنبيه (اختياري)"
@@ -1923,6 +2077,34 @@ export default function ProductEditorPage() {
                 </div>
               </div>
 
+              {bulkPriceMode === "manual" && bulkSelectedSizeIds.length ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold">السعر حسب المقاس</div>
+                      <div className="text-xs opacity-70">كل مقاس محدد يحصل على سعره الخاص.</div>
+                    </div>
+                    <Button variant="secondary" onClick={fillSelectedBulkPrices}>
+                      تعبئة الكل من السعر الافتراضي
+                    </Button>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {bulkSelectedSizeIds
+                      .map((id) => sizes.find((s) => s.id === id))
+                      .filter((s): s is Size => Boolean(s))
+                      .map((s) => (
+                        <Input
+                          key={s.id}
+                          label={s.name}
+                          value={bulkPriceBySize[s.id] ?? bulkPrice}
+                          onChange={(e) => updateBulkPriceForSize(s.id, e.target.value)}
+                        />
+                      ))}
+                  </div>
+                </div>
+              ) : null}
+
               {bulkError ? (
                 <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-100">{bulkError}</div>
               ) : null}
@@ -1930,8 +2112,6 @@ export default function ProductEditorPage() {
           );
         })()}
       </Modal>
-
-</Modal>
 
       {/* Confirm delete item */}
       <ConfirmDialog

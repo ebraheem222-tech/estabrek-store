@@ -4,17 +4,16 @@ import { Modal } from "../../components/ui/Modal";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Spinner } from "../../components/ui/Spinner";
-import { cn } from "../../components/ui/cn";
 import { toast } from "../../lib/toast";
+import { translateColorNameToArabic } from "../../lib/colorNames";
 import {
   batchUploadProductImages,
   listPendingProductImages,
   autoGroupProductImages,
   commitProductImageGroups,
   type WizardAsset,
-  type AutoGroup,
 } from "../../api/productImagesWizard.api";
-import { listSizes } from "../../api/catalog.api";
+import { listSizes, type CatalogSize } from "../../api/catalog.api";
 
 type Props = {
   open: boolean;
@@ -25,7 +24,9 @@ type Props = {
 
 type GroupVariantsDraft = {
   sizeIds: string[];
+  priceMode: "default" | "manual";
   price: string;
+  priceBySize: Record<string, string>;
   compareAt: string;
   /** bulk default stock (used to prefill per-size inputs) */
   stock: string;
@@ -70,7 +71,9 @@ function newId() {
 function defaultVariantsDraft(): GroupVariantsDraft {
   return {
     sizeIds: [],
+    priceMode: "default",
     price: "0",
+    priceBySize: {},
     compareAt: "",
     stock: "0",
     stockBySize: {},
@@ -83,6 +86,8 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
   const [unassigned, setUnassigned] = useState<WizardAssetState[]>([]);
   const [groups, setGroups] = useState<GroupState[]>([]);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const cameraRef = useRef<HTMLInputElement | null>(null);
+  const [cameraReview, setCameraReview] = useState<{ file: File; url: string } | null>(null);
 
   const dragRef = useRef<{ asset: WizardAssetState; fromGroupId: string | null } | null>(null);
 
@@ -113,6 +118,12 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
     setGroups([]);
   }, [open, qPending.data?.items]);
 
+  useEffect(() => {
+    return () => {
+      if (cameraReview?.url) URL.revokeObjectURL(cameraReview.url);
+    };
+  }, [cameraReview?.url]);
+
   const mUpload = useMutation({
     mutationFn: async (files: File[]) => batchUploadProductImages(productId!, files),
     onSuccess: (data) => {
@@ -127,7 +138,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
     onSuccess: (data) => {
       const next: GroupState[] = data.groups.map((g) => ({
         id: g.groupId || newId(),
-        colorName: g.colorName || "Color",
+        colorName: translateColorNameToArabic(g.colorName || g.colorHex || "Color"),
         boxLabel: "",
         colorHex: normalizeHex(g.colorHex || "#000000"),
         assets: (g.assets || []).map((x) => ({ ...x, view: null, alt: null })),
@@ -145,10 +156,20 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       // local validation for variants
       for (const g of groups) {
         if (g.variants.sizeIds.length) {
-          const price = Number(g.variants.price);
-          if (!Number.isFinite(price) || price <= 0) {
-            const label = g.boxLabel?.trim() ? `${g.colorName} — ${g.boxLabel}` : g.colorName;
-            throw new Error(`حدد سعر للقياسات داخل اللون: ${label}`);
+          const label = g.boxLabel?.trim() ? `${g.colorName} - ${g.boxLabel}` : g.colorName;
+          if (g.variants.priceMode === "manual") {
+            for (const sizeId of g.variants.sizeIds) {
+              const price = Number(g.variants.priceBySize?.[sizeId]);
+              if (!Number.isFinite(price) || price <= 0) {
+                const sizeName = sizes.find((s) => s.id === sizeId)?.name ?? sizeId;
+                throw new Error(`حدد سعر للمقاس ${sizeName} داخل اللون: ${label}`);
+              }
+            }
+          } else {
+            const price = Number(g.variants.price);
+            if (!Number.isFinite(price) || price <= 0) {
+              throw new Error(`حدد سعر للقياسات داخل اللون: ${label}`);
+            }
           }
         }
       }
@@ -162,6 +183,12 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                 ? {
                     sizeIds,
                     price: Number(g.variants.price || 0),
+                    priceBySize:
+                      g.variants.priceMode === "manual"
+                        ? Object.fromEntries(
+                            sizeIds.map((id) => [id, Number((g.variants.priceBySize?.[id] ?? "0") || 0)])
+                          )
+                        : undefined,
                     compareAt: g.variants.compareAt ? Number(g.variants.compareAt) : null,
                     // backward compatible: still send bulk stock, but also send per-size
                     stock: Number(g.variants.stock || 0),
@@ -200,12 +227,35 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
     e.target.value = "";
   }
 
+  function onCameraFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (cameraReview?.url) URL.revokeObjectURL(cameraReview.url);
+    setCameraReview({ file, url: URL.createObjectURL(file) });
+  }
+
+  function discardCameraShot() {
+    if (cameraReview?.url) URL.revokeObjectURL(cameraReview.url);
+    setCameraReview(null);
+    if (cameraRef.current) cameraRef.current.value = "";
+  }
+
+  function acceptCameraShot() {
+    const shot = cameraReview;
+    if (!shot) return;
+    setCameraReview(null);
+    if (cameraRef.current) cameraRef.current.value = "";
+    mUpload.mutate([shot.file], {
+      onSettled: () => URL.revokeObjectURL(shot.url),
+    });
+  }
+
   function addGroup() {
     setGroups((prev) => [
       ...prev,
       {
         id: newId(),
-        colorName: `Color ${prev.length + 1}`,
+        colorName: `لون ${prev.length + 1}`,
         boxLabel: "",
         colorHex: "#111111",
         assets: [],
@@ -234,15 +284,18 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
         const has = g.variants.sizeIds.includes(sizeId);
         const nextIds = has ? g.variants.sizeIds.filter((x) => x !== sizeId) : [...g.variants.sizeIds, sizeId];
         const nextStockBySize = { ...(g.variants.stockBySize || {}) };
+        const nextPriceBySize = { ...(g.variants.priceBySize || {}) };
 
         if (has) {
           delete nextStockBySize[sizeId];
+          delete nextPriceBySize[sizeId];
         } else {
           // prefill with current bulk stock
           nextStockBySize[sizeId] = nextStockBySize[sizeId] ?? String(g.variants.stock ?? "0");
+          nextPriceBySize[sizeId] = nextPriceBySize[sizeId] ?? String(g.variants.price ?? "0");
         }
 
-        return { ...g, variants: { ...g.variants, sizeIds: nextIds, stockBySize: nextStockBySize } };
+        return { ...g, variants: { ...g.variants, sizeIds: nextIds, stockBySize: nextStockBySize, priceBySize: nextPriceBySize } };
       })
     );
   }
@@ -253,16 +306,33 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
         if (g.id !== groupId) return g;
         const nextIds = sizes.map((s) => s.id);
         const nextStockBySize: Record<string, string> = { ...(g.variants.stockBySize || {}) };
+        const nextPriceBySize: Record<string, string> = { ...(g.variants.priceBySize || {}) };
         for (const id of nextIds) {
           nextStockBySize[id] = nextStockBySize[id] ?? String(g.variants.stock ?? "0");
+          nextPriceBySize[id] = nextPriceBySize[id] ?? String(g.variants.price ?? "0");
         }
-        return { ...g, variants: { ...g.variants, sizeIds: nextIds, stockBySize: nextStockBySize } };
+        return { ...g, variants: { ...g.variants, sizeIds: nextIds, stockBySize: nextStockBySize, priceBySize: nextPriceBySize } };
       })
     );
   }
 
   function clearSizes(groupId: string) {
-    updateGroupVariants(groupId, { sizeIds: [], stockBySize: {} });
+    updateGroupVariants(groupId, { sizeIds: [], stockBySize: {}, priceBySize: {} });
+  }
+
+  function updateGroupPriceForSize(groupId: string, sizeId: string, value: string) {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          variants: {
+            ...g.variants,
+            priceBySize: { ...(g.variants.priceBySize || {}), [sizeId]: value },
+          },
+        };
+      })
+    );
   }
 
   function updateGroupStockForSize(groupId: string, sizeId: string, value: string) {
@@ -276,6 +346,19 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
             stockBySize: { ...(g.variants.stockBySize || {}), [sizeId]: value },
           },
         };
+      })
+    );
+  }
+
+  function fillAllSelectedPrices(groupId: string) {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        const next: Record<string, string> = { ...(g.variants.priceBySize || {}) };
+        for (const id of g.variants.sizeIds) {
+          next[id] = String(g.variants.price ?? "0");
+        }
+        return { ...g, variants: { ...g.variants, priceBySize: next } };
       })
     );
   }
@@ -442,6 +525,13 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
           >
             رفع صور
           </Button>
+          <Button
+            variant="secondary"
+            onClick={() => cameraRef.current?.click()}
+            disabled={busy || !productId}
+          >
+            تصوير بالكاميرا
+          </Button>
           <Button variant="secondary" onClick={() => mAutoGroup.mutate()} disabled={busy || !unassigned.length}>
             Auto group
           </Button>
@@ -455,6 +545,36 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       }
     >
       <input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={onPickFiles} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onCameraFile} />
+
+      <Modal
+        open={!!cameraReview}
+        onClose={discardCameraShot}
+        title="مراجعة صورة الكاميرا"
+        widthClassName="max-w-2xl"
+        footer={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" onClick={discardCameraShot} disabled={busy}>
+              تجاهل
+            </Button>
+            <Button variant="secondary" onClick={() => cameraRef.current?.click()} disabled={busy}>
+              إعادة التصوير
+            </Button>
+            <Button variant="primary" onClick={acceptCameraShot} isLoading={mUpload.isPending}>
+              استخدم الصورة
+            </Button>
+          </div>
+        }
+      >
+        {cameraReview ? (
+          <div className="space-y-3">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+              <img src={cameraReview.url} alt="Camera preview" className="max-h-[62vh] w-full object-contain" />
+            </div>
+            <div className="text-xs opacity-70">بعد التأكيد سيتم رفع الصورة إلى الصور غير المصنفة للتجميع.</div>
+          </div>
+        ) : null}
+      </Modal>
 
       {qPending.isLoading ? (
         <div className="p-6">
@@ -568,9 +688,33 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                       )}
                     </div>
 
+                    <div className="mt-2 space-y-2">
+                      <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-white/10 bg-white/5 p-1 text-xs">
+                        <button
+                          type="button"
+                          className={`rounded-md px-2 py-1.5 ${g.variants.priceMode === "default" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                          onClick={() => updateGroupVariants(g.id, { priceMode: "default" })}
+                          disabled={busy}
+                        >
+                          سعر واحد
+                        </button>
+                        <button
+                          type="button"
+                          className={`rounded-md px-2 py-1.5 ${g.variants.priceMode === "manual" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                          onClick={() => {
+                            updateGroupVariants(g.id, { priceMode: "manual" });
+                            fillAllSelectedPrices(g.id);
+                          }}
+                          disabled={busy}
+                        >
+                          سعر حسب المقاس
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <Input
-                        label="Price"
+                        label={g.variants.priceMode === "default" ? "Price" : "Price prefill"}
                         value={g.variants.price}
                         onChange={(e) => updateGroupVariants(g.id, { price: e.target.value })}
                         placeholder="0"
@@ -601,6 +745,36 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                       />
                     </div>
 
+                    {g.variants.priceMode === "manual" && g.variants.sizeIds.length ? (
+                      <div className="mt-3 rounded-xl border border-white/10 bg-black/10 p-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs font-semibold">Price per size</div>
+                          <Button
+                            variant="secondary"
+                            onClick={() => fillAllSelectedPrices(g.id)}
+                            disabled={busy}
+                          >
+                            Fill all from default
+                          </Button>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          {g.variants.sizeIds
+                            .map((id) => sizes.find((s) => s.id === id))
+                            .filter((s): s is CatalogSize => Boolean(s))
+                            .map((s) => (
+                              <Input
+                                key={s.id}
+                                label={s.name}
+                                value={g.variants.priceBySize?.[s.id] ?? g.variants.price}
+                                onChange={(e) => updateGroupPriceForSize(g.id, s.id, e.target.value)}
+                                placeholder="0"
+                              />
+                            ))}
+                        </div>
+                      </div>
+                    ) : null}
+
                     {g.variants.sizeIds.length ? (
                       <div className="mt-3 rounded-xl border border-white/10 bg-black/10 p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -617,8 +791,8 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                         <div className="mt-2 grid grid-cols-2 gap-2">
                           {g.variants.sizeIds
                             .map((id) => sizes.find((s) => s.id === id))
-                            .filter(Boolean)
-                            .map((s: any) => (
+                            .filter((s): s is CatalogSize => Boolean(s))
+                            .map((s) => (
                               <Input
                                 key={s.id}
                                 label={s.name}

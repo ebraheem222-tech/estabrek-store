@@ -1,7 +1,7 @@
 // src/features/catalog/ProductsPage.tsx
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCatalogActions, useCategories, useProducts } from "../../hooks/useCatalog";
+import { useCatalogActions, useCategories, useProducts, useSizes } from "../../hooks/useCatalog";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/Table";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -12,6 +12,7 @@ import { Skeleton, Spinner } from "../../components/ui/Spinner";
 import { AsyncImage } from "../../components/ui/AsyncImage";
 import type { ProductImportRow } from "../../api/catalog.api";
 import { toast } from "@/lib/toast";
+import QuickAddProductModal from "./QuickAddProductModal";
 
 function slugify(input: string) {
   return input
@@ -173,10 +174,12 @@ export default function ProductsPage() {
   const [status, setStatus] = useState<"all" | "active" | "draft">("all");
   const q = useProducts(status);
   const qCats = useCategories();
+  const qSizes = useSizes();
   const actions = useCatalogActions();
 
   const products = q.data ?? [];
   const categories = qCats.data ?? [];
+  const sizes = qSizes.data ?? [];
 
   const byId = useMemo(() => {
     const m = new Map<string, any>();
@@ -185,6 +188,7 @@ export default function ProductsPage() {
   }, [categories]);
 
   const [open, setOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
@@ -393,6 +397,9 @@ const doImport = async () => {
 
             <Button variant="primary" onClick={openCreate} className="w-full sm:w-auto">
               إضافة منتج
+            </Button>
+            <Button variant="success" onClick={() => setQuickOpen(true)} className="w-full sm:w-auto">
+              إضافة سريعة
             </Button>
           </div>
         </div>
@@ -710,6 +717,18 @@ const doImport = async () => {
           </div>
         </div>
       </Modal>
+
+      <QuickAddProductModal
+        open={quickOpen}
+        categories={categories}
+        sizes={sizes}
+        onClose={() => setQuickOpen(false)}
+        onCreated={(productId) => {
+          setQuickOpen(false);
+          q.refetch();
+          nav(`/admin/catalog/products/${productId}`);
+        }}
+      />
 
       <Modal
         open={importOpen}
