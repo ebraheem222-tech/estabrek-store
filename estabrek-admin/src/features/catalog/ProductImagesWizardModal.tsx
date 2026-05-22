@@ -28,6 +28,7 @@ type GroupVariantsDraft = {
   price: string;
   priceBySize: Record<string, string>;
   compareAt: string;
+  stockMode: "default" | "manual";
   /** bulk default stock (used to prefill per-size inputs) */
   stock: string;
   /** per-size stock overrides (strings for inputs) */
@@ -75,6 +76,7 @@ function defaultVariantsDraft(): GroupVariantsDraft {
     price: "0",
     priceBySize: {},
     compareAt: "",
+    stockMode: "default",
     stock: "0",
     stockBySize: {},
     lowStockThreshold: "0",
@@ -192,9 +194,12 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                     compareAt: g.variants.compareAt ? Number(g.variants.compareAt) : null,
                     // backward compatible: still send bulk stock, but also send per-size
                     stock: Number(g.variants.stock || 0),
-                    stockBySize: Object.fromEntries(
-                      sizeIds.map((id) => [id, Number((g.variants.stockBySize?.[id] ?? "0") || 0)])
-                    ),
+                    stockBySize:
+                      g.variants.stockMode === "manual"
+                        ? Object.fromEntries(
+                            sizeIds.map((id) => [id, Number((g.variants.stockBySize?.[id] ?? "0") || 0)])
+                          )
+                        : undefined,
                     lowStockThreshold: Number(g.variants.lowStockThreshold || 0),
                     weightGrams: g.variants.weightGrams ? Number(g.variants.weightGrams) : null,
                   }
@@ -710,6 +715,27 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                           سعر حسب المقاس
                         </button>
                       </div>
+                      <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-white/10 bg-white/5 p-1 text-xs">
+                        <button
+                          type="button"
+                          className={`rounded-md px-2 py-1.5 ${g.variants.stockMode === "default" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                          onClick={() => updateGroupVariants(g.id, { stockMode: "default" })}
+                          disabled={busy}
+                        >
+                          مخزون واحد
+                        </button>
+                        <button
+                          type="button"
+                          className={`rounded-md px-2 py-1.5 ${g.variants.stockMode === "manual" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                          onClick={() => {
+                            updateGroupVariants(g.id, { stockMode: "manual" });
+                            fillAllSelectedStocks(g.id);
+                          }}
+                          disabled={busy}
+                        >
+                          مخزون حسب المقاس
+                        </button>
+                      </div>
                     </div>
 
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -726,7 +752,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                         placeholder=""
                       />
                       <Input
-                        label="Default stock (prefill)"
+                        label={g.variants.stockMode === "default" ? "Default stock" : "Stock prefill"}
                         value={g.variants.stock}
                         onChange={(e) => updateGroupVariants(g.id, { stock: e.target.value })}
                         placeholder="0"
@@ -775,7 +801,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                       </div>
                     ) : null}
 
-                    {g.variants.sizeIds.length ? (
+                    {g.variants.stockMode === "manual" && g.variants.sizeIds.length ? (
                       <div className="mt-3 rounded-xl border border-white/10 bg-black/10 p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="text-xs font-semibold">Stock per size</div>

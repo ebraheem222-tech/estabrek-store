@@ -887,7 +887,9 @@ export default function ProductEditorPage() {
   const [bulkPriceMode, setBulkPriceMode] = useState<"default" | "manual">("default");
   const [bulkPrice, setBulkPrice] = useState<string>("0");
   const [bulkPriceBySize, setBulkPriceBySize] = useState<Record<string, string>>({});
+  const [bulkStockMode, setBulkStockMode] = useState<"default" | "manual">("default");
   const [bulkStock, setBulkStock] = useState<string>("0");
+  const [bulkStockBySize, setBulkStockBySize] = useState<Record<string, string>>({});
   const [bulkThreshold, setBulkThreshold] = useState<string>("0");
   const [bulkWeight, setBulkWeight] = useState<string>("");
   const [bulkSuggestionNote, setBulkSuggestionNote] = useState<string>("");
@@ -926,7 +928,13 @@ export default function ProductEditorPage() {
         ? Object.fromEntries(suggested.availableIds.map((id) => [id, suggested.price]))
         : {}
     );
+    setBulkStockMode("default");
     setBulkStock(suggested.stock);
+    setBulkStockBySize(
+      opts?.preselectAll
+        ? Object.fromEntries(suggested.availableIds.map((id) => [id, suggested.stock]))
+        : {}
+    );
     setBulkThreshold(suggested.threshold);
     setBulkWeight(suggested.weight);
     setBulkSuggestionNote(
@@ -957,10 +965,16 @@ export default function ProductEditorPage() {
           delete next[sizeId];
           return next;
         });
+        setBulkStockBySize((stocks) => {
+          const next = { ...stocks };
+          delete next[sizeId];
+          return next;
+        });
         return prev.filter((x) => x !== sizeId);
       }
 
       setBulkPriceBySize((prices) => ({ ...prices, [sizeId]: prices[sizeId] ?? bulkPrice }));
+      setBulkStockBySize((stocks) => ({ ...stocks, [sizeId]: stocks[sizeId] ?? bulkStock }));
       return [...prev, sizeId];
     });
   };
@@ -972,21 +986,39 @@ export default function ProductEditorPage() {
       for (const id of availableIds) next[id] = next[id] ?? bulkPrice;
       return next;
     });
+    setBulkStockBySize((prev) => {
+      const next = { ...prev };
+      for (const id of availableIds) next[id] = next[id] ?? bulkStock;
+      return next;
+    });
   };
 
   const clearBulkSizes = () => {
     setBulkSelectedSizeIds([]);
     setBulkPriceBySize({});
+    setBulkStockBySize({});
   };
 
   const updateBulkPriceForSize = (sizeId: string, value: string) => {
     setBulkPriceBySize((prev) => ({ ...prev, [sizeId]: value }));
   };
 
+  const updateBulkStockForSize = (sizeId: string, value: string) => {
+    setBulkStockBySize((prev) => ({ ...prev, [sizeId]: value }));
+  };
+
   const fillSelectedBulkPrices = () => {
     setBulkPriceBySize((prev) => {
       const next = { ...prev };
       for (const id of bulkSelectedSizeIds) next[id] = bulkPrice;
+      return next;
+    });
+  };
+
+  const fillSelectedBulkStocks = () => {
+    setBulkStockBySize((prev) => {
+      const next = { ...prev };
+      for (const id of bulkSelectedSizeIds) next[id] = bulkStock;
       return next;
     });
   };
@@ -1016,6 +1048,14 @@ export default function ProductEditorPage() {
       }
     }
     const stockN = Math.max(0, parseInt(bulkStock || "0", 10) || 0);
+    const stockBySize = new Map<string, number>();
+    if (bulkStockMode === "manual") {
+      for (const sizeId of pickIds) {
+        const raw = bulkStockBySize[sizeId];
+        const stock = Math.max(0, parseInt(raw || "0", 10) || 0);
+        stockBySize.set(sizeId, stock);
+      }
+    }
     const thresholdN = Math.max(0, parseInt(bulkThreshold || "0", 10) || 0);
     const weightN = bulkWeight.trim() ? Math.max(0, parseInt(bulkWeight, 10) || 0) : null;
 
@@ -1036,7 +1076,7 @@ export default function ProductEditorPage() {
         sku,
         price: bulkPriceMode === "manual" ? priceBySize.get(sizeId) ?? defaultPriceN : defaultPriceN,
         compareAt: null,
-        stock: stockN,
+        stock: bulkStockMode === "manual" ? stockBySize.get(sizeId) ?? stockN : stockN,
         lowStockThreshold: thresholdN,
         weightGrams: weightN,
       };
@@ -2013,7 +2053,33 @@ export default function ProductEditorPage() {
                   value={bulkPrice}
                   onChange={(e) => setBulkPrice(e.target.value)}
                 />
-                <Input label="المخزون (لكل المقاسات)" value={bulkStock} onChange={(e) => setBulkStock(e.target.value)} />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium">نوع المخزون</label>
+                  <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
+                    <button
+                      type="button"
+                      className={`rounded-lg px-3 py-2 ${bulkStockMode === "default" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                      onClick={() => setBulkStockMode("default")}
+                    >
+                      مخزون لكل المقاسات
+                    </button>
+                    <button
+                      type="button"
+                      className={`rounded-lg px-3 py-2 ${bulkStockMode === "manual" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                      onClick={() => {
+                        setBulkStockMode("manual");
+                        fillSelectedBulkStocks();
+                      }}
+                    >
+                      مخزون لكل مقاس
+                    </button>
+                  </div>
+                </div>
+                <Input
+                  label={bulkStockMode === "default" ? "المخزون الافتراضي" : "مخزون التعبئة"}
+                  value={bulkStock}
+                  onChange={(e) => setBulkStock(e.target.value)}
+                />
                 <Input
                   label="حد التنبيه (اختياري)"
                   value={bulkThreshold}
@@ -2099,6 +2165,34 @@ export default function ProductEditorPage() {
                           label={s.name}
                           value={bulkPriceBySize[s.id] ?? bulkPrice}
                           onChange={(e) => updateBulkPriceForSize(s.id, e.target.value)}
+                        />
+                      ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {bulkStockMode === "manual" && bulkSelectedSizeIds.length ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold">المخزون حسب المقاس</div>
+                      <div className="text-xs opacity-70">كل مقاس محدد يحصل على مخزونه الخاص.</div>
+                    </div>
+                    <Button variant="secondary" onClick={fillSelectedBulkStocks}>
+                      تعبئة الكل من المخزون الافتراضي
+                    </Button>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {bulkSelectedSizeIds
+                      .map((id) => sizes.find((s) => s.id === id))
+                      .filter((s): s is Size => Boolean(s))
+                      .map((s) => (
+                        <Input
+                          key={s.id}
+                          label={s.name}
+                          value={bulkStockBySize[s.id] ?? bulkStock}
+                          onChange={(e) => updateBulkStockForSize(s.id, e.target.value)}
                         />
                       ))}
                   </div>

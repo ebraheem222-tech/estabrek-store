@@ -26,6 +26,7 @@ type QuickGroup = {
   images: LocalImage[];
   selectedSizeIds: string[];
   priceMode: "default" | "manual";
+  stockMode: "default" | "manual";
   price: string;
   stock: string;
   priceBySize: Record<string, string>;
@@ -158,6 +159,7 @@ function makeEmptyGroup(title: string, slug: string, index: number, colorHex = "
     images: [],
     selectedSizeIds: [],
     priceMode: "default",
+    stockMode: "default",
     price: "0",
     stock: "0",
     priceBySize: {},
@@ -360,11 +362,22 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
           sizeName: size?.name ?? sizeId,
           sku,
           price: group.priceMode === "manual" ? group.priceBySize[sizeId] ?? group.price : group.price,
-          stock: group.stockBySize[sizeId] ?? group.stock,
+          stock: group.stockMode === "manual" ? group.stockBySize[sizeId] ?? group.stock : group.stock,
         };
       })
     );
   }, [activeSizes, groups, slug, title]);
+
+  const fillSelectedStocksFromDefault = (groupId: string) => {
+    setGroups((prev) =>
+      prev.map((group) => {
+        if (group.localId !== groupId) return group;
+        const stockBySize = { ...group.stockBySize };
+        for (const sizeId of group.selectedSizeIds) stockBySize[sizeId] = group.stock;
+        return { ...group, stockBySize };
+      })
+    );
+  };
 
   const completeness = useMemo(() => {
     const missing: string[] = [];
@@ -837,7 +850,11 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
 
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Input label="Default price" value={selectedGroup.price} onChange={(e) => updateGroup(selectedGroup.localId, { price: (e.target?.value ?? e) as string })} />
-                <Input label="Default stock" value={selectedGroup.stock} onChange={(e) => updateGroup(selectedGroup.localId, { stock: (e.target?.value ?? e) as string })} />
+                <Input
+                  label={selectedGroup.stockMode === "default" ? "Default stock" : "Stock prefill"}
+                  value={selectedGroup.stock}
+                  onChange={(e) => updateGroup(selectedGroup.localId, { stock: (e.target?.value ?? e) as string })}
+                />
               </div>
 
               <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
@@ -854,6 +871,26 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
                   onClick={() => updateGroup(selectedGroup.localId, { priceMode: "manual" })}
                 >
                   سعر لكل مقاس
+                </button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
+                <button
+                  type="button"
+                  className={`rounded-lg px-3 py-2 ${selectedGroup.stockMode === "default" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                  onClick={() => updateGroup(selectedGroup.localId, { stockMode: "default" })}
+                >
+                  مخزون واحد
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-lg px-3 py-2 ${selectedGroup.stockMode === "manual" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
+                  onClick={() => {
+                    updateGroup(selectedGroup.localId, { stockMode: "manual" });
+                    fillSelectedStocksFromDefault(selectedGroup.localId);
+                  }}
+                >
+                  مخزون لكل مقاس
                 </button>
               </div>
 
@@ -881,7 +918,8 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
                             />
                             <Input
                               label="Stock"
-                              value={selectedGroup.stockBySize[size.id] ?? selectedGroup.stock}
+                              value={selectedGroup.stockMode === "manual" ? selectedGroup.stockBySize[size.id] ?? selectedGroup.stock : selectedGroup.stock}
+                              disabled={selectedGroup.stockMode !== "manual"}
                               onChange={(e) =>
                                 updateGroup(selectedGroup.localId, {
                                   stockBySize: { ...selectedGroup.stockBySize, [size.id]: (e.target?.value ?? e) as string },
