@@ -68,6 +68,9 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, r
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    // The cinematic homepage owns its ScrollTriggers. Its changing story text
+    // must not cause the CMS mutation observer to refresh the entire page.
+    if (root.querySelector(".cinematic-home")) return;
     if (!enabled) return;
     if (prefersReducedMotion()) return;
 
