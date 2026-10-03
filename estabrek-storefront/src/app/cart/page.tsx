@@ -1,6 +1,6 @@
 import CartClient from "@/components/CartClient";
 import { getPublicSettings } from "@/lib/api";
-import { renderCmsPageBySlug } from "../[[...slug]]/page";
+import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 
 export const metadata = {
   title: "سلة المشتريات",

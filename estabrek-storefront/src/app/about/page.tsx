@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { getBootstrap, getPublicSettings } from "@/lib/api";
-import { renderCmsPageBySlug } from "../[[...slug]]/page";
+import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 
 // Icons
 const HomeIcon = () => (
