@@ -2,7 +2,7 @@ import { getPublicSettings, listCategories, listProducts } from "@/lib/api";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
-import { renderCmsPageBySlug } from "../[[...slug]]/page";
+import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import SearchBrowseClient from "@/components/SearchBrowseClient";
 
 type SP = Record<string, string | string[] | undefined>;

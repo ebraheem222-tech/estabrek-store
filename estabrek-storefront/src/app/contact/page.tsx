@@ -1,6 +1,6 @@
 import { getPublicSettings } from "@/lib/api";
 import FallbackContact from "@/components/FallbackContact";
-import { renderCmsPageBySlug } from "../[[...slug]]/page";
+import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 
 type SP = Record<string, string | string[] | undefined>;
 

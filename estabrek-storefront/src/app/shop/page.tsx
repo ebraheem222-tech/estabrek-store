@@ -4,7 +4,7 @@ import NormalizeFilters from "@/components/NormalizeFilters";
 import ShopBrowseClient from "@/components/ShopBrowseClient";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
-import { renderCmsPageBySlug } from "../[[...slug]]/page";
+import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import dynamic from "next/dynamic";
 
 const ImageSearchPanel = dynamic(
