@@ -52,6 +52,10 @@ export type HeroSlide = {
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";
 
 export type HeroData = HeroSlide & {
+  roseTitle?: string;
+  roseImageUrl?: string;
+  roseImageAlt?: string;
+  rose3dEnabled?: boolean;
   /** Optional hero theme id (uses hero-themes renderer when set). */
   themeId?: string;
   /** Render hero in 3 columns (left content + center media + right indicators). */
