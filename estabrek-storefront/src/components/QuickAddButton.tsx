@@ -1,6 +1,9 @@
 "use client";
+import { useLanguage } from "./cinematic/Language";
+import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog";
 import { catalogItemKey, catalogItemLabel, formatMoney } from "@/lib/catalog";
 import { getProductByIdClient, getProductBySlugClient } from "@/lib/apiClient";
@@ -10,6 +13,8 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
+import { startThemeCycle, stopThemeCycle } from "@/lib/themePreview";
+import { RoseProductSheet } from "@/components/cinematic/RoseProductSheet";
 
 type Props = {
   productId?: string;
@@ -53,6 +58,7 @@ function isInStock(v: CatalogVariant) {
 }
 
 export function QuickAddButton({ productId, slug, product, className, buttonLabel }: Props) {
+  const ar = useLanguage().language === "ar";
   const settings = useStorefrontSettings();
   const { addItem } = useCart();
   const { fireConfetti } = useAnimationEffects();
@@ -64,6 +70,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
   const [status, setStatus] = useState<string | null>(null);
   const [p, setP] = useState<CatalogProduct | null>(product ?? null);
   const prefetchedRef = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const variantsCount = useMemo(() => (p ? flattenVariants(p).length : 0), [p]);
 
@@ -107,14 +114,14 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
 
     if (auto) {
       if (!isInStock(auto)) {
-        setStatus("غير متوفر حالياً");
+        setStatus(ar ? "غير متوفر حالياً" : "Currently unavailable");
         window.setTimeout(() => setStatus(null), 1600);
         return;
       }
       addItem(auto.id, 1);
       fireConfetti(e?.clientX, e?.clientY);
       toast.cartAdded(full.title);
-      setStatus("انضاف للسلة ✅");
+      setStatus(ar ? "انضاف للسلة ✅" : "Added to your bag ✅");
       window.setTimeout(() => setStatus(null), 1400);
       return;
     }
@@ -133,11 +140,16 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
   }
 
   return (
-    <div className={className}>
+    <div ref={rootRef} className={className}>
       <button
         type="button"
         onClick={(e) => void onQuickAdd(e)}
-        onMouseEnter={async () => {
+        onMouseLeave={(e) => stopThemeCycle(e.currentTarget)}
+        onFocus={(e) => { if (e.currentTarget.matches(":focus-visible")) startThemeCycle(e.currentTarget); }}
+        onBlur={(e) => stopThemeCycle(e.currentTarget)}
+        onMouseEnter={async (e) => {
+          // On the rose storefront, hovering "add to bag" keeps trying new colours on the whole site, one a second.
+          startThemeCycle(e.currentTarget);
           if (!settings.prefetchLinks) return;
           if (prefetchedRef.current) return;
           const current = p ?? product ?? null;
@@ -157,14 +169,22 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
           "border border-[color:var(--accent-2)]/50"
         }
       >
-        {buttonLabel ?? "أضف للسلة"}
+        {buttonLabel ?? (ar ? "أضف للسلة" : "Add to bag")}
       </button>
 
       {status ? <div className="mt-2 text-xs text-emerald-700">{status}</div> : null}
       {err ? <div className="mt-2 text-xs text-red-700">{err}</div> : null}
 
-      {open ? (
-        <QuickAddDrawer product={p} loading={loading} onClose={close} closing={closing} />
+      {open && p && rootRef.current?.closest(".cinematic-shell") ? (
+        // Rose storefront: the quick-add sheet with the product photo, in the campaign design.
+        <RoseProductSheet key={p.id} product={p} mode="quickadd" onClose={() => { setOpen(false); setClosing(false); }} />
+      ) : open ? (
+        // Portal out of the card: an animated (transformed) card would otherwise
+        // become the fixed drawer's containing block and squeeze it into the tile.
+        createPortal(
+          <QuickAddDrawer product={p} loading={loading} onClose={close} closing={closing} />,
+          rootRef.current?.closest<HTMLElement>(".cinematic-shell, [data-theme]") ?? document.body,
+        )
       ) : null}
     </div>
   );
@@ -181,6 +201,7 @@ function QuickAddDrawer({
   onClose: () => void;
   closing: boolean;
 }) {
+  const ar = useLanguage().language === "ar";
   const { addItem } = useCart();
   const { fireConfetti } = useAnimationEffects();
   const toast = useToastShortcuts();
@@ -231,6 +252,7 @@ function QuickAddDrawer({
   const selectedPrice = selectedVariant ? Number(selectedVariant.price) : null;
 
   function pickColor(nextColorKey: string) {
+    selectStorefrontColor(colorSwatchHex(nextColorKey));
     const it = byColor.get(nextColorKey);
     const firstVar = it?.variants?.[0];
     setSel({
@@ -252,7 +274,7 @@ function QuickAddDrawer({
       fireConfetti();
       toast.cartAdded(product.title);
     }
-    setStatus("تمت الإضافة ✅");
+    setStatus(ar ? "تمت الإضافة ✅" : "Added to your bag ✅");
     window.setTimeout(() => {
       setStatus(null);
       onClose();
@@ -283,7 +305,7 @@ const colorHasAvailable = (key: string): boolean => {
   return vars.some((v) => (v.stock ?? 0) > 0);
 };
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="quick-add-layer fixed inset-0 z-50">
       <div
         className={
           "absolute inset-0 bg-black/60 transition-opacity duration-200 " +
@@ -307,9 +329,9 @@ const colorHasAvailable = (key: string): boolean => {
       >
         <div className="flex items-start justify-between gap-3 border-b border-[color:var(--border)] p-5">
           <div>
-            <div className="text-base font-semibold">أضف للسلة</div>
+            <div className="text-base font-semibold">{ar ? "أضف للسلة" : "Add to bag"}</div>
             <div className="mt-1 text-xs text-[color:var(--muted)]">
-              اختر اللون والمقاس
+              {ar ? "اختر اللون والمقاس" : "Choose a colour and size"}
             </div>
           </div>
           <button
@@ -328,11 +350,11 @@ const colorHasAvailable = (key: string): boolean => {
             </div>
           ) : !product ? (
             <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
-              ما قدرنا نجيب بيانات المنتج.
+              {ar ? "ما قدرنا نجيب بيانات المنتج." : "Product details could not load."}
             </div>
           ) : variants.length === 0 ? (
             <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
-              هذا المنتج لا يحتوي خيارات (Variants) بعد.
+              {ar ? "هذا المنتج لا يحتوي خيارات (Variants) بعد." : "There are no options for this product yet."}
             </div>
           ) : (
             <>
@@ -346,7 +368,7 @@ const colorHasAvailable = (key: string): boolean => {
               {/* Colors */}
               {colorKeys.length > 0 ? (
                 <div className="mt-4">
-                  <div className="text-sm font-semibold">الألوان</div>
+                  <div className="text-sm font-semibold">{ar ? "الألوان" : "Colours"}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {colorKeys.map((k, idx) => {
                       const active = k === sel.colorKey;
@@ -387,7 +409,7 @@ const colorHasAvailable = (key: string): boolean => {
               {/* Sizes */}
               {sizeKeys.length > 0 ? (
                 <div className="mt-4">
-                  <div className="text-sm font-semibold">المقاسات</div>
+                  <div className="text-sm font-semibold">{ar ? "المقاسات" : "Sizes"}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {sizeKeys.map((k) => {
                       const active = k === sel.sizeKey;
@@ -408,7 +430,7 @@ const colorHasAvailable = (key: string): boolean => {
                               : "border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text)] hover:brightness-95")
                           }
                         >
-                          {k === "default" ? "مقاس واحد" : k}
+                          {k === "default" ? (ar ? "مقاس واحد" : "One size") : k}
                         </button>
                       );
                     })}
@@ -439,12 +461,12 @@ const colorHasAvailable = (key: string): boolean => {
                       : "bg-[color:var(--surface-2)] text-[color:var(--text)] opacity-50")
                   }
                 >
-                  أضف للسلة
+                  {ar ? "أضف للسلة" : "Add to bag"}
                 </button>
               </div>
 
               {status ? <div className="mt-3 text-sm text-emerald-300">{status}</div> : null}
-              {!canAdd ? <div className="mt-2 text-xs text-red-300">هذا الخيار غير متوفر حالياً.</div> : null}
+              {!canAdd ? <div className="mt-2 text-xs text-red-300">{ar ? "هذا الخيار غير متوفر حالياً." : "This option is currently unavailable."}</div> : null}
             </>
           )}
         </div>

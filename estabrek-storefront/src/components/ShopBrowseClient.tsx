@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "./cinematic/Language";
 
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
@@ -18,17 +19,35 @@ type Props = {
   initialFilters: CatalogFilters;
   categories: { id: string; name: string; parentId?: string | null }[];
   basePath?: string;
+  appearance?: "rose" | "default";
+  /** Category pages: the page's own category, applied when the URL names none. */
+  defaultCategoryId?: string;
+  /** Category pages: the pills shown above the grid (the category's children). */
+  navCategories?: { id: string; name: string; parentId?: string | null }[];
 };
 
-export default function ShopBrowseClient({ initial, initialFilters, categories, basePath = "/shop" }: Props) {
-  const [filters, setFilters] = useState<CatalogFilters>(() => ({
+export default function ShopBrowseClient({ initial, initialFilters, categories, basePath = "/shop", appearance = "default", defaultCategoryId, navCategories }: Props) {
+  const ar = useLanguage().language === "ar";
+  const [filters, setFiltersState] = useState<CatalogFilters>(() => ({
     ...initialFilters,
+    categoryId: initialFilters.categoryId ?? defaultCategoryId,
     colors: initialFilters.colors ?? [],
     sizeIds: initialFilters.sizeIds ?? [],
     lm: initialFilters.lm ?? 1,
   }));
 
   const [data, setData] = useState<any>(initial);
+  // The page's own category is implied by the path, so it stays out of the URL and the chips.
+  const setFilters = React.useCallback((next: CatalogFilters | ((prev: CatalogFilters) => CatalogFilters)) => {
+    setFiltersState((prev) => {
+      const value = typeof next === "function" ? next(prev) : next;
+      return { ...value, categoryId: value.categoryId ?? defaultCategoryId };
+    });
+  }, [defaultCategoryId]);
+  const urlFilters = useMemo<CatalogFilters>(
+    () => (defaultCategoryId && filters.categoryId === defaultCategoryId ? { ...filters, categoryId: undefined } : filters),
+    [filters, defaultCategoryId],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -41,6 +60,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
       const next = normalizeFiltersFromSearchParams(obj);
       const normalized: CatalogFilters = {
         ...next,
+        categoryId: next.categoryId ?? defaultCategoryId,
         colors: next.colors ?? [],
         sizeIds: next.sizeIds ?? [],
         lm: next.lm ?? 1,
@@ -70,36 +90,45 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
   const selectedCategoryId = filters.categoryId;
 
   const handleCategorySelect = (id?: string) => {
-    setFilters((prev) => ({
-      ...prev,
+    const next = {
+      ...filters,
       categoryId: id,
       page: undefined,
-      colors: prev.colors ?? [],
-      sizeIds: prev.sizeIds ?? [],
-    }));
+      colors: filters.colors ?? [],
+      sizeIds: filters.sizeIds ?? [],
+    };
+    setFilters(next);
+    if (appearance === "rose") {
+      const inUrl = defaultCategoryId && next.categoryId === defaultCategoryId ? { ...next, categoryId: undefined } : next;
+      const qs = buildCanonicalQuery(inUrl);
+      window.history.pushState({}, "", qs ? `${basePath}?${qs}` : basePath);
+    }
   };
 
   return (
-    <div className="shop-browse-candy-layout lg:grid lg:grid-cols-[300px,1fr] lg:gap-8">
+    <div className={`shop-browse-candy-layout lg:grid lg:grid-cols-[300px,1fr] lg:gap-8 ${appearance === "rose" ? "rose-shop-browse" : ""}`}>
+      {appearance === "rose" && (navCategories ? navCategories.length > 0 : true) && <nav className="rose-shop-categories" aria-label={ar ? "أقسام المتجر" : "Shop categories"}><button onClick={() => handleCategorySelect(defaultCategoryId)} aria-pressed={!selectedCategoryId || selectedCategoryId === defaultCategoryId}>{ar ? "كل المجموعة" : "All pieces"}</button>{(navCategories ?? categories.filter(c => !c.parentId)).map(c => <button key={c.id} onClick={() => handleCategorySelect(c.id)} aria-pressed={selectedCategoryId === c.id}>{c.name}</button>)}</nav>}
       {/* Desktop Sidebar */}
       <aside className="hidden lg:block filters-sidebar shop-right-filters-candy">
         <div className="sticky top-24 space-y-6 right-filter-stack-candy">
-          <div className="sidebar-filters-card sidebar-filters-candy-card sidebar-filters-candy-card--category">
+          {appearance !== "rose" && <div className="sidebar-filters-card sidebar-filters-candy-card sidebar-filters-candy-card--category">
             <CategorySidebar
               categories={categories ?? []}
               selectedId={selectedCategoryId}
               onSelect={handleCategorySelect}
             />
-          </div>
+          </div>}
           <div className="sidebar-filters-card sidebar-filters-candy-card sidebar-filters-candy-card--filters">
             <ProductFiltersBar
+              appearance={appearance}
               colors={facets?.colors ?? []}
               sizes={facets?.sizes ?? []}
               categories={categories ?? []}
-              filters={filters}
+              filters={urlFilters}
               onFiltersChange={setFilters}
               hideCategory
               mobileCategoryTree
+              categoryTree={appearance === "rose" && categories.some(category => category.parentId)}
               mobileAutoApply
             />
           </div>
@@ -111,10 +140,11 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
         {/* Mobile Filters */}
         <div className="lg:hidden">
           <ProductFiltersBar
+            appearance={appearance}
             colors={facets?.colors ?? []}
             sizes={facets?.sizes ?? []}
             categories={categories ?? []}
-            filters={filters}
+            filters={urlFilters}
             onFiltersChange={setFilters}
             hideCategory
             mobileCategoryTree
@@ -122,15 +152,17 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
           />
         </div>
 
-        <ShopToolbar total={total} filters={filters} onFiltersChange={setFilters} hideModeToggle />
+        <ShopToolbar total={total} filters={urlFilters} onFiltersChange={setFilters} hideModeToggle appearance={appearance} />
 
-        <FiltersChips categories={categories ?? []} filters={filters} onFiltersChange={setFilters} />
+        <FiltersChips categories={categories ?? []} filters={urlFilters} onFiltersChange={setFilters} />
 
         <ShopResultsClient
           initial={initial}
           filters={filters}
           basePath={basePath}
           onData={setData}
+          appearance={appearance}
+          showHeader={appearance !== "rose"}
         />
       </section>
 

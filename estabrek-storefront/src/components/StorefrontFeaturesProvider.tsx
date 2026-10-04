@@ -8,6 +8,7 @@ import { SeasonalThemeProvider, SeasonalEffects } from "@/components/SeasonalThe
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
+import { RoseRecentlyViewed } from "@/components/cinematic/RoseRecentlyViewed";
 import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import { AccessibilityTools } from "@/components/AccessibilityTools";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
@@ -28,11 +29,14 @@ export function useStorefrontSettings() {
 interface StorefrontFeaturesProviderProps {
   children: React.ReactNode;
   initialSettings?: Partial<StorefrontSettings>;
+  /** Rose storefront: keep one floating action (WhatsApp) and no scroll line. */
+  cinematic?: boolean;
 }
 
 export function StorefrontFeaturesProvider({ 
   children, 
-  initialSettings 
+  initialSettings,
+  cinematic = false,
 }: StorefrontFeaturesProviderProps) {
   const parseMaybeJson = (value: unknown) => {
     if (typeof value !== "string") return value;
@@ -149,15 +153,15 @@ export function StorefrontFeaturesProvider({
               offlineMessage={settings.liveChatOfflineMessage}
             />
           )}
-          {settings.scrollProgressEnabled && <ScrollProgressBar />}
+          {settings.scrollProgressEnabled && !cinematic && <ScrollProgressBar />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
-          <ScrollToTop />
+          {!cinematic && <ScrollToTop />}
           {settings.accessibilityToolsEnabled !== false && <AccessibilityTools />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
           {settings.chatbotEnabled && (
             <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} />
           )}
-          {settings.recentPurchasesPopup && <RecentActivityPopup />}
+          {settings.recentPurchasesPopup && (cinematic ? <RoseRecentlyViewed /> : <RecentActivityPopup />)}
           
           {/* WhatsApp Button */}
           {settings.whatsappEnabled && settings.whatsappNumber && (

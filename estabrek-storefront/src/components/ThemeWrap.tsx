@@ -97,11 +97,14 @@ export function ThemeWrap({
   theme,
   cursorThemeId,
   storefrontSettings,
+  disableGalleryBackdrop = false,
   children,
 }: {
   theme?: ThemeCfg | null;
   cursorThemeId?: string | null;
   storefrontSettings?: Partial<StorefrontSettings>;
+  /** The rose storefront has its own art direction; skip the legacy gallery backdrop. */
+  disableGalleryBackdrop?: boolean;
   children: React.ReactNode;
 }) {
   const t = theme ?? {};
@@ -214,7 +217,7 @@ export function ThemeWrap({
     <div
       data-theme={mode}
       data-glass-effects={glassEnabled ? "1" : "0"}
-      data-gallery-theme-active={websiteTheme && websiteTheme.id.startsWith("theme-gallery-") ? "1" : "0"}
+      data-gallery-theme-active={!disableGalleryBackdrop && websiteTheme && websiteTheme.id.startsWith("theme-gallery-") ? "1" : "0"}
       className={
         "relative isolate min-h-screen w-full bg-[var(--bg)] text-[var(--text)] overflow-x-hidden" +
         (surface === "classic" || !glassEnabled ? "" : " [--glass-bg:rgba(0,0,0,0.45)]")
@@ -244,7 +247,7 @@ export function ThemeWrap({
         } as React.CSSProperties
       }
     >
-      <GalleryThemeMotionBackdrop websiteThemeId={websiteTheme?.id} />
+      {!disableGalleryBackdrop && <GalleryThemeMotionBackdrop websiteThemeId={websiteTheme?.id} />}
       <div className="relative z-10">{children}</div>
     </div>
   );
