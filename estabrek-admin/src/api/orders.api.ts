@@ -21,9 +21,56 @@ export type Paginated<T> = {
   data: T[];
 };
 
-export async function listOrders(params?: { status?: OrderStatus; page?: number; pageSize?: number }) {
-  const res = await api.get(ENDPOINTS.admin.orders.base, { params });
+export type OrdersFilter = {
+  status?: OrderStatus;
+  page?: number;
+  pageSize?: number;
+  /** Name, phone (any format) or order number. */
+  q?: string;
+  from?: string;
+  to?: string;
+  source?: string;
+  city?: string;
+  payment?: "paid" | "unpaid";
+};
+
+export async function listOrders(params?: OrdersFilter) {
+  const clean = Object.fromEntries(Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== ""));
+  const res = await api.get(ENDPOINTS.admin.orders.base, { params: clean });
   return res.data as Paginated<any>;
+}
+
+export type OrdersSummary = {
+  counts: Partial<Record<OrderStatus, number>>;
+  latestNew: Array<{ id: string; customerName: string; total?: string | number | null; city?: string | null; source?: string | null; createdAt: string }>;
+};
+
+/** Status counts + newest new orders. Falls back to the list endpoint on servers without /summary. */
+export async function getOrdersSummary(): Promise<OrdersSummary> {
+  try {
+    const res = await api.get(`${ENDPOINTS.admin.orders.base}/summary`);
+    if (res.data && typeof res.data === "object" && "counts" in res.data) return res.data as OrdersSummary;
+  } catch (e: any) {
+    if (e?.response?.status && e.response.status !== 404 && e.response.status !== 400) throw e;
+  }
+  const res = await listOrders({ status: "NEW", pageSize: 10 });
+  return { counts: { NEW: res.total }, latestNew: res.data };
+}
+
+export type OrderDetailsBody = {
+  customerName?: string;
+  phone?: string;
+  whatsapp?: string | null;
+  city?: string | null;
+  address?: string | null;
+  paymentStatus?: "PAID" | "UNPAID" | null;
+  paymentProvider?: string | null;
+  note?: string | null;
+};
+
+export async function updateOrderDetails(id: string, body: OrderDetailsBody) {
+  const res = await api.patch(`${ENDPOINTS.admin.orders.byId(id)}/details`, body);
+  return res.data as any;
 }
 
 export async function getOrder(id: string) {
@@ -31,8 +78,8 @@ export async function getOrder(id: string) {
   return res.data as any;
 }
 
-export async function updateOrderStatus(id: string, toStatus: OrderStatus) {
-  const res = await api.patch(ENDPOINTS.admin.orders.status(id), { toStatus });
+export async function updateOrderStatus(id: string, toStatus: OrderStatus, note?: string | null) {
+  const res = await api.patch(ENDPOINTS.admin.orders.status(id), { toStatus, note: note?.trim() ? note.trim() : undefined });
   return res.data as any;
 }
 

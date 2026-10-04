@@ -1,4 +1,5 @@
 import { api } from "./http";
+import { compressImage } from "../lib/imageCompress";
 
 export type WizardAsset = {
   id: string;
@@ -30,7 +31,9 @@ export type AutoGroupResponse = { groups: AutoGroup[] };
 
 export async function batchUploadProductImages(productId: string, files: File[]) {
   const fd = new FormData();
-  for (const f of files) fd.append("files", f);
+  // Phone photos are often 4–8 MB: shrink them first (same as the other upload paths).
+  const small = await Promise.all(files.map((f) => compressImage(f, { maxW: 1800, maxH: 1800, quality: 0.86 }).catch(() => f)));
+  for (const f of small) fd.append("files", f);
   const { data } = await api.post<BatchUploadResponse>(`/admin/catalog/products/${productId}/images/batch`, fd, {
     headers: { "Content-Type": "multipart/form-data" },
   });

@@ -30,6 +30,8 @@ import {
   type ExternalThemeOption,
 } from "../../cms/theme-packs/externalThemePacks";
 import { ResponsiveTokensPanel } from "./ResponsiveTokensPanel";
+import { RoseHeroSettings } from "./RoseHeroSettings";
+import { RosePresentationSettings } from "./RosePresentationSettings";
 import {
   DndContext,
   PointerSensor,
@@ -391,6 +393,12 @@ export type HeroSlide = {
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";
 
 export type HeroData = HeroSlide & {
+  roseTitle?: string;
+  roseImageUrl?: string;
+  roseImageAlt?: string;
+  rose3dEnabled?: boolean;
+  roseVideoEnabled?: boolean;
+  roseStoryWords?: string[];
   /** Theme id to render from hero-themes */
   themeId?: string;
   /** Render hero in 3 columns (left content + center media + right indicators). */
@@ -1891,6 +1899,7 @@ function HeroEditor({ value, onChange, errors }: { value: HeroData; onChange: (v
 
   return (
     <div className="space-y-4">
+      <RoseHeroSettings value={value} onChange={onChange} />
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
         <DividerTitle title="Hero Theme" />
         {!splitMode ? (
@@ -5311,6 +5320,7 @@ export function SectionEditor({
   return (
     <div className="space-y-4">
       {content}
+      <RosePresentationSettings value={baseValue} onChange={onChange} />
       <SectionLayoutEditor value={baseValue} onChange={onChange} />
       <ResponsiveTokensPanel
         tokens={sectionTokens as any}
