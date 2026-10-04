@@ -3523,3 +3523,29 @@ html[data-cinematic-storefront="true"]:has(.rose-viewer) :is(.whatsapp-floating-
 }
 html[data-cinematic-storefront="true"]:has(.rose-sheet-layer) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root) { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .rose-sheet-layer, .rose-sheet-layer.closing { animation: none; } }
+
+/* ---------- "You viewed" reminder: a small pill beside WhatsApp, shown briefly ---------- */
+html[data-cinematic-storefront="true"] .recent-activity-popup.rose-recent {
+  position: fixed; z-index: 45; left: 86px !important; right: auto !important; bottom: 22px !important; top: auto !important;
+  width: auto; max-width: min(300px, calc(100vw - 160px)); height: 52px; padding: 0 6px 0 0; border-radius: 999px;
+  display: flex; align-items: center; gap: 2px;
+  background: color-mix(in srgb, var(--selection-surface, #fff8f4) 92%, transparent); color: var(--selection-ink, #4d2039);
+  border: 1px solid var(--selection-line, #efdde5); box-shadow: 0 14px 34px -18px rgba(60, 20, 40, .45);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+[dir="rtl"] .recent-activity-popup.rose-recent, html[dir="rtl"] .recent-activity-popup.rose-recent { padding: 0 0 0 6px; }
+.rose-recent-link { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 5px 10px 5px 5px; text-decoration: none; color: inherit; border-radius: 999px; }
+.rose-recent-thumb { flex: none; width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: var(--frame-bg, #f4ebe3); }
+.rose-recent-text { display: grid; min-width: 0; line-height: 1.35; }
+.rose-recent-text small { font-size: 10.5px; color: var(--selection-muted, #8b6d7b); white-space: nowrap; }
+.rose-recent-text b { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rose-recent-link:hover b { color: var(--selection-accent, #7d2448); }
+.rose-recent-close { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; line-height: 1; color: var(--selection-muted, #8b6d7b); background: transparent; transition: background .2s ease, color .2s ease; }
+.rose-recent-close:hover { background: color-mix(in srgb, var(--selection-accent, #7d2448) 12%, transparent); color: var(--selection-accent, #7d2448); }
+@media (max-width: 760px) {
+  html[data-cinematic-storefront="true"] .recent-activity-popup.rose-recent { left: 70px !important; bottom: 14px !important; height: 46px; max-width: calc(100vw - 130px); }
+  .rose-recent-thumb { width: 34px; height: 34px; }
+  .rose-recent-text b { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .recent-activity-popup.rose-recent { transition: none; } }
+html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, .rose-viewer, .size-guide-dialog[open]) .recent-activity-popup.rose-recent { visibility: hidden !important; }
