@@ -114,6 +114,8 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, r
             }
 
             const config: AnimationConfig = { preset: normalized };
+            // Inside the rose storefront, CMS motion stays short and plays once.
+            const roseShell = root.classList.contains("rose-native-sections");
 
             const duration = toTimeSeconds(el.getAttribute("data-motion-duration"));
             if (duration !== undefined) config.duration = duration;
@@ -139,11 +141,21 @@ export function useGsapMotion(rootRef: RefObject<HTMLElement>, enabled = true, r
             const scrub = toBool(el.getAttribute("data-motion-scrub"));
             if (scrub !== undefined) config.scrub = scrub;
 
+            if (roseShell) {
+              config.duration = Math.min(config.duration ?? 0.4, 0.45);
+              config.delay = Math.min(config.delay ?? 0, 0.1);
+              config.once = true;
+              config.scrub = false;
+              config.threshold = 0;
+            }
+
             createScrollAnimation(el, config, gsap, ScrollTrigger);
           });
         }, root);
 
-        ScrollTrigger?.refresh?.();
+        // Defer layout refresh until scrolling settles; an immediate refresh
+        // temporarily scrolls to zero and can cancel native smooth navigation.
+        ScrollTrigger?.refresh?.(true);
       };
 
       const scheduleApply = () => {
