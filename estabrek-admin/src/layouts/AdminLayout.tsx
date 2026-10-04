@@ -1,171 +1,30 @@
 // src/layouts/AdminLayout.tsx
-import React, { Suspense, useEffect, useState, createContext, useContext } from "react";
+import React, { Suspense, useCallback, useEffect, useState, createContext, useContext } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { NewOrderAlerts, OrdersBell } from "../features/orders/NewOrderAlerts";
+import { useNewOrdersCount } from "../features/orders/useNewOrdersCount";
 import { useSettings } from "../hooks/useSettings";
 import { cn } from "../components/ui/cn";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Spinner } from "../components/ui/Spinner";
 import { applyAdminTheme } from "../theme/adminTheme";
 import { applyCursorTheme } from "../theme/cursorTheme";
-import { applyButtonTheme } from "../theme/buttonTheme";
-import type { AdminPermission } from "../lib/authz";
+import { applyButtonTheme, clearButtonTheme } from "../theme/buttonTheme";
+import { applySkin, useSkin } from "../theme/skin";
+import { Icons, NAV_GROUPS, type NavItem } from "./adminNav";
+import { CommandPalette } from "./shell/CommandPalette";
+import { MobileTabBar } from "./shell/MobileTabBar";
+import { SkinPicker, SkinToggleButton } from "./shell/SkinSwitch";
 
-// Icons as inline SVGs for modern look
-const Icons = {
-  dashboard: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-    </svg>
-  ),
-  orders: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-    </svg>
-  ),
-  outbox: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-    </svg>
-  ),
-  coupon: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 14.25l6-6m-6 0h.01M15 14.25h.01M3.75 7.5h16.5A2.25 2.25 0 0122.5 9.75v4.5A2.25 2.25 0 0120.25 16.5H3.75A2.25 2.25 0 011.5 14.25v-4.5A2.25 2.25 0 013.75 7.5z" />
-    </svg>
-  ),
-  categories: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
-    </svg>
-  ),
-  products: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-    </svg>
-  ),
-  sizes: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  ),
-  inventory: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 6v6m0 6h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-  ),
-  settings: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
-    </svg>
-  ),
-  nav: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-    </svg>
-  ),
-  pages: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-    </svg>
-  ),
-  reviews: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.75.75 0 011.04 0l2.39 2.32a.75.75 0 00.424.201l3.307.48a.75.75 0 01.415 1.279l-2.39 2.33a.75.75 0 00-.216.664l.564 3.296a.75.75 0 01-1.088.79l-2.96-1.556a.75.75 0 00-.698 0l-2.96 1.556a.75.75 0 01-1.088-.79l.564-3.296a.75.75 0 00-.216-.664l-2.39-2.33a.75.75 0 01.415-1.279l3.307-.48a.75.75 0 00.424-.201l2.39-2.32z" />
-    </svg>
-  ),
-  media: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25l2.47-2.47a1.5 1.5 0 012.12 0l.66.66 1.72-1.72a1.5 1.5 0 012.12 0l1.91 1.91M8.25 8.25h.008v.008H8.25V8.25z" />
-    </svg>
-  ),
-  chatbot: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M2.25 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25-4.03 8.25-9 8.25c-1.446 0-2.812-.28-4.03-.78L3 20.25l1.053-3.158A7.83 7.83 0 012.25 12z"
-      />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h9M7.5 13.5h5.25" />
-    </svg>
-  ),
-  profile: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-    </svg>
-  ),
-  email: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-    </svg>
-  ),
-  security: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 1.5l7.5 4.5v6c0 5.25-3.188 9.75-7.5 10.5C7.688 21.75 4.5 17.25 4.5 12V6L12 1.5z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
-    </svg>
-  ),
-  logout: (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-    </svg>
-  ),
-  chevronLeft: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-    </svg>
-  ),
-};
+// Counts shown next to sidebar items (e.g. new orders), keyed by link.
+const NavBadgeContext = createContext<Record<string, number>>({});
 
-type NavItem = {
-  to: string;
-  label: string;
-  icon: React.ReactNode;
-  requirePermissions?: AdminPermission[];
-};
-
-const NAV_MAIN: NavItem[] = [
-  { to: "/admin/dashboard", label: "لوحة التحكم", icon: Icons.dashboard, requirePermissions: ["dashboard:read"] },
-  { to: "/admin/orders", label: "الطلبات", icon: Icons.orders, requirePermissions: ["orders:read"] },
-  { to: "/admin/outbox", label: "الرسائل", icon: Icons.outbox, requirePermissions: ["outbox:read"] },
-];
-
-const NAV_CATALOG: NavItem[] = [
-  { to: "/admin/catalog/categories", label: "التصنيفات", icon: Icons.categories, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/products", label: "المنتجات", icon: Icons.products, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/sizes", label: "المقاسات", icon: Icons.sizes, requirePermissions: ["catalog:read"] },
-];
-
-const NAV_INVENTORY: NavItem[] = [
-  { to: "/admin/inventory/low-stock", label: "تنبيهات المخزون", icon: Icons.inventory, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/adjustments", label: "سجل المخزون", icon: Icons.inventory, requirePermissions: ["inventory:write"] },
-];
-
-const NAV_DISCOUNTS: NavItem[] = [
-  { to: "/admin/discounts/coupons", label: "الكوبونات", icon: Icons.coupon, requirePermissions: ["discounts:read"] },
-  { to: "/admin/discounts/coupons/test", label: "تجربة كوبون", icon: Icons.coupon, requirePermissions: ["discounts:write"] },
-];
-
-const NAV_SITE: NavItem[] = [
-  { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings, requirePermissions: ["settings:read"] },
-  { to: "/admin/media", label: "الوسائط", icon: Icons.media, requirePermissions: ["settings:read"] },
-  { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
-  { to: "/admin/nav", label: "القوائم", icon: Icons.nav, requirePermissions: ["nav:write"] },
-  { to: "/admin/pages", label: "الصفحات", icon: Icons.pages, requirePermissions: ["pages:read"] },
-  { to: "/admin/ugc/reviews", label: "التقييمات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
-  { to: "/admin/ugc/comments", label: "التعليقات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
-];
-
-const NAV_ACCOUNT: NavItem[] = [
-  { to: "/admin/account/profile", label: "الملف الشخصي", icon: Icons.profile, requirePermissions: ["account:read"] },
-  { to: "/admin/account/email", label: "تغيير البريد", icon: Icons.email, requirePermissions: ["account:write"] },
-  { to: "/admin/account/security", label: "الأمان", icon: Icons.security, requirePermissions: ["security:read", "audit:read"] },
-];
+/** Polls new orders only for accounts that can see orders. */
+function OrdersWatch({ children }: { children: (count: number) => React.ReactNode }) {
+  const count = useNewOrdersCount();
+  return <>{children(count)}<NewOrderAlerts /></>;
+}
 
 // Sidebar context
 const SidebarContext = createContext({ collapsed: false, setCollapsed: (_: boolean) => {} });
@@ -173,7 +32,8 @@ export const useSidebar = () => useContext(SidebarContext);
 
 function NavItemLink({ to, label, icon }: NavItem) {
   const { collapsed } = useSidebar();
-  
+  const badge = useContext(NavBadgeContext)[to] ?? 0;
+
   return (
     <NavLink
       to={to}
@@ -183,8 +43,8 @@ function NavItemLink({ to, label, icon }: NavItem) {
           "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
           collapsed ? "justify-center" : "",
           isActive
-            ? "bg-white/[0.08] text-white shadow-inner-light"
-            : "text-white/60 hover:bg-white/[0.04] hover:text-white/90"
+            ? "bg-accent-500/[0.12] text-white"
+            : "text-white/60 hover:bg-white/[0.05] hover:text-white/90"
         )
       }
     >
@@ -193,10 +53,15 @@ function NavItemLink({ to, label, icon }: NavItem) {
           {isActive && (
             <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-accent-500 rounded-l-full" />
           )}
-          <span className={cn("transition-colors", isActive ? "text-accent-400" : "text-white/50 group-hover:text-white/70")}>
+          <span className={cn("transition-colors", isActive ? "text-accent-400" : "text-white/45 group-hover:text-white/70")}>
             {icon}
           </span>
           {!collapsed && <span>{label}</span>}
+          {badge > 0 && (
+            <span className={cn("rounded-full bg-sky-500 px-1.5 text-center text-[10px] font-bold leading-4 text-white", collapsed ? "absolute left-1.5 top-1.5" : "mr-auto min-w-[1.2rem]")} aria-label={`${badge} جديد`}>
+              {badge}
+            </span>
+          )}
           {collapsed && (
             <span className="absolute right-full mr-2 px-2 py-1 text-xs bg-surface-800 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10">
               {label}
@@ -212,7 +77,7 @@ function NavGroup({ title, items, collapsed }: { title: string; items: NavItem[]
   return (
     <div className="space-y-1">
       {!collapsed && (
-        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-white/30">
+        <div className="px-3 py-2 text-[11px] font-semibold tracking-wide text-white/35">
           {title}
         </div>
       )}
@@ -226,26 +91,104 @@ function NavGroup({ title, items, collapsed }: { title: string; items: NavItem[]
   );
 }
 
+/** Store mark: the logo from the settings, or the first letter on a rose tile. */
+function BrandMark({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (logoUrl && !broken) {
+    return (
+      <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-white p-1">
+        <img src={logoUrl} alt="" className="max-h-full max-w-full object-contain" onError={() => setBroken(true)} />
+      </span>
+    );
+  }
+  return (
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent-500 to-accent-600 text-white shadow-glow" title={name}>
+      {/* a small rose */}
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M12 13.5c-2.6 0-4.5-1.9-4.5-4.4 0-1.6.9-3 2.3-3.7.6 1.2 1.3 1.8 2.2 1.8s1.6-.6 2.2-1.8c1.4.7 2.3 2.1 2.3 3.7 0 2.5-1.9 4.4-4.5 4.4Z" />
+        <path d="M10 9.4c.5.7 1.2 1.1 2 1.1s1.5-.4 2-1.1" />
+        <path d="M12 13.5V21M12 17c-1.6-1.9-3.6-2.3-5-1.8.6 1.7 2.6 2.6 5 1.8ZM12 18.5c1.4-1.5 3.1-1.8 4.4-1.3-.6 1.4-2.3 2.1-4.4 1.3Z" />
+      </svg>
+    </span>
+  );
+}
+
+const PAGE_TITLES: Array<[string, string]> = [
+  ["/dashboard", "لوحة التحكم"],
+  ["/orders", "الطلبات"],
+  ["/outbox", "الرسائل"],
+  ["/categories", "التصنيفات"],
+  ["/products/new", "منتج جديد"],
+  ["/products", "المنتجات"],
+  ["/sizes", "المقاسات"],
+  ["/inventory", "المخزون"],
+  ["/discounts/coupons/test", "تجربة كوبون"],
+  ["/discounts/coupons", "الكوبونات"],
+  ["/settings", "الإعدادات"],
+  ["/media", "الوسائط"],
+  ["/chatbot", "مساعد المتجر"],
+  ["/nav", "القوائم"],
+  ["/pages", "الصفحات"],
+  ["/ugc/comments", "التعليقات"],
+  ["/ugc/reviews", "التقييمات"],
+  ["/profile", "الملف الشخصي"],
+  ["/email", "تغيير البريد"],
+  ["/security", "الأمان"],
+];
+
+function greeting(name?: string | null) {
+  const h = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Jerusalem" }).format(new Date()));
+  const part = h < 12 ? "صباح الخير" : h < 18 ? "مساء الخير" : "مساء النور";
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first ? `${part}، ${first}` : part;
+}
+
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { admin, logout, hasPermission } = useAuth();
+  const canSeeOrders = hasPermission("orders:read");
   const qSettings = useSettings();
+  const skin = useSkin();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const storeName = qSettings.data?.siteName || "استبرق";
+  const logoUrl = qSettings.data?.logoUrl || null;
 
   useEffect(() => {
-    const cfg = (qSettings.data as any)?.header?.ui?.adminTheme;
-    applyAdminTheme(cfg);
-    const cursorThemeId = (qSettings.data as any)?.header?.ui?.cursorThemeId;
-    applyCursorTheme(cursorThemeId);
-    const buttonThemeId = (qSettings.data as any)?.header?.storefront?.buttonThemeId;
-    applyButtonTheme(buttonThemeId);
-  }, [qSettings.data]);
+    const header = qSettings.data?.header;
+    applyCursorTheme(header?.ui?.cursorThemeId);
+    if (skin === "classic") {
+      // The original look: theme presets and button themes from the settings page.
+      applyAdminTheme(header?.ui?.adminTheme);
+      applyButtonTheme(header?.storefront?.buttonThemeId);
+    } else {
+      clearButtonTheme();
+    }
+    applySkin(skin);
+  }, [qSettings.data, skin]);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Ctrl+K / ⌘K anywhere, or "/" when not typing, opens the quick search.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
+      if ((e.key === "k" || e.key === "K") && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      } else if (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const onLogout = async () => {
     try {
@@ -255,54 +198,32 @@ export default function AdminLayout() {
     }
   };
 
-  const getPageTitle = () => {
-    const path = location.pathname;
-    if (path.includes("/dashboard")) return "لوحة التحكم";
-    if (path.includes("/orders")) return "الطلبات";
-    if (path.includes("/outbox")) return "الرسائل";
-    if (path.includes("/categories")) return "التصنيفات";
-    if (path.includes("/products")) return "المنتجات";
-    if (path.includes("/sizes")) return "المقاسات";
-    if (path.includes("/inventory")) return "المخزون";
-    if (path.includes("/discounts/coupons/test")) return "تجربة كوبون";
-    if (path.includes("/discounts/coupons")) return "الكوبونات";
-    if (path.includes("/settings")) return "الإعدادات";
-    if (path.includes("/media")) return "الوسائط";
-    if (path.includes("/nav")) return "القوائم";
-    if (path.includes("/pages")) return "الصفحات";
-    if (path.includes("/ugc/comments")) return "التعليقات";
-    if (path.includes("/ugc/reviews")) return "التقييمات";
-    if (path.includes("/profile")) return "الملف الشخصي";
-    if (path.includes("/email")) return "تغيير البريد";
-    return "لوحة التحكم";
-  };
+  const pageTitle = PAGE_TITLES.find(([p]) => location.pathname.includes(p))?.[1] ?? "لوحة التحكم";
+  const isHome = location.pathname === "/admin" || location.pathname.startsWith("/admin/dashboard");
 
-  const canViewNavItem = (item: NavItem): boolean =>
-    !item.requirePermissions?.length || item.requirePermissions.every((permission) => hasPermission(permission));
+  const canViewNavItem = useCallback(
+    (item: NavItem): boolean =>
+      !item.requirePermissions?.length || item.requirePermissions.every((permission) => hasPermission(permission)),
+    [hasPermission]
+  );
+  const can = useCallback((p: "orders:read" | "catalog:read" | "catalog:write") => hasPermission(p), [hasPermission]);
 
-  const navGroups = [
-    { id: "main", title: "الإدارة", items: NAV_MAIN.filter(canViewNavItem) },
-    { id: "catalog", title: "الكتالوج", items: NAV_CATALOG.filter(canViewNavItem) },
-    { id: "inventory", title: "المخزون", items: NAV_INVENTORY.filter(canViewNavItem) },
-    { id: "discounts", title: "التسويق", items: NAV_DISCOUNTS.filter(canViewNavItem) },
-    { id: "site", title: "الموقع", items: NAV_SITE.filter(canViewNavItem) },
-    { id: "account", title: "الحساب", items: NAV_ACCOUNT.filter(canViewNavItem) },
-  ].filter((group) => group.items.length > 0);
+  const navGroups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter(canViewNavItem) })).filter((group) => group.items.length > 0);
 
-  return (
+  const renderShell = (ordersBadge: number) => (
     <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
-      <div dir="rtl" className="min-h-screen bg-surface-950">
-        {/* Gradient background */}
+      <div dir="rtl" className="min-h-screen bg-surface-950" data-skin-shell={skin}>
+        {/* Soft background glow */}
         <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-500/[0.03] rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-600/[0.02] rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-500/[0.04] rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-600/[0.03] rounded-full blur-3xl" />
         </div>
 
         <div className="relative flex min-h-screen">
           {/* Mobile backdrop */}
           <div
             className={cn(
-              "fixed inset-0 z-30 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden",
+              "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden",
               mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
             )}
             onClick={() => setMobileOpen(false)}
@@ -311,31 +232,27 @@ export default function AdminLayout() {
           {/* Sidebar */}
           <aside
             className={cn(
-              "fixed top-0 right-0 z-40 flex h-full flex-col border-l border-white/[0.06] bg-surface-950/80 backdrop-blur-xl transition-all duration-300 lg:translate-x-0",
+              "fixed top-0 right-0 z-50 flex h-full flex-col border-l border-white/[0.07] bg-surface-950/95 backdrop-blur-xl transition-all duration-300 lg:z-40 lg:translate-x-0 lg:bg-surface-950/80",
               mobileOpen ? "translate-x-0" : "translate-x-full",
               "w-[82vw] max-w-[320px]",
               collapsed ? "lg:w-[72px]" : "lg:w-[260px]"
             )}
+            aria-label="القائمة"
           >
-            {/* Logo */}
-            <div className={cn(
-              "flex items-center h-16 border-b border-white/[0.06] px-4",
-              collapsed ? "justify-center" : "gap-3"
-            )}>
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center shadow-glow">
-                <span className="text-white font-bold text-lg">E</span>
-              </div>
+            {/* Brand */}
+            <div className={cn("flex h-16 items-center border-b border-white/[0.07] px-4", collapsed ? "justify-center" : "gap-3")}>
+              <BrandMark name={storeName} logoUrl={logoUrl} />
               {!collapsed && (
-                <div className="flex flex-col">
-                  <span className="font-semibold text-white">Estabrek</span>
-                  <span className="text-[10px] text-white/40 uppercase tracking-wider">Admin Panel</span>
+                <div className="flex min-w-0 flex-col">
+                  <span className="skin-display truncate text-[17px] font-bold leading-6 text-white">{storeName}</span>
+                  <span className="text-[11px] text-white/45">لوحة الإدارة</span>
                 </div>
               )}
             </div>
 
             {/* Navigation */}
             <div
-              className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-6 no-scrollbar"
+              className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-5 no-scrollbar"
               onClick={() => setMobileOpen(false)}
             >
               {navGroups.map((group) => (
@@ -343,13 +260,13 @@ export default function AdminLayout() {
               ))}
             </div>
 
-            {/* User section */}
-            <div className="border-t border-white/[0.06] p-3">
+            {/* User + look */}
+            <div className="border-t border-white/[0.07] p-3">
               {!collapsed ? (
                 <div className="glass rounded-xl p-3 space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-surface-700 to-surface-800 flex items-center justify-center border border-white/10">
-                      <span className="text-white/80 text-sm font-medium">
+                    <div className="w-10 h-10 rounded-full bg-accent-500/15 flex items-center justify-center border border-accent-500/20">
+                      <span className="text-accent-400 text-sm font-semibold">
                         {admin?.name?.charAt(0) || "A"}
                       </span>
                     </div>
@@ -362,10 +279,11 @@ export default function AdminLayout() {
                       </div>
                     </div>
                   </div>
+                  <SkinPicker />
                   <button
                     onClick={onLogout}
                     disabled={logout.isPending}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/60 hover:text-white hover:bg-white/[0.04] rounded-lg transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-white/60 hover:text-white hover:bg-white/[0.05] rounded-lg transition-colors"
                   >
                     {logout.isPending ? (
                       <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
@@ -376,18 +294,21 @@ export default function AdminLayout() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={onLogout}
-                  disabled={logout.isPending}
-                  className="w-full flex items-center justify-center p-2 text-white/60 hover:text-white hover:bg-white/[0.04] rounded-lg transition-colors"
-                  title="تسجيل الخروج"
-                >
-                  {logout.isPending ? (
-                    <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-                  ) : (
-                    Icons.logout
-                  )}
-                </button>
+                <div className="flex flex-col items-center gap-3">
+                  <SkinPicker compact />
+                  <button
+                    onClick={onLogout}
+                    disabled={logout.isPending}
+                    className="w-full flex items-center justify-center p-2 text-white/60 hover:text-white hover:bg-white/[0.05] rounded-lg transition-colors"
+                    title="تسجيل الخروج"
+                  >
+                    {logout.isPending ? (
+                      <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                    ) : (
+                      Icons.logout
+                    )}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -395,6 +316,7 @@ export default function AdminLayout() {
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="absolute -left-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-surface-800 text-white/40 shadow-lg transition-all hover:bg-surface-700 hover:text-white lg:flex"
+              aria-label={collapsed ? "توسيع القائمة" : "تصغير القائمة"}
             >
               <span className={cn("transition-transform duration-300", collapsed ? "rotate-180" : "")}>
                 {Icons.chevronLeft}
@@ -403,36 +325,63 @@ export default function AdminLayout() {
           </aside>
 
           {/* Main Content */}
-          <main className={cn("flex-1 transition-all duration-300 mr-0", collapsed ? "lg:mr-[72px]" : "lg:mr-[260px]")}>
+          <main className={cn("min-w-0 flex-1 transition-all duration-300 mr-0", collapsed ? "lg:mr-[72px]" : "lg:mr-[260px]")}>
             {/* Top bar */}
-            <header className="sticky top-0 z-30 h-16 border-b border-white/[0.06] bg-surface-950/80 backdrop-blur-xl">
-              <div className="h-full px-4 sm:px-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <header className="sticky top-0 z-30 h-16 border-b border-white/[0.07] bg-surface-950/80 backdrop-blur-xl">
+              <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <button
                     type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08] lg:hidden"
+                    className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08] sm:inline-flex lg:hidden"
                     onClick={() => setMobileOpen(true)}
                     aria-label="فتح القائمة"
                   >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                    </svg>
+                    {Icons.menu}
                   </button>
-                  <h1 className="text-lg font-semibold text-white">{getPageTitle()}</h1>
+                  <div className="min-w-0">
+                    <h1 className="truncate text-lg font-bold leading-6 text-white">{pageTitle}</h1>
+                    {isHome && <p className="hidden truncate text-xs text-white/45 sm:block">{greeting(admin?.name)} 🌸</p>}
+                  </div>
                 </div>
-                <div className="hidden sm:block text-xs text-white/40 font-mono">
-                  {new Date().toLocaleDateString("ar-SA", { 
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long", 
-                    day: "numeric"
-                  })}
+
+                {/* Quick search */}
+                <button
+                  type="button"
+                  onClick={() => setPaletteOpen(true)}
+                  className="hidden h-10 w-full max-w-sm items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-3 text-sm text-white/45 transition hover:border-white/15 hover:text-white/70 md:flex [&_svg]:h-4 [&_svg]:w-4"
+                  data-testid="open-search"
+                >
+                  {Icons.search}
+                  <span className="flex-1 truncate text-right">ابحثي عن طلب، منتج، صفحة…</span>
+                  <kbd className="rounded-md border border-white/10 px-1.5 py-0.5 font-sans text-[10px] text-white/40" dir="ltr">Ctrl K</kbd>
+                </button>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaletteOpen(true)}
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/[0.06] md:hidden [&_svg]:h-[18px] [&_svg]:w-[18px]"
+                    aria-label="بحث"
+                  >
+                    {Icons.search}
+                  </button>
+                  <div className="hidden text-xs text-white/40 2xl:block">
+                    {new Date().toLocaleDateString("ar-EG-u-nu-latn", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "Asia/Jerusalem",
+                    })}
+                  </div>
+                  {skin !== "classic" && <SkinToggleButton />}
+                  {canSeeOrders && <OrdersBell />}
                 </div>
               </div>
             </header>
 
             {/* Page content */}
-            <div className="p-4 sm:p-6">
+            <div className="p-4 pb-28 sm:p-6 sm:pb-28 lg:pb-6">
               <div className="max-w-7xl mx-auto animate-fade-in-up">
                 <ErrorBoundary title="حدث خطأ داخل الصفحة">
                   <Suspense
@@ -449,7 +398,24 @@ export default function AdminLayout() {
             </div>
           </main>
         </div>
+
+        <MobileTabBar
+          ordersBadge={ordersBadge}
+          canOrders={canSeeOrders}
+          canAddProduct={hasPermission("catalog:write")}
+          canProducts={hasPermission("catalog:read")}
+          onSearch={() => setPaletteOpen(true)}
+          onMenu={() => setMobileOpen(true)}
+        />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} canView={canViewNavItem} can={can} />
       </div>
     </SidebarContext.Provider>
+  );
+
+  if (!canSeeOrders) return renderShell(0);
+  return (
+    <OrdersWatch>
+      {(count) => <NavBadgeContext.Provider value={{ "/admin/orders": count }}>{renderShell(count)}</NavBadgeContext.Provider>}
+    </OrdersWatch>
   );
 }

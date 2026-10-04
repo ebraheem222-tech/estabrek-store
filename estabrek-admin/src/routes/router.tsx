@@ -21,6 +21,7 @@ const SecurityCenterPage = lazy(() => import("../features/account/SecurityCenter
 
 const OrdersPage = lazy(() => import("../features/orders/OrdersPage"));
 const OrderDetailsPage = lazy(() => import("../features/orders/OrderDetailsPage"));
+const OrderPrintPage = lazy(() => import("../features/orders/OrderPrintPage"));
 
 const OutboxPage = lazy(() => import("../features/outbox/OutboxPage"));
 const OutboxDetailsPage = lazy(() => import("../features/outbox/OutboxDetailsPage"));
@@ -28,6 +29,7 @@ const OutboxDetailsPage = lazy(() => import("../features/outbox/OutboxDetailsPag
 const CategoriesPage = lazy(() => import("../features/catalog/CategoriesPage"));
 const ProductsPage = lazy(() => import("../features/catalog/ProductsPage"));
 const ProductEditorPage = lazy(() => import("../features/catalog/ProductEditorPage"));
+const ProductComposerPage = lazy(() => import("../features/catalog/ProductComposerPage"));
 const SizesPage = lazy(() => import("../features/catalog/SizesPage"));
 
 const LowStockPage = lazy(() => import("../features/inventory/LowStockPage"));
@@ -109,6 +111,17 @@ export default function AppRouter() {
         />
 
 
+        {/* Printable invoices / delivery labels (no admin chrome) */}
+        <Route
+          path="/print/orders"
+          element={withPermissions(
+            <React.Suspense fallback={<div dir="rtl" style={{ padding: 24 }}>جارٍ التحميل…</div>}>
+              <OrderPrintPage />
+            </React.Suspense>,
+            ["orders:read"],
+          )}
+        />
+
         {/* Admin (Protected) */}
         <Route
           path="/admin"
@@ -138,6 +151,7 @@ export default function AppRouter() {
           {/* catalog */}
           <Route path="catalog/categories" element={withPermissions(<CategoriesPage />, ["catalog:read"])} />
           <Route path="catalog/products" element={withPermissions(<ProductsPage />, ["catalog:read"])} />
+          <Route path="catalog/products/new" element={withPermissions(<ProductComposerPage />, ["catalog:write"])} />
           <Route path="catalog/products/:id" element={withPermissions(<ProductEditorPage />, ["catalog:write"])} />
           <Route path="catalog/sizes" element={withPermissions(<SizesPage />, ["catalog:read"])} />
 

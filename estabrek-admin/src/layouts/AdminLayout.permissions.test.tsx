@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { AdminPermission } from "../lib/authz";
 
 const permissions = new Set<AdminPermission>();
@@ -30,12 +31,16 @@ vi.mock("../theme/cursorTheme", () => ({
 
 vi.mock("../theme/buttonTheme", () => ({
   applyButtonTheme: vi.fn(),
+  clearButtonTheme: vi.fn(),
 }));
 
 import AdminLayout from "./AdminLayout";
 
 function renderWithRouter(content: ReactNode = <div>Page content</div>) {
+  // The layout polls the orders summary for the new-order badge.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, enabled: false } } });
   render(
+    <QueryClientProvider client={client}>
     <MemoryRouter initialEntries={["/admin/dashboard"]}>
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
@@ -43,6 +48,7 @@ function renderWithRouter(content: ReactNode = <div>Page content</div>) {
         </Route>
       </Routes>
     </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -74,7 +80,8 @@ describe("AdminLayout permission visibility", () => {
 
     renderWithRouter();
 
-    expect(screen.getByRole("link", { name: "الطلبات" })).toBeInTheDocument();
+    // Orders shows in the sidebar and in the phone tab bar.
+    expect(screen.getAllByRole("link", { name: "الطلبات" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "الصفحات" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "الإعدادات" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "تغيير البريد" })).toBeInTheDocument();

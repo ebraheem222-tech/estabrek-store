@@ -68,3 +68,11 @@ export function applyButtonTheme(themeId?: string | null) {
   root.setAttribute(BUTTON_THEME_ATTR, theme.id);
 }
 
+
+/** Removes the button colours set by applyButtonTheme, so the admin skin's own button colours apply. */
+export function clearButtonTheme() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  for (const [cssVar] of BUTTON_THEME_VAR_MAPPINGS) root.style.removeProperty(cssVar);
+  root.removeAttribute(BUTTON_THEME_ATTR);
+}
