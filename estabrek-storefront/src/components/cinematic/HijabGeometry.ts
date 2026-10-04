@@ -112,6 +112,16 @@ export function createHijabGeometry() {
       0.46 + Math.sin(u * Math.PI) * 0.12 + v * 0.25 + fold,
     ];
   };
+  // A continuous drape joins the lower hood to the shoulders and chest.
+  const neckDrape: Surface = (u, v) => {
+    const a = Math.PI * (.5 + u);
+    const fold = Math.sin(u * Math.PI * 9 + v * 1.2) * .017 * Math.sin(v * Math.PI);
+    return [
+      Math.sin(a) * (.65 + v * .3),
+      (.91 + Math.cos(a) * .8) * (1 - v) + (.25 - Math.sin(u * Math.PI) * .28) * v,
+      .032 + v * .44 + Math.sin(u * Math.PI) * v * .08 + fold,
+    ];
+  };
   const fall = new THREE.CatmullRomCurve3([
     new THREE.Vector3(0.48, 1.13, 0.03),
     new THREE.Vector3(0.64, 0.33, 0.42),
@@ -131,6 +141,7 @@ export function createHijabGeometry() {
     hood: surface(hood),
     cape: surface(cape, 96, 60),
     front: surface(front, 56, 64),
+    neckDrape: surface(neckDrape, 64, 36),
     tail: surface(tail, 24, 64),
     openingHem: hem(hood, "opening"),
     capeHem: hem(cape, "bottom"),

@@ -7,6 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { Language } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 const ScarfScene = dynamic(() => import("./ScarfScene"), {
   ssr: false,
@@ -99,7 +100,7 @@ function ScarfFallback({ color }: { color: string }) {
   );
 }
 
-export function DesignStudy({ language }: { language: Language }) {
+export function DesignStudy({ language, embedded = false, words }: { language: Language; embedded?: boolean; words?: string[] }) {
   const ar = language === "ar";
   const settings = useStorefrontSettings();
   const root = useRef<HTMLElement>(null);
@@ -108,16 +109,24 @@ export function DesignStudy({ language }: { language: Language }) {
   const [colorIndex, setColorIndex] = useState(0);
   const [rotation, setRotation] = useState(0);
   const [near, setNear] = useState(false);
+  const [sceneApproached, setSceneApproached] = useState(false);
+  const approachedRef = useRef(false);
   const [active, setActive] = useState(false);
+  const visibleRef = useRef(false);
   // Static-first markup keeps every chapter available before hydration and without JS.
   const [reducedMotion, setReducedMotion] = useState(true);
+  const [preferenceReady, setPreferenceReady] = useState(false);
   const [supported, setSupported] = useState<boolean | null>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  const chapterRef = useRef(0);
+  const loadScene = near && preferenceReady && (!embedded || reducedMotion || sceneApproached);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () =>
+    const update = () => {
       setReducedMotion(media.matches || !settings.scrollAnimationsEnabled);
+      setPreferenceReady(true);
+    };
     update();
     media.addEventListener("change", update);
     const target = root.current;
@@ -131,7 +140,10 @@ export function DesignStudy({ language }: { language: Language }) {
       { rootMargin: "300px" },
     );
     const visibility = new IntersectionObserver(
-      (entries) => setActive(entries[0].isIntersecting),
+      (entries) => {
+        visibleRef.current = entries[0].isIntersecting;
+        setActive(entries[0].isIntersecting && (!embedded || target?.closest<HTMLElement>(".rose-opening")?.dataset.phase === "fabric"));
+      },
       { threshold: 0 },
     );
     if (target) {
@@ -143,9 +155,9 @@ export function DesignStudy({ language }: { language: Language }) {
       visibility.disconnect();
       media.removeEventListener("change", update);
     };
-  }, [settings.scrollAnimationsEnabled]);
+  }, [settings.scrollAnimationsEnabled, embedded]);
   useEffect(() => {
-    if (!near) return;
+    if (!loadScene) return;
     try {
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("webgl2") || canvas.getContext("webgl");
@@ -154,7 +166,7 @@ export function DesignStudy({ language }: { language: Language }) {
     } catch {
       setSupported(false);
     }
-  }, [near]);
+  }, [loadScene]);
   useEffect(() => {
     if (!root.current) return;
     gsap.registerPlugin(ScrollTrigger);
@@ -163,18 +175,35 @@ export function DesignStudy({ language }: { language: Language }) {
       setChapter(0);
       return;
     }
+    const update = (p: number, next = Math.min(2, Math.floor(p * 3))) => {
+      progress.current = p;
+      if (next !== chapterRef.current) {
+        chapterRef.current = next;
+        setChapter(next);
+      }
+    };
+    if (embedded) {
+      const opening = root.current.closest<HTMLElement>(".rose-opening");
+      const receive = (event: Event) => {
+        const p = (event as CustomEvent<number>).detail;
+        if (p >= .14 && !approachedRef.current) { approachedRef.current = true; setSceneApproached(true); }
+        setActive(visibleRef.current && p > .2 && p < .95);
+        update(Math.max(0, Math.min(1, (p - .2) / .65)), p < .45 ? 0 : p < .7 ? 1 : 2);
+      };
+      opening?.addEventListener("rose-opening-progress", receive);
+      return () => opening?.removeEventListener("rose-opening-progress", receive);
+    }
     const trigger = ScrollTrigger.create({
       trigger: root.current,
       start: "top top",
       end: "bottom bottom",
       scrub: true,
       onUpdate: (self) => {
-        progress.current = self.progress;
-        setChapter(Math.min(2, Math.floor(self.progress * 3)));
+        update(self.progress);
       },
     });
     return () => trigger.kill();
-  }, [reducedMotion]);
+  }, [reducedMotion, embedded]);
   const copy = ar
     ? [
         {
@@ -247,6 +276,7 @@ export function DesignStudy({ language }: { language: Language }) {
       id="craft"
       ref={root}
       className="design-study"
+      data-embedded={embedded}
       data-chapter={chapter}
       data-reduced-motion={reducedMotion}
       aria-labelledby="study-title"
@@ -279,7 +309,7 @@ export function DesignStudy({ language }: { language: Language }) {
                   aria-label={color.name}
                   title={ar ? color.ar : color.name}
                   aria-pressed={colorIndex === index}
-                  onClick={() => setColorIndex(index)}
+                  onClick={() => { setColorIndex(index); selectStorefrontColor(color.value); }}
                 >
                   <span />
                 </button>
@@ -309,12 +339,15 @@ export function DesignStudy({ language }: { language: Language }) {
           data-rotation={rotation}
           data-renderer={supported && !failed ? "webgl" : "fallback"}
           data-ready={ready}
+          data-color={selected.name}
         >
           <span className="model-backdrop-word" aria-hidden="true">
-            {ar ? "نعومة" : "SOFTNESS"}
+            {words?.[chapter] || (ar ? ["نعومة", "انسياب", "أناقة"] : ["SOFTNESS", "FLOW", "ELEGANCE"])[chapter]}
           </span>
           <div className="model-canvas-wrap">
-            {near && supported && !failed ? (
+            {loadScene && supported && !failed ? (
+              <>
+              {!ready && <div className="model-fallback-underlay" aria-hidden="true">{fallback}</div>}
               <SceneBoundary fallback={fallback}>
                 <ScarfScene
                   color={selected.value}
@@ -326,6 +359,7 @@ export function DesignStudy({ language }: { language: Language }) {
                   onFailure={() => setFailed(true)}
                 />
               </SceneBoundary>
+              </>
             ) : (
               fallback
             )}

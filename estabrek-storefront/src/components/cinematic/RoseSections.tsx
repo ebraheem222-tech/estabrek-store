@@ -1,13 +1,21 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
+import { useRef, type FocusEvent } from "react";
 import type { ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { ScrollOpening } from "./ScrollOpening";
+import { DesignStudy } from "./DesignStudy";
+import type { RosePresentationOptions } from "./roseDesign";
+import { RoseVideoSection } from "./RoseVideoSection";
+import { completeFaq, polishButton, polishCopy } from "./roseCopy";
+import { useRoseStore } from "./StorefrontChrome";
+import type { ProductBadge } from "@/lib/productBadges";
+import { collectionSeed } from "@/lib/collectionTheme";
+import { discardThemePreview, endThemePreview, previewTheme, shellOf } from "@/lib/themePreview";
 
 export type RoseHeroData = {
   title?: string;
@@ -19,6 +27,9 @@ export type RoseHeroData = {
   roseImageUrl?: string;
   roseImageAlt?: string;
   rose3dEnabled?: boolean;
+  roseVideoEnabled?: boolean;
+  roseStoryWords?: string[];
+  rosePresentation?: RosePresentationOptions;
   primaryButton?: { label?: string; href?: string };
   secondaryButton?: { label?: string; href?: string };
 };
@@ -27,6 +38,9 @@ export type RoseCollection = {
   title?: string;
   href?: string;
   imageUrl?: string;
+  /** Optional Admin colour for the hover theme (hex). */
+  themeColor?: string;
+  color?: string;
 };
 
 export function RoseHero({
@@ -35,17 +49,25 @@ export function RoseHero({
   logoUrl,
   siteName,
   showStudy = true,
+  openingStudy = false,
+  showVideo = true,
 }: {
   data: RoseHeroData;
   categories?: CatalogCategory[];
   logoUrl?: string | null;
   siteName?: string | null;
   showStudy?: boolean;
+  openingStudy?: boolean;
+  showVideo?: boolean;
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language } = useLanguage();
+  const ar = language === "ar";
+  const primaryButton = polishButton(data.primaryButton);
+  const secondaryButton = polishButton(data.secondaryButton);
+  const subtitle = polishCopy(data.subtitle);
   const title =
     data.roseTitle ||
-    (data.title !== siteName ? data.title : "") ||
+    (data.title !== siteName ? polishCopy(data.title) : "") ||
     (ar ? "أناقة تشبهكِ.\nبكل تفاصيلكِ." : "Modesty,\nbeautifully yours.");
   const lines = title.split("\n");
   const image =
@@ -53,17 +75,19 @@ export function RoseHero({
     (data.backgroundImageUrl && data.backgroundImageUrl !== logoUrl
       ? data.backgroundImageUrl
       : "/editorial/hijab-campaign.webp");
+  // The shop action leads; the softer "discover" action follows as a text link.
+  const shopFirst = [primaryButton, secondaryButton].find((b) => b?.href === "/shop");
   const primary =
-    data.primaryButton?.href && data.primaryButton.href !== "/"
-      ? data.primaryButton
-      : data.secondaryButton?.href
-        ? data.secondaryButton
-        : data.primaryButton;
-  const secondary =
-    primary === data.primaryButton ? data.secondaryButton : data.primaryButton;
+    shopFirst ??
+    (primaryButton?.href && primaryButton.href !== "/"
+      ? primaryButton
+      : secondaryButton?.href
+        ? secondaryButton
+        : primaryButton);
+  const secondary = primary === primaryButton ? secondaryButton : primaryButton;
   return (
     <>
-      <ScrollOpening>
+      <ScrollOpening subtle={data.rosePresentation?.motionIntensity === "subtle"} model={showStudy && openingStudy ? <DesignStudy language={language} embedded words={data.roseStoryWords} /> : undefined}>
         <section
           className="atelier-hero rose-hero"
           aria-labelledby="hero-title"
@@ -93,7 +117,7 @@ export function RoseHero({
               ))}
             </h1>
             <p className="hero-description">
-              {data.subtitle ||
+              {subtitle ||
                 (ar
                   ? "حجاب، فساتين، وقطع تختارينها بحب. إطلالات تجمع الاحتشام والراحة، بلمسة تشبهكِ."
                   : "Hijabs, dresses, and pieces to love. A little softness, a little confidence. Completely you.")}
@@ -104,7 +128,7 @@ export function RoseHero({
                 className="atelier-button button-dark"
               >
                 {primary?.label ||
-                  (ar ? "اكتشفي المجموعة" : "Discover the collection")}
+                  (ar ? "تسوّقي الآن" : "Shop now")}
                 <Icon name="arrow" />
               </Link>
               {secondary?.href && secondary.label ? (
@@ -174,17 +198,7 @@ export function RoseHero({
           </div>
         </section>
       </ScrollOpening>
-      <div className="atelier-values">
-        <span>
-          <Icon name="spark" />
-          {ar ? "احتشام يليق بكِ" : "Beautifully modest"}
-        </span>
-        <span>{ar ? "راحة ترافق يومكِ" : "Comfort for your everyday"}</span>
-        <span>
-          {ar ? "تفاصيل تختارينها بحب" : "Details to fall in love with"}
-          <Icon name="spark" />
-        </span>
-      </div>
+      <RoseTrustBar />
       {categories.length > 0 && (
         <div
           className="rose-category-nav"
@@ -202,6 +216,7 @@ export function RoseHero({
             ))}
         </div>
       )}
+      {showVideo && data.roseVideoEnabled !== false && <RoseVideoSection />}
     </>
   );
 }
@@ -214,7 +229,12 @@ export function RoseProductGrid({
   anchor = "arrivals",
   layout = "grid",
 }: {
-  products: (ProductMini & { category?: string; colors?: string[] })[];
+  products: (ProductMini & {
+    category?: string;
+    colors?: string[];
+    secondaryImageUrl?: string | null;
+    badge?: ProductBadge | null;
+  })[];
   title?: string;
   subtitle?: string;
   categories?: CatalogCategory[];
@@ -305,17 +325,32 @@ export function RoseProductGrid({
                 href={p.slug ? `/p/${encodeURIComponent(p.slug)}` : "/shop"}
                 className="editorial-product-link"
               >
-                <div className="editorial-product-image">
-                  <span className="product-edition">
-                    {ar ? "اختيار استبرق" : "ESTABREK EDIT"}
-                  </span>
+                <div className={`editorial-product-image${p.secondaryImageUrl ? " has-alt" : ""}`}>
+                  {p.badge ? (
+                    <span className={`rose-badge rose-badge-${p.badge.kind}`}>
+                      {ar ? p.badge.ar : p.badge.en}
+                    </span>
+                  ) : null}
                   {p.imageUrl ? (
-                    <Image
-                      src={p.imageUrl}
-                      alt={p.title}
-                      fill
-                      sizes="(max-width:600px) 46vw, (max-width:1000px) 45vw, 24vw"
-                    />
+                    <>
+                      <Image
+                        src={p.imageUrl}
+                        alt={p.title}
+                        fill
+                        className="product-image-main"
+                        sizes="(max-width:600px) 46vw, (max-width:1000px) 45vw, 24vw"
+                      />
+                      {p.secondaryImageUrl ? (
+                        <Image
+                          src={p.secondaryImageUrl}
+                          alt=""
+                          aria-hidden
+                          fill
+                          className="product-image-alt"
+                          sizes="(max-width:600px) 46vw, (max-width:1000px) 45vw, 24vw"
+                        />
+                      ) : null}
+                    </>
                   ) : (
                     <div className="product-image-placeholder">
                       <Icon name="spark" width="48" height="48" />
@@ -394,6 +429,21 @@ export function RoseCollections({
   anchor?: string;
 }) {
   const ar = useLanguage().language === "ar";
+  const grid = useRef<HTMLDivElement>(null);
+  const active = useRef<number | null>(null);
+  // Hovering a collection dresses the whole storefront in that collection's colour.
+  const preview = (index: number, card: HTMLElement) => {
+    if (active.current === index) return;
+    active.current = index;
+    previewTheme(shellOf(card), collectionSeed(items[index], index, card.querySelector("img")));
+  };
+  const restore = () => {
+    active.current = null;
+    endThemePreview(shellOf(grid.current));
+  };
+  const leaveFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) restore();
+  };
   return (
     <section id={anchor} className="atelier-collections atelier-section">
       <div className="atelier-section-heading" data-reveal>
@@ -413,13 +463,16 @@ export function RoseCollections({
               : "Pieces that feel like you.\nDetails that make your day.")}
         </p>
       </div>
-      <div className="editorial-collection-grid">
+      <div ref={grid} className="editorial-collection-grid" onMouseLeave={restore} onBlur={leaveFocus}>
         {items.map((item, i) => (
           <Link
             href={item.href || "/shop"}
             key={`${item.href}-${i}`}
             className={`editorial-collection-card ${i % 2 ? "collection-landscape" : "collection-portrait"}`}
             data-reveal
+            onMouseEnter={(event) => preview(i, event.currentTarget)}
+            onFocus={(event) => preview(i, event.currentTarget)}
+            onClick={() => { discardThemePreview(); active.current = null; }}
           >
             <Image
               src={
@@ -455,6 +508,8 @@ export function RoseCollections({
 
 export function RoseEditorialPanel({ data }: { data: RoseHeroData }) {
   const ar = useLanguage().language === "ar";
+  const configuredActions = [polishButton(data.primaryButton), polishButton(data.secondaryButton)].filter(button => button?.href);
+  const actions = configuredActions.length ? configuredActions : [{ href: "/shop", label: ar ? "اكتشفي المزيد" : "Discover more" }];
   return (
     <section className="rose-editorial-panel atelier-section" data-reveal>
       <div className="rose-editorial-photo">
@@ -475,19 +530,9 @@ export function RoseEditorialPanel({ data }: { data: RoseHeroData }) {
             data.badge ||
             (ar ? "لمسات تكمل إطلالتكِ" : "THE LITTLE DETAILS")}
         </span>
-        <h2>{data.roseTitle || data.title}</h2>
-        <p>{data.subtitle}</p>
-        <Link
-          className="atelier-text-link"
-          href={
-            data.primaryButton?.href || data.secondaryButton?.href || "/shop"
-          }
-        >
-          {data.primaryButton?.label ||
-            data.secondaryButton?.label ||
-            (ar ? "اكتشفي المزيد" : "Discover more")}
-          <Icon name="arrow" />
-        </Link>
+        <h2>{data.roseTitle || polishCopy(data.title)}</h2>
+        <p>{polishCopy(data.subtitle)}</p>
+        <div className="rose-editorial-actions">{actions.map((button, i) => <Link key={i} className="atelier-text-link" href={button!.href!}>{button!.label || (ar ? "اكتشفي المزيد" : "Discover more")}<Icon name="arrow" /></Link>)}</div>
       </div>
       <Icon name="spark" className="editorial-flower" />
     </section>
@@ -502,6 +547,7 @@ export function RoseFaq({
   items: { question: string; answer: string }[];
 }) {
   const ar = useLanguage().language === "ar";
+  const entries = ar ? completeFaq(items) : items;
   return (
     <section className="rose-faq atelier-section" data-reveal>
       <div>
@@ -509,11 +555,11 @@ export function RoseFaq({
           {ar ? "يسعدنا مساعدتكِ" : "LET’S MAKE IT EASY"}
         </span>
         <h2>
-          {title || (ar ? "أسئلتكِ، بكل حب." : "A little help, with love.")}
+          {(title && polishCopy(title)) || (ar ? "أسئلتكِ، بكل حب." : "A little help, with love.")}
         </h2>
       </div>
       <div className="rose-faq-items">
-        {items.map((item, i) => (
+        {entries.map((item, i) => (
           <details key={i}>
             <summary>
               {item.question}
@@ -547,14 +593,13 @@ export function RoseCta({
       </span>
       <Icon name="spark" className="manifesto-star" width="42" height="42" />
       <h2 data-reveal>
-        {data.title ||
+        {polishCopy(data.title) ||
           (ar
             ? "كوني أنتِ.\nالجمال في تفاصيلكِ."
             : "Be yourself.\nBeautifully, always.")}
       </h2>
       <p data-reveal>
-        {data.subtitle ||
-          data.text ||
+        {polishCopy(data.subtitle || data.text) ||
           (ar
             ? "أناقة محتشمة، وخيارات تليق بيومكِ. نحن هنا لنساعدكِ في العثور على ما تحبين."
             : "Modern modesty, made for your everyday. We’re here to help you find the pieces you love.")}
@@ -564,11 +609,117 @@ export function RoseCta({
         className="atelier-button button-dark"
         data-reveal
       >
-        {data.buttonLabel ||
-          data.button?.label ||
-          (ar ? "لنبقَ على تواصل" : "Let’s stay in touch")}
+        {polishCopy(data.buttonLabel || data.button?.label) ||
+          (ar ? "تواصلي معنا" : "Let’s stay in touch")}
         <Icon name="arrow" />
       </Link>
+    </section>
+  );
+}
+
+/** Three promises shoppers look for before their first order. */
+export function RoseTrustBar() {
+  const ar = useLanguage().language === "ar";
+  const items: { icon: "truck" | "cash" | "swap"; title: string; text: string }[] = [
+    { icon: "truck", title: ar ? "توصيل لكل البلاد" : "Delivery nationwide", text: ar ? "لباب بيتكِ أينما كنتِ" : "To your door, wherever you are" },
+    { icon: "cash", title: ar ? "الدفع عند الاستلام" : "Cash on delivery", text: ar ? "ادفعي عندما تصلكِ القطعة" : "Pay when your piece arrives" },
+    { icon: "swap", title: ar ? "استبدال سهل" : "Easy exchange", text: ar ? "المقاس لم يناسبكِ؟ نستبدله لكِ" : "Wrong size? We’ll swap it" },
+  ];
+  return (
+    <ul className="rose-trust-bar" aria-label={ar ? "لماذا استبرق" : "Why Estabrek"}>
+      {items.map((item) => (
+        <li key={item.icon}>
+          <span className="trust-icon"><Icon name={item.icon} /></span>
+          <span>
+            <strong>{item.title}</strong>
+            <small>{item.text}</small>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Real customer words, entered in Admin as a Testimonials section. */
+export function RoseTestimonials({
+  title,
+  items,
+}: {
+  title?: string;
+  items: { name?: string; role?: string; quote?: string; imageUrl?: string; avatarUrl?: string }[];
+}) {
+  const ar = useLanguage().language === "ar";
+  const quotes = items.filter((t) => t?.quote);
+  if (!quotes.length) return null;
+  return (
+    <section className="rose-testimonials atelier-section">
+      <div className="atelier-section-heading" data-reveal>
+        <div>
+          <span className="atelier-eyebrow">{ar ? "من زبوناتنا" : "FROM OUR CUSTOMERS"}</span>
+          <h2>{(title && polishCopy(title)) || (ar ? "بكلماتهنّ." : "In their words.")}</h2>
+        </div>
+      </div>
+      <div className="testimonial-grid">
+        {quotes.map((t, i) => (
+          <figure key={i} className="testimonial-card" data-reveal>
+            <span className="testimonial-mark" aria-hidden="true">”</span>
+            <blockquote>{polishCopy(t.quote)}</blockquote>
+            <figcaption>
+              {t.avatarUrl || t.imageUrl ? (
+                <Image src={(t.avatarUrl || t.imageUrl)!} alt="" width={40} height={40} />
+              ) : (
+                <span className="testimonial-initial" aria-hidden="true">{String(t.name || "؟").trim().charAt(0)}</span>
+              )}
+              <span>
+                <strong>{t.name}</strong>
+                {t.role ? <small>{t.role}</small> : null}
+              </span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Invitation to the store’s real Instagram, shown when no testimonials are published yet. */
+export function RoseInstagram({ images = [] }: { images?: string[] }) {
+  const ar = useLanguage().language === "ar";
+  const store = useRoseStore();
+  if (!store.instagram) return null;
+  const handle = (() => {
+    try {
+      return "@" + new URL(store.instagram).pathname.split("/").filter(Boolean)[0];
+    } catch {
+      return "Instagram";
+    }
+  })();
+  const tiles = Array.from(new Set([...images, "/editorial/hijab-campaign.webp", "/editorial/scarves.webp", "/editorial/rose-campaign-poster.webp"])).slice(0, 4);
+  return (
+    <section className="rose-instagram atelier-section" data-reveal>
+      <div className="instagram-copy">
+        <span className="atelier-eyebrow">
+          <Icon name="camera" />
+          {ar ? "على إنستغرام" : "ON INSTAGRAM"}
+        </span>
+        <h2>{ar ? "إطلالاتكنّ تلهمنا." : "Your looks inspire us."}</h2>
+        <p>
+          {ar
+            ? "تابعي جديدنا يومياً، وشاركينا إطلالتكِ بقطع استبرق مع الإشارة إلى حسابنا."
+            : "Follow our new arrivals and share your Estabrek look by tagging us."}
+        </p>
+        <a href={store.instagram} target="_blank" rel="noreferrer" className="atelier-button button-dark" dir="ltr">
+          {handle}
+          <Icon name="arrow" />
+        </a>
+      </div>
+      <a href={store.instagram} target="_blank" rel="noreferrer" className="instagram-tiles" aria-label={ar ? "افتحي حسابنا على إنستغرام" : "Open our Instagram"}>
+        {tiles.map((src, i) => (
+          <span key={src + i} className="instagram-tile">
+            <Image src={src} alt="" fill sizes="(max-width:760px) 45vw, 18vw" />
+          </span>
+        ))}
+      </a>
     </section>
   );
 }

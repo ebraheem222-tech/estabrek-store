@@ -23,6 +23,7 @@ function DrapedHijab(props: SceneProps) {
     () => new THREE.Color(props.color),
     [props.color],
   );
+  const fabricTime = useRef<THREE.IUniform | null>(null);
   const weave = useMemo(() => {
     const size = 128;
     const data = new Uint8Array(size * size * 4);
@@ -45,9 +46,9 @@ function DrapedHijab(props: SceneProps) {
       new THREE.MeshPhysicalMaterial({
         color: props.color,
         side: THREE.DoubleSide,
-        roughness: 0.82,
+        roughness: 0.7,
         metalness: 0,
-        sheen: 0.25,
+        sheen: 0.55,
         sheenColor: new THREE.Color("#f9dce7"),
         sheenRoughness: 0.85,
         bumpMap: weave,
@@ -57,6 +58,15 @@ function DrapedHijab(props: SceneProps) {
       }),
     [weave],
   );
+  useEffect(() => {
+    fabric.onBeforeCompile = (shader) => {
+      shader.uniforms.roseTime = { value: 0 };
+      fabricTime.current = shader.uniforms.roseTime;
+      shader.vertexShader = "uniform float roseTime;\n" + shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nfloat drapeWeight = 1.0 - smoothstep(-0.9, 1.0, position.y);\ntransformed.z += sin(position.y * 4.0 + position.x * 3.0 + roseTime * 0.7) * 0.009 * drapeWeight;");
+    };
+    fabric.customProgramCacheKey = () => "estabrek-drape-1";
+    fabric.needsUpdate = true;
+  }, [fabric]);
   useEffect(
     () => () => {
       Object.values(geometries).forEach((geometry) => geometry.dispose());
@@ -98,9 +108,9 @@ function DrapedHijab(props: SceneProps) {
     const scale = props.reducedMotion
       ? 1
       : THREE.MathUtils.lerp(
-          1.13,
-          0.94,
-          THREE.MathUtils.smoothstep(p, 0, 0.75),
+          1.02,
+          1.14,
+          Math.sin(p * Math.PI),
         );
     group.current.scale.setScalar(
       THREE.MathUtils.lerp(group.current.scale.x, scale, blend),
@@ -108,6 +118,7 @@ function DrapedHijab(props: SceneProps) {
     group.current.position.y = props.reducedMotion
       ? 0
       : Math.sin(clock.elapsedTime * 0.65) * 0.013;
+    if (fabricTime.current) fabricTime.current.value = props.reducedMotion ? 0 : clock.elapsedTime;
     fabric.color.lerp(targetColor, blend);
   });
   return (

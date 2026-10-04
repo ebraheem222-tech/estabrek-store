@@ -2,7 +2,7 @@
 import { useRef, type ReactNode } from "react";
 import type { CatalogCategory } from "@/lib/catalog";
 import { useLanguage } from "./Language";
-import { ScrollExperience } from "./ScrollExperience";
+import { RosePageFrame } from "./RosePageFrame";
 import { DesignStudy } from "./DesignStudy";
 import { useGsapMotion } from "@/motion/useGsapMotion";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -11,25 +11,19 @@ import {
   RoseProductGrid,
   RoseCollections,
   RoseCta,
+  RoseInstagram,
 } from "./RoseSections";
+import { RoseSeasons } from "./RoseSeasons";
+import { RoseCollectionStory } from "./RoseCollectionStory";
+import type { StoryChapter } from "@/lib/collectionStories";
+import type { SeasonEdit } from "@/lib/seasonalEdits";
+import type { ProductBadge } from "@/lib/productBadges";
 
 export function RoseHomeFrame({ children }: { children: ReactNode }) {
-  const { language } = useLanguage();
-  const root = useRef<HTMLDivElement>(null);
-  return (
-    <div
-      ref={root}
-      className="cinematic-home rose-home"
-      dir={language === "ar" ? "rtl" : "ltr"}
-      lang={language}
-    >
-      <ScrollExperience root={root} language={language} />
-      {children}
-    </div>
-  );
+  return <RosePageFrame home>{children}</RosePageFrame>;
 }
-export function RoseFabricStudy() {
-  return <DesignStudy language={useLanguage().language} />;
+export function RoseFabricStudy({ words }: { words?: string[] }) {
+  return <DesignStudy language={useLanguage().language} words={words} />;
 }
 export function RoseNativeSections({ children }: { children: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
@@ -46,22 +40,29 @@ export function RoseHome({
   products,
   categories,
   currencyCode,
+  seasons = [],
+  stories = [],
 }: {
   products: {
     id: string;
     title: string;
     slug: string;
     image: string | null;
+    secondaryImage?: string | null;
+    badge?: ProductBadge | null;
     price: number | null;
     category: string;
     colors: string[];
   }[];
   categories: CatalogCategory[];
   currencyCode: string;
+  seasons?: SeasonEdit[];
+  stories?: StoryChapter[];
 }) {
   const entries = products.map((p) => ({
     ...p,
     imageUrl: p.image,
+    secondaryImageUrl: p.secondaryImage ?? null,
     priceText:
       p.price === null
         ? ""
@@ -72,7 +73,8 @@ export function RoseHome({
   }));
   return (
     <RoseHomeFrame>
-      <RoseHero data={{}} categories={categories} />
+      <div data-rose-palette="blush"><RoseHero data={{}} categories={categories} /></div>
+      {seasons.length > 0 && <RoseSeasons seasons={seasons} />}
       <RoseProductGrid products={entries} categories={categories} />
       <RoseFabricStudy />
       <RoseCollections
@@ -93,6 +95,8 @@ export function RoseHome({
           },
         ]}
       />
+      {stories.length > 0 && <RoseCollectionStory chapters={stories} />}
+      <RoseInstagram images={entries.map((p) => p.imageUrl).filter((u): u is string => Boolean(u))} />
       <RoseCta data={{}} />
     </RoseHomeFrame>
   );

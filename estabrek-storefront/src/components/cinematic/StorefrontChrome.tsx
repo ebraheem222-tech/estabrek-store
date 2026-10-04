@@ -6,6 +6,7 @@ import { useCart } from "@/store/cart";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { LanguageProvider, useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { RoseThemeProvider } from "./RoseThemeProvider";
 
 type RoseNavLink = { href: string; label: string; children?: RoseNavLink[] };
 export type RoseStoreData = {
@@ -15,12 +16,14 @@ export type RoseStoreData = {
   footerDescription?: string;
   instagram?: string;
   contactPhone?: string | null;
+  whatsappNumber?: string | null;
   contactEmail?: string | null;
   announcement?: string;
   announcementHref?: string;
   footerEnabled?: boolean;
 };
 const StoreContext = createContext<RoseStoreData>({});
+export function useRoseStore() { return useContext(StoreContext); }
 function Brand() {
   const store = useContext(StoreContext);
   const ar = useLanguage().language === "ar";
@@ -112,7 +115,7 @@ function Header() {
           )}
         </span>
         <span className="announcement-right">
-          {ar ? "مرحباً بك في استبرق" : "Welcome to Estabrek"}
+          {ar ? "مرحباً بكِ في استبرق" : "Welcome to Estabrek"}
           <Icon name="spark" width="11" height="11" />
         </span>
       </div>
@@ -224,7 +227,7 @@ function Header() {
             {searchOpen ? (
               <form action="/search" className="atelier-search-form">
                 <label htmlFor="atelier-search">
-                  {ar ? "ابحث عن قطعتك القادمة." : "Find your next favourite."}
+                  {ar ? "ابحثي عن قطعتكِ القادمة." : "Find your next favourite."}
                 </label>
                 <div>
                   <input
@@ -234,13 +237,13 @@ function Header() {
                     name="q"
                     required
                     placeholder={
-                      ar ? "ما الذي تبحث عنه؟" : "What are you looking for?"
+                      ar ? "عمّ تبحثين؟" : "What are you looking for?"
                     }
                   />
                   <button
                     className="atelier-icon-button"
                     type="submit"
-                    aria-label={ar ? "ابحث" : "Submit search"}
+                    aria-label={ar ? "ابحثي" : "Submit search"}
                   >
                     <Icon name="arrow" />
                   </button>
@@ -258,11 +261,11 @@ function Header() {
                   ]),
                   {
                     href: "/shop",
-                    label: ar ? "تسوق كل المنتجات" : "Shop all",
+                    label: ar ? "تسوّقي كل المنتجات" : "Shop all",
                   },
                   {
                     href: "/contact",
-                    label: ar ? "تواصل معنا" : "Get in touch",
+                    label: ar ? "تواصلي معنا" : "Get in touch",
                   },
                 ]
                   .filter(
@@ -285,7 +288,7 @@ function Header() {
             )}
             <p className="dialog-footnote">
               {ar
-                ? "قطعتك القادمة تبدأ هنا."
+                ? "قطعتكِ القادمة تبدأ هنا."
                 : "Good things start with a little curiosity."}
             </p>
           </div>
@@ -328,9 +331,9 @@ function Footer() {
         </div>
         <div className="footer-links">
           <div>
-            <span>{ar ? "اكتشف" : "Explore"}</span>
+            <span>{ar ? "اكتشفي" : "Explore"}</span>
             <Link href="/shop">
-              {ar ? "تسوق المجموعة" : "Shop the collection"}
+              {ar ? "تسوّقي كل القطع" : "Shop the collection"}
             </Link>
             <Link href="/wishlist">{ar ? "المفضلة" : "Your wishlist"}</Link>
             <Link href="/cart">
@@ -339,16 +342,16 @@ function Footer() {
           </div>
           <div>
             <span>{ar ? "نحن هنا" : "Here for you"}</span>
-            <Link href="/contact">{ar ? "تواصل معنا" : "Contact us"}</Link>
+            <Link href="/contact">{ar ? "تواصلي معنا" : "Contact us"}</Link>
             <Link href="/about">{ar ? "قصتنا" : "Our story"}</Link>
           </div>
         </div>
       </div>
-      <div className="footer-wordmark" aria-hidden="true">
-        ESTABREK
+      <div className="footer-wordmark" aria-hidden="true" dir={ar ? "rtl" : "ltr"}>
+        {ar ? "استبرق" : "Estabrek"}
       </div>
       <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} ESTABREK</span>
+        <span>© {new Date().getFullYear()} {ar ? "استبرق" : "Estabrek"}</span>
         <span>
           {ar ? "كل التفاصيل، بكل حب." : "With love, in every detail."}
         </span>
@@ -397,13 +400,14 @@ export function StorefrontChrome({
   return (
     <LanguageProvider>
       <StoreContext.Provider value={storeData}>
-        <div
+        <RoseThemeProvider key={pathname}
+          restoreSelection={!pathname.startsWith("/about")}
           className={`cinematic-shell ${home ? "cinematic-home-shell" : "cinematic-interior-shell"}`}
         >
           <Header />
           {children}
           <Footer />
-        </div>
+        </RoseThemeProvider>
       </StoreContext.Provider>
     </LanguageProvider>
   );
