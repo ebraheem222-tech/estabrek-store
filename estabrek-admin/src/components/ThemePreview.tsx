@@ -99,6 +99,7 @@ export function ThemePreview({
 
   return (
     <div
+      data-skin-reset=""
       data-theme={mode}
       data-gallery-theme-active={websiteTheme?.id?.startsWith("theme-gallery-") ? "1" : "0"}
       className={cn(

@@ -75,10 +75,11 @@ export function Modal({
       <div
         className="absolute inset-0 backdrop-blur-md"
         style={{
+          // Skins set --modal-backdrop (src/theme/skins.css); classic keeps the violet glow.
           background: `
-            radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139, 92, 246, 0.12), transparent 50%),
-            radial-gradient(ellipse 60% 40% at 50% 100%, rgba(139, 92, 246, 0.08), transparent 50%),
-            rgba(9, 9, 11, 0.85)
+            radial-gradient(ellipse 80% 50% at 50% 0%, rgb(var(--sk-accent-500, 139 92 246) / 0.12), transparent 50%),
+            radial-gradient(ellipse 60% 40% at 50% 100%, rgb(var(--sk-accent-500, 139 92 246) / 0.08), transparent 50%),
+            var(--modal-backdrop, rgba(9, 9, 11, 0.85))
           `,
           animation: 'fadeIn 0.2s ease-out'
         }}
@@ -97,7 +98,7 @@ export function Modal({
             widthClassName
           )}
           style={{ 
-            background: 'linear-gradient(180deg, rgba(20, 20, 24, 1) 0%, rgba(16, 16, 20, 1) 100%)'
+            background: 'var(--modal-panel, linear-gradient(180deg, rgba(20, 20, 24, 1) 0%, rgba(16, 16, 20, 1) 100%))'
           }}
         >
           {/* Top gradient line */}
@@ -148,7 +149,7 @@ export function Modal({
           {(footer || closeText) && (
             <div className="relative flex flex-col-reverse gap-3 px-5 py-4 border-t border-white/[0.06] sm:flex-row sm:items-center sm:justify-between sm:px-6"
               style={{
-                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.1) 100%)'
+                background: 'var(--modal-header, linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.1) 100%))'
               }}
             >
               <div className="flex-1">{footer ?? null}</div>

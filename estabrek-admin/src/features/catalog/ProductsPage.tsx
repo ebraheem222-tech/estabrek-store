@@ -12,15 +12,11 @@ import { Skeleton, Spinner } from "../../components/ui/Spinner";
 import { AsyncImage } from "../../components/ui/AsyncImage";
 import type { ProductImportRow } from "../../api/catalog.api";
 import { toast } from "@/lib/toast";
-import QuickAddProductModal from "./QuickAddProductModal";
+import { makeSlug, parsePrice } from "../../lib/productComposer";
 
+// Arabic titles become latin links too ("فستان الورد" → "fstan-alwrd").
 function slugify(input: string) {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "")
-    .replace(/-+/g, "-");
+  return input.trim() ? makeSlug(input) : "";
 }
 
 function parseCsv(text: string): Array<Record<string, string>> {
@@ -81,8 +77,8 @@ function parseBool(v: string | undefined): boolean | undefined {
   if (v == null) return undefined;
   const s = String(v).trim().toLowerCase();
   if (s === "" ) return undefined;
-  if (["1", "true", "yes", "y", "on", "active", "enabled"].includes(s)) return true;
-  if (["0", "false", "no", "n", "off", "inactive", "disabled", "draft"].includes(s)) return false;
+  if (["1", "true", "yes", "y", "on", "active", "enabled", "نعم", "فعال", "مفعل", "منشور"].includes(s)) return true;
+  if (["0", "false", "no", "n", "off", "inactive", "disabled", "draft", "لا", "مسودة", "غير مفعل"].includes(s)) return false;
   return undefined;
 }
 
@@ -90,8 +86,8 @@ function parseNum(v: string | undefined): number | undefined {
   if (v == null) return undefined;
   const s = String(v).trim();
   if (!s) return undefined;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : undefined;
+  const n = parsePrice(s);
+  return n == null ? undefined : n;
 }
 
 function parseImages(v: string | undefined): string[] | undefined {
@@ -106,26 +102,26 @@ function parseImages(v: string | undefined): string[] | undefined {
 
 function mapCsvRowToImportRow(row: Record<string, string>): ProductImportRow {
   const r = normalizeRecordKeys(row);
-  const title = r.title || r.name || r.product || "";
+  const title = r.title || r.name || r.product || r["الاسم"] || r["اسم المنتج"] || "";
   const slug = (r.slug || "")?.trim() || (title ? slugify(title) : "");
 
   return {
     title,
     slug,
-    description: r.description || r.desc || r.details || undefined,
+    description: r.description || r.desc || r.details || r["الوصف"] || undefined,
     isActive: parseBool(r.isactive ?? r.active ?? r.status),
     categoryId: r.categoryid || undefined,
     categorySlug: r.categoryslug || undefined,
-    categoryName: r.categoryname || undefined,
+    categoryName: r.categoryname || r.category || r["القسم"] || r["التصنيف"] || undefined,
     // optional default item/variant hints (backend safely ignores if not used)
-    colorName: r.colorname || r.color || undefined,
+    colorName: r.colorname || r.color || r["اللون"] || undefined,
     boxLabel: r.boxlabel || r.box_label || r.box || r.pack || undefined,
     colorHex: r.colorhex || r.hex || undefined,
     skuBase: r.skubase || r.sku || undefined,
-    sizeName: r.sizename || r.size || undefined,
-    price: parseNum(r.price),
-    stock: parseNum(r.stock),
-    images: parseImages(r.images),
+    sizeName: r.sizename || r.size || r["المقاس"] || undefined,
+    price: parseNum(r.price ?? r["السعر"]),
+    stock: parseNum(r.stock ?? r["الكمية"]),
+    images: parseImages(r.images ?? r["الصور"]),
   };
 }
 
@@ -296,24 +292,8 @@ export default function ProductsPage() {
     try {
       const text = await file.text();
       const raw = parseCsv(text);
-      const mapped: ProductImportRow[] = raw.map((r) => {
-        const titleVal = (r.title ?? r.Title ?? r.name ?? r.Name ?? "").toString().trim();
-        const slugVal = (r.slug ?? r.Slug ?? "").toString().trim();
-        const categoryIdVal = (r.categoryId ?? r.CategoryId ?? "").toString().trim();
-        const categoryNameVal = (r.category ?? r.Category ?? r.categoryName ?? r.CategoryName ?? "").toString().trim();
-        const isActiveRaw = (r.isActive ?? r.active ?? r.Active ?? "").toString().trim();
-        const isActiveVal = isActiveRaw === "" ? undefined : ["1", "true", "yes", "y", "فعال", "مفعل"].includes(isActiveRaw.toLowerCase());
-        const descriptionVal = (r.description ?? r.Description ?? "").toString();
-        const slugFinal = slugVal || (titleVal ? slugify(titleVal) : "");
-        return {
-          title: titleVal,
-          slug: slugFinal,
-          description: descriptionVal || undefined,
-          isActive: isActiveVal,
-          categoryId: categoryIdVal || undefined,
-          categoryName: categoryNameVal || undefined,
-        };
-      });
+      // Full mapping: price, stock, colour, size and images too (the help text promises them).
+      const mapped: ProductImportRow[] = raw.map((r) => mapCsvRowToImportRow(r as Record<string, string>));
 
       // client-side validation for preview
       const issues: Record<number, string[]> = {};
@@ -395,11 +375,8 @@ const doImport = async () => {
               استيراد CSV
             </Button>
 
-            <Button variant="primary" onClick={openCreate} className="w-full sm:w-auto">
-              إضافة منتج
-            </Button>
-            <Button variant="success" onClick={() => setQuickOpen(true)} className="w-full sm:w-auto">
-              إضافة سريعة
+            <Button variant="primary" onClick={() => nav("/admin/catalog/products/new")} className="w-full sm:w-auto">
+              + إضافة منتج
             </Button>
           </div>
         </div>
@@ -554,6 +531,9 @@ const doImport = async () => {
                       <Button size="sm" variant="primary" className="flex-1" onClick={() => nav(`/admin/catalog/products/${p.id}`)}>
                         تحرير
                       </Button>
+                      <Button size="sm" variant="secondary" className="flex-1" onClick={() => nav(`/admin/catalog/products/new?from=${p.id}`)} title="منتج جديد يبدأ من هذا المنتج">
+                        نسخ
+                      </Button>
                       <Button size="sm" variant="danger" className="flex-1" onClick={() => setConfirmId(p.id)}>
                         حذف
                       </Button>
@@ -640,6 +620,9 @@ const doImport = async () => {
                             <Button variant="primary" onClick={() => nav(`/admin/catalog/products/${p.id}`)}>
                               تحرير المنتج
                             </Button>
+                            <Button variant="secondary" onClick={() => nav(`/admin/catalog/products/new?from=${p.id}`)} title="منتج جديد يبدأ من هذا المنتج">
+                              نسخ
+                            </Button>
                             <Button variant="danger" onClick={() => setConfirmId(p.id)}>
                               حذف
                             </Button>
@@ -718,18 +701,6 @@ const doImport = async () => {
         </div>
       </Modal>
 
-      <QuickAddProductModal
-        open={quickOpen}
-        categories={categories}
-        sizes={sizes}
-        onClose={() => setQuickOpen(false)}
-        onCreated={(productId) => {
-          setQuickOpen(false);
-          q.refetch();
-          nav(`/admin/catalog/products/${productId}`);
-        }}
-      />
-
       <Modal
         open={importOpen}
         title="استيراد منتجات من CSV"
@@ -750,7 +721,7 @@ const doImport = async () => {
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm opacity-90">
             <div className="font-semibold">الأعمدة المدعومة</div>
             <div className="mt-1 opacity-80">
-              title, slug, categoryId أو categorySlug, description, isActive (true/false), price, stock, skuBase, colorName, boxLabel, colorHex, size, images (comma separated)
+              title (أو «الاسم»)، category (أو «القسم»)، price («السعر»)، stock («الكمية»)، color («اللون»)، size («المقاس»)، images («الصور» مفصولة بفاصلة)، description («الوصف»)، isActive (نعم/لا)، slug، skuBase، colorHex. صف لكل لون ومقاس، بنفس الاسم.
             </div>
           </div>
 
@@ -772,6 +743,11 @@ const doImport = async () => {
               <input type="checkbox" checked={importCreateMissingCats} onChange={(e) => setImportCreateMissingCats(e.target.checked)} />
               إنشاء تصنيفات غير موجودة
             </label>
+            <Select
+              value={importDefaultCategoryId}
+              onValueChange={(v: string) => setImportDefaultCategoryId(v)}
+              options={[{ value: "", label: "القسم الافتراضي: بدون" }, ...categories.map((c) => ({ value: c.id, label: `القسم الافتراضي: ${c.name}` }))]}
+            />
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">

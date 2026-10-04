@@ -5022,7 +5022,7 @@ export const PageRenderer = React.memo(function PageRenderer({
   return (
     <InlineEditContext.Provider value={inlineContext}>
       <InlineSelectContext.Provider value={selectContext}>
-        <div className="space-y-5">
+        <div className="space-y-5" data-skin-reset="">
           {groups.flatMap((group) => {
             const renderSectionItem = (sec: PageSection) => {
               const layout = normalizeSectionLayout((sec as any)?.data?.layout);

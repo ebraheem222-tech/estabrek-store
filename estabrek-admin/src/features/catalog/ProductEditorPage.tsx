@@ -18,6 +18,7 @@ import { normalizeHex } from "../../lib/colorDetect";
 import { isEyeDropperSupported, pickScreenColor } from "../../lib/eyeDropper";
 import { getNearestNamedColor, skuSegmentFromColorName } from "../../lib/colorNames";
 import ProductImagesWizardModal from "./ProductImagesWizardModal";
+import { transliterate } from "../../lib/productComposer";
 
 // === Backend endpoints (حسب مشروعك) ===
 // ملاحظة: اذا عندك base مختلف (/admin بدل /v1/admin) عدّل هون
@@ -185,7 +186,7 @@ function guessColorFromHex(hex: string): { name: string; sku: string } | null {
 }
 
 function skuPrefixFromTitleSlug(title: string, slug: string) {
-  const base = (slug || title || "PRODUCT").toUpperCase();
+  const base = transliterate(slug || title || "PRODUCT").toUpperCase();
   const cleaned = base
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/-+/g, "-")
@@ -197,7 +198,7 @@ function skuSegmentFromName(name: string) {
   const knownColorSegment = skuSegmentFromColorName(name);
   if (knownColorSegment) return knownColorSegment;
 
-  const cleaned = String(name || "")
+  const cleaned = transliterate(String(name || ""))
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/-+/g, "-")
@@ -219,7 +220,7 @@ function buildAutoSkuBase(colorName: string, boxLabel: string, skuPrefix: string
 }
 
 function normalizeSkuBaseInput(value: string) {
-  const cleaned = String(value || "")
+  const cleaned = transliterate(String(value || ""))
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/-+/g, "-")
@@ -549,7 +550,7 @@ export default function ProductEditorPage() {
   const getVariantSkuSuffix = (sizeId: string) => {
     const sizeName = sizes.find((s) => s.id === sizeId)?.name ?? sizeId;
     const suffix =
-      String(sizeName)
+      transliterate(String(sizeName))
         .toUpperCase()
         .replace(/[^A-Z0-9]+/g, "")
         .slice(0, 18) || "SIZE";
@@ -1064,7 +1065,7 @@ export default function ProductEditorPage() {
 
     const newVars: LocalVariant[] = pickIds.map((sizeId) => {
       const sizeName = sizes.find((s) => s.id === sizeId)?.name ?? "SIZE";
-      const suffix = String(sizeName)
+      const suffix = transliterate(String(sizeName))
         .toUpperCase()
         .replace(/[^A-Z0-9]+/g, "")
         .slice(0, 18) || "SIZE";
@@ -1332,7 +1333,7 @@ export default function ProductEditorPage() {
 
   // === Quick setup (لما المنتج ما فيه Items/Variants بعد) ===
   const defaultSkuBase = useMemo(() => {
-    const base = (slug || title || "PRODUCT").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    const base = transliterate(slug || title || "PRODUCT").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
     return base || "PRODUCT";
   }, [slug, title]);
 
