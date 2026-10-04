@@ -42,11 +42,7 @@ import { tokensToClassName, tokensToInlineStyle } from "@/cms/style/tokensToTw";
 import { getDividerById } from "@/cms/style/containerStyles";
 
 import { DEFAULT_MOTION_BY_SECTION_TYPE } from "@/motion/gsapPresets";
-import { HeroRenderer } from "../hero-themes";
-import { ContactFormRenderer } from "../contact-forms";
-import { FeatureRenderer } from "../feature-themes";
-import { PricingRenderer } from "../pricing-themes";
-import { SliderRenderer } from "../slider-themes";
+import { HeroRenderer, ContactFormRenderer, FeatureRenderer, PricingRenderer, SliderRenderer } from "./NativeThemeRenderers";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
 
 type QuickAddRef = { productId?: string; slug?: string };

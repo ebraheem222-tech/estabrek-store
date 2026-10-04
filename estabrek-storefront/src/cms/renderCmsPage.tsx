@@ -13,6 +13,9 @@ import {
   listCategories,
 } from "@/lib/api";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage } from "@/lib/catalog";
+import { getProductBadge, getProductSecondaryImage } from "@/lib/productBadges";
+import { loadSeasonalEdits } from "@/lib/seasonalEdits";
+import { loadCollectionStories } from "@/lib/collectionStories";
 
 import { CmsPageRenderer } from "@/cms";
 import { ScriptTags } from "@/components/ScriptTags";
@@ -20,6 +23,7 @@ import ProductCard from "@/components/ProductCard";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import FallbackHome from "@/components/FallbackHome";
 import { RoseCmsHome } from "@/components/cinematic/RoseCmsHome";
+import { RoseCmsInterior } from "@/components/cinematic/RoseCmsInterior";
 import FallbackShop from "@/components/FallbackShop";
 import FallbackContact from "@/components/FallbackContact";
 import CartClient from "@/components/CartClient";
@@ -59,6 +63,19 @@ export async function renderCmsPageBySlug(
 
   const pagePromise = getPageBySlug(slug);
   const bootstrapPromise = getBootstrap();
+  // The rose homepage's scenes only need the categories: start them now instead of
+  // after every other product request (the catalog API answers in about a second each).
+  const roseHome = slug === "/" && process.env.ESTABREK_HOME_MODE !== "cms";
+  const homeDataPromise = roseHome
+    ? Promise.all([listCategories(), bootstrapPromise])
+        .then(async ([cats, boot]) => {
+          const list = cats ?? [];
+          const currency = (boot.site as any)?.currencyCode || "ILS";
+          const [seasons, stories] = await Promise.all([loadSeasonalEdits(list, currency), loadCollectionStories(list, currency)]);
+          return { categories: list, seasons, stories };
+        })
+        .catch(() => ({ categories: [] as Awaited<ReturnType<typeof listCategories>>, seasons: [] as Awaited<ReturnType<typeof loadSeasonalEdits>>, stories: [] as Awaited<ReturnType<typeof loadCollectionStories>> }))
+    : null;
   const page = await pagePromise;
 
   // ✅ Fallback pages if CMS page isn't published yet
@@ -326,7 +343,7 @@ export async function renderCmsPageBySlug(
       const minPrice = getProductMinPrice(p);
       const priceText = minPrice != null ? formatMoney(minPrice, currencyCode) : null;
 
-      const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, priceText, category: p.category?.name || "", colors: (p.items || []).map(item => item.colorHex || "").filter(color => /^#[0-9a-f]{3,8}$/i.test(color)) };
+      const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, secondaryImageUrl: getProductSecondaryImage(p, imageUrl), badge: getProductBadge(p), priceText, category: p.category?.name || "", colors: (p.items || []).map(item => item.colorHex || "").filter(color => /^#[0-9a-f]{3,8}$/i.test(color)) };
       productLookup[p.id] = entry;
       if (p.slug) {
         productLookup[`slug:${p.slug}`] = entry;
@@ -347,7 +364,7 @@ export async function renderCmsPageBySlug(
       const slug = p.slug ?? "";
       if (slug) slugToId.set(slug, p.id);
       if (p.slug) slugToId.set(p.slug, p.id);
-      const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, priceText, category: p.category?.name || "", colors: (p.items || []).map(item => item.colorHex || "").filter(color => /^#[0-9a-f]{3,8}$/i.test(color)) };
+      const entry = { id: p.id, slug: p.slug ?? undefined, title: p.title, imageUrl, secondaryImageUrl: getProductSecondaryImage(p, imageUrl), badge: getProductBadge(p), priceText, category: p.category?.name || "", colors: (p.items || []).map(item => item.colorHex || "").filter(color => /^#[0-9a-f]{3,8}$/i.test(color)) };
       productLookup[p.id] = entry;
       if (p.slug) productLookup[`slug:${p.slug}`] = entry;
     }
@@ -367,17 +384,30 @@ export async function renderCmsPageBySlug(
   }
 
 
+  const homeData = homeDataPromise ? await homeDataPromise : null;
+  const homeCategories = homeData?.categories ?? [];
+  const seasons = homeData?.seasons ?? [];
+  const stories = homeData?.stories ?? [];
+
   return (
     <>
       {/* Page-level head scripts are injected in head.tsx */}
       <ScriptTags scripts={(page as any).headScripts} />
 
-      {slug === "/" && process.env.ESTABREK_HOME_MODE !== "cms" ? <RoseCmsHome
+      {roseHome ? <RoseCmsHome
         sections={page.sections as any}
         productLookup={productLookup}
-        categories={await listCategories()}
+        categories={homeCategories ?? []}
+        seasons={seasons}
+        stories={stories}
         logoUrl={bootstrap.site.logoUrl}
         siteName={bootstrap.site.siteName}
+        renderProductCard={(id) => <ProductCard productId={id} />}
+        renderQuickAdd={(ref) => <QuickAddButton productId={ref.productId} slug={ref.slug} buttonLabel="أضيفي للحقيبة" />}
+      /> : ["/contact", "/about", "/shop"].includes(slug) && process.env.ESTABREK_HOME_MODE !== "cms" ? <RoseCmsInterior
+        kind={slug.slice(1) as "contact" | "about" | "shop"}
+        sections={page.sections as any}
+        productLookup={productLookup}
         renderProductCard={(id) => <ProductCard productId={id} />}
         renderQuickAdd={(ref) => <QuickAddButton productId={ref.productId} slug={ref.slug} buttonLabel="أضف للسلة" />}
       /> : <CmsPageRenderer
