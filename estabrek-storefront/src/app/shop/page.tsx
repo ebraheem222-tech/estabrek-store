@@ -6,6 +6,9 @@ import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/fil
 import type { Metadata } from "next";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import dynamic from "next/dynamic";
+import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
+import { RoseShopIntro } from "@/components/cinematic/RoseShopIntro";
+import { RoseShopTools } from "@/components/cinematic/RoseShopTools";
 
 const ImageSearchPanel = dynamic(
   () => import("@/components/ImageSearchPanel").then((m) => m.ImageSearchPanel),
@@ -76,7 +79,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
   const aiRecommendationsEnabled = storefrontCfg.aiRecommendationsEnabled !== false;
   if (storefrontCfg.cmsOverrideShop !== false) {
     const cms = await renderCmsPageBySlug("/shop", searchParams, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+    if (cms) return <main id="main-content" tabIndex={-1} className={process.env.ESTABREK_HOME_MODE === "cms" ? "mx-auto max-w-6xl px-4 py-8" : undefined}>{cms}</main>;
   }
 
   const f = normalizeFiltersFromSearchParams(searchParams);
@@ -105,6 +108,18 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
     }),
   ]);
 
+  if (process.env.ESTABREK_HOME_MODE !== "cms") return (
+    <main id="main-content" tabIndex={-1}>
+      <NormalizeFilters basePath="/shop" />
+      <RosePageFrame className="rose-shop">
+        <RoseShopIntro />
+        <div className="rose-shop-content" id="shop-products" data-rose-palette="pearl">
+          <ShopBrowseClient initial={out} initialFilters={f} categories={categories ?? []} basePath="/shop" appearance="rose" />
+          <RoseShopTools imageSearch={imageSearchEnabled} recommendations={aiRecommendationsEnabled} />
+        </div>
+      </RosePageFrame>
+    </main>
+  );
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl space-y-8 px-4 py-8 bg-dots" dir="rtl">
       <NormalizeFilters basePath="/shop" />

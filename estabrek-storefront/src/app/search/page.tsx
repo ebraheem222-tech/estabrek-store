@@ -4,6 +4,9 @@ import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/fil
 import type { Metadata } from "next";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import SearchBrowseClient from "@/components/SearchBrowseClient";
+import ShopBrowseClient from "@/components/ShopBrowseClient";
+import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
+import { RoseSearchIntro } from "@/components/cinematic/RoseSearchIntro";
 
 type SP = Record<string, string | string[] | undefined>;
 export const revalidate = 60;
@@ -57,6 +60,20 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
     }),
   ]);
 
+  const categories = Array.isArray(cats) ? cats : [];
+  if (process.env.ESTABREK_HOME_MODE !== "cms") {
+    return (
+      <main id="main-content" tabIndex={-1}>
+        <NormalizeFilters basePath="/search" />
+        <RosePageFrame className="rose-shop rose-search-page">
+          <RoseSearchIntro query={f.q} total={Number((out as any)?.total ?? (out as any)?.items?.length ?? 0)} />
+          <div className="rose-shop-content" id="shop-products" data-rose-palette="pearl">
+            <ShopBrowseClient key={f.q ?? ""} initial={out} initialFilters={f} categories={categories} basePath="/search" appearance="rose" />
+          </div>
+        </RosePageFrame>
+      </main>
+    );
+  }
   return (
     <>
       <NormalizeFilters basePath="/search" />

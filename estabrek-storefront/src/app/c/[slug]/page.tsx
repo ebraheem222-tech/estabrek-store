@@ -5,6 +5,10 @@ import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import type { Metadata } from "next";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
+import ShopBrowseClient from "@/components/ShopBrowseClient";
+import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
+import { RoseCategoryIntro } from "@/components/cinematic/RoseCategoryIntro";
+import { getProductPrimaryImage } from "@/lib/catalog";
 
 export const revalidate = 120;
 
@@ -73,6 +77,7 @@ export default async function CategoryPage({
   )
     ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
     : undefined;
+  if (process.env.ESTABREK_HOME_MODE !== "cms") return <RoseCategoryPage slug={params.slug} searchParams={searchParams} />;
   const selectedCategoryId = f.categoryId ?? undefined;
   const categorySlug = selectedCategoryId ? undefined : params.slug;
   const [cats, out, settings] = await Promise.all([
@@ -166,6 +171,64 @@ const breadcrumbLd = {
           <ProductTile key={p.id} product={p} />
         ))}
       </div>
+    </main>
+  );
+}
+
+/** Rose storefront version: same catalogue, filters and URLs, dressed like the shop. */
+async function RoseCategoryPage({ slug, searchParams }: { slug: string; searchParams: SP }) {
+  const f = normalizeFiltersFromSearchParams(searchParams);
+  const sort = ["latest", "title_asc", "title_desc", "price_asc", "price_desc"].includes(f.sort as string)
+    ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
+    : undefined;
+  const cats = (await listCategories()) ?? [];
+  const decoded = (() => { try { return decodeURIComponent(slug); } catch { return slug; } })();
+  const current = cats.find((c) => c.slug === slug || c.slug === decoded);
+  const out = await listProducts({
+    category: f.categoryId || current ? undefined : slug,
+    categoryId: f.categoryId ?? current?.id,
+    page: f.page ?? 1,
+    pageSize: 24,
+    sort,
+    q: f.q,
+    inStock: f.inStock,
+    colors: f.colors.length ? f.colors.join(",") : undefined,
+    sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
+    minPrice: f.minPrice,
+    maxPrice: f.maxPrice,
+    includeFacets: true,
+    lite: true,
+    color: pick(searchParams, "color"),
+    sizeId: pick(searchParams, "sizeId"),
+  });
+  const name = current?.name ?? decoded;
+  const byId = new Map(cats.map((c) => [c.id, c] as const));
+  const chain: typeof cats = [];
+  for (let cur = current; cur && !chain.includes(cur); cur = cur.parentId ? byId.get(cur.parentId) : undefined) chain.unshift(cur);
+  const crumbs = [
+    { label: "الرئيسية", href: "/" },
+    { label: "المتجر", href: "/shop" },
+    ...(chain.length ? chain : [{ name, slug }]).map((c) => ({ label: c.name, href: `/c/${c.slug}` })),
+  ];
+  const children = current ? cats.filter((c) => c.parentId === current.id) : [];
+  const firstImage = (out.items ?? []).map((p) => getProductPrimaryImage(p)).find(Boolean) ?? null;
+  return (
+    <main id="main-content" tabIndex={-1}>
+      <NormalizeFilters basePath={`/c/${slug}`} />
+      <RosePageFrame className="rose-shop rose-category">
+        <RoseCategoryIntro name={name} slug={current?.slug ?? slug} total={out.total ?? out.items?.length ?? 0} imageUrl={firstImage} crumbs={crumbs} />
+        <div className="rose-shop-content" id="shop-products" data-rose-palette="pearl">
+          <ShopBrowseClient
+            initial={out}
+            initialFilters={f}
+            categories={cats}
+            basePath={`/c/${slug}`}
+            appearance="rose"
+            defaultCategoryId={current?.id}
+            navCategories={children}
+          />
+        </div>
+      </RosePageFrame>
     </main>
   );
 }

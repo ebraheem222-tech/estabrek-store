@@ -1,7 +1,9 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductBySlug, getPublicSettings, listCategories } from "@/lib/api";
+import { getProductBySlug, getPublicSettings, listCategories, listProducts } from "@/lib/api";
+import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
+import { RoseProduct } from "@/components/cinematic/RoseProduct";
 import { formatMoney, getProductMinPrice } from "@/lib/catalog";
 import ProductDetail from "@/components/ProductDetail";
 import ShareButton from "@/components/ShareButton";
@@ -61,9 +63,16 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
+  // Settings and categories don't depend on the product: ask for all three at once.
+  const settingsPromise = getPublicSettings().catch(() => null);
+  const categoriesPromise = listCategories().catch(() => []);
   const product = await getProductBySlug(params.slug);
   if (!product) notFound();
-  const settings = await getPublicSettings().catch(() => null);
+  const relatedCategoryId = (product as any).category?.id ?? (product as any).categoryId;
+  const relatedPromise = relatedCategoryId && process.env.ESTABREK_HOME_MODE !== "cms"
+    ? listProducts({ categoryId: relatedCategoryId, page: 1, pageSize: 5, sort: "latest", includeFacets: false, lite: true }).then((out) => out.items ?? []).catch(() => [])
+    : Promise.resolve([]);
+  const settings = await settingsPromise;
   const storefrontSettings = (settings?.site as any)?.header?.storefront ?? {};
   const breadcrumbsEnabled = storefrontSettings.breadcrumbsEnabled !== false;
   const recommendationsEnabled = storefrontSettings.productRecommendations !== false;
@@ -87,7 +96,7 @@ function flattenCategories(nodes: any[]): any[] {
 const crumbs: Crumb[] = [{ label: "الرئيسية", href: "/" }, { label: "المتجر", href: "/shop" }];
 
 if ((product as any).category?.slug || (product as any).categoryId) {
-  const catsRaw = await listCategories().catch(() => []);
+  const catsRaw = await categoriesPromise;
   const cats = Array.isArray(catsRaw) ? flattenCategories(catsRaw as any[]) : [];
   const byId = new Map(cats.map((c) => [c.id, c]));
   const bySlug = new Map(cats.map((c) => [c.slug, c]));
@@ -142,6 +151,19 @@ const productLd: any = {
 
 
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
+
+  if (process.env.ESTABREK_HOME_MODE !== "cms") {
+    const related = (await relatedPromise).filter((p) => p.id !== (product as any).id).slice(0, 4);
+    return (
+      <main id="main-content" tabIndex={-1}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
+        <RosePageFrame className="rose-shop rose-product-page">
+          <RoseProduct product={product as any} crumbs={crumbs} related={related} />
+        </RosePageFrame>
+      </main>
+    );
+  }
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 space-y-8">

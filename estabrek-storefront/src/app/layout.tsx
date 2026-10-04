@@ -1,3 +1,4 @@
+import { selectStorefrontNav } from "@/lib/storefrontNav";
 import "./globals.css";
 import "./cinematic.css";
 import Providers from "./providers";
@@ -54,6 +55,7 @@ export default async function RootLayout({
       ? "light"
       : "dark";
 
+  const cinematic = process.env.ESTABREK_HOME_MODE !== "cms";
   const navbarHeader = { ...(header ?? {}), sticky: true };
   const rawLoading = header?.ui?.loading ?? null;
   const enabled = rawLoading?.enabled === true;
@@ -83,12 +85,16 @@ export default async function RootLayout({
         <a href="#main-content" className="skip-link">
           تخطي إلى المحتوى
         </a>
-        <Providers initialStorefrontSettings={initialStorefrontSettings}>
+        <Providers
+          initialStorefrontSettings={initialStorefrontSettings}
+          cinematic={cinematic}
+        >
           <EffectsStyles />
           <ThemeWrap
             theme={theme}
-            cursorThemeId={header?.ui?.cursorThemeId}
+            cursorThemeId={cinematic ? null : header?.ui?.cursorThemeId}
             storefrontSettings={initialStorefrontSettings}
+            disableGalleryBackdrop={cinematic}
           >
             <UiSettingsProvider loading={loading}>
               {customCss ? (
@@ -96,20 +102,18 @@ export default async function RootLayout({
               ) : null}
               <ScriptTags scripts={bootstrap.site.scriptsHead} />
               <StorefrontChrome
-                enabled={process.env.ESTABREK_HOME_MODE !== "cms"}
+                enabled={cinematic}
                 storeData={{
                   siteName: bootstrap.site.siteName,
                   logoUrl: bootstrap.site.logoUrl,
-                  navLinks:
-                    header?.cmsNav?.enabled !== false
-                      ? header?.cmsNav?.items || bootstrap.primaryMenu?.tree
-                      : [],
+                  navLinks: selectStorefrontNav(header?.cmsNav, bootstrap.primaryMenu),
                   footerDescription: (
                     (bootstrap.site as any).footer?.about?.text || ""
                   ).split("\n\n")[0],
                   instagram: (bootstrap.site as any).footer?.social?.instagram,
                   footerEnabled: (bootstrap.site as any).footer?.enabled,
                   contactPhone: bootstrap.site.contactPhone,
+                  whatsappNumber: bootstrap.site.whatsappNumber,
                   contactEmail: bootstrap.site.contactEmail,
                   announcement: bootstrap.site.announcement?.isActive
                     ? bootstrap.site.announcement.text || ""

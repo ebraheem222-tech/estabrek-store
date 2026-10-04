@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { getBootstrap, getPublicSettings } from "@/lib/api";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
+import { RoseAbout } from "@/components/cinematic/RoseAbout";
 
 // Icons
 const HomeIcon = () => (
@@ -58,9 +59,10 @@ export default async function AboutPage() {
   const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
   if (storefrontCfg.cmsOverrideAbout !== false) {
     const cms = await renderCmsPageBySlug("/about", undefined, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+    if (cms) return <main id="main-content" tabIndex={-1} className={process.env.ESTABREK_HOME_MODE === "cms" ? "mx-auto max-w-6xl px-4 py-8" : undefined}>{cms}</main>;
   }
 
+  if (process.env.ESTABREK_HOME_MODE !== "cms") return <main id="main-content" tabIndex={-1}><RoseAbout /></main>;
   const bootstrap = await getBootstrap();
   const siteName = bootstrap?.site?.siteName || "Estabrek Store";
 
