@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "./cinematic/Language";
 
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -60,6 +61,7 @@ export function CategorySidebar({
   selectedId?: string;
   onSelect: (id?: string) => void;
 }) {
+  const ar = useLanguage().language === "ar";
   const { roots, byId } = useMemo(() => buildCategoryTree(categories), [categories]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
@@ -130,14 +132,14 @@ export function CategorySidebar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold">التصنيفات</h3>
+        <h3 className="text-sm font-bold">{ar ? "التصنيفات" : "Categories"}</h3>
         {selectedId ? (
           <button
             type="button"
             className="text-xs text-[var(--muted)] hover:text-[var(--text)]"
             onClick={() => onSelect(undefined)}
           >
-            الكل
+            {ar ? "الكل" : "All"}
           </button>
         ) : null}
       </div>

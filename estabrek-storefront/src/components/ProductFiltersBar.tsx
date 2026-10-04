@@ -1,9 +1,12 @@
 "use client";
+import { useLanguage } from "./cinematic/Language";
 
-import React, { useEffect, useMemo, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import { CategorySidebar } from "@/components/CategorySidebar";
+import { gsap } from "gsap";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type FacetColor = { name: string; hex?: string | null; count: number };
 type FacetSize = { id: string; name: string; count: number };
@@ -105,6 +108,7 @@ export function ProductFiltersBar({
   mobileCategoryTree = false,
   categoryTree = false,
   mobileAutoApply = false,
+  appearance = "default",
 }: {
   colors: FacetColor[];
   sizes: FacetSize[];
@@ -117,7 +121,10 @@ export function ProductFiltersBar({
   mobileCategoryTree?: boolean;
   categoryTree?: boolean;
   mobileAutoApply?: boolean;
+  appearance?: "rose" | "default";
 }) {
+  const ar = useLanguage().language === "ar";
+  const settings = useStorefrontSettings();
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const sp = useSearchParams();
@@ -219,6 +226,20 @@ export function ProductFiltersBar({
   }, [categories]);
 
   const [qInput, setQInput] = useState(qParam);
+  const mobileDialog = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!mobileOpen || appearance !== "rose" || !settings.scrollAnimationsEnabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const context = gsap.context(() => {
+      if (isClosing) {
+        gsap.to(".filter-mobile-drawer-candy", { xPercent: 100, duration: .24, ease: "power2.in" });
+        gsap.to(".filter-backdrop", { opacity: 0, duration: .24 });
+      } else {
+        gsap.fromTo(".filter-mobile-drawer-candy", { xPercent: 100 }, { xPercent: 0, duration: .4, ease: "power3.out" });
+        gsap.fromTo(".filter-backdrop", { opacity: 0 }, { opacity: 1, duration: .3 });
+      }
+    }, mobileDialog);
+    return () => context.revert();
+  }, [mobileOpen, isClosing, appearance, settings.scrollAnimationsEnabled]);
   const [minInput, setMinInput] = useState(minPriceParam);
   const [maxInput, setMaxInput] = useState(maxPriceParam);
 
@@ -236,28 +257,37 @@ export function ProductFiltersBar({
 
   useEffect(() => {
     if (!mobileOpen || typeof window === "undefined") return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const dialog = mobileDialog.current;
+    dialog?.querySelector<HTMLElement>('button[aria-label="Close filters"]')?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeMobile();
+      if (e.key === "Tab" && dialog) {
+        const controls = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href]')).filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== "hidden");
+        const first = controls[0], last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); previousFocus?.focus(); };
   }, [mobileOpen]);
 
   // Build active filters array for tags display
   const activeFilters = useMemo(() => {
     const filters: Array<{ type: string; label: string; value: string }> = [];
-    if (qParam) filters.push({ type: "q", label: `بحث: ${qParam}`, value: qParam });
+    if (qParam) filters.push({ type: "q", label: `${ar ? "بحث" : "Search"}: ${qParam}`, value: qParam });
     if (selectedCategory) filters.push({ type: "categoryId", label: selectedCategory.name, value: categoryIdParam });
-    if (inStockParam) filters.push({ type: "inStock", label: "متوفر فقط", value: "1" });
-    if (minPriceParam) filters.push({ type: "minPrice", label: `من: ₪${minPriceParam}`, value: minPriceParam });
-    if (maxPriceParam) filters.push({ type: "maxPrice", label: `إلى: ₪${maxPriceParam}`, value: maxPriceParam });
+    if (inStockParam) filters.push({ type: "inStock", label: ar ? "متوفر فقط" : "In stock", value: "1" });
+    if (minPriceParam) filters.push({ type: "minPrice", label: `${ar ? "من" : "From"}: ₪${minPriceParam}`, value: minPriceParam });
+    if (maxPriceParam) filters.push({ type: "maxPrice", label: `${ar ? "إلى" : "To"}: ₪${maxPriceParam}`, value: maxPriceParam });
     selectedColors.forEach(c => filters.push({ type: "color", label: c, value: c }));
     selectedSizes.forEach(s => {
       const size = sizes.find(sz => sz.id === s);
       filters.push({ type: "size", label: size?.name || s, value: s });
     });
     return filters;
-  }, [qParam, selectedCategory, categoryIdParam, inStockParam, minPriceParam, maxPriceParam, selectedColors, selectedSizes, sizes]);
+  }, [qParam, selectedCategory, categoryIdParam, inStockParam, minPriceParam, maxPriceParam, selectedColors, selectedSizes, sizes, ar]);
 
   const activeFiltersCount = activeFilters.length;
   const hasAny = activeFiltersCount > 0;
@@ -469,14 +499,14 @@ export function ProductFiltersBar({
       <div className="filter-section">
         <label className="filter-label">
           <SearchIcon />
-          بحث
+          {ar ? "بحث" : "Search"}
         </label>
         <div className="relative">
           <input
             className="filter-input pr-10"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            placeholder="ابحث عن منتج..."
+            placeholder={ar ? "ابحث عن منتج..." : "Search products…"}
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
             <SearchIcon />
@@ -489,7 +519,7 @@ export function ProductFiltersBar({
         <div className="filter-section">
           <label className="filter-label">
             <CategoryIcon />
-            التصنيف
+            {ar ? "التصنيف" : "Category"}
           </label>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
             <CategorySidebar
@@ -507,14 +537,14 @@ export function ProductFiltersBar({
           <div className="filter-section">
             <label className="filter-label">
               <CategoryIcon />
-              التصنيف
+              {ar ? "التصنيف" : "Category"}
             </label>
             <select
               className="filter-select"
               value={categoryIdParam}
               onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
             >
-              <option value="">جميع التصنيفات</option>
+              <option value="">{ar ? "جميع التصنيفات" : "All categories"}</option>
               {categoryOptions.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.depth > 0 ? `${"— ".repeat(c.depth)}${c.name}` : c.name}
@@ -527,18 +557,18 @@ export function ProductFiltersBar({
         <div className="filter-section">
           <label className="filter-label">
             <SortIcon />
-            الترتيب
+            {ar ? "الترتيب" : "Sort by"}
           </label>
           <select
             className="filter-select"
             value={sortParam}
             onChange={(e) => setSimple("sort", e.target.value)}
           >
-            <option value="latest">الأحدث</option>
-            <option value="title_asc">العنوان أ→ي</option>
-            <option value="title_desc">العنوان ي→أ</option>
-            <option value="price_asc">السعر: الأقل أولاً</option>
-            <option value="price_desc">السعر: الأعلى أولاً</option>
+            <option value="latest">{ar ? "الأحدث" : "Latest"}</option>
+            <option value="title_asc">{ar ? "العنوان أ→ي" : "Name: A–Z"}</option>
+            <option value="title_desc">{ar ? "العنوان ي→أ" : "Name: Z–A"}</option>
+            <option value="price_asc">{ar ? "السعر: الأقل أولاً" : "Price: low to high"}</option>
+            <option value="price_desc">{ar ? "السعر: الأعلى أولاً" : "Price: high to low"}</option>
           </select>
         </div>
       </div>
@@ -547,7 +577,7 @@ export function ProductFiltersBar({
       <div className="filter-section">
         <label className="filter-label">
           <PriceIcon />
-          نطاق السعر
+          {ar ? "نطاق السعر" : "Price range"}
         </label>
         <div className="price-range-container">
           <div className="relative flex-1">
@@ -555,7 +585,7 @@ export function ProductFiltersBar({
               className="price-range-input"
               value={minInput}
               onChange={(e) => setMinInput(e.target.value)}
-              placeholder="الحد الأدنى"
+              placeholder={ar ? "الحد الأدنى" : "Min price"}
               inputMode="numeric"
               dir="ltr"
             />
@@ -569,7 +599,7 @@ export function ProductFiltersBar({
               className="price-range-input"
               value={maxInput}
               onChange={(e) => setMaxInput(e.target.value)}
-              placeholder="الحد الأقصى"
+              placeholder={ar ? "الحد الأقصى" : "Max price"}
               inputMode="numeric"
               dir="ltr"
             />
@@ -593,7 +623,7 @@ export function ProductFiltersBar({
             }`}>
               {inStockParam && <CheckIcon />}
             </div>
-            <span className="font-medium">المتوفر فقط</span>
+            <span className="font-medium">{ar ? "المتوفر فقط" : "In stock only"}</span>
           </div>
           <span className="filter-toggle-indicator" />
         </button>
@@ -609,7 +639,7 @@ export function ProductFiltersBar({
           >
             <div className="flex items-center gap-2">
               <ColorIcon />
-              <span className="font-medium">الألوان</span>
+              <span className="font-medium">{ar ? "الألوان" : "Colours"}</span>
               {selectedColors.length > 0 && (
                 <span className="active-filters-count">{selectedColors.length}</span>
               )}
@@ -656,7 +686,7 @@ export function ProductFiltersBar({
           >
             <div className="flex items-center gap-2">
               <SizeIcon />
-              <span className="font-medium">المقاسات</span>
+              <span className="font-medium">{ar ? "المقاسات" : "Sizes"}</span>
               {selectedSizes.length > 0 && (
                 <span className="active-filters-count">{selectedSizes.length}</span>
               )}
@@ -691,7 +721,7 @@ export function ProductFiltersBar({
   );
 
   return (
-    <div className={`filter-candy-shell ${className ?? ""}`.trim()} dir="rtl">
+    <div className={`filter-candy-shell ${className ?? ""}`.trim()} dir={ar ? "rtl" : "ltr"}>
       {/* Mobile Filter Toggle */}
       <button 
         type="button" 
@@ -699,33 +729,34 @@ export function ProductFiltersBar({
           setIsClosing(false);
           setMobileOpen(true);
         }} 
-        className={`mobile-filter-toggle filter-mobile-toggle-candy md:hidden ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
+        aria-expanded={mobileOpen}
+        className={`mobile-filter-toggle filter-mobile-toggle-candy ${appearance === "rose" ? "lg:hidden" : "md:hidden"} ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
       >
         <FilterIcon />
-        <span>الفلاتر</span>
+        <span>{ar ? "الفلاتر" : "Filters"}</span>
         {activeFiltersCount > 0 && (
           <span className="active-filters-count">{activeFiltersCount}</span>
         )}
       </button>
 
       {/* Desktop Filters */}
-      <div className="filters-container filters-candy-surface hidden md:block">
+      <div className={`filters-container filters-candy-surface hidden ${appearance === "rose" ? "lg:block" : "md:block"}`}>
         <div className="filters-header">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center text-white">
               <FilterIcon />
             </div>
             <div>
-              <h3 className="font-bold text-[var(--text)]">الفلاتر</h3>
+              <h3 className="font-bold text-[var(--text)]">{ar ? "الفلاتر" : "Filters"}</h3>
               {activeFiltersCount > 0 && (
-                <p className="text-xs text-[var(--muted)]">{activeFiltersCount} فلتر نشط</p>
+                <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {ar ? "فلتر نشط" : "active filters"}</p>
               )}
             </div>
           </div>
           {hasAny && (
             <button type="button" onClick={clearAll} className="clear-filters-btn">
               <TrashIcon />
-              مسح الكل
+              {ar ? "مسح الكل" : "Clear all"}
             </button>
           )}
         </div>
@@ -734,7 +765,7 @@ export function ProductFiltersBar({
 
       {/* Mobile Filters Modal */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-[1300] md:hidden" role="dialog" aria-modal="true">
+        <div ref={mobileDialog} className={`fixed inset-0 z-[1300] ${appearance === "rose" ? "lg:hidden" : "md:hidden"}`} role="dialog" aria-modal="true" aria-label={ar ? "الفلاتر" : "Filters"}>
           <div 
             className={`absolute inset-0 filter-backdrop filter-backdrop-candy ${isClosing ? "closing" : "opening"}`} 
             onClick={closeMobile} 
@@ -749,9 +780,9 @@ export function ProductFiltersBar({
                   <FilterIcon />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[var(--text)]">الفلاتر</h3>
+                  <h3 className="font-bold text-[var(--text)]">{ar ? "الفلاتر" : "Filters"}</h3>
                   {activeFiltersCount > 0 && (
-                    <p className="text-xs text-[var(--muted)]">{activeFiltersCount} فلتر نشط</p>
+                    <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {ar ? "فلتر نشط" : "active filters"}</p>
                   )}
                 </div>
               </div>
@@ -762,7 +793,7 @@ export function ProductFiltersBar({
                 aria-label="Close filters"
               >
                 <CloseIcon />
-                <span className="text-sm font-medium">إغلاق</span>
+                <span className="text-sm font-medium">{ar ? "إغلاق" : "Close"}</span>
               </button>
             </div>
 
@@ -788,7 +819,7 @@ export function ProductFiltersBar({
                   onClick={clearAll} 
                   className="flex-1 py-3 rounded-xl border border-white/45 text-[var(--text)] font-medium transition-all duration-300 filter-mobile-clear-btn"
                 >
-                  مسح الكل
+                  {ar ? "مسح الكل" : "Clear all"}
                 </button>
               )}
               {!mobileAutoApply && (
@@ -797,7 +828,7 @@ export function ProductFiltersBar({
                   onClick={applyMobile} 
                   className="flex-1 py-3 rounded-xl text-white font-semibold transition-all duration-300 filter-mobile-apply-btn"
                 >
-                  تطبيق الفلاتر
+                  {ar ? "تطبيق الفلاتر" : "Apply filters"}
                 </button>
               )}
             </div>

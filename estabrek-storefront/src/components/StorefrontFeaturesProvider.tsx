@@ -28,11 +28,14 @@ export function useStorefrontSettings() {
 interface StorefrontFeaturesProviderProps {
   children: React.ReactNode;
   initialSettings?: Partial<StorefrontSettings>;
+  /** Rose storefront: keep one floating action (WhatsApp) and no scroll line. */
+  cinematic?: boolean;
 }
 
 export function StorefrontFeaturesProvider({ 
   children, 
-  initialSettings 
+  initialSettings,
+  cinematic = false,
 }: StorefrontFeaturesProviderProps) {
   const parseMaybeJson = (value: unknown) => {
     if (typeof value !== "string") return value;
@@ -149,9 +152,9 @@ export function StorefrontFeaturesProvider({
               offlineMessage={settings.liveChatOfflineMessage}
             />
           )}
-          {settings.scrollProgressEnabled && <ScrollProgressBar />}
+          {settings.scrollProgressEnabled && !cinematic && <ScrollProgressBar />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
-          <ScrollToTop />
+          {!cinematic && <ScrollToTop />}
           {settings.accessibilityToolsEnabled !== false && <AccessibilityTools />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
           {settings.chatbotEnabled && (

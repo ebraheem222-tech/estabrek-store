@@ -45,9 +45,11 @@ function StorefrontMotionProvider({ children }: { children: React.ReactNode }) {
 export default function Providers({
   children,
   initialStorefrontSettings,
+  cinematic = false,
 }: {
   children: React.ReactNode;
   initialStorefrontSettings?: Partial<StorefrontSettings>;
+  cinematic?: boolean;
 }) {
   const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
   const defaultTheme = darkModeDisabled
@@ -67,7 +69,7 @@ export default function Providers({
         <WishlistProvider>
           <RecentlyViewedProvider>
             {/* Storefront Features (reads settings from API) */}
-            <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings}>
+            <StorefrontFeaturesProvider initialSettings={initialStorefrontSettings} cinematic={cinematic}>
               <RouteProgress />
               <StorefrontToastProvider>
                 <QuickViewProvider>

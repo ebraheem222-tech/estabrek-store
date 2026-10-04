@@ -1,7 +1,9 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductBySlug, getPublicSettings, listCategories } from "@/lib/api";
+import { getProductBySlug, getPublicSettings, listCategories, listProducts } from "@/lib/api";
+import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
+import { RoseProduct } from "@/components/cinematic/RoseProduct";
 import { formatMoney, getProductMinPrice } from "@/lib/catalog";
 import ProductDetail from "@/components/ProductDetail";
 import ShareButton from "@/components/ShareButton";
@@ -142,6 +144,24 @@ const productLd: any = {
 
 
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
+
+  if (process.env.ESTABREK_HOME_MODE !== "cms") {
+    const categoryId = (product as any).category?.id ?? (product as any).categoryId;
+    const related = categoryId
+      ? ((await listProducts({ categoryId, page: 1, pageSize: 5, sort: "latest", includeFacets: false, lite: true })).items ?? [])
+          .filter((p) => p.id !== (product as any).id)
+          .slice(0, 4)
+      : [];
+    return (
+      <main id="main-content" tabIndex={-1}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
+        <RosePageFrame className="rose-shop rose-product-page">
+          <RoseProduct product={product as any} crumbs={crumbs} related={related} />
+        </RosePageFrame>
+      </main>
+    );
+  }
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 space-y-8">

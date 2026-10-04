@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { whatsappLink } from "@/lib/whatsapp";
 
 const POSITION_KEY = "storefront_whatsapp_pos";
 
@@ -108,7 +109,7 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
     }
   };
 
-  const href = `https://wa.me/${phone.replace(/[^0-9]/g, "")}`;
+  const href = whatsappLink(phone) ?? `https://wa.me/${phone.replace(/[^0-9]/g, "")}`;
 
   return (
     <a
@@ -117,7 +118,7 @@ export default function WhatsAppFloatingButton({ phone }: { phone: string }) {
       target="_blank"
       rel="noopener noreferrer"
       className={`whatsapp-floating-btn${dragging ? " dragging" : ""}`}
-      aria-label="تواصل عبر واتساب"
+      aria-label="تواصلي معنا عبر واتساب"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

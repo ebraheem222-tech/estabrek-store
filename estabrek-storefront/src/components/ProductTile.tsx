@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "./cinematic/Language";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -17,6 +18,8 @@ import { prefetchProductQuickAdd } from "@/lib/apiClient";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useQuickView } from "@/components/QuickViewModal";
 import { LqipImage } from "@/components/LqipImage";
+import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { getProductBadge } from "@/lib/productBadges";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -132,29 +135,35 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
-export function ProductTile({ product }: { product: CatalogProduct }) {
+export function ProductTile({ product, appearance = "default" }: { product: CatalogProduct; appearance?: "rose" | "default" }) {
+  const ar = useLanguage().language === "ar";
   const settings = useStorefrontSettings();
   const { openQuickView } = useQuickView();
   const cardRef = useRef<HTMLDivElement>(null);
   const { primary, secondary } = useMemo(() => getCardImages(product), [product]);
   const swatches = useMemo(() => buildSwatches(product), [product]);
   const autoHoverImages = useMemo(() => buildAutoHoverImages(product, primary, secondary), [primary, product, secondary]);
-  const canAutoRotate = autoHoverImages.length > 1;
+  const canAutoRotate = appearance !== "rose" && autoHoverImages.length > 1;
   const [isHovered, setIsHovered] = useState(false);
   const [hoverImg, setHoverImg] = useState<string | null>(null);
   const [activeSwatch, setActiveSwatch] = useState<string | null>(null);
+  const [selectedSwatch, setSelectedSwatch] = useState<string | null>(null);
   const [autoIndex, setAutoIndex] = useState(0);
   const tiltEnabled = settings.cardTiltEffectEnabled;
   const prefetchEnabled = settings.prefetchLinks;
   const [allowPrefetch, setAllowPrefetch] = useState(false);
   const quickViewEnabled = settings.productQuickView;
   const discountPercent = getProductDiscountPercent(product);
+  const badge = useMemo(() => getProductBadge(product), [product]);
   const targetImg = useMemo(() => {
     if (hoverImg) return hoverImg;
+    const selectedImage = swatches.find(swatch => swatch.key === selectedSwatch)?.imageUrl;
+    if (selectedImage) return selectedImage;
     if (isHovered && canAutoRotate) return autoHoverImages[autoIndex] ?? primary ?? "";
-    if (isHovered && secondary) return secondary;
+    // The rose tile cross-fades its second photo in CSS instead of swapping sources.
+    if (isHovered && secondary && appearance !== "rose") return secondary;
     return primary ?? "";
-  }, [autoHoverImages, autoIndex, canAutoRotate, hoverImg, isHovered, primary, secondary]);
+  }, [appearance, autoHoverImages, autoIndex, canAutoRotate, hoverImg, isHovered, primary, secondary, selectedSwatch, swatches]);
   const [shownImg, setShownImg] = useState<string>(targetImg);
   const [prevImg, setPrevImg] = useState<string | null>(null);
   const [fadeIn, setFadeIn] = useState(true);
@@ -242,7 +251,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
 
   // 3D tilt effect
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!cardRef.current || prefersReducedMotion() || !tiltEnabled) return;
+    if (appearance === "rose" || !cardRef.current || prefersReducedMotion() || !tiltEnabled) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -257,7 +266,7 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
     cardRef.current.style.setProperty('--rotate-y', `${rotateY}deg`);
     cardRef.current.style.setProperty('--spotlight-x', `${spotlightX}%`);
     cardRef.current.style.setProperty('--spotlight-y', `${spotlightY}%`);
-  }, [tiltEnabled]);
+  }, [tiltEnabled, appearance]);
 
   const handleMouseLeave = useCallback(() => {
     if (!cardRef.current) return;
@@ -265,10 +274,24 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
     cardRef.current.style.setProperty('--rotate-y', '0deg');
     setIsHovered(false);
     setHoverImg(null);
-    setActiveSwatch(null);
+    if (appearance !== "rose") setActiveSwatch(null);
     setAutoIndex(0);
-  }, []);
+  }, [appearance]);
 
+  if (appearance === "rose") return <article ref={cardRef} className="rose-product-tile" onMouseEnter={() => setIsHovered(true)} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+    <Link className={`rose-product-image${secondary && shownImg === primary ? " has-alt" : ""}`} href={`/p/${product.slug}`} prefetch={prefetchEnabled}>
+      {discountPercent ? <span className="rose-product-discount">−{discountPercent}%</span> : badge ? <span className={`rose-badge rose-badge-${badge.kind}`}>{ar ? badge.ar : badge.en}</span> : null}
+      {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-main" /> : <span className="rose-image-placeholder">استبرق</span>}
+      {secondary && shownImg === primary ? <LqipImage src={cldUrl(secondary, { w: 640, h: 800, c: "fill", g: "auto" })} alt="" fill loading="lazy" showSkeleton={false} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-alt" /> : null}
+    </Link>
+    <div className="rose-product-meta">
+      <span className="rose-product-category">{product.category?.name}</span>
+      <Link href={`/p/${product.slug}`}><h3>{product.title}</h3></Link>
+      <span className="rose-product-price">{product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "—"}</span>
+      {!!swatches.length && <div className="rose-product-swatches">{swatches.map(s => <button key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={() => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}
+      <div className="rose-product-actions"><QuickAddButton product={product} className="rose-product-add" buttonLabel={ar ? "إضافة للحقيبة" : "Add to bag"} />{quickViewEnabled && <button className="rose-product-preview" onClick={() => openQuickView(product)} aria-label={`${ar ? "معاينة" : "Preview"} ${product.title}`}>{ar ? "معاينة" : "Preview"}</button>}</div>
+    </div>
+  </article>;
   return (
     <div className="perspective-container">
       <div
@@ -402,12 +425,20 @@ export function ProductTile({ product }: { product: CatalogProduct }) {
                     key={swatch.key}
                     type="button"
                     className={`color-swatch h-5 w-5 rounded-full border-2 transition-all duration-200 ${
-                      activeSwatch === swatch.key
+                      (activeSwatch ?? selectedSwatch) === swatch.key
                         ? "border-[var(--accent)] scale-110 active ring-2 ring-[var(--accent)]/30"
                         : "border-[var(--border)] hover:scale-105 hover:shadow-md"
                     }`}
                     style={{ background: swatch.hex }}
                     title={swatch.name}
+                    aria-label={swatch.name}
+                    aria-pressed={selectedSwatch === swatch.key}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedSwatch(swatch.key);
+                      selectStorefrontColor(swatch.hex);
+                    }}
                     onMouseEnter={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

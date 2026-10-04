@@ -33,7 +33,7 @@ export function RecentActivityPopup() {
   if (!item) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 w-72 rounded-2xl border border-white/10 bg-[color:var(--surface)]/95 p-3 shadow-lg backdrop-blur">
+    <div className="recent-activity-popup fixed bottom-4 left-4 z-40 w-72 rounded-2xl border border-white/10 bg-[color:var(--surface)]/95 p-3 shadow-lg backdrop-blur">
       <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">نشاط مؤخراً</div>
       <div className="mt-2 flex items-center gap-3">
         {item.image ? (

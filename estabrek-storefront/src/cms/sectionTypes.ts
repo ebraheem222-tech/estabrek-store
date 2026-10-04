@@ -52,6 +52,13 @@ export type HeroSlide = {
 export type HeroAnimPreset = "none" | "fade-up" | "zoom-in" | "slide-up" | "scale-in";
 
 export type HeroData = HeroSlide & {
+  roseTitle?: string;
+  roseImageUrl?: string;
+  roseImageAlt?: string;
+  rose3dEnabled?: boolean;
+  roseVideoEnabled?: boolean;
+  roseStoryWords?: string[];
+  rosePresentation?: { palette?: "pearl" | "blush" | "rose" | "lilac" | "berry"; motionIntensity?: "subtle" | "cinematic" };
   /** Optional hero theme id (uses hero-themes renderer when set). */
   themeId?: string;
   /** Render hero in 3 columns (left content + center media + right indicators). */
@@ -199,6 +206,7 @@ export type PricingData = {
 };
 
 export type ContactData = {
+  rosePresentation?: HeroData["rosePresentation"];
   /** Optional contact form theme id (uses contact-forms renderer when set). */
   themeId?: string;
   title?: string;
@@ -373,6 +381,7 @@ export type CardsData = {
 };
 
 export type VideoData = {
+  rosePresentation?: { palette?: "pearl" | "blush" | "rose" | "lilac" | "berry"; motionIntensity?: "subtle" | "cinematic" };
   title?: string;
   subtitle?: string;
   url: string;

@@ -1,5 +1,6 @@
 
 "use client";
+import { useLanguage } from "./cinematic/Language";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { listProductsClient } from "@/lib/apiClient";
@@ -8,6 +9,9 @@ import { ProductTileSkeleton } from "@/components/ProductTileSkeleton";
 import { ShopGrid } from "@/components/ShopGrid";
 import { buildCanonicalQuery } from "@/lib/filtersUrl";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type Props = {
   initial: any;
@@ -17,13 +21,20 @@ type Props = {
   onData?: (data: any) => void;
   onLoading?: (loading: boolean) => void;
   extraParams?: Record<string, any>;
+  appearance?: "rose" | "default";
 };
 
-export default function ShopResultsClient({ initial, filters, basePath, showHeader = true, onData, onLoading, extraParams }: Props) {
+export default function ShopResultsClient({ initial, filters, basePath, showHeader = true, onData, onLoading, extraParams, appearance = "default" }: Props) {
+  const ar = useLanguage().language === "ar";
+  const resultsRoot = useRef<HTMLElement>(null);
+  const settings = useStorefrontSettings();
   const isCursor = String(filters?.lm ?? "") === "1" || filters?.lm === 1 || filters?.lm === true;
 
   const [pages, setPages] = useState<any[]>([initial]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const failedLoadMore = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const lastAppliedKeyRef = useRef<string>("");
   const extraParamsRef = useRef<Record<string, any> | undefined>(extraParams);
@@ -33,6 +44,24 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
   }, [extraParams]);
 
   const items = useMemo(() => pages.flatMap((p) => p?.items ?? []), [pages]);
+  useEffect(() => {
+    if (appearance !== "rose" || !settings.scrollAnimationsEnabled || !resultsRoot.current) return;
+    gsap.registerPlugin(ScrollTrigger);
+    const media = gsap.matchMedia();
+    media.add("(prefers-reduced-motion: no-preference)", () => {
+      const context = gsap.context(() => {
+        const cards = gsap.utils.toArray<HTMLElement>(".rose-product-tile");
+        gsap.set(cards, { opacity: 0, y: 12 });
+        // Start ~160px before a card reaches the viewport so fast scrolling never lands on blank rows.
+        ScrollTrigger.batch(cards, {
+          start: "top bottom+=160", once: true, interval: .05,
+          onEnter: batch => gsap.to(batch, { opacity: 1, y: 0, duration: .4, stagger: .04, ease: "power2.out", clearProps: "opacity,transform" }),
+        });
+      }, resultsRoot);
+      return () => context.revert();
+    });
+    return () => media.revert();
+  }, [items, appearance, settings.scrollAnimationsEnabled]);
   const total = (pages[0]?.total ?? items.length) as number;
 
   const last = pages[pages.length - 1];
@@ -47,12 +76,16 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
   }, [filters]);
 
   const initialKeyRef = useRef(filtersKey);
+  const currentKey = useRef(filtersKey);
+  currentKey.current = filtersKey;
 
   useEffect(() => {
     onData?.(pages[0] ?? initial);
   }, [pages, initial, onData]);
 
   useEffect(() => {
+    setError(false);
+    failedLoadMore.current = false;
     if (filtersKey === initialKeyRef.current) {
       if (lastAppliedKeyRef.current !== filtersKey || pages[0] !== initial) {
         abortRef.current?.abort();
@@ -98,7 +131,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
           lastAppliedKeyRef.current = filtersKey;
         } catch (e) {
           if (!controller.signal.aborted) {
-            console.error(e);
+            setError(true);
           }
         } finally {
           if (active) {
@@ -113,7 +146,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
       controller.abort();
       clearTimeout(timer);
     };
-  }, [filtersKey, filters, onLoading]);
+  }, [filtersKey, filters, onLoading, retry]);
 
   const canonicalLoadMore = useMemo(() => {
     const qs = buildCanonicalQuery({ ...filters, page: 1, lm: 1 });
@@ -129,6 +162,11 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
     if (!canLoadMore) return;
     setLoading(true);
     onLoading?.(true);
+    setError(false);
+    const controller = new AbortController();
+    abortRef.current?.abort();
+    abortRef.current = controller;
+    const requestKey = filtersKey;
     try {
       const res = await listProductsClient({
         page: lastPage + 1,
@@ -147,16 +185,19 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
         color: filters.color,
         sizeId: filters.sizeId,
         ...(extraParamsRef.current ?? {}),
-      }, { cacheMs: 15000 });
-      setPages((prev) => [...prev, res]);
+      }, { cacheMs: 15000, signal: controller.signal });
+      if (!controller.signal.aborted && currentKey.current === requestKey) setPages((prev) => [...prev, res]);
+    } catch {
+      if (!controller.signal.aborted && currentKey.current === requestKey) { failedLoadMore.current = true; setError(true); }
     } finally {
-      setLoading(false);
-      onLoading?.(false);
+      if (!controller.signal.aborted && currentKey.current === requestKey) { setLoading(false); onLoading?.(false); }
     }
   }
 
   return (
-    <section aria-label="Products" className="space-y-6">
+    <section ref={resultsRoot} aria-label="Products" className="space-y-6" aria-busy={loading}>
+      {error && <div className="rose-catalog-error" role="alert"><p>{ar ? "تعذّر تحميل المنتجات. جرّبي مرة أخرى." : "Products could not load. Please try again."}</p><button type="button" onClick={() => { setError(false); if (failedLoadMore.current) void loadMore(); else setRetry(n => n + 1); }}>{ar ? "إعادة المحاولة" : "Try again"}</button></div>}
+      {!loading && !error && !items.length && <div className="rose-catalog-empty"><h2>{ar ? "لا توجد منتجات مطابقة" : "No matching products"}</h2><p>{ar ? "جرّبي تغيير الفلاتر أو البحث عن إطلالة أخرى." : "Try another filter or search for a different look."}</p></div>}
       {showHeader ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-zinc-500 dark:text-zinc-300">{total} products</div>
@@ -166,14 +207,14 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
             className="text-sm underline decoration-white/20 underline-offset-4 hover:decoration-white/40"
             title="Share this view"
           >
-            رابط هذا العرض
+            {ar ? "رابط هذا العرض" : "Share this view"}
           </a>
         </div>
       ) : null}
 
-      <ShopGrid>
+      <ShopGrid className={appearance === "rose" ? "rose-shop-grid" : undefined}>
         {items.map((p: any) => (
-          <ProductTile key={p.id} product={p} />
+          <ProductTile key={p.id} product={p} appearance={appearance} />
         ))}
 
         {isCursor && loading
@@ -196,12 +237,12 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
               {loading ? (
                 <span className="inline-flex items-center gap-2">
                   <LoadingIndicator className="inline-grid scale-75 place-items-center" />
-                  <span>جارٍ التحميل...</span>
+                  <span>{ar ? "جارٍ التحميل..." : "Loading…"}</span>
                 </span>
               ) : canLoadMore ? (
-                "تحميل المزيد"
+                ar ? "تحميل المزيد" : "Load more"
               ) : (
-                "لا يوجد المزيد"
+                ar ? "لا يوجد المزيد" : "All pieces loaded"
               )}
             </button>
 
@@ -209,7 +250,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
               href={canonicalPagination}
               className="h-11 rounded-xl px-4 text-sm border border-white/15 bg-white/5 hover:bg-white/10 inline-flex items-center"
             >
-              عرض صفحات (Pagination)
+              {ar ? "عرض صفحات (Pagination)" : "Browse pages"}
             </a>
           </>
         ) : (
@@ -218,7 +259,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
               href={canonicalLoadMore}
               className="h-11 rounded-xl px-4 text-sm bg-white text-black hover:opacity-90 inline-flex items-center"
             >
-              تحميل المزيد (Load more)
+              {ar ? "تحميل المزيد (Load more)" : "Load more"}
             </a>
           </>
         )}

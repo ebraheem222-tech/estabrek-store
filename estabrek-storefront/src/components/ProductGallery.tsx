@@ -1,4 +1,5 @@
 "use client";
+import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CatalogProduct } from "@/lib/catalog";
@@ -233,6 +234,7 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                     setItemId(s.id);
                     setActiveIdx(0);
                     onSelectColorKey?.(s.id);
+                    selectStorefrontColor(s.hex);
                   }}
                   className={[
                     "color-swatch h-7 w-7 shrink-0 rounded-full border-2 transition-all sm:h-8 sm:w-8",

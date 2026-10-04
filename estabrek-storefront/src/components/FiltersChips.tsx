@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "./cinematic/Language";
 
 import React, { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -27,6 +28,7 @@ export function FiltersChips({
   onFiltersChange?: (next: CatalogFilters) => void;
   syncUrl?: boolean;
 }) {
+  const ar = useLanguage().language === "ar";
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -77,7 +79,7 @@ export function FiltersChips({
     if (q)
       out.push({
         key: "q",
-        label: `بحث: ${q}`,
+        label: `${ar ? "بحث" : "Search"}: ${q}`,
         remove: () => {
           const n = base();
           n.q = undefined;
@@ -87,10 +89,10 @@ export function FiltersChips({
 
     const categoryId = currentFilters.categoryId;
     if (categoryId) {
-      const name = categories.find((c) => c.id === categoryId)?.name ?? "تصنيف";
+      const name = categories.find((c) => c.id === categoryId)?.name ?? (ar ? "تصنيف" : "Category");
       out.push({
         key: "categoryId",
-        label: `تصنيف: ${name}`,
+        label: `${ar ? "تصنيف" : "Category"}: ${name}`,
         remove: () => {
           const n = base();
           n.categoryId = undefined;
@@ -102,7 +104,7 @@ export function FiltersChips({
     if (currentFilters.inStock) {
       out.push({
         key: "inStock",
-        label: "متوفر فقط",
+        label: ar ? "متوفر فقط" : "In stock",
         remove: () => {
           const n = base();
           n.inStock = undefined;
@@ -116,7 +118,7 @@ export function FiltersChips({
     if (minPrice || maxPrice) {
       out.push({
         key: "price",
-        label: `السعر: ${minPrice ?? "0"} - ${maxPrice ?? "∞"}`,
+        label: `${ar ? "السعر" : "Price"}: ${minPrice ?? "0"} - ${maxPrice ?? "∞"}`,
         remove: () => {
           const n = base();
           n.minPrice = undefined;
@@ -162,7 +164,7 @@ export function FiltersChips({
     if (hasAny) {
       out.unshift({
         key: "clear",
-        label: "مسح الكل",
+        label: ar ? "مسح الكل" : "Clear all",
         variant: "danger",
         remove: () => {
           const n = base();
@@ -177,7 +179,7 @@ export function FiltersChips({
     }
 
     return out;
-  }, [currentFilters, categories, onFiltersChange, syncUrl, pathname, router]);
+  }, [currentFilters, categories, onFiltersChange, syncUrl, pathname, router, ar]);
 
   if (!chips.length) return null;
 

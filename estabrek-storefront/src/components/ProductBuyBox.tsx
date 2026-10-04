@@ -1,4 +1,5 @@
 "use client";
+import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog";
@@ -7,6 +8,7 @@ import { useCart } from "@/store/cart";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { SizeGuide } from "@/components/SizeGuide";
 
 type Selection = {
   colorKey: string; // either colorName or a fallback key
@@ -152,6 +154,7 @@ export default function ProductBuyBox({
   }, [colorKeys, colorSearch]);
 
   function pickColor(nextColorKey: string) {
+    selectStorefrontColor(colorSwatchHex(nextColorKey));
     const it = byColor.get(nextColorKey);
     const firstVar = it?.variants?.[0];
     setSel({
@@ -187,7 +190,7 @@ export default function ProductBuyBox({
             </svg>
             الشراء
           </h3>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">اختر اللون والمقاس ثم أضف للسلة</p>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">اختاري اللون والمقاس، ثم أضيفي القطعة للحقيبة</p>
         </div>
         {selectedPrice != null && selectedPrice > 0 ? (
           <div className="text-right">
@@ -389,6 +392,7 @@ export default function ProductBuyBox({
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
             </svg>
             <span className="text-sm font-semibold">المقاسات</span>
+            <SizeGuide />
           </div>
           <div className="flex flex-wrap gap-2">
             {sizeKeys.map((k) => {

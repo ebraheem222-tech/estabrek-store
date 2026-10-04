@@ -1,4 +1,5 @@
 "use client";
+import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -279,6 +280,7 @@ export function QuickViewModal({
                       style={{ backgroundColor: item.colorHex || "#ccc" }}
                       onClick={() => {
                         setSelectedItemIndex(idx);
+                        selectStorefrontColor(item.colorHex ?? item.suggestedColors?.[0]);
                         setSelectedVariantIndex(0);
                         setSelectedImageIndex(0);
                       }}
