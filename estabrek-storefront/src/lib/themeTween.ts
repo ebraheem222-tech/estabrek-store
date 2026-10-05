@@ -1,4 +1,5 @@
 import { gsap } from "gsap";
+import { sceneFrameGap } from "./motionBudget";
 
 /**
  * Every storefront colour change goes through here so it is always a smooth
@@ -80,6 +81,9 @@ export function themeFollower(el: HTMLElement) {
   let endGlide: (() => void) | null = null;
   const settle = () => { endGlide?.(); endGlide = null; };
   const step = (t: number) => {
+    // Each write restyles the whole page: at most 60 a second (30 in the light mode),
+    // also on 120 Hz screens.
+    if (last && t - last < sceneFrameGap()) { raf = requestAnimationFrame(step); return; }
     const dt = last ? Math.min(0.1, (t - last) / 1000) : 1 / 60;
     last = t;
     const k = 1 - Math.exp(-dt / smooth);
