@@ -9,6 +9,7 @@ import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import ChatWidget from "@/components/ChatWidget";
 import { RecentActivityPopup } from "@/components/RecentActivityPopup";
 import { RoseRecentlyViewed } from "@/components/cinematic/RoseRecentlyViewed";
+import { RoseCompanion } from "@/components/cinematic/mascot/RoseCompanion";
 import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import { AccessibilityTools } from "@/components/AccessibilityTools";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
@@ -158,13 +159,23 @@ export function StorefrontFeaturesProvider({
           {!cinematic && <ScrollToTop />}
           {settings.accessibilityToolsEnabled !== false && <AccessibilityTools />}
           {settings.voiceSearchEnabled && <VoiceSearchButton />}
-          {settings.chatbotEnabled && (
+          {/* On the rose design the chat is Rose herself (see RoseCompanion below). */}
+          {settings.chatbotEnabled && !cinematic && (
             <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} />
           )}
           {settings.recentPurchasesPopup && (cinematic ? <RoseRecentlyViewed /> : <RecentActivityPopup />)}
+          {/* Rose, the shop guide, follows the shopper; with the chat on, she is the chat. */}
+          {cinematic && (
+            <RoseCompanion
+              chat={Boolean(settings.chatbotEnabled)}
+              whatsapp={settings.whatsappEnabled ? settings.whatsappNumber : null}
+              side={settings.chatbotEnabled && settings.chatbotPosition === "bottom-right" ? "right" : settings.chatbotEnabled && settings.chatbotPosition === "bottom-center" ? "center" : "left"}
+            />
+          )}
           
           {/* WhatsApp Button */}
-          {settings.whatsappEnabled && settings.whatsappNumber && (
+          {/* On the rose design WhatsApp sits beside Rose instead (no overlap). */}
+          {settings.whatsappEnabled && settings.whatsappNumber && !cinematic && (
             <WhatsAppFloatingButton phone={settings.whatsappNumber} />
           )}
         </>

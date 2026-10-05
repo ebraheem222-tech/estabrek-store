@@ -651,12 +651,13 @@ export function ProductFiltersBar({
           <div className={`filter-accordion-content ${expandedSections.colors ? "expanded" : ""}`}>
             <div className="filter-accordion-body">
               <div className="color-chips-container">
-                {colors.map((c) => {
+                {colors.map((c, i) => {
                   const active = selectedColors.some((x) => x.toLowerCase() === c.name.toLowerCase());
                   const hex = c.hex?.startsWith("#") ? c.hex : c.hex ? `#${c.hex}` : null;
                   return (
                     <button
-                      key={c.name}
+                      // The catalog can list one colour name with two shades (e.g. two "ليلكي"): keep keys unique.
+                      key={`${c.name}-${c.hex ?? ""}-${i}`}
                       type="button"
                       onClick={() => toggleColor(c.name)}
                       className={`color-chip ${active ? "active" : ""}`}
