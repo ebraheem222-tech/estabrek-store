@@ -753,7 +753,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background-color: var(--selection-seed, transparent);
+  background-color: var(--selection-dye, transparent);
   mix-blend-mode: color;
   opacity: .88;
   -webkit-mask: url("/editorial/hijab-campaign-tint-mask.png") center 8% / cover no-repeat;
@@ -2819,7 +2819,7 @@ html[data-cinematic-storefront="true"] body { font-family: "Estabrek Text", "Ate
 }
 .editorial-product-image .product-view { display: none; }
 
-/* Badges: "جديد" / "الكمية محدودة" */
+/* Badges: "جديد" / "آخر قطعة" · "باقي قطعتان" */
 .rose-badge {
   position: absolute; z-index: 3; top: 12px; inset-inline-start: 12px;
   font-size: 10px; font-weight: 600; line-height: 1; letter-spacing: .01em;
@@ -3248,7 +3248,9 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
 }
 .rose-pdp-wish:hover { transform: scale(1.1); }
 .rose-pdp-wish[aria-pressed="true"] { background: var(--selection-accent, #7d2448); color: var(--selection-surface, #fff8f4); }
-.rose-pdp-wish[aria-pressed="true"] svg { fill: currentColor; }
+/* Icons (Phosphor Light): the heart fills in when the piece is in the wishlist. */
+svg[data-icon="heart"] .icon-fill { opacity: 0; transition: opacity .25s ease; }
+[aria-pressed="true"] > svg[data-icon="heart"] .icon-fill { opacity: 1; }
 
 .rose-pdp-info { padding-top: 6px; }
 .rose-pdp-info > .atelier-eyebrow { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
@@ -3423,6 +3425,9 @@ html[data-cinematic-storefront="true"]:has(.rose-product-page) .recent-activity-
 .rose-search-field input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 16px; color: var(--selection-ink, #4d2039); padding: 10px 0; }
 .rose-search-field input:focus { outline: none; }
 .rose-search-field .atelier-button { flex: none; min-height: 48px; }
+.rose-search-voice { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--selection-accent, #7d2448); cursor: pointer; transition: background-color .2s ease; }
+.rose-search-voice:hover, .rose-search-voice[aria-pressed="true"] { background: color-mix(in srgb, var(--selection-accent, #7d2448) 12%, transparent); }
+.rose-search-voice:disabled { display: none; } /* browsers without voice input (Firefox) */
 .rose-search-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--selection-muted, #8b6d7b); }
 .rose-search-suggest a { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--selection-line, #e3cdd8); color: var(--selection-ink, #4d2039); text-decoration: none; transition: background .25s ease, color .25s ease, border-color .25s ease, transform .25s ease; }
 .rose-search-suggest a:hover { background: var(--selection-accent, #7d2448); border-color: var(--selection-accent, #7d2448); color: var(--selection-surface, #fff8f4); transform: translateY(-2px); }

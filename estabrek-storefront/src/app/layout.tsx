@@ -16,6 +16,7 @@ import { getLoadingById } from "@/cms/effects/loadingAnimations";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { EffectsStyles } from "@/components/EffectsStyles";
 import { StorefrontChrome } from "@/components/cinematic/StorefrontChrome";
+import { MarketingPixels } from "@/components/MarketingPixels";
 
 /**
  * The site's name, icon and sharing card come from the admin settings (store name,
@@ -25,18 +26,24 @@ export async function generateMetadata(): Promise<Metadata> {
   const { site } = await getPublicSettings().catch(() => ({ site: {} as any }));
   const name = String((site as any)?.siteName ?? "").trim() || "استبرق";
   const tagline = "أناقة تليق بكِ";
-  const description = `حجاب، فساتين وأطقم محتشمة من ${name}. اختيارات مختارة بحب للأناقة والراحة كل يوم، مع توصيل والدفع عند الاستلام.`;
+  // Admin → Settings → محركات البحث: the home title, description and sharing picture.
+  const seo = ((site as any)?.header?.seo ?? {}) as { title?: string; description?: string; ogImageUrl?: string };
+  const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const title = text(seo.title) || `${name} — ${tagline}`;
+  const description =
+    text(seo.description) ||
+    `حجاب، فساتين وأطقم محتشمة من ${name}. اختيارات مختارة بحب للأناقة والراحة كل يوم، مع توصيل والدفع عند الاستلام.`;
   const base = process.env.NEXT_PUBLIC_SITE_URL;
   const favicon = (site as any)?.faviconUrl || null;
-  const shareImage = (site as any)?.logoUrl || "/editorial/hijab-campaign.webp";
+  const shareImage = text(seo.ogImageUrl) || (site as any)?.logoUrl || "/editorial/hijab-campaign.webp";
   return {
     ...(base ? { metadataBase: new URL(base) } : {}),
-    title: { default: `${name} — ${tagline}`, template: `%s | ${name}` },
+    title: { default: title, template: `%s | ${name}` },
     description,
     applicationName: name,
     ...(favicon ? { icons: { icon: favicon, apple: favicon } } : {}),
-    openGraph: { type: "website", siteName: name, locale: "ar", title: `${name} — ${tagline}`, description, images: [shareImage] },
-    twitter: { card: "summary_large_image", title: `${name} — ${tagline}`, description, images: [shareImage] },
+    openGraph: { type: "website", siteName: name, locale: "ar", title, description, images: [shareImage] },
+    twitter: { card: "summary_large_image", title, description, images: [shareImage] },
   };
 }
 
@@ -60,7 +67,10 @@ export default async function RootLayout({
       : null) ??
     null;
   const theme = header?.theme ?? null;
-  const customCss = bootstrap.site.customCss?.trim() || "";
+  // Admin → Settings → أكواد متقدمة → "إيقاف الأكواد المخصصة مؤقتاً": custom CSS,
+  // scripts and tracking pixels are not added while it is on (nothing is deleted).
+  const safeMode = header?.safeMode === true;
+  const customCss = safeMode ? "" : bootstrap.site.customCss?.trim() || "";
   const initialStorefrontSettings =
     header?.storefront ??
     (settings.site as any)?.storefront ??
@@ -118,7 +128,8 @@ export default async function RootLayout({
               {customCss ? (
                 <style dangerouslySetInnerHTML={{ __html: customCss }} />
               ) : null}
-              <ScriptTags scripts={bootstrap.site.scriptsHead} />
+              {safeMode ? null : <ScriptTags scripts={bootstrap.site.scriptsHead} />}
+              {safeMode ? null : <MarketingPixels config={header?.marketing} />}
               <StorefrontChrome
                 enabled={cinematic}
                 storeData={{
@@ -167,7 +178,7 @@ export default async function RootLayout({
                 {children}
               </StorefrontChrome>
               {/* Global body scripts from site settings */}
-              <ScriptTags scripts={bootstrap.site.scriptsBody} />
+              {safeMode ? null : <ScriptTags scripts={bootstrap.site.scriptsBody} />}
               <WebVitalsReporter />
             </UiSettingsProvider>
           </ThemeWrap>

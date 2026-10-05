@@ -30,7 +30,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     };
   }
 
-  const title = (product as any).seoTitle ?? (product as any).title ?? "Product";
+  // A search-engine title from the admin is used as written (no "| Store" added after it).
+  const seoTitle = String((product as any).seoTitle ?? "").trim();
+  const title = seoTitle || (product as any).title || "Product";
   // Search results and shared links show ~160 characters: the start of the description, tidied.
   const rawDescription = String((product as any).seoDescription ?? (product as any).description ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   const description = rawDescription ? (rawDescription.length > 160 ? `${rawDescription.slice(0, 157).trimEnd()}…` : rawDescription) : `${(product as any).title ?? ""} — تسوّقيها الآن مع توصيل والدفع عند الاستلام.`;
@@ -42,7 +44,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const twitterImages = [productImageUrl ?? fallbackOgUrl];
 
   return {
-    title,
+    title: seoTitle ? { absolute: seoTitle } : title,
     description,
     alternates: { canonical },
     openGraph: {
