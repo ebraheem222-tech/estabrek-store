@@ -57,6 +57,9 @@ export type HeroData = HeroSlide & {
   roseImageAlt?: string;
   rose3dEnabled?: boolean;
   roseVideoEnabled?: boolean;
+  roseHeroFilm?: boolean;
+  roseFilmLines?: string[];
+  roseFilmClosing?: string;
   roseStoryWords?: string[];
   rosePresentation?: { palette?: "pearl" | "blush" | "rose" | "lilac" | "berry"; motionIntensity?: "subtle" | "cinematic" };
   /** Optional hero theme id (uses hero-themes renderer when set). */
