@@ -11,6 +11,17 @@ function contrast(a: string, b: string) {
   return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
 }
 
+/**
+ * White, ivory and very pale greys. Dyeing a photo, the scarf film or the fabric
+ * video with them only washes the picture out to grey ("white and see-through"),
+ * so those dyes stay off for such colours; the pieces keep their own colour.
+ */
+export function isNearWhite(hex: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return false;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  return luminance(hex) > 0.72 && Math.max(r, g, b) - Math.min(r, g, b) < 0.1;
+}
+
 /** Light fabric-inspired surfaces and readable controls for any catalog swatch. */
 export function storefrontPalette(seed: string): Record<string, string> {
   const page = mixHex("#fff8f4", seed, .14);
@@ -37,6 +48,8 @@ export function storefrontPalette(seed: string): Record<string, string> {
     "--selection-decorative": mixHex("#ffffff", seed, .58),
     // The raw swatch, for things that take the colour as-is (the hero campaign tint).
     "--selection-seed": seed,
+    // What photos and films are dyed with: nothing for white and ivory (see isNearWhite).
+    "--selection-dye": isNearWhite(seed) ? "transparent" : seed,
     "--navbar-bg": seed, "--navbar-ink": navbarInk,
     "--atelier-bg": page, "--atelier-ink": ink,
     "--atelier-muted": muted, "--atelier-line": line,

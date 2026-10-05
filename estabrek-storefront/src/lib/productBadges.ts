@@ -5,8 +5,12 @@ export type ProductBadge = { kind: ProductBadgeKind; ar: string; en: string };
 
 /** Products added within this window are labelled "new". */
 const NEW_FOR_DAYS = 30;
-/** At or below this many pieces left (across all colours/sizes) we show "limited". */
-const LIMITED_AT = 5;
+/**
+ * At or below this many pieces left (across all colours/sizes) the card says how
+ * many remain ("آخر قطعة", "باقي قطعتان"). A vague "limited quantity" on most of a
+ * small boutique's pieces read like a sales trick; an exact count reads true.
+ */
+const LIMITED_AT = 3;
 
 function isModelUrl(url?: string | null) {
   const clean = String(url ?? "").trim().toLowerCase().split("?")[0].split("#")[0];
@@ -41,7 +45,7 @@ export function getProductSecondaryImage(p: CatalogProduct, primary?: string | n
   return null;
 }
 
-/** "New" for recent arrivals, otherwise "limited" when few pieces remain. */
+/** How many pieces are left when only a few remain, otherwise "new" for recent arrivals. */
 export function getProductBadge(p: CatalogProduct, now = Date.now()): ProductBadge | null {
   const created = Date.parse(String((p as any).createdAt ?? ""));
   let stock = 0;
@@ -54,7 +58,10 @@ export function getProductBadge(p: CatalogProduct, now = Date.now()): ProductBad
       }
     }
   }
-  if (counted && stock > 0 && stock <= LIMITED_AT) return { kind: "limited", ar: "الكمية محدودة", en: "Limited stock" };
+  if (counted && stock > 0 && stock <= LIMITED_AT) {
+    if (stock === 1) return { kind: "limited", ar: "آخر قطعة", en: "Last one" };
+    return { kind: "limited", ar: stock === 2 ? "باقي قطعتان" : `باقي ${stock} قطع`, en: `Only ${stock} left` };
+  }
   if (Number.isFinite(created) && now - created <= NEW_FOR_DAYS * 86_400_000) return { kind: "new", ar: "جديد", en: "New" };
   return null;
 }
