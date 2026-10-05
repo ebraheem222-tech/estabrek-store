@@ -25,11 +25,29 @@ export type CatalogProduct = {
   title: string;
   slug: string;
   description?: string | null;
+  /** Search-engine title/description (empty: the page uses the title and description). */
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   isActive: boolean;
   categoryId: string;
   category?: CatalogCategory | null;
   createdAt?: string;
   updatedAt?: string;
+  /** Sent by the updated backend: photo, prices and stock at a glance (absent on older servers). */
+  summary?: ProductSummary;
+};
+
+export type ProductSummary = {
+  thumbUrl: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  compareAtMax: number | null;
+  stockTotal: number;
+  variantCount: number;
+  outCount: number;
+  lowCount: number;
+  colors: Array<{ name: string; hex: string | null; active: boolean }>;
+  skus: string[];
 };
 
 export type ProductItemImage = {
@@ -48,6 +66,10 @@ export type ProductVariant = {
   sku: string;
   price: string | number;
   compareAt?: string | number | null;
+  originalPrice?: string | number | null;
+  salePrice?: string | number | null;
+  saleStartsAt?: string | null;
+  saleEndsAt?: string | null;
   stock: number;
   lowStockThreshold?: number;
   weightGrams?: number | null;
@@ -155,6 +177,8 @@ export async function createProduct(body: {
   title: string;
   slug: string;
   description?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   isActive?: boolean;
   categoryId: string;
 }) {
@@ -200,6 +224,8 @@ export type ProductDeepUpdateBody = {
     title?: string;
     slug?: string;
     description?: string | null;
+    seoTitle?: string | null;
+    seoDescription?: string | null;
     isActive?: boolean;
     categoryId?: string;
   };
@@ -235,7 +261,34 @@ export type ProductDeepUpdateBody = {
   deleteVariantIds?: string[];
 };
 
+export type SaveKept = { variants: Array<{ id: string; sku: string }>; items: Array<{ id: string; colorName: string }> };
+
 export async function updateProductFull(id: string, body: ProductDeepUpdateBody) {
   const res = await api.put(ENDPOINTS.admin.catalog.products.full(id), body);
-  return res.data as ProductDeep;
+  // `kept` (updated backend): sizes/colours with orders that were kept instead of deleted.
+  return res.data as ProductDeep & { kept?: SaveKept };
+}
+
+/** Why a product save was refused, in words the owner can act on. */
+export function describeSaveError(e: unknown): { message: string; skus?: string[] } {
+  if (!isAxiosError(e)) return { message: "تعذّر الحفظ. حاولي مرة أخرى." };
+  const status = e.response?.status;
+  const data = (e.response?.data ?? {}) as { error?: string; message?: string; details?: any; target?: unknown };
+  if (data.error === "SKU_TAKEN") {
+    const rows = (data.details?.products ?? []) as Array<{ sku: string; title: string }>;
+    const list = rows.map((r) => `${r.sku} (${r.title})`).join("، ");
+    return { message: `كود SKU مستخدم في منتج آخر: ${list || (data.details?.skus ?? []).join("، ")}`, skus: data.details?.skus };
+  }
+  if (data.error === "DUPLICATE_SKU") return { message: `نفس كود SKU مكتوب مرتين: ${(data.details?.skus ?? []).join("، ")}`, skus: data.details?.skus };
+  if (data.error === "UNIQUE_CONSTRAINT") {
+    const t = JSON.stringify(data.target ?? "");
+    if (/sku/i.test(t)) return { message: "أحد أكواد SKU مستخدم في منتج آخر. غيّري الكود وحاولي مرة أخرى." };
+    if (/size/i.test(t)) return { message: "نفس المقاس مكرر لنفس اللون." };
+    if (/slug/i.test(t)) return { message: "رابط المنتج مستخدم لمنتج آخر. غيّري الرابط." };
+    return { message: "يوجد تكرار في البيانات (لون أو مقاس أو كود)." };
+  }
+  if (data.error === "FOREIGN_KEY") return { message: "مقاس أو لون عليه طلبات لا يمكن حذفه. حدّثي الباكند ليُحفظ تلقائياً كـ«نفد»." };
+  if (data.error === "VALIDATION_ERROR") return { message: "بعض الحقول غير صحيحة. راجعي الأسعار والكميات." };
+  if (status === 401 || status === 403) return { message: "انتهت الجلسة أو لا تملكين الصلاحية." };
+  return { message: data.message || "تعذّر الحفظ. حاولي مرة أخرى." };
 }

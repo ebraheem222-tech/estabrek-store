@@ -47,6 +47,9 @@ export const ENDPOINTS = {
       settings: {
         base: "/admin/settings",
         linkNavs: "/admin/settings/link-navs",
+        revisions: "/admin/settings/revisions",
+        revision: (id: string) => `/admin/settings/revisions/${id}`,
+        restoreRevision: (id: string) => `/admin/settings/revisions/${id}/restore`,
       },
       nav: {
         base: "/admin/nav",
@@ -89,6 +92,8 @@ export const ENDPOINTS = {
         adjustments: "/admin/inventory/adjustments",
         variantAdjust: (variantId: string) => `/admin/inventory/variants/${variantId}/adjust`,
         variantThreshold: (variantId: string) => `/admin/inventory/variants/${variantId}/threshold`,
+        variants: "/admin/inventory/variants",
+        bulk: "/admin/inventory/bulk",
       },
       catalog: {
         base: "/admin/catalog",

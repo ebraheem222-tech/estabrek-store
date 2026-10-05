@@ -73,6 +73,11 @@ export const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
+  stock: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.5v15M6.75 4.5v15M9 4.5v15M12.75 4.5v15M15 4.5v15M18.75 4.5v15M20.25 4.5v15" />
+    </svg>
+  ),
   inventory: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path
@@ -167,6 +172,7 @@ const NAV_CATALOG: NavItem[] = [
 ];
 
 const NAV_INVENTORY: NavItem[] = [
+  { to: "/admin/inventory/stock", label: "المخزون والباركود", icon: Icons.stock, requirePermissions: ["inventory:read"] },
   { to: "/admin/inventory/low-stock", label: "تنبيهات المخزون", icon: Icons.inventory, requirePermissions: ["inventory:read"] },
   { to: "/admin/inventory/adjustments", label: "سجل المخزون", icon: Icons.inventory, requirePermissions: ["inventory:write"] },
 ];

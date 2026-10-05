@@ -34,6 +34,8 @@ const SizesPage = lazy(() => import("../features/catalog/SizesPage"));
 
 const LowStockPage = lazy(() => import("../features/inventory/LowStockPage"));
 const InventoryAdjustmentsPage = lazy(() => import("../features/inventory/InventoryAdjustmentsPage"));
+const StockPage = lazy(() => import("../features/inventory/StockPage"));
+const LabelsPrintPage = lazy(() => import("../features/inventory/LabelsPrintPage"));
 
 const CouponsPage = lazy(() => import("../features/discounts/CouponsPage"));
 const CouponTesterPage = lazy(() => import("../features/discounts/CouponTesterPage"));
@@ -122,6 +124,17 @@ export default function AppRouter() {
           )}
         />
 
+        {/* Barcode labels for SKUs (no admin chrome) */}
+        <Route
+          path="/print/labels"
+          element={withPermissions(
+            <React.Suspense fallback={<div dir="rtl" style={{ padding: 24 }}>جارٍ التحميل…</div>}>
+              <LabelsPrintPage />
+            </React.Suspense>,
+            ["inventory:read"],
+          )}
+        />
+
         {/* Admin (Protected) */}
         <Route
           path="/admin"
@@ -151,11 +164,14 @@ export default function AppRouter() {
           {/* catalog */}
           <Route path="catalog/categories" element={withPermissions(<CategoriesPage />, ["catalog:read"])} />
           <Route path="catalog/products" element={withPermissions(<ProductsPage />, ["catalog:read"])} />
-          <Route path="catalog/products/new" element={withPermissions(<ProductComposerPage />, ["catalog:write"])} />
-          <Route path="catalog/products/:id" element={withPermissions(<ProductEditorPage />, ["catalog:write"])} />
+          <Route path="catalog/products/new" element={withPermissions(<ProductComposerPage key="new" />, ["catalog:write"])} />
+          {/* Edit: the same one-screen page (SKU table, quantities); the old full editor stays as "advanced". */}
+          <Route path="catalog/products/:id" element={withPermissions(<ProductComposerPage key="edit" />, ["catalog:write"])} />
+          <Route path="catalog/products/:id/advanced" element={withPermissions(<ProductEditorPage />, ["catalog:write"])} />
           <Route path="catalog/sizes" element={withPermissions(<SizesPage />, ["catalog:read"])} />
 
           {/* inventory */}
+          <Route path="inventory/stock" element={withPermissions(<StockPage />, ["inventory:read"])} />
           <Route path="inventory/low-stock" element={withPermissions(<LowStockPage />, ["inventory:read"])} />
           <Route path="inventory/adjustments" element={withPermissions(<InventoryAdjustmentsPage />, ["inventory:write"])} />
 

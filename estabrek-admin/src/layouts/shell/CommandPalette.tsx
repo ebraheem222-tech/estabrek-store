@@ -113,9 +113,15 @@ function Palette({ onClose, canView, can }: {
       });
     }
 
-    const products = (productsQ.data ?? []).filter((p) => normalizeSearch(p.title).includes(term) || p.slug.includes(debounced.toLowerCase())).slice(0, 6);
-    for (const p of products) {
-      out.push({ id: `pr-${p.id}`, group: "منتجات", label: p.title, hint: [p.category?.name, p.isActive ? "منشور" : "مسودة"].filter(Boolean).join(" · "), icon: Icons.products, run: go(`/admin/catalog/products/${p.id}`) });
+    // Products by name, link, or a SKU (scanned or typed).
+    const code = debounced.trim().toUpperCase();
+    const products = (productsQ.data ?? [])
+      .map((p) => ({ p, sku: code.length >= 3 ? p.summary?.skus.find((s) => s.toUpperCase().includes(code)) : undefined }))
+      .filter(({ p, sku }) => sku || normalizeSearch(p.title).includes(term) || p.slug.includes(debounced.toLowerCase()))
+      .slice(0, 6);
+    for (const { p, sku } of products) {
+      const hint = [sku ? `SKU ${sku}` : null, p.category?.name, p.isActive ? "منشور" : "مسودة", p.summary ? `${p.summary.stockTotal} قطعة` : null].filter(Boolean).join(" · ");
+      out.push({ id: `pr-${p.id}`, group: "منتجات", label: p.title, hint, icon: Icons.products, run: go(`/admin/catalog/products/${p.id}`) });
     }
     return out;
     // `go` only closes over stable values.

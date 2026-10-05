@@ -18,7 +18,7 @@ export function useLowStock(params: { q?: string; onlyBelow?: boolean; take?: nu
   });
 }
 
-export function useAdjustments(params: { variantId?: string; adminUserId?: string; take?: number; skip?: number }) {
+export function useAdjustments(params: { variantId?: string; adminUserId?: string; productId?: string; q?: string; take?: number; skip?: number }) {
   return useQuery({
     queryKey: keys.adjustments(params),
     queryFn: () => InventoryAPI.listAdjustments(params),
