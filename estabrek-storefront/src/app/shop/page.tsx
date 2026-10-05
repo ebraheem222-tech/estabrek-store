@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPublicSettings, listProducts, listCategories } from "@/lib/api";
+import { getPublicSettings, listProducts, listCategories, getPageBySlug } from "@/lib/api";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import ShopBrowseClient from "@/components/ShopBrowseClient";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
@@ -72,23 +72,15 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: SP }) {
-  const settings = await getPublicSettings().catch(() => null);
-  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
-  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
-  const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
-  const aiRecommendationsEnabled = storefrontCfg.aiRecommendationsEnabled !== false;
-  if (storefrontCfg.cmsOverrideShop !== false) {
-    const cms = await renderCmsPageBySlug("/shop", searchParams, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main id="main-content" tabIndex={-1} className={process.env.ESTABREK_HOME_MODE === "cms" ? "mx-auto max-w-6xl px-4 py-8" : undefined}>{cms}</main>;
-  }
-
+  // Ask the catalog straight away: it is the slow request (≈1–2 s on the hosted
+  // API), and it used to wait for the settings and the CMS page lookup first.
   const f = normalizeFiltersFromSearchParams(searchParams);
   const sort = ["latest", "title_asc", "title_desc", "price_asc", "price_desc"].includes(
     f.sort as string
   )
     ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
     : undefined;
-  const [categories, out] = await Promise.all([
+  const catalog = Promise.all([
     listCategories(),
     listProducts({
       page: f.page ?? 1,
@@ -107,6 +99,19 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
       sizeId: pick(searchParams, "sizeId"),
     }),
   ]);
+  // Look up the CMS page alongside the settings instead of after them (one wait, not two).
+  void getPageBySlug("/shop");
+  const settings = await getPublicSettings().catch(() => null);
+  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
+  const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
+  const aiRecommendationsEnabled = storefrontCfg.aiRecommendationsEnabled !== false;
+  if (storefrontCfg.cmsOverrideShop !== false) {
+    const cms = await renderCmsPageBySlug("/shop", searchParams, { allowFallback: false, allowNotFound: false });
+    if (cms) return <main id="main-content" tabIndex={-1} className={process.env.ESTABREK_HOME_MODE === "cms" ? "mx-auto max-w-6xl px-4 py-8" : undefined}>{cms}</main>;
+  }
+
+  const [categories, out] = await catalog;
 
   if (process.env.ESTABREK_HOME_MODE !== "cms") return (
     <main id="main-content" tabIndex={-1}>

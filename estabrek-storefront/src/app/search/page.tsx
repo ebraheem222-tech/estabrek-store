@@ -1,4 +1,4 @@
-import { getPublicSettings, listCategories, listProducts } from "@/lib/api";
+import { getPublicSettings, listCategories, listProducts, getPageBySlug } from "@/lib/api";
 import NormalizeFilters from "@/components/NormalizeFilters";
 import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { Metadata } from "next";
@@ -30,18 +30,10 @@ export async function generateMetadata({ searchParams }: { searchParams: SP }): 
 }
 
 export default async function SearchPage({ searchParams }: { searchParams: SP }) {
-  const settings = await getPublicSettings().catch(() => null);
-  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
-  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
-  const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
-  if (storefrontCfg.cmsOverrideSearch !== false) {
-    const cms = await renderCmsPageBySlug("/search", searchParams, { allowFallback: false, allowNotFound: false });
-    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
-  }
-
+  // Ask the catalog straight away: it is the slow request (≈1–2 s on the hosted
+  // API), and it used to wait for the settings and the CMS page lookup first.
   const f = normalizeFiltersFromSearchParams(searchParams);
-
-  const [cats, out] = await Promise.all([
+  const catalog = Promise.all([
     listCategories(),
     listProducts({
       page: f.page ?? 1,
@@ -59,6 +51,18 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       semantic: false,
     }),
   ]);
+  // Look up the CMS page alongside the settings instead of after them (one wait, not two).
+  void getPageBySlug("/search");
+  const settings = await getPublicSettings().catch(() => null);
+  const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
+  const imageSearchEnabled = storefrontCfg.imageSearchEnabled !== false;
+  if (storefrontCfg.cmsOverrideSearch !== false) {
+    const cms = await renderCmsPageBySlug("/search", searchParams, { allowFallback: false, allowNotFound: false });
+    if (cms) return <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8">{cms}</main>;
+  }
+
+  const [cats, out] = await catalog;
 
   const categories = Array.isArray(cats) ? cats : [];
   if (process.env.ESTABREK_HOME_MODE !== "cms") {

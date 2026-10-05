@@ -746,6 +746,23 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   object-fit: cover;
   object-position: center 8%;
 }
+/* The campaign photo wears the shopper's colour: hijab, abaya and the wall take
+   the hue, the light stays the photo's own, and the mask keeps face and hands natural. */
+.hero-campaign-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-color: var(--selection-seed, transparent);
+  mix-blend-mode: color;
+  opacity: .88;
+  -webkit-mask: url("/editorial/hijab-campaign-tint-mask.png") center 8% / cover no-repeat;
+  mask: url("/editorial/hijab-campaign-tint-mask.png") center 8% / cover no-repeat;
+  transition: background-color .7s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-campaign-tint { transition: none; }
+}
 .hero-orbit {
   position: absolute;
   inset: -12px 12px 60px 8px;
@@ -3037,14 +3054,14 @@ html[data-cinematic-storefront="true"] .a11y-panel { left: auto !important; righ
   .rose-seasons-sticky { padding: 84px 5% 64px; align-items: end; }
   .season-layer { width: 100%; gap: 20px; }
   .season-copy h2 { font-size: clamp(28px, 8vw, 40px); }
-  .season-copy p { font-size: 12px; margin-bottom: 16px; }
+  .season-copy p { font-size: 12px; margin-bottom: 16px; max-width: 68%; } /* leaves Rose a free corner */
   .season-rack { grid-template-columns: repeat(4, minmax(118px, 1fr)); overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
   .season-rack::-webkit-scrollbar { display: none; }
   .season-meter { bottom: 18px; }
 }
 
 /* Floating widgets step aside while a drawer or dialog is open, and never stack on WhatsApp. */
-html[data-cinematic-storefront="true"]:has(.quick-add-layer, .size-guide-dialog[open]) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup) { visibility: hidden; }
+html[data-cinematic-storefront="true"]:has(.quick-add-layer, .size-guide-dialog[open]) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .rose-companion) { visibility: hidden; }
 html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !important; left: 22px !important; }
 @media (max-width: 760px) {
   html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 72px !important; left: 14px !important; width: min(18rem, calc(100vw - 28px)); }
@@ -3461,7 +3478,7 @@ html[data-cinematic-storefront="true"]:has(.rose-cart-page, .rose-search-page) .
 .rose-viewer-thumbs button { position: relative; flex: none; width: 56px; aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden; border: 2px solid transparent; opacity: .55; transition: opacity .25s ease, border-color .25s ease, transform .25s ease; }
 .rose-viewer-thumbs button:hover { opacity: 1; transform: translateY(-2px); }
 .rose-viewer-thumbs button[aria-current="true"] { opacity: 1; border-color: var(--selection-accent, #7d2448); }
-html[data-cinematic-storefront="true"]:has(.rose-viewer) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root) { visibility: hidden; }
+html[data-cinematic-storefront="true"]:has(.rose-viewer) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
 @media (max-width: 760px) {
   .rose-viewer-stage { margin: 0; border-radius: 0; }
   .rose-viewer-nav { width: 42px; height: 42px; }
@@ -3521,7 +3538,7 @@ html[data-cinematic-storefront="true"]:has(.rose-viewer) :is(.whatsapp-floating-
   .rose-sheet-quickadd .rose-sheet { width: 100%; height: auto; max-height: 90svh; border-radius: 26px 26px 0 0; }
   .rose-sheet-quickadd .rose-sheet-photo { aspect-ratio: 16 / 10; }
 }
-html[data-cinematic-storefront="true"]:has(.rose-sheet-layer) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root) { visibility: hidden; }
+html[data-cinematic-storefront="true"]:has(.rose-sheet-layer) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .rose-sheet-layer, .rose-sheet-layer.closing { animation: none; } }
 
 /* ---------- "You viewed" reminder: a small pill beside WhatsApp, shown briefly ---------- */
@@ -3549,3 +3566,603 @@ html[data-cinematic-storefront="true"] .recent-activity-popup.rose-recent {
 }
 @media (prefers-reduced-motion: reduce) { .recent-activity-popup.rose-recent { transition: none; } }
 html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, .rose-viewer, .size-guide-dialog[open]) .recent-activity-popup.rose-recent { visibility: hidden !important; }
+
+/* ------------------------------------------------------------------ Rose, the 2D guide */
+.rose-mascot {
+  --m-hijab: var(--selection-seed, #e3a3bb);
+  --m-dress: color-mix(in srgb, var(--m-hijab) 26%, #fff);
+  --m-skin: #f6d2bd;
+  --m-ink: #5a2a3e;
+  position: absolute;
+  z-index: 4;
+  aspect-ratio: 300 / 420;
+  pointer-events: none;
+}
+.rose-mascot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rose-mascot[data-mirrored="true"] svg { transform: scaleX(-1); }
+.rose-mascot-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  translate: -50% 6px;
+  scale: .9;
+  opacity: 0;
+  padding: 8px 14px;
+  border-radius: 16px;
+  background: var(--selection-surface, #fff);
+  color: var(--selection-ink, #462c3b);
+  border: 1px solid var(--selection-line, #efdde5);
+  box-shadow: 0 12px 28px -16px color-mix(in srgb, var(--selection-ink, #712744) 45%, transparent);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: opacity .3s, translate .3s, scale .3s;
+  pointer-events: none;
+}
+.rose-mascot-bubble[data-show="true"] { opacity: 1; translate: -50% -4px; scale: 1; }
+.rose-mascot-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  translate: -50% -5px;
+  rotate: 45deg;
+  background: inherit;
+  border-right: 1px solid var(--selection-line, #efdde5);
+  border-bottom: 1px solid var(--selection-line, #efdde5);
+}
+.rose-mascot .m-stop-hijab-light { stop-color: color-mix(in srgb, var(--m-hijab) 75%, #fff); }
+.rose-mascot .m-stop-hijab { stop-color: var(--m-hijab); }
+.rose-mascot .m-stop-hijab-dark { stop-color: color-mix(in srgb, var(--m-hijab) 80%, #4a1c30); }
+.rose-mascot .m-stop-dress-light { stop-color: color-mix(in srgb, var(--m-dress) 85%, #fff); }
+.rose-mascot .m-stop-dress { stop-color: var(--m-dress); }
+.rose-mascot .m-stop-dress-dark { stop-color: color-mix(in srgb, var(--m-dress) 82%, #4a1c30); }
+.rose-mascot .m-stop-skin-light { stop-color: color-mix(in srgb, var(--m-skin) 60%, #fff); }
+.rose-mascot .m-stop-skin { stop-color: var(--m-skin); }
+.rose-mascot .m-stop-skin-dark { stop-color: color-mix(in srgb, var(--m-skin) 86%, #b2614a); }
+.rose-mascot .m-outline { stroke: color-mix(in srgb, var(--m-ink) 75%, transparent); stroke-width: 2.4; stroke-linejoin: round; }
+.rose-mascot .m-dress { fill: var(--m-dress); }
+.rose-mascot .m-skin { fill: var(--m-skin); }
+.rose-mascot .m-hijab-dark { fill: color-mix(in srgb, var(--m-hijab) 74%, #4a1c30); }
+.rose-mascot .m-hijab-light { fill: color-mix(in srgb, var(--m-hijab) 55%, #fff); }
+.rose-mascot .m-tail { stroke: color-mix(in srgb, var(--m-ink) 55%, transparent); stroke-width: 2; }
+.rose-mascot .m-shoe { fill: #6b3a4e; }
+.rose-mascot .m-shadow { fill: var(--selection-dark, #7d2448); opacity: .12; }
+.rose-mascot .m-line { fill: none; stroke: var(--m-ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.rose-mascot .m-lash { stroke-width: 2; }
+.rose-mascot .m-thick { stroke-width: 3; }
+.rose-mascot .m-dress-fold { fill: none; stroke: color-mix(in srgb, var(--m-dress) 60%, #4a1c30); stroke-width: 2; stroke-linecap: round; opacity: .45; }
+.rose-mascot .m-hijab-fold { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 60%, #4a1c30); stroke-width: 2; stroke-linecap: round; opacity: .45; }
+.rose-mascot .m-pin circle { fill: #fff; stroke: color-mix(in srgb, var(--m-hijab) 60%, #4a1c30); stroke-width: 1; }
+.rose-mascot .m-heart { fill: #f08aa0; transition: transform 1.4s cubic-bezier(.2,.7,.3,1), opacity 1.4s; }
+.rose-mascot .m-heart-alt { fill: var(--m-hijab); }
+.rose-mascot .m-umbrella { fill: #fff; stroke: color-mix(in srgb, var(--m-ink) 70%, transparent); stroke-width: 2.4; stroke-linejoin: round; }
+.rose-mascot .m-umbrella-rib { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 2; opacity: .7; }
+.rose-mascot .m-umbrella-handle { fill: none; stroke: #6b3a4e; stroke-width: 4; stroke-linecap: round; }
+.rose-mascot .m-stem { fill: none; stroke: #6f9a5e; stroke-width: 3; stroke-linecap: round; }
+.rose-mascot .m-leaf { fill: #8bb576; }
+.rose-mascot .m-petal { fill: #fff; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 1.2; }
+
+/* In the collection story her hands are busy above her head: she talks from below. */
+.story-mascot .rose-mascot-bubble { bottom: auto; top: 100%; translate: -50% -8px; }
+.story-mascot .rose-mascot-bubble[data-show="true"] { translate: -50% 2px; }
+.story-mascot .rose-mascot-bubble::after { top: auto; bottom: 100%; translate: -50% 5px; rotate: 225deg; }
+
+/* Where she stands */
+.hero-mascot { right: -46px; bottom: 26px; height: clamp(150px, 26vh, 230px); }
+.season-mascot { bottom: 7vh; height: clamp(170px, 30vh, 270px); left: 4vw; }
+.story-mascot { bottom: 14vh; height: clamp(170px, 32vh, 290px); left: 3vw; }
+[dir="ltr"] .season-mascot, [dir="ltr"] .story-mascot { left: auto; right: 3vw; }
+.rose-seasons[data-motion="false"] .season-mascot, .rose-stories[data-motion="false"] .story-mascot { display: none; }
+@media (max-width: 899px) {
+  /* Phones: she stands in the free corners, clear of the copy and buttons. */
+  /* Hero: the free lower corner of the photo, above the buttons (measured, mascot/phoneSpot.ts). */
+  .hero-mascot { right: auto; left: var(--mascot-side, 8px); bottom: var(--mascot-bottom, 96px); height: var(--mascot-h, 116px); }
+  /* In the scenes she stands just above the product rack, in the free corner beside
+     the copy; the exact spot and size are measured (mascot/phoneSpot.ts). */
+  .season-mascot { bottom: var(--mascot-bottom, 232px); height: var(--mascot-h, 150px); left: 12px; }
+  .story-mascot { top: auto; bottom: var(--mascot-bottom, 300px); height: var(--mascot-h, 160px); left: 12px; }
+  [dir="ltr"] .hero-mascot { left: auto; right: var(--mascot-side, 8px); }
+  [dir="ltr"] .season-mascot, [dir="ltr"] .story-mascot { left: auto; right: 12px; }
+  .rose-mascot-bubble { left: 0; translate: 0 6px; font-size: 13px; padding: 7px 12px; }
+  .rose-mascot-bubble[data-show="true"] { translate: 0 -4px; }
+  .rose-mascot-bubble::after { left: 40px; }
+  /* Below her would be the products: on phones she talks from above, like elsewhere. */
+  .story-mascot .rose-mascot-bubble { top: auto; bottom: 100%; translate: 0 6px; }
+  .story-mascot .rose-mascot-bubble[data-show="true"] { translate: 0 -4px; }
+  .story-mascot .rose-mascot-bubble::after { top: 100%; bottom: auto; translate: -50% -5px; rotate: 45deg; }
+  [dir="ltr"] .rose-mascot-bubble { left: auto; right: 0; }
+  [dir="ltr"] .rose-mascot-bubble::after { left: auto; right: 34px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rose-mascot-bubble { transition: none; }
+}
+
+/* Rose follows the shopper: a small guide beside the chat button */
+.rose-companion {
+  position: fixed;
+  z-index: 55;
+  bottom: 86px;
+  left: 12px;
+  width: 92px;
+  aspect-ratio: 300 / 420;
+  transition: opacity .35s ease, translate .35s ease;
+}
+.rose-companion[data-side="right"] { left: auto; right: 12px; }
+.rose-companion[data-side="center"] { left: 50%; margin-left: -46px; }
+.rose-companion[data-away="true"] { opacity: 0; translate: 0 24px; pointer-events: none; }
+.rose-companion .rose-mascot { position: absolute; inset: 0; height: 100%; }
+.rose-companion .rose-companion-hit {
+  position: absolute;
+  inset: 8% 10% 4%;
+  border: 0;
+  border-radius: 40% 40% 30% 30%;
+  background: transparent;
+  cursor: pointer;
+}
+.rose-companion .rose-companion-hit:focus-visible { outline: 2px solid var(--selection-accent, #a43b64); outline-offset: 2px; }
+.rose-companion .rose-mascot-bubble { left: 0; translate: 0 6px; }
+.rose-companion .rose-mascot-bubble[data-show="true"] { translate: 0 -4px; }
+.rose-companion .rose-mascot-bubble::after { left: 34px; }
+.rose-companion[data-side="right"] .rose-mascot-bubble { left: auto; right: 0; }
+.rose-companion[data-side="right"] .rose-mascot-bubble::after { left: auto; right: 28px; }
+.rose-mascot .m-bag { fill: var(--m-hijab); stroke: color-mix(in srgb, var(--m-ink) 70%, transparent); stroke-width: 2.2; stroke-linejoin: round; }
+.rose-mascot .m-bag-handle { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 3; stroke-linecap: round; }
+.rose-mascot .m-bag-flower { fill: #fff; }
+@media (max-width: 899px) {
+  .rose-companion { width: 72px; bottom: 82px; left: 8px; }
+  .rose-companion[data-side="right"] { right: 8px; }
+  .rose-companion[data-side="center"] { margin-left: -36px; }
+}
+@media print { .rose-companion { display: none; } }
+
+/* The models Rose holds read clearly against the light skies */
+.story-canvas canvas { filter: drop-shadow(0 16px 22px rgba(70, 30, 40, .18)); }
+
+/* Rose 2: outfits, finer drawing, expressions */
+.rose-mascot {
+  --m-frock: color-mix(in srgb, var(--m-hijab) 42%, #fff);
+  --m-coat: color-mix(in srgb, var(--m-hijab) 55%, #3b2a33);
+  --m-sleeve: var(--m-dress);
+  --m-gold-c: #d4a64a;
+}
+.rose-mascot[data-outfit="dress"], .rose-mascot[data-outfit="tunic"] { --m-sleeve: var(--m-frock); }
+.rose-mascot[data-outfit="coat"] { --m-sleeve: var(--m-coat); }
+.rose-mascot .m-o { display: none; }
+.rose-mascot:not([data-outfit]) .m-o-abaya,
+.rose-mascot[data-outfit="abaya"] .m-o-abaya,
+.rose-mascot[data-outfit="dress"] .m-o-dress,
+.rose-mascot[data-outfit="coat"] .m-o-coat,
+.rose-mascot[data-outfit="khimar"] .m-o-khimar,
+.rose-mascot[data-outfit="tunic"] .m-o-tunic,
+.rose-mascot[data-outfit="eid"] .m-o-eid { display: inline; }
+.rose-mascot[data-outfit="tunic"] .m-pin-flower { display: none; }
+.rose-mascot .m-pearls { display: none; }
+.rose-mascot[data-pearls="true"] .m-pearls { display: inline; }
+
+.rose-mascot .m-stop-frock-light { stop-color: color-mix(in srgb, var(--m-frock) 80%, #fff); }
+.rose-mascot .m-stop-frock { stop-color: var(--m-frock); }
+.rose-mascot .m-stop-frock-dark { stop-color: color-mix(in srgb, var(--m-frock) 80%, #4a1c30); }
+.rose-mascot .m-stop-coat-light { stop-color: color-mix(in srgb, var(--m-coat) 82%, #fff); }
+.rose-mascot .m-stop-coat { stop-color: var(--m-coat); }
+.rose-mascot .m-stop-coat-dark { stop-color: color-mix(in srgb, var(--m-coat) 80%, #1d1016); }
+
+.rose-mascot .m-outline { stroke: color-mix(in srgb, var(--m-ink) 62%, transparent); stroke-width: 2.1; }
+.rose-mascot .m-sleeve { fill: var(--m-sleeve); }
+.rose-mascot .m-cuff { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 70%, #4a1c30); stroke-width: 3.2; stroke-linecap: round; opacity: .8; }
+.rose-mascot[data-outfit="eid"] .m-cuff { stroke: var(--m-gold-c); opacity: 1; }
+.rose-mascot .m-side-shade { fill: color-mix(in srgb, var(--m-dress) 70%, #4a1c30); opacity: .22; }
+.rose-mascot .m-placket { fill: none; stroke: color-mix(in srgb, var(--m-dress) 60%, #4a1c30); stroke-width: 1.4; opacity: .35; }
+.rose-mascot .m-hem { fill: none; stroke: color-mix(in srgb, var(--m-hijab) 60%, #fff); stroke-width: 4.5; stroke-linecap: round; opacity: .85; }
+.rose-mascot .m-belt { fill: color-mix(in srgb, var(--m-hijab) 74%, #4a1c30); }
+.rose-mascot .m-belt-pin { fill: color-mix(in srgb, var(--m-hijab) 55%, #fff); stroke: #fff; stroke-width: 1.5; }
+.rose-mascot .m-gold, .rose-mascot .m-gold-line { fill: var(--m-gold-c); }
+.rose-mascot .m-gold-line { fill: none; stroke: var(--m-gold-c); stroke-width: 4; stroke-linecap: round; }
+.rose-mascot .m-gold-line.m-thin { stroke-width: 1.8; stroke-dasharray: 2 5; }
+.rose-mascot .m-print { fill: #fff; opacity: .85; }
+.rose-mascot .m-bow { fill: color-mix(in srgb, var(--m-hijab) 72%, #4a1c30); stroke: color-mix(in srgb, var(--m-ink) 55%, transparent); stroke-width: 1.4; }
+.rose-mascot .m-coat-seam { fill: none; stroke: color-mix(in srgb, var(--m-coat) 55%, #000); stroke-width: 1.6; stroke-linecap: round; opacity: .5; }
+.rose-mascot .m-button { fill: #e9c27a; stroke: color-mix(in srgb, var(--m-coat) 50%, #000); stroke-width: 1; }
+.rose-mascot .m-ruffle { fill: none; stroke: color-mix(in srgb, var(--m-frock) 55%, #4a1c30); stroke-width: 2.2; stroke-linejoin: round; }
+.rose-mascot .m-pants { fill: #f6ece3; stroke: color-mix(in srgb, var(--m-ink) 50%, transparent); stroke-width: 1.8; }
+.rose-mascot .m-shoe-shine { fill: #fff; opacity: .35; }
+.rose-mascot .m-hijab-shadow { fill: color-mix(in srgb, var(--m-hijab) 62%, #4a1c30); opacity: .45; }
+.rose-mascot .m-underscarf { fill: color-mix(in srgb, var(--m-hijab) 40%, #fff); }
+.rose-mascot .m-hijab-shine { fill: none; stroke: #fff; stroke-width: 6; stroke-linecap: round; opacity: .35; }
+.rose-mascot .m-brow { stroke-width: 2.4; opacity: .85; }
+.rose-mascot .m-lid { fill: none; stroke: #2a1219; stroke-width: 2.6; stroke-linecap: round; }
+.rose-mascot .m-nose { fill: none; stroke: color-mix(in srgb, var(--m-skin) 55%, #8a4636); stroke-width: 1.8; stroke-linecap: round; }
+.rose-mascot .m-mouth-fill { fill: #9b3c55; stroke: none; }
+.rose-mascot .m-tongue { fill: #ef8fa0; }
+.rose-mascot .m-pearl { fill: #fffaf3; stroke: color-mix(in srgb, var(--m-ink) 35%, transparent); stroke-width: 1; }
+.rose-mascot .m-star { fill: #f2c14e; transition: transform 1.2s cubic-bezier(.2,.7,.3,1), opacity 1.2s; }
+
+/* Rose companion 2: she replaces the chat button on the rose design */
+.rose-companion { bottom: 10px; width: 96px; aspect-ratio: auto; height: auto; }
+.rose-companion-figure { position: relative; width: 100%; aspect-ratio: 300 / 420; }
+.rose-companion-badge {
+  position: absolute;
+  top: 6%;
+  inset-inline-end: -4px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--selection-surface, #fff);
+  border: 1px solid var(--selection-line, #efdde5);
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--selection-ink, #712744) 50%, transparent);
+  font-size: 14px;
+  pointer-events: none;
+  animation: rose-badge 2.6s ease-in-out infinite;
+}
+@keyframes rose-badge { 0%, 100% { translate: 0 0; } 50% { translate: 0 -4px; } }
+.rose-companion[data-side="right"] .rose-companion-badge { inset-inline-end: auto; inset-inline-start: -4px; }
+
+.rose-chat {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: min(360px, calc(100vw - 20px));
+  height: min(540px, calc(100dvh - 190px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--selection-surface, #fff);
+  color: var(--selection-ink, #462c3b);
+  border: 1px solid var(--selection-line, #efdde5);
+  box-shadow: 0 28px 60px -28px color-mix(in srgb, var(--selection-ink, #712744) 55%, transparent);
+  transform-origin: bottom left;
+  animation: rose-chat-in .35s cubic-bezier(.2,.8,.3,1.2);
+  font-family: "Estabrek Text", "Atelier Sans", Arial, sans-serif;
+}
+@keyframes rose-chat-in { from { opacity: 0; scale: .9; translate: 0 10px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+.rose-companion[data-side="right"] .rose-chat { left: auto; right: 0; transform-origin: bottom right; }
+.rose-companion[data-side="center"] .rose-chat { left: 50%; translate: -50% 0; }
+.rose-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, var(--selection-soft, #f7dbe6), var(--selection-surface, #fff));
+  border-bottom: 1px solid var(--selection-line, #efdde5);
+}
+.rose-chat-head > div { display: grid; flex: 1; line-height: 1.25; }
+.rose-chat-head strong { font-size: 16px; }
+.rose-chat-head span { font-size: 12px; color: var(--selection-muted, #8b6d7b); }
+.rose-chat-icon { width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 15px; }
+.rose-chat-icon:hover { background: var(--selection-soft, #f7dbe6); }
+.rose-chat-face { width: 34px; height: 34px; flex: none; border-radius: 50%; background: var(--selection-soft, #f7dbe6); }
+.rose-chat-face .m-face-hijab { fill: var(--selection-seed, #e3a3bb); }
+.rose-chat-face .m-face-skin { fill: #f6d2bd; }
+.rose-chat-list { flex: 1; overflow-y: auto; padding: 14px 12px; display: grid; align-content: start; gap: 10px; overscroll-behavior: contain; }
+.rose-chat-row { display: flex; gap: 8px; align-items: flex-end; }
+.rose-chat-row[data-role="user"] { justify-content: flex-end; }
+.rose-chat-row .rose-chat-face { width: 28px; height: 28px; }
+.rose-chat-msg { max-width: 82%; padding: 9px 12px; border-radius: 18px; background: var(--selection-soft, #f7dbe6); font-size: 14px; line-height: 1.6; }
+.rose-chat-msg p { margin: 0; white-space: pre-line; }
+.rose-chat-row[data-role="assistant"] .rose-chat-msg { border-end-start-radius: 6px; }
+.rose-chat-row[data-role="user"] .rose-chat-msg { background: var(--selection-accent, #a43b64); color: #fff; border-end-end-radius: 6px; }
+.rose-chat-products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.rose-chat-products a { display: grid; gap: 3px; color: inherit; text-decoration: none; font-size: 12px; line-height: 1.35; }
+.rose-chat-products img, .rose-chat-noimg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 12px; background: #f4ebe3; display: block; }
+.rose-chat-products em { font-style: normal; font-weight: 700; color: var(--selection-accent, #a43b64); }
+.rose-chat-typing { display: flex; gap: 4px; padding: 12px 14px; }
+.rose-chat-typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--selection-muted, #8b6d7b); animation: rose-typing 1s infinite ease-in-out; }
+.rose-chat-typing i:nth-child(2) { animation-delay: .15s; }
+.rose-chat-typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes rose-typing { 0%, 100% { opacity: .3; translate: 0 0; } 50% { opacity: 1; translate: 0 -3px; } }
+.rose-chat-quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
+.rose-chat-quick button { border: 1px solid var(--selection-line, #efdde5); background: var(--selection-surface, #fff); color: var(--selection-accent, #a43b64); border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.rose-chat-quick button:hover { background: var(--selection-soft, #f7dbe6); }
+.rose-chat-form { display: flex; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--selection-line, #efdde5); }
+.rose-chat-form input { flex: 1; min-width: 0; height: 42px; border-radius: 999px; border: 1px solid var(--selection-line, #efdde5); padding: 0 14px; font: inherit; font-size: 14px; background: var(--selection-page, #fff9fb); color: inherit; }
+.rose-chat-form input:focus { outline: 2px solid color-mix(in srgb, var(--selection-accent, #a43b64) 45%, transparent); outline-offset: 1px; }
+.rose-chat-form button { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--selection-accent, #a43b64); color: #fff; font-size: 16px; cursor: pointer; }
+.rose-chat-form button:disabled { opacity: .45; cursor: default; }
+[dir="rtl"] .rose-chat-form button, .rose-chat[dir="rtl"] .rose-chat-form button { transform: scaleX(-1); }
+@media (max-width: 899px) {
+  .rose-companion { width: 74px; bottom: 8px; }
+  .rose-chat { width: calc(100vw - 16px); height: min(520px, calc(100dvh - 150px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rose-chat, .rose-companion-badge, .rose-chat-typing i { animation: none; }
+}
+.rose-companion .rose-companion-hit { z-index: 5; }
+.rose-companion .rose-mascot svg { pointer-events: none; }
+.rose-companion[data-open="true"] .rose-mascot-bubble { display: none; }
+/* While a scene Rose is on screen, the chat waits as Rose's little face */
+.rose-companion[data-chat="true"][data-away="true"] { opacity: 1; translate: 0 0; pointer-events: auto; }
+.rose-companion[data-chat="true"][data-away="true"] .rose-companion-figure { visibility: hidden; pointer-events: none; }
+.rose-companion-mini {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  width: 58px;
+  height: 58px;
+  padding: 4px;
+  border-radius: 50%;
+  border: 1px solid var(--selection-line, #efdde5);
+  background: var(--selection-surface, #fff);
+  box-shadow: 0 12px 26px -12px color-mix(in srgb, var(--selection-ink, #712744) 55%, transparent);
+  cursor: pointer;
+  animation: rose-chat-in .3s ease;
+}
+.rose-companion-mini .rose-chat-face { width: 100%; height: 100%; }
+.rose-companion-mini span { position: absolute; top: -6px; right: -6px; font-size: 15px; }
+.rose-companion[data-side="right"] .rose-companion-mini { left: auto; right: 6px; }
+
+/* WhatsApp beside Rose (never on top of her) and inside her panel */
+.rose-companion-wa {
+  position: absolute;
+  bottom: 10px;
+  left: calc(100% + 2px);
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 12px 24px -12px rgba(18, 140, 70, .7);
+  transition: transform .2s ease;
+}
+.rose-companion-wa:hover { transform: scale(1.06); }
+.rose-companion-wa svg { width: 26px; height: 26px; }
+.rose-companion[data-side="right"] .rose-companion-wa { left: auto; right: calc(100% + 2px); }
+.rose-companion[data-side="center"] .rose-companion-wa { left: calc(100% + 2px); }
+.rose-companion[data-chat="true"][data-away="true"] .rose-companion-wa,
+.rose-companion[data-away="true"] .rose-companion-wa { left: 70px; }
+.rose-companion[data-away="true"] { opacity: 1; translate: 0 0; pointer-events: auto; }
+.rose-companion[data-away="true"] .rose-companion-figure { visibility: hidden; pointer-events: none; }
+.rose-chat-wa { color: #1fa855; display: grid; place-items: center; }
+.rose-chat-links { padding-top: 4px; }
+.rose-chat-quick a, .rose-chat-links a {
+  border: 1px solid var(--selection-line, #efdde5);
+  background: var(--selection-surface, #fff);
+  color: var(--selection-accent, #a43b64);
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.rose-chat-links .rose-chat-cta, .rose-chat-quick .rose-chat-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #25d366;
+  border-color: #25d366;
+  color: #fff;
+  font-weight: 700;
+  padding: 9px 14px;
+}
+@media (max-width: 899px) {
+  .rose-companion-wa { width: 44px; height: 44px; bottom: 8px; }
+  .rose-companion[data-away="true"] .rose-companion-wa { left: 68px; }
+}
+
+/* Chatbot off: a short contact card, not a tall empty chat. */
+.rose-chat[data-offline] { height: auto; max-height: min(540px, calc(100dvh - 190px)); }
+.rose-chat[data-offline] .rose-chat-list { flex: none; }
+.rose-chat[data-offline] .rose-chat-links { padding-bottom: 16px; }
+
+/* While a scene (seasons, collection worlds) drives the colours on every scroll
+   frame, the header follows them directly. Its own .5s colour transition kept
+   restarting each frame and trailed a step behind, so the header showed one
+   season's colour while the page already showed the next (the "blink"). */
+.cinematic-shell[data-season] .atelier-header,
+.cinematic-shell[data-season][data-navbar-color] .atelier-header { transition: none; }
+
+/* While the storefront colours glide (a colour pick, a hover preview, a scene
+   handing the colours back), GSAP is the only thing animating colour: CSS colour
+   transitions would restart on every frame and trail behind the page. Motion
+   transitions (transform, opacity…) keep running. The repeated attribute only
+   raises specificity above the few !important button transitions. */
+html[data-theme-gliding][data-theme-gliding][data-theme-gliding] *,
+html[data-theme-gliding][data-theme-gliding][data-theme-gliding] *::before,
+html[data-theme-gliding][data-theme-gliding][data-theme-gliding] *::after,
+html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *,
+html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *::before,
+html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *::after {
+  transition-property: transform, opacity, translate, scale, rotate, filter, visibility !important;
+}
+
+/* Page placeholders while a page loads (app/{contact,search,about}/loading.tsx). */
+:is(.rose-contact-skeleton, .rose-skeleton) .sk { display: block; border-radius: 999px; background: color-mix(in srgb, var(--selection-line, #e3c8d7) 70%, transparent); animation: rose-sk-pulse 1.4s ease-in-out infinite; }
+:is(.rose-contact-skeleton, .rose-skeleton) .sk-eyebrow { width: 150px; height: 10px; }
+:is(.rose-contact-skeleton, .rose-skeleton) .sk-title { width: 85%; height: 44px; margin-top: 22px; border-radius: 16px; }
+:is(.rose-contact-skeleton, .rose-skeleton) .sk-heading { width: 55%; height: 30px; margin: 22px 0 30px; border-radius: 12px; }
+:is(.rose-contact-skeleton, .rose-skeleton) .sk-short { width: 55%; }
+:is(.rose-contact-skeleton, .rose-skeleton) .sk-line { width: 80%; height: 11px; margin-top: 18px; }
+.rose-contact-skeleton .sk-arch { height: 270px; margin-top: 30px; border-radius: 140px 140px 8px 8px; }
+.rose-contact-skeleton .sk-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+:is(.rose-contact-skeleton, .rose-skeleton) .sk-field { height: 48px; border-radius: 14px; }
+.rose-contact-skeleton .sk-wide { grid-column: 1 / -1; height: 120px; }
+.rose-contact-skeleton .sk-button { width: 190px; height: 50px; margin-top: 24px; }
+.rose-search-skeleton .rose-shop-intro { margin-top: 24px; }
+.rose-search-skeleton .sk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; padding: 0 5% 80px; }
+.rose-search-skeleton .sk-photo { aspect-ratio: 4 / 5; border-radius: 18px; }
+.rose-search-skeleton .sk-card .sk-line { width: 75%; margin-top: 14px; }
+.rose-search-skeleton .sk-card .sk-short { width: 40%; }
+.rose-about-hero.rose-skeleton .sk-portrait { height: 570px; border-radius: 270px 270px 10px 10px; }
+@media (max-width: 760px) {
+  .rose-search-skeleton .sk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .rose-about-hero.rose-skeleton .sk-portrait { height: 380px; }
+}
+@keyframes rose-sk-pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { :is(.rose-contact-skeleton, .rose-skeleton) .sk { animation: none; } }
+
+/* A picked colour cross-fades (lib/themeTween.ts crossfadeTheme): the old look
+   fades into the new one on the graphics card instead of restyling the page
+   every frame. Only while a colour change runs, so other view transitions keep
+   their own timing. */
+html[data-theme-crossfade]::view-transition-old(root),
+html[data-theme-crossfade]::view-transition-new(root) {
+  animation-duration: .55s;
+  animation-timing-function: cubic-bezier(.33, .7, .3, 1);
+}
+
+/* ---------- Opening film: the scarf that becomes a hijab (RoseHeroFilm.tsx) ---------- */
+.rose-film { --film-accent: #b2486a; position: relative; height: 340vh; color: var(--selection-ink, #4d2039); }
+.rose-film[data-motion="false"] { height: auto; }
+.rose-film-sticky {
+  position: sticky; top: 0; height: 100svh; min-height: 560px; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center;
+  gap: clamp(28px, 5vw, 84px); padding: 104px 6% 44px;
+}
+.rose-film[data-motion="false"] .rose-film-sticky { position: relative; height: auto; min-height: min(100svh, 820px); }
+.film-copy { position: relative; z-index: 3; display: grid; align-content: center; max-width: 580px; }
+.film-lines {
+  display: grid; margin: 24px 0 18px; min-height: 2.9em; align-items: end;
+  font-family: var(--atelier-serif); font-weight: 500; font-size: clamp(40px, 4.9vw, 76px); line-height: 1.45; letter-spacing: -.02em;
+}
+.film-line { grid-area: 1 / 1; align-self: center; }
+.film-row { display: block; }
+.film-word {
+  display: inline-block; opacity: 0; transform: translateY(.5em); filter: blur(8px);
+  transition: opacity .55s ease, transform .75s cubic-bezier(.2, .75, .2, 1), filter .6s ease;
+  transition-delay: calc(var(--j, 0) * 75ms);
+}
+.film-line[data-state="on"] .film-word { opacity: 1; transform: none; filter: none; }
+.film-line[data-state="past"] .film-word { transform: translateY(-.4em); transition-duration: .35s; transition-delay: calc(var(--j, 0) * 25ms); }
+.film-closing { color: var(--selection-accent, #a43b64); }
+.film-closing .film-word { transition-duration: .7s, .95s, .8s; transition-delay: calc(120ms + var(--j, 0) * 110ms); }
+.rose-film .hero-description { max-width: 440px; font-size: 14px; line-height: 2.1; margin: 0 0 28px; min-height: 4.2em; }
+.rose-film .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; }
+.film-cta { transition: box-shadow .6s ease, transform .4s ease; }
+.rose-film[data-final] .film-cta { box-shadow: 0 0 0 7px color-mix(in srgb, var(--selection-accent, #a43b64) 16%, transparent); transform: translateY(-2px); }
+.film-steps { display: flex; gap: 8px; list-style: none; padding: 0; margin: 30px 0 0; }
+.film-steps li { width: 22px; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--selection-ink, #4d2039) 14%, transparent); transition: background-color .45s ease, width .45s ease; }
+.film-steps li[data-on] { background: var(--film-accent); }
+.film-steps li:last-child { width: 34px; }
+.film-cue { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; font-size: 11px; letter-spacing: .04em; opacity: .7; transition: opacity .4s ease; }
+.film-cue svg { width: 14px; height: 14px; animation: film-cue 1.8s ease-in-out infinite; }
+.rose-film[data-final] .film-cue { opacity: 0; }
+@keyframes film-cue { 50% { transform: translateY(4px); } }
+
+.film-stage { position: relative; height: min(80svh, 820px); min-height: 380px; display: grid; }
+/* Bigger scarf, nudged towards the outer edge so it stays clear of the words. */
+[dir="ltr"] .rose-film { --film-shift: 6%; }
+/* The scarf floats on the page: the film's black is taken out live (filmCutout.ts). */
+.film-arch { position: relative; isolation: isolate; }
+.film-canvas {
+  position: absolute; z-index: 1; left: calc(50% + var(--film-shift, -6%)); top: 47%;
+  width: var(--film-w, 165%); aspect-ratio: 16 / 9; height: auto;
+  translate: -50% -50%;
+  transform: scale(calc(1 + (var(--film-zoom, 1) - 1) * var(--film-zoom-k, 1))); transform-origin: 50% 42%;
+  /* Whatever reaches the edge of the frame fades out instead of being cut. */
+  -webkit-mask: radial-gradient(50% 50% at 50% 50%, #000 72%, transparent 100%);
+  mask: radial-gradient(50% 50% at 50% 50%, #000 72%, transparent 100%);
+  opacity: 0; transition: opacity .5s ease;
+  will-change: transform; pointer-events: none;
+}
+.film-canvas[data-ready="true"] { opacity: 1; }
+/* The video only feeds the canvas: kept decoding, out of sight. */
+.rose-film[data-cutout="on"] .film-video { position: absolute; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+/* A soft halo of the line's colour behind the fabric (fades between lines). */
+.film-glow {
+  position: absolute; inset: 6% 4%; z-index: 0; background-color: var(--film-accent); opacity: .2; border-radius: 50%;
+  -webkit-mask: radial-gradient(50% 50% at 50% 46%, #000 0%, transparent 70%);
+  mask: radial-gradient(50% 50% at 50% 46%, #000 0%, transparent 70%);
+  transition: background-color .9s ease;
+}
+
+/* No WebGL: the film keeps its black, shown in a dark arch instead. */
+.rose-film[data-cutout="off"] .film-canvas { display: none; }
+.rose-film[data-cutout="off"] .film-arch {
+  overflow: hidden; border-radius: 999px 999px 26px 26px; background: #0b0709;
+  box-shadow: 0 46px 90px -44px color-mix(in srgb, var(--film-accent) 75%, transparent);
+}
+.rose-film[data-cutout="off"] .film-glow { inset: 0; border-radius: 0; opacity: .42; }
+.rose-film[data-cutout="off"] .film-video {
+  position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 30%; mix-blend-mode: screen;
+  transform: scale(calc(1.16 - var(--film-p, 0) * .16)); transform-origin: 50% 38%;
+}
+.rose-film[data-cutout="off"] .film-arch::after { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 70px 18px #0b0709; }
+.film-caption { position: absolute; bottom: -24px; inset-inline-end: 10px; font-size: 9px; letter-spacing: .22em; opacity: .55; }
+.rose-film .hero-mascot { right: auto; left: -22px; bottom: -8px; height: clamp(150px, 24vh, 220px); }
+[dir="ltr"] .rose-film .hero-mascot { left: auto; right: -22px; }
+
+@media (max-width: 760px) {
+  .rose-film { height: 300vh; }
+  .rose-film-sticky {
+    grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; align-items: stretch;
+    gap: 12px; padding: 88px 5% 78px; min-height: 0; /* the floating Rose / accessibility buttons sit below the buttons, not on them */
+  }
+  .film-stage { order: -1; height: auto; min-height: 0; }
+  /* Phones: big scarf, a gentler grow, and set a little higher so it stays clear of the words. */
+  .rose-film, [dir="ltr"] .rose-film { --film-w: 210%; --film-shift: 0%; --film-zoom-k: .5; }
+  .film-canvas, .film-sparkles { top: 38%; }
+  .rose-film[data-cutout="off"] .film-arch { border-radius: 170px 170px 22px 22px; }
+  .film-lines { font-size: clamp(27px, 8.2vw, 38px); margin: 8px 0 6px; }
+  .rose-film .hero-description { font-size: 12px; line-height: 1.9; margin-bottom: 14px; min-height: 3.8em; }
+  .rose-film .atelier-eyebrow { font-size: 10px; }
+  .film-cue, .film-caption, .film-steps { display: none; } /* the arch's own progress line is enough here */
+  /* Beside the words, clear of the scarf (spot measured in mascot/phoneSpot.ts). */
+  .rose-film .hero-mascot { left: var(--mascot-side, 2px); bottom: var(--mascot-bottom, -10px); height: var(--mascot-h, 98px); }
+  [dir="ltr"] .rose-film .hero-mascot { left: auto; right: var(--mascot-side, 2px); }
+  .rose-film[data-motion="false"] .rose-film-sticky { grid-template-rows: 52svh auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .film-word { transition: none; }
+  .film-cue svg { animation: none; }
+}
+
+/* The finished hijab catches the light: sparkles twinkle around it and a glint passes once. */
+.film-sparkles {
+  position: absolute; z-index: 2; pointer-events: none;
+  left: calc(50% + var(--film-shift, -6%)); top: 47%; width: 46%; height: 92%; translate: -50% -50%;
+}
+.film-sparkles svg {
+  position: absolute; left: var(--x); top: var(--y); width: calc(var(--s) * 2.2); height: calc(var(--s) * 2.2); translate: -50% -50%;
+  fill: #fffaf0; opacity: 0; scale: 0;
+  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #f7d27a) drop-shadow(0 0 16px color-mix(in srgb, var(--film-accent) 60%, #fff));
+}
+.rose-film[data-final] .film-sparkles svg { animation: film-twinkle 2.2s calc(var(--d) * .6) ease-in-out infinite; }
+@keyframes film-twinkle {
+  0%, 100% { opacity: 0; scale: 0; rotate: 0deg; }
+  18% { opacity: 1; scale: 1; }
+  40% { opacity: .9; scale: .7; rotate: 45deg; }
+  60% { opacity: 0; scale: 0; rotate: 90deg; }
+}
+.film-shine {
+  position: absolute; inset: 8% 22%; border-radius: 50%; opacity: 0;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, .85), rgba(255, 255, 255, 0));
+  mix-blend-mode: soft-light;
+}
+.rose-film[data-final] .film-shine { animation: film-shine 1.4s .1s ease-out both; }
+@keyframes film-shine { 0% { opacity: 0; scale: .6; } 35% { opacity: 1; } 100% { opacity: 0; scale: 1.25; } }
+.rose-film[data-final] .film-glow { animation: film-halo 1.6s ease-out both; }
+@keyframes film-halo { 30% { opacity: .42; } 100% { opacity: .22; } }
+@media (prefers-reduced-motion: reduce) {
+  .rose-film[data-final] .film-sparkles svg { animation: none; opacity: .8; scale: .6; }
+  .rose-film[data-final] .film-shine, .rose-film[data-final] .film-glow { animation: none; }
+}
+@media (max-width: 760px) {
+  .film-sparkles { width: 70%; height: 96%; top: 38%; }
+  /* Leaves Rose a free corner beside the words (her spot is measured, mascot/phoneSpot.ts). */
+  .rose-film .hero-description { max-width: 64%; }
+}
+
+/* Desktop: the scarf leans towards the pointer; its halo drifts the other way for depth. */
+.rose-film[data-cutout="on"] .film-arch {
+  translate: calc(var(--tilt-x, 0) * 14px) calc(var(--tilt-y, 0) * 10px);
+  rotate: calc(var(--tilt-x, 0) * 1.6deg);
+  transition: translate 1s cubic-bezier(.2, .7, .2, 1), rotate 1s cubic-bezier(.2, .7, .2, 1);
+}
+.rose-film[data-cutout="on"] .film-glow {
+  translate: calc(var(--tilt-x, 0) * -18px) calc(var(--tilt-y, 0) * -12px);
+  transition: translate 1.2s cubic-bezier(.2, .7, .2, 1), background-color .9s ease;
+}
