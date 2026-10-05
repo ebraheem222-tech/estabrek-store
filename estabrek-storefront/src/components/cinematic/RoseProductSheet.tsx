@@ -6,7 +6,7 @@ import { gsap } from "gsap";
 import type { CatalogProduct } from "@/lib/catalog";
 import { catalogItemKey, catalogItemLabel, formatMoney, getProductPrimaryImage, getVariantCompareAtPrice, getVariantEffectivePrice } from "@/lib/catalog";
 import { getProductBySlugClient, getProductByIdClient } from "@/lib/apiClient";
-import { imagesFor, inStock, itemHex, sizeKeyOf } from "@/lib/roseProductMedia";
+import { imagesFor, inStock, itemHex, sizeKeyOf, startColorIndex } from "@/lib/roseProductMedia";
 import { cldUrl } from "@/lib/cloudinary";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
@@ -17,6 +17,7 @@ import { useToastShortcuts } from "@/components/Toast";
 import { LqipImage } from "@/components/LqipImage";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { roseReact } from "@/lib/roseEvents";
 
 type Mode = "quickview" | "quickadd";
 
@@ -71,6 +72,18 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
       .catch(() => {});
     return () => { alive = false; };
   }, [initial]);
+
+  // The sheet takes the piece's colour on its own (the shopper's current colour
+  // when the piece comes in it, otherwise its first colour in stock).
+  useEffect(() => {
+    if (!items.length) return;
+    const current = document.documentElement.dataset.storefrontColor;
+    const i = startColorIndex(items, current);
+    setColorKey(catalogItemKey(items[i], i));
+    const hex = itemHex(items[i]);
+    if (hex && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   useEffect(() => { setPhoto(0); if (firstInStock) setSizeKey(sizeKeyOf(firstInStock)); }, [colorKey, firstInStock]);
 
@@ -199,7 +212,7 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
                 {sizes.map((key) => {
                   const v = variants.find((x) => sizeKeyOf(x) === key);
                   return (
-                    <button key={key} type="button" role="radio" aria-checked={key === sizeKey} disabled={!inStock(v)} className={key === sizeKey ? "active" : undefined} onClick={() => { setSizeKey(key); setStatus(null); }}>
+                    <button key={key} type="button" role="radio" aria-checked={key === sizeKey} disabled={!inStock(v)} className={key === sizeKey ? "active" : undefined} onClick={() => { setSizeKey(key); setStatus(null); roseReact("size-pick"); }}>
                       {key === "default" ? (ar ? "مقاس واحد" : "One size") : key}
                     </button>
                   );

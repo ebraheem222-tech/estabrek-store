@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { SeasonEdit, SeasonKey } from "@/lib/seasonalEdits";
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { tweenTheme } from "@/lib/themeTween";
+import { themeFollower } from "@/lib/themeTween";
 import { claimTheme, releaseTheme, themeHeld } from "@/lib/themeBase";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -16,11 +17,19 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
+import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
+import { RoseMascot, type MascotHandle } from "./mascot/RoseMascot";
 
 const SeasonsScene = dynamic(() => import("./SeasonsScene"), { ssr: false, loading: () => null });
 
 /** Seeds for the temporary storefront theme while each season is on stage. */
 const SEASON_SEED: Record<SeasonKey, string> = { winter: "#7d8ec4", spring: "#e9a27c" };
+/** What Rose says when the season turns. */
+const ROSE_LINE: Record<SeasonKey, { ar: string; en: string }> = {
+  winter: { ar: "بررر! وقت الدفا ☔", en: "Brrr! Time for warm layers ☔" },
+  spring: { ar: "الربيع وصل! 🌸", en: "Spring is here! 🌸" },
+};
+
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -102,13 +111,17 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
   const [sceneFailed, setSceneFailed] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
   const [desktop, setDesktop] = useState(false);
+  const [season, setSeason] = useState<SeasonKey>("winter");
+  const rose = useRef<MascotHandle>(null);
   const winter = seasons.find((s) => s.key === "winter") ?? { key: "winter" as const, categoryName: null, href: "/shop", products: [] };
   const spring = seasons.find((s) => s.key === "spring") ?? { key: "spring" as const, categoryName: null, href: "/shop", products: [] };
 
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), { rootMargin: "600px 0px" });
+    // Built once when the shopper gets close, then kept: tearing the 3D scene down and
+    // rebuilding it on every pass meant a fresh WebGL start-up (a visible hitch) each time.
+    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: "600px 0px" });
     const view = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
     io.observe(el);
     view.observe(el);
@@ -130,8 +143,14 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       el.dataset.motion = "true";
       let saved = false;
       let enteredColor: string | undefined;
+      let lastSeed = "";
+      const follow = shell ? themeFollower(shell) : null;
       const takeOver = (seed: string) => {
-        if (!shell) return;
+        if (!shell || !follow) return;
+        // Most scroll frames do not change the colour (it only moves while the
+        // seasons hand over): nothing to write, so the page is not restyled.
+        if (saved && seed === lastSeed) return;
+        lastSeed = seed;
         const values = storefrontPalette(seed);
         const entering = !saved;
         if (!saved) {
@@ -140,13 +159,15 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
           claimTheme(shell, "seasons", Object.keys(values));
           shell.dataset.season = "true";
         }
-        // Glide into the season, then follow the scroll with a short smoothing tween.
-        tweenTheme(shell, values, { duration: entering ? 0.8 : 0.35 });
-        shell.dataset.navbarColor = seed;
+        // Glide into the season, then follow the scroll.
+        follow.to(values, entering ? 0.8 : 0.35);
+        if (shell.dataset.navbarColor !== seed) shell.dataset.navbarColor = seed;
       };
       const giveBack = () => {
         if (!shell || !saved) return;
         saved = false;
+        lastSeed = "";
+        follow?.stop();
         const chosen = shell.dataset.storefrontColor;
         releaseTheme(shell, "seasons", {
           duration: 0.8,
@@ -163,15 +184,25 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       };
       const winterLayer = el.querySelector<HTMLElement>(".season-winter");
       const springLayer = el.querySelector<HTMLElement>(".season-spring");
+      let shown: SeasonKey | "" = "";
+      let shownMix = "";
+      const meter = el.querySelector<HTMLElement>(".season-meter");
       const render = (p: number) => {
         progress.current = p;
         const mix = smooth(0.38, 0.62, p);
-        el.style.setProperty("--season-p", p.toFixed(4));
-        el.style.setProperty("--season-mix", mix.toFixed(4));
-        el.dataset.season = mix > 0.5 ? "spring" : "winter";
+        // Only the meter needs the raw progress; the mix only moves during the hand-over.
+        // Writing a variable on the section restyles everything inside it, so skip unchanged ones.
+        meter?.style.setProperty("--season-p", p.toFixed(3));
+        const m = mix.toFixed(4);
+        if (m !== shownMix) { el.style.setProperty("--season-mix", m); shownMix = m; }
+        const now: SeasonKey = mix > 0.5 ? "spring" : "winter";
+        if (now === shown) return; // attributes only change at the hand-over, not every frame
+        shown = now;
+        el.dataset.season = now;
+        setSeason(now);
         // Only the visible season can be tabbed into or read out.
-        if (winterLayer) winterLayer.inert = mix > 0.5;
-        if (springLayer) springLayer.inert = mix <= 0.5;
+        if (winterLayer) winterLayer.inert = now === "spring";
+        if (springLayer) springLayer.inert = now === "winter";
       };
       const seedAt = (p: number) => mixHex(SEASON_SEED.winter, SEASON_SEED.spring, smooth(0.38, 0.62, p));
       const state = { p: 0 };
@@ -195,13 +226,12 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       });
       render(0);
       // The scene just grew to its pinned height: re-measure every trigger below it.
-      const refresh = () => { ScrollTrigger.sort(); ScrollTrigger.refresh(); };
-      const raf = requestAnimationFrame(refresh);
+      const refresh = requestScrollRefresh;
+      refresh();
       // Images and the 3D study load late and can still move the page.
       window.addEventListener("load", refresh);
       const late = window.setTimeout(refresh, 1500);
       return () => {
-        cancelAnimationFrame(raf);
         window.removeEventListener("load", refresh);
         window.clearTimeout(late);
         tween.scrollTrigger?.kill();
@@ -216,6 +246,28 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
     });
     return () => media.revert();
   }, [settings.scrollAnimationsEnabled, theme]);
+
+  // Rose reacts each time the season turns while the scene is on screen.
+  useEffect(() => {
+    if (!motion || !inView) return;
+    const t = window.setTimeout(() => {
+      rose.current?.say(ROSE_LINE[season][ar ? "ar" : "en"], 2600);
+      if (season === "spring") rose.current?.joy();
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [season, motion, inView, ar]);
+
+  // Phones: stand in the free corner above the products (measured, see phoneSpot.ts).
+  useEffect(() => {
+    if (!motion || !near) return;
+    return watchMascotSpot(root.current);
+  }, [motion, near]);
+  useEffect(() => {
+    if (!motion || !near) return;
+    // Re-measure once the new season's copy has settled into place.
+    const t = window.setTimeout(() => placeMascotOnPhone(root.current), 450);
+    return () => window.clearTimeout(t);
+  }, [season, motion, near]);
 
   const copy = (key: SeasonKey) => COPY[key][ar ? "ar" : "en"];
   const block = (edit: SeasonEdit) => {
@@ -270,6 +322,19 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
               />
             </SceneBoundary>
           </div>
+        )}
+        {motion && near && (
+          <RoseMascot
+            ref={rose}
+            className="season-mascot"
+            ar={ar}
+            reactive
+            prop={season === "winter" ? "umbrella" : "flower"}
+            outfit={season === "winter" ? "coat" : "dress"}
+            mood={season === "winter" ? "cold" : "happy"}
+            mirrored={!ar}
+            label={ar ? "رَزان تعيش الفصول" : "Rose through the seasons"}
+          />
         )}
         <div className="season-stage">
           {block(winter)}

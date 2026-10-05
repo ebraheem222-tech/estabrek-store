@@ -5,10 +5,11 @@ import Link from "next/link";
 import { Component, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
-import { tweenTheme } from "@/lib/themeTween";
+import { themeFollower } from "@/lib/themeTween";
 import { claimTheme, releaseTheme, themeHeld } from "@/lib/themeBase";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { QuickAddButton } from "@/components/QuickAddButton";
@@ -16,10 +17,27 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
+import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
+import { RoseMascot, type MascotHandle, type PalmRef } from "./mascot/RoseMascot";
+import type { RoseExtras, RoseOutfit } from "@/lib/roseEvents";
 
 const CollectionModelsScene = dynamic(() => import("./CollectionModelsScene"), { ssr: false, loading: () => null });
 
 type Copy = { eyebrow: string; title: string; text: string; cta: string };
+
+/** What Rose wears for each chapter. */
+const STORY_OUTFIT: Record<StoryKey, { outfit: RoseOutfit; extras: RoseExtras }> = {
+  accessories: { outfit: "abaya", extras: { pearls: true } },
+  kids: { outfit: "tunic", extras: {} },
+  incense: { outfit: "eid", extras: {} },
+};
+
+/** What Rose says as she lifts each chapter's model. */
+const ROSE_LINE: Record<StoryKey, { ar: string; en: string }> = {
+  accessories: { ar: "شوفي هالتفاصيل الحلوة ✨", en: "Look at these little details ✨" },
+  kids: { ar: "للصغيرات الحلوات 💕", en: "For the little ones 💕" },
+  incense: { ar: "ريحة البخور بتجنن 🤍", en: "Smell that bakhoor 🤍" },
+};
 const STORY: Record<StoryKey, { seed: string; fallback: string; ar: Copy; en: Copy }> = {
   accessories: {
     seed: "#c4a266",
@@ -98,6 +116,9 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
   const theme = useRoseTheme();
   const root = useRef<HTMLElement>(null);
   const weights = useRef<number[]>(chapters.map((_, i) => (i === 0 ? 1 : 0)));
+  const palm: PalmRef = useRef(null);
+  const rose = useRef<MascotHandle>(null);
+  const [lead, setLead] = useState(0);
   const [motion, setMotion] = useState(false);
   const [near, setNear] = useState(false);
   const [inView, setInView] = useState(false);
@@ -109,7 +130,9 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => setNear(e.isIntersecting), { rootMargin: "700px 0px" });
+    // Built once when the shopper gets close, then kept (rebuilding the 3D models on
+    // every pass meant a fresh WebGL start-up and shader compile each time).
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: "700px 0px" });
     const view = new IntersectionObserver(([e]) => setInView(e.isIntersecting));
     io.observe(el);
     view.observe(el);
@@ -143,8 +166,13 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         }
         return seed;
       };
+      let lastSeed = "";
+      const follow = shell ? themeFollower(shell) : null;
       const takeOver = (seed: string) => {
-        if (!shell) return;
+        if (!shell || !follow) return;
+        // The colour only moves during a hand-over between chapters: skip the other frames.
+        if (saved && seed === lastSeed) return;
+        lastSeed = seed;
         const values = storefrontPalette(seed);
         const entering = !saved;
         if (!saved) {
@@ -153,12 +181,14 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           enteredColor = shell.dataset.storefrontColor;
           shell.dataset.season = "true";
         }
-        tweenTheme(shell, values, { duration: entering ? 0.8 : 0.35 });
-        shell.dataset.navbarColor = seed;
+        follow.to(values, entering ? 0.8 : 0.35);
+        if (shell.dataset.navbarColor !== seed) shell.dataset.navbarColor = seed;
       };
       const giveBack = () => {
         if (!shell || !saved) return;
         saved = false;
+        lastSeed = "";
+        follow?.stop();
         const chosen = shell.dataset.storefrontColor;
         releaseTheme(shell, "stories", {
           duration: 0.8,
@@ -172,16 +202,22 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           },
         });
       };
+      let shownLead = -1;
+      const shownV: string[] = [];
       const render = (p: number) => {
         const w = chapterWeights(p, n);
         weights.current = w;
         let lead = 0;
         w.forEach((v, i) => {
-          el.style.setProperty(`--v${i}`, v.toFixed(4));
+          // Settled chapters (fully in or out) are not rewritten every frame.
+          const value = v.toFixed(4);
+          if (shownV[i] !== value) { el.style.setProperty(`--v${i}`, value); shownV[i] = value; }
           if (v > w[lead]) lead = i;
         });
-        el.style.setProperty("--story-p", p.toFixed(4));
+        if (lead === shownLead) return; // attributes only change at a hand-over
+        shownLead = lead;
         el.dataset.chapter = chapters[lead].key;
+        setLead(lead);
         layers.forEach((layer, i) => { layer.inert = i !== lead; });
         dots.forEach((dot, i) => dot.toggleAttribute("data-active", i === lead));
       };
@@ -203,12 +239,11 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.4, invalidateOnRefresh: true, refreshPriority: -1 },
       });
       render(0);
-      const refresh = () => { ScrollTrigger.sort(); ScrollTrigger.refresh(); };
-      const raf = requestAnimationFrame(refresh);
+      const refresh = requestScrollRefresh;
+      refresh();
       window.addEventListener("load", refresh);
       const late = window.setTimeout(refresh, 1500);
       return () => {
-        cancelAnimationFrame(raf);
         window.removeEventListener("load", refresh);
         window.clearTimeout(late);
         tween.scrollTrigger?.kill();
@@ -222,6 +257,30 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
     });
     return () => mm.revert();
   }, [settings.scrollAnimationsEnabled, theme, chapters]);
+
+  // Rose introduces each chapter as it takes the stage.
+  useEffect(() => {
+    if (!motion || !inView) return;
+    const key = chapters[lead]?.key;
+    if (!key) return;
+    const t = window.setTimeout(() => {
+      rose.current?.say(ROSE_LINE[key][ar ? "ar" : "en"], 2600);
+      rose.current?.joy();
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [lead, motion, inView, chapters, ar]);
+
+  // Phones: stand in the free corner above the products (measured, see phoneSpot.ts).
+  useEffect(() => {
+    if (!motion || !near) return;
+    return watchMascotSpot(root.current);
+  }, [motion, near]);
+  useEffect(() => {
+    if (!motion || !near) return;
+    // Re-measure once the new chapter's copy has settled into place.
+    const t = window.setTimeout(() => placeMascotOnPhone(root.current), 450);
+    return () => window.clearTimeout(t);
+  }, [lead, motion, near]);
 
   if (!chapters.length) return null;
   return (
@@ -251,9 +310,24 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
                 rtl={ar}
                 onReady={() => setSceneReady(true)}
                 onFailure={() => setSceneFailed(true)}
+                palm={palm}
               />
             </SceneBoundary>
           </div>
+        )}
+        {motion && near && (
+          <RoseMascot
+            ref={rose}
+            className="story-mascot"
+            ar={ar}
+            reactive
+            pose={sceneFailed ? "idle" : "hold"}
+            outfit={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].outfit}
+            extras={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].extras}
+            mirrored={!ar}
+            palm={palm}
+            label={ar ? "رَزان تعرض المجموعة" : "Rose presents the collection"}
+          />
         )}
         <div className="story-stage">
           {chapters.map((chapter, i) => {

@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, type FocusEvent } from "react";
+import { useEffect, useRef, type FocusEvent } from "react";
 import type { ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { QuickAddButton } from "@/components/QuickAddButton";
@@ -11,6 +11,8 @@ import { ScrollOpening } from "./ScrollOpening";
 import { DesignStudy } from "./DesignStudy";
 import type { RosePresentationOptions } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
+import { HeroMascot } from "./mascot/HeroMascot";
+import { RoseHeroFilm } from "./RoseHeroFilm";
 import { completeFaq, polishButton, polishCopy } from "./roseCopy";
 import { useRoseStore } from "./StorefrontChrome";
 import type { ProductBadge } from "@/lib/productBadges";
@@ -29,6 +31,12 @@ export type RoseHeroData = {
   rose3dEnabled?: boolean;
   roseVideoEnabled?: boolean;
   roseStoryWords?: string[];
+  /** The scarf film opening (default on); false brings back the photo opening. */
+  roseHeroFilm?: boolean;
+  /** Film headline lines, one per turn of the scarf (empty = the shop's own lines). */
+  roseFilmLines?: string[];
+  /** The line shown when the hijab is complete. */
+  roseFilmClosing?: string;
   rosePresentation?: RosePresentationOptions;
   primaryButton?: { label?: string; href?: string };
   secondaryButton?: { label?: string; href?: string };
@@ -42,6 +50,8 @@ export type RoseCollection = {
   themeColor?: string;
   color?: string;
 };
+
+const DEFAULT_HERO_IMAGE = "/editorial/hijab-campaign.webp";
 
 export function RoseHero({
   data,
@@ -74,7 +84,7 @@ export function RoseHero({
     data.roseImageUrl ||
     (data.backgroundImageUrl && data.backgroundImageUrl !== logoUrl
       ? data.backgroundImageUrl
-      : "/editorial/hijab-campaign.webp");
+      : DEFAULT_HERO_IMAGE);
   // The shop action leads; the softer "discover" action follows as a text link.
   const shopFirst = [primaryButton, secondaryButton].find((b) => b?.href === "/shop");
   const primary =
@@ -85,8 +95,20 @@ export function RoseHero({
         ? secondaryButton
         : primaryButton);
   const secondary = primary === primaryButton ? secondaryButton : primaryButton;
+  const film = data.roseHeroFilm !== false;
   return (
     <>
+      {film ? (
+        <RoseHeroFilm
+          ar={ar}
+          eyebrow={data.eyebrow}
+          lines={data.roseFilmLines}
+          closing={data.roseFilmClosing}
+          description={subtitle}
+          primary={primary}
+          secondary={secondary}
+        />
+      ) : (
       <ScrollOpening subtle={data.rosePresentation?.motionIntensity === "subtle"} model={showStudy && openingStudy ? <DesignStudy language={language} embedded words={data.roseStoryWords} /> : undefined}>
         <section
           className="atelier-hero rose-hero"
@@ -171,7 +193,12 @@ export function RoseHero({
                 sizes="100vw"
                 className="hero-campaign-image"
               />
+              {image === DEFAULT_HERO_IMAGE ? (
+                // The campaign photo takes the shopper's colour; face and hands stay natural.
+                <span className="hero-campaign-tint" aria-hidden="true" />
+              ) : null}
             </div>
+            <HeroMascot ar={ar} />
             <div className="hero-brand-card">
               <span className="hero-brand-label">
                 {data.badge || "THE ROSE EDIT"}
@@ -198,6 +225,7 @@ export function RoseHero({
           </div>
         </section>
       </ScrollOpening>
+      )}
       <RoseTrustBar />
       {categories.length > 0 && (
         <div
@@ -431,16 +459,24 @@ export function RoseCollections({
   const ar = useLanguage().language === "ar";
   const grid = useRef<HTMLDivElement>(null);
   const active = useRef<number | null>(null);
-  // Hovering a collection dresses the whole storefront in that collection's colour.
+  const intent = useRef(0);
+  // Hovering a collection dresses the whole storefront in that collection's colour —
+  // once the pointer settles on a card, not while it just passes over the grid.
   const preview = (index: number, card: HTMLElement) => {
     if (active.current === index) return;
-    active.current = index;
-    previewTheme(shellOf(card), collectionSeed(items[index], index, card.querySelector("img")));
+    window.clearTimeout(intent.current);
+    intent.current = window.setTimeout(() => {
+      active.current = index;
+      previewTheme(shellOf(card), collectionSeed(items[index], index, card.querySelector("img")));
+    }, active.current === null ? 250 : 120);
   };
   const restore = () => {
+    window.clearTimeout(intent.current);
+    if (active.current === null) return; // nothing was previewed
     active.current = null;
     endThemePreview(shellOf(grid.current));
   };
+  useEffect(() => () => window.clearTimeout(intent.current), []);
   const leaveFocus = (event: FocusEvent<HTMLDivElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) restore();
   };

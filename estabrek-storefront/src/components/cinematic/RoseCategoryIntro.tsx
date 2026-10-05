@@ -8,6 +8,7 @@ import { useRoseTheme } from "./RoseThemeProvider";
 import { collectionSeed } from "@/lib/collectionTheme";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { tweenTheme } from "@/lib/themeTween";
+import { roseOutfit } from "@/lib/roseEvents";
 
 type Crumb = { label: string; href: string };
 
@@ -40,6 +41,12 @@ export function RoseCategoryIntro({
     shell.dataset.navbarColor = seed;
     tweenTheme(shell, storefrontPalette(seed), { duration: 0.8 });
   }, [theme, name, slug]);
+
+  // Rose changes into the outfit of this collection.
+  useEffect(() => {
+    const t = window.setTimeout(() => roseOutfit(`${slug} ${name}`), 900);
+    return () => window.clearTimeout(t);
+  }, [slug, name]);
 
   const count = ar
     ? total === 1 ? "قطعة واحدة" : total === 2 ? "قطعتان" : total <= 10 ? `${total} قطع` : `${total} قطعة`

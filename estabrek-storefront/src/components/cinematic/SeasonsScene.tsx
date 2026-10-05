@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
+import { warmScene } from "./warmScene";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { createDisplayHead, createHijabGeometry } from "./HijabGeometry";
 
@@ -381,14 +382,18 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
 
 function Lifecycle({ onReady, onFailure }: Pick<SeasonsSceneProps, "onReady" | "onFailure">) {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   const ready = useRef(onReady), failure = useRef(onFailure);
   ready.current = onReady; failure.current = onFailure;
   useEffect(() => {
-    ready.current();
+    let alive = true;
+    // Build every shader now (hidden parts included), then show the scene.
+    warmScene(gl, scene, camera).then(() => { if (alive) ready.current(); });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
-    return () => gl.domElement.removeEventListener("webglcontextlost", lost);
-  }, [gl]);
+    return () => { alive = false; gl.domElement.removeEventListener("webglcontextlost", lost); };
+  }, [gl, scene, camera]);
   return null;
 }
 

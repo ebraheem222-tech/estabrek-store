@@ -2,7 +2,8 @@
 import { createContext, useContext, useRef, useCallback, useEffect, useLayoutEffect, type ReactNode, type RefObject } from "react";
 import { rosePalettes } from "./roseDesign";
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { tweenTheme } from "@/lib/themeTween";
+import { crossfadeTheme, setThemeNow, tweenTheme } from "@/lib/themeTween";
+import { themeHeld } from "@/lib/themeBase";
 import { discardThemePreview } from "@/lib/themePreview";
 
 type Theme = { root: RefObject<HTMLDivElement>; apply: (background: string) => void; reset: () => void };
@@ -44,14 +45,28 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         if (!globalProperties.has(property)) globalProperties.set(property, document.documentElement.style.getPropertyValue(property));
         global[property] = value;
       });
-      // A picked colour glides in; a colour carried over from the last page is applied at once.
-      const duration = restored ? 0 : 0.7;
-      tweenTheme(root.current, palette, { duration });
-      tweenTheme(document.documentElement, global, { duration });
+      const shell = root.current;
+      const mark = () => {
+        shell.dataset.navbarColor = color;
+        shell.dataset.storefrontColor = color;
+        document.documentElement.dataset.storefrontColor = color;
+      };
       selected = true;
-      root.current.dataset.navbarColor = color;
-      root.current.dataset.storefrontColor = color;
-      document.documentElement.dataset.storefrontColor = color;
+      // A picked colour cross-fades in (one restyle, the fade runs on the graphics
+      // card); a colour carried over from the last page is applied at once. While a
+      // scene (seasons, collection worlds) or a hover preview holds the colours, or in
+      // a browser without view transitions, it glides as before.
+      const fade = !restored && !themeHeld(shell) && crossfadeTheme(() => {
+        setThemeNow(shell, palette);
+        setThemeNow(document.documentElement, global);
+        mark();
+      });
+      if (!fade) {
+        const duration = restored ? 0 : 0.7;
+        tweenTheme(shell, palette, { duration });
+        tweenTheme(document.documentElement, global, { duration });
+        mark();
+      }
       if (!(event as CustomEvent & { restored?: boolean }).restored) saveColor(color);
     };
     window.addEventListener("storefront-color-selected", select);

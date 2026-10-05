@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
+import { warmScene } from "./warmScene";
 import type { StoryKey } from "@/lib/collectionStories";
+import type { PalmRef } from "./mascot/RoseMascot";
 
 export type CollectionModelsProps = {
   keys: StoryKey[];
@@ -14,6 +16,8 @@ export type CollectionModelsProps = {
   rtl: boolean;
   onReady: () => void;
   onFailure: () => void;
+  /** When Rose (the 2D guide) holds the models, each one sits on her open palm. */
+  palm?: PalmRef;
 };
 
 const rand = (seed: number) => {
@@ -59,10 +63,13 @@ function surface(fn: (u: number, v: number, out: THREE.Vector3) => void, nu = 96
   return g;
 }
 
+type ModelProps = { weight: () => number; rtl: boolean; compact: boolean; palm?: PalmRef };
+
 /** Shared choreography: each model rises, unfolds and turns in as its chapter arrives. */
-function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScale: number, lift = 0) {
+function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScale: number, lift = 0, hold?: { palm?: PalmRef; base: number }) {
   const group = useRef<THREE.Group>(null);
   const viewport = useThree((s) => s.viewport);
+  const gl = useThree((s) => s.gl);
   useFrame(({ clock, pointer }) => {
     const g = group.current;
     if (!g) return;
@@ -70,6 +77,21 @@ function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScal
     g.visible = w > 0.01;
     if (!g.visible) return;
     const e = easeOut(w);
+    const palm = hold?.palm?.current;
+    if (palm) {
+      // Smaller, floating just above Rose's palm (screen px → world units on the z = 0 plane).
+      const rect = gl.domElement.getBoundingClientRect();
+      const px = ((palm.x - rect.left) / rect.width - 0.5) * viewport.width;
+      const py = -((palm.y - rect.top) / rect.height - 0.5) * viewport.height;
+      // Phones: a little smaller and closer over her hand, so the piece stays in her
+      // free corner instead of drifting behind the title.
+      const s = baseScale * (viewport.height / (compact ? 12 : 7)) * (0.55 + 0.45 * e);
+      g.position.set(px + palm.dir * s * (compact ? 0.25 : 0.85), py - hold!.base * s + 0.12 + Math.sin(clock.elapsedTime * 1.6) * 0.04 - (1 - e) * 0.6, 0);
+      g.scale.setScalar(s);
+      g.rotation.y = clock.elapsedTime * 0.45 + (1 - e) * 2.2;
+      g.rotation.x = 0;
+      return;
+    }
     const side = rtl ? -1 : 1;
     const x = compact ? 0 : side * viewport.width * 0.26;
     // On phones the model floats in the free band above the copy.
@@ -86,8 +108,8 @@ function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScal
 /* ------------------------------ Accessories ------------------------------ */
 /* A smart tasbih ring with a glowing counter, an orbit of pearls and a shawl pin. */
 
-function Accessories({ weight, rtl, compact }: { weight: () => number; rtl: boolean; compact: boolean }) {
-  const group = useStage(weight, rtl, compact, 1.05, 0.15);
+function Accessories({ weight, rtl, compact, palm }: ModelProps) {
+  const group = useStage(weight, rtl, compact, 1.05, 0.15, { palm, base: -0.95 });
   const orbit = useRef<THREE.Group>(null);
   const sparkle = useRef<THREE.Points>(null);
   const gold = useMemo(() => new THREE.MeshPhysicalMaterial({ color: "#e9c27a", metalness: 1, roughness: 0.24, clearcoat: 0.6, clearcoatRoughness: 0.15 }), []);
@@ -186,12 +208,12 @@ function dressGeometry() {
   }, 128, 72);
 }
 
-function Kids({ weight, rtl, compact }: { weight: () => number; rtl: boolean; compact: boolean }) {
-  const group = useStage(weight, rtl, compact, 1, 0.1);
+function Kids({ weight, rtl, compact, palm }: ModelProps) {
+  const group = useStage(weight, rtl, compact, 1, 0.1, { palm, base: -1.6 });
   const bubbles = useRef<THREE.InstancedMesh>(null);
   const dress = useMemo(dressGeometry, []);
   const floral = useMemo(() => canvasTexture(256, 256, (ctx) => {
-    ctx.fillStyle = "#f3a3b2";
+    ctx.fillStyle = "#ec8ea3";
     ctx.fillRect(0, 0, 256, 256);
     for (let i = 0; i < 46; i++) {
       const x = rand(i) * 256, y = rand(i + 50) * 256, s = 5 + rand(i + 99) * 6;
@@ -280,9 +302,10 @@ void main() {
   gl_FragColor = vec4(uColor, a);
 }`;
 
-function Incense({ weight, rtl, compact }: { weight: () => number; rtl: boolean; compact: boolean }) {
-  const group = useStage(weight, rtl, compact, 0.95, -0.05);
+function Incense({ weight, rtl, compact, palm }: ModelProps) {
+  const group = useStage(weight, rtl, compact, 0.95, -0.05, { palm, base: -1.75 });
   const glow = useRef<THREE.PointLight>(null);
+  const glowAt = useMemo(() => new THREE.Vector3(), []);
   const body = useMemo(() => {
     const pts = [
       [0, -1.9], [1.0, -1.9], [1.03, -1.78], [0.9, -1.68], [0.68, -1.55], [0.46, -1.25], [0.37, -0.85], [0.4, -0.55],
@@ -339,7 +362,16 @@ function Incense({ weight, rtl, compact }: { weight: () => number; rtl: boolean;
     const t = clock.elapsedTime, w = weight();
     const flicker = 0.8 + Math.sin(t * 7) * 0.1 + Math.sin(t * 13.3) * 0.08;
     coal.emissiveIntensity = flicker;
-    if (glow.current) glow.current.intensity = 1.6 * flicker * w;
+    if (glow.current) {
+      glow.current.intensity = 1.6 * flicker * w;
+      // The light follows the burner but lives outside its group: a light that
+      // disappears with a hidden group changes the light count, and three.js
+      // then rebuilds every shader in the scene at each chapter change.
+      if (group.current && w > 0.01) {
+        group.current.updateMatrixWorld();
+        glow.current.position.copy(group.current.localToWorld(glowAt.set(0, 0.5, 0)));
+      }
+    }
     smoke.m.uniforms.uOpacity.value = 0.55 * w;
     if (w <= 0.01) return;
     const pos = smoke.g.attributes.position.array as Float32Array;
@@ -359,6 +391,8 @@ function Incense({ weight, rtl, compact }: { weight: () => number; rtl: boolean;
     smoke.g.attributes.aAge.needsUpdate = true;
   });
   return (
+    <>
+    <pointLight ref={glow} position={[0, -50, 0]} intensity={0} color="#ff8a3c" distance={4} decay={2} />
     <group ref={group}>
       <mesh geometry={body} material={wood} />
       <mesh material={carving} position={[0, 0.3, 0]}><cylinderGeometry args={[1.2, 1.17, 0.22, 96, 1, true]} /></mesh>
@@ -370,22 +404,26 @@ function Incense({ weight, rtl, compact }: { weight: () => number; rtl: boolean;
           <dodecahedronGeometry args={[0.12 + rand(i + 8) * 0.07, 0]} />
         </mesh>
       ))}
-      <pointLight ref={glow} position={[0, 0.5, 0]} color="#ff8a3c" distance={4} decay={2} />
       <points geometry={smoke.g} material={smoke.m} />
     </group>
+    </>
   );
 }
 
 function Lifecycle({ onReady, onFailure }: Pick<CollectionModelsProps, "onReady" | "onFailure">) {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   const ready = useRef(onReady), failure = useRef(onFailure);
   ready.current = onReady; failure.current = onFailure;
   useEffect(() => {
-    ready.current();
+    let alive = true;
+    // Build every shader now (hidden parts included), then show the scene.
+    warmScene(gl, scene, camera).then(() => { if (alive) ready.current(); });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
-    return () => gl.domElement.removeEventListener("webglcontextlost", lost);
-  }, [gl]);
+    return () => { alive = false; gl.domElement.removeEventListener("webglcontextlost", lost); };
+  }, [gl, scene, camera]);
   return null;
 }
 
@@ -411,9 +449,9 @@ export default function CollectionModelsScene(props: CollectionModelsProps) {
         <Lightformer form="rect" intensity={1.6} position={[-4, 2, 1]} scale={[3, 4, 1]} />
         <Lightformer form="ring" intensity={1.2} color="#ffe2c2" position={[0, -3, 4]} scale={3} />
       </Environment>
-      {props.keys.includes("accessories") && <Accessories weight={at("accessories")} rtl={props.rtl} compact={props.compact} />}
-      {props.keys.includes("kids") && <Kids weight={at("kids")} rtl={props.rtl} compact={props.compact} />}
-      {props.keys.includes("incense") && <Incense weight={at("incense")} rtl={props.rtl} compact={props.compact} />}
+      {props.keys.includes("accessories") && <Accessories weight={at("accessories")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
+      {props.keys.includes("kids") && <Kids weight={at("kids")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
+      {props.keys.includes("incense") && <Incense weight={at("incense")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
       <Lifecycle onReady={props.onReady} onFailure={props.onFailure} />
     </Canvas>
   );

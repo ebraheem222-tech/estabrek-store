@@ -13,7 +13,7 @@ import {
   getVariantEffectivePrice,
 } from "@/lib/catalog";
 import { getProductBadge } from "@/lib/productBadges";
-import { imagesFor, itemHex, sizeKeyOf } from "@/lib/roseProductMedia";
+import { imagesFor, itemHex, sizeKeyOf, startColorIndex } from "@/lib/roseProductMedia";
 import { cldUrl } from "@/lib/cloudinary";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { startThemeCycle, stopThemeCycle } from "@/lib/themePreview";
@@ -28,6 +28,7 @@ import { ProductTile } from "@/components/ProductTile";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { RoseImageViewer } from "./RoseImageViewer";
+import { roseOutfit, roseReact } from "@/lib/roseEvents";
 
 type Crumb = { label: string; href: string };
 
@@ -71,6 +72,27 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
 
   useEffect(() => {
     addToRecentlyViewed({ id: product.id, title: product.title, slug: product.slug, image: getProductPrimaryImage(product) ?? undefined, price: price ?? undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
+
+  // Rose says hello to each new piece the shopper opens.
+  useEffect(() => {
+    const t = window.setTimeout(() => roseReact("product-view"), 1200);
+    // …and dresses for the piece's collection.
+    const o = window.setTimeout(() => roseOutfit(`${product.category?.slug ?? ""} ${product.category?.name ?? ""}`), 3600);
+    return () => { window.clearTimeout(t); window.clearTimeout(o); };
+  }, [product.id, product.category?.slug, product.category?.name]);
+
+  // The page takes the piece's colour on its own — no need to tap the swatch that
+  // is already selected: the shopper's current colour when the piece comes in it,
+  // otherwise its first colour in stock.
+  useEffect(() => {
+    if (!items.length) return;
+    const current = document.documentElement.dataset.storefrontColor;
+    const i = startColorIndex(items, current);
+    setColorKey(catalogItemKey(items[i], i));
+    const hex = itemHex(items[i]);
+    if (hex && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
@@ -239,7 +261,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
                   const v = variants.find((x) => sizeKeyOf(x) === key);
                   const soldOut = !v || (v.stock != null && v.stock <= 0);
                   return (
-                    <button key={key} type="button" role="radio" aria-checked={key === sizeKey} disabled={soldOut} className={key === sizeKey ? "active" : undefined} onClick={() => { setSizeKey(key); setStatus(null); }}>
+                    <button key={key} type="button" role="radio" aria-checked={key === sizeKey} disabled={soldOut} className={key === sizeKey ? "active" : undefined} onClick={() => { setSizeKey(key); setStatus(null); roseReact("size-pick"); }}>
                       {key === "default" ? (ar ? "مقاس واحد" : "One size") : key}
                     </button>
                   );

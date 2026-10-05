@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { VideoData } from "@/cms/sectionTypes";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
@@ -74,9 +75,12 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       el.loop = false;
       const state = { p: 0 };
       let pending = false;
+      let shownClock = "";
       const seek = () => {
         const d = el.duration;
-        if (time.current) time.current.textContent = `${clock(state.p * (Number.isFinite(d) ? d : 0))} / ${clock(Number.isFinite(d) ? d : 0)}`;
+        // The clock text only changes once a second: rewriting it every frame re-laid out the section.
+        const text = `${clock(state.p * (Number.isFinite(d) ? d : 0))} / ${clock(Number.isFinite(d) ? d : 0)}`;
+        if (time.current && text !== shownClock) { time.current.textContent = text; shownClock = text; }
         if (!Number.isFinite(d) || d <= 0 || el.readyState < 1) return;
         const target = Math.min(d - 0.04, Math.max(0, state.p * d));
         if (Math.abs(el.currentTime - target) < 0.012) return;
@@ -106,24 +110,24 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
         duration: 1,
         onUpdate: () => {
           seek();
-          section.style.setProperty("--video-p", state.p.toFixed(4));
+          // Only the timeline bar uses the progress; setting it on the whole section restyled all of it every frame.
+          section.querySelector<HTMLElement>(".rose-video-timeline")?.style.setProperty("--video-p", state.p.toFixed(4));
         },
       }, 0)
         // The arch opens into a wide, softly rounded frame.
         .fromTo(media, { borderRadius: "260px 260px 12px 12px", scale: 0.84 }, { borderRadius: "34px 34px 34px 34px", scale: 1, ease: "power2.out", duration: 0.4 }, 0)
         .fromTo(el, { scale: 1.22 }, { scale: 1, duration: 1 }, 0)
         .fromTo(copy, { y: 46, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.05, duration: 0.22, ease: "power2.out" }, 0.06);
-      const refresh = () => { ScrollTrigger.sort(); ScrollTrigger.refresh(); };
-      const raf = requestAnimationFrame(refresh);
+      const refresh = requestScrollRefresh;
+      refresh();
       return () => {
-        cancelAnimationFrame(raf);
         el.removeEventListener("loadedmetadata", ready);
         el.removeEventListener("seeked", seeked);
         tl.scrollTrigger?.kill();
         tl.kill();
         gsap.set([media, el, ...Array.from(copy)], { clearProps: "all" });
         section.dataset.motion = "false";
-        section.style.removeProperty("--video-p");
+        section.querySelector<HTMLElement>(".rose-video-timeline")?.style.removeProperty("--video-p");
         el.loop = data.loop !== false;
         setScroll(false);
         setPlayback("paused");
