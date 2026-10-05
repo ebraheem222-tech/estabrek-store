@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import type { StorefrontBootstrap, StorefrontPage, SitePublicSettings } from "./types";
 import { normalizeStorefrontSettings } from "./storefrontSettings";
@@ -87,8 +88,28 @@ export const getBootstrap = cache(async (): Promise<StorefrontBootstrap> => {
   }
 });
 
+/**
+ * Pages the admin never published (about, search…) answer 404. Next only keeps
+ * successful responses in its fetch cache, so every visit to those pages asked
+ * the API again (≈0.4–0.5 s to the hosted backend) before rendering anything.
+ * The "not published" answer is now remembered too, for the same 60 s and
+ * under the same tags, so publishing a page still shows up right away.
+ */
+const pageMissing = unstable_cache(
+  async (slug: string) => {
+    const url = `${baseUrl()}/storefront/page?slug=${encodeURIComponent(slug)}`;
+    const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:pages"] } });
+    if (res.status === 404) return true;
+    if (!res.ok) throw new Error(`page failed (${res.status})`); // errors are not remembered
+    return false;
+  },
+  ["storefront-page-missing"],
+  { revalidate: 60, tags: ["cms", "cms:pages"] },
+);
+
 export const getPageBySlug = cache(async (slug: string): Promise<StorefrontPage | null> => {
   try {
+    if (await pageMissing(slug)) return null;
     const url = `${baseUrl()}/storefront/page?slug=${encodeURIComponent(slug)}`;
     const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:pages"] } });
     if (res.status === 404) return null;

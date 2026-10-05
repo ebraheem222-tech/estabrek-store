@@ -33,3 +33,18 @@ export function imagesFor(product: CatalogProduct, item?: CatalogItem | null): s
 
 export const sizeKeyOf = (v: CatalogVariant) => (v.size?.name ?? "").trim() || "default";
 export const inStock = (v?: CatalogVariant | null) => Boolean(v) && (v!.stock == null || v!.stock > 0);
+
+/**
+ * The colour a piece opens in: the shopper's current colour when the piece
+ * comes in it, otherwise its first colour that is still in stock.
+ */
+export function startColorIndex(items: CatalogItem[], current?: string | null): number {
+  const available = (it: CatalogItem) => !(it.variants ?? []).length || (it.variants ?? []).some(inStock);
+  const want = current?.toLowerCase();
+  if (want) {
+    const same = items.findIndex((it) => available(it) && itemHex(it)?.toLowerCase() === want);
+    if (same >= 0) return same;
+  }
+  const first = items.findIndex(available);
+  return first >= 0 ? first : 0;
+}

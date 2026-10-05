@@ -35,6 +35,8 @@ export function storefrontPalette(seed: string): Record<string, string> {
     "--selection-ink": ink, "--selection-muted": muted,
     "--selection-accent": accent, "--selection-dark": dark,
     "--selection-decorative": mixHex("#ffffff", seed, .58),
+    // The raw swatch, for things that take the colour as-is (the hero campaign tint).
+    "--selection-seed": seed,
     "--navbar-bg": seed, "--navbar-ink": navbarInk,
     "--atelier-bg": page, "--atelier-ink": ink,
     "--atelier-muted": muted, "--atelier-line": line,

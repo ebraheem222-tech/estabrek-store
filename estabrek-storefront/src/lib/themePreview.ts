@@ -64,30 +64,44 @@ export function discardThemePreview() {
 }
 
 /**
- * Add-to-bag hover: a new random colour straight away, then another every
- * second while the pointer stays on the button. Leaving glides back.
+ * Add-to-bag hover: after the pointer rests on the button for a moment, a new
+ * random colour, then another every couple of seconds while it stays. Leaving
+ * glides back. Passing over buttons on the way somewhere (a product grid is
+ * full of them) changes nothing — that used to recolour the whole site again
+ * and again and read as flashing.
  */
-let cycle: { timer: number; source: HTMLElement } | null = null;
+const HOVER_INTENT_MS = 400;
+let cycle: { timer: number; source: HTMLElement; started: boolean } | null = null;
 
-export function startThemeCycle(source: HTMLElement, everyMs = 1000) {
+export function startThemeCycle(source: HTMLElement, everyMs = 2200) {
   const shell = shellOf(source);
   if (!shell) return;
   // Touch screens have no hover: a tap must not leave the colours spinning.
   if (window.matchMedia?.("(hover: none)").matches && !source.matches(":focus-visible")) return;
   stopThemeCycle(null);
-  previewTheme(shell, randomThemeSeed());
-  const timer = window.setInterval(() => {
+  const state = { timer: 0, source, started: false };
+  state.timer = window.setTimeout(() => {
+    if (cycle !== state) return;
     if (!source.isConnected || !shell.isConnected) return stopThemeCycle(source);
+    state.started = true;
     previewTheme(shell, randomThemeSeed());
-  }, everyMs);
-  cycle = { timer, source };
+    state.timer = window.setInterval(() => {
+      if (!source.isConnected || !shell.isConnected) return stopThemeCycle(source);
+      previewTheme(shell, randomThemeSeed());
+    }, everyMs);
+  }, HOVER_INTENT_MS);
+  cycle = state;
 }
 
 /** Stops the cycle (only the one this button started, unless null) and restores the colours. */
 export function stopThemeCycle(source: HTMLElement | null) {
   if (!cycle || (source && cycle.source !== source)) return;
+  // Clears either the waiting timeout or the running interval (they share the id space).
+  window.clearTimeout(cycle.timer);
   window.clearInterval(cycle.timer);
+  const { started } = cycle;
   const shell = shellOf(cycle.source);
   cycle = null;
-  if (source) endThemePreview(shell);
+  // A quick pass never changed anything, so there is nothing to give back.
+  if (source && started) endThemePreview(shell);
 }

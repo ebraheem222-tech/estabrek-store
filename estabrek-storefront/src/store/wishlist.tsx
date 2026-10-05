@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { roseReact } from "@/lib/roseEvents";
 
 interface WishlistItem {
   id: string;
@@ -64,6 +65,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, [items]);
 
   const addToWishlist = useCallback((item: Omit<WishlistItem, "addedAt">) => {
+    roseReact("wishlist-add");
     setItems((prev) => {
       if (prev.some((i) => i.id === item.id)) return prev;
       return [...prev, { ...item, addedAt: Date.now() }];
