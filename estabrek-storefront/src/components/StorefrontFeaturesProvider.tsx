@@ -158,7 +158,7 @@ export function StorefrontFeaturesProvider({
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
           {!cinematic && <ScrollToTop />}
           {settings.accessibilityToolsEnabled !== false && <AccessibilityTools />}
-          {settings.voiceSearchEnabled && <VoiceSearchButton />}
+          {settings.voiceSearchEnabled && !cinematic && <VoiceSearchButton />}
           {/* On the rose design the chat is Rose herself (see RoseCompanion below). */}
           {settings.chatbotEnabled && !cinematic && (
             <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} />

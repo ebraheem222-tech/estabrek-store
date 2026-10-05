@@ -1,4 +1,5 @@
 "use client";
+import { productItem, trackAddToCart } from "@/lib/analytics";
 import { useLanguage } from "./cinematic/Language";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 
@@ -50,6 +51,11 @@ function flattenVariants(p: CatalogProduct) {
     for (const v of it.variants ?? []) out.push(v);
   }
   return out;
+}
+
+/** The colour a variant belongs to (for the trackers). */
+function colorOf(p: CatalogProduct, v: CatalogVariant) {
+  return (p.items ?? []).find((it) => (it.variants ?? []).some((x) => x.id === v.id))?.colorName ?? null;
 }
 
 function isInStock(v: CatalogVariant) {
@@ -119,6 +125,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
         return;
       }
       addItem(auto.id, 1);
+      trackAddToCart(productItem(full, { color: colorOf(full, auto), size: auto.size?.name, price: Number(auto.price) }), (full as any).currencyCode ?? undefined);
       fireConfetti(e?.clientX, e?.clientY);
       toast.cartAdded(full.title);
       setStatus(ar ? "انضاف للسلة ✅" : "Added to your bag ✅");
@@ -270,6 +277,7 @@ function QuickAddDrawer({
   function onAdd() {
     if (!selectedVariant) return;
     addItem(selectedVariant.id, Math.max(1, qty));
+    if (product) trackAddToCart(productItem(product, { color: colorOf(product, selectedVariant), size: selectedVariant.size?.name, price: selectedPrice, quantity: Math.max(1, qty) }), (product as any).currencyCode ?? undefined);
     if (product) {
       fireConfetti();
       toast.cartAdded(product.title);

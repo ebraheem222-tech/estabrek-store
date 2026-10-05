@@ -250,7 +250,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
               href={canonicalPagination}
               className="h-11 rounded-xl px-4 text-sm border border-white/15 bg-white/5 hover:bg-white/10 inline-flex items-center"
             >
-              {ar ? "عرض صفحات (Pagination)" : "Browse pages"}
+              {ar ? "تصفّحي بالصفحات" : "Browse pages"}
             </a>
           </>
         ) : (

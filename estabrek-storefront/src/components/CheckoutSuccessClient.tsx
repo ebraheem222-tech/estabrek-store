@@ -1,4 +1,5 @@
 "use client";
+import { completePurchase } from "@/lib/analytics";
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -70,6 +71,7 @@ export default function CheckoutSuccessClient() {
         if (mounted) {
           setOrderId(id);
           setState("success");
+          completePurchase(id);
           setMessage(id ? `تم الدفع بنجاح. رقم الطلب: ${id}` : "تم الدفع بنجاح.");
           clear();
         }
