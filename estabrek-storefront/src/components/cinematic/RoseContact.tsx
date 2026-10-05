@@ -43,7 +43,7 @@ export function RoseContact({ data, heading }: { data?: ContactData; heading?: s
   }
   return <section className="rose-contact" data-rose-palette={data?.rosePresentation?.palette || "blush"}>
     <div className="rose-contact-intro" data-reveal>
-      <span className="atelier-eyebrow">ESTABREK · HERE FOR YOU</span>
+      <span className="atelier-eyebrow">{ar ? "تواصل" : "CONTACT"}</span>
       <h1>{data?.title ? polishCopy(data.title) : ar ? <>{heading ? polishCopy(heading).replace(/[.。]$/, "") : "تواصلي معنا"}.<br /><em>نحن هنا لأجلكِ.</em></> : <>Get in touch.<br /><em>We're here for you.</em></>}</h1>
       <p>{data?.subtitle || (ar ? "سؤال عن إطلالة، مقاس، أو طلب؟ يسعدنا نساعدكِ باختيار تفاصيلكِ." : "A question about your look, size or order? We'd love to help.")}</p>
       <div className="rose-contact-photo"><Image src="/editorial/scarves.webp" alt={ar ? "تفاصيل أقمشة بألوان هادئة" : "Soft fabric details"} fill sizes="(max-width:760px) 100vw, 40vw" /></div>
@@ -51,7 +51,7 @@ export function RoseContact({ data, heading }: { data?: ContactData; heading?: s
       {data?.mapEmbedUrl && <iframe className="rose-contact-map" title={ar ? "موقع المتجر" : "Store location"} src={data.mapEmbedUrl} loading="lazy" />}
     </div>
     <div className="rose-contact-form-panel" data-reveal>
-      <span className="rose-form-number">01 / A LITTLE CONVERSATION</span>
+      <span className="rose-form-number">{ar ? "رسالة سريعة" : "A QUICK NOTE"}</span>
       <h2>{data?.form?.title || (ar ? "اكتبي لنا" : "A note to us")}</h2>
       {data?.form?.subtitle && <p>{data.form.subtitle}</p>}
       {status === "sent" ? <div className="rose-contact-success" role="status"><Icon name="spark" /><h3>{ar ? "وصلت رسالتكِ، شكراً لكِ." : "Your message is with us. Thank you."}</h3><button className="atelier-text-link" onClick={() => setStatus("idle")}>{ar ? "إرسال رسالة أخرى" : "Send another message"}<Icon name="arrow" /></button></div> : <form onSubmit={submit} aria-busy={status === "sending"}>

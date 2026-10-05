@@ -229,12 +229,12 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
         {
           title: (
             <>
-              لونكِ.
+              اختاري لونكِ،
               <br />
-              <em>حكايتكِ.</em>
+              <em>ويتلوّن الموقع معكِ.</em>
             </>
           ),
-          text: "وردي، ليلكي، أم لؤلؤي؟ اختاري لونكِ، ثم اكتشفي الحجاب والملابس في مجموعتنا.",
+          text: "وردي، ليلكي، أم لؤلؤي؟ اضغطي على أي لون، فيلبسه الموقع كله: الخلفية والأزرار وحتى روز.",
         },
       ]
     : [
@@ -261,12 +261,12 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
         {
           title: (
             <>
-              Your colour.
+              Pick your colour,
               <br />
-              <em>Your story.</em>
+              <em>and the site wears it.</em>
             </>
           ),
-          text: "Rose, lilac, or pearl? Find your shade, then discover hijabs and modest clothing in our collection.",
+          text: "Rose, lilac or pearl? Tap any colour and the whole site takes it on: background, buttons, even Rose.",
         },
       ];
   const selected = colors[colorIndex];

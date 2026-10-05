@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
+import { createFabricTexture } from "./fabricTexture";
 import { createHijabGeometry, createDisplayHead } from "./HijabGeometry";
 
 type SceneProps = {
@@ -24,35 +25,25 @@ function DrapedHijab(props: SceneProps) {
     [props.color],
   );
   const fabricTime = useRef<THREE.IUniform | null>(null);
+  // Fine chiffon weave with uneven threads (see fabricTexture.ts).
   const weave = useMemo(() => {
-    const size = 128;
-    const data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const i = (y * size + x) * 4;
-        const value = 128 + (x % 4 === 0 ? 19 : -4) + (y % 4 === 0 ? 15 : -3);
-        data[i] = data[i + 1] = data[i + 2] = value;
-        data[i + 3] = 255;
-      }
-    }
-    const texture = new THREE.DataTexture(data, size, size);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(20, 28);
-    texture.needsUpdate = true;
-    return texture;
+    const t = createFabricTexture({ threads: 48 });
+    t.repeat(12, 16);
+    return t;
   }, []);
   const fabric = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
         color: props.color,
         side: THREE.DoubleSide,
-        roughness: 0.7,
+        roughness: 0.85, // × the roughness map (~0.8): about 0.7 on average, varying thread by thread
         metalness: 0,
-        sheen: 0.55,
+        sheen: 0.7,
         sheenColor: new THREE.Color("#f9dce7"),
-        sheenRoughness: 0.85,
-        bumpMap: weave,
-        bumpScale: 0.006,
+        sheenRoughness: 0.7,
+        bumpMap: weave.bump,
+        bumpScale: 0.022,
+        roughnessMap: weave.rough,
         // A single material is shared by all cloth layers; colour changes in useFrame.
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }),

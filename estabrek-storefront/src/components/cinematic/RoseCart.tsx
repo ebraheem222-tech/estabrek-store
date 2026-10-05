@@ -1,4 +1,5 @@
 "use client";
+import { bagItems, rememberPurchase, trackBeginCheckout, trackLead } from "@/lib/analytics";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { gsap } from "gsap";
@@ -196,6 +197,9 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     if (!nameOk || !phoneOk) { setErr(ar ? "أكملي الاسم ورقم الهاتف حتى نتواصل معكِ." : "Add your name and phone so we can reach you."); return; }
     setErr(null);
     setSubmitting(true);
+    const tracked = bagItems(quote?.lines ?? []);
+    const trackedValue = Number(grandTotal ?? quote?.total ?? 0) || 0;
+    trackBeginCheckout(tracked, trackedValue, currency ?? undefined);
     // Open the chat window inside the click so pop-up blockers allow it.
     const chat = via === "whatsapp" && waReady ? window.open("", "_blank") : null;
     try {
@@ -218,6 +222,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
       if (!res.ok) throw new Error(ar ? `تعذّر إرسال الطلب (${res.status})` : `Could not send the order (${res.status})`);
       const orderId = data?.id ? String(data.id) : undefined;
+      trackLead(tracked, trackedValue, currency ?? undefined, orderId);
       const text = orderText(orderId);
       if (via === "whatsapp") {
         const url = whatsappLink(whatsappNumber, text, countryCode);
@@ -251,6 +256,11 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
       if (!res.ok || !data?.redirectUrl) throw new Error(data?.message || (ar ? "تعذّر بدء الدفع" : "Could not start payment"));
+      // The sale is counted on the success page, once the payment is confirmed.
+      const tracked = bagItems(quote?.lines ?? []);
+      const value = Number(grandTotal ?? quote?.total ?? 0) || 0;
+      trackBeginCheckout(tracked, value, currency ?? undefined);
+      rememberPurchase(tracked, value, currency ?? undefined);
       window.location.href = data.redirectUrl;
     } catch (e: any) {
       setErr(e?.message || (ar ? "حدث خطأ" : "Something went wrong"));

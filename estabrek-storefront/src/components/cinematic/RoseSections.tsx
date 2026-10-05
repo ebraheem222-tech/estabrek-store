@@ -201,7 +201,7 @@ export function RoseHero({
             <HeroMascot ar={ar} />
             <div className="hero-brand-card">
               <span className="hero-brand-label">
-                {data.badge || "THE ROSE EDIT"}
+                {data.badge || (ar ? "مختارات استبرق" : "THE ROSE EDIT")}
               </span>
               <div className="hero-brand-image">
                 <Image
@@ -217,10 +217,9 @@ export function RoseHero({
               <span>
                 {ar ? "حكايتكِ تبدأ بتفصيلة" : "Every detail tells your story"}
               </span>
-              <span dir="ltr">THE ROSE EDIT / 01</span>
             </div>
             <span className="image-edge-label" aria-hidden="true">
-              SOFTNESS IS A STATEMENT
+              {ar ? "النعومة حضور" : "SOFTNESS IS A STATEMENT"}
             </span>
           </div>
         </section>
@@ -738,10 +737,10 @@ export function RoseInstagram({ images = [] }: { images?: string[] }) {
           <Icon name="camera" />
           {ar ? "على إنستغرام" : "ON INSTAGRAM"}
         </span>
-        <h2>{ar ? "إطلالاتكنّ تلهمنا." : "Your looks inspire us."}</h2>
+        <h2>{ar ? "تابعينا على إنستغرام." : "Follow us on Instagram."}</h2>
         <p>
           {ar
-            ? "تابعي جديدنا يومياً، وشاركينا إطلالتكِ بقطع استبرق مع الإشارة إلى حسابنا."
+            ? "نشارك هناك القطع الجديدة أولاً بأول. شاركينا إطلالتكِ بقطع استبرق مع الإشارة إلى حسابنا."
             : "Follow our new arrivals and share your Estabrek look by tagging us."}
         </p>
         <a href={store.instagram} target="_blank" rel="noreferrer" className="atelier-button button-dark" dir="ltr">

@@ -37,12 +37,12 @@ const smooth = (a: number, b: number, x: number) => {
 
 const COPY: Record<SeasonKey, { ar: { eyebrow: string; title: string; text: string; cta: string }; en: { eyebrow: string; title: string; text: string; cta: string } }> = {
   winter: {
-    ar: { eyebrow: "مجموعة الشتاء", title: "دفءٌ يليق\nبأيامكِ الباردة.", text: "أقمشة أثقل، ألوان أعمق، وطبقات تحميكِ من المطر والبرد بأناقة.", cta: "تسوّقي الشتاء" },
-    en: { eyebrow: "THE WINTER EDIT", title: "Warmth that suits\nyour coldest days.", text: "Heavier fabrics, deeper tones and layers that keep you elegant through rain and cold.", cta: "Shop winter" },
+    ar: { eyebrow: "مجموعة الشتاء", title: "عبايات وأطقم\nلأيام الشتاء.", text: "أقمشة أثقل وألوان أعمق، بقصّات واسعة ومحتشمة.", cta: "تسوّقي الشتاء" },
+    en: { eyebrow: "THE WINTER EDIT", title: "Abayas and sets\nfor winter days.", text: "Heavier fabrics and deeper tones, in loose, modest cuts.", cta: "Shop winter" },
   },
   spring: {
-    ar: { eyebrow: "مجموعة الربيع", title: "نسمة ربيع،\nبألوانٍ أخفّ.", text: "أقمشة ناعمة تتنفّس، وألوان فاتحة تشبه أول شمسٍ دافئة.", cta: "تسوّقي الربيع" },
-    en: { eyebrow: "THE SPRING EDIT", title: "A spring breeze,\nin lighter colours.", text: "Soft breathable fabrics in light tones, like the first warm sun.", cta: "Shop spring" },
+    ar: { eyebrow: "مجموعة الربيع", title: "فساتين خفيفة\nللربيع والصيف.", text: "أقمشة تتنفّس وألوان فاتحة للأيام الدافئة.", cta: "تسوّقي الربيع" },
+    en: { eyebrow: "THE SPRING EDIT", title: "Light dresses\nfor spring and summer.", text: "Breathable fabrics and light colours for warm days.", cta: "Shop spring" },
   },
 };
 

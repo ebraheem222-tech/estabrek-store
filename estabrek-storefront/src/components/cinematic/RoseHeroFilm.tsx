@@ -365,7 +365,6 @@ export function RoseHeroFilm({
               <i className="film-shine" />
             </span>
           </div>
-          <span className="film-caption" dir="ltr" aria-hidden="true">THE ROSE EDIT / 01</span>
           <HeroMascot ref={rose} ar={ar} />
         </div>
       </div>

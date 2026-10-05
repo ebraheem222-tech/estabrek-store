@@ -63,7 +63,7 @@ export function RoseCategoryIntro({
             </span>
           ))}
         </nav>
-        <span className="atelier-eyebrow">ESTABREK · {ar ? "مجموعة" : "COLLECTION"}</span>
+        <span className="atelier-eyebrow">{ar ? "مجموعة" : "COLLECTION"}</span>
         <h1>
           {name}
           <span>{ar ? "مختارة لكِ بحب." : "Chosen for you, with love."}</span>

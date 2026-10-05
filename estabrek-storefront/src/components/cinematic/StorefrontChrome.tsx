@@ -354,7 +354,7 @@ function Footer() {
       <div className="footer-bottom">
         <span>© {new Date().getFullYear()} {ar ? "استبرق" : "Estabrek"}</span>
         <span>
-          {ar ? "كل التفاصيل، بكل حب." : "With love, in every detail."}
+          {ar ? "صُنع بعناية في استبرق." : "Made with care at Estabrek."}
         </span>
         <a href="#main-content" className="back-top">
           {ar ? "للأعلى" : "Back to top"}

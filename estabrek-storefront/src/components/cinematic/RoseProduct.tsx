@@ -1,4 +1,5 @@
 "use client";
+import { productItem, trackAddToCart, trackViewItem } from "@/lib/analytics";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { gsap } from "gsap";
@@ -72,6 +73,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
 
   useEffect(() => {
     addToRecentlyViewed({ id: product.id, title: product.title, slug: product.slug, image: getProductPrimaryImage(product) ?? undefined, price: price ?? undefined });
+    trackViewItem(productItem(product, { color: item?.colorName, price }), currency ?? undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
@@ -125,6 +127,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const add = (event: MouseEvent<HTMLButtonElement>) => {
     if (!variant || !inStock) return;
     addItem(variant.id, Math.max(1, qty));
+    trackAddToCart(productItem(product, { color: item?.colorName, size: (variant as any).size?.name, price, quantity: Math.max(1, qty) }), currency ?? undefined);
     fireConfetti(event.clientX, event.clientY);
     toast.cartAdded(product.title);
     setStatus(ar ? "أُضيفت القطعة إلى حقيبتكِ." : "Added to your bag.");

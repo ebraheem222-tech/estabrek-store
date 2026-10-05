@@ -6,6 +6,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { warmScene } from "./warmScene";
+import { createFabricTexture } from "./fabricTexture";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { createDisplayHead, createHijabGeometry } from "./HijabGeometry";
 
@@ -316,24 +317,15 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
   const viewport = useThree((s) => s.viewport);
   const geometries = useMemo(() => createHijabGeometry(), []);
   const head = useMemo(() => createDisplayHead(), []);
+  // Woven cloth with a knit rib (winter); the rib flattens into a fine weave in spring.
   const knit = useMemo(() => {
-    const size = 128, data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-      // Chevron rib that reads as knit in winter and as a fine weave once the bump fades.
-      const v = 128 + Math.round(Math.sin((x + Math.abs((y % 8) - 4) * 2) * 0.8) * 22);
-      data[i] = data[i + 1] = data[i + 2] = v;
-      data[i + 3] = 255;
-    }
-    const t = new THREE.DataTexture(data, size, size);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(16, 22);
-    t.needsUpdate = true;
+    const t = createFabricTexture({ threads: 40, rib: 0.6 });
+    t.repeat(6, 8);
     return t;
   }, []);
   const fabric = useMemo(() => new THREE.MeshPhysicalMaterial({
-    color: WINTER_FABRIC.clone(), side: THREE.DoubleSide, roughness: 0.85, sheen: 0.4,
-    sheenColor: new THREE.Color("#d9d2f2"), sheenRoughness: 0.8, bumpMap: knit, bumpScale: 0.02,
+    color: WINTER_FABRIC.clone(), side: THREE.DoubleSide, roughness: 1, sheen: 0.55,
+    sheenColor: new THREE.Color("#d9d2f2"), sheenRoughness: 0.7, bumpMap: knit.bump, bumpScale: 0.035, roughnessMap: knit.rough,
   }), [knit]);
   useEffect(() => () => {
     Object.values(geometries).forEach((g) => g.dispose());
@@ -343,8 +335,9 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
     if (!group.current) return;
     const p = progress.current, mix = seasonMix(p);
     fabric.color.copy(WINTER_FABRIC).lerp(SPRING_FABRIC, mix);
-    fabric.roughness = THREE.MathUtils.lerp(0.85, 0.48, mix);
-    fabric.bumpScale = THREE.MathUtils.lerp(0.02, 0.004, mix);
+    // roughnessMap averages ~0.8: 1.0 → about 0.8 (wool), 0.62 → about 0.5 (light spring cloth).
+    fabric.roughness = THREE.MathUtils.lerp(1, 0.62, mix);
+    fabric.bumpScale = THREE.MathUtils.lerp(0.035, 0.02, mix);
     fabric.sheenColor.set(mix > 0.5 ? "#ffe1ea" : "#d9d2f2");
     const side = rtl ? -1 : 1;
     group.current.position.set(side * viewport.width * 0.27, -0.35 + Math.sin(clock.elapsedTime * 0.7) * 0.03, 0);

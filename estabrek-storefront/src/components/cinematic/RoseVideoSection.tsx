@@ -8,6 +8,7 @@ import type { VideoData } from "@/cms/sectionTypes";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { isNearWhite } from "@/lib/storefrontPalette";
 
 export const defaultCampaignVideo: VideoData = {
   url: "/editorial/rose-campaign.mp4", posterUrl: "/editorial/rose-campaign-poster.webp",
@@ -53,13 +54,16 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
   useEffect(() => {
     const read = () => {
       const c = document.documentElement.dataset.storefrontColor;
-      return c && HEX.test(c) ? c : null;
+      return c && HEX.test(c) && !isNearWhite(c) ? c : null;
     };
     const now = read();
     if (now) setDye({ color: now, on: true });
     const pick = (e: Event) => {
       const c = (e as CustomEvent<string>).detail;
-      if (typeof c === "string" && HEX.test(c)) setDye({ color: c, on: true });
+      if (typeof c !== "string" || !HEX.test(c)) return;
+      // White/ivory would only wash the fabric out to grey: it keeps its own rose.
+      if (isNearWhite(c)) setDye((d) => ({ ...d, on: false }));
+      else setDye({ color: c, on: true });
     };
     const reset = () => setDye((d) => ({ ...d, on: false }));
     window.addEventListener("storefront-color-selected", pick);
@@ -227,7 +231,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
           )}
         </div>
         <div className="rose-video-copy">
-          <span className="atelier-eyebrow">ESTABREK · IN MOTION</span>
+          <span className="atelier-eyebrow">{ar ? "القماش بالحركة" : "FABRIC IN MOTION"}</span>
           <h2>{data.title || (ar ? <>أناقةٌ تتحرّك.<br /><em>وتبقى في الذاكرة.</em></> : <>Elegance in motion.<br /><em>A feeling that stays.</em></>)}</h2>
           <p>{data.subtitle || (ar ? "تفاصيل ناعمة، وطيات تحكي الكثير. مرّري ببطء، ودعي القماش يتحرّك معكِ." : "Soft details. Beautiful folds. Scroll slowly and let the fabric move with you.")}</p>
           <Link href="/shop" className="atelier-text-link">{ar ? "اكتشفي المجموعة" : "Discover the collection"}<Icon name="arrow" /></Link>

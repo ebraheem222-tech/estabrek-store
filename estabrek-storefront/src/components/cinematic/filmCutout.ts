@@ -1,3 +1,5 @@
+import { isNearWhite } from "@/lib/storefrontPalette";
+
 /**
  * Takes the black background out of the opening film, live.
  *
@@ -169,7 +171,8 @@ export function startFilmCutout(video: HTMLVideoElement, canvas: HTMLCanvasEleme
     canvas.removeEventListener("webglcontextlost", lost);
   };
   const setTint = (hex: string | null) => {
-    if (hex && /^#[0-9a-f]{6}$/i.test(hex)) {
+    // White/ivory would only turn the scarf grey: it keeps its own colour.
+    if (hex && /^#[0-9a-f]{6}$/i.test(hex) && !isNearWhite(hex)) {
       const rgb = toRgb(hex);
       // Start from the colour itself when the scarf was still its own pastel.
       if (tint.amount < 0.01) tint.now = [...rgb];

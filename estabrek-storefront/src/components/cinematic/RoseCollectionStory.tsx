@@ -42,20 +42,20 @@ const STORY: Record<StoryKey, { seed: string; fallback: string; ar: Copy; en: Co
   accessories: {
     seed: "#c4a266",
     fallback: "/editorial/scarves.webp",
-    ar: { eyebrow: "الإكسسوارات", title: "تفاصيل صغيرة،\nتكمل حكايتكِ.", text: "خاتم التسبيح الذكي، دبابيس الشال، المعاصم والقمطات… لمسات تجعل إطلالتكِ أكمل.", cta: "تسوّقي الإكسسوارات" },
-    en: { eyebrow: "ACCESSORIES", title: "Small details\nthat finish your look.", text: "Smart tasbih rings, shawl pins, sleeves and underscarves — the touches that complete you.", cta: "Shop accessories" },
+    ar: { eyebrow: "الإكسسوارات", title: "معاصم، دبابيس\nوقمطات.", text: "خاتم التسبيح الإلكتروني، دبابيس الشال، المعاصم والبيسك… كل ما يثبّت لفّتكِ ويكمّلها.", cta: "تسوّقي الإكسسوارات" },
+    en: { eyebrow: "ACCESSORIES", title: "Sleeves, pins\nand underscarves.", text: "The electronic tasbih ring, shawl pins, sleeves and underscarves: everything that holds your wrap in place.", cta: "Shop accessories" },
   },
   kids: {
     seed: "#e59b9b",
     fallback: "/editorial/hijab-campaign.webp",
-    ar: { eyebrow: "للصغيرات", title: "أناقة صغيرة\nلأحلى البنات.", text: "فساتين مورّدة وأطقم مريحة بألوان فرحة، لجيلٍ يكبر على الأناقة.", cta: "تسوّقي الأطفال" },
-    en: { eyebrow: "FOR LITTLE ONES", title: "Little elegance\nfor little girls.", text: "Floral dresses and comfy sets in happy colours, for a generation growing up elegant.", cta: "Shop kids" },
+    ar: { eyebrow: "للصغيرات", title: "فساتين وأطقم\nللبنات الصغيرات.", text: "فساتين مورّدة وأطقم مريحة بألوان فرحة.", cta: "تسوّقي الأطفال" },
+    en: { eyebrow: "FOR LITTLE ONES", title: "Dresses and sets\nfor little girls.", text: "Floral dresses and comfy sets in happy colours.", cta: "Shop kids" },
   },
   incense: {
     seed: "#9b6b4e",
     fallback: "/editorial/rose-campaign-poster.webp",
-    ar: { eyebrow: "المباخر", title: "عبقٌ يملأ\nبيتكِ دفئاً.", text: "مباخر خشبية بنقوش عربية ولمسة ذهب، لأجواءٍ تشبه بيتكِ.", cta: "تسوّقي المباخر" },
-    en: { eyebrow: "INCENSE BURNERS", title: "A scent that fills\nyour home with warmth.", text: "Wooden burners with Arabic carving and a touch of gold, for a home that feels like you.", cta: "Shop incense burners" },
+    ar: { eyebrow: "المباخر", title: "مباخر خشب\nونقش عربي.", text: "مباخر من الخشب والبورسلان بنقوش عربية، مع عيدان البخور وتوزيعات العطر.", cta: "تسوّقي المباخر" },
+    en: { eyebrow: "INCENSE BURNERS", title: "Wooden burners,\nArabic carving.", text: "Wood and porcelain burners with Arabic carving, plus incense sticks and perfume favours.", cta: "Shop incense burners" },
   },
 };
 

@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { gsap } from "gsap";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 
 type Suggestion = { label: string; href: string };
 
@@ -16,6 +18,7 @@ type Suggestion = { label: string; href: string };
 export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: string; total: number; suggestions?: Suggestion[] }) {
   const ar = useLanguage().language === "ar";
   const router = useRouter();
+  const { voiceSearchEnabled } = useStorefrontSettings();
   const [value, setValue] = useState(query ?? "");
   const field = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLFormElement>(null);
@@ -42,7 +45,7 @@ export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: st
 
   return (
     <section className="rose-search-intro" data-rose-palette="pearl">
-      <span className="atelier-eyebrow">ESTABREK · {ar ? "البحث" : "SEARCH"}</span>
+      <span className="atelier-eyebrow">{ar ? "البحث" : "SEARCH"}</span>
       <h1>
         {query ? (ar ? <>نتائج «{query}»</> : <>Results for “{query}”</>) : ar ? "عمّ تبحثين؟" : "What are you looking for?"}
         <span>{query ? count : ar ? "اكتبي اسم القطعة، اللون أو القماش." : "Type a piece, a colour or a fabric."}</span>
@@ -58,6 +61,7 @@ export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: st
           aria-label={ar ? "ابحثي في المتجر" : "Search the store"}
           enterKeyHint="search"
         />
+        {voiceSearchEnabled && <VoiceSearchButton className="rose-search-voice" />}
         <button type="submit" className="atelier-button button-dark">{ar ? "ابحثي" : "Search"}</button>
       </form>
       {suggestions.length > 0 && (

@@ -53,6 +53,14 @@ function awayTooLong() {
     return false;
   }
 }
+/** A colour kept by an older version (no "seen" time): it may be a product's own colour, so it is dropped once. */
+function savedBeforeThisVersion() {
+  try {
+    return Boolean(window.localStorage.getItem(THEME_STORAGE_KEY)) && !window.localStorage.getItem(THEME_SEEN_KEY);
+  } catch {
+    return false;
+  }
+}
 const ACTIVITY = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"] as const;
 export function RoseThemeProvider({ children, className, restoreSelection = true }: { children: ReactNode; className: string; restoreSelection?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
@@ -97,7 +105,11 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         tweenTheme(document.documentElement, global, { duration });
         mark();
       }
-      if (!(event as CustomEvent & { restored?: boolean }).restored) saveColor(color);
+      // Only a colour the shopper picked is carried to the next pages. The colour a
+      // product page takes on its own (`auto`, e.g. a white piece) stays on that page:
+      // carried over, it turned the whole site white after a refresh.
+      const auto = Boolean((event as CustomEvent & { auto?: boolean }).auto);
+      if (!restored && !auto) saveColor(color);
       arm();
     };
 
@@ -162,7 +174,7 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
     document.addEventListener("visibilitychange", back);
     window.addEventListener("storefront-color-selected", select);
     // Pages other than About open in the colour the shopper picked last (unless she was away a long while).
-    if (awayTooLong()) forgetColor();
+    if (awayTooLong() || savedBeforeThisVersion()) forgetColor();
     const saved = restoreSelection ? readSavedColor() : null;
     if (saved) select(Object.assign(new CustomEvent("storefront-color-selected", { detail: saved }), { restored: true }));
     if (root.current) root.current.dataset.colorSelectionReady = "true";

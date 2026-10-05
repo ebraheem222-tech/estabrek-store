@@ -1,4 +1,5 @@
 "use client";
+import { productItem, trackAddToCart } from "@/lib/analytics";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
@@ -119,6 +120,7 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
   const add = (event: MouseEvent<HTMLButtonElement>) => {
     if (!variant || !available) return;
     addItem(variant.id, Math.max(1, qty));
+    trackAddToCart(productItem(product, { color: item?.colorName, size: (variant as any).size?.name, price, quantity: Math.max(1, qty) }), (product as any).currencyCode ?? undefined);
     fireConfetti(event.clientX, event.clientY);
     toast.cartAdded(product.title);
     setStatus(ar ? "أُضيفت القطعة إلى حقيبتكِ." : "Added to your bag.");
