@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { getBootstrap, getPublicSettings } from "@/lib/api";
+import { getBootstrap, getPublicSettings, getPageBySlug } from "@/lib/api";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import { RoseAbout } from "@/components/cinematic/RoseAbout";
 
@@ -54,6 +54,8 @@ const UsersIcon = () => (
 );
 
 export default async function AboutPage() {
+  // Look up the CMS page alongside the settings instead of after them (one wait, not two).
+  void getPageBySlug("/about");
   const settings = await getPublicSettings().catch(() => null);
   const storefrontCfg = (settings?.site as any)?.header?.storefront ?? {};
   const breadcrumbsEnabled = storefrontCfg.breadcrumbsEnabled !== false;
