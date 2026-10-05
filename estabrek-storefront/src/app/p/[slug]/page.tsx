@@ -31,7 +31,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 
   const title = (product as any).seoTitle ?? (product as any).title ?? "Product";
-  const description = (product as any).seoDescription ?? (product as any).description ?? "View product";
+  // Search results and shared links show ~160 characters: the start of the description, tidied.
+  const rawDescription = String((product as any).seoDescription ?? (product as any).description ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const description = rawDescription ? (rawDescription.length > 160 ? `${rawDescription.slice(0, 157).trimEnd()}…` : rawDescription) : `${(product as any).title ?? ""} — تسوّقيها الآن مع توصيل والدفع عند الاستلام.`;
   const productImageUrl = (product as any).images?.[0]?.url;
   const fallbackOgUrl = new URL(`/api/og/product?slug=${slug}`, base).toString();
   const openGraphImages = productImageUrl

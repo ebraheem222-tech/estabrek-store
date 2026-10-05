@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { selectStorefrontNav } from "@/lib/storefrontNav";
 import "./globals.css";
 import "./cinematic.css";
@@ -16,11 +17,28 @@ import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { EffectsStyles } from "@/components/EffectsStyles";
 import { StorefrontChrome } from "@/components/cinematic/StorefrontChrome";
 
-export const metadata = {
-  title: "استبرق — أناقة تليق بكِ",
-  description:
-    "حجاب، فساتين وأطقم محتشمة. اكتشفي اختيارات استبرق للأناقة والراحة كل يوم.",
-};
+/**
+ * The site's name, icon and sharing card come from the admin settings (store name,
+ * favicon, logo); every page title becomes "Page | Store name".
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const { site } = await getPublicSettings().catch(() => ({ site: {} as any }));
+  const name = String((site as any)?.siteName ?? "").trim() || "استبرق";
+  const tagline = "أناقة تليق بكِ";
+  const description = `حجاب، فساتين وأطقم محتشمة من ${name}. اختيارات مختارة بحب للأناقة والراحة كل يوم، مع توصيل والدفع عند الاستلام.`;
+  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const favicon = (site as any)?.faviconUrl || null;
+  const shareImage = (site as any)?.logoUrl || "/editorial/hijab-campaign.webp";
+  return {
+    ...(base ? { metadataBase: new URL(base) } : {}),
+    title: { default: `${name} — ${tagline}`, template: `%s | ${name}` },
+    description,
+    applicationName: name,
+    ...(favicon ? { icons: { icon: favicon, apple: favicon } } : {}),
+    openGraph: { type: "website", siteName: name, locale: "ar", title: `${name} — ${tagline}`, description, images: [shareImage] },
+    twitter: { card: "summary_large_image", title: `${name} — ${tagline}`, description, images: [shareImage] },
+  };
+}
 
 export default async function RootLayout({
   children,

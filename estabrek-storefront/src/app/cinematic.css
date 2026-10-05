@@ -3079,13 +3079,20 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
   box-shadow: 0 30px 70px color-mix(in srgb, var(--selection-ink,#4d2039) 16%, transparent);
 }
 .rose-video[data-motion="true"] video { will-change: transform; transform-origin: 50% 50%; }
-.rose-video-timeline {
-  position: absolute; inset-inline: 22px; bottom: 20px; display: flex; align-items: center; gap: 12px;
-  color: #fff; font-size: 11px; letter-spacing: .06em; text-shadow: 0 1px 6px rgba(60, 20, 40, .35);
+/* The fabric takes the shopper's colour: a "color" blend keeps its folds and light (no timeline bar). */
+.rose-video-media { isolation: isolate; }
+.rose-video-dye {
+  position: absolute; inset: 0; pointer-events: none; /* above the video, below the play button (page order) */
+  background-color: var(--video-dye, transparent); mix-blend-mode: color;
+  opacity: 0; transition: opacity .9s ease, background-color .9s ease;
 }
-.rose-video-timeline .timeline-track { flex: 1; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, .38); overflow: hidden; }
-.rose-video-timeline .timeline-track > span { display: block; height: 100%; width: calc(var(--video-p, 0) * 100%); background: #fff; }
-.rose-video-timeline .timeline-clock { font-variant-numeric: tabular-nums; }
+.rose-video-dye[data-on] { opacity: .85; }
+/* Dark colours also deepen the fabric (strength set from the colour's lightness). */
+.rose-video-deepen {
+  position: absolute; inset: 0; pointer-events: none; background-color: var(--video-dye, transparent);
+  mix-blend-mode: multiply; opacity: 0; transition: opacity .9s ease, background-color .9s ease;
+}
+.rose-video-deepen[data-on] { opacity: var(--video-deepen, 0); }
 @media (max-width: 760px) {
   .rose-video[data-motion="true"] { height: 230vh; }
   .rose-video[data-motion="true"] .rose-video-stage { padding: 86px 6% 28px; gap: 18px; align-content: center; }
@@ -4056,7 +4063,7 @@ html[data-theme-crossfade]::view-transition-new(root) {
 [dir="ltr"] .rose-film { --film-shift: 6%; }
 /* The scarf floats on the page: the film's black is taken out live (filmCutout.ts). */
 .film-arch { position: relative; isolation: isolate; }
-.film-canvas {
+.film-canvas, .film-still {
   position: absolute; z-index: 1; left: calc(50% + var(--film-shift, -6%)); top: 47%;
   width: var(--film-w, 165%); aspect-ratio: 16 / 9; height: auto;
   translate: -50% -50%;
@@ -4068,6 +4075,9 @@ html[data-theme-crossfade]::view-transition-new(root) {
   will-change: transform; pointer-events: none;
 }
 .film-canvas[data-ready="true"] { opacity: 1; }
+/* The first frame as a picture until the live film is drawn (and if the video cannot load). */
+.film-still { opacity: 1; object-fit: contain; max-width: none; }
+.film-canvas[data-ready="true"] ~ .film-still, .rose-film[data-cutout="off"] .film-still { opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility 0s .5s; }
 /* The video only feeds the canvas: kept decoding, out of sight. */
 .rose-film[data-cutout="on"] .film-video { position: absolute; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
 /* A soft halo of the line's colour behind the fabric (fades between lines). */
@@ -4104,7 +4114,7 @@ html[data-theme-crossfade]::view-transition-new(root) {
   .film-stage { order: -1; height: auto; min-height: 0; }
   /* Phones: big scarf, a gentler grow, and set a little higher so it stays clear of the words. */
   .rose-film, [dir="ltr"] .rose-film { --film-w: 210%; --film-shift: 0%; --film-zoom-k: .5; }
-  .film-canvas, .film-sparkles { top: 38%; }
+  .film-canvas, .film-still, .film-sparkles { top: 38%; }
   .rose-film[data-cutout="off"] .film-arch { border-radius: 170px 170px 22px 22px; }
   .film-lines { font-size: clamp(27px, 8.2vw, 38px); margin: 8px 0 6px; }
   .rose-film .hero-description { font-size: 12px; line-height: 1.9; margin-bottom: 14px; min-height: 3.8em; }
@@ -4166,3 +4176,50 @@ html[data-theme-crossfade]::view-transition-new(root) {
   translate: calc(var(--tilt-x, 0) * -18px) calc(var(--tilt-y, 0) * -12px);
   transition: translate 1.2s cubic-bezier(.2, .7, .2, 1), background-color .9s ease;
 }
+
+/* After the film: the hijab flies down into the first products (scarfFlight.ts). */
+.scarf-flight-layer { position: absolute; left: 0; top: 0; width: 100%; z-index: 45; pointer-events: none; overflow: clip; } /* height set to the page's: nothing it holds can widen the page */
+.scarf-flight { position: absolute; left: 0; top: 0; opacity: 0; transform-origin: 50% 50%; will-change: transform, opacity; filter: drop-shadow(0 18px 28px rgba(60, 20, 40, .22)); }
+.scarf-flight-picture { display: block; width: 100%; height: auto; -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent); mask-image: linear-gradient(to bottom, #000 72%, transparent); } /* the film frame ends in a straight edge */
+.scarf-trail, .scarf-burst { position: absolute; width: calc(var(--s) * 2); height: calc(var(--s) * 2); translate: -50% -50%; opacity: 0; }
+.scarf-trail svg, .scarf-burst svg { width: 100%; height: 100%; fill: #fffaf0; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 8px #f7d27a) drop-shadow(0 0 14px color-mix(in srgb, var(--selection-accent, #a43b64) 55%, #fff)); }
+.scarf-trail { animation: scarf-trail .9s ease-out both; }
+.scarf-burst { animation: film-twinkle 1.1s ease-in-out both; }
+@keyframes scarf-trail { 0% { opacity: 0; scale: .2; } 20% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: .3; rotate: 90deg; translate: -50% 10px; } }
+.editorial-product[data-scarf-landed] .editorial-product-image { animation: scarf-landed 1.5s ease-out; }
+.editorial-product[data-scarf-landed] .editorial-product-image::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, .55) 48%, transparent 66%) no-repeat;
+  background-size: 250% 100%; animation: scarf-glint 1.1s .1s ease-out both;
+}
+@keyframes scarf-landed {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--selection-accent, #a43b64) 0%, transparent); scale: 1; }
+  25% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--selection-accent, #a43b64) 35%, transparent), 0 18px 40px color-mix(in srgb, var(--selection-accent, #a43b64) 30%, transparent); scale: 1.025; }
+  100% { box-shadow: 0 0 0 14px transparent; scale: 1; }
+}
+@keyframes scarf-glint { from { background-position: 120% 0; opacity: 1; } to { background-position: -40% 0; opacity: 0; } }
+
+/* Bag: delivery by city (fees from the admin), free-delivery progress. */
+.rose-cart-form select { width: 100%; border: 1px solid var(--selection-line, #e3cdd8); border-radius: 14px; background: color-mix(in srgb, var(--selection-surface, #fff8f4) 70%, white); padding: 12px 14px; font: inherit; font-size: 14px; color: var(--selection-ink, #4d2039); appearance: auto; }
+.rose-cart-form select:focus { outline: none; border-color: var(--selection-accent, #7d2448); box-shadow: 0 0 0 4px color-mix(in srgb, var(--selection-accent, #7d2448) 14%, transparent); }
+.rose-cart-city-other { display: flex; gap: 8px; }
+.rose-cart-city-other button { flex: none; padding: 0 14px; border-radius: 14px; font-size: 12.5px; border: 1px solid var(--selection-line, #e3cdd8); color: var(--selection-ink, #4d2039); background: transparent; }
+.rose-cart-summary dt small { font-size: 11px; color: var(--selection-muted, #8b6d7b); font-weight: 400; }
+.rose-cart-free { color: #2f7a52; font-weight: 700; }
+.rose-cart-free-note { margin: 10px 0 0; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-cart-free-note b { color: var(--selection-ink, #4d2039); }
+.rose-cart-free-bar { display: block; height: 5px; margin-top: 6px; border-radius: 99px; background: color-mix(in srgb, var(--selection-line, #e3cdd8) 70%, transparent); overflow: hidden; }
+.rose-cart-free-bar i { display: block; height: 100%; border-radius: inherit; background: var(--selection-accent, #7d2448); transition: width .5s cubic-bezier(.2, .7, .2, 1); }
+.rose-cart-stock { display: inline-block; width: fit-content; justify-self: start; align-self: flex-start; margin-top: 4px; padding: 2px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600; color: #8a2f2f; background: rgba(197, 106, 106, .14); }
+.rose-cart-short { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgba(197, 106, 106, .1); color: #7a2a2a; font-size: 13px; }
+.rose-cart-short p { margin: 0; flex: 1 1 180px; }
+.rose-cart-short button { padding: 8px 14px; border-radius: 12px; font-size: 12.5px; font-weight: 600; background: var(--selection-ink, #4d2039); color: var(--selection-surface, #fff8f4); }
+
+/* Not found / something went wrong (RoseStatusPage) */
+.rose-status { min-height: calc(100svh - 160px); display: grid; place-items: center; padding: 120px 20px 80px; }
+.rose-status-card { position: relative; max-width: 620px; text-align: center; padding: 44px 28px; border-radius: 34px; background: color-mix(in srgb, var(--selection-surface, #fff8f4) 75%, white); box-shadow: 0 40px 90px -60px color-mix(in srgb, var(--selection-accent, #7d2448) 70%, transparent); overflow: hidden; }
+.rose-status-code { display: block; font-size: clamp(76px, 18vw, 150px); line-height: .9; font-weight: 800; letter-spacing: -.04em; background: linear-gradient(135deg, var(--selection-accent, #a43b64), color-mix(in srgb, var(--selection-accent, #a43b64) 35%, #f1c7d6)); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 10px; }
+.rose-status-card h1 { margin: 10px 0 10px; font-size: clamp(24px, 4.4vw, 34px); color: var(--selection-ink, #4d2039); }
+.rose-status-card p { margin: 0 auto; max-width: 440px; line-height: 1.9; color: var(--selection-muted, #8b6d7b); font-size: 15px; }
+.rose-status-actions { display: flex; flex-wrap: wrap; gap: 14px 20px; justify-content: center; align-items: center; margin-top: 26px; }
+.rose-status-ref { display: block; margin-top: 18px; font-size: 11px; color: var(--selection-muted, #8b6d7b); opacity: .7; }

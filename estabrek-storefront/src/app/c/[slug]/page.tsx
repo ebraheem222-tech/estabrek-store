@@ -35,7 +35,7 @@ export async function generateMetadata({
   const cats = await listCategories();
   const categoryName = cats.find((c) => c.slug === params.slug)?.name ?? params.slug;
   const title = categoryName;
-  const description = `Browse ${categoryName} products`;
+  const description = `تسوّقي ${categoryName}: تشكيلة مختارة من الأناقة المحتشمة، مع توصيل والدفع عند الاستلام.`;
 
   return {
     title,

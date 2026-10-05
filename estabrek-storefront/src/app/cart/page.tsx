@@ -36,6 +36,7 @@ export default async function CartPage() {
             stripeEnabled={cfg.stripeEnabled ?? false}
             paypalEnabled={cfg.paypalEnabled ?? false}
             countryCode={cfg.storeCountryCode ?? null}
+            delivery={cfg.header?.delivery ?? null}
           />
         </RosePageFrame>
       </main>

@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { RoseStatusPage } from "@/components/cinematic/RoseStatusPage";
+
+export const metadata = { title: "الصفحة غير موجودة", robots: { index: false } };
 
 export default function NotFound() {
+  if (process.env.ESTABREK_HOME_MODE !== "cms") return <RoseStatusPage kind="404" />;
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-3xl font-arabic" dir="rtl">
       <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-8 text-center">
