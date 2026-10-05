@@ -7,6 +7,7 @@ import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { LanguageProvider, useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { RoseThemeProvider } from "./RoseThemeProvider";
+import { PerfOverlay } from "./PerfOverlay";
 
 type RoseNavLink = { href: string; label: string; children?: RoseNavLink[] };
 export type RoseStoreData = {
@@ -407,6 +408,7 @@ export function StorefrontChrome({
           <Header />
           {children}
           <Footer />
+          <PerfOverlay />
         </RoseThemeProvider>
       </StoreContext.Provider>
     </LanguageProvider>

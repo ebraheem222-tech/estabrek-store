@@ -61,6 +61,8 @@ export type FilmCutout = {
   stop: () => void;
   /** Dye the scarf in a colour (glides there), or back to its own pastel with null. */
   setTint: (hex: string | null) => void;
+  /** The current frame (dyed, without its black) cropped to the scarf, as a plain canvas. */
+  snapshot: () => HTMLCanvasElement | null;
 };
 
 const toRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
@@ -176,5 +178,39 @@ export function startFilmCutout(video: HTMLVideoElement, canvas: HTMLCanvasEleme
     } else tint.amountTo = 0;
     if (!tintFrame) tintFrame = requestAnimationFrame(glide);
   };
-  return { stop, setTint };
+  const snapshot = () => {
+    if (!alive) return null;
+    draw();
+    if (!hasFrame || !canvas.width) return null;
+    // The WebGL picture is only readable in the same task it was drawn in.
+    paint();
+    try {
+      // Find the scarf on a small copy, then cut it out of the full frame.
+      const probe = document.createElement("canvas");
+      probe.width = 128;
+      probe.height = 72;
+      const pc = probe.getContext("2d", { willReadFrequently: true })!;
+      pc.drawImage(canvas, 0, 0, 128, 72);
+      const px = pc.getImageData(0, 0, 128, 72).data;
+      let x0 = 128, y0 = 72, x1 = -1, y1 = -1;
+      for (let y = 0; y < 72; y++) for (let x = 0; x < 128; x++) {
+        if (px[(y * 128 + x) * 4 + 3] < 40) continue;
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+      if (x1 < 0) return null;
+      const sx = canvas.width / 128, sy = canvas.height / 72;
+      const left = Math.max(0, (x0 - 2) * sx), top = Math.max(0, (y0 - 2) * sy);
+      const w = Math.min(canvas.width, (x1 + 3) * sx) - left, h = Math.min(canvas.height, (y1 + 3) * sy) - top;
+      const k = Math.min(1, 480 / Math.max(w, h));
+      const out = document.createElement("canvas");
+      out.width = Math.round(w * k);
+      out.height = Math.round(h * k);
+      out.getContext("2d")!.drawImage(canvas, left, top, w, h, 0, 0, out.width, out.height);
+      return out;
+    } catch {
+      return null;
+    }
+  };
+  return { stop, setTint, snapshot };
 }

@@ -7,6 +7,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { LqipImage } from "@/components/LqipImage";
 import { cldUrl } from "@/lib/cloudinary";
 import { whatsappLink } from "@/lib/whatsapp";
+import { deliveryCities, deliveryFor, hasDeliveryPrices, lowestFee, normalizeDelivery } from "@/lib/delivery";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
@@ -24,6 +25,8 @@ type Line = {
   unitPrice?: string | number;
   lineSubtotal?: string | number;
   lineTotal?: string | number;
+  /** How many can still be ordered (updated backend); absent = no limit known. */
+  available?: number;
 };
 type Quote = {
   subtotal?: string | number;
@@ -56,6 +59,8 @@ type Props = {
   stripeEnabled?: boolean;
   paypalEnabled?: boolean;
   countryCode?: string | null;
+  /** header.delivery from the admin: zones, fees, free-delivery threshold. */
+  delivery?: unknown;
 };
 
 /**
@@ -63,7 +68,7 @@ type Props = {
  * from the store's own price quote, and one clear way to order. Orders are
  * recorded in the store first, then the WhatsApp message opens ready to send.
  */
-export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmail, stripeEnabled, paypalEnabled, countryCode }: Props) {
+export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmail, stripeEnabled, paypalEnabled, countryCode, delivery: deliveryRaw }: Props) {
   const ar = useLanguage().language === "ar";
   const settings = useStorefrontSettings();
   const { items, setQty, removeItem, clear } = useCart();
@@ -73,7 +78,8 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const [coupon, setCoupon] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", address: "", note: "" });
+  const [form, setForm] = useState({ name: "", phone: "", city: "", address: "", note: "" });
+  const [otherCity, setOtherCity] = useState(false);
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ orderId?: string; via: "whatsapp" | "direct" | "email" } | null>(null);
@@ -88,6 +94,27 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const lineBy = useMemo(() => new Map((quote?.lines ?? []).map((l) => [l.variantId, l])), [quote]);
   const count = items.reduce((a, b) => a + b.quantity, 0);
   const discount = Number(quote?.discountAmount ?? 0);
+  // Pieces asked in a larger quantity than is left (the store refuses those orders).
+  const shortLines = items.filter((i) => { const a = lineBy.get(i.variantId)?.available; return typeof a === "number" && i.quantity > a; });
+  const fitToStock = () => {
+    for (const i of shortLines) {
+      const a = lineBy.get(i.variantId)?.available ?? 0;
+      if (a <= 0) removeItem(i.variantId);
+      else setQty(i.variantId, a);
+    }
+    setErr(null);
+  };
+  // Delivery: the owner's zones and fees (none set → confirmed by phone, as before).
+  const delivery = useMemo(() => normalizeDelivery(deliveryRaw), [deliveryRaw]);
+  const priced = hasDeliveryPrices(delivery);
+  const cityGroups = useMemo(() => deliveryCities(delivery), [delivery]);
+  const subtotalNum = Number(quote?.subtotal ?? 0);
+  const ship = deliveryFor(form.city, subtotalNum, delivery);
+  const freeLeft = delivery.freeOver != null && quote ? Math.max(0, delivery.freeOver - subtotalNum) : null;
+  const allFree = delivery.freeOver != null && quote != null && subtotalNum >= delivery.freeOver;
+  const feeKnown = allFree || (form.city.trim() !== "" && ship.fee != null);
+  const feeNow = allFree ? 0 : ship.fee ?? 0;
+  const grandTotal = quote ? Number(quote.total ?? 0) + (feeKnown ? feeNow : 0) : null;
 
   useEffect(() => { clearBodyScrollLocks(); }, []);
 
@@ -131,7 +158,15 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
 
   const nameOk = form.name.trim().length >= 2;
   const phoneOk = form.phone.replace(/\D/g, "").length >= 7;
-  const canOrder = !submitting && !loading && items.length > 0 && Boolean(quote?.lines?.length);
+  const canOrder = !submitting && !loading && items.length > 0 && Boolean(quote?.lines?.length) && shortLines.length === 0;
+
+  /** The store's answer when pieces ran out meanwhile: refresh the bag and say which. */
+  const stockMessage = (data: any) => {
+    const rows = (data?.details?.lines ?? []) as Array<{ productTitle?: string; colorName?: string | null; sizeName?: string | null; available?: number }>;
+    void refresh();
+    const names = rows.map((r) => [r.productTitle, r.colorName, r.sizeName].filter(Boolean).join(" · ") + (ar ? ` (متوفر ${r.available ?? 0})` : ` (${r.available ?? 0} left)`)).join("، ");
+    return ar ? `بعض القطع لم تعد متوفرة بهذه الكمية: ${names}` : `Some pieces are no longer available in this quantity: ${names}`;
+  };
 
   const orderText = (orderId?: string) => {
     const lines = (quote?.lines ?? []).map((l) => {
@@ -145,10 +180,12 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       ...lines,
       "",
       ...(discount > 0 ? [`${ar ? "الخصم" : "Discount"}: −${money(discount, currency)}`] : []),
-      `${ar ? "الإجمالي" : "Total"}: ${money(quote?.total, currency)}`,
+      ...(priced && feeKnown ? [`${ar ? "التوصيل" : "Delivery"}: ${feeNow === 0 ? (ar ? "مجاني" : "Free") : money(feeNow, currency)}`] : []),
+      `${ar ? "الإجمالي" : "Total"}: ${money(grandTotal ?? quote?.total, currency)}`,
       "",
       `${ar ? "الاسم" : "Name"}: ${form.name.trim()}`,
       `${ar ? "الهاتف" : "Phone"}: ${form.phone.trim()}`,
+      ...(form.city.trim() ? [`${ar ? "المدينة" : "City"}: ${form.city.trim()}`] : []),
       ...(form.address.trim() ? [`${ar ? "العنوان" : "Address"}: ${form.address.trim()}`] : []),
       ...(form.note.trim() ? [`${ar ? "ملاحظات" : "Notes"}: ${form.note.trim()}`] : []),
     ].join("\n");
@@ -170,14 +207,16 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
           customerName: form.name.trim(),
           phone: form.phone.trim(),
           ...(via === "whatsapp" ? { whatsapp: form.phone.trim() } : {}),
+          city: form.city.trim() || undefined,
           address: form.address.trim() || undefined,
           note: form.note.trim() || undefined,
           couponCode: coupon.trim() || undefined,
           source: via === "whatsapp" ? "WHATSAPP_CART" : via === "email" ? "EMAIL_CART" : "DIRECT_CART",
         }),
       });
-      if (!res.ok) throw new Error(ar ? `تعذّر إرسال الطلب (${res.status})` : `Could not send the order (${res.status})`);
       const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
+      if (!res.ok) throw new Error(ar ? `تعذّر إرسال الطلب (${res.status})` : `Could not send the order (${res.status})`);
       const orderId = data?.id ? String(data.id) : undefined;
       const text = orderText(orderId);
       if (via === "whatsapp") {
@@ -207,9 +246,10 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       const res = await fetch(`${apiBase()}/storefront/checkout/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, items: payload, customerName: form.name.trim(), phone: form.phone.trim(), address: form.address.trim() || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined }),
+        body: JSON.stringify({ provider, items: payload, customerName: form.name.trim(), phone: form.phone.trim(), address: [form.city.trim(), form.address.trim()].filter(Boolean).join("، ") || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
       if (!res.ok || !data?.redirectUrl) throw new Error(data?.message || (ar ? "تعذّر بدء الدفع" : "Could not start payment"));
       window.location.href = data.redirectUrl;
     } catch (e: any) {
@@ -281,6 +321,11 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                       {l?.sizeName && <span>{ar ? "المقاس" : "Size"}: {l.sizeName}</span>}
                     </div>
                     <span className="rose-cart-unit">{money(l?.unitPrice, currency)}</span>
+                    {typeof l?.available === "number" && it.quantity > l.available ? (
+                      <span className="rose-cart-stock" role="status" data-testid="cart-stock-note">
+                        {l.available <= 0 ? (ar ? "نفدت هذه القطعة" : "Sold out") : ar ? `متوفر ${l.available} فقط` : `Only ${l.available} left`}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="rose-cart-qty" aria-label={ar ? "الكمية" : "Quantity"}>
                     <button type="button" aria-label={ar ? "زيادة" : "More"} onClick={() => setQty(it.variantId, it.quantity + 1)}>+</button>
@@ -308,9 +353,25 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
           <dl>
             <div><dt>{ar ? "المجموع الفرعي" : "Subtotal"}</dt><dd>{loading && !quote ? "…" : money(quote?.subtotal, currency)}</dd></div>
             {discount > 0 && <div className="discount"><dt>{ar ? "الخصم" : "Discount"}{quote?.coupon?.code ? ` (${quote.coupon.code})` : ""}</dt><dd>−{money(discount, currency)}</dd></div>}
-            <div><dt>{ar ? "التوصيل" : "Delivery"}</dt><dd className="muted">{ar ? "نؤكده معكِ" : "Confirmed with you"}</dd></div>
-            <div className="total"><dt>{ar ? "الإجمالي" : "Total"}</dt><dd>{loading && !quote ? "…" : money(quote?.total, currency)}</dd></div>
+            <div data-testid="cart-delivery">
+              <dt>{ar ? "التوصيل" : "Delivery"}{priced && ship.zone && !allFree ? <small> ({ship.zone.name})</small> : null}</dt>
+              <dd className={feeKnown && feeNow > 0 ? undefined : "muted"}>
+                {!priced ? (ar ? "نؤكده معكِ" : "Confirmed with you")
+                  : allFree || (feeKnown && feeNow === 0) ? <b className="rose-cart-free">{ar ? "مجاني" : "Free"}</b>
+                  : feeKnown ? money(feeNow, currency)
+                  : form.city.trim() ? (ar ? "نؤكده معكِ" : "Confirmed with you")
+                  : lowestFee(delivery) != null ? (ar ? `من ${money(lowestFee(delivery), currency)} · اختاري المدينة` : `From ${money(lowestFee(delivery), currency)} · pick your city`)
+                  : (ar ? "اختاري المدينة" : "Pick your city")}
+              </dd>
+            </div>
+            <div className="total"><dt>{ar ? "الإجمالي" : "Total"}</dt><dd data-testid="cart-total">{loading && !quote ? "…" : money(grandTotal ?? quote?.total, currency)}</dd></div>
           </dl>
+          {priced && freeLeft != null && freeLeft > 0 && (
+            <p className="rose-cart-free-note" data-testid="cart-free-note">
+              {ar ? <>أضيفي بـ<b>{money(freeLeft, currency)}</b> فقط ويصير التوصيل مجاناً</> : <>Add <b>{money(freeLeft, currency)}</b> more for free delivery</>}
+              <span className="rose-cart-free-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, (subtotalNum / (delivery.freeOver || 1)) * 100)}%` }} /></span>
+            </p>
+          )}
 
           {couponOpen ? (
             <form className="rose-cart-coupon" onSubmit={applyCoupon}>
@@ -332,9 +393,40 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
               <span>{ar ? "رقم الهاتف" : "Phone"} *</span>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} type="tel" autoComplete="tel" dir="ltr" required />
             </label>
+            {priced && cityGroups.some((g) => g.cities.length) ? (
+              <label>
+                <span>{ar ? "المدينة" : "City"}</span>
+                {!otherCity ? (
+                  <select
+                    value={form.city}
+                    onChange={(e) => { if (e.target.value === "__other") { setOtherCity(true); setForm({ ...form, city: "" }); } else setForm({ ...form, city: e.target.value }); }}
+                    aria-label={ar ? "المدينة" : "City"}
+                    data-testid="cart-city"
+                  >
+                    <option value="">{ar ? "اختاري مدينتكِ" : "Choose your city"}</option>
+                    {cityGroups.filter((g) => g.cities.length).map((g) => (
+                      <optgroup key={g.zone} label={`${g.zone} — ${g.fee === 0 ? (ar ? "مجاني" : "free") : money(g.fee, currency)}`}>
+                        {g.cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </optgroup>
+                    ))}
+                    <option value="__other">{ar ? "مدينة أخرى…" : "Another city…"}</option>
+                  </select>
+                ) : (
+                  <span className="rose-cart-city-other">
+                    <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" placeholder={ar ? "اكتبي اسم المدينة" : "Type your city"} autoFocus />
+                    <button type="button" onClick={() => { setOtherCity(false); setForm({ ...form, city: "" }); }}>{ar ? "القائمة" : "List"}</button>
+                  </span>
+                )}
+              </label>
+            ) : priced ? (
+              <label>
+                <span>{ar ? "المدينة" : "City"}</span>
+                <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" />
+              </label>
+            ) : null}
             <label>
               <span>{ar ? "العنوان" : "Address"}</span>
-              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} autoComplete="street-address" placeholder={ar ? "المدينة، الحي، الشارع" : "City, area, street"} />
+              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} autoComplete="street-address" placeholder={priced ? (ar ? "الحي، الشارع، رقم البيت" : "Area, street, house") : ar ? "المدينة، الحي، الشارع" : "City, area, street"} />
             </label>
             <label>
               <span>{ar ? "ملاحظات" : "Notes"}</span>
@@ -342,6 +434,12 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             </label>
           </div>
 
+          {shortLines.length > 0 && (
+            <div className="rose-cart-short" role="alert" data-testid="cart-short">
+              <p>{ar ? "بعض القطع أقل من الكمية في حقيبتكِ." : "Some pieces have fewer left than in your bag."}</p>
+              <button type="button" onClick={fitToStock}>{ar ? "تعديل للكمية المتوفرة" : "Fit to what's left"}</button>
+            </div>
+          )}
           {err && <p className="rose-cart-error" role="alert">{err}</p>}
 
           <div className="rose-cart-actions">

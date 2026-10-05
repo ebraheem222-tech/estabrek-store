@@ -47,7 +47,7 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
       };
       measure();
       const tween = gsap.fromTo(state, { p: 0 }, { p: 1, ease: "none", onUpdate: frame,
-        scrollTrigger: { trigger: scene, start: () => `top top+=${parseFloat(getComputedStyle(sticky).top)}`, end: "bottom bottom", scrub: .4, invalidateOnRefresh: true, onRefresh: measure }
+        scrollTrigger: { trigger: scene, start: () => `top top+=${parseFloat(getComputedStyle(sticky).top)}`, end: "bottom bottom", scrub: .4, onRefresh: measure }
       });
       let disposed = false;
       document.fonts.ready.then(() => { if (!disposed) ScrollTrigger.refresh(true); });

@@ -1,4 +1,6 @@
 "use client";
+import { ScenePacer } from "./ScenePacer";
+import { sceneDpr } from "@/lib/motionBudget";
 import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
@@ -435,8 +437,9 @@ export default function CollectionModelsScene(props: CollectionModelsProps) {
   return (
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
-      dpr={[1, 1.6]}
-      frameloop={props.active ? "always" : "demand"}
+      dpr={sceneDpr()}
+      /* Drawn by ScenePacer: 60 frames a second at most (30 in the light mode). */
+      frameloop="demand"
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >
       <ambientLight intensity={0.75} />
@@ -452,6 +455,7 @@ export default function CollectionModelsScene(props: CollectionModelsProps) {
       {props.keys.includes("accessories") && <Accessories weight={at("accessories")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
       {props.keys.includes("kids") && <Kids weight={at("kids")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
       {props.keys.includes("incense") && <Incense weight={at("incense")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
+      <ScenePacer active={props.active} />
       <Lifecycle onReady={props.onReady} onFailure={props.onFailure} />
     </Canvas>
   );

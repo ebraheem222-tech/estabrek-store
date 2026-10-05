@@ -2,7 +2,7 @@
 import { createContext, useContext, useRef, useCallback, useEffect, useLayoutEffect, type ReactNode, type RefObject } from "react";
 import { rosePalettes } from "./roseDesign";
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { crossfadeTheme, setThemeNow, tweenTheme } from "@/lib/themeTween";
+import { crossfadeTheme, setThemeNow, tweenTheme, tweenThemeBack } from "@/lib/themeTween";
 import { themeHeld } from "@/lib/themeBase";
 import { discardThemePreview } from "@/lib/themePreview";
 
@@ -23,15 +23,44 @@ function readSavedColor(): string | null {
 function saveColor(color: string) {
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, color);
+    window.localStorage.setItem(THEME_SEEN_KEY, String(Date.now()));
   } catch {
     // Private mode or blocked storage: the theme still applies on this page.
   }
 }
+function forgetColor() {
+  try {
+    window.localStorage.removeItem(THEME_STORAGE_KEY);
+    window.localStorage.removeItem(THEME_SEEN_KEY);
+  } catch {
+    /* storage blocked */
+  }
+}
+/**
+ * Away from the keyboard: when the shopper does nothing for this long (no
+ * scroll, touch, click, typing or pointer movement), the picked colour fades
+ * back to the shop's own colours, and the next visit after such a break opens
+ * in them too. The colour stays while she keeps browsing, page to page.
+ */
+export const THEME_IDLE_MS = 3 * 60_000;
+/** When the shopper was last active with a colour picked (to tell a break from page-to-page browsing). */
+const THEME_SEEN_KEY = "estabrek_theme_seen";
+function awayTooLong() {
+  try {
+    const seen = Number(window.localStorage.getItem(THEME_SEEN_KEY));
+    return seen > 0 && Date.now() - seen > THEME_IDLE_MS;
+  } catch {
+    return false;
+  }
+}
+const ACTIVITY = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"] as const;
 export function RoseThemeProvider({ children, className, restoreSelection = true }: { children: ReactNode; className: string; restoreSelection?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   useClientLayoutEffect(() => {
     let selected = false;
     const globalProperties = new Map<string, string>();
+    // The shell's own colours before the first pick, to fade back to after a break.
+    let ownColours: Map<string, string> | null = null;
     const select = (event: Event) => {
       const color = (event as CustomEvent<string>).detail;
       if (!/^#[0-9a-f]{6}$/i.test(color) || !root.current) return;
@@ -46,6 +75,7 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         global[property] = value;
       });
       const shell = root.current;
+      if (!ownColours) ownColours = new Map(Object.keys(palette).map((key) => [key, shell.style.getPropertyValue(key)]));
       const mark = () => {
         shell.dataset.navbarColor = color;
         shell.dataset.storefrontColor = color;
@@ -68,13 +98,78 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         mark();
       }
       if (!(event as CustomEvent & { restored?: boolean }).restored) saveColor(color);
+      arm();
     };
+
+    // Back to the shop's own colours after a break (see THEME_IDLE_MS).
+    let idleTimer = 0;
+    let lastActive = Date.now();
+    let lastSaved = 0;
+    const arm = () => {
+      window.clearTimeout(idleTimer);
+      if (selected) idleTimer = window.setTimeout(goIdle, THEME_IDLE_MS);
+    };
+    const goIdle = () => {
+      const shell = root.current;
+      if (!selected || !shell) return;
+      // A scene (seasons, collection worlds) or a preview is borrowing the colours: wait for it to give them back.
+      if (themeHeld(shell)) { idleTimer = window.setTimeout(goIdle, 5000); return; }
+      const own = ownColours ?? new Map<string, string>();
+      const global = new Map(globalProperties);
+      const restore = () => {
+        own.forEach((value, key) => (value ? shell.style.setProperty(key, value) : shell.style.removeProperty(key)));
+        global.forEach((previous, property) => previous
+          ? document.documentElement.style.setProperty(property, previous)
+          : document.documentElement.style.removeProperty(property));
+      };
+      const unmark = () => {
+        delete shell.dataset.navbarColor;
+        delete shell.dataset.storefrontColor;
+        delete document.documentElement.dataset.storefrontColor;
+      };
+      // Nobody watching (hidden tab): at once. Otherwise the same soft cross-fade as a pick.
+      if (document.hidden || !crossfadeTheme(() => { restore(); unmark(); })) {
+        if (document.hidden) restore();
+        else {
+          tweenThemeBack(shell, own, { duration: 1.2 });
+          tweenThemeBack(document.documentElement, global, { duration: 1.2 });
+        }
+        unmark();
+      }
+      selected = false;
+      ownColours = null;
+      globalProperties.clear();
+      forgetColor();
+      window.dispatchEvent(new CustomEvent("storefront-color-reset"));
+    };
+    const active = () => {
+      const now = Date.now();
+      // Pointer moves come many times a second: re-arm at most once a second.
+      if (now - lastActive < 1000) return;
+      lastActive = now;
+      if (!selected) return;
+      arm();
+      if (now - lastSaved > 15_000) {
+        lastSaved = now;
+        try { window.localStorage.setItem(THEME_SEEN_KEY, String(now)); } catch { /* storage blocked */ }
+      }
+    };
+    // Timers sleep in a background tab: on return, check how long she was away.
+    const back = () => {
+      if (document.visibilityState === "visible" && selected && Date.now() - lastActive > THEME_IDLE_MS) goIdle();
+    };
+    ACTIVITY.forEach((name) => window.addEventListener(name, active, { passive: true, capture: true }));
+    document.addEventListener("visibilitychange", back);
     window.addEventListener("storefront-color-selected", select);
-    // Pages other than About open in the colour the shopper picked last.
+    // Pages other than About open in the colour the shopper picked last (unless she was away a long while).
+    if (awayTooLong()) forgetColor();
     const saved = restoreSelection ? readSavedColor() : null;
     if (saved) select(Object.assign(new CustomEvent("storefront-color-selected", { detail: saved }), { restored: true }));
     if (root.current) root.current.dataset.colorSelectionReady = "true";
     return () => {
+      window.clearTimeout(idleTimer);
+      ACTIVITY.forEach((name) => window.removeEventListener(name, active, { capture: true }));
+      document.removeEventListener("visibilitychange", back);
       window.removeEventListener("storefront-color-selected", select);
       if (selected) {
         globalProperties.forEach((previous, property) => previous

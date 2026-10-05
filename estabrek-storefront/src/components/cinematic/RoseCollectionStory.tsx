@@ -236,7 +236,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           render(state.p);
           if (themeTrigger.isActive) takeOver(seedAt(state.p));
         },
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.4, invalidateOnRefresh: true, refreshPriority: -1 },
+        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.4, refreshPriority: -1 },
       });
       render(0);
       const refresh = requestScrollRefresh;

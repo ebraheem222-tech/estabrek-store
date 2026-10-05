@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -15,7 +15,17 @@ export const defaultCampaignVideo: VideoData = {
 };
 
 type Playback = "paused" | "playing" | "blocked" | "error" | "scrubbing";
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const HEX = /^#[0-9a-f]{6}$/i;
+/**
+ * How much to deepen the fabric for a dark colour: the "color" blend alone keeps
+ * the rose fabric's brightness, so navy came out pale lavender. A dark pick also
+ * gets a multiply layer, a light pick none.
+ */
+function deepen(hex: string) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((n) => (n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4));
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return Math.max(0, Math.min(0.6, ((0.55 - l) / 0.55) * 0.6)).toFixed(2);
+}
 
 /**
  * Campaign clip. With motion allowed, the section holds while scrolling and the
@@ -30,13 +40,35 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
   const root = useRef<HTMLElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
-  const time = useRef<HTMLSpanElement>(null);
   const alive = useRef(true);
   const [near, setNear] = useState(false);
   const [scroll, setScroll] = useState(false);
   const [playback, setPlayback] = useState<Playback>("paused");
+  // The fabric takes the shopper's colour (none picked: its own rose).
+  // The last colour is kept while the dye fades out, so it does not jump to clear.
+  const [dye, setDye] = useState<{ color: string | null; on: boolean }>({ color: null, on: false });
   const isDefault = data.url === defaultCampaignVideo.url;
   const poster = data.posterUrl || defaultCampaignVideo.posterUrl;
+
+  useEffect(() => {
+    const read = () => {
+      const c = document.documentElement.dataset.storefrontColor;
+      return c && HEX.test(c) ? c : null;
+    };
+    const now = read();
+    if (now) setDye({ color: now, on: true });
+    const pick = (e: Event) => {
+      const c = (e as CustomEvent<string>).detail;
+      if (typeof c === "string" && HEX.test(c)) setDye({ color: c, on: true });
+    };
+    const reset = () => setDye((d) => ({ ...d, on: false }));
+    window.addEventListener("storefront-color-selected", pick);
+    window.addEventListener("storefront-color-reset", reset);
+    return () => {
+      window.removeEventListener("storefront-color-selected", pick);
+      window.removeEventListener("storefront-color-reset", reset);
+    };
+  }, []);
 
   // Fetch the clip shortly before it is needed.
   useEffect(() => {
@@ -75,15 +107,12 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       el.loop = false;
       const state = { p: 0 };
       let pending = false;
-      let shownClock = "";
       const seek = () => {
         const d = el.duration;
-        // The clock text only changes once a second: rewriting it every frame re-laid out the section.
-        const text = `${clock(state.p * (Number.isFinite(d) ? d : 0))} / ${clock(Number.isFinite(d) ? d : 0)}`;
-        if (time.current && text !== shownClock) { time.current.textContent = text; shownClock = text; }
         if (!Number.isFinite(d) || d <= 0 || el.readyState < 1) return;
         const target = Math.min(d - 0.04, Math.max(0, state.p * d));
-        if (Math.abs(el.currentTime - target) < 0.012) return;
+        // Closer than about one frame (videos from the admin can be 60 a second): no seek needed.
+        if (Math.abs(el.currentTime - target) < 0.016) return;
         // Skip a frame while the decoder is still seeking instead of queueing seeks.
         if (el.seeking) { pending = true; return; }
         el.currentTime = target;
@@ -101,18 +130,13 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
           start: "top top",
           end: "bottom bottom",
           scrub: 0.6,
-          invalidateOnRefresh: true,
           refreshPriority: -1,
         },
       });
       tl.to(state, {
         p: 1,
         duration: 1,
-        onUpdate: () => {
-          seek();
-          // Only the timeline bar uses the progress; setting it on the whole section restyled all of it every frame.
-          section.querySelector<HTMLElement>(".rose-video-timeline")?.style.setProperty("--video-p", state.p.toFixed(4));
-        },
+        onUpdate: seek,
       }, 0)
         // The arch opens into a wide, softly rounded frame.
         .fromTo(media, { borderRadius: "260px 260px 12px 12px", scale: 0.84 }, { borderRadius: "34px 34px 34px 34px", scale: 1, ease: "power2.out", duration: 0.4 }, 0)
@@ -127,7 +151,6 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
         tl.kill();
         gsap.set([media, el, ...Array.from(copy)], { clearProps: "all" });
         section.dataset.motion = "false";
-        section.querySelector<HTMLElement>(".rose-video-timeline")?.style.removeProperty("--video-p");
         el.loop = data.loop !== false;
         setScroll(false);
         setPlayback("paused");
@@ -181,6 +204,16 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
             {near && <source src={data.url} type="video/mp4" />}
           </video>
           {playback === "error" && <img className="video-error-poster" src={poster} alt={ar ? "طيات قماش وردي" : "Folds of rose fabric"} />}
+          {/* Dyes the fabric in the shopper's colour, keeping its folds and light (dark colours also deepen it). */}
+          {(["rose-video-dye", "rose-video-deepen"] as const).map((layer) => (
+            <span
+              key={layer}
+              className={layer}
+              aria-hidden="true"
+              data-on={dye.on ? "true" : undefined}
+              style={dye.color ? ({ "--video-dye": dye.color, "--video-deepen": deepen(dye.color) } as CSSProperties) : undefined}
+            />
+          ))}
           {showButton && (
             <button
               type="button"
@@ -191,12 +224,6 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">{playback === "playing" ? <path d="M7 5h3v14H7zM14 5h3v14h-3z" fill="currentColor" /> : <path d="m8 4 13 8-13 8z" fill="currentColor" />}</svg>
               <span>{playback === "error" ? (ar ? "إعادة المحاولة" : "Retry") : playback === "playing" ? (ar ? "إيقاف" : "Pause") : (ar ? "تشغيل" : "Play")}</span>
             </button>
-          )}
-          {scroll && playback !== "error" && (
-            <div className="rose-video-timeline" aria-hidden="true">
-              <span className="timeline-track"><span /></span>
-              <span ref={time} className="timeline-clock" dir="ltr">0:00</span>
-            </div>
           )}
         </div>
         <div className="rose-video-copy">

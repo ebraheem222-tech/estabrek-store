@@ -222,7 +222,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
           if (themeTrigger.isActive) takeOver(seedAt(state.p));
         },
         // Measured after the pinned scenes above it (opening, fabric study) add their spacing.
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.35, invalidateOnRefresh: true, refreshPriority: -1 },
+        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.35, refreshPriority: -1 },
       });
       render(0);
       // The scene just grew to its pinned height: re-measure every trigger below it.

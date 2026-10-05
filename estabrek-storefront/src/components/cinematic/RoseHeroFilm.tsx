@@ -4,11 +4,13 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
+import { reportSeek } from "@/lib/motionBudget";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { Icon } from "./Icons";
 import { HeroMascot } from "./mascot/HeroMascot";
 import type { MascotHandle } from "./mascot/RoseMascot";
-import { startFilmCutout } from "./filmCutout";
+import { startFilmCutout, type FilmCutout } from "./filmCutout";
+import { watchScarfFlight } from "./scarfFlight";
 import { placeHeroMascotOnPhone } from "./mascot/phoneSpot";
 
 /**
@@ -102,16 +104,22 @@ export function RoseHeroFilm({
       const progress = section.querySelector<HTMLElement>(".film-arch");
       let shownZoom = "";
       let lastLook = 0;
+      let askedAt = 0;
       const seek = () => {
         const d = el.duration;
         if (!Number.isFinite(d) || d <= 0 || el.readyState < 1) return;
         // The film runs a little ahead of the lines, so the hijab is complete when the closing line arrives.
         const target = Math.min(d - 0.04, Math.max(0, Math.min(1, state.p / (LINES_END + 0.04)) * d));
-        if (Math.abs(el.currentTime - target) < 0.02) return;
+        // Under one frame of the film (24 a second) apart: the same picture, no seek needed.
+        if (Math.abs(el.currentTime - target) < 0.03) return;
         if (el.seeking) { pending = true; return; }
+        askedAt = performance.now();
         el.currentTime = target;
       };
-      const seeked = () => { if (pending) { pending = false; seek(); } };
+      const seeked = () => {
+        if (askedAt) { reportSeek(performance.now() - askedAt); askedAt = 0; }
+        if (pending) { pending = false; seek(); }
+      };
       const update = () => {
         seek();
         const p = state.p;
@@ -141,7 +149,7 @@ export function RoseHeroFilm({
       el.addEventListener("seeked", seeked);
       const tween = gsap.fromTo(state, { p: 0 }, {
         p: 1, ease: "none", onUpdate: update,
-        scrollTrigger: { trigger: section, start: "top top", end: "bottom bottom", scrub: 0.5, invalidateOnRefresh: true, refreshPriority: -1 },
+        scrollTrigger: { trigger: section, start: "top top", end: "bottom bottom", scrub: 0.5, refreshPriority: -1 },
       });
       update();
       requestScrollRefresh();
@@ -169,6 +177,7 @@ export function RoseHeroFilm({
 
   // Rose cheers when the hijab is complete (only when the shopper scrolled there).
   const seenFinal = useRef(false);
+  const filmRef = useRef<FilmCutout | null>(null);
   useEffect(() => {
     if (!motion) return;
     if (step === 1) rose.current?.wink();
@@ -190,10 +199,40 @@ export function RoseHeroFilm({
     const film = startFilmCutout(el, out, () => setCutout("off"));
     if (!film) { setCutout("off"); return; }
     film.setTint(document.documentElement.dataset.storefrontColor ?? null);
+    filmRef.current = film;
+    // iPhones load no video data until it plays: start it for a moment (muted), then the
+    // scroll takes over. Tried soon after load and again on her first touch or scroll.
+    const prime = () => {
+      if (el.readyState >= 2) return;
+      el.play()
+        .then(() => { if (root.current?.dataset.motion === "true") el.pause(); })
+        .catch(() => {});
+    };
+    const primeTimer = window.setTimeout(prime, 900);
+    const firstTouch = ["touchstart", "pointerdown", "scroll"] as const;
+    const onFirst = () => { prime(); firstTouch.forEach((e) => window.removeEventListener(e, onFirst)); };
+    firstTouch.forEach((e) => window.addEventListener(e, onFirst, { passive: true }));
     const pick = (e: Event) => film.setTint((e as CustomEvent<string>).detail);
+    // After a long break the shop's own colours return (RoseThemeProvider): the scarf too.
+    const unpick = () => film.setTint(null);
     window.addEventListener("storefront-color-selected", pick);
-    return () => { window.removeEventListener("storefront-color-selected", pick); film.stop(); };
+    window.addEventListener("storefront-color-reset", unpick);
+    return () => {
+      window.removeEventListener("storefront-color-selected", pick);
+      window.removeEventListener("storefront-color-reset", unpick);
+      window.clearTimeout(primeTimer);
+      firstTouch.forEach((e) => window.removeEventListener(e, onFirst));
+      film.stop();
+      filmRef.current = null;
+    };
   }, [cutout]);
+
+  // Below the film, the finished hijab flies into the first products (once a visit).
+  useEffect(() => {
+    const section = root.current;
+    if (!section || !motion || cutout === "off") return;
+    return watchScarfFlight(section, () => filmRef.current?.snapshot() ?? null);
+  }, [motion, cutout]);
 
   // Desktop: the scarf leans a little towards the pointer, as if it moved in the air.
   useEffect(() => {
@@ -312,6 +351,9 @@ export function RoseHeroFilm({
               <source src={SOURCES.desktop.mp4} type="video/mp4" />
             </video>
             <canvas ref={canvas} className="film-canvas" aria-hidden="true" />
+            {/* The scarf at once, before (or without) the video's first frame. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="film-still" src="/editorial/hero-film-still.webp" alt="" aria-hidden="true" decoding="async" />
             <span className="film-glow" aria-hidden="true" />
             {/* When the hijab is complete it catches the light. */}
             <span className="film-sparkles" aria-hidden="true">

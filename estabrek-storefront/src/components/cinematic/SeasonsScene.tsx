@@ -1,4 +1,6 @@
 "use client";
+import { ScenePacer } from "./ScenePacer";
+import { sceneDpr } from "@/lib/motionBudget";
 import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
@@ -419,8 +421,9 @@ export default function SeasonsScene(props: SeasonsSceneProps) {
   return (
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
-      dpr={[1, 1.6]}
-      frameloop={props.active && !props.reducedMotion ? "always" : "demand"}
+      dpr={sceneDpr()}
+      /* Drawn by ScenePacer: 60 frames a second at most (30 in the light mode). */
+      frameloop="demand"
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >
       <SeasonLights progress={props.progress} />
@@ -434,6 +437,7 @@ export default function SeasonsScene(props: SeasonsSceneProps) {
       <Sun progress={props.progress} rtl={props.rtl} />
       <Blossoms progress={props.progress} />
       {props.showModel && <SeasonalDressForm progress={props.progress} rtl={props.rtl} />}
+      <ScenePacer active={props.active && !props.reducedMotion} />
       <Lifecycle onReady={props.onReady} onFailure={props.onFailure} />
     </Canvas>
   );
