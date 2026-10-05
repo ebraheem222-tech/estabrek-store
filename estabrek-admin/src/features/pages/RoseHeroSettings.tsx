@@ -21,6 +21,42 @@ export function RoseHeroSettings({
           هذه الإعدادات تخص أول Hero في الصفحة الرئيسية. باقي أقسام الصفحة
           وترتيبها وإظهارها تُدار كالمعتاد. صورة الحملة لا تغيّر صور المنتجات.
         </p>
+        <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <label className="flex cursor-pointer items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={value.roseHeroFilm !== false}
+              onChange={(e) => onChange({ ...value, roseHeroFilm: e.target.checked })}
+              className="accent-pink-400"
+            />
+            <span>افتتاحية الفيلم: شال يتطاير ويصير حجاباً مع التمرير</span>
+          </label>
+          <p className="text-xs leading-6 text-white/50">
+            الفيديو على جانب والعنوان على الجانب الآخر؛ يتغيّر العنوان ولونه مع كل تمريرة، وتظهر الجملة الختامية عند اكتمال الحجاب.
+            عند إيقافها تعود صورة الحملة.
+          </p>
+          <label className="block space-y-2 text-sm">
+            <span>جمل الافتتاحية (جملة في كل سطر)</span>
+            <textarea
+              value={(value.roseFilmLines || []).join("\n")}
+              onChange={(e) => onChange({ ...value, roseFilmLines: e.target.value.split("\n") })}
+              placeholder={"أناقة تشبهكِ.\nنعومةٌ تلتفّ حولكِ.\nتفاصيل تحكي ذوقكِ.\nألوانٌ تشبه مزاجكِ."}
+              rows={4}
+              className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-white outline-none focus:border-pink-300/50"
+            />
+            <span className="block text-xs text-white/50">حتى 6 جمل. اتركيها فارغة لاستخدام جمل استبرق.</span>
+          </label>
+          <label className="block space-y-2 text-sm">
+            <span>الجملة الختامية</span>
+            <textarea
+              value={value.roseFilmClosing || ""}
+              onChange={(e) => onChange({ ...value, roseFilmClosing: e.target.value })}
+              placeholder={"استبرق…\nأناقةٌ تليق بكِ."}
+              rows={2}
+              className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-white outline-none focus:border-pink-300/50"
+            />
+          </label>
+        </div>
         <label className="block space-y-2 text-sm">
           <span>عنوان الحملة الوردية</span>
           <textarea

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProductDeep } from "../../../api/catalog.api";
-import { buildItems, checklist, draftFromProduct, emptyDraft, stockKey, validateDraft } from "./composerModel";
+import { autoSkus, buildItems, checklist, draftForEdit, draftFromProduct, draftSignature, duplicateSkus, emptyDraft, finalSkus, priceOf, removedIds, stockKey, validateDraft } from "./composerModel";
 
 const sizes = [{ id: "cs1aaaaaaaa", name: "S" }, { id: "cs2aaaaaaaa", name: "M" }, { id: "cs3aaaaaaaa", name: "مقاس واحد" }];
 
@@ -91,5 +91,118 @@ describe("copy from a product", () => {
     expect(d.groups[0].name).toBe("وردي");
     expect(d.groups[0].photoKeys.map((k) => d.photos[k].url)).toEqual(["https://cdn/a.jpg", "https://cdn/b.jpg"]);
     expect(d.stock[stockKey(d.groups[0].key, "cs3")]).toBe("7");
+  });
+});
+
+/* ------------------------------------------------ SKU rows and editing */
+
+const saved: ProductDeep = {
+  id: "cprod000001",
+  title: "عباية الورد",
+  slug: "rose-abaya",
+  isActive: true,
+  categoryId: "ccat0000001",
+  description: null,
+  items: [
+    {
+      id: "citem000001", productId: "cprod000001", colorName: "أسود", colorHex: "#111111", skuBase: "ABAYA-BLK", isActive: true,
+      images: [{ id: "cimg0000001", productItemId: "citem000001", url: "https://cdn/b.jpg", position: 0, isPrimary: true }],
+      variants: [
+        { id: "cvar0000001", productItemId: "citem000001", sizeId: "cs1aaaaaaaa", sku: "ABAYA-BLK-S", price: "250", stock: 4, lowStockThreshold: 2, size: { id: "cs1aaaaaaaa", name: "S", order: 1 } },
+        { id: "cvar0000002", productItemId: "citem000001", sizeId: "cs2aaaaaaaa", sku: "ABAYA-BLK-M", price: "270", stock: 0, lowStockThreshold: 2, size: { id: "cs2aaaaaaaa", name: "M", order: 2 } },
+      ],
+    },
+    {
+      id: "citem000002", productId: "cprod000001", colorName: "وردي", colorHex: "#f5c0d0", skuBase: "ABAYA-PNK", isActive: true,
+      images: [],
+      variants: [{ id: "cvar0000003", productItemId: "citem000002", sizeId: "cs1aaaaaaaa", sku: "ABAYA-PNK-S", price: "250", stock: 7, lowStockThreshold: 2, size: { id: "cs1aaaaaaaa", name: "S", order: 1 } }],
+    },
+  ] as ProductDeep["items"],
+};
+
+describe("SKU rows", () => {
+  it("an empty SKU cell takes the automatic code; a typed one is tidied and used", () => {
+    const d = filled();
+    const auto = autoSkus(d, sizes);
+    d.skus[stockKey("g1", "cs1aaaaaaaa")] = " navy small 01 ";
+    const skus = finalSkus(d, sizes);
+    expect(skus[stockKey("g1", "cs1aaaaaaaa")]).toBe("NAVY-SMALL-01");
+    expect(skus[stockKey("g1", "cs2aaaaaaaa")]).toBe(auto[stockKey("g1", "cs2aaaaaaaa")]);
+    const items = buildItems(d, sizes);
+    expect(items[0].variants?.[0].sku).toBe("NAVY-SMALL-01");
+  });
+
+  it("finds a code typed twice", () => {
+    const d = filled();
+    d.skus[stockKey("g1", "cs1aaaaaaaa")] = "X-1";
+    d.skus[stockKey("g2", "cs2aaaaaaaa")] = "x-1";
+    expect(duplicateSkus(d, sizes)).toEqual(["X-1"]);
+    expect(validateDraft(d, { publish: false, sizes }).skus).toContain("X-1");
+  });
+
+  it("a colour × size can have its own price and alert", () => {
+    const d = filled();
+    d.priceBy[stockKey("g2", "cs2aaaaaaaa")] = "205";
+    d.lowBy[stockKey("g2", "cs2aaaaaaaa")] = "5";
+    expect(priceOf(d, "g2", "cs2aaaaaaaa")).toBe(205);
+    expect(priceOf(d, "g1", "cs2aaaaaaaa")).toBe(189);
+    const v = buildItems(d, sizes)[1].variants?.[1];
+    expect(v).toMatchObject({ price: 205, lowStockThreshold: 5 });
+  });
+});
+
+describe("editing a saved product", () => {
+  it("loads ids, SKUs, quantities and per-size prices", () => {
+    const d = draftForEdit(saved);
+    expect(d.edit?.productId).toBe("cprod000001");
+    expect(d.price).toBe("250");
+    expect(d.sizeIds).toEqual(["cs1aaaaaaaa", "cs2aaaaaaaa"]);
+    const black = d.groups[0];
+    expect(d.skus[stockKey(black.key, "cs2aaaaaaaa")]).toBe("ABAYA-BLK-M");
+    expect(d.priceBy[stockKey(black.key, "cs2aaaaaaaa")]).toBe("270");
+    // pink has no M yet: it starts at 0
+    expect(d.stock[stockKey(d.groups[1].key, "cs2aaaaaaaa")]).toBe("0");
+  });
+
+  it("saves in place: ids kept, unchanged stock left out, a new size added with its base", () => {
+    const d = draftForEdit(saved);
+    const [black, pink] = d.groups;
+    d.stock[stockKey(black.key, "cs1aaaaaaaa")] = "9";
+    const items = buildItems(d, sizes, { keepUnchangedStock: true });
+    expect(items[0]).toMatchObject({ id: "citem000001", skuBase: "ABAYA-BLK" });
+    expect(items[0].images?.[0]).toMatchObject({ id: "cimg0000001" });
+    expect(items[0].variants?.[0]).toMatchObject({ id: "cvar0000001", sku: "ABAYA-BLK-S", stock: 9 });
+    expect(items[0].variants?.[1]).toMatchObject({ id: "cvar0000002", price: 270 });
+    expect(items[0].variants?.[1]).not.toHaveProperty("stock");
+    const newM = items[1].variants?.find((v) => v.sizeId === "cs2aaaaaaaa");
+    expect(newM).toMatchObject({ sku: "ABAYA-PNK-M", stock: 0 });
+    expect(newM).not.toHaveProperty("id");
+    expect(pink.itemId).toBe("citem000002");
+  });
+
+  it("removing a size, a colour or a photo lists them for deletion", () => {
+    const d = draftForEdit(saved);
+    d.sizeIds = ["cs1aaaaaaaa"];
+    const black = d.groups[0];
+    d.photos = {};
+    d.groups = [{ ...black, photoKeys: [] }];
+    expect(removedIds(d)).toEqual({ deleteItemIds: ["citem000002"], deleteImageIds: ["cimg0000001"], deleteVariantIds: ["cvar0000002", "cvar0000003"] });
+  });
+
+  it("a photo moved to another colour is added there anew", () => {
+    const d = draftForEdit(saved);
+    const [black, pink] = d.groups;
+    const pk = black.photoKeys[0];
+    d.groups = [{ ...black, photoKeys: [] }, { ...pink, photoKeys: [pk] }];
+    const items = buildItems(d, sizes);
+    expect(items[1].images?.[0]).not.toHaveProperty("id");
+    expect(removedIds(d).deleteImageIds).toEqual(["cimg0000001"]);
+  });
+
+  it("knows when nothing changed", () => {
+    const d = draftForEdit(saved);
+    const sig = draftSignature(d);
+    expect(draftSignature({ ...d })).toBe(sig);
+    expect(draftSignature({ ...d, title: "x" })).not.toBe(sig);
   });
 });

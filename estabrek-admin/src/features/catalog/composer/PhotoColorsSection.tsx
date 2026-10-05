@@ -31,13 +31,17 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
   const setGroup = (key: string, patch: Partial<ColorGroup>) =>
     update((d) => ({ ...d, groups: d.groups.map((g) => (g.key === key ? { ...g, ...patch } : g)) }));
 
-  const removeGroup = (key: string) =>
+  const removeGroup = (key: string) => {
+    const g = draft.groups.find((x) => x.key === key);
+    // A saved colour goes with its sizes and quantities: ask first.
+    if (g?.itemId && !window.confirm(`حذف اللون «${g.name}» مع مقاساته وكمياته؟ (اللون الذي عليه طلبات يُخفى بدل الحذف)`)) return;
     update((d) => {
       const g = d.groups.find((x) => x.key === key);
       const photos = { ...d.photos };
       g?.photoKeys.forEach((k) => delete photos[k]);
       return { ...d, photos, groups: d.groups.filter((x) => x.key !== key) };
     });
+  };
 
   const addEmptyGroup = () =>
     update((d) => ({ ...d, groups: [...d.groups, { key: newKey("g"), name: d.groups.length ? "" : "لون واحد", hex: null, photoKeys: [] }] }));
@@ -103,7 +107,7 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <button type="button" onClick={addEmptyGroup} className="rounded-lg px-3 py-1.5 text-accent-300 hover:bg-accent-500/10">+ إضافة لون</button>
-        {draft.groups.length > 1 && (
+        {draft.groups.length > 1 && !draft.edit && (
           <button type="button" onClick={mergeAll} className="rounded-lg px-3 py-1.5 text-white/60 hover:bg-white/[0.06] hover:text-white" title="إذا كل الصور لنفس اللون من زوايا مختلفة">
             كل الصور لون واحد
           </button>
@@ -138,7 +142,8 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
         const hex = d.photos[photoKey]?.color ?? null;
         groups = [...groups, { key: newKey("g"), name: hex ? nearestFashionColor(hex).name : "", hex, photoKeys: [photoKey] }];
       } else groups = groups.map((g) => (g.key === target ? { ...g, photoKeys: [...g.photoKeys, photoKey] } : g));
-      return { ...d, groups: groups.filter((g) => g.photoKeys.length || g.key === group.key || g.key === target) };
+      // An emptied new colour goes away; a saved colour stays (it has sizes and stock).
+      return { ...d, groups: groups.filter((g) => g.photoKeys.length || g.itemId || g.key === group.key || g.key === target) };
     });
 
   const makeMain = (photoKey: string) =>

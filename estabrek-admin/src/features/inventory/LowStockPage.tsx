@@ -62,7 +62,7 @@ export default function LowStockPage() {
     if (!selected) return;
     await adjust.mutateAsync({
       variantId: selected.variantId,
-      body: { mode: "delta", value, reason: reason.trim() || null },
+      body: { mode: "delta", value, reason: reason.trim() || undefined },
     });
     setOpenAdjust(false);
     setSelected(null);
@@ -73,7 +73,7 @@ export default function LowStockPage() {
     const n = clampInt(exact, 0);
     await adjust.mutateAsync({
       variantId: selected.variantId,
-      body: { mode: "set", value: n, reason: reason.trim() || null },
+      body: { mode: "set", value: n, reason: reason.trim() || undefined },
     });
     setOpenAdjust(false);
     setSelected(null);

@@ -2,17 +2,15 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCatalogActions, useCategories, useProducts, useSizes } from "../../hooks/useCatalog";
-import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/Table";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { Skeleton, Spinner } from "../../components/ui/Spinner";
-import { AsyncImage } from "../../components/ui/AsyncImage";
 import type { ProductImportRow } from "../../api/catalog.api";
 import { toast } from "@/lib/toast";
 import { makeSlug, parsePrice } from "../../lib/productComposer";
+import { ProductList } from "./ProductList";
 
 // Arabic titles become latin links too ("فستان الورد" → "fstan-alwrd").
 function slugify(input: string) {
@@ -138,32 +136,6 @@ function validateImportRows(rows: ProductImportRow[], opts: { defaultCategoryId?
   return issues;
 }
 
-function toFiniteNumber(value: unknown): number | undefined {
-  if (value === null || value === undefined || value === "") return undefined;
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function productThumbUrl(product: any): string | undefined {
-  const fromKnown = [
-    product?.thumbnailUrl,
-    product?.imageUrl,
-    product?.coverUrl,
-    product?.image,
-    product?.thumb,
-  ].find((value) => typeof value === "string" && value.trim());
-  return fromKnown ? String(fromKnown) : undefined;
-}
-
-function productDiscountPercent(product: any): number | undefined {
-  const explicit = toFiniteNumber(product?.discountPercent ?? product?.discount_percentage ?? product?.discount);
-  if (explicit && explicit > 0) return Math.round(explicit);
-
-  const base = toFiniteNumber(product?.price ?? product?.basePrice ?? product?.minPrice);
-  const sale = toFiniteNumber(product?.salePrice ?? product?.discountPrice ?? product?.minSalePrice);
-  if (!base || !sale || base <= 0 || sale <= 0 || sale >= base) return undefined;
-  return Math.max(1, Math.round(((base - sale) / base) * 100));
-}
 
 export default function ProductsPage() {
   const nav = useNavigate();
@@ -350,293 +322,30 @@ const doImport = async () => {
 
   return (
     <div dir="rtl" className="space-y-4">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-lg font-semibold">المنتجات</div>
-            <div className="mt-1 text-xs opacity-70">Products</div>
-          </div>
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            <Select
-              value={status}
-              className="w-full sm:w-40"
-              onChange={(e) => {
-                setStatus(e.target.value as any);
-                setSelected({});
-              }}
-              options={[
-                { value: "all", label: "الكل" },
-                { value: "active", label: "مفعل" },
-                { value: "draft", label: "مسودة" },
-              ]}
-            />
-
-            <Button variant="secondary" onClick={() => { setImportDefaultCategoryId(categoryId); setImportOpen(true); }} className="w-full sm:w-auto">
-              استيراد CSV
-            </Button>
-
-            <Button variant="primary" onClick={() => nav("/admin/catalog/products/new")} className="w-full sm:w-auto">
-              + إضافة منتج
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        {q.isLoading ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Spinner />
-              <div className="text-sm opacity-80">جاري التحميل…</div>
-            </div>
-            <div className="space-y-3 sm:hidden">
-              {Array.from({ length: 4 }).map((_, idx) => (
-                <div key={idx} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="flex items-start gap-3">
-                    <Skeleton className="h-14 w-14 rounded-xl" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-2/3" />
-                      <Skeleton className="h-3 w-1/2" />
-                      <Skeleton className="h-3 w-1/3" />
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <Skeleton className="h-8 rounded-lg" />
-                    <Skeleton className="h-8 rounded-lg" />
-                    <Skeleton className="h-8 rounded-lg" />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="hidden sm:block">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH className="w-10" />
-                    <TH>المنتج</TH>
-                    <TH>Slug</TH>
-                    <TH>التصنيف</TH>
-                    <TH>الحالة</TH>
-                    <TH className="w-72">الإجراءات</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {Array.from({ length: 6 }).map((_, idx) => (
-                    <TR key={idx}>
-                      <TD><Skeleton className="h-4 w-4 rounded" /></TD>
-                      <TD><Skeleton className="h-4 w-40" /></TD>
-                      <TD><Skeleton className="h-4 w-48" /></TD>
-                      <TD><Skeleton className="h-4 w-28" /></TD>
-                      <TD><Skeleton className="h-6 w-16 rounded-full" /></TD>
-                      <TD><Skeleton className="h-8 w-full rounded-lg" /></TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
+      <ProductList
+        products={products}
+        categories={categories}
+        loading={q.isLoading}
+        failed={q.isError}
+        status={status}
+        onStatus={(s) => { setStatus(s); setSelected({}); }}
+        selected={selected}
+        setSelected={setSelected}
+        onQuickEdit={openEdit}
+        onDelete={(id) => setConfirmId(id)}
+        onImport={() => { setImportDefaultCategoryId(categoryId); setImportOpen(true); }}
+        bulkBar={hasSelection ? (
+          <div className="glass flex flex-col gap-2 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-white/80">محدد: {selectedIds.length}</div>
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+              <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: true })} isLoading={actions.bulkProducts.isPending}>نشر</Button>
+              <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: false })} isLoading={actions.bulkProducts.isPending}>تحويل لمسودة</Button>
+              <Button variant="secondary" onClick={() => window.open(`/print/labels?productIds=${selectedIds.join(",")}`, "_blank")}>ملصقات باركود</Button>
+              <Button variant="danger" onClick={() => { if (!confirm("حذف كل المنتجات المحددة؟")) return; runBulk({ action: "delete" }); }} isLoading={actions.bulkProducts.isPending}>حذف</Button>
             </div>
           </div>
-        ) : q.isError ? (
-          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">فشل تحميل المنتجات.</div>
-        ) : (
-          <>
-            {hasSelection && (
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-sm opacity-80">محدد: {selectedIds.length}</div>
-                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                  <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: true })} isLoading={actions.bulkProducts.isPending}>
-                    تفعيل
-                  </Button>
-                  <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: false })} isLoading={actions.bulkProducts.isPending}>
-                    تحويل لمسودة
-                  </Button>
-                  <Button variant="danger" onClick={() => {
-                    if (!confirm("حذف كل المنتجات المحددة؟")) return;
-                    runBulk({ action: "delete" });
-                  }} isLoading={actions.bulkProducts.isPending}>
-                    حذف
-                  </Button>
-                </div>
-              </div>
-            )}
-
-                        <>
-              <div className="space-y-3 sm:hidden">
-                {products.length > 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        aria-label="Select all"
-                        checked={products.length > 0 && products.every((p: any) => selected[p.id])}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          const next: Record<string, boolean> = {};
-                          products.forEach((p: any) => (next[p.id] = checked));
-                          setSelected(next);
-                        }}
-                      />
-                      <span>تحديد الكل</span>
-                    </label>
-                    <span className="text-xs opacity-70">{products.length}</span>
-                  </div>
-                )}
-
-                {products.map((p: any) => (
-                  <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex min-w-0 flex-1 items-start gap-3">
-                        <div className="relative h-14 w-14 shrink-0 overflow-visible">
-                          <div className="h-14 w-14 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-                            <AsyncImage
-                              src={productThumbUrl(p)}
-                              alt={p.title ?? ""}
-                              wrapperClassName="h-full w-full"
-                              className="h-full w-full object-cover"
-                              fallback={<span className="text-[9px] opacity-60">IMG</span>}
-                            />
-                          </div>
-                          {productDiscountPercent(p) ? (
-                            <span
-                              className="discount-shape-badge pointer-events-none absolute -right-2 -top-2 inline-flex border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg"
-                              title="منتج بخصم"
-                            >
-                              -{productDiscountPercent(p)}%
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="min-w-0">
-                        <div className="text-sm font-semibold">{p.title}</div>
-                        <div dir="ltr" className="mt-1 text-xs opacity-70">{p.slug}</div>
-                        <div className="mt-1 text-xs opacity-70">{p.category?.name ?? byId.get(p.categoryId)?.name ?? "-"}</div>
-                      </div>
-                      </div>
-                      <input
-                        type="checkbox"
-                        aria-label="Select"
-                        checked={Boolean(selected[p.id])}
-                        onChange={(e) => setSelected((s) => ({ ...s, [p.id]: e.target.checked }))}
-                      />
-                    </div>
-                    <div className="mt-2">
-                      {p.isActive ? (
-                        <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-100">نشط</span>
-                      ) : (
-                        <span className="rounded-full border border-yellow-400/30 bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-100">مسودة</span>
-                      )}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" className="flex-1" onClick={() => openEdit(p)}>
-                        تعديل
-                      </Button>
-                      <Button size="sm" variant="primary" className="flex-1" onClick={() => nav(`/admin/catalog/products/${p.id}`)}>
-                        تحرير
-                      </Button>
-                      <Button size="sm" variant="secondary" className="flex-1" onClick={() => nav(`/admin/catalog/products/new?from=${p.id}`)} title="منتج جديد يبدأ من هذا المنتج">
-                        نسخ
-                      </Button>
-                      <Button size="sm" variant="danger" className="flex-1" onClick={() => setConfirmId(p.id)}>
-                        حذف
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="hidden sm:block">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH className="w-10">
-                        <input
-                          type="checkbox"
-                          aria-label="Select all"
-                          checked={products.length > 0 && products.every((p: any) => selected[p.id])}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            const next: Record<string, boolean> = {};
-                            products.forEach((p: any) => (next[p.id] = checked));
-                            setSelected(next);
-                          }}
-                        />
-                      </TH>
-                      <TH>المنتج</TH>
-                      <TH>Slug</TH>
-                      <TH>التصنيف</TH>
-                      <TH>الحالة</TH>
-                      <TH className="w-72">الإجراءات</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {products.map((p: any) => (
-                      <TR key={p.id}>
-                        <TD>
-                          <input
-                            type="checkbox"
-                            aria-label="Select"
-                            checked={Boolean(selected[p.id])}
-                            onChange={(e) => setSelected((s) => ({ ...s, [p.id]: e.target.checked }))}
-                          />
-                        </TD>
-                        <TD className="font-medium">
-                          <div className="flex items-center gap-3">
-                            <div className="relative h-10 w-10 shrink-0 overflow-visible">
-                              <div className="h-10 w-10 overflow-hidden rounded-lg border border-white/10 bg-black/20">
-                                <AsyncImage
-                                  src={productThumbUrl(p)}
-                                  alt={p.title ?? ""}
-                                  wrapperClassName="h-full w-full"
-                                  className="h-full w-full object-cover"
-                                  fallback={<span className="text-[9px] opacity-60">IMG</span>}
-                                />
-                              </div>
-                              {productDiscountPercent(p) ? (
-                                <span
-                                  className="discount-shape-badge pointer-events-none absolute -right-2 -top-2 inline-flex border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg"
-                                  title="منتج بخصم"
-                                >
-                                  -{productDiscountPercent(p)}%
-                                </span>
-                              ) : null}
-                            </div>
-                            <span className="truncate">{p.title}</span>
-                          </div>
-                        </TD>
-                        <TD dir="ltr" className="text-left opacity-80">
-                          {p.slug}
-                        </TD>
-                        <TD className="opacity-80">{p.category?.name ?? byId.get(p.categoryId)?.name ?? "-"}</TD>
-                        <TD>
-                          {p.isActive ? (
-                            <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-100">نشط</span>
-                          ) : (
-                            <span className="rounded-full border border-yellow-400/30 bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-100">مسودة</span>
-                          )}
-                        </TD>
-                        <TD>
-                          <div className="flex flex-wrap gap-2">
-                            <Button variant="secondary" onClick={() => openEdit(p)}>
-                              تعديل
-                            </Button>
-                            <Button variant="primary" onClick={() => nav(`/admin/catalog/products/${p.id}`)}>
-                              تحرير المنتج
-                            </Button>
-                            <Button variant="secondary" onClick={() => nav(`/admin/catalog/products/new?from=${p.id}`)} title="منتج جديد يبدأ من هذا المنتج">
-                              نسخ
-                            </Button>
-                            <Button variant="danger" onClick={() => setConfirmId(p.id)}>
-                              حذف
-                            </Button>
-                          </div>
-                        </TD>
-                      </TR>
-                    ))}
-                  </TBody>
-                </Table>
-              </div>
-            </>
-          </>
-        )}
-      </div>
+        ) : null}
+      />
 
       <Modal
         open={open}

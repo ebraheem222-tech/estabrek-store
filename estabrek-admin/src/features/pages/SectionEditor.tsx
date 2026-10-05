@@ -398,6 +398,12 @@ export type HeroData = HeroSlide & {
   roseImageAlt?: string;
   rose3dEnabled?: boolean;
   roseVideoEnabled?: boolean;
+  /** Scarf film opening on the rose homepage (default on). */
+  roseHeroFilm?: boolean;
+  /** Film headline lines, one per turn of the scarf. */
+  roseFilmLines?: string[];
+  /** Closing line when the hijab is complete (a line break splits it in two). */
+  roseFilmClosing?: string;
   roseStoryWords?: string[];
   /** Theme id to render from hero-themes */
   themeId?: string;

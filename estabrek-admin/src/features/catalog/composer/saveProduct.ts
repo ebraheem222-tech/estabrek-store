@@ -2,9 +2,10 @@
 // POST /products (the server needs the product first) → GET /full (to drop the
 // placeholder colour the server adds) → PUT /full with every colour, photo and size.
 import { isAxiosError } from "axios";
-import { createProduct, getProductFull, updateProductFull, type CatalogSize } from "../../../api/catalog.api";
+import { createProduct, getProductFull, updateProductFull, type CatalogSize, type ProductDeep, type SaveKept } from "../../../api/catalog.api";
+import { backendHasStockTools } from "../../../api/inventory.api";
 import { shortId } from "../../../lib/productComposer";
-import { buildItems, effectiveSlug, type ComposerDraft } from "./composerModel";
+import { buildItems, effectiveSlug, removedIds, type ComposerDraft } from "./composerModel";
 
 export type SaveStep = "create" | "details";
 
@@ -37,6 +38,8 @@ export async function saveComposedProduct(opts: {
           slug,
           categoryId: draft.categoryId,
           description: draft.description.trim() || null,
+          seoTitle: draft.seoTitle.trim() || null,
+          seoDescription: draft.seoDescription.trim() || null,
           isActive: false,
         });
         id = created.id;
@@ -63,6 +66,8 @@ export async function saveComposedProduct(opts: {
           slug,
           categoryId: draft.categoryId,
           description: draft.description.trim() || null,
+          seoTitle: draft.seoTitle.trim() || null,
+          seoDescription: draft.seoDescription.trim() || null,
           isActive: publish,
         },
         items: buildItems({ ...draft, slug, slugTouched: true }, sizes, { skuSalt: salt }),
@@ -75,4 +80,39 @@ export async function saveComposedProduct(opts: {
       throw e;
     }
   }
+}
+
+/**
+ * Saves changes to an existing product in one request: saved colours, photos and
+ * sizes keep their ids; removed ones are deleted (or kept as sold out when they
+ * have orders, by the updated backend).
+ */
+export async function saveEditedProduct(opts: {
+  draft: ComposerDraft;
+  sizes: CatalogSize[];
+  /** Published after the save. */
+  publish: boolean;
+}): Promise<{ product: ProductDeep; kept: SaveKept | null }> {
+  const { draft, sizes, publish } = opts;
+  const edit = draft.edit;
+  if (!edit) throw new Error("not an existing product");
+  // The updated backend keeps stock that isn't sent, so a size sold while this page was
+  // open isn't put back. An older backend would reset it to 0, so there we send everything.
+  const keepUnchangedStock = await backendHasStockTools();
+  const slug = effectiveSlug(draft);
+  const res = await updateProductFull(edit.productId, {
+    product: {
+      title: draft.title.trim(),
+      slug,
+      categoryId: draft.categoryId,
+      description: draft.description.trim() || null,
+      seoTitle: draft.seoTitle.trim() || null,
+      seoDescription: draft.seoDescription.trim() || null,
+      isActive: publish,
+    },
+    items: buildItems(draft, sizes, { keepUnchangedStock }),
+    ...removedIds(draft),
+  });
+  const { kept, ...product } = res;
+  return { product: product as ProductDeep, kept: kept ?? null };
 }

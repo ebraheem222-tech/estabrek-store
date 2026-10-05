@@ -11,6 +11,7 @@ import { Spinner } from "../../components/ui/Spinner";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/Table";
 import { Badge } from "../../components/ui/Badge";
 import { Pagination } from "../../components/ui/Pagination";
+import { useDebounce } from "../../hooks/useDebounce";
 
 function useQueryParam(name: string) {
   const loc = useLocation();
@@ -23,13 +24,16 @@ function useQueryParam(name: string) {
 export default function InventoryAdjustmentsPage() {
   const nav = useNavigate();
   const variantIdFromUrl = useQueryParam("variantId") || "";
+  const productId = useQueryParam("productId") || "";
 
   const [variantId, setVariantId] = useState(variantIdFromUrl);
+  const [search, setSearch] = useState("");
+  const debounced = useDebounce(search.trim(), 300);
   const [page, setPage] = useState(1);
   const take = 30;
   const skip = (page - 1) * take;
 
-  const q = useAdjustments({ variantId: variantId.trim() || undefined, take, skip });
+  const q = useAdjustments({ variantId: variantId.trim() || undefined, productId: productId || undefined, q: debounced || undefined, take, skip });
 
   const total = q.data?.total ?? 0;
   const rows = q.data?.rows ?? [];
@@ -42,6 +46,7 @@ export default function InventoryAdjustmentsPage() {
         subtitle={<span>إجمالي: <span className="font-semibold">{total}</span></span>}
         right={
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button variant="ghost" className="w-full sm:w-auto" onClick={() => nav("/admin/inventory/stock")}>المخزون</Button>
             <Button variant="ghost" className="w-full sm:w-auto" onClick={() => nav("/admin/inventory/low-stock")}>تنبيهات المخزون</Button>
             <Button variant="ghost" className="w-full sm:w-auto" onClick={() => q.refetch()}>تحديث</Button>
           </div>
@@ -51,18 +56,21 @@ export default function InventoryAdjustmentsPage() {
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
           <div className="md:col-span-7">
-            <div className="text-xs opacity-70 mb-1">Variant ID (اختياري)</div>
+            <div className="text-xs opacity-70 mb-1">بحث</div>
             <Input
-              value={variantId}
+              value={search}
               onChange={(e) => {
-                setVariantId(e.target.value);
+                setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="الصق variantId للتصفية"
+              placeholder="اسم المنتج، كود SKU أو السبب"
+              aria-label="بحث في سجل المخزون"
             />
+            {productId || variantId ? <div className="mt-1 text-xs text-white/55">{productId ? "منتج واحد" : "مقاس واحد"} فقط</div> : null}
           </div>
-          <div className="md:col-span-5 flex w-full justify-start md:justify-end">
-            <Button className="w-full md:w-auto" variant="secondary" onClick={() => { setVariantId(""); setPage(1); }}>
+          <div className="md:col-span-5 flex w-full justify-start md:justify-end gap-2">
+            {productId ? <Button className="w-full md:w-auto" variant="ghost" onClick={() => nav(`/admin/catalog/products/${productId}`)}>صفحة المنتج</Button> : null}
+            <Button className="w-full md:w-auto" variant="secondary" onClick={() => { setVariantId(""); setSearch(""); setPage(1); if (productId || variantIdFromUrl) nav("/admin/inventory/adjustments", { replace: true }); }}>
               مسح الفلتر
             </Button>
           </div>
@@ -88,7 +96,7 @@ export default function InventoryAdjustmentsPage() {
                         )}
                       </div>
                       <div className="mt-2 text-sm font-semibold">{r.productTitle ?? "-"}</div>
-                      <div className="text-xs opacity-60 font-mono break-all">{r.variantId}</div>
+                      <div className="text-xs opacity-60">{[r.colorName, r.size].filter(Boolean).join(" · ")}</div>
                       <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                         <div>
                           <span className="opacity-60">SKU:</span>{" "}
@@ -137,7 +145,7 @@ export default function InventoryAdjustmentsPage() {
                       <TD className="text-xs opacity-70">{new Date(r.createdAt).toLocaleString()}</TD>
                       <TD>
                         <div className="font-medium">{r.productTitle ?? "—"}</div>
-                        <div className="text-xs opacity-60 font-mono">{r.variantId}</div>
+                        <div className="text-xs opacity-60">{r.colorName ?? ""}</div>
                       </TD>
                       <TD>
                         <div className="font-mono text-xs">{r.sku ?? "—"}</div>
