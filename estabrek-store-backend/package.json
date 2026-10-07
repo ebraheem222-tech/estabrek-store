@@ -9,6 +9,8 @@
     "start": "node dist/server.js",
     "backfill:image-hashes": "tsx src/scripts/backfillImageHashes.ts",
     "backfill:image-embeddings": "tsx src/scripts/backfillImageEmbeddings.ts",
+    "admin:reset-link": "tsx src/scripts/adminResetLink.ts",
+    "backup:restore": "tsx src/scripts/backupRestore.ts",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "studio": "prisma studio --browser none --port 5555 --hostname 0.0.0.0"
