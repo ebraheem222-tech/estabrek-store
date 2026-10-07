@@ -17,7 +17,17 @@ enum Locale {
 }
 
 enum Role {
+  /// Store owner: every permission, can manage other owners.
   SUPERADMIN
+  /// Team member: permissions come from their StaffRole.
+  STAFF
+}
+
+enum AdminStatus {
+  ACTIVE
+  /// Invited, has not set a password yet.
+  INVITED
+  SUSPENDED
 }
 
 enum ReviewStatus {
@@ -121,6 +131,8 @@ enum SecurityEventType {
   SESSION_REVOKED
   ACCOUNT_LOCKED
   ACCOUNT_UNLOCKED
+  /// Signed in from an IP this admin hasn't used before.
+  NEW_DEVICE_LOGIN
 }
 
 
@@ -146,6 +158,11 @@ model AdminUser {
   name         String
   passwordHash String
   role         Role   @default(SUPERADMIN)
+  status       AdminStatus @default(ACTIVE)
+  /// For STAFF accounts: what they may do. Owners (SUPERADMIN) ignore it.
+  staffRoleId  String?
+  staffRole    StaffRole?  @relation(fields: [staffRoleId], references: [id], onDelete: SetNull)
+  invitedById  String?
 
   emailVerifiedAt DateTime?
   phone           String?
@@ -175,10 +192,82 @@ model AdminUser {
 
   inventoryAdjustments InventoryAdjustment[]
   settingsRevisions    SettingsRevision[]
+  auditLogs            AdminAuditLog[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([role])
+  @@index([role])
+  @@index([staffRoleId])
+}
+
+/// A named set of permissions for team members (e.g. "طلبات وخدمة الزبائن").
+model StaffRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  /// Permission keys, e.g. "orders:read", "orders:write" (see src/modules/admin/permissions.ts).
+  permissions String[] @default([])
+  members     AdminUser[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Server & security rules set from the admin (one row, id "default").
+/// Unset values fall back to the environment variables.
+model SecurityPolicy {
+  id          String   @id @default("default")
+  data        Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+/// The policy as it was before each change (latest 30 kept).
+/// An IP blocked by hand from the admin (traffic page). until = null → until unblocked.
+model IpBlock {
+  id          String    @id @default(cuid())
+  ip          String    @unique
+  reason      String?
+  until       DateTime?
+  adminUserId String?
+  createdAt   DateTime  @default(now())
+
+  @@index([until])
+}
+
+model SecurityPolicyRevision {
+  id          String   @id @default(cuid())
+  data        Json
+  changed     String[] @default([])
+  adminUserId String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Every change made from the admin: who, what, when, from where.
+model AdminAuditLog {
+  id          String     @id @default(cuid())
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  actorEmail  String?
+  /// Area of the admin, e.g. "orders", "catalog", "settings", "staff".
+  area        String
+  /// create | update | delete | action
+  verb        String
+  method      String
+  /// Path with ids replaced, e.g. "/orders/:id/status".
+  path        String
+  targetId    String?
+  status      Int
+  /// Names of the fields that were sent (never their values).
+  fields      String[]   @default([])
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([area, createdAt])
 }
 
 model AdminSession {
@@ -320,6 +409,18 @@ model SiteSettings {
 
   header Json?
   footer Json?
+
+  // Shopper accounts on the storefront (sign in, orders, favourites, addresses). Off = visitors only.
+  customerAccountsEnabled Boolean @default(false)
+  // "Tell me when it's back" on sold-out sizes (email). Off = the form isn't shown.
+  stockAlertsEnabled Boolean @default(false)
+  // Maintenance mode: the storefront shows a "back soon" screen and public orders are paused.
+  maintenanceMode    Boolean @default(false)
+  maintenanceMessage String?
+  /** Opens the storefront for the owner while maintenance is on (?preview=<key>). */
+  maintenanceKey     String?
+  // Daily automatic backup of the database (admin → النسخ الاحتياطي).
+  backupsEnabled     Boolean @default(true)
 
   // Newsletter
   newsletterIsActive Boolean @default(false)
@@ -552,17 +653,93 @@ model PageSection {
 /**
  * ================== Storefront Users ==================
  */
+/// A shopper's account (optional: buying as a guest still works).
 model User {
   id        String   @id @default(cuid())
-  name      String
+  name      String   @default("")
   email     String   @unique
   phone     String?
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  /// Agreed to news and offers by email.
+  marketingOptIn  Boolean   @default(false)
+  preferredSize   String?
+  /// Hex colour she picked on the site; the rose design opens in it.
+  favoriteColor   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   reviews  Review[]
   comments ProductComment[]
   chatbotConversations ChatbotConversation[]
+  sessions  CustomerSession[]
+  wishlist  WishlistItem[]
+  addresses Address[]
+  orders    OrderRequest[]
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+/// One-time sign-in codes sent by email.
+model CustomerOtp {
+  id        String    @id @default(cuid())
+  email     String
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  @@index([email, createdAt])
+}
+
+/// A signed-in device. The refresh token is stored hashed.
+model CustomerSession {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique
+  ip               String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  expiresAt        DateTime
+  revokedAt        DateTime?
+
+  @@index([userId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String?
+  fullName  String
+  phone     String
+  city      String
+  address   String
+  notes     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 /**
@@ -602,15 +779,123 @@ model Product {
   isActive    Boolean          @default(true)
   categoryId  String
   category    Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  /// The kind of product (clothes, ticket, course…) and its own fields' values: { fieldKey: value }.
+  typeId      String?
+  type        ProductType?     @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  attributes  Json?
+  /// Bookings (tickets, courses): when and where. Shown on the product page and the ticket.
+  eventStartsAt DateTime?
+  eventEndsAt   DateTime?
+  eventLocation String?
+  /// Digital products: the files the shopper downloads after paying / acceptance.
+  files       ProductFile[]
+  tickets     Ticket[]
+  requests        CustomerRequest[] @relation("RequestProduct")
+  linkedRequests  CustomerRequest[] @relation("RequestLinkedProduct")
   items       ProductItem[]
   reviews     Review[]
   comments    ProductComment[]
+  wishlistedBy WishlistItem[]
+  stockAlerts  StockAlert[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   @@index([categoryId])
   @@index([isActive, categoryId])
   @@index([isActive, createdAt])
+  @@index([typeId])
+}
+
+/**
+ * A kind of product with its own fields, made by the owner in the admin
+ * (أنواع المنتجات): e.g. clothes (fabric, length, care, occasion), a ticket
+ * (from, to, date) or a course (hours, link). Values live in Product.attributes.
+ */
+model ProductType {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  /// [{ key, label, kind, unit?, options?, required?, filterable?, showOnPage?, help? }]
+  fields      Json      @default("[]")
+  /// What the two choices are called for this kind ("اللون"/"المقاس", or e.g. "الدرجة"), and whether they show.
+  colorLabel  String    @default("اللون")
+  sizeLabel   String    @default("المقاس")
+  showColor   Boolean   @default(true)
+  showSize    Boolean   @default(true)
+  /// How it reaches the shopper: shipped, downloaded, or a booking with a ticket.
+  fulfillment Fulfillment @default(SHIPPING)
+  position    Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum Fulfillment {
+  SHIPPING
+  DIGITAL
+  BOOKING
+}
+
+/// A file of a digital product: a private upload, or an outside link (big files).
+model ProductFile {
+  id        String          @id @default(cuid())
+  productId String
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  /// "upload" (private file in storage) or "link" (an outside address).
+  kind      String          @default("upload")
+  location  String?
+  url       String?
+  bytes     Int?
+  format    String?
+  position  Int             @default(0)
+  downloads OrderDownload[]
+  createdAt DateTime        @default(now())
+
+  @@index([productId])
+}
+
+/// How many times an order downloaded a file (there is a limit per file).
+model OrderDownload {
+  id             String       @id @default(cuid())
+  orderRequestId String
+  orderRequest   OrderRequest @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+  fileId         String
+  file           ProductFile  @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  count          Int          @default(0)
+  lastAt         DateTime?
+
+  @@unique([orderRequestId, fileId])
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+}
+
+/// One seat of a booking: made when the order is paid online or accepted.
+model Ticket {
+  id             String       @id @default(cuid())
+  /// Shown and scanned at the door (XXXX-XXXX).
+  code           String       @unique
+  orderRequestId String
+  orderRequest   OrderRequest @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+  orderItemId    String?
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId      String?
+  /// What the seat is (variant snapshot, e.g. "VIP").
+  label          String?
+  holderName     String?
+  status         TicketStatus @default(VALID)
+  checkedInAt    DateTime?
+  checkedInById  String?
+  createdAt      DateTime     @default(now())
+
+  @@index([orderRequestId])
+  @@index([productId, status])
 }
 
 model ProductItem {
@@ -669,6 +954,7 @@ model ProductVariant {
   inventoryAdjustments InventoryAdjustment[]
   orderRequests OrderRequest[]
   orderRequestItems OrderRequestItem[]
+  stockAlerts StockAlert[]
   @@unique([productItemId, sizeId])
   @@index([productItemId])
   @@index([sizeId])
@@ -786,9 +1072,21 @@ model OrderRequest {
   couponCode String?
   couponRedemption CouponRedemption?
 
+  /// The shopper's account, when she was signed in.
+  userId       String?
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   customerName String
   phone        String
   whatsapp     String?
+  /// For digital products and tickets: where the delivery email goes (optional).
+  email        String?
+  /// Private link to the order's downloads and tickets (/order/<token>).
+  accessToken  String?        @unique
+  /// When the files/tickets were released (online payment or acceptance).
+  deliveredAt  DateTime?
+  deliveryEmailAt DateTime?
+  tickets      Ticket[]
+  downloads    OrderDownload[]
   country      String?
   city         String?
   address      String?
@@ -811,6 +1109,7 @@ model OrderRequest {
 
   @@index([status])
   @@index([status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model CheckoutSession {
@@ -903,6 +1202,8 @@ model Coupon {
   // for percent discounts, optionally cap
   maxDiscount   Decimal?           @db.Decimal(10, 2)
   minCart    Decimal? @db.Decimal(10, 2)
+  /// Only this phone (its last 9 digits) can use it, e.g. a prize from the questions quiz.
+  phone      String?
   isActive   Boolean  @default(true)
   startsAt   DateTime?
   endsAt     DateTime?
@@ -911,6 +1212,7 @@ model Coupon {
   // relations
   orderRequests OrderRequest[]
   redemptions   CouponRedemption[]
+  quizWins      QuizWin[]
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -1039,4 +1341,223 @@ model ChatbotConversation {
   @@index([createdAt])
   @@index([sessionId])
   @@index([userId])
+}
+
+/**
+ * ===================== Back-in-stock alerts =====================
+ * A shopper (no account needed) leaves her email on a sold-out size; when the
+ * size has stock again she gets one email. The stop link (token) cancels it.
+ */
+enum StockAlertStatus {
+  WAITING
+  SENT
+  CANCELLED
+  FAILED
+}
+
+model StockAlert {
+  id         String           @id @default(cuid())
+  email      String
+  variantId  String
+  variant    ProductVariant   @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status     StockAlertStatus @default(WAITING)
+  /** For the stop link in the email. */
+  token      String           @unique
+  attempts   Int              @default(0)
+  ip         String?
+  notifiedAt DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([email, variantId])
+  @@index([status, variantId])
+  @@index([productId])
+  @@index([ip, createdAt])
+}
+
+/**
+ * ===================== Backups =====================
+ * One row per backup (daily automatic or taken by hand). The file itself is
+ * encrypted and stored off the server (Cloudinary, private).
+ */
+enum BackupStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model BackupRun {
+  id          String       @id @default(cuid())
+  status      BackupStatus @default(RUNNING)
+  /** "auto" or "manual". */
+  trigger     String
+  startedAt   DateTime     @default(now())
+  finishedAt  DateTime?
+  sizeBytes   Int?
+  tables      Int?
+  rows        Int?
+  /** Rows per table. */
+  counts      Json?
+  /** Where the file is ("cloudinary"), and its id there; null once removed (older than the kept ones). */
+  storage     String?
+  location    String?
+  fileName    String?
+  error       String?
+  adminUserId String?
+
+  @@index([status, startedAt])
+}
+
+/// How often Razan (the storefront guide) was used, per day — counts only, no personal data.
+model RazanStat {
+  day   DateTime @db.Date
+  key   String
+  count Int      @default(0)
+
+  @@id([day, key])
+}
+
+enum RequestKind {
+  SIZE
+  COLOR
+  NEW_PIECE
+  CALLBACK
+}
+
+enum RequestStatus {
+  NEW
+  SEARCHING
+  FOUND
+  UNAVAILABLE
+  DONE
+}
+
+/// A shopper's request to the shop: a size/colour/piece it doesn't carry (with
+/// photos), or "call me back" from Razan's guided ordering.
+model CustomerRequest {
+  id              String        @id @default(cuid())
+  kind            RequestKind
+  status          RequestStatus @default(NEW)
+  name            String
+  phone           String
+  email           String?
+  /// The piece she was looking at, if any.
+  productId       String?
+  product         Product?      @relation("RequestProduct", fields: [productId], references: [id], onDelete: SetNull)
+  variantId       String?
+  wantedSize      String?
+  wantedColor     String?
+  details         String?
+  /// Private photos: [{ location, bytes, format }] (deleted after the owner's days).
+  photos          Json          @default("[]")
+  photosDeletedAt DateTime?
+  source          String?
+  /// The owner found it: the product she can buy, and when she was told.
+  linkedProductId String?
+  linkedProduct   Product?      @relation("RequestLinkedProduct", fields: [linkedProductId], references: [id], onDelete: SetNull)
+  notifiedAt      DateTime?
+  adminNote       String?
+  ip              String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([kind, createdAt])
+  @@index([phone])
+}
+
+
+/* ---------------- «سؤال وجواب»: questions quiz with a coupon prize ---------------- */
+
+/// A question the owner approved for the quiz (easy → hard by level).
+model QuizQuestion {
+  id        String   @id @default(cuid())
+  text      String
+  /// The choices, in order (2–4).
+  choices   Json
+  /// Index of the right choice.
+  answer    Int
+  /// 1 easy, 2 medium, 3 hard.
+  level     Int      @default(1)
+  topic     String   @default("general")
+  /// Only approved questions are asked.
+  approved  Boolean  @default(false)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([approved, active, level])
+}
+
+/// One device in one period (the counter of unique visitors; reset each period).
+model QuizDevice {
+  period    String
+  device    String
+  /// Its place among this period's devices (1, 2, 3…).
+  seq       Int
+  /// Gets a chance to play (counter: seq is 1, 3, 7, 15…; chance mode: a draw).
+  chance    Boolean  @default(false)
+  /// Already played its chance.
+  used      Boolean  @default(false)
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@id([period, device])
+  @@index([period, seq])
+}
+
+/// One go at the questions (answers are checked on the server).
+model QuizAttempt {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  period      String
+  device      String
+  questionIds Json
+  correct     Int?
+  passed      Boolean   @default(false)
+  claimed     Boolean   @default(false)
+  expiresAt   DateTime
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([period])
+}
+
+/// A prize given: one coupon for one phone.
+model QuizWin {
+  id        String   @id @default(cuid())
+  period    String
+  device    String
+  phone     String
+  name      String?
+  couponId  String
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([period, phone])
+  @@index([period])
+  @@index([createdAt])
+}
+
+/* ---------------- AI features (off until OPENAI_API_KEY is set) ---------------- */
+
+/// Saved AI answers (review summaries, "complete the look"…) so the same question isn't paid for twice.
+model AiCache {
+  key       String   @id
+  value     Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+/// How many AI calls each feature made per day (the owner sees the cost).
+model AiUsage {
+  day     DateTime @db.Date
+  feature String
+  count   Int      @default(0)
+
+  @@id([day, feature])
 }
