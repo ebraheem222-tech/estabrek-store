@@ -128,6 +128,24 @@ export function FiltersChips({
       });
     }
 
+    // Product-type fields (القماش، المناسبة…): the value is enough as a label.
+    for (const [key, vals] of Object.entries(currentFilters.attrs ?? {})) {
+      for (const v of vals) {
+        out.push({
+          key: `attr:${key}:${v}`,
+          label: v === "true" ? (ar ? "نعم" : "Yes") : v === "false" ? (ar ? "لا" : "No") : v,
+          remove: () => {
+            const n = base();
+            const attrs = { ...(n.attrs ?? {}) };
+            attrs[key] = (attrs[key] ?? []).filter((x) => x !== v);
+            if (!attrs[key].length) delete attrs[key];
+            n.attrs = Object.keys(attrs).length ? attrs : undefined;
+            nav(n);
+          },
+        });
+      }
+    }
+
     (currentFilters.colors ?? []).forEach((c) => {
       out.push({
         key: `color:${c}`,

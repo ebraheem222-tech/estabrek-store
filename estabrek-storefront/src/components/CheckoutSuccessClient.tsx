@@ -22,6 +22,8 @@ export default function CheckoutSuccessClient() {
   const [state, setState] = useState<VerifyState>("idle");
   const [message, setMessage] = useState<string>("");
   const [orderId, setOrderId] = useState<string | null>(null);
+  // Digital files / tickets: ready right after paying, on her private order page.
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const provider = useMemo(() => {
     const explicit = searchParams.get("provider");
@@ -70,6 +72,7 @@ export default function CheckoutSuccessClient() {
         const id = data?.orderId ? String(data.orderId) : null;
         if (mounted) {
           setOrderId(id);
+          setAccessToken(typeof data?.accessToken === "string" ? data.accessToken : null);
           setState("success");
           completePurchase(id);
           setMessage(id ? `تم الدفع بنجاح. رقم الطلب: ${id}` : "تم الدفع بنجاح.");
@@ -101,6 +104,14 @@ export default function CheckoutSuccessClient() {
         <div className="space-y-3">
           <div className="text-2xl font-bold text-emerald-400">تم الدفع بنجاح</div>
           <div className="text-sm text-white/80">{message}</div>
+          {accessToken ? (
+            <div className="pt-2" data-testid="checkout-handover">
+              <Link href={`/order/${encodeURIComponent(accessToken)}`} className="inline-flex px-5 py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold">
+                ملفاتكِ / تذاكركِ جاهزة ←
+              </Link>
+              <p className="mt-2 text-xs text-white/60">احفظي الرابط. بعتناه كمان على إيميلكِ إذا كتبتيه.</p>
+            </div>
+          ) : null}
           <div className="flex items-center justify-center gap-3 pt-3">
             <Link href="/shop" className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium">
               متابعة التسوق

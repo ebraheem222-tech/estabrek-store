@@ -8,6 +8,7 @@ import { CategorySidebar } from "@/components/CategorySidebar";
 import { FiltersChips } from "@/components/FiltersChips";
 import { ShopToolbar } from "@/components/ShopToolbar";
 import ShopResultsClient from "@/components/ShopResultsClient";
+import { AttributeFilters } from "@/components/AttributeFilters";
 
 const ProductFiltersBar = dynamic(
   () => import("@/components/ProductFiltersBar").then((m) => m.ProductFiltersBar),
@@ -151,6 +152,17 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
             mobileAutoApply
           />
         </div>
+
+        <AttributeFilters
+          appearance={appearance}
+          filters={filters}
+          onChange={(next) => {
+            setFilters(next);
+            const inUrl = defaultCategoryId && next.categoryId === defaultCategoryId ? { ...next, categoryId: undefined } : next;
+            const qs = buildCanonicalQuery(inUrl);
+            window.history.pushState({}, "", qs ? `${basePath}?${qs}` : basePath);
+          }}
+        />
 
         <ShopToolbar total={total} filters={urlFilters} onFiltersChange={setFilters} hideModeToggle appearance={appearance} />
 

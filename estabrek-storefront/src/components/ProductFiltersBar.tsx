@@ -653,7 +653,9 @@ export function ProductFiltersBar({
               <div className="color-chips-container">
                 {colors.map((c, i) => {
                   const active = selectedColors.some((x) => x.toLowerCase() === c.name.toLowerCase());
-                  const hex = c.hex?.startsWith("#") ? c.hex : c.hex ? `#${c.hex}` : null;
+                  // The API sends colorHex (older code read hex).
+                  const raw = c.hex ?? (c as { colorHex?: string | null }).colorHex ?? null;
+                  const hex = raw?.startsWith("#") ? raw : raw ? `#${raw}` : null;
                   return (
                     <button
                       // The catalog can list one colour name with two shades (e.g. two "ليلكي"): keep keys unique.

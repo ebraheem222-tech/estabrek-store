@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useRouter } from "next/navigation";
 import { ProductTile } from "@/components/ProductTile";
+import { useSiteFeatures } from "@/store/siteFeatures";
+import { handOverPhoto } from "@/lib/requestHandover";
 import { LoadingImg } from "@/components/LoadingImg";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import type { CatalogProduct } from "@/lib/catalog";
@@ -62,6 +65,9 @@ function validateFile(file: File): string | null {
 
 export function ImageSearchPanel() {
   const settings = useStorefrontSettings();
+  const router = useRouter();
+  const { requests } = useSiteFeatures();
+  const lastFile = useRef<File | null>(null);
   if (!settings.imageSearchEnabled) return null;
 
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -91,6 +97,7 @@ export function ImageSearchPanel() {
 
     setError(null);
     setLoading(true);
+    lastFile.current = file;
     const nextPreview = URL.createObjectURL(file);
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -273,6 +280,16 @@ export function ImageSearchPanel() {
               </div>
             ) : null}
           </div>
+
+          {/* Not here? Send the photo to «اطلبي قطعتكِ» (admin → الطلبات الخاصة). */}
+          {requests.enabled && requests.kinds.newPiece && lastFile.current ? (
+            <p className="image-search-request">
+              {products.length ? "ما لقيتي نفسها؟" : "ما لقيناها عنا هلأ."}{" "}
+              <button type="button" onClick={() => { handOverPhoto(requests.maxPhotos > 0 ? lastFile.current : null); router.push("/request?from=image"); }}>
+                ابعتيلنا الصورة ونحن بندوّرلكِ عليها ←
+              </button>
+            </p>
+          ) : null}
 
           {/* Products Grid */}
           {products.length ? (

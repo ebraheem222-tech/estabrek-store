@@ -7,7 +7,7 @@ import { listProductsClient } from "@/lib/apiClient";
 import { ProductTile } from "@/components/ProductTile";
 import { ProductTileSkeleton } from "@/components/ProductTileSkeleton";
 import { ShopGrid } from "@/components/ShopGrid";
-import { buildCanonicalQuery } from "@/lib/filtersUrl";
+import { attrParams, buildCanonicalQuery } from "@/lib/filtersUrl";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -124,6 +124,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
             // legacy
             color: filters.color,
             sizeId: filters.sizeId,
+            ...attrParams(filters.attrs),
             ...(extraParamsRef.current ?? {}),
           }, { signal: controller.signal, cacheMs: 15000 });
           if (!active) return;
@@ -184,6 +185,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
         // legacy
         color: filters.color,
         sizeId: filters.sizeId,
+        ...attrParams(filters.attrs),
         ...(extraParamsRef.current ?? {}),
       }, { cacheMs: 15000, signal: controller.signal });
       if (!controller.signal.aborted && currentKey.current === requestKey) setPages((prev) => [...prev, res]);
