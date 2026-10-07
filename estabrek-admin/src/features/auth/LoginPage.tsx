@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "../../api/http";
 import { validateLogin } from "./auth.schema";
 import { useAuth } from "../../hooks/useAuth";
 import { hasTokens } from "../../lib/storage";
+import { firstAllowedPath } from "../../layouts/adminNav";
 import * as AuthAPI from "../../api/auth.api";
 import { useMutation } from "@tanstack/react-query";
 
@@ -43,9 +44,10 @@ export default function LoginPage() {
   }, [location.search]);
 
   useEffect(() => {
-    if (admin && hasPermission("dashboard:read")) {
-      nav(from, { replace: true });
-    }
+    if (!admin) return;
+    // A team member without the dashboard goes to the first page they may open.
+    const target = from === "/admin/dashboard" && !hasPermission("dashboard:read") ? firstAllowedPath(hasPermission) : from;
+    nav(target, { replace: true });
   }, [admin, hasPermission, nav, from]);
 
   const phoneStart = useMutation({ mutationFn: AuthAPI.phoneStart });
@@ -144,6 +146,12 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-white">مرحباً بعودتك</h1>
           <p className="mt-2 text-sm text-white/50">سجل دخولك للوصول إلى لوحة التحكم</p>
         </div>
+
+        {loginReason === "suspended" && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+            تم إيقاف هذا الحساب. تواصل مع صاحب المتجر.
+          </div>
+        )}
 
         {loginReason === "expired" && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">

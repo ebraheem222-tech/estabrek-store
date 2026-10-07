@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     mutationFn: AuthAPI.forgotPassword,
     onSuccess: (out) => {
       setToken(out.token ?? null);
-      toast.success("تم إرسال طلب إعادة التعيين");
+      toast.success("وصل الطلب");
     },
     onError: (e) => {
       toast.error(getApiErrorMessage(e));
@@ -47,7 +47,9 @@ export default function ForgotPasswordPage() {
       <div dir="rtl" className="relative glass rounded-3xl p-8 shadow-elevated">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-white">إعادة تعيين كلمة المرور</h1>
-          <p className="mt-2 text-sm text-white/50">اكتب ايميل الأدمن. رح يوصلك رابط/كود (حسب إعدادات السيرفر).</p>
+          <p className="mt-2 text-sm text-white/50">
+            إذا الإيميل مربوط بالسيرفر، بيوصلك رابط على إيميلك. أو اطلب من صاحب المتجر رابط جديد من صفحة الفريق والصلاحيات.
+          </p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-5">

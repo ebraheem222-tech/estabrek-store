@@ -13,6 +13,7 @@ import * as AuthAPI from "../../api/auth.api";
 import * as SecAPI from "../../api/adminSecurity.api";
 import * as AccountAPI from "../../api/account.api";
 import { useAuth } from "../../hooks/useAuth";
+import { authStore } from "../../store/auth.store";
 import { useAdminSessions, useAdminSecurityEvents, useSecurityActions } from "../../hooks/useSecurity";
 import { listLocalAdminAuditEvents, type LocalAdminAuditEvent } from "../../lib/adminAudit";
 
@@ -80,12 +81,10 @@ export default function SecurityCenterPage() {
   async function refreshMe() {
     try {
       const me = await AccountAPI.getAdminMe();
-      // backend may return {admin: {...}}
-      // store is updated by useAuth hook automatically on next render only if it fetches,
-      // so we just do a hard reload by re-sync tokens + refresh page state.
-      // safer: full page reload is not needed; pages read `admin` but backend is source of truth.
-      // We'll rely on the page UI (2FA enabled badge) updating after user navigates.
-      void me;
+      // backend may return {admin: {...}}; keep the signed-in admin in sync
+      // (the 2FA badge, and pages that were waiting for two-step sign-in).
+      const next = (me?.admin ?? me) as any;
+      if (next?.id) authStore.setAdmin(next);
     } catch {
       // ignore
     }
@@ -209,8 +208,16 @@ export default function SecurityCenterPage() {
     if (tab === "AUDIT") refreshLocalAuditEvents();
   }, [tab]);
 
+  // Sent here because the store requires two-step sign-in (Security rules).
+  const mustSetUp2fa = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("setup") === "2fa";
+
   return (
     <div className="space-y-4">
+      {mustSetUp2fa && !admin?.twoFactorEnabled ? (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-200" data-testid="setup-2fa-required">
+          صاحب المتجر طلب تفعيل التحقق بخطوتين لكل الحسابات. فعّله هون (تطبيق المصادقة أو SMS)، وبعدها بتفتح باقي صفحات لوحة الإدارة.
+        </div>
+      ) : null}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-xl font-bold">الأمان</h1>
