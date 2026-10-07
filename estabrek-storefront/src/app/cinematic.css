@@ -4076,11 +4076,15 @@ html[data-theme-crossfade]::view-transition-new(root) {
   width: var(--film-w, 165%); aspect-ratio: 16 / 9; height: auto;
   translate: -50% -50%;
   transform: scale(calc(1 + (var(--film-zoom, 1) - 1) * var(--film-zoom-k, 1))); transform-origin: 50% 42%;
-  /* Whatever reaches the edge of the frame fades out instead of being cut. */
-  -webkit-mask: radial-gradient(50% 50% at 50% 50%, #000 72%, transparent 100%);
-  mask: radial-gradient(50% 50% at 50% 50%, #000 72%, transparent 100%);
   opacity: 0; transition: opacity .5s ease;
   will-change: transform; pointer-events: none;
+}
+/* Whatever reaches the edge of the frame fades out instead of being cut. The live film
+   does this in its own shader (filmCutout.ts): a mask on the moving canvas cost the
+   graphics card a full extra pass on every frame. */
+.film-still {
+  -webkit-mask: radial-gradient(50% 50% at 50% 50%, #000 72%, transparent 100%);
+  mask: radial-gradient(50% 50% at 50% 50%, #000 72%, transparent 100%);
 }
 .film-canvas[data-ready="true"] { opacity: 1; }
 /* The first frame as a picture until the live film is drawn (and if the video cannot load). */
