@@ -26,6 +26,7 @@ export const StorefrontCheckoutCreateBody = z.object({
     .min(1),
   customerName: z.string().min(2).max(120),
   phone: z.string().min(5).max(40),
+  email: z.string().trim().toLowerCase().email().max(160).nullable().optional().or(z.literal("").transform(() => null)),
   address: z.string().max(240).nullable().optional(),
   note: z.string().max(500).nullable().optional(),
   couponCode: z.string().max(40).nullable().optional(),

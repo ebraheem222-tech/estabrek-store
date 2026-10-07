@@ -1,14 +1,19 @@
 import Stripe from "stripe";
+import { activeCustomerId } from "../customer/customer.service.js";
 import { prisma } from "../../lib/prisma.js";
 import { quoteCart, submitOrderRequest } from "../catalog/catalog.service.js";
+import { releaseOrder, sendDeliveryEmail } from "../fulfillment/fulfillment.service.js";
 
 type CheckoutProvider = "stripe" | "paypal";
 
 type CheckoutCreateInput = {
   provider: CheckoutProvider;
+  /** Signed-in shopper (from her token, never from the request body). */
+  userId?: string | null;
   items: Array<{ variantId: string; quantity: number }>;
   customerName: string;
   phone: string;
+  email?: string | null;
   address?: string | null;
   note?: string | null;
   couponCode?: string | null;
@@ -198,7 +203,7 @@ async function finalizeCheckoutSession(args: {
   const payload = (checkout.payload as any) ?? {};
   const existingOrderId = payload?.orderId as string | undefined;
   if (checkout.status === "COMPLETED" && existingOrderId) {
-    return { orderId: existingOrderId, status: "COMPLETED" as const };
+    return { orderId: existingOrderId, status: "COMPLETED" as const, ...(await deliveryFor(existingOrderId)) };
   }
 
   const order = await submitOrderRequest({
@@ -206,6 +211,7 @@ async function finalizeCheckoutSession(args: {
     customerName: String(payload.customerName ?? ""),
     phone: String(payload.phone ?? ""),
     whatsapp: payload.whatsapp ?? undefined,
+    email: payload.email ?? undefined,
     country: payload.country ?? undefined,
     city: payload.city ?? undefined,
     address: payload.address ?? undefined,
@@ -215,7 +221,7 @@ async function finalizeCheckoutSession(args: {
     paymentProvider: args.provider.toUpperCase(),
     paymentStatus: "PAID",
     paymentReference: args.paymentReference ?? undefined,
-  });
+  }, { skipStockCheck: true, userId: await activeCustomerId(payload.userId) }); // paid: always recorded, the owner sorts out stock
 
   await prisma.checkoutSession.update({
     where: { id: checkout.id },
@@ -229,7 +235,17 @@ async function finalizeCheckoutSession(args: {
     },
   });
 
-  return { orderId: order.id, status: "PAID" as const };
+  // Paid online: digital files and tickets are hers right away.
+  await releaseOrder(order.id, "paid").catch((e) => console.error("[checkout] release failed:", (e as Error)?.message));
+  await sendDeliveryEmail(order.id).catch(() => null);
+
+  return { orderId: order.id, status: "PAID" as const, ...(await deliveryFor(order.id)) };
+}
+
+/** The private order page token, when the order has files or tickets ready. */
+async function deliveryFor(orderId: string) {
+  const o = await prisma.orderRequest.findUnique({ where: { id: orderId }, select: { accessToken: true, deliveredAt: true } });
+  return o?.accessToken && o.deliveredAt ? { accessToken: o.accessToken } : {};
 }
 
 export async function createCheckoutSession(input: CheckoutCreateInput) {
@@ -244,15 +260,20 @@ export async function createCheckoutSession(input: CheckoutCreateInput) {
     throw httpError("PAYPAL_DISABLED", "PayPal غير مفعل حالياً.", 400);
   }
 
-  const quote = await quoteCart({ items: input.items, couponCode: input.couponCode ?? undefined });
+  // Check the pieces are still there before taking the money.
+  // The phone is checked here, before paying (a coupon can belong to one phone).
+  const quote = await quoteCart({ items: input.items, couponCode: input.couponCode ?? undefined, phone: input.phone }, { requireStock: true });
   if (!quote?.lines?.length) {
     throw httpError("EMPTY_CART", "السلة فارغة.", 400);
   }
 
   const payload = {
     items: input.items,
+    // Signed-in shopper: the paid order shows in her account.
+    userId: input.userId ?? null,
     customerName: input.customerName,
     phone: input.phone,
+    email: input.email ?? null,
     address: input.address ?? null,
     note: input.note ?? null,
     couponCode: input.couponCode ?? null,

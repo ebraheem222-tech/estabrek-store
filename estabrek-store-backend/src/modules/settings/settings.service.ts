@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { prisma } from "../../lib/prisma.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
 import type { NavigationItem, SiteSettings } from "@prisma/client";
@@ -103,6 +104,12 @@ export async function getPublicSettings() {
       stripePublicKey: (s as any).stripePublicKey ?? null,
       paypalEnabled: (s as any).paypalEnabled ?? false,
       paypalClientId: (s as any).paypalClientId ?? null,
+      customerAccountsEnabled: s.customerAccountsEnabled === true,
+      stockAlertsEnabled: s.stockAlertsEnabled === true,
+      // Maintenance: the storefront shows a "back soon" screen; the owner opens it with ?preview=<key> (only its hash is public).
+      maintenance: s.maintenanceMode
+        ? { on: true, message: s.maintenanceMessage ?? null, previewHash: s.maintenanceKey ? createHash("sha256").update(s.maintenanceKey).digest("hex") : null }
+        : { on: false, message: null, previewHash: null },
       updatedAt: s.updatedAt,
       createdAt: s.createdAt,
     },

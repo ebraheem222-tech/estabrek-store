@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { optionalCustomer } from "../../middleware/customerAuth.js";
 import multer from "multer";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
@@ -461,11 +462,12 @@ r.post("/search/image", (req, res, next) => {
  * GET /v1/storefront/checkout/verify?provider=stripe&sessionId=...
  *  - verify payment and finalize order
  */
-r.post("/checkout/session", validate({ body: StorefrontCheckoutCreateBody }), asyncHandler(async (req, res) => {
+r.post("/checkout/session", optionalCustomer, validate({ body: StorefrontCheckoutCreateBody }), asyncHandler(async (req, res) => {
   const baseUrl = resolveStorefrontBaseUrl(req);
   const out = await createCheckoutSession({
     ...(req.body as any),
     baseUrl,
+    userId: req.customer?.id ?? null,
   });
   res.json(out);
 }));
