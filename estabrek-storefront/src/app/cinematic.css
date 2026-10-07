@@ -3062,7 +3062,9 @@ html[data-cinematic-storefront="true"] .a11y-panel { left: auto !important; righ
 }
 
 /* Floating widgets step aside while a drawer or dialog is open, and never stack on WhatsApp. */
-html[data-cinematic-storefront="true"]:has(.quick-add-layer, .size-guide-dialog[open]) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .rose-companion) { visibility: hidden; }
+/* Class names only inside :has() on html: an attribute there (like [open]) makes Chrome restyle
+   the whole page on every element added or removed anywhere — that was the scroll-scene stutter. */
+html[data-cinematic-storefront="true"]:has(.quick-add-layer, .size-guide-dialog.is-open) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .rose-companion) { visibility: hidden; }
 html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !important; left: 22px !important; }
 @media (max-width: 760px) {
   html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 72px !important; left: 14px !important; width: min(18rem, calc(100vw - 28px)); }
@@ -3578,7 +3580,7 @@ html[data-cinematic-storefront="true"] .recent-activity-popup.rose-recent {
   .rose-recent-text b { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .recent-activity-popup.rose-recent { transition: none; } }
-html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, .rose-viewer, .size-guide-dialog[open]) .recent-activity-popup.rose-recent { visibility: hidden !important; }
+html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, .rose-viewer, .size-guide-dialog.is-open) .recent-activity-popup.rose-recent { visibility: hidden !important; }
 
 /* ------------------------------------------------------------------ Rose, the 2D guide */
 .rose-mascot {
