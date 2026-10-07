@@ -1,7 +1,7 @@
 "use client";
 import { ScenePacer } from "./ScenePacer";
 import { sceneDpr } from "@/lib/motionBudget";
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { memo, useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
@@ -309,6 +309,14 @@ function Blossoms({ progress }: { progress: MutableRefObject<number> }) {
 
 /* ---------- The garment: one dress form, re-dressed from winter wool to spring silk ---------- */
 
+/** The dress form's profile, made once: built inline it was a new array on every
+ * render, so the geometry was rebuilt (and re-uploaded) each time the season flipped. */
+const FORM_PROFILE: [THREE.Vector2[], number] = [[
+  new THREE.Vector2(0, -1.62), new THREE.Vector2(0.65, -1.62), new THREE.Vector2(0.83, -1.2),
+  new THREE.Vector2(1.04, -0.6), new THREE.Vector2(1.01, -0.39), new THREE.Vector2(0.61, -0.1),
+  new THREE.Vector2(0.24, 0.04), new THREE.Vector2(0.21, 0.44), new THREE.Vector2(0, 0.44),
+], 64];
+
 const WINTER_FABRIC = new THREE.Color("#5b4a72");
 const SPRING_FABRIC = new THREE.Color("#f1b2c4");
 
@@ -353,11 +361,7 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
         <meshStandardMaterial color="#f5eae0" roughness={0.73} />
       </mesh>
       <mesh scale={[0.78, 1, 0.45]}>
-        <latheGeometry args={[[
-          new THREE.Vector2(0, -1.62), new THREE.Vector2(0.65, -1.62), new THREE.Vector2(0.83, -1.2),
-          new THREE.Vector2(1.04, -0.6), new THREE.Vector2(1.01, -0.39), new THREE.Vector2(0.61, -0.1),
-          new THREE.Vector2(0.24, 0.04), new THREE.Vector2(0.21, 0.44), new THREE.Vector2(0, 0.44),
-        ], 64]} />
+        <latheGeometry args={FORM_PROFILE} />
         <meshStandardMaterial color="#efe1d7" roughness={0.75} />
       </mesh>
       {Object.entries(geometries).map(([name, geometry]) => (
@@ -379,16 +383,18 @@ function Lifecycle({ onReady, onFailure }: Pick<SeasonsSceneProps, "onReady" | "
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
   const ready = useRef(onReady), failure = useRef(onFailure);
   ready.current = onReady; failure.current = onFailure;
   useEffect(() => {
     let alive = true;
     // Build every shader now (hidden parts included), then show the scene.
-    warmScene(gl, scene, camera).then(() => { if (alive) ready.current(); });
+    // (The warm-up leaves the canvas empty: ask for a real frame right after.)
+    warmScene(gl, scene, camera).then(() => { invalidate(); if (alive) ready.current(); });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
     return () => { alive = false; gl.domElement.removeEventListener("webglcontextlost", lost); };
-  }, [gl, scene, camera]);
+  }, [gl, scene, camera, invalidate]);
   return null;
 }
 
@@ -410,7 +416,7 @@ function SeasonLights({ progress }: { progress: MutableRefObject<number> }) {
   );
 }
 
-export default function SeasonsScene(props: SeasonsSceneProps) {
+function SeasonsScene(props: SeasonsSceneProps) {
   return (
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
@@ -435,3 +441,13 @@ export default function SeasonsScene(props: SeasonsSceneProps) {
     </Canvas>
   );
 }
+
+/**
+ * The page re-renders when the season flips (copy, Rose's outfit); the 3D scene
+ * doesn't need to (it reads the season from `progress` every frame), so it only
+ * re-renders when one of its real settings changes. The callbacks are read
+ * through refs inside, so new copies of them don't matter.
+ */
+export default memo(SeasonsScene, (a, b) =>
+  a.progress === b.progress && a.active === b.active && a.reducedMotion === b.reducedMotion && a.showModel === b.showModel && a.rtl === b.rtl,
+);

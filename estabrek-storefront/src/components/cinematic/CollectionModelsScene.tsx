@@ -1,7 +1,7 @@
 "use client";
 import { ScenePacer } from "./ScenePacer";
 import { sceneDpr } from "@/lib/motionBudget";
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { memo, useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
@@ -416,20 +416,22 @@ function Lifecycle({ onReady, onFailure }: Pick<CollectionModelsProps, "onReady"
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
   const ready = useRef(onReady), failure = useRef(onFailure);
   ready.current = onReady; failure.current = onFailure;
   useEffect(() => {
     let alive = true;
     // Build every shader now (hidden parts included), then show the scene.
-    warmScene(gl, scene, camera).then(() => { if (alive) ready.current(); });
+    // (The warm-up leaves the canvas empty: ask for a real frame right after.)
+    warmScene(gl, scene, camera).then(() => { invalidate(); if (alive) ready.current(); });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
     return () => { alive = false; gl.domElement.removeEventListener("webglcontextlost", lost); };
-  }, [gl, scene, camera]);
+  }, [gl, scene, camera, invalidate]);
   return null;
 }
 
-export default function CollectionModelsScene(props: CollectionModelsProps) {
+function CollectionModelsScene(props: CollectionModelsProps) {
   const at = (key: StoryKey) => () => {
     const i = props.keys.indexOf(key);
     return i < 0 ? 0 : props.weights.current[i] ?? 0;
@@ -460,3 +462,12 @@ export default function CollectionModelsScene(props: CollectionModelsProps) {
     </Canvas>
   );
 }
+
+/**
+ * The section re-renders at every chapter change (copy, Rose); the models read
+ * their weights every frame, so the 3D scene only re-renders when its real
+ * settings change (`keys` is compared by content: it is a new array each time).
+ */
+export default memo(CollectionModelsScene, (a, b) =>
+  a.keys.join() === b.keys.join() && a.weights === b.weights && a.active === b.active && a.compact === b.compact && a.rtl === b.rtl && a.palm === b.palm,
+);

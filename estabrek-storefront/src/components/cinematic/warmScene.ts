@@ -32,29 +32,34 @@ export function warmScene(gl: THREE.WebGLRenderer, scene: THREE.Scene, camera: T
 }
 
 /**
- * The browser still checks each new shader the first time it is drawn, and
- * waits for it then. Draw everything once now with a zero-size scissor: the
- * checks happen here, and nothing appears on the canvas.
+ * Draw everything once, for real, before the scene is shown. Graphics drivers
+ * (ANGLE on Windows above all) only finish a shader the first time it actually
+ * draws something; a draw clipped to nothing could be skipped, leaving that
+ * work for the moment a hidden model first appears — mid-transition. So every
+ * object is drawn once in full (also those outside the camera's view, with
+ * culling off), then the canvas is cleared: nothing of it is ever seen, and
+ * the next frame draws the real scene.
  */
 function firstUse(gl: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
   const hidden: THREE.Object3D[] = [];
+  const culled: THREE.Object3D[] = [];
   scene.traverse((o) => {
     if (!o.visible) {
       hidden.push(o);
       o.visible = true;
     }
+    if (o.frustumCulled) {
+      culled.push(o);
+      o.frustumCulled = false;
+    }
   });
-  const autoClear = gl.autoClear;
   try {
-    gl.autoClear = false;
-    gl.setScissorTest(true);
-    gl.setScissor(0, 0, 0, 0);
     gl.render(scene, camera);
+    gl.clear();
   } catch {
     // Warm-up is only an optimisation.
   } finally {
-    gl.setScissorTest(false);
-    gl.autoClear = autoClear;
     hidden.forEach((o) => { o.visible = false; });
+    culled.forEach((o) => { o.frustumCulled = true; });
   }
 }

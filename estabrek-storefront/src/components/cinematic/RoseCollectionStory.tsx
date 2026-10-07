@@ -167,7 +167,12 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         return seed;
       };
       let lastSeed = "";
-      const follow = shell ? themeFollower(shell) : null;
+      // While the colours move, only this section and the header get them (the whole page
+      // restyled on every frame of a hand-over otherwise); the page catches up when they settle.
+      const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
+      // "On stage" = the section is pinned and fills the screen (set by its scroll timeline below).
+      let onStage = false;
+      const follow = shell ? themeFollower(shell, { local: () => (onStage ? [el, header] : []) }) : null;
       const takeOver = (seed: string) => {
         if (!shell || !follow) return;
         // The colour only moves during a hand-over between chapters: skip the other frames.
@@ -182,7 +187,9 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           shell.dataset.season = "true";
         }
         follow.to(values, entering ? 0.8 : 0.35);
-        if (shell.dataset.navbarColor !== seed) shell.dataset.navbarColor = seed;
+        // Only its presence matters to the header styles; changing its value on every frame
+        // made the browser re-check every link on the page.
+        if (!shell.dataset.navbarColor) shell.dataset.navbarColor = seed;
       };
       const giveBack = () => {
         if (!shell || !saved) return;
@@ -204,6 +211,9 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       };
       let shownLead = -1;
       const shownV: string[] = [];
+      // Each chapter's weight goes on its own layer and sky only: written on the
+      // section it would restyle everything inside (mascot, all racks) every frame.
+      const skies = Array.from(el.querySelectorAll<HTMLElement>(".story-sky > span"));
       const render = (p: number) => {
         const w = chapterWeights(p, n);
         weights.current = w;
@@ -211,7 +221,11 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         w.forEach((v, i) => {
           // Settled chapters (fully in or out) are not rewritten every frame.
           const value = v.toFixed(4);
-          if (shownV[i] !== value) { el.style.setProperty(`--v${i}`, value); shownV[i] = value; }
+          if (shownV[i] !== value) {
+            layers[i]?.style.setProperty("--v", value);
+            skies[i]?.style.setProperty("--v", value);
+            shownV[i] = value;
+          }
           if (v > w[lead]) lead = i;
         });
         if (lead === shownLead) return; // attributes only change at a hand-over
@@ -236,7 +250,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           render(state.p);
           if (themeTrigger.isActive) takeOver(seedAt(state.p));
         },
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.4, refreshPriority: -1 },
+        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", onToggle: (self) => { onStage = self.isActive; if (!onStage) follow?.unpin(); }, scrub: 0.4, refreshPriority: -1 },
       });
       render(0);
       const refresh = requestScrollRefresh;
@@ -296,7 +310,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       <div className="stories-sticky">
         <div className="story-sky" aria-hidden="true">
           {chapters.map((c, i) => (
-            <span key={c.key} className={`sky-${c.key}`} style={{ "--v": `var(--v${i}, ${i === 0 ? 1 : 0})` } as CSSProperties} />
+            <span key={c.key} className={`sky-${c.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties} />
           ))}
         </div>
         {motion && near && !sceneFailed && (
@@ -333,7 +347,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           {chapters.map((chapter, i) => {
             const c = STORY[chapter.key][ar ? "ar" : "en"];
             return (
-              <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": `var(--v${i}, ${i === 0 ? 1 : 0})` } as CSSProperties}>
+              <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties}>
                 <div className="season-copy story-copy">
                   <span className="atelier-eyebrow">
                     <Icon name="spark" />

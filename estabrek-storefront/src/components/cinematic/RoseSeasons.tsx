@@ -144,7 +144,12 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       let saved = false;
       let enteredColor: string | undefined;
       let lastSeed = "";
-      const follow = shell ? themeFollower(shell) : null;
+      // While the colours move, only this section and the header get them (the whole page
+      // restyled on every frame of a hand-over otherwise); the page catches up when they settle.
+      const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
+      // "On stage" = the section is pinned and fills the screen (set by its scroll timeline below).
+      let onStage = false;
+      const follow = shell ? themeFollower(shell, { local: () => (onStage ? [el, header] : []) }) : null;
       const takeOver = (seed: string) => {
         if (!shell || !follow) return;
         // Most scroll frames do not change the colour (it only moves while the
@@ -161,7 +166,9 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         }
         // Glide into the season, then follow the scroll.
         follow.to(values, entering ? 0.8 : 0.35);
-        if (shell.dataset.navbarColor !== seed) shell.dataset.navbarColor = seed;
+        // Only its presence matters to the header styles; changing its value on every frame
+        // made the browser re-check every link on the page.
+        if (!shell.dataset.navbarColor) shell.dataset.navbarColor = seed;
       };
       const giveBack = () => {
         if (!shell || !saved) return;
@@ -187,14 +194,20 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       let shown: SeasonKey | "" = "";
       let shownMix = "";
       const meter = el.querySelector<HTMLElement>(".season-meter");
+      // The mix goes only on the pieces that use it: written on the section it
+      // would restyle everything inside (the mascot, both racks) every frame.
+      const mixed = [".sky-spring", ".season-static-snow", ".season-static-sun", ".meter-winter", ".meter-spring"]
+        .map((s) => el.querySelector<HTMLElement>(s))
+        .concat(winterLayer, springLayer)
+        .filter((x): x is HTMLElement => Boolean(x));
       const render = (p: number) => {
         progress.current = p;
         const mix = smooth(0.38, 0.62, p);
         // Only the meter needs the raw progress; the mix only moves during the hand-over.
-        // Writing a variable on the section restyles everything inside it, so skip unchanged ones.
+        // Unchanged values are skipped, so nothing is restyled outside the hand-over.
         meter?.style.setProperty("--season-p", p.toFixed(3));
         const m = mix.toFixed(4);
-        if (m !== shownMix) { el.style.setProperty("--season-mix", m); shownMix = m; }
+        if (m !== shownMix) { mixed.forEach((part) => part.style.setProperty("--season-mix", m)); shownMix = m; }
         const now: SeasonKey = mix > 0.5 ? "spring" : "winter";
         if (now === shown) return; // attributes only change at the hand-over, not every frame
         shown = now;
@@ -222,7 +235,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
           if (themeTrigger.isActive) takeOver(seedAt(state.p));
         },
         // Measured after the pinned scenes above it (opening, fabric study) add their spacing.
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.35, refreshPriority: -1 },
+        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", onToggle: (self) => { onStage = self.isActive; if (!onStage) follow?.unpin(); }, scrub: 0.35, refreshPriority: -1 },
       });
       render(0);
       // The scene just grew to its pinned height: re-measure every trigger below it.
