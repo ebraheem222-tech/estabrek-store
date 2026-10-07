@@ -42,7 +42,15 @@ void main() {
   float a = smoothstep(0.02, 0.25, m);          // near-black -> clear, fabric -> solid
   vec3 col = clamp(c / max(a, 0.001), 0.0, 1.0); // undo the black that was mixed into soft edges
   col = pow(col, vec3(0.86)) * vec3(1.03, 0.995, 1.0); // a touch brighter and warmer on the light page
-  col = mix(col, setLum(tint, lum(col)), amount); // dyed in her colour
+  // Dyed in her colour. The "color" blend keeps the fabric's own (light) shade, so a deep
+  // pick (wine, navy, black, bottle green) came out as its pastel: wine looked pink.
+  // Deep colours also darken the fabric, towards their own depth.
+  float depth = clamp(lum(tint) / 0.5, 0.32, 1.0);
+  col = mix(col, setLum(tint, lum(col) * depth), amount);
+  // Whatever reaches the edge of the frame fades out instead of being cut (was a CSS
+  // mask on the canvas: the graphics card had to mask the whole, large, moving film
+  // again on every frame of the scroll).
+  a *= 1.0 - clamp((length((uv - 0.5) * 2.0) - 0.72) / 0.28, 0.0, 1.0);
   gl_FragColor = vec4(col * a, a);                // premultiplied
 }`;
 

@@ -409,13 +409,24 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     draw(performance.now());
 
     let lookHold = 0;
+    // Where she stands, read at most a few times a second: reading it on every pointer
+    // move (and every look while the film scrolls) made the browser lay the page out
+    // again in the middle of a frame, once per Rose on the page.
+    let spot: DOMRect | null = null;
+    let spotAt = 0;
+    const where = () => {
+      const t = performance.now();
+      if (!spot || t - spotAt > 250) { spot = el.getBoundingClientRect(); spotAt = t; }
+      return spot;
+    };
     const lookAt = (x: number, y: number) => {
-      const b = el.getBoundingClientRect();
+      const b = where();
       const cx = b.left + b.width / 2, cy = b.top + b.height * 0.38;
       const sign = mirrored ? -1 : 1;
       s.look = [Math.max(-1, Math.min(1, ((x - cx) / 300) * sign)), Math.max(-1, Math.min(1, (y - cy) / 300))];
     };
     const onMove = (e: PointerEvent) => {
+      if (!visible) return; // off screen: nobody sees where she looks
       if (performance.now() < lookHold) return; // she is watching something else just now
       lookAt(e.clientX, e.clientY);
     };

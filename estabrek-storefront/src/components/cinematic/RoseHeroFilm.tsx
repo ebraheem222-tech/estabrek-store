@@ -104,6 +104,8 @@ export function RoseHeroFilm({
       const progress = section.querySelector<HTMLElement>(".film-arch");
       let shownZoom = "";
       let lastLook = 0;
+      let scarfBox: DOMRect | null = null;
+      let scarfAt = 0;
       let askedAt = 0;
       const seek = () => {
         const d = el.duration;
@@ -137,11 +139,14 @@ export function RoseHeroFilm({
           shownZoom = zoom;
           progress?.style.setProperty("--film-zoom", zoom);
         }
-        // Rose watches the scarf fly past (a few times a second is plenty).
+        // Rose watches the scarf fly past (a few times a second is plenty). The scarf's box
+        // is read once in a while, not on every look: reading it right after the scroll
+        // values were written made the browser lay the page out mid-frame.
         const now = performance.now();
         if (now - lastLook > 180 && p < LINES_END) {
           lastLook = now;
-          const r = canvas.current?.getBoundingClientRect();
+          if (!scarfBox || now - scarfAt > 1000) { scarfBox = canvas.current?.getBoundingClientRect() ?? null; scarfAt = now; }
+          const r = scarfBox;
           if (r && r.width) rose.current?.lookAt?.(r.left + r.width * (0.5 + Math.sin(p * 9) * 0.18), r.top + r.height * 0.4, 700);
         }
       };

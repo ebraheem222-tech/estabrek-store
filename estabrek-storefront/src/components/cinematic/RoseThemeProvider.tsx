@@ -170,6 +170,28 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
     const back = () => {
       if (document.visibilityState === "visible" && selected && Date.now() - lastActive > THEME_IDLE_MS) goIdle();
     };
+    // A colour picked in another tab, or this page shown again from the browser's
+    // back/forward memory (its scripts don't run again): it catches up with the colour
+    // she picked last, as a fresh visit would. A product page keeps the piece's colour.
+    let pendingSync = false;
+    const sync = () => {
+      pendingSync = false;
+      const shell = root.current;
+      const saved = restoreSelection ? readSavedColor() : null;
+      if (!shell || !saved || awayTooLong() || shell.querySelector(".rose-pdp")) return;
+      if (shell.dataset.storefrontColor?.toLowerCase() === saved.toLowerCase()) return;
+      window.dispatchEvent(Object.assign(new CustomEvent("storefront-color-selected", { detail: saved }), { restored: true }));
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== THEME_STORAGE_KEY || !event.newValue) return;
+      // Applied when she comes back to this tab (nothing to restyle while it is hidden).
+      if (document.visibilityState === "visible") sync(); else pendingSync = true;
+    };
+    const onShow = (event: PageTransitionEvent) => { if (event.persisted) sync(); };
+    const onVisible = () => { if (pendingSync && document.visibilityState === "visible") sync(); };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("pageshow", onShow);
+    document.addEventListener("visibilitychange", onVisible);
     ACTIVITY.forEach((name) => window.addEventListener(name, active, { passive: true, capture: true }));
     document.addEventListener("visibilitychange", back);
     window.addEventListener("storefront-color-selected", select);
@@ -182,6 +204,9 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
       window.clearTimeout(idleTimer);
       ACTIVITY.forEach((name) => window.removeEventListener(name, active, { capture: true }));
       document.removeEventListener("visibilitychange", back);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("pageshow", onShow);
+      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("storefront-color-selected", select);
       if (selected) {
         globalProperties.forEach((previous, property) => previous
