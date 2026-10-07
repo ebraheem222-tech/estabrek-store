@@ -93,6 +93,13 @@ export type ProductItem = {
 export type ProductDeep = CatalogProduct & {
   category?: CatalogCategory | null;
   items: ProductItem[];
+  /** Kind of product (أنواع المنتجات) and its fields' values. */
+  typeId?: string | null;
+  attributes?: Record<string, unknown> | null;
+  /** Bookings: when and where. */
+  eventStartsAt?: string | null;
+  eventEndsAt?: string | null;
+  eventLocation?: string | null;
 };
 
 export async function listCategories() {
@@ -181,6 +188,8 @@ export async function createProduct(body: {
   seoDescription?: string | null;
   isActive?: boolean;
   categoryId: string;
+  typeId?: string | null;
+  attributes?: Record<string, unknown>;
 }) {
   const res = await api.post(ENDPOINTS.admin.catalog.products.base, body);
   return res.data as CatalogProduct;
@@ -228,6 +237,11 @@ export type ProductDeepUpdateBody = {
     seoDescription?: string | null;
     isActive?: boolean;
     categoryId?: string;
+    typeId?: string | null;
+    attributes?: Record<string, unknown>;
+    eventStartsAt?: string | null;
+    eventEndsAt?: string | null;
+    eventLocation?: string | null;
   };
   items?: Array<{
     id?: string;
@@ -270,7 +284,7 @@ export async function updateProductFull(id: string, body: ProductDeepUpdateBody)
 }
 
 /** Why a product save was refused, in words the owner can act on. */
-export function describeSaveError(e: unknown): { message: string; skus?: string[] } {
+export function describeSaveError(e: unknown): { message: string; skus?: string[]; attributeErrors?: Record<string, string> } {
   if (!isAxiosError(e)) return { message: "تعذّر الحفظ. حاولي مرة أخرى." };
   const status = e.response?.status;
   const data = (e.response?.data ?? {}) as { error?: string; message?: string; details?: any; target?: unknown };
@@ -289,6 +303,8 @@ export function describeSaveError(e: unknown): { message: string; skus?: string[
   }
   if (data.error === "FOREIGN_KEY") return { message: "مقاس أو لون عليه طلبات لا يمكن حذفه. حدّثي الباكند ليُحفظ تلقائياً كـ«نفد»." };
   if (data.error === "VALIDATION_ERROR") return { message: "بعض الحقول غير صحيحة. راجعي الأسعار والكميات." };
+  if (data.error === "ATTRIBUTES_INVALID") return { message: "في تفاصيل القطعة شي مش مكتوب صح. راجعي الحقول المعلّمة بالأحمر.", attributeErrors: data.details?.errors ?? {} };
+  if (data.error === "TYPE_NOT_FOUND") return { message: "نوع المنتج انحذف. اختاري نوع ثاني." };
   if (status === 401 || status === 403) return { message: "انتهت الجلسة أو لا تملكين الصلاحية." };
   return { message: data.message || "تعذّر الحفظ. حاولي مرة أخرى." };
 }

@@ -6,6 +6,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import AdminLayout from "../layouts/AdminLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import type { AdminPermission } from "../lib/authz";
+import { useAuth } from "../hooks/useAuth";
+import { firstAllowedPath } from "../layouts/adminNav";
 
 // features pages
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
@@ -19,6 +21,11 @@ const ProfilePage = lazy(() => import("../features/account/ProfilePage"));
 const EmailChangePage = lazy(() => import("../features/account/EmailChangePage"));
 const SecurityCenterPage = lazy(() => import("../features/account/SecurityCenterPage"));
 
+const TeamPage = lazy(() => import("../features/team/TeamPage"));
+const ActivityPage = lazy(() => import("../features/team/ActivityPage"));
+const SystemSecurityPage = lazy(() => import("../features/system/SystemSecurityPage"));
+const CustomersPage = lazy(() => import("../features/customers/CustomersPage"));
+
 const OrdersPage = lazy(() => import("../features/orders/OrdersPage"));
 const OrderDetailsPage = lazy(() => import("../features/orders/OrderDetailsPage"));
 const OrderPrintPage = lazy(() => import("../features/orders/OrderPrintPage"));
@@ -31,8 +38,11 @@ const ProductsPage = lazy(() => import("../features/catalog/ProductsPage"));
 const ProductEditorPage = lazy(() => import("../features/catalog/ProductEditorPage"));
 const ProductComposerPage = lazy(() => import("../features/catalog/ProductComposerPage"));
 const SizesPage = lazy(() => import("../features/catalog/SizesPage"));
+const ProductTypesPage = lazy(() => import("../features/catalog/ProductTypesPage"));
+const TicketsPage = lazy(() => import("../features/orders/TicketsPage"));
 
 const LowStockPage = lazy(() => import("../features/inventory/LowStockPage"));
+const BackInStockPage = lazy(() => import("../features/inventory/BackInStockPage"));
 const InventoryAdjustmentsPage = lazy(() => import("../features/inventory/InventoryAdjustmentsPage"));
 const StockPage = lazy(() => import("../features/inventory/StockPage"));
 const LabelsPrintPage = lazy(() => import("../features/inventory/LabelsPrintPage"));
@@ -41,6 +51,13 @@ const CouponsPage = lazy(() => import("../features/discounts/CouponsPage"));
 const CouponTesterPage = lazy(() => import("../features/discounts/CouponTesterPage"));
 
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
+const FeaturesPage = lazy(() => import("../features/features/FeaturesPage"));
+const RazanPage = lazy(() => import("../features/razan/RazanPage"));
+const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
+const QuizPage = lazy(() => import("../features/quiz/QuizPage"));
+const AiPage = lazy(() => import("../features/ai/AiPage"));
+const TrafficPage = lazy(() => import("../features/system/TrafficPage"));
+const BackupsPage = lazy(() => import("../features/system/BackupsPage"));
 const ChatbotPage = lazy(() => import("../features/chatbot/ChatbotPage"));
 const NavPage = lazy(() => import("../features/nav/NavPage"));
 const MediaCenterPage = lazy(() => import("../features/media/MediaCenterPage"));
@@ -64,6 +81,12 @@ function NotFound() {
       </div>
     </div>
   );
+}
+
+/** /admin → the first page this admin may open. */
+function HomeRedirect() {
+  const { hasPermission } = useAuth();
+  return <Navigate to={firstAllowedPath(hasPermission)} replace />;
 }
 
 export default function AppRouter() {
@@ -139,12 +162,12 @@ export default function AppRouter() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute requireSuperAdmin={false} requirePermissions={["dashboard:read"]}>
+            <ProtectedRoute requireSuperAdmin={false}>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route index element={<HomeRedirect />} />
 
           <Route path="dashboard" element={withPermissions(<DashboardPage />, ["dashboard:read"])} />
 
@@ -156,6 +179,8 @@ export default function AppRouter() {
           {/* orders */}
           <Route path="orders" element={withPermissions(<OrdersPage />, ["orders:read"])} />
           <Route path="orders/:id" element={withPermissions(<OrderDetailsPage />, ["orders:read"])} />
+          <Route path="tickets" element={withPermissions(<TicketsPage />, ["orders:read"])} />
+          <Route path="requests" element={withPermissions(<RequestsPage />, ["orders:read"])} />
 
           {/* outbox */}
           <Route path="outbox" element={withPermissions(<OutboxPage />, ["outbox:read"])} />
@@ -169,10 +194,12 @@ export default function AppRouter() {
           <Route path="catalog/products/:id" element={withPermissions(<ProductComposerPage key="edit" />, ["catalog:write"])} />
           <Route path="catalog/products/:id/advanced" element={withPermissions(<ProductEditorPage />, ["catalog:write"])} />
           <Route path="catalog/sizes" element={withPermissions(<SizesPage />, ["catalog:read"])} />
+          <Route path="catalog/types" element={withPermissions(<ProductTypesPage />, ["catalog:read"])} />
 
           {/* inventory */}
           <Route path="inventory/stock" element={withPermissions(<StockPage />, ["inventory:read"])} />
           <Route path="inventory/low-stock" element={withPermissions(<LowStockPage />, ["inventory:read"])} />
+          <Route path="inventory/back-in-stock" element={withPermissions(<BackInStockPage />, ["inventory:read"])} />
           <Route path="inventory/adjustments" element={withPermissions(<InventoryAdjustmentsPage />, ["inventory:write"])} />
 
           {/* discounts */}
@@ -181,8 +208,20 @@ export default function AppRouter() {
           
               <Route path="discounts/coupons/test" element={withPermissions(<CouponTesterPage />, ["discounts:write"])} />{/* settings */}
           <Route path="settings" element={withPermissions(<SettingsPage />, ["settings:read"])} />
+          <Route path="features" element={withPermissions(<FeaturesPage />, ["settings:read"])} />
+          <Route path="razan" element={withPermissions(<RazanPage />, ["settings:read"])} />
+          <Route path="quiz" element={withPermissions(<QuizPage />, ["settings:read"])} />
+          <Route path="ai" element={withPermissions(<AiPage />, ["settings:read"])} />
           <Route path="chatbot" element={withPermissions(<ChatbotPage />, ["chatbot:read"])} />
-          <Route path="media" element={withPermissions(<MediaCenterPage />, ["settings:read"])} />
+          <Route path="media" element={withPermissions(<MediaCenterPage />, ["media:read"])} />
+
+          {/* team & permissions */}
+          <Route path="team" element={withPermissions(<TeamPage />, ["staff:read"])} />
+          <Route path="team/activity" element={withPermissions(<ActivityPage />, ["activity:read"])} />
+          <Route path="system/security" element={withPermissions(<SystemSecurityPage />, ["system:read"])} />
+          <Route path="system/traffic" element={withPermissions(<TrafficPage />, ["system:read"])} />
+          <Route path="system/backups" element={withPermissions(<BackupsPage />, ["system:read"])} />
+          <Route path="customers" element={withPermissions(<CustomersPage />, ["customers:read"])} />
 
           {/* nav + pages */}
           <Route path="nav" element={withPermissions(<NavPage />, ["nav:write"])} />

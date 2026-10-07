@@ -123,6 +123,32 @@ export const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10.5h9M7.5 13.5h5.25" />
     </svg>
   ),
+  backup: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <ellipse cx="12" cy="5.5" rx="7.5" ry="2.75" />
+      <path strokeLinecap="round" d="M4.5 5.5v6c0 1.52 3.36 2.75 7.5 2.75s7.5-1.23 7.5-2.75v-6" />
+      <path strokeLinecap="round" d="M4.5 11.5v6c0 1.52 3.36 2.75 7.5 2.75 1 0 1.96-.07 2.83-.2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 15.5v5m0 0l-2-2m2 2l2-2" />
+    </svg>
+  ),
+  toggles: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <rect x="2.75" y="4.75" width="18.5" height="6.5" rx="3.25" />
+      <circle cx="17.5" cy="8" r="1.75" fill="currentColor" stroke="none" />
+      <rect x="2.75" y="12.75" width="18.5" height="6.5" rx="3.25" />
+      <circle cx="6.5" cy="16" r="1.75" />
+    </svg>
+  ),
+  ticket: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4zM14 6v2m0 3v2m0 3v2" />
+    </svg>
+  ),
+  bell: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.86 17.08a23.85 23.85 0 005.45-1.31A8.97 8.97 0 0118 9.75V9a6 6 0 10-12 0v.75a8.97 8.97 0 01-2.31 6.02c1.73.64 3.56 1.08 5.45 1.31m5.72 0a24.26 24.26 0 01-5.72 0m5.72 0a3 3 0 11-5.72 0" />
+    </svg>
+  ),
   profile: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -131,6 +157,16 @@ export const Icons = {
   email: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+    </svg>
+  ),
+  team: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.13a9.38 9.38 0 002.63.37 9.34 9.34 0 004.12-.95 4.13 4.13 0 00-7.53-2.49M15 19.13v-.01c0-1.12-.29-2.17-.78-3.08M15 19.13v.1A12.32 12.32 0 018.62 21c-2.33 0-4.51-.64-6.37-1.77v-.11a6.38 6.38 0 0111.96-3.08M12 6.38a3.38 3.38 0 11-6.75 0 3.38 3.38 0 016.75 0zm8.25 2.25a2.63 2.63 0 11-5.25 0 2.63 2.63 0 015.25 0z" />
+    </svg>
+  ),
+  activity: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
   security: (
@@ -161,6 +197,9 @@ export type NavItem = {
 const NAV_MAIN: NavItem[] = [
   { to: "/admin/dashboard", label: "لوحة التحكم", icon: Icons.dashboard, requirePermissions: ["dashboard:read"] },
   { to: "/admin/orders", label: "الطلبات", icon: Icons.orders, requirePermissions: ["orders:read"] },
+  { to: "/admin/tickets", label: "التذاكر والدخول", icon: Icons.ticket, requirePermissions: ["orders:read"] },
+  { to: "/admin/requests", label: "الطلبات الخاصة", icon: Icons.bell, requirePermissions: ["orders:read"] },
+  { to: "/admin/customers", label: "الزبائن", icon: Icons.profile, requirePermissions: ["customers:read"] },
   { to: "/admin/outbox", label: "الرسائل", icon: Icons.outbox, requirePermissions: ["outbox:read"] },
 ];
 
@@ -169,11 +208,13 @@ const NAV_CATALOG: NavItem[] = [
   { to: "/admin/catalog/products", label: "المنتجات", icon: Icons.products, requirePermissions: ["catalog:read"] },
   { to: "/admin/catalog/products/new", label: "+ منتج جديد", icon: Icons.products, requirePermissions: ["catalog:write"] },
   { to: "/admin/catalog/sizes", label: "المقاسات", icon: Icons.sizes, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/types", label: "أنواع المنتجات", icon: Icons.categories, requirePermissions: ["catalog:read"] },
 ];
 
 const NAV_INVENTORY: NavItem[] = [
   { to: "/admin/inventory/stock", label: "المخزون والباركود", icon: Icons.stock, requirePermissions: ["inventory:read"] },
   { to: "/admin/inventory/low-stock", label: "تنبيهات المخزون", icon: Icons.inventory, requirePermissions: ["inventory:read"] },
+  { to: "/admin/inventory/back-in-stock", label: "بانتظار التوفّر", icon: Icons.bell, requirePermissions: ["inventory:read"] },
   { to: "/admin/inventory/adjustments", label: "سجل المخزون", icon: Icons.inventory, requirePermissions: ["inventory:write"] },
 ];
 
@@ -183,13 +224,25 @@ const NAV_DISCOUNTS: NavItem[] = [
 ];
 
 const NAV_SITE: NavItem[] = [
+  { to: "/admin/features", label: "الميزات", icon: Icons.toggles, requirePermissions: ["settings:read"] },
+  { to: "/admin/razan", label: "رزان (دليلة المتجر)", icon: Icons.chatbot, requirePermissions: ["settings:read"] },
+  { to: "/admin/quiz", label: "سؤال وجواب 🎁", icon: Icons.coupon, requirePermissions: ["settings:read"] },
+  { to: "/admin/ai", label: "الذكاء الاصطناعي ✨", icon: Icons.chatbot, requirePermissions: ["settings:read"] },
   { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings, requirePermissions: ["settings:read"] },
-  { to: "/admin/media", label: "الوسائط", icon: Icons.media, requirePermissions: ["settings:read"] },
+  { to: "/admin/media", label: "الوسائط", icon: Icons.media, requirePermissions: ["media:read"] },
   { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
   { to: "/admin/nav", label: "القوائم", icon: Icons.nav, requirePermissions: ["nav:write"] },
   { to: "/admin/pages", label: "الصفحات", icon: Icons.pages, requirePermissions: ["pages:read"] },
   { to: "/admin/ugc/reviews", label: "التقييمات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
   { to: "/admin/ugc/comments", label: "التعليقات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
+];
+
+const NAV_TEAM: NavItem[] = [
+  { to: "/admin/team", label: "الفريق والصلاحيات", icon: Icons.team, requirePermissions: ["staff:read"] },
+  { to: "/admin/team/activity", label: "سجل النشاط", icon: Icons.activity, requirePermissions: ["activity:read"] },
+  { to: "/admin/system/security", label: "حماية السيرفر", icon: Icons.security, requirePermissions: ["system:read"] },
+  { to: "/admin/system/traffic", label: "حماية الضغط والصيانة", icon: Icons.activity, requirePermissions: ["system:read"] },
+  { to: "/admin/system/backups", label: "النسخ الاحتياطي", icon: Icons.backup, requirePermissions: ["system:read"] },
 ];
 
 const NAV_ACCOUNT: NavItem[] = [
@@ -205,5 +258,16 @@ export const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> 
   { id: "inventory", title: "المخزون", items: NAV_INVENTORY },
   { id: "discounts", title: "التسويق", items: NAV_DISCOUNTS },
   { id: "site", title: "الموقع", items: NAV_SITE },
+  { id: "team", title: "الفريق والأمان", items: NAV_TEAM },
   { id: "account", title: "الحساب", items: NAV_ACCOUNT },
 ];
+
+/** The first page this admin may open (a team member may not have the dashboard). */
+export function firstAllowedPath(has: (p: AdminPermission) => boolean): string {
+  for (const g of NAV_GROUPS) {
+    for (const item of g.items) {
+      if ((item.requirePermissions ?? []).every((p) => has(p))) return item.to;
+    }
+  }
+  return "/admin/account/profile";
+}

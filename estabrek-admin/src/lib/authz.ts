@@ -27,7 +27,17 @@ export type AdminPermission =
   | "settings:write"
   | "security:read"
   | "security:write"
-  | "audit:read";
+  | "audit:read"
+  | "media:read"
+  | "media:write"
+  | "payments:write"
+  | "staff:read"
+  | "staff:write"
+  | "activity:read"
+  | "system:read"
+  | "system:write"
+  | "customers:read"
+  | "customers:write";
 
 const ALL_PERMISSIONS: readonly AdminPermission[] = [
   "dashboard:read",
@@ -57,10 +67,25 @@ const ALL_PERMISSIONS: readonly AdminPermission[] = [
   "security:read",
   "security:write",
   "audit:read",
+  "media:read",
+  "media:write",
+  "payments:write",
+  "staff:read",
+  "staff:write",
+  "activity:read",
+  "system:read",
+  "system:write",
+  "customers:read",
+  "customers:write",
 ];
+
+/** Every signed-in member can manage their own account. */
+const OWN_ACCOUNT: readonly AdminPermission[] = ["account:read", "account:write", "security:read", "security:write", "audit:read"];
 
 const ROLE_PERMISSIONS: Record<Role, readonly AdminPermission[]> = {
   SUPERADMIN: ALL_PERMISSIONS,
+  // Team members get theirs from the server (admin.permissions); this is the floor.
+  STAFF: OWN_ACCOUNT,
   ADMIN: [
     "dashboard:read",
     "account:read",
@@ -134,3 +159,22 @@ export function hasRolePermission(role: Role | null | undefined, permission: Adm
   if (!role) return false;
   return (ROLE_PERMISSIONS[role] ?? []).includes(permission);
 }
+
+const KNOWN = new Set<string>(ALL_PERMISSIONS);
+
+/**
+ * What the signed-in admin may do. The server sends the list (owner, or the
+ * team member's role); older servers only sent the role, so fall back to it.
+ */
+export function permissionsOf(
+  admin: { role?: Role | null; owner?: boolean; permissions?: string[] | null } | null | undefined,
+): AdminPermission[] {
+  if (!admin) return [];
+  if (admin.owner || admin.role === "SUPERADMIN") return [...ALL_PERMISSIONS];
+  if (Array.isArray(admin.permissions)) {
+    return Array.from(new Set(admin.permissions.filter((p): p is AdminPermission => KNOWN.has(p))));
+  }
+  return getPermissionsForRole(admin.role ?? null);
+}
+
+export const ALL_ADMIN_PERMISSIONS = ALL_PERMISSIONS;

@@ -61,6 +61,7 @@ export type OrderDetailsBody = {
   customerName?: string;
   phone?: string;
   whatsapp?: string | null;
+  email?: string | null;
   city?: string | null;
   address?: string | null;
   paymentStatus?: "PAID" | "UNPAID" | null;

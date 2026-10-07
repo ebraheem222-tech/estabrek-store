@@ -57,6 +57,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   STRIPE: "بطاقة",
   PAYPAL: "PayPal",
   MANUAL: "يدوي",
+  RAZAN_HELP: "بمساعدة رزان 🌸",
 };
 
 export function sourceLabel(s?: string | null) {

@@ -16,7 +16,6 @@ export const ENDPOINTS = {
 
       // MFA
       mfaFinalize: "/auth/mfa/finalize",
-      mfaTokensFromSession: "/auth/mfa/tokens-from-session",
 
       // 2FA management
       twofaSetup: "/auth/2fa/setup",
@@ -51,6 +50,39 @@ export const ENDPOINTS = {
         revision: (id: string) => `/admin/settings/revisions/${id}`,
         restoreRevision: (id: string) => `/admin/settings/revisions/${id}/restore`,
       },
+
+      // Team & permissions
+      staff: {
+        permissions: "/admin/staff/permissions",
+        roles: "/admin/staff/roles",
+        role: (id: string) => `/admin/staff/roles/${id}`,
+        members: "/admin/staff/members",
+        member: (id: string) => `/admin/staff/members/${id}`,
+        memberLink: (id: string) => `/admin/staff/members/${id}/link`,
+        memberRevokeSessions: (id: string) => `/admin/staff/members/${id}/sessions/revoke`,
+      },
+      activity: "/admin/activity",
+
+      // Shopper accounts
+      customers: "/admin/customers",
+      customer: (id: string) => `/admin/customers/${id}`,
+
+      // Server & sign-in rules
+      systemSecurity: "/admin/system/security",
+      systemBackups: {
+        base: "/admin/system/backups",
+        run: "/admin/system/backups/run",
+        download: "/admin/system/backups/download",
+        link: (id: string) => `/admin/system/backups/${id}/link`,
+      },
+      systemTraffic: {
+        base: "/admin/system/traffic",
+        blocks: "/admin/system/traffic/blocks",
+        block: (id: string) => `/admin/system/traffic/blocks/${id}`,
+        forgive: "/admin/system/traffic/forgive",
+      },
+      systemSecurityReset: "/admin/system/security/reset",
+      systemSecurityRestore: (id: string) => `/admin/system/security/revisions/${id}/restore`,
       nav: {
         base: "/admin/nav",
         menus: "/admin/nav/menus",
@@ -95,6 +127,15 @@ export const ENDPOINTS = {
         variants: "/admin/inventory/variants",
         bulk: "/admin/inventory/bulk",
       },
+      features: {
+        base: "/admin/features",
+        byKey: (key: string) => `/admin/features/${key}`,
+      },
+      stockAlerts: {
+        base: "/admin/stock-alerts",
+        sendNow: "/admin/stock-alerts/send-now",
+        byId: (id: string) => `/admin/stock-alerts/${id}`,
+      },
       catalog: {
         base: "/admin/catalog",
       
@@ -112,6 +153,13 @@ export const ENDPOINTS = {
           import: "/admin/catalog/products/import",
         },
       
+        productFiles: (productId: string) => `/admin/catalog/products/${productId}/files`,
+
+        productTypes: {
+          base: "/admin/catalog/product-types",
+          byId: (id: string) => `/admin/catalog/product-types/${id}`,
+        },
+
         sizes: {
           base: "/admin/catalog/sizes",
           byId: (id: string) => `/admin/catalog/sizes/${id}`,
@@ -144,6 +192,15 @@ export const ENDPOINTS = {
         invoice: (id: string) => `/admin/orders/${id}/invoice`,
         status: (id: string) => `/admin/orders/${id}/status`,
         message: (id: string) => `/admin/orders/${id}/message`,
+        delivery: (id: string) => `/admin/orders/${id}/delivery`,
+      },
+
+      tickets: {
+        base: "/admin/tickets",
+        events: "/admin/tickets/events",
+        byCode: (code: string) => `/admin/tickets/code/${encodeURIComponent(code)}`,
+        checkIn: (id: string) => `/admin/tickets/${id}/check-in`,
+        undo: (id: string) => `/admin/tickets/${id}/undo`,
       },
   
       outbox: {
