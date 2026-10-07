@@ -12,6 +12,8 @@ import { deliveryCities, deliveryFor, hasDeliveryPrices, lowestFee, normalizeDel
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { useOptionalAccount } from "@/store/account";
+import { rememberRemoved } from "@/lib/razanHistory";
 
 type Line = {
   variantId: string;
@@ -28,6 +30,9 @@ type Line = {
   lineTotal?: string | number;
   /** How many can still be ordered (updated backend); absent = no limit known. */
   available?: number;
+  /** Shipped (default), downloaded, or a booking with a ticket. */
+  fulfillment?: "SHIPPING" | "DIGITAL" | "BOOKING";
+  eventStartsAt?: string | null;
 };
 type Quote = {
   subtotal?: string | number;
@@ -40,6 +45,15 @@ type Quote = {
 
 function apiBase() {
   return process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || process.env.API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:4000/v1";
+}
+
+/** A booking's date in the bag (Israel time). */
+function eventDate(iso: string, ar: boolean) {
+  try {
+    return new Intl.DateTimeFormat(ar ? "ar" : "en", { timeZone: "Asia/Jerusalem", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+  } catch {
+    return "";
+  }
 }
 
 function money(value: string | number | null | undefined, currency?: string | null) {
@@ -79,11 +93,40 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const [coupon, setCoupon] = useState("");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", city: "", address: "", note: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", city: "", address: "", note: "" });
+  // Signed in: her details (and default address) fill the form, and the order goes into her account.
+  const account = useOptionalAccount();
+  const signedIn = account?.status === "signedIn";
+  useEffect(() => {
+    if (!account || account.status !== "signedIn" || !account.user) return;
+    const u = account.user;
+    let cancelled = false;
+    account
+      .api<{ addresses: Array<{ fullName: string; phone: string; city: string; address: string; isDefault: boolean }> }>("/customer/me/addresses")
+      .then(({ addresses }) => {
+        if (cancelled) return;
+        const a = addresses.find((x) => x.isDefault) ?? addresses[0];
+        setForm((f) => ({
+          ...f,
+          name: f.name || a?.fullName || u.name || "",
+          phone: f.phone || a?.phone || u.phone || "",
+          city: f.city || a?.city || "",
+          address: f.address || a?.address || "",
+          email: f.email || u.email || "",
+        }));
+      })
+      .catch(() => {
+        setForm((f) => ({ ...f, name: f.name || u.name || "", phone: f.phone || u.phone || "" }));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.status, account?.user?.id]);
   const [otherCity, setOtherCity] = useState(false);
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ orderId?: string; via: "whatsapp" | "direct" | "email" } | null>(null);
+  const [done, setDone] = useState<{ orderId?: string; via: "whatsapp" | "direct" | "email"; handover?: string } | null>(null);
   const list = useRef<HTMLUListElement>(null);
 
   const wantsStripe = (checkoutMode === "STRIPE" || checkoutMode === "PAYMENTS") && !!stripeEnabled;
@@ -113,8 +156,16 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const ship = deliveryFor(form.city, subtotalNum, delivery);
   const freeLeft = delivery.freeOver != null && quote ? Math.max(0, delivery.freeOver - subtotalNum) : null;
   const allFree = delivery.freeOver != null && quote != null && subtotalNum >= delivery.freeOver;
-  const feeKnown = allFree || (form.city.trim() !== "" && ship.fee != null);
-  const feeNow = allFree ? 0 : ship.fee ?? 0;
+  // Digital files and bookings: nothing to ship (no address, no delivery fee) and an email for the link.
+  const qLines = quote?.lines ?? [];
+  const noShipping = qLines.length > 0 && qLines.every((l) => l.fulfillment === "DIGITAL" || l.fulfillment === "BOOKING");
+  const hasDigital = qLines.some((l) => l.fulfillment === "DIGITAL");
+  const hasBooking = qLines.some((l) => l.fulfillment === "BOOKING");
+  const handover = ar
+    ? hasDigital && hasBooking ? "الملفات والتذاكر" : hasDigital ? "الملفات" : "التذاكر"
+    : hasDigital && hasBooking ? "files and tickets" : hasDigital ? "files" : "tickets";
+  const feeKnown = noShipping || allFree || (form.city.trim() !== "" && ship.fee != null);
+  const feeNow = noShipping || allFree ? 0 : ship.fee ?? 0;
   const grandTotal = quote ? Number(quote.total ?? 0) + (feeKnown ? feeNow : 0) : null;
 
   useEffect(() => { clearBodyScrollLocks(); }, []);
@@ -130,6 +181,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
         body: JSON.stringify({ items: payload, couponCode: code || undefined }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(eventOverMessage(data));
       if (!res.ok) throw new Error(data?.message || (ar ? "تعذّر حساب الحقيبة" : "Could not price your bag"));
       setQuote(data);
       return data as Quote;
@@ -143,6 +195,9 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   useEffect(() => { void refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [JSON.stringify(payload)]);
 
   const remove = (variantId: string) => {
+    // Razan's history: "شلتيها من الحقيبة" (only while the owner has it on).
+    const l = lineBy.get(variantId);
+    if (l) rememberRemoved({ id: variantId, title: l.productTitle ?? "", slug: l.productSlug, image: l.imageUrl, color: l.colorName, size: l.sizeName });
     const row = list.current?.querySelector<HTMLElement>(`[data-variant="${CSS.escape(variantId)}"]`);
     if (!row) return removeItem(variantId);
     gsap.to(row, { opacity: 0, x: ar ? 40 : -40, height: 0, marginBottom: 0, paddingBlock: 0, duration: 0.35, ease: "power2.in", onComplete: () => removeItem(variantId) });
@@ -157,6 +212,18 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     if (!data?.coupon?.code) setCoupon("");
   };
 
+  /** The store refused the coupon at order time (e.g. a prize coupon for another phone). */
+  const couponMessage = (code: string | undefined) =>
+    code === "COUPON_PHONE" ? (ar ? "هالكوبون لرقم تاني — اكتبي نفس الرقم اللي ربحتي فيه." : "This coupon belongs to another phone number.")
+    : code === "COUPON_USAGE_LIMIT_REACHED" ? (ar ? "هالكوبون انستعمل قبل." : "This coupon was already used.")
+    : code === "COUPON_EXPIRED" ? (ar ? "هالكوبون خلصت مدته." : "This coupon has expired.")
+    : code === "COUPON_NOT_FOUND" || code === "COUPON_INACTIVE" ? (ar ? "الكوبون مش صالح." : "This coupon isn't valid.")
+    : null;
+  const eventOverMessage = (data: any) => {
+    const t = data?.details?.productTitle ?? "";
+    return ar ? `موعد «${t}» مرق، فما عاد فينا نحجزه. شيليه من الحقيبة.` : `"${t}" has already taken place; please remove it from your bag.`;
+  };
+  const emailOk = !form.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
   const nameOk = form.name.trim().length >= 2;
   const phoneOk = form.phone.replace(/\D/g, "").length >= 7;
   const canOrder = !submitting && !loading && items.length > 0 && Boolean(quote?.lines?.length) && shortLines.length === 0;
@@ -186,6 +253,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       "",
       `${ar ? "الاسم" : "Name"}: ${form.name.trim()}`,
       `${ar ? "الهاتف" : "Phone"}: ${form.phone.trim()}`,
+      ...(form.email.trim() ? [`${ar ? "الإيميل" : "Email"}: ${form.email.trim()}`] : []),
       ...(form.city.trim() ? [`${ar ? "المدينة" : "City"}: ${form.city.trim()}`] : []),
       ...(form.address.trim() ? [`${ar ? "العنوان" : "Address"}: ${form.address.trim()}`] : []),
       ...(form.note.trim() ? [`${ar ? "ملاحظات" : "Notes"}: ${form.note.trim()}`] : []),
@@ -195,6 +263,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   async function placeOrder(via: "whatsapp" | "direct" | "email") {
     setTouched(true);
     if (!nameOk || !phoneOk) { setErr(ar ? "أكملي الاسم ورقم الهاتف حتى نتواصل معكِ." : "Add your name and phone so we can reach you."); return; }
+    if (!emailOk) { setErr(ar ? "الإيميل مش مكتوب صح." : "That email doesn't look right."); return; }
     setErr(null);
     setSubmitting(true);
     const tracked = bagItems(quote?.lines ?? []);
@@ -205,14 +274,15 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     try {
       const res = await fetch(`${apiBase()}/catalog/order-requests`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...((await account?.authHeaders()) ?? {}) },
         body: JSON.stringify({
           items: payload,
           customerName: form.name.trim(),
           phone: form.phone.trim(),
           ...(via === "whatsapp" ? { whatsapp: form.phone.trim() } : {}),
-          city: form.city.trim() || undefined,
-          address: form.address.trim() || undefined,
+          ...(form.email.trim() ? { email: form.email.trim() } : {}),
+          city: noShipping ? undefined : form.city.trim() || undefined,
+          address: noShipping ? undefined : form.address.trim() || undefined,
           note: form.note.trim() || undefined,
           couponCode: coupon.trim() || undefined,
           source: via === "whatsapp" ? "WHATSAPP_CART" : via === "email" ? "EMAIL_CART" : "DIRECT_CART",
@@ -220,6 +290,8 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
+      if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(eventOverMessage(data));
+      if (couponMessage(data?.error)) throw new Error(couponMessage(data?.error)!);
       if (!res.ok) throw new Error(ar ? `تعذّر إرسال الطلب (${res.status})` : `Could not send the order (${res.status})`);
       const orderId = data?.id ? String(data.id) : undefined;
       trackLead(tracked, trackedValue, currency ?? undefined, orderId);
@@ -231,7 +303,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       } else if (via === "email" && ordersEmail) {
         window.location.href = `mailto:${ordersEmail}?subject=${encodeURIComponent(orderId ? `طلب جديد ${orderId}` : "طلب جديد")}&body=${encodeURIComponent(text)}`;
       }
-      setDone({ orderId, via });
+      setDone({ orderId, via, handover: hasDigital || hasBooking ? handover : undefined });
       clear();
       window.scrollTo({ top: 0 });
     } catch (e: any) {
@@ -245,16 +317,19 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   async function pay(provider: "stripe" | "paypal") {
     setTouched(true);
     if (!nameOk || !phoneOk) { setErr(ar ? "أكملي الاسم ورقم الهاتف." : "Add your name and phone."); return; }
+    if (!emailOk) { setErr(ar ? "الإيميل مش مكتوب صح." : "That email doesn't look right."); return; }
     setSubmitting(true);
     setErr(null);
     try {
       const res = await fetch(`${apiBase()}/storefront/checkout/session`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, items: payload, customerName: form.name.trim(), phone: form.phone.trim(), address: [form.city.trim(), form.address.trim()].filter(Boolean).join("، ") || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined }),
+        headers: { "Content-Type": "application/json", ...((await account?.authHeaders()) ?? {}) },
+        body: JSON.stringify({ provider, items: payload, customerName: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, address: noShipping ? undefined : [form.city.trim(), form.address.trim()].filter(Boolean).join("، ") || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
+      if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(eventOverMessage(data));
+      if (couponMessage(data?.error)) throw new Error(couponMessage(data?.error)!);
       if (!res.ok || !data?.redirectUrl) throw new Error(data?.message || (ar ? "تعذّر بدء الدفع" : "Could not start payment"));
       // The sale is counted on the success page, once the payment is confirmed.
       const tracked = bagItems(quote?.lines ?? []);
@@ -280,6 +355,11 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             ? ar ? "فتحنا لكِ محادثة واتساب فيها تفاصيل الطلب. أرسلي الرسالة لنؤكد معكِ التوصيل." : "We opened a WhatsApp chat with your order details. Send it and we'll confirm delivery with you."
             : ar ? "سنتواصل معكِ قريباً على رقمكِ لتأكيد الطلب والتوصيل." : "We'll contact you soon to confirm your order and delivery."}
         </p>
+        {done.handover ? (
+          <p className="rose-cart-handover" data-testid="cart-handover">
+            {ar ? `لما نأكد الطلب، بيوصلكِ رابط ${done.handover} على الإيميل أو الواتساب.` : `Once we confirm the order, the link to your ${done.handover} reaches you by email or WhatsApp.`}
+          </p>
+        ) : null}
         <Link href="/shop" className="atelier-button button-dark">{ar ? "متابعة التسوق" : "Keep shopping"}<Icon name="arrow" /></Link>
       </section>
     );
@@ -327,8 +407,10 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                   <div className="rose-cart-info">
                     <Link href={href} className="rose-cart-title">{l?.productTitle ?? (loading ? "…" : ar ? "قطعة" : "Item")}</Link>
                     <div className="rose-cart-chips">
-                      {color && <span>{ar ? "اللون" : "Colour"}: {color}</span>}
-                      {l?.sizeName && <span>{ar ? "المقاس" : "Size"}: {l.sizeName}</span>}
+                      {color && color.toLowerCase() !== "default" && <span>{ar ? "اللون" : "Colour"}: {color}</span>}
+                      {l?.sizeName && l.sizeName.toLowerCase() !== "default" && <span>{ar ? "المقاس" : "Size"}: {l.sizeName}</span>}
+                      {l?.fulfillment === "DIGITAL" && <span data-testid="cart-digital">{ar ? "⬇️ تنزيل رقمي" : "⬇️ Digital download"}</span>}
+                      {l?.fulfillment === "BOOKING" && <span data-testid="cart-booking">🎟️ {l.eventStartsAt ? eventDate(l.eventStartsAt, ar) : ar ? "حجز" : "Booking"}</span>}
                     </div>
                     <span className="rose-cart-unit">{money(l?.unitPrice, currency)}</span>
                     {typeof l?.available === "number" && it.quantity > l.available ? (
@@ -366,7 +448,8 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             <div data-testid="cart-delivery">
               <dt>{ar ? "التوصيل" : "Delivery"}{priced && ship.zone && !allFree ? <small> ({ship.zone.name})</small> : null}</dt>
               <dd className={feeKnown && feeNow > 0 ? undefined : "muted"}>
-                {!priced ? (ar ? "نؤكده معكِ" : "Confirmed with you")
+                {noShipping ? (ar ? "ما في توصيل" : "Nothing to ship")
+                  : !priced ? (ar ? "نؤكده معكِ" : "Confirmed with you")
                   : allFree || (feeKnown && feeNow === 0) ? <b className="rose-cart-free">{ar ? "مجاني" : "Free"}</b>
                   : feeKnown ? money(feeNow, currency)
                   : form.city.trim() ? (ar ? "نؤكده معكِ" : "Confirmed with you")
@@ -376,7 +459,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             </div>
             <div className="total"><dt>{ar ? "الإجمالي" : "Total"}</dt><dd data-testid="cart-total">{loading && !quote ? "…" : money(grandTotal ?? quote?.total, currency)}</dd></div>
           </dl>
-          {priced && freeLeft != null && freeLeft > 0 && (
+          {priced && !noShipping && freeLeft != null && freeLeft > 0 && (
             <p className="rose-cart-free-note" data-testid="cart-free-note">
               {ar ? <>أضيفي بـ<b>{money(freeLeft, currency)}</b> فقط ويصير التوصيل مجاناً</> : <>Add <b>{money(freeLeft, currency)}</b> more for free delivery</>}
               <span className="rose-cart-free-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, (subtotalNum / (delivery.freeOver || 1)) * 100)}%` }} /></span>
@@ -394,7 +477,12 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
           {couponMsg && <p className="rose-cart-note" role="status">{couponMsg}</p>}
 
           <div className="rose-cart-form">
-            <h3>{ar ? "بياناتكِ للتوصيل" : "Your delivery details"}</h3>
+            <h3>{noShipping ? (ar ? "بياناتكِ" : "Your details") : ar ? "بياناتكِ للتوصيل" : "Your delivery details"}</h3>
+            {signedIn ? (
+              <p className="rose-cart-account" data-testid="cart-signed-in">{ar ? `الطلب رح ينحفظ بحسابكِ (${account?.user?.email}).` : `This order will be saved to your account (${account?.user?.email}).`}</p>
+            ) : account?.status === "guest" ? (
+              <p className="rose-cart-account"><Link href="/account?next=/cart">{ar ? "عندكِ حساب؟ سجّلي دخول لتتابعي طلباتكِ" : "Have an account? Sign in to follow your orders"}</Link></p>
+            ) : null}
             <label className={touched && !nameOk ? "invalid" : undefined}>
               <span>{ar ? "الاسم" : "Name"} *</span>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="name" required />
@@ -403,7 +491,14 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
               <span>{ar ? "رقم الهاتف" : "Phone"} *</span>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} type="tel" autoComplete="tel" dir="ltr" required />
             </label>
-            {priced && cityGroups.some((g) => g.cities.length) ? (
+            {hasDigital || hasBooking ? (
+              <label className={touched && !emailOk ? "invalid" : undefined}>
+                <span>{ar ? "الإيميل" : "Email"}</span>
+                <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" autoComplete="email" dir="ltr" data-testid="cart-email" />
+                <small className="rose-cart-hint">{ar ? `عليه بيوصلكِ رابط ${handover} (اختياري — بنبعته كمان بالواتساب).` : `Where we send your ${handover} link (optional — we also send it on WhatsApp).`}</small>
+              </label>
+            ) : null}
+            {noShipping ? null : priced && cityGroups.some((g) => g.cities.length) ? (
               <label>
                 <span>{ar ? "المدينة" : "City"}</span>
                 {!otherCity ? (
@@ -434,13 +529,13 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                 <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" />
               </label>
             ) : null}
-            <label>
+            {noShipping ? null : <label>
               <span>{ar ? "العنوان" : "Address"}</span>
               <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} autoComplete="street-address" placeholder={priced ? (ar ? "الحي، الشارع، رقم البيت" : "Area, street, house") : ar ? "المدينة، الحي، الشارع" : "City, area, street"} />
-            </label>
+            </label>}
             <label>
               <span>{ar ? "ملاحظات" : "Notes"}</span>
-              <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={ar ? "وقت مناسب للتوصيل، أو أي تفصيلة" : "A good delivery time, or any detail"} />
+              <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={noShipping ? (ar ? "أي تفصيلة بتحبي نعرفها" : "Anything we should know") : ar ? "وقت مناسب للتوصيل، أو أي تفصيلة" : "A good delivery time, or any detail"} />
             </label>
           </div>
 
@@ -471,11 +566,13 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             )}
           </div>
 
-          <ul className="rose-pdp-trust rose-cart-trust">
-            <li><Icon name="truck" />{ar ? "توصيل لكل البلاد" : "Delivery nationwide"}</li>
-            <li><Icon name="cash" />{ar ? "الدفع عند الاستلام" : "Cash on delivery"}</li>
-            <li><Icon name="swap" />{ar ? "استبدال سهل" : "Easy exchange"}</li>
-          </ul>
+          {noShipping ? null : (
+            <ul className="rose-pdp-trust rose-cart-trust">
+              <li><Icon name="truck" />{ar ? "توصيل لكل البلاد" : "Delivery nationwide"}</li>
+              <li><Icon name="cash" />{ar ? "الدفع عند الاستلام" : "Cash on delivery"}</li>
+              <li><Icon name="swap" />{ar ? "استبدال سهل" : "Easy exchange"}</li>
+            </ul>
+          )}
         </aside>
       </div>
     </section>

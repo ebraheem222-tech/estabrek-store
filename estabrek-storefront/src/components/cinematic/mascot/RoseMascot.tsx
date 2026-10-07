@@ -10,6 +10,7 @@
  * is on screen; with reduced motion she simply stands still.
  */
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useSyncExternalStore, type MutableRefObject } from "react";
+import { razanMaySpeak, razanNow, type SpeakKind } from "@/lib/razanRuntime";
 import { ROSE_EVENT, roseLine, type RoseExtras, type RoseMoment, type RoseOutfit } from "@/lib/roseEvents";
 
 /* Which scene Roses (hero, seasons, collections) are on screen, so the floating companion can step aside. */
@@ -44,7 +45,8 @@ export type MascotHandle = {
   think: (on: boolean) => void;
   /** Mouth moves for a while, as if she is speaking. */
   talk: (ms?: number) => void;
-  say: (text: string, ms?: number) => void;
+  /** A speech bubble; it shows only when the owner's Razan settings allow it now (see razanMaySpeak). */
+  say: (text: string, ms?: number, kind?: SpeakKind) => void;
   /** Look towards a point on screen for a while (e.g. something flying past); the pointer takes over again afterwards. */
   lookAt?: (clientX: number, clientY: number, holdMs?: number) => void;
 };
@@ -173,9 +175,9 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       }
     };
     api.current = {
-      say: (text, ms = 2400) => {
+      say: (text, ms = 2400, kind = "react") => {
         const b = bubble.current;
-        if (!b) return;
+        if (!b || !razanMaySpeak(kind)) return;
         b.textContent = text;
         b.dataset.show = "true";
         state.current.talkUntil = now() + Math.min(1.6, 0.4 + text.length * 0.05);
@@ -251,7 +253,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       let at = act ? now - s.actionAt : 0;
       if (act && at > ACTION_LENGTH[act]) { s.action = null; act = null; at = 0; }
       // Idle habits now and then.
-      if (!reduce && idleHabits && !act && !s.thinking && now > s.nextHabit && visible) {
+      if (!reduce && idleHabits && razanNow().idleHabits && !act && !s.thinking && now > s.nextHabit && visible) {
         const habits: Action[] = ["look", "adjust", "hop", "look"];
         s.action = habits[Math.floor(Math.random() * habits.length)];
         s.actionAt = now;
@@ -423,7 +425,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     // Shop moments: whichever Rose is on screen (and not stepping aside) answers.
     let lastSaid = 0;
     const answer = (kind: RoseMoment | "color-pick") => {
-      if (!reactive || !visible || s.muted) return;
+      if (!reactive || !visible || s.muted || !razanNow().reactions || !razanNow().enabled) return;
       const t = performance.now() / 1000;
       if (kind === "product-view" && t - lastSaid < 4) return; // never talk over a fresh reaction
       lastSaid = t;
@@ -444,7 +446,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     if (greeting) {
       greetTimer = window.setTimeout(() => {
         api.current.wave();
-        api.current.say(greeting, 2800);
+        api.current.say(greeting, 2800, "greet");
       }, reduce ? 0 : walking ? 1800 : 1100);
     }
     return () => {

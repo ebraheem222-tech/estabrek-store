@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useCart } from "@/store/cart";
+import { useOptionalAccount } from "@/store/account";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { LanguageProvider, useLanguage } from "./Language";
 import { Icon } from "./Icons";
@@ -52,6 +53,8 @@ function Header() {
   const { language, setLanguage } = useLanguage();
   const ar = language === "ar";
   const { count } = useCart();
+  // Shopper accounts are an admin switch (Settings → حسابات الزبائن); off = visitors only.
+  const accountsOn = useOptionalAccount() !== null;
   const store = useContext(StoreContext);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -166,6 +169,15 @@ function Header() {
           >
             <Icon name="heart" />
           </Link>
+          {accountsOn ? (
+            <Link
+              className="atelier-icon-button account-link"
+              href="/account"
+              aria-label={ar ? "حسابي" : "My account"}
+            >
+              <Icon name="user" />
+            </Link>
+          ) : null}
           <Link
             className="atelier-icon-button cart-link"
             href="/cart"
@@ -302,6 +314,7 @@ function Footer() {
   const store = useContext(StoreContext);
   const { language } = useLanguage();
   const ar = language === "ar";
+  const accountsOn = useOptionalAccount() !== null;
   if (store.footerEnabled === false) return null;
   return (
     <footer className="atelier-footer" dir={ar ? "rtl" : "ltr"}>
@@ -337,6 +350,7 @@ function Footer() {
               {ar ? "تسوّقي كل القطع" : "Shop the collection"}
             </Link>
             <Link href="/wishlist">{ar ? "المفضلة" : "Your wishlist"}</Link>
+            {accountsOn ? <Link href="/account">{ar ? "حسابي وطلباتي" : "My account & orders"}</Link> : null}
             <Link href="/cart">
               {ar ? "حقيبة التسوق" : "Your shopping bag"}
             </Link>

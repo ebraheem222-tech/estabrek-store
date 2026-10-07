@@ -7,6 +7,9 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { rememberSearch } from "@/lib/razanHistory";
+import { useSiteFeatures } from "@/store/siteFeatures";
+import { RazanSmartSearch } from "./RazanSmartSearch";
 
 type Suggestion = { label: string; href: string };
 
@@ -15,15 +18,20 @@ type Suggestion = { label: string; href: string };
  * number of results for the current words, and quick links to the main
  * collections when she isn't sure what to type.
  */
-export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: string; total: number; suggestions?: Suggestion[] }) {
+export function RoseSearchIntro({ query, total, suggestions = [], filtered = false }: { query?: string; total: number; suggestions?: Suggestion[]; filtered?: boolean }) {
   const ar = useLanguage().language === "ar";
   const router = useRouter();
   const { voiceSearchEnabled } = useStorefrontSettings();
+  const { requests, ai } = useSiteFeatures();
+  // Her own words (3+ words, no filters picked yet): Razan can turn them into filters.
+  const sentence = Boolean(query && !filtered && ai.smartSearch && query.trim().split(/\s+/).length >= 3);
   const [value, setValue] = useState(query ?? "");
   const field = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLFormElement>(null);
 
   useEffect(() => setValue(query ?? ""), [query]);
+  // Razan's history (admin → رزان): what she looked for, to find it again later.
+  useEffect(() => { if (query?.trim()) rememberSearch(query); }, [query]);
   useEffect(() => {
     if (!query) field.current?.focus({ preventScroll: true });
   }, [query]);
@@ -64,6 +72,13 @@ export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: st
         {voiceSearchEnabled && <VoiceSearchButton className="rose-search-voice" />}
         <button type="submit" className="atelier-button button-dark">{ar ? "ابحثي" : "Search"}</button>
       </form>
+      {sentence ? <RazanSmartSearch query={query!.trim()} ar={ar} /> : null}
+      {query && requests.enabled && requests.kinds.newPiece ? (
+        <p className={`rose-search-request${total === 0 ? " empty" : ""}`}>
+          {total === 0 ? (ar ? "ما لقيناها عنا هلأ — بس بنقدر ندوّرلكِ عليها." : "We don't have it right now — but we can look for it.") : ar ? "ما لقيتي اللي بدك؟" : "Not what you wanted?"}{" "}
+          <Link href={`/request?q=${encodeURIComponent(query)}`}>{ar ? "اطلبيها منّا ←" : "Ask us for it →"}</Link>
+        </p>
+      ) : null}
       {suggestions.length > 0 && (
         <nav className="rose-search-suggest" aria-label={ar ? "اقتراحات" : "Suggestions"}>
           <span>{ar ? "جرّبي:" : "Try:"}</span>

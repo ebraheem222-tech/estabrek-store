@@ -17,6 +17,7 @@ import { getProductBadge } from "@/lib/productBadges";
 import { imagesFor, itemHex, sizeKeyOf, startColorIndex } from "@/lib/roseProductMedia";
 import { cldUrl } from "@/lib/cloudinary";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { notePick, setRazanProduct, setRazanSelection } from "@/lib/razanProduct";
 import { startThemeCycle, stopThemeCycle } from "@/lib/themePreview";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
@@ -30,6 +31,10 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { RoseImageViewer } from "./RoseImageViewer";
 import { roseOutfit, roseReact } from "@/lib/roseEvents";
+import { useSiteFeatures } from "@/store/siteFeatures";
+import { RoseStockAlert } from "./RoseStockAlert";
+import { RoseRequestForm } from "./RoseRequestForm";
+import { RoseReviewSummary, RoseShopTheLook, RoseSizeAdvice } from "./RoseProductAi";
 
 type Crumb = { label: string; href: string };
 
@@ -57,9 +62,24 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const zoom = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
   const wishlist = useWishlist();
-  const { addToRecentlyViewed } = useRecentlyViewed();
+  const { addToRecentlyViewed, updateRecentlyViewed } = useRecentlyViewed();
+  // Reopened from Razan's history: ?c=<colour>&s=<size> brings back what she had picked.
+  const wanted = useRef<{ color?: string; size?: string } | null>(null);
   const { fireConfetti } = useAnimationEffects();
   const toast = useToastShortcuts();
+  // Admin → بانتظار التوفّر: sold-out sizes can be picked to leave an email.
+  const { stockAlerts, requests, ai } = useSiteFeatures();
+  // «اطلبي قطعتكِ»: a size or colour this piece doesn't come in (admin → الطلبات الخاصة).
+  const [asking, setAsking] = useState(false);
+  // The kind of product names its two choices (e.g. "الدرجة" for a ticket) and can hide them.
+  const kind = product.type ?? null;
+  const colorLabel = ar ? kind?.colorLabel || "اللون" : "Colour";
+  const sizeLabel = ar ? kind?.sizeLabel || "المقاس" : "Size";
+  const specs = product.specs ?? [];
+  const fulfillment = kind?.fulfillment ?? "SHIPPING";
+  // A booking whose time has passed can't be ordered any more.
+  const eventEnd = product.eventEndsAt ?? product.eventStartsAt ?? null;
+  const eventOver = fulfillment === "BOOKING" && Boolean(eventEnd) && new Date(eventEnd!).getTime() < Date.now();
 
   const variant = variants.find((v) => sizeKeyOf(v) === sizeKey) ?? firstInStock ?? null;
   const price = variant ? getVariantEffectivePrice(variant) : null;
@@ -77,6 +97,13 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
+  // Razan's guided ordering starts from the piece on screen.
+  useEffect(() => {
+    setRazanProduct(product);
+    return () => setRazanProduct(null);
+  }, [product]);
+  useEffect(() => { setRazanSelection(colorKey, sizeKey); }, [colorKey, sizeKey]);
+
   // Rose says hello to each new piece the shopper opens.
   useEffect(() => {
     const t = window.setTimeout(() => roseReact("product-view"), 1200);
@@ -90,8 +117,11 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   // otherwise its first colour in stock.
   useEffect(() => {
     if (!items.length) return;
+    const sp = new URLSearchParams(window.location.search);
+    wanted.current = sp.get("c") || sp.get("s") ? { color: sp.get("c") ?? undefined, size: sp.get("s") ?? undefined } : null;
     const current = document.documentElement.dataset.storefrontColor;
-    const i = startColorIndex(items, current);
+    const asked = wanted.current?.color ? items.findIndex((it) => it.colorName === wanted.current!.color) : -1;
+    const i = asked >= 0 ? asked : startColorIndex(items, current);
     setColorKey(catalogItemKey(items[i], i));
     const hex = itemHex(items[i]);
     if (hex && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true });
@@ -101,8 +131,17 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   // A new colour starts on its first photo and its first size in stock.
   useEffect(() => {
     setActive(0);
-    if (firstInStock) setSizeKey(sizeKeyOf(firstInStock));
-  }, [colorKey, firstInStock]);
+    const ask = wanted.current?.size;
+    const askedVariant = ask ? variants.find((v) => sizeKeyOf(v) === ask) : null;
+    if (askedVariant) { setSizeKey(ask!); wanted.current = null; }
+    else if (firstInStock) setSizeKey(sizeKeyOf(firstInStock));
+  }, [colorKey, firstInStock, variants]);
+
+  // Razan's history keeps how long she stayed (and, below, what she picked herself).
+  useEffect(() => {
+    const start = Date.now();
+    return () => updateRecentlyViewed(product.id, { addSeconds: (Date.now() - start) / 1000 });
+  }, [product.id, updateRecentlyViewed]);
 
   // Photos cross-fade in.
   useEffect(() => {
@@ -114,6 +153,8 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const pickColor = (key: string, it: CatalogItem) => {
     setColorKey(key);
     setStatus(null);
+    if (it.colorName && it.colorName.toLowerCase() !== "default") updateRecentlyViewed(product.id, { color: it.colorName, size: "" });
+    notePick();
     const hex = itemHex(it);
     if (hex) selectStorefrontColor(hex);
   };
@@ -222,13 +263,13 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </span>
           </div>
 
-          {items.length > 0 && (
+          {items.length > 0 && kind?.showColor !== false && (
             <div className="rose-pdp-option">
               <div className="rose-pdp-option-head">
-                <span>{ar ? "اللون" : "Colour"}</span>
+                <span>{colorLabel}</span>
                 <b>{item ? catalogItemLabel(item, itemIndex) : ""}</b>
               </div>
-              <div className="rose-pdp-swatches" role="radiogroup" aria-label={ar ? "اللون" : "Colour"}>
+              <div className="rose-pdp-swatches" role="radiogroup" aria-label={colorLabel}>
                 {items.map((it, i) => {
                   const key = catalogItemKey(it, i);
                   const hex = itemHex(it) ?? "#e8d8de";
@@ -252,24 +293,43 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </div>
           )}
 
-          {sizes.length > 0 && !(sizes.length === 1 && sizes[0] === "default") && (
+          {sizes.length > 0 && !(sizes.length === 1 && sizes[0] === "default") && kind?.showSize !== false && (
             <div className="rose-pdp-option">
               <div className="rose-pdp-option-head">
-                <span>{ar ? "المقاس" : "Size"}</span>
+                <span>{sizeLabel}</span>
                 <b>{sizeKey !== "default" ? sizeKey : ""}</b>
                 <SizeGuide />
               </div>
-              <div className="rose-pdp-sizes" role="radiogroup" aria-label={ar ? "المقاس" : "Size"}>
+              <div className="rose-pdp-sizes" role="radiogroup" aria-label={sizeLabel}>
                 {sizes.map((key) => {
                   const v = variants.find((x) => sizeKeyOf(x) === key);
                   const soldOut = !v || (v.stock != null && v.stock <= 0);
                   return (
-                    <button key={key} type="button" role="radio" aria-checked={key === sizeKey} disabled={soldOut} className={key === sizeKey ? "active" : undefined} onClick={() => { setSizeKey(key); setStatus(null); roseReact("size-pick"); }}>
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={key === sizeKey}
+                      disabled={soldOut && !(stockAlerts && v)}
+                      className={[key === sizeKey ? "active" : "", soldOut ? "sold-out" : ""].filter(Boolean).join(" ") || undefined}
+                      aria-label={soldOut && stockAlerts && v ? `${key === "default" ? (ar ? "مقاس واحد" : "One size") : key} — ${ar ? "نفد" : "sold out"}` : undefined}
+                      onClick={() => { setSizeKey(key); setStatus(null); roseReact("size-pick"); if (key !== "default") updateRecentlyViewed(product.id, { size: key }); notePick(); }}
+                    >
                       {key === "default" ? (ar ? "مقاس واحد" : "One size") : key}
                     </button>
                   );
                 })}
               </div>
+              {ai.sizeAdvice && sizes.length > 1 ? (
+                <RoseSizeAdvice
+                  productId={product.id}
+                  ar={ar}
+                  onPick={(s) => {
+                    const key = sizes.find((k) => k.toUpperCase() === s.toUpperCase());
+                    if (key) { setSizeKey(key); setStatus(null); notePick(); }
+                  }}
+                />
+              ) : null}
             </div>
           )}
 
@@ -282,26 +342,78 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             <button
               type="button"
               className="atelier-button button-dark rose-pdp-add"
-              disabled={!inStock}
+              disabled={!inStock || eventOver}
               onClick={add}
               onMouseEnter={(e) => startThemeCycle(e.currentTarget)}
               onFocus={(e) => { if (e.currentTarget.matches(":focus-visible")) startThemeCycle(e.currentTarget); }}
               onBlur={(e) => stopThemeCycle(e.currentTarget)}
               onMouseLeave={(e) => stopThemeCycle(e.currentTarget)}
             >
-              {inStock ? (ar ? "أضيفي للحقيبة" : "Add to bag") : (ar ? "غير متوفر" : "Unavailable")}
+              {eventOver ? (ar ? "انتهى الموعد" : "This has passed") : inStock ? (fulfillment === "BOOKING" ? (ar ? "احجزي" : "Book") : ar ? "أضيفي للحقيبة" : "Add to bag") : fulfillment === "BOOKING" ? (ar ? "المقاعد خلصت" : "Fully booked") : (ar ? "غير متوفر" : "Unavailable")}
               <Icon name="bag" />
             </button>
           </div>
           {status && <p className="rose-pdp-status" role="status">{status}</p>}
+          {stockAlerts && variant && !inStock ? (
+            <RoseStockAlert
+              variantId={variant.id}
+              label={[
+                item?.colorName,
+                sizeKeyOf(variant) !== "default" ? (ar ? `مقاس ${sizeKeyOf(variant)}` : `size ${sizeKeyOf(variant)}`) : "",
+              ].filter(Boolean).join(ar ? "، " : ", ") || (ar ? "هذا المقاس" : "this size")}
+            />
+          ) : null}
 
-          <ul className="rose-pdp-trust">
-            <li><Icon name="truck" />{ar ? "توصيل لكل البلاد" : "Delivery nationwide"}</li>
-            <li><Icon name="cash" />{ar ? "الدفع عند الاستلام" : "Cash on delivery"}</li>
-            <li><Icon name="swap" />{ar ? "استبدال سهل" : "Easy exchange"}</li>
-          </ul>
+          {requests.enabled && fulfillment === "SHIPPING" && (requests.kinds.size || requests.kinds.color) ? (
+            asking ? (
+              <RoseRequestForm
+                product={{ id: product.id, title: product.title }}
+                variantId={variant?.id ?? null}
+                source="PRODUCT"
+                initialKind={requests.kinds.size && kind?.showSize !== false ? "SIZE" : "COLOR"}
+                onClose={() => setAsking(false)}
+              />
+            ) : (
+              <button type="button" className="rose-request-open" onClick={() => setAsking(true)}>
+                {requests.kinds.size && requests.kinds.color ? (ar ? "مقاسكِ أو لونكِ مش موجود؟ اطلبيه منّا" : "Your size or colour missing? Ask us")
+                  : requests.kinds.size ? (ar ? "مقاسكِ مش موجود؟ اطلبيه منّا" : "Your size missing? Ask us")
+                  : ar ? "لونكِ مش موجود؟ اطلبيه منّا" : "Your colour missing? Ask us"}
+              </button>
+            )
+          ) : null}
+
+          {fulfillment === "BOOKING" ? (
+            <div className="rose-pdp-handover" data-testid="product-booking">
+              {product.eventStartsAt ? <p><b>🗓️ {ar ? "الموعد" : "When"}:</b> <span suppressHydrationWarning>{eventWhen(product.eventStartsAt, product.eventEndsAt, ar)}</span></p> : null}
+              {product.eventLocation ? <p><b>📍 {ar ? "المكان" : "Where"}:</b> {product.eventLocation}</p> : null}
+              <p className="muted">{ar ? "🎟️ بعد تأكيد الحجز بيوصلكِ رابط التذكرة مع كود الدخول (QR)." : "🎟️ Once your booking is confirmed you get your ticket link with an entry code (QR)."}</p>
+            </div>
+          ) : fulfillment === "DIGITAL" ? (
+            <div className="rose-pdp-handover" data-testid="product-digital">
+              <p>{ar ? "⬇️ منتج رقمي: بعد الدفع أو تأكيد الطلب بيوصلكِ رابط خاص تنزّلي منه الملفات. ما في شحن." : "⬇️ Digital product: after payment or confirmation you get a private link to download the files. Nothing is shipped."}</p>
+            </div>
+          ) : (
+            <ul className="rose-pdp-trust">
+              <li><Icon name="truck" />{ar ? "توصيل لكل البلاد" : "Delivery nationwide"}</li>
+              <li><Icon name="cash" />{ar ? "الدفع عند الاستلام" : "Cash on delivery"}</li>
+              <li><Icon name="swap" />{ar ? "استبدال سهل" : "Easy exchange"}</li>
+            </ul>
+          )}
 
           <div className="rose-pdp-details">
+            {specs.length > 0 && (
+              <details open data-testid="product-specs">
+                <summary>{ar ? "تفاصيل القطعة" : "Details"}<span aria-hidden="true">+</span></summary>
+                <dl className="rose-pdp-specs">
+                  {specs.map((s) => (
+                    <div key={s.key} className={s.kind === "longtext" ? "wide" : undefined}>
+                      <dt>{s.label}</dt>
+                      <dd>{s.kind === "url" ? <a href={s.value} target="_blank" rel="noopener noreferrer">{ar ? "افتحي الرابط" : "Open link"}</a> : s.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
+            )}
             {product.description && (
               <details open>
                 <summary>{ar ? "عن القطعة" : "About this piece"}<span aria-hidden="true">+</span></summary>
@@ -317,8 +429,11 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
               <p>{ar ? "اتبعي تعليمات الغسيل على ملصق القطعة. يُفضّل الغسيل بماء بارد وتجفيفها بعيداً عن الشمس المباشرة للحفاظ على اللون." : "Follow the washing label. Cool water and drying out of direct sun keep the colour fresh."}</p>
             </details>
           </div>
+          {ai.reviewSummary ? <RoseReviewSummary productId={product.id} ar={ar} /> : null}
         </section>
       </div>
+
+      {ai.shopTheLook ? <RoseShopTheLook productId={product.id} ar={ar} /> : null}
 
       {related.length > 0 && (
         <section className="rose-pdp-related" aria-labelledby="pdp-related">
@@ -341,4 +456,17 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
       )}
     </div>
   );
+}
+
+/** "السبت 20 ديسمبر، 18:00–20:00" in Israel time. */
+function eventWhen(start: string, end: string | null | undefined, ar: boolean) {
+  try {
+    const tz = "Asia/Jerusalem";
+    const s = new Date(start);
+    const day = new Intl.DateTimeFormat(ar ? "ar" : "en", { timeZone: tz, weekday: "long", day: "numeric", month: "long" }).format(s);
+    const time = (d: Date) => new Intl.DateTimeFormat(ar ? "ar" : "en", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+    return end ? `${day}، ${time(s)}–${time(new Date(end))}` : `${day}، ${time(s)}`;
+  } catch {
+    return "";
+  }
 }
