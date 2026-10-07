@@ -3082,8 +3082,16 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
   box-shadow: 0 30px 70px color-mix(in srgb, var(--selection-ink,#4d2039) 16%, transparent);
 }
 .rose-video[data-motion="true"] video { will-change: transform; transform-origin: 50% 50%; }
-/* The fabric takes the shopper's colour: a "color" blend keeps its folds and light (no timeline bar). */
-.rose-video-media { isolation: isolate; }
+/* The fabric takes the shopper's colour, drawn into a canvas over the clip (videoDye.ts):
+   no blend layers over the moving video. The blend layers below are only the fallback
+   (no WebGL), so the media box isolates its blending only when they are on. */
+.rose-video-dyed {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none;
+  transform-origin: 50% 50%; opacity: 0; transition: opacity .9s ease;
+}
+.rose-video[data-motion="true"] .rose-video-dyed { will-change: transform; }
+.rose-video-dyed[data-on] { opacity: 1; }
+.rose-video-media.is-blend-dyed { isolation: isolate; }
 .rose-video-dye {
   position: absolute; inset: 0; pointer-events: none; /* above the video, below the play button (page order) */
   background-color: var(--video-dye, transparent); mix-blend-mode: color;
