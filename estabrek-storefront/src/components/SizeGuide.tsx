@@ -17,7 +17,7 @@ export function SizeGuide() {
   const dialog = useRef<HTMLDialogElement>(null);
   return (
     <>
-      <button type="button" className="size-guide-trigger" onClick={() => dialog.current?.showModal()}>
+      <button type="button" className="size-guide-trigger" onClick={() => { dialog.current?.classList.add("is-open"); dialog.current?.showModal(); }}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
           <rect x="2.5" y="8" width="19" height="8" rx="1.5" />
           <path d="M6.5 8v3M10 8v4.5M13.5 8v3M17 8v4.5" />
@@ -29,6 +29,7 @@ export function SizeGuide() {
         className="size-guide-dialog"
         dir="rtl"
         aria-labelledby="size-guide-title"
+        onClose={() => dialog.current?.classList.remove("is-open")}
         onClick={(event) => {
           if (event.target === dialog.current) dialog.current?.close();
         }}
