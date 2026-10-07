@@ -123,4 +123,40 @@ describe("Admin Orders", () => {
 
     expect(res.body.status).toBe("QUEUED");
   });
+
+  test("search orders by phone in another format, name, and date range", async () => {
+    const byPhone = await request(app).get("/v1/admin/orders?q=%2B972-23456789").expect(200);
+    expect(byPhone.body.data.map((o: any) => o.id)).toContain("or1");
+    const byName = await request(app).get("/v1/admin/orders?q=jan").expect(200);
+    expect(byName.body.data.map((o: any) => o.id)).toContain("or1");
+    const none = await request(app).get("/v1/admin/orders?q=nobody-here").expect(200);
+    expect(none.body.total).toBe(0);
+    const old = await request(app).get("/v1/admin/orders?to=2000-01-01").expect(200);
+    expect(old.body.total).toBe(0);
+  });
+
+  test("summary returns status counts and newest NEW orders", async () => {
+    const res = await request(app).get("/v1/admin/orders/summary").expect(200);
+    expect(res.body.counts.NEW).toBe(1);
+    expect(res.body.latestNew[0]).toMatchObject({ id: "or1", customerName: "Jane" });
+  });
+
+  test("record cash collected and delivery details with a timeline note", async () => {
+    const res = await request(app)
+      .patch("/v1/admin/orders/or1/details")
+      .send({ city: "القدس", address: "شارع صلاح الدين", paymentStatus: "PAID", paymentProvider: "COD" })
+      .expect(200);
+    expect(res.body).toMatchObject({ city: "القدس", paymentStatus: "PAID", paymentProvider: "COD", status: "NEW" });
+    const history = await prisma.orderRequestHistory.findMany({ where: { orderRequestId: "or1" } });
+    expect(history.some((h) => (h.note ?? "").includes("استلام المبلغ"))).toBe(true);
+
+    const undo = await request(app).patch("/v1/admin/orders/or1/details").send({ paymentStatus: "UNPAID" }).expect(200);
+    expect(undo.body.paymentStatus).toBeNull();
+  });
+
+  test("status note is kept in the order history", async () => {
+    await request(app).patch("/v1/admin/orders/or1/status").send({ toStatus: "CONTACTED", note: "اتصلنا بها" }).expect(200);
+    const history = await prisma.orderRequestHistory.findMany({ where: { orderRequestId: "or1", toStatus: "CONTACTED" } });
+    expect(history[0]?.note).toBe("اتصلنا بها");
+  });
 });

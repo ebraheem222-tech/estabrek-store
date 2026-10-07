@@ -100,6 +100,32 @@ const EnvSchema = z.object({
   STOREFRONT_REVALIDATE_URL: OptionalUrl,
   STOREFRONT_REVALIDATE_SECRET: z.string().optional(),
 
+  // Email (Resend). Without RESEND_API_KEY + EMAIL_FROM emails are only logged.
+  RESEND_API_KEY: z.string().optional(),
+  /** e.g. "استبرق <hello@your-domain.com>" (the domain must be verified in Resend). */
+  EMAIL_FROM: z.string().optional(),
+  EMAIL_REPLY_TO: z.string().optional(),
+  /** Admin site address, used in invite / password links, e.g. https://estabrek-store.pages.dev */
+  ADMIN_APP_URL: OptionalUrl,
+  /** Storefront address, used in customer emails, e.g. https://estabrek-store.vercel.app */
+  STOREFRONT_URL: OptionalUrl,
+
+  // Backups (admin → النسخ الاحتياطي). The files are encrypted with this key; keep a copy of it
+  // somewhere safe — without it a backup can't be opened. Unset: a key made from JWT_SECRET.
+  BACKUP_ENCRYPTION_KEY: z.string().min(16).optional(),
+  /** How many backups to keep in storage (older ones are removed). */
+  BACKUP_KEEP: z.coerce.number().int().min(1).max(365).default(14),
+  /** Hour of the day (Israel time) for the automatic backup. */
+  BACKUP_HOUR: z.coerce.number().int().min(0).max(23).default(3),
+  /** Largest file the storage takes (Cloudinary free plan: 10 MB for raw files). */
+  BACKUP_MAX_UPLOAD_MB: z.coerce.number().min(1).max(500).default(10),
+
+  // Digital products (files the shopper downloads after paying / acceptance).
+  /** How many times one order can download each file. */
+  DIGITAL_MAX_DOWNLOADS: z.coerce.number().int().min(1).max(1000).default(10),
+  /** Largest file uploaded to storage (Cloudinary free plan: 10 MB); bigger files go in as a link. */
+  DIGITAL_MAX_UPLOAD_MB: z.coerce.number().min(1).max(500).default(10),
+
   // Redis (optional)
   REDIS_URL: z.string().optional(),
   REDIS_KEY_PREFIX: z.string().default("estabrak"),

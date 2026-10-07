@@ -5,6 +5,10 @@ import { env } from "./config/env.js";
 import { prisma } from "./lib/prisma.js";
 import { closeRedis } from "./lib/redis.js";
 import { processQueueOnce } from "./modules/outbox/outbox.service.js";
+import { loadPolicy } from "./lib/securityPolicy.js";
+import { startStockAlertSweeper, stopStockAlertSweeper } from "./modules/stockAlerts/stockAlerts.service.js";
+import { startBackupScheduler, stopBackupScheduler } from "./modules/backups/backup.service.js";
+import { startRequestPhotoCleanup } from "./modules/requests/requests.service.js";
 
 const port = Number(env.PORT || 4000);
 const host = "0.0.0.0";
@@ -30,6 +34,8 @@ function startOutboxWorker() {
 async function shutdown(code = 0) {
   try {
     if (workerTimer) clearInterval(workerTimer);
+    stopStockAlertSweeper();
+    stopBackupScheduler();
     if (server) {
       await new Promise<void>((resolve) => server!.close(() => resolve()));
     }
@@ -59,6 +65,8 @@ process.on("uncaughtException", (err) => {
 });
 
 // ---- Boot ----
+// Security rules from the admin (falls back to env until loaded).
+void loadPolicy();
 server = createServer(app);
 server.headersTimeout = env.HTTP_HEADER_TIMEOUT_MS;
 server.requestTimeout = env.HTTP_REQUEST_TIMEOUT_MS;
@@ -67,4 +75,9 @@ server.timeout = env.HTTP_SERVER_TIMEOUT_MS;
 server.listen(port, host, () => {
   console.log(`estabrak-store API on http://${host}:${port}`);
   startOutboxWorker();
+  // Back-in-stock emails (only while the feature is on and email is set up).
+  startStockAlertSweeper();
+  // Daily database backup (admin → النسخ الاحتياطي).
+  startBackupScheduler();
+  startRequestPhotoCleanup();
 });
