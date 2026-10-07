@@ -84,6 +84,47 @@ export function RoseHeroFilm({
   const [step, setStep] = useState(0);
   const [motion, setMotion] = useState(false);
   const final = step >= lines.length;
+  // The whole film is fetched into memory once (about 0.6 MB on phones, 1 MB on computers)
+  // and played from there. Streamed, the first scroll often asked for parts not yet
+  // downloaded, and every such jump waited for the network: the first pass stuttered on
+  // every device, the second was smooth. Until it is in, the still of the scarf shows.
+  const [filmSrc, setFilmSrc] = useState<string | null>(null);
+  const [streamed, setStreamed] = useState(false); // the download failed: stream it as before
+  const [filmReady, setFilmReady] = useState(false);
+  useEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    const set = window.matchMedia("(max-width: 760px)").matches ? SOURCES.mobile : SOURCES.desktop;
+    const url = el.canPlayType('video/webm; codecs="vp9"') ? set.webm : set.mp4;
+    const ctrl = new AbortController();
+    let objectUrl = "";
+    fetch(url, { signal: ctrl.signal })
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
+      .then((blob) => { objectUrl = URL.createObjectURL(blob); setFilmSrc(objectUrl); })
+      .catch(() => { if (!ctrl.signal.aborted) setStreamed(true); });
+    return () => { ctrl.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, []);
+  useEffect(() => { if (streamed) video.current?.load(); }, [streamed]);
+  // iPhones decode nothing until a video plays: once the film is in, start it for a moment.
+  useEffect(() => {
+    const el = video.current;
+    if (!filmSrc || !el) return;
+    const t = window.setTimeout(() => {
+      if (el.readyState >= 2) return;
+      el.play().then(() => { if (root.current?.dataset.motion === "true") el.pause(); }).catch(() => {});
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [filmSrc]);
+  // "Ready" = the film can be drawn (or will not be): only then do the other hellos start.
+  useEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    const ready = () => setFilmReady(true);
+    if (el.readyState >= 2) ready();
+    el.addEventListener("loadeddata", ready);
+    const latest = window.setTimeout(ready, 6000);
+    return () => { el.removeEventListener("loadeddata", ready); window.clearTimeout(latest); };
+  }, [filmSrc, streamed]);
 
   // Scroll plays the film; the headline follows it.
   useEffect(() => {
@@ -94,6 +135,9 @@ export function RoseHeroFilm({
     mm.add("(prefers-reduced-motion: no-preference)", () => {
       setMotion(true);
       section.dataset.motion = "true";
+      // Android: the closing glint is a plain light, not a blend over the WebGL film (slow, and
+      // drawn wrongly on some phones' graphics cards).
+      if (/Android/i.test(navigator.userAgent)) section.dataset.plainLight = "true";
       el.pause();
       el.loop = false;
       const state = { p: 0 };
@@ -188,11 +232,20 @@ export function RoseHeroFilm({
     if (step === 1) rose.current?.wink();
     if (final && !seenFinal.current) {
       seenFinal.current = true;
-      const t = window.setTimeout(() => {
-        rose.current?.cheer();
-        rose.current?.say(ar ? "شو هالحلا! ✨" : "So lovely! ✨", 2600);
-      }, 450);
-      return () => window.clearTimeout(t);
+      // She cheers once the shopper stops scrolling: her stars and the film's last turn
+      // and sparkles all at once were the heaviest moment of the opening on phones.
+      let t = 0;
+      const wait = () => {
+        window.clearTimeout(t);
+        t = window.setTimeout(() => {
+          window.removeEventListener("scroll", wait);
+          rose.current?.cheer();
+          rose.current?.say(ar ? "شو هالحلا! ✨" : "So lovely! ✨", 2600);
+        }, 700);
+      };
+      window.addEventListener("scroll", wait, { passive: true });
+      wait();
+      return () => { window.clearTimeout(t); window.removeEventListener("scroll", wait); };
     }
     if (!final) seenFinal.current = false;
   }, [step, final, motion, ar]);
@@ -347,13 +400,18 @@ export function RoseHeroFilm({
               muted
               playsInline
               preload="auto"
+              src={filmSrc ?? undefined}
               poster="/editorial/hero-film-poster.webp"
               aria-label={ar ? "شال شفاف يتطاير ويلتفّ ليصبح حجاباً" : "A sheer scarf flies and wraps itself into a hijab"}
             >
-              <source src={SOURCES.mobile.webm} type="video/webm" media="(max-width: 760px)" />
-              <source src={SOURCES.mobile.mp4} type="video/mp4" media="(max-width: 760px)" />
-              <source src={SOURCES.desktop.webm} type="video/webm" />
-              <source src={SOURCES.desktop.mp4} type="video/mp4" />
+              {streamed && (
+                <>
+                  <source src={SOURCES.mobile.webm} type="video/webm" media="(max-width: 760px)" />
+                  <source src={SOURCES.mobile.mp4} type="video/mp4" media="(max-width: 760px)" />
+                  <source src={SOURCES.desktop.webm} type="video/webm" />
+                  <source src={SOURCES.desktop.mp4} type="video/mp4" />
+                </>
+              )}
             </video>
             <canvas ref={canvas} className="film-canvas" aria-hidden="true" />
             {/* The scarf at once, before (or without) the video's first frame. */}
@@ -362,15 +420,29 @@ export function RoseHeroFilm({
             <span className="film-glow" aria-hidden="true" />
             {/* When the hijab is complete it catches the light. */}
             <span className="film-sparkles" aria-hidden="true">
+              {/* The glow is painted in each star (one soft gradient), not three blur filters:
+                  re-blurred on every frame of the twinkle, they dropped phones with dense
+                  screens to ~35 frames a second at the end of the film. */}
+              <svg className="film-spark-defs" width="0" height="0" focusable="false">
+                <defs>
+                  <radialGradient id="film-spark-glow">
+                    <stop offset="0" stopColor="#ffffff" stopOpacity=".95" />
+                    <stop offset=".28" stopColor="#f7d27a" stopOpacity=".55" />
+                    <stop offset=".62" style={{ stopColor: "color-mix(in srgb, var(--film-accent) 60%, #fff)", stopOpacity: 0.22 }} />
+                    <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+              </svg>
               {SPARKS.map(([x, y, size, delay], i) => (
-                <svg key={i} viewBox="0 0 24 24" style={{ "--x": `${x}%`, "--y": `${y}%`, "--s": `${size}px`, "--d": `${delay}ms` } as CSSProperties}>
+                <svg key={i} className="film-spark" viewBox="-12 -12 48 48" style={{ "--x": `${x}%`, "--y": `${y}%`, "--s": `${size}px`, "--d": `${delay}ms` } as CSSProperties}>
+                  <circle cx="12" cy="12" r="24" fill="url(#film-spark-glow)" />
                   <path d="M12 0c.9 6.3 5.7 11.1 12 12-6.3.9-11.1 5.7-12 12-.9-6.3-5.7-11.1-12-12C6.3 11.1 11.1 6.3 12 0Z" />
                 </svg>
               ))}
               <i className="film-shine" />
             </span>
           </div>
-          <HeroMascot ref={rose} ar={ar} />
+          <HeroMascot ref={rose} ar={ar} holdGreeting={!filmReady} />
         </div>
       </div>
     </section>
