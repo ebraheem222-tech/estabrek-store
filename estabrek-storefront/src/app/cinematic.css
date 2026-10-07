@@ -4147,12 +4147,15 @@ html[data-theme-crossfade]::view-transition-new(root) {
   position: absolute; z-index: 2; pointer-events: none;
   left: calc(50% + var(--film-shift, -6%)); top: 47%; width: 46%; height: 92%; translate: -50% -50%;
 }
-.film-sparkles svg {
-  position: absolute; left: var(--x); top: var(--y); width: calc(var(--s) * 2.2); height: calc(var(--s) * 2.2); translate: -50% -50%;
-  fill: #fffaf0; opacity: 0; scale: 0;
-  filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #f7d27a) drop-shadow(0 0 16px color-mix(in srgb, var(--film-accent) 60%, #fff));
+/* The glow is part of each star (a soft gradient in its SVG, twice the star's box) instead
+   of three drop-shadow filters: a blur is redrawn on every frame of the twinkle, a plain
+   shape only moves on the graphics card. */
+.film-sparkles .film-spark {
+  position: absolute; left: var(--x); top: var(--y); width: calc(var(--s) * 4.4); height: calc(var(--s) * 4.4); translate: -50% -50%;
+  fill: #fffaf0; opacity: 0; scale: 0; overflow: visible;
 }
-.rose-film[data-final] .film-sparkles svg { animation: film-twinkle 2.2s calc(var(--d) * .6) ease-in-out infinite; }
+.film-sparkles .film-spark-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.rose-film[data-final] .film-sparkles .film-spark { animation: film-twinkle 2.2s calc(var(--d) * .6) ease-in-out infinite; }
 @keyframes film-twinkle {
   0%, 100% { opacity: 0; scale: 0; rotate: 0deg; }
   18% { opacity: 1; scale: 1; }
@@ -4165,11 +4168,13 @@ html[data-theme-crossfade]::view-transition-new(root) {
   mix-blend-mode: soft-light;
 }
 .rose-film[data-final] .film-shine { animation: film-shine 1.4s .1s ease-out both; }
-@keyframes film-shine { 0% { opacity: 0; scale: .6; } 35% { opacity: 1; } 100% { opacity: 0; scale: 1.25; } }
+@keyframes film-shine { 0% { opacity: 0; scale: .6; } 35% { opacity: var(--shine-peak, 1); } 100% { opacity: 0; scale: 1.25; } }
+/* Android: a plain soft light instead of a blend over the WebGL film (see RoseHeroFilm). */
+.rose-film[data-plain-light] .film-shine { mix-blend-mode: normal; --shine-peak: .32; }
 .rose-film[data-final] .film-glow { animation: film-halo 1.6s ease-out both; }
 @keyframes film-halo { 30% { opacity: .42; } 100% { opacity: .22; } }
 @media (prefers-reduced-motion: reduce) {
-  .rose-film[data-final] .film-sparkles svg { animation: none; opacity: .8; scale: .6; }
+  .rose-film[data-final] .film-sparkles .film-spark { animation: none; opacity: .8; scale: .6; }
   .rose-film[data-final] .film-shine, .rose-film[data-final] .film-glow { animation: none; }
 }
 @media (max-width: 760px) {
