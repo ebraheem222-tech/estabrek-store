@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import { env } from "../config/env.js";
 import { getRedis } from "../lib/redis.js";
 import { normalizeIp } from "../utils/ip.js";
+import { policy } from "../lib/securityPolicy.js";
 
 type Bucket = { count: number; resetAt: number };
 
@@ -95,12 +96,21 @@ function maybeSweep(now: number) {
 }
 
 function isAuthPath(path: string) {
-  return path.startsWith("/v1/auth");
+  // Admin sign-in, shopper sign-in codes and back-in-stock sign-ups share the stricter limit.
+  return path.startsWith("/v1/auth") || path.startsWith("/v1/customer/auth") || path.startsWith("/v1/stock-alerts");
 }
 
 export const rateLimit: RequestHandler = (req, res, next) => {
   const now = Date.now();
   maybeSweep(now);
+
+  // Limits come from the security policy (admin → Security page; defaults = env).
+  const rl = policy().rateLimit;
+  const WINDOW_MS = rl.windowSeconds * 1000;
+  const AUTH_WINDOW_MS = rl.authWindowSeconds * 1000;
+  const MAX = rl.perPath;
+  const IP_MAX = rl.perIp;
+  const AUTH_MAX = rl.auth;
 
   const ip = normalizeIp(req.ip || "") || "unknown";
   const normPath = normalizePathForKey(req.path || "/");
@@ -115,36 +125,36 @@ export const rateLimit: RequestHandler = (req, res, next) => {
       pathBuckets.size >= env.RATE_LIMIT_MEMORY_MAX_KEYS && !pathBuckets.has(perPathKey)
         ? `${ip}:*`
         : perPathKey;
-    const pathBucket = getBucket(pathBuckets, pathKey, now, env.RATE_LIMIT_WINDOW_MS);
+    const pathBucket = getBucket(pathBuckets, pathKey, now, WINDOW_MS);
     pathBucket.count += 1;
 
-    const ipBucket = getBucket(ipBuckets, ip, now, env.RATE_LIMIT_WINDOW_MS);
+    const ipBucket = getBucket(ipBuckets, ip, now, WINDOW_MS);
     ipBucket.count += 1;
 
     let authBucket: Bucket | undefined;
     if (isAuthPath(req.path)) {
-      authBucket = getBucket(authBuckets, ip, now, env.RATE_LIMIT_AUTH_WINDOW_MS);
+      authBucket = getBucket(authBuckets, ip, now, AUTH_WINDOW_MS);
       authBucket.count += 1;
     }
 
-    res.setHeader("X-RateLimit-Limit", env.RATE_LIMIT_MAX.toString());
-    res.setHeader("X-RateLimit-Remaining", Math.max(0, env.RATE_LIMIT_MAX - pathBucket.count).toString());
+    res.setHeader("X-RateLimit-Limit", MAX.toString());
+    res.setHeader("X-RateLimit-Remaining", Math.max(0, MAX - pathBucket.count).toString());
     res.setHeader("X-RateLimit-Reset", Math.ceil(pathBucket.resetAt / 1000).toString());
 
-    res.setHeader("X-RateLimit-Global-Limit", env.RATE_LIMIT_IP_MAX.toString());
-    res.setHeader("X-RateLimit-Global-Remaining", Math.max(0, env.RATE_LIMIT_IP_MAX - ipBucket.count).toString());
+    res.setHeader("X-RateLimit-Global-Limit", IP_MAX.toString());
+    res.setHeader("X-RateLimit-Global-Remaining", Math.max(0, IP_MAX - ipBucket.count).toString());
     res.setHeader("X-RateLimit-Global-Reset", Math.ceil(ipBucket.resetAt / 1000).toString());
 
     if (authBucket) {
-      res.setHeader("X-RateLimit-Auth-Limit", env.RATE_LIMIT_AUTH_MAX.toString());
-      res.setHeader("X-RateLimit-Auth-Remaining", Math.max(0, env.RATE_LIMIT_AUTH_MAX - authBucket.count).toString());
+      res.setHeader("X-RateLimit-Auth-Limit", AUTH_MAX.toString());
+      res.setHeader("X-RateLimit-Auth-Remaining", Math.max(0, AUTH_MAX - authBucket.count).toString());
       res.setHeader("X-RateLimit-Auth-Reset", Math.ceil(authBucket.resetAt / 1000).toString());
     }
 
     if (
-      pathBucket.count > env.RATE_LIMIT_MAX ||
-      ipBucket.count > env.RATE_LIMIT_IP_MAX ||
-      (authBucket && authBucket.count > env.RATE_LIMIT_AUTH_MAX)
+      pathBucket.count > MAX ||
+      ipBucket.count > IP_MAX ||
+      (authBucket && authBucket.count > AUTH_MAX)
     ) {
       const retryAt = Math.max(pathBucket.resetAt, ipBucket.resetAt, authBucket?.resetAt ?? 0);
       res.setHeader("Retry-After", Math.max(1, Math.ceil((retryAt - now) / 1000)).toString());
@@ -173,33 +183,33 @@ export const rateLimit: RequestHandler = (req, res, next) => {
   (async () => {
     try {
       const [pathRes, ipRes, authRes] = await Promise.all([
-        incrWithTtl(pathKey, env.RATE_LIMIT_WINDOW_MS),
-        incrWithTtl(ipKey, env.RATE_LIMIT_WINDOW_MS),
-        isAuthPath(req.path) ? incrWithTtl(authKey, env.RATE_LIMIT_AUTH_WINDOW_MS) : Promise.resolve(null),
+        incrWithTtl(pathKey, WINDOW_MS),
+        incrWithTtl(ipKey, WINDOW_MS),
+        isAuthPath(req.path) ? incrWithTtl(authKey, AUTH_WINDOW_MS) : Promise.resolve(null),
       ]);
 
       const pathResetAt = now + pathRes.ttl;
       const ipResetAt = now + ipRes.ttl;
       const authResetAt = authRes ? now + authRes.ttl : 0;
 
-      res.setHeader("X-RateLimit-Limit", env.RATE_LIMIT_MAX.toString());
-      res.setHeader("X-RateLimit-Remaining", Math.max(0, env.RATE_LIMIT_MAX - pathRes.count).toString());
+      res.setHeader("X-RateLimit-Limit", MAX.toString());
+      res.setHeader("X-RateLimit-Remaining", Math.max(0, MAX - pathRes.count).toString());
       res.setHeader("X-RateLimit-Reset", Math.ceil(pathResetAt / 1000).toString());
 
-      res.setHeader("X-RateLimit-Global-Limit", env.RATE_LIMIT_IP_MAX.toString());
-      res.setHeader("X-RateLimit-Global-Remaining", Math.max(0, env.RATE_LIMIT_IP_MAX - ipRes.count).toString());
+      res.setHeader("X-RateLimit-Global-Limit", IP_MAX.toString());
+      res.setHeader("X-RateLimit-Global-Remaining", Math.max(0, IP_MAX - ipRes.count).toString());
       res.setHeader("X-RateLimit-Global-Reset", Math.ceil(ipResetAt / 1000).toString());
 
       if (authRes) {
-        res.setHeader("X-RateLimit-Auth-Limit", env.RATE_LIMIT_AUTH_MAX.toString());
-        res.setHeader("X-RateLimit-Auth-Remaining", Math.max(0, env.RATE_LIMIT_AUTH_MAX - authRes.count).toString());
+        res.setHeader("X-RateLimit-Auth-Limit", AUTH_MAX.toString());
+        res.setHeader("X-RateLimit-Auth-Remaining", Math.max(0, AUTH_MAX - authRes.count).toString());
         res.setHeader("X-RateLimit-Auth-Reset", Math.ceil(authResetAt / 1000).toString());
       }
 
       if (
-        pathRes.count > env.RATE_LIMIT_MAX ||
-        ipRes.count > env.RATE_LIMIT_IP_MAX ||
-        (authRes && authRes.count > env.RATE_LIMIT_AUTH_MAX)
+        pathRes.count > MAX ||
+        ipRes.count > IP_MAX ||
+        (authRes && authRes.count > AUTH_MAX)
       ) {
         const retryAt = Math.max(pathResetAt, ipResetAt, authResetAt);
         res.setHeader("Retry-After", Math.max(1, Math.ceil((retryAt - now) / 1000)).toString());

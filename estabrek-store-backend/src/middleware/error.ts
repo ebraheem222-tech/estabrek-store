@@ -33,7 +33,12 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
 
   if (typeof (err as any)?.statusCode === "number") {
-    return res.status((err as any).statusCode).json({ error: (err as any).code || "ERROR", message: (err as any).message || "Request failed" });
+    const details = (err as any).details ?? (err as any).meta;
+    return res.status((err as any).statusCode).json({
+      error: (err as any).code || "ERROR",
+      message: (err as any).message || "Request failed",
+      ...(details !== undefined ? { details } : {}),
+    });
   }
 
   return res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
