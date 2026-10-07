@@ -9,6 +9,7 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { isNearWhite } from "@/lib/storefrontPalette";
+import { startVideoDye, type VideoDye } from "./videoDye";
 
 export const defaultCampaignVideo: VideoData = {
   url: "/editorial/rose-campaign.mp4", posterUrl: "/editorial/rose-campaign-poster.webp",
@@ -48,6 +49,14 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
   // The fabric takes the shopper's colour (none picked: its own rose).
   // The last colour is kept while the dye fades out, so it does not jump to clear.
   const [dye, setDye] = useState<{ color: string | null; on: boolean }>({ color: null, on: false });
+  // The dye is drawn in WebGL ("gl"); the old CSS blend layers stay as the fallback
+  // ("css": no WebGL, or the clip shows its own controls the canvas would cover).
+  const dyeCanvas = useRef<HTMLCanvasElement>(null);
+  const dyer = useRef<VideoDye | null>(null);
+  const [dyeMode, setDyeMode] = useState<"gl" | "css">("gl");
+  const [dyeShown, setDyeShown] = useState(false);
+  // The canvas only exists once a colour has been on (no colour: no canvas at all).
+  const [dyeUsed, setDyeUsed] = useState(false);
   const isDefault = data.url === defaultCampaignVideo.url;
   const poster = data.posterUrl || defaultCampaignVideo.posterUrl;
 
@@ -73,6 +82,25 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       window.removeEventListener("storefront-color-reset", reset);
     };
   }, []);
+
+  // Start the WebGL dye the first time a colour is on (no colour: nothing runs).
+  const withControls = data.controls === true && !scroll;
+  useEffect(() => {
+    if (withControls) { setDyeMode("css"); return; }
+    if (dyer.current) { setDyeMode("gl"); return; }
+    if (!dye.on) return;
+    if (!dyeUsed) { setDyeUsed(true); return; } // the canvas mounts first
+    const el = video.current, canvas = dyeCanvas.current;
+    if (!el || !canvas) return;
+    const made = startVideoDye(el, canvas, setDyeShown);
+    if (!made) { setDyeMode("css"); return; }
+    setDyeMode("gl");
+    dyer.current = made;
+    made.setTint(dye.color);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dye.on, withControls, dyeUsed]);
+  useEffect(() => { dyer.current?.setTint(dyeMode === "gl" && dye.on ? dye.color : null); }, [dye, dyeMode]);
+  useEffect(() => () => { dyer.current?.stop(); dyer.current = null; }, []);
 
   // Fetch the clip shortly before it is needed.
   useEffect(() => {
@@ -146,6 +174,8 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
         .fromTo(media, { borderRadius: "260px 260px 12px 12px", scale: 0.84 }, { borderRadius: "34px 34px 34px 34px", scale: 1, ease: "power2.out", duration: 0.4 }, 0)
         .fromTo(el, { scale: 1.22 }, { scale: 1, duration: 1 }, 0)
         .fromTo(copy, { y: 46, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.05, duration: 0.22, ease: "power2.out" }, 0.06);
+      // The dyed canvas (when a colour is on) keeps the clip's zoom.
+      tl.eventCallback("onUpdate", () => { const c = dyeCanvas.current; if (c && c.style.transform !== el.style.transform) c.style.transform = el.style.transform; });
       const refresh = requestScrollRefresh;
       refresh();
       return () => {
@@ -154,6 +184,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
         tl.scrollTrigger?.kill();
         tl.kill();
         gsap.set([media, el, ...Array.from(copy)], { clearProps: "all" });
+        dyeCanvas.current?.style.removeProperty("transform");
         section.dataset.motion = "false";
         el.loop = data.loop !== false;
         setScroll(false);
@@ -189,7 +220,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       aria-label={data.title || (ar ? "حكاية قماش" : "A story in fabric")}
     >
       <div className="rose-video-stage">
-        <div ref={frame} className="rose-video-media">
+        <div ref={frame} className={`rose-video-media${dye.on && dyeMode === "css" ? " is-blend-dyed" : ""}`} data-dye={dye.on && dye.color ? dye.color : undefined}>
           <video
             ref={video}
             poster={poster}
@@ -209,12 +240,13 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
           </video>
           {playback === "error" && <img className="video-error-poster" src={poster} alt={ar ? "طيات قماش وردي" : "Folds of rose fabric"} />}
           {/* Dyes the fabric in the shopper's colour, keeping its folds and light (dark colours also deepen it). */}
+          {dyeUsed && <canvas ref={dyeCanvas} className="rose-video-dyed" aria-hidden="true" data-on={dyeMode === "gl" && dyeShown && playback !== "error" ? "true" : undefined} />}
           {(["rose-video-dye", "rose-video-deepen"] as const).map((layer) => (
             <span
               key={layer}
               className={layer}
               aria-hidden="true"
-              data-on={dye.on ? "true" : undefined}
+              data-on={dye.on && dyeMode === "css" ? "true" : undefined}
               style={dye.color ? ({ "--video-dye": dye.color, "--video-deepen": deepen(dye.color) } as CSSProperties) : undefined}
             />
           ))}
