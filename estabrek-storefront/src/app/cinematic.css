@@ -3741,8 +3741,13 @@ html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, 
 }
 @media print { .rose-companion { display: none; } }
 
-/* The models Rose holds read clearly against the light skies */
-.story-canvas canvas { filter: drop-shadow(0 16px 22px rgba(70, 30, 40, .18)); }
+/* The models Rose holds read clearly against the light skies. Computers only: the shadow is a
+   blur over the whole 3D canvas, redone by the graphics card for every frame of the models
+   (60 a second), and phones could not keep up: the collection worlds stuttered on phones
+   only. On phones the models keep their own light and shading. */
+@media (hover: hover) and (pointer: fine) {
+  .story-canvas canvas { filter: drop-shadow(0 16px 22px rgba(70, 30, 40, .18)); }
+}
 
 /* Rose 2: outfits, finer drawing, expressions */
 .rose-mascot {
