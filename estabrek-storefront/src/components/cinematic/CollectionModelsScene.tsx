@@ -67,6 +67,21 @@ function surface(fn: (u: number, v: number, out: THREE.Vector3) => void, nu = 96
 
 type ModelProps = { weight: () => number; rtl: boolean; compact: boolean; palm?: PalmRef };
 
+/**
+ * Where the canvas is on screen, read at most ten times a second: each model read it on
+ * every frame (60 a second, two models during a hand-over), and each read made the browser
+ * lay the page out again in the middle of the frame, which phones felt.
+ */
+const canvasBoxes = new WeakMap<HTMLCanvasElement, { at: number; box: DOMRect }>();
+function canvasBox(canvas: HTMLCanvasElement) {
+  const now = performance.now();
+  const kept = canvasBoxes.get(canvas);
+  if (kept && now - kept.at < 100) return kept.box;
+  const box = canvas.getBoundingClientRect();
+  canvasBoxes.set(canvas, { at: now, box });
+  return box;
+}
+
 /** Shared choreography: each model rises, unfolds and turns in as its chapter arrives. */
 function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScale: number, lift = 0, hold?: { palm?: PalmRef; base: number }) {
   const group = useRef<THREE.Group>(null);
@@ -82,7 +97,7 @@ function useStage(weight: () => number, rtl: boolean, compact: boolean, baseScal
     const palm = hold?.palm?.current;
     if (palm) {
       // Smaller, floating just above Rose's palm (screen px → world units on the z = 0 plane).
-      const rect = gl.domElement.getBoundingClientRect();
+      const rect = canvasBox(gl.domElement);
       const px = ((palm.x - rect.left) / rect.width - 0.5) * viewport.width;
       const py = -((palm.y - rect.top) / rect.height - 0.5) * viewport.height;
       // Phones: a little smaller and closer over her hand, so the piece stays in her
