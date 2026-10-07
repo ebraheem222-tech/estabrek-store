@@ -46,6 +46,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       maxPrice: f.maxPrice,
       categoryId: f.categoryId,
       inStock: f.inStock,
+      attrs: f.attrs,
       includeFacets: true,
       lite: true,
       semantic: false,
@@ -70,7 +71,7 @@ export default async function SearchPage({ searchParams }: { searchParams: SP })
       <main id="main-content" tabIndex={-1}>
         <NormalizeFilters basePath="/search" />
         <RosePageFrame className="rose-shop rose-search-page">
-          <RoseSearchIntro query={f.q} total={Number((out as any)?.total ?? (out as any)?.items?.length ?? 0)} />
+          <RoseSearchIntro query={f.q} total={Number((out as any)?.total ?? (out as any)?.items?.length ?? 0)} filtered={Boolean(f.colors.length || f.sizeIds.length || f.categoryId || f.minPrice != null || f.maxPrice != null)} />
           <div className="rose-shop-content" id="shop-products" data-rose-palette="pearl">
             <ShopBrowseClient key={f.q ?? ""} initial={out} initialFilters={f} categories={categories} basePath="/search" appearance="rose" />
           </div>

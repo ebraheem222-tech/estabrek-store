@@ -93,6 +93,7 @@ export default async function ShopPage({ searchParams }: { searchParams: SP }) {
       sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
       minPrice: f.minPrice,
       maxPrice: f.maxPrice,
+      attrs: f.attrs,
       includeFacets: true,
       lite: true,
       color: pick(searchParams, "color"),

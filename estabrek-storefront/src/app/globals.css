@@ -14474,3 +14474,7 @@ html {
   color: #0f172a !important;
 }
 
+
+/* Admin → رزان → "try before saving": a small bar while the owner previews her settings. */
+.razan-preview-bar { position: fixed; inset-inline: 12px; top: 12px; z-index: 2147483000; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: #2b1a22; color: #fff; font-size: 13px; box-shadow: 0 10px 30px -12px rgba(0,0,0,.5); direction: rtl; }
+.razan-preview-bar button { border: 0; border-radius: 10px; padding: 6px 12px; background: #fff; color: #2b1a22; font: inherit; font-weight: 600; cursor: pointer; }

@@ -16,6 +16,7 @@ import { getLoadingById } from "@/cms/effects/loadingAnimations";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { EffectsStyles } from "@/components/EffectsStyles";
 import { StorefrontChrome } from "@/components/cinematic/StorefrontChrome";
+import { MaintenanceGate } from "@/components/cinematic/MaintenanceGate";
 import { MarketingPixels } from "@/components/MarketingPixels";
 
 /**
@@ -84,6 +85,10 @@ export default async function RootLayout({
       : "dark";
 
   const cinematic = process.env.ESTABREK_HOME_MODE !== "cms";
+  // Admin → Settings → حسابات الزبائن (off by default: visitors only).
+  const accountsEnabled = settings.site?.customerAccountsEnabled === true;
+  // Admin → المخزون → بانتظار التوفّر (off by default).
+  const stockAlertsEnabled = settings.site?.stockAlertsEnabled === true;
   const navbarHeader = { ...(header ?? {}), sticky: true };
   const rawLoading = header?.ui?.loading ?? null;
   const enabled = rawLoading?.enabled === true;
@@ -116,6 +121,13 @@ export default async function RootLayout({
         <Providers
           initialStorefrontSettings={initialStorefrontSettings}
           cinematic={cinematic}
+          accountsEnabled={accountsEnabled}
+          stockAlertsEnabled={stockAlertsEnabled}
+          razan={header?.razan}
+          requests={header?.requests}
+          delivery={header?.delivery}
+          quiz={header?.quiz}
+          ai={header?.ai}
         >
           <EffectsStyles />
           <ThemeWrap
@@ -130,6 +142,14 @@ export default async function RootLayout({
               ) : null}
               {safeMode ? null : <ScriptTags scripts={bootstrap.site.scriptsHead} />}
               {safeMode ? null : <MarketingPixels config={header?.marketing} />}
+              <MaintenanceGate
+                maintenance={settings.site?.maintenance}
+                siteName={bootstrap.site.siteName || "استبرق"}
+                logoUrl={bootstrap.site.logoUrl}
+                whatsappNumber={bootstrap.site.whatsappNumber}
+                contactEmail={bootstrap.site.contactEmail}
+                countryCode={(bootstrap.site as any).storeCountryCode}
+              >
               <StorefrontChrome
                 enabled={cinematic}
                 storeData={{
@@ -177,6 +197,7 @@ export default async function RootLayout({
               >
                 {children}
               </StorefrontChrome>
+              </MaintenanceGate>
               {/* Global body scripts from site settings */}
               {safeMode ? null : <ScriptTags scripts={bootstrap.site.scriptsBody} />}
               <WebVitalsReporter />

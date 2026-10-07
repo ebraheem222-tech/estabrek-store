@@ -1812,6 +1812,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   }
   .atelier-desktop-nav,
   .wishlist-link,
+  .account-link,
   .action-divider {
     display: none;
   }
@@ -4228,3 +4229,334 @@ html[data-theme-crossfade]::view-transition-new(root) {
 .rose-status-card p { margin: 0 auto; max-width: 440px; line-height: 1.9; color: var(--selection-muted, #8b6d7b); font-size: 15px; }
 .rose-status-actions { display: flex; flex-wrap: wrap; gap: 14px 20px; justify-content: center; align-items: center; margin-top: 26px; }
 .rose-status-ref { display: block; margin-top: 18px; font-size: 11px; color: var(--selection-muted, #8b6d7b); opacity: .7; }
+
+/* ---------- حسابي (shopper account) ---------- */
+.rose-cart-account { margin: 0; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-cart-account a { color: var(--selection-accent, #7d2448); text-decoration: underline; text-underline-offset: 3px; }
+.rose-account { max-width: 980px; margin: 0 auto; padding: 0 0 90px; }
+.rose-account-signin, .rose-account-loading { display: grid; justify-items: center; text-align: center; gap: 14px; padding: 70px 6% 110px; max-width: 560px; }
+.rose-account-signin h1 { font-family: var(--atelier-serif); font-weight: 600; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.25; margin: 0; color: var(--selection-ink, #4d2039); }
+.rose-account-signin > p { margin: 0; line-height: 2; color: var(--selection-muted, #8b6d7b); }
+.rose-account-form { width: 100%; text-align: start; }
+.rose-account-form .atelier-button { justify-self: start; }
+.rose-account-signin .rose-account-form .atelier-button { justify-self: stretch; justify-content: center; }
+.rose-account-code { font-size: 26px !important; letter-spacing: .5em; text-align: center; font-variant-numeric: tabular-nums; }
+.rose-account-sent { margin: 0; font-size: 13.5px; line-height: 1.9; color: var(--selection-muted, #8b6d7b); }
+.rose-account-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.rose-account-links button { background: none; border: 0; padding: 0; font: inherit; font-size: 12.5px; color: var(--selection-accent, #7d2448); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.rose-account-links button:disabled { color: var(--selection-muted, #8b6d7b); text-decoration: none; cursor: default; }
+.rose-account-head-email { direction: ltr; }
+.rose-account-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 26px; }
+.rose-account-tabs button, .rose-account-tab-link { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--selection-line, #e3cdd8); border-radius: 999px; background: transparent; padding: 9px 18px; font: inherit; font-size: 13.5px; color: var(--selection-ink, #4d2039); cursor: pointer; text-decoration: none; transition: background .2s ease, color .2s ease, border-color .2s ease; }
+.rose-account-tabs button[aria-selected="true"] { background: var(--selection-accent, #7d2448); border-color: var(--selection-accent, #7d2448); color: #fff; }
+.rose-account-tab-link { margin-inline-start: auto; }
+.rose-account-tab-link svg { width: 16px; height: 16px; }
+.rose-account-muted { color: var(--selection-muted, #8b6d7b); font-size: 13.5px; }
+.rose-account-empty { display: grid; justify-items: start; gap: 16px; }
+.rose-account-empty p { margin: 0; line-height: 2; color: var(--selection-muted, #8b6d7b); }
+.rose-account-orders, .rose-account-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.rose-account-order, .rose-account-card { border: 1px solid var(--selection-line, #efdde5); border-radius: 22px; padding: 18px 20px; background: color-mix(in srgb, var(--selection-surface, #fff8f4) 70%, white); display: grid; gap: 10px; }
+.rose-account-order-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--selection-muted, #8b6d7b); }
+.rose-account-order-head b { margin-inline-start: auto; color: var(--selection-ink, #4d2039); font-size: 15px; }
+.rose-account-status { border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--selection-accent, #7d2448) 12%, transparent); color: var(--selection-accent, #7d2448); }
+.rose-account-status.status-closed, .rose-account-status.status-shipped { background: #e7f3ec; color: #2f6b47; }
+.rose-account-status.status-rejected, .rose-account-status.status-canceled, .rose-account-status.status-refunded { background: #f3e7e7; color: #8a3a3a; }
+.rose-account-order-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rose-account-order-items li { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.rose-account-order-items img, .rose-account-order-items .rose-image-placeholder { width: 48px; height: 60px; border-radius: 12px; object-fit: cover; flex: none; display: grid; place-items: center; font-size: 10px; }
+.rose-account-order-items span { display: grid; gap: 2px; }
+.rose-account-order-items a { color: inherit; text-decoration: none; }
+.rose-account-order-items small { color: var(--selection-muted, #8b6d7b); font-size: 12px; }
+.rose-account-card b { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.rose-account-card em { font-style: normal; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: color-mix(in srgb, var(--selection-accent, #7d2448) 12%, transparent); color: var(--selection-accent, #7d2448); }
+.rose-account-card > span, .rose-account-card > small { font-size: 13.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-account-addresses { display: grid; gap: 18px; justify-items: start; }
+.rose-account-addresses > ul { width: 100%; }
+.rose-account-check { display: flex !important; align-items: center; gap: 10px !important; }
+.rose-account-check input { width: 18px !important; height: 18px; accent-color: var(--selection-accent, #7d2448); }
+.rose-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+.rose-account-details { max-width: 560px; }
+.rose-account-color { display: grid; gap: 8px; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-account-color > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.rose-account-color i { display: inline-block; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--selection-line, #e3cdd8); }
+.rose-account-color button { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--selection-line, #e3cdd8); border-radius: 999px; background: transparent; padding: 6px 12px 6px 8px; font: inherit; font-size: 12.5px; color: var(--selection-ink, #4d2039); cursor: pointer; }
+@media (max-width: 760px) {
+  .rose-account { padding-bottom: 70px; }
+  .rose-account-signin { padding: 40px 0 80px; }
+  .rose-account-tab-link { margin-inline-start: 0; }
+  .rose-account-order, .rose-account-card { padding: 16px; border-radius: 18px; }
+}
+.rose-account-addresses .rose-account-form { max-width: 560px; }
+
+/* "بلّغيني لما يرجع" under add-to-bag on a sold-out size (admin → بانتظار التوفّر). */
+.rose-pdp-sizes button.sold-out:not(:disabled) { text-decoration: line-through; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); opacity: .72; }
+.rose-pdp-sizes button.sold-out.active { opacity: 1; text-decoration: none; }
+.rose-stock-alert { margin-top: 16px; padding: 16px 18px; border-radius: 20px; border: 1px dashed var(--selection-line, #e3cdd8); background: color-mix(in srgb, var(--selection-surface, #fff8f4) 85%, transparent); color: var(--selection-ink, #4d2039); }
+.rose-stock-alert strong { display: block; font-size: 14px; }
+.rose-stock-alert p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.7; opacity: .8; }
+.rose-stock-alert-row { display: flex; gap: 8px; margin-top: 12px; }
+.rose-stock-alert-row input { flex: 1; min-width: 0; height: 46px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--selection-line, #e3cdd8); background: #fff; color: #2b1a22; font-size: 14px; text-align: left; }
+.rose-stock-alert-row input:focus { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 1px; }
+.rose-stock-alert-row button { height: 46px !important; min-height: 46px !important; padding: 0 22px !important; white-space: nowrap; }
+.rose-stock-alert .rose-form-error { margin-top: 8px; opacity: 1; }
+.rose-stock-alert.done { border-style: solid; border-color: color-mix(in srgb, #2f7a52 35%, transparent); }
+.rose-stock-alert.done strong { color: #2f7a52; }
+.rose-stock-stop { max-width: 560px; margin-inline: auto; text-align: center; }
+.rose-stock-stop-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }
+@media (max-width: 420px) {
+  .rose-stock-alert-row { flex-direction: column; }
+  .rose-stock-alert-row input { flex: none; width: 100%; }
+  .rose-stock-alert-row button { width: 100%; justify-content: center !important; }
+}
+
+/* Maintenance mode (admin → حماية الضغط والصيانة): a "back soon" screen over everything. */
+.rose-maint { position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center; padding: 24px 16px; overflow-y: auto; background: radial-gradient(120% 90% at 50% 0%, var(--rose-soft, #f7dbe6) 0%, #fff8f4 55%, #f3e6ea 100%); color: #3d1a2c; }
+.rose-maint-card { width: 100%; max-width: 520px; text-align: center; padding: 40px 28px; border-radius: 28px; background: rgba(255,255,255,.72); border: 1px solid var(--rose-border, #eac9d7); box-shadow: 0 30px 80px -40px rgba(125,36,72,.45); backdrop-filter: blur(8px); }
+.rose-maint-logo { max-height: 64px; max-width: 180px; margin: 0 auto 18px; object-fit: contain; }
+.rose-maint-name { font-size: 28px; font-weight: 700; color: var(--rose-dark, #7d2448); margin-bottom: 14px; }
+.rose-maint h1 { margin: 10px 0 12px; font-size: clamp(28px, 6vw, 40px); line-height: 1.2; color: var(--rose-dark, #7d2448); }
+.rose-maint p { margin: 0 auto; max-width: 400px; font-size: 15px; line-height: 1.9; opacity: .85; white-space: pre-line; }
+.rose-maint-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 24px; }
+.rose-maint-banner { position: sticky; top: 0; z-index: 2147482000; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 8px 14px; font-size: 12.5px; background: #3d1a2c; color: #fff8f4; text-align: center; }
+.rose-maint-banner button { padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(255,248,244,.5); color: inherit; background: transparent; font-size: 12px; }
+/* Nothing floats over the maintenance screen (companion, accessibility button, chat…). */
+body:has(.rose-maint) :is(.rose-companion, .a11y-fab, .season-mascot, .live-chat-button, .whatsapp-float, .scroll-to-top, .mobile-bottom-nav) { display: none !important; }
+body:has(.rose-maint) { overflow: hidden; }
+
+/* Product-type details on the product page (admin → أنواع المنتجات). */
+.rose-pdp-specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin: 14px 0 0; }
+.rose-pdp-specs > div { min-width: 0; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--selection-surface, #fff8f4) 80%, transparent); border: 1px solid var(--selection-line, #efdde5); }
+.rose-pdp-specs > div.wide { grid-column: 1 / -1; }
+.rose-pdp-specs dt { font-size: 11.5px; opacity: .65; margin: 0 0 2px; }
+.rose-pdp-specs dd { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--selection-ink, #4d2039); line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+.rose-pdp-specs dd a { color: var(--selection-accent, #7d2448); text-decoration: underline; }
+@media (max-width: 420px) { .rose-pdp-specs { grid-template-columns: 1fr; } }
+
+/* Shop filters from the product types' fields (القماش، المناسبة…). */
+.rose-attr-filters, .attr-filters { display: flex; flex-direction: column; gap: 10px; }
+.rose-attr-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rose-attr-label { font-size: 12px; font-weight: 600; opacity: .7; min-width: 64px; }
+.rose-attr-options { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.rose-attr-options button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 999px; font-size: 12.5px; border: 1px solid var(--selection-line, #e3cdd8); background: var(--selection-surface, #fff8f4); color: var(--selection-ink, #4d2039); transition: all .2s ease; }
+.rose-attr-options button:hover { border-color: var(--selection-accent, #7d2448); }
+.rose-attr-options button.active { background: var(--selection-accent, #7d2448); border-color: var(--selection-accent, #7d2448); color: var(--selection-surface, #fff8f4); }
+.rose-attr-count { font-size: 10.5px; opacity: .6; }
+@media (max-width: 640px) { .rose-attr-options { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; } .rose-attr-options::-webkit-scrollbar { display: none; } .rose-attr-group { flex-wrap: nowrap; } .rose-attr-label { flex: none; } }
+
+/* Digital products and bookings: bag, product page and the private order page (/order/<token>). */
+.rose-cart-hint { display: block; margin-top: 4px; font-size: 11.5px; line-height: 1.7; color: var(--selection-muted, #8b6d7b); }
+.rose-cart-handover { margin: 0; padding: 12px 16px; border-radius: 16px; background: color-mix(in srgb, var(--selection-accent, #7d2448) 8%, transparent); color: var(--selection-ink, #4d2039); line-height: 1.9; }
+.rose-pdp-handover { display: grid; gap: 6px; margin: 18px 0 6px; padding: 14px 16px; border: 1px solid var(--selection-line, #efdde5); border-radius: 18px; font-size: 14px; line-height: 1.8; color: var(--selection-ink, #4d2039); }
+.rose-pdp-handover p { margin: 0; }
+.rose-pdp-handover .muted { font-size: 13px; color: var(--selection-muted, #8b6d7b); }
+.rose-order-access { max-width: 720px; display: grid; gap: 18px; }
+.rose-order-access h1 { font-family: var(--atelier-serif); font-weight: 600; font-size: clamp(30px, 4vw, 48px); line-height: 1.25; margin: 0; color: var(--selection-ink, #4d2039); }
+.rose-order-access > p { margin: 0; line-height: 2; color: var(--selection-muted, #8b6d7b); }
+.rose-order-access a { color: var(--selection-accent, #7d2448); text-decoration: underline; text-underline-offset: 3px; }
+.rose-order-access h2 { font-size: 18px; margin: 0 0 12px; color: var(--selection-ink, #4d2039); }
+.rose-order-tickets ul, .rose-order-files ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.rose-order-tickets li { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 18px; align-items: center; border: 1px solid var(--selection-line, #efdde5); border-radius: 22px; padding: 16px; background: color-mix(in srgb, var(--selection-surface, #fff8f4) 70%, white); break-inside: avoid; }
+.rose-order-tickets li.used { opacity: .65; }
+.rose-order-qr { width: 150px; height: 150px; border-radius: 12px; background: #fff; }
+.rose-order-ticket-info { display: grid; gap: 4px; min-width: 0; font-size: 14px; line-height: 1.7; color: var(--selection-ink, #4d2039); }
+.rose-order-ticket-info b { font-size: 16px; }
+.rose-order-ticket-info code { justify-self: start; margin-top: 4px; font-size: 22px; font-weight: 700; letter-spacing: .14em; color: var(--selection-accent, #7d2448); }
+.rose-order-ticket-info em { font-style: normal; font-size: 13px; color: var(--selection-muted, #8b6d7b); }
+.rose-order-note { margin: 12px 0; font-size: 13px; color: var(--selection-muted, #8b6d7b); }
+.rose-order-files li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--selection-line, #efdde5); border-radius: 18px; padding: 14px 16px; }
+.rose-order-files li > div { display: grid; gap: 2px; min-width: 0; }
+.rose-order-files li span, .rose-order-files li small { font-size: 12.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-order-items summary { cursor: pointer; font-size: 14px; color: var(--selection-ink, #4d2039); }
+.rose-order-items ul { margin: 10px 0 0; padding-inline-start: 20px; line-height: 2; font-size: 14px; }
+@media (max-width: 520px) {
+  .rose-order-tickets li { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .rose-order-ticket-info code { justify-self: center; }
+  .rose-order-qr { width: min(220px, 70vw); height: auto; aspect-ratio: 1; }
+  .rose-order-files li .atelier-button { width: 100%; justify-content: center; }
+}
+@media print {
+  .rose-order-access .no-print, .rose-order-access ~ *, header, footer, nav { display: none !important; }
+  .rose-order-tickets li { border-color: #999; background: #fff; }
+}
+.rose-order-access { padding-inline: 16px; }
+
+/* Razan: tabs in her panel, «شو كنتِ شايفة», and her small offers above her. */
+.razan-tabs { display: flex; gap: 6px; padding: 8px 12px 0; }
+.razan-tabs button { flex: 1; border: 1px solid var(--selection-line, #efdde5); background: transparent; color: var(--selection-ink, #4d2039); border-radius: 999px; padding: 7px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.razan-tabs button[aria-selected="true"] { background: var(--selection-accent, #7d2448); border-color: var(--selection-accent, #7d2448); color: #fff; }
+.razan-history { display: grid; gap: 14px; font-size: 13px; color: var(--selection-ink, #4d2039); }
+.razan-history h4 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--selection-muted, #8b6d7b); }
+.razan-history ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.razan-history li a { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 14px; color: inherit; text-decoration: none; background: color-mix(in srgb, var(--selection-surface, #fff8f4) 70%, white); }
+.razan-history li a:hover { background: color-mix(in srgb, var(--selection-accent, #7d2448) 8%, white); }
+.razan-history img, .razan-history-noimg { width: 44px; height: 55px; border-radius: 10px; object-fit: cover; flex: none; background: var(--selection-line, #efdde5); }
+.razan-history-info { display: grid; min-width: 0; line-height: 1.5; }
+.razan-history-info b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.razan-history-info small { color: var(--selection-muted, #8b6d7b); font-size: 11.5px; }
+.razan-history-searches { display: flex; flex-wrap: wrap; gap: 6px; }
+.razan-history-searches a { border: 1px solid var(--selection-line, #efdde5); border-radius: 999px; padding: 5px 10px; color: var(--selection-accent, #7d2448); text-decoration: none; font-size: 12.5px; }
+.razan-history-clear { justify-self: start; border: 0; background: none; padding: 0; font: inherit; font-size: 12px; color: var(--selection-accent, #7d2448); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.razan-history-note, .razan-history-empty { margin: 0; font-size: 11.5px; color: var(--selection-muted, #8b6d7b); line-height: 1.7; }
+.razan-offer { position: absolute; bottom: calc(100% + 8px); left: 0; width: min(270px, calc(100vw - 24px)); padding: 12px 14px; border-radius: 18px; background: var(--selection-surface, #fff); color: var(--selection-ink, #4d2039); border: 1px solid var(--selection-line, #efdde5); box-shadow: 0 18px 40px -20px rgba(77, 32, 57, .45); font-size: 13.5px; line-height: 1.7; animation: razan-offer-in .35s ease both; z-index: 2; }
+.razan-offer p { margin: 0 0 8px; }
+.razan-offer div { display: flex; flex-wrap: wrap; gap: 6px; }
+.razan-offer button { border: 0; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 12.5px; cursor: pointer; background: var(--selection-accent, #7d2448); color: #fff; }
+.razan-offer button.ghost { background: transparent; color: var(--selection-muted, #8b6d7b); }
+@keyframes razan-offer-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .razan-offer { animation: none; } }
+.rose-companion[data-side="right"] .razan-offer { left: auto; right: 0; }
+.rose-companion[data-side="center"] .razan-offer { left: 50%; translate: -50% 0; }
+/* «رزان بتساعدك تطلبي»: one question per screen inside her panel. */
+.razan-help { display: grid; gap: 12px; font-size: 14px; color: var(--selection-ink, #4d2039); }
+.razan-help-dots { display: flex; gap: 4px; }
+.razan-help-dots i { flex: 1; height: 4px; border-radius: 4px; background: var(--selection-line, #efdde5); }
+.razan-help-dots i[data-on] { background: var(--selection-accent, #7d2448); }
+.razan-help-count { margin: -6px 0 0; font-size: 11.5px; color: var(--selection-muted, #8b6d7b); }
+.razan-help-q { margin: 0; font-size: 15.5px; font-weight: 600; line-height: 1.6; }
+.razan-help-colors { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.razan-help-sizes { display: flex; flex-wrap: wrap; gap: 8px; }
+.razan-help-pick { display: grid; gap: 4px; justify-items: center; border: 1.5px solid var(--selection-line, #efdde5); background: var(--selection-surface, #fff); color: inherit; border-radius: 14px; padding: 6px; font: inherit; font-size: 12.5px; cursor: pointer; min-height: 44px; min-width: 52px; }
+.razan-help-pick img, .razan-help-swatch { width: 100%; aspect-ratio: 4 / 5; border-radius: 10px; object-fit: cover; display: block; }
+.razan-help-pick[aria-pressed="true"] { border-color: var(--selection-accent, #7d2448); box-shadow: 0 0 0 2px color-mix(in srgb, var(--selection-accent, #7d2448) 22%, transparent); }
+.razan-help-pick:disabled { opacity: .45; cursor: not-allowed; }
+.razan-help-pick small { font-size: 10.5px; color: var(--selection-muted, #8b6d7b); }
+.razan-help-sizes .razan-help-pick { padding: 8px 14px; font-size: 14px; }
+.razan-help-unsure { justify-self: start; border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--selection-accent, #7d2448); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.razan-help-hint { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--selection-muted, #8b6d7b); }
+.razan-help-qty { display: flex; align-items: center; gap: 14px; }
+.razan-help-qty button { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--selection-line, #efdde5); background: var(--selection-surface, #fff); color: inherit; font: inherit; font-size: 20px; cursor: pointer; }
+.razan-help-qty button:disabled { opacity: .4; cursor: not-allowed; }
+.razan-help-qty output { min-width: 2ch; text-align: center; font-size: 22px; font-weight: 600; }
+.razan-help-field { display: grid; gap: 4px; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); }
+.razan-help-field input { width: 100%; box-sizing: border-box; border: 1.5px solid var(--selection-line, #efdde5); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 16px; color: var(--selection-ink, #4d2039); background: var(--selection-surface, #fff); }
+.razan-help-field input:focus { outline: none; border-color: var(--selection-accent, #7d2448); }
+.razan-help-summary { display: flex; gap: 12px; align-items: flex-start; }
+.razan-help-summary img { width: 70px; aspect-ratio: 4 / 5; border-radius: 12px; object-fit: cover; flex: none; }
+.razan-help-summary dl { margin: 0; display: grid; gap: 4px; flex: 1; min-width: 0; font-size: 13px; }
+.razan-help-summary dl div { display: flex; justify-content: space-between; gap: 8px; }
+.razan-help-summary dt { color: var(--selection-muted, #8b6d7b); flex: none; }
+.razan-help-summary dd { margin: 0; text-align: end; overflow-wrap: anywhere; }
+.razan-help-total { border-top: 1px solid var(--selection-line, #efdde5); padding-top: 6px; margin-top: 2px; font-weight: 600; }
+.razan-help-total small { display: block; font-weight: 400; font-size: 11px; color: var(--selection-muted, #8b6d7b); }
+.razan-help-err { margin: 0; padding: 8px 10px; border-radius: 10px; background: #fdecef; color: #9b1c3a; font-size: 12.5px; line-height: 1.7; }
+.razan-help-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.razan-help-nav button, .razan-help-done button, .razan-help > .razan-help-main { border: 0; border-radius: 999px; padding: 10px 18px; font: inherit; font-size: 14px; cursor: pointer; min-height: 44px; }
+.razan-help-main { background: var(--selection-accent, #7d2448); color: #fff; }
+.razan-help-main:disabled { opacity: .45; cursor: not-allowed; }
+.razan-help-nav .ghost { background: transparent; color: var(--selection-muted, #8b6d7b); }
+.razan-help-call { justify-self: center; border: 0; background: none; padding: 4px; font: inherit; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.razan-help-done { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 8px 0; }
+.razan-help-done > span { font-size: 34px; }
+.razan-help-done h3 { margin: 0; font-size: 17px; }
+.razan-help-done p { margin: 0; font-size: 13.5px; line-height: 1.7; }
+
+/* «اطلبي قطعتكِ» — special requests (admin → الطلبات الخاصة). */
+.rose-request-open { display: block; margin-top: 14px; border: 0; background: none; padding: 4px 0; font: inherit; font-size: 13.5px; color: var(--selection-accent, #7d2448); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; text-align: start; }
+.rose-request { display: grid; gap: 12px; margin-top: 16px; padding: 18px; border-radius: 22px; border: 1px solid var(--selection-line, #e3cdd8); background: color-mix(in srgb, var(--selection-surface, #fff8f4) 88%, transparent); color: var(--selection-ink, #4d2039); }
+.rose-request-for { margin: 0; font-size: 13px; color: var(--selection-muted, #8b6d7b); }
+.rose-request-for b { color: var(--selection-ink, #4d2039); font-weight: 600; }
+.rose-request-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.rose-request-kinds button { border: 1px solid var(--selection-line, #e3cdd8); background: #fff; color: inherit; border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13px; cursor: pointer; min-height: 40px; }
+.rose-request-kinds button[aria-checked="true"] { background: var(--selection-accent, #7d2448); border-color: var(--selection-accent, #7d2448); color: #fff; }
+.rose-request-field { display: grid; gap: 5px; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); min-width: 0; }
+.rose-request-field input, .rose-request-field textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--selection-line, #e3cdd8); border-radius: 14px; padding: 11px 14px; font: inherit; font-size: 16px; color: #2b1a22; background: #fff; }
+.rose-request-field textarea { resize: vertical; min-height: 84px; line-height: 1.7; }
+.rose-request-field input:focus, .rose-request-field textarea:focus { outline: none; border-color: var(--selection-accent, #7d2448); }
+.rose-request-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .rose-request-two { grid-template-columns: 1fr; } .rose-request { padding: 14px; } }
+.rose-request-photos { display: grid; gap: 6px; font-size: 12.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-request-photos > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.rose-request-photos figure { position: relative; margin: 0; width: 76px; aspect-ratio: 4 / 5; }
+.rose-request-photos figure img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; }
+.rose-request-photos figure button { position: absolute; top: 4px; inset-inline-end: 4px; width: 24px; height: 24px; min-width: 0; min-height: 0; padding: 0; border-radius: 50%; border: 0; background: rgba(43, 26, 34, .7); color: #fff; font-size: 11px; line-height: 24px; cursor: pointer; }
+.rose-request-add { width: 76px; aspect-ratio: 4 / 5; display: grid; place-content: center; gap: 2px; border: 1.5px dashed var(--selection-line, #e3cdd8); border-radius: 12px; background: #fff; color: var(--selection-accent, #7d2448); font: inherit; font-size: 22px; cursor: pointer; }
+.rose-request-add small { font-size: 11px; }
+.rose-request-photos > small { font-size: 11.5px; line-height: 1.6; }
+.rose-request-err { margin: 0; padding: 9px 12px; border-radius: 12px; background: #fdecef; color: #9b1c3a; font-size: 13px; line-height: 1.7; }
+.rose-request-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.rose-request-cancel { border: 0; background: none; font: inherit; font-size: 13px; color: var(--selection-muted, #8b6d7b); cursor: pointer; }
+.rose-request-done { justify-items: center; text-align: center; }
+.rose-request-done > span { font-size: 32px; }
+.rose-request-done strong { font-size: 16px; }
+.rose-request-done p { margin: 0; font-size: 13.5px; line-height: 1.7; }
+.rose-request-page { padding-inline: 16px; max-width: 640px; }
+.rose-request-page h1 { margin: 6px 0 10px; font-size: clamp(26px, 6vw, 40px); line-height: 1.25; color: var(--selection-ink, #4d2039); }
+.rose-request-page > p { line-height: 1.8; color: var(--selection-muted, #8b6d7b); }
+.rose-search-request { margin: 14px 0 0; font-size: 13.5px; color: var(--selection-muted, #8b6d7b); }
+.rose-search-request.empty { padding: 14px 16px; border-radius: 18px; border: 1px dashed var(--selection-line, #e3cdd8); color: var(--selection-ink, #4d2039); }
+.rose-search-request a { color: var(--selection-accent, #7d2448); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.image-search-request { margin: 0 0 14px; font-size: 13.5px; color: var(--muted, #8b6d7b); }
+.image-search-request button { border: 0; background: none; padding: 0; font: inherit; color: var(--accent, #7d2448); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+
+/* «رزان بتختارلك» — the style quiz in Razan's panel. */
+.razan-tabs { overflow-x: auto; scrollbar-width: none; }
+.razan-tabs::-webkit-scrollbar { display: none; }
+.razan-tabs button { flex: 1 0 auto; white-space: nowrap; }
+.razan-quiz-chip { padding: 9px 14px; font-size: 13.5px; }
+.razan-quiz-note { font-size: 11.5px; color: var(--selection-muted, #8b6d7b); }
+.razan-quiz-colors { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.razan-quiz-color { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--selection-line, #efdde5); background: var(--selection-surface, #fff); color: inherit; border-radius: 999px; padding: 6px 10px 6px 6px; font: inherit; font-size: 12.5px; cursor: pointer; min-height: 40px; text-align: start; }
+.razan-quiz-color i { width: 24px; height: 24px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.razan-quiz-color[aria-pressed="true"] { border-color: var(--selection-accent, #7d2448); box-shadow: 0 0 0 2px color-mix(in srgb, var(--selection-accent, #7d2448) 22%, transparent); }
+.razan-quiz .razan-help-pick { position: relative; }
+.razan-quiz .razan-help-pick > span:last-child:not(:first-child) { position: absolute; top: 6px; inset-inline-end: 8px; font-size: 16px; }
+.razan-quiz-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.razan-quiz-results li { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border-radius: 16px; border: 1px solid var(--selection-line, #efdde5); background: var(--selection-surface, #fff); }
+.razan-quiz-results li[data-liked] { border-color: var(--selection-accent, #7d2448); }
+.razan-quiz-results a { display: flex; gap: 10px; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.razan-quiz-results img, .razan-quiz-results .razan-help-swatch { width: 64px; aspect-ratio: 4 / 5; border-radius: 10px; object-fit: cover; flex: none; background: var(--selection-line, #efdde5); }
+.razan-quiz-results a > span { display: grid; gap: 2px; min-width: 0; font-size: 12.5px; line-height: 1.5; }
+.razan-quiz-results b { font-weight: 600; font-size: 13px; }
+.razan-quiz-results em { font-style: normal; color: var(--selection-accent, #7d2448); font-weight: 600; }
+.razan-quiz-results small { color: var(--selection-muted, #8b6d7b); font-size: 11.5px; }
+.razan-quiz-thumbs { display: grid; gap: 4px; }
+.razan-quiz-thumbs button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--selection-line, #efdde5); background: transparent; cursor: pointer; font-size: 15px; }
+.razan-quiz-thumbs button[aria-pressed="true"] { background: color-mix(in srgb, var(--selection-accent, #7d2448) 14%, white); border-color: var(--selection-accent, #7d2448); }
+.razan-quiz-actions { display: grid; gap: 8px; justify-items: center; }
+.razan-quiz-link { display: inline-block; text-align: center; text-decoration: none; padding: 10px 18px; border-radius: 999px; }
+.rose-quiz-cta { display: inline-flex; margin-top: 14px; margin-inline-start: 16px; border: 1px solid var(--selection-line, #e3cdd8); background: var(--selection-surface, #fff); color: var(--selection-accent, #7d2448); border-radius: 999px; padding: 10px 16px; font: inherit; font-size: 13.5px; cursor: pointer; }
+
+/* «سؤال وجواب» — the questions quiz in Razan's panel. */
+.razan-questions-rules { margin: 0; padding-inline-start: 18px; display: grid; gap: 4px; font-size: 13px; line-height: 1.7; color: var(--selection-ink, #4d2039); }
+.razan-questions-choices { display: grid; gap: 8px; }
+.razan-questions-choices .razan-help-pick { justify-items: start; text-align: start; padding: 12px 14px; font-size: 14px; }
+.razan-questions-review { margin: 0; padding-inline-start: 18px; display: grid; gap: 8px; font-size: 12.5px; line-height: 1.6; }
+.razan-questions-review li span { display: block; color: var(--selection-muted, #8b6d7b); }
+.razan-questions-review li b { color: #2f7a4f; font-weight: 600; }
+.razan-questions-review li[data-ok] b::after { content: " ✓"; }
+.razan-questions-code { margin: 4px 0; padding: 10px 18px; border-radius: 14px; border: 2px dashed var(--selection-accent, #7d2448); font-size: 22px; font-weight: 700; letter-spacing: 2px; color: var(--selection-accent, #7d2448); user-select: all; }
+
+/* AI on the product page and search (admin → الذكاء الاصطناعي). */
+.rose-ai-link { display: block; margin-top: 10px; border: 0; background: none; padding: 2px 0; font: inherit; font-size: 13px; color: var(--selection-accent, #7d2448); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; text-align: start; }
+.rose-ai-card { margin-top: 12px; padding: 14px 16px; border-radius: 20px; border: 1px solid var(--selection-line, #e3cdd8); background: color-mix(in srgb, var(--selection-surface, #fff8f4) 88%, transparent); color: var(--selection-ink, #4d2039); display: grid; gap: 10px; font-size: 13.5px; }
+.rose-ai-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rose-ai-row label { display: grid; gap: 4px; font-size: 11.5px; color: var(--selection-muted, #8b6d7b); min-width: 0; }
+.rose-ai-row input { width: 100%; box-sizing: border-box; height: 42px; border: 1px solid var(--selection-line, #e3cdd8); border-radius: 12px; padding: 0 10px; font: inherit; font-size: 16px; background: #fff; color: #2b1a22; }
+.rose-ai-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rose-ai-chips button, .rose-ai-actions button, .rose-ai-answer button { border: 1px solid var(--selection-line, #e3cdd8); background: #fff; color: inherit; border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13px; cursor: pointer; min-height: 38px; }
+.rose-ai-chips button[aria-checked="true"], .rose-ai-actions button[type="submit"], .rose-ai-answer button { background: var(--selection-accent, #7d2448); border-color: var(--selection-accent, #7d2448); color: #fff; }
+.rose-ai-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rose-ai-actions .ghost { background: transparent; }
+.rose-ai-answer { padding: 10px 12px; border-radius: 14px; background: #fff; display: grid; gap: 6px; line-height: 1.7; }
+.rose-ai-answer p { margin: 0; }
+.rose-ai-answer small { color: var(--selection-muted, #8b6d7b); }
+.rose-ai-answer button { justify-self: start; }
+.rose-ai-err { margin: 0; padding: 8px 10px; border-radius: 10px; background: #fdecef; color: #9b1c3a; font-size: 12.5px; }
+.rose-ai-note { font-size: 11px; color: var(--selection-muted, #8b6d7b); }
+@media (max-width: 420px) { .rose-ai-row { grid-template-columns: 1fr 1fr; } .rose-ai-row label:last-child { grid-column: 1 / -1; } }
+.rose-ai-reviews-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.rose-ai-reviews-head h2 { margin: 0; font-size: 15px; }
+.rose-ai-reviews-head span { font-size: 12px; color: var(--selection-muted, #8b6d7b); }
+.rose-ai-reviews-head button { margin-inline-start: auto; border: 0; background: none; font: inherit; font-size: 12px; color: var(--selection-accent, #7d2448); text-decoration: underline; cursor: pointer; }
+.rose-ai-reviews p { margin: 0; line-height: 1.8; }
+.rose-ai-reviews ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12.5px; }
+.rose-ai-look { max-width: 1180px; margin: 32px auto 0; padding: 0 16px; }
+.rose-ai-look h2 { margin: 0 0 12px; font-size: 20px; color: var(--selection-ink, #4d2039); }
+.rose-ai-look ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.rose-ai-look a { display: grid; gap: 4px; color: var(--selection-ink, #4d2039); text-decoration: none; font-size: 13px; }
+.rose-ai-look img, .rose-ai-noimg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 16px; background: var(--selection-line, #efdde5); display: block; }
+.rose-ai-look em { font-style: normal; font-weight: 600; color: var(--selection-accent, #7d2448); }
+.rose-ai-look small { color: var(--selection-muted, #8b6d7b); font-size: 12px; line-height: 1.5; }
+@media (max-width: 560px) { .rose-ai-look ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .rose-ai-look a { font-size: 12px; } }
+.rose-smart-search { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 14px 0 0; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--selection-line, #e3cdd8); background: color-mix(in srgb, var(--selection-surface, #fff8f4) 90%, transparent); font-size: 13.5px; color: var(--selection-ink, #4d2039); }
+.rose-smart-search a { color: var(--selection-accent, #7d2448); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }

@@ -91,6 +91,7 @@ export default async function CategoryPage({
       sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
       minPrice: f.minPrice,
       maxPrice: f.maxPrice,
+      attrs: f.attrs,
       includeFacets: true,
       lite: true,
       // legacy
@@ -196,6 +197,7 @@ async function RoseCategoryPage({ slug, searchParams }: { slug: string; searchPa
     sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined,
     minPrice: f.minPrice,
     maxPrice: f.maxPrice,
+    attrs: f.attrs,
     includeFacets: true,
     lite: true,
     color: pick(searchParams, "color"),
