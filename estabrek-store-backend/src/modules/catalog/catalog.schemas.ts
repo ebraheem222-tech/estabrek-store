@@ -19,6 +19,8 @@ const CartItemBody = z.object({
 /** list/browse query */
 export const ProductListQuery = z.object({
   q: z.string().trim().optional(),
+  /** Product type slug (admin → أنواع المنتجات). attr_<field>=a,b filters are read from the raw query. */
+  type: z.string().trim().max(60).optional(),
   category: z.string().trim().optional(), // category slug
   categoryId: z.string().cuid().optional(),
   inStock: Boolish.optional(),
@@ -73,6 +75,8 @@ export const CreateOrderRequestBody = z
     customerName: z.string().trim().min(2).max(120),
     phone: z.string().trim().min(5).max(40),
     whatsapp: z.string().trim().min(5).max(40).optional(),
+    /** For digital products and tickets: the delivery email (optional). */
+    email: z.string().trim().toLowerCase().email().max(160).optional().or(z.literal("").transform(() => undefined)),
     country: z.string().trim().max(80).optional(),
     city: z.string().trim().max(80).optional(),
     address: z.string().trim().max(300).optional(),

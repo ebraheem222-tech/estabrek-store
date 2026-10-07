@@ -1,4 +1,5 @@
 import { type OrderReqStatus, Prisma } from "@prisma/client";
+import { digitalVariantIds, releaseOrderInTx, revokeOrderInTx } from "../fulfillment/fulfillment.service.js";
 
 export const ORDER_REQUEST_STATUSES = [
   "NEW",
@@ -35,6 +36,8 @@ export type ApplyOrderStatusSuccess = {
     stockCommitted: boolean;
   };
   stockAction: "none" | "decremented" | "restored";
+  /** Files/tickets: released on acceptance, taken back on cancel/reject/refund. */
+  delivery: "none" | "released" | "revoked";
 };
 
 export type ApplyOrderStatusResult = ApplyOrderStatusSuccess | ApplyOrderStatusError;
@@ -88,7 +91,10 @@ async function applyStockLines(
   lines: StockLine[],
   options: { multiplier: 1 | -1; reason: string; adminUserId: string | null }
 ): Promise<ApplyOrderStatusError | null> {
+  // Digital products never run out: their stock isn't taken or given back.
+  const digital = await digitalVariantIds(tx, lines.map((l) => l.variantId));
   for (const line of lines) {
+    if (digital.has(line.variantId)) continue;
     const variant = await tx.productVariant.findUnique({
       where: { id: line.variantId },
       select: { id: true, stock: true },
@@ -242,8 +248,18 @@ export async function applyOrderStatusTransition(
     },
   });
 
+  // Digital files and tickets: ready once accepted, taken back when the order is closed.
+  let delivery: ApplyOrderStatusSuccess["delivery"] = "none";
+  if (args.toStatus === "ACCEPTED" || args.toStatus === "SHIPPED" || args.toStatus === "CLOSED") {
+    const r = await releaseOrderInTx(tx, existing.id, "accepted");
+    if (r.released) delivery = "released";
+  } else if (RESTORE_STOCK_STATUSES.has(args.toStatus)) {
+    if ((await revokeOrderInTx(tx, existing.id)) > 0) delivery = "revoked";
+  }
+
   return {
     ok: true,
+    delivery,
     order: {
       ...updated,
       stockCommitted: shouldDecrement ? true : shouldRestore ? false : isCommitted,

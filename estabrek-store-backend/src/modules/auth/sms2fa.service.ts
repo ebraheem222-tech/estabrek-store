@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { invalidateAccess } from "../../middleware/access.js";
 import { Unauthorized } from "../../utils/httpError.js";
 import { createOtpChallenge, verifyOtpChallenge } from "./otp.service.js";
 import { sendSms } from "../outbox/sender/sms.js";
@@ -50,5 +51,6 @@ export async function confirmEnableSms2fa(params: { adminId: string; challengeId
     data: { twoFactorEnabled: true, default2FADeviceId: device.id },
   });
 
+  invalidateAccess(params.adminId);
   return { ok: true, deviceId: device.id };
 }

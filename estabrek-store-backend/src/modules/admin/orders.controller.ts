@@ -22,6 +22,8 @@ const ORDER_REQUEST_BASE_SELECT = {
   customerName: true,
   phone: true,
   whatsapp: true,
+  email: true,
+  deliveredAt: true,
   country: true,
   city: true,
   address: true,
@@ -90,7 +92,58 @@ const ListQuery = z.object({
   status: z.enum(ORDER_REQUEST_STATUSES).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  /** Name, phone/WhatsApp (any format) or order id. */
+  q: z.string().trim().max(100).optional(),
+  /** Inclusive date range on createdAt (ISO date or datetime). */
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  source: z.string().trim().max(40).optional(),
+  city: z.string().trim().max(80).optional(),
+  payment: z.enum(["paid", "unpaid"]).optional(),
 });
+
+type ListQueryT = z.infer<typeof ListQuery>;
+
+/** Digits only, without the country code or the leading 0, so 054-420-4029 and +972544204029 both match. */
+function phoneCore(raw: string) {
+  const d = raw.replace(/\D/g, "");
+  return d.replace(/^(00)?(972|970)/, "").replace(/^0/, "");
+}
+
+function buildOrdersWhere(q: Omit<ListQueryT, "page" | "pageSize">) {
+  const and: any[] = [];
+  if (q.status) and.push({ status: q.status });
+  if (q.from || q.to) {
+    const createdAt: any = {};
+    if (q.from) createdAt.gte = q.from;
+    if (q.to) {
+      // A bare date means "until the end of that day".
+      const to = new Date(q.to);
+      if (to.getUTCHours() === 0 && to.getUTCMinutes() === 0 && to.getUTCSeconds() === 0) to.setUTCDate(to.getUTCDate() + 1);
+      createdAt.lt = to;
+    }
+    and.push({ createdAt });
+  }
+  if (q.source) and.push({ source: q.source });
+  if (q.city) and.push({ city: { contains: q.city, mode: "insensitive" } });
+  if (q.payment === "paid") and.push({ paymentStatus: { in: ["PAID", "paid", "COLLECTED"] } });
+  if (q.payment === "unpaid") and.push({ OR: [{ paymentStatus: null }, { paymentStatus: { notIn: ["PAID", "paid", "COLLECTED"] } }] });
+  if (q.q) {
+    const text = q.q.trim();
+    const or: any[] = [
+      { customerName: { contains: text, mode: "insensitive" } },
+      { email: { contains: text.toLowerCase() } },
+      { id: { startsWith: text } },
+      { city: { contains: text, mode: "insensitive" } },
+    ];
+    const core = phoneCore(text);
+    if (core.length >= 4) {
+      or.push({ phone: { contains: core } }, { whatsapp: { contains: core } });
+    }
+    and.push({ OR: or });
+  }
+  return and.length ? { AND: and } : {};
+}
 
 r.get(
   "/",
@@ -98,7 +151,7 @@ r.get(
   asyncHandler(async (req, res) => {
     const q = ListQuery.parse(req.query);
 
-    const where = q.status ? { status: q.status } : {};
+    const where = buildOrdersWhere(q);
     const skip = (q.page - 1) * q.pageSize;
 
     const [total, data] = await Promise.all([
@@ -110,31 +163,17 @@ r.get(
         take: q.pageSize,
         select: {
           ...ORDER_REQUEST_BASE_SELECT,
+          // Only what the list shows: the first photo is enough for a thumbnail.
           variant: {
             include: {
-              item: { include: { product: true, images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }] } } },
+              item: { include: { product: true, images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }], take: 1 } } },
               size: true,
             },
           },
           items: {
             orderBy: { createdAt: "asc" },
-            select: {
-              ...ORDER_REQUEST_ITEM_SELECT,
-              variant: {
-                include: {
-                  item: {
-                    include: {
-                      product: true,
-                      images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }] },
-                    },
-                  },
-                  size: true,
-                },
-              },
-            },
+            select: ORDER_REQUEST_ITEM_SELECT,
           },
-          messages: true,
-          history: true,
         },
       }),
     ]);
@@ -146,6 +185,26 @@ r.get(
       totalPages: Math.max(1, Math.ceil(total / q.pageSize)),
       data,
     });
+  })
+);
+
+// GET /v1/admin/orders/summary — light endpoint the admin polls for new-order alerts and status counts.
+r.get(
+  "/summary",
+  asyncHandler(async (_req, res) => {
+    const [groups, latestNew] = await Promise.all([
+      prisma.orderRequest.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.orderRequest.findMany({
+        where: { status: "NEW" },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { id: true, customerName: true, total: true, currencyCode: true, city: true, source: true, createdAt: true },
+      }),
+    ]);
+    const counts: Record<string, number> = {};
+    for (const s of ORDER_REQUEST_STATUSES) counts[s] = 0;
+    for (const g of groups as any[]) counts[g.status] = g._count?._all ?? 0;
+    res.json({ counts, latestNew, now: new Date().toISOString() });
   })
 );
 
@@ -471,6 +530,56 @@ r.patch(
     }
 
     res.json(result.order);
+  })
+);
+
+const UpdateDetailsBody = z.object({
+  customerName: z.string().trim().min(1).max(120).optional(),
+  phone: z.string().trim().min(3).max(40).optional(),
+  whatsapp: z.string().trim().max(40).nullable().optional(),
+  /** Where the files/tickets email goes. */
+  email: z.union([z.string().trim().toLowerCase().email().max(160), z.literal("")]).nullable().optional(),
+  city: z.string().trim().max(80).nullable().optional(),
+  address: z.string().trim().max(500).nullable().optional(),
+  /** Cash on delivery: "PAID" once the money was collected, null to undo. */
+  paymentStatus: z.enum(["PAID", "UNPAID"]).nullable().optional(),
+  paymentProvider: z.string().trim().max(40).nullable().optional(),
+  paymentReference: z.string().trim().max(120).nullable().optional(),
+  /** Optional line for the order timeline. */
+  note: z.string().trim().max(500).nullable().optional(),
+});
+
+// PATCH /v1/admin/orders/:id/details — delivery details and cash-on-delivery collection.
+r.patch(
+  "/:id/details",
+  asyncHandler(async (req, res) => {
+    const parsed = UpdateDetailsBody.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: "BAD_REQUEST", message: "Invalid order details" });
+    const { note, ...fields } = parsed.data;
+
+    const existing = await prisma.orderRequest.findUnique({ where: { id: req.params.id }, select: { id: true, status: true, paymentStatus: true } });
+    if (!existing) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const data: any = {};
+    for (const [k, v] of Object.entries(fields)) if (v !== undefined) data[k] = v === "" ? null : v;
+    if (data.paymentStatus === "UNPAID") data.paymentStatus = null;
+
+    const lines: string[] = [];
+    if (fields.paymentStatus === "PAID" && existing.paymentStatus !== "PAID") lines.push("تم تسجيل استلام المبلغ");
+    if (fields.paymentStatus !== undefined && fields.paymentStatus !== "PAID" && existing.paymentStatus === "PAID") lines.push("أُلغي تسجيل استلام المبلغ");
+    if (["customerName", "phone", "whatsapp", "email", "city", "address"].some((k) => (fields as any)[k] !== undefined)) lines.push("تم تعديل بيانات الزبونة/التوصيل");
+    if (note) lines.push(note);
+
+    const order = await prisma.$transaction(async (tx) => {
+      const updated = await tx.orderRequest.update({ where: { id: existing.id }, data, select: ORDER_REQUEST_BASE_SELECT });
+      if (lines.length) {
+        await tx.orderRequestHistory.create({
+          data: { orderRequestId: existing.id, fromStatus: existing.status, toStatus: existing.status, note: lines.join(" — ") },
+        });
+      }
+      return updated;
+    });
+    res.json(order);
   })
 );
 

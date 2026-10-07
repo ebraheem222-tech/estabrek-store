@@ -1,6 +1,10 @@
 import { Router } from "express";
+import { optionalCustomer } from "../../middleware/customerAuth.js";
+import { activeCustomerId } from "../customer/customer.service.js";
 import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
+import { prisma } from "../../lib/prisma.js";
+import { attrFiltersFrom, attributeFacets, publicType } from "../productTypes/productTypes.js";
 import {
   ProductListQuery,
   ProductIdsBody,
@@ -29,7 +33,26 @@ const r = Router();
 // list/browse
 r.get("/products", validate({ query: ProductListQuery }), asyncHandler(async (req, res) => {
   const q = ProductListQuery.parse(req.query);
-  res.json(await listProducts(q));
+  res.json(await listProducts({ ...q, attrs: attrFiltersFrom(req.query as Record<string, unknown>) }));
+}));
+
+// Kinds of products and their fields (for the shop's filters and labels).
+r.get("/product-types", asyncHandler(async (_req, res) => {
+  const types = await prisma.productType.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] });
+  res.json({ types: types.map(publicType) });
+}));
+
+// Filter choices with counts from the types' filterable fields: ?category=slug&categoryId=&type=slug&q=
+r.get("/attribute-facets", asyncHandler(async (req, res) => {
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const and: any[] = [{ isActive: true }];
+  const type = str(req.query.type);
+  if (type) and.push({ type: { slug: type } });
+  const categoryId = str(req.query.categoryId);
+  const category = str(req.query.category);
+  if (categoryId) and.push({ OR: [{ categoryId }, { category: { parentId: categoryId } }] });
+  else if (category) and.push({ OR: [{ category: { slug: category } }, { category: { parent: { slug: category } } }] });
+  res.json({ fields: await attributeFacets({ AND: and }, type) });
 }));
 
 // batch by ids (for CMS + landing sections)
@@ -94,8 +117,9 @@ r.post("/cart-quote", validate({ body: CartQuoteBody }), asyncHandler(async (req
 }));
 
 // order request
-r.post("/order-requests", validate({ body: CreateOrderRequestBody }), asyncHandler(async (req, res) => {
-  const created = await submitOrderRequest(req.body);
+r.post("/order-requests", optionalCustomer, validate({ body: CreateOrderRequestBody }), asyncHandler(async (req, res) => {
+  // Signed-in shopper: the order shows in her account.
+  const created = await submitOrderRequest(req.body, { userId: await activeCustomerId(req.customer?.id) });
   res.status(201).json({ ok: true, id: created.id, subtotal: created.subtotal, discountAmount: created.discountAmount, total: created.total, couponCode: created.couponCode });
 }));
 

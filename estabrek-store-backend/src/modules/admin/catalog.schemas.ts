@@ -9,12 +9,25 @@ export const CreateCategoryBody = z.object({
 });
 export const UpdateCategoryBody = CreateCategoryBody.partial();
 
+/** Search-engine title/description: empty means "use the product's own title and description". */
+const SeoTitle = z.string().trim().max(120).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null));
+const SeoDescription = z.string().trim().max(320).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null));
+
 export const CreateProductBody = z.object({
   title: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().nullable().optional(),
+  seoTitle: SeoTitle,
+  seoDescription: SeoDescription,
   isActive: z.boolean().optional(),
   categoryId: z.string().cuid(),
+  /** The kind of product (admin → أنواع المنتجات) and its fields' values; checked against the type. */
+  typeId: z.string().min(1).max(64).nullable().optional(),
+  attributes: z.record(z.string(), z.unknown()).nullable().optional(),
+  /** Bookings: when and where (shown on the product page and the ticket). */
+  eventStartsAt: z.coerce.date().nullable().optional(),
+  eventEndsAt: z.coerce.date().nullable().optional(),
+  eventLocation: z.string().trim().max(200).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
 });
 export const UpdateProductBody = CreateProductBody.partial();
 
@@ -83,8 +96,16 @@ export const ProductDeepUpdateBody = z.object({
     title: z.string().min(1).optional(),
     slug: z.string().min(1).optional(),
     description: z.string().nullable().optional(),
+    seoTitle: SeoTitle,
+    seoDescription: SeoDescription,
     isActive: z.boolean().optional(),
     categoryId: z.string().cuid().optional(),
+    typeId: z.string().min(1).max(64).nullable().optional(),
+    attributes: z.record(z.string(), z.unknown()).nullable().optional(),
+    /** Bookings: when and where (shown on the product page and the ticket). */
+    eventStartsAt: z.coerce.date().nullable().optional(),
+    eventEndsAt: z.coerce.date().nullable().optional(),
+    eventLocation: z.string().trim().max(200).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
   }).optional(),
   items: z.array(z.object({
     id: z.string().cuid().optional(),
@@ -112,14 +133,22 @@ export const ProductDeepUpdateBody = z.object({
       salePrice: PriceNumber.nullable().optional(),
       saleStartsAt: z.coerce.date().nullable().optional(),
       saleEndsAt: z.coerce.date().nullable().optional(),
-      stock: z.number().int().min(0).optional().default(0),
-      lowStockThreshold: z.number().int().min(0).optional().default(0),
+      // Left out = keep the current value (never silently reset to 0).
+      stock: z.number().int().min(0).optional(),
+      lowStockThreshold: z.number().int().min(0).optional(),
       weightGrams: z.number().int().min(0).nullable().optional(),
     })).optional(),
   })).optional(),
   deleteItemIds: z.array(z.string().cuid()).optional(),
   deleteImageIds: z.array(z.string().cuid()).optional(),
   deleteVariantIds: z.array(z.string().cuid()).optional(),
+});
+
+/** GET /products: optional filters (the admin list also filters in the browser). */
+export const ProductListQuery = z.object({
+  status: z.enum(["all", "active", "draft"]).optional(),
+  q: z.string().max(120).optional(),
+  categoryId: z.string().optional(),
 });
 
 /**

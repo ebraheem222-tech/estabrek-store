@@ -1,10 +1,13 @@
 // src/modules/catalog/catalog.service.ts
 import { prisma } from "../../lib/prisma.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
-import type { Prisma } from "@prisma/client";
+import { phoneKey } from "../../lib/phoneKey.js";
+import { Prisma } from "@prisma/client";
 import { annotateLinesWithDiscount } from "../../utils/money.js";
 import { openaiEmbedText } from "../../lib/openai.js";
 import { scoreTextMatch } from "../../lib/searchText.js";
+import { attributesWhere, fieldsOf, publicType, publicTypeSelect, specsOf } from "../productTypes/productTypes.js";
+import { DIGITAL_STOCK, eventIsOver } from "../fulfillment/fulfillment.service.js";
 
 function parseCsv(v?: string | null): string[] | undefined {
   if (!v) return undefined;
@@ -222,6 +225,12 @@ async function resetExpiredSales(db: typeof prisma, expired: ExpiredSale[]) {
   );
 }
 
+/** The product's type (labels, fields) and its details rows for the product page. */
+function typeDetails(product: { type?: any; attributes?: unknown }) {
+  if (!product.type) return { type: null, specs: [] as ReturnType<typeof specsOf> };
+  return { type: publicType(product.type), specs: specsOf(fieldsOf(product.type.fields), product.attributes) };
+}
+
 const baseProductSelect = {
   id: true,
   title: true,
@@ -229,6 +238,11 @@ const baseProductSelect = {
   description: true,
   isActive: true,
   categoryId: true,
+  typeId: true,
+  attributes: true,
+  eventStartsAt: true,
+  eventEndsAt: true,
+  eventLocation: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -499,8 +513,11 @@ async function buildFacetsForProductIds(args: {
   };
 }
 
-function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string; categoryIds?: string[] }): Prisma.ProductWhereInput {
+function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string; categoryIds?: string[]; type?: string; attrs?: Record<string, string[]> }): Prisma.ProductWhereInput {
   const and: Prisma.ProductWhereInput[] = [{ isActive: true }];
+  // Product type and its fields (attr_<key>=a,b), see productTypes.ts.
+  if (input.type) and.push({ type: { slug: input.type } });
+  and.push(...attributesWhere(input.attrs));
 
   if (input.q) {
     and.push({
@@ -568,6 +585,8 @@ function buildItemWhere(input: {
  */
 function buildProductsWhere(input: {
   q?: string;
+  type?: string;
+  attrs?: Record<string, string[]>;
   category?: string; // category slug
   categoryId?: string;
   categoryIds?: string[];
@@ -590,6 +609,8 @@ function buildProductsWhere(input: {
     category: input.category,
     categoryId: input.categoryId,
     categoryIds: input.categoryIds,
+    type: input.type,
+    attrs: input.attrs,
   });
   const now = input.now ?? new Date();
 
@@ -634,6 +655,8 @@ function buildProductsWhere(input: {
 
 async function listProductsSemantic(params: {
   q?: string;
+  type?: string;
+  attrs?: Record<string, string[]>;
   category?: string;
   categoryId?: string;
   inStock?: boolean;
@@ -738,6 +761,8 @@ async function listProductsSemantic(params: {
 
 export async function listProducts(params: {
   q?: string;
+  type?: string;
+  attrs?: Record<string, string[]>;
   category?: string;
   categoryId?: string;
   inStock?: boolean;
@@ -771,7 +796,9 @@ export async function listProducts(params: {
     !!params.color ||
     !!params.sizeId ||
     !!params.colors ||
-    !!params.sizeIds;
+    !!params.sizeIds ||
+    !!params.type ||
+    Object.keys(params.attrs ?? {}).length > 0;
   const useSemantic = !!query && sort === "latest" && !hasFilters && params.semantic !== false;
   if (useSemantic) {
     const semantic = await listProductsSemantic(params);
@@ -946,6 +973,7 @@ export async function getProductById(id: string) {
       },
       reviews: true,
       comments: true,
+      type: { select: publicTypeSelect },
     },
   });
   if (!product) return null;
@@ -954,7 +982,7 @@ export async function getProductById(id: string) {
   const pricedItems = applySalePricingToItems(product.items ?? [], now, expiredSales);
   const minPrice = computeMinPriceFromItems(pricedItems);
   await resetExpiredSales(prisma, expiredSales);
-  return { ...product, items: pricedItems, minPrice };
+  return { ...product, items: pricedItems, minPrice, ...typeDetails(product) };
 }
 
 export async function getProductBySlug(slug: string) {
@@ -962,6 +990,9 @@ export async function getProductBySlug(slug: string) {
     where: { slug, isActive: true },
     select: {
       ...baseProductSelect,
+      // The product page's search-engine title and description (lists don't need them).
+      seoTitle: true,
+      seoDescription: true,
       category: true,
       items: {
         include: {
@@ -985,6 +1016,7 @@ export async function getProductBySlug(slug: string) {
       },
       reviews: true,
       comments: true,
+      type: { select: publicTypeSelect },
     },
   });
   if (!product) return null;
@@ -993,7 +1025,7 @@ export async function getProductBySlug(slug: string) {
   const pricedItems = applySalePricingToItems(product.items ?? [], now, expiredSales);
   const minPrice = computeMinPriceFromItems(pricedItems);
   await resetExpiredSales(prisma, expiredSales);
-  return { ...product, items: pricedItems, minPrice };
+  return { ...product, items: pricedItems, minPrice, ...typeDetails(product) };
 }
 
 export async function getCategoriesTree() {
@@ -1219,14 +1251,14 @@ async function getCurrencyCode() {
   return s?.currencyCode ?? "ILS";
 }
 
-async function computeCouponDiscount(args: { code: string; subtotal: number }) {
+async function computeCouponDiscount(args: { code: string; subtotal: number; phone?: string | null }) {
   // kept for non-transactional callers (quote endpoints)
   return computeCouponDiscountWithClient(prisma, args);
 }
 
 async function computeCouponDiscountWithClient(
   db: typeof prisma,
-  args: { code: string; subtotal: number }
+  args: { code: string; subtotal: number; phone?: string | null }
 ) {
   const code = args.code.toUpperCase().trim();
   const coupon = await db.coupon.findUnique({ where: { code } });
@@ -1242,6 +1274,10 @@ async function computeCouponDiscountWithClient(
   }
   if (coupon.endsAt && now > coupon.endsAt) {
     throw httpError("COUPON_EXPIRED", "Coupon expired", 400);
+  }
+  // A coupon for one phone (e.g. a quiz prize): checked when the phone is known.
+  if (coupon.phone && args.phone != null && phoneKey(args.phone) !== coupon.phone) {
+    throw httpError("COUPON_PHONE", "This coupon belongs to another phone number", 400);
   }
   const minCart = coupon.minCart != null ? Number(coupon.minCart) : null;
   if (minCart != null && args.subtotal < minCart) {
@@ -1297,11 +1333,63 @@ type CartLine = {
   sku?: string | null;
   imageUrl?: string | null;
   imageBlurDataUrl?: string | null;
+  /** Stock on the shelf (internal: never sent as is). */
+  stock?: number;
+  /** How it reaches her: shipped, downloaded, or a booking (ticket). */
+  fulfillment?: "SHIPPING" | "DIGITAL" | "BOOKING";
+  eventStartsAt?: Date | null;
 };
+
+/**
+ * Orders hold their pieces until the owner handles them: quantities in new or
+ * contacted orders that haven't taken stock yet (accepting takes it), placed in
+ * the last HOLD_HOURS. Older untouched orders stop holding, so a forgotten order
+ * can't block a size forever.
+ */
+export const HOLD_HOURS = 72;
+export async function heldQuantities(db: any, variantIds: string[], opts?: { excludeOrderId?: string }) {
+  if (!variantIds.length) return new Map<string, number>();
+  const since = new Date(Date.now() - HOLD_HOURS * 3600_000);
+  const rows = await db.orderRequestItem.groupBy({
+    by: ["variantId"],
+    where: {
+      variantId: { in: variantIds },
+      orderRequest: {
+        status: { in: ["NEW", "CONTACTED"] },
+        stockCommitted: false,
+        createdAt: { gte: since },
+        ...(opts?.excludeOrderId ? { id: { not: opts.excludeOrderId } } : {}),
+      },
+    },
+    _sum: { quantity: true },
+  });
+  return new Map<string, number>(rows.map((r: any) => [r.variantId, Number(r._sum?.quantity ?? 0)]));
+}
+
+/** What can still be ordered of each line: shelf stock minus what open orders hold. */
+async function availability(db: any, lines: CartLine[]) {
+  const held = await heldQuantities(db, [...new Set(lines.map((l) => l.variantId))]);
+  return new Map(lines.map((l) => [l.variantId, Math.max(0, (l.stock ?? 0) - (held.get(l.variantId) ?? 0))]));
+}
+
+/** Throws OUT_OF_STOCK (409) listing every line asking for more than is left. */
+function assertAvailable(lines: CartLine[], available: Map<string, number>) {
+  // The same size can come in several lines: count them together.
+  const wanted = new Map<string, number>();
+  for (const l of lines) wanted.set(l.variantId, (wanted.get(l.variantId) ?? 0) + l.quantity);
+  const short = [...wanted]
+    .filter(([id, qty]) => qty > (available.get(id) ?? 0))
+    .map(([id, qty]) => {
+      const l = lines.find((x) => x.variantId === id)!;
+      return { variantId: id, sku: l.sku ?? null, productTitle: l.productTitle, colorName: l.colorName ?? null, sizeName: l.sizeName ?? null, requested: qty, available: available.get(id) ?? 0 };
+    });
+  if (short.length) throw httpError("OUT_OF_STOCK", "Some pieces are no longer available in this quantity", 409, { lines: short });
+}
 
 async function loadLinesForItems(
   db: typeof prisma,
-  items: CartItemInput[]
+  items: CartItemInput[],
+  opts?: { allowPastEvents?: boolean }
 ): Promise<CartLine[]> {
   const normalized = normalizeCartItems(items);
   const ids = normalized.map((x) => x.variantId);
@@ -1311,7 +1399,7 @@ async function loadLinesForItems(
     include: {
       item: {
         include: {
-          product: true,
+          product: { include: { type: { select: { fulfillment: true } } } },
           images: { orderBy: { position: "asc" } },
         },
       },
@@ -1328,6 +1416,10 @@ async function loadLinesForItems(
     const v = byId.get(it.variantId);
     if (!v || !v.item?.isActive || !v.item?.product?.isActive) {
       throw httpError("VARIANT_NOT_AVAILABLE", "Variant not available", 400, { variantId: it.variantId });
+    }
+    const fulfillment = ((v.item.product as any).type?.fulfillment ?? "SHIPPING") as NonNullable<CartLine["fulfillment"]>;
+    if (fulfillment === "BOOKING" && !opts?.allowPastEvents && eventIsOver(v.item.product as any, now)) {
+      throw httpError("EVENT_OVER", "This event has already taken place", 409, { variantId: it.variantId, productTitle: v.item.product.title });
     }
 
     const pricedVariant = normalizeVariantPricing(v as any, now, expiredSales);
@@ -1356,6 +1448,10 @@ async function loadLinesForItems(
       sku: v.sku,
       imageUrl,
       imageBlurDataUrl,
+      // Digital products never run out.
+      stock: fulfillment === "DIGITAL" ? Math.max(v.stock, DIGITAL_STOCK) : v.stock,
+      fulfillment,
+      eventStartsAt: (v.item.product as any).eventStartsAt ?? null,
     });
   }
 
@@ -1363,15 +1459,19 @@ async function loadLinesForItems(
   return out;
 }
 
-export async function quoteCart(data: { items: CartItemInput[]; couponCode?: string }) {
-  const lines = await loadLinesForItems(prisma, data.items);
+export async function quoteCart(data: { items: CartItemInput[]; couponCode?: string; phone?: string | null }, opts?: { requireStock?: boolean }) {
+  const loaded = await loadLinesForItems(prisma, data.items);
+  const available = await availability(prisma, loaded);
+  if (opts?.requireStock) assertAvailable(loaded, available);
+  // The bag shows "only N left" before ordering; the shelf count itself isn't sent.
+  const lines = loaded.map(({ stock: _stock, ...l }) => ({ ...l, available: available.get(l.variantId) ?? 0 }));
   const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
 
   let discountAmount = 0;
   let applied: any = null;
 
   if (data.couponCode) {
-    const { coupon, discount } = await computeCouponDiscount({ code: data.couponCode, subtotal });
+    const { coupon, discount } = await computeCouponDiscount({ code: data.couponCode, subtotal, phone: data.phone });
     discountAmount = discount;
     applied = {
       code: coupon.code,
@@ -1421,6 +1521,7 @@ export async function submitOrderRequest(data: {
   customerName: string;
   phone: string;
   whatsapp?: string;
+  email?: string;
   country?: string;
   city?: string;
   address?: string;
@@ -1430,6 +1531,11 @@ export async function submitOrderRequest(data: {
   paymentProvider?: string;
   paymentStatus?: string;
   paymentReference?: string;
+}, opts?: {
+  /** A paid order is always recorded (the money was taken); the owner sorts out stock. */
+  skipStockCheck?: boolean;
+  /** The shopper's account when she was signed in (orders list in her account). */
+  userId?: string | null;
 }) {
   const now = new Date();
 
@@ -1441,7 +1547,12 @@ export async function submitOrderRequest(data: {
   const normalized = normalizeCartItems(items);
 
   const req = await prisma.$transaction(async (tx) => {
-    const lines = await loadLinesForItems(tx as any, normalized);
+    // Two orders for the last piece at the same moment: the second waits here and then sees it taken.
+    const ids = [...new Set(normalized.map((x) => x.variantId))];
+    if (ids.length) await tx.$queryRaw`SELECT "id" FROM "ProductVariant" WHERE "id" IN (${Prisma.join(ids)}) FOR UPDATE`;
+    // A paid order is recorded even if the event started meanwhile (the money was taken).
+    const lines = await loadLinesForItems(tx as any, normalized, { allowPastEvents: opts?.skipStockCheck });
+    if (!opts?.skipStockCheck) assertAvailable(lines, await availability(tx, lines));
     const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
     const site = await tx.siteSettings.findFirst({ select: { currencyCode: true, storeCountryCode: true } });
     const currencyCode = site?.currencyCode ?? "ILS";
@@ -1459,6 +1570,10 @@ export async function submitOrderRequest(data: {
       if (!couponRow.isActive) throw httpError("COUPON_INACTIVE", "Coupon is inactive", 400);
       if (couponRow.startsAt && now < couponRow.startsAt) throw httpError("COUPON_NOT_ACTIVE_YET", "Coupon not active yet", 400);
       if (couponRow.endsAt && now > couponRow.endsAt) throw httpError("COUPON_EXPIRED", "Coupon expired", 400);
+      // Paid orders were checked before the payment (see checkout); never refuse money already taken.
+      if (couponRow.phone && !opts?.skipStockCheck && phoneKey(data.phone) !== couponRow.phone) {
+        throw httpError("COUPON_PHONE", "This coupon belongs to another phone number", 400);
+      }
 
       const minCart = couponRow.minCart != null ? Number(couponRow.minCart) : null;
       if (minCart != null && subtotal < minCart) throw httpError("COUPON_MIN_CART", "Minimum cart not met", 400, { minCart });
@@ -1493,9 +1608,11 @@ export async function submitOrderRequest(data: {
         variantId: first.variantId,
         quantity: first.quantity,
 
+        userId: opts?.userId ?? null,
         customerName: data.customerName,
         phone: data.phone,
         whatsapp: data.whatsapp,
+        email: data.email ? data.email.trim().toLowerCase() : null,
         country: data.country ?? defaultCountry,
         city: data.city,
         address: data.address,

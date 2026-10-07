@@ -1,4 +1,5 @@
 import argon2 from "argon2";
+import { policy } from "../../lib/securityPolicy.js";
 import { randomInt } from "node:crypto";
 import { prisma } from "../../lib/prisma.js";
 import { env } from "../../config/env.js";
@@ -22,7 +23,7 @@ export async function createOtpChallenge(params: {
 }) {
   const code = generateNumericCode(6);
   const codeHash = await argon2.hash(code, { type: argon2.argon2id });
-  const ttl = params.ttlMinutes ?? env.OTP_TTL_MINUTES;
+  const ttl = params.ttlMinutes ?? policy().otp.ttlMinutes;
   const expiresAt = new Date(Date.now() + ttl * 60 * 1000);
 
   const rec = await prisma.adminOtpChallenge.create({
@@ -52,7 +53,7 @@ export async function verifyOtpChallenge(params: {
   if (!rec || rec.purpose !== params.purpose) throw Unauthorized("Invalid code");
   if (rec.usedAt) throw Unauthorized("Code already used");
   if (rec.expiresAt < new Date()) throw Unauthorized("Code expired");
-  if (rec.attempts >= env.OTP_MAX_ATTEMPTS) throw Unauthorized("Too many attempts");
+  if (rec.attempts >= policy().otp.maxAttempts) throw Unauthorized("Too many attempts");
   if (params.adminUserId && rec.adminUserId !== params.adminUserId) throw Unauthorized("Invalid code");
   if (params.to && rec.to !== params.to) throw Unauthorized("Invalid code");
 

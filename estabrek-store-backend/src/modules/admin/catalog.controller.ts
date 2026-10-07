@@ -24,8 +24,11 @@ import {
   AddImageBody, UpdateImageBody, ProductDeepUpdateBody, CommitImageGroupsBody,
   BulkProductsBody,
   ImportProductsBody,
+  ProductListQuery,
 } from "./catalog.schemas.js";
 import { updateProductDeep, getProductDeep } from "./catalog.service.js";
+import { attributesForSave, defaultTypeId } from "../productTypes/productTypes.js";
+import { syncDigitalStock } from "../fulfillment/fulfillment.service.js";
 
 function slugify(input: string) {
   return (input || "")
@@ -81,17 +84,62 @@ r.delete("/categories/:id", asyncHandler(async (req, res) => {
 }));
 
 /* ========== Products ========== */
-r.get("/products", asyncHandler(async (req, res) => {
+r.get("/products", validate({ query: ProductListQuery }), asyncHandler(async (req, res) => {
   // status = all | active | draft
   const status = String(req.query.status ?? "all");
+  const q = String(req.query.q ?? "").trim();
+  const categoryId = req.query.categoryId ? String(req.query.categoryId) : undefined;
   const where: any = {};
   if (status === "active") where.isActive = true;
   if (status === "draft") where.isActive = false;
+  if (categoryId) where.categoryId = categoryId;
+  if (q) {
+    where.OR = [
+      { title: { contains: q, mode: "insensitive" } },
+      { slug: { contains: q, mode: "insensitive" } },
+      { items: { some: { variants: { some: { sku: { contains: q, mode: "insensitive" } } } } } },
+    ];
+  }
 
-  const out = await prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { category: true },
+    include: {
+      category: true,
+      items: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          colorName: true,
+          colorHex: true,
+          isActive: true,
+          images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }], take: 1, select: { url: true } },
+          variants: { select: { sku: true, price: true, compareAt: true, salePrice: true, stock: true, lowStockThreshold: true } },
+        },
+      },
+    },
+  });
+
+  // The list stays light: each product gets a summary instead of its whole graph.
+  const out = products.map(({ items, ...p }) => {
+    const shown = items.filter((it) => it.colorName !== "Default" || it.images.length || it.variants.some((v) => Number(v.price) > 0));
+    const variants = shown.flatMap((it) => it.variants);
+    const prices = variants.map((v) => Number(v.salePrice ?? v.price)).filter((n) => n > 0);
+    const compare = variants.map((v) => Number(v.compareAt ?? 0)).filter((n) => n > 0);
+    return {
+      ...p,
+      summary: {
+        thumbUrl: shown.find((it) => it.images.length)?.images[0]?.url ?? null,
+        priceMin: prices.length ? Math.min(...prices) : null,
+        priceMax: prices.length ? Math.max(...prices) : null,
+        compareAtMax: compare.length ? Math.max(...compare) : null,
+        stockTotal: variants.reduce((sum, v) => sum + v.stock, 0),
+        variantCount: variants.length,
+        outCount: variants.filter((v) => v.stock <= 0).length,
+        lowCount: variants.filter((v) => v.stock > 0 && v.lowStockThreshold > 0 && v.stock <= v.lowStockThreshold).length,
+        colors: shown.map((it) => ({ name: it.colorName, hex: it.colorHex, active: it.isActive })),
+        skus: variants.map((v) => v.sku),
+      },
+    };
   });
   res.json(out);
 }));
@@ -99,6 +147,8 @@ r.get("/products", asyncHandler(async (req, res) => {
 // Create product + auto default Item + default Variant
 r.post("/products", validate({ body: CreateProductBody }), asyncHandler(async (req, res) => {
   const body = req.body as any;
+  // The kind of product (the first type when none is chosen) and its checked values.
+  const typed = await attributesForSave({ typeId: body.typeId !== undefined ? body.typeId : await defaultTypeId(), attributes: body.attributes ?? undefined });
 
   const created = await prisma.$transaction(async (tx) => {
     const title = body.title as string;
@@ -109,8 +159,14 @@ r.post("/products", validate({ body: CreateProductBody }), asyncHandler(async (r
         title,
         slug,
         description: body.description ?? null,
+        seoTitle: body.seoTitle ?? null,
+        seoDescription: body.seoDescription ?? null,
         isActive: body.isActive ?? false, // default draft
         categoryId: body.categoryId,
+        eventStartsAt: body.eventStartsAt ?? null,
+        eventEndsAt: body.eventEndsAt ?? null,
+        eventLocation: body.eventLocation ?? null,
+        ...typed,
       },
     });
 
@@ -145,6 +201,7 @@ r.post("/products", validate({ body: CreateProductBody }), asyncHandler(async (r
     return product;
   });
 
+  await syncDigitalStock({ productIds: [created.id] });
   void indexProductTextEmbedding(created.id).catch((err: any) => {
     console.warn("[product-embedding] failed", created.id, err?.message ?? err);
   });
@@ -402,7 +459,14 @@ r.get("/products/:id", asyncHandler(async (req, res) => {
 }));
 
 r.patch("/products/:id", validate({ body: UpdateProductBody }), asyncHandler(async (req, res) => {
-  const out = await prisma.product.update({ where: { id: req.params.id }, data: req.body });
+  const { typeId, attributes, ...rest } = req.body ?? {};
+  let typed = {};
+  if (typeId !== undefined || attributes !== undefined) {
+    const current = await prisma.product.findUnique({ where: { id: req.params.id }, select: { typeId: true } });
+    typed = await attributesForSave({ typeId, attributes: attributes ?? undefined }, current);
+  }
+  const out = await prisma.product.update({ where: { id: req.params.id }, data: { ...rest, ...typed } });
+  await syncDigitalStock({ productIds: [out.id] });
   const shouldIndex = ["title", "description", "categoryId", "slug"].some((key) => key in (req.body ?? {}));
   if (shouldIndex) {
     void indexProductTextEmbedding(out.id).catch((err: any) => {
@@ -1082,7 +1146,15 @@ r.put(
   "/products/:id/full",
   validate({ body: ProductDeepUpdateBody }),
   asyncHandler(async (req, res) => {
-    const out = await updateProductDeep(req.params.id, req.body, { adminUserId: req.user?.sub ?? null, reason: "Product full edit" });
+    const body = req.body;
+    if (body?.product && (body.product.typeId !== undefined || body.product.attributes !== undefined)) {
+      const { typeId, attributes, ...rest } = body.product;
+      const current = await prisma.product.findUnique({ where: { id: req.params.id }, select: { typeId: true } });
+      body.product = { ...rest, ...(await attributesForSave({ typeId, attributes: attributes ?? undefined }, current)) };
+    }
+    const out = await updateProductDeep(req.params.id, body, { adminUserId: req.user?.sub ?? null, reason: "Product full edit" });
+    // Digital products never run out (new sizes included).
+    await syncDigitalStock({ productIds: [req.params.id] });
     void indexProductTextEmbedding(req.params.id).catch((err: any) => {
       console.warn("[product-embedding] failed", req.params.id, err?.message ?? err);
     });
