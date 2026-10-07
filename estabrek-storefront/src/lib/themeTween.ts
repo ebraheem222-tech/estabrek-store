@@ -71,19 +71,69 @@ const toHex = (c: Rgb) => `#${c.map((n) => Math.max(0, Math.min(255, Math.round(
  */
 const STAND_IN: Record<string, string> = { "--navbar-bg": "--atelier-bg", "--navbar-ink": "--atelier-ink" };
 
-export function themeFollower(el: HTMLElement) {
+export type FollowerOptions = {
+  /**
+   * The parts of the page on screen while the scene fills the screen (its own
+   * section, the header); an empty list while it doesn't (entering, leaving).
+   * While the colours move, only these get them: a colour written on the page
+   * shell is inherited by every element, so the browser restyled the whole page
+   * (about 2,000 elements) on every frame of a hand-over — measured at 10–20×
+   * the normal style work, right while the 3D model turns. The shell gets the
+   * colours once, when the glide settles (and when the scene ends), so the rest
+   * of the page and the floating buttons catch up in one step.
+   */
+  local?: () => Array<HTMLElement | null | undefined>;
+};
+
+export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
   const now = new Map<string, Rgb>();
   const target = new Map<string, Rgb>();
+  /** What the shell has (or will get at the next flush, for values that aren't colours). */
   const written = new Map<string, string>();
+  /** Values on screen in the local parts, not yet on the shell. */
+  const behind = new Map<string, string>();
+  const localWritten = new Map<HTMLElement, Map<string, string>>();
   let raf = 0;
   let last = 0;
   let smooth = 0.12;
   let endGlide: (() => void) | null = null;
+  let glideFrom = 0;
   const settle = () => { endGlide?.(); endGlide = null; };
+  const locals = () => (opts.local?.() ?? []).filter((x): x is HTMLElement => Boolean(x) && x !== el);
+  /** One value: on the local parts while moving (shell later), or straight on the shell. */
+  const put = (name: string, value: string, parts: HTMLElement[]) => {
+    if (!parts.length) {
+      // The whole page is in view again: it takes over from the local parts.
+      if (localWritten.size) { flush(); dropLocal(); }
+      if (written.get(name) !== value) { el.style.setProperty(name, value); written.set(name, value); }
+      return;
+    }
+    for (const part of parts) {
+      let mine = localWritten.get(part);
+      if (!mine) localWritten.set(part, (mine = new Map()));
+      if (mine.get(name) !== value) { part.style.setProperty(name, value); mine.set(name, value); }
+    }
+    if (written.get(name) !== value) behind.set(name, value);
+    else behind.delete(name);
+  };
+  /** The shell catches up with what is on screen (one restyle of the page). */
+  const flush = () => {
+    behind.forEach((value, name) => {
+      if (written.get(name) !== value) { el.style.setProperty(name, value); written.set(name, value); }
+    });
+    behind.clear();
+  };
+  /** The local parts inherit from the shell again. */
+  const dropLocal = () => {
+    localWritten.forEach((names, part) => names.forEach((_, name) => part.style.removeProperty(name)));
+    localWritten.clear();
+  };
   const step = (t: number) => {
-    // Each write restyles the whole page: at most 60 a second (30 in the light mode),
-    // also on 120 Hz screens.
-    if (last && t - last < sceneFrameGap()) { raf = requestAnimationFrame(step); return; }
+    const parts = locals();
+    // At most 60 writes a second (30 in the light mode), also on 120 Hz screens. While a
+    // scene is on stage each write restyles the whole scene (Rose's outfit follows the
+    // colour), so 30 a second there: a colour this slow looks the same, the scroll keeps 60.
+    if (last && t - last < (parts.length ? Math.max(sceneFrameGap(), 1000 / 30 - 2) : sceneFrameGap())) { raf = requestAnimationFrame(step); return; }
     const dt = last ? Math.min(0.1, (t - last) / 1000) : 1 / 60;
     last = t;
     const k = 1 - Math.exp(-dt / smooth);
@@ -96,14 +146,12 @@ export function themeFollower(el: HTMLElement) {
         if (Math.abs(d) < 0.5) c[i] = to[i];
         else { c[i] += d * k; moving = true; }
       }
-      const value = toHex(c);
-      if (written.get(name) !== value) {
-        el.style.setProperty(name, value);
-        written.set(name, value);
-      }
+      put(name, toHex(c), parts);
     });
     raf = moving ? requestAnimationFrame(step) : 0;
-    if (!moving) { last = 0; settle(); }
+    // While a scene is on stage the shell and the glide flag wait for it to leave:
+    // catching up at every pause in the scroll restyled the whole page each time.
+    if (!moving) { last = 0; if (!parts.length) { flush(); settle(); } }
   };
   return {
     /** Glide towards `values`; `seconds` is roughly how long most of the change takes. */
@@ -111,10 +159,11 @@ export function themeFollower(el: HTMLElement) {
       smooth = Math.max(0.02, seconds / 3);
       if (!now.size) gsap.killTweensOf(el); // a colour still gliding back from another scene: take over from where it is
       const fresh: string[] = [];
+      const parts = locals();
       for (const [name, value] of Object.entries(values)) {
         const c = reduced() ? null : parseColor(value);
         if (!c) {
-          if (written.get(name) !== value) { el.style.setProperty(name, value); written.set(name, value); }
+          put(name, value, parts);
           target.delete(name);
           continue;
         }
@@ -133,15 +182,26 @@ export function themeFollower(el: HTMLElement) {
       }
       if (!raf) {
         // Long scroll scenes keep renewing this, so give it a generous safety window.
-        endGlide ??= beginGlide(30);
+        const t = performance.now();
+        if (endGlide && t - glideFrom > 25000) settle();
+        if (!endGlide) { endGlide = beginGlide(30); glideFrom = t; }
         raf = requestAnimationFrame(step);
       }
+    },
+    /** The scene left the stage: the page catches up with the colours shown in its parts. */
+    unpin() {
+      if (localWritten.size) { flush(); dropLocal(); }
+      if (!raf) settle();
     },
     /** Stop following (the scene hands the colours back). */
     stop() {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
       last = 0;
+      // The shell takes what is on screen before the local parts let go, so nothing jumps;
+      // the colours then glide back from there.
+      flush();
+      dropLocal();
       settle();
       now.clear();
       target.clear();
