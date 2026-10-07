@@ -41,6 +41,12 @@ export type SitePublicSettings = {
   stripePublicKey?: string | null;
   paypalEnabled?: boolean;
   paypalClientId?: string | null;
+  /** Admin → Settings → حسابات الزبائن. Off (default): visitors only. */
+  customerAccountsEnabled?: boolean;
+  /** Admin → المخزون → بانتظار التوفّر: "tell me when it's back" on sold-out sizes. */
+  stockAlertsEnabled?: boolean;
+  /** Admin → حماية الضغط والصيانة: "back soon" screen; the owner previews with ?preview=<key>. */
+  maintenance?: { on: boolean; message: string | null; previewHash: string | null };
   storeCountryCode?: string | null;
 };
 

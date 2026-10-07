@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useRazan } from "@/store/razan";
 
-interface RecentlyViewedItem {
+export interface RecentlyViewedItem {
   id: string;
   title: string;
   slug: string;
@@ -10,11 +11,18 @@ interface RecentlyViewedItem {
   imageBlurDataUrl?: string;
   price?: number;
   viewedAt: number;
+  /** What she had picked on the piece (Razan's history reopens it the same way). */
+  color?: string;
+  size?: string;
+  /** How long she stayed on it, in seconds (all visits together). */
+  seconds?: number;
 }
 
 interface RecentlyViewedContextValue {
   items: RecentlyViewedItem[];
   addToRecentlyViewed: (item: Omit<RecentlyViewedItem, "viewedAt">) => void;
+  /** Add details to a piece already in the list (colour, size, time spent). */
+  updateRecentlyViewed: (id: string, patch: Partial<Pick<RecentlyViewedItem, "color" | "size">> & { addSeconds?: number }) => void;
   clearRecentlyViewed: () => void;
   count: number;
 }
@@ -25,7 +33,17 @@ const STORAGE_KEY = "estabrek_recently_viewed";
 const MAX_ITEMS = 20;
 
 export function RecentlyViewedProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<RecentlyViewedItem[]>([]);
+  const [stored, setItems] = useState<RecentlyViewedItem[]>([]);
+  // Admin → رزان → «شو كنتِ شايفة»: when it's on, pieces older than its expiry are forgotten.
+  const history = useRazan().history;
+  const ttlMs = history.enabled ? history.ttlHours * 3600_000 : 0;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!ttlMs) return;
+    const t = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(t);
+  }, [ttlMs]);
+  const items = useMemo(() => (ttlMs ? stored.filter((i) => now - i.viewedAt < ttlMs) : stored), [stored, ttlMs, now]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage on mount
@@ -49,21 +67,38 @@ export function RecentlyViewedProvider({ children }: { children: React.ReactNode
     if (isLoaded) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        if (items.length !== stored.length) setItems(items); // expired ones are dropped for good
       } catch (e) {
         console.error("Failed to save recently viewed:", e);
       }
     }
-  }, [items, isLoaded]);
+  }, [items, stored.length, isLoaded]);
 
   const addToRecentlyViewed = useCallback((item: Omit<RecentlyViewedItem, "viewedAt">) => {
     setItems((prev) => {
       // Remove existing entry if present
+      const old = prev.find((i) => i.id === item.id);
       const filtered = prev.filter((i) => i.id !== item.id);
-      // Add to beginning with timestamp
-      const updated = [{ ...item, viewedAt: Date.now() }, ...filtered];
+      // Add to beginning with timestamp (what she picked before is kept)
+      const updated = [{ color: old?.color, size: old?.size, seconds: old?.seconds, ...item, viewedAt: Date.now() }, ...filtered];
       // Limit to MAX_ITEMS
       return updated.slice(0, MAX_ITEMS);
     });
+  }, []);
+
+  const updateRecentlyViewed = useCallback<RecentlyViewedContextValue["updateRecentlyViewed"]>((id, patch) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id !== id
+          ? i
+          : {
+              ...i,
+              ...(patch.color !== undefined ? { color: patch.color } : {}),
+              ...(patch.size !== undefined ? { size: patch.size } : {}),
+              ...(patch.addSeconds ? { seconds: Math.min(24 * 3600, (i.seconds ?? 0) + Math.round(patch.addSeconds)) } : {}),
+            },
+      ),
+    );
   }, []);
 
   const clearRecentlyViewed = useCallback(() => {
@@ -75,6 +110,7 @@ export function RecentlyViewedProvider({ children }: { children: React.ReactNode
       value={{
         items,
         addToRecentlyViewed,
+        updateRecentlyViewed,
         clearRecentlyViewed,
         count: items.length,
       }}

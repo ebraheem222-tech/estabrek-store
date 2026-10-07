@@ -3,6 +3,8 @@
  * roseReact(); whichever Rose is on screen answers. Colour picks already go
  * through the "storefront-color-selected" event and need nothing here.
  */
+import { razanNow } from "./razanRuntime";
+
 export type RoseMoment = "cart-add" | "wishlist-add" | "size-pick" | "product-view";
 
 export const ROSE_EVENT = "rose:react";
@@ -37,13 +39,17 @@ export const ROSE_OUTFIT_EVENT = "rose:outfit";
 /** Which outfit suits a category (by its slug or name, Arabic or English). */
 export function outfitFor(text: string | null | undefined): { outfit: RoseOutfit; extras: RoseExtras } {
   const t = (text ?? "").toLowerCase();
+  // The owner's own rules first (admin → رزان → اللبس).
+  const owner = razanNow().outfits;
+  const rule = owner.rules.find((r) => t.includes(r.match.toLowerCase()));
+  if (rule) return { outfit: rule.outfit, extras: rule.pearls ? { pearls: true } : {} };
   if (/winter|coat|jacket|شتو|شتاء|معطف|جاكيت|جاكيت/.test(t)) return { outfit: "coat", extras: {} };
   if (/kid|child|girl|أطفال|اطفال|طفل|بنات|صغير/.test(t)) return { outfit: "tunic", extras: {} };
   if (/incense|bakh|بخور|مبخر|مباخر|عيد|eid/.test(t)) return { outfit: "eid", extras: {} };
   if (/accessor|إكسسوار|اكسسوار|pin|دبوس|tasbih|تسبيح/.test(t)) return { outfit: "abaya", extras: { pearls: true } };
   if (/hijab|khimar|scarf|shawl|حجاب|خمار|شال|طرح/.test(t)) return { outfit: "khimar", extras: {} };
   if (/dress|summer|spring|فستان|فساتين|صيف|ربيع/.test(t)) return { outfit: "dress", extras: {} };
-  return { outfit: "abaya", extras: {} };
+  return { outfit: owner.default, extras: {} };
 }
 
 /** Ask the floating Rose to change into the outfit of this category. */

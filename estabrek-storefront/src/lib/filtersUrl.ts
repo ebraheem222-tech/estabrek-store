@@ -12,7 +12,18 @@ export type CatalogFilters = {
   inStock?: boolean;
   categoryId?: string;
   lm?: 1 | true;
+  /** Product-type fields (admin → أنواع المنتجات): attr_<key>=a,b in the address. */
+  attrs?: Record<string, string[]>;
 };
+
+const ATTR_KEY = /^attr_([a-z][a-z0-9_]{0,31})$/;
+
+/** { fabric: ["كريب"] } → { attr_fabric: "كريب" } for the API. */
+export function attrParams(attrs?: Record<string, string[]>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, vals] of Object.entries(attrs ?? {})) if (vals?.length) out[`attr_${k}`] = vals.join(",");
+  return out;
+}
 
 function getFirst(sp: Record<string, string | string[] | undefined>, key: string): string | undefined {
   const v = sp[key];
@@ -78,6 +89,14 @@ export function normalizeFiltersFromSearchParams(sp: Record<string, string | str
   if (categoryId) out.categoryId = categoryId;
   if (page && page > 1) out.page = page;
   if (lm) out.lm = lm;
+  const attrs: Record<string, string[]> = {};
+  for (const key of Object.keys(sp).sort()) {
+    const m = ATTR_KEY.exec(key);
+    if (!m) continue;
+    const vals = [...new Set(parseCsv(getFirst(sp, key)))].sort((a, b) => a.localeCompare(b));
+    if (vals.length) attrs[m[1]] = vals;
+  }
+  if (Object.keys(attrs).length) out.attrs = attrs;
   return out;
 }
 
@@ -102,6 +121,11 @@ export function buildCanonicalQuery(filters: CatalogFilters): string {
   for (const k of orderedKeys) {
     const v = usp.get(k);
     if (v != null) ordered.set(k, v);
+    // Product-type fields go right after the sizes.
+    if (k === "sizeIds") {
+      const attrs = attrParams(filters.attrs);
+      for (const ak of Object.keys(attrs).sort()) ordered.set(ak, attrs[ak]);
+    }
   }
   return ordered.toString();
 }

@@ -61,7 +61,30 @@ export type CatalogProduct = {
   primaryImageUrl?: string | null;
   secondaryImageUrl?: string | null;
   defaultItemId?: string | null;
+  /** Kind of product (admin → أنواع المنتجات): what the two choices are called and whether they show. */
+  type?: CatalogProductType | null;
+  /** The product page's details rows, from the type's fields. */
+  specs?: CatalogSpec[];
+  attributes?: Record<string, unknown> | null;
+  /** Bookings: when and where. */
+  eventStartsAt?: string | null;
+  eventEndsAt?: string | null;
+  eventLocation?: string | null;
 };
+
+export type CatalogProductType = {
+  id: string;
+  name: string;
+  slug: string;
+  colorLabel: string;
+  sizeLabel: string;
+  showColor: boolean;
+  showSize: boolean;
+  /** How it reaches the shopper: shipped, downloaded, or a booking with a ticket. */
+  fulfillment?: "SHIPPING" | "DIGITAL" | "BOOKING";
+};
+
+export type CatalogSpec = { key: string; label: string; value: string; kind?: string };
 
 export type CatalogProductsList = {
   items: CatalogProduct[];

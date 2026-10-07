@@ -178,13 +178,17 @@ export const listProducts = cache(
     lite?: boolean;
     includeFacets?: boolean;
     semantic?: boolean;
+    /** Product-type fields: { fabric: ["كريب"] } → attr_fabric=كريب */
+    attrs?: Record<string, string[]>;
   }): Promise<CatalogProductsList> => {
     try {
       const usp = new URLSearchParams();
       for (const [k, v] of Object.entries(params)) {
+        if (k === "attrs") continue;
         if (v === undefined || v === null || v === "") continue;
         usp.set(k, String(v));
       }
+      for (const [k, vals] of Object.entries(params.attrs ?? {})) if (vals?.length) usp.set(`attr_${k}`, vals.join(","));
       const url = `${baseUrl()}/catalog/products?${usp.toString()}`;
       const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
       if (!res.ok) throw new Error(`products failed (${res.status})`);
