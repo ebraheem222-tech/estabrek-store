@@ -805,7 +805,7 @@ function ThemeColorField({
 }
 
 /** Header keys this page shows but doesn't own: always saved from the server's latest copy. */
-const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery"] as const;
+const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai"] as const;
 
 export default function SettingsPage() {
   const q = useSettings();
@@ -1530,7 +1530,12 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                {(settings as any)?.paymentsLocked ? (
+                  <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200" data-testid="payments-locked">
+                    مفاتيح الدفع مقفولة لحسابك. صاحب المتجر بس (أو دور فيه صلاحية "مفاتيح الدفع") بيقدر يشوفها ويغيّرها.
+                  </div>
+                ) : null}
+                <fieldset disabled={(settings as any)?.paymentsLocked === true} className="mt-4 grid gap-4 lg:grid-cols-2 disabled:opacity-60">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold">Stripe</div>
@@ -1589,7 +1594,7 @@ export default function SettingsPage() {
                       disabled={!paypalEnabled}
                     />
                   </div>
-                </div>
+                </fieldset>
 
                 <div className="mt-3 text-xs opacity-70">
                   الدفع يتم بتحويل تلقائي لصفحة Stripe أو PayPal، ثم يعود العميل إلى صفحة النجاح في المتجر.

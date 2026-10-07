@@ -5,7 +5,7 @@
 // existing product (/catalog/products/:id) keeps every saved id, so a save updates it.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { createSize, describeSaveError, getProductFull, type CatalogSize } from "../../api/catalog.api";
 import { uploadImages } from "../../api/uploads.api";
@@ -17,10 +17,14 @@ import { toast } from "../../lib/toast";
 import { env } from "../../config/env";
 import { cn } from "../../components/ui/cn";
 import {
-  categoryLabel, checklist, clearLocalDraft, draftForEdit, draftFromProduct, draftSignature, effectiveSlug, emptyDraft, hasContent, newKey, readLocalDraft,
+  categoryLabel, checklist, clearLocalDraft, draftForEdit, draftFromProduct, draftSignature, effectiveSlug, emptyDraft, eventForSave, hasContent, newKey, readLocalDraft,
   readPrefs, rememberChoices, saveDraftLocally, validateDraft, type ComposerDraft, type ComposerErrors, type ComposerPhoto,
 } from "./composer/composerModel";
-import { saveComposedProduct, saveEditedProduct, type SaveStep } from "./composer/saveProduct";
+import { saveComposedProduct, saveEditedProduct, type SaveStep, type TypedValues } from "./composer/saveProduct";
+import { TypeFieldsBlock } from "./composer/TypeFieldsBlock";
+import { AiWriter } from "./composer/AiWriter";
+import { listProductTypes } from "../../api/productTypes.api";
+import { missingRequired, tidyAttributes } from "./types/typeText";
 import { PhotoColorsSection } from "./composer/PhotoColorsSection";
 import { SizesStockSection } from "./composer/SizesStockSection";
 import { Chip, Section, Swatch, Toggle } from "./composer/ui";
@@ -30,7 +34,7 @@ import { GooglePreview } from "../settings/settingsCentre";
 type Phase =
   | { kind: "editing" }
   | { kind: "saving"; step: "uploads" | SaveStep; publish: boolean }
-  | { kind: "saved"; id: string; slug: string; published: boolean; title: string };
+  | { kind: "saved"; id: string; slug: string; published: boolean; title: string; digital?: boolean };
 
 const SAME_COLOUR = 16; // Lab distance: photos closer than this go into the same colour
 
@@ -45,6 +49,10 @@ export default function ProductComposerPage() {
   const sizesQ = useSizes();
   const categories = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
   const sizes = useMemo(() => sizesQ.data ?? [], [sizesQ.data]);
+  // Kinds of products and their fields (أنواع المنتجات); a draft without a kind uses the first one.
+  const typesQ = useQuery({ queryKey: ["product-types"], queryFn: listProductTypes, staleTime: 60_000 });
+  const types = useMemo(() => typesQ.data ?? [], [typesQ.data]);
+  const [attrErrors, setAttrErrors] = useState<Record<string, string>>({});
 
   const [draft, setDraft] = useState<ComposerDraft>(() => emptyDraft({ defaultStock: readPrefs().defaultStock ?? "3" }));
   const [restore, setRestore] = useState<(ComposerDraft & { savedAt: number }) | null>(() => (fromId || isEdit ? null : readLocalDraft()));
@@ -237,6 +245,26 @@ export default function ProductComposerPage() {
       toast.error(found[first]!);
       return;
     }
+    // The kind's own fields: required ones must be filled.
+    const d0 = draftRef.current;
+    const kind = types.find((t) => t.id === d0.typeId) ?? types[0] ?? null;
+    const typed: TypedValues | undefined = kind
+      ? { typeId: kind.id, attributes: tidyAttributes(kind.fields, d0.attributes ?? {}), ...(kind.fulfillment === "BOOKING" ? { event: eventForSave(d0) } : {}) }
+      : undefined;
+    if (typed?.event?.eventStartsAt && typed.event.eventEndsAt && typed.event.eventEndsAt <= typed.event.eventStartsAt) {
+      document.getElementById("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast.error("موعد النهاية لازم يكون بعد البداية");
+      return;
+    }
+    if (kind) {
+      const missing = missingRequired(kind.fields, d0.attributes ?? {});
+      if (missing.length) {
+        setAttrErrors(Object.fromEntries(missing.map((k) => [k, "مطلوب"])));
+        document.getElementById("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        toast.error(`كمّلي تفاصيل القطعة: ${missing.map((k) => kind.fields.find((f) => f.key === k)?.label ?? k).join("، ")}`);
+        return;
+      }
+    }
     try {
       setPhase({ kind: "saving", step: "uploads", publish });
       // Wait for photos still uploading.
@@ -249,7 +277,7 @@ export default function ProductComposerPage() {
       const d = draftRef.current;
       if (d.edit) {
         setPhase({ kind: "saving", step: "details", publish });
-        const { product, kept } = await saveEditedProduct({ draft: d, sizes, publish });
+        const { product, kept } = await saveEditedProduct({ draft: d, sizes, publish, typed });
         const next = draftForEdit(product);
         setDraft(next);
         setBaseline(draftSignature(next));
@@ -275,6 +303,7 @@ export default function ProductComposerPage() {
         draft: d,
         sizes,
         publish,
+        typed,
         existingId: createdId.current,
         onStep: (step) => setPhase({ kind: "saving", step, publish }),
         onCreated: (id) => { createdId.current = id; },
@@ -283,12 +312,16 @@ export default function ProductComposerPage() {
       clearLocalDraft();
       createdId.current = null;
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
-      setPhase({ kind: "saved", id: res.id, slug: res.slug, published: publish, title: d.title.trim() });
+      setPhase({ kind: "saved", id: res.id, slug: res.slug, published: publish, title: d.title.trim(), digital: kind?.fulfillment === "DIGITAL" });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       setPhase({ kind: "editing" });
       if (isAxiosError(e)) {
         const why = describeSaveError(e);
+        if (why.attributeErrors && Object.keys(why.attributeErrors).length) {
+          setAttrErrors(why.attributeErrors);
+          document.getElementById("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
         if (why.skus?.length) {
           setBadSkus(why.skus);
           document.getElementById("sizes")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -383,6 +416,7 @@ export default function ProductComposerPage() {
             <PhotoColorsSection draft={draft} update={update} onFiles={(f, g) => void onFiles(f, g)} onRetry={retry} error={errors.photos || errors.colors || errors.uploads} />
 
             <Section id="details" step={2} title="الاسم والقسم" error={errors.title || errors.category}>
+              <AiWriter draft={draft} update={update} type={types.find((t) => t.id === draft.typeId) ?? types[0] ?? null} categoryName={categories.find((c) => c.id === draft.categoryId)?.name ?? ""} />
               <label className="block">
                 <span className="mb-1.5 block text-xs text-white/55">اسم المنتج</span>
                 <input
@@ -406,6 +440,14 @@ export default function ProductComposerPage() {
                 </div>
               </div>
               <Description value={draft.description} onChange={(v) => update((d) => ({ ...d, description: v }))} />
+              <TypeFieldsBlock
+                types={types}
+                active={types.find((t) => t.id === draft.typeId) ?? types[0] ?? null}
+                draft={draft}
+                update={update}
+                errors={attrErrors}
+                onFix={(key) => setAttrErrors((x) => { const n = { ...x }; delete n[key]; return n; })}
+              />
             </Section>
 
             <Section id="price" step={3} title="السعر" error={errors.price || errors.compareAt}>
@@ -639,6 +681,11 @@ function SavedPanel({ phase, onNew, onEdit, onList }: { phase: Extract<Phase, { 
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-500/15 text-3xl text-emerald-300">✓</div>
         <h1 className="mt-4 text-xl font-semibold text-white">{phase.published ? "نُشر المنتج" : "حُفظ كمسودة"}</h1>
         <p className="mt-1 text-sm text-white/60">«{phase.title}»</p>
+        {phase.digital ? (
+          <button type="button" onClick={onEdit} data-testid="saved-add-files" className="mt-5 h-12 w-full rounded-xl bg-emerald-500/20 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/30">
+            ⬇️ الخطوة الجاية: ارفعي الملفات اللي بتنزّلها الزبونة ←
+          </button>
+        ) : null}
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           <button type="button" onClick={() => onNew("similar")} className="h-12 rounded-xl bg-accent-500 px-4 text-sm font-semibold text-white hover:bg-accent-400">منتج مشابه</button>
           <button type="button" onClick={() => onNew("blank")} className="h-12 rounded-xl border border-white/[0.12] px-4 text-sm text-white/85 hover:bg-white/[0.06]">منتج جديد فارغ</button>

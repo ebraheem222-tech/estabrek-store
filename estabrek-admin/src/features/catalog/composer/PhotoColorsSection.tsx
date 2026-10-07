@@ -1,6 +1,10 @@
 // Step 1: photos first. Photos are grouped into colours automatically; the
 // owner fixes a name or moves a photo with one tap (works on phones too).
 import React, { useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import * as AiAPI from "../../../api/ai.api";
+import { getApiErrorMessage } from "../../../api/http";
+import { toast } from "../../../lib/toast";
 import { cn } from "../../../components/ui/cn";
 import { FASHION_COLORS, colorDistance, nearestFashionColor } from "../../../lib/productComposer";
 import type { ColorGroup, ComposerDraft, ComposerPhoto } from "./composerModel";
@@ -20,6 +24,9 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
   const pick = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
+  // AI photo studio (admin → الذكاء الاصطناعي): a clean background, added as a new photo.
+  const ai = useQuery({ queryKey: ["ai-catalog-status"], queryFn: AiAPI.catalogAiStatus, staleTime: 60_000, retry: false });
+  const studio = Boolean(ai.data?.photoStudio);
   const photoCount = Object.keys(draft.photos).length;
   const uploading = Object.values(draft.photos).filter((p) => p.status === "queued" || p.status === "uploading").length;
 
@@ -89,7 +96,7 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
       {draft.groups.length > 0 && (
         <div className="mt-4 space-y-3">
           {draft.groups.map((g, gi) => (
-            <GroupCard
+            <GroupCard studio={studio} title={draft.title}
               key={g.key}
               group={g}
               index={gi}
@@ -117,7 +124,9 @@ export function PhotoColorsSection({ draft, update, onFiles, onRetry, error }: P
   );
 }
 
-function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, update, onRetry }: {
+function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, update, onRetry, studio, title }: {
+  studio?: boolean;
+  title?: string;
   group: ColorGroup;
   index: number;
   draft: ComposerDraft;
@@ -148,6 +157,14 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
 
   const makeMain = (photoKey: string) =>
     update((d) => ({ ...d, groups: d.groups.map((g) => (g.key === group.key ? { ...g, photoKeys: [photoKey, ...g.photoKeys.filter((k) => k !== photoKey)] } : g)) }));
+
+  // The studio's photo goes right after the one it was made from, in the same colour.
+  const addStudioPhoto = (afterKey: string, url: string) =>
+    update((d) => {
+      const key = newKey("p");
+      const photos = { ...d.photos, [key]: { key, url, preview: url, status: "done" as const, color: d.photos[afterKey]?.color ?? null } };
+      return { ...d, photos, groups: d.groups.map((g) => (g.key === group.key ? { ...g, photoKeys: g.photoKeys.flatMap((k) => (k === afterKey ? [k, key] : [k])) } : g)) };
+    });
 
   const removePhoto = (photoKey: string) =>
     update((d) => {
@@ -186,7 +203,7 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
 
       <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
         {group.photoKeys.map((k, i) => (
-          <PhotoTile key={k} photo={draft.photos[k]} main={i === 0} groups={draft.groups} groupKey={group.key} onMain={() => makeMain(k)} onRemove={() => removePhoto(k)} onMove={(t) => movePhoto(k, t)} onRetry={() => onRetry(k)} />
+          <PhotoTile key={k} photo={draft.photos[k]} main={i === 0} groups={draft.groups} groupKey={group.key} onMain={() => makeMain(k)} onRemove={() => removePhoto(k)} onMove={(t) => movePhoto(k, t)} onRetry={() => onRetry(k)} studio={studio} title={title} onStudio={(url) => addStudioPhoto(k, url)} />
         ))}
         <button type="button" onClick={() => add.current?.click()} className="grid aspect-[4/5] place-items-center rounded-xl border border-dashed border-white/[0.14] text-xs text-white/50 hover:border-accent-400/60 hover:text-white" aria-label={`إضافة صور للون ${group.name || index + 1}`}>
           <span className="text-center leading-6"><span className="block text-xl">+</span>صور لهذا اللون</span>
@@ -197,7 +214,10 @@ function GroupCard({ group, index, draft, onName, onHex, onRemove, onFiles, upda
   );
 }
 
-function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, onRetry }: {
+function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, onRetry, studio, title, onStudio }: {
+  studio?: boolean;
+  title?: string;
+  onStudio?: (url: string) => void;
   photo?: ComposerPhoto;
   main: boolean;
   groups: ColorGroup[];
@@ -207,8 +227,24 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
   onMove: (target: string) => void;
   onRetry: () => void;
 }) {
+  const [menu, setMenu] = useState(false);
+  const [making, setMaking] = useState(false);
   if (!photo) return null;
   const busy = photo.status === "queued" || photo.status === "uploading";
+  const make = async (style: "white" | "studio" | "soft") => {
+    if (!photo.url) return;
+    setMenu(false);
+    setMaking(true);
+    try {
+      const out = await AiAPI.photoStudio({ imageUrl: photo.url, style, title });
+      onStudio?.(out.url);
+      toast.success("انضافت صورة جديدة بخلفية نظيفة — الأصلية ضلّت");
+    } catch (e) {
+      toast.error("ما زبطت الصورة", { description: getApiErrorMessage(e) });
+    } finally {
+      setMaking(false);
+    }
+  };
   return (
     <div className={cn("group relative aspect-[4/5] overflow-hidden rounded-xl border bg-black/20", main ? "border-accent-400/70" : "border-white/[0.08]")} data-testid="photo-tile">
       <img src={photo.preview} alt="" className="h-full w-full object-cover" draggable={false} />
@@ -216,6 +252,19 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
       {busy && (
         <div className="absolute inset-0 grid place-items-center bg-black/35">
           <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-label="جارٍ الرفع" />
+        </div>
+      )}
+      {making && (
+        <div className="absolute inset-0 grid place-items-center bg-black/55 p-2 text-center text-[11px] text-white">
+          <span><span className="mx-auto mb-1 block h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />عم نجهّز الخلفية… (لحد دقيقة)</span>
+        </div>
+      )}
+      {menu && (
+        <div className="absolute inset-x-1 top-1 z-10 grid gap-1 rounded-lg bg-black/85 p-1.5 text-[11px]" role="menu" aria-label="خلفية جديدة">
+          {([["white", "خلفية بيضا"], ["studio", "استوديو فاتح"], ["soft", "زهري ناعم"]] as const).map(([k, l]) => (
+            <button key={k} type="button" role="menuitem" onClick={() => void make(k)} className="rounded-md bg-white/10 px-2 py-1 text-white hover:bg-white/20">{l}</button>
+          ))}
+          <button type="button" onClick={() => setMenu(false)} className="rounded-md px-2 py-1 text-white/60 hover:text-white">إلغاء</button>
         </div>
       )}
       {photo.status === "error" && (
@@ -239,6 +288,9 @@ function PhotoTile({ photo, main, groups, groupKey, onMain, onRemove, onMove, on
           {groups.map((g, i) => <option key={g.key} value={g.key} className="text-black">{g.name || `لون ${i + 1}`}</option>)}
           <option value="__new" className="text-black">لون جديد…</option>
         </select>
+        {studio && photo.url && !making ? (
+          <button type="button" onClick={() => setMenu((v) => !v)} className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] text-white hover:bg-accent-500/70" title="خلفية نظيفة بالذكاء الاصطناعي" aria-label="خلفية نظيفة بالذكاء الاصطناعي">✨</button>
+        ) : null}
         <button type="button" onClick={onRemove} className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] text-white hover:bg-red-500/70" aria-label="حذف الصورة">✕</button>
       </div>
     </div>

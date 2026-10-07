@@ -52,6 +52,12 @@ export type ComposerDraft = {
   title: string;
   categoryId: string;
   description: string;
+  /** Kind of product (أنواع المنتجات); null = the store's first type. */
+  typeId: string | null;
+  /** The type's fields: { fieldKey: value }. */
+  attributes: Record<string, unknown>;
+  /** Bookings: date/time (datetime-local, the browser's time) and place. */
+  event: { startsAt: string; endsAt: string; location: string };
   /** Search-engine title and description; empty = the product's own title and description. */
   seoTitle: string;
   seoDescription: string;
@@ -85,6 +91,9 @@ export function emptyDraft(partial?: Partial<ComposerDraft>): ComposerDraft {
     title: "",
     categoryId: "",
     description: "",
+    typeId: null,
+    attributes: {},
+    event: { startsAt: "", endsAt: "", location: "" },
     seoTitle: "",
     seoDescription: "",
     price: "",
@@ -365,6 +374,9 @@ export function draftForEdit(p: ProductDeep): ComposerDraft {
     slugTouched: true,
     categoryId: p.categoryId,
     description: p.description ?? "",
+    typeId: p.typeId ?? null,
+    attributes: (p.attributes as Record<string, unknown> | null) ?? {},
+    event: eventOf(p),
     seoTitle: p.seoTitle ?? "",
     seoDescription: p.seoDescription ?? "",
     price: Number.isFinite(base) && base > 0 ? String(base) : "",
@@ -419,6 +431,9 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
     title: opts.titleSuffix ? `${p.title}${opts.titleSuffix}` : "",
     categoryId: p.categoryId,
     description: p.description ?? "",
+    typeId: p.typeId ?? null,
+    attributes: (p.attributes as Record<string, unknown> | null) ?? {},
+    event: eventOf(p),
     price: Number.isFinite(price) && price > 0 ? String(price) : "",
     onSale: Number.isFinite(compare) && compare > price,
     compareAt: Number.isFinite(compare) && compare > price ? String(compare) : "",
@@ -480,4 +495,33 @@ export function clearLocalDraft() {
 /** Anything worth keeping? (an empty page is not a draft) */
 export function hasContent(d: ComposerDraft) {
   return Boolean(d.title.trim() || d.price.trim() || Object.keys(d.photos).length || d.description.trim());
+}
+
+/** ISO time → the value of an <input type="datetime-local"> (the browser's own time). */
+export function toLocalInput(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** <input type="datetime-local"> value → ISO time (null when empty or invalid). */
+export function fromLocalInput(v: string) {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function eventOf(p: { eventStartsAt?: string | null; eventEndsAt?: string | null; eventLocation?: string | null }) {
+  return { startsAt: toLocalInput(p.eventStartsAt), endsAt: toLocalInput(p.eventEndsAt), location: p.eventLocation ?? "" };
+}
+
+/** The booking's when/where as the server takes them. */
+export function eventForSave(d: Pick<ComposerDraft, "event">) {
+  return {
+    eventStartsAt: fromLocalInput(d.event?.startsAt ?? ""),
+    eventEndsAt: fromLocalInput(d.event?.endsAt ?? ""),
+    eventLocation: d.event?.location?.trim() || null,
+  };
 }

@@ -12,10 +12,14 @@ import {
 import { toast } from "../../lib/toast";
 import { PaidChip, SourceChip, StatusPill, Thumb, WhatsAppIcon } from "./orderUi";
 import { useDelivery } from "./useDelivery";
+import { DeliveryCard } from "./DeliveryCard";
+import { AiOrderCard } from "./AiOrderCard";
+import { useOrderDelivery } from "./useOrderDelivery";
 
 type FullOrder = OrderLike & {
   history?: Array<{ id: string; fromStatus?: string | null; toStatus: string; note?: string | null; at: string }>;
   country?: string | null;
+  email?: string | null;
 };
 
 const FLOW: OrderStatus[] = ["NEW", "CONTACTED", "ACCEPTED", "SHIPPED", "CLOSED"];
@@ -27,6 +31,9 @@ export default function OrderDetailsPage() {
   const { updateStatus, updateDetails } = useOrdersActions();
   const { delivery, storeName } = useDelivery();
   const [justMoved, setJustMoved] = useState<OrderStatus | null>(null);
+  // Files/tickets: an order with nothing to ship needs no address.
+  const handover = useOrderDelivery(order?.id ?? "", order?.status ?? "");
+  const noShipping = Boolean(handover.data?.needed && !handover.data.kinds.shipping);
 
   if (q.isLoading) return <div className="space-y-3">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-white/[0.04]" />)}</div>;
   if (!order) return <div className="glass rounded-2xl p-10 text-center text-sm text-white/70">لم نجد هذا الطلب. <Link className="text-accent-300" to="/admin/orders">رجوع للطلبات</Link></div>;
@@ -133,7 +140,9 @@ export default function OrderDetailsPage() {
         </div>
 
         <div className="min-w-0 space-y-4">
-          <CustomerCard order={order} saving={updateDetails.isPending} onSave={(body) => updateDetails.mutateAsync({ id: order.id, body })} />
+          <DeliveryCard orderId={order.id} status={order.status} />
+          <AiOrderCard orderId={order.id} phone={order.whatsapp || order.phone} />
+          <CustomerCard order={order} noShipping={noShipping} saving={updateDetails.isPending} onSave={(body) => updateDetails.mutateAsync({ id: order.id, body })} />
           <WhatsAppComposer order={order} storeName={storeName} deliveryFee={d.fee} />
         </div>
       </div>
@@ -224,11 +233,11 @@ function AfterMoveBanner({ to, href, onClose }: { to: OrderStatus; href: string 
 
 /* ---------------------------------------------------------------- customer */
 
-function CustomerCard({ order, saving, onSave }: { order: FullOrder; saving: boolean; onSave: (body: { customerName?: string; phone?: string; whatsapp?: string | null; city?: string | null; address?: string | null }) => Promise<unknown> }) {
+function CustomerCard({ order, noShipping, saving, onSave }: { order: FullOrder; noShipping?: boolean; saving: boolean; onSave: (body: { customerName?: string; phone?: string; whatsapp?: string | null; email?: string | null; city?: string | null; address?: string | null }) => Promise<unknown> }) {
   const [edit, setEdit] = useState(false);
-  const [f, setF] = useState({ customerName: "", phone: "", whatsapp: "", city: "", address: "" });
+  const [f, setF] = useState({ customerName: "", phone: "", whatsapp: "", email: "", city: "", address: "" });
   const startEdit = () => {
-    setF({ customerName: order.customerName ?? "", phone: order.phone ?? "", whatsapp: order.whatsapp ?? "", city: order.city ?? "", address: order.address ?? "" });
+    setF({ customerName: order.customerName ?? "", phone: order.phone ?? "", whatsapp: order.whatsapp ?? "", email: order.email ?? "", city: order.city ?? "", address: order.address ?? "" });
     setEdit(true);
   };
   const field = "h-10 w-full rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35";
@@ -246,11 +255,12 @@ function CustomerCard({ order, saving, onSave }: { order: FullOrder; saving: boo
           <input className={field} value={f.customerName} onChange={(e) => setF({ ...f, customerName: e.target.value })} placeholder="الاسم" aria-label="الاسم" />
           <input className={field} dir="ltr" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="الهاتف" aria-label="الهاتف" />
           <input className={field} dir="ltr" value={f.whatsapp} onChange={(e) => setF({ ...f, whatsapp: e.target.value })} placeholder="واتساب (إذا مختلف)" aria-label="واتساب" />
+          <input className={field} dir="ltr" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="الإيميل (للملفات والتذاكر)" aria-label="الإيميل" />
           <input className={field} value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} placeholder="المدينة" aria-label="المدينة" />
           <textarea className={cn(field, "h-20 py-2")} value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} placeholder="العنوان بالتفصيل" aria-label="العنوان" />
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={() => setEdit(false)} className="h-9 rounded-xl px-3 text-sm text-white/60 hover:text-white">إلغاء</button>
-            <button type="button" disabled={saving || !f.customerName.trim() || !f.phone.trim()} onClick={() => void onSave({ customerName: f.customerName.trim(), phone: f.phone.trim(), whatsapp: f.whatsapp.trim() || null, city: f.city.trim() || null, address: f.address.trim() || null }).then(() => { setEdit(false); toast.success("حُفظت البيانات"); }, () => { /* toast shown by the hook */ })} className="h-9 rounded-xl bg-accent-500 px-4 text-sm text-white hover:bg-accent-400 disabled:opacity-50">حفظ</button>
+            <button type="button" disabled={saving || !f.customerName.trim() || !f.phone.trim()} onClick={() => void onSave({ customerName: f.customerName.trim(), phone: f.phone.trim(), whatsapp: f.whatsapp.trim() || null, email: f.email.trim() || null, city: f.city.trim() || null, address: f.address.trim() || null }).then(() => { setEdit(false); toast.success("حُفظت البيانات"); }, () => { /* toast shown by the hook */ })} className="h-9 rounded-xl bg-accent-500 px-4 text-sm text-white hover:bg-accent-400 disabled:opacity-50">حفظ</button>
           </div>
         </div>
       ) : (
@@ -264,10 +274,16 @@ function CustomerCard({ order, saving, onSave }: { order: FullOrder; saving: boo
               {order.whatsapp && order.whatsapp !== order.phone && <span className="text-[11px] text-white/50">واتساب: <span dir="ltr">{order.whatsapp}</span></span>}
             </dd>
           </div>
+          {order.email && (
+            <div>
+              <dt className="text-[11px] text-white/45">الإيميل</dt>
+              <dd dir="ltr" className="text-end text-white">{order.email}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-[11px] text-white/45">العنوان</dt>
-            <dd className={cn(fullAddress ? "text-white" : "text-amber-300/90")}>
-              {fullAddress || "لا يوجد عنوان — اسأليها عنه"}
+            <dd className={cn(fullAddress || noShipping ? "text-white" : "text-amber-300/90")}>
+              {fullAddress || (noShipping ? <span className="text-white/55">ما في شحن (ملفات/تذاكر)</span> : "لا يوجد عنوان — اسأليها عنه")}
               {fullAddress && <button type="button" onClick={() => copy(fullAddress)} className="ms-2 text-[11px] text-white/45 hover:text-white">نسخ</button>}
             </dd>
           </div>

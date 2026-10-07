@@ -7,6 +7,14 @@ import { backendHasStockTools } from "../../../api/inventory.api";
 import { shortId } from "../../../lib/productComposer";
 import { buildItems, effectiveSlug, removedIds, type ComposerDraft } from "./composerModel";
 
+/** The kind of product and its values, as the server takes them (the type's fields come from the page). */
+export type TypedValues = {
+  typeId: string | null;
+  attributes: Record<string, unknown>;
+  /** Bookings only: when and where. */
+  event?: { eventStartsAt: string | null; eventEndsAt: string | null; eventLocation: string | null };
+};
+
 export type SaveStep = "create" | "details";
 
 const isConflict = (e: unknown) => isAxiosError(e) && e.response?.status === 409;
@@ -20,6 +28,7 @@ export async function saveComposedProduct(opts: {
   draft: ComposerDraft;
   sizes: CatalogSize[];
   publish: boolean;
+  typed?: TypedValues;
   /** Set when an earlier attempt already created the product: never create it twice. */
   existingId?: string | null;
   onStep?: (step: SaveStep) => void;
@@ -41,6 +50,7 @@ export async function saveComposedProduct(opts: {
           seoTitle: draft.seoTitle.trim() || null,
           seoDescription: draft.seoDescription.trim() || null,
           isActive: false,
+          ...(opts.typed?.typeId ? { typeId: opts.typed.typeId } : {}),
         });
         id = created.id;
         slug = created.slug || slug;
@@ -69,6 +79,7 @@ export async function saveComposedProduct(opts: {
           seoTitle: draft.seoTitle.trim() || null,
           seoDescription: draft.seoDescription.trim() || null,
           isActive: publish,
+          ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}) } : {}),
         },
         items: buildItems({ ...draft, slug, slugTouched: true }, sizes, { skuSalt: salt }),
         deleteItemIds,
@@ -90,6 +101,7 @@ export async function saveComposedProduct(opts: {
 export async function saveEditedProduct(opts: {
   draft: ComposerDraft;
   sizes: CatalogSize[];
+  typed?: TypedValues;
   /** Published after the save. */
   publish: boolean;
 }): Promise<{ product: ProductDeep; kept: SaveKept | null }> {
@@ -109,6 +121,7 @@ export async function saveEditedProduct(opts: {
       seoTitle: draft.seoTitle.trim() || null,
       seoDescription: draft.seoDescription.trim() || null,
       isActive: publish,
+      ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}) } : {}),
     },
     items: buildItems(draft, sizes, { keepUnchangedStock }),
     ...removedIds(draft),
