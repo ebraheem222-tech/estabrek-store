@@ -17,7 +17,11 @@ import { completeFaq, polishButton, polishCopy } from "./roseCopy";
 import { useRoseStore } from "./StorefrontChrome";
 import type { ProductBadge } from "@/lib/productBadges";
 import { collectionSeed } from "@/lib/collectionTheme";
-import { discardThemePreview, endThemePreview, previewTheme, shellOf } from "@/lib/themePreview";
+import {
+  discardThemePreview,
+  endThemePreview,
+  previewTheme,
+} from "@/lib/themePreview";
 
 export type RoseHeroData = {
   title?: string;
@@ -466,14 +470,23 @@ export function RoseCollections({
     window.clearTimeout(intent.current);
     intent.current = window.setTimeout(() => {
       active.current = index;
-      previewTheme(shellOf(card), collectionSeed(items[index], index, card.querySelector("img")));
+      previewTheme(
+  card,
+  collectionSeed(
+    items[index],
+    index,
+    card.querySelector("img"),
+  ),
+);
     }, active.current === null ? 90 : 45);
   };
   const restore = () => {
     window.clearTimeout(intent.current);
     if (active.current === null) return; // nothing was previewed
     active.current = null;
-    endThemePreview(shellOf(grid.current));
+    endThemePreview(
+  grid.current,
+);
   };
   useEffect(() => () => window.clearTimeout(intent.current), []);
   const leaveFocus = (event: FocusEvent<HTMLDivElement>) => {
