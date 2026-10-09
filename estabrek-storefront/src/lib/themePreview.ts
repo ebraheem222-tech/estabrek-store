@@ -1,5 +1,9 @@
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { tweenTheme } from "@/lib/themeTween";
+import {
+  crossfadeTheme,
+  setThemeNow,
+  tweenTheme,
+} from "@/lib/themeTween";
 import { claimTheme, dropTheme, holdsTheme, releaseTheme } from "@/lib/themeBase";
 
 /**
@@ -23,35 +27,110 @@ export function shellOf(el: Element | null | undefined) {
   return el?.closest<HTMLElement>(".cinematic-shell") ?? null;
 }
 
-export function previewTheme(shell: HTMLElement | null, seed: string) {
+const FALLBACK_GLIDE_SECONDS = 0.22;
+
+export function previewTheme(
+  shell: HTMLElement | null,
+  seed: string,
+) {
   if (!shell || shell.dataset.season) return;
+
   const values = storefrontPalette(seed);
-  if (!saved || saved.shell !== shell || !holdsTheme(shell, "preview")) {
-    if (saved && saved.shell !== shell) dropTheme(saved.shell, "preview");
-    saved = { shell, navbar: shell.dataset.navbarColor };
-    claimTheme(shell, "preview", Object.keys(values));
+
+  if (
+    !saved ||
+    saved.shell !== shell ||
+    !holdsTheme(shell, "preview")
+  ) {
+    if (saved && saved.shell !== shell) {
+      dropTheme(saved.shell, "preview");
+    }
+
+    saved = {
+      shell,
+      navbar: shell.dataset.navbarColor,
+    };
+
+    claimTheme(
+      shell,
+      "preview",
+      Object.keys(values),
+    );
   }
+
   lastSeed = seed;
+
   shell.dataset.themePreview = "true";
   shell.dataset.navbarColor = seed;
-  tweenTheme(shell, values, { duration: 0.6 });
+
+  // Preferred:
+  // change the palette once and let the compositor
+  // cross-fade the page snapshots.
+  const crossfaded = crossfadeTheme(() => {
+    setThemeNow(shell, values);
+  });
+
+  // Older browser fallback.
+  if (!crossfaded) {
+    tweenTheme(shell, values, {
+      duration: FALLBACK_GLIDE_SECONDS,
+    });
+  }
 }
 
-export function endThemePreview(shell: HTMLElement | null) {
-  if (!shell || !saved || saved.shell !== shell) return;
+export function endThemePreview(
+  shell: HTMLElement | null,
+) {
+  if (
+    !shell ||
+    !saved ||
+    saved.shell !== shell
+  ) {
+    return;
+  }
+
   const previous = saved;
   saved = null;
-  releaseTheme(shell, "preview", {
-    duration: 0.6,
-    onComplete: () => {
-      if (saved) return; // a new preview started meanwhile
-      delete shell.dataset.themePreview;
-      const chosen = shell.dataset.storefrontColor;
-      if (chosen) shell.dataset.navbarColor = chosen;
-      else if (previous.navbar) shell.dataset.navbarColor = previous.navbar;
-      else delete shell.dataset.navbarColor;
-    },
+
+  const finish = () => {
+    // Another hover started while returning.
+    if (saved) return;
+
+    delete shell.dataset.themePreview;
+
+    const chosen =
+      shell.dataset.storefrontColor;
+
+    if (chosen) {
+      shell.dataset.navbarColor = chosen;
+    } else if (previous.navbar) {
+      shell.dataset.navbarColor =
+        previous.navbar;
+    } else {
+      delete shell.dataset.navbarColor;
+    }
+  };
+
+  /*
+   * Important:
+   *
+   * restore the CSS variables ONCE inside the
+   * View Transition instead of interpolating them
+   * frame-by-frame over the entire DOM.
+   */
+  const crossfaded = crossfadeTheme(() => {
+    releaseTheme(shell, "preview", {
+      duration: 0,
+      onComplete: finish,
+    });
   });
+
+  if (!crossfaded) {
+    releaseTheme(shell, "preview", {
+      duration: FALLBACK_GLIDE_SECONDS,
+      onComplete: finish,
+    });
+  }
 }
 
 /** A real colour choice replaces the preview: nothing to restore afterwards. */
