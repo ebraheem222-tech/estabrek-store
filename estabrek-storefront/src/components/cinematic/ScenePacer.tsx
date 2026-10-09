@@ -2,38 +2,186 @@
 
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
-import { onMotionLevel, sceneDpr, sceneFrameGap, watchSceneFrames } from "@/lib/motionBudget";
+
+import {
+  onMotionLevel,
+  sceneDpr,
+  sceneFrameGap,
+  watchSceneFrames,
+} from "@/lib/motionBudget";
 
 /**
- * Drives a 3D scene (Canvas with frameloop="demand") at the paced rate from
- * motionBudget: 60 frames a second at most, 30 in the light mode, instead of
- * the screen's own rate (120 Hz on some phones). Also lowers the pixel density
- * when the light mode starts.
+ * Adaptive 3D scene pacer.
+ *
+ * Browser rAF remains the master clock.
+ *
+ * The accumulator lets us correctly render:
+ *
+ * 120Hz → 120
+ * 120Hz → 90
+ * 120Hz → 60
+ * 120Hz → 45
+ *
+ * instead of accidentally collapsing
+ * intermediate rates to divisors of 120.
  */
-export function ScenePacer({ active }: { active: boolean }) {
-  const invalidate = useThree((s) => s.invalidate);
-  const setDpr = useThree((s) => s.setDpr);
+export function ScenePacer({
+  active,
+}: {
+  active: boolean;
+}) {
+  const invalidate =
+    useThree(
+      (state) =>
+        state.invalidate,
+    );
 
-  useEffect(() => onMotionLevel(() => { setDpr(sceneDpr()); invalidate(); }), [setDpr, invalidate]);
+  const setDpr =
+    useThree(
+      (state) =>
+        state.setDpr,
+    );
+
+  /**
+   * FPS tier changes also emit through
+   * onMotionLevel.
+   */
+  useEffect(
+    () =>
+      onMotionLevel(() => {
+        setDpr(
+          sceneDpr(),
+        );
+
+        invalidate();
+      }),
+    [
+      setDpr,
+      invalidate,
+    ],
+  );
 
   useEffect(() => {
-    if (!active) return;
-    const stopWatching = watchSceneFrames();
+    if (!active) {
+      return;
+    }
+
+    /**
+     * Ensure current adaptive DPR is
+     * applied as soon as scene wakes.
+     */
+    setDpr(
+      sceneDpr(),
+    );
+
+    const stopWatching =
+      watchSceneFrames();
+
     let raf = 0;
+
     let last = 0;
-    const tick = (t: number) => {
-      if (t - last >= sceneFrameGap()) {
-        last = t;
+
+    let accumulator = 0;
+
+    const tick = (
+      time: number,
+    ) => {
+      if (!last) {
+        last = time;
+
+        /**
+         * Render immediately when the
+         * scene first becomes active.
+         */
+        accumulator =
+          sceneFrameGap();
+      } else {
+        const elapsed =
+          time - last;
+
+        last = time;
+
+        /**
+         * A background-tab pause should
+         * not create a huge backlog.
+         */
+        if (
+          elapsed > 250
+        ) {
+          accumulator =
+            sceneFrameGap();
+        } else {
+          accumulator +=
+            Math.min(
+              elapsed,
+              100,
+            );
+        }
+      }
+
+      const interval =
+        sceneFrameGap();
+
+      /**
+       * Small tolerance handles floating
+       * point differences between:
+       *
+       * 8.333ms
+       * 11.111ms
+       * 16.667ms
+       */
+      if (
+        accumulator +
+          0.5 >=
+        interval
+      ) {
+        accumulator -=
+          interval;
+
+        if (
+          accumulator < 0
+        ) {
+          accumulator = 0;
+        }
+
+        /**
+         * Never try to catch up several
+         * old frames in one browser frame.
+         */
+        if (
+          accumulator >
+          interval * 2
+        ) {
+          accumulator %=
+            interval;
+        }
+
         invalidate();
       }
-      raf = requestAnimationFrame(tick);
+
+      raf =
+        requestAnimationFrame(
+          tick,
+        );
     };
-    raf = requestAnimationFrame(tick);
+
+    raf =
+      requestAnimationFrame(
+        tick,
+      );
+
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(
+        raf,
+      );
+
       stopWatching();
     };
-  }, [active, invalidate]);
+  }, [
+    active,
+    invalidate,
+    setDpr,
+  ]);
 
   return null;
 }
