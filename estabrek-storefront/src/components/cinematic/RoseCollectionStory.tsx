@@ -17,6 +17,7 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
 import { RoseMascot, type MascotHandle, type PalmRef } from "./mascot/RoseMascot";
 import type { RoseExtras, RoseOutfit } from "@/lib/roseEvents";
@@ -235,7 +236,88 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         layers.forEach((layer, i) => { layer.inert = i !== lead; });
         dots.forEach((dot, i) => dot.toggleAttribute("data-active", i === lead));
       };
-      const state = { p: 0 };
+      let renderedProgress = 0;
+
+let themeTrigger:
+  ScrollTrigger | null = null;
+
+const scrollMotion =
+  createScrollProgressMotion(
+    (p) => {
+      renderedProgress = p;
+
+      render(p);
+
+      if (
+        themeTrigger?.isActive
+      ) {
+        takeOver(
+          seedAt(p),
+        );
+      }
+    },
+    {
+      smoothTime: 0.09,
+      maxDeltaTime: 1 / 30,
+    },
+  );
+
+const sceneTrigger =
+  ScrollTrigger.create({
+    trigger: el,
+
+    start: "top top",
+    end: "bottom bottom",
+
+    refreshPriority: -1,
+
+    onUpdate: (self) => {
+      scrollMotion.target(
+        self.progress,
+      );
+    },
+
+    onRefresh: (self) => {
+      scrollMotion.snap(
+        self.progress,
+      );
+    },
+
+    onToggle: (self) => {
+      onStage =
+        self.isActive;
+
+      if (!onStage) {
+        follow?.unpin();
+      }
+    },
+  });
+
+scrollMotion.snap(
+  sceneTrigger.progress,
+);
+
+themeTrigger =
+  ScrollTrigger.create({
+    trigger: el,
+
+    start: "top 55%",
+    end: "bottom 45%",
+
+    refreshPriority: -1,
+
+    onToggle: (self) => {
+      if (self.isActive) {
+        takeOver(
+          seedAt(
+            renderedProgress,
+          ),
+        );
+      } else {
+        giveBack();
+      }
+    },
+  });
       const themeTrigger = ScrollTrigger.create({
         trigger: el,
         start: "top 55%",
@@ -260,9 +342,9 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       return () => {
         window.removeEventListener("load", refresh);
         window.clearTimeout(late);
-        tween.scrollTrigger?.kill();
-        tween.kill();
-        themeTrigger.kill();
+        sceneTrigger.kill();
+themeTrigger?.kill();
+scrollMotion.stop();
         giveBack();
         layers.forEach((layer) => { layer.inert = false; });
         el.dataset.motion = "false";
