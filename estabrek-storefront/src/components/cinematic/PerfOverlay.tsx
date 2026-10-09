@@ -46,13 +46,46 @@ export function PerfOverlay() {
         frames = 0; sum = 0; worst = 0;
         const s = motionStats;
         const level = motionLevel();
-        setText([
-          `${fps} fps · ${avg} ms · worst ${shownWorst} ms`,
-          `screen ${s.hz || "?"} Hz · dpr ${window.devicePixelRatio} · ${screen.width}×${screen.height}`,
-          `mode ${level}${s.reason ? ` (${s.reason})` : ""}`,
-          `scene ${s.frameMs || "-"} ms · late ${Math.round(s.late * 100)}%`,
-          `film seek ${s.seekMs || "-"} ms`,
-        ].join("\n"));
+        `target ${s.targetFps} fps · render dpr ${s.renderDpr}`,
+        setText(
+  [
+    `${fps} fps · ${avg} ms · worst ${shownWorst} ms`,
+
+    `screen ${
+      s.hz || "?"
+    } Hz · dpr ${
+      window.devicePixelRatio
+    } · ${
+      screen.width
+    }×${
+      screen.height
+    }`,
+
+    `target ${
+      s.targetFps
+    } fps · render dpr ${
+      s.renderDpr
+    }`,
+
+    `mode ${level}${
+      s.reason
+        ? ` (${s.reason})`
+        : ""
+    }`,
+
+    `scene ${
+      s.frameMs || "-"
+    } ms · late ${
+      Math.round(
+        s.late * 100,
+      )
+    }%`,
+
+    `film seek ${
+      s.seekMs || "-"
+    } ms`,
+  ].join("\n"),
+);
       }
       raf = requestAnimationFrame(tick);
     };
