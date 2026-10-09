@@ -16,7 +16,7 @@ const WEBM = "/editorial/hero-film.webm";
  * The decoder itself may run slower; we intentionally allow only
  * one outstanding seek at a time.
  */
-const FILM_FPS = 120;
+const FILM_FPS = 960;
 
 /**
  * Lite mode remains intentionally capped to 30 updates/sec
