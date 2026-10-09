@@ -15,6 +15,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
 import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
@@ -217,27 +218,159 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         if (winterLayer) winterLayer.inert = now === "spring";
         if (springLayer) springLayer.inert = now === "winter";
       };
-      const seedAt = (p: number) => mixHex(SEASON_SEED.winter, SEASON_SEED.spring, smooth(0.38, 0.62, p));
-      const state = { p: 0 };
-      // The theme follows the scene a little before and after it is pinned.
-      const themeTrigger = ScrollTrigger.create({
-        trigger: el,
-        start: "top 55%",
-        end: "bottom 45%",
-        refreshPriority: -1,
-        onToggle: (self) => (self.isActive ? takeOver(seedAt(state.p)) : giveBack()),
-      });
-      const tween = gsap.fromTo(state, { p: 0 }, {
-        p: 1,
-        ease: "none",
-        onUpdate: () => {
-          render(state.p);
-          if (themeTrigger.isActive) takeOver(seedAt(state.p));
-        },
-        // Measured after the pinned scenes above it (opening, fabric study) add their spacing.
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", onToggle: (self) => { onStage = self.isActive; if (!onStage) follow?.unpin(); }, scrub: 0.35, refreshPriority: -1 },
-      });
-      render(0);
+      const seedAt = (p: number) =>
+  mixHex(
+    SEASON_SEED.winter,
+    SEASON_SEED.spring,
+    smooth(0.38, 0.62, p),
+  );
+
+/**
+ * Theme trigger is assigned after the scene trigger.
+ *
+ * The motion callback can safely check it once it exists.
+ */
+let themeTrigger:
+  ScrollTrigger | null = null;
+
+/**
+ * GAME-STYLE SCROLL MOTION
+ *
+ * raw ScrollTrigger progress
+ *         ↓
+ * target
+ *         ↓
+ * rAF / display refresh
+ *         ↓
+ * SmoothDamp
+ *         ↓
+ * rendered progress
+ */
+const scrollMotion =
+  createScrollProgressMotion(
+    (p) => {
+      /**
+       * This writes progress.current.
+       *
+       * SeasonsScene's useFrame() then reads this same
+       * smoothed value on every Three.js render frame.
+       */
+      render(p);
+
+      /**
+       * Theme uses the SAME rendered progress.
+       *
+       * This keeps:
+       * 3D
+       * DOM
+       * colours
+       *
+       * synchronized.
+       */
+      if (themeTrigger?.isActive) {
+        takeOver(
+          seedAt(p),
+        );
+      }
+    },
+    {
+      /**
+       * Similar feel to your improved Hero.
+       *
+       * 0.07 = tighter
+       * 0.09 = balanced
+       * 0.11 = softer
+       */
+      smoothTime: 0.09,
+
+      /**
+       * One slow browser frame must not create
+       * a giant simulation jump.
+       */
+      maxDeltaTime: 1 / 30,
+    },
+  );
+
+/**
+ * Main season timeline.
+ *
+ * IMPORTANT:
+ * no GSAP scrub here.
+ *
+ * ScrollTrigger does not animate anymore.
+ * It only tells our motion system where it wants to go.
+ */
+const sceneTrigger =
+  ScrollTrigger.create({
+    trigger: el,
+
+    start: "top top",
+    end: "bottom bottom",
+
+    refreshPriority: -1,
+
+    onUpdate: (self) => {
+      scrollMotion.target(
+        self.progress,
+      );
+    },
+
+    /**
+     * When layout changes we snap to the physically
+     * correct scroll position instead of slowly chasing it.
+     */
+    onRefresh: (self) => {
+      scrollMotion.snap(
+        self.progress,
+      );
+    },
+
+    onToggle: (self) => {
+      onStage = self.isActive;
+
+      if (!onStage) {
+        follow?.unpin();
+      }
+    },
+  });
+
+/**
+ * Correct initial state.
+ *
+ * Important when:
+ * - page refreshes halfway down
+ * - browser restores previous scroll position
+ * - user comes back with history navigation
+ */
+scrollMotion.snap(
+  sceneTrigger.progress,
+);
+
+/**
+ * Theme ownership starts slightly before the section
+ * reaches its pinned/full-screen position and ends after.
+ */
+themeTrigger =
+  ScrollTrigger.create({
+    trigger: el,
+
+    start: "top 55%",
+    end: "bottom 45%",
+
+    refreshPriority: -1,
+
+    onToggle: (self) => {
+      if (self.isActive) {
+        takeOver(
+          seedAt(
+            progress.current,
+          ),
+        );
+      } else {
+        giveBack();
+      }
+    },
+  });
       // The scene just grew to its pinned height: re-measure every trigger below it.
       const refresh = requestScrollRefresh;
       refresh();
@@ -247,9 +380,9 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       return () => {
         window.removeEventListener("load", refresh);
         window.clearTimeout(late);
-        tween.scrollTrigger?.kill();
-        tween.kill();
-        themeTrigger.kill();
+       sceneTrigger.kill();
+       themeTrigger?.kill();
+       scrollMotion.stop();
         if (winterLayer) winterLayer.inert = false;
         if (springLayer) springLayer.inert = false;
         giveBack();
