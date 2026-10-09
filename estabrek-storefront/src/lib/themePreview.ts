@@ -1,54 +1,96 @@
 import { storefrontPalette } from "@/lib/storefrontPalette";
+import { tweenTheme } from "@/lib/themeTween";
 import {
-  crossfadeTheme,
-  setThemeNow,
-  tweenTheme,
-} from "@/lib/themeTween";
-import { claimTheme, dropTheme, holdsTheme, releaseTheme } from "@/lib/themeBase";
+  claimTheme,
+  dropTheme,
+  holdsTheme,
+  releaseTheme,
+} from "@/lib/themeBase";
 
 /**
- * Temporary storefront colour on hover (collection cards, add-to-bag buttons).
- * One preview at a time; leaving glides back to whatever the page had before.
- * Scenes that own the colours (seasons, collection worlds) are left alone.
+ * Hover previews must react quickly.
+ *
+ * 0.6s felt like lag because the entire storefront palette
+ * was still moving long after the pointer entered the card.
  */
+const HOVER_TWEEN_SECONDS = 0.18;
 
-let saved: { shell: HTMLElement; navbar?: string } | null = null;
+/**
+ * Enough intent to avoid recolouring the site when the
+ * mouse simply passes over a Quick Add button.
+ */
+const HOVER_INTENT_MS = 120;
+
+let saved: {
+  shell: HTMLElement;
+  navbar?: string;
+} | null = null;
+
 let lastSeed = "";
 
-/** Soft brand-friendly seeds for the random add-to-bag preview. */
-const RANDOM_SEEDS = ["#c97794", "#a08cbd", "#7d8ec4", "#e9a27c", "#8ea58a", "#c4a266", "#e59b9b", "#9b6b4e", "#5f8f9b", "#b5658f"];
+const RANDOM_SEEDS = [
+  "#c97794",
+  "#a08cbd",
+  "#7d8ec4",
+  "#e9a27c",
+  "#8ea58a",
+  "#c4a266",
+  "#e59b9b",
+  "#9b6b4e",
+  "#5f8f9b",
+  "#b5658f",
+];
 
 export function randomThemeSeed() {
-  const pool = RANDOM_SEEDS.filter((s) => s !== lastSeed);
-  return pool[Math.floor(Math.random() * pool.length)];
+  const pool = RANDOM_SEEDS.filter(
+    (seed) => seed !== lastSeed,
+  );
+
+  return pool[
+    Math.floor(Math.random() * pool.length)
+  ];
 }
 
-export function shellOf(el: Element | null | undefined) {
-  return el?.closest<HTMLElement>(".cinematic-shell") ?? null;
+export function shellOf(
+  el: Element | null | undefined,
+) {
+  return (
+    el?.closest<HTMLElement>(
+      ".cinematic-shell",
+    ) ?? null
+  );
 }
-
-const FALLBACK_GLIDE_SECONDS = 0.22;
 
 export function previewTheme(
   shell: HTMLElement | null,
   seed: string,
 ) {
-  if (!shell || shell.dataset.season) return;
+  if (!shell || shell.dataset.season) {
+    return;
+  }
 
-  const values = storefrontPalette(seed);
+  const values =
+    storefrontPalette(seed);
 
   if (
     !saved ||
     saved.shell !== shell ||
     !holdsTheme(shell, "preview")
   ) {
-    if (saved && saved.shell !== shell) {
-      dropTheme(saved.shell, "preview");
+    if (
+      saved &&
+      saved.shell !== shell
+    ) {
+      dropTheme(
+        saved.shell,
+        "preview",
+      );
     }
 
     saved = {
       shell,
-      navbar: shell.dataset.navbarColor,
+      navbar:
+        shell.dataset.navbarColor,
     };
 
     claimTheme(
@@ -60,22 +102,25 @@ export function previewTheme(
 
   lastSeed = seed;
 
-  shell.dataset.themePreview = "true";
-  shell.dataset.navbarColor = seed;
+  shell.dataset.themePreview =
+    "true";
 
-  // Preferred:
-  // change the palette once and let the compositor
-  // cross-fade the page snapshots.
-  const crossfaded = crossfadeTheme(() => {
-    setThemeNow(shell, values);
+  shell.dataset.navbarColor =
+    seed;
+
+  /**
+   * IMPORTANT:
+   *
+   * Do NOT use View Transition here.
+   *
+   * Hover is interactive and needs immediate feedback.
+   * The root View Transition snapshot was hiding the
+   * actual recoloured page for ~550ms.
+   */
+  tweenTheme(shell, values, {
+    duration: HOVER_TWEEN_SECONDS,
+    ease: "power2.out",
   });
-
-  // Older browser fallback.
-  if (!crossfaded) {
-    tweenTheme(shell, values, {
-      duration: FALLBACK_GLIDE_SECONDS,
-    });
-  }
 }
 
 export function endThemePreview(
@@ -90,97 +135,180 @@ export function endThemePreview(
   }
 
   const previous = saved;
+
   saved = null;
 
-  const finish = () => {
-    // Another hover started while returning.
-    if (saved) return;
+  releaseTheme(
+    shell,
+    "preview",
+    {
+      duration:
+        HOVER_TWEEN_SECONDS,
 
-    delete shell.dataset.themePreview;
+      onComplete: () => {
+        /**
+         * Another hover may have started
+         * while this one was returning.
+         */
+        if (saved) {
+          return;
+        }
 
-    const chosen =
-      shell.dataset.storefrontColor;
+        delete shell.dataset
+          .themePreview;
 
-    if (chosen) {
-      shell.dataset.navbarColor = chosen;
-    } else if (previous.navbar) {
-      shell.dataset.navbarColor =
-        previous.navbar;
-    } else {
-      delete shell.dataset.navbarColor;
-    }
-  };
+        const chosen =
+          shell.dataset
+            .storefrontColor;
 
-  /*
-   * Important:
-   *
-   * restore the CSS variables ONCE inside the
-   * View Transition instead of interpolating them
-   * frame-by-frame over the entire DOM.
-   */
-  const crossfaded = crossfadeTheme(() => {
-    releaseTheme(shell, "preview", {
-      duration: 0,
-      onComplete: finish,
-    });
-  });
-
-  if (!crossfaded) {
-    releaseTheme(shell, "preview", {
-      duration: FALLBACK_GLIDE_SECONDS,
-      onComplete: finish,
-    });
-  }
-}
-
-/** A real colour choice replaces the preview: nothing to restore afterwards. */
-export function discardThemePreview() {
-  if (saved) {
-    delete saved.shell.dataset.themePreview;
-    dropTheme(saved.shell, "preview");
-  }
-  saved = null;
+        if (chosen) {
+          shell.dataset
+            .navbarColor = chosen;
+        } else if (
+          previous.navbar
+        ) {
+          shell.dataset
+            .navbarColor =
+            previous.navbar;
+        } else {
+          delete shell.dataset
+            .navbarColor;
+        }
+      },
+    },
+  );
 }
 
 /**
- * Add-to-bag hover: after the pointer rests on the button for a moment, a new
- * random colour, then another every couple of seconds while it stays. Leaving
- * glides back. Passing over buttons on the way somewhere (a product grid is
- * full of them) changes nothing — that used to recolour the whole site again
- * and again and read as flashing.
+ * A permanent colour choice replaces
+ * the temporary hover preview.
  */
-const HOVER_INTENT_MS = 400;
-let cycle: { timer: number; source: HTMLElement; started: boolean } | null = null;
+export function discardThemePreview() {
+  if (saved) {
+    delete saved.shell.dataset
+      .themePreview;
 
-export function startThemeCycle(source: HTMLElement, everyMs = 2200) {
-  const shell = shellOf(source);
-  if (!shell) return;
-  // Touch screens have no hover: a tap must not leave the colours spinning.
-  if (window.matchMedia?.("(hover: none)").matches && !source.matches(":focus-visible")) return;
+    dropTheme(
+      saved.shell,
+      "preview",
+    );
+  }
+
+  saved = null;
+}
+
+let cycle: {
+  timer: number;
+  source: HTMLElement;
+  started: boolean;
+} | null = null;
+
+export function startThemeCycle(
+  source: HTMLElement,
+  everyMs = 2200,
+) {
+  const shell =
+    shellOf(source);
+
+  if (!shell) {
+    return;
+  }
+
+  /**
+   * Touch screens do not have real hover.
+   */
+  if (
+    window.matchMedia?.(
+      "(hover: none)",
+    ).matches &&
+    !source.matches(
+      ":focus-visible",
+    )
+  ) {
+    return;
+  }
+
   stopThemeCycle(null);
-  const state = { timer: 0, source, started: false };
-  state.timer = window.setTimeout(() => {
-    if (cycle !== state) return;
-    if (!source.isConnected || !shell.isConnected) return stopThemeCycle(source);
-    state.started = true;
-    previewTheme(shell, randomThemeSeed());
-    state.timer = window.setInterval(() => {
-      if (!source.isConnected || !shell.isConnected) return stopThemeCycle(source);
-      previewTheme(shell, randomThemeSeed());
-    }, everyMs);
-  }, HOVER_INTENT_MS);
+
+  const state = {
+    timer: 0,
+    source,
+    started: false,
+  };
+
+  state.timer =
+    window.setTimeout(() => {
+      if (cycle !== state) {
+        return;
+      }
+
+      if (
+        !source.isConnected ||
+        !shell.isConnected
+      ) {
+        stopThemeCycle(source);
+        return;
+      }
+
+      state.started = true;
+
+      previewTheme(
+        shell,
+        randomThemeSeed(),
+      );
+
+      state.timer =
+        window.setInterval(() => {
+          if (
+            !source.isConnected ||
+            !shell.isConnected
+          ) {
+            stopThemeCycle(
+              source,
+            );
+            return;
+          }
+
+          previewTheme(
+            shell,
+            randomThemeSeed(),
+          );
+        }, everyMs);
+    }, HOVER_INTENT_MS);
+
   cycle = state;
 }
 
-/** Stops the cycle (only the one this button started, unless null) and restores the colours. */
-export function stopThemeCycle(source: HTMLElement | null) {
-  if (!cycle || (source && cycle.source !== source)) return;
-  // Clears either the waiting timeout or the running interval (they share the id space).
-  window.clearTimeout(cycle.timer);
-  window.clearInterval(cycle.timer);
+export function stopThemeCycle(
+  source: HTMLElement | null,
+) {
+  if (
+    !cycle ||
+    (source &&
+      cycle.source !== source)
+  ) {
+    return;
+  }
+
+  window.clearTimeout(
+    cycle.timer,
+  );
+
+  window.clearInterval(
+    cycle.timer,
+  );
+
   const { started } = cycle;
-  const shell = shellOf(cycle.source);
+
+  const shell =
+    shellOf(cycle.source);
+
   cycle = null;
-  // A quick pass never changed anything, so there is nothing to give back.
-  if (source && started) endThemePreview(shell);
+
+  if (
+    source &&
+    started
+  ) {
+    endThemePreview(shell);
+  }
 }
