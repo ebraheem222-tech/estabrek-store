@@ -1,32 +1,57 @@
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { tweenTheme } from "@/lib/themeTween";
+
 import {
-  claimTheme,
-  dropTheme,
-  holdsTheme,
-  releaseTheme,
-} from "@/lib/themeBase";
+  stopThemeTween,
+  tweenTheme,
+  tweenThemeBack,
+} from "@/lib/themeTween";
+
+import { themeHeld } from "@/lib/themeBase";
 
 /**
- * Hover previews must react quickly.
+ * Hover theme previews.
  *
- * 0.6s felt like lag because the entire storefront palette
- * was still moving long after the pointer entered the card.
+ * IMPORTANT:
+ *
+ * Never animate the palette on .cinematic-shell.
+ *
+ * CSS variables on the shell are inherited by practically the
+ * entire storefront. Updating them every animation frame forces
+ * a huge style recalculation.
+ *
+ * Instead we animate only:
+ *
+ *  - the section containing the hovered element
+ *  - the header
+ *  - the announcement bar
+ *
+ * The permanent storefront theme remains on the shell.
  */
-const HOVER_TWEEN_SECONDS = 0.18;
 
-/**
- * Enough intent to avoid recolouring the site when the
- * mouse simply passes over a Quick Add button.
- */
+const HOVER_TWEEN_SECONDS = 0.28;
+const RESTORE_TWEEN_SECONDS = 0.22;
 const HOVER_INTENT_MS = 120;
 
-let saved: {
+type TargetSnapshot = {
+  element: HTMLElement;
+  inlineValues: Map<string, string>;
+};
+
+type PreviewState = {
   shell: HTMLElement;
-  navbar?: string;
-} | null = null;
+  section: HTMLElement;
+  targets: TargetSnapshot[];
+};
+
+let saved: PreviewState | null = null;
 
 let lastSeed = "";
+
+/**
+ * Used to invalidate completion callbacks belonging to an
+ * older restore animation.
+ */
+let generation = 0;
 
 const RANDOM_SEEDS = [
   "#c97794",
@@ -52,52 +77,206 @@ export function randomThemeSeed() {
 }
 
 export function shellOf(
-  el: Element | null | undefined,
+  element: Element | null | undefined,
 ) {
   return (
-    el?.closest<HTMLElement>(
+    element?.closest<HTMLElement>(
       ".cinematic-shell",
     ) ?? null
   );
 }
 
+/**
+ * Find the smallest useful rendering area.
+ *
+ * The expensive old implementation animated .cinematic-shell.
+ *
+ * We intentionally stop at the section.
+ */
+function sectionOf(
+  source: Element | null | undefined,
+) {
+  return (
+    source?.closest<HTMLElement>("section") ??
+    null
+  );
+}
+
+function uniqueElements(
+  elements: Array<HTMLElement | null>,
+) {
+  return Array.from(
+    new Set(
+      elements.filter(
+        (element): element is HTMLElement =>
+          element !== null,
+      ),
+    ),
+  );
+}
+
+/**
+ * Capture ONLY inline values.
+ *
+ * If an inline value was empty, removing the temporary value later
+ * makes the target inherit the latest permanent storefront theme.
+ */
+function snapshot(
+  element: HTMLElement,
+  names: string[],
+): TargetSnapshot {
+  const inlineValues =
+    new Map<string, string>();
+
+  for (const name of names) {
+    inlineValues.set(
+      name,
+      element.style.getPropertyValue(name),
+    );
+  }
+
+  return {
+    element,
+    inlineValues,
+  };
+}
+
+/**
+ * Restore without animation.
+ *
+ * Used when changing preview ownership or navigating away.
+ */
+function restoreImmediately(
+  state: PreviewState,
+) {
+  for (const target of state.targets) {
+    stopThemeTween(target.element);
+
+    for (const [
+      name,
+      previous,
+    ] of target.inlineValues) {
+      if (previous) {
+        target.element.style.setProperty(
+          name,
+          previous,
+        );
+      } else {
+        target.element.style.removeProperty(
+          name,
+        );
+      }
+    }
+  }
+
+  delete state.shell.dataset.themePreview;
+}
+
+/**
+ * Local hover preview.
+ *
+ * `source` should be the actual hovered card/button.
+ */
 export function previewTheme(
-  shell: HTMLElement | null,
+  source: HTMLElement | null,
   seed: string,
 ) {
-  if (!shell || shell.dataset.season) {
+  if (!source) {
+    return;
+  }
+
+  const shell = shellOf(source);
+
+  if (!shell) {
+    return;
+  }
+
+  /**
+   * Don't fight scenes that currently own the theme.
+   */
+  if (
+    shell.dataset.season ||
+    themeHeld(shell)
+  ) {
+    return;
+  }
+
+  const section = sectionOf(source);
+
+  if (!section) {
     return;
   }
 
   const values =
     storefrontPalette(seed);
 
-  if (
-    !saved ||
-    saved.shell !== shell ||
-    !holdsTheme(shell, "preview")
-  ) {
-    if (
-      saved &&
-      saved.shell !== shell
-    ) {
-      dropTheme(
-        saved.shell,
-        "preview",
-      );
-    }
+  const names =
+    Object.keys(values);
 
+  const header =
+    shell.querySelector<HTMLElement>(
+      ".atelier-header",
+    );
+
+  const announcement =
+    shell.querySelector<HTMLElement>(
+      ".atelier-announcement",
+    );
+
+  /**
+   * Keep the animation local.
+   *
+   * NO shell here.
+   */
+  const elements =
+    uniqueElements([
+      section,
+      header,
+      announcement,
+    ]);
+
+  /**
+   * New animation invalidates any previous restore callback.
+   */
+  generation++;
+
+  /**
+   * If we entered a completely different section before the
+   * previous preview cleaned itself up, restore the old section
+   * immediately.
+   */
+  if (
+    saved &&
+    (
+      saved.shell !== shell ||
+      saved.section !== section
+    )
+  ) {
+    restoreImmediately(saved);
+    saved = null;
+  }
+
+  /**
+   * Capture base values only on the FIRST preview in this section.
+   *
+   * Moving:
+   *
+   * category A → category B → category C
+   *
+   * must keep the original resting theme, not save A as B's base.
+   */
+  if (!saved) {
     saved = {
       shell,
-      navbar:
-        shell.dataset.navbarColor,
+      section,
+      targets: elements.map(
+        (element) =>
+          snapshot(
+            element,
+            names,
+          ),
+      ),
     };
-
-    claimTheme(
-      shell,
-      "preview",
-      Object.keys(values),
-    );
   }
 
   lastSeed = seed;
@@ -105,97 +284,139 @@ export function previewTheme(
   shell.dataset.themePreview =
     "true";
 
-  shell.dataset.navbarColor =
-    seed;
-
   /**
-   * IMPORTANT:
+   * Critical difference:
    *
-   * Do NOT use View Transition here.
+   * OLD:
    *
-   * Hover is interactive and needs immediate feedback.
-   * The root View Transition snapshot was hiding the
-   * actual recoloured page for ~550ms.
+   * tweenTheme(shell, values)
+   *
+   * NEW:
+   *
+   * section
+   * header
+   * announcement
+   *
+   * only.
    */
-  tweenTheme(shell, values, {
-    duration: HOVER_TWEEN_SECONDS,
-    ease: "power2.out",
-  });
+  for (const target of saved.targets) {
+    if (!target.element.isConnected) {
+      continue;
+    }
+
+    tweenTheme(
+      target.element,
+      values,
+      {
+        duration:
+          HOVER_TWEEN_SECONDS,
+
+        ease:
+          "power2.out",
+      },
+    );
+  }
 }
 
+/**
+ * Return the local elements to the permanent storefront theme.
+ */
 export function endThemePreview(
-  shell: HTMLElement | null,
+  source: HTMLElement | null,
 ) {
+  if (!source || !saved) {
+    return;
+  }
+
+  const shell =
+    shellOf(source);
+
   if (
     !shell ||
-    !saved ||
-    saved.shell !== shell
+    shell !== saved.shell
   ) {
     return;
   }
 
-  const previous = saved;
+  const state = saved;
 
   saved = null;
 
-  releaseTheme(
-    shell,
-    "preview",
-    {
-      duration:
-        HOVER_TWEEN_SECONDS,
+  const myGeneration =
+    ++generation;
 
-      onComplete: () => {
-        /**
-         * Another hover may have started
-         * while this one was returning.
-         */
-        if (saved) {
-          return;
-        }
+  let remaining =
+    state.targets.length;
 
-        delete shell.dataset
-          .themePreview;
+  if (!remaining) {
+    delete shell.dataset.themePreview;
+    return;
+  }
 
-        const chosen =
-          shell.dataset
-            .storefrontColor;
+  const finishedOne = () => {
+    remaining--;
 
-        if (chosen) {
-          shell.dataset
-            .navbarColor = chosen;
-        } else if (
-          previous.navbar
-        ) {
-          shell.dataset
-            .navbarColor =
-            previous.navbar;
-        } else {
-          delete shell.dataset
-            .navbarColor;
-        }
+    if (remaining > 0) {
+      return;
+    }
+
+    /**
+     * Ignore a stale restore completion if another hover
+     * began while we were returning.
+     */
+    if (
+      generation !== myGeneration ||
+      saved
+    ) {
+      return;
+    }
+
+    delete shell.dataset.themePreview;
+  };
+
+  for (const target of state.targets) {
+    if (!target.element.isConnected) {
+      finishedOne();
+      continue;
+    }
+
+    tweenThemeBack(
+      target.element,
+      target.inlineValues,
+      {
+        duration:
+          RESTORE_TWEEN_SECONDS,
+
+        onComplete:
+          finishedOne,
       },
-    },
-  );
+    );
+  }
 }
 
 /**
- * A permanent colour choice replaces
- * the temporary hover preview.
+ * A real navigation/click should abandon the temporary preview.
  */
 export function discardThemePreview() {
-  if (saved) {
-    delete saved.shell.dataset
-      .themePreview;
+  generation++;
 
-    dropTheme(
-      saved.shell,
-      "preview",
-    );
+  if (!saved) {
+    return;
   }
 
+  const state = saved;
+
   saved = null;
+
+  restoreImmediately(state);
 }
+
+/**
+ * Quick Add hover cycle.
+ *
+ * Keep the existing behavior, but previews now affect only
+ * the section containing this button.
+ */
 
 let cycle: {
   timer: number;
@@ -215,7 +436,7 @@ export function startThemeCycle(
   }
 
   /**
-   * Touch screens do not have real hover.
+   * Phones/tablets don't have real hover.
    */
   if (
     window.matchMedia?.(
@@ -252,8 +473,13 @@ export function startThemeCycle(
 
       state.started = true;
 
+      /**
+       * Pass SOURCE now.
+       *
+       * Do not pass the shell.
+       */
       previewTheme(
-        shell,
+        source,
         randomThemeSeed(),
       );
 
@@ -266,11 +492,12 @@ export function startThemeCycle(
             stopThemeCycle(
               source,
             );
+
             return;
           }
 
           previewTheme(
-            shell,
+            source,
             randomThemeSeed(),
           );
         }, everyMs);
@@ -284,8 +511,10 @@ export function stopThemeCycle(
 ) {
   if (
     !cycle ||
-    (source &&
-      cycle.source !== source)
+    (
+      source &&
+      cycle.source !== source
+    )
   ) {
     return;
   }
@@ -298,17 +527,23 @@ export function stopThemeCycle(
     cycle.timer,
   );
 
-  const { started } = cycle;
-
-  const shell =
-    shellOf(cycle.source);
+  const {
+    started,
+    source: cycleSource,
+  } = cycle;
 
   cycle = null;
 
+  /**
+   * null means another cycle is taking ownership.
+   * Don't restore between Quick Add buttons.
+   */
   if (
     source &&
     started
   ) {
-    endThemePreview(shell);
+    endThemePreview(
+      cycleSource,
+    );
   }
 }
