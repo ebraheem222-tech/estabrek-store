@@ -467,7 +467,7 @@ export function RoseCollections({
     intent.current = window.setTimeout(() => {
       active.current = index;
       previewTheme(shellOf(card), collectionSeed(items[index], index, card.querySelector("img")));
-    }, active.current === null ? 250 : 120);
+    }, active.current === null ? 90 : 45);
   };
   const restore = () => {
     window.clearTimeout(intent.current);
