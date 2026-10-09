@@ -10,7 +10,7 @@
  * 0.110 = very smooth
  * 0.140 = cinematic
  */
-const SMOOTH_TIME = 0.09;
+const SMOOTH_TIME = 0.11;
 
 /**
  * Never allow one bad/slow frame to create a huge simulation step.
