@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
-import { reportSeek } from "@/lib/motionBudget";
+import { createFilmScrubber } from "./heroFilmPlayback";
+import { createHeroScrollMotion } from "./heroScrollMotion";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { Icon } from "./Icons";
 import { HeroMascot } from "./mascot/HeroMascot";
@@ -140,8 +141,7 @@ export function RoseHeroFilm({
       if (/Android/i.test(navigator.userAgent)) section.dataset.plainLight = "true";
       el.pause();
       el.loop = false;
-      const state = { p: 0 };
-      let pending = false;
+      const scrubber = createFilmScrubber(el, () => {});
       let shown = -1;
       let shownP = "";
       // The film's frame (video, cut-out canvas, halo) is the only part that follows the scroll value.
@@ -150,25 +150,11 @@ export function RoseHeroFilm({
       let lastLook = 0;
       let scarfBox: DOMRect | null = null;
       let scarfAt = 0;
-      let askedAt = 0;
-      const seek = () => {
-        const d = el.duration;
-        if (!Number.isFinite(d) || d <= 0 || el.readyState < 1) return;
-        // The film runs a little ahead of the lines, so the hijab is complete when the closing line arrives.
-        const target = Math.min(d - 0.04, Math.max(0, Math.min(1, state.p / (LINES_END + 0.04)) * d));
-        // Under one frame of the film (24 a second) apart: the same picture, no seek needed.
-        if (Math.abs(el.currentTime - target) < 0.03) return;
-        if (el.seeking) { pending = true; return; }
-        askedAt = performance.now();
-        el.currentTime = target;
-      };
-      const seeked = () => {
-        if (askedAt) { reportSeek(performance.now() - askedAt); askedAt = 0; }
-        if (pending) { pending = false; seek(); }
-      };
-      const update = () => {
-        seek();
-        const p = state.p;
+      const update = (p: number) => {
+        // Input, transforms and captions share one elapsed-time position. The
+        // decoder coalesces targets and waits for the next display frame after
+        // seeked, so the completed picture can reach the canvas first.
+        scrubber.update(p / (LINES_END + 0.04));
         const s = p >= LINES_END ? lines.length : Math.min(lines.length - 1, Math.floor((p / LINES_END) * lines.length));
         if (s !== shown) { shown = s; setStep(s); }
         // Only the small parts that follow the scroll get the value (not the whole section).
@@ -194,19 +180,21 @@ export function RoseHeroFilm({
           if (r && r.width) rose.current?.lookAt?.(r.left + r.width * (0.5 + Math.sin(p * 9) * 0.18), r.top + r.height * 0.4, 700);
         }
       };
-      el.addEventListener("loadedmetadata", update);
-      el.addEventListener("seeked", seeked);
-      const tween = gsap.fromTo(state, { p: 0 }, {
-        p: 1, ease: "none", onUpdate: update,
-        scrollTrigger: { trigger: section, start: "top top", end: "bottom bottom", scrub: 0.5, refreshPriority: -1 },
+      const motion = createHeroScrollMotion(update);
+      const trigger = ScrollTrigger.create({
+        trigger: section, start: "top top", end: "bottom bottom", refreshPriority: -1,
+        onUpdate: self => motion.target(self.progress),
+        onRefresh: self => motion.target(self.progress),
       });
-      update();
+      update(0);
+      motion.target(trigger.progress);
+      // Let a jump past the hero settle before these on-demand loops sleep:
+      // the scarf flight below takes a snapshot of this completed film.
       requestScrollRefresh();
       return () => {
-        el.removeEventListener("loadedmetadata", update);
-        el.removeEventListener("seeked", seeked);
-        tween.scrollTrigger?.kill();
-        tween.kill();
+        trigger.kill();
+        motion.stop();
+        scrubber.stop();
         section.dataset.motion = "false";
         progress?.style.removeProperty("--film-p");
         progress?.style.removeProperty("--film-zoom");
