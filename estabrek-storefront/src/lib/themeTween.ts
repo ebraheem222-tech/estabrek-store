@@ -73,14 +73,12 @@ const STAND_IN: Record<string, string> = { "--navbar-bg": "--atelier-bg", "--nav
 
 export type FollowerOptions = {
   /**
-   * The parts of the page on screen while the scene fills the screen (its own
-   * section, the header); an empty list while it doesn't (entering, leaving).
-   * While the colours move, only these get them: a colour written on the page
-   * shell is inherited by every element, so the browser restyled the whole page
-   * (about 2,000 elements) on every frame of a hand-over — measured at 10–20×
-   * the normal style work, right while the 3D model turns. The shell gets the
-   * colours once, when the glide settles (and when the scene ends), so the rest
-   * of the page and the floating buttons catch up in one step.
+   * The parts of the page that take the colours (a scene's own section and the
+   * header). While the colours move, only these get them: a colour written on
+   * the page shell is inherited by every element, so the browser restyled the
+   * whole page (about 2,000 elements) on every frame of a hand-over — measured
+   * at 10–20× the normal style work, right while the 3D model turns. With an
+   * empty list the colours go on the shell.
    */
   local?: () => Array<HTMLElement | null | undefined>;
 };
@@ -98,6 +96,8 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
   let smooth = 0.12;
   let endGlide: (() => void) | null = null;
   let glideFrom = 0;
+  /** Set while the local parts glide back to the page's own colours before letting go. */
+  let releasing: (() => void) | null = null;
   const settle = () => { endGlide?.(); endGlide = null; };
   const locals = () => (opts.local?.() ?? []).filter((x): x is HTMLElement => Boolean(x) && x !== el);
   /** One value: on the local parts while moving (shell later), or straight on the shell. */
@@ -128,6 +128,21 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
     localWritten.forEach((names, part) => names.forEach((_, name) => part.style.removeProperty(name)));
     localWritten.clear();
   };
+  /** The local parts reached the page's own colours: let go of them (the shell was never touched). */
+  const letGo = () => {
+    const done = releasing;
+    releasing = null;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    last = 0;
+    dropLocal();
+    behind.clear();
+    now.clear();
+    target.clear();
+    written.clear();
+    settle();
+    done?.();
+  };
   const step = (t: number) => {
     const parts = locals();
     // At most 60 writes a second (30 in the light mode), also on 120 Hz screens. While a
@@ -149,15 +164,18 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
       put(name, toHex(c), parts);
     });
     raf = moving ? requestAnimationFrame(step) : 0;
-    // While a scene is on stage the shell and the glide flag wait for it to leave:
+    if (moving) return;
+    last = 0;
+    if (releasing) return letGo();
+    // While a scene holds the colours the shell and the glide flag wait for it to leave:
     // catching up at every pause in the scroll restyled the whole page each time.
-    if (!moving) { last = 0; if (!parts.length) { flush(); settle(); } }
+    if (!parts.length) { flush(); settle(); }
   };
   return {
     /** Glide towards `values`; `seconds` is roughly how long most of the change takes. */
     to(values: Record<string, string>, seconds = 0.35) {
       smooth = Math.max(0.02, seconds / 3);
-      if (!now.size) gsap.killTweensOf(el); // a colour still gliding back from another scene: take over from where it is
+      releasing = null; // taken again while handing back: carry on from where the colours are
       const fresh: string[] = [];
       const parts = locals();
       for (const [name, value] of Object.entries(values)) {
@@ -193,6 +211,28 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
       if (localWritten.size) { flush(); dropLocal(); }
       if (!raf) settle();
     },
+    /**
+     * Hand the colours back without touching the page shell: the local parts glide
+     * to what the shell shows (the page's own colours, or one picked meanwhile),
+     * then let go and inherit it again. Writing the scene's colours on the shell
+     * and gliding the shell back restyled the whole page on every frame of the
+     * hand-back, right while the scene's 3D was still on screen.
+     */
+    release(seconds = 0.8, done?: () => void) {
+      releasing = done ?? (() => {});
+      if (!localWritten.size || seconds <= 0 || reduced()) return letGo();
+      const computed = getComputedStyle(el);
+      const read = (name: string) => parseColor(el.style.getPropertyValue(name).trim() || computed.getPropertyValue(name).trim());
+      target.forEach((_, name) => {
+        // A property the page has no colour for (the navbar before any pick) goes back to
+        // what shows in its place, so nothing jumps when the parts let go.
+        const home = read(name) ?? (STAND_IN[name] ? read(STAND_IN[name]) : null);
+        if (home) target.set(name, home);
+        else target.delete(name);
+      });
+      smooth = Math.max(0.02, seconds / 3);
+      if (!raf) raf = requestAnimationFrame(step);
+    },
     /** Stop following (the scene hands the colours back). */
     stop() {
       if (raf) cancelAnimationFrame(raf);
@@ -224,6 +264,9 @@ export function tweenTheme(
   const starts = Object.keys(values).map((name) => el.style.getPropertyValue(name).trim() || computed().getPropertyValue(name).trim());
   Object.entries(values).forEach(([name, value], i) => {
     const start = starts[i];
+    // Already showing this colour (a scene that only coloured its own section hands
+    // back a page that never changed): no write, so no restyle of the whole page.
+    if (el.style.getPropertyValue(name).trim() === value.trim()) return;
     if (duration > 0 && !reduced() && isColor(value) && isColor(start)) {
       from[name] = start;
       to[name] = value;
@@ -260,7 +303,8 @@ export function tweenThemeBack(
   const clear: string[] = [];
   saved.forEach((value, name) => {
     if (value) targets[name] = value;
-    else clear.push(name);
+    // Nothing inline to take away: the stylesheet colour is already showing.
+    else if (el.style.getPropertyValue(name)) clear.push(name);
   });
   if (clear.length) {
     // Read the stylesheet values by briefly lifting the inline ones — all at
