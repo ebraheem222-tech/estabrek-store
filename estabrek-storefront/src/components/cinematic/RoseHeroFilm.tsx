@@ -40,9 +40,18 @@ const LINE_COLORS = ["#b2486a", "#7c5fa8", "#3f7f78", "#a87a2c"];
 /** The film's share of the scroll that tells the lines; the rest holds the closing line. */
 const LINES_END = 0.84;
 
+/**
+ * The film's own 24 frames a second, with a key frame every 6 for quick seeks.
+ * The 120/240 fps copies (hero-film.*, hero-film-mobile.*) were made by blending
+ * neighbouring frames: every fast turn of the scarf showed two or three ghost
+ * copies of its edge, which turned into dark "shadow pictures" on the light
+ * page. The scroll stays smooth with 24 real frames: the scroll motion, the
+ * zoom and the captions move on every screen frame; only the picture is 24/s.
+ * (They are also 4–5× smaller: 1.3 MB on computers, 0.85 MB on phones.)
+ */
 const SOURCES = {
-  desktop: { webm: "/editorial/hero-film.webm", mp4: "/editorial/hero-film.mp4" },
-  mobile: { webm: "/editorial/hero-film-mobile.webm", mp4: "/editorial/hero-film-mobile.mp4" },
+  desktop: { webm: "/editorial/hero-film-scrub.webm", mp4: "/editorial/hero-film-scrub.mp4" },
+  mobile: { webm: "/editorial/hero-film-mobile-scrub.webm", mp4: "/editorial/hero-film-mobile-scrub.mp4" },
 };
 
 type Button = { label?: string; href?: string } | undefined;
@@ -205,6 +214,19 @@ export function RoseHeroFilm({
     });
     return () => mm.revert();
   }, [scrollAnimationsEnabled, lines.length]);
+
+  // Off screen the finished hijab's sparkles rest: their twinkle restyled them on every
+  // frame even far below the film, right while the 3D scenes needed the time.
+  useEffect(() => {
+    const section = root.current;
+    if (!section) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) delete section.dataset.away;
+      else section.dataset.away = "true";
+    });
+    io.observe(section);
+    return () => io.disconnect();
+  }, []);
 
   // The closing words can change the layout under Rose on phones: measure her spot again.
   useEffect(() => {

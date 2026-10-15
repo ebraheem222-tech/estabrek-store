@@ -166,11 +166,11 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         return seed;
       };
       let lastSeed = "";
-      // Only this section and the header take the chapters' colours, from the moment it
-      // arrives until it hands them back (see RoseSeasons): written on the page shell, the
-      // whole page was restyled on every frame of the glide before and after the scene.
+      // Only the header follows the chapters' colours with the scroll (see RoseSeasons):
+      // written on the page shell, or on this section, the whole page or the whole scene
+      // was restyled on every frame of a hand-over. The section wears its chapter's colours.
       const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
-      const follow = shell ? themeFollower(shell, { local: () => [el, header] }) : null;
+      const follow = shell ? themeFollower(shell, { local: () => [header] }) : null;
       const takeOver = (seed: string) => {
         if (!shell || !follow) return;
         // The colour only moves during a hand-over between chapters: skip the other frames.
@@ -193,8 +193,8 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         if (!shell || !follow || !saved) return;
         saved = false;
         lastSeed = "";
-        // The section and header glide back to the page's own colours (a swatch picked
-        // meanwhile already went to the page), then the page lets go of the scene.
+        // The header glides back to the page's own colours (a swatch picked meanwhile
+        // already went to the page), then the page lets go of the scene.
         follow.release(now ? 0 : 0.8, () => releaseTheme(shell, "stories", {
           duration: 0.8,
           onComplete: () => {
@@ -208,9 +208,16 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       };
       let shownLead = -1;
       const shownV: string[] = [];
-      // Each chapter's weight goes on its own layer and sky only: written on the
-      // section it would restyle everything inside (mascot, all racks) every frame.
+      // Each chapter's weight goes on its own sky (no children), and its layer and cards
+      // move by their own opacity and transform: a --v on a layer restyled its whole copy
+      // and rack on every frame of a hand-over.
       const skies = Array.from(el.querySelectorAll<HTMLElement>(".story-sky > span"));
+      const cards = layers.map((layer) =>
+        Array.from(layer.querySelectorAll<HTMLElement>(".season-card")).map((card) => ({ card, i: Number(card.style.getPropertyValue("--i")) || 0 })));
+      const px = (n: number) => `translateY(${n.toFixed(2)}px)`;
+      // The section wears the leading chapter's colours, so it never glides them; it
+      // changes at a hand-over's midpoint, when neither chapter's copy shows.
+      const palettes = seeds.map((seed) => storefrontPalette(seed));
       const render = (p: number) => {
         const w = chapterWeights(p, n);
         weights.current = w;
@@ -219,14 +226,17 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           // Settled chapters (fully in or out) are not rewritten every frame.
           const value = v.toFixed(4);
           if (shownV[i] !== value) {
-            layers[i]?.style.setProperty("--v", value);
             skies[i]?.style.setProperty("--v", value);
+            const layer = layers[i];
+            if (layer) { layer.style.opacity = value; layer.style.transform = px((1 - v) * 34); }
+            cards[i]?.forEach(({ card, i: k }) => { card.style.transform = px((1 - v) * (40 + k * 18)); });
             shownV[i] = value;
           }
           if (v > w[lead]) lead = i;
         });
         if (lead === shownLead) return; // attributes only change at a hand-over
         shownLead = lead;
+        Object.entries(palettes[lead]).forEach(([name, value]) => el.style.setProperty(name, value));
         el.dataset.chapter = chapters[lead].key;
         setLead(lead);
         layers.forEach((layer, i) => { layer.inert = i !== lead; });
@@ -269,7 +279,9 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         themeTrigger?.kill();
         scrollMotion.stop();
         giveBack(true);
-        layers.forEach((layer) => { layer.inert = false; });
+        layers.forEach((layer) => { layer.inert = false; layer.style.removeProperty("opacity"); layer.style.removeProperty("transform"); });
+        cards.flat().forEach(({ card }) => card.style.removeProperty("transform"));
+        Object.keys(palettes[0] ?? {}).forEach((name) => el.style.removeProperty(name));
         el.dataset.motion = "false";
         setMotion(false);
       };

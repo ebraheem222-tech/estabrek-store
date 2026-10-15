@@ -1,27 +1,25 @@
 import { motionLevel, reportSeek } from "@/lib/motionBudget";
 
-const MP4 = "/editorial/hero-film.mp4";
-const WEBM = "/editorial/hero-film.webm";
+const MP4 = "/editorial/hero-film-scrub.mp4";
+const WEBM = "/editorial/hero-film-scrub.webm";
 
 /**
- * The hero films are encoded at 120 FPS (phone MP4/WebM and the desktop
- * WebM; the desktop MP4 has 240, of which every other frame is used).
+ * The hero films have 24 real frames a second (see SOURCES in RoseHeroFilm:
+ * the 120/240 fps copies were blended and showed ghost edges).
  *
  * This is the source timeline FPS, NOT a forced rendering rate.
- * Rendering is paced by requestAnimationFrame(), so:
- *
- * 60 Hz display  -> up to ~60 updates/sec
- * 90 Hz display  -> up to ~90 updates/sec
- * 120 Hz display -> up to ~120 updates/sec
+ * Rendering is paced by requestAnimationFrame(), so the scroll motion and
+ * everything around the film still move at 60 / 90 / 120 Hz; the picture
+ * itself changes when the scroll reaches the next of the film's frames.
  *
  * The decoder itself may run slower; we intentionally allow only
  * one outstanding seek at a time.
  *
- * The grid must match the file. It was 960: on a 120 FPS phone file most
- * seeks then landed inside the frame already shown, and each of those still
- * kept the phone's decoder busy (30–140 ms) while showing nothing new.
+ * The grid must match the file: a finer grid sends seeks that land inside
+ * the frame already shown, and each of those still keeps a phone's decoder
+ * busy (30–140 ms) while showing nothing new.
  */
-const FILM_FPS = 120;
+const FILM_FPS = 24;
 
 /**
  * Lite mode remains intentionally capped to 30 updates/sec

@@ -143,12 +143,13 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       el.dataset.motion = "true";
       let saved = false;
       let lastSeed = "";
-      // Only this section and the header take the season's colours, from the moment it
-      // arrives until it hands them back. Written on the page shell, every element of the
-      // page was restyled on every frame of the glide: before the scene pinned (and after
-      // it ended) the rain dropped to about 20 frames a second.
+      // Only the header follows the season's colours with the scroll. Written on the page
+      // shell, every element of the page was restyled on every frame of the glide (before
+      // the scene pinned and after it ended the rain dropped to about 20 frames a second);
+      // written on this section, its ~700 elements were, while the sun rose (13 frames a
+      // second on a phone). The section wears its season's colours instead (see `wear`).
       const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
-      const follow = shell ? themeFollower(shell, { local: () => [el, header] }) : null;
+      const follow = shell ? themeFollower(shell, { local: () => [header] }) : null;
       const takeOver = (seed: string) => {
         if (!shell || !follow) return;
         // Most scroll frames do not change the colour (it only moves while the
@@ -173,8 +174,8 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         if (!shell || !follow || !saved) return;
         saved = false;
         lastSeed = "";
-        // The section and header glide back to the page's own colours (a swatch picked
-        // meanwhile already went to the page), then the page lets go of the scene.
+        // The header glides back to the page's own colours (a swatch picked meanwhile
+        // already went to the page), then the page lets go of the scene.
         follow.release(now ? 0 : 0.8, () => releaseTheme(shell, "seasons", {
           duration: 0.8,
           onComplete: () => {
@@ -191,12 +192,28 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       let shown: SeasonKey | "" = "";
       let shownMix = "";
       const meter = el.querySelector<HTMLElement>(".season-meter");
-      // The mix goes only on the pieces that use it: written on the section it
-      // would restyle everything inside (the mascot, both racks) every frame.
+      // The mix goes only on the small pieces that use it (no children to restyle).
       const mixed = [".sky-spring", ".season-static-snow", ".season-static-sun", ".meter-winter", ".meter-spring"]
         .map((s) => el.querySelector<HTMLElement>(s))
-        .concat(winterLayer, springLayer)
         .filter((x): x is HTMLElement => Boolean(x));
+      // The two seasons and their cards move by their own opacity and transform: a
+      // --season-mix on a season restyled its whole copy and rack on every frame.
+      const cards = (layer: HTMLElement | null) =>
+        Array.from(layer?.querySelectorAll<HTMLElement>(".season-card") ?? []).map((card) => ({ card, i: Number(card.style.getPropertyValue("--i")) || 0 }));
+      const winterCards = cards(winterLayer);
+      const springCards = cards(springLayer);
+      const px = (n: number) => `translateY(${n.toFixed(2)}px)`;
+      const place = (mix: number) => {
+        // Winter leaves in the first half of the change, spring arrives in the second (no overlap).
+        if (winterLayer) { winterLayer.style.opacity = String(1 - Math.min(1, mix * 2)); winterLayer.style.transform = px(mix * -40); }
+        if (springLayer) { springLayer.style.opacity = String(Math.max(0, mix * 2 - 1)); springLayer.style.transform = px((1 - mix) * 40); }
+        winterCards.forEach(({ card, i }) => { card.style.transform = px(mix * (-30 - i * 14)); });
+        springCards.forEach(({ card, i }) => { card.style.transform = px((1 - mix) * (40 + i * 22)); });
+      };
+      // The section always wears its season's colours, so it never glides them. It changes
+      // season once, in the middle of the hand-over, when neither season's copy shows.
+      const palettes = { winter: storefrontPalette(SEASON_SEED.winter), spring: storefrontPalette(SEASON_SEED.spring) };
+      const wear = (key: SeasonKey) => Object.entries(palettes[key]).forEach(([name, value]) => el.style.setProperty(name, value));
       const render = (p: number) => {
         progress.current = p;
         const mix = smooth(0.38, 0.62, p);
@@ -204,10 +221,15 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         // Unchanged values are skipped, so nothing is restyled outside the hand-over.
         meter?.style.setProperty("--season-p", p.toFixed(3));
         const m = mix.toFixed(4);
-        if (m !== shownMix) { mixed.forEach((part) => part.style.setProperty("--season-mix", m)); shownMix = m; }
+        if (m !== shownMix) {
+          mixed.forEach((part) => part.style.setProperty("--season-mix", m));
+          place(mix);
+          shownMix = m;
+        }
         const now: SeasonKey = mix > 0.5 ? "spring" : "winter";
         if (now === shown) return; // attributes only change at the hand-over, not every frame
         shown = now;
+        wear(now);
         el.dataset.season = now;
         setSeason(now);
         // Only the visible season can be tabbed into or read out.
@@ -256,6 +278,9 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         scrollMotion.stop();
         if (winterLayer) winterLayer.inert = false;
         if (springLayer) springLayer.inert = false;
+        [winterLayer, springLayer, ...winterCards.map((c) => c.card), ...springCards.map((c) => c.card)].forEach((part) => part?.style.removeProperty("transform"));
+        [winterLayer, springLayer].forEach((part) => part?.style.removeProperty("opacity"));
+        Object.keys(palettes.winter).forEach((name) => el.style.removeProperty(name));
         giveBack(true);
         el.dataset.motion = "false";
         setMotion(false);
