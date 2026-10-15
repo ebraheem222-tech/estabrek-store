@@ -236,105 +236,33 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         layers.forEach((layer, i) => { layer.inert = i !== lead; });
         dots.forEach((dot, i) => dot.toggleAttribute("data-active", i === lead));
       };
-      let renderedProgress = 0;
-
-let themeTrigger:
-  ScrollTrigger | null = null;
-
-const scrollMotion =
-  createScrollProgressMotion(
-    (p) => {
-      renderedProgress = p;
-
-      render(p);
-
-      if (
-        themeTrigger?.isActive
-      ) {
-        takeOver(
-          seedAt(p),
-        );
-      }
-    },
-    {
-      smoothTime: 0.09,
-      maxDeltaTime: 1 / 30,
-    },
-  );
-
-const sceneTrigger =
-  ScrollTrigger.create({
-    trigger: el,
-
-    start: "top top",
-    end: "bottom bottom",
-
-    refreshPriority: -1,
-
-    onUpdate: (self) => {
-      scrollMotion.target(
-        self.progress,
-      );
-    },
-
-    onRefresh: (self) => {
-      scrollMotion.snap(
-        self.progress,
-      );
-    },
-
-    onToggle: (self) => {
-      onStage =
-        self.isActive;
-
-      if (!onStage) {
-        follow?.unpin();
-      }
-    },
-  });
-
-scrollMotion.snap(
-  sceneTrigger.progress,
-);
-
-themeTrigger =
-  ScrollTrigger.create({
-    trigger: el,
-
-    start: "top 55%",
-    end: "bottom 45%",
-
-    refreshPriority: -1,
-
-    onToggle: (self) => {
-      if (self.isActive) {
-        takeOver(
-          seedAt(
-            renderedProgress,
-          ),
-        );
-      } else {
-        giveBack();
-      }
-    },
-  });
-      const themeTrigger = ScrollTrigger.create({
+      // Game-loop motion (scrollProgressMotion.ts): the scroll only sets the target,
+      // the display's own frames move the chapters, the 3D models and the colours to it.
+      let shownP = 0;
+      let themeTrigger: ScrollTrigger | null = null;
+      const scrollMotion = createScrollProgressMotion((p) => {
+        shownP = p;
+        render(p);
+        if (themeTrigger?.isActive) takeOver(seedAt(p));
+      });
+      const sceneTrigger = ScrollTrigger.create({
+        trigger: el,
+        start: "top top",
+        end: "bottom bottom",
+        refreshPriority: -1,
+        onUpdate: (self) => scrollMotion.target(self.progress),
+        // A re-measure lands on the true position instead of gliding there from a stale one.
+        onRefresh: (self) => scrollMotion.snap(self.progress),
+        onToggle: (self) => { onStage = self.isActive; if (!onStage) follow?.unpin(); },
+      });
+      scrollMotion.snap(sceneTrigger.progress);
+      themeTrigger = ScrollTrigger.create({
         trigger: el,
         start: "top 55%",
         end: "bottom 45%",
         refreshPriority: -1,
-        onToggle: (self) => (self.isActive ? takeOver(seedAt(state.p)) : giveBack()),
+        onToggle: (self) => (self.isActive ? takeOver(seedAt(shownP)) : giveBack()),
       });
-      const tween = gsap.fromTo(state, { p: 0 }, {
-        p: 1,
-        ease: "none",
-        onUpdate: () => {
-          render(state.p);
-          if (themeTrigger.isActive) takeOver(seedAt(state.p));
-        },
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", onToggle: (self) => { onStage = self.isActive; if (!onStage) follow?.unpin(); }, scrub: 0.4, refreshPriority: -1 },
-      });
-      render(0);
       const refresh = requestScrollRefresh;
       refresh();
       window.addEventListener("load", refresh);
@@ -343,8 +271,8 @@ themeTrigger =
         window.removeEventListener("load", refresh);
         window.clearTimeout(late);
         sceneTrigger.kill();
-themeTrigger?.kill();
-scrollMotion.stop();
+        themeTrigger?.kill();
+        scrollMotion.stop();
         giveBack();
         layers.forEach((layer) => { layer.inert = false; });
         el.dataset.motion = "false";

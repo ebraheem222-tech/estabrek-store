@@ -4,7 +4,8 @@ const MP4 = "/editorial/hero-film.mp4";
 const WEBM = "/editorial/hero-film.webm";
 
 /**
- * All hero videos are now encoded at 120 FPS.
+ * The hero films are encoded at 120 FPS (phone MP4/WebM and the desktop
+ * WebM; the desktop MP4 has 240, of which every other frame is used).
  *
  * This is the source timeline FPS, NOT a forced rendering rate.
  * Rendering is paced by requestAnimationFrame(), so:
@@ -15,8 +16,12 @@ const WEBM = "/editorial/hero-film.webm";
  *
  * The decoder itself may run slower; we intentionally allow only
  * one outstanding seek at a time.
+ *
+ * The grid must match the file. It was 960: on a 120 FPS phone file most
+ * seeks then landed inside the frame already shown, and each of those still
+ * kept the phone's decoder busy (30–140 ms) while showing nothing new.
  */
-const FILM_FPS = 960;
+const FILM_FPS = 120;
 
 /**
  * Lite mode remains intentionally capped to 30 updates/sec
@@ -82,7 +87,10 @@ export async function heroFilmSources(
 export function createFilmScrubber(
   video: HTMLVideoElement,
   onFrame: (index: number) => void,
+  /** Frames per second of the clip (the campaign clip has 30). */
+  fps = FILM_FPS,
 ) {
+
   let progress = 0;
 
   let rafId = 0;
@@ -124,7 +132,7 @@ export function createFilmScrubber(
 
     return Math.max(
       0,
-      Math.ceil(video.duration * FILM_FPS) - 1,
+      Math.ceil(video.duration * fps) - 1,
     );
   };
 
@@ -139,7 +147,7 @@ export function createFilmScrubber(
       Math.max(
         0,
         Math.floor(
-          video.currentTime * FILM_FPS + 0.001,
+          video.currentTime * fps + 0.001,
         ),
       ),
     );
@@ -293,7 +301,7 @@ export function createFilmScrubber(
       index === 0 &&
       video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
         ? 0
-        : (index + 0.1) / FILM_FPS;
+        : (index + 0.1) / fps;
 
     /**
      * Never seek beyond the actual media duration.
@@ -363,9 +371,18 @@ export function createFilmScrubber(
     ready();
   };
 
+  /**
+   * The media was reloaded (Retry, a new source): a seek still out
+   * never reports back, and waiting for it would freeze the film.
+   */
+  const emptied = () => {
+    asked = null;
+  };
+
   video.addEventListener("seeked", seeked);
   video.addEventListener("loadeddata", ready);
   video.addEventListener("loadedmetadata", ready);
+  video.addEventListener("emptied", emptied);
 
   document.addEventListener(
     "visibilitychange",
@@ -430,6 +447,11 @@ export function createFilmScrubber(
       video.removeEventListener(
         "loadedmetadata",
         ready,
+      );
+
+      video.removeEventListener(
+        "emptied",
+        emptied,
       );
 
       document.removeEventListener(

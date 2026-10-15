@@ -46,7 +46,6 @@ export function PerfOverlay() {
         frames = 0; sum = 0; worst = 0;
         const s = motionStats;
         const level = motionLevel();
-        `target ${s.targetFps} fps · render dpr ${s.renderDpr}`,
         setText(
   [
     `${fps} fps · ${avg} ms · worst ${shownWorst} ms`,

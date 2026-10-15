@@ -394,7 +394,7 @@ function Incense({ weight, rtl, compact, palm }: ModelProps) {
     const pos = smoke.g.attributes.position.array as Float32Array;
     const age = smoke.g.attributes.aAge.array as Float32Array;
     const seed = smoke.g.attributes.aSeed.array as Float32Array;
-    const dt = Math.min(delta, 0.05);
+    const dt = Math.min(delta, 0.1); // real time down to 10 fps; only a long pause is cut
     for (let i = 0; i < smoke.n; i++) {
       age[i] += dt / (3.2 + seed[i] * 1.6);
       if (age[i] > 1) age[i] -= 1;
@@ -455,7 +455,7 @@ function CollectionModelsScene(props: CollectionModelsProps) {
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
       dpr={sceneDpr()}
-      /* Drawn by ScenePacer: 60 frames a second at most (30 in the light mode). */
+      /* Drawn by ScenePacer: the screen's rate (120/90/60) or lower while this device struggles; 30 in the light mode. */
       frameloop="demand"
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >

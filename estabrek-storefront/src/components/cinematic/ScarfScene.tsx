@@ -5,6 +5,8 @@ import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { createFabricTexture } from "./fabricTexture";
 import { createHijabGeometry, createDisplayHead } from "./HijabGeometry";
+import { ScenePacer } from "./ScenePacer";
+import { sceneDpr } from "@/lib/motionBudget";
 
 type SceneProps = {
   color: string;
@@ -77,34 +79,29 @@ function DrapedHijab(props: SceneProps) {
     props.reducedMotion,
     invalidate,
   ]);
+  // The rotate buttons and the pointer, eased here. The scroll part arrives already
+  // smoothed (DesignStudy's scroll motion): easing it again only made it trail behind.
+  const turn = useRef(0);
   useFrame(({ clock, pointer }, delta) => {
     if (!group.current) return;
     const p = props.progress.current;
+    // Elapsed-time easing: the same speed at 30, 60 or 120 frames a second.
     const blend = props.reducedMotion ? 1 : 1 - Math.exp(-delta * 7);
-    const angle =
-      -0.22 +
-      p * Math.PI * 2 +
-      (props.rotation * Math.PI) / 4 +
-      (props.reducedMotion ? 0 : pointer.x * 0.09);
-    group.current.rotation.y = THREE.MathUtils.lerp(
-      group.current.rotation.y,
-      angle,
+    turn.current = THREE.MathUtils.lerp(
+      turn.current,
+      (props.rotation * Math.PI) / 4 + (props.reducedMotion ? 0 : pointer.x * 0.09),
       blend,
     );
+    group.current.rotation.y = -0.22 + p * Math.PI * 2 + turn.current;
     group.current.rotation.x = THREE.MathUtils.lerp(
       group.current.rotation.x,
       props.reducedMotion ? 0 : pointer.y * 0.025,
       blend,
     );
-    const scale = props.reducedMotion
-      ? 1
-      : THREE.MathUtils.lerp(
-          1.02,
-          1.14,
-          Math.sin(p * Math.PI),
-        );
     group.current.scale.setScalar(
-      THREE.MathUtils.lerp(group.current.scale.x, scale, blend),
+      props.reducedMotion
+        ? 1
+        : THREE.MathUtils.lerp(1.02, 1.14, Math.sin(p * Math.PI)),
     );
     group.current.position.y = props.reducedMotion
       ? 0
@@ -169,8 +166,10 @@ export default function ScarfScene(props: SceneProps) {
   return (
     <Canvas
       camera={{ position: [0, 0.05, 6.7], fov: 38 }}
-      dpr={[1, 1.5]}
-      frameloop={props.active && !props.reducedMotion ? "always" : "demand"}
+      dpr={sceneDpr()}
+      /* Drawn by ScenePacer, like the other 3D scenes: it used to draw on every
+         screen frame (120 a second on many phones) outside the frame budget. */
+      frameloop="demand"
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >
       <ambientLight intensity={0.85} />
@@ -214,6 +213,7 @@ export default function ScarfScene(props: SceneProps) {
         frames={1}
         color="#a75676"
       />
+      <ScenePacer active={props.active && !props.reducedMotion} />
       <SceneLifecycle onReady={props.onReady} onFailure={props.onFailure} />
     </Canvas>
   );

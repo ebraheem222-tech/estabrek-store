@@ -8,6 +8,7 @@ import type { Language } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
 
 const ScarfScene = dynamic(() => import("./ScarfScene"), {
   ssr: false,
@@ -193,16 +194,21 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
       opening?.addEventListener("rose-opening-progress", receive);
       return () => opening?.removeEventListener("rose-opening-progress", receive);
     }
+    // Game-loop motion (scrollProgressMotion.ts): the scroll sets the target, the
+    // display's own frames turn the hijab and change the chapter.
+    const motion = createScrollProgressMotion((p) => update(p));
     const trigger = ScrollTrigger.create({
       trigger: root.current,
       start: "top top",
       end: "bottom bottom",
-      scrub: true,
-      onUpdate: (self) => {
-        update(self.progress);
-      },
+      onUpdate: (self) => motion.target(self.progress),
+      onRefresh: (self) => motion.snap(self.progress),
     });
-    return () => trigger.kill();
+    motion.snap(trigger.progress);
+    return () => {
+      trigger.kill();
+      motion.stop();
+    };
   }, [reducedMotion, embedded]);
   const copy = ar
     ? [

@@ -5,6 +5,8 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { VideoData } from "@/cms/sectionTypes";
+import { createFilmScrubber } from "./heroFilmPlayback";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -109,49 +111,44 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       section.dataset.motion = "true";
       el.pause();
       el.loop = false;
-      const state = { p: 0 };
-      let pending = false;
-      const seek = () => {
-        const d = el.duration;
-        if (!Number.isFinite(d) || d <= 0 || el.readyState < 1) return;
-        const target = Math.min(d - 0.04, Math.max(0, state.p * d));
-        // Closer than about one frame (videos from the admin can be 60 a second): no seek needed.
-        if (Math.abs(el.currentTime - target) < 0.016) return;
-        // Skip a frame while the decoder is still seeking instead of queueing seeks.
-        if (el.seeking) { pending = true; return; }
-        el.currentTime = target;
-      };
-      const seeked = () => { if (pending) { pending = false; seek(); } };
-      const ready = () => { if (el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE) setPlayback("scrubbing"); seek(); };
+      // Same method as the opening film: one seek at a time, the next only after the
+      // decoded frame was shown, on the clip's own 30-a-second frame grid (videos from
+      // the Admin with more frames simply show every 30th of a second).
+      const scrubber = createFilmScrubber(el, () => {}, 30);
+      const ready = () => { if (el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE) setPlayback("scrubbing"); };
       el.addEventListener("loadedmetadata", ready);
-      el.addEventListener("seeked", seeked);
       if (el.readyState >= 1) ready();
       const copy = section.querySelectorAll<HTMLElement>(".rose-video-copy > *");
-      const tl = gsap.timeline({
-        defaults: { ease: "none" },
-        scrollTrigger: {
-          trigger: section,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 0.6,
-          refreshPriority: -1,
-        },
-      });
-      tl.to(state, {
-        p: 1,
-        duration: 1,
-        onUpdate: seek,
-      }, 0)
-        // The arch opens into a wide, softly rounded frame.
-        .fromTo(media, { borderRadius: "260px 260px 12px 12px", scale: 0.84 }, { borderRadius: "34px 34px 34px 34px", scale: 1, ease: "power2.out", duration: 0.4 }, 0)
+      // Drawn by the scroll motion below, not by GSAP's own scrub.
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+      // The arch opens into a wide, softly rounded frame.
+      tl.fromTo(media, { borderRadius: "260px 260px 12px 12px", scale: 0.84 }, { borderRadius: "34px 34px 34px 34px", scale: 1, ease: "power2.out", duration: 0.4 }, 0)
         .fromTo(el, { scale: 1.22 }, { scale: 1, duration: 1 }, 0)
         .fromTo(copy, { y: 46, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.05, duration: 0.22, ease: "power2.out" }, 0.06);
+      // Game-loop motion (scrollProgressMotion.ts): the scroll sets the target, the
+      // display's own frames move the frame, the copy and the film to it.
+      const scrollMotion = createScrollProgressMotion((p) => {
+        tl.progress(p);
+        // Stop just short of the end: some browsers show a blank frame at the very end.
+        const d = el.duration;
+        scrubber.update(Number.isFinite(d) && d > 0.1 ? p * (1 - 0.04 / d) : p);
+      });
+      const trigger = ScrollTrigger.create({
+        trigger: section,
+        start: "top top",
+        end: "bottom bottom",
+        refreshPriority: -1,
+        onUpdate: (self) => scrollMotion.target(self.progress),
+        onRefresh: (self) => scrollMotion.snap(self.progress),
+      });
+      scrollMotion.snap(trigger.progress);
       const refresh = requestScrollRefresh;
       refresh();
       return () => {
         el.removeEventListener("loadedmetadata", ready);
-        el.removeEventListener("seeked", seeked);
-        tl.scrollTrigger?.kill();
+        trigger.kill();
+        scrollMotion.stop();
+        scrubber.stop();
         tl.kill();
         gsap.set([media, el, ...Array.from(copy)], { clearProps: "all" });
         section.dataset.motion = "false";

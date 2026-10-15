@@ -74,7 +74,7 @@ function Rain({ progress }: { progress: MutableRefObject<number> }) {
     const amount = 1 - smooth(0.12, 0.32, progress.current);
     material.opacity = amount * 0.55;
     if (amount <= 0.01) return;
-    const dt = Math.min(delta, 0.05);
+    const dt = Math.min(delta, 0.1); // real time down to 10 fps; only a long pause is cut
     for (let i = 0; i < count; i++) {
       const o = i * 6;
       let y = positions[o + 1] - speeds[i] * dt;
@@ -114,7 +114,7 @@ function Snow({ progress }: { progress: MutableRefObject<number> }) {
     const amount = smooth(0.0, 0.14, p) * (1 - seasonMix(p));
     material.opacity = amount * 0.95;
     if (amount <= 0.01) return;
-    const dt = Math.min(delta, 0.05), t = clock.elapsedTime;
+    const dt = Math.min(delta, 0.1), t = clock.elapsedTime; // real time down to 10 fps
     for (let i = 0; i < count; i++) {
       const o = i * 3;
       positions[o] += Math.sin(t * 0.6 + drift[i]) * dt * 0.25;
@@ -421,7 +421,7 @@ function SeasonsScene(props: SeasonsSceneProps) {
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
       dpr={sceneDpr()}
-      /* Drawn by ScenePacer: 60 frames a second at most (30 in the light mode). */
+      /* Drawn by ScenePacer: the screen's rate (120/90/60) or lower while this device struggles; 30 in the light mode. */
       frameloop="demand"
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
     >
