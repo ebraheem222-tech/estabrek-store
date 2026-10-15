@@ -10,7 +10,6 @@ import type { SeasonEdit, SeasonKey } from "@/lib/seasonalEdits";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
 import { claimTheme, releaseTheme, themeHeld } from "@/lib/themeBase";
-import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useLanguage } from "./Language";
@@ -143,14 +142,13 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       setMotion(true);
       el.dataset.motion = "true";
       let saved = false;
-      let enteredColor: string | undefined;
       let lastSeed = "";
-      // While the colours move, only this section and the header get them (the whole page
-      // restyled on every frame of a hand-over otherwise); the page catches up when they settle.
+      // Only this section and the header take the season's colours, from the moment it
+      // arrives until it hands them back. Written on the page shell, every element of the
+      // page was restyled on every frame of the glide: before the scene pinned (and after
+      // it ended) the rain dropped to about 20 frames a second.
       const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
-      // "On stage" = the section is pinned and fills the screen (set by its scroll timeline below).
-      let onStage = false;
-      const follow = shell ? themeFollower(shell, { local: () => (onStage ? [el, header] : []) }) : null;
+      const follow = shell ? themeFollower(shell, { local: () => [el, header] }) : null;
       const takeOver = (seed: string) => {
         if (!shell || !follow) return;
         // Most scroll frames do not change the colour (it only moves while the
@@ -161,7 +159,6 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         const entering = !saved;
         if (!saved) {
           saved = true;
-          enteredColor = shell.dataset.storefrontColor;
           claimTheme(shell, "seasons", Object.keys(values));
           shell.dataset.season = "true";
         }
@@ -171,24 +168,23 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         // made the browser re-check every link on the page.
         if (!shell.dataset.navbarColor) shell.dataset.navbarColor = seed;
       };
-      const giveBack = () => {
-        if (!shell || !saved) return;
+      /** `now`: no glide (the scene is going away). */
+      const giveBack = (now = false) => {
+        if (!shell || !follow || !saved) return;
         saved = false;
         lastSeed = "";
-        follow?.stop();
-        const chosen = shell.dataset.storefrontColor;
-        releaseTheme(shell, "seasons", {
+        // The section and header glide back to the page's own colours (a swatch picked
+        // meanwhile already went to the page), then the page lets go of the scene.
+        follow.release(now ? 0 : 0.8, () => releaseTheme(shell, "seasons", {
           duration: 0.8,
           onComplete: () => {
             if (saved || themeHeld(shell)) return; // a scene took over again meanwhile
             delete shell.dataset.season;
-            if (chosen) {
-              shell.dataset.navbarColor = chosen;
-              // A swatch picked while the scene was on stage wins once it ends.
-              if (chosen !== enteredColor) selectStorefrontColor(chosen);
-            } else delete shell.dataset.navbarColor;
+            const chosen = shell.dataset.storefrontColor;
+            if (chosen) shell.dataset.navbarColor = chosen;
+            else delete shell.dataset.navbarColor;
           },
-        });
+        }));
       };
       const winterLayer = el.querySelector<HTMLElement>(".season-winter");
       const springLayer = el.querySelector<HTMLElement>(".season-spring");
@@ -235,7 +231,6 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         onUpdate: (self) => scrollMotion.target(self.progress),
         // A re-measure lands on the true position instead of gliding there from a stale one.
         onRefresh: (self) => scrollMotion.snap(self.progress),
-        onToggle: (self) => { onStage = self.isActive; if (!onStage) follow?.unpin(); },
       });
       // Right from the first paint (a reload or Back can land halfway down).
       scrollMotion.snap(sceneTrigger.progress);
@@ -261,7 +256,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         scrollMotion.stop();
         if (winterLayer) winterLayer.inert = false;
         if (springLayer) springLayer.inert = false;
-        giveBack();
+        giveBack(true);
         el.dataset.motion = "false";
         setMotion(false);
       };

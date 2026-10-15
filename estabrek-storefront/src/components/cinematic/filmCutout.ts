@@ -24,8 +24,17 @@ precision mediump float;
 uniform sampler2D frame;
 uniform vec3 tint;     // the shopper's colour
 uniform float amount;  // 0 = the scarf's own pastel, 1 = fully in her colour
+uniform vec2 reach;    // about 4 px of a 720p frame, in texture units (checked at 1× and 2×)
 varying vec2 uv;
 float lum(vec3 c) { return dot(c, vec3(0.3, 0.59, 0.11)); }
+float peak(vec3 c) { return max(max(c.r, c.g), c.b); }
+// Darkest and brightest picture at two distances in one direction.
+void probe(vec2 d, inout float bg, inout float cloth) {
+  float m1 = peak(texture2D(frame, uv + d * reach).rgb);
+  float m2 = peak(texture2D(frame, uv + d * reach * 2.0).rgb);
+  bg = min(bg, min(m1, m2));
+  cloth = max(cloth, max(m1, m2));
+}
 // The "color" blend: the colour's hue and saturation with the fabric's own light and shade.
 vec3 clipColor(vec3 c) {
   float l = lum(c);
@@ -38,9 +47,27 @@ vec3 clipColor(vec3 c) {
 vec3 setLum(vec3 c, float l) { return clipColor(c + (l - lum(c))); }
 void main() {
   vec3 c = texture2D(frame, uv).rgb;
-  float m = max(max(c.r, c.g), c.b);
+  float m = peak(c);
   float a = smoothstep(0.02, 0.25, m);          // near-black -> clear, fabric -> solid
-  vec3 col = clamp(c / max(a, 0.001), 0.0, 1.0); // undo the black that was mixed into soft edges
+  vec3 col = c / max(a, 0.001);                 // undo the black that was mixed into soft edges
+  // The scarf's hem is a darker grey band along the edge of the cloth. On the film's
+  // black it reads as a soft shadow; cut out onto the light page it became a hard grey
+  // outline (and a dark one once dyed). Where the background is within reach, a pixel
+  // darker than the cloth beside it is treated as that cloth partly covering the
+  // background: it takes the cloth's brightness and becomes as see-through as it is dark.
+  float bg = m, cloth = m;
+  probe(vec2(1.0, 0.0), bg, cloth);
+  probe(vec2(-1.0, 0.0), bg, cloth);
+  probe(vec2(0.0, 1.0), bg, cloth);
+  probe(vec2(0.0, -1.0), bg, cloth);
+  probe(vec2(0.707, 0.707), bg, cloth);
+  probe(vec2(-0.707, 0.707), bg, cloth);
+  probe(vec2(0.707, -0.707), bg, cloth);
+  probe(vec2(-0.707, -0.707), bg, cloth);
+  float edge = (1.0 - smoothstep(0.05, 0.18, bg)) * smoothstep(0.3, 0.5, cloth);
+  float cover = clamp((m - 0.03) / max(cloth - 0.03, 0.001), 0.0, 1.0);
+  a = mix(a, cover, edge);
+  col = clamp(mix(col, c * (cloth / max(m, 0.001)), edge), 0.0, 1.0);
   col = pow(col, vec3(0.86)) * vec3(1.03, 0.995, 1.0); // a touch brighter and warmer on the light page
   // Dyed in her colour. The "color" blend keeps the fabric's own (light) shade, so a deep
   // pick (wine, navy, black, bottle green) came out as its pastel: wine looked pink.
@@ -110,6 +137,8 @@ export function startFilmCutout(video: HTMLVideoElement, canvas: HTMLCanvasEleme
   const tint = { now: [1, 1, 1] as number[], to: [1, 1, 1] as number[], amount: 0, amountTo: 0 };
   gl.uniform3f(uTint, 1, 1, 1);
   gl.uniform1f(uAmount, 0);
+  // The hem check looks this far (the same share of the picture in the phone and computer films).
+  gl.uniform2f(gl.getUniformLocation(program, "reach"), 4 / 1280, 4 / 720);
   let hasFrame = false;
 
   const v = video as VideoWithFrames;

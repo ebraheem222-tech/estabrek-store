@@ -8,7 +8,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { themeFollower } from "@/lib/themeTween";
 import { claimTheme, releaseTheme, themeHeld } from "@/lib/themeBase";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -157,7 +156,6 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       const layers = Array.from(el.querySelectorAll<HTMLElement>(".story-layer"));
       const dots = Array.from(el.querySelectorAll<HTMLElement>(".story-meter-step"));
       let saved = false;
-      let enteredColor: string | undefined;
       const seeds = chapters.map((c) => STORY[c.key].seed);
       const seedAt = (p: number) => {
         let seed = seeds[Math.min(n - 1, Math.floor(p * n))];
@@ -168,12 +166,11 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         return seed;
       };
       let lastSeed = "";
-      // While the colours move, only this section and the header get them (the whole page
-      // restyled on every frame of a hand-over otherwise); the page catches up when they settle.
+      // Only this section and the header take the chapters' colours, from the moment it
+      // arrives until it hands them back (see RoseSeasons): written on the page shell, the
+      // whole page was restyled on every frame of the glide before and after the scene.
       const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
-      // "On stage" = the section is pinned and fills the screen (set by its scroll timeline below).
-      let onStage = false;
-      const follow = shell ? themeFollower(shell, { local: () => (onStage ? [el, header] : []) }) : null;
+      const follow = shell ? themeFollower(shell, { local: () => [el, header] }) : null;
       const takeOver = (seed: string) => {
         if (!shell || !follow) return;
         // The colour only moves during a hand-over between chapters: skip the other frames.
@@ -184,7 +181,6 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         if (!saved) {
           saved = true;
           claimTheme(shell, "stories", Object.keys(values));
-          enteredColor = shell.dataset.storefrontColor;
           shell.dataset.season = "true";
         }
         follow.to(values, entering ? 0.8 : 0.35);
@@ -192,23 +188,23 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         // made the browser re-check every link on the page.
         if (!shell.dataset.navbarColor) shell.dataset.navbarColor = seed;
       };
-      const giveBack = () => {
-        if (!shell || !saved) return;
+      /** `now`: no glide (the scene is going away). */
+      const giveBack = (now = false) => {
+        if (!shell || !follow || !saved) return;
         saved = false;
         lastSeed = "";
-        follow?.stop();
-        const chosen = shell.dataset.storefrontColor;
-        releaseTheme(shell, "stories", {
+        // The section and header glide back to the page's own colours (a swatch picked
+        // meanwhile already went to the page), then the page lets go of the scene.
+        follow.release(now ? 0 : 0.8, () => releaseTheme(shell, "stories", {
           duration: 0.8,
           onComplete: () => {
             if (saved || themeHeld(shell)) return;
             delete shell.dataset.season;
-            if (chosen) {
-              shell.dataset.navbarColor = chosen;
-              if (chosen !== enteredColor) selectStorefrontColor(chosen);
-            } else delete shell.dataset.navbarColor;
+            const chosen = shell.dataset.storefrontColor;
+            if (chosen) shell.dataset.navbarColor = chosen;
+            else delete shell.dataset.navbarColor;
           },
-        });
+        }));
       };
       let shownLead = -1;
       const shownV: string[] = [];
@@ -253,7 +249,6 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         onUpdate: (self) => scrollMotion.target(self.progress),
         // A re-measure lands on the true position instead of gliding there from a stale one.
         onRefresh: (self) => scrollMotion.snap(self.progress),
-        onToggle: (self) => { onStage = self.isActive; if (!onStage) follow?.unpin(); },
       });
       scrollMotion.snap(sceneTrigger.progress);
       themeTrigger = ScrollTrigger.create({
@@ -273,7 +268,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         sceneTrigger.kill();
         themeTrigger?.kill();
         scrollMotion.stop();
-        giveBack();
+        giveBack(true);
         layers.forEach((layer) => { layer.inert = false; });
         el.dataset.motion = "false";
         setMotion(false);
