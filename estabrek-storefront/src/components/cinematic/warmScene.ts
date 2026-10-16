@@ -1,4 +1,28 @@
 import type * as THREE from "three";
+import { useEffect, useState } from "react";
+import { onPageRest } from "@/lib/pageRest";
+
+/**
+ * How many of a scene's `total` parts may exist yet. A scene is built one part at
+ * a time (each part's geometry and materials, then the shader warm-up last), a new
+ * part only once the page has rested a moment: built in one go, a scene blocked
+ * the page for up to half a second on a phone, and when that started in a short
+ * pause (in the campaign clip, say) the next scroll waited for it. On screen and
+ * not complete yet, it gets one part per frame so it never stays empty.
+ */
+export function useStagedParts(total: number, onScreen: boolean) {
+  const [built, setBuilt] = useState(0);
+  useEffect(() => {
+    if (built >= total) return;
+    const next = () => setBuilt((n) => Math.min(total, n + 1));
+    if (onScreen) {
+      const frame = requestAnimationFrame(next);
+      return () => cancelAnimationFrame(frame);
+    }
+    return onPageRest(next, { quiet: 150 });
+  }, [built, total, onScreen]);
+  return built;
+}
 
 /**
  * Prepare every material of a scene up front.

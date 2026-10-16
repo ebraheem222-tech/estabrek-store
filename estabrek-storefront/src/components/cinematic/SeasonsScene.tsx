@@ -5,7 +5,7 @@ import { memo, useEffect, useMemo, useRef, useState, type MutableRefObject } fro
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
-import { warmScene } from "./warmScene";
+import { useStagedParts, warmScene } from "./warmScene";
 import { createFabricTexture } from "./fabricTexture";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { createDisplayHead, createHijabGeometry } from "./HijabGeometry";
@@ -428,6 +428,8 @@ function SeasonsScene(props: SeasonsSceneProps) {
   // frame made the browser build them all at once and wait: the page froze ~0.5 s just
   // before this section, right while the shopper scrolled towards it.
   const [warm, setWarm] = useState(false);
+  // Built one part at a time while the page rests (useStagedParts); the warm-up comes last.
+  const parts = useStagedParts(7, props.active);
   return (
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
@@ -445,14 +447,14 @@ function SeasonsScene(props: SeasonsSceneProps) {
         <Lightformer form="rect" intensity={2} position={[3, 4, 3]} scale={[3, 6, 1]} />
         <Lightformer form="rect" intensity={1.2} position={[-4, 2, 1]} scale={[3, 4, 1]} />
       </Environment>
-      <Rain progress={props.progress} />
-      <Snow progress={props.progress} />
-      <Crystals progress={props.progress} />
-      <Sun progress={props.progress} rtl={props.rtl} />
-      <Blossoms progress={props.progress} />
-      {props.showModel && <SeasonalDressForm progress={props.progress} rtl={props.rtl} />}
+      {parts > 0 && <Rain progress={props.progress} />}
+      {parts > 1 && <Snow progress={props.progress} />}
+      {parts > 2 && <Crystals progress={props.progress} />}
+      {parts > 3 && <Sun progress={props.progress} rtl={props.rtl} />}
+      {parts > 4 && <Blossoms progress={props.progress} />}
+      {parts > 5 && props.showModel && <SeasonalDressForm progress={props.progress} rtl={props.rtl} />}
       <ScenePacer active={props.active && !props.reducedMotion} />
-      <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />
+      {parts > 6 && <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />}
     </Canvas>
   );
 }

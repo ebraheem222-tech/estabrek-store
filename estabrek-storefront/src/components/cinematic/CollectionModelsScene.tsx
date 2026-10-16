@@ -5,7 +5,7 @@ import { memo, useEffect, useMemo, useRef, useState, type MutableRefObject } fro
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
-import { warmScene } from "./warmScene";
+import { useStagedParts, warmScene } from "./warmScene";
 import type { StoryKey } from "@/lib/collectionStories";
 import type { PalmRef } from "./mascot/RoseMascot";
 
@@ -458,6 +458,8 @@ function CollectionModelsScene(props: CollectionModelsProps) {
   // frame made the browser build them all at once and wait: the page froze ~0.5 s just
   // before this section, right while the shopper scrolled towards it.
   const [warm, setWarm] = useState(false);
+  // Built one model at a time while the page rests (useStagedParts); the warm-up comes last.
+  const parts = useStagedParts(4, props.active);
   const at = (key: StoryKey) => () => {
     const i = props.keys.indexOf(key);
     return i < 0 ? 0 : props.weights.current[i] ?? 0;
@@ -484,11 +486,11 @@ function CollectionModelsScene(props: CollectionModelsProps) {
         <Lightformer form="rect" intensity={1.6} position={[-4, 2, 1]} scale={[3, 4, 1]} />
         <Lightformer form="ring" intensity={1.2} color="#ffe2c2" position={[0, -3, 4]} scale={3} />
       </Environment>
-      {props.keys.includes("accessories") && <Accessories weight={at("accessories")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
-      {props.keys.includes("kids") && <Kids weight={at("kids")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
-      {props.keys.includes("incense") && <Incense weight={at("incense")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
+      {parts > 0 && props.keys.includes("accessories") && <Accessories weight={at("accessories")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
+      {parts > 1 && props.keys.includes("kids") && <Kids weight={at("kids")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
+      {parts > 2 && props.keys.includes("incense") && <Incense weight={at("incense")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
       <ScenePacer active={props.active} />
-      <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />
+      {parts > 3 && <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />}
     </Canvas>
   );
 }
