@@ -2578,7 +2578,9 @@ html:has(.rose-shop) { scroll-behavior:smooth; }
 .rose-shop-content { padding:0 5% 80px; }
 .rose-shop-browse { grid-template-columns:260px minmax(0,1fr); gap:26px; }
 .rose-shop-categories { grid-column:1/-1; display:flex; gap:10px; overflow:auto; padding:0 0 18px; margin-bottom:6px; border-bottom:1px solid var(--selection-line,#dec8d2); white-space:nowrap; scrollbar-width:thin; }
-.rose-shop-categories button { font-size:13px; padding:12px 22px; border-radius:30px; color:var(--selection-muted,#703c58); border:1px solid var(--selection-line,#e6ceda); background:var(--selection-surface,#fff8f4); transition:background .2s,color .2s; }
+/* flex:none — each keeps its full name and the row scrolls sideways. Left to shrink, the
+   44px tap-size minimum (globals.css) let six long names squeeze into circles on phones. */
+.rose-shop-categories button { flex:none; font-size:13px; padding:12px 22px; border-radius:30px; color:var(--selection-muted,#703c58); border:1px solid var(--selection-line,#e6ceda); background:var(--selection-surface,#fff8f4); transition:background .2s,color .2s; }
 .rose-shop-categories button[aria-pressed="true"] { color:var(--selection-surface,#fff8f4); border-color:var(--selection-accent,#6b2446); background:var(--selection-accent,#6b2446); }
 .rose-shop-toolbar { position:relative!important; top:auto!important; border-radius:0!important; border:0!important; border-bottom:1px solid var(--selection-line,#dec8d2)!important; background:transparent!important; margin:0!important; padding:0 0 18px!important; }
 .rose-shop-toolbar select { border-radius:6px; background:var(--selection-surface,#fff8f4); border-color:var(--selection-line,#dec8d2); }
@@ -3603,6 +3605,10 @@ html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, 
   -webkit-tap-highlight-color: transparent;
 }
 .rose-mascot[data-mirrored="true"] svg { transform: scaleX(-1); }
+/* Well off screen (RoseMascot.tsx): left out of style and layout until she comes near.
+   (content-visibility skipped only layout: a colour pick still restyled her.) The
+   wrapper keeps its size through its aspect-ratio, so she is still seen coming. */
+.rose-mascot svg[data-away] { display: none; }
 .rose-mascot-bubble {
   position: absolute;
   bottom: 100%;
@@ -3988,10 +3994,14 @@ html[data-cinematic-storefront="true"]:has(.rose-sheet-layer, .quick-add-layer, 
    handing the colours back), GSAP is the only thing animating colour: CSS colour
    transitions would restart on every frame and trail behind the page. Motion
    transitions (transform, opacity…) keep running. The repeated attribute only
-   raises specificity above the few !important button transitions. */
-html[data-theme-gliding][data-theme-gliding][data-theme-gliding] *,
-html[data-theme-gliding][data-theme-gliding][data-theme-gliding] *::before,
-html[data-theme-gliding][data-theme-gliding][data-theme-gliding] *::after,
+   raises specificity above the few !important button transitions. The flag sits
+   on the parts that glide (the shell, a section, the header), not always on <html>.
+   A cross-fade sets its flag with the new colours (no extra restyle) and takes it
+   off once the page rests (lib/themeTween.ts crossfadeTheme). */
+[data-theme-gliding][data-theme-gliding][data-theme-gliding],
+[data-theme-gliding][data-theme-gliding][data-theme-gliding] *,
+[data-theme-gliding][data-theme-gliding][data-theme-gliding] *::before,
+[data-theme-gliding][data-theme-gliding][data-theme-gliding] *::after,
 html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *,
 html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *::before,
 html[data-theme-crossfade][data-theme-crossfade][data-theme-crossfade] *::after {
@@ -4152,6 +4162,9 @@ html[data-theme-crossfade]::view-transition-new(root) {
   position: absolute; z-index: 2; pointer-events: none;
   left: calc(50% + var(--film-shift, -6%)); top: 47%; width: 46%; height: 92%; translate: -50% -50%;
 }
+/* Off screen (the shopper is further down the page) the twinkle stops: it was still
+   restyled on every frame, next to the 3D scenes. */
+.rose-film[data-away] .film-sparkles { display: none; }
 /* The glow is part of each star (a soft gradient in its SVG, twice the star's box) instead
    of three drop-shadow filters: a blur is redrawn on every frame of the twinkle, a plain
    shape only moves on the graphics card. */
@@ -4576,3 +4589,13 @@ body:has(.rose-maint) { overflow: hidden; }
 @media (max-width: 560px) { .rose-ai-look ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .rose-ai-look a { font-size: 12px; } }
 .rose-smart-search { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 14px 0 0; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--selection-line, #e3cdd8); background: color-mix(in srgb, var(--selection-surface, #fff8f4) 90%, transparent); font-size: 13.5px; color: var(--selection-ink, #4d2039); }
 .rose-smart-search a { color: var(--selection-accent, #7d2448); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+
+/* Phones and tablets: no background blur (backdrop-filter). The header, the shop's
+   toolbar and the floating buttons stay on screen while the page scrolls, so the
+   graphics chip re-blurred what moves behind them on every frame, at about 3 device
+   pixels per CSS pixel (a 20px blur is ~55 real pixels wide). Measured on the shop
+   page at phone size: half of the graphics work while scrolling. Their backgrounds
+   are 88–94% opaque, so the look barely changes; computers keep the frosted glass. */
+@media (hover: none) and (pointer: coarse) {
+  *, *::before, *::after, ::backdrop { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
