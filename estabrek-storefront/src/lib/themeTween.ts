@@ -1,5 +1,6 @@
 import { gsap } from "gsap";
 import { sceneFrameGap } from "./motionBudget";
+import { onPageRest } from "./pageRest";
 
 /**
  * Every storefront colour change goes through here so it is always a smooth
@@ -17,25 +18,37 @@ function reduced() {
 
 /**
  * While the storefront colours glide, CSS colour transitions are switched off
- * (see `html[data-theme-gliding]` in cinematic.css). Otherwise every element
+ * (see `[data-theme-gliding]` in cinematic.css). Otherwise every element
  * with its own colour transition (header, buttons, swatches, filters) restarted
  * it on every frame of the glide and trailed behind the page — measured: the
  * page reached a new colour at 0.6 s while the header got there at 1.05 s, with
  * 800–1000 transition restarts per pick. One animation source keeps everything
  * moving together.
+ *
+ * Only on the parts that glide: the flag on <html> restyled all ~1,800
+ * elements of the home page when it was set and again when it was taken off,
+ * even when only the header (a scene) or one section (a hover preview) moved.
  */
-let gliding = 0;
-function beginGlide(seconds: number) {
+const gliding = new Map<HTMLElement, number>();
+function beginGlide(seconds: number, targets: HTMLElement[]) {
   if (typeof document === "undefined") return () => {};
-  gliding++;
-  document.documentElement.dataset.themeGliding = "";
+  targets.forEach((t) => {
+    gliding.set(t, (gliding.get(t) ?? 0) + 1);
+    t.dataset.themeGliding = "";
+  });
   let open = true;
   const end = () => {
     if (!open) return;
     open = false;
     window.clearTimeout(safety);
-    gliding = Math.max(0, gliding - 1);
-    if (!gliding) delete document.documentElement.dataset.themeGliding;
+    targets.forEach((t) => {
+      const left = (gliding.get(t) ?? 1) - 1;
+      if (left > 0) gliding.set(t, left);
+      else {
+        gliding.delete(t);
+        delete t.dataset.themeGliding;
+      }
+    });
   };
   // A tween replaced by a newer one never completes: let go of it anyway.
   const safety = window.setTimeout(end, seconds * 1000 + 400);
@@ -202,7 +215,7 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
         // Long scroll scenes keep renewing this, so give it a generous safety window.
         const t = performance.now();
         if (endGlide && t - glideFrom > 25000) settle();
-        if (!endGlide) { endGlide = beginGlide(30); glideFrom = t; }
+        if (!endGlide) { endGlide = beginGlide(30, parts.length ? parts : [el]); glideFrom = t; }
         raf = requestAnimationFrame(step);
       }
     },
@@ -281,7 +294,7 @@ export function tweenTheme(
   }
   // Pin the start values inline so GSAP interpolates from what is on screen now.
   for (const name of names) el.style.setProperty(name, from[name]);
-  const endGlide = beginGlide(duration);
+  const endGlide = beginGlide(duration, [el]);
   return gsap.to(el, {
     ...to, duration, ease, overwrite: "auto",
     // Transitions come back before anything the caller does at the end (like
@@ -336,7 +349,9 @@ export function setThemeNow(el: HTMLElement, values: Record<string, string>) {
   for (const [name, value] of Object.entries(values)) el.style.setProperty(name, value);
 }
 
-type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => { finished: Promise<void> } };
+let crossfades = 0;
+
+type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => { finished: Promise<void>; ready?: Promise<void> } };
 
 /**
  * Change the colours as one smooth cross-fade done by the graphics card: the
@@ -350,11 +365,21 @@ export function crossfadeTheme(update: () => void): boolean {
   const doc = document as ViewTransitionDocument;
   if (typeof doc.startViewTransition !== "function" || reduced()) return false;
   const root = document.documentElement;
-  root.dataset.themeCrossfade = "";
+  crossfades++;
   try {
-    const transition = doc.startViewTransition(update);
-    transition.finished.finally(() => delete root.dataset.themeCrossfade);
+    // The flag (no CSS colour transitions, the fade's timing: see cinematic.css) goes on
+    // with the new colours, in the one restyle they need anyway. Set before, it restyled
+    // the whole page on its own; it comes off when the page rests (that is a restyle too).
+    const transition = doc.startViewTransition(() => {
+      root.dataset.themeCrossfade = "";
+      update();
+    });
+    // A newer pick cancels this fade (the browser rejects its `ready`): not an error.
+    transition.ready?.catch(() => {});
+    const done = () => { crossfades--; onPageRest(() => { if (!crossfades) delete root.dataset.themeCrossfade; }); };
+    transition.finished.then(done, done);
   } catch {
+    crossfades--;
     delete root.dataset.themeCrossfade;
     update();
   }
