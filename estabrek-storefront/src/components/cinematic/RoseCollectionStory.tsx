@@ -6,6 +6,8 @@ import { Component, useEffect, useRef, useState, type CSSProperties, type ReactN
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
+import { onPageRest } from "@/lib/pageRest";
+import { motionLevel } from "@/lib/motionBudget";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
@@ -133,6 +135,8 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
     // Built once when the shopper gets close, then kept (rebuilding the 3D models on
     // every pass meant a fresh WebGL start-up and shader compile each time).
     const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: "700px 0px" });
+    // Built ahead while the page rests (after the seasons scene), so the scroll never waits for it.
+    const early = motionLevel() === "lite" ? null : onPageRest(() => setNear(true), { after: 3500, quiet: 600 });
     const view = new IntersectionObserver(([e]) => setInView(e.isIntersecting));
     io.observe(el);
     view.observe(el);
@@ -140,7 +144,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
     const sync = () => setCompact(mq.matches);
     sync();
     mq.addEventListener("change", sync);
-    return () => { io.disconnect(); view.disconnect(); mq.removeEventListener("change", sync); };
+    return () => { io.disconnect(); view.disconnect(); mq.removeEventListener("change", sync); early?.(); };
   }, []);
 
   useEffect(() => {

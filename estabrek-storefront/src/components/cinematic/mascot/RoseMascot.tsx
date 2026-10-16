@@ -11,6 +11,7 @@
  */
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useSyncExternalStore, type MutableRefObject } from "react";
 import { razanMaySpeak, razanNow, type SpeakKind } from "@/lib/razanRuntime";
+import { pageScrolling } from "@/lib/pageRest";
 import { ROSE_EVENT, roseLine, type RoseExtras, type RoseMoment, type RoseOutfit } from "@/lib/roseEvents";
 
 /* Which scene Roses (hero, seasons, collections) are on screen, so the floating companion can step aside. */
@@ -394,9 +395,13 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
     };
 
     // ~30 frames a second is plenty for a 2D character and leaves the page's 3D scenes the rest.
+    // On a phone, while the page scrolls, ~15: each drawing restyles her whole SVG, and the
+    // scroll through the opening film already took the phone's whole frame. Her motion
+    // follows the clock, so she keeps her speed.
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
     let last = 0;
     const loop = (ms: number) => {
-      if (ms - last >= 32) { last = ms; draw(ms); }
+      if (ms - last >= (coarse && pageScrolling() ? 64 : 32)) { last = ms; draw(ms); }
       if (visible && !reduce) frame = requestAnimationFrame(loop);
     };
     const io = new IntersectionObserver(([entry]) => {
@@ -406,6 +411,11 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       if (visible) frame = requestAnimationFrame(loop);
     });
     io.observe(box);
+    // Well off screen, her SVG is left out of style and layout (see cinematic.css). The
+    // four Roses are over half the home page's elements, and every colour pick restyled
+    // all of them, also those nobody could see.
+    const nearby = new IntersectionObserver(([entry]) => { el.toggleAttribute("data-away", !entry.isIntersecting); }, { rootMargin: "50% 0px" });
+    nearby.observe(box);
     draw(performance.now());
 
     let lookHold = 0;
@@ -470,6 +480,8 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       window.clearTimeout(sayTimer.current);
       if (!companion) setSceneOnScreen(uid, false);
       if (palm) palm.current = null;
+      nearby.disconnect();
+      el.removeAttribute("data-away");
     };
   }, [greeting, mirrored, palm, reactive, companion, ar, uid, walkIn, idleHabits]);
 

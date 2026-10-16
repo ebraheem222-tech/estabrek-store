@@ -6,6 +6,8 @@ import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
+import { onPageRest } from "@/lib/pageRest";
+import { motionLevel } from "@/lib/motionBudget";
 import type { SeasonEdit, SeasonKey } from "@/lib/seasonalEdits";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
@@ -122,6 +124,9 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
     // Built once when the shopper gets close, then kept: tearing the 3D scene down and
     // rebuilding it on every pass meant a fresh WebGL start-up (a visible hitch) each time.
     const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: "600px 0px" });
+    // Built ahead while the shopper reads (the page resting), so it is ready before she
+    // gets here: built on the way in, its start-up stopped her scroll for a moment.
+    const early = motionLevel() === "lite" ? null : onPageRest(() => setNear(true), { after: 1500, quiet: 600 });
     const view = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
     io.observe(el);
     view.observe(el);
@@ -129,7 +134,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
     const sync = () => setDesktop(mq.matches);
     sync();
     mq.addEventListener("change", sync);
-    return () => { io.disconnect(); view.disconnect(); mq.removeEventListener("change", sync); };
+    return () => { io.disconnect(); view.disconnect(); mq.removeEventListener("change", sync); early?.(); };
   }, []);
 
   useEffect(() => {

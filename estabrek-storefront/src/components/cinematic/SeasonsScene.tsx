@@ -1,7 +1,7 @@
 "use client";
 import { ScenePacer } from "./ScenePacer";
 import { sceneDpr } from "@/lib/motionBudget";
-import { memo, useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
@@ -379,22 +379,29 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
   );
 }
 
-function Lifecycle({ onReady, onFailure }: Pick<SeasonsSceneProps, "onReady" | "onFailure">) {
+function Lifecycle({ onReady, onFailure, onWarm }: Pick<SeasonsSceneProps, "onReady" | "onFailure"> & { onWarm: () => void }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
-  const invalidate = useThree((s) => s.invalidate);
-  const ready = useRef(onReady), failure = useRef(onFailure);
-  ready.current = onReady; failure.current = onFailure;
+  const advance = useThree((s) => s.advance);
+  const ready = useRef(onReady), failure = useRef(onFailure), warm = useRef(onWarm);
+  ready.current = onReady; failure.current = onFailure; warm.current = onWarm;
   useEffect(() => {
     let alive = true;
     // Build every shader now (hidden parts included), then show the scene.
     // (The warm-up leaves the canvas empty: ask for a real frame right after.)
-    warmScene(gl, scene, camera).then(() => { invalidate(); if (alive) ready.current(); });
+    warmScene(gl, scene, camera).then(() => {
+      if (!alive) return;
+      // One real frame now, the lighting environment included, while the scene is still
+      // out of sight; then the scene may draw (see `warm` in the scene below).
+      advance(performance.now());
+      warm.current();
+      ready.current();
+    });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
     return () => { alive = false; gl.domElement.removeEventListener("webglcontextlost", lost); };
-  }, [gl, scene, camera, invalidate]);
+  }, [gl, scene, camera, advance]);
   return null;
 }
 
@@ -417,13 +424,21 @@ function SeasonLights({ progress }: { progress: MutableRefObject<number> }) {
 }
 
 function SeasonsScene(props: SeasonsSceneProps) {
+  // Nothing is drawn until every shader is built (warmScene). Drawn before, the first
+  // frame made the browser build them all at once and wait: the page froze ~0.5 s just
+  // before this section, right while the shopper scrolled towards it.
+  const [warm, setWarm] = useState(false);
   return (
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
       dpr={sceneDpr()}
       /* Drawn by ScenePacer: the screen's rate (120/90/60) or lower while this device struggles; 30 in the light mode. */
-      frameloop="demand"
+      frameloop={warm ? "demand" : "never"}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+      /* Measured on resize only. With scroll tracking (the default) every scroll anywhere on
+         the page re-measured each 3D canvas, re-rendered it through React and asked it for a
+         new frame, also far off screen. Pointers are read relative to the canvas anyway. */
+      resize={{ scroll: false }}
     >
       <SeasonLights progress={props.progress} />
       <Environment resolution={64}>
@@ -437,7 +452,7 @@ function SeasonsScene(props: SeasonsSceneProps) {
       <Blossoms progress={props.progress} />
       {props.showModel && <SeasonalDressForm progress={props.progress} rtl={props.rtl} />}
       <ScenePacer active={props.active && !props.reducedMotion} />
-      <Lifecycle onReady={props.onReady} onFailure={props.onFailure} />
+      <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />
     </Canvas>
   );
 }

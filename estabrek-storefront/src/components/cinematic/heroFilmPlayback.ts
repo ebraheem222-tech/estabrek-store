@@ -1,16 +1,18 @@
 import { motionLevel, reportSeek } from "@/lib/motionBudget";
 
-const MP4 = "/editorial/hero-film-scrub.mp4";
-const WEBM = "/editorial/hero-film-scrub.webm";
+const MP4 = "/editorial/hero-film-120.mp4";
+const WEBM = "/editorial/hero-film-120.webm";
 
 /**
- * The hero films have 24 real frames a second (see SOURCES in RoseHeroFilm:
- * the 120/240 fps copies were blended and showed ghost edges).
+ * The hero films are encoded at 120 FPS (phone and computer, MP4 and WebM;
+ * see SOURCES in RoseHeroFilm).
  *
  * This is the source timeline FPS, NOT a forced rendering rate.
- * Rendering is paced by requestAnimationFrame(), so the scroll motion and
- * everything around the film still move at 60 / 90 / 120 Hz; the picture
- * itself changes when the scroll reaches the next of the film's frames.
+ * Rendering is paced by requestAnimationFrame(), so:
+ *
+ * 60 Hz display  -> up to ~60 updates/sec
+ * 90 Hz display  -> up to ~90 updates/sec
+ * 120 Hz display -> up to ~120 updates/sec
  *
  * The decoder itself may run slower; we intentionally allow only
  * one outstanding seek at a time.
@@ -19,7 +21,7 @@ const WEBM = "/editorial/hero-film-scrub.webm";
  * the frame already shown, and each of those still keeps a phone's decoder
  * busy (30–140 ms) while showing nothing new.
  */
-const FILM_FPS = 24;
+const FILM_FPS = 120;
 
 /**
  * Lite mode remains intentionally capped to 30 updates/sec
@@ -85,8 +87,10 @@ export async function heroFilmSources(
 export function createFilmScrubber(
   video: HTMLVideoElement,
   onFrame: (index: number) => void,
-  /** Frames per second of the clip (the campaign clip has 30). */
+  /** Frames per second of the clip. */
   fps = FILM_FPS,
+  /** A key frame every this many frames (6 in the shop's own 120 fps films; 1 = unknown). */
+  keyEvery = 1,
 ) {
 
   let progress = 0;
@@ -264,13 +268,31 @@ export function createFilmScrubber(
      * new 120 FPS:
      * 1200 possible positions
      */
-    const index = Math.min(
+    let index = Math.min(
       lastIndex,
       Math.max(
         0,
         Math.round(progress * lastIndex),
       ),
     );
+
+    /**
+     * Far behind the scroll (a fast scroll, either way): go to the
+     * nearest key frame, which decodes on its own (about half the
+     * time of a frame between key frames here, more on phones), so
+     * the picture keeps up more often. Close to the scroll again,
+     * every frame is exact.
+     */
+    if (
+      keyEvery > 1 &&
+      video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+      Math.abs(index - getCurrentIndex()) > keyEvery * 3
+    ) {
+      index = Math.min(
+        lastIndex,
+        Math.round(index / keyEvery) * keyEvery,
+      );
+    }
 
     /**
      * Don't seek if the decoder is already displaying the desired

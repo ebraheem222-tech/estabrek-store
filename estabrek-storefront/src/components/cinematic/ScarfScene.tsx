@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
 import { createFabricTexture } from "./fabricTexture";
 import { createHijabGeometry, createDisplayHead } from "./HijabGeometry";
 import { ScenePacer } from "./ScenePacer";
+import { warmScene } from "./warmScene";
 import { sceneDpr } from "@/lib/motionBudget";
 
 type SceneProps = {
@@ -147,30 +148,54 @@ function DrapedHijab(props: SceneProps) {
 function SceneLifecycle({
   onReady,
   onFailure,
-}: Pick<SceneProps, "onReady" | "onFailure">) {
+  onWarm,
+}: Pick<SceneProps, "onReady" | "onFailure"> & { onWarm: () => void }) {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const advance = useThree((s) => s.advance);
   const ready = useRef(onReady);
   const failure = useRef(onFailure);
+  const warm = useRef(onWarm);
   ready.current = onReady;
   failure.current = onFailure;
+  warm.current = onWarm;
   useEffect(() => {
-    ready.current();
+    let alive = true;
+    // Build every shader first (in the background where the driver can), then draw
+    // one real frame; until then the fallback drawing stays on screen.
+    warmScene(gl, scene, camera).then(() => {
+      if (!alive) return;
+      advance(performance.now());
+      warm.current();
+      ready.current();
+    });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
-    return () => gl.domElement.removeEventListener("webglcontextlost", lost);
-  }, [gl]);
+    return () => {
+      alive = false;
+      gl.domElement.removeEventListener("webglcontextlost", lost);
+    };
+  }, [gl, scene, camera, advance]);
   return null;
 }
 
 export default function ScarfScene(props: SceneProps) {
+  // Nothing is drawn until every shader is built: drawn before, the first frame built
+  // them all at once and the page stopped for a moment (see SeasonsScene).
+  const [warm, setWarm] = useState(false);
   return (
     <Canvas
       camera={{ position: [0, 0.05, 6.7], fov: 38 }}
       dpr={sceneDpr()}
       /* Drawn by ScenePacer, like the other 3D scenes: it used to draw on every
          screen frame (120 a second on many phones) outside the frame budget. */
-      frameloop="demand"
+      frameloop={warm ? "demand" : "never"}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+      /* Measured on resize only. With scroll tracking (the default) every scroll anywhere on
+         the page re-measured each 3D canvas, re-rendered it through React and asked it for a
+         new frame, also far off screen. Pointers are read relative to the canvas anyway. */
+      resize={{ scroll: false }}
     >
       <ambientLight intensity={0.85} />
       <directionalLight position={[0, 2, 5]} intensity={0.65} color="#fff4e9" />
@@ -214,7 +239,7 @@ export default function ScarfScene(props: SceneProps) {
         color="#a75676"
       />
       <ScenePacer active={props.active && !props.reducedMotion} />
-      <SceneLifecycle onReady={props.onReady} onFailure={props.onFailure} />
+      <SceneLifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />
     </Canvas>
   );
 }

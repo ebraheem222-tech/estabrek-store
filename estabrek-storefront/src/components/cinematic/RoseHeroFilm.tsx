@@ -13,6 +13,7 @@ import type { MascotHandle } from "./mascot/RoseMascot";
 import { startFilmCutout, type FilmCutout } from "./filmCutout";
 import { watchScarfFlight } from "./scarfFlight";
 import { placeHeroMascotOnPhone } from "./mascot/phoneSpot";
+import { motionLevel } from "@/lib/motionBudget";
 
 /**
  * The opening film: a sheer scarf flies in, wraps itself into a hijab and
@@ -41,17 +42,14 @@ const LINE_COLORS = ["#b2486a", "#7c5fa8", "#3f7f78", "#a87a2c"];
 const LINES_END = 0.84;
 
 /**
- * The film's own 24 frames a second, with a key frame every 6 for quick seeks.
- * The 120/240 fps copies (hero-film.*, hero-film-mobile.*) were made by blending
- * neighbouring frames: every fast turn of the scarf showed two or three ghost
- * copies of its edge, which turned into dark "shadow pictures" on the light
- * page. The scroll stays smooth with 24 real frames: the scroll motion, the
- * zoom and the captions move on every screen frame; only the picture is 24/s.
- * (They are also 4–5× smaller: 1.3 MB on computers, 0.85 MB on phones.)
+ * The film at 120 frames a second, a key frame every 6 for quick seeks. Made from
+ * the 24 fps original with motion interpolation (ffmpeg minterpolate, mci): the
+ * earlier 120/240 fps copies (hero-film.*) blended neighbouring frames, so every
+ * fast turn of the scarf showed two or three ghost copies of its edge.
  */
 const SOURCES = {
-  desktop: { webm: "/editorial/hero-film-scrub.webm", mp4: "/editorial/hero-film-scrub.mp4" },
-  mobile: { webm: "/editorial/hero-film-mobile-scrub.webm", mp4: "/editorial/hero-film-mobile-scrub.mp4" },
+  desktop: { webm: "/editorial/hero-film-120.webm", mp4: "/editorial/hero-film-120.mp4" },
+  mobile: { webm: "/editorial/hero-film-mobile-120.webm", mp4: "/editorial/hero-film-mobile-120.mp4" },
 };
 
 type Button = { label?: string; href?: string } | undefined;
@@ -101,9 +99,26 @@ export function RoseHeroFilm({
   const [filmSrc, setFilmSrc] = useState<string | null>(null);
   const [streamed, setStreamed] = useState(false); // the download failed: stream it as before
   const [filmReady, setFilmReady] = useState(false);
+  // No film at all (the still of the scarf instead): with reduced motion nothing would
+  // play it, and with data saver it is several megabytes nobody asked for. Data saver
+  // also keeps the opening short (no long scroll scene); so does a film that cannot load.
+  const [wantFilm, setWantFilm] = useState(false);
+  const [saveData, setSaveData] = useState(false);
+  const [filmFailed, setFilmFailed] = useState(false);
+  const [lite, setLite] = useState(false);
+  useEffect(() => {
+    const saver = Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
+    setSaveData(saver);
+    setLite(motionLevel() === "lite");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setWantFilm(!saver && !reduce.matches);
+    sync();
+    reduce.addEventListener("change", sync);
+    return () => reduce.removeEventListener("change", sync);
+  }, []);
   useEffect(() => {
     const el = video.current;
-    if (!el) return;
+    if (!el || !wantFilm || filmSrc) return;
     const set = window.matchMedia("(max-width: 760px)").matches ? SOURCES.mobile : SOURCES.desktop;
     const url = el.canPlayType('video/webm; codecs="vp9"') ? set.webm : set.mp4;
     const ctrl = new AbortController();
@@ -113,8 +128,18 @@ export function RoseHeroFilm({
       .then((blob) => { objectUrl = URL.createObjectURL(blob); setFilmSrc(objectUrl); })
       .catch(() => { if (!ctrl.signal.aborted) setStreamed(true); });
     return () => { ctrl.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, []);
-  useEffect(() => { if (streamed) video.current?.load(); }, [streamed]);
+    // filmSrc is left out: once the film is in, it stays (also if reduced motion comes and goes).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantFilm]);
+  useEffect(() => {
+    const el = video.current;
+    if (!streamed || !el) return;
+    el.load();
+    // Streaming failed too (every <source>; their errors do not bubble): keep the still.
+    const failed = () => { if (el.networkState === HTMLMediaElement.NETWORK_NO_SOURCE || el.error) setFilmFailed(true); };
+    el.addEventListener("error", failed, true);
+    return () => el.removeEventListener("error", failed, true);
+  }, [streamed]);
   // iPhones decode nothing until a video plays: once the film is in, start it for a moment.
   useEffect(() => {
     const el = video.current;
@@ -139,7 +164,7 @@ export function RoseHeroFilm({
   // Scroll plays the film; the headline follows it.
   useEffect(() => {
     const section = root.current, el = video.current;
-    if (!section || !el || !scrollAnimationsEnabled) return;
+    if (!section || !el || !scrollAnimationsEnabled || saveData || filmFailed) return;
     gsap.registerPlugin(ScrollTrigger);
     const mm = gsap.matchMedia();
     mm.add("(prefers-reduced-motion: no-preference)", () => {
@@ -150,7 +175,9 @@ export function RoseHeroFilm({
       if (/Android/i.test(navigator.userAgent)) section.dataset.plainLight = "true";
       el.pause();
       el.loop = false;
-      const scrubber = createFilmScrubber(el, () => {});
+      // 120 fps with a key frame every 6 (see SOURCES). The frame on screen is noted on
+      // the canvas (data-frame) for the checks; nothing styles it.
+      const scrubber = createFilmScrubber(el, (index) => canvas.current?.setAttribute("data-frame", String(index)), 120, 6);
       let shown = -1;
       let shownP = "";
       // The film's frame (video, cut-out canvas, halo) is the only part that follows the scroll value.
@@ -213,7 +240,7 @@ export function RoseHeroFilm({
       };
     });
     return () => mm.revert();
-  }, [scrollAnimationsEnabled, lines.length]);
+  }, [scrollAnimationsEnabled, lines.length, saveData, filmFailed]);
 
   // Off screen the finished hijab's sparkles rest: their twinkle restyled them on every
   // frame even far below the film, right while the 3D scenes needed the time.
@@ -337,10 +364,12 @@ export function RoseHeroFilm({
       ref={root}
       className="rose-film"
       data-motion="false"
+      // How the opening runs: "full"/"lite" = the scroll plays the film, "static" = the still.
+      data-playback={motion ? (lite ? "lite" : "full") : "static"}
       data-final={final ? "true" : undefined}
       data-cutout={cutout}
       aria-labelledby="hero-title"
-      style={{ "--film-accent": accent, "--film-steps": lines.length } as CSSProperties}
+      style={{ "--film-steps": lines.length } as CSSProperties}
     >
       <div className="rose-film-sticky">
         <div className="film-copy">
@@ -390,7 +419,9 @@ export function RoseHeroFilm({
               </Link>
             ) : null}
           </div>
-          <ol className="film-steps" aria-hidden="true">
+          {/* The line's colour goes only where it shows (these steps, the halo in the arch): on the
+              section, every new line restyled the whole opening, Rose included (~50 ms on a phone). */}
+          <ol className="film-steps" aria-hidden="true" style={{ "--film-accent": accent } as CSSProperties}>
             {[...lines, closing].map((_, i) => (
               <li key={i} data-on={i <= step ? "true" : undefined} />
             ))}
@@ -403,7 +434,7 @@ export function RoseHeroFilm({
           )}
         </div>
         <div className="film-stage">
-          <div className="film-arch">
+          <div className="film-arch" style={{ "--film-accent": accent } as CSSProperties}>
             <video
               ref={video}
               className="film-video"

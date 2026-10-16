@@ -9,6 +9,8 @@ import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { onPageRest } from "@/lib/pageRest";
+import { motionLevel } from "@/lib/motionBudget";
 
 const ScarfScene = dynamic(() => import("./ScarfScene"), {
   ssr: false,
@@ -157,6 +159,12 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
       media.removeEventListener("change", update);
     };
   }, [settings.scrollAnimationsEnabled, embedded]);
+  // Built ahead while the page rests (between the seasons and the collection worlds),
+  // so its start-up never lands in the middle of a scroll.
+  useEffect(() => {
+    if (motionLevel() === "lite") return;
+    return onPageRest(() => setNear(true), { after: 2500, quiet: 600 });
+  }, []);
   useEffect(() => {
     if (!loadScene) return;
     try {

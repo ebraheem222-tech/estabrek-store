@@ -112,9 +112,10 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       el.pause();
       el.loop = false;
       // Same method as the opening film: one seek at a time, the next only after the
-      // decoded frame was shown, on the clip's own 30-a-second frame grid (videos from
-      // the Admin with more frames simply show every 30th of a second).
-      const scrubber = createFilmScrubber(el, () => {}, 30);
+      // decoded frame was shown, on the clip's own frame grid: 120 a second for the
+      // shop's clip; a video from the Admin is taken as up to 60 (a finer grid only
+      // sends seeks that land inside the frame already shown).
+      const scrubber = createFilmScrubber(el, () => {}, isDefault ? 120 : 60, isDefault ? 6 : 1);
       const ready = () => { if (el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE) setPlayback("scrubbing"); };
       el.addEventListener("loadedmetadata", ready);
       if (el.readyState >= 1) ready();
@@ -199,10 +200,11 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
             onPlay={() => setPlayback("playing")}
             onPause={() => { if (!scroll) setPlayback(video.current?.error ? "error" : "paused"); }}
           >
-            {near && isDefault && <source src="/editorial/rose-campaign-mobile.webm" type="video/webm" media="(max-width: 760px)" />}
-            {near && isDefault && <source src="/editorial/rose-campaign-mobile.mp4" type="video/mp4" media="(max-width: 760px)" />}
-            {near && isDefault && <source src="/editorial/rose-campaign.webm" type="video/webm" />}
-            {near && <source src={data.url} type="video/mp4" />}
+            {/* The shop's clip at 120 frames a second (motion-interpolated from the 30 fps original). */}
+            {near && isDefault && <source src="/editorial/rose-campaign-mobile-120.webm" type="video/webm" media="(max-width: 760px)" />}
+            {near && isDefault && <source src="/editorial/rose-campaign-mobile-120.mp4" type="video/mp4" media="(max-width: 760px)" />}
+            {near && isDefault && <source src="/editorial/rose-campaign-120.webm" type="video/webm" />}
+            {near && <source src={isDefault ? "/editorial/rose-campaign-120.mp4" : data.url} type="video/mp4" />}
           </video>
           {playback === "error" && <img className="video-error-poster" src={poster} alt={ar ? "طيات قماش وردي" : "Folds of rose fabric"} />}
           {/* Dyes the fabric in the shopper's colour, keeping its folds and light (dark colours also deepen it). */}

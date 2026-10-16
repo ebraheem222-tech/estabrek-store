@@ -66,6 +66,7 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
   const root = useRef<HTMLDivElement>(null);
   useClientLayoutEffect(() => {
     let selected = false;
+    let picks = 0;
     const globalProperties = new Map<string, string>();
     // The shell's own colours before the first pick, to fade back to after a break.
     let ownColours: Map<string, string> | null = null;
@@ -90,11 +91,15 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
         document.documentElement.dataset.storefrontColor = color;
       };
       selected = true;
+      const pick = ++picks;
       // A picked colour cross-fades in (one restyle, the fade runs on the graphics
       // card); a colour carried over from the last page is applied at once. While a
       // scene (seasons, collection worlds) or a hover preview holds the colours, or in
       // a browser without view transitions, it glides as before.
       const fade = !restored && !themeHeld(shell) && crossfadeTheme(() => {
+        // The browser can run an older pick's change after a newer one (its snapshot
+        // took longer): that older colour must not win.
+        if (pick !== picks) return;
         setThemeNow(shell, palette);
         setThemeNow(document.documentElement, global);
         mark();
