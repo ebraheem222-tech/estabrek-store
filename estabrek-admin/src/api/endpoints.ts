@@ -81,6 +81,42 @@ export const ENDPOINTS = {
         block: (id: string) => `/admin/system/traffic/blocks/${id}`,
         forgive: "/admin/system/traffic/forgive",
       },
+      // The video library and upload settings (الوسائط → الفيديوهات)
+      mediaVideos: {
+        base: "/admin/media/videos",
+        settings: "/admin/media/videos/settings",
+        sign: "/admin/media/videos/sign",
+        local: "/admin/media/videos/local",
+        one: (id: string) => `/admin/media/videos/${id}`,
+        usage: (id: string) => `/admin/media/videos/${id}/usage`,
+        renditions: (id: string) => `/admin/media/videos/${id}/renditions`,
+        rendition: (id: string, rid: string) => `/admin/media/videos/${id}/renditions/${rid}`,
+        frames: (id: string) => `/admin/media/videos/${id}/frames`,
+      },
+      // Speed monitor and request lanes (مراقبة السرعة والأولوية)
+      systemSpeed: {
+        base: "/admin/system/speed",
+        live: "/admin/system/speed/live",
+        reset: "/admin/system/speed/reset",
+        resetStats: "/admin/system/speed/reset-stats",
+        rum: "/admin/system/speed/rum",
+        indexes: "/admin/system/speed/indexes",
+      },
+      // Background jobs (المهام بالخلفية)
+      systemJobs: {
+        base: "/admin/system/jobs",
+        run: (name: string) => `/admin/system/jobs/${encodeURIComponent(name)}/run`,
+      },
+      // Speed & cache (السرعة والكاش)
+      systemCache: {
+        base: "/admin/system/cache",
+        live: "/admin/system/cache/live",
+        reset: "/admin/system/cache/reset",
+        purge: "/admin/system/cache/purge",
+        popular: "/admin/system/cache/popular",
+        warm: "/admin/system/cache/warm",
+        restore: (id: string) => `/admin/system/cache/revisions/${id}/restore`,
+      },
       systemSecurityReset: "/admin/system/security/reset",
       systemSecurityRestore: (id: string) => `/admin/system/security/revisions/${id}/restore`,
       nav: {
@@ -119,6 +155,52 @@ export const ENDPOINTS = {
         imageDuplicates: "/admin/uploads/images/duplicates",
       },
 
+      // Automations (التلقائيات) and the bell
+      automations: {
+        base: "/admin/automations",
+        one: (id: string) => `/admin/automations/${encodeURIComponent(id)}`,
+        test: (id: string) => `/admin/automations/${encodeURIComponent(id)}/test`,
+      },
+      notifications: {
+        base: "/admin/notifications",
+        read: "/admin/notifications/read",
+      },
+      // The timeline (الجدول الزمني)
+      schedule: {
+        base: "/admin/schedule",
+        options: "/admin/schedule/options",
+        preview: "/admin/schedule/preview",
+        one: (id: string) => `/admin/schedule/${encodeURIComponent(id)}`,
+        cancel: (id: string) => `/admin/schedule/${encodeURIComponent(id)}/cancel`,
+        run: (id: string) => `/admin/schedule/${encodeURIComponent(id)}/run`,
+        undo: (id: string) => `/admin/schedule/${encodeURIComponent(id)}/undo`,
+      },
+      // A/B tests (تجارب A/B)
+      experiments: {
+        base: "/admin/experiments",
+        one: (id: string) => `/admin/experiments/${encodeURIComponent(id)}`,
+        start: (id: string) => `/admin/experiments/${encodeURIComponent(id)}/start`,
+        stop: (id: string) => `/admin/experiments/${encodeURIComponent(id)}/stop`,
+        keep: (id: string) => `/admin/experiments/${encodeURIComponent(id)}/keep`,
+      },
+      // Smart selling: sale rules and seasons (البيع الذكي)
+      selling: {
+        suggestions: "/admin/selling/suggestions",
+        rules: "/admin/selling/rules",
+        approve: "/admin/selling/suggestions/approve",
+        skip: "/admin/selling/suggestions/skip",
+        actions: "/admin/selling/actions",
+        undo: (id: string) => `/admin/selling/actions/${encodeURIComponent(id)}/undo`,
+        campaigns: "/admin/selling/campaigns",
+        campaignPreview: "/admin/selling/campaigns/preview",
+        campaign: (id: string) => `/admin/selling/campaigns/${encodeURIComponent(id)}`,
+        campaignEnd: (id: string) => `/admin/selling/campaigns/${encodeURIComponent(id)}/end`,
+      },
+      // Smart selling (توقّع المخزون)
+      insights: {
+        stock: "/admin/insights/stock",
+        stockSettings: "/admin/insights/stock/settings",
+      },
       inventory: {
         lowStock: "/admin/inventory/low-stock",
         adjustments: "/admin/inventory/adjustments",
