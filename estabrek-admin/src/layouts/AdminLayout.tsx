@@ -3,6 +3,7 @@ import React, { Suspense, useCallback, useEffect, useState, createContext, useCo
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { NewOrderAlerts, OrdersBell } from "../features/orders/NewOrderAlerts";
+import { NotificationsBell } from "../features/system/NotificationsBell";
 import { useNewOrdersCount } from "../features/orders/useNewOrdersCount";
 import { useSettings } from "../hooks/useSettings";
 import { cn } from "../components/ui/cn";
@@ -126,14 +127,18 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/sizes", "المقاسات"],
   ["/catalog/types", "أنواع المنتجات"],
   ["/inventory/back-in-stock", "بانتظار التوفّر"],
+  ["/inventory/forecast", "توقّع المخزون"],
   ["/inventory", "المخزون"],
   ["/discounts/coupons/test", "تجربة كوبون"],
+  ["/discounts/smart", "البيع الذكي"],
+  ["/discounts/ab", "تجارب A/B"],
   ["/discounts/coupons", "الكوبونات"],
   ["/settings", "الإعدادات"],
   ["/features", "الميزات"],
   ["/razan", "رزان"],
   ["/quiz", "سؤال وجواب"],
   ["/ai", "الذكاء الاصطناعي"],
+  ["/media/videos", "الفيديوهات"],
   ["/media", "الوسائط"],
   ["/chatbot", "مساعد المتجر"],
   ["/nav", "القوائم"],
@@ -144,6 +149,11 @@ const PAGE_TITLES: Array<[string, string]> = [
   ["/email", "تغيير البريد"],
   ["/system/security", "حماية السيرفر"],
   ["/system/traffic", "حماية الضغط والصيانة"],
+  ["/system/cache", "السرعة والكاش"],
+  ["/system/speed", "مراقبة السرعة والأولوية"],
+  ["/system/jobs", "المهام بالخلفية"],
+  ["/system/schedule", "الجدول الزمني"],
+  ["/system/automations", "التلقائيات"],
   ["/system/backups", "النسخ الاحتياطي"],
   ["/security", "الأمان"],
   ["/team/activity", "سجل النشاط"],
@@ -389,6 +399,7 @@ export default function AdminLayout() {
                     })}
                   </div>
                   {skin !== "classic" && <SkinToggleButton />}
+                  <NotificationsBell />
                   {canSeeOrders && <OrdersBell />}
                 </div>
               </div>

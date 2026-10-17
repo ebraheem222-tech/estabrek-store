@@ -169,6 +169,26 @@ export const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  calendar: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+    </svg>
+  ),
+  forecast: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+    </svg>
+  ),
+  jobs: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </svg>
+  ),
+  speed: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+    </svg>
+  ),
   security: (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 1.5l7.5 4.5v6c0 5.25-3.188 9.75-7.5 10.5C7.688 21.75 4.5 17.25 4.5 12V6L12 1.5z" />
@@ -214,6 +234,7 @@ const NAV_CATALOG: NavItem[] = [
 const NAV_INVENTORY: NavItem[] = [
   { to: "/admin/inventory/stock", label: "المخزون والباركود", icon: Icons.stock, requirePermissions: ["inventory:read"] },
   { to: "/admin/inventory/low-stock", label: "تنبيهات المخزون", icon: Icons.inventory, requirePermissions: ["inventory:read"] },
+  { to: "/admin/inventory/forecast", label: "توقّع المخزون", icon: Icons.forecast, requirePermissions: ["inventory:read"] },
   { to: "/admin/inventory/back-in-stock", label: "بانتظار التوفّر", icon: Icons.bell, requirePermissions: ["inventory:read"] },
   { to: "/admin/inventory/adjustments", label: "سجل المخزون", icon: Icons.inventory, requirePermissions: ["inventory:write"] },
 ];
@@ -221,6 +242,8 @@ const NAV_INVENTORY: NavItem[] = [
 const NAV_DISCOUNTS: NavItem[] = [
   { to: "/admin/discounts/coupons", label: "الكوبونات", icon: Icons.coupon, requirePermissions: ["discounts:read"] },
   { to: "/admin/discounts/coupons/test", label: "تجربة كوبون", icon: Icons.coupon, requirePermissions: ["discounts:write"] },
+  { to: "/admin/discounts/smart", label: "البيع الذكي", icon: Icons.forecast, requirePermissions: ["discounts:read"] },
+  { to: "/admin/discounts/ab", label: "تجارب A/B", icon: Icons.toggles, requirePermissions: ["discounts:read"] },
 ];
 
 const NAV_SITE: NavItem[] = [
@@ -230,6 +253,7 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/ai", label: "الذكاء الاصطناعي ✨", icon: Icons.chatbot, requirePermissions: ["settings:read"] },
   { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings, requirePermissions: ["settings:read"] },
   { to: "/admin/media", label: "الوسائط", icon: Icons.media, requirePermissions: ["media:read"] },
+  { to: "/admin/media/videos", label: "الفيديوهات", icon: Icons.media, requirePermissions: ["media:read"] },
   { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
   { to: "/admin/nav", label: "القوائم", icon: Icons.nav, requirePermissions: ["nav:write"] },
   { to: "/admin/pages", label: "الصفحات", icon: Icons.pages, requirePermissions: ["pages:read"] },
@@ -242,6 +266,11 @@ const NAV_TEAM: NavItem[] = [
   { to: "/admin/team/activity", label: "سجل النشاط", icon: Icons.activity, requirePermissions: ["activity:read"] },
   { to: "/admin/system/security", label: "حماية السيرفر", icon: Icons.security, requirePermissions: ["system:read"] },
   { to: "/admin/system/traffic", label: "حماية الضغط والصيانة", icon: Icons.activity, requirePermissions: ["system:read"] },
+  { to: "/admin/system/cache", label: "السرعة والكاش", icon: Icons.speed, requirePermissions: ["system:read"] },
+  { to: "/admin/system/speed", label: "مراقبة السرعة والأولوية", icon: Icons.activity, requirePermissions: ["system:read"] },
+  { to: "/admin/system/jobs", label: "المهام بالخلفية", icon: Icons.jobs, requirePermissions: ["system:read"] },
+  { to: "/admin/system/schedule", label: "الجدول الزمني", icon: Icons.calendar, requirePermissions: ["system:read"] },
+  { to: "/admin/system/automations", label: "التلقائيات", icon: Icons.bell, requirePermissions: ["settings:read"] },
   { to: "/admin/system/backups", label: "النسخ الاحتياطي", icon: Icons.backup, requirePermissions: ["system:read"] },
 ];
 
