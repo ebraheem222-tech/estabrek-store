@@ -244,6 +244,280 @@ model SecurityPolicyRevision {
   @@index([createdAt])
 }
 
+/// Speed settings set from the admin (Performance page): data.cache = the cache
+/// layers, TTLs, eviction rules and memory (see src/lib/cacheConfig.ts).
+model PerformanceSettings {
+  id          String   @id @default("default")
+  data        Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+/// Smart selling (admin → البيع الذكي): the stock forecast's numbers (lead time,
+/// cover days…), the sale rules and the A/B tests' defaults. One document.
+model SellingSettings {
+  id          String   @id @default("default")
+  data        Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+/// A price change from البيع الذكي (an approved suggestion or a season), kept so it
+/// can be undone: each size before and after.
+model PriceAction {
+  id          String    @id @default(cuid())
+  /// "discount" | "endDiscount" | "campaign"
+  kind        String
+  /// The rule that suggested it ("unseen", "lookedNotBought", "hotLowStock"), or null.
+  rule        String?
+  campaignId  String?
+  productId   String
+  title       String
+  /// [{ variantId, before: { price, originalPrice, salePrice, saleStartsAt, saleEndsAt }, after: {…} }]
+  changes     Json
+  /// "applied" | "undone" | "ended" (a season's prices, put back at its end)
+  status      String    @default("applied")
+  adminUserId String?
+  createdAt   DateTime  @default(now())
+  undoneAt    DateTime?
+
+  @@index([createdAt])
+  @@index([productId, createdAt])
+  @@index([campaignId])
+}
+
+/// A suggestion the owner said no to: not shown again until `until`.
+model SaleSuggestionSkip {
+  rule      String
+  productId String
+  until     DateTime
+  createdAt DateTime @default(now())
+
+  @@id([rule, productId])
+}
+
+/// A season or an occasion (Ramadan, Eid…): a theme and prices from a start to an
+/// end, and back by itself at the end (lib/jobs: campaigns, every minute).
+model Campaign {
+  id            String    @id @default(cuid())
+  name          String
+  startsAt      DateTime
+  endsAt        DateTime
+  /// The theme during it (a preset id; null = the shop's own), and the one before (put back).
+  themePresetId String?
+  themeBefore   String?
+  /// Percent off during it (null = prices stay), on everything or on some categories / products.
+  percentOff    Int?
+  categoryIds   String[]  @default([])
+  productIds    String[]  @default([])
+  /// "scheduled" | "running" | "ended" | "canceled"
+  status        String    @default("scheduled")
+  startedAt     DateTime?
+  endedAt       DateTime?
+  /// What happened at the start and the end (counts, sizes left alone).
+  log           Json?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, startsAt])
+}
+
+/// An A/B test (admin → تجارب A/B): half the visits (or `split`%) see B, the rest A,
+/// e.g. the hero film or the photo opening, 90 or 120 frames a second. Chosen per
+/// visit in the browser (no cookie); measured in visits, bag adds and orders.
+model Experiment {
+  id          String          @id @default(cuid())
+  name        String
+  /// "heroOpening" | "motion"
+  kind        String
+  /// For "motion": which setting (maxFps, phoneGlass…).
+  field       String?
+  /// What A and B show ("film" / "photo", 120 / 90, true / false…).
+  a           Json
+  b           Json
+  /// Share of visits that get B, in %.
+  split       Int             @default(50)
+  /// "draft" | "running" | "stopped"
+  status      String          @default("draft")
+  startedAt   DateTime?
+  stoppedAt   DateTime?
+  /// "A" | "B" once the owner kept one.
+  winner      String?
+  createdById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  days        ExperimentDay[]
+
+  @@index([status])
+}
+
+/// An A/B test's numbers per store day and side.
+model ExperimentDay {
+  experimentId String
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  day          DateTime   @db.Date
+  variant      String
+  visits       Int        @default(0)
+  bags         Int        @default(0)
+  orders       Int        @default(0)
+  revenue      Float      @default(0)
+
+  @@id([experimentId, day, variant])
+}
+
+/// A change set for later (admin → الجدول الزمني): the theme, motion settings,
+/// maintenance, the announcement bar, a page section shown or hidden, emptying the
+/// cache. Done on the minute by the background job "scheduled"; with `undoAt` it
+/// goes back by itself (only what wasn't changed by hand meanwhile).
+model ScheduledChange {
+  id          String    @id @default(cuid())
+  /// "theme" | "motion" | "maintenance" | "announcement" | "section" | "cachePurge"
+  kind        String
+  title       String
+  /// What to set (checked per kind).
+  payload     Json
+  runAt       DateTime
+  undoAt      DateTime?
+  /// "scheduled" | "applied" (waiting to go back) | "done" | "undone" | "canceled" | "failed"
+  status      String    @default("scheduled")
+  /// What it replaced, to go back.
+  before      Json?
+  appliedAt   DateTime?
+  undoneAt    DateTime?
+  /// What happened (an error, or "changed by hand, left as it was").
+  note        String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, runAt])
+  @@index([status, undoAt])
+}
+
+/// "When X, do Y" (admin → التلقائيات): a new order → a WhatsApp to the owner,
+/// stock below 3 → an email, a video ready → a notification, a product gone viral
+/// → pinned in the cache. Messages go through the outbox (modules/admin/automations.service.ts).
+model AutomationRule {
+  id              String          @id @default(cuid())
+  name            String
+  /// "order.created" | "stock.low" | "video.ready" | "product.viral" | "job.failing"
+  trigger         String
+  /// What the trigger needs: { minTotal }, { threshold }, { minScore, factor }…
+  conditions      Json
+  /// "notify" | "email" | "whatsapp" | "sms" | "pinProduct"
+  action          String
+  /// { to, subject, text, hours }
+  config          Json
+  enabled         Boolean         @default(true)
+  /// Not again for the same thing (order, size, product…) within this long.
+  cooldownMinutes Int             @default(0)
+  lastFiredAt     DateTime?
+  fired           Int             @default(0)
+  createdById     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  runs            AutomationRun[]
+}
+
+/// One time a rule did (or tried) its thing.
+model AutomationRun {
+  id      String         @id @default(cuid())
+  ruleId  String
+  rule    AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  at      DateTime       @default(now())
+  subject String?
+  ok      Boolean
+  detail  String?
+
+  @@index([ruleId, at])
+  @@index([at])
+}
+
+/// What a rule remembers per thing: when it last fired, "still low" for stock (it
+/// fires again only after the stock went back up), when to unpin a pinned product.
+model AutomationState {
+  ruleId  String
+  subject String
+  lastAt  DateTime
+  latched Boolean   @default(false)
+  until   DateTime?
+
+  @@id([ruleId, subject])
+}
+
+/// The bell in the admin's top bar (an automation's "notify").
+model AdminNotification {
+  id        String    @id @default(cuid())
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([readAt])
+}
+
+/// The speed settings as they were before each change (latest 30 kept).
+model PerformanceSettingsRevision {
+  id          String   @id @default(cuid())
+  data        Json
+  changed     String[] @default([])
+  adminUserId String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// A product's popularity score (views, wishlists, bags, purchases, fading by half
+/// every half-life) as of scoreAt, and its counts since tracking began.
+model ProductPopularity {
+  productId    String    @id
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  score        Float     @default(0)
+  scoreAt      DateTime  @default(now())
+  views        Int       @default(0)
+  wishlists    Int       @default(0)
+  bags         Int       @default(0)
+  purchases    Int       @default(0)
+  lastSignalAt DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  @@index([score])
+}
+
+/// Real shoppers' speed (admin → مراقبة السرعة والأولوية → تجربة الزباين): per store day,
+/// page kind, device and system, one row per measure, with how many visits fell in each
+/// time (or fps) bucket (lib/rum.ts). Kept 90 days. Nothing about the shopper.
+model RumDaily {
+  day     DateTime @db.Date
+  page    String
+  device  String
+  os      String
+  metric  String
+  count   Int      @default(0)
+  sum     Float    @default(0)
+  buckets Int[]    @default([])
+
+  @@id([day, page, device, os, metric])
+  @@index([day])
+}
+
+/// Counts per product per store day (kept 120 days), for the admin's charts.
+model ProductPopularityDay {
+  day       DateTime @db.Date
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  views     Int      @default(0)
+  wishlists Int      @default(0)
+  bags      Int      @default(0)
+  purchases Int      @default(0)
+
+  @@id([day, productId])
+  @@index([productId, day])
+}
+
 /// Every change made from the admin: who, what, when, from where.
 model AdminAuditLog {
   id          String     @id @default(cuid())
@@ -620,6 +894,16 @@ dominantColorHex String?
 palette          Json?
   /** low-res placeholder (base64 data URL) */
   blurDataUrl      String?
+
+  // Videos (kind = "VIDEO", admin → الوسائط → الفيديوهات)
+  durationMs Int?
+  fps        Float?
+  /** The cover image (a frame of the video). */
+  posterUrl  String?
+  /** Converted versions: [{ id, preset, profile, status, url, bytes, error, createdAt, checkedAt }] (lib/videoProfiles.ts). */
+  renditions Json?
+  /** What the upload was: codec, sound, the original's address. */
+  videoMeta  Json?
   @@index([folder])
   @@index([kind, folder, createdAt])
   @@index([imageHash])
@@ -794,6 +1078,9 @@ model Product {
   linkedRequests  CustomerRequest[] @relation("RequestLinkedProduct")
   items       ProductItem[]
   reviews     Review[]
+  /// How popular it is right now (lib/popularity.ts) and per day.
+  popularity     ProductPopularity?
+  popularityDays ProductPopularityDay[]
   comments    ProductComment[]
   wishlistedBy WishlistItem[]
   stockAlerts  StockAlert[]
