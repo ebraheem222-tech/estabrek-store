@@ -23,6 +23,15 @@ import customers from "./customers.controller.js";
 import stockAlerts from "./stockAlerts.controller.js";
 import features from "./features.controller.js";
 import traffic from "./traffic.controller.js";
+import cache from "./cache.controller.js";
+import videos from "./videos.controller.js";
+import speed from "./speed.controller.js";
+import jobs from "./jobs.controller.js";
+import insights from "./insights.controller.js";
+import selling from "./selling.controller.js";
+import experiments from "./experiments.controller.js";
+import schedule from "./schedule.controller.js";
+import automations, { notifications } from "./automations.controller.js";
 import backups from "./backups.controller.js";
 import productTypes from "./productTypes.controller.js";
 import { orderDelivery, productFiles, tickets } from "./fulfillment.controller.js";
@@ -108,15 +117,31 @@ r.use(
   }),
   uploads,
 );
+// The video library and the image/video upload settings (الوسائط → الفيديوهات).
+r.use("/media/videos", areaAccess({ read: "media:read", write: "media:write" }), videos);
 r.use("/inventory", areaAccess({ read: "inventory:read", write: "inventory:write" }), inventory);
 r.use("/coupons", areaAccess({ read: "discounts:read", write: "discounts:write" }), coupons);
+// Smart selling: sale rules and seasons (البيع الذكي).
+r.use("/selling", areaAccess({ read: "discounts:read", write: "discounts:write" }), selling);
+// A/B tests (تجارب A/B).
+r.use("/experiments", areaAccess({ read: "discounts:read", write: "discounts:write" }), experiments);
+// The timeline (الجدول الزمني): each change also checks the right of what it changes.
+r.use("/schedule", areaAccess({ read: ["settings:read", "system:read", "pages:read"], write: ["settings:write", "system:write", "pages:write"] }), schedule);
+// Automations (التلقائيات), and the bell any member sees.
+r.use("/automations", areaAccess({ read: "settings:read", write: "settings:write" }), automations);
+r.use("/notifications", areaAccess({ read: "dashboard:read", write: "dashboard:read" }), notifications);
 r.use("/chatbot", areaAccess({ read: "chatbot:read", write: "chatbot:write" }), chatbot);
 r.use("/staff", areaAccess({ read: "staff:read", write: "staff:write" }), staff);
 r.use("/activity", requirePermission("activity:read"), activity);
 r.use("/system/traffic", areaAccess({ read: "system:read", write: "system:write" }), traffic);
+r.use("/system/cache", areaAccess({ read: "system:read", write: "system:write" }), cache);
+r.use("/system/speed", areaAccess({ read: "system:read", write: "system:write" }), speed);
+r.use("/system/jobs", areaAccess({ read: "system:read", write: "system:write" }), jobs);
 r.use("/system/backups", areaAccess({ read: "system:read", write: "system:write" }), backups);
 r.use("/system", areaAccess({ read: "system:read", write: "system:write" }), system);
 r.use("/customers", areaAccess({ read: "customers:read", write: "customers:write" }), customers);
 r.use("/stock-alerts", areaAccess({ read: "inventory:read", write: "inventory:write" }), stockAlerts);
+// Smart selling: the stock forecast (توقّع المخزون).
+r.use("/insights", areaAccess({ read: "inventory:read", write: "inventory:write" }), insights);
 
 export default r;

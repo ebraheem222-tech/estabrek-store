@@ -35,6 +35,19 @@ type Payload = Record<string, any>;
 type Template = (p: Payload & { siteName: string }) => RenderedEmail;
 
 export const EMAIL_TEMPLATES: Record<string, Template> = {
+  /** To the owner, from an automation (التلقائيات): its subject and text, and a link into the admin. */
+  OWNER_ALERT: (p) => ({
+    subject: String(p.subject || "تنبيه من المتجر"),
+    html: layout({
+      siteName: p.siteName,
+      title: String(p.subject || "تنبيه"),
+      body: `<p style="white-space:pre-line">${esc(p.text)}</p>${p.url ? button(String(p.url), "افتح بلوحة الإدارة") : ""}`,
+      footer: "وصلتك لأنك عامل تلقائية بلوحة الإدارة (التلقائيات). بتقدر توقّفها من هناك.",
+    }),
+    text: `${p.text}${p.url ? `
+${p.url}` : ""}`,
+  }),
+
   /** Customer sign-in: a 6-digit code. */
   CUSTOMER_LOGIN_CODE: (p) => ({
     subject: `كود الدخول: ${p.code}`,

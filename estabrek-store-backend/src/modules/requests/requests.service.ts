@@ -245,11 +245,4 @@ export async function purgeOldPhotos(now = new Date()) {
   return { requests: old.length, photos: removed };
 }
 
-let timer: NodeJS.Timeout | undefined;
-export function startRequestPhotoCleanup() {
-  if (env.NODE_ENV === "test" || timer) return;
-  const run = () => void purgeOldPhotos().catch((e) => console.error("[requests] photo cleanup failed:", (e as Error)?.message));
-  setTimeout(run, 2 * 60_000).unref?.();
-  timer = setInterval(run, 6 * 3600_000);
-  timer.unref?.();
-}
+// Runs every 6 hours as a background job (src/jobs.ts: requestPhotos), first 2 minutes after start.

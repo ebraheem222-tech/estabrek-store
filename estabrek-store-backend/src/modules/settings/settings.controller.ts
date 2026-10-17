@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async.js";
+import { cacheResponse } from "../../middleware/responseCache.js";
 import { validate } from "../../utils/validate.js";
 import { MenuLocationParam } from "./settings.schemas.js";
 import {
@@ -11,13 +12,14 @@ import {
 const r = Router();
 
 /** GET /v1/settings  → site settings + header/footer trees */
-r.get("/", asyncHandler(async (_req, res) => {
+r.get("/", cacheResponse("settings"), asyncHandler(async (_req, res) => {
   res.json(await getPublicSettings());
 }));
 
 /** GET /v1/settings/menu/:location  (HEADER|FOOTER|SECONDARY|CUSTOM) default menus by location */
 r.get(
   "/menu/:location",
+  cacheResponse("settings"),
   validate({ params: MenuLocationParam }),
   asyncHandler(async (req, res) => {
     const { location } = req.params as unknown as { location: "HEADER" | "FOOTER" | "SECONDARY" | "CUSTOM" };
@@ -28,7 +30,7 @@ r.get(
 );
 
 /** GET /v1/settings/menu/by-id/:id  (explicit menu id) */
-r.get("/menu/by-id/:id", asyncHandler(async (req, res) => {
+r.get("/menu/by-id/:id", cacheResponse("settings"), asyncHandler(async (req, res) => {
   const { id } = req.params;
   const tree = await getMenuTreeById(id).catch(() => null);
   if (!tree) return res.status(404).json({ error: "NOT_FOUND" });

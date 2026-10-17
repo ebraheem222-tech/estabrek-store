@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { prisma } from "../../lib/prisma.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
+import { publicStorefrontMotion } from "../../lib/storefrontMotion.js";
+import { publicExperiments } from "../../lib/experiments.js";
 import type { NavigationItem, SiteSettings } from "@prisma/client";
 
 const PUBLIC_SETTINGS_TTL_MS = 30_000;
@@ -107,6 +109,10 @@ export async function getPublicSettings() {
       customerAccountsEnabled: s.customerAccountsEnabled === true,
       stockAlertsEnabled: s.stockAlertsEnabled === true,
       // Maintenance: the storefront shows a "back soon" screen; the owner opens it with ?preview=<key> (only its hash is public).
+      // How the shop moves and loads (admin → السرعة والكاش → الحركة والتحميل).
+      performance: await publicStorefrontMotion(),
+      // Running A/B tests (admin → تجارب A/B): the shop picks A or B per visit.
+      experiments: await publicExperiments().catch(() => []),
       maintenance: s.maintenanceMode
         ? { on: true, message: s.maintenanceMessage ?? null, previewHash: s.maintenanceKey ? createHash("sha256").update(s.maintenanceKey).digest("hex") : null }
         : { on: false, message: null, previewHash: null },

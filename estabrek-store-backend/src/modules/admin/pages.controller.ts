@@ -51,7 +51,7 @@ function toNullableJsonInput(value: unknown): Prisma.InputJsonValue | Prisma.Nul
   return value as Prisma.InputJsonValue;
 }
 
-function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []) {
+export function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []) {
   const paths = Array.from(new Set(slugs.filter(Boolean))) as string[];
   void (async () => {
     await cacheDel("storefront:pages:published");
@@ -150,7 +150,7 @@ function validateSuggestedSections(sections: SuggestedSection[]) {
 
 type RevisionActor = { email?: string | null; sub?: string | null } | null | undefined;
 
-async function capturePageRevision(pageId: string, reason: string, actor?: RevisionActor) {
+export async function capturePageRevision(pageId: string, reason: string, actor?: RevisionActor) {
   const normalizedReason = String(reason || "Update page").trim();
   const recentCutoff = new Date(Date.now() - 45_000);
   const recent = await prisma.pageRevision.findFirst({

@@ -63,7 +63,8 @@ const UiTailwindZ = z.object({
 
 const AlignZ = z.enum(["left", "center", "right"]);
 const BannerVariantZ = z.enum(["info", "success", "warning", "danger"]);
-const VideoProviderZ = z.enum(["AUTO", "YOUTUBE", "VIMEO", "MP4"]);
+// HLS: an adaptive stream from the video library (.m3u8).
+const VideoProviderZ = z.enum(["AUTO", "YOUTUBE", "VIMEO", "MP4", "HLS"]);
 const VideoAspectZ = z.enum(["16/9", "4/3", "1/1", "9/16"]);
 
 const ButtonZ = z.object({

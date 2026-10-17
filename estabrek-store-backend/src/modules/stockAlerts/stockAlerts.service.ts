@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/httpError.js";
 import { stockAlertsOn } from "../../lib/features.js";
+import { triggerJob } from "../../lib/jobs.js";
 import { emailConfigured, sendEmail } from "../outbox/sender/email.js";
 
 /**
@@ -152,8 +153,9 @@ export async function sweepStockAlerts(limit = SWEEP_BATCH) {
 }
 
 /* ---------------- Scheduling ---------------- */
+// The regular sweep is a background job (src/jobs.ts: stockAlerts, every
+// STOCK_ALERT_INTERVAL_MS, default 2 minutes; 0 turns it off).
 
-let timer: NodeJS.Timeout | undefined;
 let kickTimer: NodeJS.Timeout | undefined;
 let running: Promise<unknown> | null = null;
 
@@ -170,6 +172,9 @@ function runSweep() {
 /** A sweep a few seconds after stock may have changed (admin saves; several saves → one sweep). */
 export function kickStockAlerts(delayMs = 3_000) {
   if (process.env.NODE_ENV === "test") return;
+  // The automations' "stock below N" look too.
+  triggerJob("automations", delayMs + 2_000);
+  if (triggerJob("stockAlerts", delayMs)) return;
   if (kickTimer) clearTimeout(kickTimer);
   kickTimer = setTimeout(() => {
     kickTimer = undefined;
@@ -178,16 +183,7 @@ export function kickStockAlerts(delayMs = 3_000) {
   kickTimer.unref?.();
 }
 
-/** Regular sweep (STOCK_ALERT_INTERVAL_MS, default 2 minutes; 0 turns it off). */
-export function startStockAlertSweeper() {
-  const every = Number(process.env.STOCK_ALERT_INTERVAL_MS ?? 120_000);
-  if (!Number.isFinite(every) || every <= 0) return;
-  timer = setInterval(() => void runSweep(), Math.max(15_000, every));
-  timer.unref?.();
-}
-
-export function stopStockAlertSweeper() {
-  if (timer) clearInterval(timer);
+export function stopStockAlertKicks() {
   if (kickTimer) clearTimeout(kickTimer);
-  timer = kickTimer = undefined;
+  kickTimer = undefined;
 }
