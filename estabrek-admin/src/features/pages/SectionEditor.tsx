@@ -6,6 +6,7 @@ import { Select } from "../../components/ui/Select";
 import { cn } from "../../components/ui/cn";
 import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import { MediaUrlInput } from "../../components/media/MediaUrlInput";
+import { VideoPickerModal } from "../../components/media/VideoPickerModal";
 import { listCategories, type CatalogCategory } from "../../api/catalog.api";
 import DOMPurify from "dompurify";
 import type { TwTokens } from "../../cms/style/tokens";
@@ -751,7 +752,7 @@ export type VideoData = {
   subtitle?: string;
   url: string;
   posterUrl?: string;
-  provider?: "AUTO" | "YOUTUBE" | "VIMEO" | "MP4";
+  provider?: "AUTO" | "YOUTUBE" | "VIMEO" | "MP4" | "HLS";
   aspect?: "16/9" | "4/3" | "1/1" | "9/16";
   autoplay?: boolean;
   muted?: boolean;
@@ -5127,6 +5128,7 @@ function CardsEditor({ value, onChange }: { value: CardsData; onChange: (v: Card
 
 function VideoEditor({ value, onChange, errors }: { value: VideoData; onChange: (v: VideoData) => void; errors?: CommonErrors }) {
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
@@ -5153,13 +5155,23 @@ function VideoEditor({ value, onChange, errors }: { value: VideoData; onChange: 
         placeholder="https://..."
       />
       {errors?.url ? <div className="text-xs text-red-400">{errors.url}</div> : null}
+      <div>
+        <Button type="button" variant="secondary" onClick={() => setVideoOpen(true)}>
+          اختار من الفيديوهات
+        </Button>
+        <VideoPickerModal
+          open={videoOpen}
+          onClose={() => setVideoOpen(false)}
+          onPick={({ url, posterUrl, stream }) => onChange({ ...value, url, provider: stream ? "HLS" : "MP4", posterUrl: value.posterUrl || posterUrl || "" })}
+        />
+      </div>
 
       <div className="grid gap-3 md:grid-cols-2">
         <Select
           label="Provider"
           value={value.provider ?? "AUTO"}
           onChange={(v) => onChange({ ...value, provider: (v as any) ?? "AUTO" })}
-          options={[{ value: "AUTO", label: "AUTO" }, { value: "YOUTUBE", label: "YouTube" }, { value: "VIMEO", label: "Vimeo" }, { value: "MP4", label: "MP4" }]}
+          options={[{ value: "AUTO", label: "AUTO" }, { value: "YOUTUBE", label: "YouTube" }, { value: "VIMEO", label: "Vimeo" }, { value: "MP4", label: "MP4" }, { value: "HLS", label: "HLS (بث متكيّف)" }]}
         />
         <MediaUrlInput
           label="Poster URL (اختياري)"
