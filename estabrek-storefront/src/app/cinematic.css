@@ -2335,6 +2335,16 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
     min-height: 420px;
   }
 }
+/* The fabric study switched off from the admin (or the shop's scroll animations off):
+   the same still layout as above, which only "reduce motion" got before. */
+.design-study[data-still] { height: auto; }
+.design-study[data-still] .design-study-sticky { position: relative; height: auto; min-height: 700px; }
+.design-study[data-still] :is(.study-progress, .model-scroll-hint) { display: none; }
+.design-study[data-still] .study-chapter-static { margin-top: 22px; min-height: 0; }
+.design-study[data-still] .study-chapter-static h2 { font-size: 34px; }
+[dir="rtl"] .design-study[data-still] .study-chapter-static h2 { font-size: 28px; line-height: 1.5; }
+.design-study[data-still] .study-chapter-static p { margin-top: 10px; }
+.design-study[data-still] .model-stage { min-height: 420px; }
 
 .rose-reel-controls {
   display: flex;
@@ -4595,7 +4605,12 @@ body:has(.rose-maint) { overflow: hidden; }
    graphics chip re-blurred what moves behind them on every frame, at about 3 device
    pixels per CSS pixel (a 20px blur is ~55 real pixels wide). Measured on the shop
    page at phone size: half of the graphics work while scrolling. Their backgrounds
-   are 88–94% opaque, so the look barely changes; computers keep the frosted glass. */
+   are 88–94% opaque, so the look barely changes; computers keep the frosted glass.
+   The admin can bring it back (السرعة والكاش → الحركة والتحميل: html[data-phone-glass]). */
 @media (hover: none) and (pointer: coarse) {
-  *, *::before, *::after, ::backdrop { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  :where(html:not([data-phone-glass])) *, :where(html:not([data-phone-glass])) *::before, :where(html:not([data-phone-glass])) *::after, :where(html:not([data-phone-glass])) ::backdrop { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 }
+
+/* The owner previews new motion settings (lib/motionSettings.ts): a small note with a way out. */
+.motion-preview-note { position: fixed; z-index: 90; inset-inline: 12px; top: 12px; margin-inline: auto; width: fit-content; max-width: calc(100% - 24px); display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 999px; background: #2a1420; color: #fff; font-size: 13px; box-shadow: 0 8px 24px rgb(0 0 0 / 25%); }
+.motion-preview-note button { border: 0; border-radius: 999px; padding: 4px 10px; background: #fff; color: #2a1420; font: inherit; font-weight: 600; cursor: pointer; }

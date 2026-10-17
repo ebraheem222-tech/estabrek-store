@@ -10,6 +10,7 @@ import ShareButton from "@/components/ShareButton";
 import RecommendedProductsSection from "@/components/RecommendedProductsSection";
 import { RecentlyViewedSection } from "@/components/RecentlyViewedSection";
 import { ProductPageEnhancements } from "@/components/ProductPageEnhancements";
+import { ProductViewSignal } from "@/components/ProductViewSignal";
 
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
 import type { Metadata } from "next";
@@ -162,6 +163,7 @@ const productLd: any = {
       <main id="main-content" tabIndex={-1}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
+        <ProductViewSignal productId={String((product as any).id)} />
         <RosePageFrame className="rose-shop rose-product-page">
           <RoseProduct product={product as any} crumbs={crumbs} related={related} />
         </RosePageFrame>
@@ -179,6 +181,7 @@ const productLd: any = {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
       
       {/* All Product Enhancements - Client Component */}
+      <ProductViewSignal productId={String((product as any).id)} />
       <ProductPageEnhancements product={product as any} />
       
       <ProductDetail product={product as any} />

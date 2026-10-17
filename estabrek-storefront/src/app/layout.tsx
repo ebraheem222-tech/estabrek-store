@@ -17,6 +17,9 @@ import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { EffectsStyles } from "@/components/EffectsStyles";
 import { StorefrontChrome } from "@/components/cinematic/StorefrontChrome";
 import { MaintenanceGate } from "@/components/cinematic/MaintenanceGate";
+import { MotionSettingsBridge } from "@/components/MotionSettingsBridge";
+import { normalizeMotion } from "@/lib/motionSettings";
+import { abHeadScript, abTests } from "@/lib/ab";
 import { MarketingPixels } from "@/components/MarketingPixels";
 
 /**
@@ -90,6 +93,11 @@ export default async function RootLayout({
   // Admin → المخزون → بانتظار التوفّر (off by default).
   const stockAlertsEnabled = settings.site?.stockAlertsEnabled === true;
   const navbarHeader = { ...(header ?? {}), sticky: true };
+  // Admin → السرعة والكاش → الحركة والتحميل: read by the scroll scenes before they start.
+  const motion = normalizeMotion((settings.site as any)?.performance);
+  const motionScript = `window.__estabrekMotion=${JSON.stringify(motion).replace(/</g, "\\u003c")};`;
+  // Admin → تجارب A/B: this visit's sides are picked before the page shows.
+  const abTestsNow = abTests((settings.site as any)?.experiments);
   const rawLoading = header?.ui?.loading ?? null;
   const enabled = rawLoading?.enabled === true;
   const rawId =
@@ -105,16 +113,20 @@ export default async function RootLayout({
   return (
     <html
       lang="ar"
+      data-phone-glass={motion.phoneGlass ? "" : undefined}
       dir="rtl"
       data-theme={defaultTheme}
       className={defaultTheme}
       suppressHydrationWarning
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: motionScript }} />
+        {abTestsNow.length ? <script dangerouslySetInnerHTML={{ __html: abHeadScript(abTestsNow) }} /> : null}
         <link rel="preconnect" href="https://res.cloudinary.com" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body>
+        <MotionSettingsBridge />
         <a href="#main-content" className="skip-link">
           تخطي إلى المحتوى
         </a>
