@@ -1,6 +1,8 @@
 // src/modules/catalog/catalog.service.ts
 import { prisma } from "../../lib/prisma.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
+import { notePurchases } from "../../lib/popularity.js";
+import { emitAutomation } from "../../lib/automations.js";
 import { phoneKey } from "../../lib/phoneKey.js";
 import { Prisma } from "@prisma/client";
 import { annotateLinesWithDiscount } from "../../utils/money.js";
@@ -1687,6 +1689,15 @@ export async function submitOrderRequest(data: {
 
     return created;
   });
+
+  // Each product ordered counts towards its popularity (the cache keeps popular ones longer).
+  void notePurchases(normalized);
+  // Admin → التلقائيات: "a new order → a WhatsApp to me"…
+  emitAutomation(
+    "order.created",
+    { orderId: req.id, customerName: data.customerName, phone: data.phone, total: Number(req.total ?? 0), items: normalized.reduce((n, l) => n + Math.max(1, Number(l.quantity ?? 1)), 0), city: data.city ?? "", source: data.source ?? "", link: `/admin/orders/${req.id}` },
+    `order:${req.id}`,
+  );
 
   return req;
 }

@@ -168,20 +168,4 @@ export async function maybeRunDailyBackup(now = new Date()) {
   return runBackup({ trigger: "auto" });
 }
 
-let timer: NodeJS.Timeout | undefined;
-
-/** Checks every 10 minutes (BACKUP_CHECK_MS; 0 turns the schedule off), first 5 minutes after start. */
-export function startBackupScheduler() {
-  const every = Number(process.env.BACKUP_CHECK_MS ?? 10 * 60_000);
-  if (!Number.isFinite(every) || every <= 0) return;
-  const tick = () => void maybeRunDailyBackup().catch((e) => console.error("[backup] scheduled run failed:", (e as Error)?.message));
-  const first = setTimeout(tick, 5 * 60_000);
-  first.unref?.();
-  timer = setInterval(tick, Math.max(60_000, every));
-  timer.unref?.();
-}
-
-export function stopBackupScheduler() {
-  if (timer) clearInterval(timer);
-  timer = undefined;
-}
+// Checked every 10 minutes by a background job (src/jobs.ts: backup; BACKUP_CHECK_MS, 0 turns it off), first 5 minutes after start.

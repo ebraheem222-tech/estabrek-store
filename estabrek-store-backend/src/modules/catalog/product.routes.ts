@@ -2,6 +2,7 @@ import { Router } from "express";
 import { optionalCustomer } from "../../middleware/customerAuth.js";
 import { activeCustomerId } from "../customer/customer.service.js";
 import { asyncHandler } from "../../utils/async.js";
+import { cacheResponse } from "../../middleware/responseCache.js";
 import { validate } from "../../utils/validate.js";
 import { prisma } from "../../lib/prisma.js";
 import { attrFiltersFrom, attributeFacets, publicType } from "../productTypes/productTypes.js";
@@ -30,20 +31,27 @@ import {
 
 const r = Router();
 
+/** The product a detail answer is about (its popularity sets how long it stays cached). */
+const productOfBody = (_req: unknown, body: unknown) => (body && typeof body === "object" ? String((body as { id?: unknown }).id ?? "") : "");
+
+/** A typed search is cached with searches, the rest (category, filters, sort) with grids. */
+const listingOrSearch = (req: { query: unknown }) =>
+  String((req.query as Record<string, unknown>)?.q ?? "").trim() ? ("search" as const) : ("listings" as const);
+
 // list/browse
-r.get("/products", validate({ query: ProductListQuery }), asyncHandler(async (req, res) => {
+r.get("/products", cacheResponse(listingOrSearch), validate({ query: ProductListQuery }), asyncHandler(async (req, res) => {
   const q = ProductListQuery.parse(req.query);
   res.json(await listProducts({ ...q, attrs: attrFiltersFrom(req.query as Record<string, unknown>) }));
 }));
 
 // Kinds of products and their fields (for the shop's filters and labels).
-r.get("/product-types", asyncHandler(async (_req, res) => {
+r.get("/product-types", cacheResponse("categories"), asyncHandler(async (_req, res) => {
   const types = await prisma.productType.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] });
   res.json({ types: types.map(publicType) });
 }));
 
 // Filter choices with counts from the types' filterable fields: ?category=slug&categoryId=&type=slug&q=
-r.get("/attribute-facets", asyncHandler(async (req, res) => {
+r.get("/attribute-facets", cacheResponse("filters"), asyncHandler(async (req, res) => {
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
   const and: any[] = [{ isActive: true }];
   const type = str(req.query.type);
@@ -56,26 +64,26 @@ r.get("/attribute-facets", asyncHandler(async (req, res) => {
 }));
 
 // batch by ids (for CMS + landing sections)
-r.post("/products/by-ids", validate({ body: ProductIdsBody }), asyncHandler(async (req, res) => {
+r.post("/products/by-ids", cacheResponse("listings"), validate({ body: ProductIdsBody }), asyncHandler(async (req, res) => {
   const { ids, lite } = ProductIdsBody.parse(req.body);
   res.json({ items: await listProductsByIds(ids, { lite }) });
 }));
 
 // batch by slugs (for CMS + landing sections)
-r.post("/products/by-slugs", validate({ body: ProductSlugsBody }), asyncHandler(async (req, res) => {
+r.post("/products/by-slugs", cacheResponse("listings"), validate({ body: ProductSlugsBody }), asyncHandler(async (req, res) => {
   const { slugs, lite } = ProductSlugsBody.parse(req.body);
   res.json({ items: await listProductsBySlugs(slugs, { lite }) });
 }));
 
 // detail by slug
-r.get("/products/slug/:slug", asyncHandler(async (req, res) => {
+r.get("/products/slug/:slug", cacheResponse("products", { subject: productOfBody }), asyncHandler(async (req, res) => {
   const p = await getProductBySlug(req.params.slug);
   if (!p) return res.status(404).json({ error: "NOT_FOUND" });
   res.json(p);
 }));
 
 // detail by id
-r.get("/products/:id", asyncHandler(async (req, res) => {
+r.get("/products/:id", cacheResponse("products", { subject: productOfBody }), asyncHandler(async (req, res) => {
   const p = await getProductById(req.params.id);
   if (!p) return res.status(404).json({ error: "NOT_FOUND" });
   res.json(p);
