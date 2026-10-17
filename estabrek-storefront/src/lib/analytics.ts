@@ -8,6 +8,8 @@
  * right away) wait in a short queue and go out once they are ready.
  */
 
+import { abConvert } from "./ab";
+
 export type TrackItem = {
   id: string;
   name: string;
@@ -111,11 +113,16 @@ export const trackBeginCheckout = (items: TrackItem[], value: number, currency?:
   fanOut("begin_checkout", "InitiateCheckout", "InitiateCheckout", items, { value, currency });
 
 /** An order sent without paying online (WhatsApp / pay on delivery): a lead, not yet a sale. */
-export const trackLead = (items: TrackItem[], value: number, currency?: string, orderId?: string) =>
-  fanOut("generate_lead", "Lead", "SubmitForm", items, { value, currency, orderId });
+export const trackLead = (items: TrackItem[], value: number, currency?: string, orderId?: string) => {
+  // An order for the A/B tests (no tracker needed; once per visit and test).
+  abConvert("order", value);
+  return fanOut("generate_lead", "Lead", "SubmitForm", items, { value, currency, orderId });
+};
 
-export const trackPurchase = (items: TrackItem[], value: number, currency?: string, orderId?: string) =>
-  fanOut("purchase", "Purchase", "CompletePayment", items, { value, currency, orderId });
+export const trackPurchase = (items: TrackItem[], value: number, currency?: string, orderId?: string) => {
+  abConvert("order", value);
+  return fanOut("purchase", "Purchase", "CompletePayment", items, { value, currency, orderId });
+};
 
 /* A card/PayPal payment finishes on another page: what was paid for is kept until then. */
 const PENDING_KEY = "estabrek_pending_purchase";

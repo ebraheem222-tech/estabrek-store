@@ -23,7 +23,12 @@
  *   each time it had to come down again) and is never saved;
  * - only the shopper's own ?motion= choice, data saver or a 2 GB device turn
  *   on the light mode.
+ *
+ * The admin sets the limits (السرعة والكاش → الحركة والتحميل, lib/motionSettings.ts):
+ * the highest frame rate, whether it adapts at all, when the light mode starts
+ * and the sharpest 3D on computers and phones. The defaults are the values above.
  */
+import { motionSettings } from "./motionSettings";
 
 export type MotionLevel = "full" | "lite";
 
@@ -57,6 +62,9 @@ export const motionStats = {
   targetFps: 60,
   renderDpr: 1,
   frameMs: 0,
+  /** Measuring windows so far and their frame times added up (the speed report averages a page's). */
+  windows: 0,
+  frameMsTotal: 0,
   late: 0,
   seekMs: 0,
   reason: "",
@@ -82,11 +90,12 @@ function read(): MotionLevel {
     return choice;
   }
   const nav = navigator as Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number };
-  if (nav.connection?.saveData) {
+  const limits = motionSettings();
+  if (limits.liteOnSaveData && nav.connection?.saveData) {
     motionStats.reason = "data saver";
     return "lite";
   }
-  if (nav.deviceMemory && nav.deviceMemory <= 2) {
+  if (limits.liteMemoryGb > 0 && nav.deviceMemory && nav.deviceMemory <= limits.liteMemoryGb) {
     motionStats.reason = "low memory";
     return "lite";
   }
@@ -123,9 +132,14 @@ function displayTier(hz: number) {
   return 30;
 }
 
+/** The admin's highest frame rate for the scenes. */
+const capFps = () => motionSettings().maxFps;
+/** Adapting is off when the shopper chose (?motion=) or the admin switched it off. */
+const fixedRate = () => forced || !motionSettings().adaptive;
+
 /** Current heavy-scene target. */
 export function sceneFps() {
-  const fps = motionLevel() === "lite" ? 30 : forced ? ceiling : Math.min(budget, ceiling);
+  const fps = motionLevel() === "lite" ? 30 : Math.min(capFps(), fixedRate() ? ceiling : Math.min(budget, ceiling));
   motionStats.targetFps = fps;
   return fps;
 }
@@ -151,8 +165,14 @@ export function sceneDpr(): number {
   const fps = sceneFps();
   const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
   // Desktop keeps more resolution; phones and tablets put smooth movement first.
-  let cap = 1.6;
-  if (coarse) cap = fps >= 110 ? 1.2 : fps >= 80 ? 1.3 : fps >= 60 ? 1.4 : fps >= 45 ? 1.15 : 1;
+  // The admin sets the sharpest (desktop 1.6, phone 1.4 at 60 fps by default); the
+  // faster tiers on phones keep the same proportion below it.
+  const limits = motionSettings();
+  let cap = limits.desktopDpr / 100;
+  if (coarse) {
+    const tier = fps >= 110 ? 1.2 : fps >= 80 ? 1.3 : fps >= 60 ? 1.4 : fps >= 45 ? 1.15 : 1;
+    cap = Math.max(1, (tier * limits.phoneDpr) / 140);
+  }
   const dpr = Math.min(raw, cap);
   motionStats.renderDpr = Math.round(dpr * 100) / 100;
   return dpr;
@@ -202,7 +222,7 @@ function measureHz() {
 }
 
 function lower(reason: string) {
-  const current = Math.min(budget, ceiling);
+  const current = Math.min(budget, ceiling, capFps());
   const next = LADDER.find((fps) => fps < current);
   if (!next) return false;
   budget = next;
@@ -213,7 +233,7 @@ function lower(reason: string) {
 }
 
 function raise() {
-  const next = LADDER.filter((fps) => fps > budget && fps <= ceiling).pop();
+  const next = LADDER.filter((fps) => fps > budget && fps <= ceiling && fps <= capFps()).pop();
   if (!next) return;
   budget = next;
   motionStats.reason = `smooth again -> ${next}fps`;
@@ -247,8 +267,10 @@ function startWatching() {
     const late = gaps.filter((g) => g > pace * 1.65).length / gaps.length;
     gaps.length = 0;
     motionStats.frameMs = Math.round(average * 10) / 10;
+    motionStats.windows += 1;
+    motionStats.frameMsTotal += average;
     motionStats.late = Math.round(late * 100) / 100;
-    if (forced || motionLevel() === "lite") return;
+    if (fixedRate() || motionLevel() === "lite") return;
     const struggling = late > 0.18 || (ceiling >= 60 && average > 1000 / FLOOR_FPS);
     if (struggling) {
       smooth = 0;

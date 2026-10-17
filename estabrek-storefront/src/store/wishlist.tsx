@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { roseReact } from "@/lib/roseEvents";
+import { signal } from "@/lib/signals";
 import { useOptionalAccount } from "@/store/account";
 
 interface WishlistItem {
@@ -114,6 +115,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   const addToWishlist = useCallback((item: Omit<WishlistItem, "addedAt">) => {
     roseReact("wishlist-add");
+    signal("wishlist", { productId: item.id });
     setItems((prev) => {
       if (prev.some((i) => i.id === item.id)) return prev;
       return [...prev, { ...item, addedAt: Date.now() }];
