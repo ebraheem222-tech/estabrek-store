@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err);
+  // For the monitor's error list (admin → مراقبة السرعة والأولوية).
+  res.locals.errorMessage = String(err?.message ?? err).slice(0, 300);
 
   if (err instanceof ZodError) {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: err.flatten() });

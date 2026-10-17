@@ -53,6 +53,9 @@ function allowed(ip: string) {
   return allowRules.length > 0 && isIpInRules(ip, allowRules);
 }
 
+/** The shop's small batched "viewed / added" counts weigh like a page view, not a change. */
+const isSignalPath = (path: string) => path === "/v1/storefront/signals" || path === "/v1/storefront/rum" || path === "/v1/storefront/ab";
+
 function isAuthPath(path: string) {
   return path.startsWith("/v1/auth") || path.startsWith("/v1/customer/auth") || path.startsWith("/v1/stock-alerts");
 }
@@ -80,7 +83,11 @@ export const pressureGuard: RequestHandler = (req, res, next) => {
   const s = policy().pressure;
   if (s.mode === "off" || allowed(ip) || isAdmin(req.headers.authorization)) return next();
 
-  const weight = isAuthPath(req.path) ? s.weightAuth : req.method === "GET" || req.method === "HEAD" ? s.weightRead : s.weightWrite;
+  const weight = isAuthPath(req.path)
+    ? s.weightAuth
+    : req.method === "GET" || req.method === "HEAD" || isSignalPath(req.path)
+      ? s.weightRead
+      : s.weightWrite;
   const verdict = hit({ ip, weight, path: req.path, method: req.method, userAgent: req.get("user-agent") ?? "" }, s);
 
   if (verdict.action === "block") {
