@@ -38,6 +38,8 @@ export type ScrollMotion = {
   stop(): void;
 };
 
+import { motionSettings } from "@/lib/motionSettings";
+
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 
 /**
@@ -61,7 +63,7 @@ export function springStep(current: number, target: number, velocity: number, sm
 
 export function createScrollProgressMotion(present: (progress: number) => void, options: Options = {}): ScrollMotion {
   const smoothTime = options.smoothTime ?? 0.09;
-  const maxFrame = options.maxFrame ?? 0.25;
+  const maxFrame = options.maxFrame ?? motionSettings().maxStepMs / 1000;
   const epsilon = options.epsilon ?? 0.00001;
 
   let current = 0;

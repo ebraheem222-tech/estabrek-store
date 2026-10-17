@@ -5,6 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useLanguage } from "./Language";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 
 /** Static-first campaign, progressively enhanced with one reversible held scene. */
 export function ScrollOpening({ children, model, subtle = false }: { children: ReactNode; model?: ReactNode; subtle?: boolean }) {
@@ -13,7 +14,7 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
   const { language } = useLanguage();
   useEffect(() => {
     const scene = root.current;
-    if (!scene || !scrollAnimationsEnabled) return;
+    if (!scene || !scrollAnimationsEnabled || !sectionMotionOn("opening")) return;
     gsap.registerPlugin(ScrollTrigger);
     const media = gsap.matchMedia();
     media.add("(prefers-reduced-motion: no-preference)", () => {
@@ -48,7 +49,7 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
       };
       measure();
       // Game-loop motion (scrollProgressMotion.ts): the scroll sets the target, the display's own frames move the scene to it.
-      const motion = createScrollProgressMotion((p) => { state.p = p; frame(); });
+      const motion = createScrollProgressMotion((p) => { state.p = p; frame(); }, { smoothTime: sectionSmoothTime("opening") });
       const trigger = ScrollTrigger.create({
         trigger: scene, start: () => `top top+=${parseFloat(getComputedStyle(sticky).top)}`, end: "bottom bottom",
         onUpdate: (self) => motion.target(self.progress),

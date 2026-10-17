@@ -8,6 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
+import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { SeasonEdit, SeasonKey } from "@/lib/seasonalEdits";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
@@ -123,10 +124,11 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
     if (!el) return;
     // Built once when the shopper gets close, then kept: tearing the 3D scene down and
     // rebuilding it on every pass meant a fresh WebGL start-up (a visible hitch) each time.
-    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: "600px 0px" });
+    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: lazyMargin(600) });
     // Built ahead while the shopper reads (the page resting), so it is ready before she
     // gets here: built on the way in, its start-up stopped her scroll for a moment.
-    const early = motionLevel() === "lite" ? null : onPageRest(() => setNear(true), { after: 1500, quiet: 600 });
+    const after = prebuildAfter(0);
+    const early = motionLevel() === "lite" || after === null ? null : onPageRest(() => setNear(true), { after, quiet: 600 });
     const view = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
     io.observe(el);
     view.observe(el);
@@ -140,7 +142,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
   useEffect(() => {
     const el = root.current;
     const shell = theme?.root.current;
-    if (!el || !settings.scrollAnimationsEnabled) return;
+    if (!el || !settings.scrollAnimationsEnabled || !sectionMotionOn("seasons")) return;
     gsap.registerPlugin(ScrollTrigger);
     const media = gsap.matchMedia();
     media.add("(prefers-reduced-motion: no-preference)", () => {
@@ -249,7 +251,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       const scrollMotion = createScrollProgressMotion((p) => {
         render(p);
         if (themeTrigger?.isActive) takeOver(seedAt(p));
-      });
+      }, { smoothTime: sectionSmoothTime("seasons") });
       const sceneTrigger = ScrollTrigger.create({
         trigger: el,
         start: "top top",

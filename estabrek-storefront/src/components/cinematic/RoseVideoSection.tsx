@@ -7,6 +7,7 @@ import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { VideoData } from "@/cms/sectionTypes";
 import { createFilmScrubber } from "./heroFilmPlayback";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { lazyMargin, motionSettings, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -83,7 +84,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
     if (!el) return;
     const io = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) { setNear(true); io.disconnect(); }
-    }, { rootMargin: "600px 0px" });
+    }, { rootMargin: lazyMargin(600) });
     io.observe(el);
     return () => { alive.current = false; io.disconnect(); };
   }, []);
@@ -103,7 +104,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
   // Scroll-driven playback and frame animation.
   useEffect(() => {
     const section = root.current, media = frame.current, el = video.current;
-    if (!section || !media || !el || !scrollAnimationsEnabled) return;
+    if (!section || !media || !el || !scrollAnimationsEnabled || !sectionMotionOn("campaign")) return;
     gsap.registerPlugin(ScrollTrigger);
     const mm = gsap.matchMedia();
     mm.add("(prefers-reduced-motion: no-preference)", () => {
@@ -115,7 +116,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       // decoded frame was shown, on the clip's own frame grid: 120 a second for the
       // shop's clip; a video from the Admin is taken as up to 60 (a finer grid only
       // sends seeks that land inside the frame already shown).
-      const scrubber = createFilmScrubber(el, () => {}, isDefault ? 120 : 60, isDefault ? 6 : 1);
+      const scrubber = createFilmScrubber(el, () => {}, isDefault ? 120 : 60, isDefault && motionSettings().keyframeSnap ? 6 : 1);
       const ready = () => { if (el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE) setPlayback("scrubbing"); };
       el.addEventListener("loadedmetadata", ready);
       if (el.readyState >= 1) ready();
@@ -133,7 +134,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
         // Stop just short of the end: some browsers show a blank frame at the very end.
         const d = el.duration;
         scrubber.update(Number.isFinite(d) && d > 0.1 ? p * (1 - 0.04 / d) : p);
-      });
+      }, { smoothTime: sectionSmoothTime("campaign") });
       const trigger = ScrollTrigger.create({
         trigger: section,
         start: "top top",
@@ -191,7 +192,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
           <video
             ref={video}
             poster={poster}
-            preload={near ? "auto" : "none"}
+            preload={near ? motionSettings().videoPreload : "none"}
             playsInline
             muted
             loop={data.loop !== false}

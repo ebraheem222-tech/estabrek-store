@@ -8,6 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
+import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { themeFollower } from "@/lib/themeTween";
@@ -134,9 +135,10 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
     if (!el) return;
     // Built once when the shopper gets close, then kept (rebuilding the 3D models on
     // every pass meant a fresh WebGL start-up and shader compile each time).
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: "700px 0px" });
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: lazyMargin(700) });
     // Built ahead while the page rests (after the seasons scene), so the scroll never waits for it.
-    const early = motionLevel() === "lite" ? null : onPageRest(() => setNear(true), { after: 3500, quiet: 600 });
+    const after = prebuildAfter(2);
+    const early = motionLevel() === "lite" || after === null ? null : onPageRest(() => setNear(true), { after, quiet: 600 });
     const view = new IntersectionObserver(([e]) => setInView(e.isIntersecting));
     io.observe(el);
     view.observe(el);
@@ -150,7 +152,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
   useEffect(() => {
     const el = root.current;
     const shell = theme?.root.current;
-    if (!el || !settings.scrollAnimationsEnabled || chapters.length < 1) return;
+    if (!el || !settings.scrollAnimationsEnabled || !sectionMotionOn("collections") || chapters.length < 1) return;
     gsap.registerPlugin(ScrollTrigger);
     const mm = gsap.matchMedia();
     mm.add("(prefers-reduced-motion: no-preference)", () => {
@@ -254,7 +256,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         shownP = p;
         render(p);
         if (themeTrigger?.isActive) takeOver(seedAt(p));
-      });
+      }, { smoothTime: sectionSmoothTime("collections") });
       const sceneTrigger = ScrollTrigger.create({
         trigger: el,
         start: "top top",

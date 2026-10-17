@@ -13,6 +13,7 @@ import type { RosePresentationOptions } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
 import { HeroMascot } from "./mascot/HeroMascot";
 import { RoseHeroFilm } from "./RoseHeroFilm";
+import { useHeroFilm } from "@/lib/useAb";
 import { completeFaq, polishButton, polishCopy } from "./roseCopy";
 import { useRoseStore } from "./StorefrontChrome";
 import type { ProductBadge } from "@/lib/productBadges";
@@ -99,7 +100,8 @@ export function RoseHero({
         ? secondaryButton
         : primaryButton);
   const secondary = primary === primaryButton ? secondaryButton : primaryButton;
-  const film = data.roseHeroFilm !== false;
+  // The CMS's choice, or this visit's side of an A/B test (admin → تجارب A/B).
+  const film = useHeroFilm(data.roseHeroFilm !== false);
   return (
     <>
       {film ? (

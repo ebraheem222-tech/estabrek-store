@@ -1,4 +1,5 @@
 import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { sectionSmoothTime } from "@/lib/motionSettings";
 
 /**
  * Smooth time in seconds for the opening film.
@@ -25,8 +26,9 @@ export function advanceScrollMotion(current: number, target: number, seconds: nu
 
 /**
  * The opening film's scroll controller: the shared game-loop motion
- * (see scrollProgressMotion.ts) with the film's softer smooth time.
+ * (see scrollProgressMotion.ts) with the film's softer smooth time
+ * (admin → الحركة والتحميل; SMOOTH_TIME by default).
  */
 export function createHeroScrollMotion(present: (progress: number) => void) {
-  return createScrollProgressMotion(present, { smoothTime: SMOOTH_TIME });
+  return createScrollProgressMotion(present, { smoothTime: sectionSmoothTime("hero") });
 }

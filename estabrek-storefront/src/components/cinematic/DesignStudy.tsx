@@ -11,6 +11,7 @@ import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { onPageRest } from "@/lib/pageRest";
 import { motionLevel } from "@/lib/motionBudget";
+import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 
 const ScarfScene = dynamic(() => import("./ScarfScene"), {
   ssr: false,
@@ -127,7 +128,9 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => {
-      setReducedMotion(media.matches || !settings.scrollAnimationsEnabled);
+      setReducedMotion(media.matches || !settings.scrollAnimationsEnabled || !sectionMotionOn("study"));
+      // Switched off from the admin: the still layout "reduce motion" gets (cinematic.css, data-still).
+      root.current?.toggleAttribute("data-still", !settings.scrollAnimationsEnabled || !sectionMotionOn("study"));
       setPreferenceReady(true);
     };
     update();
@@ -140,7 +143,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
           observer.disconnect();
         }
       },
-      { rootMargin: "300px" },
+      { rootMargin: lazyMargin(300) },
     );
     const visibility = new IntersectionObserver(
       (entries) => {
@@ -162,8 +165,9 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
   // Built ahead while the page rests (between the seasons and the collection worlds),
   // so its start-up never lands in the middle of a scroll.
   useEffect(() => {
-    if (motionLevel() === "lite") return;
-    return onPageRest(() => setNear(true), { after: 2500, quiet: 600 });
+    const after = prebuildAfter(1);
+    if (motionLevel() === "lite" || after === null) return;
+    return onPageRest(() => setNear(true), { after, quiet: 600 });
   }, []);
   useEffect(() => {
     if (!loadScene) return;
@@ -204,7 +208,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
     }
     // Game-loop motion (scrollProgressMotion.ts): the scroll sets the target, the
     // display's own frames turn the hijab and change the chapter.
-    const motion = createScrollProgressMotion((p) => update(p));
+    const motion = createScrollProgressMotion((p) => update(p), { smoothTime: sectionSmoothTime("study") });
     const trigger = ScrollTrigger.create({
       trigger: root.current,
       start: "top top",
