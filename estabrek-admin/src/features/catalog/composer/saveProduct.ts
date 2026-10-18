@@ -13,6 +13,12 @@ export type TypedValues = {
   attributes: Record<string, unknown>;
   /** Bookings only: when and where. */
   event?: { eventStartsAt: string | null; eventEndsAt: string | null; eventLocation: string | null };
+  /** Shipped only: where from and how long (null = the type's). */
+  delivery?: { shipsFrom: string | null; deliveryMinDays: number | null; deliveryMaxDays: number | null };
+  /** Codes only: how to use one. */
+  redeemNote?: string | null;
+  /** Digital only: protected (serial + encrypted copy), its window and downloads. */
+  protection?: { isProtected: boolean; licenceHours: number | null; licenceDownloads: number | null; licenceDevices: number | null };
 };
 
 export type SaveStep = "create" | "details";
@@ -79,7 +85,7 @@ export async function saveComposedProduct(opts: {
           seoTitle: draft.seoTitle.trim() || null,
           seoDescription: draft.seoDescription.trim() || null,
           isActive: publish,
-          ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}) } : {}),
+          ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}), ...(opts.typed.delivery ?? {}), ...(opts.typed.redeemNote !== undefined ? { redeemNote: opts.typed.redeemNote } : {}), ...(opts.typed.protection ?? {}) } : {}),
         },
         items: buildItems({ ...draft, slug, slugTouched: true }, sizes, { skuSalt: salt }),
         deleteItemIds,
@@ -121,7 +127,7 @@ export async function saveEditedProduct(opts: {
       seoTitle: draft.seoTitle.trim() || null,
       seoDescription: draft.seoDescription.trim() || null,
       isActive: publish,
-      ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}) } : {}),
+      ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}), ...(opts.typed.delivery ?? {}), ...(opts.typed.redeemNote !== undefined ? { redeemNote: opts.typed.redeemNote } : {}), ...(opts.typed.protection ?? {}) } : {}),
     },
     items: buildItems(draft, sizes, { keepUnchangedStock }),
     ...removedIds(draft),

@@ -7,7 +7,10 @@ import type { ComposerDraft } from "./composerModel";
 import { Chip, Toggle } from "./ui";
 import { fieldCls } from "./styles";
 import { ProductFilesBlock } from "./ProductFilesBlock";
-import { FULFILLMENT } from "../types/typeText";
+import { ProductCodesBlock } from "./ProductCodesBlock";
+import { ProtectedFilesBlock, ProtectionSettings } from "./ProtectedFilesBlock";
+import { FULFILLMENT, deliveryLine } from "../types/typeText";
+import { deliveryForSave } from "./composerModel";
 
 export function TypeFieldsBlock({
   types,
@@ -65,12 +68,63 @@ export function TypeFieldsBlock({
         <p className="mt-4 rounded-xl bg-white/[0.04] px-3 py-2 text-xs leading-5 text-white/65" data-testid="fulfillment-note">
           {FULFILLMENT[active.fulfillment].icon} <b className="text-white/85">{FULFILLMENT[active.fulfillment].label}:</b>{" "}
           {active.fulfillment === "DIGITAL"
-            ? "ما في داعي للكمية — المنتج الرقمي ما بيخلص. الزبونة بتنزّل الملفات من صفحة طلبها بعد الدفع أونلاين أو لما تقبلي الطلب."
+            ? "ما في داعي للكمية — المنتج الرقمي ما بيخلص (إلا إذا بتبيعي أكواد: وقتها الكمية = الأكواد المتاحة). الزبونة بتلاقي الملفات والأكواد بصفحة طلبها بعد الدفع أونلاين أو لما تقبلي الطلب."
             : "الكمية بقسم المقاسات = عدد المقاعد. كل مقعد بيطلعله تذكرة بكود لما تنقبل الطلبية أو تندفع أونلاين."}
         </p>
       ) : null}
+      {(active.fulfillment ?? "SHIPPING") === "SHIPPING" ? <ShippingFields type={active} draft={draft} update={update} /> : null}
       {active.fulfillment === "BOOKING" ? <BookingFields draft={draft} update={update} /> : null}
-      {active.fulfillment === "DIGITAL" ? <ProductFilesBlock productId={draft.edit?.productId ?? null} /> : null}
+      {active.fulfillment === "DIGITAL" ? <ProtectionSettings draft={draft} update={update} /> : null}
+      {active.fulfillment === "DIGITAL" && draft.protection?.on ? <ProtectedFilesBlock productId={draft.edit?.productId ?? null} /> : null}
+      {active.fulfillment === "DIGITAL" && !draft.protection?.on ? (
+        <>
+          <ProductFilesBlock productId={draft.edit?.productId ?? null} />
+          <ProductCodesBlock productId={draft.edit?.productId ?? null} />
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-xs text-white/55">كيف تستعمل الكود (اختياري)</span>
+            <textarea
+              rows={2}
+              maxLength={500}
+              className={cn(fieldCls, "min-h-[64px] py-2")}
+              value={draft.redeemNote ?? ""}
+              onChange={(e) => update((d) => ({ ...d, redeemNote: e.target.value }))}
+              placeholder="مثلاً: افتحي Steam ← إضافة لعبة ← تفعيل منتج، والصقي الكود"
+              aria-label="كيف تستعمل الكود"
+            />
+            <span className="mt-1 block text-[11px] text-white/40">بيطلع جنب الكود بصفحة طلبها.</span>
+          </label>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** Shipped: where it ships from and how many days (empty = the type's). */
+function ShippingFields({ type, draft, update }: { type: ProductType; draft: ComposerDraft; update: (fn: (d: ComposerDraft) => ComposerDraft) => void }) {
+  const dv = draft.delivery ?? { shipsFrom: "", minDays: "", maxDays: "" };
+  const set = (patch: Partial<typeof dv>) => update((d) => ({ ...d, delivery: { ...(d.delivery ?? { shipsFrom: "", minDays: "", maxDays: "" }), ...patch } }));
+  const v = deliveryForSave({ delivery: dv });
+  const bad = Number.isNaN(v.deliveryMinDays) || Number.isNaN(v.deliveryMaxDays) || (v.deliveryMinDays != null && v.deliveryMaxDays != null && v.deliveryMaxDays < v.deliveryMinDays);
+  const fromType = { shipsFrom: type.shipsFrom ?? null, minDays: type.deliveryMinDays ?? null, maxDays: type.deliveryMaxDays ?? null };
+  const line = bad ? null : deliveryLine({ shipsFrom: v.shipsFrom, minDays: v.deliveryMinDays, maxDays: v.deliveryMaxDays }, fromType);
+  const ph = (n: number | null | undefined) => (n == null ? "—" : String(n));
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr]" data-testid="shipping-fields">
+      <label className="block">
+        <span className="mb-1.5 block text-xs text-white/55">بينشحن من</span>
+        <input className={cn(fieldCls, "h-11")} value={dv.shipsFrom} maxLength={80} onChange={(e) => set({ shipsFrom: e.target.value })} placeholder={type.shipsFrom ? `${type.shipsFrom} (حسب النوع)` : "مثلاً: رام الله، تركيا، الصين"} aria-label="بينشحن من" />
+      </label>
+      <div>
+        <span className="mb-1.5 block text-xs text-white/55">التوصيل خلال (أيام)</span>
+        <div className="flex items-center gap-2">
+          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.minDays} onChange={(e) => set({ minDays: e.target.value })} placeholder={ph(type.deliveryMinDays)} aria-label="أقل عدد أيام" />
+          <span className="text-xs text-white/45">لحد</span>
+          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.maxDays} onChange={(e) => set({ maxDays: e.target.value })} placeholder={ph(type.deliveryMaxDays)} aria-label="أكثر عدد أيام" />
+        </div>
+      </div>
+      <p className={cn("text-[11px] sm:col-span-2", bad ? "text-red-400" : "text-white/45")} data-testid="delivery-preview">
+        {bad ? "أيام التوصيل رقم من 0 لـ 120، و«لحد» أكبر من «من»" : line ? <>الزبونة بتشوف: «{line}»</> : "فاضي = ما بينكتب وقت التوصيل. بتقدري تحطي وقت لكل المنتجات من هالنوع بـ«إدارة الأنواع»."}
+      </p>
     </div>
   );
 }

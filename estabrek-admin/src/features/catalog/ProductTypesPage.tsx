@@ -13,7 +13,9 @@ import { useAuth } from "../../hooks/useAuth";
 import * as TypesAPI from "../../api/productTypes.api";
 import type { FieldKind, ProductType, TypeField } from "../../api/productTypes.api";
 import { FIELD_KINDS } from "../../api/productTypes.api";
-import { FULFILLMENT, KIND_LABELS, canFilter, fieldProblems, hasOptions, newFieldKey, parseOptions } from "./types/typeText";
+import { FULFILLMENT, KIND_LABELS, canFilter, deliveryLine, fieldProblems, hasOptions, newFieldKey, parseOptions } from "./types/typeText";
+import { TEMPLATE_GROUPS, TYPE_TEMPLATES, findTemplates, type TemplateGroup, type TypeTemplate } from "./types/typeTemplates";
+import { deliveryForSave, deliveryProblem } from "./composer/composerModel";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
@@ -27,12 +29,15 @@ type Draft = {
   showColor: boolean;
   showSize: boolean;
   fulfillment: Fulfillment;
+  /** Shipped kinds: where from and how many days (its products' unless they say otherwise). */
+  delivery: { shipsFrom: string; minDays: string; maxDays: string };
   fields: Array<TypeField & { optionsText?: string }>;
 };
 
 type Fulfillment = ProductType["fulfillment"];
 
-const emptyType = (): Draft => ({ name: "", description: "", colorLabel: "اللون", sizeLabel: "المقاس", showColor: true, showSize: true, fulfillment: "SHIPPING", fields: [] });
+const noDelivery = { shipsFrom: "", minDays: "", maxDays: "" };
+const emptyType = (): Draft => ({ name: "", description: "", colorLabel: "اللون", sizeLabel: "المقاس", showColor: true, showSize: true, fulfillment: "SHIPPING", delivery: noDelivery, fields: [] });
 
 const toDraft = (t: ProductType): Draft => ({
   id: t.id,
@@ -43,58 +48,18 @@ const toDraft = (t: ProductType): Draft => ({
   showColor: t.showColor,
   showSize: t.showSize,
   fulfillment: t.fulfillment ?? "SHIPPING",
+  delivery: { shipsFrom: t.shipsFrom ?? "", minDays: t.deliveryMinDays == null ? "" : String(t.deliveryMinDays), maxDays: t.deliveryMaxDays == null ? "" : String(t.deliveryMaxDays) },
   fields: t.fields.map((f) => ({ ...f, optionsText: (f.options ?? []).join("\n") })),
 });
 
-/** Ready-made starting points for common kinds. */
-const TEMPLATES: Array<{ name: string; hint: string; draft: () => Draft }> = [
-  {
-    name: "تذكرة / حجز",
-    hint: "موعد، مقاعد، كود دخول",
-    draft: () => ({
-      ...emptyType(),
-      name: "تذكرة",
-      sizeLabel: "الدرجة",
-      showColor: false,
-      fulfillment: "BOOKING",
-      fields: [
-        { key: "from_city", label: "من", kind: "text", showOnPage: true },
-        { key: "to_city", label: "إلى", kind: "text", showOnPage: true },
-      ],
-    }),
-  },
-  {
-    name: "كورس / ورشة",
-    hint: "المدة، المستوى، الرابط",
-    draft: () => ({
-      ...emptyType(),
-      name: "كورس",
-      showColor: false,
-      showSize: false,
-      fulfillment: "BOOKING",
-      fields: [
-        { key: "hours", label: "المدة", kind: "number", unit: "ساعة", showOnPage: true },
-        { key: "level", label: "المستوى", kind: "select", options: ["مبتدئ", "متوسط", "متقدم"], optionsText: "مبتدئ\nمتوسط\nمتقدم", filterable: true, showOnPage: true },
-        { key: "course_link", label: "رابط الكورس", kind: "url", showOnPage: false },
-      ],
-    }),
-  },
-  {
-    name: "منتج رقمي",
-    hint: "ملفات بتنزل بعد الدفع",
-    draft: () => ({
-      ...emptyType(),
-      name: "منتج رقمي",
-      showColor: false,
-      showSize: false,
-      fulfillment: "DIGITAL",
-      fields: [
-        { key: "file_type", label: "نوع الملف", kind: "select", options: ["PDF", "صورة", "فيديو"], optionsText: "PDF\nصورة\nفيديو", showOnPage: true, filterable: true },
-        { key: "pages", label: "عدد الصفحات", kind: "number", showOnPage: true },
-      ],
-    }),
-  },
-];
+const fromTemplate = (t: TypeTemplate): Draft => ({
+  ...emptyType(),
+  ...t.type,
+  description: t.type.description ?? "",
+  fields: t.type.fields.map((f) => ({ ...f, optionsText: (f.options ?? []).join("\n") })),
+});
+
+const typeDelivery = (t: ProductType) => deliveryLine({ shipsFrom: t.shipsFrom, minDays: t.deliveryMinDays, maxDays: t.deliveryMaxDays });
 
 export default function ProductTypesPage() {
   const { hasPermission } = useAuth();
@@ -102,6 +67,7 @@ export default function ProductTypesPage() {
   const q = useQuery({ queryKey: ["product-types"], queryFn: TypesAPI.listProductTypes });
   const [editing, setEditing] = useState<Draft | null>(null);
   const [removing, setRemoving] = useState<ProductType | null>(null);
+  const [gallery, setGallery] = useState(false);
   const types = q.data ?? [];
 
   return (
@@ -123,11 +89,14 @@ export default function ProductTypesPage() {
         {canWrite ? (
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-white/50">أو ابدئي من:</span>
-            {TEMPLATES.map((t) => (
-              <button key={t.name} type="button" onClick={() => setEditing(t.draft())} className="rounded-full border border-white/10 px-3 py-1.5 hover:border-white/25">
-                {t.name} <span className="text-white/40">· {t.hint}</span>
+            {TYPE_TEMPLATES.filter((t) => t.quick).map((t) => (
+              <button key={t.id} type="button" onClick={() => setEditing(fromTemplate(t))} className="rounded-full border border-white/10 px-3 py-1.5 hover:border-white/25">
+                {t.icon} {t.name}
               </button>
             ))}
+            <button type="button" onClick={() => setGallery(true)} className="rounded-full bg-accent-500/15 px-3 py-1.5 text-accent-200 hover:bg-accent-500/25" data-testid="open-templates">
+              كل القوالب ({TYPE_TEMPLATES.length}) ←
+            </button>
           </div>
         ) : null}
       </div>
@@ -151,6 +120,7 @@ export default function ProductTypesPage() {
                   <p className="mt-0.5 text-xs text-white/50">
                     {FULFILLMENT[t.fulfillment ?? "SHIPPING"].icon} {FULFILLMENT[t.fulfillment ?? "SHIPPING"].label} · {t.products} منتج · {t.showColor ? t.colorLabel : "بدون ألوان"} · {t.showSize ? t.sizeLabel : "بدون مقاسات"}
                   </p>
+                  {(t.fulfillment ?? "SHIPPING") === "SHIPPING" && typeDelivery(t) ? <p className="mt-0.5 text-xs text-white/45">🚚 {typeDelivery(t)}</p> : null}
                 </div>
                 {canWrite ? (
                   <div className="flex shrink-0 gap-1">
@@ -183,6 +153,15 @@ export default function ProductTypesPage() {
       )}
 
       {editing ? <TypeEditor draft={editing} onClose={() => setEditing(null)} /> : null}
+      {gallery ? (
+        <TemplateGallery
+          onPick={(t) => {
+            setGallery(false);
+            setEditing(fromTemplate(t));
+          }}
+          onClose={() => setGallery(false)}
+        />
+      ) : null}
       {removing ? <DeleteType type={removing} others={types.filter((t) => t.id !== removing.id)} onClose={() => setRemoving(null)} /> : null}
     </div>
   );
@@ -195,6 +174,10 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
   const fields = useMemo(() => d.fields.map((f) => ({ ...f, options: hasOptions(f.kind) ? parseOptions(f.optionsText ?? "") : undefined })), [d.fields]);
   const problems = fieldProblems(fields);
   const nameMissing = !d.name.trim();
+  const shipped = d.fulfillment === "SHIPPING";
+  const daysProblem = shipped ? deliveryProblem(d) : null;
+  const days = deliveryForSave(d);
+  const preview = daysProblem ? null : deliveryLine({ shipsFrom: days.shipsFrom, minDays: days.deliveryMinDays, maxDays: days.deliveryMaxDays });
 
   const save = useMutation({
     mutationFn: () => {
@@ -206,6 +189,7 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
         showColor: d.showColor,
         showSize: d.showSize,
         fulfillment: d.fulfillment,
+        ...(shipped ? days : { shipsFrom: null, deliveryMinDays: null, deliveryMaxDays: null }),
         fields: fields.map((f) => ({
           key: f.key,
           kind: f.kind,
@@ -253,7 +237,7 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
             isLoading={save.isPending}
             onClick={() => {
               setTried(true);
-              if (nameMissing || Object.keys(problems).length) return;
+              if (nameMissing || daysProblem || Object.keys(problems).length) return;
               save.mutate();
             }}
           >
@@ -300,6 +284,29 @@ function TypeEditor({ draft: initial, onClose }: { draft: Draft; onClose: () => 
             <p className="mt-2 text-[11px] text-amber-300/90">بتتغيّر لكل منتجات هالنوع. الطلبات القديمة ما بتتأثر.</p>
           ) : null}
         </fieldset>
+
+        {shipped ? (
+          <fieldset className="rounded-xl border border-white/10 p-3" data-testid="type-delivery">
+            <legend className="px-1 text-xs text-white/55">التوصيل (لكل منتجات النوع، إلا إذا المنتج حط غيره)</legend>
+            <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
+              <label className="block">
+                <span className="mb-1 block text-xs text-white/55">بينشحن من</span>
+                <input className={field} value={d.delivery.shipsFrom} maxLength={80} onChange={(e) => setD({ ...d, delivery: { ...d.delivery, shipsFrom: e.target.value } })} placeholder="مثلاً: رام الله، تركيا، الصين" />
+              </label>
+              <div>
+                <span className="mb-1 block text-xs text-white/55">التوصيل خلال (أيام)</span>
+                <div className="flex items-center gap-2">
+                  <input inputMode="numeric" dir="ltr" aria-label="أقل عدد أيام" className={`${field} max-w-[5rem] text-center ${daysProblem ? "border-red-500/60" : ""}`} value={d.delivery.minDays} onChange={(e) => setD({ ...d, delivery: { ...d.delivery, minDays: e.target.value } })} placeholder="2" />
+                  <span className="text-xs text-white/45">لحد</span>
+                  <input inputMode="numeric" dir="ltr" aria-label="أكثر عدد أيام" className={`${field} max-w-[5rem] text-center ${daysProblem ? "border-red-500/60" : ""}`} value={d.delivery.maxDays} onChange={(e) => setD({ ...d, delivery: { ...d.delivery, maxDays: e.target.value } })} placeholder="5" />
+                </div>
+              </div>
+            </div>
+            <p className={`mt-2 text-[11px] ${daysProblem ? "text-red-300" : "text-white/40"}`} data-testid="type-delivery-preview">
+              {daysProblem ?? (preview ? `بالمتجر: «${preview}»` : "فاضي = ما بينكتب وقت التوصيل بصفحة المنتج.")}
+            </p>
+          </fieldset>
+        ) : null}
 
         <fieldset className="rounded-xl border border-white/10 p-3">
           <legend className="px-1 text-xs text-white/55">الاختيارات عند الشراء</legend>
@@ -452,6 +459,55 @@ function DeleteType({ type, others, onClose }: { type: ProductType; others: Prod
           )
         ) : (
           <p>ما في منتجات من هالنوع. بينحذف نهائياً.</p>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+/** The template library: search, groups, pick one to start a type from. */
+function TemplateGallery({ onPick, onClose }: { onPick: (t: TypeTemplate) => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const [group, setGroup] = useState<TemplateGroup | null>(null);
+  const list = findTemplates(q, group);
+  return (
+    <Modal open title="قوالب الأنواع" onClose={onClose} widthClassName="max-w-4xl">
+      <div dir="rtl" className="space-y-3 text-sm" data-testid="templates-gallery">
+        <p className="text-xs text-white/55">اختاري قالب وبيفتح جاهز بحقوله واختياراته. بتقدري تعدّلي كل إشي قبل الحفظ.</p>
+        <input className={field} value={q} onChange={(e) => setQ(e.target.value)} placeholder="دوّري: موبايل، عطر، Steam، كتب…" aria-label="بحث بالقوالب" />
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="القسم">
+          {[{ id: null as TemplateGroup | null, label: "الكل" }, ...TEMPLATE_GROUPS].map((g) => (
+            <button
+              key={g.id ?? "all"}
+              type="button"
+              role="radio"
+              aria-checked={group === g.id}
+              onClick={() => setGroup(g.id)}
+              className={`rounded-full border px-3 py-1 text-xs ${group === g.id ? "border-accent-400/60 bg-accent-500/15" : "border-white/10 text-white/70 hover:border-white/25"}`}
+            >
+              {g.label}
+            </button>
+          ))}
+        </div>
+        {list.length ? (
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((t) => (
+              <li key={t.id}>
+                <button type="button" onClick={() => onPick(t)} className="h-full w-full rounded-xl border border-white/10 p-3 text-start transition hover:border-accent-400/50 hover:bg-white/[0.03]" data-testid={`template-${t.id}`}>
+                  <span className="block font-medium">
+                    {t.icon} {t.name}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-white/50">{t.hint}</span>
+                  <span className="mt-2 block text-[11px] text-white/40">
+                    {FULFILLMENT[t.type.fulfillment].icon} {FULFILLMENT[t.type.fulfillment].label} · {t.type.fields.length} حقول
+                    {t.type.showColor || t.type.showSize ? ` · ${[t.type.showColor ? t.type.colorLabel : "", t.type.showSize ? t.type.sizeLabel : ""].filter(Boolean).join(" × ")}` : ""}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="py-6 text-center text-xs text-white/50">ما في قالب هيك. ابدئي بنوع فاضي من «+ نوع جديد».</p>
         )}
       </div>
     </Modal>

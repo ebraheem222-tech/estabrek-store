@@ -17,7 +17,7 @@ import { toast } from "../../lib/toast";
 import { env } from "../../config/env";
 import { cn } from "../../components/ui/cn";
 import {
-  categoryLabel, checklist, clearLocalDraft, draftForEdit, draftFromProduct, draftSignature, effectiveSlug, emptyDraft, eventForSave, hasContent, newKey, readLocalDraft,
+  categoryLabel, checklist, clearLocalDraft, draftForEdit, draftFromProduct, draftSignature, effectiveSlug, emptyDraft, deliveryForSave, deliveryProblem, eventForSave, protectionForSave, protectionProblem, hasContent, newKey, readLocalDraft,
   readPrefs, rememberChoices, saveDraftLocally, validateDraft, type ComposerDraft, type ComposerErrors, type ComposerPhoto,
 } from "./composer/composerModel";
 import { saveComposedProduct, saveEditedProduct, type SaveStep, type TypedValues } from "./composer/saveProduct";
@@ -249,8 +249,24 @@ export default function ProductComposerPage() {
     const d0 = draftRef.current;
     const kind = types.find((t) => t.id === d0.typeId) ?? types[0] ?? null;
     const typed: TypedValues | undefined = kind
-      ? { typeId: kind.id, attributes: tidyAttributes(kind.fields, d0.attributes ?? {}), ...(kind.fulfillment === "BOOKING" ? { event: eventForSave(d0) } : {}) }
+      ? {
+          typeId: kind.id,
+          attributes: tidyAttributes(kind.fields, d0.attributes ?? {}),
+          ...(kind.fulfillment === "BOOKING" ? { event: eventForSave(d0) } : {}),
+          ...((kind.fulfillment ?? "SHIPPING") === "SHIPPING" ? { delivery: deliveryForSave(d0) } : {}),
+          ...(kind.fulfillment === "DIGITAL" ? { redeemNote: d0.redeemNote.trim() || null, protection: protectionForSave(d0) } : {}),
+        }
       : undefined;
+    if (kind?.fulfillment === "DIGITAL" && protectionProblem(d0)) {
+      document.getElementById("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast.error(protectionProblem(d0)!);
+      return;
+    }
+    if (kind && (kind.fulfillment ?? "SHIPPING") === "SHIPPING" && deliveryProblem(d0)) {
+      document.getElementById("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast.error(deliveryProblem(d0)!);
+      return;
+    }
     if (typed?.event?.eventStartsAt && typed.event.eventEndsAt && typed.event.eventEndsAt <= typed.event.eventStartsAt) {
       document.getElementById("details")?.scrollIntoView({ behavior: "smooth", block: "start" });
       toast.error("موعد النهاية لازم يكون بعد البداية");
@@ -376,7 +392,7 @@ export default function ProductComposerPage() {
   }
 
   return (
-    <div dir="rtl" className="mx-auto max-w-[1280px] pb-28 lg:pb-10" data-testid="product-composer">
+    <div dir="rtl" className="mx-auto max-w-[1280px] pb-40 lg:pb-10" data-testid="product-composer">
       {isEdit ? (
         <EditHeader id={editId!} draft={draft} dirty={dirty} />
       ) : (
@@ -505,8 +521,8 @@ export default function ProductComposerPage() {
         </div>
       )}
 
-      {/* Phones: the save buttons stay at the bottom of the screen. */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-surface-950/95 p-3 backdrop-blur lg:hidden">
+      {/* Phones: the save buttons stay at the bottom, just above the tab bar (4rem tall; under it they were covered). */}
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-white/[0.08] bg-surface-950/95 p-3 backdrop-blur lg:hidden" data-testid="composer-phone-bar">
         <div className="mx-auto grid max-w-xl grid-cols-[1fr_auto] gap-2"><SaveButtons phase={phase} onSave={save} compact edit={draft.edit} dirty={dirty} /></div>
       </div>
 
@@ -683,7 +699,7 @@ function SavedPanel({ phase, onNew, onEdit, onList }: { phase: Extract<Phase, { 
         <p className="mt-1 text-sm text-white/60">«{phase.title}»</p>
         {phase.digital ? (
           <button type="button" onClick={onEdit} data-testid="saved-add-files" className="mt-5 h-12 w-full rounded-xl bg-emerald-500/20 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/30">
-            ⬇️ الخطوة الجاية: ارفعي الملفات اللي بتنزّلها الزبونة ←
+            ⬇️ الخطوة الجاية: ارفعي الملفات أو الأكواد اللي بتوصل للزبونة ←
           </button>
         ) : null}
         <div className="mt-6 grid gap-2 sm:grid-cols-2">

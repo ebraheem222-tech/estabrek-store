@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProductDeep } from "../../../api/catalog.api";
-import { autoSkus, buildItems, checklist, draftForEdit, draftFromProduct, draftSignature, duplicateSkus, emptyDraft, finalSkus, priceOf, removedIds, stockKey, validateDraft } from "./composerModel";
+import { autoSkus, buildItems, checklist, draftForEdit, draftFromProduct, draftSignature, duplicateSkus, emptyDraft, finalSkus, hasSize, madeCount, priceOf, removedIds, setSizeFor, sizesOf, stockKey, validateDraft } from "./composerModel";
 
 const sizes = [{ id: "cs1aaaaaaaa", name: "S" }, { id: "cs2aaaaaaaa", name: "M" }, { id: "cs3aaaaaaaa", name: "مقاس واحد" }];
 
@@ -160,7 +160,8 @@ describe("editing a saved product", () => {
     const black = d.groups[0];
     expect(d.skus[stockKey(black.key, "cs2aaaaaaaa")]).toBe("ABAYA-BLK-M");
     expect(d.priceBy[stockKey(black.key, "cs2aaaaaaaa")]).toBe("270");
-    // pink has no M yet: it starts at 0
+    // Pink doesn't come in M: it stays off for pink (switched on, it starts at 0).
+    expect(hasSize(d, d.groups[1].key, "cs2aaaaaaaa")).toBe(false);
     expect(d.stock[stockKey(d.groups[1].key, "cs2aaaaaaaa")]).toBe("0");
   });
 
@@ -174,7 +175,11 @@ describe("editing a saved product", () => {
     expect(items[0].variants?.[0]).toMatchObject({ id: "cvar0000001", sku: "ABAYA-BLK-S", stock: 9 });
     expect(items[0].variants?.[1]).toMatchObject({ id: "cvar0000002", price: 270 });
     expect(items[0].variants?.[1]).not.toHaveProperty("stock");
-    const newM = items[1].variants?.find((v) => v.sizeId === "cs2aaaaaaaa");
+    // Pink still has only S…
+    expect(items[1].variants?.map((v) => v.sizeId)).toEqual(["cs1aaaaaaaa"]);
+    // …until M is switched on for it: then it's added, new, at 0.
+    const withM = setSizeFor(d, pink.key, "cs2aaaaaaaa", true);
+    const newM = buildItems(withM, sizes, { keepUnchangedStock: true })[1].variants?.find((v) => v.sizeId === "cs2aaaaaaaa");
     expect(newM).toMatchObject({ sku: "ABAYA-PNK-M", stock: 0 });
     expect(newM).not.toHaveProperty("id");
     expect(pink.itemId).toBe("citem000002");
@@ -204,5 +209,56 @@ describe("editing a saved product", () => {
     const sig = draftSignature(d);
     expect(draftSignature({ ...d })).toBe(sig);
     expect(draftSignature({ ...d, title: "x" })).not.toBe(sig);
+  });
+});
+
+describe("sizes per colour", () => {
+  it("every colour comes in every size until one is switched off for it", () => {
+    const d = filled();
+    const navy = d.groups[0].key;
+    expect(sizesOf(d, navy)).toEqual(["cs1aaaaaaaa", "cs2aaaaaaaa"]);
+    expect(madeCount(d)).toBe(4);
+    const noM = setSizeFor(d, navy, "cs2aaaaaaaa", false);
+    expect(sizesOf(noM, navy)).toEqual(["cs1aaaaaaaa"]);
+    expect(madeCount(noM)).toBe(3);
+    const items = buildItems(noM, sizes);
+    expect(items[0].variants?.map((v) => v.sku)).toEqual(["FSTAN-ALWRD-NAVY-S"]);
+    expect(items[1].variants).toHaveLength(2);
+    // The other colours' codes don't move.
+    expect(autoSkus(noM, sizes)[stockKey(d.groups[1].key, "cs2aaaaaaaa")]).toBe(autoSkus(d, sizes)[stockKey(d.groups[1].key, "cs2aaaaaaaa")]);
+    expect(autoSkus(noM, sizes)).not.toHaveProperty(stockKey(navy, "cs2aaaaaaaa"));
+    // Back on: the quantity typed before is still there.
+    const back = setSizeFor({ ...noM, stock: { ...noM.stock, [stockKey(navy, "cs2aaaaaaaa")]: "6" } }, navy, "cs2aaaaaaaa", true);
+    expect(buildItems(back, sizes)[0].variants?.[1]).toMatchObject({ sizeId: "cs2aaaaaaaa", stock: 6 });
+  });
+
+  it("a colour needs at least one size; the checklist knows", () => {
+    let d = filled();
+    const navy = d.groups[0].key;
+    d = setSizeFor(setSizeFor(d, navy, "cs1aaaaaaaa", false), navy, "cs2aaaaaaaa", false);
+    expect(validateDraft(d, { publish: false }).sizes).toBe("كل لون لازم يكون إله مقاس واحد على الأقل («كحلي» ما إله)");
+    expect(checklist(d).find((c) => c.key === "sizes")?.done).toBe(false);
+  });
+
+  it("editing: switching a saved size off for a colour removes that size of that colour only", () => {
+    const d = draftForEdit(saved);
+    const black = d.groups[0];
+    const off = setSizeFor(d, black.key, "cs2aaaaaaaa", false);
+    expect(removedIds(off).deleteVariantIds).toEqual(["cvar0000002"]);
+    expect(buildItems(off, sizes)[0].variants?.map((v) => v.id)).toEqual(["cvar0000001"]);
+  });
+
+  it("a copy comes in the same sizes per colour as the original", () => {
+    const c = draftFromProduct(saved, { keepPhotos: true });
+    expect(sizesOf(c, c.groups[0].key)).toEqual(["cs1aaaaaaaa", "cs2aaaaaaaa"]);
+    expect(sizesOf(c, c.groups[1].key)).toEqual(["cs1aaaaaaaa"]);
+    expect(draftFromProduct(saved, { keepPhotos: false }).sizesOff).toEqual({});
+  });
+
+  it("an older saved draft without the field still works", () => {
+    const d = filled();
+    delete (d as { sizesOff?: unknown }).sizesOff;
+    expect(madeCount(d)).toBe(4);
+    expect(buildItems(d, sizes)[0].variants).toHaveLength(2);
   });
 });

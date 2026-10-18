@@ -71,6 +71,28 @@ export function fieldProblems(fields: TypeField[]): Record<string, string> {
 /** How a kind reaches the shopper. */
 export const FULFILLMENT: Record<"SHIPPING" | "DIGITAL" | "BOOKING", { label: string; icon: string; hint: string }> = {
   SHIPPING: { label: "شحن", icon: "📦", hint: "قطعة بتنبعت بالتوصيل (مثل الملابس)." },
-  DIGITAL: { label: "تنزيل رقمي", icon: "⬇️", hint: "ملفات بتنزّلها الزبونة بعد الدفع أو لما تقبلي الطلب. ما في كميات ولا عنوان." },
+  DIGITAL: { label: "رقمي (ملفات أو أكواد)", icon: "⬇️", hint: "ملفات بتنزّلها الزبونة، أو أكواد (ألعاب، بطاقات هدايا) بتنباع وحدة وحدة. بتوصلها بعد الدفع أو لما تقبلي الطلب. ما في عنوان." },
   BOOKING: { label: "حجز بتذكرة", icon: "🎟️", hint: "موعد ومكان، والكمية = عدد المقاعد. كل مقعد إله تذكرة بكود تشيّكيه على الباب." },
 };
+
+type Delivery = { shipsFrom?: string | null; minDays?: number | null; maxDays?: number | null };
+
+const dayWord = (n: number) => (n === 1 ? "يوم" : n === 2 ? "يومين" : n <= 10 ? `${n} أيام` : `${n} يوم`);
+
+/**
+ * What the shop shows under the price ("بيوصل خلال 3–5 أيام · بينشحن من رام الله").
+ * The product's own days/place, else the type's (like the server's deliveryOf).
+ */
+export function deliveryLine(own: Delivery, type?: Delivery | null): string | null {
+  const from = (own.shipsFrom ?? "").trim() || (type?.shipsFrom ?? "").trim();
+  const mine = own.minDays != null || own.maxDays != null;
+  let min = (mine ? own.minDays : type?.minDays) ?? null;
+  let max = (mine ? own.maxDays : type?.maxDays) ?? null;
+  if (min == null) min = max;
+  if (max == null) max = min;
+  if (min != null && max != null && max < min) [min, max] = [max, min];
+  const when =
+    min == null || max == null ? "" : max === 0 ? "بيوصل بنفس اليوم" : min === max ? `بيوصل خلال ${dayWord(max)}` : `بيوصل خلال ${min}–${max} ${max <= 10 ? "أيام" : "يوم"}`;
+  const parts = [when, from ? `بينشحن من ${from}` : ""].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}

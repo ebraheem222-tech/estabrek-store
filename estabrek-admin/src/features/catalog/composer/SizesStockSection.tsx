@@ -1,10 +1,11 @@
-// Step 4: sizes from ready sets, then every colour × size as its own SKU row
-// (code, price, quantity, low-stock alert) — or the quick quantities grid.
+// Step 4: sizes from ready sets, which sizes each colour comes in, then every
+// colour × size as its own SKU row (code, price, quantity, low-stock alert) — or
+// the quick quantities grid.
 import React, { useMemo, useState } from "react";
 import type { CatalogSize } from "../../../api/catalog.api";
 import { cn } from "../../../components/ui/cn";
 import { formatShekel, parsePrice, sizePresets } from "../../../lib/productComposer";
-import { autoSkus, cleanSku, lowOf, priceOf, stockKey, stockOf, type ComposerDraft } from "./composerModel";
+import { autoSkus, cleanSku, hasSize, lowOf, madeCount, priceOf, setSizeFor, sizesOf, stockKey, stockOf, type ComposerDraft } from "./composerModel";
 import { Chip, Section, Swatch, Toggle } from "./ui";
 import { fieldCls } from "./styles";
 
@@ -70,12 +71,18 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
     if (created) { update((d) => ({ ...d, sizeIds: [...d.sizeIds, created.id] })); setNewSize(""); }
   };
 
-  const total = draft.groups.reduce((sum, g) => sum + draft.sizeIds.reduce((s, sid) => s + stockOf(draft, g.key, sid), 0), 0);
-  const skuCount = draft.groups.length * draft.sizeIds.length;
+  const total = draft.groups.reduce((sum, g) => sum + sizesOf(draft, g.key).reduce((s, sid) => s + stockOf(draft, g.key, sid), 0), 0);
+  const skuCount = madeCount(draft);
+  const toggleFor = (groupKey: string, sizeId: string) => update((d) => setSizeFor(d, groupKey, sizeId, !hasSize(d, groupKey, sizeId)));
+  const someOff = Object.values(draft.sizesOff ?? {}).some(Boolean);
   const bad = new Set(badSkus.map((s) => s.toUpperCase()));
   const finalSku = (key: string) => cleanSku(draft.skus[key] ?? "") || auto[key] || "";
   const counts = new Map<string, number>();
-  for (const g of draft.groups) for (const s of selected) { const k = finalSku(stockKey(g.key, s.id)); counts.set(k, (counts.get(k) ?? 0) + 1); }
+  for (const g of draft.groups) for (const s of selected) {
+    if (!hasSize(draft, g.key, s.id)) continue;
+    const k = finalSku(stockKey(g.key, s.id));
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
 
   return (
     <Section
@@ -124,10 +131,57 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
             <span className="ms-auto text-xs text-white/50"><b className="text-white">{skuCount}</b> SKU · <b className="text-white">{total}</b> قطعة</span>
           </div>
 
+          {selected.length > 1 ? (
+            <div className="mb-4 rounded-xl border border-white/[0.08] bg-white/[0.015] p-3" data-testid="sizes-per-colour">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-medium text-white">كل لون بأي مقاسات؟</span>
+                {someOff ? (
+                  <button type="button" onClick={() => update((d) => ({ ...d, sizesOff: {} }))} className="rounded-lg px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/10">
+                    نفس المقاسات لكل الألوان
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-white/40">كل الألوان بكل المقاسات. شيلي المقاس اللي مش موجود بلون معيّن.</span>
+                )}
+              </div>
+              <ul className="space-y-2">
+                {draft.groups.map((g, gi) => {
+                  const mine = sizesOf(draft, g.key).length;
+                  return (
+                    <li key={g.key} className="flex flex-wrap items-center gap-2" data-testid="colour-sizes">
+                      <span className="inline-flex min-w-[6rem] items-center gap-2 text-sm text-white/85"><Swatch hex={g.hex} size={14} />{g.name || `لون ${gi + 1}`}</span>
+                      <div className="flex flex-wrap gap-1.5" role="group" aria-label={`مقاسات ${g.name || `لون ${gi + 1}`}`}>
+                        {selected.map((sz) => {
+                          const on = hasSize(draft, g.key, sz.id);
+                          return (
+                            <button
+                              key={sz.id}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() => toggleFor(g.key, sz.id)}
+                              className={cn(
+                                "h-8 min-w-[2.75rem] rounded-full border px-2.5 text-xs transition",
+                                on ? "border-accent-400/60 bg-accent-500/20 text-white" : "border-dashed border-white/[0.14] text-white/35 line-through hover:text-white/60",
+                              )}
+                              title={on ? `«${g.name}» ما بييجي بمقاس ${sz.name}؟ اضغطي لتشيليه` : `ضيفي مقاس ${sz.name} لـ«${g.name}»`}
+                            >
+                              {sz.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {!mine ? <span className="text-[11px] text-red-300">لازم مقاس واحد على الأقل</span> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+
           {view === "skus" ? (
             <div className="space-y-3" data-testid="sku-table">
               {draft.groups.map((g, gi) => {
-                const colourTotal = draft.sizeIds.reduce((s, sid) => s + stockOf(draft, g.key, sid), 0);
+                const colourTotal = sizesOf(draft, g.key).reduce((s, sid) => s + stockOf(draft, g.key, sid), 0);
+                const mineSizes = selected.filter((sz) => hasSize(draft, g.key, sz.id));
                 return (
                   <div key={g.key} className={cn("rounded-xl border border-white/[0.08] bg-white/[0.015]", g.hidden && "opacity-70")}>
                     <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-3 py-2 text-sm">
@@ -150,8 +204,9 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                     <div className="hidden grid-cols-[64px_minmax(150px,1.6fr)_104px_128px_76px_64px] gap-2 px-3 pt-2 text-[11px] text-white/40 sm:grid">
                       <span>المقاس</span><span>SKU</span><span>السعر</span><span className="text-center">الكمية</span><span className="text-center">تنبيه عند</span><span />
                     </div>
+                    {!mineSizes.length ? <p className="px-3 py-3 text-xs text-red-300">ما في مقاسات لهاللون: اختاري مقاس من «كل لون بأي مقاسات؟».</p> : null}
                     <ul className="divide-y divide-white/[0.05]">
-                      {selected.map((s) => {
+                      {mineSizes.map((s) => {
                         const key = stockKey(g.key, s.id);
                         const qty = stockOf(draft, g.key, s.id);
                         const low = lowOf(draft, g.key, s.id);
@@ -245,6 +300,15 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                       </td>
                       {selected.map((s) => {
                         const explicit = draft.stock[stockKey(g.key, s.id)] !== undefined;
+                        if (!hasSize(draft, g.key, s.id)) {
+                          return (
+                            <td key={s.id} className="px-1.5 py-1.5 text-center">
+                              <button type="button" onClick={() => toggleFor(g.key, s.id)} className="h-8 w-[5.25rem] rounded-lg border border-dashed border-white/[0.12] text-xs text-white/35 hover:text-white/70" title={`ضيفي مقاس ${s.name} لـ«${g.name}»`} aria-label={`${g.name || `لون ${gi + 1}`} مش متوفر بمقاس ${s.name}`}>
+                                —
+                              </button>
+                            </td>
+                          );
+                        }
                         return (
                           <td key={s.id} className="px-1.5 py-1.5 text-center">
                             <div className="inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.02]">

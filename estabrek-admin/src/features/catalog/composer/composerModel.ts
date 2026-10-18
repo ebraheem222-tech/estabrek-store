@@ -58,6 +58,12 @@ export type ComposerDraft = {
   attributes: Record<string, unknown>;
   /** Bookings: date/time (datetime-local, the browser's time) and place. */
   event: { startsAt: string; endsAt: string; location: string };
+  /** Shipped: where from and how many days (empty = the type's). */
+  delivery: { shipsFrom: string; minDays: string; maxDays: string };
+  /** Codes (game keys, gift cards): how to use one. */
+  redeemNote: string;
+  /** Protected digital product: a serial + an encrypted, marked copy per piece (empty = the defaults). */
+  protection: { on: boolean; hours: string; downloads: string; devices?: string };
   /** Search-engine title and description; empty = the product's own title and description. */
   seoTitle: string;
   seoDescription: string;
@@ -65,6 +71,11 @@ export type ComposerDraft = {
   onSale: boolean;
   compareAt: string;
   sizeIds: string[];
+  /**
+   * Sizes a colour doesn't come in (key `${groupKey}:${sizeId}`: true). By default
+   * every colour comes in every size; switched off, that colour × size isn't made.
+   */
+  sizesOff?: Record<string, boolean>;
   /** Stock per colour and size: key `${groupKey}:${sizeId}`. Missing = defaultStock. */
   stock: Record<string, string>;
   defaultStock: string;
@@ -94,12 +105,16 @@ export function emptyDraft(partial?: Partial<ComposerDraft>): ComposerDraft {
     typeId: null,
     attributes: {},
     event: { startsAt: "", endsAt: "", location: "" },
+    delivery: { shipsFrom: "", minDays: "", maxDays: "" },
+    redeemNote: "",
+    protection: { on: false, hours: "", downloads: "", devices: "" },
     seoTitle: "",
     seoDescription: "",
     price: "",
     onSale: false,
     compareAt: "",
     sizeIds: [],
+    sizesOff: {},
     stock: {},
     defaultStock: "3",
     priceBySize: {},
@@ -116,6 +131,23 @@ export function emptyDraft(partial?: Partial<ComposerDraft>): ComposerDraft {
 }
 
 export const stockKey = (groupKey: string, sizeId: string) => `${groupKey}:${sizeId}`;
+
+/** Does this colour come in this size? */
+export const hasSize = (d: Pick<ComposerDraft, "sizesOff">, groupKey: string, sizeId: string) => !d.sizesOff?.[stockKey(groupKey, sizeId)];
+
+/** The sizes a colour comes in, in the product's order. */
+export const sizesOf = (d: Pick<ComposerDraft, "sizeIds" | "sizesOff">, groupKey: string) => d.sizeIds.filter((sid) => hasSize(d, groupKey, sid));
+
+/** Switch one size on or off for one colour. */
+export function setSizeFor(d: ComposerDraft, groupKey: string, sizeId: string, on: boolean): ComposerDraft {
+  const off = { ...(d.sizesOff ?? {}) };
+  if (on) delete off[stockKey(groupKey, sizeId)];
+  else off[stockKey(groupKey, sizeId)] = true;
+  return { ...d, sizesOff: off };
+}
+
+/** Every colour × size that will be made (what the counts and the save use). */
+export const madeCount = (d: Pick<ComposerDraft, "sizeIds" | "sizesOff" | "groups">) => d.groups.reduce((n, g) => n + sizesOf(d, g.key).length, 0);
 
 export function stockOf(d: ComposerDraft, groupKey: string, sizeId: string): number {
   const raw = d.stock[stockKey(groupKey, sizeId)] ?? d.defaultStock;
@@ -167,6 +199,10 @@ export function validateDraft(d: ComposerDraft, opts: { publish: boolean; sizes?
     if (before == null || price == null || before <= price) e.compareAt = "السعر قبل الخصم لازم يكون أعلى من السعر الحالي";
   }
   if (!d.sizeIds.length) e.sizes = "اختاري مقاساً واحداً على الأقل";
+  else {
+    const bare = d.groups.find((g) => !sizesOf(d, g.key).length);
+    if (bare) e.sizes = `كل لون لازم يكون إله مقاس واحد على الأقل («${bare.name.trim() || "لون"}» ما إله)`;
+  }
   if (!d.groups.length) e.colors = "أضيفي لوناً واحداً على الأقل";
   else {
     const names = d.groups.map((g) => `${g.name.trim()}|${(g.boxLabel ?? "").trim()}`);
@@ -189,7 +225,7 @@ export function checklist(d: ComposerDraft) {
     { key: "title", label: "اسم المنتج", done: Boolean(d.title.trim()) },
     { key: "category", label: "القسم", done: Boolean(d.categoryId) },
     { key: "price", label: "السعر", done: price != null && price > 0 },
-    { key: "sizes", label: "المقاسات والكمية", done: d.sizeIds.length > 0 && d.groups.length > 0 },
+    { key: "sizes", label: "المقاسات والكمية", done: d.sizeIds.length > 0 && d.groups.length > 0 && d.groups.every((g) => sizesOf(d, g.key).length > 0) },
   ];
 }
 
@@ -211,7 +247,8 @@ export function autoSkus(d: ComposerDraft, sizes: CatalogSize[], opts?: { skuSal
       let sc = skuPart(sizeById.get(sid)?.name ?? "", 12) || `S${si + 1}`;
       if (usedSize.has(sc)) sc = `${sc}-${si + 1}`;
       usedSize.add(sc);
-      out[stockKey(g.key, sid)] = `${base}-${sc}`;
+      // The code stays the same whether or not other sizes are switched off.
+      if (hasSize(d, g.key, sid)) out[stockKey(g.key, sid)] = `${base}-${sc}`;
     });
   });
   return out;
@@ -233,7 +270,7 @@ export function duplicateSkus(d: ComposerDraft, sizes: CatalogSize[]): string[] 
 
 const groupBase = (d: ComposerDraft, g: ColorGroup, skus: Record<string, string>) => {
   if (g.skuBase?.trim()) return g.skuBase.trim();
-  const first = d.sizeIds.map((sid) => skus[stockKey(g.key, sid)]).find(Boolean) ?? "";
+  const first = sizesOf(d, g.key).map((sid) => skus[stockKey(g.key, sid)]).find(Boolean) ?? "";
   return first.replace(/-[^-]+$/, "") || first || "SKU";
 };
 
@@ -264,7 +301,7 @@ export function buildItems(d: ComposerDraft, sizes: CatalogSize[], opts?: { skuS
         isPrimary: i === 0,
         alt: `${d.title.trim()} — ${g.name.trim()}`,
       })),
-      variants: d.sizeIds.map((sid) => {
+      variants: sizesOf(d, g.key).map((sid) => {
         const key = stockKey(g.key, sid);
         const variantId = edit?.variantIds[key];
         const price = priceOf(d, g.key, sid);
@@ -297,7 +334,8 @@ export function removedIds(d: ComposerDraft) {
     if (p?.imageId && g.itemId && p.origItemId === g.itemId) keptImages.add(p.imageId);
   }
   const keptVariants = new Set<string>();
-  for (const g of d.groups) for (const sid of d.sizeIds) {
+  // A size switched off for a colour goes (the server keeps it if it has orders).
+  for (const g of d.groups) for (const sid of sizesOf(d, g.key)) {
     const id = edit.variantIds[stockKey(g.key, sid)];
     if (id) keptVariants.add(id);
   }
@@ -333,6 +371,7 @@ export function draftForEdit(p: ProductDeep): ComposerDraft {
   const skus: Record<string, string> = {};
   const priceBy: Record<string, string> = {};
   const lowBy: Record<string, string> = {};
+  const sizesOff: Record<string, boolean> = {};
   const meta: EditMeta = { productId: p.id, isActive: p.isActive, variantIds: {}, loadedStock: {}, loadedLow: {}, itemIds: [], imageIds: [] };
   const groups: ColorGroup[] = items.map((it) => {
     const key = newKey("g");
@@ -354,8 +393,11 @@ export function draftForEdit(p: ProductDeep): ComposerDraft {
       if (Number(v.price) !== base) priceBy[k] = String(Number(v.price));
       if ((v.lowStockThreshold ?? 0) !== low) lowBy[k] = String(v.lowStockThreshold ?? 0);
     }
-    // A size this colour doesn't have yet starts at 0 when added.
-    for (const sid of sizeIds) if (stock[stockKey(key, sid)] === undefined) stock[stockKey(key, sid)] = "0";
+    // A size this colour doesn't come in stays off for it (switched on, it starts at 0).
+    for (const sid of sizeIds) if (stock[stockKey(key, sid)] === undefined) {
+      stock[stockKey(key, sid)] = "0";
+      sizesOff[stockKey(key, sid)] = true;
+    }
     return {
       key,
       name: it.colorName === "Default" ? "لون واحد" : it.colorName,
@@ -377,12 +419,16 @@ export function draftForEdit(p: ProductDeep): ComposerDraft {
     typeId: p.typeId ?? null,
     attributes: (p.attributes as Record<string, unknown> | null) ?? {},
     event: eventOf(p),
+    delivery: deliveryOf(p),
+    redeemNote: (p as { redeemNote?: string | null }).redeemNote ?? "",
+    protection: protectionOf(p),
     seoTitle: p.seoTitle ?? "",
     seoDescription: p.seoDescription ?? "",
     price: Number.isFinite(base) && base > 0 ? String(base) : "",
     onSale: Number.isFinite(compare) && compare > base,
     compareAt: Number.isFinite(compare) && compare > base ? String(compare) : "",
     sizeIds,
+    sizesOff,
     stock,
     defaultStock: "0",
     skus,
@@ -414,6 +460,7 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
   for (const it of items) for (const v of it.variants ?? []) if (!sizeIds.includes(v.sizeId)) sizeIds.push(v.sizeId);
   const photos: Record<string, ComposerPhoto> = {};
   const stock: Record<string, string> = {};
+  const sizesOff: Record<string, boolean> = {};
   const groups: ColorGroup[] = items.map((it) => {
     const key = newKey("g");
     const photoKeys: string[] = [];
@@ -425,6 +472,8 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
       }
     }
     for (const v of it.variants ?? []) stock[stockKey(key, v.sizeId)] = String(v.stock ?? 0);
+    // The copy comes in the same sizes per colour as the original.
+    for (const sid of sizeIds) if (!(it.variants ?? []).some((v) => v.sizeId === sid)) sizesOff[stockKey(key, sid)] = true;
     return { key, name: it.colorName === "Default" ? "لون واحد" : it.colorName, hex: it.colorHex ?? null, photoKeys, nameTouched: true };
   });
   return emptyDraft({
@@ -434,10 +483,14 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
     typeId: p.typeId ?? null,
     attributes: (p.attributes as Record<string, unknown> | null) ?? {},
     event: eventOf(p),
+    delivery: deliveryOf(p),
+    redeemNote: (p as { redeemNote?: string | null }).redeemNote ?? "",
+    protection: protectionOf(p),
     price: Number.isFinite(price) && price > 0 ? String(price) : "",
     onSale: Number.isFinite(compare) && compare > price,
     compareAt: Number.isFinite(compare) && compare > price ? String(compare) : "",
     sizeIds,
+    sizesOff: opts.keepPhotos ? sizesOff : {},
     stock: opts.keepPhotos ? stock : {},
     groups: opts.keepPhotos ? groups : [],
     photos,
@@ -515,6 +568,64 @@ export function fromLocalInput(v: string) {
 
 function eventOf(p: { eventStartsAt?: string | null; eventEndsAt?: string | null; eventLocation?: string | null }) {
   return { startsAt: toLocalInput(p.eventStartsAt), endsAt: toLocalInput(p.eventEndsAt), location: p.eventLocation ?? "" };
+}
+
+function protectionOf(p: object) {
+  const d = p as { isProtected?: boolean | null; licenceHours?: number | null; licenceDownloads?: number | null; licenceDevices?: number | null };
+  const s = (n: number | null | undefined) => (n == null ? "" : String(n));
+  return { on: Boolean(d.isProtected), hours: s(d.licenceHours), downloads: s(d.licenceDownloads), devices: s(d.licenceDevices) };
+}
+
+const whole = (v: string, max: number) => {
+  const t = (v ?? "").trim().replace(/[٠-٩]/g, (c) => String("٠١٢٣٤٥٦٧٨٩".indexOf(c)));
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isInteger(n) && n >= 1 && n <= max ? n : NaN;
+};
+
+/** Protection as the server takes it (empty = the defaults: 24 h, 3 downloads); NaN marks a bad number. */
+export function protectionForSave(d: Pick<ComposerDraft, "protection">) {
+  const p = d.protection ?? { on: false, hours: "", downloads: "" };
+  return { isProtected: Boolean(p.on), licenceHours: whole(p.hours, 24 * 365), licenceDownloads: whole(p.downloads, 100), licenceDevices: whole(p.devices ?? "", 50) };
+}
+
+/** What's wrong with the protection numbers, in words (null = fine). */
+export function protectionProblem(d: Pick<ComposerDraft, "protection">): string | null {
+  const v = protectionForSave(d);
+  if (!v.isProtected) return null;
+  if (Number.isNaN(v.licenceHours)) return "مدة التنزيل: عدد ساعات صحيح، من 1 لـ 8760 (سنة)";
+  if (Number.isNaN(v.licenceDownloads)) return "عدد التنزيلات: رقم صحيح من 1 لـ 100";
+  if (Number.isNaN(v.licenceDevices)) return "عدد الأجهزة: رقم صحيح من 1 لـ 50";
+  return null;
+}
+
+function deliveryOf(p: object) {
+  const d = p as { shipsFrom?: string | null; deliveryMinDays?: number | null; deliveryMaxDays?: number | null };
+  return { shipsFrom: d.shipsFrom ?? "", minDays: d.deliveryMinDays == null ? "" : String(d.deliveryMinDays), maxDays: d.deliveryMaxDays == null ? "" : String(d.deliveryMaxDays) };
+}
+
+const days = (v: string) => {
+  const t = (v ?? "").trim().replace(/[٠-٩]/g, (c) => String("٠١٢٣٤٥٦٧٨٩".indexOf(c)));
+  if (!t) return null;
+  const n = Math.round(Number(t));
+  return Number.isFinite(n) && n >= 0 && n <= 120 ? n : NaN;
+};
+
+/** Shipping as the server takes it (empty = the type's); NaN marks a bad number. */
+export function deliveryForSave(d: Pick<ComposerDraft, "delivery">) {
+  return {
+    shipsFrom: d.delivery?.shipsFrom?.trim() || null,
+    deliveryMinDays: days(d.delivery?.minDays ?? ""),
+    deliveryMaxDays: days(d.delivery?.maxDays ?? ""),
+  };
+}
+
+/** What's wrong with the shipping days, in words (null = fine). */
+export function deliveryProblem(d: Pick<ComposerDraft, "delivery">): string | null {
+  const v = deliveryForSave(d);
+  if (Number.isNaN(v.deliveryMinDays) || Number.isNaN(v.deliveryMaxDays)) return "أيام التوصيل رقم من 0 لـ 120";
+  if (v.deliveryMinDays != null && v.deliveryMaxDays != null && v.deliveryMaxDays < v.deliveryMinDays) return "«لحد» لازم يكون أكبر من «من»";
+  return null;
 }
 
 /** The booking's when/where as the server takes them. */

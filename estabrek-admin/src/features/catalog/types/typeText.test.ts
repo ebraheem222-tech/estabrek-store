@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fieldProblems, missingRequired, newFieldKey, parseOptions, tidyAttributes } from "./typeText";
+import { deliveryLine, fieldProblems, missingRequired, newFieldKey, parseOptions, tidyAttributes } from "./typeText";
 import type { TypeField } from "../../../api/productTypes.api";
 
 const F: TypeField[] = [
@@ -26,5 +26,18 @@ describe("product type helpers", () => {
     expect(tidyAttributes(F, { fabric: " كريب ", length: "140,5", lined: true, occ: [], junk: "x" })).toEqual({ fabric: "كريب", length: 140.5, lined: true });
     expect(missingRequired(F, { fabric: "كريب" })).toEqual(["length"]);
     expect(fieldProblems([{ key: "a", label: "", kind: "text" }, { key: "b", label: "B", kind: "select", options: [] }])).toEqual({ a: "اكتبي اسم الحقل", b: "أضيفي اختيار واحد على الأقل" });
+  });
+});
+
+describe("deliveryLine", () => {
+  it("the product's own days and place, else the type's", () => {
+    const type = { shipsFrom: "رام الله", minDays: 2, maxDays: 4 };
+    expect(deliveryLine({}, type)).toBe("بيوصل خلال 2–4 أيام · بينشحن من رام الله");
+    expect(deliveryLine({ shipsFrom: "الصين", minDays: 10, maxDays: 20 }, type)).toBe("بيوصل خلال 10–20 يوم · بينشحن من الصين");
+    expect(deliveryLine({ minDays: 1 }, type)).toBe("بيوصل خلال يوم · بينشحن من رام الله");
+    expect(deliveryLine({ minDays: 5, maxDays: 2 }, null)).toBe("بيوصل خلال 2–5 أيام");
+    expect(deliveryLine({ minDays: 0, maxDays: 0 })).toBe("بيوصل بنفس اليوم");
+    expect(deliveryLine({ maxDays: 2 })).toBe("بيوصل خلال يومين");
+    expect(deliveryLine({ shipsFrom: "  " }, { shipsFrom: "" })).toBeNull();
   });
 });
