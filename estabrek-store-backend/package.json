@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prestart": "prisma migrate deploy",
+    "prestart": "node scripts/migrate-deploy.mjs",
+    "migrate:deploy": "node scripts/migrate-deploy.mjs",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "start:vault": "node dist/vault/main.js",
