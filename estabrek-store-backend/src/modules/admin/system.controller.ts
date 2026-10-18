@@ -129,10 +129,15 @@ r.post("/security/reset", asyncHandler(async (req, res) => {
   res.json(await save(req, envDefaults()));
 }));
 
-r.post("/security/revisions/:id/restore", asyncHandler(async (req, res) => {
-  const rev = await prisma.securityPolicyRevision.findUnique({ where: { id: String(req.params.id) } });
+/** Goes back to that version of the security rules (also used by السجل). */
+export async function restoreSecurityRevision(req: any, id: string) {
+  const rev = await prisma.securityPolicyRevision.findUnique({ where: { id } });
   if (!rev) throw NotFound("This version no longer exists");
-  res.json(await save(req, mergePolicy(rev.data)));
+  return save(req, mergePolicy(rev.data));
+}
+
+r.post("/security/revisions/:id/restore", asyncHandler(async (req, res) => {
+  res.json(await restoreSecurityRevision(req, String(req.params.id)));
 }));
 
 export default r;

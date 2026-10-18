@@ -27,6 +27,7 @@ import {
   ProductListQuery,
 } from "./catalog.schemas.js";
 import { updateProductDeep, getProductDeep } from "./catalog.service.js";
+import { keepProductRevision } from "./productRevisions.js";
 import { attributesForSave, defaultTypeId } from "../productTypes/productTypes.js";
 import { syncDigitalStock } from "../fulfillment/fulfillment.service.js";
 
@@ -212,6 +213,7 @@ r.post("/products", validate({ body: CreateProductBody }), asyncHandler(async (r
 // Bulk actions
 r.post("/products/bulk", validate({ body: BulkProductsBody }), asyncHandler(async (req, res) => {
   const { ids, action, isActive } = req.body as any;
+  for (const pid of (ids as string[]).slice(0, 500)) await keepProductRevision(pid, action === "delete" ? "delete" : "active", req.user?.sub);
 
   if (action === "delete") {
     const result = await prisma.product.deleteMany({ where: { id: { in: ids } } });
@@ -465,6 +467,7 @@ r.patch("/products/:id", validate({ body: UpdateProductBody }), asyncHandler(asy
     const current = await prisma.product.findUnique({ where: { id: req.params.id }, select: { typeId: true } });
     typed = await attributesForSave({ typeId, attributes: attributes ?? undefined }, current);
   }
+  await keepProductRevision(req.params.id, "edit", req.user?.sub);
   const out = await prisma.product.update({ where: { id: req.params.id }, data: { ...rest, ...typed } });
   await syncDigitalStock({ productIds: [out.id] });
   const shouldIndex = ["title", "description", "categoryId", "slug"].some((key) => key in (req.body ?? {}));
@@ -496,7 +499,14 @@ r.delete("/products/:id", asyncHandler(async (req, res) => {
       message: "Product has orders and cannot be deleted. Archive it instead.",
     });
   }
+  // Codes not sold yet would be lost with it.
+  const codesLeft = await prisma.digitalCode.count({ where: { productId: id, status: "available" } });
+  if (codesLeft) {
+    return res.status(409).json({ ok: false, code: "PRODUCT_HAS_CODES", message: `${codesLeft} codes not sold yet: void them or archive the product instead.` });
+  }
 
+  // Kept first: it can come back from السجل.
+  await keepProductRevision(id, "delete", req.user?.sub);
   await prisma.product.delete({ where: { id } });
   res.json({ ok: true });
 }));
@@ -504,6 +514,7 @@ r.delete("/products/:id", asyncHandler(async (req, res) => {
 // Archive product (soft-delete) - keeps history intact
 r.post("/products/:id/archive", asyncHandler(async (req, res) => {
   const id = req.params.id;
+  await keepProductRevision(id, "active", req.user?.sub);
   await prisma.$transaction(async (tx) => {
     await tx.product.update({ where: { id }, data: { isActive: false } });
     await tx.productItem.updateMany({ where: { productId: id }, data: { isActive: false } });
@@ -518,14 +529,28 @@ r.post("/items", validate({ body: CreateItemBody }), asyncHandler(async (req, re
 }));
 
 r.patch("/items/:id", validate({ body: UpdateItemBody }), asyncHandler(async (req, res) => {
+  await keepPartRevision(req, "item", "edit");
   const out = await prisma.productItem.update({ where: { id: req.params.id }, data: req.body });
   res.json(out);
 }));
 
 r.delete("/items/:id", asyncHandler(async (req, res) => {
+  await keepPartRevision(req, "item", "edit");
   await prisma.productItem.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
 }));
+
+/** The product of a colour, size or photo, for its version (السجل). */
+async function productOfPart(kind: "item" | "variant" | "image", id: string) {
+  if (kind === "item") return (await prisma.productItem.findUnique({ where: { id }, select: { productId: true } }))?.productId ?? null;
+  if (kind === "variant") return (await prisma.productVariant.findUnique({ where: { id }, select: { item: { select: { productId: true } } } }))?.item.productId ?? null;
+  return (await prisma.productItemImage.findUnique({ where: { id }, select: { item: { select: { productId: true } } } }))?.item.productId ?? null;
+}
+
+async function keepPartRevision(req: any, kind: "item" | "variant" | "image", reason: string) {
+  const productId = await productOfPart(kind, String(req.params.id));
+  if (productId) await keepProductRevision(productId, reason, req.user?.sub);
+}
 
 /* ========== Sizes ========== */
 r.get("/sizes", asyncHandler(async (_req, res) => {
@@ -556,6 +581,7 @@ r.post("/variants", validate({ body: CreateVariantBody }), asyncHandler(async (r
 
 r.patch("/variants/:id", validate({ body: UpdateVariantBody }), asyncHandler(async (req, res) => {
   const id = req.params.id;
+  await keepPartRevision(req, "variant", "price");
   const body: any = req.body;
 
   const { reason, ...data } = body;
@@ -593,6 +619,7 @@ r.patch("/variants/:id", validate({ body: UpdateVariantBody }), asyncHandler(asy
 }));
 
 r.delete("/variants/:id", asyncHandler(async (req, res) => {
+  await keepPartRevision(req, "variant", "edit");
   await prisma.productVariant.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
 }));
@@ -606,10 +633,12 @@ r.post("/images", validate({ body: AddImageBody }), asyncHandler(async (req, res
   res.status(201).json(out);
 }));
 r.patch("/images/:id", validate({ body: UpdateImageBody }), asyncHandler(async (req, res) => {
+  await keepPartRevision(req, "image", "edit");
   const out = await prisma.productItemImage.update({ where: { id: req.params.id }, data: req.body });
   res.json(out);
 }));
 r.delete("/images/:id", asyncHandler(async (req, res) => {
+  await keepPartRevision(req, "image", "edit");
   await prisma.productItemImage.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
 }));
@@ -1152,6 +1181,8 @@ r.put(
       const current = await prisma.product.findUnique({ where: { id: req.params.id }, select: { typeId: true } });
       body.product = { ...rest, ...(await attributesForSave({ typeId, attributes: attributes ?? undefined }, current)) };
     }
+    // The product as it was, for السجل.
+    await keepProductRevision(req.params.id, "edit", req.user?.sub);
     const out = await updateProductDeep(req.params.id, body, { adminUserId: req.user?.sub ?? null, reason: "Product full edit" });
     // Digital products never run out (new sizes included).
     await syncDigitalStock({ productIds: [req.params.id] });

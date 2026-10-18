@@ -7,6 +7,8 @@
     "prestart": "prisma migrate deploy",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
+    "start:vault": "node dist/vault/main.js",
+    "dev:vault": "tsx watch src/vault/main.ts",
     "backfill:image-hashes": "tsx src/scripts/backfillImageHashes.ts",
     "backfill:image-embeddings": "tsx src/scripts/backfillImageEmbeddings.ts",
     "admin:reset-link": "tsx src/scripts/adminResetLink.ts",

@@ -1,5 +1,5 @@
 -- Control and safety (2026-10-25): scheduled changes (الجدول الزمني), automations
--- (التلقائيات) and the admin's notifications. Guarded.
+-- (التلقائيات), the admin's notifications, product versions (السجل). Guarded.
 
 CREATE TABLE IF NOT EXISTS "ScheduledChange" (
     "id" TEXT NOT NULL,
@@ -82,3 +82,18 @@ CREATE TABLE IF NOT EXISTS "AdminNotification" (
 
 CREATE INDEX IF NOT EXISTS "AdminNotification_createdAt_idx" ON "AdminNotification"("createdAt");
 CREATE INDEX IF NOT EXISTS "AdminNotification_readAt_idx" ON "AdminNotification"("readAt");
+
+CREATE TABLE IF NOT EXISTS "ProductRevision" (
+    "id" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "reason" TEXT NOT NULL,
+    "data" JSONB NOT NULL,
+    "adminUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ProductRevision_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "ProductRevision_productId_createdAt_idx" ON "ProductRevision"("productId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ProductRevision_createdAt_idx" ON "ProductRevision"("createdAt");

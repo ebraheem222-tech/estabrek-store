@@ -1,6 +1,7 @@
 /**
  * Admin side of delivering digital products and tickets:
  *  - productFiles: the files of a digital product (upload, outside link, rename, order, delete).
+ *  - productCodes: codes sold one per piece (game keys, gift cards): upload, void, reveal.
  *  - orderDelivery: an order's private link, files, tickets and the delivery email.
  *  - tickets: the door — find a ticket by code and check it in; bookings with counts.
  */
@@ -14,6 +15,9 @@ import { asyncHandler } from "../../utils/async.js";
 import { validate } from "../../utils/validate.js";
 import { AppError, NotFound } from "../../utils/httpError.js";
 import { emailConfigured } from "../outbox/sender/email.js";
+import { codeSummary, importCodes, revealCode, variantsWithCodes, voidCode } from "../fulfillment/codes.service.js";
+import { orderLicences as licencesOf } from "../protected/protected.service.js";
+import { secretBoxFromJwt } from "../../lib/secretBox.js";
 import {
   CLOSED_STATUSES,
   deliveryKinds,
@@ -162,6 +166,48 @@ productFiles.get(
 
 /* ---------------- Order delivery ---------------- */
 
+/* ---------------- Codes sold one per piece (/v1/admin/catalog/products/:productId/codes) ---------------- */
+
+export const productCodes = Router({ mergeParams: true });
+
+productCodes.get(
+  "/",
+  asyncHandler(async (req: any, res) => {
+    const status = typeof req.query.status === "string" && ["available", "delivered", "void"].includes(req.query.status) ? req.query.status : null;
+    const take = Math.min(200, Math.max(1, Number(req.query.take) || 50));
+    const skip = Math.max(0, Number(req.query.skip) || 0);
+    res.json({ ...(await codeSummary(String(req.params.productId), { status, take, skip })), keyFromJwt: secretBoxFromJwt() });
+  }),
+);
+
+const ImportBody = z.object({ variantId: z.string().min(1).max(64), text: z.string().min(1).max(600_000), batch: z.string().trim().max(80).nullable().optional() }).strict();
+
+/** A list of codes (pasted, or a CSV's first column) for one size. */
+productCodes.post(
+  "/",
+  validate({ body: ImportBody }),
+  asyncHandler(async (req: any, res) => {
+    const b = req.body as z.infer<typeof ImportBody>;
+    const admin = req.user?.sub ? await prisma.adminUser.findUnique({ where: { id: String(req.user.sub) }, select: { id: true } }) : null;
+    res.json(await importCodes({ productId: String(req.params.productId), variantId: b.variantId, text: b.text, batch: b.batch ?? null, adminUserId: admin?.id ?? null }));
+  }),
+);
+
+productCodes.post(
+  "/:codeId/void",
+  asyncHandler(async (req, res) => {
+    res.json(await voidCode(String(req.params.productId), String(req.params.codeId)));
+  }),
+);
+
+/** The whole code (a POST, so it's in the activity log). */
+productCodes.post(
+  "/:codeId/reveal",
+  asyncHandler(async (req, res) => {
+    res.json(await revealCode(String(req.params.productId), String(req.params.codeId)));
+  }),
+);
+
 export const orderDelivery = Router();
 
 async function deliveryView(orderId: string) {
@@ -188,15 +234,26 @@ async function deliveryView(orderId: string) {
   if (!o) throw NotFound("Order not found");
   const kinds = await deliveryKinds(prisma, o.id);
   const needed = kinds.digital || kinds.booking;
-  const items = await prisma.orderRequestItem.findMany({ where: { orderRequestId: o.id }, select: { productId: true } });
+  const items = await prisma.orderRequestItem.findMany({ where: { orderRequestId: o.id }, select: { id: true, productId: true, variantId: true, quantity: true } });
   const files = kinds.digital
     ? await prisma.productFile.findMany({
-        where: { productId: { in: [...new Set(items.map((i) => i.productId))] }, product: { type: { fulfillment: "DIGITAL" } } },
+        // A protected product's files go out only as encrypted copies (the serials below).
+        where: { productId: { in: [...new Set(items.map((i) => i.productId))] }, product: { type: { fulfillment: "DIGITAL" }, isProtected: false } },
         orderBy: [{ position: "asc" }, { createdAt: "asc" }],
         select: { id: true, name: true, kind: true, product: { select: { title: true } } },
       })
     : [];
   const used = new Map(o.downloads.map((d) => [d.fileId, d]));
+  const codes = await prisma.digitalCode.findMany({
+    where: { orderRequestId: o.id },
+    orderBy: { deliveredAt: "asc" },
+    select: { id: true, productId: true, orderItemId: true, last4: true, status: true, deliveredAt: true, viewedAt: true, product: { select: { title: true } } },
+  });
+  // Lines sold as codes, and how many pieces still have none (ran out).
+  const coded = kinds.digital ? await variantsWithCodes(prisma, items.map((i) => i.variantId)) : new Set<string>();
+  const codesMissing = items
+    .filter((i) => coded.has(i.variantId))
+    .reduce((n, i) => n + Math.max(0, i.quantity - codes.filter((c) => c.orderItemId === i.id && c.status === "delivered").length), 0);
   return {
     needed,
     kinds,
@@ -214,8 +271,41 @@ async function deliveryView(orderId: string) {
     files: files.map((f) => ({ id: f.id, name: f.name, productTitle: f.product.title, kind: f.kind, downloads: used.get(f.id)?.count ?? 0, lastAt: used.get(f.id)?.lastAt ?? null })),
     maxDownloads: env.DIGITAL_MAX_DOWNLOADS,
     tickets: o.tickets.map((t) => ({ id: t.id, code: t.code, title: t.product.title, label: t.label, status: t.status, checkedInAt: t.checkedInAt, when: eventWhen(t.product.eventStartsAt, t.product.eventEndsAt) })),
+    codes: codes.map((c) => ({ id: c.id, productId: c.productId, title: c.product.title, last4: c.last4, status: c.status, deliveredAt: c.deliveredAt, viewedAt: c.viewedAt })),
+    sellsCodes: coded.size > 0,
+    codesMissing,
+    licences: await licencesOf(o.id),
+    sellsLicences: kinds.digital ? (await prisma.product.count({ where: { id: { in: [...new Set(items.map((i) => i.productId))] }, isProtected: true } })) > 0 : false,
   };
 }
+
+const orderCode = async (orderId: string, codeId: string) => {
+  const c = await prisma.digitalCode.findFirst({ where: { id: codeId, orderRequestId: orderId }, select: { id: true, productId: true } });
+  if (!c) throw NotFound("Code not found on this order");
+  return c;
+};
+
+/** The order's code in full (support: "it doesn't work, which one did I get?"). */
+orderDelivery.post(
+  "/:id/delivery/codes/:codeId/reveal",
+  asyncHandler(async (req, res) => {
+    const c = await orderCode(String(req.params.id), String(req.params.codeId));
+    res.json(await revealCode(c.productId, c.id));
+  }),
+);
+
+/** A bad code: voided, and the order gets the next one from the list. */
+orderDelivery.post(
+  "/:id/delivery/codes/:codeId/replace",
+  asyncHandler(async (req, res) => {
+    const id = String(req.params.id);
+    const c = await orderCode(id, String(req.params.codeId));
+    await voidCode(c.productId, c.id);
+    const r = await releaseOrder(id, "manual");
+    if (!r.released && r.why === "ORDER_CLOSED") throw new AppError(409, "ORDER_CLOSED", "This order is closed");
+    res.json(await deliveryView(id));
+  }),
+);
 
 orderDelivery.get(
   "/:id/delivery",

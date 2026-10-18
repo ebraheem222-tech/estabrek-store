@@ -121,11 +121,13 @@ ${button(p.url, "شوفي القطعة")}`,
   },
 };
 
-/** Digital files and tickets are ready: the private order page link, ticket codes and file names. */
+/** Digital files, tickets and codes are ready: the private order page link, ticket codes and file names (codes only as a count: they stay on the page). */
 EMAIL_TEMPLATES.ORDER_DELIVERY = (p) => {
   const tickets: Array<{ code: string; title: string; label?: string | null; when?: string | null; location?: string | null }> = Array.isArray(p.tickets) ? p.tickets : [];
   const files: Array<{ name: string; productTitle: string }> = Array.isArray(p.files) ? p.files : [];
-  const what = [files.length ? "ملفاتكِ" : "", tickets.length ? (tickets.length > 1 ? "تذاكركِ" : "تذكرتكِ") : ""].filter(Boolean).join(" و");
+  const codes = Number(p.codes ?? 0);
+  const licences = Number(p.licences ?? 0);
+  const what = [files.length || licences ? "ملفاتكِ" : "", tickets.length ? (tickets.length > 1 ? "تذاكركِ" : "تذكرتكِ") : "", codes ? (codes > 1 ? "أكوادكِ" : "كودكِ") : ""].filter(Boolean).join(" و");
   const ticketsHtml = tickets
     .map(
       (t) => `<tr><td style="padding:12px;border:1px solid #eadde3;border-radius:12px">
@@ -147,10 +149,12 @@ ${t.when ? `<div style="color:#5c4450;font-size:14px">${esc(t.when)}</div>` : ""
       body: `<p>أهلاً ${esc(p.name)}،</p><p>شكراً لطلبكِ. ${esc(what || "طلبكِ")} جاهزة:</p>
 ${tickets.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${ticketsHtml}</table><p style="font-size:13px;color:#5c4450">ورّي الكود (أو الـ QR من صفحة الطلب) على الباب.</p>` : ""}
 ${filesHtml}
-${button(p.url, tickets.length && !files.length ? "افتحي التذاكر" : files.length && !tickets.length ? "نزّلي الملفات" : "افتحي صفحة الطلب")}`,
+${codes ? `<p>${codes > 1 ? `${esc(codes)} أكواد` : "الكود"} بصفحة طلبكِ الخاصة (ما منبعت الأكواد بالإيميل، لأمانها).</p>` : ""}
+${licences ? `<p>🔒 ${licences > 1 ? `${esc(licences)} نسخ محمية` : "النسخة المحمية"}: السيريال (كلمة السر) والتنزيل بصفحة طلبكِ الخاصة، لمدة محدودة.</p>` : ""}
+${button(p.url, tickets.length && !files.length && !codes ? "افتحي التذاكر" : files.length && !tickets.length && !codes ? "نزّلي الملفات" : codes && !files.length && !tickets.length ? (codes > 1 ? "شوفي الأكواد" : "شوفي الكود") : "افتحي صفحة الطلب")}`,
       footer: "هالرابط خاص فيكِ، لا تشاركيه مع حدا.",
     }),
-    text: `أهلاً ${p.name}، ${what || "طلبكِ"} جاهزة (طلب ${p.orderNo}).\n${tickets.map((t) => `${t.title}${t.label ? ` · ${t.label}` : ""}: ${t.code}${t.when ? ` — ${t.when}` : ""}`).join("\n")}\n${files.map((f) => `- ${f.name}`).join("\n")}\n${p.url}`,
+    text: `أهلاً ${p.name}، ${what || "طلبكِ"} جاهزة (طلب ${p.orderNo}).\n${tickets.map((t) => `${t.title}${t.label ? ` · ${t.label}` : ""}: ${t.code}${t.when ? ` — ${t.when}` : ""}`).join("\n")}\n${files.map((f) => `- ${f.name}`).join("\n")}${codes ? `\n${codes > 1 ? `${codes} أكواد` : "الكود"} بصفحة الطلب.` : ""}${licences ? `\nالسيريال والتنزيل المحمي بصفحة الطلب، لمدة محدودة.` : ""}\n${p.url}`,
   };
 };
 

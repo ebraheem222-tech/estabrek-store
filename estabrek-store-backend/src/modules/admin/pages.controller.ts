@@ -202,7 +202,7 @@ export async function capturePageRevision(pageId: string, reason: string, actor?
   });
 }
 
-async function restorePageRevision(pageId: string, revisionId: string, reason: string, actor?: RevisionActor) {
+export async function restorePageRevision(pageId: string, revisionId: string, reason: string, actor?: RevisionActor) {
   const revision = await prisma.pageRevision.findFirst({
     where: { id: revisionId, pageId },
   });

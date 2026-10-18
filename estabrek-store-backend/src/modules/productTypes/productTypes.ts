@@ -68,6 +68,10 @@ export const TypeBody = z.object({
   showSize: z.boolean().optional(),
   /** How it reaches the shopper: shipped, downloaded (files) or a booking (tickets). */
   fulfillment: z.enum(["SHIPPING", "DIGITAL", "BOOKING"]).optional(),
+  /** Its products' delivery unless a product says otherwise. */
+  shipsFrom: z.string().trim().max(80).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+  deliveryMinDays: z.number().int().min(0).max(120).nullable().optional(),
+  deliveryMaxDays: z.number().int().min(0).max(120).nullable().optional(),
   position: z.number().int().min(0).max(1000).optional(),
 });
 export const TypePatch = TypeBody.partial();
@@ -168,6 +172,25 @@ export function specsOf(fields: FieldDef[], attributes: unknown) {
 }
 
 /** What the storefront needs to know about a type. */
+export type DeliveryFields = { shipsFrom?: string | null; deliveryMinDays?: number | null; deliveryMaxDays?: number | null };
+
+/**
+ * Where it ships from and how long it takes: the product's own, else its type's.
+ * Null when neither says. Days given the wrong way round are put right.
+ */
+export function deliveryOf(product: DeliveryFields, type?: DeliveryFields | null) {
+  const shipsFrom = product.shipsFrom || type?.shipsFrom || null;
+  const own = product.deliveryMinDays != null || product.deliveryMaxDays != null;
+  const src = own ? product : type ?? {};
+  let min = src.deliveryMinDays ?? null;
+  let max = src.deliveryMaxDays ?? null;
+  if (min == null && max != null) min = max;
+  if (max == null && min != null) max = min;
+  if (min != null && max != null && max < min) [min, max] = [max, min];
+  if (!shipsFrom && min == null) return null;
+  return { shipsFrom, minDays: min, maxDays: max };
+}
+
 export function publicType(t: { id: string; name: string; slug: string; colorLabel: string; sizeLabel: string; showColor: boolean; showSize: boolean; fulfillment?: string | null; fields: unknown }) {
   return {
     id: t.id,
@@ -192,6 +215,9 @@ export const publicTypeSelect = {
   showSize: true,
   fulfillment: true,
   fields: true,
+  shipsFrom: true,
+  deliveryMinDays: true,
+  deliveryMaxDays: true,
 } as const;
 
 /** The type new products get when none is chosen: the first one. */

@@ -28,6 +28,19 @@ export const CreateProductBody = z.object({
   eventStartsAt: z.coerce.date().nullable().optional(),
   eventEndsAt: z.coerce.date().nullable().optional(),
   eventLocation: z.string().trim().max(200).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+  /** Shipped products: where from and how long (empty = the type's). */
+  shipsFrom: z.string().trim().max(80).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+  deliveryMinDays: z.number().int().min(0).max(120).nullable().optional(),
+  deliveryMaxDays: z.number().int().min(0).max(120).nullable().optional(),
+  /** Codes: how to use one (shown next to it on the order page). */
+  redeemNote: z.string().trim().max(500).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+  /** Protected digital product: a serial and an encrypted, marked copy per piece. */
+  isProtected: z.boolean().optional(),
+  /** Download window (hours) and downloads per serial; null = the defaults (24 h, 3). */
+  licenceHours: z.number().int().min(1).max(24 * 365).nullable().optional(),
+  licenceDownloads: z.number().int().min(1).max(100).nullable().optional(),
+  /** PCs one serial can be activated on with the launcher; null = 1. */
+  licenceDevices: z.number().int().min(1).max(50).nullable().optional(),
 });
 export const UpdateProductBody = CreateProductBody.partial();
 
@@ -106,6 +119,16 @@ export const ProductDeepUpdateBody = z.object({
     eventStartsAt: z.coerce.date().nullable().optional(),
     eventEndsAt: z.coerce.date().nullable().optional(),
     eventLocation: z.string().trim().max(200).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+    /** Shipped products: where from and how long (empty = the type's). */
+    shipsFrom: z.string().trim().max(80).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+    deliveryMinDays: z.number().int().min(0).max(120).nullable().optional(),
+    deliveryMaxDays: z.number().int().min(0).max(120).nullable().optional(),
+    /** Codes: how to use one (shown next to it on the order page). */
+    redeemNote: z.string().trim().max(500).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+    isProtected: z.boolean().optional(),
+    licenceHours: z.number().int().min(1).max(24 * 365).nullable().optional(),
+    licenceDownloads: z.number().int().min(1).max(100).nullable().optional(),
+    licenceDevices: z.number().int().min(1).max(50).nullable().optional(),
   }).optional(),
   items: z.array(z.object({
     id: z.string().cuid().optional(),

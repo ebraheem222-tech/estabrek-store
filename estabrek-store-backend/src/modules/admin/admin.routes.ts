@@ -32,9 +32,12 @@ import selling from "./selling.controller.js";
 import experiments from "./experiments.controller.js";
 import schedule from "./schedule.controller.js";
 import automations, { notifications } from "./automations.controller.js";
+import history from "./history.controller.js";
 import backups from "./backups.controller.js";
 import productTypes from "./productTypes.controller.js";
-import { orderDelivery, productFiles, tickets } from "./fulfillment.controller.js";
+import { orderDelivery, productCodes, productFiles, tickets } from "./fulfillment.controller.js";
+import { orderLicences, productProtected, protectedTrace, protectedTypes } from "./protected.controller.js";
+import { vaultAdmin } from "./vault.controller.js";
 import razan from "./razan.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
@@ -95,9 +98,18 @@ r.use("/razan", areaAccess({ read: "settings:read", write: "settings:write" }), 
 r.use("/nav", areaAccess({ read: ["nav:read", "nav:write"], write: "nav:write" }), nav);
 r.use("/pages", areaAccess({ read: "pages:read", write: "pages:write", extra: pagePublishing }), pages);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);
+// Codes sold one per piece (game keys, gift cards).
+r.use("/catalog/products/:productId/codes", areaAccess({ read: "catalog:read", write: "catalog:write" }), productCodes);
+// Protected products (scripts…): master files kept encrypted, file types for the buyer's mark.
+r.use("/catalog/products/:productId/protected", areaAccess({ read: "catalog:read", write: "catalog:write" }), productProtected);
+r.use("/catalog/protected-types", areaAccess({ read: "catalog:read", write: "catalog:write" }), protectedTypes);
 r.use("/catalog/product-types", areaAccess({ read: "catalog:read", write: "catalog:write" }), productTypes);
 r.use("/catalog", areaAccess({ read: "catalog:read", write: "catalog:write" }), catalog);
-r.use("/orders", areaAccess({ read: "orders:read", write: "orders:write" }), orderDelivery, orders);
+// The vault (الخزنة): the owner's 20-minute session, the launcher. Opening a session also needs her password and code.
+r.use("/vault", areaAccess({ read: "system:read", write: "system:write" }), vaultAdmin);
+// A leaked file → the order it came from (shows the buyer: needs the orders).
+r.use("/orders/protected-trace", areaAccess({ read: "orders:read", write: "orders:read" }), protectedTrace);
+r.use("/orders", areaAccess({ read: "orders:read", write: "orders:write" }), orderDelivery, orderLicences, orders);
 r.use("/tickets", areaAccess({ read: "orders:read", write: "orders:write" }), tickets);
 r.use("/requests-settings", areaAccess({ read: "settings:read", write: "settings:write" }), requestsSettings);
 r.use("/requests", areaAccess({ read: "orders:read", write: "orders:write" }), requestsInbox);
@@ -130,6 +142,8 @@ r.use("/schedule", areaAccess({ read: ["settings:read", "system:read", "pages:re
 // Automations (التلقائيات), and the bell any member sees.
 r.use("/automations", areaAccess({ read: "settings:read", write: "settings:write" }), automations);
 r.use("/notifications", areaAccess({ read: "dashboard:read", write: "dashboard:read" }), notifications);
+// One history for everything (السجل): each part checks its own rights.
+r.use("/history", areaAccess({ read: ["settings:read", "system:read", "pages:read", "catalog:read", "inventory:read", "discounts:read"], write: ["settings:write", "system:write", "pages:write", "catalog:write", "inventory:write", "discounts:write"] }), history);
 r.use("/chatbot", areaAccess({ read: "chatbot:read", write: "chatbot:write" }), chatbot);
 r.use("/staff", areaAccess({ read: "staff:read", write: "staff:write" }), staff);
 r.use("/activity", requirePermission("activity:read"), activity);

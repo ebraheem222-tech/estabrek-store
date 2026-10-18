@@ -10,6 +10,7 @@ import auth from "../modules/auth/auth.routes.js";   // ← add this
 import customer from "../modules/customer/customer.routes.js";
 import stockAlerts from "../modules/stockAlerts/stockAlerts.routes.js";
 import orderAccess from "../modules/fulfillment/orderAccess.routes.js";
+import licences from "../modules/protected/licence.routes.js";
 import razanPublic from "../modules/razan/razan.routes.js";
 import requestsPublic from "../modules/requests/requests.routes.js";
 import quizPublic from "../modules/quiz/quiz.routes.js";
@@ -25,6 +26,7 @@ r.use("/auth", auth);
 r.use("/customer", customer); // shopper accounts (sign in by email code)
 r.use("/stock-alerts", stockAlerts); // "tell me when it's back"
 r.use("/orders", orderAccess); // private order page: downloads and tickets
+r.use("/licences", licences); // the Windows launcher: activate a serial on a PC, check it, download the launcher
 r.use("/razan", razanPublic); // the storefront guide: usage counts and the owner's preview
 r.use("/requests", requestsPublic); // «اطلبي قطعتكِ» and «بدي حدا يحكيني»
 r.use("/quiz", quizPublic); // «سؤال وجواب» (a coupon prize)

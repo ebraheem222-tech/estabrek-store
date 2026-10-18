@@ -133,6 +133,9 @@ enum SecurityEventType {
   ACCOUNT_UNLOCKED
   /// Signed in from an IP this admin hasn't used before.
   NEW_DEVICE_LOGIN
+  /// The vault (protected products' masters): a 20-minute session opened, or refused.
+  VAULT_SESSION_OPENED
+  VAULT_SESSION_DENIED
 }
 
 
@@ -457,6 +460,57 @@ model AdminNotification {
 
   @@index([createdAt])
   @@index([readAt])
+}
+
+/// A product as it was before a change from the admin (the editor, the list, a
+/// price, a delete), to put it back from السجل (modules/admin/productRevisions.ts).
+/// Not a relation: the product may be deleted. The latest 20 per product are kept.
+model ProductRevision {
+  id          String   @id @default(cuid())
+  productId   String
+  title       String
+  /// "edit" | "price" | "active" | "delete" | "restore"
+  reason      String
+  /// The product with its colours, photos and sizes (getProductDeep).
+  data        Json
+  adminUserId String?
+  createdAt   DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([createdAt])
+}
+
+/// One code sold per piece (admin → المنتج → الأكواد): a game key, a gift card, a
+/// licence. Uploaded by the owner, stored encrypted (lib/secretBox.ts), handed out
+/// when an order is paid or accepted, shown on the shopper's private order page.
+/// The size's stock is the number of codes still available.
+model DigitalCode {
+  id          String          @id @default(cuid())
+  productId   String
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String
+  variant     ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  /// The code, encrypted (AES-256-GCM).
+  codeEnc     String
+  /// A keyed hash of the code: the same code can't be added twice.
+  codeHash    String          @unique
+  /// The last 4 characters, to tell codes apart without showing them.
+  last4       String
+  /// "available" | "delivered" | "void"
+  status      String          @default("available")
+  orderRequestId String?
+  orderItemId String?
+  deliveredAt DateTime?
+  /// First time the shopper's order page showed it (unseen codes go back if the order is cancelled).
+  viewedAt    DateTime?
+  /// Which upload it came in (the owner's note, e.g. the supplier invoice).
+  batch       String?
+  createdById String?
+  createdAt   DateTime        @default(now())
+
+  @@index([variantId, status])
+  @@index([productId, status])
+  @@index([orderRequestId])
 }
 
 /// The speed settings as they were before each change (latest 30 kept).
@@ -1071,8 +1125,27 @@ model Product {
   eventStartsAt DateTime?
   eventEndsAt   DateTime?
   eventLocation String?
+  /// Shipped products: where it ships from and how long it takes (empty = the type's).
+  shipsFrom       String?
+  deliveryMinDays Int?
+  deliveryMaxDays Int?
+  /// Codes (game keys, gift cards): how to use one, shown next to the code.
+  redeemNote    String?
+  /// Protected digital product (scripts…): each piece gets a serial and an encrypted,
+  /// marked copy (modules/protected). Download window in hours and downloads per serial
+  /// (empty = the defaults, 24 h and 3).
+  isProtected      Boolean @default(false)
+  licenceHours     Int?
+  licenceDownloads Int?
+  /// PCs one serial can be activated on with the launcher (empty = 1).
+  licenceDevices   Int?
   /// Digital products: the files the shopper downloads after paying / acceptance.
   files       ProductFile[]
+  /// Protected products: the master files (kept encrypted) and the serials sold.
+  protectedFiles ProtectedFile[]
+  licences       Licence[]
+  /// Codes sold one per piece (أكواد): game keys, gift cards, licences.
+  codes       DigitalCode[]
   tickets     Ticket[]
   requests        CustomerRequest[] @relation("RequestProduct")
   linkedRequests  CustomerRequest[] @relation("RequestLinkedProduct")
@@ -1112,6 +1185,10 @@ model ProductType {
   showSize    Boolean   @default(true)
   /// How it reaches the shopper: shipped, downloaded, or a booking with a ticket.
   fulfillment Fulfillment @default(SHIPPING)
+  /// Its products' delivery unless a product says otherwise.
+  shipsFrom       String?
+  deliveryMinDays Int?
+  deliveryMaxDays Int?
   position    Int       @default(0)
   products    Product[]
   createdAt   DateTime  @default(now())
@@ -1242,6 +1319,7 @@ model ProductVariant {
   orderRequests OrderRequest[]
   orderRequestItems OrderRequestItem[]
   stockAlerts StockAlert[]
+  codes DigitalCode[]
   @@unique([productItemId, sizeId])
   @@index([productItemId])
   @@index([sizeId])
@@ -1374,6 +1452,7 @@ model OrderRequest {
   deliveryEmailAt DateTime?
   tickets      Ticket[]
   downloads    OrderDownload[]
+  licences     Licence[]
   country      String?
   city         String?
   address      String?
@@ -1847,4 +1926,119 @@ model AiUsage {
   count   Int      @default(0)
 
   @@id([day, feature])
+}
+
+/// A protected product's master file (a script, a model, a program…), kept
+/// encrypted (lib/secretBox sealBytes). Each download makes a copy marked for
+/// the order and packs it in a ZIP encrypted with the buyer's serial.
+model ProtectedFile {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  /// Lower-case extension without the dot ("py", "stl"); "" when none.
+  ext         String
+  bytes       Int
+  sha256      String
+  /// The file, encrypted, when it's kept here (no vault); empty when it's in the vault.
+  dataEnc     Bytes?
+  /// The file's id in the vault (src/vault) when it's kept there.
+  vaultFileId String?
+  /// What the upload is (text encoding, signed script, STL kind): decides where the mark can go.
+  probe       Json
+  position    Int      @default(0)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([productId, position])
+}
+
+/// The owner's own file types, or changes to the built-in ones (modules/protected/marks.ts).
+model ProtectedFileType {
+  ext          String   @id
+  label        String
+  /// comment (a licence line inside the file) | stl (in the STL header) | package (beside it, in the ZIP)
+  mode         String
+  commentStart String?
+  commentEnd   String?
+  updatedAt    DateTime @updatedAt
+}
+
+/// A serial sold with a protected product: one per piece. The buyer downloads the
+/// encrypted copy (its password is the serial) inside the window, a set number of times.
+model Licence {
+  id             String       @id @default(cuid())
+  productId      String
+  product        Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderRequestId String
+  orderRequest   OrderRequest @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+  orderItemId    String
+  serialEnc      String
+  serialHash     String       @unique
+  last4          String
+  /// In every copy (the licence line, the STL header, LICENCE.txt): finds the order behind a leaked file.
+  markId         String       @unique
+  /// active | revoked
+  status         String       @default("active")
+  /// order (the order was cancelled: comes back if it's reopened) | owner
+  revokedReason  String?
+  revokedAt      DateTime?
+  expiresAt      DateTime
+  maxDownloads   Int
+  downloads      Int          @default(0)
+  lastDownloadAt DateTime?
+  createdAt      DateTime     @default(now())
+  log            LicenceDownload[]
+  activations    Activation[]
+
+  @@index([orderRequestId])
+  @@index([productId, status])
+}
+
+model LicenceDownload {
+  id        String   @id @default(cuid())
+  licenceId String
+  licence   Licence  @relation(fields: [licenceId], references: [id], onDelete: Cascade)
+  at        DateTime @default(now())
+  /// Keyed hash of the IP (who downloaded, without keeping the address).
+  ipHash    String?
+  userAgent String?
+
+  @@index([licenceId, at])
+}
+
+/// A serial activated on one PC with the launcher (phase 4). The launcher keeps a
+/// licence signed for that PC's fingerprint; the owner can free a PC (reset).
+model Activation {
+  id          String    @id @default(cuid())
+  licenceId   String
+  licence     Licence   @relation(fields: [licenceId], references: [id], onDelete: Cascade)
+  /// SHA-256 of the PC's identifiers, made by the launcher (the identifiers never leave the PC).
+  deviceHash  String
+  deviceName  String?
+  /// active | reset
+  status      String    @default("active")
+  appVersion  String?
+  ipHash      String?
+  createdAt   DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  resetAt     DateTime?
+
+  @@unique([licenceId, deviceHash])
+  @@index([licenceId, status])
+}
+
+/// The Windows launcher buyers download (built from estabrek-launcher, uploaded by the owner).
+model LauncherRelease {
+  id          String   @id @default(cuid())
+  version     String
+  bytes       Int
+  sha256      String
+  data        Bytes
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([isActive, createdAt])
 }

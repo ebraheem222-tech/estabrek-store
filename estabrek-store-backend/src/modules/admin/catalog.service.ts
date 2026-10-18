@@ -31,6 +31,14 @@ type DeepInput = {
     eventStartsAt: Date | null;
     eventEndsAt: Date | null;
     eventLocation: string | null;
+    shipsFrom: string | null;
+    deliveryMinDays: number | null;
+    deliveryMaxDays: number | null;
+    redeemNote: string | null;
+    isProtected: boolean;
+    licenceHours: number | null;
+    licenceDownloads: number | null;
+    licenceDevices: number | null;
   }>;
   items?: Array<{
     id?: string;
@@ -138,6 +146,8 @@ export async function updateProductDeep(productId: string, input: DeepInput, ctx
       ? new Set([
           ...(await tx.orderRequest.findMany({ where: { variantId: { in: [...variantIdsToDelete] } }, select: { variantId: true }, distinct: ["variantId"] })).map((o) => o.variantId),
           ...(await tx.orderRequestItem.findMany({ where: { variantId: { in: [...variantIdsToDelete] } }, select: { variantId: true }, distinct: ["variantId"] })).map((o) => o.variantId),
+          // Sizes with codes are kept too: deleting them would delete the codes.
+          ...(await tx.digitalCode.findMany({ where: { variantId: { in: [...variantIdsToDelete] } }, select: { variantId: true }, distinct: ["variantId"] })).map((o) => o.variantId),
         ])
       : new Set<string>();
     const keptVariantByKey = new Map<string, string>();

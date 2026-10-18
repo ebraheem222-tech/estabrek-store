@@ -2,8 +2,13 @@
  * Reading the whole database into a backup, and putting a backup back.
  * Works on any version of the schema: tables and columns are read from
  * Postgres itself, and a restore only fills the columns both sides have.
+ *
+ * Only the tagged $queryRaw / $executeRaw are used (lib/prisma.ts switches the
+ * *Unsafe ones off). Table and column names can't be bound parameters, so they
+ * go in with Prisma.raw — always names read from Postgres's own catalogue (never
+ * from a request or the backup file), quoted.
  */
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma as defaultPrisma } from "../../lib/prisma.js";
 import type { BackupData } from "./backupFile.js";
 
@@ -18,22 +23,22 @@ export const SKIPPED_TABLES = new Set([
   "CustomerSession",
 ]);
 
-type Db = Pick<PrismaClient, "$queryRawUnsafe" | "$executeRawUnsafe">;
+type Db = Pick<PrismaClient, "$queryRaw" | "$executeRaw">;
 
 const q = (name: string) => `"${name.replace(/"/g, '""')}"`;
+/** A table or column name from Postgres's catalogue, quoted, as SQL. */
+const ident = (name: string) => Prisma.raw(q(name));
 
 async function tableNames(db: Db): Promise<string[]> {
-  const rows = await db.$queryRawUnsafe<Array<{ name: string }>>(
-    `SELECT table_name::text AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`,
-  );
+  const rows = await db.$queryRaw<Array<{ name: string }>>`
+    SELECT table_name::text AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`;
   return rows.map((r) => r.name);
 }
 
 async function lastMigration(db: Db): Promise<string | null> {
   try {
-    const rows = await db.$queryRawUnsafe<Array<{ name: string }>>(
-      `SELECT migration_name::text AS name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL ORDER BY migration_name DESC LIMIT 1`,
-    );
+    const rows = await db.$queryRaw<Array<{ name: string }>>`
+      SELECT migration_name::text AS name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL ORDER BY migration_name DESC LIMIT 1`;
     return rows[0]?.name ?? null;
   } catch {
     return null;
@@ -44,7 +49,7 @@ export async function dumpDatabase(db: Db = defaultPrisma): Promise<BackupData> 
   const tables: BackupData["tables"] = {};
   for (const name of await tableNames(db)) {
     if (SKIPPED_TABLES.has(name)) continue;
-    const res = await db.$queryRawUnsafe<Array<{ rows: unknown }>>(`SELECT coalesce(json_agg(t), '[]'::json) AS rows FROM ${q(name)} t`);
+    const res = await db.$queryRaw<Array<{ rows: unknown }>>`SELECT coalesce(json_agg(t), '[]'::json) AS rows FROM ${ident(name)} t`;
     const rows = res[0]?.rows;
     tables[name] = (typeof rows === "string" ? JSON.parse(rows) : rows) as Array<Record<string, unknown>>;
   }
@@ -60,7 +65,7 @@ export function countRows(data: BackupData) {
 type ForeignKey = { child: string; childColumn: string; parent: string; parentColumn: string };
 
 async function foreignKeys(db: Db): Promise<ForeignKey[]> {
-  return db.$queryRawUnsafe<ForeignKey[]>(`
+  return db.$queryRaw<ForeignKey[]>`
     SELECT tc.relname::text AS child, ca.attname::text AS "childColumn", tp.relname::text AS parent, pa.attname::text AS "parentColumn"
     FROM pg_constraint c
     JOIN pg_class tc ON tc.oid = c.conrelid
@@ -68,14 +73,12 @@ async function foreignKeys(db: Db): Promise<ForeignKey[]> {
     JOIN pg_namespace n ON n.oid = tc.relnamespace AND n.nspname = 'public'
     JOIN pg_attribute ca ON ca.attrelid = c.conrelid AND ca.attnum = c.conkey[1]
     JOIN pg_attribute pa ON pa.attrelid = c.confrelid AND pa.attnum = c.confkey[1]
-    WHERE c.contype = 'f'`);
+    WHERE c.contype = 'f'`;
 }
 
 async function columnsOf(db: Db, table: string): Promise<string[]> {
-  const rows = await db.$queryRawUnsafe<Array<{ name: string }>>(
-    `SELECT column_name::text AS name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1`,
-    table,
-  );
+  const rows = await db.$queryRaw<Array<{ name: string }>>`
+    SELECT column_name::text AS name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${table}`;
   return rows.map((r) => r.name);
 }
 
@@ -135,7 +138,7 @@ export async function restoreDatabase(data: BackupData, db: PrismaClient = defau
   const counts: Record<string, number> = {};
   await db.$transaction(
     async (tx) => {
-      if (order.length) await tx.$executeRawUnsafe(`TRUNCATE ${order.map(q).join(", ")} CASCADE`);
+      if (order.length) await tx.$executeRaw`TRUNCATE ${Prisma.join(order.map(ident), ", ")} CASCADE`;
       for (const t of order) {
         let rows = data.tables[t] ?? [];
         if (!rows.length) {
@@ -145,10 +148,10 @@ export async function restoreDatabase(data: BackupData, db: PrismaClient = defau
         const cols = (columns.get(t) ?? []).filter((c) => c in rows[0]);
         const self = fks.find((fk) => fk.child === t && fk.parent === t);
         if (self) rows = parentsFirst(rows, self.childColumn, self.parentColumn);
-        const list = cols.map(q).join(", ");
+        const list = Prisma.join(cols.map(ident), ", ");
         for (let i = 0; i < rows.length; i += 500) {
-          const chunk = rows.slice(i, i + 500);
-          await tx.$executeRawUnsafe(`INSERT INTO ${q(t)} (${list}) SELECT ${list} FROM json_populate_recordset(NULL::${q(t)}, $1::json)`, JSON.stringify(chunk));
+          const chunk = JSON.stringify(rows.slice(i, i + 500));
+          await tx.$executeRaw`INSERT INTO ${ident(t)} (${list}) SELECT ${list} FROM json_populate_recordset(NULL::${ident(t)}, ${chunk}::json)`;
         }
         counts[t] = rows.length;
       }

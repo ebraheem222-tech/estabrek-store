@@ -134,10 +134,10 @@ r.get("/revisions/:id", asyncHandler(async (req, res) => {
   res.json(rev);
 }));
 
-// POST /v1/admin/settings/revisions/:id/restore — go back to that version (the current one is kept first)
-r.post("/revisions/:id/restore", asyncHandler(async (req, res) => {
-  const rev = await prisma.settingsRevision.findUnique({ where: { id: req.params.id } });
-  if (!rev) return res.status(404).json({ error: "NOT_FOUND", message: "This version no longer exists" });
+/** Goes back to that version (the current one is kept first). Null when it no longer exists. Also used by السجل. */
+export async function restoreSettingsRevision(req: any, id: string) {
+  const rev = await prisma.settingsRevision.findUnique({ where: { id } });
+  if (!rev) return null;
   const s = await getOrCreateSettings();
   const data = snapshotOf((rev.data ?? {}) as Record<string, unknown>);
   // Only real settings columns go back (a column removed since then is skipped).
@@ -148,7 +148,14 @@ r.post("/revisions/:id/restore", asyncHandler(async (req, res) => {
   await keepRevision(current, changed, adminUserId, "قبل الاسترجاع");
   const updated = await prisma.siteSettings.update({ where: { id: s.id }, data: restore as any });
   triggerSettingsRevalidate();
-  res.json({ settings: visibleSettings(req, updated as unknown as Record<string, unknown>), changed });
+  return { settings: visibleSettings(req, updated as unknown as Record<string, unknown>), changed };
+}
+
+// POST /v1/admin/settings/revisions/:id/restore — go back to that version (the current one is kept first)
+r.post("/revisions/:id/restore", asyncHandler(async (req, res) => {
+  const out = await restoreSettingsRevision(req, String(req.params.id));
+  if (!out) return res.status(404).json({ error: "NOT_FOUND", message: "This version no longer exists" });
+  res.json(out);
 }));
 
 // PATCH /v1/admin/settings

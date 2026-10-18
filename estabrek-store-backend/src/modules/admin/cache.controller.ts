@@ -280,14 +280,19 @@ r.post(
   }),
 );
 
+/** Goes back to that version of the speed settings (every part: cache, motion, uploads, lanes, jobs). Also used by السجل. */
+export async function restorePerformanceRevision(req: any, id: string) {
+  const rev = await prisma.performanceSettingsRevision.findUnique({ where: { id } });
+  if (!rev) throw NotFound("This version no longer exists");
+  const data = rev.data && typeof rev.data === "object" ? (rev.data as Record<string, unknown>) : {};
+  // The history is shared: going back restores every part as it was (cache, motion, uploads, lanes).
+  return savePerformance(req, partsOf(data));
+}
+
 r.post(
   "/revisions/:id/restore",
   asyncHandler(async (req, res) => {
-    const rev = await prisma.performanceSettingsRevision.findUnique({ where: { id: String(req.params.id) } });
-    if (!rev) throw NotFound("This version no longer exists");
-    const data = rev.data && typeof rev.data === "object" ? (rev.data as Record<string, unknown>) : {};
-    // The history is shared: going back restores every part as it was (cache, motion, uploads, lanes).
-    const out = await savePerformance(req, partsOf(data));
+    const out = await restorePerformanceRevision(req, String(req.params.id));
     res.json({ config: out.cache, storefront: out.storefront, changed: out.changed });
   }),
 );

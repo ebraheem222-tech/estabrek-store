@@ -1,7 +1,8 @@
 /**
  * How products reach the shopper (أنواع المنتجات → طريقة التسليم):
  *  - SHIPPING: as always (the owner ships it).
- *  - DIGITAL: files she downloads from her private order page.
+ *  - DIGITAL: files she downloads from her private order page, and codes (game
+ *    keys, gift cards) shown there, one per piece (codes.service.ts).
  *  - BOOKING: one ticket per seat, with a code shown at the door.
  *
  * Files and tickets are "released" when the order is paid online or the owner
@@ -17,6 +18,9 @@ import { env } from "../../config/env.js";
 import { getCloudinary, isCloudinaryEnabled } from "../../lib/cloudinary.js";
 import { AppError } from "../../utils/httpError.js";
 import { emailConfigured, sendEmail } from "../outbox/sender/email.js";
+import { assignCodesInTx, codesForOrder, returnUnseenCodesInTx, syncCodeStock } from "./codes.service.js";
+import { issueLicencesInTx, licencesForOrder, revokeLicencesInTx } from "../protected/protected.service.js";
+import { currentLauncher } from "../protected/launcher.service.js";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -95,7 +99,7 @@ async function orderLines(db: Db, orderId: string) {
   const products = ids.length
     ? await db.product.findMany({
         where: { id: { in: ids } },
-        select: { id: true, title: true, eventStartsAt: true, eventEndsAt: true, eventLocation: true, type: { select: { fulfillment: true } } },
+        select: { id: true, title: true, eventStartsAt: true, eventEndsAt: true, eventLocation: true, isProtected: true, licenceHours: true, licenceDownloads: true, type: { select: { fulfillment: true } } },
       })
     : [];
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -159,6 +163,17 @@ export async function releaseOrderInTx(tx: Prisma.TransactionClient, orderId: st
     }
   }
 
+  // Codes (game keys, gift cards): one per piece, from the size's list.
+  const digital = deliverable.filter((l) => l.fulfillment === "DIGITAL");
+  const codes = digital.length ? await assignCodesInTx(tx, order.id, digital.map((l) => ({ id: l.id, variantId: l.variantId, quantity: l.quantity }))) : { short: [] };
+  if (codes.short.length) {
+    const missing = codes.short.reduce((n, s) => n + s.missing, 0);
+    await tx.orderRequestHistory.create({ data: { orderRequestId: order.id, fromStatus: order.status, toStatus: order.status, note: `ناقص ${missing} كود: الأكواد خلصت. ضيفي أكواد للمنتج وارجعي سلّمي الطلب.` } });
+    await tx.adminNotification.create({ data: { title: "الأكواد خلصت", body: `طلب ${order.id.slice(-6).toUpperCase()} ناقصه ${missing} كود.`, link: `/admin/orders/${order.id}` } });
+  }
+  // Protected products (scripts…): a serial per piece; the encrypted copy is made at download.
+  made += await issueLicencesInTx(tx, order.id, digital);
+
   const first = !order.deliveredAt;
   await tx.orderRequest.update({
     where: { id: order.id },
@@ -186,7 +201,11 @@ async function freeTicketCode(tx: Prisma.TransactionClient) {
 /** Cancelled / rejected / refunded: valid tickets stop working (used ones stay as history). */
 export async function revokeOrderInTx(tx: Prisma.TransactionClient, orderId: string) {
   const r = await tx.ticket.updateMany({ where: { orderRequestId: orderId, status: "VALID" }, data: { status: "CANCELLED" } });
-  return r.count;
+  // Codes she never saw go back to the list; seen ones stay with the order.
+  const back = await returnUnseenCodesInTx(tx, orderId);
+  // Serials stop (they come back if the order is released again).
+  const stopped = await revokeLicencesInTx(tx, orderId);
+  return r.count + back + stopped;
 }
 
 export async function releaseOrder(orderId: string, reason: "paid" | "accepted" | "manual") {
@@ -195,15 +214,24 @@ export async function releaseOrder(orderId: string, reason: "paid" | "accepted" 
 
 /* ---------------- Digital stock ---------------- */
 
-/** Digital products never sell out: their sizes get a high stock (after a save, or when a type turns digital). */
+/**
+ * Digital products never sell out: their sizes get a high stock (after a save, or
+ * when a type turns digital). Sizes that sell codes have the codes left as their
+ * stock instead, counted again here (a save can't change it).
+ */
 export async function syncDigitalStock(where: { productIds?: string[]; typeId?: string }) {
   const product: Prisma.ProductWhereInput = { type: { fulfillment: "DIGITAL" } };
   if (where.productIds) product.id = { in: where.productIds };
   if (where.typeId) product.typeId = where.typeId;
   const r = await prisma.productVariant.updateMany({
-    where: { stock: { lt: DIGITAL_STOCK }, item: { product } },
+    where: { stock: { lt: DIGITAL_STOCK }, item: { product }, codes: { none: {} } },
     data: { stock: DIGITAL_STOCK },
   });
+  const coded = await prisma.productVariant.findMany({ where: { item: { product }, codes: { some: {} } }, select: { id: true } });
+  await syncCodeStock(
+    prisma,
+    coded.map((v) => v.id),
+  );
   return r.count;
 }
 
@@ -237,7 +265,8 @@ async function downloadsFor(db: Db, orderId: string, productIds: string[]) {
   if (!productIds.length) return [];
   const [files, used] = await Promise.all([
     db.productFile.findMany({
-      where: { productId: { in: productIds } },
+      // A protected product's files go out only as the buyer's encrypted copy.
+      where: { productId: { in: productIds }, product: { isProtected: false } },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       select: { id: true, productId: true, name: true, kind: true, bytes: true, format: true, product: { select: { title: true } } },
     }),
@@ -265,13 +294,16 @@ export async function orderAccess(token: string) {
   const o = loaded.order;
   const closed = CLOSED_STATUSES.has(o.status);
   const digitalIds = [...new Set(loaded.lines.filter((l) => l.fulfillment === "DIGITAL").map((l) => l.productId))];
-  const [files, tickets] = await Promise.all([
+  const [files, tickets, codes, licences, launcher] = await Promise.all([
     closed || !o.deliveredAt ? [] : downloadsFor(prisma, o.id, digitalIds),
     prisma.ticket.findMany({
       where: { orderRequestId: o.id },
       orderBy: { createdAt: "asc" },
       select: { code: true, label: true, holderName: true, status: true, checkedInAt: true, productId: true, product: { select: { title: true, eventStartsAt: true, eventEndsAt: true, eventLocation: true } } },
     }),
+    closed || !o.deliveredAt ? [] : codesForOrder(o.id),
+    closed || !o.deliveredAt ? [] : licencesForOrder(o.id),
+    closed || !o.deliveredAt ? null : currentLauncher(),
   ]);
   return {
     id: o.id,
@@ -289,6 +321,10 @@ export async function orderAccess(token: string) {
       fulfillment: l.fulfillment,
     })),
     files,
+    codes: codes.map(({ orderItemId: _i, ...c }) => c),
+    licences,
+    /** The Windows launcher on offer (for protected products), when one is uploaded. */
+    launcher: licences.length && launcher ? { version: launcher.version, bytes: launcher.bytes, path: launcher.path } : null,
     maxDownloads: env.DIGITAL_MAX_DOWNLOADS,
     tickets: closed
       ? []
@@ -314,8 +350,9 @@ export async function downloadLink(token: string, fileId: string) {
   if (!order) throw new AppError(404, "NOT_FOUND", "Order not found");
   if (CLOSED_STATUSES.has(order.status)) throw new AppError(410, "ORDER_CLOSED", "This order was cancelled");
   if (!order.deliveredAt) throw new AppError(409, "NOT_RELEASED", "Not ready yet");
-  const file = await prisma.productFile.findUnique({ where: { id: fileId }, select: { id: true, productId: true, kind: true, location: true, url: true, name: true, format: true } });
-  if (!file) throw new AppError(404, "FILE_NOT_FOUND", "File not found");
+  const file = await prisma.productFile.findUnique({ where: { id: fileId }, select: { id: true, productId: true, kind: true, location: true, url: true, name: true, format: true, product: { select: { isProtected: true } } } });
+  // A protected product's files go out only as the buyer's encrypted copy (licences).
+  if (!file || file.product.isProtected) throw new AppError(404, "FILE_NOT_FOUND", "File not found");
   const bought = await prisma.orderRequestItem.findFirst({
     where: { orderRequestId: order.id, productId: file.productId, variant: { item: { product: { type: { fulfillment: "DIGITAL" } } } } },
     select: { id: true },
@@ -411,13 +448,17 @@ export async function sendDeliveryEmail(orderId: string, opts?: { force?: boolea
   if (!url) return { sent: false, why: "NO_STOREFRONT_URL" } as const;
 
   const digitalIds = [...new Set(loaded.lines.filter((l) => l.fulfillment === "DIGITAL").map((l) => l.productId))];
-  const [fileRows, tickets] = await Promise.all([
+  const [fileRows, tickets, codeCount, licenceCount] = await Promise.all([
     downloadsFor(prisma, o.id, digitalIds),
     prisma.ticket.findMany({
       where: { orderRequestId: o.id, status: { not: "CANCELLED" } },
       orderBy: { createdAt: "asc" },
       select: { code: true, label: true, product: { select: { title: true, eventStartsAt: true, eventEndsAt: true, eventLocation: true } } },
     }),
+    // Codes stay on the private page (an email is less private): only how many.
+    prisma.digitalCode.count({ where: { orderRequestId: o.id, status: "delivered" } }),
+    // Serials too: the page has them, the email only says how many.
+    prisma.licence.count({ where: { orderRequestId: o.id, status: "active" } }),
   ]);
   const res = await sendEmail({
     to: o.email,
@@ -435,6 +476,8 @@ export async function sendDeliveryEmail(orderId: string, opts?: { force?: boolea
         location: t.product.eventLocation,
       })),
       maxDownloads: env.DIGITAL_MAX_DOWNLOADS,
+      codes: codeCount,
+      licences: licenceCount,
     },
     idempotencyKey: `order-delivery-${o.id}-${o.deliveredAt.getTime()}${opts?.force ? `-${Date.now()}` : ""}`,
   });

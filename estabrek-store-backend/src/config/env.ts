@@ -113,6 +113,9 @@ const EnvSchema = z.object({
   // Backups (admin → النسخ الاحتياطي). The files are encrypted with this key; keep a copy of it
   // somewhere safe — without it a backup can't be opened. Unset: a key made from JWT_SECRET.
   BACKUP_ENCRYPTION_KEY: z.string().min(16).optional(),
+  // Codes sold one per piece (game keys, gift cards) are stored encrypted with this key. Keep a
+  // copy somewhere safe. Unset: a key made from JWT_SECRET (changing JWT_SECRET then locks them).
+  CODES_ENCRYPTION_KEY: z.string().min(16).optional(),
   /** How many backups to keep in storage (older ones are removed). */
   BACKUP_KEEP: z.coerce.number().int().min(1).max(365).default(14),
   /** Hour of the day (Israel time) for the automatic backup. */
@@ -125,6 +128,19 @@ const EnvSchema = z.object({
   DIGITAL_MAX_DOWNLOADS: z.coerce.number().int().min(1).max(1000).default(10),
   /** Largest file uploaded to storage (Cloudinary free plan: 10 MB); bigger files go in as a link. */
   DIGITAL_MAX_UPLOAD_MB: z.coerce.number().min(1).max(500).default(10),
+  /** Largest master file of a protected product (kept encrypted in the database, not on Cloudinary). */
+  PROTECTED_MAX_UPLOAD_MB: z.coerce.number().min(1).max(200).default(25),
+  /**
+   * The vault (src/vault): its private address (Railway private network, or its
+   * Tailscale name) and the secret both sides sign requests with. Unset = no vault:
+   * masters stay encrypted in the database and the backend signs licences itself.
+   */
+  VAULT_URL: z.string().url().optional(),
+  VAULT_SHARED_SECRET: z.string().min(32).optional(),
+  /** Without a vault: what the licence signing key is made from (unset = from JWT_SECRET). */
+  LICENCE_SIGNING_SEED: z.string().min(16).optional(),
+  /** Largest launcher (.exe) the owner can upload for buyers to download. */
+  LAUNCHER_MAX_UPLOAD_MB: z.coerce.number().min(1).max(200).default(60),
 
   // Redis (optional)
   REDIS_URL: z.string().optional(),

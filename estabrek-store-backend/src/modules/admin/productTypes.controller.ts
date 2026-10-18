@@ -64,6 +64,9 @@ r.post(
         showColor: b.showColor ?? true,
         showSize: b.showSize ?? true,
         fulfillment: b.fulfillment ?? "SHIPPING",
+        shipsFrom: b.shipsFrom ?? null,
+        deliveryMinDays: b.deliveryMinDays ?? null,
+        deliveryMaxDays: b.deliveryMaxDays ?? null,
         position: b.position ?? (last ? last.position + 1 : 0),
       },
     });

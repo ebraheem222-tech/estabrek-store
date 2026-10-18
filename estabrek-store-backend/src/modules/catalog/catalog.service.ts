@@ -8,8 +8,9 @@ import { Prisma } from "@prisma/client";
 import { annotateLinesWithDiscount } from "../../utils/money.js";
 import { openaiEmbedText } from "../../lib/openai.js";
 import { scoreTextMatch } from "../../lib/searchText.js";
-import { attributesWhere, fieldsOf, publicType, publicTypeSelect, specsOf } from "../productTypes/productTypes.js";
+import { attributesWhere, deliveryOf, fieldsOf, publicType, publicTypeSelect, specsOf, type DeliveryFields } from "../productTypes/productTypes.js";
 import { DIGITAL_STOCK, eventIsOver } from "../fulfillment/fulfillment.service.js";
+import { variantsWithCodes } from "../fulfillment/codes.service.js";
 
 function parseCsv(v?: string | null): string[] | undefined {
   if (!v) return undefined;
@@ -228,9 +229,10 @@ async function resetExpiredSales(db: typeof prisma, expired: ExpiredSale[]) {
 }
 
 /** The product's type (labels, fields) and its details rows for the product page. */
-function typeDetails(product: { type?: any; attributes?: unknown }) {
-  if (!product.type) return { type: null, specs: [] as ReturnType<typeof specsOf> };
-  return { type: publicType(product.type), specs: specsOf(fieldsOf(product.type.fields), product.attributes) };
+function typeDetails(product: { type?: any; attributes?: unknown } & DeliveryFields) {
+  const delivery = deliveryOf(product, product.type);
+  if (!product.type) return { type: null, specs: [] as ReturnType<typeof specsOf>, delivery };
+  return { type: publicType(product.type), specs: specsOf(fieldsOf(product.type.fields), product.attributes), delivery };
 }
 
 const baseProductSelect = {
@@ -245,6 +247,11 @@ const baseProductSelect = {
   eventStartsAt: true,
   eventEndsAt: true,
   eventLocation: true,
+  shipsFrom: true,
+  // A protected product's page says how it's delivered (serial + encrypted copy).
+  isProtected: true,
+  deliveryMinDays: true,
+  deliveryMaxDays: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -1340,6 +1347,8 @@ type CartLine = {
   /** How it reaches her: shipped, downloaded, or a booking (ticket). */
   fulfillment?: "SHIPPING" | "DIGITAL" | "BOOKING";
   eventStartsAt?: Date | null;
+  /** Sold as codes (internal): the stock is the codes left. */
+  sellsCodes?: boolean;
 };
 
 /**
@@ -1349,7 +1358,7 @@ type CartLine = {
  * can't block a size forever.
  */
 export const HOLD_HOURS = 72;
-export async function heldQuantities(db: any, variantIds: string[], opts?: { excludeOrderId?: string }) {
+export async function heldQuantities(db: any, variantIds: string[], opts?: { excludeOrderId?: string; undeliveredOnly?: boolean }) {
   if (!variantIds.length) return new Map<string, number>();
   const since = new Date(Date.now() - HOLD_HOURS * 3600_000);
   const rows = await db.orderRequestItem.groupBy({
@@ -1360,6 +1369,7 @@ export async function heldQuantities(db: any, variantIds: string[], opts?: { exc
         status: { in: ["NEW", "CONTACTED"] },
         stockCommitted: false,
         createdAt: { gte: since },
+        ...(opts?.undeliveredOnly ? { deliveredAt: null } : {}),
         ...(opts?.excludeOrderId ? { id: { not: opts.excludeOrderId } } : {}),
       },
     },
@@ -1370,7 +1380,13 @@ export async function heldQuantities(db: any, variantIds: string[], opts?: { exc
 
 /** What can still be ordered of each line: shelf stock minus what open orders hold. */
 async function availability(db: any, lines: CartLine[]) {
-  const held = await heldQuantities(db, [...new Set(lines.map((l) => l.variantId))]);
+  const ids = [...new Set(lines.map((l) => l.variantId))];
+  const coded = new Set(lines.filter((l) => l.sellsCodes).map((l) => l.variantId));
+  const held = new Map([
+    ...(await heldQuantities(db, ids.filter((id) => !coded.has(id)))),
+    // Codes: an order that was handed its codes already took them off the count.
+    ...(await heldQuantities(db, ids.filter((id) => coded.has(id)), { undeliveredOnly: true })),
+  ]);
   return new Map(lines.map((l) => [l.variantId, Math.max(0, (l.stock ?? 0) - (held.get(l.variantId) ?? 0))]));
 }
 
@@ -1410,6 +1426,7 @@ async function loadLinesForItems(
   });
 
   const byId = new Map(variants.map((v) => [v.id, v]));
+  const coded = await variantsWithCodes(db, ids);
   const out: CartLine[] = [];
   const now = new Date();
   const expiredSales: ExpiredSale[] = [];
@@ -1450,9 +1467,10 @@ async function loadLinesForItems(
       sku: v.sku,
       imageUrl,
       imageBlurDataUrl,
-      // Digital products never run out.
-      stock: fulfillment === "DIGITAL" ? Math.max(v.stock, DIGITAL_STOCK) : v.stock,
+      // Digital products never run out… unless they sell codes: then it's the codes left.
+      stock: fulfillment === "DIGITAL" && !coded.has(v.id) ? Math.max(v.stock, DIGITAL_STOCK) : v.stock,
       fulfillment,
+      sellsCodes: coded.has(v.id),
       eventStartsAt: (v.item.product as any).eventStartsAt ?? null,
     });
   }
@@ -1466,7 +1484,7 @@ export async function quoteCart(data: { items: CartItemInput[]; couponCode?: str
   const available = await availability(prisma, loaded);
   if (opts?.requireStock) assertAvailable(loaded, available);
   // The bag shows "only N left" before ordering; the shelf count itself isn't sent.
-  const lines = loaded.map(({ stock: _stock, ...l }) => ({ ...l, available: available.get(l.variantId) ?? 0 }));
+  const lines = loaded.map(({ stock: _stock, sellsCodes: _codes, ...l }) => ({ ...l, available: available.get(l.variantId) ?? 0 }));
   const subtotal = round2(lines.reduce((sum, l) => sum + l.lineSubtotal, 0));
 
   let discountAmount = 0;
