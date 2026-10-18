@@ -3151,7 +3151,7 @@ export default function SettingsPage() {
               <SettingsHistoryCard />
             </SettingsSection>
 
-            <div className="sticky bottom-0 z-20 -mx-1 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface-950/90 p-3 backdrop-blur">
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-20 -mx-1 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface-950/90 p-3 backdrop-blur">
               <span className="text-xs text-white/55">الحفظ يشمل كل الأقسام، وتُحفظ نسخة من الإعدادات السابقة في «السجل».</span>
               <Button variant="primary" onClick={onSave} disabled={!canSave} isLoading={actions.updateSettings.isPending}>
                 حفظ

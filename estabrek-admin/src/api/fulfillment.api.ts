@@ -1,7 +1,9 @@
-// Digital products (files) and bookings (tickets): product files, an order's
-// delivery (private link, email, tickets) and the door (check-in).
+// Digital products (files, codes) and bookings (tickets): product files and
+// codes, an order's delivery (private link, email, tickets, codes) and the door
+// (check-in).
 import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
+import type { OrderLicence } from "./protected.api";
 
 export type Fulfillment = "SHIPPING" | "DIGITAL" | "BOOKING";
 
@@ -53,6 +55,46 @@ export async function productFileLink(productId: string, fileId: string) {
   return ((await api.get(`${ENDPOINTS.admin.catalog.productFiles(productId)}/${fileId}/link`)).data as { url: string }).url;
 }
 
+/* ---------------- Codes sold one per piece (game keys, gift cards) ---------------- */
+
+export type CodeStatus = "available" | "delivered" | "void";
+
+export type ProductCode = {
+  id: string;
+  variantId: string;
+  last4: string;
+  status: CodeStatus;
+  batch: string | null;
+  orderRequestId: string | null;
+  deliveredAt: string | null;
+  viewedAt: string | null;
+  createdAt: string;
+};
+
+export type ProductCodesInfo = {
+  variants: Array<{ id: string; sku: string; color: string; size: string; available: number; delivered: number; void: number }>;
+  codes: ProductCode[];
+  total: number;
+  /** No CODES_ENCRYPTION_KEY on the server: the key comes from JWT_SECRET. */
+  keyFromJwt: boolean;
+};
+
+export type CodesImportResult = { added: number; duplicates: number; invalid: number; invalidExamples: string[]; available: number };
+
+export async function getProductCodes(productId: string, params: { status?: CodeStatus | null; take?: number; skip?: number } = {}) {
+  const q = { ...(params.status ? { status: params.status } : {}), ...(params.take ? { take: params.take } : {}), ...(params.skip ? { skip: params.skip } : {}) };
+  return (await api.get(ENDPOINTS.admin.catalog.productCodes(productId), { params: q })).data as ProductCodesInfo;
+}
+export async function importProductCodes(productId: string, body: { variantId: string; text: string; batch?: string | null }) {
+  return (await api.post(ENDPOINTS.admin.catalog.productCodes(productId), body)).data as CodesImportResult;
+}
+export async function voidProductCode(productId: string, codeId: string) {
+  return (await api.post(`${ENDPOINTS.admin.catalog.productCodes(productId)}/${codeId}/void`)).data as { ok: true };
+}
+export async function revealProductCode(productId: string, codeId: string) {
+  return ((await api.post(`${ENDPOINTS.admin.catalog.productCodes(productId)}/${codeId}/reveal`)).data as { code: string }).code;
+}
+
 /* ---------------- Order delivery ---------------- */
 
 export type TicketStatus = "VALID" | "USED" | "CANCELLED";
@@ -74,6 +116,15 @@ export type OrderDelivery = {
   files: Array<{ id: string; name: string; productTitle: string; kind: string; downloads: number; lastAt: string | null }>;
   maxDownloads: number;
   tickets: Array<{ id: string; code: string; title: string; label: string | null; status: TicketStatus; checkedInAt: string | null; when: string | null }>;
+  /** Codes handed to this order (only the last 4 shown until revealed). */
+  codes?: Array<{ id: string; productId: string; title: string; last4: string; status: CodeStatus; deliveredAt: string | null; viewedAt: string | null }>;
+  /** Some lines are sold as codes. */
+  sellsCodes?: boolean;
+  /** Pieces still without a code (the list ran out). */
+  codesMissing?: number;
+  /** Protected products: the serials (last 4 only until revealed). */
+  licences?: OrderLicence[];
+  sellsLicences?: boolean;
   /** After sending: false = no email provider yet (only logged). */
   live?: boolean;
 };
@@ -89,6 +140,13 @@ export async function sendOrderDeliveryEmail(orderId: string, email?: string) {
 }
 export async function newOrderDeliveryLink(orderId: string) {
   return (await api.post(`${ENDPOINTS.admin.orders.delivery(orderId)}/new-link`)).data as OrderDelivery;
+}
+export async function revealOrderCode(orderId: string, codeId: string) {
+  return ((await api.post(`${ENDPOINTS.admin.orders.delivery(orderId)}/codes/${codeId}/reveal`)).data as { code: string }).code;
+}
+/** A bad code: voided, and the order takes the next one. */
+export async function replaceOrderCode(orderId: string, codeId: string) {
+  return (await api.post(`${ENDPOINTS.admin.orders.delivery(orderId)}/codes/${codeId}/replace`)).data as OrderDelivery;
 }
 
 /* ---------------- Tickets ---------------- */

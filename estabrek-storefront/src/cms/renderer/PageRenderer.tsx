@@ -44,6 +44,7 @@ import { getDividerById } from "@/cms/style/containerStyles";
 import { DEFAULT_MOTION_BY_SECTION_TYPE } from "@/motion/gsapPresets";
 import { HeroRenderer, ContactFormRenderer, FeatureRenderer, PricingRenderer, SliderRenderer } from "./NativeThemeRenderers";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
+import { StreamVideo } from "@/components/StreamVideo";
 
 type QuickAddRef = { productId?: string; slug?: string };
 
@@ -3278,9 +3279,11 @@ function Section({
                   allowFullScreen
                 />
               ) : d.url ? (
-                <video
+                // MP4/WebM as before; an HLS stream from the video library plays in pieces (StreamVideo).
+                <StreamVideo
                   className="h-full w-full"
                   src={d.url}
+                  provider={d.provider}
                   poster={d.posterUrl ?? undefined}
                   controls={d.controls ?? true}
                   autoPlay={!!d.autoplay}

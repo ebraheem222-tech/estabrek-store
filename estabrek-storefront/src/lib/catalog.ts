@@ -70,6 +70,10 @@ export type CatalogProduct = {
   eventStartsAt?: string | null;
   eventEndsAt?: string | null;
   eventLocation?: string | null;
+  /** Shipped: where it ships from and how many days (the product's, else its type's). */
+  delivery?: { shipsFrom: string | null; minDays: number | null; maxDays: number | null } | null;
+  /** Protected digital product: a serial and an encrypted copy marked with her order. */
+  isProtected?: boolean;
 };
 
 export type CatalogProductType = {

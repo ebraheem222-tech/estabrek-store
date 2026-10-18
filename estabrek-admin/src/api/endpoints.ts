@@ -155,6 +155,11 @@ export const ENDPOINTS = {
         imageDuplicates: "/admin/uploads/images/duplicates",
       },
 
+      // One history for everything (السجل)
+      history: {
+        base: "/admin/history",
+        restore: "/admin/history/restore",
+      },
       // Automations (التلقائيات) and the bell
       automations: {
         base: "/admin/automations",
@@ -236,6 +241,9 @@ export const ENDPOINTS = {
         },
       
         productFiles: (productId: string) => `/admin/catalog/products/${productId}/files`,
+        productCodes: (productId: string) => `/admin/catalog/products/${productId}/codes`,
+        productProtected: (productId: string) => `/admin/catalog/products/${productId}/protected`,
+        protectedTypes: "/admin/catalog/protected-types",
 
         productTypes: {
           base: "/admin/catalog/product-types",
@@ -275,6 +283,7 @@ export const ENDPOINTS = {
         status: (id: string) => `/admin/orders/${id}/status`,
         message: (id: string) => `/admin/orders/${id}/message`,
         delivery: (id: string) => `/admin/orders/${id}/delivery`,
+        protectedTrace: "/admin/orders/protected-trace",
       },
 
       tickets: {

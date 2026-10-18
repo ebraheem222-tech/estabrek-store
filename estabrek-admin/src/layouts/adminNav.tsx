@@ -212,6 +212,8 @@ export type NavItem = {
   label: string;
   icon: React.ReactNode;
   requirePermissions?: AdminPermission[];
+  /** Open to everyone but not where a member lands (it shows each one only their own parts). */
+  noLanding?: boolean;
 };
 
 const NAV_MAIN: NavItem[] = [
@@ -271,7 +273,9 @@ const NAV_TEAM: NavItem[] = [
   { to: "/admin/system/jobs", label: "المهام بالخلفية", icon: Icons.jobs, requirePermissions: ["system:read"] },
   { to: "/admin/system/schedule", label: "الجدول الزمني", icon: Icons.calendar, requirePermissions: ["system:read"] },
   { to: "/admin/system/automations", label: "التلقائيات", icon: Icons.bell, requirePermissions: ["settings:read"] },
+  { to: "/admin/system/history", label: "السجل والرجوع", icon: Icons.activity, noLanding: true },
   { to: "/admin/system/backups", label: "النسخ الاحتياطي", icon: Icons.backup, requirePermissions: ["system:read"] },
+  { to: "/admin/system/vault", label: "الخزنة والبرنامج", icon: Icons.security, requirePermissions: ["system:read"] },
 ];
 
 const NAV_ACCOUNT: NavItem[] = [
@@ -295,7 +299,7 @@ export const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> 
 export function firstAllowedPath(has: (p: AdminPermission) => boolean): string {
   for (const g of NAV_GROUPS) {
     for (const item of g.items) {
-      if ((item.requirePermissions ?? []).every((p) => has(p))) return item.to;
+      if (!item.noLanding && (item.requirePermissions ?? []).every((p) => has(p))) return item.to;
     }
   }
   return "/admin/account/profile";

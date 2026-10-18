@@ -16,12 +16,14 @@ import { useAuth } from "../../hooks/useAuth";
 import * as AutoAPI from "../../api/automations.api";
 import type { Action, AutomationRule, AutomationsPage as Data, RuleInput, Trigger } from "../../api/automations.api";
 import { relativeTime } from "../team/teamText";
-import { ACTION_TEXT, TRIGGER_TEXT, WORD_TEXT, channelWarning, cooldownText, newRule, ruleSentence } from "./automationText";
+import { ACTION_TEXT, TRIGGER_TEXT, WORD_TEXT, channelWarning, cooldownText, newRule, ruleSentence, runDetailText } from "./automationText";
 
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
 const KEY = ["automations"];
 const onError = (e: unknown) => toast.error("ما زبط", { description: getApiErrorMessage(e) });
 const TRIGGERS = Object.keys(TRIGGER_TEXT) as Trigger[];
+/** What can be saved (the server refuses anything else, like its counters). */
+const inputOf = (r: AutomationRule): RuleInput => ({ name: r.name, trigger: r.trigger, conditions: r.conditions, action: r.action, config: r.config, enabled: r.enabled, cooldownMinutes: r.cooldownMinutes });
 const COOLDOWNS = [0, 30, 60, 6 * 60, 24 * 60, 7 * 24 * 60];
 
 export default function AutomationsPage() {
@@ -38,10 +40,10 @@ export default function AutomationsPage() {
     onSuccess: () => (toast.success("انحفظت"), setDraft(null), setEditing(null), refresh()),
     onError,
   });
-  const toggle = useMutation({ mutationFn: (r: AutomationRule) => AutoAPI.updateRule(r.id, { ...r, enabled: !r.enabled }), onSuccess: refresh, onError });
+  const toggle = useMutation({ mutationFn: (r: AutomationRule) => AutoAPI.updateRule(r.id, { ...inputOf(r), enabled: !r.enabled }), onSuccess: refresh, onError });
   const test = useMutation({
     mutationFn: (r: AutomationRule) => AutoAPI.testRule(r.id),
-    onSuccess: (out) => (out.ok ? toast.success("انجرّبت", { description: out.detail }) : toast.error("ما زبطت", { description: out.detail }), refresh()),
+    onSuccess: (out) => (out.ok ? toast.success("انجرّبت", { description: runDetailText(out.detail) }) : toast.error("ما زبطت", { description: runDetailText(out.detail) }), refresh()),
     onError,
   });
   const remove = useMutation({ mutationFn: (r: AutomationRule) => AutoAPI.deleteRule(r.id), onSuccess: () => (setRemoving(null), refresh()), onError });
@@ -106,7 +108,7 @@ export default function AutomationsPage() {
                   <Button size="sm" variant="ghost" onClick={() => toggle.mutate(r)} disabled={toggle.isPending}>
                     {r.enabled ? "وقّف" : "شغّل"}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => (setEditing(r.id), setDraft({ name: r.name, trigger: r.trigger, conditions: r.conditions, action: r.action, config: r.config, enabled: r.enabled, cooldownMinutes: r.cooldownMinutes }))}>
+                  <Button size="sm" variant="ghost" onClick={() => (setEditing(r.id), setDraft(inputOf(r)))}>
                     تعديل
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setRemoving(r)}>
@@ -127,7 +129,7 @@ export default function AutomationsPage() {
               <li key={run.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
                 <span className="min-w-0 truncate">
                   <span className="font-medium">{ruleName(run.ruleId)}</span>
-                  <span className={run.ok ? "text-white/60" : "text-red-300"}>{` · ${run.detail ?? ""}`}</span>
+                  <span className={run.ok ? "text-white/60" : "text-red-300"}>{` · ${runDetailText(run.detail)}`}</span>
                 </span>
                 <span className="shrink-0 text-white/40">{relativeTime(run.at)}</span>
               </li>

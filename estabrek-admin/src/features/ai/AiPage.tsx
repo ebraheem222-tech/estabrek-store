@@ -96,7 +96,7 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
       </section>
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
           <div className="mx-auto flex max-w-3xl justify-end">
             <Button variant="primary" isLoading={save.isPending} onClick={() => save.mutate()}>حفظ</Button>
           </div>

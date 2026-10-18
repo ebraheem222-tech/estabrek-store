@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { apiBaseClient } from "@/lib/apiClient";
 import { qrMatrix, qrPath } from "@/lib/qr";
+import { attachmentName, licenceTimeLeft } from "@/lib/licenceTime";
 import { useLanguage } from "./Language";
 
 type AccessFile = { id: string; name: string; productTitle: string; kind: string; bytes: number | null; format: string | null; downloads: number; left: number };
@@ -18,6 +19,8 @@ type AccessTicket = {
   endsAt: string | null;
   location: string | null;
 };
+type AccessCode = { code: string; title: string; redeemNote: string | null; orderItemId: string | null };
+type AccessLicence = { id: string; title: string; serial: string; expiresAt: string; expired: boolean; downloadsLeft: number; maxDownloads: number; ready: boolean; devices?: { used: number; max: number } };
 type Access = {
   shortId: string;
   status: string;
@@ -28,6 +31,12 @@ type Access = {
   files: AccessFile[];
   maxDownloads: number;
   tickets: AccessTicket[];
+  /** Game keys, gift cards…: one per piece. */
+  codes?: AccessCode[];
+  /** Protected products: her serial and the encrypted copy to download. */
+  licences?: AccessLicence[];
+  /** The Windows launcher (binds the copy to her PC), when the shop offers it. */
+  launcher?: { version: string; bytes: number; path: string } | null;
 };
 
 function size(n: number | null) {
@@ -116,6 +125,14 @@ export function RoseOrderAccess({ token }: { token: string }) {
   }
 
   const live = data.tickets.filter((t) => t.status !== "CANCELLED");
+  const codes = data.codes ?? [];
+  // Codes of the same product together, with how to use them once.
+  const codeGroups = codes.reduce<Array<{ title: string; note: string | null; codes: string[] }>>((out, c) => {
+    const g = out.find((x) => x.title === c.title && x.note === c.redeemNote);
+    if (g) g.codes.push(c.code);
+    else out.push({ title: c.title, note: c.redeemNote, codes: [c.code] });
+    return out;
+  }, []);
   return (
     <section className="rose-account rose-order-access" data-testid="order-access">
       <span className="atelier-eyebrow">{ar ? `طلب رقم ${data.shortId}` : `ORDER ${data.shortId}`}</span>
@@ -123,7 +140,7 @@ export function RoseOrderAccess({ token }: { token: string }) {
       {data.closed ? (
         <p>{ar ? "الملفات والتذاكر واقفة. إذا في غلط تواصلي معنا." : "The files and tickets are no longer active. Contact us if this is a mistake."}</p>
       ) : !data.delivered ? (
-        <p>{ar ? "لسا ما تأكد الطلب. أول ما نأكده بتطلع ملفاتكِ وتذاكركِ هون." : "Your order isn't confirmed yet. Your files and tickets appear here once it is."}</p>
+        <p>{ar ? "لسا ما تأكد الطلب. أول ما نأكده بتطلع ملفاتكِ وأكوادكِ وتذاكركِ هون." : "Your order isn't confirmed yet. Your files, codes and tickets appear here once it is."}</p>
       ) : (
         <p className="no-print">{ar ? "هاي صفحتكِ الخاصة. لا تشاركي الرابط مع حدا." : "This page is yours alone — please don't share the link."}</p>
       )}
@@ -148,6 +165,53 @@ export function RoseOrderAccess({ token }: { token: string }) {
           </ul>
           <p className="rose-order-note no-print">{ar ? "ورّي الـ QR أو الكود على الباب. كل تذكرة بتفوت مرة وحدة." : "Show the QR or the code at the door. Each ticket gets in once."}</p>
           <button type="button" className="atelier-button no-print" onClick={() => window.print()}>{ar ? "اطبعي / احفظي PDF" : "Print / save as PDF"}</button>
+        </div>
+      )}
+
+      {codes.length > 0 && (
+        <div className="rose-order-codes" data-testid="order-codes">
+          <h2>{ar ? (codes.length > 1 ? `أكوادكِ (${codes.length})` : "كودكِ") : codes.length > 1 ? `Your codes (${codes.length})` : "Your code"}</h2>
+          {codeGroups.map((g) => (
+            <div key={`${g.title}|${g.note ?? ""}`} className="rose-order-code-group">
+              <b>{g.title}</b>
+              <ul>
+                {g.codes.map((c) => (
+                  <CodeLine key={c} code={c} ar={ar} />
+                ))}
+              </ul>
+              {g.note ? <p className="rose-order-code-how">{ar ? "طريقة التفعيل: " : "How to redeem: "}{g.note}</p> : null}
+            </div>
+          ))}
+          <p className="rose-order-note">{ar ? "كل كود بيشتغل مرة وحدة. إذا ما زبط معكِ، تواصلي معنا وابعتي صورة للرسالة اللي طلعت." : "Each code works once. If one doesn't work, contact us with a screenshot of the message you got."}</p>
+        </div>
+      )}
+
+      {(data.licences ?? []).length > 0 && (
+        <div className="rose-order-licences" data-testid="order-licences">
+          <h2>{ar ? ((data.licences ?? []).length > 1 ? `نسخكِ المحمية (${(data.licences ?? []).length})` : "نسختكِ المحمية") : "Your protected copy"}</h2>
+          <ul>
+            {(data.licences ?? []).map((l) => (
+              <LicenceItem key={l.id} l={l} token={token} ar={ar} shortId={data.shortId} onDownloaded={(left) => setData((d) => (d ? { ...d, licences: (d.licences ?? []).map((x) => (x.id === l.id ? { ...x, downloadsLeft: left } : x)) } : d))} />
+            ))}
+          </ul>
+          {data.launcher ? (
+            <div className="rose-order-launcher" data-testid="order-launcher">
+              <b>{ar ? "💻 برنامج استبرق (ويندوز)" : "💻 Estabrek launcher (Windows)"}</b>
+              <ol>
+                <li>{ar ? "نزّلي النسخة المشفّرة من فوق." : "Download the encrypted copy above."}</li>
+                <li>
+                  <a href={`${apiBaseClient()}${data.launcher.path}`} data-testid="launcher-link">{ar ? `نزّلي برنامج التشغيل (${data.launcher.version})` : `Download the launcher (${data.launcher.version})`}</a>
+                  {ar ? " وافتحيه. إذا ويندوز حذّر، اختاري «More info» وبعدين «Run anyway»." : " and open it. If Windows warns you, choose “More info”, then “Run anyway”."}
+                </li>
+                <li>{ar ? "اضغطي «إضافة منتج»، اختاري الملف والصقي السيريال: بيتفعّل على جهازكِ وبتشغّليه من هناك." : "Click “إضافة منتج”, pick the file and paste the serial: it activates on your PC and runs from there."}</li>
+              </ol>
+            </div>
+          ) : null}
+          <p className="rose-order-note">
+            {ar
+              ? "بدون البرنامج: افتحي الملف بـ \u20667-Zip\u2069 أو WinRAR، ولما يطلب كلمة سر الصقي السيريال. (فتح الملفات المضغوطة العادي بويندوز ما بيفتح الملفات المشفّرة.) كل نسخة فيها علامة طلبكِ، فلا تشاركيها."
+              : "Without the launcher: open the file with 7-Zip or WinRAR and paste the serial when it asks for a password (Windows' own ZIP viewer can't open encrypted files). Each copy carries your order's mark, so please don't share it."}
+          </p>
         </div>
       )}
 
@@ -201,5 +265,98 @@ function TicketQr({ text, label }: { text: string; label: string }) {
       <rect width={svg.size} height={svg.size} fill="#fff" />
       <path d={svg.d} fill="#000" />
     </svg>
+  );
+}
+
+function CodeLine({ code, ar }: { code: string; ar: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <li>
+      <code dir="ltr" data-testid="order-code">{code}</code>
+      <button type="button" className="atelier-button button-dark no-print" onClick={() => void copy()} aria-label={ar ? `انسخي الكود ${code}` : `Copy code ${code}`}>
+        {copied ? (ar ? "✓ انسخ" : "✓ Copied") : ar ? "انسخي" : "Copy"}
+      </button>
+    </li>
+  );
+}
+
+function LicenceItem({ l, token, ar, shortId, onDownloaded }: { l: AccessLicence; token: string; ar: boolean; shortId: string; onDownloaded: (left: number) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const left = licenceTimeLeft(l.expiresAt, ar);
+  const over = l.expired || !left;
+  const download = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`${apiBaseClient()}/orders/access/${encodeURIComponent(token)}/licences/${encodeURIComponent(l.id)}`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const code = String(body?.error ?? "");
+        throw new Error(
+          code === "DOWNLOAD_LIMIT"
+            ? ar ? `وصلتِ للحد (${l.maxDownloads} تنزيلات). تواصلي معنا إذا بدكِ كمان.` : "You've reached the download limit. Contact us if you need more."
+            : code === "LICENCE_EXPIRED"
+              ? ar ? "انتهت مدة التنزيل. تواصلي معنا لنجدّدها." : "The download window is over. Contact us to renew it."
+              : code === "LICENCE_STOPPED"
+                ? ar ? "هالسيريال موقوف. تواصلي معنا." : "This serial was stopped. Contact us."
+                : code === "NOT_READY"
+                  ? ar ? "الملف لسا بيتجهّز. جرّبي كمان شوي." : "The file isn't ready yet. Try again shortly."
+                  : ar ? "ما قدرنا نجهّز الملف. جرّبي كمان شوي." : "We couldn't prepare the file. Try again shortly.",
+        );
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = attachmentName(res.headers.get("content-disposition"), `estabrek-${shortId}.zip`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      onDownloaded(Math.max(0, l.downloadsLeft - 1));
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <li data-testid="order-licence">
+      <b>{l.title}</b>
+      <div className="rose-order-serial">
+        <span>{ar ? "السيريال (كلمة السر):" : "Serial (the password):"}</span>
+        <ul>
+          <CodeLine code={l.serial} ar={ar} />
+        </ul>
+      </div>
+      <small data-testid="licence-window">
+        {over
+          ? ar ? "انتهت مدة التنزيل. تواصلي معنا لنجدّدها." : "The download window is over. Contact us to renew it."
+          : !l.ready
+            ? ar ? "الملف لسا بيتجهّز، بنبلّغكِ لما يجهز." : "The file is being prepared; we'll let you know."
+            : ar ? `${left} للتنزيل · ${l.downloadsLeft} من ${l.maxDownloads} تنزيلات باقية` : `${left} · ${l.downloadsLeft} of ${l.maxDownloads} downloads left`}
+      </small>
+      {l.devices ? (
+        <small data-testid="licence-devices">
+          {ar ? `💻 مفعّل على ${l.devices.used} من ${l.devices.max} ${l.devices.max === 1 ? "جهاز" : "أجهزة"}` : `💻 Active on ${l.devices.used} of ${l.devices.max} PC${l.devices.max === 1 ? "" : "s"}`}
+        </small>
+      ) : null}
+      {!over && l.ready ? (
+        <button type="button" className="atelier-button button-dark no-print" disabled={busy || l.downloadsLeft <= 0} onClick={() => void download()}>
+          {busy ? (ar ? "لحظة، عم نجهّز نسختكِ…" : "Preparing your copy…") : ar ? "نزّلي النسخة المشفّرة" : "Download the encrypted copy"}
+        </button>
+      ) : null}
+      {msg ? <p className="rose-form-error" role="alert">{msg}</p> : null}
+    </li>
   );
 }

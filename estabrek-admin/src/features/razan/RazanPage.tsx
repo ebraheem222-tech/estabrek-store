@@ -235,7 +235,7 @@ function Editor({ saved, chatbotEnabled, storefrontUrl }: { saved: RazanSettings
       <Report />
 
       {canWrite ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-40 border-t border-white/10 bg-surface-950/95 p-3 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-end gap-2">
             {dirty ? <span className="me-auto text-xs text-amber-200" role="status">في تغييرات مش محفوظة</span> : null}
             <Button variant="secondary" isLoading={preview.isPending} onClick={() => preview.mutate()}>

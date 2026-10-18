@@ -29,6 +29,10 @@ export type ProductType = {
   showSize: boolean;
   /** How it reaches the shopper: shipped, downloaded (files) or a booking (tickets). */
   fulfillment: "SHIPPING" | "DIGITAL" | "BOOKING";
+  /** Its products' delivery unless a product says otherwise. */
+  shipsFrom?: string | null;
+  deliveryMinDays?: number | null;
+  deliveryMaxDays?: number | null;
   position: number;
   /** Products of this kind. */
   products: number;

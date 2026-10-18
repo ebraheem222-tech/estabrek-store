@@ -267,8 +267,20 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
 export function tweenTheme(
   el: HTMLElement,
   values: Record<string, string>,
-  { duration = 0.7, ease = "power2.out", onComplete }: { duration?: number; ease?: string; onComplete?: () => void } = {},
+  {
+    duration = 0.7,
+    ease = "power2.out",
+    onComplete,
+    onReplaced = onComplete,
+  }: {
+    duration?: number;
+    ease?: string;
+    onComplete?: () => void;
+    /** A newer glide took over before this one ended (default: as if it had ended). */
+    onReplaced?: () => void;
+  } = {},
 ) {
+  replaceThemeTween(el, values);
   const from: Record<string, string> = {};
   const to: Record<string, string> = {};
   // Read every start value before writing any: a read after a write forces the
@@ -295,12 +307,39 @@ export function tweenTheme(
   // Pin the start values inline so GSAP interpolates from what is on screen now.
   for (const name of names) el.style.setProperty(name, from[name]);
   const endGlide = beginGlide(duration, [el]);
-  return gsap.to(el, {
+  const tween = gsap.to(el, {
     ...to, duration, ease, overwrite: "auto",
     // Transitions come back before anything the caller does at the end (like
     // dropping the navbar colour), so that last step still eases in CSS.
-    onComplete: () => { endGlide(); onComplete?.(); },
+    onComplete: () => {
+      if (themeTweens.get(el)?.tween === tween) themeTweens.delete(el);
+      endGlide();
+      onComplete?.();
+    },
   });
+  themeTweens.set(el, { tween, to, done: () => { endGlide(); onReplaced?.(); } });
+  return tween;
+}
+
+/** The colour glide running on each element, where it was going, and what ends it (see replaceThemeTween). */
+const themeTweens = new WeakMap<HTMLElement, { tween: gsap.core.Tween; to: Record<string, string>; done: () => void }>();
+
+/**
+ * One colour glide per element: a new one stops the one still running (a hover
+ * preview the shopper already left, the hand-back before it). GSAP's own
+ * overwrite doesn't catch these custom properties, so two glides took turns on
+ * every frame and the older one could have the last word: the header then stayed
+ * in a preview colour nobody picked. Colours only the old glide was moving go
+ * straight to where it was taking them, so none is left half-way.
+ */
+function replaceThemeTween(el: HTMLElement, values: Record<string, string>) {
+  const running = themeTweens.get(el);
+  if (!running) return;
+  themeTweens.delete(el);
+  running.tween.kill();
+  for (const [name, value] of Object.entries(running.to)) if (!(name in values)) el.style.setProperty(name, value);
+  // Its owner still hears it is over (a scene's hand-back lets go of the stage).
+  running.done();
 }
 
 /**
@@ -335,16 +374,21 @@ export function tweenThemeBack(
       clear.forEach((name) => el.style.removeProperty(name));
       onComplete?.();
     },
+    // Taken over before the end: the colours are the new glide's now, so nothing
+    // inline is taken away; the hand-back itself is over.
+    onReplaced: onComplete,
   });
 }
 
 /** Stop any colour transition still running on `el` (e.g. before a new owner takes over). */
 export function stopThemeTween(el: HTMLElement) {
+  replaceThemeTween(el, {});
   gsap.killTweensOf(el);
 }
 
 /** Set colours at once (stopping any glide still running on `el`). */
 export function setThemeNow(el: HTMLElement, values: Record<string, string>) {
+  replaceThemeTween(el, values);
   gsap.killTweensOf(el);
   for (const [name, value] of Object.entries(values)) el.style.setProperty(name, value);
 }

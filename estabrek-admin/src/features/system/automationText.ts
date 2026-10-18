@@ -42,6 +42,9 @@ export const WORD_TEXT: Record<string, string> = {
   error: "الخطأ",
 };
 
+/** A phone number or an email kept left-to-right inside an Arabic sentence (the "+" stays in front). */
+export const ltr = (s: string) => `⁦${s}⁩`;
+
 /** "لما يجي طلب جديد (فوق ₪200) ← واتساب لـ +970…". */
 export function ruleSentence(r: Pick<AutomationRule, "trigger" | "conditions" | "action" | "config">, shop: AutomationsPage["shop"]): string {
   const c = r.conditions ?? {};
@@ -57,7 +60,7 @@ export function ruleSentence(r: Pick<AutomationRule, "trigger" | "conditions" | 
       ? `ثبّته بالكاش ${r.config?.hours ?? 48} ساعة`
       : r.action === "notify"
         ? "إشعار باللوحة"
-        : `${ACTION_TEXT[r.action]}${to ? ` لـ ${to}` : " (ما في عنوان: ضيفه)"}`;
+        : `${ACTION_TEXT[r.action]}${to ? ` لـ ${ltr(to)}` : " (ما في عنوان: ضيفه)"}`;
   return `${when} ← ${what}`;
 }
 
@@ -68,6 +71,21 @@ export function channelWarning(action: Action, ch: AutomationsPage["channels"]):
   if (action === "sms" && !ch.sms) return "الـ SMS مش مضبوط على السيرفر (Twilio).";
   if ((action === "email" || action === "sms") && !ch.outboxWorker) return "الرسايل بتنبعت لما يشتغل «إرسال الرسايل» (OUTBOX_WORKER=true)، أو من صفحة الرسايل.";
   return null;
+}
+
+const RUN_ERRORS: Array<[RegExp, string]> = [
+  [/^NO_EMAIL/, "ما في إيميل: ضيفه للقاعدة أو بالإعدادات (إيميل الطلبات)."],
+  [/^NO_PHONE/, "ما في رقم: ضيفه للقاعدة أو بالإعدادات (رقم الواتساب)."],
+  [/^NO_PRODUCT/, "ما في منتج بهالحدث."],
+  [/^PINNED_FULL/, "في 50 منتج مثبّت بالكاش (الحد)."],
+];
+
+/** What a run did, readable: known errors in Arabic, numbers and emails left-to-right. */
+export function runDetailText(detail: string | null): string {
+  if (!detail) return "";
+  const known = RUN_ERRORS.find(([re]) => re.test(detail.replace(/^تجربة: /, "")));
+  const text = known ? `${detail.startsWith("تجربة: ") ? "تجربة: " : ""}${known[1]}` : detail;
+  return text.replace(/(\+?[0-9][0-9 ()-]{5,}[0-9]|[\w.+-]+@[\w-]+\.[\w.-]+)/g, (m) => ltr(m));
 }
 
 export function cooldownText(min: number): string {

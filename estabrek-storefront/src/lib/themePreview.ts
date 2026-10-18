@@ -45,6 +45,15 @@ type PreviewState = {
 
 let saved: PreviewState | null = null;
 
+/**
+ * Elements still gliding back after a preview, and the inline values they are
+ * gliding back to. A new preview starting meanwhile keeps these as its resting
+ * values: read from the element, it took the half-way colours as the page's own
+ * and, once left, glided back to them and kept them (a header stuck in a colour
+ * nobody picked).
+ */
+const resting = new WeakMap<HTMLElement, Map<string, string>>();
+
 let lastSeed = "";
 
 /**
@@ -151,6 +160,7 @@ function restoreImmediately(
 ) {
   for (const target of state.targets) {
     stopThemeTween(target.element);
+    resting.delete(target.element);
 
     for (const [
       name,
@@ -270,11 +280,13 @@ export function previewTheme(
       shell,
       section,
       targets: elements.map(
-        (element) =>
-          snapshot(
-            element,
-            names,
-          ),
+        (element) => {
+          const back = resting.get(element);
+
+          return back
+            ? { element, inlineValues: new Map(back) }
+            : snapshot(element, names);
+        },
       ),
     };
   }
@@ -380,6 +392,11 @@ export function endThemePreview(
       continue;
     }
 
+    resting.set(
+      target.element,
+      target.inlineValues,
+    );
+
     tweenThemeBack(
       target.element,
       target.inlineValues,
@@ -387,8 +404,13 @@ export function endThemePreview(
         duration:
           RESTORE_TWEEN_SECONDS,
 
-        onComplete:
-          finishedOne,
+        onComplete: () => {
+          if (resting.get(target.element) === target.inlineValues) {
+            resting.delete(target.element);
+          }
+
+          finishedOne();
+        },
       },
     );
   }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { gsap } from "gsap";
 import type { CatalogItem, CatalogProduct, CatalogVariant } from "@/lib/catalog";
+import { deliveryText } from "@/lib/deliveryTime";
 import {
   catalogItemKey,
   catalogItemLabel,
@@ -77,6 +78,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const sizeLabel = ar ? kind?.sizeLabel || "المقاس" : "Size";
   const specs = product.specs ?? [];
   const fulfillment = kind?.fulfillment ?? "SHIPPING";
+  const eta = fulfillment === "SHIPPING" ? deliveryText(product.delivery, ar) : null;
   // A booking whose time has passed can't be ordered any more.
   const eventEnd = product.eventEndsAt ?? product.eventStartsAt ?? null;
   const eventOver = fulfillment === "BOOKING" && Boolean(eventEnd) && new Date(eventEnd!).getTime() < Date.now();
@@ -390,14 +392,26 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </div>
           ) : fulfillment === "DIGITAL" ? (
             <div className="rose-pdp-handover" data-testid="product-digital">
-              <p>{ar ? "⬇️ منتج رقمي: بعد الدفع أو تأكيد الطلب بيوصلكِ رابط خاص تنزّلي منه الملفات. ما في شحن." : "⬇️ Digital product: after payment or confirmation you get a private link to download the files. Nothing is shipped."}</p>
+              {product.isProtected ? (
+                <p data-testid="product-protected">{ar ? "🔒 منتج محمي: بعد الدفع أو تأكيد الطلب بيوصلكِ سيريال خاص فيكِ، ونسخة مشفّرة باسم طلبكِ بتنزّليها خلال مدة محدودة. بتفتحيها بـ \u20667-Zip\u2069 أو WinRAR." : "🔒 Protected product: after payment or confirmation you get your own serial and an encrypted copy made for your order, to download within a limited time. Open it with 7-Zip or WinRAR."}</p>
+              ) : (
+                <p>{ar ? "⬇️ منتج رقمي: بعد الدفع أو تأكيد الطلب بيوصلكِ رابط خاص فيه الملفات أو الكود. ما في شحن." : "⬇️ Digital product: after payment or confirmation you get a private link with your files or code. Nothing is shipped."}</p>
+              )}
             </div>
           ) : (
+            <>
+            {eta ? (
+              <p className="rose-pdp-eta" data-testid="product-delivery">
+                <Icon name="truck" />
+                {eta}
+              </p>
+            ) : null}
             <ul className="rose-pdp-trust">
               <li><Icon name="truck" />{ar ? "توصيل لكل البلاد" : "Delivery nationwide"}</li>
               <li><Icon name="cash" />{ar ? "الدفع عند الاستلام" : "Cash on delivery"}</li>
               <li><Icon name="swap" />{ar ? "استبدال سهل" : "Easy exchange"}</li>
             </ul>
+            </>
           )}
 
           <div className="rose-pdp-details">

@@ -63,8 +63,10 @@ const TrafficPage = lazy(() => import("../features/system/TrafficPage"));
 const CachePage = lazy(() => import("../features/system/CachePage"));
 const SpeedMonitorPage = lazy(() => import("../features/system/SpeedMonitorPage"));
 const JobsPage = lazy(() => import("../features/system/JobsPage"));
+const VaultPage = lazy(() => import("../features/system/VaultPage"));
 const SchedulePage = lazy(() => import("../features/system/SchedulePage"));
 const AutomationsPage = lazy(() => import("../features/system/AutomationsPage"));
+const HistoryPage = lazy(() => import("../features/system/HistoryPage"));
 const BackupsPage = lazy(() => import("../features/system/BackupsPage"));
 const ChatbotPage = lazy(() => import("../features/chatbot/ChatbotPage"));
 const NavPage = lazy(() => import("../features/nav/NavPage"));
@@ -236,8 +238,11 @@ export default function AppRouter() {
           <Route path="system/cache" element={withPermissions(<CachePage />, ["system:read"])} />
           <Route path="system/speed" element={withPermissions(<SpeedMonitorPage />, ["system:read"])} />
           <Route path="system/jobs" element={withPermissions(<JobsPage />, ["system:read"])} />
+          <Route path="system/vault" element={withPermissions(<VaultPage />, ["system:read"])} />
           <Route path="system/schedule" element={withPermissions(<SchedulePage />, ["system:read"])} />
           <Route path="system/automations" element={withPermissions(<AutomationsPage />, ["settings:read"])} />
+          {/* Every member: it shows only the parts they can see. */}
+          <Route path="system/history" element={withPermissions(<HistoryPage />, [])} />
           <Route path="system/backups" element={withPermissions(<BackupsPage />, ["system:read"])} />
           <Route path="customers" element={withPermissions(<CustomersPage />, ["customers:read"])} />
 
