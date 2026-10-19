@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext } from "react";
 import { REQUESTS_DEFAULTS, type RequestsSettings } from "@/lib/requestsSettings";
+import { SCARCITY_DEFAULTS, type ScarcitySettings } from "@/lib/scarcity";
 
 /** Store features switched on and off in the admin (read from the public settings in the root layout). */
 export type SiteFeatures = {
@@ -15,6 +16,8 @@ export type SiteFeatures = {
   quiz: boolean;
   /** AI for shoppers (admin → الذكاء الاصطناعي; only switchable once the key is set). */
   ai: { smartSearch: boolean; shopTheLook: boolean; sizeAdvice: boolean; reviewSummary: boolean };
+  /** "آخر قطعة" / "باقي قطعتان" labels (admin → تنبيهات المخزون). */
+  scarcity: ScarcitySettings;
 };
 
 const DEFAULTS: SiteFeatures = {
@@ -23,6 +26,7 @@ const DEFAULTS: SiteFeatures = {
   delivery: null,
   quiz: false,
   ai: { smartSearch: false, shopTheLook: false, sizeAdvice: false, reviewSummary: false },
+  scarcity: SCARCITY_DEFAULTS,
 };
 const Ctx = createContext<SiteFeatures>(DEFAULTS);
 

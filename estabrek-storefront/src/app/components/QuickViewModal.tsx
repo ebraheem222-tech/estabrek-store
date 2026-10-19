@@ -8,6 +8,8 @@ import { catalogItemLabel, getProductMinPrice, getProductImageBlurDataUrl } from
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useSiteFeatures } from "@/store/siteFeatures";
+import { piecesLeftText, showsLeft } from "@/lib/scarcity";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
 import { LqipImage } from "@/components/LqipImage";
@@ -74,6 +76,7 @@ export function QuickViewModal({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isClosing, setIsClosing] = useState(false);
+  const { scarcity } = useSiteFeatures();
 
   // Reset state when product changes
   useEffect(() => {
@@ -300,7 +303,8 @@ export function QuickViewModal({
 
             {/* Stock Status */}
             <div className={`quick-view-stock ${isOutOfStock ? "out" : "in"}`}>
-              {isOutOfStock ? "غير متوفر" : `متوفر (${stock} قطعة)`}
+              {/* The count only when few are left and the owner shows it (admin → تنبيهات المخزون). */}
+              {isOutOfStock ? "غير متوفر" : showsLeft(scarcity, stock, "price") ? `متوفر · ${piecesLeftText(stock, true)}` : "متوفر"}
             </div>
 
             {/* Actions */}

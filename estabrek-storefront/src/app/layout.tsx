@@ -140,6 +140,7 @@ export default async function RootLayout({
           delivery={header?.delivery}
           quiz={header?.quiz}
           ai={header?.ai}
+          scarcity={header?.scarcity}
         >
           <EffectsStyles />
           <ThemeWrap

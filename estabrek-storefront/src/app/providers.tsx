@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/components/ThemeToggle";
 import MotionProvider from "@/motion/MotionProvider";
 import { RazanProvider } from "@/store/razan";
 import { normalizeRequests } from "@/lib/requestsSettings";
+import { normalizeScarcity } from "@/lib/scarcity";
 import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
@@ -68,6 +69,7 @@ export default function Providers({
   delivery,
   quiz,
   ai,
+  scarcity,
 }: {
   children: React.ReactNode;
   initialStorefrontSettings?: Partial<StorefrontSettings>;
@@ -86,6 +88,8 @@ export default function Providers({
   quiz?: unknown;
   /** Admin → الذكاء الاصطناعي (header.ai). */
   ai?: unknown;
+  /** Admin → تنبيهات المخزون (header.scarcity): the "pieces left" labels. */
+  scarcity?: unknown;
 }) {
   const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
   const defaultTheme = darkModeDisabled
@@ -101,8 +105,9 @@ export default function Providers({
       delivery: delivery ?? null,
       quiz: Boolean(quiz && typeof quiz === "object" && (quiz as { enabled?: unknown }).enabled === true),
       ai: aiFlags(ai),
+      scarcity: normalizeScarcity(scarcity),
     }),
-    [stockAlertsEnabled, requests, delivery, quiz, ai],
+    [stockAlertsEnabled, requests, delivery, quiz, ai, scarcity],
   );
 
   useEffect(() => {

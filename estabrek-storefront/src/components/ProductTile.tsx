@@ -20,6 +20,7 @@ import { useQuickView } from "@/components/QuickViewModal";
 import { LqipImage } from "@/components/LqipImage";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { getProductBadge } from "@/lib/productBadges";
+import { RoseBadge } from "./cinematic/RoseBadge";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -280,7 +281,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
 
   if (appearance === "rose") return <article ref={cardRef} className="rose-product-tile" onMouseEnter={() => setIsHovered(true)} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
     <Link className={`rose-product-image${secondary && shownImg === primary ? " has-alt" : ""}`} href={`/p/${product.slug}`} prefetch={prefetchEnabled}>
-      {discountPercent ? <span className="rose-product-discount">−{discountPercent}%</span> : badge ? <span className={`rose-badge rose-badge-${badge.kind}`}>{ar ? badge.ar : badge.en}</span> : null}
+      {discountPercent ? <span className="rose-product-discount">−{discountPercent}%</span> : <RoseBadge badge={badge} ar={ar} />}
       {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-main" /> : <span className="rose-image-placeholder">استبرق</span>}
       {secondary && shownImg === primary ? <LqipImage src={cldUrl(secondary, { w: 640, h: 800, c: "fill", g: "auto" })} alt="" fill loading="lazy" showSkeleton={false} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-alt" /> : null}
     </Link>

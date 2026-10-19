@@ -408,6 +408,17 @@ http
       });
       return;
     }
+    // "باقي قطعتان" labels (scarcity.spec.ts): POST a JSON body to set header.scarcity, {} to clear.
+    if (pathname === "/__test/scarcity" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (Object.keys(data).length) site.header.scarcity = data; else delete site.header.scarcity;
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
     if (pathname === "/__test/razan-events") return res.end(JSON.stringify(globalThis.razanEvents ?? []));
     // «اطلبي قطعتكِ» and Razan's «بدي حدا يحكيني» (razan-help.spec.ts, requests.spec.ts): what was sent.
     if (pathname === "/__test/requests") {
