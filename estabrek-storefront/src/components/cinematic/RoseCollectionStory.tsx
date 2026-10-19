@@ -17,6 +17,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { RoseBadge } from "./RoseBadge";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
@@ -92,7 +93,7 @@ function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
         <article key={p.id} className="season-card story-card" style={{ "--i": i } as CSSProperties}>
           <Link href={`/p/${encodeURIComponent(p.slug)}`} className="season-card-link">
             <span className={`season-card-image${p.secondaryImageUrl ? " has-alt" : ""}`}>
-              {p.badge && <span className={`rose-badge rose-badge-${p.badge.kind}`}>{ar ? p.badge.ar : p.badge.en}</span>}
+              <RoseBadge badge={p.badge} ar={ar} />
               <Image src={p.imageUrl || fallback} alt={p.title} fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-main" />
               {p.secondaryImageUrl && <Image src={p.secondaryImageUrl} alt="" aria-hidden fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-alt" />}
             </span>

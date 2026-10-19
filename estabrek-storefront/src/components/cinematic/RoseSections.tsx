@@ -17,6 +17,7 @@ import { useHeroFilm } from "@/lib/useAb";
 import { completeFaq, polishButton, polishCopy } from "./roseCopy";
 import { useRoseStore } from "./StorefrontChrome";
 import type { ProductBadge } from "@/lib/productBadges";
+import { RoseBadge } from "./RoseBadge";
 import { collectionSeed } from "@/lib/collectionTheme";
 import {
   discardThemePreview,
@@ -359,11 +360,7 @@ export function RoseProductGrid({
                 className="editorial-product-link"
               >
                 <div className={`editorial-product-image${p.secondaryImageUrl ? " has-alt" : ""}`}>
-                  {p.badge ? (
-                    <span className={`rose-badge rose-badge-${p.badge.kind}`}>
-                      {ar ? p.badge.ar : p.badge.en}
-                    </span>
-                  ) : null}
+                  <RoseBadge badge={p.badge} ar={ar} />
                   {p.imageUrl ? (
                     <>
                       <Image

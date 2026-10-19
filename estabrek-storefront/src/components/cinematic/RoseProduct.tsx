@@ -15,6 +15,7 @@ import {
   getVariantEffectivePrice,
 } from "@/lib/catalog";
 import { getProductBadge } from "@/lib/productBadges";
+import { piecesLeftText, showsLeft } from "@/lib/scarcity";
 import { imagesFor, itemHex, sizeKeyOf, startColorIndex } from "@/lib/roseProductMedia";
 import { cldUrl } from "@/lib/cloudinary";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
@@ -31,6 +32,7 @@ import { ProductTile } from "@/components/ProductTile";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { RoseImageViewer } from "./RoseImageViewer";
+import { RoseBadge } from "./RoseBadge";
 import { roseOutfit, roseReact } from "@/lib/roseEvents";
 import { useSiteFeatures } from "@/store/siteFeatures";
 import { RoseStockAlert } from "./RoseStockAlert";
@@ -69,7 +71,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const { fireConfetti } = useAnimationEffects();
   const toast = useToastShortcuts();
   // Admin → بانتظار التوفّر: sold-out sizes can be picked to leave an email.
-  const { stockAlerts, requests, ai } = useSiteFeatures();
+  const { stockAlerts, requests, ai, scarcity } = useSiteFeatures();
   // «اطلبي قطعتكِ»: a size or colour this piece doesn't come in (admin → الطلبات الخاصة).
   const [asking, setAsking] = useState(false);
   // The kind of product names its two choices (e.g. "الدرجة" for a ticket) and can hide them.
@@ -88,7 +90,8 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const compareAt = variant ? getVariantCompareAtPrice(variant) : null;
   const discount = price && compareAt && compareAt > price ? Math.round((1 - price / compareAt) * 100) : null;
   const inStock = Boolean(variant) && (variant!.stock == null || variant!.stock > 0);
-  const lowStock = inStock && variant?.stock != null && variant.stock <= 3;
+  // "باقي قطعتان" next to the price, as the owner set it (admin → تنبيهات المخزون).
+  const lowStock = inStock && showsLeft(scarcity, variant?.stock, "price");
   const badge = useMemo(() => getProductBadge(product), [product]);
   const currency = (product as any).currencyCode ?? null;
   const saved = wishlist.isInWishlist(product.id);
@@ -201,7 +204,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </div>
           )}
           <div ref={frame} className="rose-pdp-frame">
-            {discount ? <span className="rose-badge rose-badge-limited">−{discount}%</span> : badge ? <span className={`rose-badge rose-badge-${badge.kind}`}>{ar ? badge.ar : badge.en}</span> : null}
+            {discount ? <span className="rose-badge rose-badge-limited">−{discount}%</span> : <RoseBadge badge={badge} ar={ar} />}
             <button
               type="button"
               className="rose-pdp-wish"
@@ -261,7 +264,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             {price != null && price > 0 ? <strong>{formatMoney(price, currency)}</strong> : <strong>{ar ? "تواصلي معنا للسعر" : "Ask us for the price"}</strong>}
             {discount && compareAt ? <s>{formatMoney(compareAt, currency)}</s> : null}
             <span className={`rose-pdp-stock${inStock ? "" : " out"}`}>
-              {inStock ? (lowStock ? (ar ? `آخر ${variant?.stock} قطع` : `Only ${variant?.stock} left`) : (ar ? "متوفر" : "In stock")) : (ar ? "نفد هذا المقاس" : "Sold out in this size")}
+              {inStock ? (lowStock ? piecesLeftText(variant!.stock!, ar) : (ar ? "متوفر" : "In stock")) : (ar ? "نفد هذا المقاس" : "Sold out in this size")}
             </span>
           </div>
 

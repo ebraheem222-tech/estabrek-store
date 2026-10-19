@@ -18,6 +18,7 @@ import { razanCount } from "@/lib/razanRuntime";
 import { razanSelection } from "@/lib/razanProduct";
 import { useOptionalAccount } from "@/store/account";
 import { useSiteFeatures } from "@/store/siteFeatures";
+import { showsLeft } from "@/lib/scarcity";
 
 type Step = "color" | "size" | "qty" | "name" | "phone" | "address" | "summary";
 type Done = { kind: "order"; orderId?: string } | { kind: "call" };
@@ -27,7 +28,7 @@ const MAX_QTY = 10;
 
 export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProduct; ar: boolean; onClose: () => void }) {
   const account = useOptionalAccount();
-  const { delivery: deliveryRaw } = useSiteFeatures();
+  const { delivery: deliveryRaw, scarcity } = useSiteFeatures();
   const cities = useMemo(() => deliveryCities(normalizeDelivery(deliveryRaw)).flatMap((g) => g.cities), [deliveryRaw]);
   const kind = product.type ?? null;
   const fulfillment = kind?.fulfillment ?? "SHIPPING";
@@ -309,7 +310,7 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
             <output aria-live="polite">{qty}</output>
             <button type="button" onClick={() => setQty((q) => Math.min(Math.max(1, left), q + 1))} disabled={qty >= left} aria-label={ar ? "أكثر" : "More"}>+</button>
           </div>
-          {variant?.stock != null && variant.stock <= 3 ? <p className="razan-help-hint">{ar ? `ضايل ${variant.stock} بس` : `Only ${variant.stock} left`}</p> : null}
+          {showsLeft(scarcity, variant?.stock, "price") ? <p className="razan-help-hint">{ar ? `ضايل ${variant?.stock} بس` : `Only ${variant?.stock} left`}</p> : null}
         </>
       )}
 

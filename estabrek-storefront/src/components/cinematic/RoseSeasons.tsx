@@ -17,6 +17,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { RoseBadge } from "./RoseBadge";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
@@ -76,7 +77,7 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
         <article key={p.id} className="season-card" style={{ "--i": i } as React.CSSProperties}>
           <Link href={`/p/${encodeURIComponent(p.slug)}`} className="season-card-link">
             <span className="season-card-image">
-              {p.badge && <span className={`rose-badge rose-badge-${p.badge.kind}`}>{ar ? p.badge.ar : p.badge.en}</span>}
+              <RoseBadge badge={p.badge} ar={ar} />
               {p.imageUrl ? (
                 <Image src={p.imageUrl} alt={p.title} fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-main" />
               ) : (
