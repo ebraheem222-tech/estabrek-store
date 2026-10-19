@@ -13,6 +13,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Spinner } from "../../components/ui/Spinner";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/Table";
 import { Modal } from "../../components/ui/Modal";
+import { ScarcityCard } from "./ScarcityCard";
 
 function clampInt(v: string, min = 0) {
   const n = Math.floor(Number(v));
@@ -107,6 +108,8 @@ export default function LowStockPage() {
           </div>
         }
       />
+
+      <ScarcityCard />
 
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
