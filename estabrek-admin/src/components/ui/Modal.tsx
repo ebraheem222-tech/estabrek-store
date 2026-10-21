@@ -92,6 +92,8 @@ export function Modal({
       <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-4">
         <div
           ref={modalRef}
+          role="dialog"
+          aria-modal="true"
           onMouseMove={handleMouseMove}
           className={cn(
             "modal-spotlight relative w-full max-h-[90vh] flex flex-col rounded-2xl border border-white/[0.08] shadow-elevated overflow-hidden animate-modal-enter",

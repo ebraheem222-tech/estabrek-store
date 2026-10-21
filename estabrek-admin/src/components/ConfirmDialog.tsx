@@ -84,7 +84,7 @@ export function ConfirmDialog({
           <Button
             variant="ghost"
             className="flex-1"
-            onClick={onCancel}
+            onClick={closeHandler}
             disabled={isLoading}
           >
             {cancelText}
