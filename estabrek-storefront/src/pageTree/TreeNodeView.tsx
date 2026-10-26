@@ -16,7 +16,8 @@ import { RoseInstagram } from "@/components/cinematic/RoseSections";
 import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, type TreeLang, type TreeNode } from "./tree";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt } from "./svgArt";
-import { SpinView, spinFor } from "@/components/cinematic/ProductSpin";
+import { SpinView } from "@/components/cinematic/ProductSpin";
+import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
 
 export type TreeCtx = {

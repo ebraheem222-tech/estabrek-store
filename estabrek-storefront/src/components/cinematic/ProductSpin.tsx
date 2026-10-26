@@ -13,17 +13,9 @@ import { createPortal } from "react-dom";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { tr } from "@/lib/words";
 import type { Lang } from "@/lib/i18n";
+import type { ProductSpinData } from "./spinData";
 
-export type ProductSpinData = { id: string; url: string; cols: number; rows: number; cellW: number; cellH: number; count: number; itemId: string | null; modelUrl: string | null };
-
-const SAFE = /^(\/(?!\/)|https?:\/\/)[^\s<>"'`\\()]+$/;
-/** The view for the colour on screen: its own, else the one for every colour. */
-export function spinFor(spins: unknown, itemId?: string | null): ProductSpinData | null {
-  const list = (Array.isArray(spins) ? spins : []).filter(
-    (s): s is ProductSpinData => Boolean(s) && typeof s.url === "string" && SAFE.test(s.url) && s.cols > 0 && s.rows > 0 && s.cellW > 0 && s.cellH > 0 && s.count > 1,
-  );
-  return list.find((s) => itemId && s.itemId === itemId) ?? list.find((s) => !s.itemId) ?? null;
-}
+export type { ProductSpinData } from "./spinData";
 
 const ProductModelView = dynamic(() => import("./ProductModelView").then((m) => m.ProductModelView), { ssr: false });
 
