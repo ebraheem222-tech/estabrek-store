@@ -70,6 +70,9 @@ const FINISH_LABEL: Record<(typeof STAGE_FINISHES)[number], () => string> = {
   metal: () => tr("معدني لامع", "Polished metal"),
   toy: () => tr("بلاستيك ناعم", "Soft plastic"),
   voxel: () => tr("مكعّبات (فوكسل)", "Voxel blocks"),
+  matte: () => tr("مطفي", "Matte"),
+  glass: () => tr("زجاجي", "Glass"),
+  gold: () => tr("ذهبي", "Gold"),
 };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));

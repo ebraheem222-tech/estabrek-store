@@ -30,4 +30,8 @@ export const MOTION: Record<MotionStyle, MotionPreset> = {
   arcade: { headline: "chars-glitch", block: "skew", image: "scan", duration: 0.55, ease: "power4.out", stagger: 0.025, parallax: 8, draw: 1, morph: 2.4, float: 10, magnetic: true, tilt: true, marquee: 18 },
   soft: { headline: "words-blur", block: "fade", image: "bloom", duration: 1.3, ease: "power2.out", stagger: 0.08, parallax: 5, draw: 2, morph: 6, float: 14, magnetic: false, tilt: false, marquee: 45 },
   bouncy: { headline: "words-pop", block: "pop", image: "drop", duration: 0.9, ease: "back.out(1.7)", stagger: 0.07, parallax: 0, draw: 1.2, morph: 1.6, float: 12, magnetic: true, tilt: false, marquee: 24 },
+  // Jewellery, perfume, galleries: slow, unhurried, nothing bounces.
+  luxe: { headline: "lines-mask", block: "fade", image: "bloom", duration: 1.6, ease: "power4.out", stagger: 0.16, parallax: 12, draw: 3.2, morph: 8, float: 6, magnetic: false, tilt: false, marquee: 70 },
+  // Sport and street: fast, leaning forward.
+  sporty: { headline: "words-rise", block: "skew", image: "clip-up", duration: 0.6, ease: "power4.out", stagger: 0.04, parallax: 14, draw: 1, morph: 2, float: 4, magnetic: true, tilt: true, marquee: 16 },
 };

@@ -1,6 +1,6 @@
 "use client";
 /**
- * The five openings. Each reads the store's HERO section (words, buttons, picture) and
+ * The openings. Each reads the store's HERO section (words, buttons, picture) and
  * falls back to the theme's own words and drawing; the words carry the editor's marks
  * (data-edit) so the new editor writes on them in place.
  */
@@ -260,12 +260,129 @@ function Playful(input: HeroInput) {
   );
 }
 
+/* -------------------------------------------------------------- Gallery */
+// A museum wall: the picture in a deep mount, a wall label beside it, the rooms below.
+function Gallery(input: HeroInput) {
+  const w = words(input);
+  const { lang, theme, categories } = input;
+  return (
+    <section className="th-hero th-hero-gallery">
+      <Backdrop kit={theme.svg} />
+      <div className="th-hero-copy">
+        <p className="th-eyebrow" data-th-reveal="block">
+          <span className="th-rule" aria-hidden />
+          <span data-edit="eyebrow">{w.eyebrow}</span>
+        </p>
+        <Title lines={w.lines} />
+        <p className="th-hero-sub" data-th-reveal="block" data-edit="subtitle">
+          {w.subtitle}
+        </p>
+        <Buttons w={w} />
+        {categories.length ? (
+          <ol className="th-rooms" data-th-stagger="">
+            {categories.slice(0, 3).map((c, i) => (
+              <li key={c.id}>
+                <Link href={`/c/${encodeURIComponent(c.slug)}`}>
+                  <span className="th-index-n">{tr(lang, `القاعة ${i + 1}`, "Room {0}", [String(i + 1)])}</span>
+                  <span>{c.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </div>
+      <figure className="th-gallery-wall">
+        <div className="th-gallery-frame">
+          <Picture w={w} kit={theme.svg} fallback={input.productImage} sizes="(max-width: 900px) 80vw, 40vw" className="th-hero-media" />
+        </div>
+        <figcaption className="th-wall-label" data-th-reveal="block">
+          <strong>{w.lines[0]}</strong>
+          <span>{say(theme.copy.marquee[0], lang)}</span>
+        </figcaption>
+      </figure>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- Split */
+// Half a page of colour with the words, half a picture: sport, street, bold fashion.
+function Split(input: HeroInput) {
+  const w = words(input);
+  const { theme, lang } = input;
+  return (
+    <section className="th-hero th-hero-split">
+      <div className="th-split-panel">
+        <Backdrop kit={theme.svg} />
+        <div className="th-hero-copy">
+          <p className="th-eyebrow th-tag" data-th-reveal="block" data-edit="eyebrow">
+            {w.eyebrow}
+          </p>
+          <Title lines={w.lines} />
+          <p className="th-hero-sub" data-th-reveal="block" data-edit="subtitle">
+            {w.subtitle}
+          </p>
+          <Buttons w={w} />
+          <ul className="th-split-facts" data-th-stagger="">
+            {theme.copy.marquee.slice(0, 3).map((m, i) => (
+              <li key={i}>{say(m, lang)}</li>
+            ))}
+          </ul>
+        </div>
+        <span className="th-split-number" aria-hidden>
+          01
+        </span>
+      </div>
+      <div className="th-split-media">
+        <Picture w={w} kit={theme.svg} fallback={input.productImage} sizes="(max-width: 900px) 100vw, 50vw" className="th-hero-media" />
+      </div>
+    </section>
+  );
+}
+
+/* ----------------------------------------------------------------- Mono */
+// The words do the work: a very large title, a small picture, thin lines.
+function Mono(input: HeroInput) {
+  const w = words(input);
+  const { theme, lang, counts } = input;
+  return (
+    <section className="th-hero th-hero-mono">
+      <Backdrop kit={theme.svg} />
+      <p className="th-eyebrow" data-th-reveal="block" data-edit="eyebrow">
+        {w.eyebrow}
+      </p>
+      <Title lines={w.lines} />
+      <div className="th-mono-row">
+        <div className="th-hero-copy">
+          <p className="th-hero-sub" data-th-reveal="block" data-edit="subtitle">
+            {w.subtitle}
+          </p>
+          <Buttons w={w} />
+        </div>
+        <dl className="th-mono-facts" data-th-stagger="">
+          <div>
+            <dt>{tr(lang, "منتج", "Products")}</dt>
+            <dd data-th-count={String(Math.max(counts.products, 1))}>{Math.max(counts.products, 1)}</dd>
+          </div>
+          <div>
+            <dt>{say(theme.copy.marquee[0], lang)}</dt>
+            <dd>✓</dd>
+          </div>
+        </dl>
+        <Picture w={w} kit={theme.svg} fallback={input.productImage} sizes="(max-width: 900px) 70vw, 24vw" className="th-hero-media th-mono-media" />
+      </div>
+    </section>
+  );
+}
+
 const HEROES: Record<StoreTheme["hero"], (i: HeroInput) => ReactNode> = {
   editorial: Editorial,
   spotlight: Spotlight,
   glitch: Glitch,
   bloom: Bloom,
   playful: Playful,
+  gallery: Gallery,
+  split: Split,
+  mono: Mono,
   // A gaming theme's stage (StageHero) without its 3D settings: the neon opening.
   stage: Glitch,
 };

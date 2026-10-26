@@ -392,6 +392,7 @@ export const HE: Record<string, string> = {
   "Product details could not load.": "פרטי המוצר לא נטענו.",
   "Product photos": "תמונות המוצר",
   "Products": "מוצרים",
+  "Room {0}": "אולם {0}",
   "Products could not load. Please try again.": "המוצרים לא נטענו. כדאי לנסות שוב.",
   "Products show here as soon as they are added.": "המוצרים יופיעו כאן ברגע שיתווספו.",
   "QR for ticket {0}": "QR לכרטיס {0}",

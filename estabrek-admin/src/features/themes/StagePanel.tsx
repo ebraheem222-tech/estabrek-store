@@ -10,7 +10,7 @@ import type { CatalogCategory } from "../../api/catalog.api";
 import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import { adminLang } from "../../lib/lang";
 import { tr } from "../../lib/words";
-import type { StageModelInfo, StoreThemeInfo } from "../../studio/storeThemes";
+import { stageWords, type StageModelInfo, type StoreThemeInfo } from "../../studio/storeThemes";
 import { MAX_GAMES, MAX_MODELS, themeDraft, type DraftGame, type DraftModel, type StageDraftApi } from "./stageDraft";
 
 const input = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
@@ -49,6 +49,7 @@ export function StagePanel({ theme, models, categories, api }: { theme: StoreThe
   const { draft, change } = api;
   const rows = draft.models;
   const games = draft.games;
+  const words = stageWords(theme.family);
   const nameOf = (kind: string) => models.find((m) => m.kind === kind)?.label[lang] ?? kind;
   const [picking, setPicking] = useState<number | null>(null);
 
@@ -64,12 +65,9 @@ export function StagePanel({ theme, models, categories, api }: { theme: StoreThe
   return (
     <section className="space-y-4" data-testid="stage-panel">
       <div>
-        <h3 className="text-sm font-semibold">{tr("الموديلات والألعاب", "Models and games")}</h3>
+        <h3 className="text-sm font-semibold">{words.title}</h3>
         <p className="mt-1 text-[11px] leading-5 text-white/45">
-          {tr(
-            "الموديلات بتطلع بمشهد الـ 3D، وكل موديل بيفتح قسمه. الزبون بيختار لعبة، فبيتلوّن المشهد بلونها وبيطلع موديلها وبيوصل لمنتجاتها.",
-            "The models stand on the 3D stage and each opens its category. A shopper picks a game: the stage takes its colour, its model comes forward and it leads to its products.",
-          )}
+          {words.help}
         </p>
       </div>
 
@@ -105,10 +103,10 @@ export function StagePanel({ theme, models, categories, api }: { theme: StoreThe
       </div>
 
       <div className="space-y-2">
-        <div className="text-xs font-medium text-white/70">{tr("الألعاب", "Games")} ({games.length}/{MAX_GAMES})</div>
+        <div className="text-xs font-medium text-white/70">{words.list} ({games.length}/{MAX_GAMES})</div>
         {games.map((g, i) => (
           <div key={i} className="grid gap-2 rounded-xl bg-white/[0.03] p-2 md:grid-cols-[1fr_52px_130px_1fr_auto]" data-testid="stage-game-row">
-            <input className={input} aria-label={tr("اسم اللعبة", "Game name")} value={g.name} placeholder="FIFA 25" onChange={(e) => setGame(i, { name: e.target.value }, `game:${i}`)} />
+            <input className={input} aria-label={words.name} value={g.name} placeholder={words.example} onChange={(e) => setGame(i, { name: e.target.value }, `game:${i}`)} />
             <input type="color" className="h-8 w-full cursor-pointer rounded-lg border border-white/[0.1] bg-transparent" aria-label={tr("اللون", "Colour")} value={g.color} onChange={(e) => setGame(i, { color: e.target.value }, `gameColour:${i}`)} />
             <select className={input} aria-label={tr("الموديل", "Model")} value={g.model} onChange={(e) => setGame(i, { model: e.target.value })}>
               <option value="">{tr("بدون", "None")}</option>
@@ -127,14 +125,14 @@ export function StagePanel({ theme, models, categories, api }: { theme: StoreThe
           </div>
         ))}
         <button type="button" className={btn} disabled={games.length >= MAX_GAMES} onClick={() => change((d) => ({ ...d, games: [...d.games, { name: "", color: "#ff2bd6", href: "", imageUrl: "", model: "" }] }))} data-testid="stage-add-game">
-          + {tr("لعبة", "Game")}
+          + {words.one}
         </button>
       </div>
 
       <button type="button" className={btn} onClick={() => change(() => themeDraft(theme, lang))} data-testid="stage-theme-own">
         {tr("رجوع لموديلات الثيم", "Back to the theme's own")}
       </button>
-      <MediaLibraryModal open={picking !== null} onClose={() => setPicking(null)} title={tr("صورة اللعبة", "The game's picture")} onSelect={(url) => { if (picking !== null) setGame(picking, { imageUrl: url }); setPicking(null); }} />
+      <MediaLibraryModal open={picking !== null} onClose={() => setPicking(null)} title={words.picture} onSelect={(url) => { if (picking !== null) setGame(picking, { imageUrl: url }); setPicking(null); }} />
     </section>
   );
 }

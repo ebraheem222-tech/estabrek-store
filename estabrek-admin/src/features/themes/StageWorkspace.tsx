@@ -14,7 +14,7 @@ import { getApiErrorMessage } from "../../api/http";
 import { adminLang } from "../../lib/lang";
 import { toast } from "../../lib/toast";
 import { tr } from "../../lib/words";
-import { saveStageOptions, type StageDefaults, type StageModelInfo, type StageOptions, type StoreThemeInfo } from "../../studio/storeThemes";
+import { saveStageOptions, stageWords, type StageDefaults, type StageModelInfo, type StageOptions, type StoreThemeInfo } from "../../studio/storeThemes";
 import type { GlbInfo } from "./ModelFile";
 import { SceneEditor, type SceneTool } from "./SceneEditor";
 import { ScenePanel } from "./ScenePanel";
@@ -190,7 +190,7 @@ export function StageWorkspace({
         <div className="me-auto flex gap-1" role="tablist" aria-label={tr("المشهد", "The stage")}>
           {(["models", "scene"] as const).map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-white/[0.14] text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`stage-tab-${t}`}>
-              {t === "models" ? tr("الموديلات والألعاب", "Models and games") : tr("محرّر المشهد", "Scene editor")}
+              {t === "models" ? stageWords(theme.family).title : tr("محرّر المشهد", "Scene editor")}
             </button>
           ))}
         </div>

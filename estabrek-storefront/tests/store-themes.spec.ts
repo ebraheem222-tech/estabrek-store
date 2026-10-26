@@ -91,10 +91,11 @@ test("every theme reads well in each of its modes", () => {
   }
 });
 
-test("every gaming pack's games bring forward one of its own models", () => {
-  const gaming = STORE_THEMES.filter((t) => t.stage);
-  expect(gaming.length).toBe(20);
-  for (const t of gaming) {
+test("every 3D stage's games and collections bring forward one of its own models", () => {
+  const staged = STORE_THEMES.filter((t) => t.stage);
+  expect(staged.filter((t) => t.family === "gaming").length).toBe(20);
+  expect(staged.length).toBeGreaterThan(20);
+  for (const t of staged) {
     expect(new Set(t.stage!.models).size, `${t.id}: no model twice`).toBe(t.stage!.models.length);
     for (const g of t.stage!.games) expect(t.stage!.models, `${t.id}: ${g.name.en}`).toContain(g.model);
   }
@@ -269,7 +270,7 @@ test.describe("gaming themes: the 3D stage", () => {
     });
     // A knob with set choices takes the nearest one; an empty look is no look.
     expect(cleanLook({ knobs: { faces: 9 } }, "dice")).toEqual({ knobs: { faces: 8 } });
-    expect(cleanLook({ finish: "glass", anim: { type: "teleport" } }, "dice")).toBeUndefined();
+    expect(cleanLook({ finish: "plasma", anim: { type: "teleport" } }, "dice")).toBeUndefined();
     // Every model has knobs, each default inside its range.
     for (const kind of MODEL_KINDS) {
       expect(MODEL_KNOBS[kind].length).toBeGreaterThan(0);

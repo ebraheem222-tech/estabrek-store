@@ -182,6 +182,9 @@ export function StageHero({ theme, palette, lang, d, categories, options }: { th
   const title: string = (typeof d.title === "string" && d.title.trim()) || say(theme.copy.title, lang);
   const current = models[selected];
   const cta = picked ? { label: tr(lang, `تسوّق ${picked.name}`, "Shop {0}", [picked.name]), href: picked.href } : { label: d.primaryButton?.label || say(theme.copy.cta, lang), href: d.primaryButton?.href || "/shop" };
+  // A gaming store picks gear and games; the other stores name their own pickers.
+  const pickLabel = stage.labels ? say(stage.labels.pick, lang) : tr(lang, "اختر جهازك", "Pick your gear");
+  const gamesLabel = stage.labels ? say(stage.labels.games, lang) : tr(lang, "اختر لعبتك", "Pick your game");
 
   return (
     <>
@@ -269,7 +272,7 @@ export function StageHero({ theme, palette, lang, d, categories, options }: { th
             </div>
           ) : null}
         </div>
-        <div className="th-pick" role="group" aria-label={tr(lang, "اختر جهازك", "Pick your gear")}>
+        <div className="th-pick" role="group" aria-label={pickLabel}>
           {models.map((m, i) => (
             <button key={`${m.kind}-${i}`} type="button" className="th-pick-item" aria-pressed={i === selected} onClick={() => select(i)} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} data-kind={m.kind}>
               {m.label}
@@ -278,9 +281,9 @@ export function StageHero({ theme, palette, lang, d, categories, options }: { th
         </div>
       </section>
       {games.length ? (
-        <section className="th-games" aria-label={tr(lang, "اختر لعبتك", "Pick your game")}>
+        <section className="th-games" aria-label={gamesLabel}>
           <h2 className="th-games-title" data-th-reveal="headline">
-            {tr(lang, "اختر لعبتك", "Pick your game")}
+            {gamesLabel}
           </h2>
           <div className="th-games-list" role="group">
             {games.map((g, i) => (
