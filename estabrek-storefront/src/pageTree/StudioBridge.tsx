@@ -329,6 +329,21 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       });
     };
 
+    // A place the editor asked to see (after the frame reloads with a change, or a new element):
+    // the page still grows while pictures and scenes load, so it's taken again a few times.
+    let held: (() => void) | null = null;
+    let holds: number[] = [];
+    const hold = (go: () => void) => {
+      holds.forEach((t) => window.clearTimeout(t));
+      held = go;
+      go();
+      holds = [150, 400, 900, 1600, 2600].map((ms) => window.setTimeout(() => held?.(), ms));
+      holds.push(window.setTimeout(() => (held = null), 2700));
+    };
+    const letGo = () => {
+      held = null;
+      holds.forEach((t) => window.clearTimeout(t));
+    };
     const onMessage = (e: MessageEvent) => {
       if (!origins.includes(e.origin)) return;
       const d = e.data as { source?: string; type?: string; dx?: number; dy?: number; y?: number; nodeId?: string; sectionId?: string; path?: string; value?: string; block?: string; owner?: string; part?: string; n?: number } | null;
@@ -348,9 +363,13 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       }
       if (d.type === "editText" && d.sectionId && d.path) return startEdit(d.sectionId, d.path, typeof d.value === "string" ? d.value : null);
       if (d.type === "stopEdit") return finish(true);
-      if (d.type === "scrollBy") window.scrollBy({ left: Number(d.dx) || 0, top: Number(d.dy) || 0, behavior: "instant" as ScrollBehavior });
-      else if (d.type === "scrollTo") window.scrollTo({ top: Number(d.y) || 0, behavior: "instant" as ScrollBehavior });
-      else if (d.type === "reveal") {
+      if (d.type === "scrollBy") {
+        letGo();
+        window.scrollBy({ left: Number(d.dx) || 0, top: Number(d.dy) || 0, behavior: "instant" as ScrollBehavior });
+      } else if (d.type === "scrollTo") {
+        const y = Number(d.y) || 0;
+        hold(() => window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior }));
+      } else if (d.type === "reveal") {
         const el = d.nodeId
           ? document.querySelector(`[data-tree-node="${CSS.escape(d.nodeId)}"]`)
           : typeof d.owner === "string"
@@ -362,7 +381,7 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
               : d.sectionId
                 ? document.querySelector(`[data-cms-section="${CSS.escape(d.sectionId)}"]`)
                 : null;
-        el?.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (el) hold(() => el.isConnected && el.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior }));
       } else if (d.type === "measure") now();
     };
     // The editor only looks: links and forms stay on the page.
@@ -416,6 +435,7 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       cancelAnimationFrame(frame);
       window.clearTimeout(timer);
       window.clearTimeout(moving);
+      letGo();
     };
   }, [origins, pageId, lang]);
   return null;

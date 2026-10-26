@@ -102,6 +102,25 @@ test("inside the home's sections and scenes: each word, button and card is measu
   }
 });
 
+test("objects placed over an old section show on a layer over it, measured with that layer as their holder", async ({ page, request }) => {
+  const home = await (await request.get("http://127.0.0.1:4100/v1/storefront/page?slug=/")).json();
+  const sections = home.sections.map((s: any) => ({ id: s.id, type: s.type, data: s.data, isVisible: s.isVisible !== false, tr: {} }));
+  const words = { id: "over-faq", type: "heading", props: { level: 2, text: { ar: "كلام فوق الأسئلة" } }, style: { base: { layer: { x: 20, y: 30, anchor: "center" } } } };
+  const tree = { version: 1, root: { id: "page", type: "page", props: {}, children: home.sections.map((s: any) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id }, ...(s.id === "faq" ? { children: [words] } : {}) })) } };
+  await request.post("http://127.0.0.1:4100/__test/preview-draft", { data: { pageId: "home", sections, tree, rev: 1, updatedAt: "" } });
+  await page.goto(`${HARNESS}?src=${encodeURIComponent("/studio-frame?token=good-draft")}`);
+  const frame = page.frameLocator("#f");
+  const over = frame.locator('[data-cms-section="faq"] > .pt-over [data-tree-node="over-faq"]');
+  await expect(over).toHaveText("كلام فوق الأسئلة");
+  expect(await over.evaluate((el) => getComputedStyle(el).position)).toBe("absolute");
+  await over.scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await lastLayout(page))?.items?.find((i: any) => i.kind === "node" && i.id === "over-faq")?.holder?.w ?? 0, { timeout: 30_000 }).toBeGreaterThan(600);
+  // Its section is still measured whole, and the layer lets clicks through to it.
+  const layout = await lastLayout(page);
+  expect(layout.items.some((i: any) => i.kind === "legacy" && i.sectionId === "faq")).toBe(true);
+  expect(await frame.locator('[data-cms-section="faq"] > .pt-over').evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+});
+
 test("the home page as a tree, in English: old sections are measured as whole blocks", async ({ page }) => {
   await page.goto(`${HARNESS}?src=${encodeURIComponent("/en/studio-frame?token=good-home")}`);
   await expect.poll(async () => (await lastLayout(page))?.items?.length ?? 0, { timeout: 45_000 }).toBeGreaterThan(2);

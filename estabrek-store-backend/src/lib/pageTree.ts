@@ -41,6 +41,13 @@ export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 export const SLIDER_LIMITS = { slides: 12, minSeconds: 2, maxSeconds: 30 } as const;
 /** Nodes that sit straight under the page, and only there. */
 export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy"]);
+/**
+ * An old section or a rose scene can hold objects placed freely over it (words, a picture,
+ * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
+ */
+export const OVERLAY_HOSTS: ReadonlySet<NodeType> = new Set(["legacy", "roseBlock"]);
+export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon"]);
+export const OVERLAY_LIMIT = 40;
 
 export const ICON_NAMES = ["heart", "star", "truck", "shield", "gift", "phone", "whatsapp", "mail", "check", "sparkle", "bag", "return"] as const;
 /** Theme colours (the shop maps them to its CSS variables); anything else must be a hex colour. */
@@ -328,6 +335,7 @@ export function checkTree(input: unknown): TreeCheck {
     if (parent === "columns" && type !== "cell") add(`${path}.type`, `“${type}” goes inside a cell of the columns`);
     if (type === "cell" && parent !== "columns") add(`${path}.type`, "A cell goes inside columns");
     if (type === "columns" && columnsAbove >= COLUMNS_LIMITS.nested) add(`${path}.type`, `Columns go at most ${COLUMNS_LIMITS.nested} deep`);
+    if (parent !== null && OVERLAY_HOSTS.has(parent) && !OVERLAY_TYPES.has(type)) add(`${path}.type`, `“${type}” can't be placed over a section`);
 
     const props = NODE_PROPS[type].safeParse(raw.props ?? {});
     if (!props.success) for (const i of props.error.issues) add(`${path}.props${i.path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("")}`, i.message);
@@ -341,7 +349,10 @@ export function checkTree(input: unknown): TreeCheck {
     let children: TreeNode[] | undefined;
     if (raw.children !== undefined) {
       if (!Array.isArray(raw.children)) add(`${path}.children`, "Expected a list");
-      else if (!CONTAINER_TYPES.has(type)) {
+      else if (OVERLAY_HOSTS.has(type)) {
+        if (raw.children.length > OVERLAY_LIMIT) add(`${path}.children`, `More than ${OVERLAY_LIMIT} objects over one section`);
+        else children = raw.children.map((c, i) => walk(c, `${path}.children[${i}]`, depth + 1, type, columnsAbove)).filter((c): c is TreeNode => Boolean(c));
+      } else if (!CONTAINER_TYPES.has(type)) {
         if (raw.children.length) add(`${path}.children`, `“${type}” can't hold other elements`);
       } else if (raw.children.length > TREE_LIMITS.children) add(`${path}.children`, `More than ${TREE_LIMITS.children} elements in one place`);
       else if (type === "columns" && raw.children.length > COLUMNS_LIMITS.cells) add(`${path}.children`, `Columns hold 1–${COLUMNS_LIMITS.cells} cells`);
@@ -352,6 +363,7 @@ export function checkTree(input: unknown): TreeCheck {
     if (style?.success && Object.keys(style.data).length) node.style = style.data;
     if (motion?.success && Object.keys(motion.data).length) node.motion = motion.data;
     if (CONTAINER_TYPES.has(type)) node.children = children ?? [];
+    else if (OVERLAY_HOSTS.has(type) && children?.length) node.children = children;
     if (type === "columns" && !(Array.isArray(raw.children) && raw.children.length)) add(`${path}.children`, `Columns hold 1–${COLUMNS_LIMITS.cells} cells`);
     return node;
   };

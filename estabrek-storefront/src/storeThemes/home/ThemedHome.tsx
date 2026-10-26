@@ -14,6 +14,7 @@ import type { StageOptions } from "../three/kinds";
 import type { StoreTheme } from "../types";
 import { ThemeHero } from "./heroes";
 import { StageHero } from "./StageHero";
+import { OverlayLayer } from "@/pageTree/OverlayLayer";
 import { marqueeWords } from "../words";
 import { ThCollections, ThCta, ThDivider, ThFaq, ThMarquee, ThPanel, ThProducts, ThTestimonials, ThVideo, type ThProduct } from "./sections";
 
@@ -60,6 +61,7 @@ export function ThemedHome({
       ...native.map((section) => (
         <div key={`native-${section.id}`} className="th-native" data-cms-section={section.id}>
           <CmsPageRenderer sections={[section]} markSections={false} productLookup={productLookup} renderQuickAdd={renderQuickAdd} renderProductCard={renderProductCard} />
+          <OverlayLayer over={section.overlay} />
         </div>
       )),
     );
@@ -71,6 +73,7 @@ export function ThemedHome({
     nodes.push(
       <div key={section.id} data-cms-section={section.id} id={section.anchorId || undefined} aria-label={section.ariaLabel || undefined}>
         {node}
+        <OverlayLayer over={section.overlay} />
       </div>,
     );
   };

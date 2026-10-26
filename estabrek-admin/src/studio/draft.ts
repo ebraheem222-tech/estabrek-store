@@ -97,7 +97,10 @@ export function inverseOf(op: PageDraftOp, d: PageDraft, main: Lang): PageDraftO
     }
     case "placeBlock": {
       const at = kids.findIndex((n) => n.id === `rb-${op.block}`);
-      return [{ op: "placeBlock", block: op.block, index: at >= 0 ? at : null }];
+      const back: PageDraftOp[] = [{ op: "placeBlock", block: op.block, index: at >= 0 ? at : null }];
+      // A scene taken off the page takes the objects placed over it: they come back with it.
+      if (at >= 0 && (op.index === null || op.index === undefined)) (kids[at].children ?? []).forEach((c, i) => back.push({ op: "insert", parentId: kids[at].id, index: i, node: structuredClone(c) }));
+      return back;
     }
   }
 }
@@ -107,10 +110,17 @@ export function inverseOf(op: PageDraftOp, d: PageDraft, main: Lang): PageDraftO
  * the old sections' words and visibility leave the tree as it is.
  */
 export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
-  if (!["move", "remove", "insert", "setProps", "setStyle", "setMotion"].includes(op.op)) return d;
+  if (!["move", "remove", "insert", "setProps", "setStyle", "setMotion", "placeBlock"].includes(op.op)) return d;
   const tree = structuredClone(d.tree);
   tree.root.children ??= [];
   switch (op.op) {
+    case "placeBlock": {
+      const kids = tree.root.children;
+      const at = kids.findIndex((n) => n.id === `rb-${op.block}`);
+      const node = at >= 0 ? kids.splice(at, 1)[0] : { id: `rb-${op.block}`, type: "roseBlock", props: { block: op.block } };
+      if (op.index !== null && op.index !== undefined) kids.splice(clamp(op.index, kids.length), 0, node);
+      break;
+    }
     case "move": {
       const at = locate(tree, op.nodeId);
       const into = op.parentId === undefined ? tree.root : locate(tree, op.parentId)?.node;
@@ -127,6 +137,8 @@ export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
     }
     case "insert": {
       const into = locate(tree, op.parentId)?.node;
+      // An old section or a scene starts holding objects placed over it.
+      if (into && !into.children && (into.type === "legacy" || into.type === "roseBlock")) into.children = [];
       if (!into?.children) return d;
       into.children.splice(clamp(op.index, into.children.length), 0, structuredClone(op.node));
       break;

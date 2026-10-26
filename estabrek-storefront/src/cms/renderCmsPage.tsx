@@ -148,7 +148,8 @@ export async function renderCmsPageBySlug(
     (page as any).sections = (tree.root.children ?? []).flatMap((n, i) => {
       if (n.type === "legacy") {
         const s = byId.get(String(n.props?.sectionId ?? ""));
-        return s ? [{ ...s, order: i }] : [];
+        // Objects placed over the section in the editor go with it.
+        return s ? [{ ...s, order: i, ...(n.children?.length ? { overlay: { nodes: n.children, ctx: treeCtx } } : {}) }] : [];
       }
       return [{ id: `tree-${n.id}`, type: "TREE_NODE", order: i, isVisible: true, data: { node: n, ctx: treeCtx } }];
     });

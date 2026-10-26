@@ -298,6 +298,11 @@ export const BASE_CSS = [
   "html.pt-pending [data-pt-enter]{opacity:0}",
   ".pt{box-sizing:border-box;min-width:0}",
   ".pt-section{position:relative;width:100%;padding-block:56px}",
+  // Objects placed over an old section or a scene: a layer over it, in sight through a tall scene.
+  "[data-cms-section]:has(>.pt-over),[data-rose-block]:has(>.pt-over){position:relative}",
+  ".pt-over{position:absolute;inset:0;z-index:6;pointer-events:none}",
+  ".pt-over-in{position:sticky;top:0;height:min(100%,100vh);pointer-events:none}",
+  ".pt-over-in>*{pointer-events:auto}",
   ".pt-inner{max-width:1200px;margin-inline:auto;padding-inline:16px}",
   ".pt-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}",
   ".pt-stack{display:flex;flex-direction:column;gap:16px}",

@@ -116,6 +116,27 @@ describe("a page's draft", () => {
     expect(locate(d.tree, "t")?.parent?.id).toBe("c1");
   });
 
+  test("objects placed freely over an old section or a scene: added, moved, kept through delete and back", () => {
+    const words = { id: "o1", type: "heading", props: { text: { ar: "فوق" } }, style: { base: { layer: { x: 30, y: 40, anchor: "center" } } } };
+    let d = applyOps(fresh(), [{ op: "insert", parentId: "s-hero", index: 0, node: words }], ctx);
+    expect(locate(d.tree, "o1")?.parent?.id).toBe("s-hero");
+    expect(needsTree(d.tree)).toBe(true);
+    // A scene gets its place first, then holds objects too.
+    d = applyOps(d, [{ op: "placeBlock", block: "seasons", index: 1 }, { op: "insert", parentId: "rb-seasons", index: 0, node: { id: "o2", type: "image", props: { src: "/x.webp" } } }], ctx);
+    expect(locate(d.tree, "o2")?.parent?.id).toBe("rb-seasons");
+    d = applyOps(d, [{ op: "move", nodeId: "o2", parentId: "s-cta", index: 0 }], ctx);
+    expect(locate(d.tree, "o2")?.parent?.id).toBe("s-cta");
+    // A deleted section keeps its objects in the bin, and they come back with it.
+    d = applyOps(d, [{ op: "remove", nodeId: "s-hero" }], ctx);
+    expect(locate(d.tree, "o1")).toBeNull();
+    d = applyOps(d, [{ op: "restore", sectionId: "hero" }], ctx);
+    expect(locate(d.tree, "o1")?.parent?.id).toBe("s-hero");
+    // Only content goes over a section: no sections, columns or other old sections.
+    const refuse = (ops: unknown, why: RegExp) => expect(() => applyOps(d, ops, ctx)).toThrow(why);
+    refuse([{ op: "insert", parentId: "s-faq", index: 0, node: { id: "c9", type: "columns", props: {}, children: [{ id: "c9a", type: "cell", props: {}, children: [] }] } }], /placed over a section/);
+    refuse([{ op: "insert", parentId: "s-faq", index: 0, node: { id: "x9", type: "section", props: {}, children: [] } }], /straight on the page/);
+  });
+
   test("bad changes are refused and nothing is applied", () => {
     const d = fresh();
     const refuse = (ops: unknown) => expect(() => applyOps(d, ops, ctx)).toThrow(DraftError);

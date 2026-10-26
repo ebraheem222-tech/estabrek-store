@@ -20,6 +20,20 @@ const draft = (): PageDraft => ({
   ] } },
 });
 
+describe("objects placed over a section or scene", () => {
+  it("a scene given a place and an object over it come off again with one undo", () => {
+    const d = draft();
+    d.tree.root.children = d.tree.root.children!.filter((n) => n.id !== "rb-seasons");
+    const obj = { id: "o1", type: "text", props: {}, style: { base: { layer: { x: 10, y: 20 } } } };
+    const ops = [{ op: "placeBlock" as const, block: "seasons" as const, index: 1 }, { op: "insert" as const, parentId: "rb-seasons", index: 0, node: obj }];
+    expect(undoOf(ops, d, "ar")).toEqual([{ op: "remove", nodeId: "o1" }, { op: "placeBlock", block: "seasons", index: null }]);
+    const after = ops.reduce(simulate, d);
+    expect(locate(after.tree, "o1")?.parent?.id).toBe("rb-seasons");
+    // Taking the scene off the page brings its objects back on undo.
+    expect(inverseOf({ op: "placeBlock", block: "seasons", index: null }, after, "ar")).toEqual([{ op: "placeBlock", block: "seasons", index: 1 }, { op: "insert", parentId: "rb-seasons", index: 0, node: obj }]);
+  });
+});
+
 describe("the editor's draft", () => {
   it("reads a field as the shopper sees it in each language", () => {
     const d = draft();

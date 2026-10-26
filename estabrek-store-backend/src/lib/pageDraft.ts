@@ -11,7 +11,7 @@
  * still pass its type's check after a change, and the tree the page tree's.
  */
 import { createHash } from "node:crypto";
-import { type PageTree, type TreeNode, TREE_VERSION, checkTree, storedTree, syncWithSections, treeFromSections } from "./pageTree.js";
+import { type PageTree, type TreeNode, OVERLAY_HOSTS, TREE_VERSION, checkTree, storedTree, syncWithSections, treeFromSections } from "./pageTree.js";
 
 export const DRAFT_LANGS = ["ar", "en", "he"] as const;
 export type DraftLang = (typeof DRAFT_LANGS)[number];
@@ -188,6 +188,9 @@ const FIXED_TYPES = new Set(["page", "legacy", "roseBlock"]);
 const isPlain = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === "object" && !Array.isArray(v);
 const place = (n: number, max: number) => Math.max(0, Math.min(max, Math.trunc(Number(n)) || 0));
 
+/** What an element holds; an old section or a scene starts holding objects placed over it. */
+const holdsOf = (n: TreeNode): TreeNode[] | undefined => n.children ?? (OVERLAY_HOSTS.has(n.type) ? (n.children = []) : undefined);
+
 const legacyIndex = (tree: PageTree, sectionId: string) => (tree.root.children ?? []).findIndex((n) => n.type === "legacy" && n.props.sectionId === sectionId);
 
 export type ApplyCtx = {
@@ -229,10 +232,11 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
           const at = locate(d.tree, raw.nodeId);
           const into = locate(d.tree, raw.parentId);
           if (!at?.parent || FIXED_TYPES.has(at.node.type)) throw new DraftError(`No element ${String(raw.nodeId)} to move`);
-          if (!into || !into.node.children) throw new DraftError(`${String(raw.parentId)} can't hold other elements`);
+          const held = into ? holdsOf(into.node) : undefined;
+          if (!into || !held) throw new DraftError(`${String(raw.parentId)} can't hold other elements`);
           if (locate({ version: TREE_VERSION, root: at.node }, raw.parentId)) throw new DraftError("An element can't go inside itself");
           at.parent.children!.splice(at.index, 1);
-          into.node.children.splice(place(raw.index, into.node.children.length), 0, at.node);
+          held.splice(place(raw.index, held.length), 0, at.node);
           break;
         }
         const list = kids();
@@ -252,12 +256,13 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
       }
       case "insert": {
         const into = locate(d.tree, raw.parentId);
-        if (!into || !into.node.children) throw new DraftError(`${String(raw.parentId)} can't hold other elements`);
+        const held = into ? holdsOf(into.node) : undefined;
+        if (!into || !held) throw new DraftError(`${String(raw.parentId)} can't hold other elements`);
         if (!isPlain(raw.node)) throw new DraftError("Expected an element");
         const node = clone(raw.node);
         const fixed = (n: TreeNode): boolean => FIXED_TYPES.has(String(n?.type)) || (Array.isArray(n?.children) && n.children.some(fixed));
         if (fixed(node)) throw new DraftError("Old sections and scenes come back through their own changes");
-        into.node.children.splice(place(raw.index, into.node.children.length), 0, node);
+        held.splice(place(raw.index, held.length), 0, node);
         break;
       }
       case "setProps": {
@@ -350,7 +355,7 @@ export function publishOrder(d: PageDraft): Map<string, number> {
   return order;
 }
 
-/** Whether the published page needs its tree (anything besides old sections in order). */
-export const needsTree = (tree: PageTree) => (tree.root.children ?? []).some((n) => n.type !== "legacy");
+/** Whether the published page needs its tree (anything besides old sections in order, or objects placed over them). */
+export const needsTree = (tree: PageTree) => (tree.root.children ?? []).some((n) => n.type !== "legacy" || Boolean(n.children?.length));
 
 export { TREE_VERSION, getPath };

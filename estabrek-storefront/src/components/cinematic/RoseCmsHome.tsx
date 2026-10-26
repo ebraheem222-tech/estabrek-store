@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { CmsSection, ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { CmsPageRenderer } from "@/cms";
+import { OverlayLayer, type SectionOverlay } from "@/pageTree/OverlayLayer";
 import { RoseHomeFrame, RoseFabricStudy, RoseNativeSections } from "./RoseHome";
 import { sectionPalette } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
@@ -92,9 +93,16 @@ export function RoseCmsHome({
     .slice(0, 4);
   let instagramShown = placed.has("instagram");
   // A scene's wrapper: the editor picks it (and its words, kept in the opening's data) by these.
+  // A placed scene's objects (the editor's roseBlock node's children) go over it.
+  const overOf = (name: string): SectionOverlay | undefined => {
+    const s = sorted.find((x) => (x.type as string) === "TREE_NODE" && (x.data as any)?.node?.type === "roseBlock" && (x.data as any).node.props?.block === name);
+    const n = (s?.data as any)?.node;
+    return n?.children?.length ? { nodes: n.children, ctx: (s!.data as any).ctx } : undefined;
+  };
   const block = (name: string, node: ReactNode) => (
     <div key={`block-${name}`} data-rose-block={name} data-edit-section={hero?.id}>
       {node}
+      <OverlayLayer over={overOf(name)} />
     </div>
   );
   const seasonsScene = () => block("seasons", <RoseSeasons seasons={seasons} words={scenes.seasons} />);
@@ -115,6 +123,7 @@ export function RoseCmsHome({
           renderProductCard={renderProductCard}
         />
       </RoseNativeSections>
+      <OverlayLayer over={section.overlay} />
       </div>
     )));
     native = [];
@@ -230,6 +239,7 @@ export function RoseCmsHome({
           aria-label={section.ariaLabel || undefined}
         >
           {node}
+          <OverlayLayer over={section.overlay} />
         </div>,
       );
     } else native.push(section);

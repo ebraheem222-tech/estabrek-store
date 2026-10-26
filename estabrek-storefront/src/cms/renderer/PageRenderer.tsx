@@ -46,6 +46,7 @@ import { HeroRenderer, ContactFormRenderer, FeatureRenderer, PricingRenderer, Sl
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
 import { StreamVideo } from "@/components/StreamVideo";
 import { TreeNodeView } from "@/pageTree/TreeNodeView";
+import { OverlayLayer } from "@/pageTree/OverlayLayer";
 
 type QuickAddRef = { productId?: string; slug?: string };
 
@@ -3372,6 +3373,7 @@ export function CmsPageRenderer({
                 seen={seen}
               />
               {dividerNode}
+              {markSections ? <OverlayLayer over={(sec as any).overlay} /> : null}
             </div>
           );
         };
