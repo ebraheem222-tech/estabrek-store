@@ -255,6 +255,7 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"] },
   { to: "/admin/ai", label: tr("الذكاء الاصطناعي ✨", "AI ✨"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
   { to: "/admin/settings", label: tr("الإعدادات", "Settings"), icon: Icons.settings, requirePermissions: ["settings:read"] },
+  { to: "/setup", label: tr("إعداد المتجر", "Store setup"), icon: Icons.sun, requirePermissions: ["settings:write"] },
   { to: "/admin/media", label: tr("الوسائط", "Media"), icon: Icons.media, requirePermissions: ["media:read"] },
   { to: "/admin/media/videos", label: tr("الفيديوهات", "Videos"), icon: Icons.media, requirePermissions: ["media:read"] },
   { to: "/admin/media/scan", label: tr("مسح 3D من فيديو", "3D scan from a video"), icon: Icons.media, requirePermissions: ["media:read"] },

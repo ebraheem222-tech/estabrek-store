@@ -10,6 +10,7 @@ export type Texts = { ar: string; en: string; he: string };
 export const INDUSTRIES = [
   "fashion", "shoes", "electronics", "phones", "gaming", "books", "beauty", "jewelry",
   "home", "kids", "food", "digital", "marketplace", "general",
+  "computers", "sports", "art", "pets", "flowers", "music",
 ] as const;
 export type Industry = (typeof INDUSTRIES)[number];
 export const AUDIENCES = ["women", "men", "everyone"] as const;

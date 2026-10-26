@@ -23,6 +23,7 @@ import { MODEL_INFO, cleanLive, hrefFor, type ModelKind, type StageLive, type St
 import type { StageTransform } from "../three/GameStage";
 import type { GlbInfo } from "../three/GlbModel";
 import type { StoreTheme } from "../types";
+import { modelColours } from "../three/colours";
 import { say } from "../words";
 
 const GameStage = dynamic(() => import("../three/GameStage"), { ssr: false });
@@ -163,17 +164,7 @@ export function StageHero({ theme, palette, lang, d, categories, options }: { th
     if (game !== null && !games[game]) setGame(null);
   }, [game, games]);
   const tint = picked?.color ?? null;
-  const colours = useMemo(() => {
-    const body = stage.finish === "toy" || stage.finish === "voxel" ? palette.accent : dark ? mix(palette.surface, "#000000", 0.2) : mix(palette.ink, palette.surface, 0.12);
-    return {
-      body,
-      trim: stage.finish === "toy" || stage.finish === "voxel" ? palette.strong : dark ? palette.line : palette.soft,
-      accent: tint ?? palette.accent,
-      glow: tint ?? palette.strong,
-      metal: mix(palette.strong, "#ffffff", 0.35),
-      screen: tint ?? palette.glow,
-    };
-  }, [palette, stage.finish, dark, tint]);
+  const colours = useMemo(() => modelColours(palette, stage.finish, tint), [palette, stage.finish, tint]);
   const own = scene?.lights?.colours;
   const lights: [string, string] = [tint ?? own?.[0] ?? palette.accent, own?.[1] ?? palette.strong];
   const layout = scene?.layout ?? stage.layout;

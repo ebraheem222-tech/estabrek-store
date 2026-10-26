@@ -1,7 +1,8 @@
 "use client";
 /**
  * The admin's theme gallery shows a theme on the shop before it is saved:
- * ?storeTheme=<id>&themeMode=light|dark (storeTheme=rose for the rose design). Inside
+ * ?storeTheme=<id>&themeMode=light|dark (storeTheme=rose for the rose design), and the store's
+ * changes being tried in the customizer (&themeCustom=, custom.ts). Inside
  * the admin's frame the choice follows the shopper's clicks for the rest of the visit
  * (sessionStorage, which in a frame belongs to that admin tab only); a normal visit
  * forgets it with the next page. Only the look changes here: the home page's own
@@ -10,6 +11,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { themeCss } from "./css";
+import { applyCustom, customFromParam } from "./custom";
 import { themeById } from "./registry";
 
 const KEY = "store-theme-preview";
@@ -21,19 +23,22 @@ export function StoreThemePreview({ saved }: { saved: string | null }) {
     const framed = window.self !== window.top;
     let want = sp.get("storeTheme");
     let mode = sp.get("themeMode");
+    let custom = sp.get("themeCustom");
     try {
-      if (want && framed) sessionStorage.setItem(KEY, JSON.stringify({ id: want, mode }));
+      if (want && framed) sessionStorage.setItem(KEY, JSON.stringify({ id: want, mode, custom }));
       if (!want && framed) {
-        const kept = JSON.parse(sessionStorage.getItem(KEY) || "null") as { id?: string; mode?: string } | null;
+        const kept = JSON.parse(sessionStorage.getItem(KEY) || "null") as { id?: string; mode?: string; custom?: string } | null;
         want = kept?.id ?? null;
         mode = kept?.mode ?? null;
+        custom = kept?.custom ?? null;
       }
     } catch {
       /* storage off: the address alone decides */
     }
     if (!want) return;
     const root = document.documentElement;
-    const theme = themeById(want);
+    const found = themeById(want);
+    const theme = found ? applyCustom(found, customFromParam(custom)) : null;
     let tag = document.getElementById(KEY) as HTMLStyleElement | null;
     if (!theme) {
       // The rose design: no theme at all.

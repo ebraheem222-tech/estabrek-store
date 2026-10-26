@@ -725,4 +725,11 @@ export const HE: Record<string, string> = {
   "📞 I'd rather someone called me": "📞 מעדיף/ה שיתקשרו אליי",
   "🔒 Protected product: after payment or confirmation you get your own serial and an encrypted copy made for your order, to download within a limited time. Open it with 7-Zip or WinRAR.": "🔒 מוצר מוגן: אחרי התשלום או האישור מקבלים סיריאל אישי ועותק מוצפן שהוכן להזמנה שלך, להורדה בזמן מוגבל. פותחים אותו ב־7-Zip או ב־WinRAR.",
   "🧣 A piece": "🧣 פריט",
+  "Welcome to our store": "ברוכים הבאים לחנות שלנו",
+  "Everything we sell in one place. Find what suits you.": "כל מה שאנחנו מוכרים במקום אחד. מצאו את מה שמתאים לכם.",
+  "{0} products": "{0} מוצרים",
+  "Browse the products": "לעיין במוצרים",
+  "Why {0}?": "למה {0}?",
+  "Our promises": "ההבטחות שלנו",
+  "Welcome to {0}.": "ברוכים הבאים ל-{0}.",
 };

@@ -14,6 +14,7 @@ export type Lang = (typeof LANGS)[number];
 export const INDUSTRIES = [
   "fashion", "shoes", "electronics", "phones", "gaming", "books", "beauty", "jewelry",
   "home", "kids", "food", "digital", "marketplace", "general",
+  "computers", "sports", "art", "pets", "flowers", "music",
 ] as const;
 export type Industry = (typeof INDUSTRIES)[number];
 
@@ -85,6 +86,12 @@ export const INDUSTRY_WORD: Record<Industry, Texts> = {
   digital: { ar: "منتجات رقمية", en: "digital products", he: "מוצרים דיגיטליים" },
   marketplace: { ar: "كل شيء", en: "everything", he: "הכל" },
   general: { ar: "منتجات", en: "products", he: "מוצרים" },
+  computers: { ar: "كمبيوترات ولابتوبات", en: "computers and laptops", he: "מחשבים" },
+  sports: { ar: "رياضة ولياقة", en: "sport and fitness", he: "ספורט וכושר" },
+  art: { ar: "فن وأدوات رسم", en: "art and art supplies", he: "אמנות וחומרי ציור" },
+  pets: { ar: "مستلزمات الحيوانات الأليفة", en: "pet supplies", he: "מוצרים לחיות מחמד" },
+  flowers: { ar: "زهور ونباتات", en: "flowers and plants", he: "פרחים וצמחים" },
+  music: { ar: "موسيقى وآلات", en: "music and instruments", he: "מוזיקה וכלי נגינה" },
 };
 
 const INDUSTRY_EN: Record<Industry, string> = {
@@ -102,6 +109,12 @@ const INDUSTRY_EN: Record<Industry, string> = {
   digital: "a shop for digital products",
   marketplace: "an online marketplace with many sellers",
   general: "an online shop",
+  computers: "a computers and laptops shop",
+  sports: "a sports and fitness shop",
+  art: "an art and art supplies shop",
+  pets: "a pet shop",
+  flowers: "a flower and plant shop",
+  music: "a music and instruments shop",
 };
 
 const AUDIENCE_EN: Record<Audience, string> = {

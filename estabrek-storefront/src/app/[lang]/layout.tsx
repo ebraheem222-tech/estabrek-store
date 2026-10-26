@@ -25,6 +25,8 @@ import { normalizeMotion } from "@/lib/motionSettings";
 import { abHeadScript, abTests } from "@/lib/ab";
 import { MarketingPixels } from "@/components/MarketingPixels";
 import { identityOf, modestShop, nameOf, pick } from "@/lib/storeIdentity";
+import { StoreLookProvider } from "@/store/storeLook";
+import { themePalette } from "@/storeThemes/css";
 import { setArabicTone, tr } from "@/lib/words";
 import { storeThemeOf, themeCss } from "@/storeThemes";
 import { ThemeMotion } from "@/storeThemes/motion/ThemeMotion";
@@ -75,7 +77,7 @@ export async function generateMetadata({ params }: { params: { lang: string } })
     (modest ? MODEST_COPY[lang].description(name) : id.about[lang] || pick(id.about, lang) || name);
   const base = process.env.NEXT_PUBLIC_SITE_URL;
   const favicon = (site as any)?.faviconUrl || null;
-  const shareImage = text(seo.ogImageUrl) || (site as any)?.logoUrl || "/editorial/hijab-campaign.webp";
+  const shareImage = text(seo.ogImageUrl) || (site as any)?.logoUrl || (modest ? "/editorial/hijab-campaign.webp" : undefined);
   return {
     ...(base ? { metadataBase: new URL(base) } : {}),
     title: { default: title, template: `%s | ${name}` },
@@ -194,6 +196,14 @@ export default async function RootLayout({
           languages={langConfigOf(header)}
         >
           <EffectsStyles />
+          <StoreLookProvider
+            value={{
+              theme: storeTheme?.theme ?? null,
+              mode: storeTheme ? themePalette(storeTheme.theme, storeTheme.mode).mode : "light",
+              industry: identity.industry,
+              modest: modestShop(identity),
+            }}
+          >
           <ThemeWrap
             theme={theme}
             cursorThemeId={cinematic ? null : header?.ui?.cursorThemeId}
@@ -267,6 +277,7 @@ export default async function RootLayout({
               <WebVitalsReporter />
             </UiSettingsProvider>
           </ThemeWrap>
+          </StoreLookProvider>
         </Providers>
       </body>
     </html>

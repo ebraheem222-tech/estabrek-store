@@ -80,7 +80,7 @@ function Header() {
     : [
         { href: "/#arrivals", label: tr(lang, "وصل حديثاً", "New arrivals") },
         { href: "/#collections", label: tr(lang, "المجموعات", "Collections") },
-        { href: "/#craft", label: tr(lang, "عالم الأقمشة", "The fabric story") },
+        modestShop(id) ? { href: "/#craft", label: tr(lang, "عالم الأقمشة", "The fabric story") } : { href: "/shop", label: tr(lang, "كل المنتجات", "All products") },
       ];
   useEffect(() => {
     if (!open) return;
@@ -125,7 +125,7 @@ function Header() {
               {store.announcement}
             </Link>
           ) : (
-            tr(lang, "أناقة تليق بكِ، وراحة ترافق يومكِ.", "Modern modesty. Beautifully yours.")
+            modestShop(id) ? tr(lang, "أناقة تليق بكِ، وراحة ترافق يومكِ.", "Modern modesty. Beautifully yours.") : pick(id.tagline, lang) || tr(lang, "أهلاً فيكم بمتجرنا", "Welcome to our store")
           )}
         </span>
         <span className="announcement-right">

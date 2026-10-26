@@ -20,6 +20,7 @@ import { SkinPicker, SkinToggleButton } from "./shell/SkinSwitch";
 import { LanguageSwitch } from "./shell/LanguageSwitch";
 import { storeNameOf } from "../lib/storeIdentity";
 import { setStoreCurrency } from "../lib/money";
+import { SETUP_LATER_KEY, getSetupStatus } from "../api/setup.api";
 import { tr } from "@/lib/words";
 import { loc } from "@/lib/lang";
 
@@ -207,6 +208,26 @@ export default function AdminLayout() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // A new, empty store opens on its setup for the owner (once a visit if put off with «بعدين»).
+  useEffect(() => {
+    if (!admin || !(admin.owner || admin.role === "SUPERADMIN")) return;
+    try {
+      if (sessionStorage.getItem(SETUP_LATER_KEY)) return;
+    } catch {
+      /* storage off: ask the server */
+    }
+    let live = true;
+    void getSetupStatus()
+      .then((s) => {
+        if (live && s.needed && s.owner) navigate("/setup");
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [admin?.id]);
 
   // Ctrl+K / ⌘K anywhere, or "/" when not typing, opens the quick search.
   useEffect(() => {

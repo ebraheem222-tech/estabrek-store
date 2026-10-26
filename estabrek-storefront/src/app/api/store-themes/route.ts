@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { studioOrigins } from "@/lib/studioOrigins";
-import { STORE_THEMES, themePalette } from "@/storeThemes";
+import { DEFAULT_THEME, STORE_THEMES, themePalette } from "@/storeThemes";
 import { CAMERA_DEFAULT, CAMERA_RANGE, LIGHTS_DEFAULT, LIGHTS_RANGE, MODEL_INFO, MODEL_KINDS, MODEL_KNOBS } from "@/storeThemes/three/kinds";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,10 @@ const list = STORE_THEMES.map((t) => {
     mode: t.mode,
     modes: (["light", "dark"] as const).filter((m) => t.palettes[m]),
     swatch: [palette.bg, palette.surface, palette.accent, palette.strong, palette.ink],
+    // Every colour of each mode, for the admin's customizer (storeThemes/custom.ts).
+    palettes: t.palettes,
+    round: t.round,
+    shadow: t.shadow,
     hero: t.hero,
     motion: t.motion,
     // Gaming themes: the 3D stage the admin can fill with its own models and games.
@@ -37,5 +41,6 @@ const cors = (req: NextRequest): Record<string, string> => {
 };
 
 export function GET(req: NextRequest) {
-  return NextResponse.json({ themes: list, models, stageDefaults }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
+  // defaults: each kind of store's theme when none is chosen (the admin shows it as the current one).
+  return NextResponse.json({ themes: list, models, stageDefaults, defaults: DEFAULT_THEME }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
 }

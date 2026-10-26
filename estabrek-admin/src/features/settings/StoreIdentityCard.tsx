@@ -2,6 +2,8 @@
 // sells, who it talks to and its currency. The shop, the emails, WhatsApp messages and
 // the AI all use these, so a store on the platform never shows the platform's name.
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { tr } from "../../lib/words";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -119,6 +121,9 @@ export function StoreIdentityCard() {
               {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
             </Select>
           </div>
+          <Link to="/setup" className="mt-2 inline-block text-[11px] text-accent-300 hover:underline" data-testid="identity-setup-link">
+            {tr("بدّك متجر جاهز لنوع تاني؟ افتح إعداد المتجر: ثيم، أقسام وصفحة رئيسية مناسبة", "Want a ready store for another kind? Open the store setup: a theme, categories and a home page that fit")}
+          </Link>
 
           <fieldset className="mt-4" disabled={!canWrite}>
             <legend className="mb-2 text-xs text-white/55">لمين بيحكي المتجر؟</legend>

@@ -79,6 +79,7 @@ const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
 const PageEditorPage = lazy(() => import("../features/pages/PageEditorPage"));
 const PagePreviewPage = lazy(() => import("../features/pages/PagePreviewPage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
+const SetupWizard = lazy(() => import("../features/setup/SetupWizard"));
 const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
 
 const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
@@ -171,6 +172,17 @@ export default function AppRouter() {
               <LabelsPrintPage />
             </React.Suspense>,
             ["inventory:read"],
+          )}
+        />
+
+        {/* Setting up a new store, full screen (opens on its own for an empty store's owner) */}
+        <Route
+          path="/setup"
+          element={withPermissions(
+            <React.Suspense fallback={<div style={{ padding: 24 }}>{tr("جارٍ التحميل…", "Loading…")}</div>}>
+              <SetupWizard />
+            </React.Suspense>,
+            ["settings:read"],
           )}
         />
 

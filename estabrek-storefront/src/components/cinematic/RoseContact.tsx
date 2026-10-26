@@ -10,9 +10,12 @@ import { polishCopy } from "./roseCopy";
 import { whatsappLink } from "@/lib/whatsapp";
 import { tr } from "@/lib/words";
 import { toneAr } from "@/lib/words";
+import { useStoreLook } from "@/store/storeLook";
+import { HeroArt } from "@/storeThemes/svg/kits";
 
 export function RoseContact({ data, heading }: { data?: ContactData; heading?: string }) {
   const lang = useLanguage().language, ar = lang === "ar", store = useRoseStore();
+  const look = useStoreLook();
   const id = useId();
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
@@ -48,7 +51,7 @@ export function RoseContact({ data, heading }: { data?: ContactData; heading?: s
       <span className="atelier-eyebrow">{tr(lang, "تواصل", "CONTACT")}</span>
       <h1>{data?.title ? polishCopy(data.title) : ar ? <>{heading ? polishCopy(heading).replace(/[.。]$/, "") : toneAr("تواصلي معنا")}.<br /><em>{toneAr("نحن هنا لأجلكِ.")}</em></> : lang === "he" ? <>צרו קשר.<br /><em>אנחנו כאן בשבילך.</em></> : <>Get in touch.<br /><em>We're here for you.</em></>}</h1>
       <p>{data?.subtitle || (tr(lang, "سؤال عن إطلالة، مقاس، أو طلب؟ يسعدنا نساعدكِ باختيار تفاصيلكِ.", "A question about your look, size or order? We'd love to help."))}</p>
-      <div className="rose-contact-photo"><Image src="/editorial/scarves.webp" alt={tr(lang, "تفاصيل أقمشة بألوان هادئة", "Soft fabric details")} fill sizes="(max-width:760px) 100vw, 40vw" /></div>
+      {look.theme ? <div className="rose-contact-photo th-contact-art" data-th={look.theme.id}><HeroArt kit={look.theme.svg} /></div> : look.modest ? <div className="rose-contact-photo"><Image src="/editorial/scarves.webp" alt={tr(lang, "تفاصيل أقمشة بألوان هادئة", "Soft fabric details")} fill sizes="(max-width:760px) 100vw, 40vw" /></div> : null}
       {!!items.length && <div className="rose-contact-channels">{items.map((item, i) => <div key={`${item.label}-${i}`}><span>{item.label}</span>{item.href ? <a href={item.href} target={/^https?:\/\//i.test(item.href) ? "_blank" : undefined} rel={/^https?:\/\//i.test(item.href) ? "noopener noreferrer" : undefined}>{item.value}<Icon name="arrow" /></a> : <p>{item.value}</p>}</div>)}</div>}
       {data?.mapEmbedUrl && <iframe className="rose-contact-map" title={tr(lang, "موقع المتجر", "Store location")} src={data.mapEmbedUrl} loading="lazy" />}
     </div>

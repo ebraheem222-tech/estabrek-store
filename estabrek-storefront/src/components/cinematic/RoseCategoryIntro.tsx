@@ -12,6 +12,9 @@ import { roseOutfit } from "@/lib/roseEvents";
 import { useStoreIdentity } from "@/store/storeIdentity";
 import { markOf } from "@/lib/storeIdentity";
 import { tr } from "@/lib/words";
+import { useStoreLook } from "@/store/storeLook";
+import { ThemeIntro } from "@/storeThemes/inner/ThemeIntro";
+import { modelFor } from "@/storeThemes/inner/modelFor";
 
 type Crumb = { label: string; href: string };
 
@@ -38,14 +41,15 @@ export function RoseCategoryIntro({
   const ar = lang === "ar";
   const id = useStoreIdentity();
   const theme = useRoseTheme();
+  const look = useStoreLook();
 
   useEffect(() => {
     const shell = theme?.root.current;
-    if (!shell || shell.dataset.storefrontColor) return;
+    if (!shell || shell.dataset.storefrontColor || look.theme) return;
     const seed = collectionSeed({ label: name, href: `/c/${slug}` }, 0);
     shell.dataset.navbarColor = seed;
     tweenTheme(shell, storefrontPalette(seed), { duration: 0.8 });
-  }, [theme, name, slug]);
+  }, [theme, name, slug, look.theme]);
 
   // Rose changes into the outfit of this collection.
   useEffect(() => {
@@ -57,6 +61,18 @@ export function RoseCategoryIntro({
     ? total === 1 ? "قطعة واحدة" : total === 2 ? "قطعتان" : total <= 10 ? `${total} قطع` : `${total} قطعة`
     : `${total} piece${total === 1 ? "" : "s"}`;
 
+  // A store with a theme: the category in its opening, with the model that fits the category.
+  if (look.theme) {
+    return (
+      <ThemeIntro
+        crumbs={crumbs}
+        eyebrow={tr(lang, `${total} منتج`, "{0} products", [total])}
+        title={name}
+        cta={{ label: tr(lang, "تصفّح المنتجات", "Browse the products"), href: "#shop-products" }}
+        model={modelFor(look.theme, look.industry, `${name} ${slug}`)}
+      />
+    );
+  }
   return (
     <section className="rose-shop-intro rose-category-intro" data-rose-palette="pearl">
       <div data-reveal>
@@ -81,7 +97,7 @@ export function RoseCategoryIntro({
           <Icon name="down" />
         </a>
       </div>
-      <div className="rose-shop-intro-image" data-reveal>
+      {imageUrl || look.modest ? <div className="rose-shop-intro-image" data-reveal>
         <Image
           src={imageUrl || "/editorial/scarves.webp"}
           alt={name}
@@ -90,7 +106,7 @@ export function RoseCategoryIntro({
           sizes="(max-width:760px) 100vw, 45vw"
         />
         <span dir="ltr">THE {markOf(id, "en").toUpperCase()} EDIT / {slug.replace(/^-+/, "").toUpperCase()}</span>
-      </div>
+      </div> : null}
     </section>
   );
 }
