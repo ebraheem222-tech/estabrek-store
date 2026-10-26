@@ -137,6 +137,30 @@ describe("a page's draft", () => {
     refuse([{ op: "insert", parentId: "s-faq", index: 0, node: { id: "x9", type: "section", props: {}, children: [] } }], /straight on the page/);
   });
 
+  test("a part of an old section or scene gets its own look and motion, per screen, and loses them again", () => {
+    const title = "s:faq/title";
+    let d = applyOps(fresh(), [
+      { op: "setLookStyle", target: title, kind: "text", screen: "base", style: { font: "serif", size: 40, color: "#7d2448", textAlign: "center" } },
+      { op: "setLookStyle", target: "b:seasons/@card-image", kind: "image", screen: "mobile", style: { focus: { x: 30, y: 20 }, radius: 24 } },
+      { op: "setLookMotion", target: title, kind: "text", motion: { enter: { kind: "up", duration: 0.8 } } },
+    ], ctx);
+    const looks = d.tree.root.props.looks as Record<string, any>;
+    expect(looks[title]).toEqual({ kind: "text", style: { base: { font: "serif", size: 40, color: "#7d2448", textAlign: "center" } }, motion: { enter: { kind: "up", duration: 0.8 } } });
+    expect(looks["b:seasons/@card-image"].style.mobile.focus).toEqual({ x: 30, y: 20 });
+    expect(needsTree(d.tree)).toBe(true);
+    d = applyOps(d, [
+      { op: "setLookStyle", target: title, kind: "text", screen: "base", style: null },
+      { op: "setLookMotion", target: title, kind: "text", motion: null },
+      { op: "setLookStyle", target: "b:seasons/@card-image", kind: "image", screen: "mobile", style: null },
+    ], ctx);
+    expect(d.tree.root.props.looks).toBeUndefined();
+    expect(needsTree(d.tree)).toBe(false);
+    const refuse = (ops: unknown, why: RegExp) => expect(() => applyOps(fresh(), ops, ctx)).toThrow(why);
+    refuse([{ op: "setLookStyle", target: "s:faq/<script>", kind: "text", screen: "base", style: {} }], /Not a part/);
+    refuse([{ op: "setLookStyle", target: "s:faq", kind: "wheel", screen: "base", style: {} }], /Not a kind/);
+    refuse([{ op: "setLookStyle", target: "s:faq", kind: "box", screen: "base", style: { size: 900 } }], /200/);
+  });
+
   test("bad changes are refused and nothing is applied", () => {
     const d = fresh();
     const refuse = (ops: unknown) => expect(() => applyOps(d, ops, ctx)).toThrow(DraftError);

@@ -10,7 +10,7 @@
  */
 import { useEffect } from "react";
 import { studioLink } from "./studioLink";
-import { PREVIEW_VARS, TREE_TRANSFORM } from "./tree";
+import { PREVIEW_VARS, TREE_TRANSFORM, lookSelector } from "./tree";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -350,14 +350,19 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       if (!d || d.source !== STUDIO_SOURCE) return;
       if (typeof d.type === "string" && (d.type.startsWith("stage") || d.type.startsWith("motion"))) return studioLink.emit(d as Record<string, unknown>);
       // A look tried before it's saved (a slider being dragged): only its own variables, numbers only.
-      if (d.type === "previewLook" && d.nodeId) {
-        const el = document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(d.nodeId)}"]`);
+      // A look tried on a part of an old section or scene: every element it names.
+      const target = (e.data as { target?: unknown }).target;
+      if (d.type === "previewLook" && (d.nodeId || typeof target === "string")) {
+        const sel = typeof target === "string" ? lookSelector(target) : null;
+        const els = d.nodeId ? [document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(d.nodeId)}"]`)] : sel ? Array.from(document.querySelectorAll<HTMLElement>(sel)) : [];
         const vars = (e.data as { vars?: Record<string, unknown> }).vars ?? {};
-        if (!el) return;
-        el.style.transform = TREE_TRANSFORM;
-        for (const [k, v] of Object.entries(vars)) {
-          if (k === "opacity" && typeof v === "number" && v >= 0 && v <= 1) el.style.opacity = String(v);
-          else if ((PREVIEW_VARS as readonly string[]).includes(k) && typeof v === "string" && /^-?\d{1,4}(\.\d{1,3})?(px|deg)?$/.test(v)) el.style.setProperty(k, v);
+        for (const el of els) {
+          if (!el) continue;
+          el.style.transform = TREE_TRANSFORM;
+          for (const [k, v] of Object.entries(vars)) {
+            if (k === "opacity" && typeof v === "number" && v >= 0 && v <= 1) el.style.opacity = String(v);
+            else if ((PREVIEW_VARS as readonly string[]).includes(k) && typeof v === "string" && /^-?\d{1,4}(\.\d{1,3})?(px|deg)?$/.test(v)) el.style.setProperty(k, v);
+          }
         }
         return now();
       }

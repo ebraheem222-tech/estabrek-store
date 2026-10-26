@@ -38,6 +38,7 @@ import { langConfigOf, type Lang } from "@/lib/i18n";
 import { localizeCategories } from "@/lib/localize";
 import { asTree, treeNeeds } from "@/pageTree/tree";
 import { treeCss } from "@/pageTree/css";
+import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
 import { TreeMotion } from "@/pageTree/TreeMotion";
 
@@ -468,6 +469,8 @@ export async function renderCmsPageBySlug(
   // What the tree's category tiles and rose blocks draw from, and its CSS.
   let treeStyle = "";
   let treeMoves = false;
+  // The editor's looks that move (parts of old sections and scenes), for the motion engine.
+  let lookMoves = "";
   if (tree && treeCtx) {
     const needs = treeNeeds(tree);
     if (needs.categories || needs.seasons || needs.stories) {
@@ -491,6 +494,8 @@ export async function renderCmsPageBySlug(
     }
     treeStyle = treeCss(tree);
     treeMoves = needs.motion;
+    const moving = looksOf(tree).map(([t, l]) => [t, treeMotionOf(lookNode(t, l))] as const).filter(([, m]) => m);
+    if (moving.length) lookMoves = JSON.stringify(moving).replace(/</g, "\\u003c");
   }
 
   return (
@@ -499,6 +504,7 @@ export async function renderCmsPageBySlug(
       <ScriptTags scripts={(page as any).headScripts} />
       {treeStyle ? <style data-page-tree="" dangerouslySetInnerHTML={{ __html: treeStyle }} /> : null}
       {treeMoves ? <script dangerouslySetInnerHTML={{ __html: TREE_PENDING }} /> : null}
+      {lookMoves ? <script type="application/json" id="pt-looks" dangerouslySetInnerHTML={{ __html: lookMoves }} /> : null}
       {treeMoves ? <TreeMotion /> : null}
 
       {roseHome && storeTheme ? <ThemedHome

@@ -121,6 +121,49 @@ test("objects placed over an old section show on a layer over it, measured with 
   expect(await frame.locator('[data-cms-section="faq"] > .pt-over').evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
 });
 
+test("looks on parts of old sections and scenes: words, cards and hiding per screen, tried live before saving", async ({ page, request }) => {
+  const home = await (await request.get("http://127.0.0.1:4100/v1/storefront/page?slug=/")).json();
+  const sections = home.sections.map((s: any) => ({ id: s.id, type: s.type, data: s.data, isVisible: s.isVisible !== false, tr: {} }));
+  const looks = {
+    "s:faq/title": { kind: "text", style: { base: { font: "serif", size: 44, color: "#123456", textAlign: "center", letterSpacing: 2 } } },
+    "s:products/@card-name": { kind: "text", style: { base: { color: "#00aa00" } } },
+    "s:cta/buttonLabel": { kind: "button", style: { base: { bg: "#111111", radius: 0 } } },
+    // Shown on a computer, hidden on a phone.
+    "s:collections": { kind: "box", style: { mobile: { hidden: true } } },
+    "s:faq/@faq-item": { kind: "box", motion: { enter: { kind: "up", duration: 0.6 } } },
+  };
+  const tree = { version: 1, root: { id: "page", type: "page", props: { looks }, children: home.sections.map((s: any) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id } })) } };
+  await request.post("http://127.0.0.1:4100/__test/preview-draft", { data: { pageId: "home", sections, tree, rev: 1, updatedAt: "" } });
+  await page.goto(`${HARNESS}?src=${encodeURIComponent("/studio-frame?token=good-draft")}`);
+  const frame = page.frameLocator("#f");
+  const title = frame.locator('[data-cms-section="faq"] [data-edit="title"]');
+  await expect(title).toBeVisible();
+  const css = await title.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { size: s.fontSize, color: s.color, align: s.textAlign, spacing: s.letterSpacing, font: s.fontFamily };
+  });
+  expect(css).toMatchObject({ size: "44px", color: "rgb(18, 52, 86)", align: "center", spacing: "2px" });
+  expect(css.font).toContain("Georgia");
+  expect(await frame.locator('[data-cms-section="products"] [data-part="card-name"]').first().evaluate((el) => getComputedStyle(el).color)).toBe("rgb(0, 170, 0)");
+  // A button's look goes on the whole button.
+  const button = frame.locator('[data-cms-section="cta"] [data-edit-box="buttonLabel"]');
+  expect(await button.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopLeftRadius].join(" "))).toBe("rgb(17, 17, 17) 0px");
+  expect(await frame.locator('[data-cms-section="collections"]').evaluate((el) => getComputedStyle(el).display)).not.toBe("none");
+  // The FAQ's questions come in: the motion engine is on the page for them.
+  await expect.poll(() => frame.locator('[data-cms-section="faq"] [data-part="faq-item"][data-pt-look="s:faq/@faq-item"]').count()).toBeGreaterThan(0);
+  // A look tried in the editor before it's saved shows on every element it names.
+  await page.evaluate(() => (window as any).send({ type: "previewLook", target: "s:products/@card-name", vars: { "--pt-rz": "8deg" } }));
+  await expect.poll(() => frame.locator('[data-cms-section="products"] [data-part="card-name"]').first().evaluate((el) => el.style.getPropertyValue("--pt-rz"))).toBe("8deg");
+  // On a phone the collections are hidden.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    const f = document.getElementById("f") as HTMLIFrameElement;
+    f.style.width = "390px";
+    f.style.height = "844px";
+  });
+  await expect.poll(() => frame.locator('[data-cms-section="collections"]').evaluate((el) => getComputedStyle(el).display)).toBe("none");
+});
+
 test("the home page as a tree, in English: old sections are measured as whole blocks", async ({ page }) => {
   await page.goto(`${HARNESS}?src=${encodeURIComponent("/en/studio-frame?token=good-home")}`);
   await expect.poll(async () => (await lastLayout(page))?.items?.length ?? 0, { timeout: 45_000 }).toBeGreaterThan(2);

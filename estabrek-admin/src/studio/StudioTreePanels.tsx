@@ -9,6 +9,7 @@
 import { useState } from "react";
 import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
+import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { MAX_CELLS, MAX_SLIDES, PRESETS, addSlides, changeSlide, dropCellOps, layoutOps, moveSlide, reduceWidths, sameWidths, shownWidths, slidesOf, styleOp, type NewKind, type Slide } from "./columns";
@@ -492,6 +493,8 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
         return (
           <>
             <Field label={tr("رابط الفيديو (MP4، من مكتبة الفيديوهات أو أي رابط https)", "Video link (MP4, from the video library or any https link)")} value={typeof p.src === "string" ? p.src : ""} testId="studio-prop-src" onSave={(v) => SAFE_FILE.test(v.trim()) && setProps({ src: v.trim() })} />
+            <button type="button" className={btn} disabled={busy} onClick={() => setMedia(true)} data-testid="studio-pick-video">{tr("من مكتبة الفيديوهات", "From the video library")}</button>
+            <VideoPickerModal open={media} onClose={() => setMedia(false)} onPick={({ url, posterUrl }) => { setMedia(false); setProps({ src: url, ...(posterUrl ? { poster: posterUrl } : {}) }); }} />
             {toggle("autoplay", tr("بيشتغل لحاله (بلا صوت)", "Plays by itself (muted)"))}
             {toggle("loop", tr("بيعيد من الأول", "Loops"))}
             {toggle("controls", tr("أزرار التشغيل", "Play controls"), true)}

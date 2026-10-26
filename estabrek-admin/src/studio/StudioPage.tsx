@@ -28,8 +28,9 @@ import { getApiErrorMessage } from "../api/http";
 import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme } from "./storeThemes";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toast } from "../lib/toast";
-import { History, fieldValue, parsePath, undoOf } from "./draft";
-import { Field, MediaSlot, PartInfo, SectionActions, SectionSettings, ThemePanel } from "./StudioPanels";
+import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
+import { Field, MediaSlot, PartInfo, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
+import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
@@ -68,6 +69,12 @@ const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stor
 /** Scenes that keep their own place (the fabric study follows the first products). */
 const FIXED_BLOCKS = new Set(["fabric"]);
 const statusOf = (e: unknown) => (e as { response?: { status?: number } })?.response?.status;
+/** What a marked piece is drawn as, for its look (the rest are boxes). */
+const PART_KIND: Record<string, PagesAPI.LookKind> = {
+  "card-image": "image", tile: "image", film: "video",
+  "card-name": "text", "card-price": "text", "card-category": "text", category: "text", "closing-text": "text", cue: "text",
+  handle: "button", "card-add": "button",
+};
 /** A field that names its language at its end (a scene's word: roseScenes.seasons.winter.title.en). */
 const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
 /**
@@ -676,6 +683,46 @@ export default function StudioPage() {
   const selExtra = selected ? extras.get(selected) : undefined;
   const selBlock = selExtra?.kind === "block" ? selExtra.block : selNode?.node.type === "roseBlock" ? String(selNode.node.props.block) : selected?.startsWith("block:") ? selected.slice(6) : null;
   const selSection = selNode?.node.type === "legacy" ? sectionOf(String(selNode.node.props.sectionId)) : undefined;
+
+  /* -------------------------------------- looks: parts of old sections and scenes */
+
+  /** What's selected as a look's target (a field or marked piece of an old section or scene, or the whole of one). */
+  const lookTarget: { target: string; kind: PagesAPI.LookKind } | null = (() => {
+    const x = selExtra;
+    // A scene's words are one look for every language (…title, not …title.en).
+    if (x?.kind === "slot") return { target: `${x.owner}/${x.path.replace(/\.(ar|en|he)$/, "")}`, kind: x.edit === "media" ? (x.media === "video" ? "video" : "image") : x.link ? "button" : "text" };
+    if (x?.kind === "part") return { target: `${x.owner}/@${x.name}`, kind: PART_KIND[x.name] ?? "box" };
+    if (selSection) return { target: `s:${selSection.id}`, kind: "box" };
+    if (selBlock) return { target: `b:${selBlock}`, kind: "box" };
+    return null;
+  })();
+  const looks = looksOf(working);
+  /** The look as a node, for the look and motion panels (their changes become setLookStyle/setLookMotion). */
+  const lookSel: PagesAPI.PageTreeNode | null = lookTarget
+    ? { id: `look:${lookTarget.target}`, type: { text: "text", button: "button", image: "image", video: "video", box: "section" }[lookTarget.kind], props: {}, style: looks[lookTarget.target]?.style, motion: looks[lookTarget.target]?.motion }
+    : null;
+  const lookChange = (label: string, ops: PagesAPI.PageDraftOp[]) => {
+    if (!lookTarget) return;
+    const mapped = ops.map((o): PagesAPI.PageDraftOp =>
+      o.op === "setStyle" && o.nodeId.startsWith("look:")
+        ? { op: "setLookStyle", target: o.nodeId.slice(5), kind: lookTarget.kind, screen: o.screen, style: o.style }
+        : o.op === "setMotion" && o.nodeId.startsWith("look:")
+          ? { op: "setLookMotion", target: o.nodeId.slice(5), kind: lookTarget.kind, motion: o.motion }
+          : o,
+    );
+    void change(label, mapped);
+  };
+  /** A field's words in a language: a scene's word in its own field (…title.en), else that language's own. */
+  const wordOf = (x: Extract<Extra, { kind: "slot" }>, l: Lang) => {
+    const s = sectionOf(x.sectionId);
+    const v = wordLang(x.path) ? getPath(s?.data, parsePath(x.path.replace(/\.(ar|en|he)$/, `.${l}`))) : ownValue(s, l, main, parsePath(x.path));
+    return typeof v === "string" ? v : "";
+  };
+  const saveWord = (x: Extract<Extra, { kind: "slot" }>, l: Lang, v: string) => {
+    const empty = !v.trim();
+    if (wordLang(x.path)) return void setField(x.sectionId, parsePath(x.path.replace(/\.(ar|en|he)$/, `.${l}`)), empty ? null : v, main);
+    void setField(x.sectionId, parsePath(x.path), empty ? null : v, l);
+  };
   const canUndo = history.current.done.length > 0;
   const canRedo = history.current.undone.length > 0;
   const topAt = selected ? pageKids.findIndex((n) => n.id === selected) : -1;
@@ -924,6 +971,17 @@ export default function StudioPage() {
             </p>
           </div>
         ) : null}
+        {selExtra?.kind === "slot" && (selExtra.edit === "text" || selExtra.edit === "lines") ? (
+          <WordsPanel
+            langs={langs.enabled}
+            main={main}
+            names={LANG_NAME}
+            multiline={selExtra.edit === "lines"}
+            busy={busy}
+            valueOf={(l) => wordOf(selExtra, l)}
+            onSave={(l, v) => saveWord(selExtra, l, v)}
+          />
+        ) : null}
         {selExtra?.kind === "slot" && selExtra.edit === "media" ? (
           <MediaSlot
             kind={selExtra.media === "video" ? "video" : "image"}
@@ -931,6 +989,34 @@ export default function StudioPage() {
             busy={busy}
             onSet={(url) => void setField(selExtra.sectionId, parsePath(selExtra.path), url, main)}
           />
+        ) : null}
+
+        {/* A part of an old section or scene: its look and motion (all of its kind, for a marked piece). */}
+        {lookSel && lookTarget ? (
+          <div className="space-y-3" data-testid="studio-look-target" data-target={lookTarget.target}>
+            {selExtra?.kind === "part" && selExtra.count > 1 ? <p className="text-[11px] leading-5 text-accent-200/80">{tr(`الشكل والحركة بيتغيّروا للـ ${selExtra.count} كلهم.`, "The look and motion change for all {0} of them.", [selExtra.count])}</p> : null}
+            {lookTarget.kind === "text" ? <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+            {lookTarget.kind === "button" ? (
+              <>
+                <ButtonStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+                <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight"]} />
+              </>
+            ) : null}
+            {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+            <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
+            {lookTarget.kind !== "box" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
+            {!lookTarget.target.startsWith("b:") || lookTarget.target.includes("/") ? (
+              <MotionPanel
+                node={lookSel}
+                busy={busy}
+                onOps={(l, ops) => {
+                  playNext.current = lookTarget.target;
+                  lookChange(l, ops);
+                }}
+                onPlay={() => send({ type: "motionPlay", nodeId: lookTarget.target })}
+              />
+            ) : null}
+          </div>
         ) : null}
 
         {selSection && topAt >= 0 ? (
@@ -1004,6 +1090,16 @@ export default function StudioPage() {
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["size", "color", "align"]} /> : null}
+            {selFree.type === "button" ? (
+              <>
+                <ButtonStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["font", "size", "weight"]} />
+              </>
+            ) : null}
+            {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
@@ -1153,7 +1249,8 @@ export default function StudioPage() {
     const what = `«${label(addWhereNow === "inside" ? (n && isFree(n.node.type) ? selected : beside) : beside)}»`;
     return addWhereNow === "before" ? `${tr("قبل", "before")} ${what}` : addWhereNow === "after" ? `${tr("بعد", "after")} ${what}` : `${tr("جوّا أو فوق", "inside or over")} ${what}`;
   })();
-  const motionNode = selFree ?? null;
+  // Motion from the Add panel goes on the selected element, or on the selected part of a section or scene.
+  const motionNode = selFree ?? (lookTarget && lookTarget.kind !== "box" ? lookSel : null);
   const addPanel = () => (
     <AddPanel
       where={addWhereNow}
@@ -1169,8 +1266,14 @@ export default function StudioPage() {
       motion={motionNode?.motion as Motion | undefined}
       onMotion={(p) => {
         if (!motionNode) return;
-        playNext.current = motionNode.id;
-        void change(p.label(), [motionOp(motionNode, withPreset(motionNode.motion as Motion | undefined, p))]);
+        const op = motionOp(motionNode, withPreset(motionNode.motion as Motion | undefined, p));
+        if (motionNode === selFree) {
+          playNext.current = motionNode.id;
+          void change(p.label(), [op]);
+        } else if (lookTarget) {
+          playNext.current = lookTarget.target;
+          lookChange(p.label(), [op]);
+        }
       }}
     />
   );

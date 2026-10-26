@@ -122,13 +122,15 @@ export const ScreenStyle = z.object({
   border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
   shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
   opacity: z.number().min(0).max(1).optional(),
-  font: z.enum(["heading", "body"]).optional(),
+  font: z.enum(["heading", "body", "serif", "sans", "mono"]).optional(),
   size: px(8, 200).optional(),
   weight: z.number().int().min(100).max(900).refine((w) => w % 100 === 0, "100, 200 … 900").optional(),
   lineHeight: z.number().min(0.8).max(3).optional(),
   letterSpacing: px(-5, 20).optional(),
   textAlign: z.enum(["start", "center", "end"]).optional(),
   fit: z.enum(["cover", "contain"]).optional(),
+  // A picture's or clip's point that stays in sight when it's cut to its frame (% across, % down).
+  focus: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   aspect: z.string().trim().regex(/^\d{1,2}\s*\/\s*\d{1,2}$/, "Like 16 / 9").optional(),
   shape: z.enum(["rect", "rounded", "pill", "arch", "circle"]).optional(), // what clips it (a picture inside takes the shape)
   // Turned (degrees) and moved (px); with perspective a turn around X or Y looks 3D.
@@ -186,11 +188,26 @@ export const NodeMotion = z.object({
   phone: z.enum(["same", "lite", "off"]).optional(),
 });
 
+/* ------------------------------------------------------------------ looks */
+
+/**
+ * The look and motion of a part of an old section or a rose scene, kept on the page
+ * (root props.looks): "s:<section id>" or "b:<scene>", then "/<field path>" or
+ * "/@<piece>" for something inside it. The shop turns them into CSS for that part.
+ */
+export const LOOK_TARGET = /^(s|b):([A-Za-z0-9_-]{1,80})(?:\/(@[a-z0-9-]{1,40}|[A-Za-z0-9_.]{1,120}))?$/;
+export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
+export const LOOKS_LIMIT = 300;
+export const LookEntry = z.object({ kind: z.enum(LOOK_KINDS), style: NodeStyle.optional(), motion: NodeMotion.optional() });
+const Looks = z
+  .record(z.string().regex(LOOK_TARGET, "Not a part of a section or scene"), LookEntry)
+  .refine((r) => Object.keys(r).length <= LOOKS_LIMIT, `At most ${LOOKS_LIMIT} looks on a page`);
+
 /* ------------------------------------------------------------- each type */
 
 const none = z.object({});
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
-  page: none,
+  page: z.object({ looks: Looks.optional() }),
   section: z.object({
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),

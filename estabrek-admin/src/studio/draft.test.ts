@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageDraft } from "../api/pages.api";
-import { History, fieldValue, inverseOf, locate, mergeTranslated, parsePath, simulate, undoOf } from "./draft";
+import { History, fieldValue, inverseOf, locate, looksOf, mergeTranslated, parsePath, simulate, undoOf } from "./draft";
 
 const draft = (): PageDraft => ({
   version: 1,
@@ -18,6 +18,23 @@ const draft = (): PageDraft => ({
     { id: "rb-seasons", type: "roseBlock", props: { block: "seasons" } },
     { id: "s-faq", type: "legacy", props: { sectionId: "faq" } },
   ] } },
+});
+
+describe("looks of parts of old sections and scenes", () => {
+  it("each change comes back with undo, per screen, and the looks go when empty", () => {
+    const d = draft();
+    const set = { op: "setLookStyle" as const, target: "s:faq/title", kind: "text" as const, screen: "base" as const, style: { size: 40, color: "#7d2448" } };
+    const after = simulate(d, set);
+    expect(looksOf(after)["s:faq/title"]).toEqual({ kind: "text", style: { base: { size: 40, color: "#7d2448" } } });
+    expect(inverseOf(set, d, "ar")).toEqual([{ ...set, style: null }]);
+    const move = { op: "setLookMotion" as const, target: "s:faq/title", kind: "text" as const, motion: { enter: { kind: "up" } } };
+    const both = simulate(after, move);
+    expect(inverseOf({ ...set, style: { size: 12 } }, both, "ar")).toEqual([{ ...set, style: { size: 40, color: "#7d2448" } }]);
+    expect(inverseOf({ ...move, motion: null }, both, "ar")).toEqual([move]);
+    // Undoing both leaves no looks at all.
+    const back = undoOf([set, move], d, "ar").reduce(simulate, both);
+    expect(back.tree.root.props.looks).toBeUndefined();
+  });
 });
 
 describe("objects placed over a section or scene", () => {

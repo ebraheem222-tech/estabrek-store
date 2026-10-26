@@ -84,7 +84,8 @@ const toggleRow = (label: string, on: boolean, busy: boolean, flip: (on: boolean
 
 /* -------------------------------------------------------------------- look */
 
-export function LookPanel({ node, screen, busy, onOps, onPreview }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; onPreview: Preview }) {
+/** `limited`: a part of an old section or scene (no colour layer over it, no free place: it stays where its section has it). */
+export function LookPanel({ node, screen, busy, onOps, onPreview, limited = false }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; onPreview: Preview; limited?: boolean }) {
   const n = (k: string, def: number) => (typeof shownLook(node, screen, k) === "number" ? (shownLook(node, screen, k) as number) : def);
   const obj = <T,>(k: string) => (shownLook(node, screen, k) && typeof shownLook(node, screen, k) === "object" ? (shownLook(node, screen, k) as T) : null);
   const save = (label: string, patch: Record<string, unknown>) => onOps(label, [styleOp(node, screen, patch)]);
@@ -132,7 +133,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview }: { node: Page
         ) : null}
       </Part>
 
-      <Part title={tr("طبقة لون فوقه", "A colour layer over it")} open={Boolean(overlay)} testId="studio-look-overlay">
+      {limited ? null : <Part title={tr("طبقة لون فوقه", "A colour layer over it")} open={Boolean(overlay)} testId="studio-look-overlay">
         {toggleRow(tr("طبقة لون", "Colour layer"), Boolean(overlay), busy, (on) => save(tr("طبقة لون", "Colour layer"), { overlay: on ? { color: "#000000", opacity: 0.35 } : null }), "studio-overlay-on")}
         {overlay ? (
           <>
@@ -147,7 +148,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview }: { node: Page
             />
           </>
         ) : null}
-      </Part>
+      </Part>}
 
       <Part title={tr("الظل والتوهج", "Shadow and glow")} open={Boolean(shade || glow)}>
         {toggleRow(tr("ظل خاص", "Its own shadow"), Boolean(shade), busy, (on) => save(tr("الظل", "Shadow"), { shade: on ? { x: 0, y: 16, blur: 40, color: "#0000004d" } : null }), "studio-shade-on")}
@@ -169,7 +170,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview }: { node: Page
         ) : null}
       </Part>
 
-      <Part title={tr("مكان حر فوق الحاوية", "A free place over its container")} open={Boolean(place)} testId="studio-look-place">
+      {limited ? null : <Part title={tr("مكان حر فوق الحاوية", "A free place over its container")} open={Boolean(place)} testId="studio-look-place">
         <p className="text-[11px] leading-5 text-white/40">{tr("متل نص وزر فوق فيديو. بتقدر تسحبه بالصفحة كمان.", "Like words and a button over a clip. It can also be dragged on the page.")}</p>
         {toggleRow(tr("فوق اللي جنبه، بمكان حر", "Over what's beside it, placed freely"), Boolean(place), busy, (on) => save(tr("المكان", "Place"), { layer: on ? { x: 50, y: 50, anchor: "center" } : screen === "base" ? null : false }), "studio-place-on")}
         {place ? (
@@ -187,7 +188,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview }: { node: Page
             <NumberField label={tr("مين فوق مين (أكبر = فوق)", "Which goes on top (bigger = on top)")} value={typeof shownLook(node, screen, "z") === "number" ? (shownLook(node, screen, "z") as number) : undefined} min={-10} max={50} onSave={(v) => save(tr("المكان", "Place"), { z: v })} />
           </>
         ) : null}
-      </Part>
+      </Part>}
       <p className="text-[10px] leading-4 text-white/35">{tr("بينحفظ للشاشة المعروضة:", "Kept for the screen shown:")} {SCREEN_LABEL[screen]()}</p>
     </div>
   );

@@ -5,7 +5,7 @@
  * so a bad saved value can't become CSS. Sides follow the text direction
  * (padding-inline-start…), so the same tree is right in Arabic, Hebrew and English.
  */
-import { TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, motionOf, type PageTree, type ScreenStyle, type TreeNode } from "./tree";
+import { TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type TreeNode } from "./tree";
 
 export const TABLET_MAX = 1023.98;
 export const PHONE_MAX = 639.98;
@@ -47,6 +47,14 @@ const ANCHORS: Record<string, [number, number]> = {
   "bottom-start": [0, 100], bottom: [50, 100], "bottom-end": [100, 100],
 };
 const ORIGINS: Record<string, string> = { center: "50% 50%", top: "50% 0%", bottom: "50% 100%" };
+/** The fonts a text can take: the theme's two, or a family of its own. */
+const FONTS: Record<string, string> = {
+  heading: "var(--pt-font-heading)",
+  body: "inherit",
+  serif: "\"Noto Naskh Arabic\",\"Frank Ruhl Libre\",Georgia,\"Times New Roman\",serif",
+  sans: "system-ui,-apple-system,\"Segoe UI\",Tahoma,Arial,sans-serif",
+  mono: "ui-monospace,Consolas,\"Courier New\",monospace",
+};
 /** Its glow is a light around the letters, not around the box. */
 const TEXTISH = new Set(["heading", "text", "icon"]);
 /** A colour layer goes over these (a picture, a clip, slides) and under the words of anything else. */
@@ -112,8 +120,8 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
     if (w !== undefined && c) d.push(`border:${w}px ${st} ${c}`);
   }
   push("opacity", num(s.opacity, 0, 1));
-  const font = pick(s.font, ["heading", "body"] as const);
-  if (font) d.push(`font-family:${font === "heading" ? "var(--pt-font-heading)" : "inherit"}`);
+  const font = pick(s.font, Object.keys(FONTS));
+  if (font) d.push(`font-family:${FONTS[font]}`);
   push("font-size", num(s.size, 8, 200), "px");
   const w = num(s.weight, 100, 900);
   if (w !== undefined && w % 100 === 0) d.push(`font-weight:${w}`);
@@ -123,6 +131,10 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   if (ta) d.push(`text-align:${ta}`);
   const fit = pick(s.fit, ["cover", "contain"] as const);
   if (fit) d.push(...(type === "image" || type === "video" ? [`object-fit:${fit}`, `--pt-fit:${fit}`] : [`--pt-fit:${fit}`]));
+  if (s.focus && typeof s.focus === "object") {
+    const [fx, fy] = [num(s.focus.x, 0, 100), num(s.focus.y, 0, 100)];
+    if (fx !== undefined && fy !== undefined) d.push(...(type === "image" || type === "video" ? [`object-position:${fx}% ${fy}%`] : []), `--pt-focus:${fx}% ${fy}%`);
+  }
   if (typeof s.aspect === "string" && /^\d{1,2}\s*\/\s*\d{1,2}$/.test(s.aspect)) d.push(`aspect-ratio:${s.aspect.replace(/\s+/g, "")}`);
   const shape = pick(s.shape, ["rect", "rounded", "pill", "arch", "circle"] as const);
   if (shape) d.push(...SHAPES[shape]);
@@ -174,9 +186,29 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   }
   const zi = num(s.z, -10, 50);
   if (zi !== undefined && Number.isInteger(zi)) d.push(`z-index:${zi}`);
-  if (s.hidden === true) d.push("display:none");
   return d;
 }
+
+/**
+ * Hidden on each screen size: a screen's own choice, else the bigger screen's (so "hidden"
+ * on the computer hides it everywhere unless a smaller screen shows it again). Each as the
+ * width range it covers, so a smaller screen can show what a bigger one hides.
+ */
+const RANGES: Record<Screen, string> = {
+  base: `(min-width:${TABLET_MAX + 0.02}px)`,
+  tablet: `(min-width:${PHONE_MAX + 0.02}px) and (max-width:${TABLET_MAX}px)`,
+  mobile: `(max-width:${PHONE_MAX}px)`,
+};
+export function hiddenRules(sel: string, style: Partial<Record<Screen, ScreenStyle>> | undefined): string[] {
+  const b = style?.base?.hidden === true;
+  const t = typeof style?.tablet?.hidden === "boolean" ? style.tablet.hidden : b;
+  const m = typeof style?.mobile?.hidden === "boolean" ? style.mobile.hidden : t;
+  if (b && t && m) return [`${sel}{display:none}`];
+  return ([["base", b], ["tablet", t], ["mobile", m]] as const).filter(([, h]) => h).map(([k]) => `@media ${RANGES[k]}{${sel}{display:none}}`);
+}
+
+/** What a look's kind draws as (for the type-aware declarations). */
+const LOOK_TYPE: Record<string, string> = { text: "text", button: "button", image: "image", video: "video", box: "section" };
 
 const TURNS = ["rotateX", "rotateY", "rotateZ", "perspective", "scale", "moveX", "moveY"] as const;
 
@@ -234,6 +266,7 @@ export function treeCss(tree: PageTree): string {
   const holders: string[] = [];
   const fx: string[] = [];
   const staggered = new Set<string>();
+  const hidden: string[] = [];
   let drawn = 0;
   const walk = (n: TreeNode, parent: TreeNode | null) => {
     if (n.type !== "page" && n.type !== "legacy") drawn++;
@@ -267,12 +300,36 @@ export function treeCss(tree: PageTree): string {
       if (b.length) base.push(`${sel}{${b.join(";")}}`);
       if (t.length) tablet.push(`${sel}{${t.join(";")}}`);
       if (p.length) phone.push(`${sel}{${p.join(";")}}`);
+      hidden.push(...hiddenRules(sel, n.style));
       tablet.push(...extra.rules.tablet);
       phone.push(...extra.rules.phone);
     }
     n.children?.forEach((c) => walk(c, n));
   };
   walk(tree.root, null);
+  // Parts of old sections and scenes (the editor's looks): their own look, per screen.
+  for (const [target, look] of looksOf(tree)) {
+    const sel = lookSelector(target)!;
+    const type = LOOK_TYPE[look.kind];
+    drawn++;
+    const node = lookNode(target, look);
+    const screens = [look.style?.base, look.style?.tablet, look.style?.mobile];
+    if (motionOf(node) || screens.some((s) => s && TURNS.some((k) => s[k] !== undefined))) turned.push(sel);
+    const media = look.kind === "image" || look.kind === "video";
+    // A picture's fit and focus go on the picture itself (the field is often its frame).
+    const inner = `:is(${sel}) :is(img,video),:is(${sel}):is(img,video)`;
+    const put = (list: string[], s: ScreenStyle | undefined) => {
+      const d = declarations(s, type);
+      if (media && typeof s?.radius === "number") d.push("overflow:hidden");
+      if (d.length) list.push(`${sel}{${d.join(";")}}`);
+      const pic = media ? d.filter((x) => x.startsWith("object-")) : [];
+      if (pic.length) list.push(`${inner}{${pic.join(";")}}`);
+    };
+    put(base, look.style?.base);
+    put(tablet, look.style?.tablet);
+    put(phone, look.style?.mobile);
+    hidden.push(...hiddenRules(sel, look.style));
+  }
   if (!drawn) return "";
   const layer = "content:\"\";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--pt-ov);opacity:var(--pt-ovo);mix-blend-mode:var(--pt-ovb)";
   return [
@@ -287,6 +344,7 @@ export function treeCss(tree: PageTree): string {
     fx.join(""),
     tablet.length ? `@media (max-width:${TABLET_MAX}px){${tablet.join("")}}` : "",
     phone.length ? `@media (max-width:${PHONE_MAX}px){${phone.join("")}}` : "",
+    hidden.join(""),
   ].join("");
 }
 
@@ -321,7 +379,7 @@ export const BASE_CSS = [
   // A picture or clip in a frame: the frame carries the look, the layers and the zoom.
   ".pt-frame{position:relative;display:block;max-width:100%;overflow:hidden}",
   ".pt-frame.pt-image{width:fit-content}",
-  ".pt-frame-media{display:block;width:100%;height:100%;max-width:100%;object-fit:var(--pt-fit,cover)}",
+  ".pt-frame-media{display:block;width:100%;height:100%;max-width:100%;object-fit:var(--pt-fit,cover);object-position:var(--pt-focus,50% 50%)}",
   ".pt-hv-glow{transition:filter .35s ease}",
   ".pt-hv-glow:hover{filter:drop-shadow(0 0 18px var(--accent))}",
   ".pt-hv-zoom>.pt-frame-media{transition:transform .7s cubic-bezier(.2,.7,.2,1)}",

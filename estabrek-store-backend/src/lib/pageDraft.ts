@@ -11,7 +11,7 @@
  * still pass its type's check after a change, and the tree the page tree's.
  */
 import { createHash } from "node:crypto";
-import { type PageTree, type TreeNode, OVERLAY_HOSTS, TREE_VERSION, checkTree, storedTree, syncWithSections, treeFromSections } from "./pageTree.js";
+import { type PageTree, type TreeNode, LOOK_KINDS, LOOK_TARGET, OVERLAY_HOSTS, TREE_VERSION, checkTree, storedTree, syncWithSections, treeFromSections } from "./pageTree.js";
 
 export const DRAFT_LANGS = ["ar", "en", "he"] as const;
 export type DraftLang = (typeof DRAFT_LANGS)[number];
@@ -47,7 +47,11 @@ export type DraftOp =
   | { op: "setMotion"; nodeId: string; motion: Record<string, unknown> | null }
   | { op: "restore"; sectionId: string }
   | { op: "setVisible"; sectionId: string; visible: boolean }
-  | { op: "placeBlock"; block: (typeof ROSE_BLOCKS)[number]; index: number | null };
+  | { op: "placeBlock"; block: (typeof ROSE_BLOCKS)[number]; index: number | null }
+  /** A part of an old section or scene: its look on one screen size (null clears it). */
+  | { op: "setLookStyle"; target: string; kind: (typeof LOOK_KINDS)[number]; screen: (typeof SCREENS)[number]; style: Record<string, unknown> | null }
+  /** A part of an old section or scene: how it moves (null stops it). */
+  | { op: "setLookMotion"; target: string; kind: (typeof LOOK_KINDS)[number]; motion: Record<string, unknown> | null };
 
 export class DraftError extends Error {}
 
@@ -333,6 +337,33 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
         if (raw.index !== null && raw.index !== undefined) list.splice(Math.max(0, Math.min(list.length, Math.trunc(Number(raw.index)))), 0, node);
         break;
       }
+      case "setLookStyle":
+      case "setLookMotion": {
+        if (typeof raw.target !== "string" || !LOOK_TARGET.test(raw.target)) throw new DraftError(`Not a part of a section or scene: ${String(raw.target)}`);
+        if (!(LOOK_KINDS as readonly string[]).includes(raw.kind)) throw new DraftError(`Not a kind of part: ${String(raw.kind)}`);
+        const looks: Record<string, any> = { ...((d.tree.root.props.looks ?? {}) as Record<string, unknown>) };
+        const entry: Record<string, any> = { ...(looks[raw.target] ?? {}), kind: raw.kind };
+        if (raw.op === "setLookStyle") {
+          if (!(SCREENS as readonly string[]).includes(raw.screen)) throw new DraftError(`Not a screen: ${String(raw.screen)}`);
+          if (raw.style !== null && !isPlain(raw.style)) throw new DraftError("A look is an object");
+          const style: Record<string, unknown> = { ...(entry.style ?? {}) };
+          if (raw.style === null || !Object.keys(raw.style).length) delete style[raw.screen];
+          else style[raw.screen] = clone(raw.style);
+          if (Object.keys(style).length) entry.style = style;
+          else delete entry.style;
+        } else {
+          if (raw.motion !== null && !isPlain(raw.motion)) throw new DraftError("Motion is an object");
+          if (raw.motion === null || !Object.keys(raw.motion).length) delete entry.motion;
+          else entry.motion = clone(raw.motion);
+        }
+        if (entry.style || entry.motion) looks[raw.target] = entry;
+        else delete looks[raw.target];
+        const props = { ...d.tree.root.props };
+        if (Object.keys(looks).length) props.looks = looks;
+        else delete props.looks;
+        d.tree.root.props = props;
+        break;
+      }
       default:
         throw new DraftError(`Unknown change “${String((raw as any)?.op)}”`);
     }
@@ -356,6 +387,7 @@ export function publishOrder(d: PageDraft): Map<string, number> {
 }
 
 /** Whether the published page needs its tree (anything besides old sections in order, or objects placed over them). */
-export const needsTree = (tree: PageTree) => (tree.root.children ?? []).some((n) => n.type !== "legacy" || Boolean(n.children?.length));
+export const needsTree = (tree: PageTree) =>
+  (tree.root.children ?? []).some((n) => n.type !== "legacy" || Boolean(n.children?.length)) || Object.keys((tree.root.props?.looks ?? {}) as object).length > 0;
 
 export { TREE_VERSION, getPath };

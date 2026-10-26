@@ -7,8 +7,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
+import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import { tr } from "../lib/words";
-import { adminLang } from "../lib/lang";
+import { adminLang, type Lang } from "../lib/lang";
 import { ROSE_ID, type StoreThemeInfo } from "./storeThemes";
 import { ROSE_PALETTES } from "./themes";
 
@@ -109,6 +110,33 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
   );
 }
 
+/**
+ * A field's words in each language the store shows. The main language's are the shop's
+ * words for all of them until a language has its own; empty takes a language's own away.
+ */
+export function WordsPanel({ langs, main, names, multiline, busy, valueOf, onSave }: {
+  langs: Lang[];
+  main: Lang;
+  names: Record<Lang, string>;
+  multiline: boolean;
+  busy: boolean;
+  valueOf: (l: Lang) => string;
+  onSave: (l: Lang, v: string) => void;
+}) {
+  const order = [main, ...langs.filter((l) => l !== main)];
+  return (
+    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-words">
+      <div className="text-xs font-medium text-white/70">{tr("الكلام بكل لغة", "The words in each language")}</div>
+      {order.map((l) => (
+        <div key={l} className={busy ? "pointer-events-none opacity-60" : ""} data-lang={l}>
+          <Field label={l === main ? `${names[l]} (${tr("الأساسية", "main")})` : names[l]} multiline={multiline} value={valueOf(l)} onSave={(v) => onSave(l, v)} testId={`studio-words-${l}`} />
+        </div>
+      ))}
+      <p className="text-[10px] leading-4 text-white/35">{tr("الفاضي بياخد كلام المتجر الجاهز، أو كلام اللغة الأساسية.", "Empty takes the shop's own words, or the main language's.")}</p>
+    </div>
+  );
+}
+
 /** Where a piece's words and pictures come from (the editor changes its look and motion only). */
 const PART_SOURCE: Record<string, () => string> = {
   products: () => tr("الاسم والسعر والصور بتيجي من المنتج نفسه، وبتتغيّر من صفحة المنتجات.", "The name, price and pictures come from the product itself and change on the products page."),
@@ -160,8 +188,10 @@ export function MediaSlot({ kind, value, busy, onSet }: { kind: "image" | "video
           </label>
           <div className="flex flex-wrap gap-1">
             <button type="button" className={btn} disabled={busy || !ok || url.trim() === value} onClick={() => onSet(url.trim())}>{tr("حفظ", "Save")}</button>
+            <button type="button" className={btn} disabled={busy} onClick={() => setOpen(true)} data-testid="studio-pick-video">{tr("من مكتبة الفيديوهات", "From the video library")}</button>
             {value ? <button type="button" className={btn} disabled={busy} onClick={() => onSet(null)}>{tr("رجوع للجاهز", "Back to the shop's own")}</button> : null}
           </div>
+          <VideoPickerModal open={open} onClose={() => setOpen(false)} onPick={({ url: picked }) => { setOpen(false); onSet(picked); }} />
         </>
       )}
     </div>
