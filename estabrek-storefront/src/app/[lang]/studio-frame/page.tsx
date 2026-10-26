@@ -31,6 +31,8 @@ export default async function StudioFrame({ params, searchParams }: { params?: {
     <>
       {/* The editor only: an empty cell or section keeps a place to drop things into (the shop draws it empty). */}
       <style dangerouslySetInnerHTML={{ __html: EMPTY_PLACES }} />
+      {/* The home looks as the home does in the editor (StorefrontChrome reads this). */}
+      {(page.slug || "/") === "/" ? <div hidden data-studio-home="" /> : null}
       {body}
       <StudioBridge origins={studioOrigins()} pageId={page.id} lang={lang} />
     </>

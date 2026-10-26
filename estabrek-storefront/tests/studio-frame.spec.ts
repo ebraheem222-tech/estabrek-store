@@ -77,6 +77,31 @@ test("in the editor's frame nothing waits unseen, and a look can be tried before
   await expect.poll(() => title.evaluate((el) => Number(getComputedStyle(el).opacity)), { timeout: 5000 }).toBe(1);
 });
 
+test("inside the home's sections and scenes: each word, button and card is measured, and the home looks as the home", async ({ page, request }) => {
+  await request.get("http://127.0.0.1:4100/__test/scenes?on=1");
+  try {
+    await page.goto(`${HARNESS}?src=${encodeURIComponent("/studio-frame?token=good-home")}`);
+    const has = (match: (i: any) => boolean) => async () => Boolean((await lastLayout(page))?.items?.some(match));
+    await expect.poll(has((i) => i.kind === "block" && i.block === "seasons"), { timeout: 45_000 }).toBe(true);
+    // A scene's words are kept in the opening's data, each language its own; the scene is their owner.
+    await expect.poll(has((i) => i.kind === "slot" && i.owner === "b:seasons" && i.sectionId === "hero" && i.path === "roseScenes.seasons.winter.title.ar" && i.edit === "lines")).toBe(true);
+    // A button is measured whole, with its link's field (once it has come in, as the page scrolls to it).
+    await page.frameLocator("#f").locator('[data-cms-section="cta"]').scrollIntoViewIfNeeded();
+    await expect.poll(has((i) => i.kind === "slot" && i.owner === "s:cta" && i.path === "buttonLabel" && i.link === "buttonHref")).toBe(true);
+    const layout = await lastLayout(page);
+    // Product cards, and what's inside each one under it.
+    const card = layout.items.find((i: any) => i.kind === "part" && i.owner === "s:products" && i.name === "card" && i.n === 0);
+    expect(card?.count).toBeGreaterThan(0);
+    expect(layout.items.find((i: any) => i.kind === "part" && i.owner === "s:products" && i.name === "card-name" && i.n === 0)?.within).toBe("p:card:0");
+    // Anything else that shows can be picked too.
+    expect(layout.items.some((i: any) => i.kind === "auto" && i.owner.startsWith("s:"))).toBe(true);
+    // The editor's frame shows the home as the home does.
+    await expect.poll(() => page.frameLocator("#f").locator("html").getAttribute("data-cinematic-home")).toBe("true");
+  } finally {
+    await request.get("http://127.0.0.1:4100/__test/scenes?on=0");
+  }
+});
+
 test("the home page as a tree, in English: old sections are measured as whole blocks", async ({ page }) => {
   await page.goto(`${HARNESS}?src=${encodeURIComponent("/en/studio-frame?token=good-home")}`);
   await expect.poll(async () => (await lastLayout(page))?.items?.length ?? 0, { timeout: 45_000 }).toBeGreaterThan(2);

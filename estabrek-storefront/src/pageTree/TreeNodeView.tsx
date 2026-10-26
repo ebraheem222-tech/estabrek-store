@@ -260,9 +260,10 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       );
     }
     case "roseBlock": {
-      if (p.block === "seasons" && ctx.seasons?.length) return <div {...mark}><RoseSeasons seasons={ctx.seasons} /></div>;
-      if (p.block === "stories" && ctx.stories?.length) return <div {...mark}><RoseCollectionStory chapters={ctx.stories} /></div>;
-      if (p.block === "instagram" && ctx.instagram?.length) return <div {...mark}><RoseInstagram images={ctx.instagram} /></div>;
+      // data-rose-block: the editor picks the scene and what's inside it as on the home.
+      if (p.block === "seasons" && ctx.seasons?.length) return <div {...mark} data-rose-block="seasons"><RoseSeasons seasons={ctx.seasons} /></div>;
+      if (p.block === "stories" && ctx.stories?.length) return <div {...mark} data-rose-block="stories"><RoseCollectionStory chapters={ctx.stories} /></div>;
+      if (p.block === "instagram" && ctx.instagram?.length) return <div {...mark} data-rose-block="instagram"><RoseInstagram images={ctx.instagram} /></div>;
       return null;
     }
     default:

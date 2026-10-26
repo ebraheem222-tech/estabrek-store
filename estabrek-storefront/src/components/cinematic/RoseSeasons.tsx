@@ -21,6 +21,7 @@ import { RoseBadge } from "./RoseBadge";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
+import { sceneField, sceneSeed, sceneWord } from "./sceneWords";
 import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
 import { RoseMascot, type MascotHandle } from "./mascot/RoseMascot";
 import { useNames } from "@/store/storeIdentity";
@@ -69,11 +70,11 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
   if (!edit.products.length) {
     return (
       <div className="season-rack season-rack-empty">
-        <Link href={edit.href} className="season-card" style={{ "--i": 0 } as React.CSSProperties}>
-          <span className="season-card-image">
+        <Link href={edit.href} className="season-card" style={{ "--i": 0 } as React.CSSProperties} data-part="card">
+          <span className="season-card-image" data-part="card-image">
             <Image src={fallbackImage} alt="" fill sizes="(max-width:760px) 60vw, 22vw" />
           </span>
-          <span className="season-card-title">{edit.categoryName || (tr(lang, "اكتشفي المجموعة", "Explore the edit"))}</span>
+          <span className="season-card-title" data-part="card-name">{edit.categoryName || (tr(lang, "اكتشفي المجموعة", "Explore the edit"))}</span>
         </Link>
       </div>
     );
@@ -81,9 +82,9 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
   return (
     <div className="season-rack">
       {edit.products.map((p, i) => (
-        <article key={p.id} className="season-card" style={{ "--i": i } as React.CSSProperties}>
+        <article key={p.id} className="season-card" style={{ "--i": i } as React.CSSProperties} data-part="card">
           <Link href={`/p/${encodeURIComponent(p.slug)}`} className="season-card-link">
-            <span className="season-card-image">
+            <span className="season-card-image" data-part="card-image">
               <RoseBadge badge={p.badge} ar={ar} />
               {p.imageUrl ? (
                 <Image src={p.imageUrl} alt={p.title} fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-main" />
@@ -94,8 +95,8 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
                 <Image src={p.secondaryImageUrl} alt="" aria-hidden fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-alt" />
               )}
             </span>
-            <span className="season-card-title">{p.title}</span>
-            {p.priceText && <span className="season-card-price">{p.priceText}</span>}
+            <span className="season-card-title" data-part="card-name">{p.title}</span>
+            {p.priceText && <span className="season-card-price" data-part="card-price">{p.priceText}</span>}
           </Link>
           <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={tr(lang, "إضافة سريعة", "Quick add")} />
         </article>
@@ -109,7 +110,8 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
  * from winter (rain, snow, deep tones) to spring (sun, blossoms, light tones).
  * The storefront theme follows the season and returns to normal afterwards.
  */
-export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
+/** `words`: the admin's words and colours for this scene (the opening's roseScenes.seasons, see sceneWords.ts). */
+export function RoseSeasons({ seasons, words }: { seasons: SeasonEdit[]; words?: unknown }) {
   const { language } = useLanguage();
   const lang = language;
   const ar = lang === "ar";
@@ -128,6 +130,8 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
   const rose = useRef<MascotHandle>(null);
   const winter = seasons.find((s) => s.key === "winter") ?? { key: "winter" as const, categoryName: null, href: "/shop", products: [] };
   const spring = seasons.find((s) => s.key === "spring") ?? { key: "spring" as const, categoryName: null, href: "/shop", products: [] };
+  const winterSeed = sceneSeed(words, ["winter", "seed"], SEASON_SEED.winter);
+  const springSeed = sceneSeed(words, ["spring", "seed"], SEASON_SEED.spring);
 
   useEffect(() => {
     const el = root.current;
@@ -229,7 +233,8 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       };
       // The section always wears its season's colours, so it never glides them. It changes
       // season once, in the middle of the hand-over, when neither season's copy shows.
-      const palettes = { winter: storefrontPalette(SEASON_SEED.winter), spring: storefrontPalette(SEASON_SEED.spring) };
+      const seed = { winter: winterSeed, spring: springSeed };
+      const palettes = { winter: storefrontPalette(seed.winter), spring: storefrontPalette(seed.spring) };
       const wear = (key: SeasonKey) => Object.entries(palettes[key]).forEach(([name, value]) => el.style.setProperty(name, value));
       const render = (p: number) => {
         progress.current = p;
@@ -253,7 +258,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
         if (winterLayer) winterLayer.inert = now === "spring";
         if (springLayer) springLayer.inert = now === "winter";
       };
-      const seedAt = (p: number) => mixHex(SEASON_SEED.winter, SEASON_SEED.spring, smooth(0.38, 0.62, p));
+      const seedAt = (p: number) => mixHex(seed.winter, seed.spring, smooth(0.38, 0.62, p));
       // Game-loop motion (scrollProgressMotion.ts): the scroll only sets the target, the
       // display's own frames move to it. progress.current is what SeasonsScene's useFrame
       // reads, so the 3D, the page and the colours all show the same position.
@@ -304,7 +309,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       };
     });
     return () => media.revert();
-  }, [settings.scrollAnimationsEnabled, theme]);
+  }, [settings.scrollAnimationsEnabled, theme, winterSeed, springSeed]);
 
   // Rose reacts each time the season turns while the scene is on screen.
   useEffect(() => {
@@ -328,21 +333,22 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
     return () => window.clearTimeout(t);
   }, [season, motion, near]);
 
-  const copy = (key: SeasonKey) => COPY[key][lang];
   const block = (edit: SeasonEdit) => {
-    const c = copy(edit.key);
+    const own = COPY[edit.key][lang];
+    const word = (name: keyof SeasonCopy) => sceneWord(words, [edit.key, name], lang, own[name]);
+    const field = (name: keyof SeasonCopy) => sceneField("seasons", [edit.key, name], lang);
     return (
       <div className={`season-layer season-${edit.key}`}>
         <div className="season-copy">
           <span className="atelier-eyebrow">
             <Icon name="spark" />
-            {c.eyebrow}
-            {edit.categoryName ? <em>· {edit.categoryName}</em> : null}
+            <span data-edit={field("eyebrow")}>{word("eyebrow")}</span>
+            {edit.categoryName ? <em data-part="category">· {edit.categoryName}</em> : null}
           </span>
-          <h2>{c.title}</h2>
-          <p>{c.text}</p>
-          <Link href={edit.href} className="atelier-button button-dark">
-            {c.cta}
+          <h2 data-edit={field("title")} data-edit-lines="">{word("title")}</h2>
+          <p data-edit={field("text")}>{word("text")}</p>
+          <Link href={edit.href} className="atelier-button button-dark" data-edit-box={field("cta")}>
+            <span data-edit={field("cta")} data-edit-boxed="">{word("cta")}</span>
             <Icon name="arrow" />
           </Link>
         </div>
@@ -368,7 +374,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
           <span className="season-static-sun" />
         </div>
         {motion && near && !sceneFailed && (
-          <div className="season-canvas" aria-hidden="true">
+          <div className="season-canvas" aria-hidden="true" data-part="scene">
             <SceneBoundary onError={() => setSceneFailed(true)}>
               <SeasonsScene
                 progress={progress}
@@ -399,7 +405,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
           {block(winter)}
           {block(spring)}
         </div>
-        <div className="season-meter" aria-hidden="true">
+        <div className="season-meter" aria-hidden="true" data-part="meter">
           <span className="meter-winter">{tr(lang, "شتاء", "Winter")}</span>
           <span className="meter-track"><span /></span>
           <span className="meter-spring">{tr(lang, "ربيع", "Spring")}</span>

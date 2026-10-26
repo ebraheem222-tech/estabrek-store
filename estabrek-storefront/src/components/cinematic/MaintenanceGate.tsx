@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { whatsappLink } from "@/lib/whatsapp";
 import { tr } from "@/lib/words";
 import { useLanguage } from "./Language";
+import { usePathname } from "@/lib/shopPath";
 
 export type MaintenanceInfo = { on: boolean; message: string | null; previewHash: string | null } | null | undefined;
 
@@ -45,7 +46,9 @@ export function MaintenanceGate({
   children: ReactNode;
 }) {
   const { language: lang } = useLanguage();
-  const on = maintenance?.on === true;
+  // The admin's editor opens its page with a ticket of its own: no "back soon" over it.
+  const studio = /(^|\/)studio-frame$/.test(usePathname());
+  const on = maintenance?.on === true && !studio;
   const [preview, setPreview] = useState(false);
 
   useEffect(() => {

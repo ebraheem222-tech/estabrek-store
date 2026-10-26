@@ -96,9 +96,25 @@ const FIELD_LABEL: Record<string, () => string> = {
   answer: () => tr("جواب", "Answer"),
   quote: () => tr("رأي", "Review"),
   name: () => tr("الاسم", "Name"),
+  cta: () => tr("الزر", "Button"),
+  roseFilmLines: () => tr("سطور الفيلم", "Film lines"),
+  roseFilmClosing: () => tr("السطر الأخير", "Closing line"),
+};
+/** The rose scenes' own parts (roseScenes.<scene>.<part>.<field>.<language>). */
+const SCENE_PART: Record<string, () => string> = {
+  winter: () => tr("الشتاء", "Winter"),
+  spring: () => tr("الربيع", "Spring"),
+  accessories: () => tr("الإكسسوارات", "Accessories"),
+  kids: () => tr("الأطفال", "Kids"),
+  incense: () => tr("المباخر", "Incense"),
 };
 export function fieldLabel(path: string): string {
   if (FIELD_LABEL[path]) return FIELD_LABEL[path]();
+  const scene = /^roseScenes\.\w+\.(?:(\w+)\.)?(\w+)\.(?:ar|en|he)$/.exec(path);
+  if (scene) {
+    const name = FIELD_LABEL[scene[2]]?.() ?? scene[2];
+    return scene[1] ? `${name} · ${SCENE_PART[scene[1]]?.() ?? scene[1]}` : name;
+  }
   const m = /^(?:\w+)\.(\d+)\.(.+)$/.exec(path);
   if (m) return `${FIELD_LABEL[m[2]]?.() ?? m[2]} ${Number(m[1]) + 1}`;
   return FIELD_LABEL[path.split(".").pop() ?? ""]?.() ?? path;
@@ -129,57 +145,94 @@ export function nodeTitle(index: TreeIndex, id: string, sectionType?: string): s
   return nodeName(at.node, sectionType);
 }
 
-/** From the page to this node: [page, section, grid, …]; a field's parent is its section. */
-export function pathTo(index: TreeIndex, id: string | null): string[] {
+/**
+ * From the page to this node: [page, section, grid, …]. What isn't a tree node (a field, a
+ * piece of an old section or scene) climbs through `up` (its measured parents, see shapesOf);
+ * without it a field's parent is its section and a scene's the page.
+ */
+export function pathTo(index: TreeIndex, id: string | null, up?: ReadonlyMap<string, string | null>): string[] {
   const out: string[] = [];
   let at = id;
-  while (at) {
+  while (at && out.length < 64) {
     out.unshift(at);
-    if (at.startsWith("slot:")) at = index.bySection.get(at.split(":")[1]) ?? index.root;
+    if (index.nodes.has(at)) at = index.nodes.get(at)!.parentId;
+    else if (up?.has(at)) at = up.get(at) ?? null;
+    else if (at.startsWith("slot:")) at = index.bySection.get(at.split(":")[1]) ?? index.root;
     else if (at.startsWith("block:")) at = index.root;
-    else at = index.nodes.get(at)?.parentId ?? null;
+    else at = null;
   }
   return out;
 }
 
-export const isRelated = (index: TreeIndex) => (a: Shape, b: Shape) => pathTo(index, a.id).includes(b.id) || pathTo(index, b.id).includes(a.id);
+export const isRelated = (index: TreeIndex, up?: ReadonlyMap<string, string | null>) => (a: Shape, b: Shape) => pathTo(index, a.id, up).includes(b.id) || pathTo(index, b.id, up).includes(a.id);
 
+/** Inside an old section or rose scene ("owner": "s:<section id>" or "b:<scene>"), see the shop's pageTree/StudioBridge. */
 export type BridgeItem =
   /** `holder`: the box a freely placed element is placed in. */
   | { kind: "node"; id: string; rect: Box; holder?: Box }
   | { kind: "legacy"; sectionId: string; rect: Box }
-  | { kind: "slot"; sectionId: string; path: string; edit: "text" | "lines" | "media"; media?: "image" | "video"; rect: Box }
+  /** `owner` is missing from a shop that hasn't learnt it yet (then it's the field's section). */
+  | { kind: "slot"; owner?: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string; within?: string; rect: Box }
+  | { kind: "part"; owner: string; name: string; n: number; count: number; within?: string; rect: Box }
+  | { kind: "auto"; owner: string; n: number; tag: string; label?: string; within?: string; rect: Box }
   | { kind: "block"; block: string; rect: Box };
 
-/** What a shape that isn't a tree node is: a field inside an old section, or a rose scene. */
-export type Extra = { kind: "slot"; sectionId: string; path: string; edit: "text" | "lines" | "media"; media?: "image" | "video" } | { kind: "block"; block: string };
+/** How a field is written: words in place (one line, or several), a list of lines in the panel, a picture or clip. */
+export type SlotEdit = "text" | "lines" | "list" | "media";
+/**
+ * What a shape that isn't a tree node is: a field of an old section or scene (`sectionId`
+ * holds its data, `owner` is where it shows, `link` its button's link field), a rose scene,
+ * a marked piece (`n` of `count` alike in its owner) or anything else seen there.
+ */
+export type Extra =
+  | { kind: "slot"; owner: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string }
+  | { kind: "block"; block: string }
+  | { kind: "part"; owner: string; name: string; n: number; count: number }
+  | { kind: "auto"; owner: string; n: number; tag: string; label?: string };
 export const slotId = (sectionId: string, path: string) => `slot:${sectionId}:${path}`;
 export const blockId = (index: TreeIndex, block: string) => (index.nodes.has(`rb-${block}`) ? `rb-${block}` : `block:${block}`);
+/** A field's id: its section's, or its scene's. */
+const fieldId = (owner: string, path: string) => (owner.startsWith("b:") ? `bslot:${owner.slice(2)}:${path}` : slotId(owner.slice(2), path));
 export type BridgeLayout = { pageId: string; lang: string; dir: string; viewport: { w: number; h: number }; scroll: Pt; doc: { w: number; h: number }; items: BridgeItem[] };
 
 /**
- * Every measured thing as a screen shape: tree nodes, old sections, the fields
- * inside them (one level deeper than their section) and the rose scenes; the page
- * itself is the frame's visible window.
+ * Every measured thing as a screen shape: tree nodes, old sections, the rose scenes, and
+ * inside those the fields, marked pieces and anything else seen (each under the field or
+ * piece around it, else its section or scene); the page itself is the frame's visible window.
+ * `up` has the parent of every shape that isn't a tree node (for pathTo).
  */
-export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: number): { shapes: Shape[]; extras: Map<string, Extra> } {
+export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: number): { shapes: Shape[]; extras: Map<string, Extra>; up: Map<string, string | null> } {
   const shapes: Shape[] = [{ id: index.root, depth: 0, parentId: null, box: { x: pan.x, y: pan.y, w: layout.viewport.w * zoom, h: layout.viewport.h * zoom } }];
   const extras = new Map<string, Extra>();
+  const up = new Map<string, string | null>();
+  const ownerId = (owner: string) => (owner.startsWith("b:") ? blockId(index, owner.slice(2)) : index.bySection.get(owner.slice(2)));
+  const inner: Array<{ id: string; owner: string; within?: string; box: Box }> = [];
+  const keyed = new Map<string, string>();
   for (const item of layout.items) {
     const box = toScreen(item.rect, layout.scroll, pan, zoom);
-    if (item.kind === "slot") {
-      const parentId = index.bySection.get(item.sectionId);
-      const parent = parentId ? index.nodes.get(parentId) : undefined;
-      if (!parentId || !parent) continue;
-      const id = slotId(item.sectionId, item.path);
-      extras.set(id, { kind: "slot", sectionId: item.sectionId, path: item.path, edit: item.edit, media: item.media });
-      shapes.push({ id, depth: parent.depth + 1, parentId, box });
+    if (item.kind === "slot" || item.kind === "part" || item.kind === "auto") {
+      const owner = item.kind === "slot" ? item.owner ?? `s:${item.sectionId}` : item.owner;
+      if (!ownerId(owner) || (owner.startsWith("s:") && !index.nodes.has(ownerId(owner)!))) continue;
+      const id = item.kind === "slot" ? fieldId(owner, item.path) : item.kind === "part" ? `part:${owner}:${item.name}:${item.n}` : `auto:${owner}:${item.n}`;
+      if (extras.has(id)) continue;
+      extras.set(
+        id,
+        item.kind === "slot"
+          ? { kind: "slot", owner, sectionId: item.sectionId, ...(item.block ? { block: item.block } : {}), path: item.path, edit: item.edit, media: item.media, ...(item.link ? { link: item.link } : {}) }
+          : item.kind === "part"
+            ? { kind: "part", owner, name: item.name, n: item.n, count: item.count }
+            : { kind: "auto", owner, n: item.n, tag: item.tag, ...(item.label ? { label: item.label } : {}) },
+      );
+      keyed.set(`${owner}|${item.kind === "slot" ? `f:${item.path}` : item.kind === "part" ? `p:${item.name}:${item.n}` : `a:${item.n}`}`, id);
+      inner.push({ id, owner, within: item.within, box });
       continue;
     }
     if (item.kind === "block") {
       const id = blockId(index, item.block);
       extras.set(id, { kind: "block", block: item.block });
-      shapes.push({ id, depth: 1, parentId: index.root, box });
+      const placed = index.nodes.get(id);
+      shapes.push({ id, depth: placed?.depth ?? 1, parentId: placed?.parentId ?? index.root, box });
+      if (!placed) up.set(id, index.root);
       continue;
     }
     const id = item.kind === "node" ? item.id : index.bySection.get(item.sectionId);
@@ -187,5 +240,53 @@ export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: 
     if (!id || !at || id === index.root) continue;
     shapes.push({ id, depth: at.depth, parentId: at.parentId, box });
   }
-  return { shapes, extras };
+  // Each one under the field or piece around it (when that one is measured too), else its owner.
+  for (const it of inner) up.set(it.id, (it.within && keyed.get(`${it.owner}|${it.within}`)) || ownerId(it.owner)!);
+  const depthOf = (id: string, seen = 0): number => {
+    const n = index.nodes.get(id);
+    if (n) return n.depth;
+    const p = up.get(id);
+    return p && seen < 32 ? depthOf(p, seen + 1) + 1 : 1;
+  };
+  for (const it of inner) shapes.push({ id: it.id, depth: depthOf(it.id), parentId: up.get(it.id) ?? null, box: it.box });
+  return { shapes, extras, up };
 }
+
+/** What the shop calls a marked piece, as the owner knows it. */
+const PART_LABEL: Record<string, () => string> = {
+  card: () => tr("بطاقة منتج", "Product card"),
+  "card-image": () => tr("صورة البطاقة", "Card picture"),
+  "card-name": () => tr("اسم المنتج", "Product name"),
+  "card-price": () => tr("السعر", "Price"),
+  "card-category": () => tr("تصنيف البطاقة", "Card category"),
+  "card-add": () => tr("زر الإضافة السريعة", "Quick add button"),
+  category: () => tr("اسم التصنيف", "Category name"),
+  mascot: () => tr("الشخصية", "Mascot"),
+  scene: () => tr("المشهد ثلاثي الأبعاد", "3D scene"),
+  meter: () => tr("مؤشر التقدّم", "Progress meter"),
+  steps: () => tr("خطوات الفيلم", "Film steps"),
+  cue: () => tr("دعوة للنزول", "Scroll cue"),
+  film: () => tr("فيلم الافتتاح", "Opening film"),
+  "closing-text": () => tr("نص الختام", "Closing text"),
+  "faq-item": () => tr("سؤال وجواب", "Question and answer"),
+  handle: () => tr("زر الحساب", "Account button"),
+  tiles: () => tr("صور إنستغرام", "Instagram pictures"),
+  tile: () => tr("صورة", "Picture"),
+};
+export const partLabel = (name: string) => PART_LABEL[name]?.() ?? name;
+
+/** Anything else seen, by its kind. */
+const TAG_LABEL: Record<string, () => string> = {
+  img: () => tr("صورة", "Picture"),
+  picture: () => tr("صورة", "Picture"),
+  video: () => tr("فيديو", "Video"),
+  svg: () => tr("رسمة", "Drawing"),
+  canvas: () => tr("رسمة متحركة", "Animated drawing"),
+  a: () => tr("رابط", "Link"),
+  button: () => tr("زر", "Button"),
+  p: () => tr("نص", "Text"),
+  li: () => tr("عنصر قائمة", "List item"),
+  blockquote: () => tr("اقتباس", "Quote"),
+  figure: () => tr("صورة مع وصف", "Figure"),
+};
+export const tagLabel = (tag: string) => (/^h[1-6]$/.test(tag) ? tr("عنوان", "Heading") : TAG_LABEL[tag]?.() ?? tag);

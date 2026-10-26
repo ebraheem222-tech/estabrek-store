@@ -366,7 +366,7 @@ export function RoseHeroFilm({
   }, [motion]);
 
   const accent = final ? "var(--selection-accent, #a43b64)" : LINE_COLORS[step % LINE_COLORS.length];
-  const shop = primary?.href ? primary : { href: "/shop", label: tr(lang, "تسوّقي الآن", "Shop now") };
+  const shop = { href: primary?.href || "/shop", label: primary?.label || tr(lang, "تسوّقي الآن", "Shop now") };
   return (
     <section
       ref={root}
@@ -382,7 +382,7 @@ export function RoseHeroFilm({
       <div className="rose-film-sticky">
         <div className="film-copy">
           {/* Screen readers hear the promise once; the changing lines are the film's captions. */}
-          <h1 id="hero-title" className="hero-headline film-lines" aria-label={`${lines[0]} ${closing.replace(/\n/g, " ")}`}>
+          <h1 id="hero-title" className="hero-headline film-lines" aria-label={`${lines[0]} ${closing.replace(/\n/g, " ")}`} data-edit="roseFilmLines" data-edit-list="">
             {lines.map((line, i) => (
               <span
                 key={i}
@@ -396,7 +396,7 @@ export function RoseHeroFilm({
                 ))}
               </span>
             ))}
-            <span className="film-line film-closing" data-state={final ? "on" : "next"} aria-hidden="true">
+            <span className="film-line film-closing" data-state={final ? "on" : "next"} aria-hidden="true" data-edit={final ? "roseFilmClosing" : undefined} data-edit-lines="">
               {closing.split("\n").map((row, r, rows) => {
                 // Word order continues across the two rows so the words still arrive one by one.
                 const before = rows.slice(0, r).join(" ").split(/\s+/).filter(Boolean).length;
@@ -410,37 +410,37 @@ export function RoseHeroFilm({
               })}
             </span>
           </h1>
-          <p className="hero-description" data-edit={final ? undefined : "subtitle"}>
+          <p className="hero-description" data-edit={final ? undefined : "subtitle"} data-part={final ? "closing-text" : undefined}>
             {final ? FILM_CLOSING[lang].text : description || (tr(lang, "حجاب، فساتين، وقطع تختارينها بحب. إطلالات تجمع الاحتشام والراحة، بلمسة تشبهكِ.", "Hijabs, dresses, and pieces to love. A little softness, a little confidence. Completely you."))}
           </p>
           <div className="hero-actions">
-            <Link href={shop.href || "/shop"} className="atelier-button button-dark film-cta">
-              {shop.label || (tr(lang, "تسوّقي الآن", "Shop now"))}
+            <Link href={shop.href || "/shop"} className="atelier-button button-dark film-cta" data-edit-box="primaryButton.label" data-edit-link="primaryButton.href">
+              <span data-edit="primaryButton.label" data-edit-boxed="">{shop.label || (tr(lang, "تسوّقي الآن", "Shop now"))}</span>
               <Icon name="arrow" />
             </Link>
             {secondary?.href && secondary.label ? (
-              <Link href={secondary.href} className="atelier-text-link">
-                {secondary.label}
+              <Link href={secondary.href} className="atelier-text-link" data-edit-box="secondaryButton.label" data-edit-link="secondaryButton.href">
+                <span data-edit="secondaryButton.label" data-edit-boxed="">{secondary.label}</span>
                 <Icon name="arrow" />
               </Link>
             ) : null}
           </div>
           {/* The line's colour goes only where it shows (these steps, the halo in the arch): on the
               section, every new line restyled the whole opening, Rose included (~50 ms on a phone). */}
-          <ol className="film-steps" aria-hidden="true" style={{ "--film-accent": accent } as CSSProperties}>
+          <ol className="film-steps" aria-hidden="true" style={{ "--film-accent": accent } as CSSProperties} data-part="steps">
             {[...lines, closing].map((_, i) => (
               <li key={i} data-on={i <= step ? "true" : undefined} />
             ))}
           </ol>
           {motion && (
-            <span className="film-cue" aria-hidden="true">
+            <span className="film-cue" aria-hidden="true" data-part="cue">
               <Icon name="down" />
               {tr(lang, "مرّري ودعي الحجاب يكتمل", "Scroll and watch the hijab come together")}
             </span>
           )}
         </div>
         <div className="film-stage">
-          <div className="film-arch" style={{ "--film-accent": accent } as CSSProperties}>
+          <div className="film-arch" style={{ "--film-accent": accent } as CSSProperties} data-part="film">
             <video
               ref={video}
               className="film-video"

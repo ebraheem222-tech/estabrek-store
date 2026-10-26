@@ -29,7 +29,7 @@ import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme } from "./s
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toast } from "../lib/toast";
 import { History, fieldValue, parsePath, undoOf } from "./draft";
-import { MediaSlot, SectionActions, SectionSettings, ThemePanel } from "./StudioPanels";
+import { Field, MediaSlot, PartInfo, SectionActions, SectionSettings, ThemePanel } from "./StudioPanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newElement, newSection, reduceWidths, styleOp, twelfths, type NewKind } from "./columns";
 import { LookPanel, MotionPanel } from "./LookPanels";
@@ -41,8 +41,8 @@ import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
 import { languagesOf } from "../lib/storeLanguages";
 import { tr } from "../lib/words";
-import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, pickAt, queenStep, toScreen, zoomAround, type Box, type Pt, type Shape } from "./geometry";
-import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, pathTo, shapesOf, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
+import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
+import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, partLabel, pathTo, shapesOf, tagLabel, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
 
 const SOURCE = "estabrek-studio";
 const DEVICES = {
@@ -57,10 +57,15 @@ const BLOCK_LABEL: Record<string, () => string> = {
   seasons: () => tr("المواسم", "Seasons"),
   stories: () => tr("قصص الكولكشن", "Collection stories"),
   instagram: () => tr("إنستغرام", "Instagram"),
+  fabric: () => tr("دراسة القماش", "Fabric study"),
 };
 /** The opening's switch that shows each rose scene. */
-const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled" };
+const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled" };
+/** Scenes that keep their own place (the fabric study follows the first products). */
+const FIXED_BLOCKS = new Set(["fabric"]);
 const statusOf = (e: unknown) => (e as { response?: { status?: number } })?.response?.status;
+/** A field that names its language at its end (a scene's word: roseScenes.seasons.winter.title.en). */
+const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
 /** Where a dragged element would land: the place, its index there, and the line to draw. */
 type Drop = { parentId: string; index: number; line: Box; box: Box };
 
@@ -243,9 +248,11 @@ export default function StudioPage() {
   }, [canvas.w, canvas.h, dev.w, dev.h]);
   useEffect(() => fit(), [fit]);
 
-  const measured = useMemo(() => (index && layout ? shapesOf(index, layout, pan, zoom) : { shapes: [] as Shape[], extras: new Map<string, Extra>() }), [index, layout, pan, zoom]);
+  const measured = useMemo(() => (index && layout ? shapesOf(index, layout, pan, zoom) : { shapes: [] as Shape[], extras: new Map<string, Extra>(), up: new Map<string, string | null>() }), [index, layout, pan, zoom]);
   const shapes = measured.shapes;
   const extras = measured.extras;
+  /** The parent of every measured thing that isn't a tree node (a field, a piece of a section or scene). */
+  const up = measured.up;
   const grid = useMemo(() => new SpatialGrid(shapes, 64, { x: 0, y: 0, w: canvas.w, h: canvas.h }), [shapes, canvas.w, canvas.h]);
   const shapeOf = (sid: string | null) => (sid ? shapes.find((s) => s.id === sid) ?? null : null);
   const frameBox: Box = { x: pan.x, y: pan.y, w: dev.w * zoom, h: dev.h * zoom };
@@ -259,7 +266,9 @@ export default function StudioPage() {
     setSelected(sid);
     if (!reveal || !sid || !index) return;
     const x = extras.get(sid);
-    if (x?.kind === "slot") return send({ type: "reveal", sectionId: x.sectionId, path: x.path });
+    if (x?.kind === "slot") return send({ type: "reveal", owner: x.owner, sectionId: x.sectionId, path: x.path });
+    if (x?.kind === "part") return send({ type: "reveal", owner: x.owner, part: x.name, n: x.n });
+    if (x?.kind === "auto") return send({ type: "reveal", owner: x.owner });
     if (x?.kind === "block") return send({ type: "reveal", block: x.block });
     const n = index.nodes.get(sid)?.node;
     if (n?.type === "legacy") send({ type: "reveal", sectionId: n.props.sectionId });
@@ -320,14 +329,16 @@ export default function StudioPage() {
   const onTextEdited = useRef<(sectionId: string, path: string, value: string) => void>(() => {});
   onTextEdited.current = (sectionId, path, value) => {
     const p = parsePath(path);
-    const before = fieldValue(sectionOf(sectionId), shopLang, main, p);
+    // A scene's word names its language in its path (…title.en): kept with the main words.
+    const lang = wordLang(path) ? main : shopLang;
+    const before = fieldValue(sectionOf(sectionId), lang, main, p);
     if ((typeof before === "string" ? before : "") === value) return;
-    void setField(sectionId, p, value, shopLang, false);
+    void setField(sectionId, p, value, lang, false);
   };
   const startText = (sid: string | null) => {
     const x = sid ? extras.get(sid) : undefined;
-    if (!x || x.kind !== "slot" || x.edit === "media") return false;
-    const v = fieldValue(sectionOf(x.sectionId), shopLang, main, parsePath(x.path));
+    if (!x || x.kind !== "slot" || x.edit === "media" || x.edit === "list") return false;
+    const v = fieldValue(sectionOf(x.sectionId), wordLang(x.path) ? main : shopLang, main, parsePath(x.path));
     setEditing({ sectionId: x.sectionId, path: x.path });
     send({ type: "editText", sectionId: x.sectionId, path: x.path, value: typeof v === "string" ? v : undefined });
     return true;
@@ -445,7 +456,7 @@ export default function StudioPage() {
     // Dragging the selected element (or from inside it) moves it; sections move in the layers.
     const sel = nodeOf(selected);
     const hit = !panning && !touch && e.button === 0 && sel && isFree(sel.type) && sel.type !== "section" ? pickAt(grid.near(p), p) : null;
-    const grab = hit && index && selected && pathTo(index, hit.id).includes(selected) ? selected : null;
+    const grab = hit && index && selected && pathTo(index, hit.id, up).includes(selected) ? selected : null;
     down.current = { p, pan, panning, touch, moved: false, y: p.y, grab, box: grab ? shapeOf(grab)?.box : undefined, holder: grab ? holderOf(grab) : null };
   };
 
@@ -470,7 +481,7 @@ export default function StudioPage() {
     let target = e.ctrlKey || e.metaKey ? now?.id ?? null : clickTarget(now, filter.current.current);
     // A second click at the same spot climbs to the parent.
     const again = lastClick.current && Math.hypot(p.x - lastClick.current.x, p.y - lastClick.current.y) < 4;
-    if (again && !(e.ctrlKey || e.metaKey) && selected && target && pathTo(index, target).includes(selected)) target = parentOf(selected) ?? selected;
+    if (again && !(e.ctrlKey || e.metaKey) && selected && target && pathTo(index, target, up).includes(selected)) target = parentOf(selected) ?? selected;
     lastClick.current = p;
     select(target);
   };
@@ -537,6 +548,17 @@ export default function StudioPage() {
         else zoomBy(e.key === "-" ? 1 / 1.25 : 1.25);
         return;
       }
+      // Delete takes the selected element out (asking first), Ctrl/⌘+D copies it.
+      if ((e.key === "Delete" || e.key === "Backspace") && selected && selFree && selFree.type !== "cell") {
+        e.preventDefault();
+        setAsking({ kind: "delete", nodeId: selected, name: label(selected), tree: true });
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d" && selFree && selFree.type !== "cell") {
+        e.preventDefault();
+        copySelected();
+        return;
+      }
       if (e.key === "Escape") {
         if (themeOpen) return setThemeOpen(false);
         setSelected((s) => parentOf(s));
@@ -555,7 +577,7 @@ export default function StudioPage() {
         const v = { x: (h.has("ArrowRight") ? 1 : 0) - (h.has("ArrowLeft") ? 1 : 0), y: (h.has("ArrowDown") ? 1 : 0) - (h.has("ArrowUp") ? 1 : 0) };
         const dir = v.x && v.y ? { x: v.x * Math.SQRT1_2, y: v.y * Math.SQRT1_2 } : v.x > 0 ? DIRECTIONS.right : v.x < 0 ? DIRECTIONS.left : v.y > 0 ? DIRECTIONS.down : DIRECTIONS.up;
         const from = shapeOf(selected);
-        const next = from ? queenStep(from, shapes.filter((s) => s.id !== index.root), dir, { related: isRelated(index) }) : null;
+        const next = from ? queenStep(from, shapes.filter((s) => s.id !== index.root), dir, { related: isRelated(index, up) }) : null;
         if (next) select(next.id, true);
       }
     };
@@ -571,14 +593,22 @@ export default function StudioPage() {
     };
   });
 
+  // The layers list follows what's selected on the page.
+  useEffect(() => {
+    if (!selected) return;
+    document.querySelectorAll(`[data-testid="studio-layer"][data-node="${CSS.escape(selected)}"]`).forEach((el) => el.scrollIntoView({ block: "nearest" }));
+  }, [selected]);
+
   /* ----------------------------------------------------------- drawing */
 
   const label = (sid: string) => {
     const x = extras.get(sid);
     if (x?.kind === "block" || sid.startsWith("block:")) return `${tr("مشهد", "Scene")} · ${BLOCK_LABEL[x?.kind === "block" ? x.block : sid.slice(6)]?.() ?? sid}`;
+    if (x?.kind === "part") return x.count > 1 ? `${partLabel(x.name)} ${x.n + 1}` : partLabel(x.name);
+    if (x?.kind === "auto") return x.label ? `${tagLabel(x.tag)} · ${x.label.length > 30 ? `${x.label.slice(0, 30)}…` : x.label}` : tagLabel(x.tag);
     if (x?.kind === "slot" || sid.startsWith("slot:")) {
       const path = x?.kind === "slot" ? x.path : sid.split(":").slice(2).join(":");
-      const v = x?.kind === "slot" && x.edit !== "media" ? fieldValue(sectionOf(x.sectionId), shopLang, main, parsePath(path)) : null;
+      const v = x?.kind === "slot" && x.edit !== "media" ? fieldValue(sectionOf(x.sectionId), wordLang(path) ? main : shopLang, main, parsePath(path)) : null;
       const name = fieldLabel(path);
       return typeof v === "string" && v ? `${name} · ${v.length > 30 ? `${v.slice(0, 30)}…` : v}` : name;
     }
@@ -592,24 +622,41 @@ export default function StudioPage() {
   const outline = (sid: string | null, kind: "hover" | "selected" | "parent") => {
     const s = shapeOf(sid);
     if (!s || sid === index?.root) return null;
-    const style = { left: s.box.x - frameBox.x, top: s.box.y - frameBox.y, width: s.box.w, height: s.box.h };
+    // Only what shows of it: a scene many screens tall keeps its label and edges in sight.
+    const seen = visiblePart(s.box, frameBox);
+    if (!seen) return null;
+    const style = { left: seen.box.x - frameBox.x, top: seen.box.y - frameBox.y, width: seen.box.w, height: seen.box.h };
     const cls =
-      kind === "selected" ? "border-2 border-accent-400" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
+      kind === "selected" ? "border-2 border-accent-400 bg-accent-400/[0.06]" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
+    // Where it goes on past the frame, its side is dashed.
+    const cut = { borderTopStyle: seen.above ? "dashed" : undefined, borderBottomStyle: seen.below ? "dashed" : undefined } as const;
     return (
-      <div key={`${kind}-${sid}`} className={`pointer-events-none absolute ${cls}`} style={style} data-testid={`studio-${kind}`}>
+      <div key={`${kind}-${sid}`} className={`pointer-events-none absolute ${cls}`} style={{ ...style, ...cut }} data-testid={`studio-${kind}`} data-cut={seen.above || seen.below ? "1" : undefined}>
         {kind !== "parent" ? (
-          // Above the box; inside it when the box touches the top of the frame.
-          <span className={`absolute start-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${style.top < 24 ? "top-0" : "-top-6"} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`}>
+          // Above the box; inside it when the box touches the top of the frame (or goes on above it).
+          <span className={`absolute start-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${style.top < 24 || seen.above ? "top-0" : "-top-6"} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`}>
+            {seen.above ? <span aria-hidden="true">↑</span> : null}
             <span>{label(sid!)}</span>
             {kind === "selected" ? <span className="opacity-75" dir="ltr">{Math.round(s.box.w / zoom)}×{Math.round(s.box.h / zoom)}</span> : null}
           </span>
         ) : null}
+        {kind === "selected" && seen.below ? <span className="absolute bottom-1 start-1/2 -translate-x-1/2 rounded-full bg-accent-500 px-1.5 text-[11px] text-white" aria-hidden="true">↓</span> : null}
       </div>
     );
   };
 
-  const selPath = index ? pathTo(index, selected) : [];
-  const parentOf = (sid: string | null) => (sid && index ? pathTo(index, sid).slice(-2, -1)[0] ?? null : null);
+  const selPath = index ? pathTo(index, selected, up) : [];
+  /** A step of the path above what's selected, by its kind. */
+  const crumb = (pid: string) => {
+    const n = index?.nodes.get(pid)?.node;
+    if (n) return n.type === "roseBlock" ? tr("مشهد", "Scene") : typeLabel(n.type);
+    const x = extras.get(pid);
+    if (x?.kind === "part") return partLabel(x.name);
+    if (x?.kind === "auto") return tagLabel(x.tag);
+    if (x?.kind === "slot") return x.edit === "media" ? (x.media === "video" ? typeLabel("video") : typeLabel("image")) : x.link ? typeLabel("button") : typeLabel("text");
+    return pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text");
+  };
+  const parentOf = (sid: string | null) => (sid && index ? pathTo(index, sid, up).slice(-2, -1)[0] ?? null : null);
   const selNode = selected ? index?.nodes.get(selected) : undefined;
   const selShape = shapeOf(selected);
   const selExtra = selected ? extras.get(selected) : undefined;
@@ -757,7 +804,7 @@ export default function StudioPage() {
             <span key={pid} className="flex items-center gap-1">
               {i ? <span className="inline-block ltr:-scale-x-100">‹</span> : null}
               <button type="button" onClick={() => select(pid, true)} className={`rounded px-1 hover:bg-white/[0.06] ${pid === selected ? "text-white" : ""}`}>
-                {index.nodes.get(pid) ? typeLabel(index.nodes.get(pid)!.node.type) : pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text")}
+                {crumb(pid)}
               </button>
             </span>
           ))}
@@ -771,7 +818,33 @@ export default function StudioPage() {
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
         </dl>
 
-        {selExtra?.kind === "slot" && selExtra.edit !== "media" ? (
+        {selExtra?.kind === "slot" && selExtra.edit === "list" ? (
+          <Field
+            label={`${tr("سطر لكل لفّة، بلغة الصفحة المعروضة", "One line per turn, in the shown page language")}: ${LANG_NAME[shopLang]}`}
+            multiline
+            value={(() => {
+              const v = fieldValue(sectionOf(selExtra.sectionId), shopLang, main, parsePath(selExtra.path));
+              return Array.isArray(v) ? v.join("\n") : "";
+            })()}
+            onSave={(v) => void setField(selExtra.sectionId, parsePath(selExtra.path), v.split("\n").map((x) => x.trim()).filter(Boolean), shopLang)}
+            testId="studio-slot-list"
+          />
+        ) : null}
+        {selExtra?.kind === "slot" && selExtra.link ? (
+          <Field
+            label={tr("رابط الزر (صفحة بالمتجر متل /shop، أو https://…)", "The button's link (a store page like /shop, or https://…)")}
+            value={String(fieldValue(sectionOf(selExtra.sectionId), main, main, parsePath(selExtra.link)) ?? "")}
+            onSave={(v) => {
+              const t = v.trim();
+              if (!t) void setField(selExtra.sectionId, parsePath(selExtra.link!), null, main);
+              else if (/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i.test(t)) void setField(selExtra.sectionId, parsePath(selExtra.link!), t, main);
+              else toast.error(tr("الرابط لازم يبلّش بـ / أو https://", "A link starts with / or https://"));
+            }}
+            testId="studio-slot-link"
+          />
+        ) : null}
+        {selExtra?.kind === "part" || selExtra?.kind === "auto" ? <PartInfo extra={selExtra} /> : null}
+        {selExtra?.kind === "slot" && selExtra.edit !== "media" && selExtra.edit !== "list" ? (
           <div className="space-y-2">
             <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing)} onClick={() => startText(selected)} data-testid="studio-edit-text">
               {editing ? tr("عم تكتب بالصفحة… (Enter للحفظ، Esc للإلغاء)", "Writing in the page… (Enter saves, Esc cancels)") : tr("كتابة النص مكانه", "Write the text in place")}
@@ -818,8 +891,8 @@ export default function StudioPage() {
         {selBlock ? (
           <div className="space-y-2">
             <SectionActions
-              canUp={(topAt >= 0 ? topAt : indexAt(selected)) > 0}
-              canDown={topAt >= 0 ? topAt < pageKids.length - 1 : indexAt(selected) < pageKids.length}
+              canUp={!FIXED_BLOCKS.has(selBlock) && (topAt >= 0 ? topAt : indexAt(selected)) > 0}
+              canDown={!FIXED_BLOCKS.has(selBlock) && (topAt >= 0 ? topAt < pageKids.length - 1 : indexAt(selected) < pageKids.length)}
               hidden={false}
               busy={busy}
               onUp={() => void moveItem(selected, -1)}
@@ -835,9 +908,12 @@ export default function StudioPage() {
               </button>
             ) : null}
             <p className="text-[11px] leading-5 text-white/40">
-              {BLOCK_FLAG[selBlock]
-                ? tr("الإخفاء بيصير من إعدادات الافتتاح، ومن هناك بيرجع.", "Hiding goes through the opening's settings, and it comes back from there.")
-                : tr("بيطلع لما ما في آراء زبائن بالصفحة.", "It shows when the page has no customer reviews.")}
+              {tr("الإخفاء بيصير من إعدادات الافتتاح، ومن هناك بيرجع.", "Hiding goes through the opening's settings, and it comes back from there.")}{" "}
+              {selBlock === "instagram"
+                ? tr("بيطلع لما يكون للمتجر رابط إنستغرام (الإعدادات ← أسفل الصفحة) وما في آراء زبائن بالصفحة.", "It shows when the store has an Instagram link (Settings → footer) and the page has no customer reviews.")
+                : selBlock === "fabric"
+                  ? tr("مكانه ثابت: بعد أول قسم منتجات.", "Its place is fixed: after the first products section.")
+                  : null}
             </p>
           </div>
         ) : null}
@@ -906,7 +982,31 @@ export default function StudioPage() {
     for (const b of loose) out.splice(indexAt(b), 0, b);
     return out;
   })();
-  const slotsOf = (sid: string) => shapes.filter((s) => s.parentId === sid && s.id.startsWith("slot:")).map((s) => s.id);
+  /** What's measured inside an old section, scene, field or piece (not the tree's own elements). */
+  const piecesOf = (sid: string) => shapes.filter((s) => s.parentId === sid && extras.has(s.id) && extras.get(s.id)!.kind !== "block").map((s) => s.id);
+  // The rows under an item that's open: its fields and pieces, and theirs while one of them is open.
+  const pieceRows = (sid: string, depth: number, pick: (sid: string) => void): React.ReactNode[] => {
+    const kids = piecesOf(sid);
+    const shown = kids.length > 40 && !kids.some((k) => selPath.includes(k)) ? kids.slice(0, 40) : kids;
+    const rows = shown.flatMap((f) => [
+      <button
+        key={f}
+        type="button"
+        onClick={() => pick(f)}
+        onMouseEnter={() => setHovered(f)}
+        onMouseLeave={() => setHovered(null)}
+        className={`flex w-full truncate rounded-md py-0.5 pe-2 text-start text-[11px] ${selected === f ? "bg-accent-500/25 text-white" : hovered === f ? "bg-white/[0.06] text-white" : "text-white/55 hover:bg-white/[0.04]"}`}
+        style={{ paddingInlineStart: 20 + depth * 12 }}
+        data-testid="studio-layer"
+        data-node={f}
+      >
+        {label(f)}
+      </button>,
+      ...(selPath.includes(f) ? pieceRows(f, depth + 1, pick) : []),
+    ]);
+    if (shown.length < kids.length) rows.push(<p key={`${sid}-more`} className="py-0.5 text-[10px] text-white/30" style={{ paddingInlineStart: 20 + depth * 12 }}>+{kids.length - shown.length}</p>);
+    return rows;
+  };
   const dropOn = (target: string) => {
     const from = dragged.current;
     dragged.current = null;
@@ -962,13 +1062,7 @@ export default function StudioPage() {
             {n && n.type !== "legacy" ? (
               <Layers index={index!} id={sid} selected={selected} hovered={hovered} sectionTypes={sectionTypes} onPick={pick} onHover={setHovered} onDragStart={(x) => (dragged.current = x)} onDropOn={dropAny} depth={2} childrenOnly />
             ) : null}
-            {open
-              ? slotsOf(sid).map((f) => (
-                  <button key={f} type="button" onClick={() => pick(f)} className={`flex w-full truncate rounded-md py-0.5 pe-2 ps-9 text-start text-[11px] ${selected === f ? "bg-accent-500/25 text-white" : "text-white/55 hover:bg-white/[0.04]"}`} data-testid="studio-layer" data-node={f}>
-                    {label(f)}
-                  </button>
-                ))
-              : null}
+            {open ? pieceRows(sid, 1, pick) : null}
           </div>
         );
       })}

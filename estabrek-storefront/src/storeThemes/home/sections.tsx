@@ -50,9 +50,9 @@ export function ThProducts({ theme, lang, products, title, subtitle, slider }: {
       {products.length ? (
         <div className={`th-grid ${slider ? "th-reel" : ""}`} data-th-stagger="">
           {products.map((p, i) => (
-            <article key={p.id || p.slug || i} className="th-card" data-th-tilt="">
+            <article key={p.id || p.slug || i} className="th-card" data-th-tilt="" data-part="card">
               <Link href={p.slug ? `/p/${encodeURIComponent(p.slug)}` : "/shop"} className="th-card-link">
-                <div className={`th-card-media${p.secondaryImageUrl ? " has-alt" : ""}`}>
+                <div className={`th-card-media${p.secondaryImageUrl ? " has-alt" : ""}`} data-part="card-image">
                   <RoseBadge badge={p.badge} />
                   {p.imageUrl ? (
                     <>
@@ -64,9 +64,9 @@ export function ThProducts({ theme, lang, products, title, subtitle, slider }: {
                   )}
                 </div>
                 <div className="th-card-info">
-                  {p.category ? <span className="th-card-cat">{p.category}</span> : null}
-                  <h3 className="th-card-title">{p.title}</h3>
-                  {p.priceText ? <span className="th-card-price">{p.priceText}</span> : null}
+                  {p.category ? <span className="th-card-cat" data-part="card-category">{p.category}</span> : null}
+                  <h3 className="th-card-title" data-part="card-name">{p.title}</h3>
+                  {p.priceText ? <span className="th-card-price" data-part="card-price">{p.priceText}</span> : null}
                 </div>
               </Link>
               {p.colors?.length ? (
@@ -169,7 +169,7 @@ export function ThCta({ theme, d, lang }: { theme: StoreTheme; d: Record<string,
             {d.subtitle || d.text}
           </p>
         ) : null}
-        <Link href={href} className="th-button" data-th-magnetic="" data-edit={d.buttonLabel ? "buttonLabel" : "button.label"}>
+        <Link href={href} className="th-button" data-th-magnetic="" data-edit={d.buttonLabel ? "buttonLabel" : "button.label"} data-edit-link={d.buttonLabel ? "buttonHref" : "button.href"}>
           {label}
           <span className="th-arrow" aria-hidden>
             →
@@ -214,7 +214,7 @@ export function ThPanel({ d, theme, lang }: { d: Record<string, any>; theme: Sto
           </p>
         ) : null}
         {d.primaryButton?.label ? (
-          <Link href={d.primaryButton.href || "/shop"} className="th-button" data-edit="primaryButton.label">
+          <Link href={d.primaryButton.href || "/shop"} className="th-button" data-edit="primaryButton.label" data-edit-link="primaryButton.href">
             {d.primaryButton.label}
           </Link>
         ) : null}

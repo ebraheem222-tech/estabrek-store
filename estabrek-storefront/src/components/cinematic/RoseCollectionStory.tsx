@@ -20,6 +20,7 @@ import { Icon } from "./Icons";
 import { RoseBadge } from "./RoseBadge";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
+import { sceneField, sceneSeed, sceneWord } from "./sceneWords";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
 import { RoseMascot, type MascotHandle, type PalmRef } from "./mascot/RoseMascot";
@@ -97,15 +98,15 @@ function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
   return (
     <div className="season-rack story-rack">
       {chapter.products.map((p, i) => (
-        <article key={p.id} className="season-card story-card" style={{ "--i": i } as CSSProperties}>
+        <article key={p.id} className="season-card story-card" style={{ "--i": i } as CSSProperties} data-part="card">
           <Link href={`/p/${encodeURIComponent(p.slug)}`} className="season-card-link">
-            <span className={`season-card-image${p.secondaryImageUrl ? " has-alt" : ""}`}>
+            <span className={`season-card-image${p.secondaryImageUrl ? " has-alt" : ""}`} data-part="card-image">
               <RoseBadge badge={p.badge} ar={ar} />
               <Image src={p.imageUrl || fallback} alt={p.title} fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-main" />
               {p.secondaryImageUrl && <Image src={p.secondaryImageUrl} alt="" aria-hidden fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-alt" />}
             </span>
-            <span className="season-card-title">{p.title}</span>
-            {p.priceText && <span className="season-card-price">{p.priceText}</span>}
+            <span className="season-card-title" data-part="card-name">{p.title}</span>
+            {p.priceText && <span className="season-card-price" data-part="card-price">{p.priceText}</span>}
           </Link>
           <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={tr(lang, "إضافة سريعة", "Quick add")} />
         </article>
@@ -120,7 +121,8 @@ function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
  * its own 3D model, backdrop, products and storefront colour, then the
  * storefront returns to its own colours.
  */
-export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) {
+/** `words`: the admin's words and colours for this scene (the opening's roseScenes.stories, see sceneWords.ts). */
+export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapter[]; words?: unknown }) {
   const { language } = useLanguage();
   const lang = language;
   const ar = lang === "ar";
@@ -139,6 +141,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
   const [sceneReady, setSceneReady] = useState(false);
   const [sceneFailed, setSceneFailed] = useState(false);
   const keys = chapters.map((c) => c.key);
+  const seedKey = chapters.map((c) => sceneSeed(words, [c.key, "seed"], STORY[c.key].seed)).join(",");
 
   useEffect(() => {
     const el = root.current;
@@ -172,7 +175,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       const layers = Array.from(el.querySelectorAll<HTMLElement>(".story-layer"));
       const dots = Array.from(el.querySelectorAll<HTMLElement>(".story-meter-step"));
       let saved = false;
-      const seeds = chapters.map((c) => STORY[c.key].seed);
+      const seeds = seedKey.split(",");
       const seedAt = (p: number) => {
         let seed = seeds[Math.min(n - 1, Math.floor(p * n))];
         for (let j = 1; j < n; j++) {
@@ -303,7 +306,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       };
     });
     return () => mm.revert();
-  }, [settings.scrollAnimationsEnabled, theme, chapters]);
+  }, [settings.scrollAnimationsEnabled, theme, chapters, seedKey]);
 
   // Rose introduces each chapter as it takes the stage.
   useEffect(() => {
@@ -347,7 +350,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           ))}
         </div>
         {motion && near && !sceneFailed && (
-          <div className="story-canvas" aria-hidden="true">
+          <div className="story-canvas" aria-hidden="true" data-part="scene">
             <SceneBoundary onError={() => setSceneFailed(true)}>
               <CollectionModelsScene
                 keys={keys}
@@ -378,19 +381,21 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         )}
         <div className="story-stage">
           {chapters.map((chapter, i) => {
-            const c = STORY[chapter.key][lang];
+            const own = STORY[chapter.key][lang];
+            const word = (name: keyof Copy) => sceneWord(words, [chapter.key, name], lang, own[name]);
+            const field = (name: keyof Copy) => sceneField("stories", [chapter.key, name], lang);
             return (
               <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties}>
                 <div className="season-copy story-copy">
                   <span className="atelier-eyebrow">
                     <Icon name="spark" />
-                    {c.eyebrow}
-                    <em>· {chapter.categoryName}</em>
+                    <span data-edit={field("eyebrow")}>{word("eyebrow")}</span>
+                    <em data-part="category">· {chapter.categoryName}</em>
                   </span>
-                  <h2>{c.title}</h2>
-                  <p>{c.text}</p>
-                  <Link href={chapter.href} className="atelier-button button-dark">
-                    {c.cta}
+                  <h2 data-edit={field("title")} data-edit-lines="">{word("title")}</h2>
+                  <p data-edit={field("text")}>{word("text")}</p>
+                  <Link href={chapter.href} className="atelier-button button-dark" data-edit-box={field("cta")}>
+                    <span data-edit={field("cta")} data-edit-boxed="">{word("cta")}</span>
                     <Icon name="arrow" />
                   </Link>
                 </div>
@@ -399,11 +404,11 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
             );
           })}
         </div>
-        <ol className="story-meter" aria-hidden="true">
+        <ol className="story-meter" aria-hidden="true" data-part="meter">
           {chapters.map((chapter, i) => (
             <li key={chapter.key} className="story-meter-step" data-active={i === 0 ? "" : undefined}>
               <span />
-              {STORY[chapter.key][lang].eyebrow}
+              {sceneWord(words, [chapter.key, "eyebrow"], lang, STORY[chapter.key][lang].eyebrow)}
             </li>
           ))}
         </ol>

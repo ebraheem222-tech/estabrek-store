@@ -5,6 +5,7 @@
  * hide), and the shop's theme (preview, then save for the whole shop).
  */
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { tr } from "../lib/words";
 import { adminLang } from "../lib/lang";
@@ -104,6 +105,29 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           <p className="text-[11px] leading-5 text-white/40">{tr("الفاضي بياخد كلام المتجر الجاهز.", "Empty takes the shop's own words.")}</p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Where a piece's words and pictures come from (the editor changes its look and motion only). */
+const PART_SOURCE: Record<string, () => string> = {
+  products: () => tr("الاسم والسعر والصور بتيجي من المنتج نفسه، وبتتغيّر من صفحة المنتجات.", "The name, price and pictures come from the product itself and change on the products page."),
+  categories: () => tr("اسم التصنيف ورابطه بيجوا من صفحة التصنيفات.", "The category's name and link come from the categories page."),
+  moving: () => tr("بيتحرّك لحاله مع المشهد. بتقدر تخفي المشهد كله من إعداداته.", "It moves by itself with the scene. The whole scene can be hidden from its settings."),
+  instagram: () => tr("الصور من أول صور المنتجات، والحساب من رابط إنستغرام بالإعدادات.", "The pictures are the first product pictures, and the account is the Instagram link in the settings."),
+  design: () => tr("جزء من تصميم القسم. كلامه وصوره بتتغيّر من إعدادات القسم.", "Part of the section's design. Its words and pictures change from the section's settings."),
+};
+const sourceOf = (name: string) =>
+  name.startsWith("card") ? "products" : name === "category" ? "categories" : ["mascot", "scene", "meter", "steps", "film", "cue"].includes(name) ? "moving" : name === "tiles" || name === "tile" || name === "handle" ? "instagram" : "design";
+
+export function PartInfo({ extra }: { extra: { kind: "part"; name: string; n: number; count: number } | { kind: "auto"; tag: string } }) {
+  const source = extra.kind === "part" ? sourceOf(extra.name) : "design";
+  return (
+    <div className="space-y-2 rounded-xl border border-white/[0.08] p-3 text-[11px] leading-5 text-white/55" data-testid="studio-part">
+      <p>{PART_SOURCE[source]()}</p>
+      {extra.kind === "part" && extra.count > 1 ? <p className="text-white/40">{tr(`واحدة من ${extra.count} متلها بهالقسم.`, "One of {0} alike in this section.", [extra.count])}</p> : null}
+      {source === "products" ? <Link to="/admin/catalog/products" className="block text-accent-300 hover:underline">{tr("صفحة المنتجات", "The products page")}</Link> : null}
+      {source === "categories" ? <Link to="/admin/catalog/categories" className="block text-accent-300 hover:underline">{tr("صفحة التصنيفات", "The categories page")}</Link> : null}
     </div>
   );
 }
