@@ -1,11 +1,13 @@
 /**
- * The gaming models by name, without any 3D code (the server, the admin's list and the
+ * The 3D models by name (gaming first, then the other kinds of store), without any 3D code (the server, the admin's list and the
  * page's picker use this; models.tsx draws them). Each knows the words that find its
  * category in a store (a store's own link wins: Admin → ثيمات المتجر → الموديلات).
  */
 import type { Words } from "../types";
 
-export const MODEL_KINDS = ["controller", "headset", "console", "handheld", "keyboard", "mouse", "arcade", "vr", "wheel", "dice", "trophy", "coin", "sword", "shield", "potion", "rocket", "helmet", "tv", "chair", "cartridge"] as const;
+export const MODEL_KINDS = ["controller", "headset", "console", "handheld", "keyboard", "mouse", "arcade", "vr", "wheel", "dice", "trophy", "coin", "sword", "shield", "potion", "rocket", "helmet", "tv", "chair", "cartridge",
+  // Products of every other kind of store.
+  "phone", "laptop", "tablet", "watch", "camera", "speaker", "book", "perfume", "lipstick", "jar", "sneaker", "handbag", "hanger", "ring", "gem", "mug", "plant", "lamp", "dumbbell", "ball", "guitar", "vinyl", "vase", "blocks", "palette"] as const;
 export type ModelKind = (typeof MODEL_KINDS)[number];
 
 const w = (ar: string, en: string, he: string): Words => ({ ar, en, he });
@@ -28,15 +30,40 @@ export const MODEL_INFO: Record<ModelKind, { label: Words; find: string[] }> = {
   potion: { label: w("عروض وصناديق", "Deals & loot boxes", "מבצעים ותיבות"), find: ["bundle", "loot", "deal", "offer", "عروض", "صندوق", "מבצע"] },
   rocket: { label: w("فضاء وخيال علمي", "Space & sci-fi", "חלל ומדע בדיוני"), find: ["space", "sci-fi", "scifi", "فضاء", "خيال علمي", "חלל"] },
   tv: { label: w("شاشات وريترو", "Screens & retro", "מסכים ורטרו"), find: ["monitor", "screen", "tv", "display", "شاشة", "شاشات", "تلفزيون", "מסך"] },
-  chair: { label: w("كراسي جيمنغ", "Gaming chairs", "כיסאות גיימינג"), find: ["chair", "seat", "desk", "كرسي", "كراسي", "مكتب", "כיסא"] },
+  chair: { label: w("كراسي", "Chairs", "כיסאות"), find: ["chair", "seat", "desk", "كرسي", "كراسي", "مكتب", "כיסא"] },
   cartridge: { label: w("ألعاب", "Games", "משחקים"), find: ["game", "games", "cartridge", "ألعاب", "لعبة", "משחק"] },
   helmet: { label: w("ملابس ومقتنيات", "Merch & collectibles", "מרצ'נדייז ואספנות"), find: ["merch", "collectible", "figure", "apparel", "ملابس", "مقتنيات", "تماثيل", "מרצ"] },
+  phone: { label: w("موبايلات", "Phones", "טלפונים"), find: ["phone", "mobile", "iphone", "galaxy", "موبايل", "جوال", "هاتف", "هواتف", "טלפון", "סלולר"] },
+  laptop: { label: w("لابتوبات", "Laptops", "מחשבים ניידים"), find: ["laptop", "notebook", "macbook", "computer", "لابتوب", "حاسوب", "كمبيوتر", "מחשב", "לפטופ"] },
+  tablet: { label: w("تابلت", "Tablets", "טאבלטים"), find: ["tablet", "ipad", "تابلت", "ايباد", "لوحي", "טאבלט"] },
+  watch: { label: w("ساعات", "Watches", "שעונים"), find: ["watch", "smartwatch", "ساعة", "ساعات", "שעון"] },
+  camera: { label: w("كاميرات", "Cameras", "מצלמות"), find: ["camera", "photo", "lens", "كاميرا", "كاميرات", "تصوير", "عدسة", "מצלמה"] },
+  speaker: { label: w("صوتيات", "Audio", "שמע"), find: ["speaker", "audio", "sound", "earbuds", "سماعة", "صوت", "صوتيات", "רמקול", "שמע"] },
+  book: { label: w("كتب", "Books", "ספרים"), find: ["book", "novel", "read", "كتاب", "كتب", "رواية", "روايات", "ספר", "ספרים"] },
+  perfume: { label: w("عطور", "Perfumes", "בשמים"), find: ["perfume", "fragrance", "oud", "musk", "عطر", "عطور", "عود", "مسك", "בושם"] },
+  lipstick: { label: w("مكياج", "Make-up", "איפור"), find: ["makeup", "make-up", "lipstick", "cosmetic", "مكياج", "روج", "أحمر شفاه", "تجميل", "איפור", "שפתון"] },
+  jar: { label: w("عناية بالبشرة", "Skincare", "טיפוח"), find: ["skin", "care", "cream", "serum", "عناية", "كريم", "سيروم", "بشرة", "טיפוח", "קרם"] },
+  sneaker: { label: w("أحذية", "Shoes", "נעליים"), find: ["shoe", "sneaker", "trainer", "boot", "حذاء", "أحذية", "احذية", "كوتشي", "נעל", "נעליים"] },
+  handbag: { label: w("شنط", "Bags", "תיקים"), find: ["bag", "handbag", "purse", "wallet", "شنطة", "شنط", "حقيبة", "حقائب", "תיק", "ארנק"] },
+  hanger: { label: w("ملابس", "Clothing", "ביגוד"), find: ["dress", "clothing", "clothes", "fashion", "abaya", "hijab", "ملابس", "فستان", "فساتين", "عباية", "حجاب", "בגד", "שמלה", "ביגוד"] },
+  ring: { label: w("خواتم", "Rings", "טבעות"), find: ["ring", "wedding", "engagement", "خاتم", "خواتم", "محبس", "טבעת"] },
+  gem: { label: w("مجوهرات", "Jewellery", "תכשיטים"), find: ["jewel", "diamond", "gold", "necklace", "earring", "مجوهرات", "ذهب", "الماس", "عقد", "حلق", "תכשיט", "יהלום", "זהב"] },
+  mug: { label: w("قهوة ومشروبات", "Coffee & drinks", "קפה ומשקאות"), find: ["coffee", "tea", "mug", "cup", "drink", "قهوة", "شاي", "كوب", "فنجان", "مشروب", "קפה", "תה", "ספל"] },
+  plant: { label: w("نباتات", "Plants", "צמחים"), find: ["plant", "garden", "flower", "green", "نبات", "نباتات", "زرع", "حديقة", "ورد", "צמח", "גינה", "פרח"] },
+  lamp: { label: w("إضاءة وديكور", "Lighting & decor", "תאורה ועיצוב"), find: ["lamp", "light", "decor", "home", "furniture", "إضاءة", "اضاءة", "ديكور", "أثاث", "منزل", "מנורה", "תאורה", "רהיט"] },
+  dumbbell: { label: w("رياضة ولياقة", "Fitness", "כושר"), find: ["fitness", "gym", "sport", "dumbbell", "weight", "رياضة", "لياقة", "جيم", "أوزان", "כושר", "ספורט"] },
+  ball: { label: w("كرة وألعاب", "Balls & play", "כדורים ומשחק"), find: ["ball", "football", "soccer", "basketball", "كرة", "طابة", "כדור"] },
+  guitar: { label: w("آلات موسيقية", "Instruments", "כלי נגינה"), find: ["guitar", "instrument", "music", "piano", "جيتار", "غيتار", "آلات", "موسيقى", "גיטרה", "כלי נגינה"] },
+  vinyl: { label: w("أسطوانات", "Records", "תקליטים"), find: ["vinyl", "record", "album", "cd", "اسطوانة", "أسطوانات", "ألبوم", "تسجيلات", "תקליט"] },
+  vase: { label: w("فخار وخزف", "Ceramics", "קרמיקה"), find: ["vase", "ceramic", "pottery", "clay", "فازة", "مزهرية", "فخار", "خزف", "אגרטל", "קרמיקה"] },
+  blocks: { label: w("ألعاب أطفال", "Kids' toys", "צעצועים"), find: ["toy", "kids", "baby", "lego", "blocks", "ألعاب", "أطفال", "اطفال", "مكعبات", "צעצוע", "ילדים"] },
+  palette: { label: w("فن ورسم", "Art supplies", "אמנות וציור"), find: ["art", "paint", "brush", "canvas", "drawing", "فن", "رسم", "ألوان", "لوحة", "لوحات", "אמנות", "ציור"] },
 };
 
 export const ANIMS = ["none", "spin", "float", "bounce", "pulse", "swing", "orbit"] as const;
 export const TRIGGERS = ["always", "hover", "scroll"] as const;
 export type StageAnim = { type: (typeof ANIMS)[number]; speed: number; amount: number; trigger: (typeof TRIGGERS)[number] };
-export const FINISHES = ["neon", "metal", "toy", "voxel"] as const;
+export const FINISHES = ["neon", "metal", "toy", "voxel", "matte", "glass", "gold"] as const;
 /** A model's parts that take a colour of their own (models.tsx ModelColours). */
 export const PARTS = ["body", "trim", "accent", "glow", "screen", "metal"] as const;
 export type StagePart = (typeof PARTS)[number];
@@ -70,6 +97,31 @@ export const MODEL_KNOBS: Record<ModelKind, KnobSpec[]> = {
   tv: [knob("screen", w("حجم الشاشة", "Screen size", "גודל המסך"), 0.7, 1.1), knob("antennas", w("طول الهوائي", "Antenna length", "אורך האנטנות"), 0, 1.8)],
   chair: [knob("back", w("طول الظهر", "Back height", "גובה המשענת"), 0.7, 1.3), knob("wings", w("الأجنحة", "Side wings", "כנפי צד"), 0, 1.6)],
   cartridge: [knob("label", w("حجم الملصق", "Label size", "גודל התווית"), 0.5, 1.1), count("ridges", w("عدد الخطوط", "Ridges", "פסים"), 0, 8, 5)],
+  phone: [knob("height", w("الطول", "Height", "גובה"), 0.8, 1.25), count("lenses", w("عدد العدسات", "Lenses", "עדשות"), 1, 4, 3)],
+  laptop: [knob("open", w("فتحة الشاشة", "Lid angle", "זווית המכסה"), 0.2, 1.3), knob("width", w("العرض", "Width", "רוחב"), 0.8, 1.25)],
+  tablet: [knob("width", w("العرض", "Width", "רוחב"), 0.75, 1.3), knob("pen", w("القلم", "Pen", "עט"), 0, 1.4)],
+  watch: [knob("face", w("حجم الوجه", "Face size", "גודל הפנים"), 0.7, 1.35), count("round", w("وجه دائري", "Round face", "פנים עגולות"), 0, 1, 1)],
+  camera: [knob("lens", w("طول العدسة", "Lens length", "אורך העדשה"), 0.4, 2), knob("grip", w("حجم المقبض", "Grip size", "גודל האחיזה"), 0.6, 1.5)],
+  speaker: [knob("height", w("الطول", "Height", "גובה"), 0.7, 1.4), count("drivers", w("عدد السماعات", "Drivers", "רמקולים"), 1, 3, 2)],
+  book: [count("stack", w("عدد الكتب", "Books in the stack", "ספרים בערימה"), 1, 4, 3), knob("open", w("الكتاب المفتوح", "Open book", "ספר פתוח"), 0, 1, 1)],
+  perfume: [knob("neck", w("طول العنق", "Neck length", "אורך הצוואר"), 0.5, 1.8), knob("cap", w("حجم الغطاء", "Cap size", "גודל הפקק"), 0.6, 1.8)],
+  lipstick: [knob("bullet", w("طول الروج", "Bullet length", "אורך השפתון"), 0.5, 1.6), knob("cap", w("الغطاء", "Cap", "מכסה"), 0, 1.3)],
+  jar: [knob("height", w("الطول", "Height", "גובה"), 0.6, 1.6), knob("lid", w("حجم الغطاء", "Lid size", "גודל המכסה"), 0.6, 1.4)],
+  sneaker: [knob("sole", w("سماكة النعل", "Sole thickness", "עובי הסוליה"), 0.5, 2.2), knob("collar", w("ارتفاع الكاحل", "Collar height", "גובה הצווארון"), 0.6, 1.8)],
+  handbag: [knob("handle", w("طول اليد", "Handle height", "גובה הידית"), 0.4, 1.8), knob("width", w("العرض", "Width", "רוחב"), 0.75, 1.3)],
+  hanger: [knob("length", w("طول القطعة", "Garment length", "אורך הבגד"), 0.6, 1.4), knob("flare", w("اتساع الطرف", "Hem flare", "התרחבות"), 0.6, 1.6)],
+  ring: [knob("stone", w("حجم الحجر", "Stone size", "גודל האבן"), 0, 2), knob("band", w("سماكة الطوق", "Band thickness", "עובי הטבעת"), 0.5, 2)],
+  gem: [count("facets", w("عدد الأوجه", "Facets", "פאות"), 5, 12, 8), knob("height", w("الارتفاع", "Height", "גובה"), 0.7, 1.5)],
+  mug: [knob("height", w("الطول", "Height", "גובה"), 0.7, 1.4), knob("steam", w("البخار", "Steam", "אדים"), 0, 1.6)],
+  plant: [count("leaves", w("عدد الأوراق", "Leaves", "עלים"), 3, 9, 6), knob("pot", w("حجم القصرية", "Pot size", "גודל העציץ"), 0.7, 1.4)],
+  lamp: [knob("height", w("الطول", "Height", "גובה"), 0.7, 1.4), knob("shade", w("حجم الغطاء", "Shade size", "גודל האהיל"), 0.6, 1.5)],
+  dumbbell: [knob("plates", w("حجم الأوزان", "Plate size", "גודל המשקולות"), 0.6, 1.5), knob("bar", w("طول المقبض", "Bar length", "אורך המוט"), 0.7, 1.5)],
+  ball: [count("panels", w("نوع الكرة", "Ball type", "סוג הכדור"), 0, 2, 0), knob("size", w("الحجم", "Size", "גודל"), 0.7, 1.3)],
+  guitar: [knob("neck", w("طول الزند", "Neck length", "אורך הצוואר"), 0.7, 1.35), count("strings", w("عدد الأوتار", "Strings", "מיתרים"), 4, 12, 6)],
+  vinyl: [knob("sleeve", w("الغلاف", "Sleeve", "עטיפה"), 0, 1), knob("label", w("حجم الملصق", "Label size", "גודל התווית"), 0.5, 1.6)],
+  vase: [knob("belly", w("عرض البطن", "Belly width", "רוחב הבטן"), 0.6, 1.5), knob("neck", w("طول العنق", "Neck length", "אורך הצוואר"), 0.5, 1.8)],
+  blocks: [count("count", w("عدد المكعبات", "Blocks", "קוביות"), 2, 6, 4), knob("size", w("الحجم", "Size", "גודל"), 0.7, 1.3)],
+  palette: [count("paints", w("عدد الألوان", "Paints", "צבעים"), 3, 7, 5), knob("brush", w("الفرشاة", "Brush", "מכחול"), 0, 1.4)],
 };
 
 /** A model's knobs with the store's values (else each knob's own), each kept in range. */

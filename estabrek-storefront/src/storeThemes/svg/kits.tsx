@@ -8,6 +8,7 @@
  * All are decoration: hidden from screen readers.
  */
 import type { SvgKit } from "../types";
+import { moreArt, moreBackdrop, moreDivider } from "./moreKits";
 
 const A = "var(--th-accent)";
 const S = "var(--th-strong)";
@@ -341,6 +342,8 @@ function EmberBackdrop() {
 }
 
 export function Backdrop({ kit }: { kit: SvgKit }) {
+  const more = moreBackdrop(kit);
+  if (more) return more;
   if (kit === "glitch") return <GlitchBackdrop />;
   if (kit === "zen") return <ZenBackdrop />;
   if (kit === "frost") return <FrostBackdrop />;
@@ -360,6 +363,8 @@ export function Backdrop({ kit }: { kit: SvgKit }) {
 /* ------------------------------------------------------------- dividers */
 
 export function Divider({ kit }: { kit: SvgKit }) {
+  const more = moreDivider(kit);
+  if (more) return more;
   if (kit === "glitch")
     return (
       <svg className="th-divider" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden focusable="false" shapeRendering="crispEdges">
@@ -466,6 +471,8 @@ export function Divider({ kit }: { kit: SvgKit }) {
 
 /** What the opening shows when the store hasn't picked a picture. */
 export function HeroArt({ kit }: { kit: SvgKit }) {
+  const more = moreArt(kit);
+  if (more) return more;
   if (kit === "circuit")
     return (
       <svg className="th-hero-art" viewBox="0 0 400 400" aria-hidden focusable="false">

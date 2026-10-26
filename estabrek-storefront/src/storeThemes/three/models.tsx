@@ -1,64 +1,20 @@
 "use client";
 /**
- * Gaming models drawn in code (three.js through react-three-fiber): no files to download,
- * a few kilobytes each, and coloured by the theme (ModelColours from the theme's palette).
- * Each sits in about a 2.4-unit box, centred, facing the camera. `style` changes the
- * finish: neon (glowing edges), metal (polished), toy (soft plastic), voxel (blocky).
+ * Models drawn in code (three.js through react-three-fiber): no files to download, a few
+ * kilobytes each, and coloured by the theme (ModelColours from the theme's palette). The
+ * gaming ones are here, every other kind of store's in productModels.tsx. Each sits in
+ * about a 2.4-unit box, centred, facing the camera. `style` changes the finish (parts.tsx).
  * `knobs` are the model's own shape knobs (kinds.ts MODEL_KNOBS): longer grips, a bigger
  * screen, how many spokes; each model reads its own, 1 (or the knob's default) as drawn.
  */
-import { RoundedBox } from "@react-three/drei";
 import { useEffect, useMemo, type ReactNode } from "react";
 import * as THREE from "three";
 import { knobsOf, type ModelKind } from "./kinds";
+import { Block, seg, shown, useMaterials, type Draw, type ModelProps } from "./parts";
+import { PRODUCT_MODELS } from "./productModels";
 
 export type { ModelKind };
-export type ModelColours = { body: string; trim: string; accent: string; glow: string; metal: string; screen: string };
-export type ModelStyle = "neon" | "metal" | "toy" | "voxel";
-export type ModelProps = { c: ModelColours; style: ModelStyle };
-type Knobs = Record<string, number>;
-
-
-/* ---------------------------------------------------------------- materials */
-
-function useMaterials({ c, style }: ModelProps) {
-  // Not disposed when they change: the stage's warm-up (renderer.compileAsync) may still be
-  // waiting on them, and three shares the shader programs anyway.
-  return useMemo(() => {
-    const flat = style === "voxel";
-    const rough = style === "toy" ? 0.55 : style === "metal" ? 0.22 : 0.35;
-    const metal = style === "metal" ? 0.75 : 0.15;
-    const std = (color: string, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) =>
-      new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, flatShading: flat, ...extra });
-    return {
-      body: std(c.body),
-      trim: std(c.trim),
-      accent: std(c.accent, { roughness: 0.3 }),
-      metal: new THREE.MeshStandardMaterial({ color: c.metal, roughness: 0.18, metalness: 0.95, flatShading: flat }),
-      glow: new THREE.MeshStandardMaterial({ color: c.glow, emissive: c.glow, emissiveIntensity: style === "neon" ? 2.4 : 1.2, toneMapped: false }),
-      screen: new THREE.MeshStandardMaterial({ color: c.screen, emissive: c.screen, emissiveIntensity: 0.9, roughness: 0.2 }),
-      dark: std("#121218", { roughness: 0.6, metalness: 0.2 }),
-    };
-  }, [c.body, c.trim, c.accent, c.glow, c.metal, c.screen, style]);
-}
-type Mats = ReturnType<typeof useMaterials>;
-type Draw = ModelProps & { m: Mats; k: Knobs };
-
-/** A rounded box, or a plain box in the voxel finish. */
-function Block({ size, radius = 0.08, material, ...rest }: { size: [number, number, number]; radius?: number; material: THREE.Material; position?: [number, number, number]; rotation?: [number, number, number]; style: ModelStyle }) {
-  const { style, ...place } = rest;
-  if (style === "voxel")
-    return (
-      <mesh {...place} material={material}>
-        <boxGeometry args={size} />
-      </mesh>
-    );
-  return <RoundedBox args={size} radius={Math.min(radius, ...size.map((s) => s / 2 - 0.001))} smoothness={4} material={material} {...place} />;
-}
-
-const seg = (style: ModelStyle, n: number) => (style === "voxel" ? Math.max(4, Math.round(n / 4)) : n);
-/** A knob turned all the way down hides its part. */
-const shown = (v: number) => v > 0.04;
+export type { ModelColours, ModelProps, ModelStyle } from "./parts";
 
 /* --------------------------------------------------------------- the models */
 
@@ -778,9 +734,10 @@ const MODELS: Record<ModelKind, (p: Draw) => ReactNode> = {
   tv: Tv,
   chair: Chair,
   cartridge: Cartridge,
+  ...PRODUCT_MODELS,
 };
 
-/** One gaming model in the theme's colours, with the store's shape knobs if any. */
+/** One model in the theme's colours, with the store's shape knobs if any. */
 export function GameModel({ kind, knobs, ...p }: ModelProps & { kind: ModelKind; knobs?: Record<string, number> }) {
   const m = useMaterials(p);
   const known = MODELS[kind] ? kind : "controller";

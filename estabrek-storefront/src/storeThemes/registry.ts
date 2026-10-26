@@ -2,8 +2,12 @@
  * The store themes. The rose design (Estabrek) is not one of them: it is what the shop
  * is with no theme chosen. Each theme here repaints the whole shop (the rose stylesheet's
  * colours, fonts and corners) and brings its own home page, motion and drawings; gaming
- * themes also bring a 3D stage of gaming models (storeThemes/three).
+ * themes also bring a 3D stage of gaming models (storeThemes/three). The themes for every
+ * other kind of store are in themes/ (style, tech, life); many bring a 3D stage of their own products.
  */
+import { LIFE_THEMES } from "./themes/life";
+import { STYLE_THEMES } from "./themes/style";
+import { TECH_THEMES } from "./themes/tech";
 import type { StoreTheme } from "./types";
 
 const w = (ar: string, en: string, he: string) => ({ ar, en, he });
@@ -899,6 +903,9 @@ export const STORE_THEMES: StoreTheme[] = [
       marquee: [w("طازة يومياً", "Baked daily", "נאפה כל יום"), w("مكوّنات طبيعية", "Real ingredients", "חומרי גלם טבעיים"), w("توصيل بنفس اليوم", "Same-day delivery", "משלוח באותו יום"), w("طلبات خاصة", "Custom orders", "הזמנות מיוחדות")],
     },
   },
+  ...STYLE_THEMES,
+  ...TECH_THEMES,
+  ...LIFE_THEMES,
 ];
 
 export const themeById = (id?: string | null) => (id ? STORE_THEMES.find((t) => t.id === id) ?? null : null);

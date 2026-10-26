@@ -27,7 +27,7 @@ export type StoreThemeInfo = {
 export type KnobSpec = { id: string; label: Words; min: number; max: number; step: number; def: number; values?: number[] };
 export type StageModelInfo = { kind: string; label: Words; knobs?: KnobSpec[] };
 export const STAGE_PARTS = ["body", "trim", "accent", "glow", "screen", "metal"] as const;
-export const STAGE_FINISHES = ["neon", "metal", "toy", "voxel"] as const;
+export const STAGE_FINISHES = ["neon", "metal", "toy", "voxel", "matte", "glass", "gold"] as const;
 export const STAGE_ANIMS = ["none", "spin", "float", "bounce", "pulse", "swing", "orbit"] as const;
 export const STAGE_TRIGGERS = ["always", "hover", "scroll"] as const;
 export type StageAnim = { type: (typeof STAGE_ANIMS)[number]; speed: number; amount: number; trigger: (typeof STAGE_TRIGGERS)[number] };
@@ -135,13 +135,41 @@ export async function saveStoreTheme(choice: StoreThemeChoice | null) {
 
 export const FAMILY_LABEL: Record<string, () => string> = {
   fashion: () => tr("أزياء", "Fashion"),
-  shoes: () => tr("أحذية ورياضة", "Shoes & sport"),
-  electronics: () => tr("إلكترونيات", "Electronics"),
+  shoes: () => tr("أحذية", "Shoes"),
+  electronics: () => tr("موبايلات وكمبيوتر وإلكترونيات", "Phones, computers & electronics"),
   gaming: () => tr("ألعاب", "Gaming"),
-  beauty: () => tr("تجميل وعناية", "Beauty & care"),
+  beauty: () => tr("تجميل وعطور", "Beauty & perfume"),
+  jewelry: () => tr("مجوهرات", "Jewellery"),
   books: () => tr("كتب وقرطاسية", "Books & stationery"),
+  art: () => tr("فن ورسم", "Art"),
   home: () => tr("بيت وديكور", "Home & decor"),
   food: () => tr("أكل وحلويات", "Food & sweets"),
   kids: () => tr("أطفال", "Kids"),
+  sports: () => tr("رياضة", "Sport"),
+  pets: () => tr("حيوانات أليفة", "Pets"),
+  flowers: () => tr("زهور ونباتات", "Flowers & plants"),
+  music: () => tr("موسيقى", "Music"),
   general: () => tr("عام", "General"),
 };
+
+/** A gaming store's stage offers games; every other store's offers collections. */
+export function stageWords(family: string) {
+  const gaming = family === "gaming";
+  return {
+    title: gaming ? tr("الموديلات والألعاب", "Models and games") : tr("الموديلات والمجموعات", "Models and collections"),
+    list: gaming ? tr("الألعاب", "Games") : tr("المجموعات", "Collections"),
+    one: gaming ? tr("لعبة", "Game") : tr("مجموعة", "Collection"),
+    name: gaming ? tr("اسم اللعبة", "Game name") : tr("اسم المجموعة", "Collection name"),
+    picture: gaming ? tr("صورة اللعبة", "The game's picture") : tr("صورة المجموعة", "The collection's picture"),
+    example: gaming ? "FIFA 25" : tr("فساتين السهرة", "Evening dresses"),
+    help: gaming
+      ? tr(
+          "الموديلات بتطلع بمشهد الـ 3D، وكل موديل بيفتح قسمه. الزبون بيختار لعبة، فبيتلوّن المشهد بلونها وبيطلع موديلها وبيوصل لمنتجاتها.",
+          "The models stand on the 3D stage and each opens its category. A shopper picks a game: the stage takes its colour, its model comes forward and it leads to its products.",
+        )
+      : tr(
+          "الموديلات بتطلع بمشهد الـ 3D، وكل موديل بيفتح قسمه. الزبون بيختار مجموعة، فبيتلوّن المشهد بلونها وبيطلع موديلها وبيوصل لمنتجاتها.",
+          "The models stand on the 3D stage and each opens its category. A shopper picks a collection: the stage takes its colour, its model comes forward and it leads to its products.",
+        ),
+  };
+}

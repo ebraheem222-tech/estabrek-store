@@ -4,25 +4,70 @@ import type { ModelKind } from "./three/kinds";
 export type Words = { ar: string; en: string; he: string };
 
 /** What kind of store a theme is made for (the admin's gallery groups by it). */
-export type ThemeFamily = "fashion" | "shoes" | "electronics" | "gaming" | "beauty" | "books" | "home" | "food" | "kids" | "general";
+export type ThemeFamily =
+  | "fashion"
+  | "shoes"
+  | "electronics"
+  | "gaming"
+  | "beauty"
+  | "jewelry"
+  | "books"
+  | "art"
+  | "home"
+  | "food"
+  | "kids"
+  | "sports"
+  | "pets"
+  | "flowers"
+  | "music"
+  | "general";
 
 /** The home page's opening, each a different composition (storeThemes/home/heroes). */
-export type HeroStyle = "editorial" | "spotlight" | "glitch" | "bloom" | "playful" | "stage";
+export type HeroStyle = "editorial" | "spotlight" | "glitch" | "bloom" | "playful" | "gallery" | "split" | "mono" | "stage";
 /** How everything moves (storeThemes/motion/presets.ts). */
-export type MotionStyle = "editorial" | "precise" | "arcade" | "soft" | "bouncy";
+export type MotionStyle = "editorial" | "precise" | "arcade" | "soft" | "bouncy" | "luxe" | "sporty";
 /** The drawings: backdrops, dividers between sections, ornaments (storeThemes/svg). */
-export type SvgKit = "deco" | "circuit" | "neon" | "organic" | "candy" | "pixel" | "arena" | "synth" | "fantasy" | "space" | "glitch" | "zen" | "frost" | "ember";
+export type SvgKit =
+  | "deco"
+  | "circuit"
+  | "neon"
+  | "organic"
+  | "candy"
+  | "pixel"
+  | "arena"
+  | "synth"
+  | "fantasy"
+  | "space"
+  | "glitch"
+  | "zen"
+  | "frost"
+  | "ember"
+  | "brush"
+  | "ink"
+  | "silk"
+  | "facet"
+  | "wave"
+  | "botanic"
+  | "steam"
+  | "paw"
+  | "track"
+  | "vinyl"
+  | "arabesque"
+  | "cloud"
+  | "mono";
 /** Product cards. */
-export type CardStyle = "portrait" | "spec" | "angled" | "arch" | "sticker" | "pixel";
+export type CardStyle = "portrait" | "spec" | "angled" | "arch" | "sticker" | "pixel" | "frame" | "book" | "minimal";
 
-/** A gaming theme's 3D stage (storeThemes/three): the models the store starts with and how they stand. */
+/** A theme's 3D stage (storeThemes/three): the models the store starts with and how they stand. */
 export type StageSpec = {
   layout: "orbit" | "hero" | "podium" | "shelf";
   floor: "grid" | "stage" | "none";
-  finish: "neon" | "metal" | "toy" | "voxel";
+  finish: "neon" | "metal" | "toy" | "voxel" | "matte" | "glass" | "gold";
   models: ModelKind[];
-  /** Games (or genres) the shopper can pick until the store names its own. */
+  /** Games, genres or collections the shopper can pick until the store names its own. */
   games: Array<{ name: Words; color: string; model: ModelKind; search: string }>;
+  /** What the opening calls the two pickers (a gaming store's gear and games when not set). */
+  labels?: { pick: Words; games: Words };
 };
 
 export type StoreTheme = {
