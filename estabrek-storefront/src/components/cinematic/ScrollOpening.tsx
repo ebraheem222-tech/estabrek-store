@@ -4,15 +4,19 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useLanguage } from "./Language";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
+import { useNames } from "@/store/storeIdentity";
 
 /** Static-first campaign, progressively enhanced with one reversible held scene. */
 export function ScrollOpening({ children, model, subtle = false }: { children: ReactNode; model?: ReactNode; subtle?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const { scrollAnimationsEnabled } = useStorefrontSettings();
   const { language } = useLanguage();
+  const n = useNames();
   useEffect(() => {
     const scene = root.current;
-    if (!scene || !scrollAnimationsEnabled) return;
+    if (!scene || !scrollAnimationsEnabled || !sectionMotionOn("opening")) return;
     gsap.registerPlugin(ScrollTrigger);
     const media = gsap.matchMedia();
     media.add("(prefers-reduced-motion: no-preference)", () => {
@@ -20,6 +24,7 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
       const sticky = scene.querySelector<HTMLElement>(".rose-opening-sticky")!;
       const visual = scene.querySelector<HTMLElement>(".hero-visual")!;
       const photo = scene.querySelector<HTMLElement>(".hero-image-wrap")!;
+      const fabric = scene.querySelector<HTMLElement>(".opening-fabric");
       const state = { p: 0 };
       const frame = () => {
         const p = state.p;
@@ -27,7 +32,6 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
         const imageProgress = model ? Math.min(1, p / .2) : Math.min(1, p / .85);
         scene.dataset.progress = p.toFixed(3);
         scene.dataset.phase = reveal > .15 ? "fabric" : "campaign";
-        const fabric = scene.querySelector<HTMLElement>(".opening-fabric");
         if (fabric) { fabric.inert = reveal <= .15; fabric.setAttribute("aria-hidden", String(reveal <= .15)); }
         scene.style.setProperty("--opening-progress", String(imageProgress));
         scene.style.setProperty("--opening-model", String(reveal));
@@ -46,9 +50,14 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
         frame();
       };
       measure();
-      const tween = gsap.fromTo(state, { p: 0 }, { p: 1, ease: "none", onUpdate: frame,
-        scrollTrigger: { trigger: scene, start: () => `top top+=${parseFloat(getComputedStyle(sticky).top)}`, end: "bottom bottom", scrub: .4, invalidateOnRefresh: true, onRefresh: measure }
+      // Game-loop motion (scrollProgressMotion.ts): the scroll sets the target, the display's own frames move the scene to it.
+      const motion = createScrollProgressMotion((p) => { state.p = p; frame(); }, { smoothTime: sectionSmoothTime("opening") });
+      const trigger = ScrollTrigger.create({
+        trigger: scene, start: () => `top top+=${parseFloat(getComputedStyle(sticky).top)}`, end: "bottom bottom",
+        onUpdate: (self) => motion.target(self.progress),
+        onRefresh: (self) => { state.p = self.progress; measure(); motion.snap(self.progress); },
       });
+      motion.snap(trigger.progress);
       let disposed = false;
       document.fonts.ready.then(() => { if (!disposed) ScrollTrigger.refresh(true); });
       const resize = new ResizeObserver(() => { if (!disposed) { measure(); ScrollTrigger.refresh(true); } });
@@ -57,11 +66,10 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
       return () => {
         disposed = true;
         resize.disconnect();
-        tween.scrollTrigger?.kill(); tween.kill();
+        trigger.kill(); motion.stop();
         scene.dataset.motion = "false";
         delete scene.dataset.progress;
         delete scene.dataset.phase;
-        const fabric = scene.querySelector<HTMLElement>(".opening-fabric");
         if (fabric) { fabric.inert = false; fabric.removeAttribute("aria-hidden"); }
         ["--opening-progress", "--opening-scale", "--opening-x", "--opening-y", "--opening-model", "--opening-wordmark", "--opening-copy"].forEach(n => scene.style.removeProperty(n));
       };
@@ -70,7 +78,7 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
   }, [language, scrollAnimationsEnabled, Boolean(model), subtle]);
   return <div ref={root} className="rose-opening" data-motion="false" data-model={Boolean(model)} data-intensity={subtle ? "subtle" : "cinematic"}>
     <div className="rose-opening-sticky">
-      <span className="opening-wordmark" aria-hidden="true">{language === "ar" ? "استبرق" : "Estabrek"}</span>
+      <span className="opening-wordmark" aria-hidden="true">{n.store}</span>
       {children}
       {model && <div className="opening-fabric">{model}</div>}
     </div>

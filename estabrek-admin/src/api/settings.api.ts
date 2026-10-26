@@ -30,6 +30,15 @@ export type SiteSettings = {
   paypalClientSecret?: string | null;
   paypalWebhookId?: string | null;
 
+  /** Shopper accounts on the storefront (admin → الزبائن). Off = visitors only. */
+  customerAccountsEnabled?: boolean;
+  /** "Tell me when it's back" on sold-out sizes (admin → بانتظار التوفّر). */
+  stockAlertsEnabled?: boolean;
+  /** Maintenance mode ("back soon" screen; public orders paused) and the owner's preview key. */
+  maintenanceMode?: boolean;
+  maintenanceMessage?: string | null;
+  maintenanceKey?: string | null;
+
   // Phase 1A: Global announcement bar
   announcementIsActive?: boolean;
   announcementText?: string | null;
@@ -50,6 +59,26 @@ export async function getSettings() {
 export async function updateSettings(body: Partial<Omit<SiteSettings, "id">>) {
   const res = await api.patch(ENDPOINTS.admin.settings.base, body);
   return res.data as SiteSettings;
+}
+
+/** One saved version of the settings (taken just before a save). */
+export type SettingsRevisionRow = {
+  id: string;
+  createdAt: string;
+  /** What that save changed: "siteName", "header.marketing", … */
+  changed: string[] | null;
+  note: string | null;
+  adminUser: { email: string; name: string } | null;
+};
+
+export async function listSettingsRevisions(take = 30) {
+  const res = await api.get(ENDPOINTS.admin.settings.revisions, { params: { take } });
+  return (res.data?.rows ?? []) as SettingsRevisionRow[];
+}
+
+export async function restoreSettingsRevision(id: string) {
+  const res = await api.post(ENDPOINTS.admin.settings.restoreRevision(id));
+  return res.data as { settings: SiteSettings; changed: string[] };
 }
 
 export async function linkNavs(body: { primaryNavId?: string | null; footerNavId?: string | null }) {

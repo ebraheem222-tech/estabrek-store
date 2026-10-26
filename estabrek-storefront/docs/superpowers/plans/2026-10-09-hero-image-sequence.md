@@ -1,0 +1,21 @@
+> **Superseded: user rejected this implementation.** On a throttled mobile viewport and 4Mbps/80ms connection, repeated packet cancellation left the scarf changing only 1.8 times/s forward and 0.6 times/s in reverse. The sequence code/assets were removed. The subsequent larger video was also rejected; the current hero uses the untouched original `hero-film.mp4` (833,259 bytes). The historical plan below records the abandoned approach; its checkmarks do not establish a performance fix.
+
+# Hero image sequence implementation plan
+
+> Execute inline with the executing-plans skill. No commit, deployment or category changes are requested.
+
+**Goal:** Replace lagging video seeks with the user's proposed scroll-driven images, restoring source quality and preserving the approved hero.
+
+**Architecture:** Extract all 240 original 1280×720 frames as lossless WebP, crop only pixels the original shader makes transparent, and retain their native coordinates. Bundle four images per cacheable packet. A priority loader keeps at most twelve decoded frames and six compressed packets; four bounded background decodes and three prefetches prepare upcoming frames. It drops obsolete work on jumps and pauses outside the hero. The original cutout/tint shader draws the crop at its native position in a 1280×720 canvas. ScrollTrigger supplies progress directly without its half-second catch-up tween.
+
+**Constraints:** Preserve scale, headline colours, shopping actions, tint and scarf flight. Static/reduced-motion/data-saver modes download no sequence. Failed image loading retains a usable still. No video decoder in the normal hero path. Existing unrelated workspace changes remain intact.
+
+- [x] Add failing browser checks for native-resolution image rendering without video requests, direct forward/reverse steps and failure/static modes.
+- [x] Generate versioned packets, implement bounded loading/cancellation, adapt cutout and hero, and update the old video-specific checks to assert equivalent image behaviour.
+- [x] Run relevant tests, typecheck and production build; compare continuous-scroll presentation under CPU throttling, inspect desktop/mobile, and leave the optimized app running.
+
+**Review focus:** Jump while fetching; reverse with outstanding decodes; hide/show and reduced-motion changes; dispose with pending work; frame cache never exceeds its limit.
+
+**Ledger:** Original source is 24fps, 10s. Initial full-frame lossless packets totaled 26,124,010 bytes; continuous CPU-throttled scrolling exposed moving-target starvation missed by jump tests. Direction-aware nearest-frame presentation, predictive prefetch and residual pacing fixed that scheduler issue. Profiling then showed main-thread style work, full-image uploads and decode completion delays. Crop packets v2 total 19,135,772 bytes and 81,260,490 decoded pixels (36.74% of full frames). Samples 0/119/239 match native FFmpeg BGRA RGB pixels exactly; omitted channels are below the shader threshold. All 240 descriptors and dimensions pass checks. Direct picture transforms, scoped accents and guarded readiness preserve the original design with fewer restyles. A background decoder improved a CPU4 phone-sized probe from ~23 to ~28 frame changes/sec without reducing source detail; compatibility falls back to page/Image decoding. Full and lite retain the same 1280×720 canvas. No category implementation was changed.
+
+**Final verification:** 26 scoped browser/asset checks pass (1.8m), typecheck and production build exit 0. Read-only reviews found no important crop/decoder lifecycle issues; stop/fallback probes closed all bitmaps. Optimized live CMS desktop scroll presents ~46 distinct frames/sec forward and reverse (the source provides ~46 at this scroll speed); a DPR3 phone-sized test with four-times CPU slowdown presents ~20/18 and still drops frames. These simulated results do not guarantee physical-device performance. Desktop, 390×844, 360×640 and lite previews retain native canvas resolution, all headline colours and scale; no overflow, extra controls or page errors. Server remains running on localhost:3000. The 19.1MB complete sequence is fetched progressively; data saver/static modes skip it.

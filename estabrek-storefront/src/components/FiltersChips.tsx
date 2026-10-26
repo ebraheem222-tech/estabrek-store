@@ -2,8 +2,10 @@
 import { useLanguage } from "./cinematic/Language";
 
 import React, { useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
+import { tr } from "@/lib/words";
 
 function chipClass(variant: "default" | "danger" = "default") {
   const base =
@@ -28,7 +30,8 @@ export function FiltersChips({
   onFiltersChange?: (next: CatalogFilters) => void;
   syncUrl?: boolean;
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -79,7 +82,7 @@ export function FiltersChips({
     if (q)
       out.push({
         key: "q",
-        label: `${ar ? "بحث" : "Search"}: ${q}`,
+        label: `${tr(lang, "بحث", "Search")}: ${q}`,
         remove: () => {
           const n = base();
           n.q = undefined;
@@ -89,10 +92,10 @@ export function FiltersChips({
 
     const categoryId = currentFilters.categoryId;
     if (categoryId) {
-      const name = categories.find((c) => c.id === categoryId)?.name ?? (ar ? "تصنيف" : "Category");
+      const name = categories.find((c) => c.id === categoryId)?.name ?? (tr(lang, "تصنيف", "Category"));
       out.push({
         key: "categoryId",
-        label: `${ar ? "تصنيف" : "Category"}: ${name}`,
+        label: `${tr(lang, "تصنيف", "Category")}: ${name}`,
         remove: () => {
           const n = base();
           n.categoryId = undefined;
@@ -104,7 +107,7 @@ export function FiltersChips({
     if (currentFilters.inStock) {
       out.push({
         key: "inStock",
-        label: ar ? "متوفر فقط" : "In stock",
+        label: tr(lang, "متوفر فقط", "In stock"),
         remove: () => {
           const n = base();
           n.inStock = undefined;
@@ -118,7 +121,7 @@ export function FiltersChips({
     if (minPrice || maxPrice) {
       out.push({
         key: "price",
-        label: `${ar ? "السعر" : "Price"}: ${minPrice ?? "0"} - ${maxPrice ?? "∞"}`,
+        label: `${tr(lang, "السعر", "Price")}: ${minPrice ?? "0"} - ${maxPrice ?? "∞"}`,
         remove: () => {
           const n = base();
           n.minPrice = undefined;
@@ -126,6 +129,24 @@ export function FiltersChips({
           nav(n);
         },
       });
+    }
+
+    // Product-type fields (القماش، المناسبة…): the value is enough as a label.
+    for (const [key, vals] of Object.entries(currentFilters.attrs ?? {})) {
+      for (const v of vals) {
+        out.push({
+          key: `attr:${key}:${v}`,
+          label: v === "true" ? (tr(lang, "نعم", "Yes")) : v === "false" ? (tr(lang, "لا", "No")) : v,
+          remove: () => {
+            const n = base();
+            const attrs = { ...(n.attrs ?? {}) };
+            attrs[key] = (attrs[key] ?? []).filter((x) => x !== v);
+            if (!attrs[key].length) delete attrs[key];
+            n.attrs = Object.keys(attrs).length ? attrs : undefined;
+            nav(n);
+          },
+        });
+      }
     }
 
     (currentFilters.colors ?? []).forEach((c) => {
@@ -164,7 +185,7 @@ export function FiltersChips({
     if (hasAny) {
       out.unshift({
         key: "clear",
-        label: ar ? "مسح الكل" : "Clear all",
+        label: tr(lang, "مسح الكل", "Clear all"),
         variant: "danger",
         remove: () => {
           const n = base();

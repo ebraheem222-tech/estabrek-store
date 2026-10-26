@@ -247,7 +247,7 @@ test("reduced motion retains all content and removes the long sticky scene", asy
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /لونكِ.*حكايتكِ/ }),
+    page.getByRole("heading", { name: /اختاري لونكِ.*يتلوّن الموقع معكِ/ }),
   ).toBeVisible();
   const ratio = await study.evaluate(
     (el) => el.clientHeight / window.innerHeight,
@@ -311,7 +311,7 @@ test("disabling scroll animation in CMS shows a static opening and all fabric ch
     "false",
   );
   await expect(
-    page.getByRole("heading", { name: /لونكِ.*حكايتكِ/ }),
+    page.getByRole("heading", { name: /اختاري لونكِ.*يتلوّن الموقع معكِ/ }),
   ).toHaveCount(1);
   const position = await page
     .locator(".rose-opening-sticky")
@@ -340,7 +340,7 @@ test("without JavaScript the campaign and every fabric chapter remain readable",
     page.getByRole("heading", { name: /خفة.*ترافق يومكِ/ }),
   ).toHaveCount(1);
   await expect(
-    page.getByRole("heading", { name: /لونكِ.*حكايتكِ/ }),
+    page.getByRole("heading", { name: /اختاري لونكِ.*يتلوّن الموقع معكِ/ }),
   ).toHaveCount(1);
   const ratio = await page
     .locator(".design-study")
@@ -350,4 +350,64 @@ test("without JavaScript the campaign and every fabric chapter remain readable",
     page.getByRole("img", { name: "تصوّر لحجاب منسدل" }),
   ).toBeVisible();
   await context.close();
+});
+
+test("Rose greets on the home hero and cheers when a colour is picked", async ({ page }) => {
+  await page.goto("/");
+  const rose = page.locator(".hero-mascot");
+  await expect(rose).toHaveCount(1);
+  await expect(rose.getByRole("img")).toHaveAttribute("aria-label", /رَزان|Rose/);
+  await expect(rose.locator(".rose-mascot-bubble")).toHaveAttribute("data-show", "true", { timeout: 6000 });
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#9fb3a1" })));
+  await expect(rose.locator(".rose-mascot-bubble")).toContainText(/اللون|colour/);
+  // Her hijab follows the shopper's colour.
+  await expect.poll(() => rose.evaluate((el) => getComputedStyle(el).getPropertyValue("--m-hijab").trim())).not.toBe("");
+});
+
+test("Rose follows the shopper and cheers when a piece goes in the bag", async ({ page }) => {
+  await page.goto("/p/rose-dress");
+  const rose = page.locator(".rose-companion");
+  await expect(rose).toHaveCount(1);
+  await expect(rose).not.toHaveAttribute("data-away", "true");
+  await page.getByRole("button", { name: /أضيفي للحقيبة|Add to bag/ }).first().click();
+  await expect(rose.locator(".rose-mascot-bubble")).toHaveAttribute("data-show", "true");
+  await expect(rose.locator(".rose-mascot-bubble")).toContainText(/سلة|سلتك|موفّق|bag|pick/);
+  await expect(rose.locator("[data-bag]")).toBeVisible();
+});
+
+test("Rose changes outfit with the collection and is the shop chat", async ({ page }) => {
+  await page.route("**/api/chatbot/message", (route) => route.fulfill({ json: { ok: true, reply: "أهلاً! هاي اقتراحاتي 🌸", products: [] } }));
+  await page.goto("/c/dresses");
+  const rose = page.locator(".rose-companion");
+  await expect(rose.locator(".rose-mascot")).toHaveAttribute("data-outfit", "dress", { timeout: 8000 });
+  await expect(page.locator(".chat-widget-root")).toHaveCount(0);
+  await rose.getByRole("button", { name: /رزان|Rose/ }).first().click();
+  const chat = page.getByRole("dialog", { name: /رزان|Rose/ });
+  await expect(chat).toBeVisible();
+  await chat.getByRole("textbox").fill("عندكم مقاس L؟");
+  await chat.getByRole("textbox").press("Enter");
+  await expect(chat).toContainText("هاي اقتراحاتي");
+  await page.keyboard.press("Escape");
+  await expect(chat).toHaveCount(0);
+});
+
+test("Tapping Rose opens her panel with WhatsApp even when the chatbot is off", async ({ page }) => {
+  // The store turned the chatbot off but WhatsApp on (as on the live shop).
+  await page.route("**/v1/storefront/bootstrap", async (route) => {
+    const res = await route.fetch();
+    const json = await res.json();
+    json.site.header.storefront = { ...json.site.header.storefront, chatbotEnabled: false, whatsappEnabled: true, whatsappNumber: "0599123456" };
+    await route.fulfill({ response: res, json });
+  });
+  await page.goto("/p/rose-dress");
+  const rose = page.locator(".rose-companion");
+  // WhatsApp sits beside Rose; the separate floating button is not drawn on top of her.
+  await expect(rose.locator(".rose-companion-wa")).toBeVisible();
+  await expect(page.locator(".whatsapp-floating-btn")).toHaveCount(0);
+  await rose.getByRole("button", { name: /رزان|Rose/ }).first().click();
+  const panel = page.getByRole("dialog", { name: /رزان|Rose/ });
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("link", { name: /واتساب|WhatsApp/ }).first()).toHaveAttribute("href", /wa\.me\/\d*599123456/);
+  await expect(panel.getByRole("textbox")).toHaveCount(0);
+  await expect(rose.locator(".rose-companion-wa")).toHaveCount(0);
 });

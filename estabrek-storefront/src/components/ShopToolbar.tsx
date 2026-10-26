@@ -2,8 +2,10 @@
 import { useLanguage } from "./cinematic/Language";
 
 import React, { useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
+import { tr } from "@/lib/words";
 
 type SortKey = "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc";
 
@@ -34,7 +36,8 @@ export function ShopToolbar({
   hideModeToggle?: boolean;
   appearance?: "rose" | "default";
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -75,13 +78,13 @@ export function ShopToolbar({
     <div className={`${appearance === "rose" ? "rose-shop-toolbar " : ""}sticky top-[72px] z-20 -mx-4 border-y border-[var(--border)] bg-[var(--bg)]/90 px-4 py-3 backdrop-blur md:mx-0 md:border md:rounded-2xl md:bg-[var(--surface)]`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-[var(--muted)]">
-          <span className="font-semibold text-[var(--text)]">{total}</span> {ar ? "منتج" : "pieces"}
+          <span className="font-semibold text-[var(--text)]">{total}</span> {tr(lang, "منتج", "pieces")}
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-xs text-[var(--muted)]">{ar ? "الترتيب" : "Sort by"}</label>
+          <label className="text-xs text-[var(--muted)]">{tr(lang, "الترتيب", "Sort by")}</label>
           <select
-            aria-label={ar ? "الترتيب" : "Sort by"}
+            aria-label={tr(lang, "الترتيب", "Sort by")}
             value={sort}
             onChange={(e) => {
               const next: CatalogFilters = { ...currentFilters, colors: [...currentFilters.colors], sizeIds: [...currentFilters.sizeIds] };
@@ -94,7 +97,7 @@ export function ShopToolbar({
           >
             {SORTS.map((s) => (
               <option key={s.key} value={s.key}>
-                {ar ? s.label : ({ latest: "Latest", price_asc: "Price: low to high", price_desc: "Price: high to low", title_asc: "Name: A–Z", title_desc: "Name: Z–A" } as Record<SortKey, string>)[s.key]}
+                {ar ? s.label : tr(lang, s.label, ({ latest: "Latest", price_asc: "Price: low to high", price_desc: "Price: high to low", title_asc: "Name: A–Z", title_desc: "Name: Z–A" } as Record<SortKey, string>)[s.key])}
               </option>
             ))}
           </select>
@@ -117,7 +120,7 @@ export function ShopToolbar({
                 )}
                 aria-pressed={!lm}
               >
-                {ar ? "صفحات" : "Pages"}
+                {tr(lang, "صفحات", "Pages")}
               </button>
               <button
                 type="button"
@@ -135,7 +138,7 @@ export function ShopToolbar({
                 )}
                 aria-pressed={lm}
               >
-                {ar ? "تحميل المزيد" : "Load more"}
+                {tr(lang, "تحميل المزيد", "Load more")}
               </button>
             </div>
           )}

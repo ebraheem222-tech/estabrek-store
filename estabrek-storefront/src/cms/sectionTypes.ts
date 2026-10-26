@@ -57,6 +57,9 @@ export type HeroData = HeroSlide & {
   roseImageAlt?: string;
   rose3dEnabled?: boolean;
   roseVideoEnabled?: boolean;
+  roseHeroFilm?: boolean;
+  roseFilmLines?: string[];
+  roseFilmClosing?: string;
   roseStoryWords?: string[];
   rosePresentation?: { palette?: "pearl" | "blush" | "rose" | "lilac" | "berry"; motionIntensity?: "subtle" | "cinematic" };
   /** Optional hero theme id (uses hero-themes renderer when set). */
@@ -386,7 +389,7 @@ export type VideoData = {
   subtitle?: string;
   url: string;
   posterUrl?: string;
-  provider?: "AUTO" | "YOUTUBE" | "VIMEO" | "MP4";
+  provider?: "AUTO" | "YOUTUBE" | "VIMEO" | "MP4" | "HLS";
   aspect?: "16/9" | "4/3" | "1/1" | "9/16";
   ratio?: "16:9" | "4:3" | "1:1";
   autoplay?: boolean;

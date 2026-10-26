@@ -245,7 +245,7 @@ export default function ChatWidget({ position = "bottom-left", draggable = false
   }
 
   return (
-    <div ref={containerRef} className="fixed z-[60]" style={positionStyle}>
+    <div ref={containerRef} className="chat-widget-root fixed z-[60]" style={positionStyle}>
       {/* Launcher */}
       {!open ? (
         <button

@@ -1,9 +1,13 @@
 "use client";
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
+import { createFabricTexture } from "./fabricTexture";
 import { createHijabGeometry, createDisplayHead } from "./HijabGeometry";
+import { ScenePacer } from "./ScenePacer";
+import { warmScene } from "./warmScene";
+import { sceneDpr } from "@/lib/motionBudget";
 
 type SceneProps = {
   color: string;
@@ -24,35 +28,25 @@ function DrapedHijab(props: SceneProps) {
     [props.color],
   );
   const fabricTime = useRef<THREE.IUniform | null>(null);
+  // Fine chiffon weave with uneven threads (see fabricTexture.ts).
   const weave = useMemo(() => {
-    const size = 128;
-    const data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        const i = (y * size + x) * 4;
-        const value = 128 + (x % 4 === 0 ? 19 : -4) + (y % 4 === 0 ? 15 : -3);
-        data[i] = data[i + 1] = data[i + 2] = value;
-        data[i + 3] = 255;
-      }
-    }
-    const texture = new THREE.DataTexture(data, size, size);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(20, 28);
-    texture.needsUpdate = true;
-    return texture;
+    const t = createFabricTexture({ threads: 48 });
+    t.repeat(12, 16);
+    return t;
   }, []);
   const fabric = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
         color: props.color,
         side: THREE.DoubleSide,
-        roughness: 0.7,
+        roughness: 0.85, // × the roughness map (~0.8): about 0.7 on average, varying thread by thread
         metalness: 0,
-        sheen: 0.55,
+        sheen: 0.7,
         sheenColor: new THREE.Color("#f9dce7"),
-        sheenRoughness: 0.85,
-        bumpMap: weave,
-        bumpScale: 0.006,
+        sheenRoughness: 0.7,
+        bumpMap: weave.bump,
+        bumpScale: 0.022,
+        roughnessMap: weave.rough,
         // A single material is shared by all cloth layers; colour changes in useFrame.
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }),
@@ -86,34 +80,29 @@ function DrapedHijab(props: SceneProps) {
     props.reducedMotion,
     invalidate,
   ]);
+  // The rotate buttons and the pointer, eased here. The scroll part arrives already
+  // smoothed (DesignStudy's scroll motion): easing it again only made it trail behind.
+  const turn = useRef(0);
   useFrame(({ clock, pointer }, delta) => {
     if (!group.current) return;
     const p = props.progress.current;
+    // Elapsed-time easing: the same speed at 30, 60 or 120 frames a second.
     const blend = props.reducedMotion ? 1 : 1 - Math.exp(-delta * 7);
-    const angle =
-      -0.22 +
-      p * Math.PI * 2 +
-      (props.rotation * Math.PI) / 4 +
-      (props.reducedMotion ? 0 : pointer.x * 0.09);
-    group.current.rotation.y = THREE.MathUtils.lerp(
-      group.current.rotation.y,
-      angle,
+    turn.current = THREE.MathUtils.lerp(
+      turn.current,
+      (props.rotation * Math.PI) / 4 + (props.reducedMotion ? 0 : pointer.x * 0.09),
       blend,
     );
+    group.current.rotation.y = -0.22 + p * Math.PI * 2 + turn.current;
     group.current.rotation.x = THREE.MathUtils.lerp(
       group.current.rotation.x,
       props.reducedMotion ? 0 : pointer.y * 0.025,
       blend,
     );
-    const scale = props.reducedMotion
-      ? 1
-      : THREE.MathUtils.lerp(
-          1.02,
-          1.14,
-          Math.sin(p * Math.PI),
-        );
     group.current.scale.setScalar(
-      THREE.MathUtils.lerp(group.current.scale.x, scale, blend),
+      props.reducedMotion
+        ? 1
+        : THREE.MathUtils.lerp(1.02, 1.14, Math.sin(p * Math.PI)),
     );
     group.current.position.y = props.reducedMotion
       ? 0
@@ -159,28 +148,54 @@ function DrapedHijab(props: SceneProps) {
 function SceneLifecycle({
   onReady,
   onFailure,
-}: Pick<SceneProps, "onReady" | "onFailure">) {
+  onWarm,
+}: Pick<SceneProps, "onReady" | "onFailure"> & { onWarm: () => void }) {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const advance = useThree((s) => s.advance);
   const ready = useRef(onReady);
   const failure = useRef(onFailure);
+  const warm = useRef(onWarm);
   ready.current = onReady;
   failure.current = onFailure;
+  warm.current = onWarm;
   useEffect(() => {
-    ready.current();
+    let alive = true;
+    // Build every shader first (in the background where the driver can), then draw
+    // one real frame; until then the fallback drawing stays on screen.
+    warmScene(gl, scene, camera).then(() => {
+      if (!alive) return;
+      advance(performance.now());
+      warm.current();
+      ready.current();
+    });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
-    return () => gl.domElement.removeEventListener("webglcontextlost", lost);
-  }, [gl]);
+    return () => {
+      alive = false;
+      gl.domElement.removeEventListener("webglcontextlost", lost);
+    };
+  }, [gl, scene, camera, advance]);
   return null;
 }
 
 export default function ScarfScene(props: SceneProps) {
+  // Nothing is drawn until every shader is built: drawn before, the first frame built
+  // them all at once and the page stopped for a moment (see SeasonsScene).
+  const [warm, setWarm] = useState(false);
   return (
     <Canvas
       camera={{ position: [0, 0.05, 6.7], fov: 38 }}
-      dpr={[1, 1.5]}
-      frameloop={props.active && !props.reducedMotion ? "always" : "demand"}
+      dpr={sceneDpr()}
+      /* Drawn by ScenePacer, like the other 3D scenes: it used to draw on every
+         screen frame (120 a second on many phones) outside the frame budget. */
+      frameloop={warm ? "demand" : "never"}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+      /* Measured on resize only. With scroll tracking (the default) every scroll anywhere on
+         the page re-measured each 3D canvas, re-rendered it through React and asked it for a
+         new frame, also far off screen. Pointers are read relative to the canvas anyway. */
+      resize={{ scroll: false }}
     >
       <ambientLight intensity={0.85} />
       <directionalLight position={[0, 2, 5]} intensity={0.65} color="#fff4e9" />
@@ -223,7 +238,8 @@ export default function ScarfScene(props: SceneProps) {
         frames={1}
         color="#a75676"
       />
-      <SceneLifecycle onReady={props.onReady} onFailure={props.onFailure} />
+      <ScenePacer active={props.active && !props.reducedMotion} />
+      <SceneLifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />
     </Canvas>
   );
 }

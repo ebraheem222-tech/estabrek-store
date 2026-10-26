@@ -26,11 +26,14 @@ export const StorefrontCheckoutCreateBody = z.object({
     .min(1),
   customerName: z.string().min(2).max(120),
   phone: z.string().min(5).max(40),
+  email: z.string().trim().toLowerCase().email().max(160).nullable().optional().or(z.literal("").transform(() => null)),
   address: z.string().max(240).nullable().optional(),
   note: z.string().max(500).nullable().optional(),
   couponCode: z.string().max(40).nullable().optional(),
   country: z.string().max(80).nullable().optional(),
   city: z.string().max(80).nullable().optional(),
+  /** The shop's language (her order emails). */
+  lang: z.enum(["ar", "en", "he"]).optional(),
 });
 
 export const StorefrontCheckoutVerifyQuery = z.object({

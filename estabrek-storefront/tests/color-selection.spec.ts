@@ -74,6 +74,8 @@ test("shop selection coordinates backgrounds, buttons, filters and footer withou
   const productImage = await page.locator(".rose-product-tile").first().locator("img").getAttribute("src");
   await page.locator(".rose-product-tile").first().getByRole("button", { name: "Rose", exact: true }).click();
   await expect.poll(() => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(201, 119, 148)");
+  // The header now moves with the page instead of trailing it: wait for the whole glide to end.
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme-gliding", /.*/);
   const after = await styles();
   surfaces.forEach((selector, index) => expect(after[index], selector).not.toEqual(before[index]));
   await page.evaluate(() => scrollTo(0, 0));
@@ -93,28 +95,28 @@ test("product detail and quick view swatches both update the navbar", async ({ p
   await page.goto("/shop");
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "معاينة فستان الورد", exact: true }).click();
-  await page.locator('.quick-view-color[title="Berry"]').click();
+  await page.locator('.rose-sheet button.color-swatch[title="Berry"]').click();
   await expect.poll(() => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(107, 36, 70)");
   expect(await page.locator(".atelier-header .atelier-brand").evaluate(el => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
-  const palette = await page.locator(".quick-view-modal").evaluate(el => {
+  const palette = await page.locator(".rose-sheet").evaluate(el => {
     const style = getComputedStyle(el);
     return [style.backgroundColor, getComputedStyle(document.querySelector(".cinematic-shell")!).getPropertyValue("--selection-surface").trim()];
   });
   expect(contrast(palette[0], palette[1])).toBeLessThan(1.01);
-  const button = await page.locator(".quick-view-add-btn").evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
+  const button = await page.locator(".rose-sheet .rose-pdp-add").evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
   expect(contrast(button[0], button[1])).toBeGreaterThanOrEqual(4.5);
-  await expect(page.locator(".quick-view-size.active")).toBeVisible();
+  await expect(page.locator(".rose-sheet .rose-pdp-sizes button.active")).toBeVisible();
   // Global panels must stay readable even with ThemeWrap's inline dark text alias.
   await page.evaluate(() => document.documentElement.style.setProperty("--text", "#F7F4E9"));
   for (const seed of ["#ffffff", "#eee0d5", "#a08cbd"]) {
     await page.evaluate(color => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail:color })), seed);
-    const size = await page.locator(".quick-view-size.active").evaluate(el => {
+    const size = await page.locator(".rose-sheet .rose-pdp-sizes button.active").evaluate(el => {
       const style = getComputedStyle(el);
       return { text:style.color, background:style.backgroundColor, gradient:style.backgroundImage };
     });
     const stops = size.gradient.match(/(?:rgba?|color)\([^)]*\)/g) || [size.background];
     stops.forEach(stop => expect(contrast(size.text, stop), `selected size ${seed}`).toBeGreaterThanOrEqual(4.5));
-    const swatch = await page.locator(".quick-view-color.active").evaluate(el => [getComputedStyle(el).borderColor, getComputedStyle(document.querySelector(".quick-view-modal")!).backgroundColor]);
+    const swatch = await page.locator(".rose-sheet .rose-pdp-swatch.active").evaluate(el => [getComputedStyle(el).borderColor, getComputedStyle(document.querySelector(".rose-sheet")!).backgroundColor]);
     expect(contrast(swatch[0], swatch[1]), `selected swatch ${seed}`).toBeGreaterThanOrEqual(3);
   }
 });
@@ -191,4 +193,133 @@ test("the chosen colour theme follows the shopper to other pages, except About",
   await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
   await page.goto("/shop");
   await expect.poll(header).toBe("rgb(107, 36, 70)");
+});
+
+test("the hero campaign photo takes the chosen colour and keeps its own by default", async ({ page }) => {
+  await page.goto("/");
+  const tint = page.locator(".hero-campaign-tint");
+  await expect(tint).toHaveCount(1);
+  expect(await tint.evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#2f3b57" })));
+  await expect.poll(() => tint.evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(47, 59, 87)");
+  expect(await tint.evaluate(el => getComputedStyle(el).mixBlendMode)).toBe("color");
+});
+
+test("a product page takes the piece's colour on its own", async ({ page }) => {
+  const header = () => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor);
+  // No colour chosen yet: the page opens in the piece's first colour, no tap needed.
+  await page.goto("/p/rose-dress");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
+  await expect.poll(header).toBe("rgb(201, 119, 148)");
+  await expect(page.locator('button.color-swatch[title="Rose"]').first()).toHaveAttribute("aria-checked", "true");
+  // The shopper's own colour wins when the piece comes in it.
+  await page.locator('button.color-swatch[title="Berry"]').first().click();
+  await expect.poll(header).toBe("rgb(107, 36, 70)");
+  await page.reload();
+  await expect(page.locator('button.color-swatch[title="Berry"]').first()).toHaveAttribute("aria-checked", "true");
+  await expect.poll(header).toBe("rgb(107, 36, 70)");
+});
+
+test("a colour pick moves the header and the page together", async ({ page }) => {
+  await page.goto("/p/rose-dress");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", /#/);
+  await page.waitForTimeout(900);
+  // Sample the header against the page colour on every frame of the glide.
+  const worst = await page.evaluate(() => new Promise<number>((resolve) => {
+    const shell = document.querySelector<HTMLElement>(".cinematic-shell")!;
+    const header = document.querySelector<HTMLElement>(".atelier-header")!;
+    const rgb = (v: string) => (v.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    const hex = (v: string) => v.startsWith("#") ? [1, 3, 5].map((i) => parseInt(v.slice(i, i + 2), 16)) : rgb(v);
+    let max = 0;
+    const t0 = performance.now();
+    document.querySelector<HTMLButtonElement>('button.color-swatch[title="Berry"]')!.click();
+    const loop = () => {
+      const page = hex(getComputedStyle(shell).getPropertyValue("--navbar-bg").trim());
+      const shown = rgb(getComputedStyle(header).backgroundColor);
+      max = Math.max(max, ...page.map((c, i) => Math.abs(c - shown[i])));
+      if (performance.now() - t0 < 1200) requestAnimationFrame(loop); else resolve(max);
+    };
+    requestAnimationFrame(loop);
+  }));
+  expect(worst).toBeLessThanOrEqual(2);
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme-gliding", /.*/);
+});
+
+test("a colour pick on the home page cross-fades in one step", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-selection-ready", "true");
+  const supported = await page.evaluate(() => typeof (document as any).startViewTransition === "function");
+  test.skip(!supported, "this browser has no view transitions; the colour glides instead");
+  // Count style recalculation work: the new colours must land in one go, not frame by frame.
+  const crossfading = page.locator("html[data-theme-crossfade]");
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#6b2446" })));
+  await expect(crossfading).toHaveCount(1);
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
+  expect(await page.locator(".cinematic-shell").evaluate(el => getComputedStyle(el).getPropertyValue("--selection-seed").trim())).toBe("#6b2446");
+  await expect(crossfading).toHaveCount(0);
+  await expect.poll(() => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(107, 36, 70)");
+});
+
+test("search and about show their page shape at once while they load", async ({ page }) => {
+  await page.goto("/contact");
+  await page.waitForLoadState("networkidle");
+  // Hold the server answer for the search page so the loading screen is visible.
+  await page.route((url) => url.pathname === "/search", async (route) => { await new Promise(r => setTimeout(r, 1500)); await route.continue(); });
+  await page.evaluate(() => (window as any).next?.router?.push("/search?q=%D9%81%D8%B3%D8%AA%D8%A7%D9%86"));
+  await expect(page.locator(".rose-search-skeleton")).toBeVisible();
+  await expect(page.locator(".rose-search-skeleton")).toHaveCount(0, { timeout: 30000 });
+});
+
+test("a product's own colour stays on its page; only a real pick follows the shopper", async ({ page }) => {
+  await page.goto("/p/rose-dress");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
+  expect(await page.evaluate(() => localStorage.getItem("estabrek_theme_color"))).toBeNull();
+  await page.goto("/");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-selection-ready", "true");
+  await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
+});
+
+test("white and ivory do not wash the photos out to grey", async ({ page }) => {
+  await page.goto("/");
+  const tint = page.locator(".hero-campaign-tint");
+  await expect(tint).toHaveCount(1);
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#f5f0e6" })));
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#f5f0e6");
+  expect(await tint.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+  await expect(page.locator(".rose-video-dye")).not.toHaveAttribute("data-on", "true");
+  // A real colour still dyes them.
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#2f3b57" })));
+  await expect.poll(() => tint.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(47, 59, 87)");
+  await expect(page.locator(".rose-video-dye")).toHaveAttribute("data-on", "true");
+});
+
+test("a colour saved by the old version (maybe a product's own) is dropped once", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem("estabrek_theme_color", "#ffffff");
+    localStorage.removeItem("estabrek_theme_seen");
+  });
+  await page.goto("/shop");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-selection-ready", "true");
+  await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
+  expect(await page.evaluate(() => localStorage.getItem("estabrek_theme_color"))).toBeNull();
+});
+
+test("a colour picked in another tab reaches the home page left open", async ({ page, context }) => {
+  await page.goto("/");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-selection-ready", "true");
+  const other = await context.newPage();
+  await other.goto("/p/rose-dress");
+  await expect(other.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
+  await other.locator('button.color-swatch[title="Berry"]').first().click();
+  await expect(other.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
+  await page.bringToFront();
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
+  await expect.poll(() => page.locator(".atelier-header").evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(107, 36, 70)");
+  // The product page left open keeps the piece's own colour when another tab picks.
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#2f3b57" })));
+  await other.bringToFront();
+  await other.waitForTimeout(500);
+  await expect(other.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
 });

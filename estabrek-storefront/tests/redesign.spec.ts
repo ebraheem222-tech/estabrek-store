@@ -155,6 +155,54 @@ test("scrolling plays the campaign clip forwards and backwards, with no pause bu
   await expect.poll(() => section.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime)).toBeLessThan(2);
 });
 
+test("the campaign clip takes the picked colour, has no timeline bar, and the shop's colours return after a long break", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/");
+  const section = page.locator(".rose-video");
+  await expect(section).toHaveAttribute("data-motion", "true");
+  await section.scrollIntoViewIfNeeded();
+  await expect(section.locator(".rose-video-timeline")).toHaveCount(0);
+  const dye = section.locator(".rose-video-dye");
+  await expect(dye).not.toHaveAttribute("data-on", "true");
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#2f3b57" })));
+  await expect(dye).toHaveAttribute("data-on", "true");
+  expect(await dye.evaluate((el) => el.style.getPropertyValue("--video-dye"))).toBe("#2f3b57");
+  await expect(page.locator("html")).toHaveAttribute("data-storefront-color", "#2f3b57");
+
+  // Still browsing: the colour stays.
+  await page.clock.fastForward(120_000);
+  await page.mouse.move(200, 300);
+  await page.mouse.move(260, 320);
+  await page.clock.fastForward(120_000);
+  await expect(page.locator("html")).toHaveAttribute("data-storefront-color", "#2f3b57");
+
+  // Away for 3 minutes: back to the shop's own colours, and forgotten for the next visit.
+  await page.clock.fastForward(185_000);
+  await expect(page.locator("html")).not.toHaveAttribute("data-storefront-color", /.+/);
+  await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
+  await expect(dye).not.toHaveAttribute("data-on", "true");
+  expect(await page.evaluate(() => localStorage.getItem("estabrek_theme_color"))).toBeNull();
+});
+
+test("a visit after a long break opens in the shop's own colours", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem("estabrek_theme_color", "#2f3b57");
+    localStorage.setItem("estabrek_theme_seen", String(Date.now() - 10 * 60_000));
+  });
+  await page.goto("/shop");
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-selection-ready", "true");
+  await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
+  // A colour picked moments ago is still carried from page to page.
+  await page.evaluate(() => {
+    localStorage.setItem("estabrek_theme_color", "#2f3b57");
+    localStorage.setItem("estabrek_theme_seen", String(Date.now()));
+  });
+  await page.reload();
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#2f3b57");
+});
+
 test("with reduced motion the campaign clip is a poster with play and pause", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");

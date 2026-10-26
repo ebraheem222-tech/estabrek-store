@@ -11,6 +11,7 @@ import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/Table";
 import type { ChatbotConversation, ChatbotEntry, Locale } from "../../api/chatbot.api";
 import { useChatbotActions, useChatbotConversation, useChatbotConversations, useChatbotEntries } from "../../hooks/useChatbot";
 import { formatDateTime, truncate } from "../../lib/format";
+import { tr } from "@/lib/words";
 
 type Tab = "kb" | "logs";
 
@@ -114,17 +115,17 @@ export default function ChatbotPage() {
   }, [qConversation.data]);
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <PageHeader
-        title="مساعد المتجر (Chatbot)"
-        subtitle="قاعدة معرفة + سجل محادثات — لتحسين الدعم بدون تدريب عشوائي"
+        title={tr("مساعد المتجر (Chatbot)", "Store assistant (chatbot)")}
+        subtitle={tr("قاعدة معرفة + سجل محادثات — لتحسين الدعم بدون تدريب عشوائي", "A knowledge base + chat history — better support without random training")}
         right={
           <div className="flex items-center gap-2">
             <Button variant={tab === "kb" ? "primary" : "secondary"} onClick={() => setTab("kb")}>
-              قاعدة المعرفة
+              {tr("قاعدة المعرفة", "Knowledge base")}
             </Button>
             <Button variant={tab === "logs" ? "primary" : "secondary"} onClick={() => setTab("logs")}>
-              المحادثات
+              {tr("المحادثات", "Chats")}
             </Button>
           </div>
         }
@@ -135,26 +136,26 @@ export default function ChatbotPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="grid gap-3 sm:grid-cols-3">
               <Select
-                label="اللغة"
+                label={tr("اللغة", "Language")}
                 value={kbLocale}
                 onChange={(e) => setKbLocale(e.target.value as Locale)}
                 options={LOCALE_OPTIONS}
               />
-              <Input label="بحث" value={kbQ} onValueChange={setKbQ} placeholder="اكتب كلمة..." />
+              <Input label={tr("بحث", "Search")} value={kbQ} onValueChange={setKbQ} placeholder={tr("كلمة للبحث...", "Type a word...")} />
               <Select
-                label="مفعّل"
+                label={tr("مفعّل", "Active")}
                 value={kbEnabled}
                 onChange={(e) => setKbEnabled(e.target.value as any)}
                 options={[
-                  { value: "all", label: "الكل" },
-                  { value: "1", label: "مفعّل" },
-                  { value: "0", label: "غير مفعّل" },
+                  { value: "all", label: tr("الكل", "All") },
+                  { value: "1", label: tr("مفعّل", "Active") },
+                  { value: "0", label: tr("غير مفعّل", "Inactive") },
                 ]}
               />
             </div>
             <div className="flex items-center gap-2">
               <Button variant="accent" onClick={openCreateEntry}>
-                إضافة سؤال/إجابة
+                {tr("إضافة سؤال/إجابة", "Add a question/answer")}
               </Button>
             </div>
           </div>
@@ -167,12 +168,12 @@ export default function ChatbotPage() {
             <Table>
               <THead>
                 <TR>
-                  <TH>السؤال</TH>
-                  <TH className="w-[120px]">اللغة</TH>
-                  <TH className="w-[120px]">الحالة</TH>
-                  <TH>وسوم</TH>
-                  <TH className="w-[160px]">آخر تحديث</TH>
-                  <TH className="w-[220px]">إجراءات</TH>
+                  <TH>{tr("السؤال", "Question")}</TH>
+                  <TH className="w-[120px]">{tr("اللغة", "Language")}</TH>
+                  <TH className="w-[120px]">{tr("الحالة", "Status")}</TH>
+                  <TH>{tr("وسوم", "Tags")}</TH>
+                  <TH className="w-[160px]">{tr("آخر تحديث", "Last updated")}</TH>
+                  <TH className="w-[220px]">{tr("إجراءات", "Actions")}</TH>
                 </TR>
               </THead>
               <TBody>
@@ -180,23 +181,23 @@ export default function ChatbotPage() {
                   <TR key={e.id}>
                     <TD className="font-medium">{e.title}</TD>
                     <TD>{e.locale}</TD>
-                    <TD>{e.isEnabled ? "مفعّل" : "موقوف"}</TD>
+                    <TD>{e.isEnabled ? tr("مفعّل", "Active") : tr("موقوف", "Stopped")}</TD>
                     <TD className="text-xs opacity-80">{(e.tags ?? []).slice(0, 6).join(", ") || "-"}</TD>
                     <TD className="text-xs opacity-70">{formatDateTime(e.updatedAt)}</TD>
                     <TD>
                       <div className="flex items-center gap-2">
                         <Button size="sm" variant="secondary" onClick={() => openEditEntry(e)}>
-                          تعديل
+                          {tr("تعديل", "Edit")}
                         </Button>
                         <Button
                           size="sm"
                           variant={e.isEnabled ? "ghost" : "success"}
                           onClick={() => actions.updateEntry.mutate({ id: e.id, body: { isEnabled: !e.isEnabled } })}
                         >
-                          {e.isEnabled ? "إيقاف" : "تفعيل"}
+                          {e.isEnabled ? tr("إيقاف", "Stop") : tr("تفعيل", "Activate")}
                         </Button>
                         <Button size="sm" variant="danger" onClick={() => actions.deleteEntry.mutate(e.id)}>
-                          حذف
+                          {tr("حذف", "Delete")}
                         </Button>
                       </div>
                     </TD>
@@ -205,7 +206,7 @@ export default function ChatbotPage() {
                 {!qEntries.data?.items?.length ? (
                   <TR>
                     <TD colSpan={6} className="text-center text-white/50 py-8">
-                      لا توجد بيانات
+                      {tr("لا توجد بيانات", "No data")}
                     </TD>
                   </TR>
                 ) : null}
@@ -218,7 +219,7 @@ export default function ChatbotPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="grid gap-3 sm:grid-cols-2">
               <Select
-                label="حجم الصفحة"
+                label={tr("حجم الصفحة", "Page size")}
                 value={String(logsPageSize)}
                 onChange={(e) => {
                   setLogsPageSize(Number(e.target.value));
@@ -231,7 +232,7 @@ export default function ChatbotPage() {
                 ]}
               />
               <div className="text-xs opacity-60 pt-7">
-                {qLogs.data ? `الكل: ${qLogs.data.total}` : null}
+                {qLogs.data ? tr(`الكل: ${qLogs.data.total}`, "All: {0}", [qLogs.data.total]) : null}
               </div>
             </div>
           </div>
@@ -245,11 +246,11 @@ export default function ChatbotPage() {
               <Table>
                 <THead>
                   <TR>
-                    <TH className="w-[180px]">التاريخ</TH>
-                    <TH className="w-[120px]">الحالة</TH>
-                    <TH>آخر رسالة</TH>
-                    <TH className="w-[220px]">الصفحة</TH>
-                    <TH className="w-[120px]">عرض</TH>
+                    <TH className="w-[180px]">{tr("التاريخ", "Date")}</TH>
+                    <TH className="w-[120px]">{tr("الحالة", "Status")}</TH>
+                    <TH>{tr("آخر رسالة", "Last message")}</TH>
+                    <TH className="w-[220px]">{tr("الصفحة", "Page")}</TH>
+                    <TH className="w-[120px]">{tr("عرض", "View")}</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -261,7 +262,7 @@ export default function ChatbotPage() {
                       <TD className="text-xs opacity-60">{truncate(c.pageUrl ?? "", 48) || "-"}</TD>
                       <TD>
                         <Button size="sm" variant="secondary" onClick={() => setOpenConversationId(c.id)}>
-                          فتح
+                          {tr("فتح", "Open")}
                         </Button>
                       </TD>
                     </TR>
@@ -269,7 +270,7 @@ export default function ChatbotPage() {
                   {!qLogs.data?.items?.length ? (
                     <TR>
                       <TD colSpan={5} className="text-center text-white/50 py-8">
-                        لا توجد محادثات
+                        {tr("لا توجد محادثات", "No chats")}
                       </TD>
                     </TR>
                   ) : null}
@@ -290,7 +291,7 @@ export default function ChatbotPage() {
       {/* Entry modal */}
       <Modal
         open={entryModalOpen}
-        title={editingEntry ? "تعديل سؤال/إجابة" : "إضافة سؤال/إجابة"}
+        title={editingEntry ? tr("تعديل سؤال/إجابة", "Edit question/answer") : tr("إضافة سؤال/إجابة", "Add a question/answer")}
         onClose={() => setEntryModalOpen(false)}
         widthClassName="max-w-2xl"
         footer={
@@ -301,63 +302,63 @@ export default function ChatbotPage() {
               onClick={saveEntry}
               disabled={!entryTitle.trim() || !entryAnswer.trim()}
             >
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Select
-            label="اللغة"
+            label={tr("اللغة", "Language")}
             value={entryLocale}
             onChange={(e) => setEntryLocale(e.target.value as Locale)}
             options={LOCALE_OPTIONS}
           />
           <Input
-            label="الأولوية"
+            label={tr("الأولوية", "Priority")}
             type="number"
             value={String(entryPriority)}
             onValueChange={(v) => setEntryPriority(Number(v) || 0)}
-            hint="أعلى = يظهر أكثر في البحث"
+            hint={tr("أعلى = يظهر أكثر في البحث", "Higher = shows more in search")}
           />
         </div>
 
         <div className="mt-4">
-          <Input label="السؤال / العنوان" value={entryTitle} onValueChange={setEntryTitle} placeholder="مثال: كم مدة الشحن؟" />
+          <Input label={tr("السؤال / العنوان", "Question / title")} value={entryTitle} onValueChange={setEntryTitle} placeholder={tr("مثال: كم مدة الشحن؟", "e.g. How long does shipping take?")} />
         </div>
 
         <div className="mt-4 space-y-2">
-          <label className="block text-sm font-medium text-white/80">الإجابة</label>
+          <label className="block text-sm font-medium text-white/80">{tr("الإجابة", "Answer")}</label>
           <textarea
             className="min-h-[160px] w-full rounded-xl border border-white/10 bg-surface-925 p-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent-500/20"
             value={entryAnswer}
             onChange={(e) => setEntryAnswer(e.target.value)}
-            placeholder="اكتب إجابة واضحة..."
+            placeholder={tr("إجابة واضحة...", "Write a clear answer...")}
           />
-          <div className="text-[11px] opacity-60">يدعم نص عادي أو Markdown بسيط.</div>
+          <div className="text-[11px] opacity-60">{tr("يدعم نص عادي أو Markdown بسيط.", "Takes plain text or simple Markdown.")}</div>
         </div>
 
         <div className="mt-4">
-          <Input label="وسوم (tags) مفصولة بفاصلة" value={entryTags} onValueChange={setEntryTags} placeholder="شحن, مرتجعات, دفع" />
+          <Input label={tr("وسوم (tags) مفصولة بفاصلة", "Tags separated by commas")} value={entryTags} onValueChange={setEntryTags} placeholder={tr("شحن, مرتجعات, دفع", "shipping, returns, payment")} />
         </div>
 
         <div className="mt-4 flex items-center gap-2">
           <input type="checkbox" checked={entryEnabled} onChange={(e) => setEntryEnabled(e.target.checked)} />
-          <span className="text-sm">مفعّل</span>
+          <span className="text-sm">{tr("مفعّل", "Active")}</span>
         </div>
       </Modal>
 
       {/* Conversation modal */}
       <Modal
         open={!!openConversationId}
-        title="تفاصيل المحادثة"
+        title={tr("تفاصيل المحادثة", "Chat details")}
         onClose={() => setOpenConversationId(null)}
         widthClassName="max-w-3xl"
         footer={
           qConversation.data ? (
             <div className="flex items-center gap-2">
               <Select
-                label="الحالة"
+                label={tr("الحالة", "Status")}
                 value={String((qConversation.data as any)?.status ?? "OPEN")}
                 onChange={(e) => {
                   const status = e.target.value;
@@ -401,11 +402,11 @@ export default function ChatbotPage() {
                   <div className="whitespace-pre-wrap leading-relaxed">{m.content ?? ""}</div>
                 </div>
               ))}
-              {!messages.length ? <div className="text-sm opacity-60">لا توجد رسائل</div> : null}
+              {!messages.length ? <div className="text-sm opacity-60">{tr("لا توجد رسائل", "No messages")}</div> : null}
             </div>
           </div>
         ) : (
-          <div className="text-sm text-white/60">غير موجودة</div>
+          <div className="text-sm text-white/60">{tr("غير موجودة", "Not found")}</div>
         )}
       </Modal>
     </div>

@@ -17,6 +17,9 @@ import { httpsOnly } from "./middleware/httpsOnly.js";
 import { originGuard } from "./middleware/originGuard.js";
 import { csrfGuard } from "./middleware/csrf.js";
 import { ipAccess } from "./middleware/ipAccess.js";
+import { pressureGuard } from "./middleware/pressure.js";
+import { maintenanceGuard } from "./middleware/maintenance.js";
+import { trafficLanes } from "./middleware/trafficLanes.js";
 import webhooksRouter from "./routes/webhooks.route.js"; // ???? ?????? ??? ??????
 
 const app = express();
@@ -57,8 +60,11 @@ app.use(
 );
 app.use(cookieParser());
 app.use(ipAccess);
+app.use(pressureGuard); // traffic protection with decay (admin → حماية الضغط)
 app.use(originGuard);
 app.use(rateLimit);
+app.use(maintenanceGuard); // maintenance mode pauses public orders
+app.use(trafficLanes); // requests by priority (admin → مراقبة السرعة والأولوية)
 app.use(csrfGuard);
 app.use(express.json({ limit: env.BODY_JSON_LIMIT }));
 app.use(express.urlencoded({ extended: false, limit: env.BODY_URLENCODED_LIMIT }));

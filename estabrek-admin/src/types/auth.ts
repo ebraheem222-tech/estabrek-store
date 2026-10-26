@@ -1,7 +1,8 @@
 // src/types/auth.ts
 import type { ID, ISODateString } from "./common";
 
-export type Role = "SUPERADMIN" | "ADMIN" | "EDITOR" | "MARKETING" | "SUPPORT";
+/** SUPERADMIN = store owner; STAFF = team member (permissions from their role). The others are older presets. */
+export type Role = "SUPERADMIN" | "STAFF" | "ADMIN" | "EDITOR" | "MARKETING" | "SUPPORT";
 
 /**
  * Admin user fields (from Prisma model AdminUser) - excluding secrets like passwordHash.
@@ -21,6 +22,18 @@ export type AdminUser = {
 
   twoFactorEnabled?: boolean;
   lastLoginAt?: ISODateString | null;
+
+  /** From the server: owner of the store (every permission). */
+  owner?: boolean;
+  status?: "ACTIVE" | "INVITED" | "SUSPENDED";
+  /** Team member's role. */
+  staffRole?: { id: ID; name: string } | null;
+  /** What this admin may do, as the server enforces it. */
+  permissions?: string[];
+  /** The admin's language for this member (their choice, else the store's main language). */
+  locale?: "ar" | "en" | "he";
+  /** They chose it (else it follows the store's main language). */
+  localeChosen?: boolean;
 
   createdAt?: ISODateString;
   updatedAt?: ISODateString;

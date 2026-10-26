@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 
 type SortKey = "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc";

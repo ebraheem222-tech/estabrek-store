@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import type { RecommendedProduct } from "../storefront/recommend.service.js";
 import { recommendProducts } from "../storefront/recommend.service.js";
+import { storeName } from "../identity/identity.js";
 
 type Locale = "ar" | "he" | "en";
 
@@ -75,10 +76,10 @@ function isRecommendationIntent(message: string): boolean {
 
 async function getSupportContact() {
   const s = await prisma.siteSettings.findFirst({
-    select: { siteName: true, contactPhone: true, contactEmail: true },
+    select: { siteName: true, header: true, contactPhone: true, contactEmail: true },
   });
   return {
-    siteName: s?.siteName ?? "Estabrek",
+    siteName: storeName(s, "ar"),
     phone: s?.contactPhone ?? null,
     email: s?.contactEmail ?? null,
   };

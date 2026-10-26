@@ -32,8 +32,8 @@ const variants: Record<Variant, string> = {
   ].join(" "),
   accent: [
     "bg-gradient-to-b from-[var(--btn-accent-from)] to-[var(--btn-accent-to)] text-[var(--btn-accent-text)]",
-    "shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(139,92,246,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]",
-    "hover:shadow-[0_1px_2px_rgba(0,0,0,0.25),0_8px_20px_rgba(139,92,246,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]",
+    "shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgb(var(--sk-accent-500,139_92_246)/0.25),inset_0_1px_0_rgba(255,255,255,0.15)]",
+    "hover:shadow-[0_1px_2px_rgba(0,0,0,0.25),0_8px_20px_rgb(var(--sk-accent-500,139_92_246)/0.35),inset_0_1px_0_rgba(255,255,255,0.2)]",
     "hover:from-[var(--btn-accent-from-hover)] hover:to-[var(--btn-accent-to-hover)]",
   ].join(" "),
   secondary: [

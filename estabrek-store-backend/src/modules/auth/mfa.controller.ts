@@ -3,7 +3,6 @@ import { validate } from "../../utils/validate.js";
 import { TwoFASetupBody, TwoFAEnableBody, TwoFADisableBody, MfaFinalizeBody } from "./auth.schemas.js";
 import { asyncHandler } from "../../utils/async.js";
 import { disable2FA, enable2FA, finalizeMfaLogin, generate2FASetup } from "./mfa.service.js";
-import { issueTokensFromSession } from "./auth.service.js";
 
 export const setup2FA: RequestHandler[] = [
   validate({ body: TwoFASetupBody }),
@@ -37,15 +36,6 @@ export const finalizeMfaLoginController: RequestHandler[] = [
   asyncHandler(async (req, res) => {
     const { sessionId, adminId, totp, code, challengeId } = req.body as any;
     const tokens = await finalizeMfaLogin({ sessionId, adminId, totp, code, challengeId });
-    res.json(tokens);
-  }),
-];
-
-// Convenience endpoint if you only have sessionId after MFA
-export const tokensFromSession: RequestHandler[] = [
-  asyncHandler(async (req, res) => {
-    const { sessionId } = req.body as { sessionId: string };
-    const tokens = await issueTokensFromSession(sessionId);
     res.json(tokens);
   }),
 ];

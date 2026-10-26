@@ -5,38 +5,67 @@ import Link from "next/link";
 import { Component, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { requestScrollRefresh } from "@/lib/scrollRefresh";
+import { onPageRest } from "@/lib/pageRest";
+import { motionLevel } from "@/lib/motionBudget";
+import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import type { StoryChapter, StoryKey } from "@/lib/collectionStories";
 import { storefrontPalette } from "@/lib/storefrontPalette";
-import { selectStorefrontColor } from "@/lib/storefrontColor";
-import { tweenTheme, tweenThemeBack } from "@/lib/themeTween";
+import { themeFollower } from "@/lib/themeTween";
+import { claimTheme, releaseTheme, themeHeld } from "@/lib/themeBase";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { RoseBadge } from "./RoseBadge";
 import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
+import { RoseMascot, type MascotHandle, type PalmRef } from "./mascot/RoseMascot";
+import type { RoseExtras, RoseOutfit } from "@/lib/roseEvents";
+import { useNames } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { isRtl } from "@/lib/i18n";
 
 const CollectionModelsScene = dynamic(() => import("./CollectionModelsScene"), { ssr: false, loading: () => null });
 
 type Copy = { eyebrow: string; title: string; text: string; cta: string };
-const STORY: Record<StoryKey, { seed: string; fallback: string; ar: Copy; en: Copy }> = {
+
+/** What Rose wears for each chapter. */
+const STORY_OUTFIT: Record<StoryKey, { outfit: RoseOutfit; extras: RoseExtras }> = {
+  accessories: { outfit: "abaya", extras: { pearls: true } },
+  kids: { outfit: "tunic", extras: {} },
+  incense: { outfit: "eid", extras: {} },
+};
+
+/** What Rose says as she lifts each chapter's model. */
+const ROSE_LINE: Record<StoryKey, { ar: string; en: string; he: string }> = {
+  accessories: { ar: "شوفي هالتفاصيل الحلوة ✨", en: "Look at these little details ✨", he: "איזה פרטים קטנים ויפים ✨" },
+  kids: { ar: "للصغيرات الحلوات 💕", en: "For the little ones 💕", he: "לקטנות המתוקות 💕" },
+  incense: { ar: "ريحة البخور بتجنن 🤍", en: "Smell that bakhoor 🤍", he: "ריח הקטורת פשוט מדהים 🤍" },
+};
+const STORY: Record<StoryKey, { seed: string; fallback: string; ar: Copy; en: Copy; he: Copy }> = {
   accessories: {
     seed: "#c4a266",
     fallback: "/editorial/scarves.webp",
-    ar: { eyebrow: "الإكسسوارات", title: "تفاصيل صغيرة،\nتكمل حكايتكِ.", text: "خاتم التسبيح الذكي، دبابيس الشال، المعاصم والقمطات… لمسات تجعل إطلالتكِ أكمل.", cta: "تسوّقي الإكسسوارات" },
-    en: { eyebrow: "ACCESSORIES", title: "Small details\nthat finish your look.", text: "Smart tasbih rings, shawl pins, sleeves and underscarves — the touches that complete you.", cta: "Shop accessories" },
+    ar: { eyebrow: "الإكسسوارات", title: "معاصم، دبابيس\nوقمطات.", text: "خاتم التسبيح الإلكتروني، دبابيس الشال، المعاصم والبيسك… كل ما يثبّت لفّتكِ ويكمّلها.", cta: "تسوّقي الإكسسوارات" },
+    en: { eyebrow: "ACCESSORIES", title: "Sleeves, pins\nand underscarves.", text: "The electronic tasbih ring, shawl pins, sleeves and underscarves: everything that holds your wrap in place.", cta: "Shop accessories" },
+    he: { eyebrow: "אקססוריז", title: "שרוולים, סיכות\nוכיסויים פנימיים.", text: "טבעת תשביח אלקטרונית, סיכות לצעיף, שרוולים וכיסויים פנימיים: כל מה שמחזיק את הכיסוי במקום ומשלים אותו.", cta: "לאקססוריז" },
   },
   kids: {
     seed: "#e59b9b",
     fallback: "/editorial/hijab-campaign.webp",
-    ar: { eyebrow: "للصغيرات", title: "أناقة صغيرة\nلأحلى البنات.", text: "فساتين مورّدة وأطقم مريحة بألوان فرحة، لجيلٍ يكبر على الأناقة.", cta: "تسوّقي الأطفال" },
-    en: { eyebrow: "FOR LITTLE ONES", title: "Little elegance\nfor little girls.", text: "Floral dresses and comfy sets in happy colours, for a generation growing up elegant.", cta: "Shop kids" },
+    ar: { eyebrow: "للصغيرات", title: "فساتين وأطقم\nللبنات الصغيرات.", text: "فساتين مورّدة وأطقم مريحة بألوان فرحة.", cta: "تسوّقي الأطفال" },
+    en: { eyebrow: "FOR LITTLE ONES", title: "Dresses and sets\nfor little girls.", text: "Floral dresses and comfy sets in happy colours.", cta: "Shop kids" },
+    he: { eyebrow: "לקטנות", title: "שמלות וסטים\nלבנות קטנות.", text: "שמלות פרחוניות וסטים נוחים בצבעים שמחים.", cta: "לקולקציית הילדות" },
   },
   incense: {
     seed: "#9b6b4e",
     fallback: "/editorial/rose-campaign-poster.webp",
-    ar: { eyebrow: "المباخر", title: "عبقٌ يملأ\nبيتكِ دفئاً.", text: "مباخر خشبية بنقوش عربية ولمسة ذهب، لأجواءٍ تشبه بيتكِ.", cta: "تسوّقي المباخر" },
-    en: { eyebrow: "INCENSE BURNERS", title: "A scent that fills\nyour home with warmth.", text: "Wooden burners with Arabic carving and a touch of gold, for a home that feels like you.", cta: "Shop incense burners" },
+    ar: { eyebrow: "المباخر", title: "مباخر خشب\nونقش عربي.", text: "مباخر من الخشب والبورسلان بنقوش عربية، مع عيدان البخور وتوزيعات العطر.", cta: "تسوّقي المباخر" },
+    en: { eyebrow: "INCENSE BURNERS", title: "Wooden burners,\nArabic carving.", text: "Wood and porcelain burners with Arabic carving, plus incense sticks and perfume favours.", cta: "Shop incense burners" },
+    he: { eyebrow: "מבערי קטורת", title: "מבערים מעץ\nועיטור ערבי.", text: "מבערי קטורת מעץ ומפורצלן עם עיטורים ערביים, יחד עם מקלות קטורת ומתנות בושם.", cta: "למבערי הקטורת" },
   },
 };
 
@@ -62,6 +91,7 @@ class SceneBoundary extends Component<{ children: ReactNode; onError: () => void
 }
 
 function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
+  const { language: lang } = useLanguage();
   const fallback = STORY[chapter.key].fallback;
   if (!chapter.products.length) return null;
   return (
@@ -70,14 +100,14 @@ function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
         <article key={p.id} className="season-card story-card" style={{ "--i": i } as CSSProperties}>
           <Link href={`/p/${encodeURIComponent(p.slug)}`} className="season-card-link">
             <span className={`season-card-image${p.secondaryImageUrl ? " has-alt" : ""}`}>
-              {p.badge && <span className={`rose-badge rose-badge-${p.badge.kind}`}>{ar ? p.badge.ar : p.badge.en}</span>}
+              <RoseBadge badge={p.badge} ar={ar} />
               <Image src={p.imageUrl || fallback} alt={p.title} fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-main" />
               {p.secondaryImageUrl && <Image src={p.secondaryImageUrl} alt="" aria-hidden fill sizes="(max-width:760px) 42vw, 13vw" className="product-image-alt" />}
             </span>
             <span className="season-card-title">{p.title}</span>
             {p.priceText && <span className="season-card-price">{p.priceText}</span>}
           </Link>
-          <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={ar ? "إضافة سريعة" : "Quick add"} />
+          <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={tr(lang, "إضافة سريعة", "Quick add")} />
         </article>
       ))}
     </div>
@@ -92,11 +122,16 @@ function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
  */
 export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) {
   const { language } = useLanguage();
-  const ar = language === "ar";
+  const lang = language;
+  const ar = lang === "ar";
+  const n = useNames();
   const settings = useStorefrontSettings();
   const theme = useRoseTheme();
   const root = useRef<HTMLElement>(null);
   const weights = useRef<number[]>(chapters.map((_, i) => (i === 0 ? 1 : 0)));
+  const palm: PalmRef = useRef(null);
+  const rose = useRef<MascotHandle>(null);
+  const [lead, setLead] = useState(0);
   const [motion, setMotion] = useState(false);
   const [near, setNear] = useState(false);
   const [inView, setInView] = useState(false);
@@ -108,7 +143,12 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => setNear(e.isIntersecting), { rootMargin: "700px 0px" });
+    // Built once when the shopper gets close, then kept (rebuilding the 3D models on
+    // every pass meant a fresh WebGL start-up and shader compile each time).
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) setNear(true); }, { rootMargin: lazyMargin(700) });
+    // Built ahead while the page rests (after the seasons scene), so the scroll never waits for it.
+    const after = prebuildAfter(2);
+    const early = motionLevel() === "lite" || after === null ? null : onPageRest(() => setNear(true), { after, quiet: 600 });
     const view = new IntersectionObserver(([e]) => setInView(e.isIntersecting));
     io.observe(el);
     view.observe(el);
@@ -116,13 +156,13 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
     const sync = () => setCompact(mq.matches);
     sync();
     mq.addEventListener("change", sync);
-    return () => { io.disconnect(); view.disconnect(); mq.removeEventListener("change", sync); };
+    return () => { io.disconnect(); view.disconnect(); mq.removeEventListener("change", sync); early?.(); };
   }, []);
 
   useEffect(() => {
     const el = root.current;
     const shell = theme?.root.current;
-    if (!el || !settings.scrollAnimationsEnabled || chapters.length < 1) return;
+    if (!el || !settings.scrollAnimationsEnabled || !sectionMotionOn("collections") || chapters.length < 1) return;
     gsap.registerPlugin(ScrollTrigger);
     const mm = gsap.matchMedia();
     mm.add("(prefers-reduced-motion: no-preference)", () => {
@@ -131,8 +171,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       const n = chapters.length;
       const layers = Array.from(el.querySelectorAll<HTMLElement>(".story-layer"));
       const dots = Array.from(el.querySelectorAll<HTMLElement>(".story-meter-step"));
-      let saved: Map<string, string> | null = null;
-      let enteredColor: string | undefined;
+      let saved = false;
       const seeds = chapters.map((c) => STORY[c.key].seed);
       const seedAt = (p: number) => {
         let seed = seeds[Math.min(n - 1, Math.floor(p * n))];
@@ -142,85 +181,153 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
         }
         return seed;
       };
+      let lastSeed = "";
+      // Only the header follows the chapters' colours with the scroll (see RoseSeasons):
+      // written on the page shell, or on this section, the whole page or the whole scene
+      // was restyled on every frame of a hand-over. The section wears its chapter's colours.
+      const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
+      const follow = shell ? themeFollower(shell, { local: () => [header] }) : null;
       const takeOver = (seed: string) => {
-        if (!shell) return;
+        if (!shell || !follow) return;
+        // The colour only moves during a hand-over between chapters: skip the other frames.
+        if (saved && seed === lastSeed) return;
+        lastSeed = seed;
         const values = storefrontPalette(seed);
         const entering = !saved;
         if (!saved) {
-          saved = new Map(Object.keys(values).map((k) => [k, shell.style.getPropertyValue(k)]));
-          enteredColor = shell.dataset.storefrontColor;
+          saved = true;
+          claimTheme(shell, "stories", Object.keys(values));
           shell.dataset.season = "true";
         }
-        tweenTheme(shell, values, { duration: entering ? 0.8 : 0.35 });
-        shell.dataset.navbarColor = seed;
+        follow.to(values, entering ? 0.8 : 0.35);
+        // Only its presence matters to the header styles; changing its value on every frame
+        // made the browser re-check every link on the page.
+        if (!shell.dataset.navbarColor) shell.dataset.navbarColor = seed;
       };
-      const giveBack = () => {
-        if (!shell || !saved) return;
-        const previous = saved;
-        saved = null;
-        const chosen = shell.dataset.storefrontColor;
-        tweenThemeBack(shell, previous, {
+      /** `now`: no glide (the scene is going away). */
+      const giveBack = (now = false) => {
+        if (!shell || !follow || !saved) return;
+        saved = false;
+        lastSeed = "";
+        // The header glides back to the page's own colours (a swatch picked meanwhile
+        // already went to the page), then the page lets go of the scene.
+        follow.release(now ? 0 : 0.8, () => releaseTheme(shell, "stories", {
           duration: 0.8,
           onComplete: () => {
-            if (saved) return;
+            if (saved || themeHeld(shell)) return;
             delete shell.dataset.season;
-            if (chosen) {
-              shell.dataset.navbarColor = chosen;
-              if (chosen !== enteredColor) selectStorefrontColor(chosen);
-            } else delete shell.dataset.navbarColor;
+            const chosen = shell.dataset.storefrontColor;
+            if (chosen) shell.dataset.navbarColor = chosen;
+            else delete shell.dataset.navbarColor;
           },
-        });
+        }));
       };
+      let shownLead = -1;
+      const shownV: string[] = [];
+      // Each chapter's weight goes on its own sky (no children), and its layer and cards
+      // move by their own opacity and transform: a --v on a layer restyled its whole copy
+      // and rack on every frame of a hand-over.
+      const skies = Array.from(el.querySelectorAll<HTMLElement>(".story-sky > span"));
+      const cards = layers.map((layer) =>
+        Array.from(layer.querySelectorAll<HTMLElement>(".season-card")).map((card) => ({ card, i: Number(card.style.getPropertyValue("--i")) || 0 })));
+      const px = (n: number) => `translateY(${n.toFixed(2)}px)`;
+      // The section wears the leading chapter's colours, so it never glides them; it
+      // changes at a hand-over's midpoint, when neither chapter's copy shows.
+      const palettes = seeds.map((seed) => storefrontPalette(seed));
       const render = (p: number) => {
         const w = chapterWeights(p, n);
         weights.current = w;
         let lead = 0;
         w.forEach((v, i) => {
-          el.style.setProperty(`--v${i}`, v.toFixed(4));
+          // Settled chapters (fully in or out) are not rewritten every frame.
+          const value = v.toFixed(4);
+          if (shownV[i] !== value) {
+            skies[i]?.style.setProperty("--v", value);
+            const layer = layers[i];
+            if (layer) { layer.style.opacity = value; layer.style.transform = px((1 - v) * 34); }
+            cards[i]?.forEach(({ card, i: k }) => { card.style.transform = px((1 - v) * (40 + k * 18)); });
+            shownV[i] = value;
+          }
           if (v > w[lead]) lead = i;
         });
-        el.style.setProperty("--story-p", p.toFixed(4));
+        if (lead === shownLead) return; // attributes only change at a hand-over
+        shownLead = lead;
+        Object.entries(palettes[lead]).forEach(([name, value]) => el.style.setProperty(name, value));
         el.dataset.chapter = chapters[lead].key;
+        setLead(lead);
         layers.forEach((layer, i) => { layer.inert = i !== lead; });
         dots.forEach((dot, i) => dot.toggleAttribute("data-active", i === lead));
       };
-      const state = { p: 0 };
-      const themeTrigger = ScrollTrigger.create({
+      // Game-loop motion (scrollProgressMotion.ts): the scroll only sets the target,
+      // the display's own frames move the chapters, the 3D models and the colours to it.
+      let shownP = 0;
+      let themeTrigger: ScrollTrigger | null = null;
+      const scrollMotion = createScrollProgressMotion((p) => {
+        shownP = p;
+        render(p);
+        if (themeTrigger?.isActive) takeOver(seedAt(p));
+      }, { smoothTime: sectionSmoothTime("collections") });
+      const sceneTrigger = ScrollTrigger.create({
+        trigger: el,
+        start: "top top",
+        end: "bottom bottom",
+        refreshPriority: -1,
+        onUpdate: (self) => scrollMotion.target(self.progress),
+        // A re-measure lands on the true position instead of gliding there from a stale one.
+        onRefresh: (self) => scrollMotion.snap(self.progress),
+      });
+      scrollMotion.snap(sceneTrigger.progress);
+      themeTrigger = ScrollTrigger.create({
         trigger: el,
         start: "top 55%",
         end: "bottom 45%",
         refreshPriority: -1,
-        onToggle: (self) => (self.isActive ? takeOver(seedAt(state.p)) : giveBack()),
+        onToggle: (self) => (self.isActive ? takeOver(seedAt(shownP)) : giveBack()),
       });
-      const tween = gsap.fromTo(state, { p: 0 }, {
-        p: 1,
-        ease: "none",
-        onUpdate: () => {
-          render(state.p);
-          if (themeTrigger.isActive) takeOver(seedAt(state.p));
-        },
-        scrollTrigger: { trigger: el, start: "top top", end: "bottom bottom", scrub: 0.4, invalidateOnRefresh: true, refreshPriority: -1 },
-      });
-      render(0);
-      const refresh = () => { ScrollTrigger.sort(); ScrollTrigger.refresh(); };
-      const raf = requestAnimationFrame(refresh);
+      const refresh = requestScrollRefresh;
+      refresh();
       window.addEventListener("load", refresh);
       const late = window.setTimeout(refresh, 1500);
       return () => {
-        cancelAnimationFrame(raf);
         window.removeEventListener("load", refresh);
         window.clearTimeout(late);
-        tween.scrollTrigger?.kill();
-        tween.kill();
-        themeTrigger.kill();
-        giveBack();
-        layers.forEach((layer) => { layer.inert = false; });
+        sceneTrigger.kill();
+        themeTrigger?.kill();
+        scrollMotion.stop();
+        giveBack(true);
+        layers.forEach((layer) => { layer.inert = false; layer.style.removeProperty("opacity"); layer.style.removeProperty("transform"); });
+        cards.flat().forEach(({ card }) => card.style.removeProperty("transform"));
+        Object.keys(palettes[0] ?? {}).forEach((name) => el.style.removeProperty(name));
         el.dataset.motion = "false";
         setMotion(false);
       };
     });
     return () => mm.revert();
   }, [settings.scrollAnimationsEnabled, theme, chapters]);
+
+  // Rose introduces each chapter as it takes the stage.
+  useEffect(() => {
+    if (!motion || !inView) return;
+    const key = chapters[lead]?.key;
+    if (!key) return;
+    const t = window.setTimeout(() => {
+      rose.current?.say(ROSE_LINE[key][lang], 2600);
+      rose.current?.joy();
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [lead, motion, inView, chapters, ar, lang]);
+
+  // Phones: stand in the free corner above the products (measured, see phoneSpot.ts).
+  useEffect(() => {
+    if (!motion || !near) return;
+    return watchMascotSpot(root.current);
+  }, [motion, near]);
+  useEffect(() => {
+    if (!motion || !near) return;
+    // Re-measure once the new chapter's copy has settled into place.
+    const t = window.setTimeout(() => placeMascotOnPhone(root.current), 450);
+    return () => window.clearTimeout(t);
+  }, [lead, motion, near]);
 
   if (!chapters.length) return null;
   return (
@@ -231,12 +338,12 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       data-chapter={chapters[0].key}
       data-scene={sceneReady && !sceneFailed ? "ready" : "static"}
       style={{ "--chapters": chapters.length } as CSSProperties}
-      aria-label={ar ? "من عوالم استبرق" : "More from Estabrek"}
+      aria-label={tr(lang, `من عوالم ${n.store}`, "More from {0}", [n.store])}
     >
       <div className="stories-sticky">
         <div className="story-sky" aria-hidden="true">
           {chapters.map((c, i) => (
-            <span key={c.key} className={`sky-${c.key}`} style={{ "--v": `var(--v${i}, ${i === 0 ? 1 : 0})` } as CSSProperties} />
+            <span key={c.key} className={`sky-${c.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties} />
           ))}
         </div>
         {motion && near && !sceneFailed && (
@@ -250,15 +357,30 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
                 rtl={ar}
                 onReady={() => setSceneReady(true)}
                 onFailure={() => setSceneFailed(true)}
+                palm={palm}
               />
             </SceneBoundary>
           </div>
         )}
+        {motion && near && (
+          <RoseMascot
+            ref={rose}
+            className="story-mascot"
+            ar={ar}
+            reactive
+            pose={sceneFailed ? "idle" : "hold"}
+            outfit={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].outfit}
+            extras={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].extras}
+            mirrored={!isRtl(lang)}
+            palm={palm}
+            label={tr(lang, `${n.assistantFull} تعرض المجموعة`, "{0} presents the collection", [n.assistantFull])}
+          />
+        )}
         <div className="story-stage">
           {chapters.map((chapter, i) => {
-            const c = STORY[chapter.key][ar ? "ar" : "en"];
+            const c = STORY[chapter.key][lang];
             return (
-              <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": `var(--v${i}, ${i === 0 ? 1 : 0})` } as CSSProperties}>
+              <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties}>
                 <div className="season-copy story-copy">
                   <span className="atelier-eyebrow">
                     <Icon name="spark" />
@@ -281,7 +403,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           {chapters.map((chapter, i) => (
             <li key={chapter.key} className="story-meter-step" data-active={i === 0 ? "" : undefined}>
               <span />
-              {STORY[chapter.key][ar ? "ar" : "en"].eyebrow}
+              {STORY[chapter.key][lang].eyebrow}
             </li>
           ))}
         </ol>

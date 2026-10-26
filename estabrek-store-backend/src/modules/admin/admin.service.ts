@@ -1,5 +1,6 @@
 // src/modules/admin/admin.service.ts
 import { prisma } from "../../lib/prisma.js";
+import { adminProfile } from "./profile.js";
 import type { OrderReqStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import argon2 from "argon2";
@@ -20,6 +21,7 @@ const SECURITY_EVENT_TYPES: readonly SecurityEventType[] = [
   "SESSION_REVOKED",
   "ACCOUNT_LOCKED",
   "ACCOUNT_UNLOCKED",
+  "NEW_DEVICE_LOGIN",
 ];
 
 const SECURITY_EVENT_TYPE_SET = new Set<string>(SECURITY_EVENT_TYPES as readonly string[]);
@@ -145,22 +147,7 @@ export async function getDashboard() {
  * Basic admin profile (for /account/me).
  */
 export async function getMe(adminId: string) {
-  return prisma.adminUser.findUnique({
-    where: { id: adminId },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      phone: true,
-      secondEmail: true,
-      secondPhone: true,
-      twoFactorEnabled: true,
-      lastLoginAt: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
+  return adminProfile(adminId);
 }
 
 /**
@@ -168,7 +155,7 @@ export async function getMe(adminId: string) {
  */
 export async function updateProfile(
   adminId: string,
-  data: { name?: string; phone?: string | null; secondEmail?: string | null; secondPhone?: string | null }
+  data: { name?: string; phone?: string | null; secondEmail?: string | null; secondPhone?: string | null; locale?: "ar" | "en" | "he" | null }
 ) {
   return prisma.adminUser.update({
     where: { id: adminId },
@@ -178,6 +165,7 @@ export async function updateProfile(
       email: true,
       name: true,
       role: true,
+      locale: true,
       phone: true,
       secondEmail: true,
       secondPhone: true,

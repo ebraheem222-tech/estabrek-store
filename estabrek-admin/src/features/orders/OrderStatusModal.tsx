@@ -66,7 +66,7 @@ export default function OrderStatusModal({ open, order, onClose }: Props) {
         </div>
       }
     >
-      <div dir="rtl" className="space-y-4">
+      <div className="space-y-4">
         <Select
           label="الحالة الجديدة"
           value={toStatus}

@@ -1,10 +1,13 @@
 export class AppError extends Error {
   statusCode: number;
   code: string;
-  constructor(statusCode: number, code: string, message?: string) {
+  /** Extra data for the client (e.g. which SKUs clash). */
+  details?: unknown;
+  constructor(statusCode: number, code: string, message?: string, details?: unknown) {
     super(message ?? code);
     this.statusCode = statusCode;
     this.code = code;
+    this.details = details;
   }
 }
 

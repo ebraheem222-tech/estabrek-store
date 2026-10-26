@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
 import * as AuthAPI from "../../api/auth.api";
+import { tr } from "@/lib/words";
 
 type State = {
   sessionId: string;
@@ -31,7 +32,7 @@ export default function TwoFactorPage() {
   const finalize = useMutation({
     mutationFn: AuthAPI.mfaFinalize,
     onSuccess: () => {
-      toast.success("تم تأكيد التحقق");
+      toast.success(tr("تم تأكيد التحقق", "Verified"));
       nav("/admin/dashboard", { replace: true });
     },
     onError: (err) => toast.error(getApiErrorMessage(err)),
@@ -49,10 +50,10 @@ export default function TwoFactorPage() {
 
     if (method === "SMS") {
       if (!state.challengeId) {
-        toast.error("مفقود challengeId للـ SMS. ارجع لصفحة الدخول وجرب مرة ثانية.");
+        toast.error(tr("ناقص challengeId للـ SMS. يرجى الرجوع لصفحة الدخول والمحاولة مرة ثانية.", "The SMS challengeId is missing. Go back to the sign-in page and try again."));
         return;
       }
-      if (!smsCode.trim()) next.smsCode = "الكود مطلوب";
+      if (!smsCode.trim()) next.smsCode = tr("الكود مطلوب", "The code is required");
       if (Object.keys(next).length) {
         setErrors(next);
         return;
@@ -62,7 +63,7 @@ export default function TwoFactorPage() {
       return;
     }
 
-    if (!totp.trim()) next.totp = "الكود مطلوب";
+    if (!totp.trim()) next.totp = tr("الكود مطلوب", "The code is required");
     if (Object.keys(next).length) {
       setErrors(next);
       return;
@@ -77,16 +78,16 @@ export default function TwoFactorPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl" />
       </div>
 
-      <div dir="rtl" className="relative glass rounded-3xl p-8 shadow-elevated">
+      <div className="relative glass rounded-3xl p-8 shadow-elevated">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-white">تحقق إضافي</h1>
-          <p className="mt-2 text-sm text-white/50">{method === "SMS" ? "دخل الكود اللي وصلك على SMS" : "افتح تطبيق المصادقة وادخل الكود"}</p>
+          <h1 className="text-2xl font-bold text-white">{tr("تحقق إضافي", "One more check")}</h1>
+          <p className="mt-2 text-sm text-white/50">{method === "SMS" ? tr("الكود اللي وصل برسالة SMS", "Enter the code from the text message") : tr("الكود من تطبيق المصادقة", "Enter the code from your authenticator app")}</p>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-5">
           {method === "SMS" ? (
             <Input
-              label="كود SMS"
+              label={tr("كود SMS", "SMS code")}
               value={smsCode}
               error={errors.smsCode}
               onChange={(e) => {
@@ -97,7 +98,7 @@ export default function TwoFactorPage() {
             />
           ) : (
             <Input
-              label="كود المصادقة"
+              label={tr("كود المصادقة", "Authenticator code")}
               value={totp}
               error={errors.totp}
               onChange={(e) => {
@@ -109,11 +110,11 @@ export default function TwoFactorPage() {
           )}
 
           <Button type="submit" variant="primary" className="w-full h-12" isLoading={finalize.isPending}>
-            تأكيد
+            {tr("تأكيد", "Confirm")}
           </Button>
 
           <Button type="button" variant="ghost" className="w-full h-12" onClick={() => nav("/login", { replace: true })}>
-            رجوع
+            {tr("رجوع", "Back")}
           </Button>
         </form>
       </div>

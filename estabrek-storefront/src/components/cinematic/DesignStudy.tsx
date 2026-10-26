@@ -8,6 +8,13 @@ import type { Language } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { onPageRest } from "@/lib/pageRest";
+import { motionLevel } from "@/lib/motionBudget";
+import { lazyMargin, prebuildAfter, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
+import { tr } from "@/lib/words";
+import { useLanguage } from "./Language";
+import type { Lang } from "@/lib/i18n";
 
 const ScarfScene = dynamic(() => import("./ScarfScene"), {
   ssr: false,
@@ -18,10 +25,11 @@ const ScarfScene = dynamic(() => import("./ScarfScene"), {
   ),
 });
 const colors = [
-  { name: "Rose", ar: "وردي", value: "#c97794" },
-  { name: "Lilac", ar: "ليلكي", value: "#a08cbd" },
-  { name: "Pearl", ar: "لؤلؤي", value: "#eee0d5" },
+  { name: "Rose", ar: "وردي", he: "ורוד", value: "#c97794" },
+  { name: "Lilac", ar: "ليلكي", he: "לילך", value: "#a08cbd" },
+  { name: "Pearl", ar: "لؤلؤي", he: "פנינה", value: "#eee0d5" },
 ];
+const colorName = (c: (typeof colors)[number], lang: Lang) => (lang === "ar" ? c.ar : lang === "he" ? c.he : c.name);
 
 class SceneBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
@@ -101,6 +109,7 @@ function ScarfFallback({ color }: { color: string }) {
 }
 
 export function DesignStudy({ language, embedded = false, words }: { language: Language; embedded?: boolean; words?: string[] }) {
+  const { language: lang } = useLanguage();
   const ar = language === "ar";
   const settings = useStorefrontSettings();
   const root = useRef<HTMLElement>(null);
@@ -124,7 +133,9 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => {
-      setReducedMotion(media.matches || !settings.scrollAnimationsEnabled);
+      setReducedMotion(media.matches || !settings.scrollAnimationsEnabled || !sectionMotionOn("study"));
+      // Switched off from the admin: the still layout "reduce motion" gets (cinematic.css, data-still).
+      root.current?.toggleAttribute("data-still", !settings.scrollAnimationsEnabled || !sectionMotionOn("study"));
       setPreferenceReady(true);
     };
     update();
@@ -137,7 +148,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
           observer.disconnect();
         }
       },
-      { rootMargin: "300px" },
+      { rootMargin: lazyMargin(300) },
     );
     const visibility = new IntersectionObserver(
       (entries) => {
@@ -156,6 +167,13 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
       media.removeEventListener("change", update);
     };
   }, [settings.scrollAnimationsEnabled, embedded]);
+  // Built ahead while the page rests (between the seasons and the collection worlds),
+  // so its start-up never lands in the middle of a scroll.
+  useEffect(() => {
+    const after = prebuildAfter(1);
+    if (motionLevel() === "lite" || after === null) return;
+    return onPageRest(() => setNear(true), { after, quiet: 600 });
+  }, []);
   useEffect(() => {
     if (!loadScene) return;
     try {
@@ -193,16 +211,21 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
       opening?.addEventListener("rose-opening-progress", receive);
       return () => opening?.removeEventListener("rose-opening-progress", receive);
     }
+    // Game-loop motion (scrollProgressMotion.ts): the scroll sets the target, the
+    // display's own frames turn the hijab and change the chapter.
+    const motion = createScrollProgressMotion((p) => update(p), { smoothTime: sectionSmoothTime("study") });
     const trigger = ScrollTrigger.create({
       trigger: root.current,
       start: "top top",
       end: "bottom bottom",
-      scrub: true,
-      onUpdate: (self) => {
-        update(self.progress);
-      },
+      onUpdate: (self) => motion.target(self.progress),
+      onRefresh: (self) => motion.snap(self.progress),
     });
-    return () => trigger.kill();
+    motion.snap(trigger.progress);
+    return () => {
+      trigger.kill();
+      motion.stop();
+    };
   }, [reducedMotion, embedded]);
   const copy = ar
     ? [
@@ -229,12 +252,12 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
         {
           title: (
             <>
-              لونكِ.
+              اختاري لونكِ،
               <br />
-              <em>حكايتكِ.</em>
+              <em>ويتلوّن الموقع معكِ.</em>
             </>
           ),
-          text: "وردي، ليلكي، أم لؤلؤي؟ اختاري لونكِ، ثم اكتشفي الحجاب والملابس في مجموعتنا.",
+          text: "وردي، ليلكي، أم لؤلؤي؟ اضغطي على أي لون، فيلبسه الموقع كله: الخلفية والأزرار وحتى روز.",
         },
       ]
     : [
@@ -261,12 +284,12 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
         {
           title: (
             <>
-              Your colour.
+              Pick your colour,
               <br />
-              <em>Your story.</em>
+              <em>and the site wears it.</em>
             </>
           ),
-          text: "Rose, lilac, or pearl? Find your shade, then discover hijabs and modest clothing in our collection.",
+          text: "Rose, lilac or pearl? Tap any colour and the whole site takes it on: background, buttons, even Rose.",
         },
       ];
   const selected = colors[colorIndex];
@@ -284,9 +307,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
       <div className="design-study-sticky">
         <div className="study-copy">
           <span className="atelier-eyebrow">
-            {ar
-              ? "عالم الأقمشة · اكتشفي النعومة"
-              : "THE FABRIC STORY · A SOFTER PERSPECTIVE"}
+            {tr(lang, "عالم الأقمشة · اكتشفي النعومة", "THE FABRIC STORY · A SOFTER PERSPECTIVE")}
           </span>
           {(reducedMotion ? copy : [copy[chapter]]).map((part, index) => (
             <div
@@ -299,7 +320,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
           ))}
           <div className="study-color-picker">
             <span>
-              {ar ? "اللون" : "COLOUR"} — {ar ? selected.ar : selected.name}
+              {tr(lang, "اللون", "COLOUR")} — {colorName(selected, lang)}
             </span>
             <div className="study-swatches">
               {colors.map((color, index) => (
@@ -307,7 +328,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
                   key={color.name}
                   style={{ "--swatch": color.value } as React.CSSProperties}
                   aria-label={color.name}
-                  title={ar ? color.ar : color.name}
+                  title={colorName(color, lang)}
                   aria-pressed={colorIndex === index}
                   onClick={() => { setColorIndex(index); selectStorefrontColor(color.value); }}
                 >
@@ -317,13 +338,13 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
             </div>
           </div>
           <Link href="/shop" className="atelier-text-link">
-            {ar ? "اكتشف المجموعة" : "Find your next favourite"}
+            {tr(lang, "اكتشف المجموعة", "Find your next favourite")}
             <Icon name="arrow" />
           </Link>
           <div
             className="study-progress"
             aria-label={
-              ar ? `المشهد ${chapter + 1} من 3` : `Chapter ${chapter + 1} of 3`
+              tr(lang, `المشهد ${chapter + 1} من 3`, "Chapter {0} of 3", [chapter + 1])
             }
           >
             {[0, 1, 2].map((index) => (
@@ -342,7 +363,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
           data-color={selected.name}
         >
           <span className="model-backdrop-word" aria-hidden="true">
-            {words?.[chapter] || (ar ? ["نعومة", "انسياب", "أناقة"] : ["SOFTNESS", "FLOW", "ELEGANCE"])[chapter]}
+            {words?.[chapter] || (lang === "ar" ? ["نعومة", "انسياب", "أناقة"] : lang === "he" ? ["רכות", "זרימה", "אלגנטיות"] : ["SOFTNESS", "FLOW", "ELEGANCE"])[chapter]}
           </span>
           <div className="model-canvas-wrap">
             {loadScene && supported && !failed ? (
@@ -367,19 +388,17 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
           <div className="model-caption">
             <div>
               <span className="model-caption-title">
-                {ar ? "تصوّر لحجاب منسدل" : "THE DRAPED HIJAB"}
+                {tr(lang, "تصوّر لحجاب منسدل", "THE DRAPED HIJAB")}
               </span>
               <span className="model-caption-sub">
-                {ar
-                  ? "إلهام للأقمشة · الألوان المتاحة في صفحة كل منتج"
-                  : "Fabric inspiration · see each product for available colours"}
+                {tr(lang, "إلهام للأقمشة · الألوان المتاحة في صفحة كل منتج", "Fabric inspiration · see each product for available colours")}
               </span>
             </div>
             <div className="model-rotation">
               <button
                 className="atelier-icon-button"
                 aria-label="Rotate left"
-                title={ar ? "تدوير لليسار" : "Rotate left"}
+                title={tr(lang, "تدوير لليسار", "Rotate left")}
                 onClick={() => setRotation((value) => value - 1)}
               >
                 <Icon name="arrow" className="rotate-left" />
@@ -388,7 +407,7 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
               <button
                 className="atelier-icon-button"
                 aria-label="Rotate right"
-                title={ar ? "تدوير لليمين" : "Rotate right"}
+                title={tr(lang, "تدوير لليمين", "Rotate right")}
                 onClick={() => setRotation((value) => value + 1)}
               >
                 <Icon name="arrow" />
@@ -397,12 +416,8 @@ export function DesignStudy({ language, embedded = false, words }: { language: L
           </div>
           <span className="model-scroll-hint">
             {reducedMotion
-              ? ar
-                ? "استكشف بطريقتك"
-                : "EXPLORE AT YOUR OWN PACE"
-              : ar
-                ? "مرّر لتكتشف كل زاوية"
-                : "SCROLL TO SEE EVERY ANGLE"}
+              ? tr(lang, "استكشف بطريقتك", "EXPLORE AT YOUR OWN PACE")
+              : tr(lang, "مرّر لتكتشف كل زاوية", "SCROLL TO SEE EVERY ANGLE")}
             <Icon name="down" width="12" height="12" />
           </span>
         </div>

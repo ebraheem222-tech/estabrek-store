@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
-const drawer = (page: Page) => page.locator('div[class*="sm:w-[420px]"]');
+// The rose storefront's quick-add sheet (photo, colour, size, quantity).
+const drawer = (page: Page) => page.locator(".rose-sheet-quickadd .rose-sheet");
 
 async function openShop(page: Page) {
   await page.addInitScript(() => {
@@ -18,8 +19,9 @@ async function openShop(page: Page) {
     await route.fulfill({ response, json: data });
   });
   await page.goto("/shop");
-  // The rose storefront keeps one floating action: no scroll line, no back-to-top button.
-  await expect(page.locator(".whatsapp-floating-btn")).toBeVisible();
+  // The rose storefront keeps one floating action — WhatsApp beside Rose — no scroll line, no back-to-top button.
+  await expect(page.locator(".rose-companion-wa")).toBeVisible();
+  await expect(page.locator(".whatsapp-floating-btn")).toHaveCount(0);
   await expect(page.locator(".scroll-progress")).toHaveCount(0);
   await expect(page.locator(".scroll-to-top")).toHaveCount(0);
   const trigger = page.locator(".rose-product-add > button").first();
@@ -35,14 +37,16 @@ test("quick add covers the viewport above animated cards and hides floating widg
   });
   await trigger.click();
   await expect(drawer(page)).toBeVisible();
+  await page.waitForTimeout(500); // let the slide-in finish before measuring
   const bounds = await drawer(page).boundingBox();
   expect.soft(bounds!.y).toBeCloseTo(0, 0);
   expect.soft(bounds!.x + bounds!.width).toBeCloseTo(page.viewportSize()!.width, 0);
-  await expect.soft(page.locator(".whatsapp-floating-btn")).not.toBeVisible();
+  await expect.soft(page.locator(".rose-companion-wa")).not.toBeVisible();
   await expect.soft(page.getByText("نشاط مؤخراً", { exact: true })).not.toBeVisible();
-  await drawer(page).getByRole("button", { name: "✕", exact: true }).click();
+  await expect(drawer(page).locator(".rose-sheet-photo img")).toBeVisible();
+  await drawer(page).getByRole("button", { name: "إغلاق", exact: true }).click();
   await expect(drawer(page)).not.toBeVisible();
-  await expect(page.locator(".whatsapp-floating-btn")).toBeVisible();
+  await expect(page.locator(".rose-companion-wa")).toBeVisible();
 });
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
@@ -51,13 +55,13 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }
     const trigger = await openShop(page);
     await trigger.click();
     await expect(drawer(page)).toBeVisible();
-    await expect.soft(page.locator(".whatsapp-floating-btn")).not.toBeVisible();
+    await expect.soft(page.locator(".rose-companion-wa")).not.toBeVisible();
     await expect.soft(page.getByText("نشاط مؤخراً", { exact: true })).not.toBeVisible();
-    await drawer(page).getByRole("button", { name: "Berry", exact: true }).click();
-    await drawer(page).getByRole("button", { name: "L", exact: true }).click();
+    await drawer(page).getByRole("radio", { name: "Berry", exact: true }).click();
+    await drawer(page).getByRole("radio", { name: "L", exact: true }).click();
     const quantity = drawer(page).getByRole("spinbutton");
     await quantity.fill("2");
-    const add = drawer(page).getByRole("button", { name: "أضف للسلة", exact: true });
+    const add = drawer(page).getByRole("button", { name: "أضيفي للحقيبة" });
     await add.scrollIntoViewIfNeeded();
     const bounds = await add.boundingBox();
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
@@ -70,7 +74,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("estabrak_cart_v1") || "[]")))
       .toEqual([{ variantId: "berry-l", quantity: 2 }]);
     await expect(drawer(page)).not.toBeVisible();
-    await expect(page.locator(".whatsapp-floating-btn")).toBeVisible();
+    await expect(page.locator(".rose-companion-wa")).toBeVisible();
     expect(await page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
   });
 }

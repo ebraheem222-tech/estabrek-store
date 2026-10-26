@@ -42,6 +42,11 @@ export const MoveSectionBody = z.object({
   order: z.number().int().nonnegative(),
 });
 
+/** The new CMS: the page as a tree (checked in full by lib/pageTree.ts checkTree). */
+export const PageTreeBody = z.object({ tree: z.unknown() });
+/** 1 = shown from its sections, 2 = from its tree. */
+export const PageFormatBody = z.object({ format: z.union([z.literal(1), z.literal(2)]) });
+
 export const ValidateSectionBody = z.object({
   type: z.string().trim().min(1).max(80),
   data: z.any().optional(),

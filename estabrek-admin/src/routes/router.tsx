@@ -6,6 +6,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import AdminLayout from "../layouts/AdminLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import type { AdminPermission } from "../lib/authz";
+import { useAuth } from "../hooks/useAuth";
+import { firstAllowedPath } from "../layouts/adminNav";
 
 // features pages
 const LoginPage = lazy(() => import("../features/auth/LoginPage"));
@@ -19,8 +21,14 @@ const ProfilePage = lazy(() => import("../features/account/ProfilePage"));
 const EmailChangePage = lazy(() => import("../features/account/EmailChangePage"));
 const SecurityCenterPage = lazy(() => import("../features/account/SecurityCenterPage"));
 
+const TeamPage = lazy(() => import("../features/team/TeamPage"));
+const ActivityPage = lazy(() => import("../features/team/ActivityPage"));
+const SystemSecurityPage = lazy(() => import("../features/system/SystemSecurityPage"));
+const CustomersPage = lazy(() => import("../features/customers/CustomersPage"));
+
 const OrdersPage = lazy(() => import("../features/orders/OrdersPage"));
 const OrderDetailsPage = lazy(() => import("../features/orders/OrderDetailsPage"));
+const OrderPrintPage = lazy(() => import("../features/orders/OrderPrintPage"));
 
 const OutboxPage = lazy(() => import("../features/outbox/OutboxPage"));
 const OutboxDetailsPage = lazy(() => import("../features/outbox/OutboxDetailsPage"));
@@ -28,38 +36,73 @@ const OutboxDetailsPage = lazy(() => import("../features/outbox/OutboxDetailsPag
 const CategoriesPage = lazy(() => import("../features/catalog/CategoriesPage"));
 const ProductsPage = lazy(() => import("../features/catalog/ProductsPage"));
 const ProductEditorPage = lazy(() => import("../features/catalog/ProductEditorPage"));
+const ProductComposerPage = lazy(() => import("../features/catalog/ProductComposerPage"));
 const SizesPage = lazy(() => import("../features/catalog/SizesPage"));
+const ProductTypesPage = lazy(() => import("../features/catalog/ProductTypesPage"));
+const TicketsPage = lazy(() => import("../features/orders/TicketsPage"));
 
 const LowStockPage = lazy(() => import("../features/inventory/LowStockPage"));
+const StockForecastPage = lazy(() => import("../features/inventory/StockForecastPage"));
+const BackInStockPage = lazy(() => import("../features/inventory/BackInStockPage"));
 const InventoryAdjustmentsPage = lazy(() => import("../features/inventory/InventoryAdjustmentsPage"));
+const StockPage = lazy(() => import("../features/inventory/StockPage"));
+const LabelsPrintPage = lazy(() => import("../features/inventory/LabelsPrintPage"));
 
 const CouponsPage = lazy(() => import("../features/discounts/CouponsPage"));
 const CouponTesterPage = lazy(() => import("../features/discounts/CouponTesterPage"));
+const SmartSellingPage = lazy(() => import("../features/discounts/SmartSellingPage"));
+const ExperimentsPage = lazy(() => import("../features/discounts/ExperimentsPage"));
 
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
+const FeaturesPage = lazy(() => import("../features/features/FeaturesPage"));
+const RazanPage = lazy(() => import("../features/razan/RazanPage"));
+const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
+const QuizPage = lazy(() => import("../features/quiz/QuizPage"));
+const AiPage = lazy(() => import("../features/ai/AiPage"));
+const TrafficPage = lazy(() => import("../features/system/TrafficPage"));
+const CachePage = lazy(() => import("../features/system/CachePage"));
+const SpeedMonitorPage = lazy(() => import("../features/system/SpeedMonitorPage"));
+const JobsPage = lazy(() => import("../features/system/JobsPage"));
+const VaultPage = lazy(() => import("../features/system/VaultPage"));
+const SchedulePage = lazy(() => import("../features/system/SchedulePage"));
+const AutomationsPage = lazy(() => import("../features/system/AutomationsPage"));
+const HistoryPage = lazy(() => import("../features/system/HistoryPage"));
+const BackupsPage = lazy(() => import("../features/system/BackupsPage"));
 const ChatbotPage = lazy(() => import("../features/chatbot/ChatbotPage"));
 const NavPage = lazy(() => import("../features/nav/NavPage"));
 const MediaCenterPage = lazy(() => import("../features/media/MediaCenterPage"));
+const VideosPage = lazy(() => import("../features/media/VideosPage"));
+const ScanPage = lazy(() => import("../features/scan3d/ScanPage"));
+const PlainSpinPage = lazy(() => import("../features/scan3d/PlainSpinPage"));
 
 const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
 const PageEditorPage = lazy(() => import("../features/pages/PageEditorPage"));
 const PagePreviewPage = lazy(() => import("../features/pages/PagePreviewPage"));
+const StudioPage = lazy(() => import("../studio/StudioPage"));
+const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
 
 const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
 const CommentsPage = lazy(() => import("../features/ugc/CommentsPage"));
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { tr } from "@/lib/words";
 
 function NotFound() {
   return (
-    <div dir="rtl" className="min-h-screen flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div className="text-xl font-semibold">الصفحة غير موجودة</div>
+        <div className="text-xl font-semibold">{tr("الصفحة غير موجودة", "Page not found")}</div>
         <a className="mt-4 inline-flex rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/15" href="/admin/dashboard">
-          رجوع للوحة التحكم
+          {tr("رجوع للوحة الإدارة", "Back to the admin")}
         </a>
       </div>
     </div>
   );
+}
+
+/** /admin → the first page this admin may open. */
+function HomeRedirect() {
+  const { hasPermission } = useAuth();
+  return <Navigate to={firstAllowedPath(hasPermission)} replace />;
 }
 
 export default function AppRouter() {
@@ -109,16 +152,49 @@ export default function AppRouter() {
         />
 
 
+        {/* Printable invoices / delivery labels (no admin chrome) */}
+        <Route
+          path="/print/orders"
+          element={withPermissions(
+            <React.Suspense fallback={<div style={{ padding: 24 }}>{tr("جارٍ التحميل…", "Loading…")}</div>}>
+              <OrderPrintPage />
+            </React.Suspense>,
+            ["orders:read"],
+          )}
+        />
+
+        {/* Barcode labels for SKUs (no admin chrome) */}
+        <Route
+          path="/print/labels"
+          element={withPermissions(
+            <React.Suspense fallback={<div style={{ padding: 24 }}>{tr("جارٍ التحميل…", "Loading…")}</div>}>
+              <LabelsPrintPage />
+            </React.Suspense>,
+            ["inventory:read"],
+          )}
+        />
+
+        {/* The new page editor, full screen (no admin chrome) */}
+        <Route
+          path="/studio/:id"
+          element={withPermissions(
+            <React.Suspense fallback={<div style={{ padding: 24 }}>{tr("جارٍ التحميل…", "Loading…")}</div>}>
+              <StudioPage />
+            </React.Suspense>,
+            ["pages:read"],
+          )}
+        />
+
         {/* Admin (Protected) */}
         <Route
           path="/admin"
           element={
-            <ProtectedRoute requireSuperAdmin={false} requirePermissions={["dashboard:read"]}>
+            <ProtectedRoute requireSuperAdmin={false}>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route index element={<HomeRedirect />} />
 
           <Route path="dashboard" element={withPermissions(<DashboardPage />, ["dashboard:read"])} />
 
@@ -130,6 +206,8 @@ export default function AppRouter() {
           {/* orders */}
           <Route path="orders" element={withPermissions(<OrdersPage />, ["orders:read"])} />
           <Route path="orders/:id" element={withPermissions(<OrderDetailsPage />, ["orders:read"])} />
+          <Route path="tickets" element={withPermissions(<TicketsPage />, ["orders:read"])} />
+          <Route path="requests" element={withPermissions(<RequestsPage />, ["orders:read"])} />
 
           {/* outbox */}
           <Route path="outbox" element={withPermissions(<OutboxPage />, ["outbox:read"])} />
@@ -138,21 +216,54 @@ export default function AppRouter() {
           {/* catalog */}
           <Route path="catalog/categories" element={withPermissions(<CategoriesPage />, ["catalog:read"])} />
           <Route path="catalog/products" element={withPermissions(<ProductsPage />, ["catalog:read"])} />
-          <Route path="catalog/products/:id" element={withPermissions(<ProductEditorPage />, ["catalog:write"])} />
+          <Route path="catalog/products/new" element={withPermissions(<ProductComposerPage key="new" />, ["catalog:write"])} />
+          {/* Edit: the same one-screen page (SKU table, quantities); the old full editor stays as "advanced". */}
+          <Route path="catalog/products/:id" element={withPermissions(<ProductComposerPage key="edit" />, ["catalog:write"])} />
+          <Route path="catalog/products/:id/advanced" element={withPermissions(<ProductEditorPage />, ["catalog:write"])} />
           <Route path="catalog/sizes" element={withPermissions(<SizesPage />, ["catalog:read"])} />
+          <Route path="catalog/types" element={withPermissions(<ProductTypesPage />, ["catalog:read"])} />
 
           {/* inventory */}
+          <Route path="inventory/stock" element={withPermissions(<StockPage />, ["inventory:read"])} />
           <Route path="inventory/low-stock" element={withPermissions(<LowStockPage />, ["inventory:read"])} />
+          <Route path="inventory/forecast" element={withPermissions(<StockForecastPage />, ["inventory:read"])} />
+          <Route path="inventory/back-in-stock" element={withPermissions(<BackInStockPage />, ["inventory:read"])} />
           <Route path="inventory/adjustments" element={withPermissions(<InventoryAdjustmentsPage />, ["inventory:write"])} />
 
           {/* discounts */}
           <Route path="discounts/coupons" element={withPermissions(<CouponsPage />, ["discounts:read"])} />
+          <Route path="discounts/smart" element={withPermissions(<SmartSellingPage />, ["discounts:read"])} />
+          <Route path="discounts/ab" element={withPermissions(<ExperimentsPage />, ["discounts:read"])} />
 
           
               <Route path="discounts/coupons/test" element={withPermissions(<CouponTesterPage />, ["discounts:write"])} />{/* settings */}
           <Route path="settings" element={withPermissions(<SettingsPage />, ["settings:read"])} />
+          <Route path="themes" element={withPermissions(<ThemesPage />, ["settings:read"])} />
+          <Route path="features" element={withPermissions(<FeaturesPage />, ["settings:read"])} />
+          <Route path="razan" element={withPermissions(<RazanPage />, ["settings:read"])} />
+          <Route path="quiz" element={withPermissions(<QuizPage />, ["settings:read"])} />
+          <Route path="ai" element={withPermissions(<AiPage />, ["settings:read"])} />
           <Route path="chatbot" element={withPermissions(<ChatbotPage />, ["chatbot:read"])} />
-          <Route path="media" element={withPermissions(<MediaCenterPage />, ["settings:read"])} />
+          <Route path="media" element={withPermissions(<MediaCenterPage />, ["media:read"])} />
+          <Route path="media/videos" element={withPermissions(<VideosPage />, ["media:read"])} />
+          <Route path="media/scan" element={withPermissions(<ScanPage />, ["media:read"])} />
+          <Route path="media/spin" element={withPermissions(<PlainSpinPage />, ["media:read"])} />
+
+          {/* team & permissions */}
+          <Route path="team" element={withPermissions(<TeamPage />, ["staff:read"])} />
+          <Route path="team/activity" element={withPermissions(<ActivityPage />, ["activity:read"])} />
+          <Route path="system/security" element={withPermissions(<SystemSecurityPage />, ["system:read"])} />
+          <Route path="system/traffic" element={withPermissions(<TrafficPage />, ["system:read"])} />
+          <Route path="system/cache" element={withPermissions(<CachePage />, ["system:read"])} />
+          <Route path="system/speed" element={withPermissions(<SpeedMonitorPage />, ["system:read"])} />
+          <Route path="system/jobs" element={withPermissions(<JobsPage />, ["system:read"])} />
+          <Route path="system/vault" element={withPermissions(<VaultPage />, ["system:read"])} />
+          <Route path="system/schedule" element={withPermissions(<SchedulePage />, ["system:read"])} />
+          <Route path="system/automations" element={withPermissions(<AutomationsPage />, ["settings:read"])} />
+          {/* Every member: it shows only the parts they can see. */}
+          <Route path="system/history" element={withPermissions(<HistoryPage />, [])} />
+          <Route path="system/backups" element={withPermissions(<BackupsPage />, ["system:read"])} />
+          <Route path="customers" element={withPermissions(<CustomersPage />, ["customers:read"])} />
 
           {/* nav + pages */}
           <Route path="nav" element={withPermissions(<NavPage />, ["nav:write"])} />

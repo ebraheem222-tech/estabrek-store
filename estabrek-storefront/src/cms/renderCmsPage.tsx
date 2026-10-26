@@ -23,12 +23,26 @@ import ProductCard from "@/components/ProductCard";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import FallbackHome from "@/components/FallbackHome";
 import { RoseCmsHome } from "@/components/cinematic/RoseCmsHome";
+import { storeThemeOf, themeById } from "@/storeThemes";
+import { ThemedHome } from "@/storeThemes/home/ThemedHome";
+import { stageOptionsOf } from "@/storeThemes/three/kinds";
 import { RoseCmsInterior } from "@/components/cinematic/RoseCmsInterior";
 import FallbackShop from "@/components/FallbackShop";
 import FallbackContact from "@/components/FallbackContact";
 import CartClient from "@/components/CartClient";
 import { normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import type { ProductMini } from "@/cms/types";
+import type { StorefrontPage } from "@/lib/types";
+import type { CatalogCategory } from "@/lib/catalog";
+import { langConfigOf, type Lang } from "@/lib/i18n";
+import { localizeCategories } from "@/lib/localize";
+import { asTree, treeNeeds } from "@/pageTree/tree";
+import { treeCss } from "@/pageTree/css";
+import type { TreeCtx } from "@/pageTree/TreeNodeView";
+import { TreeMotion } from "@/pageTree/TreeMotion";
+
+/** Before the first paint: what comes in waits unseen until the motion engine is ready (2.5 s at most; never inside the editor). */
+const TREE_PENDING = `(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches||window.parent!==window)return;var r=document.documentElement;r.classList.add("pt-pending");setTimeout(function(){r.classList.remove("pt-pending")},2500)}catch(e){}})();`;
 
 
 
@@ -53,16 +67,41 @@ type SP = Record<string, string | string[] | undefined>;
 export async function renderCmsPageBySlug(
   slug: string,
   searchParams?: SP,
-  options?: { allowFallback?: boolean; allowNotFound?: boolean }
+  options?: {
+    allowFallback?: boolean;
+    allowNotFound?: boolean;
+    lang?: Lang;
+    page?: Promise<StorefrontPage | null>;
+    /** The admin's theme gallery: a theme id to show instead of the saved one ("rose" = none). */
+    storeTheme?: string | null;
+    storeThemeMode?: "light" | "dark" | null;
+  }
 ) {
+  // The page's language: its CMS words and the store's content in it.
+  const lang = options?.lang;
   const allowFallback = options?.allowFallback !== false;
   const allowNotFound = options?.allowNotFound !== false;
 
   // URL-driven filters for CMS data components (ProductGrid/ProductSlider + FiltersBar)
   const f = normalizeFiltersFromSearchParams(searchParams ?? {});
 
-  const pagePromise = getPageBySlug(slug);
+  // The new editor's frame hands in the draft it opened with its ticket.
+  const pagePromise = options?.page ?? getPageBySlug(slug, lang);
   const bootstrapPromise = getBootstrap();
+  const settingsPromise = getPublicSettings().catch(() => null);
+  // The rose homepage's scenes only need the categories: start them now instead of
+  // after every other product request (the catalog API answers in about a second each).
+  const roseHome = slug === "/" && process.env.ESTABREK_HOME_MODE !== "cms";
+  const homeDataPromise = roseHome
+    ? Promise.all([listCategories(), bootstrapPromise])
+        .then(async ([cats, boot]) => {
+          const list = cats ?? [];
+          const currency = (boot.site as any)?.currencyCode || "ILS";
+          const [seasons, stories] = await Promise.all([loadSeasonalEdits(list, currency, lang), loadCollectionStories(list, currency, lang)]);
+          return { categories: lang ? localizeCategories(list, lang) : list, seasons, stories };
+        })
+        .catch(() => ({ categories: [] as Awaited<ReturnType<typeof listCategories>>, seasons: [] as Awaited<ReturnType<typeof loadSeasonalEdits>>, stories: [] as Awaited<ReturnType<typeof loadCollectionStories>> }))
+    : null;
   const page = await pagePromise;
 
   // ✅ Fallback pages if CMS page isn't published yet
@@ -93,6 +132,27 @@ export async function renderCmsPageBySlug(
 
   const bootstrap = await bootstrapPromise;
   const currencyCode = (bootstrap.site as any)?.currencyCode || "ILS";
+  // Admin → ثيمات المتجر: a theme draws its own home; none = the rose design.
+  const settingsHeader = ((await settingsPromise)?.site as any)?.header ?? (bootstrap.site as any)?.header;
+  const storeTheme = options?.storeTheme !== undefined ? (options.storeTheme === "rose" ? null : themeById(options.storeTheme)) : storeThemeOf(settingsHeader)?.theme ?? null;
+  const storeThemeMode = options?.storeThemeMode ?? (options?.storeTheme === undefined ? storeThemeOf(settingsHeader)?.mode ?? null : null);
+
+  // The new CMS: a page saved as a tree (format 2). Its old sections keep their place
+  // through `legacy` nodes and draw exactly as before; every other page-level node
+  // becomes a section of kind TREE_NODE that the renderers hand to pageTree/TreeNodeView.
+  const tree = (page as any).format === 2 ? asTree(structuredClone((page as any).tree ?? null)) : null;
+  const langCfg = langConfigOf((bootstrap.site as any)?.header);
+  const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg } : null;
+  if (tree) {
+    const byId = new Map<string, any>((((page as any).sections ?? []) as any[]).map((s) => [s.id, s]));
+    (page as any).sections = (tree.root.children ?? []).flatMap((n, i) => {
+      if (n.type === "legacy") {
+        const s = byId.get(String(n.props?.sectionId ?? ""));
+        return s ? [{ ...s, order: i }] : [];
+      }
+      return [{ id: `tree-${n.id}`, type: "TREE_NODE", order: i, isVisible: true, data: { node: n, ctx: treeCtx } }];
+    });
+  }
 
   // Prefetch minimal product info for CMS-linked cards (e.g., CARDS linking to /p/:slug)
   const productLookup: Record<string, ProductMini> = {};
@@ -173,6 +233,32 @@ export async function renderCmsPageBySlug(
     });
   }
 
+  // The tree's product elements: hand-picked, new, best sellers or a category.
+  const treeProducts = tree ? treeNeeds(tree).products : [];
+  if (treeProducts.length) {
+    await Promise.all(
+      treeProducts.map(async (n) => {
+        const limit = Math.max(1, Math.min(48, Number(n.props?.limit) || 8));
+        try {
+          let ids: string[] = [];
+          const source = n.props?.source;
+          if (source === "picked") ids = (Array.isArray(n.props?.productIds) ? n.props.productIds : []).filter((x: unknown): x is string => typeof x === "string");
+          else if (source === "new") ids = await getNewArrivalsIds(limit);
+          else if (source === "best") ids = await getBestSellersIds(limit);
+          else if (source === "category" && typeof n.props?.categoryId === "string") {
+            const out = await listProducts({ page: 1, pageSize: limit, take: limit, cursorMode: false, lite: true, lang, categoryId: n.props.categoryId, includeFacets: false });
+            ids = (((out as any)?.items ?? []) as any[]).map((x) => x?.id).filter(Boolean);
+          }
+          ids = ids.slice(0, limit);
+          n.props = { ...n.props, productIds: ids };
+          for (const id of ids) wantIds.add(id);
+        } catch {
+          // ignore; the element shows what it could find
+        }
+      })
+    );
+  }
+
   // Fetch IDs for auto product sections and inject them into section.data.productIds
   if (autoProductSections.length) {
     await Promise.all(
@@ -216,7 +302,7 @@ export async function renderCmsPageBySlug(
 
   if (queryTasks.length) {
     // Categories are needed for the filters UI (category dropdown)
-    const categories = hasFiltersBar ? await listCategories() : [];
+    const categories = hasFiltersBar ? await listCategories(lang) : [];
 
     // For now, compute facets from the *first* query target on the page (common case: one grid per page).
     // If you place multiple query grids, they will share the same FiltersBar facets.
@@ -235,6 +321,7 @@ export async function renderCmsPageBySlug(
         take: first.limit,
         cursorMode: false,
         lite: true,
+        lang,
         sort,
         q: f.q,
         inStock: f.inStock,
@@ -291,6 +378,7 @@ export async function renderCmsPageBySlug(
               take: limit,
               cursorMode: false,
               lite: true,
+              lang,
               sort,
               q: f.q,
               inStock: f.inStock,
@@ -323,7 +411,7 @@ export async function renderCmsPageBySlug(
 
   const idsList = Array.from(wantIds);
   if (idsList.length) {
-    const products = await listProductsByIds(idsList, { lite: true });
+    const products = await listProductsByIds(idsList, { lite: true, lang });
     for (const p of products) {
       if (!p) continue;
       const imageUrl = getProductPrimaryImage(p);
@@ -341,7 +429,7 @@ export async function renderCmsPageBySlug(
 
   const slugList = Array.from(wantSlugs);
   if (slugList.length) {
-    const products = await listProductsBySlugs(slugList, { lite: true });
+    const products = await listProductsBySlugs(slugList, { lite: true, lang });
     for (const p of products) {
       if (!p) continue;
       const imageUrl = getProductPrimaryImage(p);
@@ -371,21 +459,58 @@ export async function renderCmsPageBySlug(
   }
 
 
-  const roseHome = slug === "/" && process.env.ESTABREK_HOME_MODE !== "cms";
-  const homeCategories = roseHome ? await listCategories() : [];
-  const [seasons, stories] = roseHome
-    ? await Promise.all([
-        loadSeasonalEdits(homeCategories ?? [], currencyCode),
-        loadCollectionStories(homeCategories ?? [], currencyCode),
-      ])
-    : [[], []];
+  const homeData = homeDataPromise ? await homeDataPromise : null;
+  const homeCategories = homeData?.categories ?? [];
+  const seasons = homeData?.seasons ?? [];
+  const stories = homeData?.stories ?? [];
+
+  // What the tree's category tiles and rose blocks draw from, and its CSS.
+  let treeStyle = "";
+  let treeMoves = false;
+  if (tree && treeCtx) {
+    const needs = treeNeeds(tree);
+    if (needs.categories || needs.seasons || needs.stories) {
+      const fetched: CatalogCategory[] = homeData ? [] : await listCategories(lang).catch((): CatalogCategory[] => []);
+      const cats: CatalogCategory[] = homeData?.categories ?? (lang ? localizeCategories(fetched, lang) : fetched);
+      treeCtx.categories = cats;
+      if (needs.seasons) treeCtx.seasons = homeData ? seasons : await loadSeasonalEdits(cats, currencyCode, lang).catch(() => []);
+      if (needs.stories) treeCtx.stories = homeData ? stories : await loadCollectionStories(cats, currencyCode, lang).catch(() => []);
+    }
+    // 360° elements: their products with their views (the product page's own data).
+    if (needs.spinProducts.length) {
+      const found = await Promise.all(needs.spinProducts.map((id) => getProductById(id, lang).catch(() => null)));
+      treeCtx.spinProducts = Object.fromEntries(needs.spinProducts.map((id, i) => [id, found[i] ? { title: found[i]!.title, spins: found[i]!.spins } : null]));
+    }
+    if (needs.instagram) {
+      treeCtx.instagram = Object.entries(productLookup)
+        .filter(([key]) => !key.startsWith("slug:"))
+        .map(([, p]) => p.imageUrl)
+        .filter((url): url is string => Boolean(url))
+        .slice(0, 4);
+    }
+    treeStyle = treeCss(tree);
+    treeMoves = needs.motion;
+  }
 
   return (
     <>
       {/* Page-level head scripts are injected in head.tsx */}
       <ScriptTags scripts={(page as any).headScripts} />
+      {treeStyle ? <style data-page-tree="" dangerouslySetInnerHTML={{ __html: treeStyle }} /> : null}
+      {treeMoves ? <script dangerouslySetInnerHTML={{ __html: TREE_PENDING }} /> : null}
+      {treeMoves ? <TreeMotion /> : null}
 
-      {roseHome ? <RoseCmsHome
+      {roseHome && storeTheme ? <ThemedHome
+        theme={storeTheme}
+        mode={storeThemeMode}
+        stageOptions={stageOptionsOf(settingsHeader, storeTheme.id)}
+        lang={lang ?? langCfg.default}
+        sections={page.sections as any}
+        productLookup={productLookup}
+        categories={homeCategories ?? []}
+        renderProductCard={(id) => <ProductCard productId={id} />}
+        renderQuickAdd={(ref) => <QuickAddButton productId={ref.productId} slug={ref.slug} buttonLabel="أضف للسلة" />}
+      /> : roseHome ? <RoseCmsHome
         sections={page.sections as any}
         productLookup={productLookup}
         categories={homeCategories ?? []}

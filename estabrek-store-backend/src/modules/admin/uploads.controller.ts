@@ -5,17 +5,23 @@ import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
 
+import { z } from "zod";
+
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
-import { deleteFromCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
+import { deleteFromCloudinary, getCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
+import { CUTOUT_TRANSFORMATIONS, cutoutUrl, fetchCutout, publicIdFromUrl } from "../../lib/cloudCutout.js";
 import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
 import { computeDhashHex, hammingHex } from "../../lib/imageHash.js";
 import { findDuplicateMediaAsset } from "../../lib/mediaDedup.js";
+import { mediaSettings, type MediaSettings } from "../../lib/mediaSettings.js";
 
 const r = Router();
 
 const UPLOAD_ROOT = path.resolve(process.cwd(), "uploads");
-const IMAGES_DIR = path.join(UPLOAD_ROOT, "images");
+export const IMAGES_DIR = path.join(UPLOAD_ROOT, "images");
+/** The largest image multer takes; the admin's limit (media settings) is checked after. */
+const ABSOLUTE_MAX_IMAGE_MB = 50;
 
 const ALLOWED_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".webp"]);
@@ -45,7 +51,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: ABSOLUTE_MAX_IMAGE_MB * 1024 * 1024 }, // the admin's own limit is checked in ingestImages
   fileFilter: (_req, file, cb) => {
     if (isAllowedImage(file)) return cb(null, true);
     const err = new Error("INVALID_FILE_TYPE") as any;
@@ -54,7 +60,7 @@ const upload = multer({
   },
 });
 
-function makePublicUrl(req: any, rel: string) {
+export function makePublicUrl(req: any, rel: string) {
   const proto = req.headers["x-forwarded-proto"]?.toString() || req.protocol;
   const host = req.headers["x-forwarded-host"]?.toString() || req.get("host");
   return `${proto}://${host}${rel}`;
@@ -105,52 +111,74 @@ function mergeTags(current: string[] | null | undefined, incoming: string[]) {
   return out;
 }
 
-async function optimizeImageInPlace(filePath: string) {
+type Optimized = { ok: boolean; width: number | null; height: number | null; size: number; filePath: string; mime: string | null };
+
+const MIME_OF: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".avif": "image/avif" };
+
+/**
+ * Resizes (longest side), removes the hidden data and changes the format as the
+ * admin set (media settings → images). With Cloudinary and nothing to change, the
+ * original bytes are kept. A new format gets a new file name (returned).
+ */
+export async function optimizeImageInPlace(filePath: string, settings: MediaSettings["images"] = mediaSettings().images): Promise<Optimized> {
   try {
     const ext = path.extname(filePath).toLowerCase();
     const isCloud = isCloudinaryEnabled();
     const meta = await sharp(filePath, { failOnError: false }).metadata();
     if (!meta.format || !["jpeg", "png", "webp"].includes(meta.format)) {
-      return { ok: false, width: null, height: null, size: 0 };
+      return { ok: false, width: null, height: null, size: 0, filePath, mime: null };
     }
 
-    const maxW = isCloud ? 4000 : 2000;
-    const maxH = isCloud ? 4000 : 2000;
-    const needsResize = !!(meta.width && meta.height && (meta.width > maxW || meta.height > maxH));
+    const max = settings.maxDimension > 0 ? settings.maxDimension : isCloud ? 4000 : 2000;
+    const needsResize = !!(meta.width && meta.height && (meta.width > max || meta.height > max));
+    let target = settings.format === "keep" ? ext : settings.format === "jpeg" ? ".jpg" : `.${settings.format}`;
+    // JPEG has no transparency: a picture that uses it (a cut-out) keeps its own format.
+    if (target === ".jpg" && meta.hasAlpha && !(await sharp(filePath, { failOnError: false }).stats()).isOpaque) target = ext;
+    const changesFormat = target !== ext && !(target === ".jpg" && ext === ".jpeg");
+    // Hidden data only matters when there is some (EXIF, XMP, IPTC: camera and GPS position).
+    const hasHiddenData = !!(meta.exif || meta.xmp || meta.iptc);
+    const strip = settings.stripMetadata && hasHiddenData;
 
-    // If Cloudinary is enabled and no resize is needed, keep original bytes (no re-encode).
-    if (isCloud && !needsResize) {
+    // If Cloudinary is enabled and nothing needs to change, keep original bytes (no re-encode).
+    if (isCloud && !needsResize && !changesFormat && !strip && settings.quality === 0) {
       const st = await fs.stat(filePath);
-      return { ok: true, width: meta.width ?? null, height: meta.height ?? null, size: st.size };
+      return { ok: true, width: meta.width ?? null, height: meta.height ?? null, size: st.size, filePath, mime: MIME_OF[ext] ?? null };
     }
 
     let img = sharp(filePath, { failOnError: false }).rotate();
     if (needsResize) {
-      img = img.resize({ width: maxW, height: maxH, fit: "inside", withoutEnlargement: true });
+      img = img.resize({ width: max, height: max, fit: "inside", withoutEnlargement: true });
     }
+    // sharp writes no hidden data unless asked to; keep it only when the admin wants it kept.
+    if (!settings.stripMetadata) img = img.keepMetadata();
 
-    // encode based on ext
-    if (ext === ".png") {
+    const quality = settings.quality > 0 ? settings.quality : isCloud ? 90 : 82;
+    if (target === ".png") {
       img = isCloud ? img.png({ compressionLevel: 6, palette: false }) : img.png({ compressionLevel: 9, palette: true });
-    } else if (ext === ".webp") {
-      img = img.webp({ quality: isCloud ? 90 : 82 });
+    } else if (target === ".webp") {
+      img = img.webp({ quality });
+    } else if (target === ".avif") {
+      img = img.avif({ quality: Math.max(1, Math.round(quality * 0.75)) });
     } else {
-      img = img.jpeg({ quality: isCloud ? 90 : 82, mozjpeg: true });
+      img = img.jpeg({ quality, mozjpeg: true });
     }
 
-    const tmpPath = `${filePath}.tmp`;
-    await img.toFile(tmpPath);
-    await fs.rename(tmpPath, filePath);
+    const outPath = changesFormat ? filePath.slice(0, filePath.length - ext.length) + target : filePath;
+    const tmpPath = `${outPath}.tmp`;
+    // The written size comes from the encoder (reading the file again keeps it open on Windows).
+    const written = await img.toFile(tmpPath);
+    await fs.rename(tmpPath, outPath);
+    if (outPath !== filePath) await fs.unlink(filePath).catch(() => undefined);
 
-    const st = await fs.stat(filePath);
-    return { ok: true, width: meta.width ?? null, height: meta.height ?? null, size: st.size };
+    const st = await fs.stat(outPath);
+    return { ok: true, width: written.width ?? meta.width ?? null, height: written.height ?? meta.height ?? null, size: st.size, filePath: outPath, mime: MIME_OF[target] ?? null };
   } catch {
     // If optimization fails, keep original.
     try {
       const st = await fs.stat(filePath);
-      return { ok: false, width: null, height: null, size: st.size };
+      return { ok: false, width: null, height: null, size: st.size, filePath, mime: null };
     } catch {
-      return { ok: false, width: null, height: null, size: 0 };
+      return { ok: false, width: null, height: null, size: 0, filePath, mime: null };
     }
   }
 }
@@ -233,7 +261,7 @@ function includesFilename(val: any, filename: string) {
   }
 }
 
-async function findUsageByFilename(filename: string): Promise<MediaUsage[]> {
+export async function findUsageByFilename(filename: string): Promise<MediaUsage[]> {
   const usage: MediaUsage[] = [];
 
   // Settings
@@ -852,7 +880,7 @@ r.post("/images", (req, res) => {
     if (err) {
       const code = err?.code;
       if (code === "LIMIT_FILE_SIZE") {
-        return res.status(413).json({ error: "FILE_TOO_LARGE", message: "Max file size is 10MB" });
+        return res.status(413).json({ error: "FILE_TOO_LARGE", message: `Max file size is ${Math.min(ABSOLUTE_MAX_IMAGE_MB, mediaSettings().images.maxUploadMb)}MB` });
       }
       if (code === "LIMIT_UNEXPECTED_FILE") {
         return res.status(400).json({ error: "UNEXPECTED_FIELD", message: "Expected field name: file or files" });
@@ -875,153 +903,224 @@ r.post("/images", (req, res) => {
 
       const folder = (req.body?.folder ? String(req.body.folder).trim() : "") || null;
       const tags = parseTags(req.body?.tags);
-
-      await ensureFolderExists(folder);
-
-      const out: any[] = [];
-
-      const processed: Array<{
-        file: any;
-        opt: { ok: boolean; width: number | null; height: number | null; size: number };
-        blurDataUrl: string | null;
-        imageHash: string | null;
-      }> = [];
-      const tempFiles: string[] = [];
-      for (const file of files) {
-        const fullPath = path.join(IMAGES_DIR, file.filename);
-        tempFiles.push(fullPath);
-
-        const scan = await scanFile(fullPath);
-        if (!scan.ok) {
-          await Promise.all(tempFiles.map((p) => fs.unlink(p).catch(() => undefined)));
-          const status = scan.code === "FILE_INFECTED" ? 422 : 503;
-          return res.status(status).json({ error: scan.code, message: scan.message });
-        }
-
-        const opt = await optimizeImageInPlace(fullPath);
-        if (!opt.ok) {
-          await fs.unlink(fullPath).catch(() => undefined);
-          continue;
-        }
-        const blurDataUrl = await createBlurDataUrlFromFile(fullPath);
-        const imageHash = await computeDhashHex(fullPath);
-        processed.push({ file, opt, blurDataUrl, imageHash });
-      }
-
-      if (!processed.length) {
-        return res.status(415).json({ error: "INVALID_FILE_TYPE", message: "Only PNG, JPG, or WebP images are allowed" });
-      }
-
-      const dedupCache = new Map<string, any>();
-
-      for (const { file, opt, blurDataUrl, imageHash } of processed) {
-        const fullPath = path.join(IMAGES_DIR, file.filename);
-
-        if (imageHash) {
-          const cached = dedupCache.get(imageHash);
-          if (cached) {
-            await fs.unlink(fullPath).catch(() => undefined);
-            out.push(cached);
-            continue;
-          }
-
-          let duplicate = await findDuplicateMediaAsset({
-            hash: imageHash,
-            width: opt.width,
-            height: opt.height,
-            scope: "global",
-          });
-
-          if (duplicate) {
-            const updates: any = {};
-            if (!duplicate.displayName && (file.originalname || file.filename)) {
-              updates.displayName = file.originalname || file.filename;
-            }
-            if (!duplicate.folder && folder) {
-              updates.folder = folder;
-            }
-            if (tags.length) {
-              const merged = mergeTags(duplicate.tags, tags);
-              if (merged.length !== (duplicate.tags?.length ?? 0)) {
-                updates.tags = merged;
-              }
-            }
-            if (!duplicate.blurDataUrl && blurDataUrl) {
-              updates.blurDataUrl = blurDataUrl;
-            }
-            if (Object.keys(updates).length) {
-              duplicate = await prisma.mediaAsset.update({ where: { id: duplicate.id }, data: updates });
-            }
-
-            await fs.unlink(fullPath).catch(() => undefined);
-            const response = mediaAssetToResponse(req, duplicate);
-            out.push(response);
-            dedupCache.set(imageHash, response);
-            continue;
-          }
-        }
-
-        if (isCloudinaryEnabled()) {
-          const uploaded = await uploadImageToCloudinary({
-            filePath: fullPath,
-            folder,
-            displayName: file.originalname || file.filename,
-            tags,
-          });
-
-          // Remove temp local file after upload
-          await fs.unlink(fullPath).catch(() => undefined);
-
-          const created = await prisma.mediaAsset.create({
-            data: {
-              kind: "IMAGE",
-              filename: uploaded.publicId,
-              url: uploaded.url,
-              provider: "CLOUDINARY",
-              providerId: uploaded.publicId,
-              displayName: file.originalname || uploaded.publicId,
-              folder,
-              tags,
-              mime: file.mimetype || guessMimeFromExt(file.filename),
-              size: uploaded.bytes || opt.size || file.size,
-              width: uploaded.width ?? opt.width,
-              height: uploaded.height ?? opt.height,
-              blurDataUrl: blurDataUrl ?? null,
-              imageHash: imageHash ?? null,
-            },
-          });
-
-          const response = mediaAssetToResponse(req, created);
-          out.push(response);
-          if (imageHash) dedupCache.set(imageHash, response);
-        } else {
-          const created = await prisma.mediaAsset.create({
-            data: {
-              kind: "IMAGE",
-              filename: file.filename,
-              displayName: file.originalname || file.filename,
-              folder,
-              tags,
-              mime: file.mimetype || guessMimeFromExt(file.filename),
-              size: opt.size || file.size,
-              width: opt.width,
-              height: opt.height,
-              blurDataUrl: blurDataUrl ?? null,
-              imageHash: imageHash ?? null,
-            },
-          });
-
-          const response = mediaAssetToResponse(req, created);
-          out.push(response);
-          if (imageHash) dedupCache.set(imageHash, response);
-        }
-      }
-
-      return res.status(201).json({ files: out });
+      // A picture made from another (a cut-out) stays a new item even when it looks like one we have.
+      const keepAsNew = String(req.body?.keepAsNew ?? "") === "1";
+      const result = await ingestImages(req, files, { folder, tags, keepAsNew });
+      if ("error" in result) return res.status(result.status).json({ error: result.error, message: result.message });
+      return res.status(201).json({ files: result.files });
     } catch (e: any) {
       return res.status(500).json({ error: "UPLOAD_FAILED", message: e?.message ?? String(e) });
     }
   });
+});
+
+type IngestFile = { filename: string; originalname?: string; mimetype?: string; size: number };
+type IngestResult = { files: any[] } | { error: string; status: number; message: string };
+
+/**
+ * Takes in images already saved in IMAGES_DIR (an upload, or a frame from a video):
+ * size check, virus scan, the admin's image settings, blur preview, duplicate check,
+ * then Cloudinary or the disk, and a MediaAsset each.
+ */
+export async function ingestImages(req: any, files: IngestFile[], opts: { folder: string | null; tags: string[]; keepAsNew?: boolean }): Promise<IngestResult> {
+  const { folder, tags } = opts;
+  const limits = mediaSettings().images;
+  const tooBig = files.find((file) => file.size > limits.maxUploadMb * 1024 * 1024);
+  if (tooBig) {
+    await Promise.all(files.map((file) => fs.unlink(path.join(IMAGES_DIR, file.filename)).catch(() => undefined)));
+    return { error: "FILE_TOO_LARGE", status: 413, message: `Max file size is ${limits.maxUploadMb}MB` };
+  }
+
+  await ensureFolderExists(folder);
+
+  const out: any[] = [];
+  const processed: Array<{
+    file: any;
+    opt: { ok: boolean; width: number | null; height: number | null; size: number };
+    blurDataUrl: string | null;
+    imageHash: string | null;
+  }> = [];
+  const tempFiles: string[] = [];
+  for (const file of files) {
+    const fullPath = path.join(IMAGES_DIR, file.filename);
+    tempFiles.push(fullPath);
+
+    const scan = await scanFile(fullPath);
+    if (!scan.ok) {
+      await Promise.all(tempFiles.map((p) => fs.unlink(p).catch(() => undefined)));
+      const status = scan.code === "FILE_INFECTED" ? 422 : 503;
+      return { error: scan.code ?? "SCAN_FAILED", status, message: scan.message ?? "" };
+    }
+
+    const opt = await optimizeImageInPlace(fullPath, limits);
+    if (!opt.ok) {
+      await fs.unlink(fullPath).catch(() => undefined);
+      continue;
+    }
+    // A new format means a new file name and type.
+    if (opt.filePath !== fullPath) {
+      tempFiles[tempFiles.length - 1] = opt.filePath;
+      file.filename = path.basename(opt.filePath);
+      if (file.originalname) file.originalname = file.originalname.replace(/\.[^.]+$/, path.extname(opt.filePath));
+    }
+    if (opt.mime) file.mimetype = opt.mime;
+    const blurDataUrl = await createBlurDataUrlFromFile(opt.filePath);
+    const imageHash = await computeDhashHex(opt.filePath);
+    processed.push({ file, opt, blurDataUrl, imageHash });
+  }
+
+  if (!processed.length) {
+    return { error: "INVALID_FILE_TYPE", status: 415, message: "Only PNG, JPG, or WebP images are allowed" };
+  }
+
+  const dedupCache = new Map<string, any>();
+
+  for (const { file, opt, blurDataUrl, imageHash } of processed) {
+    const fullPath = path.join(IMAGES_DIR, file.filename);
+
+    if (imageHash && !opts.keepAsNew) {
+      const cached = dedupCache.get(imageHash);
+      if (cached) {
+        await fs.unlink(fullPath).catch(() => undefined);
+        out.push(cached);
+        continue;
+      }
+
+      let duplicate = await findDuplicateMediaAsset({
+        hash: imageHash,
+        width: opt.width,
+        height: opt.height,
+        scope: "global",
+      });
+
+      if (duplicate) {
+        const updates: any = {};
+        if (!duplicate.displayName && (file.originalname || file.filename)) {
+          updates.displayName = file.originalname || file.filename;
+        }
+        if (!duplicate.folder && folder) {
+          updates.folder = folder;
+        }
+        if (tags.length) {
+          const merged = mergeTags(duplicate.tags, tags);
+          if (merged.length !== (duplicate.tags?.length ?? 0)) {
+            updates.tags = merged;
+          }
+        }
+        if (!duplicate.blurDataUrl && blurDataUrl) {
+          updates.blurDataUrl = blurDataUrl;
+        }
+        if (Object.keys(updates).length) {
+          duplicate = await prisma.mediaAsset.update({ where: { id: duplicate.id }, data: updates });
+        }
+
+        await fs.unlink(fullPath).catch(() => undefined);
+        const response = mediaAssetToResponse(req, duplicate);
+        out.push(response);
+        dedupCache.set(imageHash, response);
+        continue;
+      }
+    }
+
+    if (isCloudinaryEnabled()) {
+      const uploaded = await uploadImageToCloudinary({
+        filePath: fullPath,
+        folder,
+        displayName: file.originalname || file.filename,
+        tags,
+      });
+
+      // Remove temp local file after upload
+      await fs.unlink(fullPath).catch(() => undefined);
+
+      const created = await prisma.mediaAsset.create({
+        data: {
+          kind: "IMAGE",
+          filename: uploaded.publicId,
+          url: uploaded.url,
+          provider: "CLOUDINARY",
+          providerId: uploaded.publicId,
+          displayName: file.originalname || uploaded.publicId,
+          folder,
+          tags,
+          mime: file.mimetype || guessMimeFromExt(file.filename),
+          size: uploaded.bytes || opt.size || file.size,
+          width: uploaded.width ?? opt.width,
+          height: uploaded.height ?? opt.height,
+          blurDataUrl: blurDataUrl ?? null,
+          imageHash: imageHash ?? null,
+        },
+      });
+
+      const response = mediaAssetToResponse(req, created);
+      out.push(response);
+      if (imageHash) dedupCache.set(imageHash, response);
+    } else {
+      const created = await prisma.mediaAsset.create({
+        data: {
+          kind: "IMAGE",
+          filename: file.filename,
+          displayName: file.originalname || file.filename,
+          folder,
+          tags,
+          mime: file.mimetype || guessMimeFromExt(file.filename),
+          size: opt.size || file.size,
+          width: opt.width,
+          height: opt.height,
+          blurDataUrl: blurDataUrl ?? null,
+          imageHash: imageHash ?? null,
+        },
+      });
+
+      const response = mediaAssetToResponse(req, created);
+      out.push(response);
+      if (imageHash) dedupCache.set(imageHash, response);
+    }
+  }
+
+  return { files: out };
+}
+
+/* ---------------- «شيل الخلفية» with Cloudinary ---------------- */
+// The free engine runs in the admin's browser; this one is paid per picture (Cloudinary
+// counts 75 transformations), so it works only when switched on in the upload settings.
+// The admin gets the PNG, fixes it up and saves it as a new picture (POST /images).
+
+// GET /admin/uploads/background-removal → may the admin offer Cloudinary?
+r.get("/background-removal", (_req, res) => {
+  res.json({ cloudinary: { on: mediaSettings().images.cloudCutout, ready: isCloudinaryEnabled(), transformations: CUTOUT_TRANSFORMATIONS } });
+});
+
+const CutoutBody = z
+  .object({
+    url: z.string().trim().max(2000).optional(),
+    assetId: z.string().trim().min(1).max(100).optional(),
+    fineEdges: z.boolean().optional(),
+  })
+  .refine((b) => Boolean(b.url || b.assetId), { message: "url or assetId" });
+
+// POST /admin/uploads/background-removal { url | assetId, fineEdges? } → image/png
+r.post("/background-removal", async (req, res) => {
+  const body = CutoutBody.safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "BAD_REQUEST", message: "Send the picture's url or assetId" });
+  if (!mediaSettings().images.cloudCutout) {
+    return res.status(409).json({ error: "CLOUD_CUTOUT_OFF", message: "Removing backgrounds with Cloudinary is switched off in the upload settings" });
+  }
+  const cld = getCloudinary();
+  if (!cld) return res.status(409).json({ error: "CLOUDINARY_NOT_CONFIGURED", message: "This store has no Cloudinary account" });
+
+  let publicId: string | null = null;
+  if (body.data.assetId) {
+    const asset = await prisma.mediaAsset.findUnique({ where: { id: body.data.assetId }, select: { provider: true, providerId: true } });
+    publicId = asset?.provider === "CLOUDINARY" ? asset.providerId : null;
+  } else publicId = publicIdFromUrl(body.data.url!, process.env.CLOUDINARY_CLOUD_NAME);
+  if (!publicId) return res.status(400).json({ error: "NOT_ON_CLOUDINARY", message: "The picture is not stored on this store's Cloudinary" });
+
+  const out = await fetchCutout(cutoutUrl(cld, publicId, body.data.fineEdges));
+  if (!out.ok) return res.status(out.status).json({ error: out.error, message: out.message });
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-store");
+  return res.send(out.png);
 });
 
 export default r;

@@ -1,8 +1,10 @@
 "use client";
+import { productItem, trackAddToCart, trackViewItem } from "@/lib/analytics";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { gsap } from "gsap";
 import type { CatalogItem, CatalogProduct, CatalogVariant } from "@/lib/catalog";
+import { deliveryText } from "@/lib/deliveryTime";
 import {
   catalogItemKey,
   catalogItemLabel,
@@ -13,9 +15,12 @@ import {
   getVariantEffectivePrice,
 } from "@/lib/catalog";
 import { getProductBadge } from "@/lib/productBadges";
+import { piecesLeftText, showsLeft } from "@/lib/scarcity";
+import { imagesFor, itemHex, sizeKeyOf, startColorIndex } from "@/lib/roseProductMedia";
 import { cldUrl } from "@/lib/cloudinary";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
-import { endThemePreview, previewTheme, randomThemeSeed, shellOf } from "@/lib/themePreview";
+import { notePick, setRazanProduct, setRazanSelection } from "@/lib/razanProduct";
+import { startThemeCycle, stopThemeCycle } from "@/lib/themePreview";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
@@ -26,42 +31,29 @@ import { SizeGuide } from "@/components/SizeGuide";
 import { ProductTile } from "@/components/ProductTile";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { RoseImageViewer } from "./RoseImageViewer";
+import { SpinDialog, spinFor } from "./ProductSpin";
+import { RoseBadge } from "./RoseBadge";
+import { roseOutfit, roseReact } from "@/lib/roseEvents";
+import { useSiteFeatures } from "@/store/siteFeatures";
+import { RoseStockAlert } from "./RoseStockAlert";
+import { RoseRequestForm } from "./RoseRequestForm";
+import { RoseReviewSummary, RoseShopTheLook, RoseSizeAdvice } from "./RoseProductAi";
+import { StoreMark } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { translatedTypeLabel } from "@/lib/localize";
+import type { Lang } from "@/lib/i18n";
 
 type Crumb = { label: string; href: string };
 
-const isModel = (url?: string | null) => /\.(glb|gltf)(\?|#|$)/i.test(String(url ?? ""));
-const renderable = (im?: { url?: string | null; view?: string | null } | null) =>
-  Boolean(im?.url) && !isModel(im!.url) && String(im!.view ?? "").toLowerCase() !== "3d";
-
-function itemHex(item?: CatalogItem | null) {
-  const raw = item?.colorHex || item?.suggestedColors?.[0] || "";
-  if (!raw) return null;
-  const hex = raw.startsWith("#") ? raw : `#${raw}`;
-  return /^#[0-9a-f]{6}$/i.test(hex) ? hex : null;
-}
-
-function imagesFor(product: CatalogProduct, item?: CatalogItem | null): string[] {
-  const out: string[] = [];
-  const push = (url?: string | null) => { if (url && !isModel(url) && !out.includes(url)) out.push(url); };
-  const own = (item?.images ?? []).filter(renderable).sort((a, b) => Number(Boolean(b.isPrimary)) - Number(Boolean(a.isPrimary)) || (a.position ?? 0) - (b.position ?? 0));
-  own.forEach((im) => push(im.url));
-  push(item?.primaryImageUrl);
-  push(item?.secondaryImageUrl);
-  if (!out.length) {
-    (((product as any).images ?? []) as Array<{ url?: string; view?: string }>).filter(renderable).forEach((im) => push(im.url));
-    push(getProductPrimaryImage(product));
-  }
-  return out;
-}
-
-const sizeKeyOf = (v: CatalogVariant) => (v.size?.name ?? "").trim() || "default";
 
 /**
  * Rose product page: a framed gallery that follows the chosen colour, the
  * colour and size choices, and add-to-bag, in the storefront's own design.
  */
 export function RoseProduct({ product, crumbs, related }: { product: CatalogProduct; crumbs: Crumb[]; related: CatalogProduct[] }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const items = useMemo(() => product.items ?? [], [product]);
   const [colorKey, setColorKey] = useState(() => (items[0] ? catalogItemKey(items[0], 0) : ""));
   const itemIndex = Math.max(0, items.findIndex((it, i) => catalogItemKey(it, i) === colorKey));
@@ -74,44 +66,111 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const [status, setStatus] = useState<string | null>(null);
   const images = useMemo(() => imagesFor(product, item), [product, item]);
   const [active, setActive] = useState(0);
+  const [viewer, setViewer] = useState(false);
+  // Its 360° view (made in the admin from a video): this colour's own, else the one for every colour.
+  const spin = useMemo(() => spinFor(product.spins, item?.id), [product.spins, item?.id]);
+  const [spinning, setSpinning] = useState(false);
   const frame = useRef<HTMLDivElement>(null);
   const zoom = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
   const wishlist = useWishlist();
-  const { addToRecentlyViewed } = useRecentlyViewed();
+  const { addToRecentlyViewed, updateRecentlyViewed } = useRecentlyViewed();
+  // Reopened from Razan's history: ?c=<colour>&s=<size> brings back what she had picked.
+  const wanted = useRef<{ color?: string; size?: string } | null>(null);
   const { fireConfetti } = useAnimationEffects();
   const toast = useToastShortcuts();
+  // Admin → بانتظار التوفّر: sold-out sizes can be picked to leave an email.
+  const { stockAlerts, requests, ai, scarcity } = useSiteFeatures();
+  // «اطلبي قطعتكِ»: a size or colour this piece doesn't come in (admin → الطلبات الخاصة).
+  const [asking, setAsking] = useState(false);
+  // The kind of product names its two choices (e.g. "الدرجة" for a ticket) and can hide them.
+  const kind = product.type ?? null;
+  // The kind's own names are Arabic (admin → أنواع المنتجات); other languages use the plain words.
+  // The type's own words (admin → أنواع المنتجات), translated by the owner for this language when they did.
+  const colorLabel = ar ? kind?.colorLabel || "اللون" : translatedTypeLabel(kind, lang, "colorLabel") || tr(lang, "اللون", "Colour");
+  const sizeLabel = ar ? kind?.sizeLabel || "المقاس" : translatedTypeLabel(kind, lang, "sizeLabel") || tr(lang, "المقاس", "Size");
+  const specs = product.specs ?? [];
+  const fulfillment = kind?.fulfillment ?? "SHIPPING";
+  const eta = fulfillment === "SHIPPING" ? deliveryText(product.delivery, lang) : null;
+  // A booking whose time has passed can't be ordered any more.
+  const eventEnd = product.eventEndsAt ?? product.eventStartsAt ?? null;
+  const eventOver = fulfillment === "BOOKING" && Boolean(eventEnd) && new Date(eventEnd!).getTime() < Date.now();
 
   const variant = variants.find((v) => sizeKeyOf(v) === sizeKey) ?? firstInStock ?? null;
   const price = variant ? getVariantEffectivePrice(variant) : null;
   const compareAt = variant ? getVariantCompareAtPrice(variant) : null;
   const discount = price && compareAt && compareAt > price ? Math.round((1 - price / compareAt) * 100) : null;
   const inStock = Boolean(variant) && (variant!.stock == null || variant!.stock > 0);
-  const lowStock = inStock && variant?.stock != null && variant.stock <= 3;
+  // "باقي قطعتان" next to the price, as the owner set it (admin → تنبيهات المخزون).
+  const lowStock = inStock && showsLeft(scarcity, variant?.stock, "price");
   const badge = useMemo(() => getProductBadge(product), [product]);
   const currency = (product as any).currencyCode ?? null;
   const saved = wishlist.isInWishlist(product.id);
 
   useEffect(() => {
     addToRecentlyViewed({ id: product.id, title: product.title, slug: product.slug, image: getProductPrimaryImage(product) ?? undefined, price: price ?? undefined });
+    trackViewItem(productItem(product, { color: item?.colorName, price }), currency ?? undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
+
+  // Razan's guided ordering starts from the piece on screen.
+  useEffect(() => {
+    setRazanProduct(product);
+    return () => setRazanProduct(null);
+  }, [product]);
+  useEffect(() => { setRazanSelection(colorKey, sizeKey); }, [colorKey, sizeKey]);
+
+  // Rose says hello to each new piece the shopper opens.
+  useEffect(() => {
+    const t = window.setTimeout(() => roseReact("product-view"), 1200);
+    // …and dresses for the piece's collection.
+    const o = window.setTimeout(() => roseOutfit(`${product.category?.slug ?? ""} ${product.category?.name ?? ""}`), 3600);
+    return () => { window.clearTimeout(t); window.clearTimeout(o); };
+  }, [product.id, product.category?.slug, product.category?.name]);
+
+  // The page takes the piece's colour on its own — no need to tap the swatch that
+  // is already selected: the shopper's current colour when the piece comes in it,
+  // otherwise its first colour in stock.
+  useEffect(() => {
+    if (!items.length) return;
+    const sp = new URLSearchParams(window.location.search);
+    wanted.current = sp.get("c") || sp.get("s") ? { color: sp.get("c") ?? undefined, size: sp.get("s") ?? undefined } : null;
+    const current = document.documentElement.dataset.storefrontColor;
+    const asked = wanted.current?.color ? items.findIndex((it) => it.colorName === wanted.current!.color) : -1;
+    const i = asked >= 0 ? asked : startColorIndex(items, current);
+    setColorKey(catalogItemKey(items[i], i));
+    const hex = itemHex(items[i]);
+    if (hex && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
   // A new colour starts on its first photo and its first size in stock.
   useEffect(() => {
     setActive(0);
-    if (firstInStock) setSizeKey(sizeKeyOf(firstInStock));
-  }, [colorKey, firstInStock]);
+    const ask = wanted.current?.size;
+    const askedVariant = ask ? variants.find((v) => sizeKeyOf(v) === ask) : null;
+    if (askedVariant) { setSizeKey(ask!); wanted.current = null; }
+    else if (firstInStock) setSizeKey(sizeKeyOf(firstInStock));
+  }, [colorKey, firstInStock, variants]);
+
+  // Razan's history keeps how long she stayed (and, below, what she picked herself).
+  useEffect(() => {
+    const start = Date.now();
+    return () => updateRecentlyViewed(product.id, { addSeconds: (Date.now() - start) / 1000 });
+  }, [product.id, updateRecentlyViewed]);
 
   // Photos cross-fade in.
   useEffect(() => {
     const el = frame.current?.querySelector(".rose-pdp-main-image");
-    if (el) gsap.fromTo(el, { opacity: 0, scale: 1.03 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" });
+    // clearProps: an inline transform left behind would cancel the hover zoom.
+    if (el) gsap.fromTo(el, { opacity: 0, scale: 1.03 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out", clearProps: "transform,opacity" });
   }, [active, colorKey]);
 
   const pickColor = (key: string, it: CatalogItem) => {
     setColorKey(key);
     setStatus(null);
+    if (it.colorName && it.colorName.toLowerCase() !== "default") updateRecentlyViewed(product.id, { color: it.colorName, size: "" });
+    notePick();
     const hex = itemHex(it);
     if (hex) selectStorefrontColor(hex);
   };
@@ -125,16 +184,17 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   const add = (event: MouseEvent<HTMLButtonElement>) => {
     if (!variant || !inStock) return;
     addItem(variant.id, Math.max(1, qty));
+    trackAddToCart(productItem(product, { color: item?.colorName, size: (variant as any).size?.name, price, quantity: Math.max(1, qty) }), currency ?? undefined);
     fireConfetti(event.clientX, event.clientY);
     toast.cartAdded(product.title);
-    setStatus(ar ? "أُضيفت القطعة إلى حقيبتكِ." : "Added to your bag.");
+    setStatus(tr(lang, "أُضيفت القطعة إلى حقيبتكِ.", "Added to your bag."));
     window.setTimeout(() => setStatus(null), 2600);
   };
 
   const currentImage = images[Math.min(active, images.length - 1)];
   return (
     <div className="rose-pdp">
-      <nav className="rose-crumbs" aria-label={ar ? "مسار التصفح" : "Breadcrumb"}>
+      <nav className="rose-crumbs" aria-label={tr(lang, "مسار التصفح", "Breadcrumb")}>
         {crumbs.map((c, i) => (
           <span key={`${c.href}-${i}`}>
             {i < crumbs.length - 1 ? <Link href={c.href}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}
@@ -144,28 +204,42 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
       </nav>
 
       <div className="rose-pdp-grid">
-        <section className="rose-pdp-gallery" aria-label={ar ? "صور المنتج" : "Product photos"}>
+        <section className="rose-pdp-gallery" aria-label={tr(lang, "صور المنتج", "Product photos")}>
           {images.length > 1 && (
-            <div className="rose-pdp-thumbs" role="tablist" aria-label={ar ? "اختاري صورة" : "Choose a photo"}>
+            <div className="rose-pdp-thumbs" role="tablist" aria-label={tr(lang, "اختاري صورة", "Choose a photo")}>
               {images.map((src, i) => (
-                <button key={src} role="tab" aria-selected={i === active} aria-label={`${ar ? "صورة" : "Photo"} ${i + 1}`} onClick={() => setActive(i)}>
+                <button key={src} role="tab" aria-selected={i === active} aria-label={`${tr(lang, "صورة", "Photo")} ${i + 1}`} onClick={() => setActive(i)}>
                   <LqipImage src={cldUrl(src, { w: 160, h: 200, c: "fill", g: "auto" })} alt="" fill sizes="80px" className="object-cover" showSkeleton={false} />
                 </button>
               ))}
             </div>
           )}
           <div ref={frame} className="rose-pdp-frame">
-            {discount ? <span className="rose-badge rose-badge-limited">−{discount}%</span> : badge ? <span className={`rose-badge rose-badge-${badge.kind}`}>{ar ? badge.ar : badge.en}</span> : null}
+            {discount ? <span className="rose-badge rose-badge-limited">−{discount}%</span> : <RoseBadge badge={badge} ar={ar} />}
             <button
               type="button"
               className="rose-pdp-wish"
               aria-pressed={saved}
-              aria-label={saved ? (ar ? "إزالة من المفضلة" : "Remove from wishlist") : (ar ? "أضيفي للمفضلة" : "Save to wishlist")}
+              aria-label={saved ? (tr(lang, "إزالة من المفضلة", "Remove from wishlist")) : (tr(lang, "أضيفي للمفضلة", "Save to wishlist"))}
               onClick={() => wishlist.toggleWishlist({ id: product.id, title: product.title, slug: product.slug, image: getProductPrimaryImage(product) ?? undefined, price: price ?? undefined })}
             >
               <Icon name="heart" />
             </button>
-            <div ref={zoom} className="rose-pdp-zoom" onMouseMove={onZoom}>
+            {spin ? (
+              <button type="button" className="rose-pdp-spin" onClick={() => setSpinning(true)} aria-label={tr(lang, "لفّي القطعة 360°", "Turn the product 360°")} data-testid="pdp-spin">
+                <span aria-hidden="true">⟲</span> 360°
+              </button>
+            ) : null}
+            <div
+              ref={zoom}
+              className="rose-pdp-zoom"
+              onMouseMove={onZoom}
+              onClick={() => currentImage && setViewer(true)}
+              onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && currentImage) { e.preventDefault(); setViewer(true); } }}
+              role="button"
+              tabIndex={currentImage ? 0 : -1}
+              aria-label={tr(lang, "عرض الصور بحجم كبير", "View photos full screen")}
+            >
               {currentImage ? (
                 <LqipImage
                   key={currentImage}
@@ -178,10 +252,21 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
                   className="object-cover rose-pdp-main-image"
                 />
               ) : (
-                <span className="rose-image-placeholder">استبرق</span>
+                <span className="rose-image-placeholder"><StoreMark /></span>
               )}
             </div>
           </div>
+          {spinning && spin ? <SpinDialog spin={spin} title={product.title} lang={lang} onClose={() => setSpinning(false)} /> : null}
+          {viewer && (
+            <RoseImageViewer
+              images={images}
+              index={Math.min(active, images.length - 1)}
+              title={product.title}
+              host={frame.current?.closest<HTMLElement>(".cinematic-shell") ?? null}
+              onIndex={setActive}
+              onClose={() => setViewer(false)}
+            />
+          )}
         </section>
 
         <section className="rose-pdp-info" aria-labelledby="pdp-title">
@@ -193,20 +278,20 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
           )}
           <h1 id="pdp-title">{product.title}</h1>
           <div className="rose-pdp-price">
-            {price != null && price > 0 ? <strong>{formatMoney(price, currency)}</strong> : <strong>{ar ? "تواصلي معنا للسعر" : "Ask us for the price"}</strong>}
+            {price != null && price > 0 ? <strong>{formatMoney(price, currency)}</strong> : <strong>{tr(lang, "تواصلي معنا للسعر", "Ask us for the price")}</strong>}
             {discount && compareAt ? <s>{formatMoney(compareAt, currency)}</s> : null}
             <span className={`rose-pdp-stock${inStock ? "" : " out"}`}>
-              {inStock ? (lowStock ? (ar ? `آخر ${variant?.stock} قطع` : `Only ${variant?.stock} left`) : (ar ? "متوفر" : "In stock")) : (ar ? "نفد هذا المقاس" : "Sold out in this size")}
+              {inStock ? (lowStock ? piecesLeftText(variant!.stock!, lang) : (tr(lang, "متوفر", "In stock"))) : (tr(lang, "نفد هذا المقاس", "Sold out in this size"))}
             </span>
           </div>
 
-          {items.length > 0 && (
+          {items.length > 0 && kind?.showColor !== false && (
             <div className="rose-pdp-option">
               <div className="rose-pdp-option-head">
-                <span>{ar ? "اللون" : "Colour"}</span>
+                <span>{colorLabel}</span>
                 <b>{item ? catalogItemLabel(item, itemIndex) : ""}</b>
               </div>
-              <div className="rose-pdp-swatches" role="radiogroup" aria-label={ar ? "اللون" : "Colour"}>
+              <div className="rose-pdp-swatches" role="radiogroup" aria-label={colorLabel}>
                 {items.map((it, i) => {
                   const key = catalogItemKey(it, i);
                   const hex = itemHex(it) ?? "#e8d8de";
@@ -230,82 +315,170 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
             </div>
           )}
 
-          {sizes.length > 0 && !(sizes.length === 1 && sizes[0] === "default") && (
+          {sizes.length > 0 && !(sizes.length === 1 && sizes[0] === "default") && kind?.showSize !== false && (
             <div className="rose-pdp-option">
               <div className="rose-pdp-option-head">
-                <span>{ar ? "المقاس" : "Size"}</span>
+                <span>{sizeLabel}</span>
                 <b>{sizeKey !== "default" ? sizeKey : ""}</b>
                 <SizeGuide />
               </div>
-              <div className="rose-pdp-sizes" role="radiogroup" aria-label={ar ? "المقاس" : "Size"}>
+              <div className="rose-pdp-sizes" role="radiogroup" aria-label={sizeLabel}>
                 {sizes.map((key) => {
                   const v = variants.find((x) => sizeKeyOf(x) === key);
                   const soldOut = !v || (v.stock != null && v.stock <= 0);
                   return (
-                    <button key={key} type="button" role="radio" aria-checked={key === sizeKey} disabled={soldOut} className={key === sizeKey ? "active" : undefined} onClick={() => { setSizeKey(key); setStatus(null); }}>
-                      {key === "default" ? (ar ? "مقاس واحد" : "One size") : key}
+                    <button
+                      key={key}
+                      type="button"
+                      role="radio"
+                      aria-checked={key === sizeKey}
+                      disabled={soldOut && !(stockAlerts && v)}
+                      className={[key === sizeKey ? "active" : "", soldOut ? "sold-out" : ""].filter(Boolean).join(" ") || undefined}
+                      aria-label={soldOut && stockAlerts && v ? `${key === "default" ? (tr(lang, "مقاس واحد", "One size")) : key} — ${tr(lang, "نفد", "sold out")}` : undefined}
+                      onClick={() => { setSizeKey(key); setStatus(null); roseReact("size-pick"); if (key !== "default") updateRecentlyViewed(product.id, { size: key }); notePick(); }}
+                    >
+                      {key === "default" ? (tr(lang, "مقاس واحد", "One size")) : key}
                     </button>
                   );
                 })}
               </div>
+              {ai.sizeAdvice && sizes.length > 1 ? (
+                <RoseSizeAdvice
+                  productId={product.id}
+                  ar={ar}
+                  onPick={(s) => {
+                    const key = sizes.find((k) => k.toUpperCase() === s.toUpperCase());
+                    if (key) { setSizeKey(key); setStatus(null); notePick(); }
+                  }}
+                />
+              ) : null}
             </div>
           )}
 
           <div className="rose-pdp-buy">
-            <div className="rose-pdp-qty" aria-label={ar ? "الكمية" : "Quantity"}>
-              <button type="button" aria-label={ar ? "زيادة" : "More"} onClick={() => setQty((q) => Math.min(20, q + 1))}>+</button>
-              <input type="number" min={1} max={20} value={qty} onChange={(e) => setQty(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} aria-label={ar ? "الكمية" : "Quantity"} />
-              <button type="button" aria-label={ar ? "إنقاص" : "Less"} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
+            <div className="rose-pdp-qty" aria-label={tr(lang, "الكمية", "Quantity")}>
+              <button type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQty((q) => Math.min(20, q + 1))}>+</button>
+              <input type="number" min={1} max={20} value={qty} onChange={(e) => setQty(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} aria-label={tr(lang, "الكمية", "Quantity")} />
+              <button type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
             </div>
             <button
               type="button"
               className="atelier-button button-dark rose-pdp-add"
-              disabled={!inStock}
+              disabled={!inStock || eventOver}
               onClick={add}
-              onMouseEnter={(e) => previewTheme(shellOf(e.currentTarget), randomThemeSeed())}
-              onMouseLeave={(e) => endThemePreview(shellOf(e.currentTarget))}
+              onMouseEnter={(e) => startThemeCycle(e.currentTarget)}
+              onFocus={(e) => { if (e.currentTarget.matches(":focus-visible")) startThemeCycle(e.currentTarget); }}
+              onBlur={(e) => stopThemeCycle(e.currentTarget)}
+              onMouseLeave={(e) => stopThemeCycle(e.currentTarget)}
             >
-              {inStock ? (ar ? "أضيفي للحقيبة" : "Add to bag") : (ar ? "غير متوفر" : "Unavailable")}
+              {eventOver ? (tr(lang, "انتهى الموعد", "This has passed")) : inStock ? (fulfillment === "BOOKING" ? (tr(lang, "احجزي", "Book")) : tr(lang, "أضيفي للحقيبة", "Add to bag")) : fulfillment === "BOOKING" ? (tr(lang, "المقاعد خلصت", "Fully booked")) : (tr(lang, "غير متوفر", "Unavailable"))}
               <Icon name="bag" />
             </button>
           </div>
           {status && <p className="rose-pdp-status" role="status">{status}</p>}
+          {stockAlerts && variant && !inStock ? (
+            <RoseStockAlert
+              variantId={variant.id}
+              label={[
+                item?.colorName,
+                sizeKeyOf(variant) !== "default" ? (tr(lang, `مقاس ${sizeKeyOf(variant)}`, "size {0}", [sizeKeyOf(variant)])) : "",
+              ].filter(Boolean).join(tr(lang, "، ", ", ")) || (tr(lang, "هذا المقاس", "this size"))}
+            />
+          ) : null}
 
-          <ul className="rose-pdp-trust">
-            <li><Icon name="truck" />{ar ? "توصيل لكل البلاد" : "Delivery nationwide"}</li>
-            <li><Icon name="cash" />{ar ? "الدفع عند الاستلام" : "Cash on delivery"}</li>
-            <li><Icon name="swap" />{ar ? "استبدال سهل" : "Easy exchange"}</li>
-          </ul>
+          {requests.enabled && fulfillment === "SHIPPING" && (requests.kinds.size || requests.kinds.color) ? (
+            asking ? (
+              <RoseRequestForm
+                product={{ id: product.id, title: product.title }}
+                variantId={variant?.id ?? null}
+                source="PRODUCT"
+                initialKind={requests.kinds.size && kind?.showSize !== false ? "SIZE" : "COLOR"}
+                onClose={() => setAsking(false)}
+              />
+            ) : (
+              <button type="button" className="rose-request-open" onClick={() => setAsking(true)}>
+                {requests.kinds.size && requests.kinds.color ? (tr(lang, "مقاسكِ أو لونكِ مش موجود؟ اطلبيه منّا", "Your size or colour missing? Ask us"))
+                  : requests.kinds.size ? (tr(lang, "مقاسكِ مش موجود؟ اطلبيه منّا", "Your size missing? Ask us"))
+                  : tr(lang, "لونكِ مش موجود؟ اطلبيه منّا", "Your colour missing? Ask us")}
+              </button>
+            )
+          ) : null}
+
+          {fulfillment === "BOOKING" ? (
+            <div className="rose-pdp-handover" data-testid="product-booking">
+              {product.eventStartsAt ? <p><b>🗓️ {tr(lang, "الموعد", "When")}:</b> <span suppressHydrationWarning>{eventWhen(product.eventStartsAt, product.eventEndsAt, lang)}</span></p> : null}
+              {product.eventLocation ? <p><b>📍 {tr(lang, "المكان", "Where")}:</b> {product.eventLocation}</p> : null}
+              <p className="muted">{tr(lang, "🎟️ بعد تأكيد الحجز بيوصلكِ رابط التذكرة مع كود الدخول (QR).", "🎟️ Once your booking is confirmed you get your ticket link with an entry code (QR).")}</p>
+            </div>
+          ) : fulfillment === "DIGITAL" ? (
+            <div className="rose-pdp-handover" data-testid="product-digital">
+              {product.isProtected ? (
+                <p data-testid="product-protected">{tr(lang, "🔒 منتج محمي: بعد الدفع أو تأكيد الطلب بيوصلكِ سيريال خاص فيكِ، ونسخة مشفّرة باسم طلبكِ بتنزّليها خلال مدة محدودة. بتفتحيها بـ \u20667-Zip\u2069 أو WinRAR.", "🔒 Protected product: after payment or confirmation you get your own serial and an encrypted copy made for your order, to download within a limited time. Open it with 7-Zip or WinRAR.")}</p>
+              ) : (
+                <p>{tr(lang, "⬇️ منتج رقمي: بعد الدفع أو تأكيد الطلب بيوصلكِ رابط خاص فيه الملفات أو الكود. ما في شحن.", "⬇️ Digital product: after payment or confirmation you get a private link with your files or code. Nothing is shipped.")}</p>
+              )}
+            </div>
+          ) : (
+            <>
+            {eta ? (
+              <p className="rose-pdp-eta" data-testid="product-delivery">
+                <Icon name="truck" />
+                {eta}
+              </p>
+            ) : null}
+            <ul className="rose-pdp-trust">
+              <li><Icon name="truck" />{tr(lang, "توصيل لكل البلاد", "Delivery nationwide")}</li>
+              <li><Icon name="cash" />{tr(lang, "الدفع عند الاستلام", "Cash on delivery")}</li>
+              <li><Icon name="swap" />{tr(lang, "استبدال سهل", "Easy exchange")}</li>
+            </ul>
+            </>
+          )}
 
           <div className="rose-pdp-details">
+            {specs.length > 0 && (
+              <details open data-testid="product-specs">
+                <summary>{tr(lang, "تفاصيل القطعة", "Details")}<span aria-hidden="true">+</span></summary>
+                <dl className="rose-pdp-specs">
+                  {specs.map((s) => (
+                    <div key={s.key} className={s.kind === "longtext" ? "wide" : undefined}>
+                      <dt>{s.label}</dt>
+                      <dd>{s.kind === "url" ? <a href={s.value} target="_blank" rel="noopener noreferrer">{tr(lang, "افتحي الرابط", "Open link")}</a> : s.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
+            )}
             {product.description && (
               <details open>
-                <summary>{ar ? "عن القطعة" : "About this piece"}<span aria-hidden="true">+</span></summary>
+                <summary>{tr(lang, "عن القطعة", "About this piece")}<span aria-hidden="true">+</span></summary>
                 <p>{product.description}</p>
               </details>
             )}
             <details>
-              <summary>{ar ? "التوصيل والاستبدال" : "Delivery & exchange"}<span aria-hidden="true">+</span></summary>
-              <p>{ar ? "نوصل لكل البلاد، والدفع عند الاستلام. إذا لم يناسبكِ المقاس، تواصلي معنا عبر واتساب ونرتّب الاستبدال، بشرط أن تكون القطعة بحالتها الأصلية مع الملصق." : "We deliver nationwide with cash on delivery. If the size isn't right, message us on WhatsApp and we'll arrange an exchange while the piece is unworn with its tag."}</p>
+              <summary>{tr(lang, "التوصيل والاستبدال", "Delivery & exchange")}<span aria-hidden="true">+</span></summary>
+              <p>{tr(lang, "نوصل لكل البلاد، والدفع عند الاستلام. إذا لم يناسبكِ المقاس، تواصلي معنا عبر واتساب ونرتّب الاستبدال، بشرط أن تكون القطعة بحالتها الأصلية مع الملصق.", "We deliver nationwide with cash on delivery. If the size isn't right, message us on WhatsApp and we'll arrange an exchange while the piece is unworn with its tag.")}</p>
             </details>
             <details>
-              <summary>{ar ? "العناية بالقطعة" : "Care"}<span aria-hidden="true">+</span></summary>
-              <p>{ar ? "اتبعي تعليمات الغسيل على ملصق القطعة. يُفضّل الغسيل بماء بارد وتجفيفها بعيداً عن الشمس المباشرة للحفاظ على اللون." : "Follow the washing label. Cool water and drying out of direct sun keep the colour fresh."}</p>
+              <summary>{tr(lang, "العناية بالقطعة", "Care")}<span aria-hidden="true">+</span></summary>
+              <p>{tr(lang, "اتبعي تعليمات الغسيل على ملصق القطعة. يُفضّل الغسيل بماء بارد وتجفيفها بعيداً عن الشمس المباشرة للحفاظ على اللون.", "Follow the washing label. Cool water and drying out of direct sun keep the colour fresh.")}</p>
             </details>
           </div>
+          {ai.reviewSummary ? <RoseReviewSummary productId={product.id} ar={ar} /> : null}
         </section>
       </div>
+
+      {ai.shopTheLook ? <RoseShopTheLook productId={product.id} ar={ar} /> : null}
 
       {related.length > 0 && (
         <section className="rose-pdp-related" aria-labelledby="pdp-related">
           <div className="atelier-section-heading">
             <div>
-              <span className="atelier-eyebrow">{ar ? "من نفس المجموعة" : "FROM THE SAME COLLECTION"}</span>
-              <h2 id="pdp-related">{ar ? "قد يعجبكِ أيضاً." : "You may also love."}</h2>
+              <span className="atelier-eyebrow">{tr(lang, "من نفس المجموعة", "FROM THE SAME COLLECTION")}</span>
+              <h2 id="pdp-related">{tr(lang, "قد يعجبكِ أيضاً.", "You may also love.")}</h2>
             </div>
             {product.category?.slug && (
               <Link href={`/c/${product.category.slug}`} className="atelier-text-link">
-                {ar ? "كل المجموعة" : "See the collection"}
+                {tr(lang, "كل المجموعة", "See the collection")}
                 <Icon name="arrow" />
               </Link>
             )}
@@ -317,4 +490,18 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
       )}
     </div>
   );
+}
+
+/** "السبت 20 ديسمبر، 18:00–20:00" in Israel time. */
+function eventWhen(start: string, end: string | null | undefined, lang: Lang) {
+  try {
+    const tz = "Asia/Jerusalem";
+    const s = new Date(start);
+    const day = new Intl.DateTimeFormat(lang, { timeZone: tz, weekday: "long", day: "numeric", month: "long" }).format(s);
+    const time = (d: Date) => new Intl.DateTimeFormat(lang, { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+    const comma = lang === "ar" ? "، " : ", ";
+    return end ? `${day}${comma}${time(s)}–${time(new Date(end))}` : `${day}${comma}${time(s)}`;
+  } catch {
+    return "";
+  }
 }

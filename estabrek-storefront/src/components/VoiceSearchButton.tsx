@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { tr } from "@/lib/words";
+import { useLanguage } from "@/components/cinematic/Language";
 
 function getSpeechRecognitionCtor(): any | null {
   if (typeof window === "undefined") return null;
@@ -15,6 +17,7 @@ type Props = {
 };
 
 export function VoiceSearchButton({ className, withLabel, label }: Props) {
+  const { language: lang } = useLanguage();
   const router = useRouter();
   const [active, setActive] = useState(false);
   const [supported, setSupported] = useState(true);
@@ -105,8 +108,8 @@ export function VoiceSearchButton({ className, withLabel, label }: Props) {
     }
   }
 
-  const btnLabel = active ? "REC" : "MIC";
-  const title = error || (supported ? "Voice search" : "Voice search not supported");
+  const ar = typeof document !== "undefined" && document.documentElement?.lang?.startsWith("ar");
+  const title = error || (supported ? (tr(lang, "بحث بالصوت", "Voice search")) : tr(lang, "البحث بالصوت غير مدعوم", "Voice search not supported"));
 
   return (
     <>
@@ -114,12 +117,16 @@ export function VoiceSearchButton({ className, withLabel, label }: Props) {
         type="button"
         onClick={onToggle}
         className={className}
-        aria-label="Voice search"
+        aria-label={tr(lang, "بحث بالصوت", "Voice search")}
         aria-pressed={active}
         disabled={!supported}
         title={title}
       >
-        <span>{btnLabel}</span>
+        {/* A microphone (filled while listening), never the letters "MIC"/"REC". */}
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="3" width="6" height="11" rx="3" />
+          <path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" />
+        </svg>
         {withLabel ? <span>{label ?? "Voice"}</span> : null}
       </button>
       {error ? <span className="sr-only" aria-live="polite">{error}</span> : null}

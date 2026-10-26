@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { useAuth } from "../../hooks/useAuth";
 import * as AccountAPI from "../../api/account.api";
 import { toast } from "../../lib/toast";
+import { tr } from "@/lib/words";
 
 type Step1Errors = { newEmail?: string };
 type Step2Errors = { token?: string };
@@ -21,7 +22,7 @@ export default function EmailChangePage() {
 
   const requestChange = async () => {
     const next: Step1Errors = {};
-    if (!newEmail.trim()) next.newEmail = "الإيميل الجديد مطلوب";
+    if (!newEmail.trim()) next.newEmail = tr("الإيميل الجديد مطلوب", "The new email is required");
     if (Object.keys(next).length) {
       setErr1(next);
       return;
@@ -33,9 +34,9 @@ export default function EmailChangePage() {
       await AccountAPI.requestEmailChange(newEmail.trim());
       setStep(2);
       setErr1({});
-      toast.success("تم إرسال كود التحقق إلى الإيميل الجديد");
+      toast.success(tr("تم إرسال كود التحقق إلى الإيميل الجديد", "A verification code was sent to the new email"));
     } catch (e: any) {
-      toast.error(e?.message ?? "فشل إرسال كود التحقق");
+      toast.error(e?.message ?? tr("فشل إرسال كود التحقق", "Couldn't send the verification code"));
     } finally {
       setLoading(false);
     }
@@ -43,7 +44,7 @@ export default function EmailChangePage() {
 
   const verifyChange = async () => {
     const next: Step2Errors = {};
-    if (!token.trim()) next.token = "الكود مطلوب";
+    if (!token.trim()) next.token = tr("الكود مطلوب", "The code is required");
     if (Object.keys(next).length) {
       setErr2(next);
       return;
@@ -54,28 +55,28 @@ export default function EmailChangePage() {
       // Backend expects: { token }
       await AccountAPI.confirmEmailChange(token.trim());
       await meQuery.refetch();
-      toast.success("تم تغيير الإيميل بنجاح");
+      toast.success(tr("تم تغيير الإيميل بنجاح", "Email changed"));
       setNewEmail("");
       setToken("");
       setStep(1);
       setErr2({});
     } catch (e: any) {
-      toast.error(e?.message ?? "فشل تأكيد تغيير الإيميل");
+      toast.error(e?.message ?? tr("فشل تأكيد تغيير الإيميل", "Couldn't confirm the email change"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-        <h1 className="text-lg font-semibold">تغيير البريد الإلكتروني</h1>
-        <p className="mt-2 text-sm opacity-80">سيتم إرسال كود للإيميل الجديد للتأكيد.</p>
+        <h1 className="text-lg font-semibold">{tr("تغيير البريد الإلكتروني", "Change email")}</h1>
+        <p className="mt-2 text-sm opacity-80">{tr("سيتم إرسال كود للإيميل الجديد للتأكيد.", "A code goes to the new email to confirm it.")}</p>
 
         {step === 1 ? (
           <div className="mt-6 space-y-4">
             <Input
-              label="الإيميل الجديد"
+              label={tr("الإيميل الجديد", "New email")}
               value={newEmail}
               error={err1.newEmail}
               onChange={(e) => {
@@ -87,14 +88,14 @@ export default function EmailChangePage() {
 
             <div className="flex justify-start">
               <Button variant="primary" onClick={requestChange} isLoading={loading}>
-                إرسال كود
+                {tr("إرسال كود", "Send code")}
               </Button>
             </div>
           </div>
         ) : (
           <div className="mt-6 space-y-4">
             <Input
-              label="كود التحقق"
+              label={tr("كود التحقق", "Verification code")}
               value={token}
               error={err2.token}
               onChange={(e) => {
@@ -106,10 +107,10 @@ export default function EmailChangePage() {
 
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => setStep(1)} disabled={loading}>
-                رجوع
+                {tr("رجوع", "Back")}
               </Button>
               <Button variant="primary" onClick={verifyChange} isLoading={loading}>
-                تأكيد
+                {tr("تأكيد", "Confirm")}
               </Button>
             </div>
           </div>

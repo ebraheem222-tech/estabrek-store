@@ -19,9 +19,37 @@ export type Page = {
   customCss?: string | null;
   headScripts?: any;
   bodyScripts?: any;
+  /** The new CMS: 2 = the shop draws it from its tree, 1 = from its sections. */
+  format?: PageFormat;
+  /** There are unpublished changes from the new editor. */
+  hasDraft?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
+
+export type PageFormat = 1 | 2;
+/** A page as a tree of elements (the backend checks it: src/lib/pageTree.ts). */
+export type PageTreeNode = { id: string; type: string; name?: string; props: Record<string, unknown>; style?: Record<string, unknown>; motion?: Record<string, unknown>; children?: PageTreeNode[] };
+export type PageTree = { version: 1; root: PageTreeNode };
+export type PageTreeState = { format: PageFormat; tree: PageTree; saved: boolean };
+
+/** The new editor's unpublished changes (backend src/lib/pageDraft.ts). */
+export type DraftSection = { id: string; type: string; data: any; isVisible: boolean; tr: Partial<Record<"ar" | "en" | "he", any>> };
+export type PageDraft = { version: 1; rev: number; baseHash: string; sections: DraftSection[]; tree: PageTree; trash: Array<{ section: DraftSection; index: number }>; startedAt: string; updatedAt: string };
+export type PageDraftOp =
+  | { op: "setField"; sectionId: string; lang: "ar" | "en" | "he"; path: Array<string | number>; value: unknown }
+  /** To `index` in `parentId` (the page when left out), counted without the element itself. */
+  | { op: "move"; nodeId: string; index: number; parentId?: string }
+  | { op: "remove"; nodeId: string }
+  | { op: "restore"; sectionId: string }
+  | { op: "setVisible"; sectionId: string; visible: boolean }
+  | { op: "placeBlock"; block: "seasons" | "stories" | "instagram"; index: number | null }
+  | { op: "insert"; parentId: string; index: number; node: PageTreeNode }
+  | { op: "setProps"; nodeId: string; props: Record<string, unknown> }
+  | { op: "setStyle"; nodeId: string; screen: TreeScreen; style: Record<string, unknown> | null }
+  | { op: "setMotion"; nodeId: string; motion: Record<string, unknown> | null };
+/** A tree element's look is kept per screen size: computer (base), tablet, phone (mobile). */
+export type TreeScreen = "base" | "tablet" | "mobile";
 
 export type PageSectionType =
   | "GLOBAL_ANNOUNCEMENT"
@@ -165,6 +193,51 @@ export async function updatePage(
 ) {
   const res = await api.patch(ENDPOINTS.admin.pages.byId(id), body);
   return res.data as Page;
+}
+
+/** The page's tree (an unconverted page gets the tree it would become). */
+export async function getPageTree(id: string) {
+  const res = await api.get(ENDPOINTS.admin.pages.tree(id));
+  return res.data as PageTreeState;
+}
+
+/** Saves the tree; the page's format doesn't change. */
+export async function savePageTree(id: string, tree: PageTree) {
+  const res = await api.put(ENDPOINTS.admin.pages.tree(id), { tree });
+  return res.data as PageTreeState;
+}
+
+/** 2 = draw the page from its tree (converting it the first time), 1 = from its sections. */
+export async function setPageFormat(id: string, format: PageFormat) {
+  const res = await api.post(ENDPOINTS.admin.pages.format(id), { format });
+  return res.data as PageTreeState;
+}
+
+/** A 30-minute ticket for the shop to show this page's draft inside the new editor. */
+export async function getPreviewTicket(id: string) {
+  const res = await api.post(ENDPOINTS.admin.pages.previewToken(id));
+  return res.data as { token: string; expiresAt: string };
+}
+
+export async function getPageDraft(id: string) {
+  const res = await api.get(ENDPOINTS.admin.pages.draft(id));
+  return res.data as { draft: PageDraft | null; main: "ar" | "en" | "he" };
+}
+
+/** Changes the draft (starting one from the page when there's none). */
+export async function changePageDraft(id: string, ops: PageDraftOp[], rev?: number) {
+  const res = await api.post(ENDPOINTS.admin.pages.draftOps(id), { ops, rev });
+  return res.data as { draft: PageDraft };
+}
+
+export async function publishPageDraft(id: string, force = false) {
+  const res = await api.post(ENDPOINTS.admin.pages.draftPublish(id), { force });
+  return res.data as { ok: true; format: PageFormat };
+}
+
+export async function discardPageDraft(id: string) {
+  const res = await api.delete(ENDPOINTS.admin.pages.draft(id));
+  return res.data as { ok: true };
 }
 
 export async function deletePage(id: string) {

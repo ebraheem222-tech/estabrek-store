@@ -11,6 +11,11 @@ import { extractPaletteFromFile, extractPaletteFromUrl } from "../../lib/colorDe
 import { compressImage } from "../../lib/imageCompress";
 import { isEyeDropperSupported, pickScreenColor } from "../../lib/eyeDropper";
 import { toast } from "@/lib/toast";
+import { tr } from "@/lib/words";
+import { CutoutEditor } from "../media/CutoutEditor";
+import { CutoutBatch } from "../media/CutoutBatch";
+import type { MediaImage } from "../../api/uploads.api";
+import { placeCutout } from "../media/cutoutPlace";
 
 export type LocalImage = {
   id?: string; // موجودة إذا جاية من DB
@@ -58,6 +63,21 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
 
   const sorted = useMemo(() => normalizePositions(images ?? []), [images]);
 
+  // «شيل الخلفية»: the cut-out goes next to its photo, or takes its place (the original stays in the library).
+  const [cutoutOf, setCutoutOf] = useState<LocalImage | null>(null);
+  const [cutoutAll, setCutoutAll] = useState(false);
+  const latest = useRef(sorted);
+  latest.current = sorted;
+  const photos = sorted.filter((im) => !isModelUrl(im.url));
+  const cutoutTarget = useMemo(() => (cutoutOf ? { url: cutoutOf.url, folder: "products" } : null), [cutoutOf]);
+  const addCutout = (sourceLocalId: string, picture: MediaImage, replace: boolean) => {
+    const { next, removedId } = placeCutout(latest.current, sourceLocalId, picture.url, replace, `cut_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`);
+    if (next === latest.current) return;
+    if (removedId) pushDeleteId?.(removedId);
+    latest.current = next;
+    onChange(next);
+  };
+
   useEffect(() => {
     return () => {
       if (cameraReview?.url) URL.revokeObjectURL(cameraReview.url);
@@ -67,7 +87,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
   const setPrimary = (localId: string) => {
     const next = sorted.map((im) => ({ ...im, isPrimary: im.localId === localId }));
     onChange(next);
-    toast.success("تم تعيين الصورة الرئيسية");
+    toast.success(tr("تم تعيين الصورة الرئيسية", "Main photo set"));
   };
 
   const addFromLibrary = (urls: string[]) => {
@@ -76,7 +96,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     const existing = new Set(sorted.map((x) => x.url));
     const fresh = urls.filter((u) => !!u && !existing.has(u));
     if (!fresh.length) {
-      toast.info("كل الصور المختارة موجودة بالفعل");
+      toast.info(tr("كل الصور المختارة موجودة بالفعل", "All the chosen photos are already there"));
       return;
     }
 
@@ -92,7 +112,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     let next = normalizePositions([...sorted, ...added]);
     if (!next.some((x) => x.isPrimary) && next.length) next[0].isPrimary = true;
     onChange(next);
-    toast.success(`تم إضافة ${added.length} صورة من المكتبة`);
+    toast.success(tr(`تم إضافة ${added.length} صورة من المكتبة`, "Added {0} photos from the library", [added.length]));
   };
 
   const move = (localId: string, dir: "UP" | "DOWN") => {
@@ -162,9 +182,9 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
       if (!next.some((x) => x.isPrimary) && next.length) next[0].isPrimary = true;
 
       onChange(next);
-      toast.success(`تم رفع ${uploaded.length} صورة`);
+      toast.success(tr(`تم رفع ${uploaded.length} صورة`, "Uploaded {0} photos", [uploaded.length]));
     } catch (e: any) {
-      toast.error(e?.message ?? "فشل رفع الصور");
+      toast.error(e?.message ?? tr("فشل رفع الصور", "The photos didn't upload"));
     } finally {
       setBusy(false);
     }
@@ -205,7 +225,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     try {
       const url = new URL(raw);
       if (!isModelUrl(url.toString())) {
-        toast.error("رابط نموذج 3D يجب أن ينتهي بـ .glb أو .gltf");
+        toast.error(tr("رابط نموذج 3D يجب أن ينتهي بـ .glb أو .gltf", "A 3D model link has to end with .glb or .gltf"));
         return;
       }
       const next = normalizePositions([
@@ -221,9 +241,9 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
       ]);
       onChange(next);
       setModelUrl("");
-      toast.success("تم إضافة نموذج 3D");
+      toast.success(tr("تم إضافة نموذج 3D", "3D model added"));
     } catch {
-      toast.error("رابط غير صالح");
+      toast.error(tr("رابط غير صالح", "The link isn't valid"));
     }
   };
 
@@ -236,7 +256,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     const nextView = view?.trim() ?? "";
     const target = sorted.find((im) => im.localId === localId);
     if (nextView.toLowerCase() === "3d" && !isModelUrl(target?.url)) {
-      toast.error("اختيار 3D يتطلب رابط .glb أو .gltf");
+      toast.error(tr("اختيار 3D يتطلب رابط .glb أو .gltf", "Choosing 3D needs a .glb or .gltf link"));
       return;
     }
     const next = sorted.map((im) =>
@@ -255,12 +275,12 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
       const palette = await extractPaletteFromUrl(primary.url, 6, 72);
       if (palette?.length) {
         onDetectedColors(palette);
-        toast.success("تم استخراج ألوان مقترحة");
+        toast.success(tr("تم استخراج ألوان مقترحة", "Suggested colours found"));
       } else {
-        toast.info("ما قدرت أستخرج ألوان واضحة من الصورة");
+        toast.info(tr("ما قدرنا نستخرج ألوان واضحة من الصورة", "We couldn't find clear colours in the photo"));
       }
     } catch (e: any) {
-      toast.error(e?.message ?? "فشل تحليل الألوان");
+      toast.error(e?.message ?? tr("فشل تحليل الألوان", "Colour analysis failed"));
     } finally {
       setPaletteBusy(false);
     }
@@ -269,7 +289,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
   const pickColor = async () => {
     if (!onPickColor) return;
     if (!isEyeDropperSupported()) {
-      toast.info("القطّارة غير مدعومة على هذا المتصفح");
+      toast.info(tr("القطّارة غير مدعومة على هذا المتصفح", "The colour picker isn't supported on this browser"));
       return;
     }
 
@@ -298,20 +318,20 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold">الصور</div>
-          <div className="text-xs opacity-70">رفع + ترتيب + صورة رئيسية • الكشف التلقائي للألوان ممكن يخطأ، استخدم القطّارة للتأكيد</div>
+          <div className="text-sm font-semibold">{tr("الصور", "photos")}</div>
+          <div className="text-xs opacity-70">{tr("رفع + ترتيب + صورة رئيسية • الكشف التلقائي للألوان ممكن يخطأ، والقطّارة بتأكّد", "Upload + order + main photo • automatic colour detection can be wrong; use the colour picker to confirm")}</div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {onPickColor ? (
-            <Button variant="ghost" onClick={pickColor} disabled={!isEyeDropperSupported()} title={isEyeDropperSupported() ? "قطّارة (ColorZilla)" : "المتصفح لا يدعم EyeDropper"}>
-              🎨 قطّارة
+            <Button variant="ghost" onClick={pickColor} disabled={!isEyeDropperSupported()} title={isEyeDropperSupported() ? tr("قطّارة (ColorZilla)", "Colour picker (ColorZilla)") : tr("المتصفح لا يدعم EyeDropper", "The browser doesn't support EyeDropper")}>
+              {tr("🎨 قطّارة", "🎨 Picker")}
             </Button>
           ) : null}
 
           {onDetectedColors ? (
             <Button variant="ghost" onClick={analyzeColorsFromPrimary} disabled={paletteBusy || sorted.length === 0}>
-              {paletteBusy ? "تحليل..." : "تحليل الألوان"}
+              {paletteBusy ? tr("تحليل...", "Analysing...") : tr("تحليل الألوان", "Analyse colours")}
             </Button>
           ) : null}
 
@@ -323,7 +343,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
               multiple
               onChange={(e) => onUploadFiles(e.target.files)}
             />
-            {busy ? "جاري الرفع..." : "رفع صور"}
+            {busy ? tr("جاري الرفع...", "Uploading...") : tr("رفع صور", "Upload photos")}
           </label>
 
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10">
@@ -335,25 +355,46 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
               capture="environment"
               onChange={(e) => onCameraFile(e.target.files)}
             />
-            تصوير بالكاميرا
+            {tr("تصوير بالكاميرا", "Take a photo")}
           </label>
 
           <Button variant="secondary" onClick={() => setLibraryOpen(true)} disabled={busy}>
-            اختيار من المكتبة
+            {tr("اختيار من المكتبة", "Choose from the library")}
           </Button>
+
+          {photos.length ? (
+            <Button variant="ghost" onClick={() => setCutoutAll(true)} disabled={busy} data-testid="photos-cutout-all">
+              {tr("✂ شيل الخلفية عن كل الصور", "✂ Remove the background from all photos")}
+            </Button>
+          ) : null}
         </div>
       </div>
 
+      <CutoutEditor
+        open={!!cutoutOf}
+        target={cutoutTarget}
+        canReplace
+        onClose={() => setCutoutOf(null)}
+        onSaved={(picture, how) => cutoutOf && addCutout(cutoutOf.localId, picture, how.replace)}
+      />
+      <CutoutBatch
+        open={cutoutAll}
+        targets={photos.map((im) => ({ key: im.localId, url: im.url, folder: "products" }))}
+        canReplace
+        onClose={() => setCutoutAll(false)}
+        onSaved={(key, picture, how) => addCutout(key, picture, how.replace)}
+      />
+
       <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
         <Input
-          label="رابط نموذج 3D (glb/gltf)"
+          label={tr("رابط نموذج 3D (glb/gltf)", "3D model link (glb/gltf)")}
           value={modelUrl}
           onChange={(e) => setModelUrl(e.target.value)}
           placeholder="https://example.com/model.glb"
         />
         <div className="flex items-end">
           <Button variant="secondary" onClick={addModelUrl} disabled={!modelUrl.trim()}>
-            إضافة 3D
+            {tr("إضافة 3D", "Add 3D")}
           </Button>
         </div>
       </div>
@@ -362,25 +403,25 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
         open={libraryOpen}
         onClose={() => setLibraryOpen(false)}
         multiple
-        title="اختيار صور من المكتبة"
+        title={tr("اختيار صور من المكتبة", "Choose photos from the library")}
         onSelectMultiple={(urls) => addFromLibrary(urls)}
       />
 
       <Modal
         open={!!cameraReview}
-        title="مراجعة الصورة"
+        title={tr("مراجعة الصورة", "Review the photo")}
         onClose={discardCameraShot}
         widthClassName="max-w-2xl"
         footer={
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={discardCameraShot} disabled={busy}>
-              تجاهل
+              {tr("تجاهل", "Discard")}
             </Button>
             <Button variant="secondary" onClick={() => cameraInputRef.current?.click()} disabled={busy}>
-              إعادة التصوير
+              {tr("إعادة التصوير", "Retake")}
             </Button>
             <Button variant="primary" onClick={acceptCameraShot} isLoading={busy}>
-              استخدم الصورة
+              {tr("استخدام الصورة", "Use the photo")}
             </Button>
           </div>
         }
@@ -390,7 +431,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
               <img src={cameraReview.url} alt="Camera preview" className="max-h-[62vh] w-full object-contain" />
             </div>
-            <div className="text-xs opacity-70">بعد التأكيد سيتم رفع الصورة وتحليل اللون تلقائيًا.</div>
+            <div className="text-xs opacity-70">{tr("بعد التأكيد سيتم رفع الصورة وتحليل اللون تلقائيًا.", "After confirming, the photo is uploaded and its colour analysed automatically.")}</div>
           </div>
         ) : null}
       </Modal>
@@ -412,7 +453,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
             ))}
           </div>
         ) : (
-          <div className="text-sm opacity-70">لا توجد صور بعد.</div>
+          <div className="text-sm opacity-70">{tr("لا توجد صور بعد.", "No photos yet.")}</div>
         )
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -425,7 +466,7 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
               onDragEnd={() => setDragId(null)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDropReorder(im.localId)}
-              title="اسحب لتغيير الترتيب"
+              title={tr("السحب بيغيّر الترتيب", "Drag to reorder")}
             >
               <div className="flex gap-3">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
@@ -440,36 +481,41 @@ export default function ItemImagesManager({ images, onChange, pushDeleteId, onDe
                 <div className="flex-1">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="text-xs opacity-70">
-                      ترتيب: {im.position} {im.isPrimary ? "• (رئيسية)" : ""}
+                      {tr("ترتيب:", "Order:")} {im.position} {im.isPrimary ? tr("• (رئيسية)", "• (main)") : ""}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="ghost" onClick={() => move(im.localId, "UP")}>↑</Button>
                       <Button variant="ghost" onClick={() => move(im.localId, "DOWN")}>↓</Button>
-                      <Button variant="secondary" onClick={() => setPrimary(im.localId)}>اجعلها رئيسية</Button>
-                      <Button variant="danger" onClick={() => remove(im.localId)}>حذف</Button>
+                      <Button variant="secondary" onClick={() => setPrimary(im.localId)}>{tr("تعيينها رئيسية", "Make it main")}</Button>
+                      {!isModelUrl(im.url) ? (
+                        <Button variant="ghost" onClick={() => setCutoutOf(im)} title={tr("شيل الخلفية", "Remove background")} data-testid="photo-cutout">
+                          {tr("✂ شيل الخلفية", "✂ Remove background")}
+                        </Button>
+                      ) : null}
+                      <Button variant="danger" onClick={() => remove(im.localId)}>{tr("حذف", "Delete")}</Button>
                     </div>
                   </div>
 
                   <Input
-                    label="Alt (اختياري)"
+                    label={tr("Alt (اختياري)", "Alt (optional)")}
                     value={im.alt ?? ""}
                     onChange={(e) => updateAlt(im.localId, e.target.value)}
                   />
 
                   <div className="mt-2">
-                    <label className="mb-1 block text-xs opacity-70">نوع الصورة</label>
+                    <label className="mb-1 block text-xs opacity-70">{tr("نوع الصورة", "Photo type")}</label>
                     <select
                       className="w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm outline-none"
                       value={im.view ?? ""}
                       onChange={(e) => updateView(im.localId, e.target.value || null)}
                     >
-                      <option value="">عادي</option>
+                      <option value="">{tr("عادي", "Normal")}</option>
                       <option value="360">360°</option>
                       <option value="3d">3D</option>
-                      <option value="Front">أمام</option>
-                      <option value="Back">خلف</option>
-                      <option value="Side">جانب</option>
-                      <option value="Detail">تفاصيل</option>
+                      <option value="Front">{tr("أمام", "Front")}</option>
+                      <option value="Back">{tr("خلف", "Back")}</option>
+                      <option value="Side">{tr("جانب", "Side")}</option>
+                      <option value="Detail">{tr("تفاصيل", "Detail")}</option>
                     </select>
                   </div>
 

@@ -1,20 +1,51 @@
 import { z } from "zod";
 import { PriceNumber } from "../../schemas/common.js";
+import { CategoryTranslations, ProductTranslations } from "../../lib/translations.js";
 
 export const CreateCategoryBody = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   parentId: z.string().cuid().nullable().optional(),
   iconUrl: z.string().min(1).nullable().optional(),
+  /** The name in the shop's other languages ({ en: { name }, he: { name } }). */
+  translations: CategoryTranslations.optional(),
 });
 export const UpdateCategoryBody = CreateCategoryBody.partial();
+
+/** Search-engine title/description: empty means "use the product's own title and description". */
+const SeoTitle = z.string().trim().max(120).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null));
+const SeoDescription = z.string().trim().max(320).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null));
 
 export const CreateProductBody = z.object({
   title: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().nullable().optional(),
+  seoTitle: SeoTitle,
+  seoDescription: SeoDescription,
+  /** Title, description, SEO, written values and colour names in the shop's other languages. */
+  translations: ProductTranslations.optional(),
   isActive: z.boolean().optional(),
   categoryId: z.string().cuid(),
+  /** The kind of product (admin → أنواع المنتجات) and its fields' values; checked against the type. */
+  typeId: z.string().min(1).max(64).nullable().optional(),
+  attributes: z.record(z.string(), z.unknown()).nullable().optional(),
+  /** Bookings: when and where (shown on the product page and the ticket). */
+  eventStartsAt: z.coerce.date().nullable().optional(),
+  eventEndsAt: z.coerce.date().nullable().optional(),
+  eventLocation: z.string().trim().max(200).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+  /** Shipped products: where from and how long (empty = the type's). */
+  shipsFrom: z.string().trim().max(80).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+  deliveryMinDays: z.number().int().min(0).max(120).nullable().optional(),
+  deliveryMaxDays: z.number().int().min(0).max(120).nullable().optional(),
+  /** Codes: how to use one (shown next to it on the order page). */
+  redeemNote: z.string().trim().max(500).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+  /** Protected digital product: a serial and an encrypted, marked copy per piece. */
+  isProtected: z.boolean().optional(),
+  /** Download window (hours) and downloads per serial; null = the defaults (24 h, 3). */
+  licenceHours: z.number().int().min(1).max(24 * 365).nullable().optional(),
+  licenceDownloads: z.number().int().min(1).max(100).nullable().optional(),
+  /** PCs one serial can be activated on with the launcher; null = 1. */
+  licenceDevices: z.number().int().min(1).max(50).nullable().optional(),
 });
 export const UpdateProductBody = CreateProductBody.partial();
 
@@ -83,8 +114,27 @@ export const ProductDeepUpdateBody = z.object({
     title: z.string().min(1).optional(),
     slug: z.string().min(1).optional(),
     description: z.string().nullable().optional(),
+    seoTitle: SeoTitle,
+    seoDescription: SeoDescription,
+    translations: ProductTranslations.optional(),
     isActive: z.boolean().optional(),
     categoryId: z.string().cuid().optional(),
+    typeId: z.string().min(1).max(64).nullable().optional(),
+    attributes: z.record(z.string(), z.unknown()).nullable().optional(),
+    /** Bookings: when and where (shown on the product page and the ticket). */
+    eventStartsAt: z.coerce.date().nullable().optional(),
+    eventEndsAt: z.coerce.date().nullable().optional(),
+    eventLocation: z.string().trim().max(200).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+    /** Shipped products: where from and how long (empty = the type's). */
+    shipsFrom: z.string().trim().max(80).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+    deliveryMinDays: z.number().int().min(0).max(120).nullable().optional(),
+    deliveryMaxDays: z.number().int().min(0).max(120).nullable().optional(),
+    /** Codes: how to use one (shown next to it on the order page). */
+    redeemNote: z.string().trim().max(500).nullable().optional().transform((v) => (v ? v : v === undefined ? undefined : null)),
+    isProtected: z.boolean().optional(),
+    licenceHours: z.number().int().min(1).max(24 * 365).nullable().optional(),
+    licenceDownloads: z.number().int().min(1).max(100).nullable().optional(),
+    licenceDevices: z.number().int().min(1).max(50).nullable().optional(),
   }).optional(),
   items: z.array(z.object({
     id: z.string().cuid().optional(),
@@ -112,14 +162,22 @@ export const ProductDeepUpdateBody = z.object({
       salePrice: PriceNumber.nullable().optional(),
       saleStartsAt: z.coerce.date().nullable().optional(),
       saleEndsAt: z.coerce.date().nullable().optional(),
-      stock: z.number().int().min(0).optional().default(0),
-      lowStockThreshold: z.number().int().min(0).optional().default(0),
+      // Left out = keep the current value (never silently reset to 0).
+      stock: z.number().int().min(0).optional(),
+      lowStockThreshold: z.number().int().min(0).optional(),
       weightGrams: z.number().int().min(0).nullable().optional(),
     })).optional(),
   })).optional(),
   deleteItemIds: z.array(z.string().cuid()).optional(),
   deleteImageIds: z.array(z.string().cuid()).optional(),
   deleteVariantIds: z.array(z.string().cuid()).optional(),
+});
+
+/** GET /products: optional filters (the admin list also filters in the browser). */
+export const ProductListQuery = z.object({
+  status: z.enum(["all", "active", "draft"]).optional(),
+  q: z.string().max(120).optional(),
+  categoryId: z.string().optional(),
 });
 
 /**

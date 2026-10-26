@@ -1,5 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { getRequestMetrics } from "./requestMetrics.js";
+import { noteQuery } from "./dbWrites.js";
+import { noteDbQuery } from "./observability.js";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient<Prisma.PrismaClientOptions, "query">;
@@ -17,6 +19,10 @@ const client =
   });
 
 client.$on("query", (e: Prisma.QueryEvent) => {
+  // Writes to products, pages or settings clear the caches built from them (lib/cache.ts).
+  noteQuery(e.query);
+  // The slowest queries (admin → مراقبة السرعة والأولوية).
+  noteDbQuery(e.query, e.duration ?? 0);
   const metrics = getRequestMetrics();
   if (!metrics) return;
   metrics.dbMs += e.duration ?? 0;

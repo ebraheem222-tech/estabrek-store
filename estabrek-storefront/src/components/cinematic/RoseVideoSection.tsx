@@ -1,12 +1,18 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { VideoData } from "@/cms/sectionTypes";
+import { createFilmScrubber } from "./heroFilmPlayback";
+import { createScrollProgressMotion } from "./scrollProgressMotion";
+import { lazyMargin, motionSettings, sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { isNearWhite } from "@/lib/storefrontPalette";
+import { tr } from "@/lib/words";
 
 export const defaultCampaignVideo: VideoData = {
   url: "/editorial/rose-campaign.mp4", posterUrl: "/editorial/rose-campaign-poster.webp",
@@ -14,7 +20,17 @@ export const defaultCampaignVideo: VideoData = {
 };
 
 type Playback = "paused" | "playing" | "blocked" | "error" | "scrubbing";
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const HEX = /^#[0-9a-f]{6}$/i;
+/**
+ * How much to deepen the fabric for a dark colour: the "color" blend alone keeps
+ * the rose fabric's brightness, so navy came out pale lavender. A dark pick also
+ * gets a multiply layer, a light pick none.
+ */
+function deepen(hex: string) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((n) => (n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4));
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return Math.max(0, Math.min(0.6, ((0.55 - l) / 0.55) * 0.6)).toFixed(2);
+}
 
 /**
  * Campaign clip. With motion allowed, the section holds while scrolling and the
@@ -24,18 +40,44 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60))
  * motion or CMS animations off, it is a still poster with a play button.
  */
 export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: VideoData }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const { scrollAnimationsEnabled } = useStorefrontSettings();
   const root = useRef<HTMLElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
-  const time = useRef<HTMLSpanElement>(null);
   const alive = useRef(true);
   const [near, setNear] = useState(false);
   const [scroll, setScroll] = useState(false);
   const [playback, setPlayback] = useState<Playback>("paused");
+  // The fabric takes the shopper's colour (none picked: its own rose).
+  // The last colour is kept while the dye fades out, so it does not jump to clear.
+  const [dye, setDye] = useState<{ color: string | null; on: boolean }>({ color: null, on: false });
   const isDefault = data.url === defaultCampaignVideo.url;
   const poster = data.posterUrl || defaultCampaignVideo.posterUrl;
+
+  useEffect(() => {
+    const read = () => {
+      const c = document.documentElement.dataset.storefrontColor;
+      return c && HEX.test(c) && !isNearWhite(c) ? c : null;
+    };
+    const now = read();
+    if (now) setDye({ color: now, on: true });
+    const pick = (e: Event) => {
+      const c = (e as CustomEvent<string>).detail;
+      if (typeof c !== "string" || !HEX.test(c)) return;
+      // White/ivory would only wash the fabric out to grey: it keeps its own rose.
+      if (isNearWhite(c)) setDye((d) => ({ ...d, on: false }));
+      else setDye({ color: c, on: true });
+    };
+    const reset = () => setDye((d) => ({ ...d, on: false }));
+    window.addEventListener("storefront-color-selected", pick);
+    window.addEventListener("storefront-color-reset", reset);
+    return () => {
+      window.removeEventListener("storefront-color-selected", pick);
+      window.removeEventListener("storefront-color-reset", reset);
+    };
+  }, []);
 
   // Fetch the clip shortly before it is needed.
   useEffect(() => {
@@ -44,7 +86,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
     if (!el) return;
     const io = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) { setNear(true); io.disconnect(); }
-    }, { rootMargin: "600px 0px" });
+    }, { rootMargin: lazyMargin(600) });
     io.observe(el);
     return () => { alive.current = false; io.disconnect(); };
   }, []);
@@ -64,7 +106,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
   // Scroll-driven playback and frame animation.
   useEffect(() => {
     const section = root.current, media = frame.current, el = video.current;
-    if (!section || !media || !el || !scrollAnimationsEnabled) return;
+    if (!section || !media || !el || !scrollAnimationsEnabled || !sectionMotionOn("campaign")) return;
     gsap.registerPlugin(ScrollTrigger);
     const mm = gsap.matchMedia();
     mm.add("(prefers-reduced-motion: no-preference)", () => {
@@ -72,58 +114,48 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       section.dataset.motion = "true";
       el.pause();
       el.loop = false;
-      const state = { p: 0 };
-      let pending = false;
-      const seek = () => {
-        const d = el.duration;
-        if (time.current) time.current.textContent = `${clock(state.p * (Number.isFinite(d) ? d : 0))} / ${clock(Number.isFinite(d) ? d : 0)}`;
-        if (!Number.isFinite(d) || d <= 0 || el.readyState < 1) return;
-        const target = Math.min(d - 0.04, Math.max(0, state.p * d));
-        if (Math.abs(el.currentTime - target) < 0.012) return;
-        // Skip a frame while the decoder is still seeking instead of queueing seeks.
-        if (el.seeking) { pending = true; return; }
-        el.currentTime = target;
-      };
-      const seeked = () => { if (pending) { pending = false; seek(); } };
-      const ready = () => { if (el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE) setPlayback("scrubbing"); seek(); };
+      // Same method as the opening film: one seek at a time, the next only after the
+      // decoded frame was shown, on the clip's own frame grid: 120 a second for the
+      // shop's clip; a video from the Admin is taken as up to 60 (a finer grid only
+      // sends seeks that land inside the frame already shown).
+      const scrubber = createFilmScrubber(el, () => {}, isDefault ? 120 : 60, isDefault && motionSettings().keyframeSnap ? 6 : 1);
+      const ready = () => { if (el.networkState !== HTMLMediaElement.NETWORK_NO_SOURCE) setPlayback("scrubbing"); };
       el.addEventListener("loadedmetadata", ready);
-      el.addEventListener("seeked", seeked);
       if (el.readyState >= 1) ready();
       const copy = section.querySelectorAll<HTMLElement>(".rose-video-copy > *");
-      const tl = gsap.timeline({
-        defaults: { ease: "none" },
-        scrollTrigger: {
-          trigger: section,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 0.6,
-          invalidateOnRefresh: true,
-          refreshPriority: -1,
-        },
-      });
-      tl.to(state, {
-        p: 1,
-        duration: 1,
-        onUpdate: () => {
-          seek();
-          section.style.setProperty("--video-p", state.p.toFixed(4));
-        },
-      }, 0)
-        // The arch opens into a wide, softly rounded frame.
-        .fromTo(media, { borderRadius: "260px 260px 12px 12px", scale: 0.84 }, { borderRadius: "34px 34px 34px 34px", scale: 1, ease: "power2.out", duration: 0.4 }, 0)
+      // Drawn by the scroll motion below, not by GSAP's own scrub.
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+      // The arch opens into a wide, softly rounded frame.
+      tl.fromTo(media, { borderRadius: "260px 260px 12px 12px", scale: 0.84 }, { borderRadius: "34px 34px 34px 34px", scale: 1, ease: "power2.out", duration: 0.4 }, 0)
         .fromTo(el, { scale: 1.22 }, { scale: 1, duration: 1 }, 0)
         .fromTo(copy, { y: 46, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.05, duration: 0.22, ease: "power2.out" }, 0.06);
-      const refresh = () => { ScrollTrigger.sort(); ScrollTrigger.refresh(); };
-      const raf = requestAnimationFrame(refresh);
+      // Game-loop motion (scrollProgressMotion.ts): the scroll sets the target, the
+      // display's own frames move the frame, the copy and the film to it.
+      const scrollMotion = createScrollProgressMotion((p) => {
+        tl.progress(p);
+        // Stop just short of the end: some browsers show a blank frame at the very end.
+        const d = el.duration;
+        scrubber.update(Number.isFinite(d) && d > 0.1 ? p * (1 - 0.04 / d) : p);
+      }, { smoothTime: sectionSmoothTime("campaign") });
+      const trigger = ScrollTrigger.create({
+        trigger: section,
+        start: "top top",
+        end: "bottom bottom",
+        refreshPriority: -1,
+        onUpdate: (self) => scrollMotion.target(self.progress),
+        onRefresh: (self) => scrollMotion.snap(self.progress),
+      });
+      scrollMotion.snap(trigger.progress);
+      const refresh = requestScrollRefresh;
+      refresh();
       return () => {
-        cancelAnimationFrame(raf);
         el.removeEventListener("loadedmetadata", ready);
-        el.removeEventListener("seeked", seeked);
-        tl.scrollTrigger?.kill();
+        trigger.kill();
+        scrollMotion.stop();
+        scrubber.stop();
         tl.kill();
         gsap.set([media, el, ...Array.from(copy)], { clearProps: "all" });
         section.dataset.motion = "false";
-        section.style.removeProperty("--video-p");
         el.loop = data.loop !== false;
         setScroll(false);
         setPlayback("paused");
@@ -155,52 +187,57 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       data-motion="false"
       data-playback={playback}
       data-rose-palette={data.rosePresentation?.palette || "berry"}
-      aria-label={data.title || (ar ? "حكاية قماش" : "A story in fabric")}
+      aria-label={data.title || (tr(lang, "حكاية قماش", "A story in fabric"))}
     >
       <div className="rose-video-stage">
         <div ref={frame} className="rose-video-media">
           <video
             ref={video}
             poster={poster}
-            preload={near ? "auto" : "none"}
+            preload={near ? motionSettings().videoPreload : "none"}
             playsInline
             muted
             loop={data.loop !== false}
             controls={data.controls === true && !scroll}
-            aria-label={ar ? "طيات قماش وردي تتحرك" : "Rose fabric in motion"}
+            aria-label={tr(lang, "طيات قماش وردي تتحرك", "Rose fabric in motion")}
             onPlay={() => setPlayback("playing")}
             onPause={() => { if (!scroll) setPlayback(video.current?.error ? "error" : "paused"); }}
           >
-            {near && isDefault && <source src="/editorial/rose-campaign-mobile.webm" type="video/webm" media="(max-width: 760px)" />}
-            {near && isDefault && <source src="/editorial/rose-campaign-mobile.mp4" type="video/mp4" media="(max-width: 760px)" />}
-            {near && isDefault && <source src="/editorial/rose-campaign.webm" type="video/webm" />}
-            {near && <source src={data.url} type="video/mp4" />}
+            {/* The shop's clip at 120 frames a second (motion-interpolated from the 30 fps original). */}
+            {near && isDefault && <source src="/editorial/rose-campaign-mobile-120.webm" type="video/webm" media="(max-width: 760px)" />}
+            {near && isDefault && <source src="/editorial/rose-campaign-mobile-120.mp4" type="video/mp4" media="(max-width: 760px)" />}
+            {near && isDefault && <source src="/editorial/rose-campaign-120.webm" type="video/webm" />}
+            {near && <source src={isDefault ? "/editorial/rose-campaign-120.mp4" : data.url} type="video/mp4" />}
           </video>
-          {playback === "error" && <img className="video-error-poster" src={poster} alt={ar ? "طيات قماش وردي" : "Folds of rose fabric"} />}
+          {playback === "error" && <img className="video-error-poster" src={poster} alt={tr(lang, "طيات قماش وردي", "Folds of rose fabric")} />}
+          {/* Dyes the fabric in the shopper's colour, keeping its folds and light (dark colours also deepen it). */}
+          {(["rose-video-dye", "rose-video-deepen"] as const).map((layer) => (
+            <span
+              key={layer}
+              className={layer}
+              aria-hidden="true"
+              data-on={dye.on ? "true" : undefined}
+              style={dye.color ? ({ "--video-dye": dye.color, "--video-deepen": deepen(dye.color) } as CSSProperties) : undefined}
+            />
+          ))}
           {showButton && (
             <button
               type="button"
               className="rose-video-toggle"
-              aria-label={playback === "error" ? (ar ? "إعادة تحميل الفيديو" : "Reload video") : playback === "playing" ? (ar ? "إيقاف الفيديو" : "Pause video") : (ar ? "تشغيل الفيديو" : "Play video")}
+              aria-label={playback === "error" ? (tr(lang, "إعادة تحميل الفيديو", "Reload video")) : playback === "playing" ? (tr(lang, "إيقاف الفيديو", "Pause video")) : (tr(lang, "تشغيل الفيديو", "Play video"))}
               onClick={() => void toggle()}
             >
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">{playback === "playing" ? <path d="M7 5h3v14H7zM14 5h3v14h-3z" fill="currentColor" /> : <path d="m8 4 13 8-13 8z" fill="currentColor" />}</svg>
-              <span>{playback === "error" ? (ar ? "إعادة المحاولة" : "Retry") : playback === "playing" ? (ar ? "إيقاف" : "Pause") : (ar ? "تشغيل" : "Play")}</span>
+              <span>{playback === "error" ? (tr(lang, "إعادة المحاولة", "Retry")) : playback === "playing" ? (tr(lang, "إيقاف", "Pause")) : (tr(lang, "تشغيل", "Play"))}</span>
             </button>
-          )}
-          {scroll && playback !== "error" && (
-            <div className="rose-video-timeline" aria-hidden="true">
-              <span className="timeline-track"><span /></span>
-              <span ref={time} className="timeline-clock" dir="ltr">0:00</span>
-            </div>
           )}
         </div>
         <div className="rose-video-copy">
-          <span className="atelier-eyebrow">ESTABREK · IN MOTION</span>
-          <h2>{data.title || (ar ? <>أناقةٌ تتحرّك.<br /><em>وتبقى في الذاكرة.</em></> : <>Elegance in motion.<br /><em>A feeling that stays.</em></>)}</h2>
-          <p>{data.subtitle || (ar ? "تفاصيل ناعمة، وطيات تحكي الكثير. مرّري ببطء، ودعي القماش يتحرّك معكِ." : "Soft details. Beautiful folds. Scroll slowly and let the fabric move with you.")}</p>
-          <Link href="/shop" className="atelier-text-link">{ar ? "اكتشفي المجموعة" : "Discover the collection"}<Icon name="arrow" /></Link>
-          {playback === "error" && <span className="video-status" role="status">{ar ? "تعذّر تحميل الفيديو. يمكنكِ إعادة المحاولة." : "Video could not load. You can try again."}</span>}
+          <span className="atelier-eyebrow">{tr(lang, "القماش بالحركة", "FABRIC IN MOTION")}</span>
+          <h2>{data.title || (ar ? <>أناقةٌ تتحرّك.<br /><em>وتبقى في الذاكرة.</em></> : lang === "he" ? <>אלגנטיות בתנועה.<br /><em>תחושה שנשארת.</em></> : <>Elegance in motion.<br /><em>A feeling that stays.</em></>)}</h2>
+          <p>{data.subtitle || (tr(lang, "تفاصيل ناعمة، وطيات تحكي الكثير. مرّري ببطء، ودعي القماش يتحرّك معكِ.", "Soft details. Beautiful folds. Scroll slowly and let the fabric move with you."))}</p>
+          <Link href="/shop" className="atelier-text-link">{tr(lang, "اكتشفي المجموعة", "Discover the collection")}<Icon name="arrow" /></Link>
+          {playback === "error" && <span className="video-status" role="status">{tr(lang, "تعذّر تحميل الفيديو. يمكنكِ إعادة المحاولة.", "Video could not load. You can try again.")}</span>}
         </div>
       </div>
     </section>

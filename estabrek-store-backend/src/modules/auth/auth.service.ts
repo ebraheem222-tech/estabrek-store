@@ -3,7 +3,11 @@ import argon2 from "argon2";
 import { prisma } from "../../lib/prisma.js";
 import { signAccessToken } from "../../config/security.js";
 import type { AuthUser } from "../../types/auth.js";
-import { Unauthorized } from "../../utils/httpError.js";
+import { AppError, Unauthorized } from "../../utils/httpError.js";
+import { adminProfile } from "../admin/profile.js";
+import { policy } from "../../lib/securityPolicy.js";
+import { sendEmail } from "../outbox/sender/email.js";
+import { deviceName, israelTime } from "../outbox/sender/links.js";
 import { env } from "../../config/env.js";
 import { createOtpChallenge } from "./otp.service.js";
 import { sendSms } from "../outbox/sender/sms.js";
@@ -12,8 +16,21 @@ function b64url(buf: Buffer) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-const ACCESS_EXPIRES = "15m";
-const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30d
+// Lifetimes come from the security policy (admin → Security page).
+export const accessExpires = () => `${policy().session.accessMinutes}m` as const;
+export const refreshTtlMs = () => policy().session.lifetimeDays * 24 * 60 * 60 * 1000;
+
+/** A device that wasn't used for longer than the policy's idle time is signed out. */
+export async function ensureNotIdle(session: { id: string; adminUserId: string; updatedAt: Date }) {
+  const hours = policy().session.idleHours;
+  if (!hours) return;
+  if (session.updatedAt.getTime() >= Date.now() - hours * 60 * 60 * 1000) return;
+  await prisma.adminSession.update({
+    where: { id: session.id },
+    data: { status: "EXPIRED", revokedAt: new Date(), revocationReason: "idle" },
+  });
+  throw Unauthorized("Session expired");
+}
 
 async function logSecurityEvent(params: {
   adminUserId: string;
@@ -28,7 +45,8 @@ async function logSecurityEvent(params: {
     | "SESSION_CREATED"
     | "SESSION_REVOKED"
     | "ACCOUNT_LOCKED"
-    | "ACCOUNT_UNLOCKED";
+    | "ACCOUNT_UNLOCKED"
+    | "NEW_DEVICE_LOGIN";
   ip?: string;
   userAgent?: string;
   metadata?: any;
@@ -52,12 +70,19 @@ async function createRefreshToken(sessionId: string) {
   const rand = b64url(randomBytes(32));
   const token = `${sessionId}.${rand}`;
   const hash = await argon2.hash(token, { type: argon2.argon2id });
-  const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
+  const expiresAt = new Date(Date.now() + refreshTtlMs());
   return { token, hash, expiresAt };
 }
 
+/** A suspended (or not yet joined) account can't sign in or keep a session going. */
+function ensureActive(admin: { status?: string | null }) {
+  if (admin.status && admin.status !== "ACTIVE") {
+    throw new AppError(403, "ACCOUNT_SUSPENDED", "This account is turned off. Ask the store owner.");
+  }
+}
+
 function buildAccessToken(admin: { id: string; role: any; email: string }) {
-  return signAccessToken({ sub: admin.id, role: admin.role, email: admin.email } as AuthUser, { expiresIn: ACCESS_EXPIRES });
+  return signAccessToken({ sub: admin.id, role: admin.role, email: admin.email } as AuthUser, { expiresIn: accessExpires() });
 }
 
 export async function createSessionWithRefresh(params: { adminUserId: string; ip?: string; ua?: string }) {
@@ -67,7 +92,7 @@ export async function createSessionWithRefresh(params: { adminUserId: string; ip
       ip: params.ip,
       userAgent: params.ua,
       status: "ACTIVE",
-      expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+      expiresAt: new Date(Date.now() + refreshTtlMs()),
     },
   });
 
@@ -102,13 +127,14 @@ export async function authenticateAdmin(opts: {
   const ok = await argon2.verify(admin.passwordHash, password).catch(() => false);
   if (!ok) {
     const nextFailed = admin.failedLoginCount + 1;
-    const shouldLock = nextFailed >= env.AUTH_MAX_FAILED;
+    const { maxFailed, lockMinutes } = policy().login;
+    const shouldLock = nextFailed >= maxFailed;
 
     await prisma.adminUser.update({
       where: { id: admin.id },
       data: {
         failedLoginCount: { increment: 1 },
-        lockedUntil: shouldLock ? new Date(Date.now() + env.AUTH_LOCK_MINUTES * 60 * 1000) : admin.lockedUntil,
+        lockedUntil: shouldLock ? new Date(Date.now() + lockMinutes * 60 * 1000) : admin.lockedUntil,
         lastIp: ip,
       },
     });
@@ -120,12 +146,14 @@ export async function authenticateAdmin(opts: {
         type: "ACCOUNT_LOCKED",
         ip,
         userAgent: ua,
-        metadata: { minutes: env.AUTH_LOCK_MINUTES },
+        metadata: { minutes: lockMinutes },
       });
     }
 
     throw Unauthorized("Invalid credentials");
   }
+
+  ensureActive(admin);
 
   // success → reset counters
   await prisma.adminUser.update({
@@ -143,6 +171,23 @@ export async function beginSessionForAdmin(params: { adminId: string; ip?: strin
     include: { default2FADevice: true },
   });
   if (!admin) throw Unauthorized("Invalid user");
+  ensureActive(admin);
+
+  // Signed in from an IP this admin never used before (and not their first sign-in): note it.
+  if (policy().alerts.newDevice && params.ip) {
+    const [fromHere, before] = await Promise.all([
+      prisma.adminSession.count({ where: { adminUserId: admin.id, ip: params.ip } }),
+      prisma.adminSession.count({ where: { adminUserId: admin.id } }),
+    ]);
+    if (before > 0 && fromHere === 0) {
+      await logSecurityEvent({ adminUserId: admin.id, type: "NEW_DEVICE_LOGIN", ip: params.ip, userAgent: params.ua });
+      void sendEmail({
+        to: admin.email,
+        template: "ADMIN_NEW_DEVICE",
+        payload: { name: admin.name, ip: params.ip, device: deviceName(params.ua), time: israelTime() },
+      });
+    }
+  }
 
   const { sessionId } = await createSessionWithRefresh({ adminUserId: admin.id, ip: params.ip, ua: params.ua });
   await logSecurityEvent({ adminUserId: admin.id, type: "SESSION_CREATED", ip: params.ip, userAgent: params.ua, metadata: { sessionId } });
@@ -179,7 +224,7 @@ export async function beginSessionForAdmin(params: { adminId: string; ip?: strin
     mfaRequired: false as const,
     accessToken: tokens.accessToken ?? accessToken,
     refreshToken: tokens.refreshToken,
-    admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role, twoFactorEnabled: admin.twoFactorEnabled },
+    admin: (await adminProfile(admin.id)) ?? { id: admin.id, email: admin.email, name: admin.name, role: admin.role, twoFactorEnabled: admin.twoFactorEnabled },
   };
 }
 
@@ -191,6 +236,8 @@ export async function issueTokensFromSession(sessionId: string) {
   if (!session || session.status !== "ACTIVE" || session.expiresAt < new Date()) {
     throw Unauthorized("Session expired");
   }
+  ensureActive(session.adminUser);
+  await ensureNotIdle(session);
 
   const { token: refreshToken, hash, expiresAt } = await createRefreshToken(session.id);
   await prisma.adminSession.update({
@@ -214,6 +261,8 @@ export async function refreshTokens(refreshToken: string, ip?: string, ua?: stri
 
   const valid = await argon2.verify(session.refreshTokenHash ?? "", refreshToken).catch(() => false);
   if (!valid) throw Unauthorized("Invalid refresh token");
+  ensureActive(session.adminUser);
+  await ensureNotIdle(session);
 
   // rotate
   const { token: newRefresh, hash, expiresAt } = await createRefreshToken(session.id);

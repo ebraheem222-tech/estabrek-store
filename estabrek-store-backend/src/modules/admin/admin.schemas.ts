@@ -5,6 +5,8 @@ export const UpdateProfileBody = z.object({
   phone: z.string().nullable().optional(),
   secondEmail: z.string().email().nullable().optional(),
   secondPhone: z.string().nullable().optional(),
+  /** The admin's language for this member; null = the store's main language. */
+  locale: z.enum(["ar", "en", "he"]).nullable().optional(),
 });
 
 export const EmailChangeRequestBody = z.object({

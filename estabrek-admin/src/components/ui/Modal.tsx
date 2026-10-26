@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./cn";
 import { Button } from "./Button";
+import { tr } from "@/lib/words";
 
 type Props = {
   open: boolean;
@@ -28,7 +29,7 @@ export function Modal({
   onClose,
   onCancel,
   footer,
-  closeText = "إغلاق",
+  closeText = tr("إغلاق", "Close"),
   disableBackdropClose,
   widthClassName = "max-w-lg",
   icon,
@@ -70,15 +71,16 @@ export function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div dir="rtl" className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50">
       {/* Premium Backdrop with animated radial gradient */}
       <div
         className="absolute inset-0 backdrop-blur-md"
         style={{
+          // Skins set --modal-backdrop (src/theme/skins.css); classic keeps the violet glow.
           background: `
-            radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139, 92, 246, 0.12), transparent 50%),
-            radial-gradient(ellipse 60% 40% at 50% 100%, rgba(139, 92, 246, 0.08), transparent 50%),
-            rgba(9, 9, 11, 0.85)
+            radial-gradient(ellipse 80% 50% at 50% 0%, rgb(var(--sk-accent-500, 139 92 246) / 0.12), transparent 50%),
+            radial-gradient(ellipse 60% 40% at 50% 100%, rgb(var(--sk-accent-500, 139 92 246) / 0.08), transparent 50%),
+            var(--modal-backdrop, rgba(9, 9, 11, 0.85))
           `,
           animation: 'fadeIn 0.2s ease-out'
         }}
@@ -91,17 +93,19 @@ export function Modal({
       <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-4">
         <div
           ref={modalRef}
+          role="dialog"
+          aria-modal="true"
           onMouseMove={handleMouseMove}
           className={cn(
             "modal-spotlight relative w-full max-h-[90vh] flex flex-col rounded-2xl border border-white/[0.08] shadow-elevated overflow-hidden animate-modal-enter",
             widthClassName
           )}
           style={{ 
-            background: 'linear-gradient(180deg, rgba(20, 20, 24, 1) 0%, rgba(16, 16, 20, 1) 100%)'
+            background: 'var(--modal-panel, linear-gradient(180deg, rgba(20, 20, 24, 1) 0%, rgba(16, 16, 20, 1) 100%))'
           }}
         >
           {/* Top gradient line */}
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-500/40 to-transparent" />
+          <div className="absolute top-0 end-0 start-0 h-px bg-gradient-to-r from-transparent via-accent-500/40 to-transparent" />
           
           {/* Ambient glow top */}
           <div className="ambient-glow-top" />
@@ -112,7 +116,7 @@ export function Modal({
           {/* Header */}
           <div className="relative flex flex-col gap-3 px-5 pt-5 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-6 sm:pt-6 border-b border-white/[0.06]">
             {/* Header accent line */}
-            <div className="absolute bottom-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-accent-500/20 to-transparent" />
+            <div className="absolute bottom-0 end-6 start-6 h-px bg-gradient-to-r from-transparent via-accent-500/20 to-transparent" />
             
             <div className="flex items-start gap-4">
               {icon && (
@@ -148,7 +152,7 @@ export function Modal({
           {(footer || closeText) && (
             <div className="relative flex flex-col-reverse gap-3 px-5 py-4 border-t border-white/[0.06] sm:flex-row sm:items-center sm:justify-between sm:px-6"
               style={{
-                background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.1) 100%)'
+                background: 'var(--modal-header, linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.1) 100%))'
               }}
             >
               <div className="flex-1">{footer ?? null}</div>

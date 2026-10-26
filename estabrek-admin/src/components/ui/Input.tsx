@@ -28,7 +28,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(
         )}
         <div className="relative group">
           {leftIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
+            <div className="absolute start-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
               {leftIcon}
             </div>
           )}
@@ -39,13 +39,13 @@ export const Input = forwardRef<HTMLInputElement, Props>(
               "transition-all duration-200 ease-smooth",
               "shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]",
               "focus:outline-none focus:ring-2 focus:ring-accent-500/20 focus:border-accent-500/40",
-              "focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgba(139,92,246,0.08)]",
+              "focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_0_0_4px_rgb(var(--sk-accent-500,139_92_246)/0.08)]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               error
                 ? "border-red-500/50 focus:ring-red-500/20 focus:border-red-500/50"
                 : "border-white/[0.06] hover:border-white/[0.1]",
-              !!leftIcon && "pr-10",
-              !!rightIcon && "pl-10",
+              !!leftIcon && "ps-10",
+              !!rightIcon && "pe-10",
               className
             )}
             onChange={(e) => {
@@ -75,7 +75,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(
             {...rest}
           />
           {rightIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
+            <div className="absolute end-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
               {rightIcon}
             </div>
           )}

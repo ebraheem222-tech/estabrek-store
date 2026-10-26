@@ -1,8 +1,11 @@
 import argon2 from "argon2";
+import { invalidateAccess } from "../../middleware/access.js";
+import { accessExpires, refreshTtlMs } from "./auth.service.js";
 import { prisma } from "../../lib/prisma.js";
 import { createTotpSecret, totpURI, verifyTotp, signAccessToken } from "../../config/security.js";
 import type { AuthUser } from "../../types/auth.js";
-import { BadRequest, Unauthorized } from "../../utils/httpError.js";
+import { AppError, BadRequest, Unauthorized } from "../../utils/httpError.js";
+import { policy } from "../../lib/securityPolicy.js";
 import { randomBytes } from "node:crypto";
 import { verifyOtpChallenge } from "./otp.service.js";
 
@@ -10,7 +13,6 @@ function b64url(buf: Buffer) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-const ACCESS_EXPIRES = "15m";
 
 export function generate2FASetup(email: string, issuer = "Estabrak Store") {
   const secret = createTotpSecret();
@@ -38,6 +40,7 @@ export async function enable2FA(adminId: string, secret: string, code: string, l
     data: { twoFactorEnabled: true, default2FADeviceId: device.id },
   });
 
+  invalidateAccess(adminId);
   return { ok: true, deviceId: device.id };
 }
 
@@ -46,6 +49,12 @@ export async function disable2FA(adminId: string, deviceId?: string) {
   const admin = await prisma.adminUser.findUnique({ where: { id: adminId } });
   if (!admin) throw Unauthorized("Not found");
 
+  // The store's security rules may require two-step sign-in for this account.
+  const rule = policy().twoFactor.required;
+  if (rule === "everyone" || (rule === "owners" && admin.role === "SUPERADMIN")) {
+    throw new AppError(409, "MFA_REQUIRED_BY_POLICY", "Two-step sign-in is required for this account");
+  }
+
   const target = deviceId ?? admin.default2FADeviceId ?? undefined;
   if (!target) {
     // no specific device — disable all
@@ -53,6 +62,7 @@ export async function disable2FA(adminId: string, deviceId?: string) {
       prisma.admin2FADevice.updateMany({ where: { adminUserId: adminId }, data: { enabled: false } }),
       prisma.adminUser.update({ where: { id: adminId }, data: { twoFactorEnabled: false, default2FADeviceId: null } }),
     ]);
+    invalidateAccess(adminId);
     return { ok: true };
   }
 
@@ -61,6 +71,7 @@ export async function disable2FA(adminId: string, deviceId?: string) {
   if (admin.default2FADeviceId === target) {
     await prisma.adminUser.update({ where: { id: adminId }, data: { twoFactorEnabled: false, default2FADeviceId: null } });
   }
+  invalidateAccess(adminId);
   return { ok: true };
 }
 
@@ -71,6 +82,17 @@ export async function finalizeMfaLogin(params: {
   code?: string;
   challengeId?: string;
 }) {
+  // The session must be the one this admin just started with their password,
+  // and the account must still be on.
+  const session = await prisma.adminSession.findUnique({
+    where: { id: params.sessionId },
+    select: { adminUserId: true, status: true, expiresAt: true, adminUser: { select: { status: true } } },
+  });
+  if (!session || session.adminUserId !== params.adminId || session.status !== "ACTIVE" || session.expiresAt < new Date()) {
+    throw Unauthorized("Session expired");
+  }
+  if (session.adminUser.status !== "ACTIVE") throw Unauthorized("Account is turned off");
+
   const device = await prisma.admin2FADevice.findFirst({
     where: { adminUserId: params.adminId, enabled: true },
     orderBy: { lastUsedAt: "desc" },
@@ -107,7 +129,7 @@ export async function finalizeMfaLogin(params: {
   const rand = b64url(randomBytes(32));
   const token = `${params.sessionId}.${rand}`;
   const hash = await argon2.hash(token, { type: argon2.argon2id });
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + refreshTtlMs());
 
   await prisma.adminSession.update({
     where: { id: params.sessionId },
@@ -115,7 +137,7 @@ export async function finalizeMfaLogin(params: {
   });
 
   const a = device.adminUser;
-  const accessToken = signAccessToken({ sub: a.id, role: a.role, email: a.email } as AuthUser, { expiresIn: ACCESS_EXPIRES });
+  const accessToken = signAccessToken({ sub: a.id, role: a.role, email: a.email } as AuthUser, { expiresIn: accessExpires() });
 
   return { accessToken, refreshToken: token };
 }

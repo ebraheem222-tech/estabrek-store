@@ -8,6 +8,7 @@ import {
   webhookIpBlocklist,
 } from "./ipLists.manual.js";
 import { compileIpRules, isIpInRules, normalizeIp, parseIpList, type CompiledIpRule } from "../utils/ip.js";
+import { policy, policyVersion } from "../lib/securityPolicy.js";
 
 const globalAllowRules = compileIpRules([
   ...globalIpAllowlist,
@@ -36,6 +37,36 @@ const webhookBlockRules = compileIpRules([
   ...parseIpList(env.WEBHOOK_IP_BLOCKLIST),
 ]);
 
+/**
+ * Lists from the admin's Security page, added to the environment lists above.
+ * Rebuilt only when the policy changes.
+ */
+let compiledFor = -1;
+let fromPolicy = { siteBlock: [] as CompiledIpRule[], adminAllow: [] as CompiledIpRule[], adminBlock: [] as CompiledIpRule[] };
+function policyRules() {
+  const v = policyVersion();
+  const p = policy(); // may refresh in the background
+  if (v !== compiledFor) {
+    fromPolicy = {
+      siteBlock: compileIpRules(p.ip.siteBlock),
+      adminAllow: compileIpRules(p.ip.adminAllow),
+      adminBlock: compileIpRules(p.ip.adminBlock),
+    };
+    compiledFor = v;
+  }
+  return fromPolicy;
+}
+
+/** Would these lists stop this IP from reaching the admin? (Used before saving.) */
+export function wouldBlockAdmin(ip: string, lists: { siteBlock: string[]; adminAllow: string[]; adminBlock: string[] }) {
+  const n = normalizeIp(ip);
+  if (isIpInRules(n, compileIpRules(lists.siteBlock))) return "BLOCKS_YOUR_IP" as const;
+  if (isIpInRules(n, compileIpRules(lists.adminBlock))) return "BLOCKS_YOUR_IP" as const;
+  const allow = compileIpRules(lists.adminAllow);
+  if (allow.length && !isIpInRules(n, allow)) return "NOT_IN_ALLOWLIST" as const;
+  return null;
+}
+
 function isAdminPath(p: string) {
   return p === "/v1/admin" || p.startsWith("/v1/admin/");
 }
@@ -54,11 +85,13 @@ export function checkIpAccess(params: { ip: string; path: string }) {
   const ip = normalizeIp(params.ip);
   const path = params.path || "/";
 
-  const global = evaluate(ip, globalAllowRules, globalBlockRules);
+  const extra = policyRules();
+
+  const global = evaluate(ip, globalAllowRules, [...globalBlockRules, ...extra.siteBlock]);
   if (global) return { allowed: false as const, code: global };
 
   if (isAdminPath(path)) {
-    const admin = evaluate(ip, adminAllowRules, adminBlockRules);
+    const admin = evaluate(ip, [...adminAllowRules, ...extra.adminAllow], [...adminBlockRules, ...extra.adminBlock]);
     if (admin) return { allowed: false as const, code: admin };
   }
 

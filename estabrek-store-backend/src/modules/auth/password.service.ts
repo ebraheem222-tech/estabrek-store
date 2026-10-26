@@ -2,6 +2,10 @@ import { randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import { prisma } from "../../lib/prisma.js";
 import { NotFound, Unauthorized } from "../../utils/httpError.js";
+import { env } from "../../config/env.js";
+import { invalidateAccess } from "../../middleware/access.js";
+import { sendEmail } from "../outbox/sender/email.js";
+import { adminPasswordLink } from "../outbox/sender/links.js";
 
 function b64url(buf: Buffer) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -31,8 +35,19 @@ export async function requestPasswordReset(email: string, requesterIp?: string, 
     },
   });
 
-  // In prod: send email. In dev: return raw token.
-  return { ok: true, token: `${tokenId}.${secret}` };
+  // The link must reach the owner of the email, never the person asking: the
+  // token is only returned outside production (local testing). In production the
+  // store owner sends a reset link from Team & permissions, or runs
+  // `npm run admin:reset-link -- <email>` on the server.
+  const token = `${tokenId}.${secret}`;
+  // Email the link to the account's own address (when email is set up).
+  const url = adminPasswordLink(token, "reset");
+  if (url) {
+    void sendEmail({ to: admin.email, template: "ADMIN_PASSWORD_RESET", payload: { name: admin.name, url, hours: 1 } });
+  }
+  if (env.NODE_ENV !== "production") return { ok: true, token };
+  console.log(`[auth] password reset requested for an admin account (${tokenId})`);
+  return { ok: true };
 }
 
 export async function resetPassword(token: string, newPassword: string) {
@@ -47,10 +62,18 @@ export async function resetPassword(token: string, newPassword: string) {
   const ok = await argon2.verify(rec.tokenHash, secret).catch(() => false);
   if (!ok) throw Unauthorized("Invalid reset token");
 
+  const admin = await prisma.adminUser.findUnique({ where: { id: rec.adminUserId }, select: { status: true } });
+  if (!admin) throw NotFound("Reset token not found or expired");
+  if (admin.status === "SUSPENDED") throw Unauthorized("This account is turned off. Ask the store owner.");
+
   const hash = await argon2.hash(newPassword, { type: argon2.argon2id });
 
   await prisma.$transaction([
-    prisma.adminUser.update({ where: { id: rec.adminUserId }, data: { passwordHash: hash } }),
+    prisma.adminUser.update({
+      where: { id: rec.adminUserId },
+      // Opening an invite link and choosing a password is how a new member joins.
+      data: { passwordHash: hash, failedLoginCount: 0, lockedUntil: null, ...(admin.status === "INVITED" ? { status: "ACTIVE" as const } : {}) },
+    }),
     prisma.adminPasswordReset.update({ where: { id: rec.id }, data: { usedAt: new Date() } }),
     // revoke all sessions (force re-login)
     prisma.adminSession.updateMany({
@@ -59,5 +82,6 @@ export async function resetPassword(token: string, newPassword: string) {
     }),
   ]);
 
-  return { ok: true };
+  invalidateAccess(rec.adminUserId);
+  return { ok: true, joined: admin.status === "INVITED" };
 }

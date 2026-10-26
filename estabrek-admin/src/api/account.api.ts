@@ -7,6 +7,8 @@ export type UpdateProfileInput = {
   phone?: string | null;
   secondEmail?: string | null;
   secondPhone?: string | null;
+  /** The admin's language for this member; null = the store's main language. */
+  locale?: "ar" | "en" | "he" | null;
 };
 
 export async function getAdminMe() {

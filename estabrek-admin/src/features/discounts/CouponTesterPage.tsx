@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { Select } from "../../components/ui/Select";
 import { toast } from "../../lib/toast";
 import { http } from "../../api/http";
+import { tr } from "@/lib/words";
 
 type QuoteResponse = {
   variantId: string;
@@ -92,7 +93,7 @@ export default function CouponTesterPage() {
   }, [catalog]);
 
   async function runQuote() {
-    if (!variantId.trim()) return toast.error("أدخل Variant ID");
+    if (!variantId.trim()) return toast.error(tr("يرجى إدخال Variant ID", "Enter a variant ID"));
     setLoading(true);
     try {
       const { data } = await http.post<QuoteResponse>("/catalog/quote", {
@@ -101,19 +102,19 @@ export default function CouponTesterPage() {
         couponCode: couponCode.trim() ? couponCode.trim().toUpperCase() : undefined,
       });
       setQuote(data);
-      toast.success("تم حساب السعر");
+      toast.success(tr("تم حساب السعر", "Price worked out"));
     } catch (e: any) {
       setQuote(null);
-      toast.error("فشل حساب السعر", { description: e?.response?.data?.message ?? e?.message });
+      toast.error(tr("فشل حساب السعر", "Working out the price failed"), { description: e?.response?.data?.message ?? e?.message });
     } finally {
       setLoading(false);
     }
   }
 
   async function submitOrder() {
-    if (!variantId.trim()) return toast.error("أدخل Variant ID");
-    if (!customerName.trim()) return toast.error("أدخل اسم الزبون");
-    if (!phone.trim()) return toast.error("أدخل رقم الهاتف");
+    if (!variantId.trim()) return toast.error(tr("يرجى إدخال Variant ID", "Enter a variant ID"));
+    if (!customerName.trim()) return toast.error(tr("يرجى إدخال اسم الزبون", "Enter the customer's name"));
+    if (!phone.trim()) return toast.error(tr("يرجى إدخال رقم الهاتف", "Enter the phone number"));
     setLoading(true);
     try {
       const { data } = await http.post("/catalog/order-requests", {
@@ -124,45 +125,45 @@ export default function CouponTesterPage() {
         couponCode: couponCode.trim() ? couponCode.trim().toUpperCase() : undefined,
         source: "admin-tester",
       });
-      toast.success("تم إنشاء طلب", { description: `ID: ${data?.id ?? ""}` });
+      toast.success(tr("تم إنشاء طلب", "Order created"), { description: `ID: ${data?.id ?? ""}` });
     } catch (e: any) {
-      toast.error("فشل إنشاء الطلب", { description: e?.response?.data?.message ?? e?.message });
+      toast.error(tr("فشل إنشاء الطلب", "Creating the order failed"), { description: e?.response?.data?.message ?? e?.message });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="space-y-4">
       <Card className="p-4 space-y-3">
-        <div className="text-lg font-semibold">تجربة كوبون</div>
+        <div className="text-lg font-semibold">{tr("تجربة كوبون", "Try a coupon")}</div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Input
-            label="ابحث عن منتج (اختياري)"
+            label={tr("بحث عن منتج (اختياري)", "Search for a product (optional)")}
             value={productQuery}
             onChange={(e) => setProductQuery(e.target.value)}
-            placeholder="اكتب اسم المنتج..."
+            placeholder={tr("اسم المنتج...", "Type the product name...")}
           />
           <Select
-            label="اختيار Variant"
+            label={tr("اختيار Variant", "Choose variant")}
             value={variantId}
             onChange={(e) => setVariantId(e.target.value)}
             options={variantOptions}
-            placeholder={pickerLoading ? "..." : (variantOptions.length ? "اختر" : "ابحث أولاً")}
+            placeholder={pickerLoading ? "..." : (variantOptions.length ? tr("اختيار", "Choose") : tr("البحث أولاً", "Search first"))}
             disabled={pickerLoading || variantOptions.length === 0}
           />
           <div className="text-xs text-white/60 flex items-end">
             <div>
-              بدل ما تدور على Variant ID، ابحث واختر من القائمة.
+              {tr("بدل البحث عن Variant ID، الاختيار من القائمة أسهل.", "Instead of hunting for a variant ID, search and pick from the list.")}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Input label="Variant ID (للمطور)" value={variantId} onChange={(e) => setVariantId(e.target.value)} placeholder="cuid..." />
+          <Input label={tr("Variant ID (للمطور)", "Variant ID (for developers)")} value={variantId} onChange={(e) => setVariantId(e.target.value)} placeholder="cuid..." />
           <Input
-            label="الكمية"
+            label={tr("الكمية", "Quantity")}
             type="number"
             value={String(quantity)}
             onChange={(e) => setQuantity(Number(e.target.value))}
@@ -174,39 +175,39 @@ export default function CouponTesterPage() {
             onChange={(e) => setCouponCode(e.target.value)}
             placeholder="SAVE10"
           />
-          <Input label="اسم الزبون" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-          <Input label="هاتف" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input label={tr("اسم الزبون", "Customer name")} value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+          <Input label={tr("هاتف", "Phone")} value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
 
         <div className="flex gap-2">
           <Button onClick={runQuote} disabled={loading}>
-            {loading ? "..." : "احسب (Quote)"}
+            {loading ? "..." : tr("حساب (Quote)", "Work out (quote)")}
           </Button>
           <Button variant="secondary" onClick={submitOrder} disabled={loading}>
-            {loading ? "..." : "أنشئ طلب OrderRequest"}
+            {loading ? "..." : tr("إنشاء طلب OrderRequest", "Create an OrderRequest")}
           </Button>
         </div>
       </Card>
 
       {quote && (
         <Card className="p-4 space-y-2">
-          <div className="text-base font-semibold">النتيجة</div>
+          <div className="text-base font-semibold">{tr("النتيجة", "Result")}</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-            <div>عملة: <b>{quote.currencyCode}</b></div>
-            <div>سعر القطعة: <b>{formatMoney(quote.unitPrice, quote.currencyCode)}</b></div>
-            <div>المجموع: <b>{formatMoney(quote.subtotal, quote.currencyCode)}</b></div>
-            <div>خصم: <b>{formatMoney(quote.discountAmount, quote.currencyCode)}</b></div>
-            <div>الإجمالي: <b>{formatMoney(quote.total, quote.currencyCode)}</b></div>
+            <div>{tr("عملة:", "Currency:")} <b>{quote.currencyCode}</b></div>
+            <div>{tr("سعر القطعة:", "Unit price:")} <b>{formatMoney(quote.unitPrice, quote.currencyCode)}</b></div>
+            <div>{tr("المجموع:", "Subtotal:")} <b>{formatMoney(quote.subtotal, quote.currencyCode)}</b></div>
+            <div>{tr("خصم:", "Discount:")} <b>{formatMoney(quote.discountAmount, quote.currencyCode)}</b></div>
+            <div>{tr("الإجمالي:", "Total:")} <b>{formatMoney(quote.total, quote.currencyCode)}</b></div>
             <div>
-              كوبون:
+              {tr("كوبون:", "Coupon:")}
               <b className="ms-1">{quote.coupon ? quote.coupon.code : "—"}</b>
             </div>
           </div>
 
           {quote.coupon && (
             <div className="text-sm opacity-80">
-              ({quote.coupon.discountType} • قيمة: {quote.coupon.discountValue}
-              {quote.coupon.maxDiscount != null ? ` • سقف: ${quote.coupon.maxDiscount}` : ""})
+              ({quote.coupon.discountType} {tr("• قيمة:", "• value:")} {quote.coupon.discountValue}
+              {quote.coupon.maxDiscount != null ? tr(` • سقف: ${quote.coupon.maxDiscount}`, " • cap: {0}", [quote.coupon.maxDiscount]) : ""})
             </div>
           )}
         </Card>

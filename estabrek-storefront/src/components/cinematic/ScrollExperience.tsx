@@ -2,6 +2,7 @@
 import { useEffect, type RefObject } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { requestScrollRefresh } from "@/lib/scrollRefresh";
 import type { Language } from "./Language";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 export function ScrollExperience({
@@ -27,7 +28,7 @@ export function ScrollExperience({
           clearProps: "all",
         });
         gsap.fromTo(
-          ".hero-campaign-image",
+          ".hero-campaign-image, .hero-campaign-tint",
           { scale: 1.06 },
           { scale: 1, duration: 1.6, ease: "power2.out" },
         );
@@ -46,9 +47,9 @@ export function ScrollExperience({
       }, root);
       // Pinned scenes (opening, fabric study, seasons) add spacing after mount;
       // re-measure so reveals fire at the right place on a fast scroll.
-      const refresh = () => { ScrollTrigger.sort(); ScrollTrigger.refresh(); };
+      const refresh = requestScrollRefresh;
       window.addEventListener("load", refresh);
-      const late = window.setTimeout(refresh, 1200);
+      const late = window.setTimeout(refresh, 1500); // same moment as the pinned scenes: one shared re-measure
       return () => {
         window.removeEventListener("load", refresh);
         window.clearTimeout(late);

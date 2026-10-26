@@ -15,6 +15,8 @@ import { getLowStock } from "../../api/inventory.api";
 import { listProducts } from "../../api/catalog.api";
 import { listImageDuplicates } from "../../api/uploads.api";
 import { getSettings } from "../../api/settings.api";
+import { tr } from "@/lib/words";
+import { loc } from "@/lib/lang";
 
 // Icons
 const Icons = {
@@ -66,14 +68,14 @@ function statusVariant(status?: string) {
 
 function statusLabel(status?: string) {
   switch (status) {
-    case "NEW": return "جديد";
-    case "CONTACTED": return "تم التواصل";
-    case "ACCEPTED": return "مقبول";
-    case "REJECTED": return "مرفوض";
-    case "SHIPPED": return "تم الشحن";
-    case "CLOSED": return "مغلق";
-    case "CANCELED": return "ملغي";
-    case "REFUNDED": return "مسترجع";
+    case "NEW": return tr("جديد", "New");
+    case "CONTACTED": return tr("تم التواصل", "Contacted");
+    case "ACCEPTED": return tr("مقبول", "Accepted");
+    case "REJECTED": return tr("مرفوض", "Rejected");
+    case "SHIPPED": return tr("تم الشحن", "Shipped");
+    case "CLOSED": return tr("مغلق", "Closed");
+    case "CANCELED": return tr("ملغي", "Cancelled");
+    case "REFUNDED": return tr("مسترجع", "Refunded");
     default: return status;
   }
 }
@@ -116,13 +118,13 @@ function StatCard({ label, value, icon, trend, color = "default", delay = 0 }: S
     >
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-30">
-        <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
+        <div className="absolute -top-10 -start-10 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500" />
       </div>
 
       <div className="relative flex items-start justify-between">
         <div>
           <p className="text-sm text-white/50 font-medium">{label}</p>
-          <p className="mt-2 text-3xl font-bold text-white tabular-nums">{value.toLocaleString("ar-SA")}</p>
+          <p className="mt-2 text-3xl font-bold text-white tabular-nums">{value.toLocaleString(loc("ar-SA"))}</p>
           {trend && (
             <div className={cn(
               "mt-2 flex items-center gap-1 text-xs font-medium",
@@ -130,7 +132,7 @@ function StatCard({ label, value, icon, trend, color = "default", delay = 0 }: S
             )}>
               {trend.up ? Icons.arrowUp : Icons.arrowDown}
               <span>{trend.value}%</span>
-              <span className="text-white/40">من أمس</span>
+              <span className="text-white/40">{tr("من أمس", "since yesterday")}</span>
             </div>
           )}
         </div>
@@ -210,7 +212,7 @@ function TaskCard({ title, subtitle, value, to, tone = "default", loading }: Tas
       type="button"
       onClick={() => navigate(to)}
       className={cn(
-        "rounded-2xl border p-4 text-right transition hover:border-white/20 hover:bg-white/[0.06]",
+        "rounded-2xl border p-4 text-start transition hover:border-white/20 hover:bg-white/[0.06]",
         toneClass
       )}
     >
@@ -273,10 +275,10 @@ export default function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-white">فشل تحميل البيانات</h3>
-        <p className="mt-2 text-sm text-white/50">حدث خطأ أثناء تحميل لوحة التحكم. يرجى المحاولة مرة أخرى.</p>
+        <h3 className="text-lg font-semibold text-white">{tr("فشل تحميل البيانات", "Couldn't load the data")}</h3>
+        <p className="mt-2 text-sm text-white/50">{tr("حدث خطأ أثناء تحميل لوحة التحكم. يرجى المحاولة مرة أخرى.", "Something went wrong loading the dashboard. Please try again.")}</p>
         <Button variant="secondary" className="mt-4" onClick={() => overviewQuery.refetch()}>
-          إعادة المحاولة
+          {tr("إعادة المحاولة", "Try again")}
         </Button>
       </div>
     );
@@ -300,31 +302,31 @@ export default function DashboardPage() {
 
   const mainStats = [
     canReadOrders
-      ? { label: "إجمالي الطلبات", value: counts.orders ?? 0, icon: Icons.orders, color: "accent" as const }
+      ? { label: tr("إجمالي الطلبات", "Total orders"), value: counts.orders ?? 0, icon: Icons.orders, color: "accent" as const }
       : null,
     canReadCatalog
-      ? { label: "المنتجات", value: counts.products ?? 0, icon: Icons.products, color: "default" as const }
+      ? { label: tr("المنتجات", "Products"), value: counts.products ?? 0, icon: Icons.products, color: "default" as const }
       : null,
     canReadOutbox
-      ? { label: "رسائل معلقة", value: counts.outboxQueued ?? 0, icon: Icons.outbox, color: counts.outboxQueued > 0 ? "warning" as const : "default" as const }
+      ? { label: tr("رسائل معلقة", "Pending messages"), value: counts.outboxQueued ?? 0, icon: Icons.outbox, color: counts.outboxQueued > 0 ? "warning" as const : "default" as const }
       : null,
     canReadUgc
-      ? { label: "تقييمات معلقة", value: counts.reviewsPending ?? 0, icon: Icons.reviews, color: counts.reviewsPending > 0 ? "accent" as const : "default" as const }
+      ? { label: tr("تقييمات معلقة", "Pending reviews"), value: counts.reviewsPending ?? 0, icon: Icons.reviews, color: counts.reviewsPending > 0 ? "accent" as const : "default" as const }
       : null,
   ].filter(Boolean);
 
   const quickActions = [
-    can("catalog:read") ? { label: "إدارة المنتجات", to: "/admin/catalog/products" } : null,
-    can("orders:read") ? { label: "عرض الطلبات", to: "/admin/orders" } : null,
-    can("outbox:read") ? { label: "صندوق الرسائل", to: "/admin/outbox" } : null,
-    can("settings:read") ? { label: "الإعدادات", to: "/admin/settings" } : null,
+    can("catalog:read") ? { label: tr("إدارة المنتجات", "Manage products"), to: "/admin/catalog/products" } : null,
+    can("orders:read") ? { label: tr("عرض الطلبات", "See orders"), to: "/admin/orders" } : null,
+    can("outbox:read") ? { label: tr("صندوق الرسائل", "Messages"), to: "/admin/outbox" } : null,
+    can("settings:read") ? { label: tr("الإعدادات", "Settings"), to: "/admin/settings" } : null,
   ].filter(Boolean);
 
   const taskCards = [
     can("orders:read")
       ? {
-          title: "طلبات جديدة",
-          subtitle: "تحتاج مراجعة أو تواصل",
+          title: tr("طلبات جديدة", "New orders"),
+          subtitle: tr("تحتاج مراجعة أو تواصل", "Need a look or a call"),
           value: ordersByStatus.NEW ?? 0,
           to: "/admin/orders",
           tone: (ordersByStatus.NEW ?? 0) > 0 ? "warning" as const : "success" as const,
@@ -332,8 +334,8 @@ export default function DashboardPage() {
       : null,
     can("inventory:read")
       ? {
-          title: "مخزون منخفض",
-          subtitle: "Variants تحت حد التنبيه",
+          title: tr("مخزون منخفض", "Low stock"),
+          subtitle: tr("Variants تحت حد التنبيه", "Variants under their alert level"),
           value: lowStockQuery.data?.total ?? 0,
           to: "/admin/inventory/low-stock",
           loading: lowStockQuery.isLoading,
@@ -342,7 +344,7 @@ export default function DashboardPage() {
       : null,
     can("outbox:read")
       ? {
-          title: "رسائل فاشلة اليوم",
+          title: tr("رسائل فاشلة اليوم", "Failed messages today"),
           subtitle: "SMS / WhatsApp / Email",
           value: counts.outboxFailedToday ?? 0,
           to: "/admin/outbox",
@@ -351,8 +353,8 @@ export default function DashboardPage() {
       : null,
     can("ugc:read")
       ? {
-          title: "تقييمات بانتظار الموافقة",
-          subtitle: "مراجعة قبل النشر",
+          title: tr("تقييمات بانتظار الموافقة", "Reviews waiting for approval"),
+          subtitle: tr("مراجعة قبل النشر", "Check before publishing"),
           value: counts.reviewsPending ?? 0,
           to: "/admin/ugc/reviews",
           tone: (counts.reviewsPending ?? 0) > 0 ? "warning" as const : "success" as const,
@@ -360,8 +362,8 @@ export default function DashboardPage() {
       : null,
     can("ugc:read")
       ? {
-          title: "تعليقات بانتظار الموافقة",
-          subtitle: "أسئلة وتعليقات المنتجات",
+          title: tr("تعليقات بانتظار الموافقة", "Comments waiting for approval"),
+          subtitle: tr("أسئلة وتعليقات المنتجات", "Product questions and comments"),
           value: counts.commentsPending ?? 0,
           to: "/admin/ugc/comments",
           tone: (counts.commentsPending ?? 0) > 0 ? "warning" as const : "success" as const,
@@ -369,8 +371,8 @@ export default function DashboardPage() {
       : null,
     can("settings:read")
       ? {
-          title: "صور مكررة",
-          subtitle: "تنظيف مكتبة الوسائط",
+          title: tr("صور مكررة", "Duplicate images"),
+          subtitle: tr("تنظيف مكتبة الوسائط", "Tidy the media library"),
           value: duplicateImagesQuery.data?.groups?.length ?? 0,
           to: "/admin/media",
           loading: duplicateImagesQuery.isLoading,
@@ -379,8 +381,8 @@ export default function DashboardPage() {
       : null,
     can("catalog:read")
       ? {
-          title: "منتجات مسودة",
-          subtitle: "قد تحتاج صور/مقاسات/SEO",
+          title: tr("منتجات مسودة", "Draft products"),
+          subtitle: tr("قد تحتاج صور/مقاسات/SEO", "May need photos/sizes/SEO"),
           value: draftProductsQuery.data?.length ?? 0,
           to: "/admin/catalog/products",
           loading: draftProductsQuery.isLoading,
@@ -389,8 +391,8 @@ export default function DashboardPage() {
       : null,
     can("settings:read")
       ? {
-          title: "إعدادات الدفع",
-          subtitle: "Stripe / PayPal ناقصة",
+          title: tr("إعدادات الدفع", "Payment settings"),
+          subtitle: tr("Stripe / PayPal ناقصة", "Stripe / PayPal incomplete"),
           value: paymentIssueCount,
           to: "/admin/settings",
           loading: settingsQuery.isLoading,
@@ -414,7 +416,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="glass rounded-2xl p-5 text-sm text-white/60">
-          لا توجد إحصائيات متاحة لحسابك حالياً.
+          {tr("لا توجد إحصائيات متاحة لحسابك حالياً.", "No figures are available for your account yet.")}
         </div>
       )}
 
@@ -422,11 +424,11 @@ export default function DashboardPage() {
         <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "120ms" }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-white">مركز العمل</h2>
-              <p className="mt-0.5 text-xs text-white/40">الأشياء التي تحتاج متابعة الآن</p>
+              <h2 className="text-base font-semibold text-white">{tr("مركز العمل", "To do")}</h2>
+              <p className="mt-0.5 text-xs text-white/40">{tr("الأشياء التي تحتاج متابعة الآن", "What needs attention now")}</p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => overviewQuery.refetch()}>
-              تحديث
+              {tr("تحديث", "Refresh")}
             </Button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -443,11 +445,11 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 glass rounded-2xl overflow-hidden animate-fade-in-up" style={{ animationDelay: "200ms" }}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
               <div>
-                <h2 className="text-base font-semibold text-white">آخر الطلبات</h2>
-                <p className="text-xs text-white/40 mt-0.5">آخر 10 طلبات وردت</p>
+                <h2 className="text-base font-semibold text-white">{tr("آخر الطلبات", "Latest orders")}</h2>
+                <p className="text-xs text-white/40 mt-0.5">{tr("آخر 10 طلبات وردت", "The last 10 orders")}</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => navigate("/admin/orders")}>
-                عرض الكل
+                {tr("عرض الكل", "See all")}
               </Button>
             </div>
 
@@ -455,10 +457,10 @@ export default function DashboardPage() {
               <Table>
                 <THead>
                   <TR>
-                    <TH>الحالة</TH>
-                    <TH>العميل</TH>
-                    <TH>المنتج</TH>
-                    <TH>التاريخ</TH>
+                    <TH>{tr("الحالة", "Status")}</TH>
+                    <TH>{tr("العميل", "Customer")}</TH>
+                    <TH>{tr("المنتج", "Product")}</TH>
+                    <TH>{tr("التاريخ", "Date")}</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -486,7 +488,7 @@ export default function DashboardPage() {
                   ) : (
                     <TR>
                       <TD className="text-center py-8 text-white/40" colSpan={4}>
-                        لا يوجد طلبات بعد
+                        {tr("لا يوجد طلبات بعد", "No orders yet")}
                       </TD>
                     </TR>
                   )}
@@ -499,18 +501,18 @@ export default function DashboardPage() {
         {/* Order Status Breakdown */}
         {canReadOrders && (
           <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-            <h2 className="text-base font-semibold text-white">حالات الطلبات</h2>
-            <p className="text-xs text-white/40 mt-0.5">توزيع الطلبات حسب الحالة</p>
+            <h2 className="text-base font-semibold text-white">{tr("حالات الطلبات", "Order statuses")}</h2>
+            <p className="text-xs text-white/40 mt-0.5">{tr("توزيع الطلبات حسب الحالة", "Orders by status")}</p>
 
             <div className="mt-4 divide-y divide-white/[0.04]">
-              <OrderStatusCard label="جديد" value={ordersByStatus.NEW ?? 0} color="NEW" delay={350} />
-              <OrderStatusCard label="تم التواصل" value={ordersByStatus.CONTACTED ?? 0} color="CONTACTED" delay={400} />
-              <OrderStatusCard label="مقبول" value={ordersByStatus.ACCEPTED ?? 0} color="ACCEPTED" delay={450} />
-              <OrderStatusCard label="مرفوض" value={ordersByStatus.REJECTED ?? 0} color="REJECTED" delay={500} />
-              <OrderStatusCard label="تم الشحن" value={ordersByStatus.SHIPPED ?? 0} color="SHIPPED" delay={550} />
-              <OrderStatusCard label="مغلق" value={ordersByStatus.CLOSED ?? 0} color="CLOSED" delay={600} />
-              <OrderStatusCard label="ملغي" value={ordersByStatus.CANCELED ?? 0} color="CANCELED" delay={650} />
-              <OrderStatusCard label="مسترجع" value={ordersByStatus.REFUNDED ?? 0} color="REFUNDED" delay={700} />
+              <OrderStatusCard label={tr("جديد", "New")} value={ordersByStatus.NEW ?? 0} color="NEW" delay={350} />
+              <OrderStatusCard label={tr("تم التواصل", "Contacted")} value={ordersByStatus.CONTACTED ?? 0} color="CONTACTED" delay={400} />
+              <OrderStatusCard label={tr("مقبول", "Accepted")} value={ordersByStatus.ACCEPTED ?? 0} color="ACCEPTED" delay={450} />
+              <OrderStatusCard label={tr("مرفوض", "Rejected")} value={ordersByStatus.REJECTED ?? 0} color="REJECTED" delay={500} />
+              <OrderStatusCard label={tr("تم الشحن", "Shipped")} value={ordersByStatus.SHIPPED ?? 0} color="SHIPPED" delay={550} />
+              <OrderStatusCard label={tr("مغلق", "Closed")} value={ordersByStatus.CLOSED ?? 0} color="CLOSED" delay={600} />
+              <OrderStatusCard label={tr("ملغي", "Cancelled")} value={ordersByStatus.CANCELED ?? 0} color="CANCELED" delay={650} />
+              <OrderStatusCard label={tr("مسترجع", "Refunded")} value={ordersByStatus.REFUNDED ?? 0} color="REFUNDED" delay={700} />
             </div>
           </div>
         )}
@@ -518,7 +520,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="glass rounded-2xl p-5 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
-        <h2 className="text-base font-semibold text-white mb-4">إجراءات سريعة</h2>
+        <h2 className="text-base font-semibold text-white mb-4">{tr("إجراءات سريعة", "Quick actions")}</h2>
         {quickActions.length > 0 ? (
           <div className="flex flex-wrap gap-3">
             {quickActions.map((action) => (
@@ -529,7 +531,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <p className="text-sm text-white/60">
-            لا توجد إجراءات سريعة متاحة بحسب الصلاحيات الحالية.
+            {tr("لا توجد إجراءات سريعة متاحة بحسب الصلاحيات الحالية.", "No quick actions for your current permissions.")}
           </p>
         )}
       </div>

@@ -3,6 +3,7 @@ import React from "react";
 import { Modal } from "./ui/Modal";
 import { Button } from "./ui/Button";
 import { cn } from "./ui/cn";
+import { tr } from "@/lib/words";
 
 type Props = {
   open: boolean;
@@ -48,11 +49,11 @@ const colors = {
 
 export function ConfirmDialog({
   open,
-  title = "تأكيد",
+  title = tr("تأكيد", "Confirm"),
   message,
   description,
-  confirmText = "تأكيد",
-  cancelText = "إلغاء",
+  confirmText = tr("تأكيد", "Confirm"),
+  cancelText = tr("إلغاء", "Cancel"),
   variant = "danger",
   isLoading,
   onConfirm,
@@ -84,7 +85,7 @@ export function ConfirmDialog({
           <Button
             variant="ghost"
             className="flex-1"
-            onClick={onCancel}
+            onClick={closeHandler}
             disabled={isLoading}
           >
             {cancelText}

@@ -13,6 +13,8 @@ import { Badge } from "../../components/ui/Badge";
 import { Spinner } from "../../components/ui/Spinner";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/Table";
 import { Modal } from "../../components/ui/Modal";
+import { ScarcityCard } from "./ScarcityCard";
+import { tr } from "@/lib/words";
 
 function clampInt(v: string, min = 0) {
   const n = Math.floor(Number(v));
@@ -54,7 +56,7 @@ export default function LowStockPage() {
     return (r: LowStockRow) => {
       const t = r.lowStockThreshold ?? 0;
       const isBelow = t > 0 && r.stock <= t;
-      return isBelow ? <Badge variant="danger" dot>منخفض</Badge> : <Badge variant="success">OK</Badge>;
+      return isBelow ? <Badge variant="danger" dot>{tr("منخفض", "Low")}</Badge> : <Badge variant="success">OK</Badge>;
     };
   }, []);
 
@@ -62,7 +64,7 @@ export default function LowStockPage() {
     if (!selected) return;
     await adjust.mutateAsync({
       variantId: selected.variantId,
-      body: { mode: "delta", value, reason: reason.trim() || null },
+      body: { mode: "delta", value, reason: reason.trim() || undefined },
     });
     setOpenAdjust(false);
     setSelected(null);
@@ -73,7 +75,7 @@ export default function LowStockPage() {
     const n = clampInt(exact, 0);
     await adjust.mutateAsync({
       variantId: selected.variantId,
-      body: { mode: "set", value: n, reason: reason.trim() || null },
+      body: { mode: "set", value: n, reason: reason.trim() || undefined },
     });
     setOpenAdjust(false);
     setSelected(null);
@@ -88,44 +90,46 @@ export default function LowStockPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <PageHeader
-        title="تنبيهات المخزون"
+        title={tr("تنبيهات المخزون", "Stock alerts")}
         subtitle={
           <span>
-            إجمالي العناصر المضبوطة على تنبيه: <span className="font-semibold">{total}</span>
+            {tr("إجمالي العناصر المضبوطة على تنبيه:", "Total items with an alert set:")} <span className="font-semibold">{total}</span>
           </span>
         }
         right={
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={() => qLow.refetch()}>
-              تحديث
+              {tr("تحديث", "Refresh")}
             </Button>
             <Button variant="ghost" onClick={() => nav("/admin/inventory/adjustments")}>
-              سجل التغييرات
+              {tr("سجل التغييرات", "Change history")}
             </Button>
           </div>
         }
       />
 
+      <ScarcityCard />
+
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
           <div className="md:col-span-6">
-            <div className="text-xs opacity-70 mb-1">بحث (SKU / المنتج / اللون)</div>
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="مثال: SKU-123 أو فستان..." />
+            <div className="text-xs opacity-70 mb-1">{tr("بحث (SKU / المنتج / اللون)", "Search (SKU / product / colour)")}</div>
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("مثال: SKU-123 أو فستان...", "e.g. SKU-123 or dress...")} />
           </div>
           <div className="md:col-span-3">
-            <div className="text-xs opacity-70 mb-1">الفلترة</div>
+            <div className="text-xs opacity-70 mb-1">{tr("الفلترة", "Filter")}</div>
             <Select
               value={onlyBelow ? "below" : "all"}
               onChange={(e) => setOnlyBelow(e.target.value === "below")}
             >
-              <option value="below">تحت الحد فقط</option>
-              <option value="all">الكل (حدّ&gt;0)</option>
+              <option value="below">{tr("تحت الحد فقط", "Below the level only")}</option>
+              <option value="all">{tr("الكل (حدّ&gt;0)", "All (level&gt;0)")}</option>
             </Select>
           </div>
           <div className="md:col-span-3">
-            <div className="text-xs opacity-70 mb-1">عدد النتائج</div>
+            <div className="text-xs opacity-70 mb-1">{tr("عدد النتائج", "Results")}</div>
             <Select value={String(take)} onChange={(e) => setTake(Number(e.target.value))}>
               <option value="25">25</option>
               <option value="50">50</option>
@@ -144,12 +148,12 @@ export default function LowStockPage() {
           <Table>
             <THead>
               <TR>
-                <TH>الحالة</TH>
+                <TH>{tr("الحالة", "Status")}</TH>
                 <TH>SKU</TH>
-                <TH>المنتج</TH>
-                <TH>اللون / المقاس</TH>
-                <TH>المخزون</TH>
-                <TH>الحد</TH>
+                <TH>{tr("المنتج", "Product")}</TH>
+                <TH>{tr("اللون / المقاس", "Colour / size")}</TH>
+                <TH>{tr("المخزون", "Stock")}</TH>
+                <TH>{tr("الحد", "Level")}</TH>
                 <TH></TH>
               </TR>
             </THead>
@@ -175,19 +179,19 @@ export default function LowStockPage() {
                     </TD>
                     <TD>
                       <div className="font-semibold">{r.stock}</div>
-                      <div className="text-xs opacity-60">فرق: {r.shortage}</div>
+                      <div className="text-xs opacity-60">{tr("فرق:", "Difference:")} {r.shortage}</div>
                     </TD>
                     <TD>
                       <div className="font-semibold">{r.lowStockThreshold}</div>
-                      <div className="text-xs opacity-60">0 = تعطيل</div>
+                      <div className="text-xs opacity-60">{tr("0 = تعطيل", "0 = off")}</div>
                     </TD>
                     <TD>
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="secondary" onClick={() => open(r)}>
-                          تعديل
+                          {tr("تعديل", "Edit")}
                         </Button>
                         <Button variant="ghost" onClick={() => nav(`/admin/inventory/adjustments?variantId=${r.variantId}`)}>
-                          السجل
+                          {tr("السجل", "History")}
                         </Button>
                       </div>
                     </TD>
@@ -196,7 +200,7 @@ export default function LowStockPage() {
               ) : (
                 <TR>
                   <TD colSpan={7} className="p-6 text-center text-white/60">
-                    لا يوجد نتائج
+                    {tr("لا يوجد نتائج", "No results")}
                   </TD>
                 </TR>
               )}
@@ -211,13 +215,13 @@ export default function LowStockPage() {
           setOpenAdjust(false);
           setSelected(null);
         }}
-        title="تعديل المخزون"
+        title={tr("تعديل المخزون", "Edit stock")}
         description={selected ? `${selected.productTitle ?? ""} • ${selected.colorName ?? ""} • ${selected.size ?? ""} • ${selected.sku}` : undefined}
         widthClassName="max-w-xl"
         footer={
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={() => setOpenAdjust(false)}>
-              إغلاق
+              {tr("إغلاق", "Close")}
             </Button>
           </div>
         }
@@ -227,11 +231,11 @@ export default function LowStockPage() {
             <Card>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <div className="text-xs opacity-70 mb-1">المخزون الحالي</div>
+                  <div className="text-xs opacity-70 mb-1">{tr("المخزون الحالي", "Current stock")}</div>
                   <div className="text-xl font-semibold">{selected.stock}</div>
                 </div>
                 <div>
-                  <div className="text-xs opacity-70 mb-1">حدّ التنبيه</div>
+                  <div className="text-xs opacity-70 mb-1">{tr("حدّ التنبيه", "Alert level")}</div>
                   <Input
                     type="number"
                     min={0}
@@ -245,13 +249,13 @@ export default function LowStockPage() {
                       onClick={doSaveThreshold}
                       isLoading={setThreshold.isPending}
                     >
-                      حفظ الحد
+                      {tr("حفظ الحد", "Save level")}
                     </Button>
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs opacity-70 mb-1">السبب (اختياري)</div>
-                  <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: جرد / توريد / تلف" />
+                  <div className="text-xs opacity-70 mb-1">{tr("السبب (اختياري)", "Reason (optional)")}</div>
+                  <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr("مثال: جرد / توريد / تلف", "e.g. count / supply / damage")} />
                 </div>
               </div>
             </Card>
@@ -259,7 +263,7 @@ export default function LowStockPage() {
             <Card>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm font-semibold mb-2">تعديل سريع (Delta)</div>
+                  <div className="text-sm font-semibold mb-2">{tr("تعديل سريع (Delta)", "Quick change (delta)")}</div>
                   <div className="flex items-center gap-2">
                     <Input type="number" value={delta} onChange={(e) => setDelta(e.target.value)} />
                     <Button
@@ -294,14 +298,14 @@ export default function LowStockPage() {
                 </div>
 
                 <div>
-                  <div className="text-sm font-semibold mb-2">تعيين قيمة دقيقة</div>
+                  <div className="text-sm font-semibold mb-2">{tr("تعيين قيمة دقيقة", "Set an exact value")}</div>
                   <div className="flex items-center gap-2">
-                    <Input type="number" min={0} value={exact} onChange={(e) => setExact(e.target.value)} placeholder="مثال: 120" />
+                    <Input type="number" min={0} value={exact} onChange={(e) => setExact(e.target.value)} placeholder={tr("مثال: 120", "e.g. 120")} />
                     <Button variant="primary" onClick={doSetExact} isLoading={adjust.isPending}>
-                      تعيين
+                      {tr("تعيين", "Set")}
                     </Button>
                   </div>
-                  <div className="mt-2 text-xs opacity-60">لن يسمح بالنزول تحت 0</div>
+                  <div className="mt-2 text-xs opacity-60">{tr("لن يسمح بالنزول تحت 0", "It won't go below 0")}</div>
                 </div>
               </div>
             </Card>

@@ -63,12 +63,19 @@ export function RoseCmsHome({
   const isCollections = (s: CmsSection) =>
     (s.type === "COLLECTIONS_GRID" || s.type === "FEATURED_CATEGORIES") &&
     Array.isArray((s.data as any)?.items);
-  const showSeasons = (hero?.data as any)?.roseSeasonsEnabled !== false && seasons.length > 0;
+  // The new editor can give the seasons, the collection stories and the Instagram strip a
+  // place of their own (a page tree's rose blocks); otherwise they find their usual spot.
+  const placed = new Set(
+    sorted.filter((s) => (s.type as string) === "TREE_NODE" && (s.data as any)?.node?.type === "roseBlock").map((s) => String((s.data as any).node.props?.block)),
+  );
+  const seasonsOn = (hero?.data as any)?.roseSeasonsEnabled !== false && seasons.length > 0;
+  const showSeasons = seasonsOn && !placed.has("seasons");
   // The seasonal scene opens the shopping part of the page, right above the first
   // products ("وصل حديثاً"); without a products section it follows the hero.
   const seasonsBefore = firstProducts?.id;
   const seasonsAfter = seasonsBefore ? undefined : sorted.find(isCollections)?.id || hero?.id;
-  const showStories = (hero?.data as any)?.roseStoriesEnabled !== false && stories.length > 0;
+  const storiesOn = (hero?.data as any)?.roseStoriesEnabled !== false && stories.length > 0;
+  const showStories = storiesOn && !placed.has("stories");
   // The collection worlds follow the collections grid; without one they come before Instagram/FAQ.
   const storiesAfter = sorted.find(isCollections)?.id;
   let storiesShown = false;
@@ -79,7 +86,12 @@ export function RoseCmsHome({
     .map(([, p]) => p.imageUrl)
     .filter((url): url is string => Boolean(url))
     .slice(0, 4);
-  let instagramShown = false;
+  let instagramShown = placed.has("instagram");
+  const block = (name: string, node: ReactNode) => (
+    <div key={`block-${name}`} data-rose-block={name}>
+      {node}
+    </div>
+  );
   const nodes: ReactNode[] = [];
   let native: CmsSection[] = [];
   const flush = () => {
@@ -89,6 +101,7 @@ export function RoseCmsHome({
       <RoseNativeSections>
         <CmsPageRenderer
           sections={[section]}
+          markSections={false}
           productLookup={productLookup}
           renderQuickAdd={renderQuickAdd}
           renderProductCard={renderProductCard}
@@ -102,17 +115,26 @@ export function RoseCmsHome({
     const d = (section.data ?? {}) as any;
     if (section.id === seasonsBefore && showSeasons) {
       flush();
-      nodes.push(<RoseSeasons key="seasons" seasons={seasons} />);
+      nodes.push(block("seasons", <RoseSeasons seasons={seasons} />));
     }
     if (showStories && !storiesShown && !storiesAfter && section.id === instagramBefore) {
       flush();
       storiesShown = true;
-      nodes.push(<RoseCollectionStory key="stories" chapters={stories} />);
+      nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
     }
     if (!hasTestimonials && !instagramShown && section.id === instagramBefore) {
       flush();
       instagramShown = true;
-      nodes.push(<RoseInstagram key="instagram" images={instagramImages} />);
+      nodes.push(block("instagram", <RoseInstagram images={instagramImages} />));
+    }
+    // A rose block where the editor put it.
+    if ((section.type as string) === "TREE_NODE" && d.node?.type === "roseBlock") {
+      flush();
+      const name = String(d.node.props?.block);
+      if (name === "seasons" && seasonsOn) nodes.push(block("seasons", <RoseSeasons seasons={seasons} />));
+      else if (name === "stories" && storiesOn) nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
+      else if (name === "instagram" && !hasTestimonials) nodes.push(block("instagram", <RoseInstagram images={instagramImages} />));
+      continue;
     }
     let node: ReactNode;
     const composed =
@@ -210,15 +232,15 @@ export function RoseCmsHome({
     if (showStories && !storiesShown && section.id === storiesAfter) {
       flush();
       storiesShown = true;
-      nodes.push(<RoseCollectionStory key="stories" chapters={stories} />);
+      nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
     }
     if (section.id === seasonsAfter && showSeasons) {
       flush();
-      nodes.push(<RoseSeasons key="seasons" seasons={seasons} />);
+      nodes.push(block("seasons", <RoseSeasons seasons={seasons} />));
     }
   }
   flush();
-  if (showStories && !storiesShown) nodes.push(<RoseCollectionStory key="stories" chapters={stories} />);
-  if (!hasTestimonials && !instagramShown) nodes.push(<RoseInstagram key="instagram" images={instagramImages} />);
+  if (showStories && !storiesShown) nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
+  if (!hasTestimonials && !instagramShown) nodes.push(block("instagram", <RoseInstagram images={instagramImages} />));
   return <RoseHomeFrame>{nodes}</RoseHomeFrame>;
 }

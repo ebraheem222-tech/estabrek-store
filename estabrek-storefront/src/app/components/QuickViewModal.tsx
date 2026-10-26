@@ -2,16 +2,19 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import type { CatalogProduct } from "@/lib/catalog";
-import { catalogItemLabel, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
+import { catalogItemLabel, formatMoney, getProductMinPrice, getProductImageBlurDataUrl } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { useSiteFeatures } from "@/store/siteFeatures";
+import { piecesLeftText, showsLeft } from "@/lib/scarcity";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
 import { LqipImage } from "@/components/LqipImage";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
+import { useStoreIdentity } from "@/store/storeIdentity";
 
 // Icons
 const XIcon = () => (
@@ -74,6 +77,8 @@ export function QuickViewModal({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isClosing, setIsClosing] = useState(false);
+  const { scarcity } = useSiteFeatures();
+  const { currency } = useStoreIdentity();
 
   // Reset state when product changes
   useEffect(() => {
@@ -221,11 +226,11 @@ export function QuickViewModal({
             {/* Price */}
             <div className="quick-view-price">
               <span className="quick-view-current-price">
-                {Number(price).toFixed(2)} ₪
+                {formatMoney(Number(price), currency)}
               </span>
               {showCompare && (
                 <span className="quick-view-compare-price">
-                  {Number(compareAt).toFixed(2)} ₪
+                  {formatMoney(Number(compareAt), currency)}
                 </span>
               )}
             </div>
@@ -300,7 +305,8 @@ export function QuickViewModal({
 
             {/* Stock Status */}
             <div className={`quick-view-stock ${isOutOfStock ? "out" : "in"}`}>
-              {isOutOfStock ? "غير متوفر" : `متوفر (${stock} قطعة)`}
+              {/* The count only when few are left and the owner shows it (admin → تنبيهات المخزون). */}
+              {isOutOfStock ? "غير متوفر" : showsLeft(scarcity, stock, "price") ? `متوفر · ${piecesLeftText(stock, "ar")}` : "متوفر"}
             </div>
 
             {/* Actions */}

@@ -7,10 +7,28 @@ import { Select } from "../../components/ui/Select";
 import { MediaUrlInput } from "../../components/media/MediaUrlInput";
 import { Card, CardContent, CardHeader } from "../../components/ui/Card";
 import { useSettings, useSettingsActions } from "../../hooks/useSettings";
+import { getSettings } from "../../api/settings.api";
 import type { CmsSettingsCatalog } from "./cmsSettingsCatalog";
 import { DEFAULT_BUTTON_THEME_ID, getButtonTheme } from "../../cms/button-themes";
 import { buttonThemeToCssVars } from "../../theme/buttonTheme";
 import { WebsiteThemeGalleryPicker } from "./WebsiteThemeGalleryPicker";
+import {
+  MarketingCard,
+  SafeModeCard,
+  SeoCard,
+  SettingsCentreProvider,
+  SettingsHistoryCard,
+  SettingsSection,
+  SettingsTabBar,
+  normalizeMarketing,
+  normalizeSeo,
+  useSettingsCentre,
+  validateMarketing,
+  type MarketingConfig,
+  type SeoConfig,
+} from "./settingsCentre";
+import { StoreIdentityCard } from "./StoreIdentityCard";
+import { StoreLanguagesCard } from "./StoreLanguagesCard";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -788,6 +806,9 @@ function ThemeColorField({
   );
 }
 
+/** Header keys this page shows but doesn't own: always saved from the server's latest copy. */
+const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai", "scarcity", "identity", "languages"] as const;
+
 export default function SettingsPage() {
   const q = useSettings();
   const actions = useSettingsActions();
@@ -833,6 +854,13 @@ export default function SettingsPage() {
   const [cmsCatalog, setCmsCatalog] = useState<CmsSettingsCatalog>(() => DEFAULT_CMS_SETTINGS_CATALOG);
 
   const [errors, setErrors] = useState<Errors>({});
+
+  // Settings centre: tabs + search, marketing pixels, site SEO, custom-code safe mode (all kept in settings.header).
+  const centre = useSettingsCentre();
+  const [marketing, setMarketing] = useState<MarketingConfig>(() => normalizeMarketing(null));
+  const [marketingErrors, setMarketingErrors] = useState<ReturnType<typeof validateMarketing>>({});
+  const [seo, setSeo] = useState<SeoConfig>(() => normalizeSeo(null));
+  const [safeMode, setSafeMode] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -911,6 +939,10 @@ export default function SettingsPage() {
     setCmsNavCollapsedMap({});
     setStorefrontCfg(normalizeStorefront((settings.header as any)?.storefront));
     setFooterCfg(normalizeFooter(settings.footer));
+    setMarketing(normalizeMarketing((settings.header as any)?.marketing));
+    setMarketingErrors({});
+    setSeo(normalizeSeo((settings.header as any)?.seo));
+    setSafeMode(Boolean((settings.header as any)?.safeMode));
     setShowHeaderJson(false);
     setShowFooterJson(false);
     setHeaderJsonDraft("");
@@ -991,8 +1023,20 @@ export default function SettingsPage() {
       nextErrors.scriptsBody = "JSON غير صالح";
     }
 
+    const mErrors = validateMarketing(marketing);
+    setMarketingErrors(mErrors);
+    if (Object.keys(mErrors).length) {
+      centre.setQuery("");
+      centre.setTab("marketing");
+      return;
+    }
+
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
+      // Show the tab where the first problem is (the field may be on another tab).
+      const first = Object.keys(nextErrors)[0];
+      centre.setQuery("");
+      centre.setTab(first === "siteName" ? "brand" : first === "announcementText" ? "rose" : first.startsWith("scripts") ? "advanced" : centre.tab);
       return;
     }
 
@@ -1004,6 +1048,11 @@ export default function SettingsPage() {
     };
 
     try {
+      // Parts of the header edited from other screens (delivery fees from Orders) are taken
+      // fresh from the server, so saving this page never brings back an old copy of them.
+      const latest = await getSettings().catch(() => null);
+      const latestHeader = (latest?.header ?? {}) as Record<string, unknown>;
+      const ownedElsewhere = Object.fromEntries(HEADER_KEYS_OWNED_ELSEWHERE.filter((k) => k in latestHeader).map((k) => [k, latestHeader[k]]));
       await actions.updateSettings.mutateAsync({
         siteName: siteName.trim(),
         logoUrl: logoUrl.trim() || null,
@@ -1023,7 +1072,15 @@ export default function SettingsPage() {
         paypalClientSecret: paypalClientSecret.trim() || null,
         paypalWebhookId: paypalWebhookId.trim() || null,
         customCss: customCss,
-        header: { ...headerCfg, cmsNav: normalizedCmsNav, storefront: storefrontCfg },
+        header: {
+          ...headerCfg,
+          cmsNav: normalizedCmsNav,
+          storefront: storefrontCfg,
+          marketing: normalizeMarketing(marketing),
+          seo: { title: seo.title?.trim() ?? "", description: seo.description?.trim() ?? "", ogImageUrl: seo.ogImageUrl?.trim() ?? "" },
+          safeMode,
+          ...ownedElsewhere,
+        },
         footer: footerCfg,
         scriptsHead,
         scriptsBody,
@@ -1295,7 +1352,7 @@ export default function SettingsPage() {
         )}
 
         {hasChildren ? (
-          <div className="space-y-3 border-r border-white/10 pr-3">
+          <div className="space-y-3 border-s border-white/10 ps-3">
             {children.map((child, idx) =>
               renderCmsNavItemEditor(child, [...path, idx], depth + 1, children.length)
             )}
@@ -1306,7 +1363,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div>
           <div className="text-lg font-semibold">إعدادات الموقع</div>
@@ -1325,7 +1382,10 @@ export default function SettingsPage() {
         ) : !settings ? (
           <div className="text-sm opacity-80">لا توجد إعدادات.</div>
         ) : (
+          <SettingsCentreProvider value={centre.value}>
           <div className="space-y-4">
+            <SettingsTabBar {...centre} />
+            <SettingsSection id="menu" tab="menu" keywords="قائمة روابط تنقل منيو menu nav">
             <Card>
               <CardHeader title="تنقل الـCMS (الهيدر)" subtitle="روابط رئيسية وفرعية + منسدلة/ميجا + تدرجات + أيقونات" />
               <CardContent>
@@ -1407,7 +1467,9 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            </SettingsSection>
 
+            <SettingsSection id="brand" tab="brand" keywords="اسم شعار لوجو logo favicon ايميل هاتف تواصل هوية عملة currency لغة">
             <Card>
               <CardHeader title="الإعدادات العامة" subtitle="بيانات الموقع والشعار والتواصل." />
               <CardContent>
@@ -1428,6 +1490,10 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            <div className="mt-4"><StoreIdentityCard /></div>
+            <div className="mt-4"><StoreLanguagesCard /></div>
+            </SettingsSection>
+            <SettingsSection id="checkout" tab="checkout" keywords="دفع واتساب whatsapp stripe paypal طلب">
             <Card>
               <CardHeader title="إدارة الدفع" subtitle="بوابات الدفع وإعدادات تحويل الدفع." />
               <CardContent>
@@ -1468,7 +1534,12 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                {(settings as any)?.paymentsLocked ? (
+                  <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200" data-testid="payments-locked">
+                    مفاتيح الدفع مقفولة لحسابك. صاحب المتجر بس (أو دور فيه صلاحية "مفاتيح الدفع") بيقدر يشوفها ويغيّرها.
+                  </div>
+                ) : null}
+                <fieldset disabled={(settings as any)?.paymentsLocked === true} className="mt-4 grid gap-4 lg:grid-cols-2 disabled:opacity-60">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold">Stripe</div>
@@ -1527,13 +1598,18 @@ export default function SettingsPage() {
                       disabled={!paypalEnabled}
                     />
                   </div>
-                </div>
+                </fieldset>
 
                 <div className="mt-3 text-xs opacity-70">
                   الدفع يتم بتحويل تلقائي لصفحة Stripe أو PayPal، ثم يعود العميل إلى صفحة النجاح في المتجر.
                 </div>
               </CardContent>
             </Card>
+            </SettingsSection>
+            <SettingsSection id="safe-mode" tab="advanced" keywords="امان ايقاف safe">
+              <SafeModeCard value={safeMode} onChange={setSafeMode} />
+            </SettingsSection>
+            <SettingsSection id="css" tab="advanced" keywords="css كود تصميم">
             <Card>
               <CardHeader title="CSS مخصص" subtitle="يُطبق على واجهة المتجر العامة." />
               <CardContent>
@@ -1545,7 +1621,9 @@ export default function SettingsPage() {
                 />
               </CardContent>
             </Card>
+            </SettingsSection>
 
+            <SettingsSection id="announcement" tab="rose" note="يظهر أعلى تصميم روز." keywords="اعلان شريط announcement">
             <Card>
               <CardHeader title="الشريط العلوي العام" subtitle="يظهر أعلى الموقع في الواجهة العامة." />
               <CardContent>
@@ -1572,7 +1650,9 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            </SettingsSection>
 
+            <SettingsSection id="legacy-header" tab="legacy" legacy keywords="ثيم theme هيدر header الوان">
             <Card>
               <CardHeader title="الهيدر" subtitle="خيارات عرض الهيدر والثيم." />
               <CardContent>
@@ -1662,7 +1742,6 @@ export default function SettingsPage() {
 	                          onSubmit={(e) => e.preventDefault()}
 	                        >
 	                          <input
-	                            dir="rtl"
 	                            className={selectedSearchInputStyle.inputClassName}
 	                            placeholder="بحث..."
 	                            readOnly
@@ -1788,7 +1867,7 @@ export default function SettingsPage() {
                             type="button"
                             onClick={() => updateTheme({ presetId: preset.id })}
                             className={
-                              "rounded-xl border p-3 text-right transition " +
+                              "rounded-xl border p-3 text-start transition " +
                               (active ? "border-accent-500/60 bg-white/10" : "border-white/10 bg-white/5 hover:border-white/20")
                             }
                             aria-pressed={active}
@@ -2018,7 +2097,9 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            </SettingsSection>
 
+            <SettingsSection id="footer" tab="rose" note="يستخدم تصميم روز من هنا: تفعيل الفوتر، النبذة، ورابط إنستغرام. باقي الخيارات للتصميم القديم." keywords="فوتر footer نبذة انستغرام instagram">
             <Card>
               <CardHeader title="الفوتر" subtitle="روابط، نبذة، ونشرة بريدية." />
               <CardContent>
@@ -2420,8 +2501,10 @@ export default function SettingsPage() {
                 ) : null}
               </CardContent>
             </Card>
+            </SettingsSection>
 
             {/* Storefront UI Settings */}
+            <SettingsSection id="storefront" tab="rose" note="يستخدم تصميم روز من هنا: الحركة مع التمرير والـParallax، المساعد (روز) والدردشة، زر واتساب، البحث بالصوت، أدوات الإمكانية، والمعروض مؤخراً. باقي الخيارات للتصميم القديم." keywords="حركة تمرير scroll واتساب روز">
             <Card>
               <CardHeader title="إعدادات واجهة المتجر" subtitle="تحكم في ميزات وتأثيرات الواجهة الأمامية" />
               <CardContent>
@@ -3022,7 +3105,9 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            </SettingsSection>
 
+            <SettingsSection id="scripts" tab="advanced" keywords="scripts سكربت كود head body">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium">Scripts في &lt;head&gt; (JSON Array)</label>
@@ -3057,13 +3142,26 @@ export default function SettingsPage() {
                 {errors.scriptsBody ? <div className="mt-2 text-xs text-red-200">{errors.scriptsBody}</div> : null}
               </div>
             </div>
+            </SettingsSection>
 
-            <div className="pt-2">
+            <SettingsSection id="marketing" tab="marketing" keywords="pixel بكسل تحليلات analytics google meta facebook instagram tiktok تيك توك اعلانات ga4">
+              <MarketingCard value={marketing} onChange={(v) => { setMarketing(v); setMarketingErrors({}); }} errors={marketingErrors} />
+            </SettingsSection>
+            <SettingsSection id="seo" tab="seo" keywords="seo جوجل google بحث عنوان وصف مشاركة">
+              <SeoCard value={seo} onChange={setSeo} siteName={siteName} />
+            </SettingsSection>
+            <SettingsSection id="history" tab="history" keywords="سجل نسخ استرجاع تراجع history">
+              <SettingsHistoryCard />
+            </SettingsSection>
+
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 z-20 -mx-1 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface-950/90 p-3 backdrop-blur">
+              <span className="text-xs text-white/55">الحفظ يشمل كل الأقسام، وتُحفظ نسخة من الإعدادات السابقة في «السجل».</span>
               <Button variant="primary" onClick={onSave} disabled={!canSave} isLoading={actions.updateSettings.isPending}>
                 حفظ
               </Button>
             </div>
           </div>
+          </SettingsCentreProvider>
         )}
       </div>
     </div>

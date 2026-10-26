@@ -1,3 +1,4 @@
+import { CategoryTranslations, ProductTranslations, translationsOf } from "../../lib/translations.js";
 import { prisma } from "../../lib/prisma.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 
@@ -69,16 +70,19 @@ function pickPrimaryImage(p: any): { url: string | null; blurDataUrl: string | n
   return { url: null, blurDataUrl: null };
 }
 
-function asRecommendedProduct(p: any): RecommendedProduct {
+/** In the shopper's language when the owner translated it (src/lib/translations.ts). */
+function asRecommendedProduct(p: any, locale: Locale): RecommendedProduct {
   const image = pickPrimaryImage(p);
+  const title = translationsOf(ProductTranslations, p.translations)[locale]?.title;
+  const categoryName = translationsOf(CategoryTranslations, p.category?.translations)[locale]?.name ?? p.category?.name;
   return {
     id: String(p.id),
     slug: String(p.slug),
-    title: String(p.title),
+    title: String(title ?? p.title),
     imageUrl: image.url,
     imageBlurDataUrl: image.blurDataUrl,
     minPrice: computeMinPrice(p),
-    categoryName: p.category?.name ? String(p.category.name) : null,
+    categoryName: categoryName ? String(categoryName) : null,
   };
 }
 
@@ -130,7 +134,8 @@ async function fetchCandidates(opts: {
       slug: true,
       title: true,
       description: true,
-      category: { select: { id: true, name: true, slug: true } },
+      translations: true,
+      category: { select: { id: true, name: true, slug: true, translations: true } },
       items: {
         where: { isActive: true },
         select: {
@@ -295,7 +300,7 @@ export async function recommendProducts(input: {
   const products = pickedIds
     .map((id) => byId.get(id))
     .filter(Boolean)
-    .map(asRecommendedProduct)
+    .map((p) => asRecommendedProduct(p, locale))
     .slice(0, limit);
 
   return {

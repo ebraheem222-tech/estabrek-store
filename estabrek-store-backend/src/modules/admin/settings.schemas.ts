@@ -25,6 +25,14 @@ export const UpdateSettingsBody = z.object({
   paypalClientSecret: z.string().nullable().optional(),
   paypalWebhookId: z.string().nullable().optional(),
 
+  // Shopper accounts on the storefront (off = visitors only)
+  customerAccountsEnabled: z.boolean().optional(),
+  // "Tell me when it's back" on sold-out sizes
+  stockAlertsEnabled: z.boolean().optional(),
+  // Maintenance mode ("back soon" screen; public orders paused)
+  maintenanceMode: z.boolean().optional(),
+  maintenanceMessage: z.string().trim().max(400).nullable().optional(),
+
   // Global announcement bar
   announcementIsActive: z.boolean().optional(),
   announcementText: z.string().min(1).max(200).nullable().optional(),

@@ -1,7 +1,10 @@
-import { Router } from "express";
+import { Router, text as textBody } from "express";
+import { z } from "zod";
+import { optionalCustomer } from "../../middleware/customerAuth.js";
 import multer from "multer";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/async.js";
+import { cacheResponse } from "../../middleware/responseCache.js";
 import { validate } from "../../utils/validate.js";
 import { getPublicSettings } from "../settings/settings.service.js";
 import {
@@ -18,6 +21,12 @@ import { loadImageFromUrl } from "../../lib/imageEmbeddings.js";
 import { normalizeSearchText, scoreTextMatch } from "../../lib/searchText.js";
 import { cacheGet, cacheSet } from "../../lib/cache.js";
 import { createCheckoutSession, verifyCheckoutSession } from "./checkout.service.js";
+import { noteSignals } from "../../lib/popularity.js";
+import { RumBodySchema, noteRum } from "../../lib/rum.js";
+import { AbBodySchema, noteAb, publicExperiments } from "../../lib/experiments.js";
+import { storedTree, treeFromSections } from "../../lib/pageTree.js";
+import { previewPageId } from "../../lib/previewToken.js";
+import { storedDraft } from "../../lib/pageDraft.js";
 
 const r = Router();
 
@@ -151,7 +160,84 @@ r.use("/recommend", recommend);
  * GET /v1/storefront/page?slug=/about
  *  - one published page + visible sections ordered (and page scripts/css)
  */
-r.get("/bootstrap", asyncHandler(async (_req, res) => {
+/**
+ * What shoppers do with products, for the cache's popularity (lib/popularity.ts):
+ * { e: [{ k: "view" | "wishlist" | "bag", p?: productId, v?: variantId }] }, sent
+ * as text/plain (a beacon, no preflight). Counts only; nothing about the shopper
+ * is kept. Always answers 204 quickly.
+ */
+const SignalsBody = z.object({
+  e: z
+    .array(
+      z.object({
+        k: z.enum(["view", "wishlist", "bag"]),
+        p: z.string().trim().min(1).max(64).optional(),
+        v: z.string().trim().min(1).max(64).optional(),
+      }),
+    )
+    .max(20),
+});
+
+r.post("/signals", textBody({ type: "text/plain", limit: "8kb" }), asyncHandler(async (req, res) => {
+  let raw: unknown = req.body;
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return res.status(400).json({ error: "BAD_SIGNALS" });
+    }
+  }
+  const parsed = SignalsBody.safeParse(raw);
+  if (!parsed.success) return res.status(400).json({ error: "BAD_SIGNALS" });
+  await noteSignals(
+    parsed.data.e.map((x) => ({ kind: x.k, productId: x.p, variantId: x.v })),
+    { ip: String(req.ip ?? ""), userAgent: req.get("user-agent") ?? "" },
+  );
+  res.status(204).end();
+}));
+
+/**
+ * How fast the shop was for this page view (lib/rum.ts): page kind, device,
+ * system and the numbers, nothing about the shopper. Sent as text/plain (a
+ * beacon) when the page is left. Always answers 204.
+ */
+r.post("/rum", textBody({ type: "text/plain", limit: "8kb" }), asyncHandler(async (req, res) => {
+  let raw: unknown = req.body;
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return res.status(400).json({ error: "BAD_RUM" });
+    }
+  }
+  const parsed = RumBodySchema.safeParse(raw);
+  if (!parsed.success) return res.status(400).json({ error: "BAD_RUM" });
+  noteRum(parsed.data.r, { userAgent: req.get("user-agent") ?? "" });
+  res.status(204).end();
+}));
+
+/**
+ * A/B tests (admin → تجارب A/B): what a visit saw and did, once per visit and test
+ * (lib/experiments.ts). A simple text request like the signals. Always 204 for a
+ * well-formed body (tests that ended meanwhile are just not counted).
+ */
+r.post("/ab", textBody({ type: "text/plain", limit: "4kb" }), asyncHandler(async (req, res) => {
+  let raw: unknown = req.body;
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return res.status(400).json({ error: "BAD_AB" });
+    }
+  }
+  const parsed = AbBodySchema.safeParse(raw);
+  if (!parsed.success) return res.status(400).json({ error: "BAD_AB" });
+  await publicExperiments();
+  noteAb(parsed.data.e, { ip: String(req.ip ?? ""), userAgent: req.get("user-agent") ?? "" });
+  res.status(204).end();
+}));
+
+r.get("/bootstrap", cacheResponse("settings"), asyncHandler(async (_req, res) => {
   const [settings, pages] = await Promise.all([
     getPublicSettings(),
     getPublishedPagesCached(),
@@ -160,19 +246,13 @@ r.get("/bootstrap", asyncHandler(async (_req, res) => {
   res.json({ ...settings, pages });
 }));
 
-r.get("/pages", asyncHandler(async (_req, res) => {
+r.get("/pages", cacheResponse("pages"), asyncHandler(async (_req, res) => {
   const pages = await getPublishedPagesCached();
   res.json({ pages });
 }));
 
-r.get("/page", validate({ query: PageBySlugQuery }), asyncHandler(async (req, res) => {
-  const slug = String((req.query as any).slug);
-  const locale = String((req.query as any).locale ?? "ar") as ("ar"|"he"|"en");
-
-  const page = await getPageBySlugCached(slug, locale);
-
-  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
-
+/** A page as the shop gets it: its language's SEO and sections over the main ones, and its tree. */
+function pageForShop(page: any, opts: { tree?: unknown } = {}) {
   // i18n (DB): apply per-locale overrides from PageTranslation / PageSectionTranslation
   const pt = (page as any).translations?.[0];
   const outPage: any = { ...page };
@@ -195,7 +275,7 @@ r.get("/page", validate({ query: PageBySlugQuery }), asyncHandler(async (req, re
     return s;
   });
 
-res.json({
+return {
     id: outPage.id,
     name: outPage.name,
     slug: outPage.slug,
@@ -203,6 +283,9 @@ res.json({
     publishAt: outPage.publishAt,
     unpublishAt: outPage.unpublishAt,
     sections: outSections,
+    // The new CMS: 2 = draw the page from `tree` (old sections in it are `legacy` nodes pointing at `sections`).
+    format: opts.tree !== undefined ? 2 : outPage.format ?? 1,
+    tree: opts.tree !== undefined ? opts.tree : outPage.format === 2 ? storedTree(outPage.tree) : null,
     headScripts: outPage.headScripts,
     bodyScripts: outPage.bodyScripts,
     customCss: outPage.customCss,
@@ -213,7 +296,49 @@ res.json({
     noIndex: outPage.noIndex,
     updatedAt: outPage.updatedAt,
     createdAt: outPage.createdAt,
+  };
+}
+
+r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asyncHandler(async (req, res) => {
+  const slug = String((req.query as any).slug);
+  const locale = String((req.query as any).locale ?? "ar") as ("ar"|"he"|"en");
+
+  const page = await getPageBySlugCached(slug, locale);
+
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+
+  res.json(pageForShop(page));
+}));
+
+/**
+ * GET /storefront/page-preview?token=…&locale=… — one page's draft for the admin's
+ * new editor (lib/previewToken.ts): published or not, always as a tree (an
+ * unconverted page as the tree it would become). Never cached.
+ */
+r.get("/page-preview", asyncHandler(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex");
+  const pageId = previewPageId((req.query as any).token);
+  if (!pageId) return res.status(401).json({ error: "PREVIEW_TOKEN" });
+  const raw = String((req.query as any).locale ?? "ar");
+  const locale = (["ar", "he", "en"].includes(raw) ? raw : "ar") as "ar" | "he" | "en";
+  const page = await prisma.page.findUnique({
+    where: { id: pageId },
+    include: {
+      translations: { where: { locale } },
+      sections: { where: { isVisible: true }, orderBy: { order: "asc" }, include: { translations: { where: { locale } } } },
+    },
   });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  // With unpublished changes, the editor sees them.
+  const draft = storedDraft(page.draft);
+  if (draft) {
+    const sections = draft.sections
+      .filter((s) => s.isVisible)
+      .map((s, order) => ({ id: s.id, type: s.type, data: s.data, isVisible: true, order, translations: s.tr[locale] ? [{ locale, data: s.tr[locale] }] : [] }));
+    return res.json({ ...pageForShop({ ...page, sections }, { tree: draft.tree }), draft: { rev: draft.rev, updatedAt: draft.updatedAt } });
+  }
+  res.json(pageForShop(page, { tree: storedTree(page.tree) ?? treeFromSections(page.sections) }));
 }));
 
 /**
@@ -222,7 +347,7 @@ res.json({
  * GET /v1/storefront/products/new-arrivals?limit=12
  * GET /v1/storefront/products/best-sellers?limit=12
  */
-r.get("/products/new-arrivals", validate({ query: StorefrontListProductsQuery }), asyncHandler(async (req, res) => {
+r.get("/products/new-arrivals", cacheResponse("listings"), validate({ query: StorefrontListProductsQuery }), asyncHandler(async (req, res) => {
   const limit = Math.min(50, Math.max(1, Number((req.query as any).limit ?? 12)));
 
   const products = await prisma.product.findMany({
@@ -235,7 +360,7 @@ r.get("/products/new-arrivals", validate({ query: StorefrontListProductsQuery })
   res.json({ productIds: products.map((p) => p.id) });
 }));
 
-r.get("/products/best-sellers", validate({ query: StorefrontListProductsQuery }), asyncHandler(async (req, res) => {
+r.get("/products/best-sellers", cacheResponse("listings"), validate({ query: StorefrontListProductsQuery }), asyncHandler(async (req, res) => {
   const limit = Math.min(50, Math.max(1, Number((req.query as any).limit ?? 12)));
 
   // "Best sellers" heuristic: sum OrderRequestItem quantities per product.
@@ -276,7 +401,7 @@ r.get("/products/best-sellers", validate({ query: StorefrontListProductsQuery })
  * GET /v1/storefront/search/suggest?q=sh&limit=6
  * Returns lightweight suggestions for products + categories.
  */
-r.get("/search/suggest", validate({ query: StorefrontSearchSuggestQuery }), asyncHandler(async (req, res) => {
+r.get("/search/suggest", cacheResponse("search"), validate({ query: StorefrontSearchSuggestQuery }), asyncHandler(async (req, res) => {
   const q = String((req.query as any).q ?? "").trim();
   const limit = Math.min(20, Math.max(1, Number((req.query as any).limit ?? 6)));
 
@@ -461,11 +586,12 @@ r.post("/search/image", (req, res, next) => {
  * GET /v1/storefront/checkout/verify?provider=stripe&sessionId=...
  *  - verify payment and finalize order
  */
-r.post("/checkout/session", validate({ body: StorefrontCheckoutCreateBody }), asyncHandler(async (req, res) => {
+r.post("/checkout/session", optionalCustomer, validate({ body: StorefrontCheckoutCreateBody }), asyncHandler(async (req, res) => {
   const baseUrl = resolveStorefrontBaseUrl(req);
   const out = await createCheckoutSession({
     ...(req.body as any),
     baseUrl,
+    userId: req.customer?.id ?? null,
   });
   res.json(out);
 }));

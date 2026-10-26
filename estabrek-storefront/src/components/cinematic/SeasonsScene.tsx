@@ -1,8 +1,12 @@
 "use client";
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { ScenePacer } from "./ScenePacer";
+import { sceneDpr } from "@/lib/motionBudget";
+import { memo, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import * as THREE from "three";
+import { useStagedParts, warmScene } from "./warmScene";
+import { createFabricTexture } from "./fabricTexture";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { createDisplayHead, createHijabGeometry } from "./HijabGeometry";
 
@@ -70,7 +74,7 @@ function Rain({ progress }: { progress: MutableRefObject<number> }) {
     const amount = 1 - smooth(0.12, 0.32, progress.current);
     material.opacity = amount * 0.55;
     if (amount <= 0.01) return;
-    const dt = Math.min(delta, 0.05);
+    const dt = Math.min(delta, 0.1); // real time down to 10 fps; only a long pause is cut
     for (let i = 0; i < count; i++) {
       const o = i * 6;
       let y = positions[o + 1] - speeds[i] * dt;
@@ -110,7 +114,7 @@ function Snow({ progress }: { progress: MutableRefObject<number> }) {
     const amount = smooth(0.0, 0.14, p) * (1 - seasonMix(p));
     material.opacity = amount * 0.95;
     if (amount <= 0.01) return;
-    const dt = Math.min(delta, 0.05), t = clock.elapsedTime;
+    const dt = Math.min(delta, 0.1), t = clock.elapsedTime; // real time down to 10 fps
     for (let i = 0; i < count; i++) {
       const o = i * 3;
       positions[o] += Math.sin(t * 0.6 + drift[i]) * dt * 0.25;
@@ -305,6 +309,14 @@ function Blossoms({ progress }: { progress: MutableRefObject<number> }) {
 
 /* ---------- The garment: one dress form, re-dressed from winter wool to spring silk ---------- */
 
+/** The dress form's profile, made once: built inline it was a new array on every
+ * render, so the geometry was rebuilt (and re-uploaded) each time the season flipped. */
+const FORM_PROFILE: [THREE.Vector2[], number] = [[
+  new THREE.Vector2(0, -1.62), new THREE.Vector2(0.65, -1.62), new THREE.Vector2(0.83, -1.2),
+  new THREE.Vector2(1.04, -0.6), new THREE.Vector2(1.01, -0.39), new THREE.Vector2(0.61, -0.1),
+  new THREE.Vector2(0.24, 0.04), new THREE.Vector2(0.21, 0.44), new THREE.Vector2(0, 0.44),
+], 64];
+
 const WINTER_FABRIC = new THREE.Color("#5b4a72");
 const SPRING_FABRIC = new THREE.Color("#f1b2c4");
 
@@ -313,24 +325,15 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
   const viewport = useThree((s) => s.viewport);
   const geometries = useMemo(() => createHijabGeometry(), []);
   const head = useMemo(() => createDisplayHead(), []);
+  // Woven cloth with a knit rib (winter); the rib flattens into a fine weave in spring.
   const knit = useMemo(() => {
-    const size = 128, data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4;
-      // Chevron rib that reads as knit in winter and as a fine weave once the bump fades.
-      const v = 128 + Math.round(Math.sin((x + Math.abs((y % 8) - 4) * 2) * 0.8) * 22);
-      data[i] = data[i + 1] = data[i + 2] = v;
-      data[i + 3] = 255;
-    }
-    const t = new THREE.DataTexture(data, size, size);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(16, 22);
-    t.needsUpdate = true;
+    const t = createFabricTexture({ threads: 40, rib: 0.6 });
+    t.repeat(6, 8);
     return t;
   }, []);
   const fabric = useMemo(() => new THREE.MeshPhysicalMaterial({
-    color: WINTER_FABRIC.clone(), side: THREE.DoubleSide, roughness: 0.85, sheen: 0.4,
-    sheenColor: new THREE.Color("#d9d2f2"), sheenRoughness: 0.8, bumpMap: knit, bumpScale: 0.02,
+    color: WINTER_FABRIC.clone(), side: THREE.DoubleSide, roughness: 1, sheen: 0.55,
+    sheenColor: new THREE.Color("#d9d2f2"), sheenRoughness: 0.7, bumpMap: knit.bump, bumpScale: 0.035, roughnessMap: knit.rough,
   }), [knit]);
   useEffect(() => () => {
     Object.values(geometries).forEach((g) => g.dispose());
@@ -340,8 +343,9 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
     if (!group.current) return;
     const p = progress.current, mix = seasonMix(p);
     fabric.color.copy(WINTER_FABRIC).lerp(SPRING_FABRIC, mix);
-    fabric.roughness = THREE.MathUtils.lerp(0.85, 0.48, mix);
-    fabric.bumpScale = THREE.MathUtils.lerp(0.02, 0.004, mix);
+    // roughnessMap averages ~0.8: 1.0 → about 0.8 (wool), 0.62 → about 0.5 (light spring cloth).
+    fabric.roughness = THREE.MathUtils.lerp(1, 0.62, mix);
+    fabric.bumpScale = THREE.MathUtils.lerp(0.035, 0.02, mix);
     fabric.sheenColor.set(mix > 0.5 ? "#ffe1ea" : "#d9d2f2");
     const side = rtl ? -1 : 1;
     group.current.position.set(side * viewport.width * 0.27, -0.35 + Math.sin(clock.elapsedTime * 0.7) * 0.03, 0);
@@ -357,11 +361,7 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
         <meshStandardMaterial color="#f5eae0" roughness={0.73} />
       </mesh>
       <mesh scale={[0.78, 1, 0.45]}>
-        <latheGeometry args={[[
-          new THREE.Vector2(0, -1.62), new THREE.Vector2(0.65, -1.62), new THREE.Vector2(0.83, -1.2),
-          new THREE.Vector2(1.04, -0.6), new THREE.Vector2(1.01, -0.39), new THREE.Vector2(0.61, -0.1),
-          new THREE.Vector2(0.24, 0.04), new THREE.Vector2(0.21, 0.44), new THREE.Vector2(0, 0.44),
-        ], 64]} />
+        <latheGeometry args={FORM_PROFILE} />
         <meshStandardMaterial color="#efe1d7" roughness={0.75} />
       </mesh>
       {Object.entries(geometries).map(([name, geometry]) => (
@@ -379,16 +379,29 @@ function SeasonalDressForm({ progress, rtl }: { progress: MutableRefObject<numbe
   );
 }
 
-function Lifecycle({ onReady, onFailure }: Pick<SeasonsSceneProps, "onReady" | "onFailure">) {
+function Lifecycle({ onReady, onFailure, onWarm }: Pick<SeasonsSceneProps, "onReady" | "onFailure"> & { onWarm: () => void }) {
   const gl = useThree((s) => s.gl);
-  const ready = useRef(onReady), failure = useRef(onFailure);
-  ready.current = onReady; failure.current = onFailure;
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const advance = useThree((s) => s.advance);
+  const ready = useRef(onReady), failure = useRef(onFailure), warm = useRef(onWarm);
+  ready.current = onReady; failure.current = onFailure; warm.current = onWarm;
   useEffect(() => {
-    ready.current();
+    let alive = true;
+    // Build every shader now (hidden parts included), then show the scene.
+    // (The warm-up leaves the canvas empty: ask for a real frame right after.)
+    warmScene(gl, scene, camera).then(() => {
+      if (!alive) return;
+      // One real frame now, the lighting environment included, while the scene is still
+      // out of sight; then the scene may draw (see `warm` in the scene below).
+      advance(performance.now());
+      warm.current();
+      ready.current();
+    });
     const lost = () => failure.current();
     gl.domElement.addEventListener("webglcontextlost", lost);
-    return () => gl.domElement.removeEventListener("webglcontextlost", lost);
-  }, [gl]);
+    return () => { alive = false; gl.domElement.removeEventListener("webglcontextlost", lost); };
+  }, [gl, scene, camera, advance]);
   return null;
 }
 
@@ -410,26 +423,48 @@ function SeasonLights({ progress }: { progress: MutableRefObject<number> }) {
   );
 }
 
-export default function SeasonsScene(props: SeasonsSceneProps) {
+function SeasonsScene(props: SeasonsSceneProps) {
+  // Nothing is drawn until every shader is built (warmScene). Drawn before, the first
+  // frame made the browser build them all at once and wait: the page froze ~0.5 s just
+  // before this section, right while the shopper scrolled towards it.
+  const [warm, setWarm] = useState(false);
+  // Built one part at a time while the page rests (useStagedParts); the warm-up comes last.
+  const parts = useStagedParts(7, props.active);
   return (
     <Canvas
       camera={{ position: [0, 0, 9], fov: 40 }}
-      dpr={[1, 1.6]}
-      frameloop={props.active && !props.reducedMotion ? "always" : "demand"}
+      dpr={sceneDpr()}
+      /* Drawn by ScenePacer: the screen's rate (120/90/60) or lower while this device struggles; 30 in the light mode. */
+      frameloop={warm ? "demand" : "never"}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+      /* Measured on resize only. With scroll tracking (the default) every scroll anywhere on
+         the page re-measured each 3D canvas, re-rendered it through React and asked it for a
+         new frame, also far off screen. Pointers are read relative to the canvas anyway. */
+      resize={{ scroll: false }}
     >
       <SeasonLights progress={props.progress} />
       <Environment resolution={64}>
         <Lightformer form="rect" intensity={2} position={[3, 4, 3]} scale={[3, 6, 1]} />
         <Lightformer form="rect" intensity={1.2} position={[-4, 2, 1]} scale={[3, 4, 1]} />
       </Environment>
-      <Rain progress={props.progress} />
-      <Snow progress={props.progress} />
-      <Crystals progress={props.progress} />
-      <Sun progress={props.progress} rtl={props.rtl} />
-      <Blossoms progress={props.progress} />
-      {props.showModel && <SeasonalDressForm progress={props.progress} rtl={props.rtl} />}
-      <Lifecycle onReady={props.onReady} onFailure={props.onFailure} />
+      {parts > 0 && <Rain progress={props.progress} />}
+      {parts > 1 && <Snow progress={props.progress} />}
+      {parts > 2 && <Crystals progress={props.progress} />}
+      {parts > 3 && <Sun progress={props.progress} rtl={props.rtl} />}
+      {parts > 4 && <Blossoms progress={props.progress} />}
+      {parts > 5 && props.showModel && <SeasonalDressForm progress={props.progress} rtl={props.rtl} />}
+      <ScenePacer active={props.active && !props.reducedMotion} />
+      {parts > 6 && <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />}
     </Canvas>
   );
 }
+
+/**
+ * The page re-renders when the season flips (copy, Rose's outfit); the 3D scene
+ * doesn't need to (it reads the season from `progress` every frame), so it only
+ * re-renders when one of its real settings changes. The callbacks are read
+ * through refs inside, so new copies of them don't matter.
+ */
+export default memo(SeasonsScene, (a, b) =>
+  a.progress === b.progress && a.active === b.active && a.reducedMotion === b.reducedMotion && a.showModel === b.showModel && a.rtl === b.rtl,
+);

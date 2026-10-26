@@ -1,5 +1,6 @@
 // src/components/Topbar.tsx
 import React from "react";
+import { loc } from "@/lib/lang";
 
 export function Topbar({ title, right }: { title: string; right?: React.ReactNode }) {
   return (
@@ -7,7 +8,7 @@ export function Topbar({ title, right }: { title: string; right?: React.ReactNod
       <div className="text-xl font-semibold">{title}</div>
       <div className="flex items-center gap-3">
         {right}
-        <div className="text-xs opacity-70">{new Date().toLocaleString("ar")}</div>
+        <div className="text-xs opacity-70">{new Date().toLocaleString(loc("ar"))}</div>
       </div>
     </div>
   );

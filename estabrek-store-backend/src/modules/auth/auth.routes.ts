@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { authenticate, requireSuperAdmin } from "../../middleware/auth.js";
+import { authenticate } from "../../middleware/auth.js";
+import { loadAccess } from "../../middleware/access.js";
 import { login, refresh, logoutController, me, csrfToken } from "./auth.controller.js";
-import { setup2FA, enable2FAController, disable2FAController, finalizeMfaLoginController, tokensFromSession } from "./mfa.controller.js";
+import { setup2FA, enable2FAController, disable2FAController, finalizeMfaLoginController } from "./mfa.controller.js";
 import { forgotPassword, performReset } from "./password.controller.js";
 import { generateCodes, verifyCode } from "./recovery.controller.js";
 import { phoneStart, phoneVerify } from "./phone.controller.js";
@@ -21,7 +22,7 @@ r.post("/phone/verify", ...phoneVerify);
 
 // MFA flow
 r.post("/mfa/finalize", ...finalizeMfaLoginController);
-r.post("/mfa/tokens-from-session", ...tokensFromSession);
+// (No "tokens from session" shortcut: it handed out tokens without the 2FA code.)
 
 // must be logged in for these:
 r.post("/2fa/setup", authenticate, ...setup2FA);
@@ -39,7 +40,7 @@ r.post("/2fa/recovery/verify", authenticate, ...verifyCode);
 r.post("/password/forgot", ...forgotPassword);
 r.post("/password/reset", ...performReset);
 
-// who am i (admin only)
-r.get("/me", authenticate, requireSuperAdmin, me);
+// who am i (any active admin: owner or team member)
+r.get("/me", authenticate, loadAccess, me);
 
 export default r;

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "./cn";
+import { tr } from "@/lib/words";
 
 type Props = {
   label?: string;
@@ -79,7 +80,7 @@ export function ColorPicker({
             )}
             style={{ backgroundColor: preview }}
             onClick={() => !disabled && setOpen((s) => !s)}
-            aria-label="اختر لون"
+            aria-label={tr("اختيار لون", "Pick a colour")}
           />
 
           <input

@@ -55,6 +55,7 @@ import { recordAdminAuditEvent } from "../../lib/adminAudit";
 import { PAGE_TEMPLATES } from "./pageTemplates";
 import type { CmsComponentKind } from "../../cms/types";
 import type { TwTokens } from "../../cms/style/tokens";
+import { INDUSTRY_LABEL, identityOf, storeNameOf } from "../../lib/storeIdentity";
 
 type ScopeCssFn = (css: string, scopeSelector: string) => string;
 
@@ -3295,8 +3296,8 @@ export default function PageEditorPage() {
         pageName: String(name ?? page.name ?? "").trim() || "Page",
         pageSlug: normalizeSlug(slug),
         locale: aiLocale,
-        brandName: "Estabrek",
-        storeCategory: "ملابس / شالات / البسة شرعية",
+        brandName: storeNameOf(qSettings.data),
+        storeCategory: INDUSTRY_LABEL[identityOf(qSettings.data?.header).industry],
       });
 
       // Append suggested sections to the end (keep existing)
@@ -3339,8 +3340,8 @@ export default function PageEditorPage() {
         locale: aiLocale,
         currentTitle: "",
         currentDescription: "",
-        brandName: "Estabrek",
-        storeCategory: "ملابس / شالات / البسة شرعية",
+        brandName: storeNameOf(qSettings.data),
+        storeCategory: INDUSTRY_LABEL[identityOf(qSettings.data?.header).industry],
       });
       await actions.updatePage.mutateAsync({ id, body: { seoTitle: res.seoTitle, seoDescription: res.seoDescription } as any });
       toast.success(`تم تحديث SEO (AI: ${res.source})`);

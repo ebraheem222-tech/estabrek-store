@@ -1,0 +1,253 @@
+/*
+ * Admin skins. The Tailwind colours read --sk-* variables (see tailwind.config.js),
+ * so a skin only sets variables here plus a few fixes for hand-written CSS.
+ *   classic     → no data-skin attribute, original dark violet look
+ *   rose        → light, like the storefront (cream + rose)
+ *   rose-night  → dark, warm, rose accent
+ * Anything inside [data-skin-reset] (storefront/CMS previews) keeps the classic colours.
+ */
+@import "./skin-palettes.css";
+
+/* ------------------------------------------------------------------ rose (day) */
+:root[data-skin="rose"] {
+  color-scheme: light;
+  --sk-white: 70 44 59;          /* ink  #462c3b — "text-white" becomes ink */
+  --sk-black: 255 250 252;       /* paper — "bg-black/x" fields become light */
+
+  --sk-surface-975: 247 238 242;
+  --sk-surface-950: 251 245 247; /* page */
+  --sk-surface-925: 255 255 255; /* inputs / panels */
+  --sk-surface-900: 255 253 254;
+  --sk-surface-850: 248 238 242;
+  --sk-surface-800: 243 229 235;
+  --sk-surface-700: 233 213 222;
+  --sk-surface-600: 201 174 187;
+  --sk-surface-500: 154 123 137;
+  --sk-surface-400: 126 97 112;
+  --sk-surface-300: 100 72 90;
+  --sk-surface-200: 79 54 70;
+  --sk-surface-100: 62 40 54;
+  --sk-surface-50: 46 28 40;
+
+  --sk-accent-50: 63 15 35;
+  --sk-accent-100: 86 23 49;
+  --sk-accent-200: 106 29 60;
+  --sk-accent-300: 125 36 72;    /* #7d2448 */
+  --sk-accent-400: 142 49 87;
+  --sk-accent-500: 164 59 100;   /* #a43b64 storefront rose */
+  --sk-accent-600: 125 36 72;
+  --sk-accent-700: 215 155 180;
+  --sk-accent-800: 235 196 212;
+  --sk-accent-900: 246 224 233;
+  --sk-accent-950: 251 240 244;
+
+  --skin-line: #efdde5;
+  --skin-card: #ffffff;
+  --skin-shadow: 0 1px 2px rgba(70, 44, 59, 0.05), 0 8px 24px -14px rgba(125, 36, 72, 0.18);
+  --skin-shadow-hover: 0 2px 4px rgba(70, 44, 59, 0.06), 0 16px 34px -16px rgba(125, 36, 72, 0.28);
+  --accent-glow: rgba(164, 59, 100, 0.22);
+
+  --editor-bg: #fbf5f7;
+  --editor-surface: #ffffff;
+  --editor-border: #efdde5;
+  --editor-border-hover: #e3c6d3;
+
+  --btn-solid-bg: #7d2448;
+  --btn-solid-hover: #6a1d3c;
+  --btn-solid-text: #fffafc;
+  --btn-accent-from: #b0466f;
+  --btn-accent-to: #a43b64;
+  --btn-accent-from-hover: #a43b64;
+  --btn-accent-to-hover: #7d2448;
+  --btn-accent-text: #ffffff;
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-bg-hover: #fbf0f4;
+  --btn-secondary-text: #462c3b;
+  --btn-secondary-border: #efdde5;
+  --btn-ghost-text: #6f5262;
+  --btn-ghost-text-hover: #462c3b;
+  --btn-ghost-bg-hover: #f7e8ee;
+
+  --modal-backdrop: rgba(70, 44, 59, 0.32);
+  --modal-panel: linear-gradient(180deg, #ffffff 0%, #fffafc 100%);
+  --modal-header: linear-gradient(180deg, #fffafc 0%, #fbf3f6 100%);
+}
+
+/* ------------------------------------------------------------------ rose night */
+:root[data-skin="rose-night"] {
+  color-scheme: dark;
+  --sk-white: 255 246 250;
+
+  --sk-surface-975: 12 6 9;
+  --sk-surface-950: 19 11 15;
+  --sk-surface-925: 25 15 21;
+  --sk-surface-900: 31 19 26;
+  --sk-surface-850: 38 23 31;
+  --sk-surface-800: 47 29 39;
+  --sk-surface-700: 67 42 55;
+  --sk-surface-600: 94 64 80;
+  --sk-surface-500: 138 107 123;
+  --sk-surface-400: 181 151 166;
+  --sk-surface-300: 212 188 200;
+  --sk-surface-200: 232 217 224;
+  --sk-surface-100: 244 236 240;
+  --sk-surface-50: 251 246 248;
+
+  --sk-accent-50: 253 242 246;
+  --sk-accent-100: 251 228 237;
+  --sk-accent-200: 246 200 218;
+  --sk-accent-300: 238 159 190;
+  --sk-accent-400: 224 117 159;
+  --sk-accent-500: 201 79 128;
+  --sk-accent-600: 164 59 100;
+  --sk-accent-700: 135 47 82;
+  --sk-accent-800: 111 40 68;
+  --sk-accent-900: 93 36 59;
+  --sk-accent-950: 54 16 31;
+
+  --skin-line: rgba(255, 230, 240, 0.08);
+  --accent-glow: rgba(201, 79, 128, 0.3);
+  --editor-bg: #130b0f;
+  --editor-surface: #190f15;
+  --btn-accent-from: #d05c8a;
+  --btn-accent-to: #b54572;
+  --btn-accent-from-hover: #e0759f;
+  --btn-accent-to-hover: #c94f80;
+  --btn-solid-bg: #fff6fa;
+  --btn-solid-hover: #fbe4ed;
+  --btn-solid-text: #2a1520;
+
+  --modal-backdrop: rgba(12, 6, 9, 0.78);
+  --modal-panel: linear-gradient(180deg, #22141c 0%, #1b1016 100%);
+  --modal-header: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.1) 100%);
+}
+
+/* Storefront / CMS previews keep their own (classic) colours. */
+:root[data-skin] [data-skin-reset] {
+  --sk-white: initial; --sk-black: initial;
+  --sk-surface-975: initial; --sk-surface-950: initial; --sk-surface-925: initial; --sk-surface-900: initial;
+  --sk-surface-850: initial; --sk-surface-800: initial; --sk-surface-700: initial; --sk-surface-600: initial;
+  --sk-surface-500: initial; --sk-surface-400: initial; --sk-surface-300: initial; --sk-surface-200: initial;
+  --sk-surface-100: initial; --sk-surface-50: initial;
+  --sk-accent-50: initial; --sk-accent-100: initial; --sk-accent-200: initial; --sk-accent-300: initial;
+  --sk-accent-400: initial; --sk-accent-500: initial; --sk-accent-600: initial; --sk-accent-700: initial;
+  --sk-accent-800: initial; --sk-accent-900: initial; --sk-accent-950: initial;
+}
+
+/* --------------------------------------------------------- shared rose styling */
+:root[data-skin^="rose"] body {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgb(var(--sk-accent-500) / 0.07), transparent),
+    radial-gradient(ellipse 60% 40% at 50% 120%, rgb(var(--sk-accent-500) / 0.04), transparent);
+}
+:root[data-skin^="rose"] :is(h1, h2, .skin-display) {
+  font-family: "Cairo", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+:root[data-skin^="rose"] ::selection {
+  background: rgb(var(--sk-accent-500) / 0.25);
+}
+
+/* --------------------------------------------------------- rose (day) fixes */
+/* Cards: white paper with a soft rose shadow instead of dark glass. */
+:root[data-skin="rose"] .glass {
+  background: var(--skin-card);
+  border-color: var(--skin-line);
+  box-shadow: var(--skin-shadow);
+  backdrop-filter: none;
+}
+:root[data-skin="rose"] .glass-hover:hover {
+  background: var(--skin-card);
+  border-color: #e6c9d6;
+  box-shadow: var(--skin-shadow-hover);
+}
+:root[data-skin="rose"] :is(.card-premium, .section-card, .collapsible-panel) {
+  background: var(--skin-card);
+  border-color: var(--skin-line);
+  box-shadow: var(--skin-shadow);
+}
+:root[data-skin="rose"] :is(.editor-panel, .input-premium) {
+  box-shadow: none;
+}
+:root[data-skin="rose"] :is(.card-premium, .section-card, .editor-panel)::before {
+  display: none;
+}
+:root[data-skin="rose"] :is(.shadow-card, .shadow-elevated, .shadow-float, .shadow-2xl, .shadow-xl) {
+  --tw-shadow: var(--skin-shadow);
+  --tw-shadow-colored: var(--skin-shadow);
+  box-shadow: var(--skin-shadow);
+}
+:root[data-skin="rose"] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+}
+
+/* Text on solid colour stays white (text-white would otherwise turn ink). */
+:root[data-skin="rose"] :is(
+  .bg-accent-400, .bg-accent-500, .bg-accent-600, .bg-accent-700, .from-accent-500, .from-accent-600,
+  .bg-emerald-500, .bg-emerald-600, .bg-green-500, .bg-green-600, .bg-teal-500, .bg-teal-600, .bg-cyan-500, .bg-cyan-600,
+  .bg-sky-500, .bg-sky-600, .bg-blue-500, .bg-blue-600, .bg-indigo-500, .bg-indigo-600, .bg-violet-500, .bg-violet-600,
+  .bg-purple-500, .bg-purple-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-pink-500, .bg-pink-600, .bg-rose-500, .bg-rose-600,
+  .bg-red-500, .bg-red-600, .bg-orange-500, .bg-orange-600, .bg-amber-500, .bg-amber-600,
+  .hover\:bg-accent-400:hover, .hover\:bg-accent-500:hover, .hover\:bg-accent-600:hover
+):is(.text-white, .hover\:text-white:hover),
+:root[data-skin="rose"] :is(.bg-accent-500, .bg-accent-600, .from-accent-500, .bg-emerald-500, .bg-emerald-600, .bg-sky-500, .bg-red-500, .bg-red-600, .bg-blue-500, .bg-blue-600) .text-white {
+  color: #fff;
+}
+:root[data-skin="rose"] :is(.bg-accent-500, .bg-accent-600, .from-accent-500, .bg-emerald-500, .bg-emerald-600, .bg-sky-500, .bg-red-500, .bg-red-600, .bg-blue-500, .bg-blue-600) :is([class*="text-white/"]) {
+  color: rgb(255 255 255 / 0.85);
+}
+
+/* Full-screen dimmers: a soft plum veil, not a white wash. */
+:root[data-skin="rose"] .fixed.inset-0:is([class*="bg-black/"], [class*="bg-surface-950/"], [class*="bg-surface-975/"]) {
+  background-color: var(--modal-backdrop);
+}
+
+/* Scrollbars and native controls */
+:root[data-skin="rose"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(125, 36, 72, 0.18);
+}
+:root[data-skin="rose"] ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(125, 36, 72, 0.3);
+}
+:root[data-skin="rose"] :is(input, select, textarea)::placeholder {
+  color: rgba(70, 44, 59, 0.38);
+}
+:root[data-skin="rose"] select option {
+  background: #fff;
+  color: #462c3b;
+}
+
+/* --------------------------------------------------------- rose night fixes */
+:root[data-skin="rose-night"] .glass {
+  border-color: var(--skin-line);
+  box-shadow:
+    0 0 0 1px rgba(255, 230, 240, 0.03) inset,
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 40px -22px rgba(201, 79, 128, 0.3);
+}
+
+/* Headline gradients and glows made for the dark violet look */
+:root[data-skin="rose"] .text-gradient-premium {
+  background-image: linear-gradient(135deg, #462c3b 0%, #7d2448 60%, #a43b64 100%);
+}
+:root[data-skin="rose-night"] .text-gradient-premium {
+  background-image: linear-gradient(135deg, #fff6fa 0%, rgba(255, 246, 250, 0.75) 50%, #ee9fbe 100%);
+}
+:root[data-skin^="rose"] .modal-spotlight::before {
+  background: radial-gradient(circle 400px at var(--spotlight-x, 50%) var(--spotlight-y, 50%), rgb(var(--sk-accent-500) / 0.06) 0%, transparent 60%);
+}
+
+/* Panels written as "rounded + border + faint white" on the dark look become
+   clean white cards on cream (otherwise they read as grey). */
+:root[data-skin="rose"] :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl):is(.bg-white\/5, .bg-white\/\[0\.02\], .bg-white\/\[0\.03\], .bg-white\/\[0\.04\], .bg-surface-900\/40, .bg-surface-900\/30, .bg-black\/20, .bg-black\/30):is(.border) {
+  background-color: #fff;
+  border-color: var(--skin-line);
+}
+:root[data-skin="rose"] :is(.border-white\/10, .border-white\/\[0\.06\], .border-white\/\[0\.08\], .border-white\/\[0\.07\]) {
+  border-color: var(--skin-line);
+}
+
+/* The inset field shadow reads as a grey smudge on white fields. */
+:root[data-skin="rose"] [class*="shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"]:not(:focus) {
+  box-shadow: none;
+}

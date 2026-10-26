@@ -4,7 +4,7 @@ import Link from "next/link";
 import { isExternalHref, normalizeNavHref, normalizeNavItems } from "@/lib/storefrontNav";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";

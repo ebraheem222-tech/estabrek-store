@@ -3,7 +3,7 @@ import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import type { CatalogProduct } from "@/lib/catalog";
 import { catalogItemLabel, getProductMinPrice, getProductImageBlurDataUrl, getVariantCompareAtPrice, getVariantEffectivePrice } from "@/lib/catalog";
 import { useCart } from "@/store/cart";
@@ -12,6 +12,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useAnimationEffects } from "@/components/AnimationEffectsProvider";
 import { useToastShortcuts } from "@/components/Toast";
 import { LqipImage } from "@/components/LqipImage";
+import { RoseProductSheet } from "@/components/cinematic/RoseProductSheet";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { cldUrl } from "@/lib/cloudinary";
 
@@ -420,6 +421,11 @@ export function QuickViewLayer() {
   const toast = useToastShortcuts();
 
   if (!settings.productQuickView) return null;
+
+  // The rose storefront has its own quick view in the campaign design.
+  if (typeof document !== "undefined" && document.documentElement.dataset.cinematicStorefront === "true") {
+    return isOpen && currentProduct ? <RoseProductSheet key={currentProduct.id} product={currentProduct} mode="quickview" onClose={closeQuickView} /> : null;
+  }
 
   const inWishlist = currentProduct ? isInWishlist(currentProduct.id) : false;
 

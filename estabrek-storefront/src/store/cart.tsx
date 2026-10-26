@@ -1,6 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { roseReact } from "@/lib/roseEvents";
+import { signal } from "@/lib/signals";
+import { abConvert } from "@/lib/ab";
 
 export type CartItem = { variantId: string; quantity: number };
 
@@ -65,6 +68,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       count: items.reduce((a, b) => a + (b.quantity || 0), 0),
       addItem: (variantId, qty = 1) => {
         const addQty = Math.max(1, Number(qty || 1));
+        roseReact("cart-add");
+        signal("bag", { variantId });
+        abConvert("bag");
         setItems((prev) => {
           const i = prev.findIndex((x) => x.variantId === variantId);
           if (i >= 0) {

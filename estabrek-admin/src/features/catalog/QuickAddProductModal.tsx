@@ -676,7 +676,7 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
         </div>
       }
     >
-      <div dir="rtl" className="space-y-4">
+      <div className="space-y-4">
         <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="grid gap-3 md:grid-cols-2">
@@ -1013,7 +1013,7 @@ export default function QuickAddProductModal({ open, categories, sizes, onClose,
                     <button
                       type="button"
                       onClick={() => removeCapturedShot(shot.id)}
-                      className="absolute right-1 top-1 rounded-lg bg-black/70 px-2 py-1 text-xs text-white"
+                      className="absolute start-1 top-1 rounded-lg bg-black/70 px-2 py-1 text-xs text-white"
                     >
                       حذف
                     </button>

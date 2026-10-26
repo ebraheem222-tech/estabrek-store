@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as InventoryAPI from "../api/inventory.api";
 import { getApiErrorMessage } from "../api/http";
 import { toast } from "../lib/toast";
+import { tr } from "@/lib/words";
 
 const keys = {
   lowStock: (params: { q?: string; onlyBelow?: boolean; take?: number; skip?: number } = {}) =>
@@ -18,7 +19,7 @@ export function useLowStock(params: { q?: string; onlyBelow?: boolean; take?: nu
   });
 }
 
-export function useAdjustments(params: { variantId?: string; adminUserId?: string; take?: number; skip?: number }) {
+export function useAdjustments(params: { variantId?: string; adminUserId?: string; productId?: string; q?: string; take?: number; skip?: number }) {
   return useQuery({
     queryKey: keys.adjustments(params),
     queryFn: () => InventoryAPI.listAdjustments(params),
@@ -32,23 +33,23 @@ export function useInventoryActions() {
     mutationFn: (args: { variantId: string; body: InventoryAPI.AdjustVariantBody }) =>
       InventoryAPI.adjustVariant(args.variantId, args.body),
     onSuccess: async () => {
-      toast.success("تم تحديث المخزون");
+      toast.success(tr("تم تحديث المخزون", "Stock updated"));
       // refresh most inventory lists
       await qc.invalidateQueries({ queryKey: ["inventory"] });
       // product pages might show stock too
       await qc.invalidateQueries({ queryKey: ["admin-product-full"] }).catch(() => {});
     },
-    onError: (e) => toast.error("فشل تحديث المخزون", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("فشل تحديث المخزون", "Couldn't update the stock"), { description: getApiErrorMessage(e) }),
   });
 
   const setThreshold = useMutation({
     mutationFn: (args: { variantId: string; lowStockThreshold: number }) =>
       InventoryAPI.setVariantThreshold(args.variantId, args.lowStockThreshold),
     onSuccess: async () => {
-      toast.success("تم حفظ حدّ التنبيه");
+      toast.success(tr("تم حفظ حدّ التنبيه", "Alert level saved"));
       await qc.invalidateQueries({ queryKey: ["inventory"] });
     },
-    onError: (e) => toast.error("فشل حفظ حدّ التنبيه", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("فشل حفظ حدّ التنبيه", "Couldn't save the alert level"), { description: getApiErrorMessage(e) }),
   });
 
   return { adjust, setThreshold };

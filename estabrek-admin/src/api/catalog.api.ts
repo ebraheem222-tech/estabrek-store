@@ -2,6 +2,8 @@
 import { isAxiosError } from "axios";
 import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
+import type { Translations } from "../lib/translations";
+import { tr } from "@/lib/words";
 
 export type CatalogCategory = {
   id: string;
@@ -9,6 +11,8 @@ export type CatalogCategory = {
   slug: string;
   parentId?: string | null;
   iconUrl?: string | null;
+  /** The name in the shop's other languages ({ en: { name } }). */
+  translations?: unknown;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -25,11 +29,31 @@ export type CatalogProduct = {
   title: string;
   slug: string;
   description?: string | null;
+  /** Search-engine title/description (empty: the page uses the title and description). */
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  /** Its texts in the shop's other languages (src/lib/translations.ts). */
+  translations?: unknown;
   isActive: boolean;
   categoryId: string;
   category?: CatalogCategory | null;
   createdAt?: string;
   updatedAt?: string;
+  /** Sent by the updated backend: photo, prices and stock at a glance (absent on older servers). */
+  summary?: ProductSummary;
+};
+
+export type ProductSummary = {
+  thumbUrl: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  compareAtMax: number | null;
+  stockTotal: number;
+  variantCount: number;
+  outCount: number;
+  lowCount: number;
+  colors: Array<{ name: string; hex: string | null; active: boolean }>;
+  skus: string[];
 };
 
 export type ProductItemImage = {
@@ -48,6 +72,10 @@ export type ProductVariant = {
   sku: string;
   price: string | number;
   compareAt?: string | number | null;
+  originalPrice?: string | number | null;
+  salePrice?: string | number | null;
+  saleStartsAt?: string | null;
+  saleEndsAt?: string | null;
   stock: number;
   lowStockThreshold?: number;
   weightGrams?: number | null;
@@ -71,6 +99,13 @@ export type ProductItem = {
 export type ProductDeep = CatalogProduct & {
   category?: CatalogCategory | null;
   items: ProductItem[];
+  /** Kind of product (أنواع المنتجات) and its fields' values. */
+  typeId?: string | null;
+  attributes?: Record<string, unknown> | null;
+  /** Bookings: when and where. */
+  eventStartsAt?: string | null;
+  eventEndsAt?: string | null;
+  eventLocation?: string | null;
 };
 
 export async function listCategories() {
@@ -78,12 +113,12 @@ export async function listCategories() {
   return res.data as CatalogCategory[];
 }
 
-export async function createCategory(body: { name: string; slug: string; parentId?: string | null; iconUrl?: string | null }) {
+export async function createCategory(body: { name: string; slug: string; parentId?: string | null; iconUrl?: string | null; translations?: Translations }) {
   const res = await api.post(ENDPOINTS.admin.catalog.categories.base, body);
   return res.data as CatalogCategory;
 }
 
-export async function updateCategory(id: string, body: Partial<{ name: string; slug: string; parentId?: string | null; iconUrl?: string | null }>) {
+export async function updateCategory(id: string, body: Partial<{ name: string; slug: string; parentId?: string | null; iconUrl?: string | null; translations: Translations }>) {
   const res = await api.patch(ENDPOINTS.admin.catalog.categories.byId(id), body);
   return res.data as CatalogCategory;
 }
@@ -155,8 +190,12 @@ export async function createProduct(body: {
   title: string;
   slug: string;
   description?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   isActive?: boolean;
   categoryId: string;
+  typeId?: string | null;
+  attributes?: Record<string, unknown>;
 }) {
   const res = await api.post(ENDPOINTS.admin.catalog.products.base, body);
   return res.data as CatalogProduct;
@@ -200,8 +239,16 @@ export type ProductDeepUpdateBody = {
     title?: string;
     slug?: string;
     description?: string | null;
+    seoTitle?: string | null;
+    seoDescription?: string | null;
+    translations?: Translations;
     isActive?: boolean;
     categoryId?: string;
+    typeId?: string | null;
+    attributes?: Record<string, unknown>;
+    eventStartsAt?: string | null;
+    eventEndsAt?: string | null;
+    eventLocation?: string | null;
   };
   items?: Array<{
     id?: string;
@@ -235,7 +282,36 @@ export type ProductDeepUpdateBody = {
   deleteVariantIds?: string[];
 };
 
+export type SaveKept = { variants: Array<{ id: string; sku: string }>; items: Array<{ id: string; colorName: string }> };
+
 export async function updateProductFull(id: string, body: ProductDeepUpdateBody) {
   const res = await api.put(ENDPOINTS.admin.catalog.products.full(id), body);
-  return res.data as ProductDeep;
+  // `kept` (updated backend): sizes/colours with orders that were kept instead of deleted.
+  return res.data as ProductDeep & { kept?: SaveKept };
+}
+
+/** Why a product save was refused, in words the owner can act on. */
+export function describeSaveError(e: unknown): { message: string; skus?: string[]; attributeErrors?: Record<string, string> } {
+  if (!isAxiosError(e)) return { message: tr("تعذّر الحفظ. يرجى المحاولة مرة أخرى.", "Couldn't save. Please try again.") };
+  const status = e.response?.status;
+  const data = (e.response?.data ?? {}) as { error?: string; message?: string; details?: any; target?: unknown };
+  if (data.error === "SKU_TAKEN") {
+    const rows = (data.details?.products ?? []) as Array<{ sku: string; title: string }>;
+    const list = rows.map((r) => `${r.sku} (${r.title})`).join(tr("، ", ", "));
+    return { message: tr(`كود SKU مستخدم في منتج آخر: ${list || (data.details?.skus ?? []).join(tr("، ", ", "))}`, "SKU code already used by another product: {0}", [list || (data.details?.skus ?? []).join(tr("، ", ", "))]), skus: data.details?.skus };
+  }
+  if (data.error === "DUPLICATE_SKU") return { message: tr(`نفس كود SKU مكتوب مرتين: ${(data.details?.skus ?? []).join(tr("، ", ", "))}`, "The same SKU is written twice: {0}", [(data.details?.skus ?? []).join(tr("، ", ", "))]), skus: data.details?.skus };
+  if (data.error === "UNIQUE_CONSTRAINT") {
+    const t = JSON.stringify(data.target ?? "");
+    if (/sku/i.test(t)) return { message: tr("أحد أكواد SKU مستخدم في منتج آخر. يرجى تغيير الكود والمحاولة مرة أخرى.", "One SKU code is used by another product. Change it and try again.") };
+    if (/size/i.test(t)) return { message: tr("نفس المقاس مكرر لنفس اللون.", "The same size is listed twice for one colour.") };
+    if (/slug/i.test(t)) return { message: tr("رابط المنتج مستخدم لمنتج آخر. يرجى تغيير الرابط.", "This product link is used by another product. Change the link.") };
+    return { message: tr("يوجد تكرار في البيانات (لون أو مقاس أو كود).", "Something is listed twice (a colour, size or code).") };
+  }
+  if (data.error === "FOREIGN_KEY") return { message: tr("مقاس أو لون عليه طلبات ما بينحذف. لازم يتحدّث الباكند ليُحفظ تلقائياً كـ«نفد».", "A size or colour with orders can't be deleted. Update the backend so it's kept as “Sold out” instead.") };
+  if (data.error === "VALIDATION_ERROR") return { message: tr("بعض الحقول غير صحيحة. يرجى مراجعة الأسعار والكميات.", "Some fields aren't right. Check the prices and quantities.") };
+  if (data.error === "ATTRIBUTES_INVALID") return { message: tr("في تفاصيل القطعة شي مش مكتوب صح. يرجى مراجعة الحقول المعلّمة بالأحمر.", "Something in the details isn't right. Check the fields marked in red."), attributeErrors: data.details?.errors ?? {} };
+  if (data.error === "TYPE_NOT_FOUND") return { message: tr("نوع المنتج انحذف. يرجى اختيار نوع ثاني.", "The product type was deleted. Choose another one.") };
+  if (status === 401 || status === 403) return { message: tr("انتهت الجلسة أو ما في صلاحية.", "Your session ended, or you don't have permission.") };
+  return { message: data.message || tr("تعذّر الحفظ. يرجى المحاولة مرة أخرى.", "Couldn't save. Please try again.") };
 }

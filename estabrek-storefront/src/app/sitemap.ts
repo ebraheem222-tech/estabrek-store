@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
-import { listCategories, listProducts, listPages } from "@/lib/api";
+import { getPublicSettings, listCategories, listProducts, listPages } from "@/lib/api";
+import { alternatesFor, langConfigOf, withLang } from "@/lib/i18n";
 
 const SITE =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
@@ -96,5 +97,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  return out;
+  // Every address in each language the store offers (/en/…, /he/…), each pointing to the others.
+  const settings = await getPublicSettings().catch(() => null);
+  const cfg = langConfigOf((settings?.site as any)?.header);
+  if (cfg.enabled.length < 2) return out;
+  return out.flatMap((entry) => {
+    const path = entry.url.slice(SITE.length) || "/";
+    const languages = alternatesFor(path, cfg, SITE);
+    return cfg.enabled.map((lang) => ({ ...entry, url: `${SITE}${withLang(path, lang, cfg)}`.replace(/\/$/, "") || SITE, alternates: { languages } }));
+  });
 }

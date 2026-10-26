@@ -5,6 +5,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { gsap } from "gsap";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { rememberSearch } from "@/lib/razanHistory";
+import { useSiteFeatures } from "@/store/siteFeatures";
+import { RazanSmartSearch } from "./RazanSmartSearch";
+import { tr } from "@/lib/words";
 
 type Suggestion = { label: string; href: string };
 
@@ -13,14 +19,21 @@ type Suggestion = { label: string; href: string };
  * number of results for the current words, and quick links to the main
  * collections when she isn't sure what to type.
  */
-export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: string; total: number; suggestions?: Suggestion[] }) {
-  const ar = useLanguage().language === "ar";
+export function RoseSearchIntro({ query, total, suggestions = [], filtered = false }: { query?: string; total: number; suggestions?: Suggestion[]; filtered?: boolean }) {
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const router = useRouter();
+  const { voiceSearchEnabled } = useStorefrontSettings();
+  const { requests, ai } = useSiteFeatures();
+  // Her own words (3+ words, no filters picked yet): Razan can turn them into filters.
+  const sentence = Boolean(query && !filtered && ai.smartSearch && query.trim().split(/\s+/).length >= 3);
   const [value, setValue] = useState(query ?? "");
   const field = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLFormElement>(null);
 
   useEffect(() => setValue(query ?? ""), [query]);
+  // Razan's history (admin → رزان): what she looked for, to find it again later.
+  useEffect(() => { if (query?.trim()) rememberSearch(query); }, [query]);
   useEffect(() => {
     if (!query) field.current?.focus({ preventScroll: true });
   }, [query]);
@@ -42,10 +55,10 @@ export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: st
 
   return (
     <section className="rose-search-intro" data-rose-palette="pearl">
-      <span className="atelier-eyebrow">ESTABREK · {ar ? "البحث" : "SEARCH"}</span>
+      <span className="atelier-eyebrow">{tr(lang, "البحث", "SEARCH")}</span>
       <h1>
-        {query ? (ar ? <>نتائج «{query}»</> : <>Results for “{query}”</>) : ar ? "عمّ تبحثين؟" : "What are you looking for?"}
-        <span>{query ? count : ar ? "اكتبي اسم القطعة، اللون أو القماش." : "Type a piece, a colour or a fabric."}</span>
+        {query ? (ar ? <>نتائج «{query}»</> : lang === "he" ? <>תוצאות עבור „{query}”</> : <>Results for “{query}”</>) : tr(lang, "عمّ تبحثين؟", "What are you looking for?")}
+        <span>{query ? count : tr(lang, "اكتبي اسم القطعة، اللون أو القماش.", "Type a piece, a colour or a fabric.")}</span>
       </h1>
       <form ref={box} className="rose-search-field" role="search" onSubmit={submit}>
         <Icon name="search" />
@@ -54,15 +67,23 @@ export function RoseSearchIntro({ query, total, suggestions = [] }: { query?: st
           type="search"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={ar ? "ابحثي في المتجر…" : "Search the store…"}
-          aria-label={ar ? "ابحثي في المتجر" : "Search the store"}
+          placeholder={tr(lang, "ابحثي في المتجر…", "Search the store…")}
+          aria-label={tr(lang, "ابحثي في المتجر", "Search the store")}
           enterKeyHint="search"
         />
-        <button type="submit" className="atelier-button button-dark">{ar ? "ابحثي" : "Search"}</button>
+        {voiceSearchEnabled && <VoiceSearchButton className="rose-search-voice" />}
+        <button type="submit" className="atelier-button button-dark">{tr(lang, "ابحثي", "Search")}</button>
       </form>
+      {sentence ? <RazanSmartSearch query={query!.trim()} ar={ar} /> : null}
+      {query && requests.enabled && requests.kinds.newPiece ? (
+        <p className={`rose-search-request${total === 0 ? " empty" : ""}`}>
+          {total === 0 ? (tr(lang, "ما لقيناها عنا هلأ — بس بنقدر ندوّرلكِ عليها.", "We don't have it right now — but we can look for it.")) : tr(lang, "ما لقيتي اللي بدك؟", "Not what you wanted?")}{" "}
+          <Link href={`/request?q=${encodeURIComponent(query)}`}>{tr(lang, "اطلبيها منّا ←", "Ask us for it →")}</Link>
+        </p>
+      ) : null}
       {suggestions.length > 0 && (
-        <nav className="rose-search-suggest" aria-label={ar ? "اقتراحات" : "Suggestions"}>
-          <span>{ar ? "جرّبي:" : "Try:"}</span>
+        <nav className="rose-search-suggest" aria-label={tr(lang, "اقتراحات", "Suggestions")}>
+          <span>{tr(lang, "جرّبي:", "Try:")}</span>
           {suggestions.slice(0, 6).map((s) => (
             <Link key={s.href} href={s.href}>{s.label}</Link>
           ))}

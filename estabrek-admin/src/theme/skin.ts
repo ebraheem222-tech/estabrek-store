@@ -1,0 +1,62 @@
+// Admin skin: the look of the whole admin on this device.
+// "rose" (light, like the storefront) is the default; "rose-night" is the dark
+// rose version; "classic" is the original dark violet admin (and the only one
+// where the theme presets from the settings page apply).
+import { useSyncExternalStore } from "react";
+import { tr } from "@/lib/words";
+
+export type AdminSkin = "rose" | "rose-night" | "classic";
+
+export const SKINS: Array<{ id: AdminSkin; label: string; hint: string }> = [
+  { id: "rose", label: tr("روز نهاري", "Rose light"), hint: tr("فاتح مثل المتجر", "Light, like the store") },
+  { id: "rose-night", label: tr("روز ليلي", "Rose dark"), hint: tr("داكن ومريح للعين", "Dark and easy on the eyes") },
+  { id: "classic", label: tr("الكلاسيكي", "Classic"), hint: tr("الشكل القديم البنفسجي", "The original purple look") },
+];
+
+const KEY = "estabrek_admin_skin_v1";
+const listeners = new Set<() => void>();
+
+function isSkin(v: unknown): v is AdminSkin {
+  return v === "rose" || v === "rose-night" || v === "classic";
+}
+
+export function readSkin(): AdminSkin {
+  try {
+    const v = localStorage.getItem(KEY);
+    return isSkin(v) ? v : "rose";
+  } catch {
+    return "rose";
+  }
+}
+
+export function applySkin(skin: AdminSkin) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (skin === "classic") {
+    root.removeAttribute("data-skin");
+  } else {
+    root.setAttribute("data-skin", skin);
+    // The settings presets belong to the classic look only.
+    root.removeAttribute("data-admin-theme");
+  }
+  root.style.colorScheme = skin === "rose" ? "light" : "dark";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", skin === "rose" ? "#fbf5f7" : skin === "rose-night" ? "#130b0f" : "#09090b");
+}
+
+export function setSkin(skin: AdminSkin) {
+  try { localStorage.setItem(KEY, skin); } catch { /* storage blocked: still switch for this visit */ }
+  current = skin;
+  applySkin(skin);
+  listeners.forEach((l) => l());
+}
+
+let current: AdminSkin = typeof window === "undefined" ? "rose" : readSkin();
+
+export function useSkin(): AdminSkin {
+  return useSyncExternalStore(
+    (cb) => { listeners.add(cb); return () => listeners.delete(cb); },
+    () => current,
+    () => "rose" as AdminSkin,
+  );
+}

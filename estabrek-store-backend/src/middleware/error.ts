@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err);
+  // For the monitor's error list (admin → مراقبة السرعة والأولوية).
+  res.locals.errorMessage = String(err?.message ?? err).slice(0, 300);
 
   if (err instanceof ZodError) {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: err.flatten() });
@@ -33,7 +35,12 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
 
   if (typeof (err as any)?.statusCode === "number") {
-    return res.status((err as any).statusCode).json({ error: (err as any).code || "ERROR", message: (err as any).message || "Request failed" });
+    const details = (err as any).details ?? (err as any).meta;
+    return res.status((err as any).statusCode).json({
+      error: (err as any).code || "ERROR",
+      message: (err as any).message || "Request failed",
+      ...(details !== undefined ? { details } : {}),
+    });
   }
 
   return res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });

@@ -37,7 +37,7 @@ export default function Toasts() {
   if (!sorted.length) return null;
 
   return (
-    <div className="pointer-events-none fixed top-4 left-4 z-[9999] flex flex-col gap-2">
+    <div className="pointer-events-none fixed top-4 end-4 z-[9999] flex flex-col gap-2">
       {sorted.map((t) => (
         <div key={t.id} className={cls(t.type)}>
           <div className="flex items-start justify-between gap-2">

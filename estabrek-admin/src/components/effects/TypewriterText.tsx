@@ -96,7 +96,7 @@ export function TypewriterText({
       <span className={textClassName}>{displayText}</span>
       {showCursor && (
         <span
-          className={cn("mr-0.5 font-light", cursorBlink && "animate-blink")}
+          className={cn("ms-0.5 font-light", cursorBlink && "animate-blink")}
           style={{ color: cursorColor }}
         >
           {cursor}

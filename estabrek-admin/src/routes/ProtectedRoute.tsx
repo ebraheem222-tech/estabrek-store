@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { hasTokens } from "../lib/storage";
 import type { AdminPermission } from "../lib/authz";
 
+import { tr } from "@/lib/words";
 type Props = {
   children: React.ReactNode;
   /** if you ever want to allow non-superadmin roles later */
@@ -29,10 +30,10 @@ export default function ProtectedRoute({ children, requireSuperAdmin = true, req
     }
 
     return (
-      <div dir="rtl" className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6">
-          <div className="text-lg font-semibold">جاري التحقق…</div>
-          <div className="mt-2 text-sm opacity-80">لحظات وبنفتح لوحة الإدارة.</div>
+          <div className="text-lg font-semibold">{tr("جاري التحقق…", "Checking…")}</div>
+          <div className="mt-2 text-sm opacity-80">{tr("لحظات وبنفتح لوحة الإدارة.", "Opening the admin in a moment.")}</div>
           <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/10">
             <div className="h-full w-1/2 animate-pulse bg-white/30" />
           </div>
@@ -44,19 +45,19 @@ export default function ProtectedRoute({ children, requireSuperAdmin = true, req
   // Admin loaded but not authorized
   if (requireSuperAdmin && !isSuperAdmin()) {
     return (
-      <div dir="rtl" className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-6">
-          <div className="text-xl font-semibold">غير مصرح</div>
+          <div className="text-xl font-semibold">{tr("غير مصرح", "Not allowed")}</div>
           <div className="mt-2 text-sm opacity-80">
-            هذا الحساب لا يملك صلاحيات <b>SUPERADMIN</b>.
+            {tr("هذا الحساب لا يملك صلاحيات", "This account has no permissions")} <b>SUPERADMIN</b>.
           </div>
-          <div className="mt-4 text-sm opacity-80">بدك؟ سجّل دخول بحساب أدمن صحيح.</div>
+          <div className="mt-4 text-sm opacity-80">{tr("يرجى تسجيل الدخول بحساب إدارة.", "Please sign in with an admin account.")}</div>
           <div className="mt-6">
             <a
               className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
               href="/login"
             >
-              رجوع لتسجيل الدخول
+              {tr("رجوع لتسجيل الدخول", "Back to sign in")}
             </a>
           </div>
         </div>
@@ -68,17 +69,17 @@ export default function ProtectedRoute({ children, requireSuperAdmin = true, req
     const missing = requirePermissions.filter((permission) => !hasPermission(permission));
     if (missing.length) {
       return (
-        <div dir="rtl" className="min-h-screen flex items-center justify-center p-6">
+        <div className="min-h-screen flex items-center justify-center p-6">
           <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-6">
-            <div className="text-xl font-semibold">غير مصرح</div>
-            <div className="mt-2 text-sm opacity-80">الحساب لا يملك الصلاحيات المطلوبة لهذه الصفحة.</div>
+            <div className="text-xl font-semibold">{tr("غير مصرح", "Not allowed")}</div>
+            <div className="mt-2 text-sm opacity-80">{tr("الحساب لا يملك الصلاحيات المطلوبة لهذه الصفحة.", "This account doesn't have permission for this page.")}</div>
             <div className="mt-3 text-xs opacity-70 break-words">Missing: {missing.join(", ")}</div>
             <div className="mt-6">
               <a
                 className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
                 href="/admin/dashboard"
               >
-                رجوع للوحة التحكم
+                {tr("رجوع للوحة الإدارة", "Back to the admin")}
               </a>
             </div>
           </div>

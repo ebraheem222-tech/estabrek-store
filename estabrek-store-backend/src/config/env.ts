@@ -100,6 +100,48 @@ const EnvSchema = z.object({
   STOREFRONT_REVALIDATE_URL: OptionalUrl,
   STOREFRONT_REVALIDATE_SECRET: z.string().optional(),
 
+  // Email (Resend). Without RESEND_API_KEY + EMAIL_FROM emails are only logged.
+  RESEND_API_KEY: z.string().optional(),
+  /** e.g. "استبرق <hello@your-domain.com>" (the domain must be verified in Resend). */
+  EMAIL_FROM: z.string().optional(),
+  EMAIL_REPLY_TO: z.string().optional(),
+  /** Admin site address, used in invite / password links, e.g. https://estabrek-store.pages.dev */
+  ADMIN_APP_URL: OptionalUrl,
+  /** Storefront address, used in customer emails, e.g. https://estabrek-store.vercel.app */
+  STOREFRONT_URL: OptionalUrl,
+
+  // Backups (admin → النسخ الاحتياطي). The files are encrypted with this key; keep a copy of it
+  // somewhere safe — without it a backup can't be opened. Unset: a key made from JWT_SECRET.
+  BACKUP_ENCRYPTION_KEY: z.string().min(16).optional(),
+  // Codes sold one per piece (game keys, gift cards) are stored encrypted with this key. Keep a
+  // copy somewhere safe. Unset: a key made from JWT_SECRET (changing JWT_SECRET then locks them).
+  CODES_ENCRYPTION_KEY: z.string().min(16).optional(),
+  /** How many backups to keep in storage (older ones are removed). */
+  BACKUP_KEEP: z.coerce.number().int().min(1).max(365).default(14),
+  /** Hour of the day (Israel time) for the automatic backup. */
+  BACKUP_HOUR: z.coerce.number().int().min(0).max(23).default(3),
+  /** Largest file the storage takes (Cloudinary free plan: 10 MB for raw files). */
+  BACKUP_MAX_UPLOAD_MB: z.coerce.number().min(1).max(500).default(10),
+
+  // Digital products (files the shopper downloads after paying / acceptance).
+  /** How many times one order can download each file. */
+  DIGITAL_MAX_DOWNLOADS: z.coerce.number().int().min(1).max(1000).default(10),
+  /** Largest file uploaded to storage (Cloudinary free plan: 10 MB); bigger files go in as a link. */
+  DIGITAL_MAX_UPLOAD_MB: z.coerce.number().min(1).max(500).default(10),
+  /** Largest master file of a protected product (kept encrypted in the database, not on Cloudinary). */
+  PROTECTED_MAX_UPLOAD_MB: z.coerce.number().min(1).max(200).default(25),
+  /**
+   * The vault (src/vault): its private address (Railway private network, or its
+   * Tailscale name) and the secret both sides sign requests with. Unset = no vault:
+   * masters stay encrypted in the database and the backend signs licences itself.
+   */
+  VAULT_URL: z.string().url().optional(),
+  VAULT_SHARED_SECRET: z.string().min(32).optional(),
+  /** Without a vault: what the licence signing key is made from (unset = from JWT_SECRET). */
+  LICENCE_SIGNING_SEED: z.string().min(16).optional(),
+  /** Largest launcher (.exe) the owner can upload for buyers to download. */
+  LAUNCHER_MAX_UPLOAD_MB: z.coerce.number().min(1).max(200).default(60),
+
   // Redis (optional)
   REDIS_URL: z.string().optional(),
   REDIS_KEY_PREFIX: z.string().default("estabrak"),

@@ -9,11 +9,12 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useComments, useUGCActions } from "../../hooks/useUGC";
 import type { UGCStatus } from "../../api/ugc.api";
 import { formatDateTime } from "../../lib/format";
+import { tr } from "@/lib/words";
 
 const STATUS_OPTIONS = [
-  { value: "PENDING", label: "قيد المراجعة" },
-  { value: "APPROVED", label: "مقبولة" },
-  { value: "REJECTED", label: "مرفوضة" },
+  { value: "PENDING", label: tr("قيد المراجعة", "In review") },
+  { value: "APPROVED", label: tr("مقبولة", "Approved") },
+  { value: "REJECTED", label: tr("مرفوضة", "Rejected") },
 ];
 
 function statusVariant(status?: string) {
@@ -32,11 +33,11 @@ function statusVariant(status?: string) {
 function statusLabel(status?: string) {
   switch (status) {
     case "PENDING":
-      return "قيد المراجعة";
+      return tr("قيد المراجعة", "In review");
     case "APPROVED":
-      return "مقبول";
+      return tr("مقبول", "Approved");
     case "REJECTED":
-      return "مرفوض";
+      return tr("مرفوض", "Rejected");
     default:
       return status ?? "-";
   }
@@ -95,12 +96,12 @@ export default function CommentsPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="text-lg font-semibold text-white">تعليقات المنتجات</div>
-            <div className="mt-1 text-xs text-white/50">الإجمالي: {total}</div>
+            <div className="text-lg font-semibold text-white">{tr("تعليقات المنتجات", "Product comments")}</div>
+            <div className="mt-1 text-xs text-white/50">{tr("الإجمالي:", "Total:")} {total}</div>
           </div>
           <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-[180px_260px_auto]">
             <Select
@@ -111,9 +112,9 @@ export default function CommentsPage() {
               }}
               options={STATUS_OPTIONS}
             />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث داخل النتائج" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("بحث داخل النتائج", "Search the results")} />
             <Button variant="ghost" onClick={() => commentsQ.refetch()} className="w-full sm:w-auto">
-              تحديث
+              {tr("تحديث", "Refresh")}
             </Button>
           </div>
         </div>
@@ -123,11 +124,11 @@ export default function CommentsPage() {
         {commentsQ.isLoading ? (
           <div className="flex items-center gap-2 text-sm text-white/70">
             <Spinner />
-            جاري التحميل...
+            {tr("جاري التحميل...", "Loading...")}
           </div>
         ) : commentsQ.isError ? (
           <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
-            فشل تحميل التعليقات.
+            {tr("فشل تحميل التعليقات.", "The comments couldn't load.")}
           </div>
         ) : filtered.length ? (
           <div className="space-y-3">
@@ -147,7 +148,7 @@ export default function CommentsPage() {
                     </div>
                     {comment.product ? (
                       <div className="mt-3 text-xs text-white/50">
-                        المنتج: {comment.product.title ?? comment.product.id}
+                        {tr("المنتج:", "Product:")} {comment.product.title ?? comment.product.id}
                       </div>
                     ) : null}
                   </div>
@@ -155,21 +156,21 @@ export default function CommentsPage() {
                   <div className="flex flex-wrap gap-2 lg:justify-end">
                     {comment.status !== "APPROVED" ? (
                       <Button size="sm" variant="success" onClick={() => setStatusFor(comment.id, "APPROVED")} isLoading={actions.setCommentStatus.isPending}>
-                        قبول
+                        {tr("قبول", "Approve")}
                       </Button>
                     ) : null}
                     {comment.status !== "REJECTED" ? (
                       <Button size="sm" variant="danger" onClick={() => setStatusFor(comment.id, "REJECTED")} isLoading={actions.setCommentStatus.isPending}>
-                        رفض
+                        {tr("رفض", "Reject")}
                       </Button>
                     ) : null}
                     {comment.status !== "PENDING" ? (
                       <Button size="sm" variant="secondary" onClick={() => setStatusFor(comment.id, "PENDING")} isLoading={actions.setCommentStatus.isPending}>
-                        إرجاع للمراجعة
+                        {tr("إرجاع للمراجعة", "Back to review")}
                       </Button>
                     ) : null}
                     <Button size="sm" variant="ghost" onClick={() => setDeleteId(comment.id)}>
-                      حذف
+                      {tr("حذف", "Delete")}
                     </Button>
                   </div>
                 </div>
@@ -177,7 +178,7 @@ export default function CommentsPage() {
             ))}
           </div>
         ) : (
-          <div className="py-10 text-center text-sm text-white/60">لا يوجد نتائج</div>
+          <div className="py-10 text-center text-sm text-white/60">{tr("لا يوجد نتائج", "No results")}</div>
         )}
 
         {totalPages > 1 ? (
@@ -187,10 +188,10 @@ export default function CommentsPage() {
 
       <ConfirmDialog
         open={!!deleteId}
-        title="حذف التعليق"
-        message="هل أنت متأكد من حذف هذا التعليق؟"
-        confirmText="حذف"
-        cancelText="إلغاء"
+        title={tr("حذف التعليق", "Delete comment")}
+        message={tr("حذف هالتعليق أكيد؟", "Delete this comment for sure?")}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onConfirm={deleteSelected}
         onCancel={() => setDeleteId(null)}
       />

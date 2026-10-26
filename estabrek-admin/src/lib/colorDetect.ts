@@ -1,5 +1,7 @@
 // src/lib/colorDetect.ts
 // استخراج ألوان مسيطرة (dominant palette) من ملف صورة داخل المتصفح.
+// أول لون = لون القطعة نفسها (نتجاهل لون الخلفية)، ثم بقية الألوان.
+import { dominantGarmentColor } from "./productComposer";
 // خفيف وسريع: quantization + histogram.
 
 export function normalizeHex(input: string): string | null {
@@ -77,6 +79,9 @@ function extractPaletteFromBitmap(bmp: ImageBitmap, count = 5, sample = 64): str
   ctx.drawImage(bmp, 0, 0, w, h);
   const img = ctx.getImageData(0, 0, w, h).data;
 
+  // The garment first: the most common colour is usually the backdrop (white wall, studio paper).
+  const garment = dominantGarmentColor(img, w, h);
+
   // Quantize: 4 bits per channel (0..15)
   const bins = new Map<number, number>();
   for (let i = 0; i < img.length; i += 4) {
@@ -93,8 +98,8 @@ function extractPaletteFromBitmap(bmp: ImageBitmap, count = 5, sample = 64): str
     .sort((a, b) => b[1] - a[1])
     .slice(0, Math.max(count * 4, 20));
 
-  const picks: string[] = [];
-  const pickedRgb: Array<[number, number, number]> = [];
+  const picks: string[] = garment ? [garment] : [];
+  const pickedRgb: Array<[number, number, number]> = garment ? [parseHexToRgb(garment)] : [];
   const minDist = 28 * 28; // منع ألوان متشابهة جدًا
 
   for (const [key] of top) {
