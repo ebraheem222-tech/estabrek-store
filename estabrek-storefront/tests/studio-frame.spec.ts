@@ -78,7 +78,9 @@ test("in the editor's frame nothing waits unseen, and a look can be tried before
 });
 
 test("inside the home's sections and scenes: each word, button and card is measured, and the home looks as the home", async ({ page, request }) => {
+  // The scenes need their categories; the shop's cache is cleared so it sees them.
   await request.get("http://127.0.0.1:4100/__test/scenes?on=1");
+  await page.request.post("/api/revalidate", { data: { tags: ["cms:pages", "catalog"] } });
   try {
     await page.goto(`${HARNESS}?src=${encodeURIComponent("/studio-frame?token=good-home")}`);
     const has = (match: (i: any) => boolean) => async () => Boolean((await lastLayout(page))?.items?.some(match));
@@ -99,6 +101,7 @@ test("inside the home's sections and scenes: each word, button and card is measu
     await expect.poll(() => page.frameLocator("#f").locator("html").getAttribute("data-cinematic-home")).toBe("true");
   } finally {
     await request.get("http://127.0.0.1:4100/__test/scenes?on=0");
+    await page.request.post("/api/revalidate", { data: { tags: ["cms:pages", "catalog"] } });
   }
 });
 
