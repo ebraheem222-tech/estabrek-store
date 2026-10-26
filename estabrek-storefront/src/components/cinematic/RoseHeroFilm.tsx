@@ -45,6 +45,11 @@ const FILM_CLOSING = {
 };
 /** One colour per line, readable on the light page; the closing line takes the shopper's own colour. */
 const LINE_COLORS = ["#b2486a", "#7c5fa8", "#3f7f78", "#a87a2c"];
+/** Line i's colour: the admin's (roseFilmColors), else the shop's own. */
+const lineColour = (own: string[] | undefined, i: number) => {
+  const c = own?.[i % LINE_COLORS.length];
+  return typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c) ? c : LINE_COLORS[i % LINE_COLORS.length];
+};
 /** The film's share of the scroll that tells the lines; the rest holds the closing line. */
 const LINES_END = 0.84;
 
@@ -74,8 +79,11 @@ export function RoseHeroFilm({
   description,
   primary,
   secondary,
+  lineColors,
 }: {
   ar: boolean;
+  /** The admin's colours for the lines, in turn (roseFilmColors); the shop's own where missing. */
+  lineColors?: string[];
   /** Kept for the Admin data; the film opening shows no small eyebrow line. */
   eyebrow?: string;
   /** Admin lines (one per turn of the scarf); the shop's own lines when empty. */
@@ -365,7 +373,7 @@ export function RoseHeroFilm({
     el.play().catch(() => {});
   }, [motion]);
 
-  const accent = final ? "var(--selection-accent, #a43b64)" : LINE_COLORS[step % LINE_COLORS.length];
+  const accent = final ? "var(--selection-accent, #a43b64)" : lineColour(lineColors, step);
   const shop = { href: primary?.href || "/shop", label: primary?.label || tr(lang, "تسوّقي الآن", "Shop now") };
   return (
     <section
@@ -389,7 +397,7 @@ export function RoseHeroFilm({
                 className="film-line"
                 data-state={i === step ? "on" : i < step ? "past" : "next"}
                 aria-hidden="true"
-                style={{ color: LINE_COLORS[i % LINE_COLORS.length] }}
+                style={{ color: lineColour(lineColors, i) }}
               >
                 {line.split(/\s+/).map((word, j) => (
                   <span key={j}>{j > 0 ? " " : null}<span className="film-word" style={{ "--j": j } as CSSProperties}>{word}</span></span>

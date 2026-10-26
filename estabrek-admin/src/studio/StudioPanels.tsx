@@ -14,6 +14,8 @@ import { ROSE_ID, type StoreThemeInfo } from "./storeThemes";
 import { ROSE_PALETTES } from "./themes";
 
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
+/** The film opening's own line colours (the shop's RoseHeroFilm LINE_COLORS). */
+const FILM_COLORS = ["#b2486a", "#7c5fa8", "#3f7f78", "#a87a2c"];
 const PALETTE_LABEL: Record<string, () => string> = {
   pearl: () => tr("لؤلؤي", "Pearl"),
   blush: () => tr("وردي فاتح", "Blush"),
@@ -80,6 +82,7 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           <option value="">{tr("تلقائية حسب المشهد", "Automatic for the scene")}</option>
           {ROSE_PALETTES.map((k) => <option key={k} value={k}>{PALETTE_LABEL[k]()}</option>)}
         </select>
+        <span className="mt-1 block text-[10px] leading-4 text-white/35">{tr("بتلوّن الصفحة مع السكرول بالصفحات الداخلية. بالرئيسية الألوان من المشاهد (المواسم والقصص).", "They colour the page with the scroll on inner pages. On the home the colours come from the scenes (seasons and stories).")}</span>
       </label>
       <label className="block text-[11px] text-white/55">
         {tr("الحركة", "Motion")}
@@ -95,6 +98,7 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           {toggle("rose3dEnabled", tr("مشهد القماش", "The fabric scene"))}
           {toggle("roseSeasonsEnabled", tr("المواسم", "Seasons"))}
           {toggle("roseStoriesEnabled", tr("قصص الكولكشن", "Collection stories"))}
+          {toggle("roseInstagramEnabled", tr("إنستغرام", "Instagram"))}
           <Field
             label={tr("سطور الفيلم (سطر لكل لفّة)", "Film lines (one per turn)")}
             multiline
@@ -103,9 +107,106 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
             testId="studio-film-lines"
           />
           <Field label={tr("السطر الأخير", "Closing line")} value={typeof words.roseFilmClosing === "string" ? words.roseFilmClosing : ""} onSave={(v) => onSet(["roseFilmClosing"], v.trim() || null, true)} />
+          <div className="space-y-1.5" data-testid="studio-film-colors">
+            <div className="text-[11px] text-white/55">{tr("ألوان سطور الفيلم (بالدور)", "The film lines' colours (in turn)")}</div>
+            {FILM_COLORS.map((own, i) => {
+              const list = Array.isArray(data.roseFilmColors) ? (data.roseFilmColors as unknown[]) : [];
+              return (
+                <SeedPick
+                  key={i}
+                  label={`${tr("سطر", "Line")} ${i + 1}`}
+                  own={own}
+                  value={list[i]}
+                  busy={busy}
+                  onPick={(hex) => {
+                    const next = FILM_COLORS.map((_, j) => (j === i ? hex ?? "" : typeof list[j] === "string" ? String(list[j]) : ""));
+                    onSet(["roseFilmColors"], next.some(Boolean) ? next : null);
+                  }}
+                />
+              );
+            })}
+          </div>
           <p className="text-[11px] leading-5 text-white/40">{tr("الفاضي بياخد كلام المتجر الجاهز.", "Empty takes the shop's own words.")}</p>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+const HEX6 = /^#[0-9a-f]{6}$/i;
+
+/** A colour of the shop's design that can be changed: its own until one is picked. */
+export function SeedPick({ label, value, own, busy, onPick, testId }: { label: string; value: unknown; own: string; busy: boolean; onPick: (hex: string | null) => void; testId?: string }) {
+  const mine = typeof value === "string" && HEX6.test(value) ? value : null;
+  const [hex, setHex] = useState(mine ?? own);
+  const [was, setWas] = useState(mine);
+  if (was !== mine) {
+    setWas(mine);
+    setHex(mine ?? own);
+  }
+  return (
+    <div className="flex items-center gap-2 text-[11px] text-white/60" data-testid={testId}>
+      <input type="color" aria-label={label} className="h-7 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={hex} onChange={(e) => setHex(e.target.value)} onBlur={() => hex.toLowerCase() !== (mine ?? own).toLowerCase() && onPick(hex)} />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {mine ? (
+        <button type="button" className={btn} disabled={busy} onClick={() => onPick(null)}>{tr("الجاهز", "The shop's own")}</button>
+      ) : (
+        <span className="text-[10px] text-white/35">{tr("الجاهز", "The shop's own")}</span>
+      )}
+    </div>
+  );
+}
+
+/** The rose scenes' own colours (each turns the page's and header's colours while it shows). */
+const SCENE_SEEDS: Record<string, Array<[string, string, () => string]>> = {
+  seasons: [["winter", "#7d8ec4", () => tr("الشتاء", "Winter")], ["spring", "#e9a27c", () => tr("الربيع", "Spring")]],
+  stories: [["accessories", "#c4a266", () => tr("الإكسسوارات", "Accessories")], ["kids", "#e59b9b", () => tr("الأطفال", "Kids")], ["incense", "#9b6b4e", () => tr("المباخر", "Incense")]],
+};
+/** Where a scene's products and links come from. */
+const SCENE_SOURCE: Record<string, () => string> = {
+  seasons: () => tr("المنتجات من تصنيفات اسمها فيه شتاء أو ربيع أو صيف (شتوي، ربيع، صيفي…). بلاها بيطلع المشهد بصور جاهزة.", "The products come from categories named for winter, spring or summer. Without them the scene shows ready pictures."),
+  stories: () => tr("كل فصل من تصنيف: إكسسوارات، أطفال، بخور. فصل بلا تصنيف ما بيطلع.", "Each chapter comes from a category: accessories, kids, incense. A chapter without its category doesn't show."),
+  instagram: () => tr("الحساب من رابط إنستغرام بالإعدادات، والصور من أول صور المنتجات.", "The account is the Instagram link in the settings; the pictures are the first product pictures."),
+  fabric: () => tr("دراسة القماش بتطلع بعد أول قسم منتجات.", "The fabric study shows after the first products section."),
+};
+
+/**
+ * A rose scene's own settings: shown or not, its colours (the winter colour is the lilac
+ * that fills the page while the seasons show), where its products come from. Its words
+ * change by clicking them on the page.
+ */
+export function SceneSettings({ block, scene, shown, busy, onShown, onSeed }: {
+  block: string;
+  /** The opening's roseScenes.<block>. */
+  scene: Record<string, unknown> | undefined;
+  shown: boolean;
+  busy: boolean;
+  onShown: (on: boolean) => void;
+  onSeed: (part: string, hex: string | null) => void;
+}) {
+  const seeds = SCENE_SEEDS[block] ?? [];
+  return (
+    <div className="space-y-3 rounded-xl border border-white/[0.08] p-3" data-testid="studio-scene">
+      <div className="text-xs font-medium text-white/70">{tr("إعدادات المشهد", "Scene settings")}</div>
+      <label className="flex items-center justify-between gap-2 text-xs">
+        <span className="text-white/75">{tr("ظاهر بالصفحة", "Shown on the page")}</span>
+        <input type="checkbox" disabled={busy} checked={shown} onChange={(e) => onShown(e.target.checked)} data-testid="studio-scene-shown" />
+      </label>
+      {seeds.length ? (
+        <div className="space-y-1.5">
+          <div className="text-[11px] text-white/55">{tr("ألوان المشهد", "The scene's colours")}</div>
+          {seeds.map(([part, own, name]) => (
+            <SeedPick key={part} label={name()} own={own} value={(scene?.[part] as Record<string, unknown> | undefined)?.seed} busy={busy} onPick={(hex) => onSeed(part, hex)} testId={`studio-seed-${part}`} />
+          ))}
+          <p className="text-[10px] leading-4 text-white/40">
+            {block === "seasons"
+              ? tr("وقت المشهد، الصفحة وراسها بيلبسوا لون الموسم: لون الشتاء الجاهز هو الليلكي.", "While the scene shows, the page and its header wear the season's colour: the ready winter colour is the lilac.")
+              : tr("وقت المشهد، الصفحة وراسها بيلبسوا لون الفصل.", "While the scene shows, the page and its header wear the chapter's colour.")}
+          </p>
+        </div>
+      ) : null}
+      <p className="text-[11px] leading-5 text-white/45">{SCENE_SOURCE[block]?.()}</p>
+      <p className="text-[11px] leading-5 text-white/45">{tr("لتغيير أي كلمة بالمشهد: كبسة عليها بالصفحة، وبتكتبها بكل لغة.", "To change any word of the scene: click it on the page, and write it in each language.")}</p>
     </div>
   );
 }

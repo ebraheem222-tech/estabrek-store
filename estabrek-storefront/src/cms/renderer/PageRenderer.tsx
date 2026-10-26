@@ -1367,13 +1367,13 @@ function Section({
           <SectionTextScope data={d}>
             <div className={cls("relative flex h-full min-h-[260px] flex-col justify-center gap-3 p-8", justify, contentAnimClass)}>
               {wrapDecorations(
-                <h2 className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} aria-label={titleData.ariaLabel}>
+                <h2 className={cls("text-2xl font-bold", tokensClass(titleTokens), titleData.className)} style={tokensStyle(titleTokens)} data-edit="title" aria-label={titleData.ariaLabel}>
                   {titleData.content}
                 </h2>,
                 titleTokens
               )}
               {subtitleData ? wrapDecorations(
-                <p className={cls("max-w-[60ch] text-sm opacity-90", tokensClass(subtitleTokens), subtitleData.className)} style={tokensStyle(subtitleTokens)} aria-label={subtitleData.ariaLabel}>
+                <p className={cls("max-w-[60ch] text-sm opacity-90", tokensClass(subtitleTokens), subtitleData.className)} style={tokensStyle(subtitleTokens)} data-edit="subtitle" aria-label={subtitleData.ariaLabel}>
                   {subtitleData.content}
                 </p>,
                 subtitleTokens
@@ -1467,7 +1467,7 @@ function Section({
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} data-edit="title" aria-label={titleData.ariaLabel}>
                 {titleData.content}
               </h3>
             ) : null}
@@ -1542,7 +1542,7 @@ function Section({
       <section {...attrs} className={cls("rounded-3xl border p-5", color, uiSectionClass(d))} style={uiSectionStyle(d)}>
         <SectionTextScope data={d}>
           <div className={cls("flex flex-col gap-2 md:flex-row md:items-center md:justify-between", uiContainerClass(d))}>
-            <div className={cls("text-sm opacity-90", textData.className)} aria-label={textData.ariaLabel}>
+            <div className={cls("text-sm opacity-90", textData.className)} data-edit="text" aria-label={textData.ariaLabel}>
               {textData.content}
             </div>
             {linkLabel && linkHref ? (
@@ -1583,12 +1583,12 @@ function Section({
           <SectionTextScope data={d}>
             <div className={cls("flex flex-col gap-3", justify)}>
               {titleData ? (
-                <div className={cls("text-xl font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+                <div className={cls("text-xl font-semibold", titleData.className)} data-edit="title" aria-label={titleData.ariaLabel}>
                   {titleData.content}
                 </div>
               ) : null}
               {subtitleData ? (
-                <div className={cls("text-sm opacity-80", subtitleData.className)} aria-label={subtitleData.ariaLabel}>
+                <div className={cls("text-sm opacity-80", subtitleData.className)} data-edit="subtitle" aria-label={subtitleData.ariaLabel}>
                   {subtitleData.content}
                 </div>
               ) : null}
@@ -1625,7 +1625,7 @@ function Section({
         <div className={cls("mx-auto max-w-3xl", uiContainerClass(d))}>
           <SectionTextScope data={d}>
             {titleData ? (
-              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} aria-label={titleData.ariaLabel}>
+              <h3 className={cls("mb-3 text-lg font-semibold", titleData.className)} data-edit="title" aria-label={titleData.ariaLabel}>
                 {titleData.content}
               </h3>
             ) : null}
@@ -1647,13 +1647,13 @@ function Section({
                     style={tokensStyle(itemTokens)}
                   >
                     {wrapDecorations(
-                      <div className={cls("text-sm font-semibold", tokensClass(questionTokens), questionData.className)} style={tokensStyle(questionTokens)} aria-label={questionData.ariaLabel}>
+                      <div className={cls("text-sm font-semibold", tokensClass(questionTokens), questionData.className)} style={tokensStyle(questionTokens)} data-edit={it.question !== undefined ? `items.${idx}.question` : undefined} aria-label={questionData.ariaLabel}>
                         {questionData.content}
                       </div>,
                       questionTokens
                     )}
                     {wrapDecorations(
-                      <div className={cls("mt-1 text-sm opacity-80", tokensClass(answerTokens), answerData.className)} style={tokensStyle(answerTokens)} aria-label={answerData.ariaLabel}>
+                      <div className={cls("mt-1 text-sm opacity-80", tokensClass(answerTokens), answerData.className)} style={tokensStyle(answerTokens)} data-edit={it.answer !== undefined ? `items.${idx}.answer` : undefined} aria-label={answerData.ariaLabel}>
                         {answerData.content}
                       </div>,
                       answerTokens

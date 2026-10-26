@@ -29,7 +29,7 @@ import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme } from "./s
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
-import { Field, MediaSlot, PartInfo, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
+import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
@@ -1057,6 +1057,16 @@ export default function StudioPage() {
                 if (flag && heroSection) void run(tr("إخفاء", "Hide"), [{ op: "setField", sectionId: heroSection.id, lang: main, path: [flag], value: false }]);
               }}
             />
+            {heroSection ? (
+              <SceneSettings
+                block={selBlock}
+                scene={(((heroSection.data as Record<string, unknown>)?.roseScenes ?? {}) as Record<string, Record<string, unknown> | undefined>)[selBlock]}
+                shown={(heroSection.data as Record<string, unknown>)?.[BLOCK_FLAG[selBlock]] !== false}
+                busy={busy}
+                onShown={(on) => void run(on ? tr("إظهار", "Show") : tr("إخفاء", "Hide"), [{ op: "setField", sectionId: heroSection.id, lang: main, path: [BLOCK_FLAG[selBlock]], value: on }])}
+                onSeed={(part, hex) => void setField(heroSection.id, ["roseScenes", selBlock, part, "seed"], hex, main)}
+              />
+            ) : null}
             {topAt >= 0 ? (
               <button type="button" className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1]" disabled={busy} onClick={() => void run(tr("مكان تلقائي", "Automatic place"), [{ op: "placeBlock", block: selBlock as "seasons", index: null }])}>
                 {tr("رجوع لمكانه التلقائي", "Back to its automatic place")}

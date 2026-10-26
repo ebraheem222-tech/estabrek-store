@@ -129,6 +129,7 @@ export function RoseHero({
           description={subtitle}
           primary={primary}
           secondary={secondary}
+          lineColors={(data as { roseFilmColors?: string[] }).roseFilmColors}
         />
       ) : (
       <ScrollOpening subtle={data.rosePresentation?.motionIntensity === "subtle"} model={showStudy && openingStudy ? <DesignStudy language={language} embedded words={data.roseStoryWords} /> : undefined}>
