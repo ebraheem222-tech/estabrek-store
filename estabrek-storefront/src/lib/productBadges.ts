@@ -6,6 +6,7 @@ export type ProductBadge = {
   kind: ProductBadgeKind;
   ar: string;
   en: string;
+  he?: string;
   /** "limited": pieces left across all colours and sizes. */
   left?: number;
   /** "limited": also a recent arrival, so it reads "new" when the count is hidden. */
@@ -14,7 +15,7 @@ export type ProductBadge = {
 
 /** Products added within this window are labelled "new". */
 const NEW_FOR_DAYS = 30;
-const NEW: ProductBadge = { kind: "new", ar: "جديد", en: "New" };
+const NEW: ProductBadge = { kind: "new", ar: "جديد", en: "New", he: "חדש" };
 
 function isModelUrl(url?: string | null) {
   const clean = String(url ?? "").trim().toLowerCase().split("?")[0].split("#")[0];
@@ -69,7 +70,7 @@ export function getProductBadge(p: CatalogProduct, now = Date.now()): ProductBad
     }
   }
   if (counted && stock > 0 && stock <= SCARCITY_MAX) {
-    return { kind: "limited", ar: piecesLeftText(stock, true), en: piecesLeftText(stock, false), left: stock, isNew };
+    return { kind: "limited", ar: piecesLeftText(stock, "ar"), en: piecesLeftText(stock, "en"), he: piecesLeftText(stock, "he"), left: stock, isNew };
   }
   return isNew ? NEW : null;
 }

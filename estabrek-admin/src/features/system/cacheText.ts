@@ -79,6 +79,7 @@ export const MEDIA_TEXT: Record<string, string> = {
   stripMetadata: "شيل المعلومات المخفية",
   format: "الصيغة",
   quality: "الجودة",
+  cloudCutout: "شيل الخلفية بـ Cloudinary",
   defaultPreset: "النسخة التلقائية",
   autoConvert: "نسخة تلقائية بعد الرفع",
   posterSecond: "ثانية الغلاف",

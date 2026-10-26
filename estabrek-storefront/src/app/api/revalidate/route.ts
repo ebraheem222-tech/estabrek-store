@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { LANGS } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,11 @@ export async function POST(req: NextRequest) {
   const paths = asList(payload.paths ?? req.nextUrl.searchParams.getAll("path"));
 
   for (const tag of tags) revalidateTag(tag);
-  for (const path of paths) revalidatePath(path);
+  for (const path of paths) {
+    revalidatePath(path);
+    // Each language is its own page (app/[lang]/…).
+    for (const lang of LANGS) revalidatePath(`/${lang}${path === "/" ? "" : path}`);
+  }
 
   return NextResponse.json({ ok: true, tags, paths, hasSecret: !!secret });
 }

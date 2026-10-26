@@ -1,0 +1,18 @@
+node_modules/
+.next/
+.env.local
+.env.*.local
+.superpowers/
+.tmp/
+test-results/
+playwright-report/
+*.tsbuildinfo
+dist/
+estabrek-launcher/obj/
+vault-data/
+
+# Local archives and scratch output (too large / duplicates of the source)
+*.rar
+estabrek-admin/estabrek-admin.zip
+estabrek-launcher/estabrek-launcher.zip
+Claude outputs/

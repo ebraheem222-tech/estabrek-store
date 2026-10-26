@@ -5,6 +5,8 @@
 
 /* ---------------------------------------------------------------- slugs */
 
+import { money } from "./money";
+import { tr } from "@/lib/words";
 const AR_TO_LATIN: Record<string, string> = {
   "ا": "a", "أ": "a", "إ": "i", "آ": "a", "ء": "", "ؤ": "o", "ئ": "e",
   "ب": "b", "ت": "t", "ث": "th", "ج": "j", "ح": "h", "خ": "kh", "د": "d", "ذ": "th",
@@ -240,10 +242,10 @@ export function sizePresets(sizes: SizeLike[]): SizePreset[] {
   const active = sizes.filter((s) => s.active !== false);
   const pick = (test: (name: string) => boolean) => active.filter((s) => test(s.name.trim())).map((s) => s.id);
   const presets: SizePreset[] = [
-    { key: "one", label: "مقاس واحد", sizeIds: pick((n) => ONE.test(n)).slice(0, 1) },
+    { key: "one", label: tr("مقاس واحد", "One size"), sizeIds: pick((n) => ONE.test(n)).slice(0, 1) },
     { key: "letters", label: "S – XL", sizeIds: pick((n) => LETTER.test(n)) },
-    { key: "numbers", label: "مقاسات بالأرقام", sizeIds: pick((n) => /^\d{2}$/.test(n) && +n >= 30 && +n <= 60) },
-    { key: "kids", label: "أطفال (بالعمر)", sizeIds: pick((n) => (/^\d{1,2}$/.test(n) && +n <= 16) || (KIDS.test(n) && /\d/.test(n))) },
+    { key: "numbers", label: tr("مقاسات بالأرقام", "Number sizes"), sizeIds: pick((n) => /^\d{2}$/.test(n) && +n >= 30 && +n <= 60) },
+    { key: "kids", label: tr("أطفال (بالعمر)", "Kids (by age)"), sizeIds: pick((n) => (/^\d{1,2}$/.test(n) && +n <= 16) || (KIDS.test(n) && /\d/.test(n))) },
   ];
   return presets.filter((p) => p.sizeIds.length > 0);
 }
@@ -271,7 +273,7 @@ export function parsePrice(value: string): number | null {
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
 }
 
-export function formatShekel(n: number | null | undefined) {
-  if (n == null || !Number.isFinite(n)) return "—";
-  return `₪${n % 1 === 0 ? n : n.toFixed(2)}`;
+/** "₪189" in the store's currency (lib/money.ts). */
+export function formatMoney(n: number | null | undefined) {
+  return money(n);
 }

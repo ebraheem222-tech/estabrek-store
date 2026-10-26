@@ -1,7 +1,7 @@
 export function RosePresentationSettings({ value, onChange }: { value: any; onChange: (next: any) => void }) {
   const presentation = value?.rosePresentation || {};
   return <details className="rounded-xl border border-pink-300/20 bg-pink-400/5 p-4" dir="rtl">
-    <summary className="cursor-pointer text-sm font-semibold text-pink-200">استبرق — ألوان القسم والحركة</summary>
+    <summary className="cursor-pointer text-sm font-semibold text-pink-200">التصميم الوردي — ألوان القسم والحركة</summary>
     <div className="mt-4 grid gap-4 sm:grid-cols-2">
       <label className="space-y-2 text-sm"><span>لوحة ألوان القسم</span>
         <select className="block w-full rounded-lg bg-slate-900 p-2 text-white" value={presentation.palette || ""} onChange={e => onChange({ ...value, rosePresentation: { ...presentation, palette: e.target.value || undefined } })}>

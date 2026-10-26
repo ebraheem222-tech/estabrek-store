@@ -12,6 +12,9 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { listSettingsRevisions, restoreSettingsRevision, type SettingsRevisionRow } from "../../api/settings.api";
 import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
+import { storeHost } from "../../lib/storeIdentity";
+import { env } from "../../config/env";
+import { loc } from "@/lib/lang";
 
 /* ---------------------------------- Tabs ---------------------------------- */
 
@@ -102,7 +105,7 @@ export function SettingsTabBar({
           className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none focus:border-white/25"
         />
         {searching ? (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-white/55">
+          <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-white/55">
             {total ? `${total} نتيجة` : "لا نتائج"}
           </span>
         ) : null}
@@ -313,7 +316,7 @@ export function SeoCard({
                 label="عنوان الموقع في Google"
                 value={title}
                 onValueChange={(x) => onChange({ ...value, title: x })}
-                placeholder={`${siteName || "استبرق"} — حجاب وفساتين محتشمة`}
+                placeholder={`${siteName || "اسم المتجر"} — جملة قصيرة عن المتجر`}
               />
               <div className="mt-1 flex justify-between"><span className="text-xs text-white/45">الأفضل حتى 60 حرفاً</span><Counter n={title.length} max={60} /></div>
             </div>
@@ -337,7 +340,7 @@ export function SeoCard({
           </div>
           <div className="space-y-2">
             <div className="text-xs text-white/60">هكذا تظهر الصفحة الرئيسية في Google:</div>
-            <GooglePreview title={title || siteName} description={description} url="estabrek-store.vercel.app" />
+            <GooglePreview title={title || siteName} description={description} url={storeHost(env.VITE_STOREFRONT_BASE_URL)} />
             <div className="text-xs leading-6 text-white/50">
               لكل منتج عنوان ووصف خاص من صفحة المنتج (قسم «محركات البحث»). إذا تُركا فارغين يُستعمل اسم المنتج ووصفه.
             </div>
@@ -402,6 +405,10 @@ const KEY_LABELS: Record<string, string> = {
   "header.storefront": "إعدادات الواجهة",
   "header.cmsNav": "القائمة",
   "header.delivery": "أسعار التوصيل",
+  "header.scarcity": "«باقي قطعتان» بالمتجر",
+  "header.identity": "هوية المتجر",
+  "header.languages": "لغات المتجر",
+  currencyCode: "العملة",
   "header.theme": "الثيم القديم",
   "header.ui": "الواجهة القديمة",
   "header.topbar": "الشريط القديم",
@@ -419,7 +426,7 @@ function when(iso: string) {
   if (mins < 1) return "الآن";
   if (mins < 60) return `قبل ${mins} دقيقة`;
   if (mins < 24 * 60) return `قبل ${Math.round(mins / 60)} ساعة`;
-  return d.toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString(loc("ar"), { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function SettingsHistoryCard({ onRestored }: { onRestored?: () => void }) {
@@ -480,7 +487,7 @@ export function SettingsHistoryCard({ onRestored }: { onRestored?: () => void })
         cancelText="إلغاء"
         variant="warning"
         isLoading={restore.isPending}
-        onConfirm={() => confirm && restore.mutate(confirm.id)}
+        onConfirm={() => { if (confirm) restore.mutate(confirm.id); }}
         onCancel={() => setConfirm(null)}
       />
     </Card>

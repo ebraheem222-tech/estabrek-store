@@ -1,6 +1,12 @@
 // src/lib/orders.ts
-// Everything the orders screens share: Arabic status names, the usual next step,
-// WhatsApp links and ready messages, delivery fees by city, and order money maths.
+// Everything the orders screens share: status names, the usual next step,
+// WhatsApp links and ready messages (in the order's language), delivery fees by
+// city, and order money maths.
+
+import { money } from "./money";
+import type { Audience } from "./storeIdentity";
+import { adminLang, isLang, loc, type Lang } from "@/lib/lang";
+import { tr } from "@/lib/words";
 
 export type OrderStatus = "NEW" | "CONTACTED" | "ACCEPTED" | "REJECTED" | "SHIPPED" | "CLOSED" | "CANCELED" | "REFUNDED";
 
@@ -8,14 +14,14 @@ export const ORDER_STATUSES: OrderStatus[] = ["NEW", "CONTACTED", "ACCEPTED", "S
 
 /** What each status means for this shop (WhatsApp + cash on delivery). */
 export const STATUS_INFO: Record<OrderStatus, { label: string; hint: string; tone: "new" | "work" | "ok" | "ship" | "done" | "bad" | "muted" }> = {
-  NEW: { label: "جديد", hint: "وصل الطلب ولم نتواصل بعد", tone: "new" },
-  CONTACTED: { label: "تم التواصل", hint: "تواصلنا مع الزبونة وننتظر التأكيد", tone: "work" },
-  ACCEPTED: { label: "مؤكَّد", hint: "تأكد الطلب — تُخصم الكمية من المخزون", tone: "ok" },
-  SHIPPED: { label: "خرج للتوصيل", hint: "الطلب مع شركة التوصيل", tone: "ship" },
-  CLOSED: { label: "تم التسليم", hint: "وصل الطلب للزبونة", tone: "done" },
-  REJECTED: { label: "مرفوض", hint: "لم نقبل الطلب", tone: "bad" },
-  CANCELED: { label: "ملغي", hint: "ألغت الزبونة أو ألغينا الطلب — ترجع الكمية للمخزون", tone: "bad" },
-  REFUNDED: { label: "مسترجع", hint: "رجعت القطعة ورجع المبلغ — ترجع الكمية للمخزون", tone: "muted" },
+  NEW: { label: tr("جديد", "New"), hint: tr("وصل الطلب ولم نتواصل بعد", "The order came in; no contact yet"), tone: "new" },
+  CONTACTED: { label: tr("تم التواصل", "Contacted"), hint: tr("تواصلنا مع الزبون وننتظر التأكيد", "We contacted the customer and are waiting to confirm"), tone: "work" },
+  ACCEPTED: { label: tr("مؤكَّد", "Confirmed"), hint: tr("تأكد الطلب — تُخصم الكمية من المخزون", "The order is confirmed — the quantity comes off stock"), tone: "ok" },
+  SHIPPED: { label: tr("خرج للتوصيل", "Out for delivery"), hint: tr("الطلب مع شركة التوصيل", "The order is with the delivery company"), tone: "ship" },
+  CLOSED: { label: tr("تم التسليم", "Delivered"), hint: tr("وصل الطلب للزبون", "The customer received the order"), tone: "done" },
+  REJECTED: { label: tr("مرفوض", "Rejected"), hint: tr("لم نقبل الطلب", "We didn't accept the order"), tone: "bad" },
+  CANCELED: { label: tr("ملغي", "Cancelled"), hint: tr("ألغى الزبون أو ألغينا الطلب — ترجع الكمية للمخزون", "The customer or we cancelled the order — the quantity goes back to stock"), tone: "bad" },
+  REFUNDED: { label: tr("مسترجع", "Refunded"), hint: tr("رجعت القطعة ورجع المبلغ — ترجع الكمية للمخزون", "The item came back and the money was returned — the quantity goes back to stock"), tone: "muted" },
 };
 
 export const TONE_CLASS: Record<(typeof STATUS_INFO)[OrderStatus]["tone"], string> = {
@@ -44,25 +50,25 @@ export function nextStep(s?: string | null): OrderStatus | null {
 }
 
 export const NEXT_STEP_LABEL: Partial<Record<OrderStatus, string>> = {
-  CONTACTED: "تواصلت معها",
-  ACCEPTED: "تأكيد الطلب",
-  SHIPPED: "خرج للتوصيل",
-  CLOSED: "تم التسليم",
+  CONTACTED: tr("تم التواصل", "Contacted"),
+  ACCEPTED: tr("تأكيد الطلب", "Confirm order"),
+  SHIPPED: tr("خرج للتوصيل", "Out for delivery"),
+  CLOSED: tr("تم التسليم", "Delivered"),
 };
 
 export const SOURCE_LABEL: Record<string, string> = {
-  WHATSAPP_CART: "واتساب",
-  DIRECT_CART: "طلب مباشر",
-  EMAIL_CART: "إيميل",
-  STRIPE: "بطاقة",
+  WHATSAPP_CART: tr("واتساب", "WhatsApp"),
+  DIRECT_CART: tr("طلب مباشر", "Direct order"),
+  EMAIL_CART: tr("إيميل", "Email"),
+  STRIPE: tr("بطاقة", "Card"),
   PAYPAL: "PayPal",
-  MANUAL: "يدوي",
-  RAZAN_HELP: "بمساعدة رزان 🌸",
+  MANUAL: tr("يدوي", "Manual"),
+  RAZAN_HELP: tr("بمساعدة رزان 🌸", "With Razan's help 🌸"),
 };
 
 export function sourceLabel(s?: string | null) {
-  if (!s) return "المتجر";
-  return SOURCE_LABEL[s] ?? (s === "test" ? "تجربة" : s);
+  if (!s) return tr("المتجر", "The store");
+  return SOURCE_LABEL[s] ?? (s === "test" ? tr("تجربة", "Test") : s);
 }
 
 export function isPaid(o: { paymentStatus?: string | null }) {
@@ -76,9 +82,9 @@ export const num = (v: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-export function shekel(v: unknown) {
-  const n = num(v);
-  return `₪${Number.isInteger(n) ? n : n.toFixed(2)}`;
+/** "₪189" in the store's currency (lib/money.ts). */
+export function moneyText(v: unknown) {
+  return money(num(v));
 }
 
 export type OrderLike = {
@@ -100,6 +106,8 @@ export type OrderLike = {
   paymentStatus?: string | null;
   paymentProvider?: string | null;
   createdAt: string;
+  /** The language the shopper ordered in (ar/en/he); old orders have none. */
+  locale?: string | null;
   items?: Array<{ productTitle: string; quantity: number; unitPrice?: number | string; lineSubtotal?: number | string; lineTotal?: number | string; colorName?: string | null; sizeName?: string | null; imageUrl?: string | null; sku?: string | null }>;
   variant?: { item?: { colorName?: string | null; product?: { title?: string } | null; images?: Array<{ url: string }> } | null; size?: { name?: string } | null; sku?: string } | null;
 };
@@ -108,7 +116,7 @@ export type OrderLike = {
 export function orderLines(o: OrderLike) {
   if (o.items?.length) return o.items;
   return [{
-    productTitle: o.variant?.item?.product?.title ?? "قطعة",
+    productTitle: o.variant?.item?.product?.title ?? tr("قطعة", "Item"),
     quantity: o.quantity ?? 1,
     unitPrice: o.unitPrice ?? undefined,
     lineSubtotal: o.subtotal ?? undefined,
@@ -198,12 +206,12 @@ export function waLink(phone: string | null | undefined, text?: string) {
 export type MessageKind = "confirm" | "contacted" | "accepted" | "shipped" | "delivered" | "unavailable" | "canceled" | "thanks";
 
 export const MESSAGE_KINDS: Array<{ kind: MessageKind; label: string }> = [
-  { kind: "confirm", label: "تأكيد الطلب" },
-  { kind: "accepted", label: "الطلب مؤكد" },
-  { kind: "shipped", label: "خرج للتوصيل" },
-  { kind: "delivered", label: "شكراً بعد التسليم" },
-  { kind: "unavailable", label: "قطعة غير متوفرة" },
-  { kind: "canceled", label: "إلغاء الطلب" },
+  { kind: "confirm", label: tr("تأكيد الطلب", "Confirm order") },
+  { kind: "accepted", label: tr("الطلب مؤكد", "Order confirmed") },
+  { kind: "shipped", label: tr("خرج للتوصيل", "Out for delivery") },
+  { kind: "delivered", label: tr("شكراً بعد التسليم", "Thanks after delivery") },
+  { kind: "unavailable", label: tr("قطعة غير متوفرة", "Item not available") },
+  { kind: "canceled", label: tr("إلغاء الطلب", "Cancel order") },
 ];
 
 /** The message that fits the order's current status. */
@@ -220,34 +228,105 @@ export function messageForStatus(s?: string | null): MessageKind {
   }
 }
 
-export function buildMessage(kind: MessageKind, o: OrderLike, opts: { storeName?: string; deliveryFee?: number | null } = {}) {
-  const store = opts.storeName || "استبرق";
+/** The language a message to this shopper is written in: the one they ordered in. */
+export function messageLang(o: { locale?: string | null }): Lang {
+  return isLang(o.locale) ? o.locale : adminLang();
+}
+
+/**
+ * The WhatsApp message for an order, from the store (its name) in its voice and in the
+ * shopper's language: in Arabic a shop for women speaks to her («طلبكِ»), any other to
+ * everyone («طلبك»). Admin → هوية المتجر.
+ */
+export function buildMessage(kind: MessageKind, o: OrderLike, opts: { storeName?: string; deliveryFee?: number | null; audience?: Audience; lang?: Lang } = {}) {
+  const lang = opts.lang ?? messageLang(o);
+  if (lang !== "ar") return buildMessageIn(lang, kind, o, opts);
+  const store = opts.storeName || "المتجر";
+  const her = (opts.audience ?? "women") === "women";
+  const v = (women: string, others: string) => (her ? women : others);
   const name = o.customerName?.trim().split(/\s+/)[0] || "";
-  const hi = name ? `أهلاً ${name} 🌸` : "أهلاً 🌸";
+  const hi = name ? `أهلاً ${name} ${v("🌸", "👋")}` : `أهلاً ${v("🌸", "👋")}`;
   const no = `#${shortOrderId(o.id)}`;
   const lines = orderLines(o).map((l) => `• ${l.productTitle}${[l.colorName, l.sizeName && `مقاس ${l.sizeName}`].filter(Boolean).length ? ` (${[l.colorName, l.sizeName && `مقاس ${l.sizeName}`].filter(Boolean).join("، ")})` : ""} × ${l.quantity}`);
   const total = orderTotal(o);
   const fee = opts.deliveryFee ?? null;
   const money = fee != null && fee > 0
-    ? `المجموع: ${shekel(total)} + توصيل ${shekel(fee)} = ${shekel(total + fee)}`
-    : fee === 0 ? `المجموع: ${shekel(total)} (التوصيل مجاني)` : `المجموع: ${shekel(total)}`;
+    ? `المجموع: ${moneyText(total)} + توصيل ${moneyText(fee)} = ${moneyText(total + fee)}`
+    : fee === 0 ? `المجموع: ${moneyText(total)} (التوصيل مجاني)` : `المجموع: ${moneyText(total)}`;
   const where = [o.city, o.address].filter(Boolean).join("، ");
   switch (kind) {
     case "confirm":
-      return [hi, `وصلنا طلبكِ رقم ${no} من ${store}:`, ...lines, money, where ? `التوصيل إلى: ${where}` : "نحتاج عنوان التوصيل بالتفصيل لو سمحتِ.", "", "نأكد الطلب؟ ✅"].join("\n");
+      return [hi, `وصلنا ${v("طلبكِ", "طلبك")} رقم ${no} من ${store}:`, ...lines, money, where ? `التوصيل إلى: ${where}` : v("نحتاج عنوان التوصيل بالتفصيل لو سمحتِ.", "نحتاج عنوان التوصيل بالتفصيل لو سمحت."), "", "نأكد الطلب؟ ✅"].join("\n");
     case "contacted":
     case "accepted":
-      return [hi, `تم تأكيد طلبكِ ${no} ✨`, money, "الدفع عند الاستلام. نبلغكِ عند خروج الطلب للتوصيل."].join("\n");
+      return [hi, `تم تأكيد ${v("طلبكِ", "طلبك")} ${no} ✨`, money, v("الدفع عند الاستلام. نبلغكِ عند خروج الطلب للتوصيل.", "الدفع عند الاستلام. نبلغك عند خروج الطلب للتوصيل.")].join("\n");
     case "shipped":
-      return [hi, `طلبكِ ${no} خرج للتوصيل 🚚`, fee != null ? `المبلغ عند الاستلام: ${shekel(total + (fee ?? 0))}` : `المبلغ عند الاستلام: ${shekel(total)}`, "إذا في أي سؤال نحن هنا."].join("\n");
+      return [hi, `${v("طلبكِ", "طلبك")} ${no} خرج للتوصيل 🚚`, fee != null ? `المبلغ عند الاستلام: ${moneyText(total + (fee ?? 0))}` : `المبلغ عند الاستلام: ${moneyText(total)}`, "إذا في أي سؤال نحن هنا."].join("\n");
     case "delivered":
-      return [hi, `شكراً لثقتكِ بـ${store} 💗 نتمنى تكون القطعة عجبتكِ.`, "يسعدنا نشوف صورتكِ فيها أو رأيكِ."].join("\n");
+      return her
+        ? [hi, `شكراً لثقتكِ بـ${store} 💗 نتمنى تكون القطعة عجبتكِ.`, "يسعدنا نشوف صورتكِ فيها أو رأيكِ."].join("\n")
+        : [hi, `شكراً لثقتك بـ${store} 💙 نتمنى يكون الطلب عجبك.`, "يسعدنا نسمع رأيك."].join("\n");
     case "unavailable":
-      return [hi, `بخصوص طلبكِ ${no}: للأسف إحدى القطع غير متوفرة حالياً بهذا اللون/المقاس.`, "بتحبي نقترح عليكِ بديل قريب؟"].join("\n");
+      return her
+        ? [hi, `بخصوص طلبكِ ${no}: للأسف إحدى القطع غير متوفرة حالياً بهذا اللون/المقاس.`, "بتحبي نقترح عليكِ بديل قريب؟"].join("\n")
+        : [hi, `بخصوص طلبك ${no}: للأسف أحد المنتجات غير متوفر حالياً بهذا الخيار.`, "بتحب نقترح عليك بديل قريب؟"].join("\n");
     case "canceled":
-      return [hi, `تم إلغاء طلبكِ ${no}. إذا حابة نرجع نرتبه بأي وقت، احكيلنا 🌸`].join("\n");
+      return [hi, v(`تم إلغاء طلبكِ ${no}. إذا حابة نرجع نرتبه بأي وقت، احكيلنا 🌸`, `تم إلغاء طلبك ${no}. إذا حابب نرجع نرتبه بأي وقت، احكيلنا.`)].join("\n");
     default:
-      return [hi, `شكراً لطلبكِ من ${store} 💗`].join("\n");
+      return [hi, v(`شكراً لطلبكِ من ${store} 💗`, `شكراً لطلبك من ${store} 💙`)].join("\n");
+  }
+}
+
+/** The same messages in English and Hebrew (Hebrew kept neutral: no he/she forms). */
+function buildMessageIn(lang: "en" | "he", kind: MessageKind, o: OrderLike, opts: { storeName?: string; deliveryFee?: number | null; audience?: Audience }) {
+  const en = lang === "en";
+  const store = opts.storeName || (en ? "the store" : "החנות");
+  const her = (opts.audience ?? "women") === "women";
+  const name = o.customerName?.trim().split(/\s+/)[0] || "";
+  const hi = `${en ? "Hi" : "היי"}${name ? ` ${name}` : ""} ${her ? "🌸" : "👋"}`;
+  const no = `#${shortOrderId(o.id)}`;
+  const lines = orderLines(o).map((l) => {
+    const opts2 = [l.colorName, l.sizeName && `${en ? "size" : "מידה"} ${l.sizeName}`].filter(Boolean);
+    return `• ${l.productTitle}${opts2.length ? ` (${opts2.join(", ")})` : ""} × ${l.quantity}`;
+  });
+  const total = orderTotal(o);
+  const fee = opts.deliveryFee ?? null;
+  const sum = en ? "Total" : "סה״כ";
+  const money = fee != null && fee > 0
+    ? `${sum}: ${moneyText(total)} + ${en ? "delivery" : "משלוח"} ${moneyText(fee)} = ${moneyText(total + fee)}`
+    : fee === 0 ? `${sum}: ${moneyText(total)} (${en ? "free delivery" : "משלוח חינם"})` : `${sum}: ${moneyText(total)}`;
+  const where = [o.city, o.address].filter(Boolean).join(", ");
+  const heart = her ? "💗" : "💙";
+  switch (kind) {
+    case "confirm":
+      return en
+        ? [hi, `We received your order ${no} from ${store}:`, ...lines, money, where ? `Delivery to: ${where}` : "We need your full delivery address, please.", "", "Shall we confirm the order? ✅"].join("\n")
+        : [hi, `קיבלנו את ההזמנה שלך ${no} מ${store}:`, ...lines, money, where ? `משלוח אל: ${where}` : "נשמח לכתובת מלאה למשלוח, בבקשה.", "", "לאשר את ההזמנה? ✅"].join("\n");
+    case "contacted":
+    case "accepted":
+      return en
+        ? [hi, `Your order ${no} is confirmed ✨`, money, "Payment on delivery. We'll let you know when it's out for delivery."].join("\n")
+        : [hi, `ההזמנה שלך ${no} אושרה ✨`, money, "התשלום במסירה. נעדכן כשההזמנה יוצאת למשלוח."].join("\n");
+    case "shipped": {
+      const due = moneyText(total + (fee ?? 0));
+      return en
+        ? [hi, `Your order ${no} is out for delivery 🚚`, `Amount due on delivery: ${due}`, "Any questions, we're here."].join("\n")
+        : [hi, `ההזמנה שלך ${no} יצאה למשלוח 🚚`, `לתשלום במסירה: ${due}`, "לכל שאלה, אנחנו כאן."].join("\n");
+    }
+    case "delivered":
+      return en
+        ? [hi, `Thank you for trusting ${store} ${heart} We hope you love it.`, her ? "We'd love to see a photo or hear what you think." : "We'd love to hear what you think."].join("\n")
+        : [hi, `תודה על האמון ב${store} ${heart} מקווים שההזמנה מצאה חן.`, her ? "נשמח לראות תמונה או לשמוע מה דעתך." : "נשמח לשמוע מה דעתך."].join("\n");
+    case "unavailable":
+      return en
+        ? [hi, `About your order ${no}: unfortunately one of the items isn't available right now in this option.`, "Would you like us to suggest a close alternative?"].join("\n")
+        : [hi, `לגבי ההזמנה שלך ${no}: לצערנו אחד הפריטים לא זמין כרגע באפשרות הזאת.`, "נציע חלופה דומה?"].join("\n");
+    case "canceled":
+      return en
+        ? [hi, `Your order ${no} has been cancelled. If you'd like to arrange it again any time, just tell us${her ? " 🌸" : "."}`].join("\n")
+        : [hi, `ההזמנה שלך ${no} בוטלה. אם רוצים לסדר אותה שוב בכל זמן, אפשר לכתוב לנו${her ? " 🌸" : "."}`].join("\n");
+    default:
+      return [hi, en ? `Thank you for your order from ${store} ${heart}` : `תודה על ההזמנה מ${store} ${heart}`].join("\n");
   }
 }
 
@@ -255,18 +334,18 @@ export function buildMessage(kind: MessageKind, o: OrderLike, opts: { storeName?
 
 export function timeAgo(iso: string, now = Date.now()) {
   const m = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
-  if (m < 1) return "الآن";
-  if (m < 60) return m === 1 ? "قبل دقيقة" : m === 2 ? "قبل دقيقتين" : m <= 10 ? `قبل ${m} دقائق` : `قبل ${m} دقيقة`;
+  if (m < 1) return tr("الآن", "just now");
+  if (m < 60) return m === 1 ? tr("قبل دقيقة", "1 minute ago") : m === 2 ? tr("قبل دقيقتين", "2 minutes ago") : tr(m <= 10 ? `قبل ${m} دقائق` : `قبل ${m} دقيقة`, "{0} minutes ago", [m]);
   const h = Math.round(m / 60);
-  if (h < 24) return h === 1 ? "قبل ساعة" : h === 2 ? "قبل ساعتين" : h <= 10 ? `قبل ${h} ساعات` : `قبل ${h} ساعة`;
+  if (h < 24) return h === 1 ? tr("قبل ساعة", "1 hour ago") : h === 2 ? tr("قبل ساعتين", "2 hours ago") : tr(h <= 10 ? `قبل ${h} ساعات` : `قبل ${h} ساعة`, "{0} hours ago", [h]);
   const d = Math.round(h / 24);
-  if (d < 30) return d === 1 ? "أمس" : d === 2 ? "قبل يومين" : d <= 10 ? `قبل ${d} أيام` : `قبل ${d} يوماً`;
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "medium", timeZone: "Asia/Jerusalem" }).format(new Date(iso));
+  if (d < 30) return d === 1 ? tr("أمس", "yesterday") : d === 2 ? tr("قبل يومين", "2 days ago") : tr(d <= 10 ? `قبل ${d} أيام` : `قبل ${d} يوماً`, "{0} days ago", [d]);
+  return new Intl.DateTimeFormat(loc("ar-EG-u-nu-latn"), { dateStyle: "medium", timeZone: "Asia/Jerusalem" }).format(new Date(iso));
 }
 
 export function dateTime(iso?: string | null) {
   if (!iso) return "";
-  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jerusalem" }).format(new Date(iso));
+  return new Intl.DateTimeFormat(loc("ar-EG-u-nu-latn"), { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jerusalem" }).format(new Date(iso));
 }
 
 /** Start of a day in Israel time, as an ISO string the API understands. */

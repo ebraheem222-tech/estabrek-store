@@ -5,9 +5,12 @@ import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
 
+import { z } from "zod";
+
 import { prisma } from "../../lib/prisma.js";
 import { scanFile } from "../../lib/antivirus.js";
-import { deleteFromCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
+import { deleteFromCloudinary, getCloudinary, isCloudinaryEnabled, uploadImageToCloudinary } from "../../lib/cloudinary.js";
+import { CUTOUT_TRANSFORMATIONS, cutoutUrl, fetchCutout, publicIdFromUrl } from "../../lib/cloudCutout.js";
 import { createBlurDataUrlFromFile } from "../../lib/lqip.js";
 import { computeDhashHex, hammingHex } from "../../lib/imageHash.js";
 import { findDuplicateMediaAsset } from "../../lib/mediaDedup.js";
@@ -128,7 +131,9 @@ export async function optimizeImageInPlace(filePath: string, settings: MediaSett
 
     const max = settings.maxDimension > 0 ? settings.maxDimension : isCloud ? 4000 : 2000;
     const needsResize = !!(meta.width && meta.height && (meta.width > max || meta.height > max));
-    const target = settings.format === "keep" ? ext : settings.format === "jpeg" ? ".jpg" : `.${settings.format}`;
+    let target = settings.format === "keep" ? ext : settings.format === "jpeg" ? ".jpg" : `.${settings.format}`;
+    // JPEG has no transparency: a picture that uses it (a cut-out) keeps its own format.
+    if (target === ".jpg" && meta.hasAlpha && !(await sharp(filePath, { failOnError: false }).stats()).isOpaque) target = ext;
     const changesFormat = target !== ext && !(target === ".jpg" && ext === ".jpeg");
     // Hidden data only matters when there is some (EXIF, XMP, IPTC: camera and GPS position).
     const hasHiddenData = !!(meta.exif || meta.xmp || meta.iptc);
@@ -898,7 +903,9 @@ r.post("/images", (req, res) => {
 
       const folder = (req.body?.folder ? String(req.body.folder).trim() : "") || null;
       const tags = parseTags(req.body?.tags);
-      const result = await ingestImages(req, files, { folder, tags });
+      // A picture made from another (a cut-out) stays a new item even when it looks like one we have.
+      const keepAsNew = String(req.body?.keepAsNew ?? "") === "1";
+      const result = await ingestImages(req, files, { folder, tags, keepAsNew });
       if ("error" in result) return res.status(result.status).json({ error: result.error, message: result.message });
       return res.status(201).json({ files: result.files });
     } catch (e: any) {
@@ -915,7 +922,7 @@ type IngestResult = { files: any[] } | { error: string; status: number; message:
  * size check, virus scan, the admin's image settings, blur preview, duplicate check,
  * then Cloudinary or the disk, and a MediaAsset each.
  */
-export async function ingestImages(req: any, files: IngestFile[], opts: { folder: string | null; tags: string[] }): Promise<IngestResult> {
+export async function ingestImages(req: any, files: IngestFile[], opts: { folder: string | null; tags: string[]; keepAsNew?: boolean }): Promise<IngestResult> {
   const { folder, tags } = opts;
   const limits = mediaSettings().images;
   const tooBig = files.find((file) => file.size > limits.maxUploadMb * 1024 * 1024);
@@ -971,7 +978,7 @@ export async function ingestImages(req: any, files: IngestFile[], opts: { folder
   for (const { file, opt, blurDataUrl, imageHash } of processed) {
     const fullPath = path.join(IMAGES_DIR, file.filename);
 
-    if (imageHash) {
+    if (imageHash && !opts.keepAsNew) {
       const cached = dedupCache.get(imageHash);
       if (cached) {
         await fs.unlink(fullPath).catch(() => undefined);
@@ -1073,5 +1080,47 @@ export async function ingestImages(req: any, files: IngestFile[], opts: { folder
 
   return { files: out };
 }
+
+/* ---------------- «شيل الخلفية» with Cloudinary ---------------- */
+// The free engine runs in the admin's browser; this one is paid per picture (Cloudinary
+// counts 75 transformations), so it works only when switched on in the upload settings.
+// The admin gets the PNG, fixes it up and saves it as a new picture (POST /images).
+
+// GET /admin/uploads/background-removal → may the admin offer Cloudinary?
+r.get("/background-removal", (_req, res) => {
+  res.json({ cloudinary: { on: mediaSettings().images.cloudCutout, ready: isCloudinaryEnabled(), transformations: CUTOUT_TRANSFORMATIONS } });
+});
+
+const CutoutBody = z
+  .object({
+    url: z.string().trim().max(2000).optional(),
+    assetId: z.string().trim().min(1).max(100).optional(),
+    fineEdges: z.boolean().optional(),
+  })
+  .refine((b) => Boolean(b.url || b.assetId), { message: "url or assetId" });
+
+// POST /admin/uploads/background-removal { url | assetId, fineEdges? } → image/png
+r.post("/background-removal", async (req, res) => {
+  const body = CutoutBody.safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: "BAD_REQUEST", message: "Send the picture's url or assetId" });
+  if (!mediaSettings().images.cloudCutout) {
+    return res.status(409).json({ error: "CLOUD_CUTOUT_OFF", message: "Removing backgrounds with Cloudinary is switched off in the upload settings" });
+  }
+  const cld = getCloudinary();
+  if (!cld) return res.status(409).json({ error: "CLOUDINARY_NOT_CONFIGURED", message: "This store has no Cloudinary account" });
+
+  let publicId: string | null = null;
+  if (body.data.assetId) {
+    const asset = await prisma.mediaAsset.findUnique({ where: { id: body.data.assetId }, select: { provider: true, providerId: true } });
+    publicId = asset?.provider === "CLOUDINARY" ? asset.providerId : null;
+  } else publicId = publicIdFromUrl(body.data.url!, process.env.CLOUDINARY_CLOUD_NAME);
+  if (!publicId) return res.status(400).json({ error: "NOT_ON_CLOUDINARY", message: "The picture is not stored on this store's Cloudinary" });
+
+  const out = await fetchCutout(cutoutUrl(cld, publicId, body.data.fineEdges));
+  if (!out.ok) return res.status(out.status).json({ error: out.error, message: out.message });
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-store");
+  return res.send(out.png);
+});
 
 export default r;

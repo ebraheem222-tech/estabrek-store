@@ -62,7 +62,7 @@ export default function SystemSecurityPage() {
 
   if (q.isLoading || !draft || !q.data) {
     return (
-      <div dir="rtl" className={box}>
+      <div className={box}>
         {q.isError ? (
           <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div>
         ) : (
@@ -88,7 +88,7 @@ export default function SystemSecurityPage() {
   });
 
   return (
-    <div dir="rtl" className="space-y-4 pb-24" data-testid="system-security">
+    <div className="space-y-4 pb-24" data-testid="system-security">
       <div className={box}>
         <h1 className="text-lg font-semibold">حماية السيرفر</h1>
         <p className="mt-1 text-sm text-white/60">
@@ -267,7 +267,7 @@ export default function SystemSecurityPage() {
       </div>
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:right-72" data-testid="security-save-bar">
+        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:start-72" data-testid="security-save-bar">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[var(--surface,#fff)] p-3 shadow-xl">
             <span className="text-sm">
               {bad.length ? (

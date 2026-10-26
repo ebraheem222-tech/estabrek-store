@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { apiBaseClient } from "@/lib/apiClient";
 import type { CatalogFilters } from "@/lib/filtersUrl";
 import { useLanguage } from "./cinematic/Language";
+import { localizeFacets } from "@/lib/localize";
 
-export type AttributeFacet = { key: string; label: string; kind: string; options: Array<{ value: string; count: number }> };
+export type AttributeFacet = { key: string; label: string; kind: string; options: Array<{ value: string; count: number; label?: string }>; translations?: Record<string, { label?: string; options?: Record<string, string> }> };
 
 const cache = new Map<string, AttributeFacet[]>();
 
@@ -13,7 +14,7 @@ const cache = new Map<string, AttributeFacet[]>();
  * e.g. القماش or المناسبة, with how many pieces have each value.
  */
 export function AttributeFilters({ filters, onChange, appearance = "default" }: { filters: CatalogFilters; onChange: (next: CatalogFilters) => void; appearance?: "rose" | "default" }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
   const scope = filters.categoryId ?? "";
   const [facets, setFacets] = useState<AttributeFacet[]>(() => cache.get(scope) ?? []);
 
@@ -39,6 +40,8 @@ export function AttributeFilters({ filters, onChange, appearance = "default" }: 
   }, [scope]);
 
   if (!facets.length) return null;
+  // The filter's name and choices in the page's language (values stay the same in the address).
+  const shown = localizeFacets(facets, lang);
   const selected = filters.attrs ?? {};
   const toggle = (key: string, value: string) => {
     const cur = selected[key] ?? [];
@@ -47,11 +50,11 @@ export function AttributeFilters({ filters, onChange, appearance = "default" }: 
     if (!nextVals.length) delete attrs[key];
     onChange({ ...filters, attrs: Object.keys(attrs).length ? attrs : undefined, page: undefined });
   };
-  const show = (f: AttributeFacet, v: string) => (f.kind === "boolean" ? (v === "true" ? (ar ? "نعم" : "Yes") : ar ? "لا" : "No") : v);
+  const show = (f: AttributeFacet, v: string) => f.options.find((o) => o.value === v)?.label ?? v;
 
   return (
     <div className={appearance === "rose" ? "rose-attr-filters" : "attr-filters"} data-testid="attribute-filters">
-      {facets.map((f) => (
+      {shown.map((f) => (
         <div key={f.key} className="rose-attr-group" role="group" aria-label={f.label}>
           <span className="rose-attr-label">{f.label}</span>
           <div className="rose-attr-options">

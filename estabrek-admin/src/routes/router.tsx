@@ -72,22 +72,27 @@ const ChatbotPage = lazy(() => import("../features/chatbot/ChatbotPage"));
 const NavPage = lazy(() => import("../features/nav/NavPage"));
 const MediaCenterPage = lazy(() => import("../features/media/MediaCenterPage"));
 const VideosPage = lazy(() => import("../features/media/VideosPage"));
+const ScanPage = lazy(() => import("../features/scan3d/ScanPage"));
+const PlainSpinPage = lazy(() => import("../features/scan3d/PlainSpinPage"));
 
 const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
 const PageEditorPage = lazy(() => import("../features/pages/PageEditorPage"));
 const PagePreviewPage = lazy(() => import("../features/pages/PagePreviewPage"));
+const StudioPage = lazy(() => import("../studio/StudioPage"));
+const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
 
 const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
 const CommentsPage = lazy(() => import("../features/ugc/CommentsPage"));
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { tr } from "@/lib/words";
 
 function NotFound() {
   return (
-    <div dir="rtl" className="min-h-screen flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div className="text-xl font-semibold">الصفحة غير موجودة</div>
+        <div className="text-xl font-semibold">{tr("الصفحة غير موجودة", "Page not found")}</div>
         <a className="mt-4 inline-flex rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/15" href="/admin/dashboard">
-          رجوع للوحة التحكم
+          {tr("رجوع للوحة الإدارة", "Back to the admin")}
         </a>
       </div>
     </div>
@@ -151,7 +156,7 @@ export default function AppRouter() {
         <Route
           path="/print/orders"
           element={withPermissions(
-            <React.Suspense fallback={<div dir="rtl" style={{ padding: 24 }}>جارٍ التحميل…</div>}>
+            <React.Suspense fallback={<div style={{ padding: 24 }}>{tr("جارٍ التحميل…", "Loading…")}</div>}>
               <OrderPrintPage />
             </React.Suspense>,
             ["orders:read"],
@@ -162,10 +167,21 @@ export default function AppRouter() {
         <Route
           path="/print/labels"
           element={withPermissions(
-            <React.Suspense fallback={<div dir="rtl" style={{ padding: 24 }}>جارٍ التحميل…</div>}>
+            <React.Suspense fallback={<div style={{ padding: 24 }}>{tr("جارٍ التحميل…", "Loading…")}</div>}>
               <LabelsPrintPage />
             </React.Suspense>,
             ["inventory:read"],
+          )}
+        />
+
+        {/* The new page editor, full screen (no admin chrome) */}
+        <Route
+          path="/studio/:id"
+          element={withPermissions(
+            <React.Suspense fallback={<div style={{ padding: 24 }}>{tr("جارٍ التحميل…", "Loading…")}</div>}>
+              <StudioPage />
+            </React.Suspense>,
+            ["pages:read"],
           )}
         />
 
@@ -222,6 +238,7 @@ export default function AppRouter() {
           
               <Route path="discounts/coupons/test" element={withPermissions(<CouponTesterPage />, ["discounts:write"])} />{/* settings */}
           <Route path="settings" element={withPermissions(<SettingsPage />, ["settings:read"])} />
+          <Route path="themes" element={withPermissions(<ThemesPage />, ["settings:read"])} />
           <Route path="features" element={withPermissions(<FeaturesPage />, ["settings:read"])} />
           <Route path="razan" element={withPermissions(<RazanPage />, ["settings:read"])} />
           <Route path="quiz" element={withPermissions(<QuizPage />, ["settings:read"])} />
@@ -229,6 +246,8 @@ export default function AppRouter() {
           <Route path="chatbot" element={withPermissions(<ChatbotPage />, ["chatbot:read"])} />
           <Route path="media" element={withPermissions(<MediaCenterPage />, ["media:read"])} />
           <Route path="media/videos" element={withPermissions(<VideosPage />, ["media:read"])} />
+          <Route path="media/scan" element={withPermissions(<ScanPage />, ["media:read"])} />
+          <Route path="media/spin" element={withPermissions(<PlainSpinPage />, ["media:read"])} />
 
           {/* team & permissions */}
           <Route path="team" element={withPermissions(<TeamPage />, ["staff:read"])} />

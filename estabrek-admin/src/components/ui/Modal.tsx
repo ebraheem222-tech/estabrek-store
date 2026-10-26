@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./cn";
 import { Button } from "./Button";
+import { tr } from "@/lib/words";
 
 type Props = {
   open: boolean;
@@ -28,7 +29,7 @@ export function Modal({
   onClose,
   onCancel,
   footer,
-  closeText = "إغلاق",
+  closeText = tr("إغلاق", "Close"),
   disableBackdropClose,
   widthClassName = "max-w-lg",
   icon,
@@ -70,7 +71,7 @@ export function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div dir="rtl" className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50">
       {/* Premium Backdrop with animated radial gradient */}
       <div
         className="absolute inset-0 backdrop-blur-md"
@@ -104,7 +105,7 @@ export function Modal({
           }}
         >
           {/* Top gradient line */}
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-500/40 to-transparent" />
+          <div className="absolute top-0 end-0 start-0 h-px bg-gradient-to-r from-transparent via-accent-500/40 to-transparent" />
           
           {/* Ambient glow top */}
           <div className="ambient-glow-top" />
@@ -115,7 +116,7 @@ export function Modal({
           {/* Header */}
           <div className="relative flex flex-col gap-3 px-5 pt-5 pb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-6 sm:pt-6 border-b border-white/[0.06]">
             {/* Header accent line */}
-            <div className="absolute bottom-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-accent-500/20 to-transparent" />
+            <div className="absolute bottom-0 end-6 start-6 h-px bg-gradient-to-r from-transparent via-accent-500/20 to-transparent" />
             
             <div className="flex items-start gap-4">
               {icon && (

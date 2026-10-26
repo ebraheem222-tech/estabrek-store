@@ -61,9 +61,9 @@ export default {
         ...Object.fromEntries(SKIN_PALETTES.map((p) => [p, skinnedScale(p, defaultColors[p])])),
       },
       fontFamily: {
-        sans: ["Geist", "IBM Plex Sans Arabic", "system-ui", "sans-serif"],
+        sans: ["Geist", "IBM Plex Sans Arabic", "IBM Plex Sans Hebrew", "system-ui", "sans-serif"],
         mono: ["Geist Mono", "ui-monospace", "monospace"],
-        arabic: ["IBM Plex Sans Arabic", "sans-serif"],
+        arabic: ["IBM Plex Sans Arabic", "IBM Plex Sans Hebrew", "sans-serif"],
         display: ["Geist", "system-ui", "sans-serif"],
       },
       fontSize: {

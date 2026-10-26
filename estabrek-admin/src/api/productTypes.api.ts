@@ -36,6 +36,8 @@ export type ProductType = {
   position: number;
   /** Products of this kind. */
   products: number;
+  /** Its words in the shop's other languages (src/lib/translations.ts). */
+  translations?: unknown;
 };
 
 export type ProductTypeInput = Partial<Omit<ProductType, "id" | "products">> & { name?: string };

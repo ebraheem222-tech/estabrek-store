@@ -11,6 +11,9 @@ import { scoreTextMatch } from "../../lib/searchText.js";
 import { attributesWhere, deliveryOf, fieldsOf, publicType, publicTypeSelect, specsOf, type DeliveryFields } from "../productTypes/productTypes.js";
 import { DIGITAL_STOCK, eventIsOver } from "../fulfillment/fulfillment.service.js";
 import { variantsWithCodes } from "../fulfillment/codes.service.js";
+import { currencySign } from "../../lib/currency.js";
+import { CONTENT_LANGS } from "../../lib/translations.js";
+import { shopperLanguage } from "../../lib/shopperLanguage.js";
 
 function parseCsv(v?: string | null): string[] | undefined {
   if (!v) return undefined;
@@ -240,6 +243,8 @@ const baseProductSelect = {
   title: true,
   slug: true,
   description: true,
+  /** Other languages (src/lib/translations.ts); the shop picks its own. */
+  translations: true,
   isActive: true,
   categoryId: true,
   typeId: true,
@@ -262,6 +267,7 @@ const categorySelect = {
     name: true,
     slug: true,
     parentId: true,
+    translations: true,
   },
 };
 
@@ -522,6 +528,12 @@ async function buildFacetsForProductIds(args: {
   };
 }
 
+/** The title in the shop's other languages contains the words (JSON text matches by case: a few spellings). */
+function translatedTitleWhere(q: string): Prisma.ProductWhereInput[] {
+  const spellings = [...new Set([q, q.toLowerCase(), q.charAt(0).toUpperCase() + q.slice(1).toLowerCase()])];
+  return CONTENT_LANGS.flatMap((lang) => spellings.map((s) => ({ translations: { path: [lang, "title"], string_contains: s } })));
+}
+
 function buildBaseProductWhere(input: { q?: string; category?: string; categoryId?: string; categoryIds?: string[]; type?: string; attrs?: Record<string, string[]> }): Prisma.ProductWhereInput {
   const and: Prisma.ProductWhereInput[] = [{ isActive: true }];
   // Product type and its fields (attr_<key>=a,b), see productTypes.ts.
@@ -534,6 +546,7 @@ function buildBaseProductWhere(input: { q?: string; category?: string; categoryI
         { title: { contains: input.q, mode: "insensitive" } },
         { description: { contains: input.q, mode: "insensitive" } },
         { slug: { contains: input.q, mode: "insensitive" } },
+        ...translatedTitleWhere(input.q),
       ],
     });
   }
@@ -1332,6 +1345,8 @@ type CartLine = {
   lineSubtotal: number;
   productId: string;
   productTitle: string;
+  /** The product's other languages: the bag shows its title and colour in the shopper's (orders keep productTitle). */
+  productTranslations?: unknown;
   productSlug?: string | null;
   itemId?: string | null;
   colorName?: string | null;
@@ -1457,6 +1472,7 @@ async function loadLinesForItems(
       lineSubtotal,
       productId: v.item.productId,
       productTitle: v.item.product.title,
+      productTranslations: (v.item.product as any).translations ?? {},
       productSlug: v.item.product.slug,
       itemId: v.productItemId,
       colorName: v.item.colorName,
@@ -1551,6 +1567,8 @@ export async function submitOrderRequest(data: {
   paymentProvider?: string;
   paymentStatus?: string;
   paymentReference?: string;
+  /** The shop's language she ordered in (her emails); one the store offers, else none. */
+  lang?: string | null;
 }, opts?: {
   /** A paid order is always recorded (the money was taken); the owner sorts out stock. */
   skipStockCheck?: boolean;
@@ -1629,6 +1647,7 @@ export async function submitOrderRequest(data: {
         quantity: first.quantity,
 
         userId: opts?.userId ?? null,
+        locale: data.lang ? (await shopperLanguage(data.lang)).lang : null,
         customerName: data.customerName,
         phone: data.phone,
         whatsapp: data.whatsapp,
@@ -1678,6 +1697,7 @@ export async function submitOrderRequest(data: {
         discountAmount: true,
         total: true,
         couponCode: true,
+        currencyCode: true,
       },
     });
 
@@ -1713,7 +1733,7 @@ export async function submitOrderRequest(data: {
   // Admin → التلقائيات: "a new order → a WhatsApp to me"…
   emitAutomation(
     "order.created",
-    { orderId: req.id, customerName: data.customerName, phone: data.phone, total: Number(req.total ?? 0), items: normalized.reduce((n, l) => n + Math.max(1, Number(l.quantity ?? 1)), 0), city: data.city ?? "", source: data.source ?? "", link: `/admin/orders/${req.id}` },
+    { orderId: req.id, customerName: data.customerName, phone: data.phone, total: Number(req.total ?? 0), currency: currencySign(req.currencyCode), items: normalized.reduce((n, l) => n + Math.max(1, Number(l.quantity ?? 1)), 0), city: data.city ?? "", source: data.source ?? "", link: `/admin/orders/${req.id}` },
     `order:${req.id}`,
   );
 

@@ -1,14 +1,19 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useCart } from "@/store/cart";
 import { useOptionalAccount } from "@/store/account";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
-import { LanguageProvider, useLanguage } from "./Language";
+import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { RoseThemeProvider } from "./RoseThemeProvider";
 import { PerfOverlay } from "./PerfOverlay";
+import { useNames, useStoreIdentity } from "@/store/storeIdentity";
+import { markOf, modestShop, pick } from "@/lib/storeIdentity";
+import { LanguageSwitch } from "./LanguageSwitch";
+import { tr } from "@/lib/words";
+import { dirOf } from "@/lib/i18n";
 
 type RoseNavLink = { href: string; label: string; children?: RoseNavLink[] };
 export type RoseStoreData = {
@@ -28,9 +33,13 @@ const StoreContext = createContext<RoseStoreData>({});
 export function useRoseStore() { return useContext(StoreContext); }
 function Brand() {
   const store = useContext(StoreContext);
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
+  const id = useStoreIdentity();
+  const n = useNames();
+  const tagline = pick(id.tagline, lang);
   return (
-    <Link href="/" className="atelier-brand" aria-label="Estabrek home">
+    <Link href="/" className="atelier-brand" aria-label={`${markOf(id, "en")} home`}>
       {store.logoUrl ? (
         <img
           className="brand-logo"
@@ -43,15 +52,18 @@ function Brand() {
         <Icon name="spark" />
       )}
       <span>
-        <span className="brand-arabic">{ar ? "استبرق" : "Estabrek"}</span>
-        <span className="brand-english">MODESTLY, BEAUTIFULLY YOU</span>
+        <span className="brand-arabic">{n.store}</span>
+        {tagline ? <span className="brand-english">{tagline}</span> : null}
       </span>
     </Link>
   );
 }
 function Header() {
-  const { language, setLanguage } = useLanguage();
-  const ar = language === "ar";
+  const { language } = useLanguage();
+  const lang = language;
+  const ar = lang === "ar";
+  const id = useStoreIdentity();
+  const n = useNames();
   const { count } = useCart();
   // Shopper accounts are an admin switch (Settings → حسابات الزبائن); off = visitors only.
   const accountsOn = useOptionalAccount() !== null;
@@ -66,9 +78,9 @@ function Header() {
   const links: RoseNavLink[] = store.navLinks?.length
     ? store.navLinks
     : [
-        { href: "/#arrivals", label: ar ? "وصل حديثاً" : "New arrivals" },
-        { href: "/#collections", label: ar ? "المجموعات" : "Collections" },
-        { href: "/#craft", label: ar ? "عالم الأقمشة" : "The fabric story" },
+        { href: "/#arrivals", label: tr(lang, "وصل حديثاً", "New arrivals") },
+        { href: "/#collections", label: tr(lang, "المجموعات", "Collections") },
+        { href: "/#craft", label: tr(lang, "عالم الأقمشة", "The fabric story") },
       ];
   useEffect(() => {
     if (!open) return;
@@ -106,28 +118,26 @@ function Header() {
   }, [open, searchOpen]);
   return (
     <>
-      <div className="atelier-announcement" dir={ar ? "rtl" : "ltr"}>
+      <div className="atelier-announcement" dir={dirOf(lang)}>
         <span>
           {store.announcement ? (
             <Link href={store.announcementHref || "/shop"}>
               {store.announcement}
             </Link>
-          ) : ar ? (
-            "أناقة تليق بكِ، وراحة ترافق يومكِ."
           ) : (
-            "Modern modesty. Beautifully yours."
+            tr(lang, "أناقة تليق بكِ، وراحة ترافق يومكِ.", "Modern modesty. Beautifully yours.")
           )}
         </span>
         <span className="announcement-right">
-          {ar ? "مرحباً بكِ في استبرق" : "Welcome to Estabrek"}
+          {ar ? (modestShop(id) ? `مرحباً بكِ في ${n.store}` : `أهلاً وسهلاً في ${n.store}`) : tr(lang, "", "Welcome to {0}", [n.store])}
           <Icon name="spark" width="11" height="11" />
         </span>
       </div>
-      <header className="atelier-header" dir={ar ? "rtl" : "ltr"}>
+      <header className="atelier-header" dir={dirOf(lang)}>
         <Brand />
         <nav
           className="atelier-desktop-nav"
-          aria-label={ar ? "القائمة الرئيسية" : "Main navigation"}
+          aria-label={tr(lang, "القائمة الرئيسية", "Main navigation")}
         >
           {links.map((link) => (
             <div key={link.href} className="rose-nav-item">
@@ -147,17 +157,11 @@ function Header() {
           ))}
         </nav>
         <div className="atelier-actions">
-          <button
-            className="language-button"
-            onClick={() => setLanguage(ar ? "en" : "ar")}
-            aria-label={ar ? "English" : "العربية"}
-          >
-            {ar ? "EN" : "عربي"}
-          </button>
+          <LanguageSwitch />
           <span className="action-divider" />
           <button
             className="atelier-icon-button"
-            aria-label={ar ? "البحث" : "Search"}
+            aria-label={tr(lang, "البحث", "Search")}
             onClick={() => setSearchOpen(true)}
           >
             <Icon name="search" />
@@ -165,7 +169,7 @@ function Header() {
           <Link
             className="atelier-icon-button wishlist-link"
             href="/wishlist"
-            aria-label={ar ? "المفضلة" : "Wishlist"}
+            aria-label={tr(lang, "المفضلة", "Wishlist")}
           >
             <Icon name="heart" />
           </Link>
@@ -173,7 +177,7 @@ function Header() {
             <Link
               className="atelier-icon-button account-link"
               href="/account"
-              aria-label={ar ? "حسابي" : "My account"}
+              aria-label={tr(lang, "حسابي", "My account")}
             >
               <Icon name="user" />
             </Link>
@@ -181,7 +185,7 @@ function Header() {
           <Link
             className="atelier-icon-button cart-link"
             href="/cart"
-            aria-label={`${ar ? "حقيبة التسوق" : "Shopping bag"}${count ? ` (${count})` : ""}`}
+            aria-label={`${tr(lang, "حقيبة التسوق", "Shopping bag")}${count ? ` (${count})` : ""}`}
           >
             <Icon name="bag" />
             {count > 0 && <span className="atelier-cart-count">{count}</span>}
@@ -189,7 +193,7 @@ function Header() {
           <button
             ref={menuButton}
             className="atelier-icon-button menu-toggle"
-            aria-label={ar ? "فتح القائمة" : "Open menu"}
+            aria-label={tr(lang, "فتح القائمة", "Open menu")}
             aria-expanded={menuOpen}
             aria-controls="atelier-menu"
             onClick={() => setMenuOpen(true)}
@@ -214,21 +218,17 @@ function Header() {
             aria-modal="true"
             aria-label={
               searchOpen
-                ? ar
-                  ? "البحث"
-                  : "Search"
-                : ar
-                  ? "القائمة"
-                  : "Navigation"
+                ? tr(lang, "البحث", "Search")
+                : tr(lang, "القائمة", "Navigation")
             }
-            dir={ar ? "rtl" : "ltr"}
+            dir={dirOf(lang)}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="dialog-top">
               <Brand />
               <button
                 className="atelier-icon-button"
-                aria-label={ar ? "إغلاق" : "Close"}
+                aria-label={tr(lang, "إغلاق", "Close")}
                 onClick={() => {
                   setMenuOpen(false);
                   setSearchOpen(false);
@@ -240,7 +240,7 @@ function Header() {
             {searchOpen ? (
               <form action="/search" className="atelier-search-form">
                 <label htmlFor="atelier-search">
-                  {ar ? "ابحثي عن قطعتكِ القادمة." : "Find your next favourite."}
+                  {tr(lang, "ابحثي عن قطعتكِ القادمة.", "Find your next favourite.")}
                 </label>
                 <div>
                   <input
@@ -250,13 +250,13 @@ function Header() {
                     name="q"
                     required
                     placeholder={
-                      ar ? "عمّ تبحثين؟" : "What are you looking for?"
+                      tr(lang, "عمّ تبحثين؟", "What are you looking for?")
                     }
                   />
                   <button
                     className="atelier-icon-button"
                     type="submit"
-                    aria-label={ar ? "ابحثي" : "Submit search"}
+                    aria-label={tr(lang, "ابحثي", "Submit search")}
                   >
                     <Icon name="arrow" />
                   </button>
@@ -274,11 +274,11 @@ function Header() {
                   ]),
                   {
                     href: "/shop",
-                    label: ar ? "تسوّقي كل المنتجات" : "Shop all",
+                    label: tr(lang, "تسوّقي كل المنتجات", "Shop all"),
                   },
                   {
                     href: "/contact",
-                    label: ar ? "تواصلي معنا" : "Get in touch",
+                    label: tr(lang, "تواصلي معنا", "Get in touch"),
                   },
                 ]
                   .filter(
@@ -300,9 +300,7 @@ function Header() {
               </nav>
             )}
             <p className="dialog-footnote">
-              {ar
-                ? "قطعتكِ القادمة تبدأ هنا."
-                : "Good things start with a little curiosity."}
+              {tr(lang, "قطعتكِ القادمة تبدأ هنا.", "Good things start with a little curiosity.")}
             </p>
           </div>
         </div>
@@ -313,19 +311,22 @@ function Header() {
 function Footer() {
   const store = useContext(StoreContext);
   const { language } = useLanguage();
-  const ar = language === "ar";
+  const lang = language;
+  const ar = lang === "ar";
+  const id = useStoreIdentity();
+  const n = useNames();
   const accountsOn = useOptionalAccount() !== null;
   if (store.footerEnabled === false) return null;
   return (
-    <footer className="atelier-footer" dir={ar ? "rtl" : "ltr"}>
+    <footer className="atelier-footer" dir={dirOf(lang)}>
       <div className="footer-main">
         <div>
           <Brand />
           <p>
             {store.footerDescription ||
-              (ar
-                ? "اختيارات تجمع الاحتشام والراحة والأناقة. من استبرق، لكل تفاصيلكِ الجميلة."
-                : "Modest pieces. Beautiful details. Made for every side of you.")}
+              (modestShop(id)
+                ? tr(lang, `اختيارات تجمع الاحتشام والراحة والأناقة. من ${n.store}، لكل تفاصيلكِ الجميلة.`, "Modest pieces. Beautiful details. Made for every side of you.")
+                : pick(id.about, lang))}
           </p>
           <div className="footer-socials">
             {store.instagram && (
@@ -345,33 +346,33 @@ function Footer() {
         </div>
         <div className="footer-links">
           <div>
-            <span>{ar ? "اكتشفي" : "Explore"}</span>
+            <span>{tr(lang, "اكتشفي", "Explore")}</span>
             <Link href="/shop">
-              {ar ? "تسوّقي كل القطع" : "Shop the collection"}
+              {tr(lang, "تسوّقي كل القطع", "Shop the collection")}
             </Link>
-            <Link href="/wishlist">{ar ? "المفضلة" : "Your wishlist"}</Link>
-            {accountsOn ? <Link href="/account">{ar ? "حسابي وطلباتي" : "My account & orders"}</Link> : null}
+            <Link href="/wishlist">{tr(lang, "المفضلة", "Your wishlist")}</Link>
+            {accountsOn ? <Link href="/account">{tr(lang, "حسابي وطلباتي", "My account & orders")}</Link> : null}
             <Link href="/cart">
-              {ar ? "حقيبة التسوق" : "Your shopping bag"}
+              {tr(lang, "حقيبة التسوق", "Your shopping bag")}
             </Link>
           </div>
           <div>
-            <span>{ar ? "نحن هنا" : "Here for you"}</span>
-            <Link href="/contact">{ar ? "تواصلي معنا" : "Contact us"}</Link>
-            <Link href="/about">{ar ? "قصتنا" : "Our story"}</Link>
+            <span>{tr(lang, "نحن هنا", "Here for you")}</span>
+            <Link href="/contact">{tr(lang, "تواصلي معنا", "Contact us")}</Link>
+            <Link href="/about">{tr(lang, "قصتنا", "Our story")}</Link>
           </div>
         </div>
       </div>
-      <div className="footer-wordmark" aria-hidden="true" dir={ar ? "rtl" : "ltr"}>
-        {ar ? "استبرق" : "Estabrek"}
+      <div className="footer-wordmark" aria-hidden="true" dir={dirOf(lang)}>
+        {n.store}
       </div>
       <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} {ar ? "استبرق" : "Estabrek"}</span>
+        <span>© {new Date().getFullYear()} {n.store}</span>
         <span>
-          {ar ? "صُنع بعناية في استبرق." : "Made with care at Estabrek."}
+          {tr(lang, `صُنع بعناية في ${n.store}.`, "Made with care at {0}.", [n.store])}
         </span>
         <a href="#main-content" className="back-top">
-          {ar ? "للأعلى" : "Back to top"}
+          {tr(lang, "للأعلى", "Back to top")}
           <Icon name="arrow" />
         </a>
       </div>
@@ -413,7 +414,6 @@ export function StorefrontChrome({
       </>
     );
   return (
-    <LanguageProvider>
       <StoreContext.Provider value={storeData}>
         <RoseThemeProvider key={pathname}
           restoreSelection={!pathname.startsWith("/about")}
@@ -425,6 +425,5 @@ export function StorefrontChrome({
           <PerfOverlay />
         </RoseThemeProvider>
       </StoreContext.Provider>
-    </LanguageProvider>
   );
 }

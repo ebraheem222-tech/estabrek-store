@@ -2,11 +2,14 @@
 import { useLanguage } from "./cinematic/Language";
 
 import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { buildCanonicalQuery, type CatalogFilters, normalizeFiltersFromSearchParams } from "@/lib/filtersUrl";
 import { CategorySidebar } from "@/components/CategorySidebar";
 import { gsap } from "gsap";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
+import { tr } from "@/lib/words";
+import { dirOf } from "@/lib/i18n";
 
 type FacetColor = { name: string; hex?: string | null; count: number };
 type FacetSize = { id: string; name: string; count: number };
@@ -123,7 +126,8 @@ export function ProductFiltersBar({
   mobileAutoApply?: boolean;
   appearance?: "rose" | "default";
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const settings = useStorefrontSettings();
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -276,11 +280,11 @@ export function ProductFiltersBar({
   // Build active filters array for tags display
   const activeFilters = useMemo(() => {
     const filters: Array<{ type: string; label: string; value: string }> = [];
-    if (qParam) filters.push({ type: "q", label: `${ar ? "بحث" : "Search"}: ${qParam}`, value: qParam });
+    if (qParam) filters.push({ type: "q", label: `${tr(lang, "بحث", "Search")}: ${qParam}`, value: qParam });
     if (selectedCategory) filters.push({ type: "categoryId", label: selectedCategory.name, value: categoryIdParam });
-    if (inStockParam) filters.push({ type: "inStock", label: ar ? "متوفر فقط" : "In stock", value: "1" });
-    if (minPriceParam) filters.push({ type: "minPrice", label: `${ar ? "من" : "From"}: ₪${minPriceParam}`, value: minPriceParam });
-    if (maxPriceParam) filters.push({ type: "maxPrice", label: `${ar ? "إلى" : "To"}: ₪${maxPriceParam}`, value: maxPriceParam });
+    if (inStockParam) filters.push({ type: "inStock", label: tr(lang, "متوفر فقط", "In stock"), value: "1" });
+    if (minPriceParam) filters.push({ type: "minPrice", label: `${tr(lang, "من", "From")}: ₪${minPriceParam}`, value: minPriceParam });
+    if (maxPriceParam) filters.push({ type: "maxPrice", label: `${tr(lang, "إلى", "To")}: ₪${maxPriceParam}`, value: maxPriceParam });
     selectedColors.forEach(c => filters.push({ type: "color", label: c, value: c }));
     selectedSizes.forEach(s => {
       const size = sizes.find(sz => sz.id === s);
@@ -499,14 +503,14 @@ export function ProductFiltersBar({
       <div className="filter-section">
         <label className="filter-label">
           <SearchIcon />
-          {ar ? "بحث" : "Search"}
+          {tr(lang, "بحث", "Search")}
         </label>
         <div className="relative">
           <input
             className="filter-input pr-10"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            placeholder={ar ? "ابحث عن منتج..." : "Search products…"}
+            placeholder={tr(lang, "ابحث عن منتج...", "Search products…")}
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]">
             <SearchIcon />
@@ -519,7 +523,7 @@ export function ProductFiltersBar({
         <div className="filter-section">
           <label className="filter-label">
             <CategoryIcon />
-            {ar ? "التصنيف" : "Category"}
+            {tr(lang, "التصنيف", "Category")}
           </label>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
             <CategorySidebar
@@ -537,14 +541,14 @@ export function ProductFiltersBar({
           <div className="filter-section">
             <label className="filter-label">
               <CategoryIcon />
-              {ar ? "التصنيف" : "Category"}
+              {tr(lang, "التصنيف", "Category")}
             </label>
             <select
               className="filter-select"
               value={categoryIdParam}
               onChange={(e) => setSimple("categoryId", e.target.value || undefined)}
             >
-              <option value="">{ar ? "جميع التصنيفات" : "All categories"}</option>
+              <option value="">{tr(lang, "جميع التصنيفات", "All categories")}</option>
               {categoryOptions.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.depth > 0 ? `${"— ".repeat(c.depth)}${c.name}` : c.name}
@@ -557,18 +561,18 @@ export function ProductFiltersBar({
         <div className="filter-section">
           <label className="filter-label">
             <SortIcon />
-            {ar ? "الترتيب" : "Sort by"}
+            {tr(lang, "الترتيب", "Sort by")}
           </label>
           <select
             className="filter-select"
             value={sortParam}
             onChange={(e) => setSimple("sort", e.target.value)}
           >
-            <option value="latest">{ar ? "الأحدث" : "Latest"}</option>
-            <option value="title_asc">{ar ? "العنوان أ→ي" : "Name: A–Z"}</option>
-            <option value="title_desc">{ar ? "العنوان ي→أ" : "Name: Z–A"}</option>
-            <option value="price_asc">{ar ? "السعر: الأقل أولاً" : "Price: low to high"}</option>
-            <option value="price_desc">{ar ? "السعر: الأعلى أولاً" : "Price: high to low"}</option>
+            <option value="latest">{tr(lang, "الأحدث", "Latest")}</option>
+            <option value="title_asc">{tr(lang, "العنوان أ→ي", "Name: A–Z")}</option>
+            <option value="title_desc">{tr(lang, "العنوان ي→أ", "Name: Z–A")}</option>
+            <option value="price_asc">{tr(lang, "السعر: الأقل أولاً", "Price: low to high")}</option>
+            <option value="price_desc">{tr(lang, "السعر: الأعلى أولاً", "Price: high to low")}</option>
           </select>
         </div>
       </div>
@@ -577,7 +581,7 @@ export function ProductFiltersBar({
       <div className="filter-section">
         <label className="filter-label">
           <PriceIcon />
-          {ar ? "نطاق السعر" : "Price range"}
+          {tr(lang, "نطاق السعر", "Price range")}
         </label>
         <div className="price-range-container">
           <div className="relative flex-1">
@@ -585,7 +589,7 @@ export function ProductFiltersBar({
               className="price-range-input"
               value={minInput}
               onChange={(e) => setMinInput(e.target.value)}
-              placeholder={ar ? "الحد الأدنى" : "Min price"}
+              placeholder={tr(lang, "الحد الأدنى", "Min price")}
               inputMode="numeric"
               dir="ltr"
             />
@@ -599,7 +603,7 @@ export function ProductFiltersBar({
               className="price-range-input"
               value={maxInput}
               onChange={(e) => setMaxInput(e.target.value)}
-              placeholder={ar ? "الحد الأقصى" : "Max price"}
+              placeholder={tr(lang, "الحد الأقصى", "Max price")}
               inputMode="numeric"
               dir="ltr"
             />
@@ -623,7 +627,7 @@ export function ProductFiltersBar({
             }`}>
               {inStockParam && <CheckIcon />}
             </div>
-            <span className="font-medium">{ar ? "المتوفر فقط" : "In stock only"}</span>
+            <span className="font-medium">{tr(lang, "المتوفر فقط", "In stock only")}</span>
           </div>
           <span className="filter-toggle-indicator" />
         </button>
@@ -639,7 +643,7 @@ export function ProductFiltersBar({
           >
             <div className="flex items-center gap-2">
               <ColorIcon />
-              <span className="font-medium">{ar ? "الألوان" : "Colours"}</span>
+              <span className="font-medium">{tr(lang, "الألوان", "Colours")}</span>
               {selectedColors.length > 0 && (
                 <span className="active-filters-count">{selectedColors.length}</span>
               )}
@@ -689,7 +693,7 @@ export function ProductFiltersBar({
           >
             <div className="flex items-center gap-2">
               <SizeIcon />
-              <span className="font-medium">{ar ? "المقاسات" : "Sizes"}</span>
+              <span className="font-medium">{tr(lang, "المقاسات", "Sizes")}</span>
               {selectedSizes.length > 0 && (
                 <span className="active-filters-count">{selectedSizes.length}</span>
               )}
@@ -724,7 +728,7 @@ export function ProductFiltersBar({
   );
 
   return (
-    <div className={`filter-candy-shell ${className ?? ""}`.trim()} dir={ar ? "rtl" : "ltr"}>
+    <div className={`filter-candy-shell ${className ?? ""}`.trim()} dir={dirOf(lang)}>
       {/* Mobile Filter Toggle */}
       <button 
         type="button" 
@@ -736,7 +740,7 @@ export function ProductFiltersBar({
         className={`mobile-filter-toggle filter-mobile-toggle-candy ${appearance === "rose" ? "lg:hidden" : "md:hidden"} ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
       >
         <FilterIcon />
-        <span>{ar ? "الفلاتر" : "Filters"}</span>
+        <span>{tr(lang, "الفلاتر", "Filters")}</span>
         {activeFiltersCount > 0 && (
           <span className="active-filters-count">{activeFiltersCount}</span>
         )}
@@ -750,16 +754,16 @@ export function ProductFiltersBar({
               <FilterIcon />
             </div>
             <div>
-              <h3 className="font-bold text-[var(--text)]">{ar ? "الفلاتر" : "Filters"}</h3>
+              <h3 className="font-bold text-[var(--text)]">{tr(lang, "الفلاتر", "Filters")}</h3>
               {activeFiltersCount > 0 && (
-                <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {ar ? "فلتر نشط" : "active filters"}</p>
+                <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
               )}
             </div>
           </div>
           {hasAny && (
             <button type="button" onClick={clearAll} className="clear-filters-btn">
               <TrashIcon />
-              {ar ? "مسح الكل" : "Clear all"}
+              {tr(lang, "مسح الكل", "Clear all")}
             </button>
           )}
         </div>
@@ -768,7 +772,7 @@ export function ProductFiltersBar({
 
       {/* Mobile Filters Modal */}
       {mobileOpen && (
-        <div ref={mobileDialog} className={`fixed inset-0 z-[1300] ${appearance === "rose" ? "lg:hidden" : "md:hidden"}`} role="dialog" aria-modal="true" aria-label={ar ? "الفلاتر" : "Filters"}>
+        <div ref={mobileDialog} className={`fixed inset-0 z-[1300] ${appearance === "rose" ? "lg:hidden" : "md:hidden"}`} role="dialog" aria-modal="true" aria-label={tr(lang, "الفلاتر", "Filters")}>
           <div 
             className={`absolute inset-0 filter-backdrop filter-backdrop-candy ${isClosing ? "closing" : "opening"}`} 
             onClick={closeMobile} 
@@ -783,9 +787,9 @@ export function ProductFiltersBar({
                   <FilterIcon />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[var(--text)]">{ar ? "الفلاتر" : "Filters"}</h3>
+                  <h3 className="font-bold text-[var(--text)]">{tr(lang, "الفلاتر", "Filters")}</h3>
                   {activeFiltersCount > 0 && (
-                    <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {ar ? "فلتر نشط" : "active filters"}</p>
+                    <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
                   )}
                 </div>
               </div>
@@ -796,7 +800,7 @@ export function ProductFiltersBar({
                 aria-label="Close filters"
               >
                 <CloseIcon />
-                <span className="text-sm font-medium">{ar ? "إغلاق" : "Close"}</span>
+                <span className="text-sm font-medium">{tr(lang, "إغلاق", "Close")}</span>
               </button>
             </div>
 
@@ -822,7 +826,7 @@ export function ProductFiltersBar({
                   onClick={clearAll} 
                   className="flex-1 py-3 rounded-xl border border-white/45 text-[var(--text)] font-medium transition-all duration-300 filter-mobile-clear-btn"
                 >
-                  {ar ? "مسح الكل" : "Clear all"}
+                  {tr(lang, "مسح الكل", "Clear all")}
                 </button>
               )}
               {!mobileAutoApply && (
@@ -831,7 +835,7 @@ export function ProductFiltersBar({
                   onClick={applyMobile} 
                   className="flex-1 py-3 rounded-xl text-white font-semibold transition-all duration-300 filter-mobile-apply-btn"
                 >
-                  {ar ? "تطبيق الفلاتر" : "Apply filters"}
+                  {tr(lang, "تطبيق الفلاتر", "Apply filters")}
                 </button>
               )}
             </div>

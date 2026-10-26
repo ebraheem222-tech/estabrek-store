@@ -1,6 +1,8 @@
 import { listProducts } from "@/lib/api";
 import { type CatalogCategory } from "@/lib/catalog";
 import { toSeasonProduct, type SeasonProduct } from "@/lib/seasonalEdits";
+import type { Lang } from "./i18n";
+import { localizeCategory } from "./localize";
 
 export type StoryKey = "accessories" | "kids" | "incense";
 export type StoryChapter = {
@@ -23,16 +25,17 @@ function findCategory(categories: CatalogCategory[], pattern: RegExp) {
 }
 
 /** Accessories → kids → incense chapters for the pinned collection scene, skipping missing categories. */
-export async function loadCollectionStories(categories: CatalogCategory[], currencyCode: string): Promise<StoryChapter[]> {
+/** Categories are matched by their own (untranslated) slugs and names; `lang` words the result. */
+export async function loadCollectionStories(categories: CatalogCategory[], currencyCode: string, lang?: Lang): Promise<StoryChapter[]> {
   const found = ORDER.map(([key, pattern]) => ({ key, category: findCategory(categories, pattern) })).filter(
     (entry): entry is { key: StoryKey; category: CatalogCategory } => Boolean(entry.category),
   );
   return Promise.all(
     found.map(async ({ key, category }) => {
-      const list = await listProducts({ categoryId: category.id, sort: "latest", page: 1, pageSize: 4, includeFacets: false, lite: true });
+      const list = await listProducts({ categoryId: category.id, sort: "latest", page: 1, pageSize: 4, includeFacets: false, lite: true, lang });
       return {
         key,
-        categoryName: category.name,
+        categoryName: (lang ? localizeCategory(category, lang) : category).name,
         href: `/c/${encodeURIComponent(category.slug)}`,
         products: (list.items ?? []).slice(0, 4).map((p) => toSeasonProduct(p, currencyCode)),
       };

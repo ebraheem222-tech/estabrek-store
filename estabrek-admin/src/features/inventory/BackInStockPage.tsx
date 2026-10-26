@@ -13,14 +13,15 @@ import { useAuth } from "../../hooks/useAuth";
 import * as AlertsAPI from "../../api/stockAlerts.api";
 import type { StockAlertStatus, StockAlertsView } from "../../api/stockAlerts.api";
 import { relativeTime } from "../team/teamText";
+import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
 const STATUS: Record<StockAlertStatus, { label: string; variant: "success" | "warning" | "danger" | undefined }> = {
-  WAITING: { label: "بتستنى", variant: "warning" },
-  SENT: { label: "انبعتلها", variant: "success" },
-  CANCELLED: { label: "انلغى", variant: undefined },
-  FAILED: { label: "ما وصل", variant: "danger" },
+  WAITING: { label: tr("بتستنى", "Waiting"), variant: "warning" },
+  SENT: { label: tr("انبعت", "Sent"), variant: "success" },
+  CANCELLED: { label: tr("انلغى", "Cancelled"), variant: undefined },
+  FAILED: { label: tr("ما وصل", "Not delivered"), variant: "danger" },
 };
 
 export default function BackInStockPage() {
@@ -28,10 +29,10 @@ export default function BackInStockPage() {
   const d = q.data;
 
   return (
-    <div dir="rtl" className="space-y-4" data-testid="back-in-stock-page">
+    <div className="space-y-4" data-testid="back-in-stock-page">
       {q.isLoading ? (
         <div className={`${box} flex items-center gap-2 text-sm`}>
-          <Spinner /> جاري التحميل…
+          <Spinner /> {tr("جاري التحميل…", "Loading…")}
         </div>
       ) : q.isError ? (
         <div className={`${box} text-sm text-red-200`}>{getApiErrorMessage(q.error)}</div>
@@ -39,8 +40,8 @@ export default function BackInStockPage() {
         <>
           <AlertsSwitch view={d} />
           <section className="grid grid-cols-2 gap-3">
-            <Fact label="بانتظار قطع" value={String(d.totals.waiting)} />
-            <Fact label="انبعتلهن آخر 30 يوم" value={String(d.totals.sentLast30Days)} />
+            <Fact label={tr("بانتظار قطع", "Waiting for pieces")} value={String(d.totals.waiting)} />
+            <Fact label={tr("انبعت آخر 30 يوم", "Sent in the last 30 days")} value={String(d.totals.sentLast30Days)} />
           </section>
           <Pieces view={d} />
           <Recent view={d} />
@@ -59,16 +60,16 @@ function AlertsSwitch({ view }: { view: StockAlertsView }) {
   const change = useMutation({
     mutationFn: (on: boolean) => AlertsAPI.setStockAlerts(on),
     onSuccess: (_out, on) => {
-      toast.success(on ? "صار في «بلّغيني لما ترجع» على المقاسات اللي نفدت" : "انطفى التنبيه. اللي سجّلوا قبل بيضلّوا محفوظين");
+      toast.success(on ? tr("صار في «بلّغيني لما ترجع» على المقاسات اللي نفدت", "Sold-out sizes now have “Tell me when it's back”") : tr("انطفى التنبيه. اللي سجّلوا قبل بيضلّوا محفوظين", "The alert is off. Those who signed up stay saved"));
       setConfirmOff(false);
       qc.invalidateQueries({ queryKey: ["stock-alerts"] });
       qc.invalidateQueries({ queryKey: ["settings"] });
     },
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
   const missing = [
-    !view.ready.email ? "إرسال الإيميل (Resend)" : null,
-    !view.ready.storefrontUrl ? "عنوان المتجر STOREFRONT_URL" : null,
+    !view.ready.email ? tr("إرسال الإيميل (Resend)", "Email sending (Resend)") : null,
+    !view.ready.storefrontUrl ? tr("عنوان المتجر STOREFRONT_URL", "The store address STOREFRONT_URL") : null,
   ].filter(Boolean);
 
   return (
@@ -76,46 +77,46 @@ function AlertsSwitch({ view }: { view: StockAlertsView }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-semibold">تنبيه «رجعت متوفرة»</h1>
+            <h1 className="font-semibold">{tr("تنبيه «رجعت متوفرة»", "“Back in stock” alert")}</h1>
             {enabled ? (
               <Badge size="sm" variant="success" dot>
-                شغّال
+                {tr("شغّال", "On")}
               </Badge>
             ) : (
               <Badge size="sm" dot>
-                مطفي
+                {tr("مطفي", "Off")}
               </Badge>
             )}
           </div>
           <p className="mt-1 text-sm text-white/60">
             {enabled
-              ? "لما مقاس يخلص، الزبونة بتحط إيميلها تحت زر الشراء، وأول ما ترجع القطعة للمخزون بيوصلها إيميل واحد فيه رابط القطعة. ما بدها حساب."
-              : "لما يشتغل، بيطلع تحت زر الشراء بالمقاسات اللي نفدت «بلّغيني لما ترجع». الزبونة بتحط إيميلها، وأول ما ترجع القطعة بيوصلها إيميل."}
+              ? tr("لما مقاس يخلص، الزبون بيحط إيميله تحت زر الشراء، وأول ما ترجع القطعة للمخزون بيوصله إيميل واحد فيه رابط القطعة. ما بده حساب.", "When a size sells out, the customer leaves their email under the buy button, and as soon as the piece is back in stock they get one email with its link. No account needed.")
+              : tr("لما يشتغل، بيطلع تحت زر الشراء بالمقاسات اللي نفدت «بلّغني لما ترجع». الزبون بيحط إيميله، وأول ما ترجع القطعة بيوصله إيميل.", "When on, “Tell me when it's back” shows under the buy button on sold-out sizes. The customer leaves their email and gets one as soon as the piece is back.")}
           </p>
           {missing.length ? (
             <p className="mt-2 text-xs text-amber-200">
-              الإيميلات ما رح تنبعت لحتى ينضبط بالسيرفر: {missing.join(" و")}. الطلبات بتنحفظ وبتستنى، وما بيضيع اشي.
+              {tr("الإيميلات ما رح تنبعت لحتى ينضبط بالسيرفر:", "Emails won't be sent until this is set on the server:")} {missing.join(tr(" و", " and "))}{tr(". الطلبات بتنحفظ وبتستنى، وما بيضيع اشي.", ". Requests are saved and wait; nothing is lost.")}
             </p>
           ) : null}
-          {!canChange ? <p className="mt-2 text-xs text-white/50">التشغيل والإطفاء بدّه صلاحية «تعديل الإعدادات».</p> : null}
+          {!canChange ? <p className="mt-2 text-xs text-white/50">{tr("التشغيل والإطفاء بدّه صلاحية «تعديل الإعدادات».", "Turning it on or off needs the “Edit settings” permission.")}</p> : null}
         </div>
         {canChange ? (
           enabled ? (
             <Button variant="secondary" onClick={() => setConfirmOff(true)} isLoading={change.isPending}>
-              إطفاء
+              {tr("إطفاء", "Turn off")}
             </Button>
           ) : (
             <Button variant="primary" onClick={() => change.mutate(true)} isLoading={change.isPending}>
-              تشغيل
+              {tr("تشغيل", "Turn on")}
             </Button>
           )
         ) : null}
       </div>
       <ConfirmDialog
         open={confirmOff}
-        title="إطفاء «رجعت متوفرة»"
-        message="الخانة بتختفي من المتجر، وما بتنبعت إيميلات. اللي سجّلوا بيضلّوا محفوظين، ولما ترجّع تشغّله بيوصلهم الإيميل عادي."
-        confirmText="إطفاء"
+        title={tr("إطفاء «رجعت متوفرة»", "Turn off “Back in stock”")}
+        message={tr("الخانة بتختفي من المتجر، وما بتنبعت إيميلات. اللي سجّلوا بيضلّوا محفوظين، ولما يرجع يشتغل بيوصلهم الإيميل عادي.", "The box disappears from the store and no emails go out. Those who signed up stay saved, and when it's back on they get the email as usual.")}
+        confirmText={tr("إطفاء", "Turn off")}
         isLoading={change.isPending}
         onConfirm={() => change.mutate(false)}
         onCancel={() => setConfirmOff(false)}
@@ -133,22 +134,22 @@ function Pieces({ view }: { view: StockAlertsView }) {
   const send = useMutation({
     mutationFn: AlertsAPI.sendStockAlertsNow,
     onSuccess: (out) => {
-      toast.success(out.sent ? `انبعت ${out.sent} إيميل` : "ما في إيميلات لازم تنبعت هلّق");
+      toast.success(out.sent ? tr(`انبعت ${out.sent} إيميل`, "{0} emails sent", [out.sent]) : tr("ما في إيميلات لازم تنبعت هلّق", "No emails need sending now"));
       qc.invalidateQueries({ queryKey: ["stock-alerts"] });
     },
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
 
   return (
     <div className={box}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="font-semibold">القطع اللي بيستنوها</h2>
-          <p className="mt-1 text-xs text-white/50">الأكثر طلباً أول. هاي إشارة شو ترجّعي للمخزون.</p>
+          <h2 className="font-semibold">{tr("القطع اللي بيستنوها", "Pieces people are waiting for")}</h2>
+          <p className="mt-1 text-xs text-white/50">{tr("الأكثر طلباً أول. هاي إشارة شو لازم يرجع للمخزون.", "Most wanted first. A sign of what to bring back into stock.")}</p>
         </div>
         {canWrite && due > 0 && ready ? (
           <Button variant="secondary" onClick={() => send.mutate()} isLoading={send.isPending}>
-            إرسال الآن ({due})
+            {tr("إرسال الآن (", "Send now (")}{due})
           </Button>
         ) : null}
       </div>
@@ -160,29 +161,29 @@ function Pieces({ view }: { view: StockAlertsView }) {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{p.productTitle}</div>
                 <div className="text-xs text-white/60">
-                  {[p.colorName, p.sizeName ? `مقاس ${p.sizeName}` : ""].filter(Boolean).join(" · ")}
-                  {p.since ? ` · أول طلب ${relativeTime(p.since)}` : ""}
+                  {[p.colorName, p.sizeName ? tr(`مقاس ${p.sizeName}`, "size {0}", [p.sizeName]) : ""].filter(Boolean).join(" · ")}
+                  {p.since ? tr(` · أول طلب ${relativeTime(p.since)}`, " · first request {0}", [relativeTime(p.since)]) : ""}
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1 text-xs">
-                <span className="font-semibold">{p.waiting === 1 ? "زبونة وحدة" : `${p.waiting} زبونات`}</span>
+                <span className="font-semibold">{p.waiting === 1 ? tr("زبون واحد", "1 customer") : tr(`${p.waiting} زبائن`, "{0} customers", [p.waiting])}</span>
                 {p.stock > 0 ? (
                   <Badge size="sm" variant="success">
-                    رجعت ({p.stock}){ready ? " · بينبعت قريباً" : ""}
+                    {tr("رجعت (", "Back (")}{p.stock}){ready ? tr(" · بينبعت قريباً", " · sending soon") : ""}
                   </Badge>
                 ) : (
-                  <Badge size="sm">نفدت</Badge>
+                  <Badge size="sm">{tr("نفدت", "Sold out")}</Badge>
                 )}
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-white/60">{view.enabled ? "ما حدا بيستنى قطعة هلّق." : "ما في طلبات. التنبيه مطفي."}</p>
+        <p className="mt-3 text-sm text-white/60">{view.enabled ? tr("ما حدا بيستنى قطعة هلّق.", "Nobody is waiting for a piece right now.") : tr("ما في طلبات. التنبيه مطفي.", "No requests. The alert is off.")}</p>
       )}
       {view.pieces.length ? (
         <p className="mt-3 text-xs text-white/50">
-          لما ترجّعي مقاس للمخزون من <Link className="underline" to="/admin/inventory/stock">المخزون والباركود</Link>، الإيميلات بتنبعت لحالها خلال دقيقتين.
+          {tr("لما يرجع مقاس للمخزون من", "When a size is put back in stock from")} <Link className="underline" to="/admin/inventory/stock">{tr("المخزون والباركود", "Stock and barcodes")}</Link>{tr("، الإيميلات بتنبعت لحالها خلال دقيقتين.", ", the emails go out by themselves within two minutes.")}
         </p>
       ) : null}
     </div>
@@ -197,17 +198,17 @@ function Recent({ view }: { view: StockAlertsView }) {
   const cancel = useMutation({
     mutationFn: (id: string) => AlertsAPI.cancelStockAlert(id),
     onSuccess: () => {
-      toast.success("انلغى التنبيه");
+      toast.success(tr("انلغى التنبيه", "Alert cancelled"));
       setCancelId(null);
       qc.invalidateQueries({ queryKey: ["stock-alerts"] });
     },
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
   if (!view.recent.length) return null;
 
   return (
     <div className={box}>
-      <h2 className="font-semibold">آخر الطلبات</h2>
+      <h2 className="font-semibold">{tr("آخر الطلبات", "Latest requests")}</h2>
       <ul className="mt-3 divide-y divide-white/10 text-sm" data-testid="recent-alerts">
         {view.recent.map((a) => (
           <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
@@ -226,7 +227,7 @@ function Recent({ view }: { view: StockAlertsView }) {
             </div>
             {canWrite && a.status === "WAITING" ? (
               <Button size="sm" variant="ghost" onClick={() => setCancelId(a.id)}>
-                إلغاء
+                {tr("إلغاء", "Cancel")}
               </Button>
             ) : null}
           </li>
@@ -234,9 +235,9 @@ function Recent({ view }: { view: StockAlertsView }) {
       </ul>
       <ConfirmDialog
         open={!!cancelId}
-        title="إلغاء التنبيه"
-        message="ما رح يوصلها إيميل لما ترجع القطعة."
-        confirmText="إلغاء التنبيه"
+        title={tr("إلغاء التنبيه", "Cancel the alert")}
+        message={tr("ما رح يوصل إيميل لما ترجع القطعة.", "No email will be sent when the piece is back.")}
+        confirmText={tr("إلغاء التنبيه", "Cancel the alert")}
         isLoading={cancel.isPending}
         onConfirm={() => {
           if (cancelId) cancel.mutate(cancelId);

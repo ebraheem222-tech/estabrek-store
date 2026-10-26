@@ -22,6 +22,7 @@ import { MOTION_TEXT, NAMESPACE_TEXT, motionPreviewUrl } from "./cacheText";
 import { FIELD_INPUT, valueText } from "../discounts/abText";
 import { CAMPAIGN_STATUS_TEXT, campaignWhen, fromLocalInput, toLocalInput } from "../discounts/sellingText";
 import { KIND_TEXT, STATUS_TEXT, payloadSummary, previewLineText, timelineGroups, whenText, type Names, type TimelineItem } from "./scheduleText";
+import { money } from "../../lib/money";
 
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
 const KEY = ["schedule"];
@@ -82,7 +83,7 @@ export default function SchedulePage() {
 
   if (!q.data) {
     return (
-      <div dir="rtl">
+      <div>
         <PageHeader title="الجدول الزمني" />
         <Card>{q.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div> : <Spinner />}</Card>
       </div>
@@ -113,7 +114,7 @@ export default function SchedulePage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4 pb-16" data-testid="schedule-page">
+    <div className="space-y-4 pb-16" data-testid="schedule-page">
       <PageHeader
         title="الجدول الزمني"
         subtitle="أي تغيير على وقت: الثيم، الحركة، الصيانة، شريط الإعلان، قسم بصفحة، تفريغ الكاش. شوف شو رح يتغيّر قبل ما تحفظ، وخلّيه يرجع لحاله إذا بدك. ما بيرجّع شي إنت غيّرته بإيدك بالنص."
@@ -387,7 +388,7 @@ function ChangeForm({ draft, setDraft, options, names, canKind, onDone }: { draf
           <>
             <label className="block">
               <span className="text-sm font-medium">النص</span>
-              <input className={`${field} mt-1.5`} value={draft.text} maxLength={200} placeholder={options.now.announcement.text ?? "شحن مجاني فوق ₪200"} onChange={(e) => set({ text: e.target.value })} />
+              <input className={`${field} mt-1.5`} value={draft.text} maxLength={200} placeholder={options.now.announcement.text ?? `شحن مجاني فوق ${money(200)}`} onChange={(e) => set({ text: e.target.value })} />
             </label>
             <label className="block sm:col-span-2">
               <span className="text-sm font-medium">الرابط (اختياري)</span>

@@ -9,7 +9,7 @@ const r = Router();
 
 r.post(
   "/",
-  validate({ body: z.object({ email: z.string().trim().toLowerCase().email().max(160), variantId: z.string().min(1).max(64) }) }),
+  validate({ body: z.object({ email: z.string().trim().toLowerCase().email().max(160), variantId: z.string().min(1).max(64), lang: z.enum(["ar", "en", "he"]).optional() }) }),
   asyncHandler(async (req, res) => {
     res.status(201).json(await createStockAlert(req.body, { ip: req.ip }));
   }),

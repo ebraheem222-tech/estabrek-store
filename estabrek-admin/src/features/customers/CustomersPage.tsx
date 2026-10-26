@@ -13,11 +13,13 @@ import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
 import { useDebounce } from "../../hooks/useDebounce";
-import { shekel, shortOrderId } from "../../lib/orders";
+import { moneyText, shortOrderId } from "../../lib/orders";
 import { StatusPill } from "../orders/orderUi";
 import * as CustomersAPI from "../../api/customers.api";
 import type { CustomerRow } from "../../api/customers.api";
 import { relativeTime } from "../team/teamText";
+import { loc } from "@/lib/lang";
+import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
@@ -38,38 +40,38 @@ export default function CustomersPage() {
   const first = list.data?.pages[0];
 
   return (
-    <div dir="rtl" className="space-y-4" data-testid="customers-page">
+    <div className="space-y-4" data-testid="customers-page">
       {first ? <AccountsSwitch enabled={first.accountsEnabled === true} emailReady={first.emailReady !== false} /> : null}
       <div className={box}>
-        <h1 className="text-lg font-semibold">الزبائن</h1>
+        <h1 className="text-lg font-semibold">{tr("الزبائن", "Customers")}</h1>
         <p className="mt-1 text-sm text-white/60">
-          الزبونات اللي عملوا حساب بالمتجر (دخول بكود على الإيميل). الطلبات اللي بيعملوها وهنّ داخلات بتنحفظ بحسابهن. الشراء كضيفة بيضل شغّال.
+          {tr("الزبائن اللي عملوا حساب بالمتجر (دخول بكود على الإيميل). الطلبات اللي بيعملوها وهنّي داخلين بتنحفظ بحسابهم. الشراء كضيف بيضل شغّال.", "Customers who made an account in the store (sign in with an email code). Orders they place while signed in are saved to their account. Guest checkout keeps working.")}
         </p>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Input label="بحث" placeholder="الاسم، الإيميل أو رقم الهاتف" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input label={tr("بحث", "Search")} placeholder={tr("الاسم، الإيميل أو رقم الهاتف", "Name, email or phone number")} value={q} onChange={(e) => setQ(e.target.value)} />
           <Select
-            label="الحالة"
+            label={tr("الحالة", "Status")}
             value={status}
             onValueChange={setStatus}
             options={[
-              { value: "", label: "الكل" },
-              { value: "ACTIVE", label: "فعّال" },
-              { value: "SUSPENDED", label: "موقوف" },
+              { value: "", label: tr("الكل", "All") },
+              { value: "ACTIVE", label: tr("فعّال", "Active") },
+              { value: "SUSPENDED", label: tr("موقوف", "Stopped") },
             ]}
           />
-          <div className="flex items-end text-sm text-white/60">{list.data ? `${total} حساب` : ""}</div>
+          <div className="flex items-end text-sm text-white/60">{list.data ? tr(`${total} حساب`, "{0} accounts", [total]) : ""}</div>
         </div>
       </div>
 
       <div className={box}>
         {list.isLoading ? (
           <div className="flex items-center gap-2 text-sm">
-            <Spinner /> جاري التحميل…
+            <Spinner /> {tr("جاري التحميل…", "Loading…")}
           </div>
         ) : list.isError ? (
           <div className="text-sm text-red-200">{getApiErrorMessage(list.error)}</div>
         ) : !rows.length ? (
-          <div className="text-sm text-white/60">{search || status ? "ما في نتائج." : first?.accountsEnabled === false ? "ما في حسابات. الحسابات مطفية، والمتجر للزوار بس." : "ما في حسابات بعد. لما زبونة تعمل حساب من صفحة «حسابي» بالمتجر، بتبيّن هون."}</div>
+          <div className="text-sm text-white/60">{search || status ? tr("ما في نتائج.", "No results.") : first?.accountsEnabled === false ? tr("ما في حسابات. الحسابات مطفية، والمتجر للزوار بس.", "No accounts. Accounts are off, and the store is for guests only.") : tr("ما في حسابات بعد. لما زبون يعمل حساب من صفحة «حسابي» بالمتجر، بيبيّن هون.", "No accounts yet. When a customer makes one from the “My account” page in the store, it shows here.")}</div>
         ) : (
           <>
             <ul className="divide-y divide-white/10" data-testid="customers-list">
@@ -78,13 +80,13 @@ export default function CustomersPage() {
                   <button type="button" className="flex w-full flex-col gap-1 py-3 text-start sm:flex-row sm:items-center sm:justify-between" onClick={() => setOpen(c.id)}>
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{c.name || "بدون اسم"}</span>
+                        <span className="font-medium">{c.name || tr("بدون اسم", "No name")}</span>
                         {c.status === "SUSPENDED" ? (
                           <Badge size="sm" variant="danger" dot>
-                            موقوف
+                            {tr("موقوف", "Stopped")}
                           </Badge>
                         ) : null}
-                        {c.marketingOptIn ? <Badge size="sm">موافقة على العروض</Badge> : null}
+                        {c.marketingOptIn ? <Badge size="sm">{tr("موافقة على العروض", "Accepts offers")}</Badge> : null}
                       </span>
                       <span className="block truncate text-xs text-white/60" dir="ltr" style={{ textAlign: "right" }}>
                         {c.email}
@@ -92,9 +94,9 @@ export default function CustomersPage() {
                       </span>
                     </span>
                     <span className="flex flex-wrap gap-x-4 text-xs text-white/50">
-                      <span>{c.orders} طلب</span>
-                      <span>{c.favourites} بالمفضلة</span>
-                      <span>آخر دخول {relativeTime(c.lastLoginAt)}</span>
+                      <span>{c.orders} {tr("طلب", "orders")}</span>
+                      <span>{c.favourites} {tr("بالمفضلة", "in favourites")}</span>
+                      <span>{tr("آخر دخول", "Last sign-in")} {relativeTime(c.lastLoginAt)}</span>
                     </span>
                   </button>
                 </li>
@@ -103,7 +105,7 @@ export default function CustomersPage() {
             {list.hasNextPage ? (
               <div className="mt-4 text-center">
                 <Button variant="secondary" onClick={() => list.fetchNextPage()} isLoading={list.isFetchingNextPage}>
-                  عرض المزيد
+                  {tr("عرض المزيد", "Show more")}
                 </Button>
               </div>
             ) : null}
@@ -125,12 +127,12 @@ function AccountsSwitch({ enabled, emailReady }: { enabled: boolean; emailReady:
   const change = useMutation({
     mutationFn: (on: boolean) => CustomersAPI.setCustomerAccounts(on),
     onSuccess: (_out, on) => {
-      toast.success(on ? "انفتحت حسابات الزبائن بالمتجر" : "انطفت حسابات الزبائن. المتجر للزوار بس");
+      toast.success(on ? tr("انفتحت حسابات الزبائن بالمتجر", "Customer accounts are on in the store") : tr("انطفت حسابات الزبائن. المتجر للزوار بس", "Customer accounts are off. The store is for guests only"));
       setConfirmOff(false);
       qc.invalidateQueries({ queryKey: ["customers"] });
       qc.invalidateQueries({ queryKey: ["settings"] });
     },
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
 
   return (
@@ -138,46 +140,46 @@ function AccountsSwitch({ enabled, emailReady }: { enabled: boolean; emailReady:
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-semibold">حسابات الزبائن بالمتجر</h2>
+            <h2 className="font-semibold">{tr("حسابات الزبائن بالمتجر", "Customer accounts in the store")}</h2>
             {enabled ? (
               <Badge size="sm" variant="success" dot>
-                شغّالة
+                {tr("شغّالة", "On")}
               </Badge>
             ) : (
               <Badge size="sm" dot>
-                مطفية
+                {tr("مطفية", "Off")}
               </Badge>
             )}
           </div>
           <p className="mt-1 text-sm text-white/60">
             {enabled
-              ? "الزبونة بتقدر تفوت بكود على إيميلها، تشوف طلباتها، وتحفظ المفضلة وعناوينها. الشراء كضيفة بيضل شغّال."
-              : "المتجر للزوار بس: الزبونة بتشتري كضيفة، وما في أيقونة حساب ولا صفحة «حسابي». لما تشغّلها، كل اشي جاهز."}
+              ? tr("الزبون بيقدر يفوت بكود على إيميله، يشوف طلباته، ويحفظ المفضلة وعناوينه. الشراء كضيف بيضل شغّال.", "Customers can sign in with a code to their email, see their orders, and save favourites and addresses. Guest checkout keeps working.")
+              : tr("المتجر للزوار بس: الزبون بيشتري كضيف، وما في أيقونة حساب ولا صفحة «حسابي». لما تشتغل، كل اشي جاهز.", "The store is for guests only: customers buy as guests, with no account icon or “My account” page. Turn it on and everything is ready.")}
           </p>
           {!emailReady && !enabled ? (
             <p className="mt-2 text-xs text-amber-200">
-              قبل ما تشغّلها: لازم يكون إرسال الإيميل (Resend) مضبوط بالسيرفر، حتى توصل أكواد الدخول للزبونات.
+              {tr("قبل التشغيل: لازم يكون إرسال الإيميل (Resend) مضبوط بالسيرفر، حتى توصل أكواد الدخول للزبائن.", "Before turning it on: email sending (Resend) has to be set up on the server so sign-in codes reach customers.")}
             </p>
           ) : null}
-          {!canChange ? <p className="mt-2 text-xs text-white/50">تغيير هذا بدّه صلاحية «تعديل الإعدادات».</p> : null}
+          {!canChange ? <p className="mt-2 text-xs text-white/50">{tr("تغيير هذا بدّه صلاحية «تعديل الإعدادات».", "Changing this needs the “Edit settings” permission.")}</p> : null}
         </div>
         {canChange ? (
           enabled ? (
             <Button variant="secondary" onClick={() => setConfirmOff(true)} isLoading={change.isPending}>
-              إطفاء الحسابات
+              {tr("إطفاء الحسابات", "Turn accounts off")}
             </Button>
           ) : (
             <Button variant="primary" onClick={() => change.mutate(true)} isLoading={change.isPending}>
-              تشغيل الحسابات
+              {tr("تشغيل الحسابات", "Turn accounts on")}
             </Button>
           )
         ) : null}
       </div>
       <ConfirmDialog
         open={confirmOff}
-        title="إطفاء حسابات الزبائن"
-        message="الأيقونة وصفحة «حسابي» بيختفوا من المتجر، واللي داخلات ما بيقدروا يفوتوا على حسابهن. ما بينمسح اشي: الحسابات والطلبات والعناوين بتضل محفوظة، ولما ترجّع تشغّلها بيرجع كل اشي متل ما كان."
-        confirmText="إطفاء"
+        title={tr("إطفاء حسابات الزبائن", "Turn customer accounts off")}
+        message={tr("الأيقونة وصفحة «حسابي» بيختفوا من المتجر، واللي داخلين ما بيقدروا يفوتوا على حسابهم. ما بينمسح اشي: الحسابات والطلبات والعناوين بتضل محفوظة، ولما ترجع تشتغل بيرجع كل اشي متل ما كان.", "The icon and the “My account” page disappear from the store, and signed-in customers can't reach their accounts. Nothing is deleted: accounts, orders and addresses stay saved, and when it's back on everything returns as it was.")}
+        confirmText={tr("إطفاء", "Turn off")}
         isLoading={change.isPending}
         onConfirm={() => change.mutate(false)}
         onCancel={() => setConfirmOff(false)}
@@ -196,43 +198,43 @@ function CustomerModal({ id, onClose }: { id: string | null; onClose: () => void
   const change = useMutation({
     mutationFn: (status: CustomerRow["status"]) => CustomersAPI.setCustomerStatus(id!, status),
     onSuccess: (out) => {
-      toast.success(out.status === "SUSPENDED" ? "انوقف الحساب وطلع من كل الأجهزة" : "رجع الحساب يشتغل");
+      toast.success(out.status === "SUSPENDED" ? tr("انوقف الحساب وطلع من كل الأجهزة", "The account was stopped and signed out of every device") : tr("رجع الحساب يشتغل", "The account works again"));
       setConfirm(null);
       qc.invalidateQueries({ queryKey: ["customers"] });
     },
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
   const d = q.data;
 
   return (
-    <Modal open={!!id} title={d?.customer.name || d?.customer.email || "الزبونة"} description={d?.customer.email} onClose={onClose} widthClassName="max-w-2xl">
+    <Modal open={!!id} title={d?.customer.name || d?.customer.email || tr("الزبون", "Customer")} description={d?.customer.email} onClose={onClose} widthClassName="max-w-2xl">
       {q.isLoading ? (
         <div className="flex items-center gap-2 text-sm">
-          <Spinner /> جاري التحميل…
+          <Spinner /> {tr("جاري التحميل…", "Loading…")}
         </div>
       ) : q.isError ? (
         <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div>
       ) : d ? (
-        <div dir="rtl" className="space-y-5 text-sm" data-testid="customer-details">
+        <div className="space-y-5 text-sm" data-testid="customer-details">
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Fact label="الطلبات" value={String(d.orders.length)} />
-            <Fact label="المفضلة" value={String(d.favouritesCount)} />
-            <Fact label="أجهزة داخلة" value={String(d.activeSessions)} />
-            <Fact label="من" value={new Date(d.customer.createdAt).toLocaleDateString("ar", { dateStyle: "medium" })} />
+            <Fact label={tr("الطلبات", "Orders")} value={String(d.orders.length)} />
+            <Fact label={tr("المفضلة", "Favourites")} value={String(d.favouritesCount)} />
+            <Fact label={tr("أجهزة داخلة", "Signed-in devices")} value={String(d.activeSessions)} />
+            <Fact label={tr("من", "Since")} value={new Date(d.customer.createdAt).toLocaleDateString(loc("ar"), { dateStyle: "medium" })} />
           </section>
           <section className="flex flex-wrap gap-2 text-xs">
             {d.customer.phone ? <Badge size="sm"><span dir="ltr">{d.customer.phone}</span></Badge> : null}
-            {d.customer.preferredSize ? <Badge size="sm">مقاس {d.customer.preferredSize}</Badge> : null}
+            {d.customer.preferredSize ? <Badge size="sm">{tr("مقاس", "Size")} {d.customer.preferredSize}</Badge> : null}
             {d.customer.favoriteColor ? (
               <Badge size="sm">
-                <span className="inline-block h-3 w-3 rounded-full align-middle" style={{ background: d.customer.favoriteColor }} /> لونها المفضّل
+                <span className="inline-block h-3 w-3 rounded-full align-middle" style={{ background: d.customer.favoriteColor }} /> {tr("اللون المفضّل", "Favourite colour")}
               </Badge>
             ) : null}
-            {d.customer.marketingOptIn ? <Badge size="sm" variant="success">موافقة على رسائل العروض</Badge> : <Badge size="sm">بدون رسائل عروض</Badge>}
+            {d.customer.marketingOptIn ? <Badge size="sm" variant="success">{tr("موافقة على رسائل العروض", "Accepts offer messages")}</Badge> : <Badge size="sm">{tr("بدون رسائل عروض", "No offer messages")}</Badge>}
           </section>
 
           <section>
-            <h3 className="font-semibold">الطلبات</h3>
+            <h3 className="font-semibold">{tr("الطلبات", "Orders")}</h3>
             {d.orders.length ? (
               <ul className="mt-2 divide-y divide-white/10">
                 {d.orders.map((o) => (
@@ -248,19 +250,19 @@ function CustomerModal({ id, onClose }: { id: string | null; onClose: () => void
                       <StatusPill status={o.status} />
                     </span>
                     <span className="text-xs text-white/60">
-                      {o.items} قطعة · {o.total != null ? shekel(o.total) : ""} · {relativeTime(o.createdAt)}
+                      {o.items} {tr("قطعة ·", "pieces ·")} {o.total != null ? moneyText(o.total) : ""} · {relativeTime(o.createdAt)}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-2 text-white/60">ما في طلبات بحسابها بعد.</p>
+              <p className="mt-2 text-white/60">{tr("ما في طلبات بالحساب بعد.", "No orders on the account yet.")}</p>
             )}
           </section>
 
           {d.favourites.length ? (
             <section>
-              <h3 className="font-semibold">المفضلة</h3>
+              <h3 className="font-semibold">{tr("المفضلة", "Favourites")}</h3>
               <ul className="mt-2 flex flex-wrap gap-2">
                 {d.favourites.map((f) => (
                   <li key={f.id} className="flex items-center gap-2 rounded-xl border border-white/10 px-2 py-1 text-xs">
@@ -274,11 +276,11 @@ function CustomerModal({ id, onClose }: { id: string | null; onClose: () => void
 
           {d.addresses.length ? (
             <section>
-              <h3 className="font-semibold">العناوين</h3>
+              <h3 className="font-semibold">{tr("العناوين", "Addresses")}</h3>
               <ul className="mt-2 space-y-1 text-white/70">
                 {d.addresses.map((a) => (
                   <li key={a.id}>
-                    {a.isDefault ? <Badge size="sm">الأساسي</Badge> : null} {a.fullName} · {a.city}، {a.address}
+                    {a.isDefault ? <Badge size="sm">{tr("الأساسي", "Main")}</Badge> : null} {a.fullName} · {a.city}{tr("،", ",")} {a.address}
                   </li>
                 ))}
               </ul>
@@ -289,11 +291,11 @@ function CustomerModal({ id, onClose }: { id: string | null; onClose: () => void
             <section className="border-t border-white/10 pt-4">
               {d.customer.status === "SUSPENDED" ? (
                 <Button variant="secondary" onClick={() => change.mutate("ACTIVE")} isLoading={change.isPending}>
-                  تشغيل الحساب
+                  {tr("تشغيل الحساب", "Turn the account on")}
                 </Button>
               ) : (
                 <Button variant="danger" onClick={() => setConfirm("SUSPENDED")}>
-                  إيقاف الحساب
+                  {tr("إيقاف الحساب", "Stop the account")}
                 </Button>
               )}
             </section>
@@ -302,9 +304,9 @@ function CustomerModal({ id, onClose }: { id: string | null; onClose: () => void
       ) : null}
       <ConfirmDialog
         open={confirm === "SUSPENDED"}
-        title="إيقاف الحساب"
-        message="الزبونة بتطلع من كل الأجهزة وما بتقدر تفوت على حسابها. طلباتها بتضل محفوظة، وبتقدر تشتري كضيفة. بتقدر ترجّع تشغّل الحساب أي وقت."
-        confirmText="إيقاف"
+        title={tr("إيقاف الحساب", "Stop the account")}
+        message={tr("الزبون بيطلع من كل الأجهزة وما بيقدر يفوت على حسابه. طلباته بتضل محفوظة، وبيقدر يشتري كضيف. الحساب بيرجع يشتغل أي وقت.", "The customer is signed out of every device and can't reach their account. Their orders stay saved, and they can buy as a guest. The account can be turned back on any time.")}
+        confirmText={tr("إيقاف", "Stop")}
         isLoading={change.isPending}
         onConfirm={() => change.mutate("SUSPENDED")}
         onCancel={() => setConfirm(null)}

@@ -3,6 +3,7 @@
 // (estabrek-storefront/src/lib/scarcity.ts). The owner's own low-stock alerts
 // (per-variant thresholds) are a separate thing and aren't affected.
 
+import { tr } from "@/lib/words";
 export type ScarcitySettings = {
   enabled: boolean;
   /** Shown when this many pieces or fewer are left. */
@@ -35,11 +36,11 @@ export function sameScarcity(a: ScarcitySettings, b: ScarcitySettings) {
   return a.enabled === b.enabled && a.showAt === b.showAt && a.onPhoto === b.onPhoto && a.nearPrice === b.nearPrice;
 }
 
-/** The storefront's wording: "آخر قطعة", "باقي قطعتان", "باقي 5 قطع", "باقي 12 قطعة". */
+/** The storefront's wording: "آخر قطعة", "باقي قطعتان", "باقي 5 قطع", "باقي 12 قطعة" (and the same in English and Hebrew). */
 export function piecesLeftText(left: number) {
-  if (left === 1) return "آخر قطعة";
-  if (left === 2) return "باقي قطعتان";
-  return left <= 10 ? `باقي ${left} قطع` : `باقي ${left} قطعة`;
+  if (left === 1) return tr("آخر قطعة", "Last one left");
+  if (left === 2) return tr("باقي قطعتان", "Only 2 left");
+  return tr(left <= 10 ? `باقي ${left} قطع` : `باقي ${left} قطعة`, "Only {0} left", [left]);
 }
 
 /** The labels a shopper would see, from 1 piece up to the chosen count (a few, not all). */
@@ -51,9 +52,15 @@ export function scarcityExamples(showAt: number) {
 
 /** One line about the current choice, for the card. */
 export function scarcitySummary(s: ScarcitySettings) {
-  if (!s.enabled) return "الزبونات ما بيشوفن كم قطعة باقية، بس «متوفر» أو «نفد».";
-  if (!s.onPhoto && !s.nearPrice) return "ما في مكان مختار، فالعدد ما رح يبين بأي مكان.";
-  const where = s.onPhoto && s.nearPrice ? "على الصورة وجنب السعر" : s.onPhoto ? "على الصورة بس" : "جنب السعر بس";
-  const when = s.showAt === 1 ? "لما تضل آخر قطعة" : s.showAt === 2 ? "لما يضل قطعتين أو أقل" : `لما يضل ${s.showAt} ${s.showAt <= 10 ? "قطع" : "قطعة"} أو أقل`;
-  return `بيبين ${where} ${when}.`;
+  if (!s.enabled) return tr("الزبائن ما بيشوفوا كم قطعة باقية، بس «متوفر» أو «نفد».", "Shoppers don't see how many are left, only “In stock” or “Sold out”.");
+  if (!s.onPhoto && !s.nearPrice) return tr("ما في مكان مختار، فالعدد ما رح يبين بأي مكان.", "No place is chosen, so the count doesn't show anywhere.");
+  const where =
+    s.onPhoto && s.nearPrice ? tr("على الصورة وجنب السعر", "on the photo and next to the price") : s.onPhoto ? tr("على الصورة بس", "on the photo only") : tr("جنب السعر بس", "next to the price only");
+  const when =
+    s.showAt === 1
+      ? tr("لما تضل آخر قطعة", "when the last one is left")
+      : s.showAt === 2
+        ? tr("لما يضل قطعتين أو أقل", "when 2 or fewer are left")
+        : tr(`لما يضل ${s.showAt} ${s.showAt <= 10 ? "قطع" : "قطعة"} أو أقل`, "when {0} or fewer are left", [s.showAt]);
+  return tr(`بيبين ${where} ${when}.`, "It shows {0} {1}.", [where, when]);
 }

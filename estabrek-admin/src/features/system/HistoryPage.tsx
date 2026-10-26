@@ -17,10 +17,11 @@ import * as HistoryAPI from "../../api/history.api";
 import type { HistoryArea, HistoryEntry } from "../../api/history.api";
 import { Segmented } from "./cacheParts";
 import { AREA_TEXT, entrySentence, groupByDay, noRestoreText, rangeOf, restoreLabel } from "./historyText";
+import { loc } from "@/lib/lang";
 
 type Range = "today" | "yesterday" | "week" | "month";
 const field = "h-10 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm";
-const time = (iso: string) => new Date(iso).toLocaleTimeString("ar", { hour: "2-digit", minute: "2-digit" });
+const time = (iso: string) => new Date(iso).toLocaleTimeString(loc("ar"), { hour: "2-digit", minute: "2-digit" });
 
 export default function HistoryPage() {
   const qc = useQueryClient();
@@ -45,7 +46,7 @@ export default function HistoryPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4 pb-16" data-testid="history-page">
+    <div className="space-y-4 pb-16" data-testid="history-page">
       <PageHeader title="السجل" subtitle="كل اللي تغيّر من لوحة الإدارة، يوم بيوم، وكبسة وحدة لترجع: لقبل التغيير، أو تتراجع عنه. الرجوع نفسه بيتسجّل، فبتقدر ترجع عنه كمان." />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="sm:w-96">

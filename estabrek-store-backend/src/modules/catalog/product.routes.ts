@@ -5,6 +5,8 @@ import { asyncHandler } from "../../utils/async.js";
 import { cacheResponse } from "../../middleware/responseCache.js";
 import { validate } from "../../utils/validate.js";
 import { prisma } from "../../lib/prisma.js";
+import { spinsForProduct } from "../../lib/productSpins.js";
+import { makePublicUrl } from "../admin/uploads.controller.js";
 import { attrFiltersFrom, attributeFacets, publicType } from "../productTypes/productTypes.js";
 import {
   ProductListQuery,
@@ -79,14 +81,15 @@ r.post("/products/by-slugs", cacheResponse("listings"), validate({ body: Product
 r.get("/products/slug/:slug", cacheResponse("products", { subject: productOfBody }), asyncHandler(async (req, res) => {
   const p = await getProductBySlug(req.params.slug);
   if (!p) return res.status(404).json({ error: "NOT_FOUND" });
-  res.json(p);
+  // Its 360° views (scans linked to it), for the product page.
+  res.json({ ...p, spins: await spinsForProduct(p.id, (rel) => makePublicUrl(req, rel)) });
 }));
 
 // detail by id
 r.get("/products/:id", cacheResponse("products", { subject: productOfBody }), asyncHandler(async (req, res) => {
   const p = await getProductById(req.params.id);
   if (!p) return res.status(404).json({ error: "NOT_FOUND" });
-  res.json(p);
+  res.json({ ...p, spins: await spinsForProduct(p.id, (rel) => makePublicUrl(req, rel)) });
 }));
 
 // reviews

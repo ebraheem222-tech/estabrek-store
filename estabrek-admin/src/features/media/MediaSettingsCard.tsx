@@ -13,10 +13,11 @@ import type { MediaSettings } from "../../api/videos.api";
 import { NumberInput, Segmented, Toggle } from "../system/cacheParts";
 import { describeChanged } from "../system/cacheText";
 import { PRESET_TEXT } from "./videoText";
+import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
-const FORMAT_TEXT: Record<MediaSettings["images"]["format"], string> = { keep: "متل ما هي", webp: "WebP", avif: "AVIF", jpeg: "JPEG" };
+const FORMAT_TEXT: Record<MediaSettings["images"]["format"], string> = { keep: tr("متل ما هي", "As it is"), webp: "WebP", avif: "AVIF", jpeg: "JPEG" };
 
 export function MediaSettingsCard() {
   const qc = useQueryClient();
@@ -43,10 +44,10 @@ export function MediaSettingsCard() {
   const save = useMutation({
     mutationFn: () => VideosAPI.saveMediaSettings(patch),
     onSuccess: (out) => {
-      toast.success("انحفظت إعدادات الرفع", { description: describeChanged(out.changed) });
+      toast.success(tr("انحفظت إعدادات الرفع", "Upload settings saved"), { description: describeChanged(out.changed) });
       qc.invalidateQueries({ queryKey: ["media"] });
     },
-    onError: (e) => toast.error("ما انحفظ", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما انحفظ", "Not saved"), { description: getApiErrorMessage(e) }),
   });
 
   if (!q.data || !draft) {
@@ -69,21 +70,21 @@ export function MediaSettingsCard() {
 
   return (
     <section className={box} data-testid="media-settings">
-      <h2 className="font-semibold">إعدادات الرفع</h2>
-      <p className="mt-1 text-xs text-white/60">شو بصير بالصور والفيديوهات لما تنرفع. ما بتغيّر الملفات اللي انرفعت قبل.</p>
+      <h2 className="font-semibold">{tr("إعدادات الرفع", "Upload settings")}</h2>
+      <p className="mt-1 text-xs text-white/60">{tr("شو بصير بالصور والفيديوهات لما تنرفع. ما بتغيّر الملفات اللي انرفعت قبل.", "What happens to photos and videos when they're uploaded. Files uploaded before don't change.")}</p>
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4">
-          <h3 className="text-sm font-medium">الصور</h3>
+          <h3 className="text-sm font-medium">{tr("الصور", "Photos")}</h3>
           <Toggle
-            label="شيل المعلومات المخفية من الصور"
-            help="صور التلفون فيها نوع الجهاز ومكان التصوير (GPS). بتنحفظ الصورة من جديد بدونها، بجودة عالية."
+            label={tr("حذف المعلومات المخفية من الصور", "Remove hidden info from photos")}
+            help={tr("صور التلفون فيها نوع الجهاز ومكان التصوير (GPS). بتنحفظ الصورة من جديد بدونها، بجودة عالية.", "Phone photos hold the device model and where they were taken (GPS). The photo is saved again without them, at high quality.")}
             checked={draft.images.stripMetadata}
             disabled={!canWrite}
             onChange={(v) => img("stripMetadata", v)}
           />
           <NumberInput
             id="media-img-max"
-            label="أكبر حجم للصورة"
+            label={tr("أكبر حجم للصورة", "Largest photo size")}
             unit="MB"
             value={draft.images.maxUploadMb}
             def={defaults.images.maxUploadMb}
@@ -94,10 +95,10 @@ export function MediaSettingsCard() {
           />
           <NumberInput
             id="media-img-dim"
-            label="أطول ضلع"
+            label={tr("أطول ضلع", "Longest side")}
             unit="px"
-            help="الصور الأكبر بتصغر لهالقد. 0 = تلقائي (4000 مع Cloudinary، 2000 على السيرفر)."
-            hint={(v) => (v === 0 ? "تلقائي" : `${v}px`)}
+            help={tr("الصور الأكبر بتصغر لهالقد. 0 = تلقائي (4000 مع Cloudinary، 2000 على السيرفر).", "Bigger photos are shrunk to this. 0 = automatic (4000 with Cloudinary, 2000 on the server).")}
+            hint={(v) => (v === 0 ? tr("تلقائي", "Automatic") : `${v}px`)}
             value={draft.images.maxDimension}
             def={defaults.images.maxDimension}
             limits={limits.maxDimension}
@@ -106,8 +107,8 @@ export function MediaSettingsCard() {
             onChange={(v) => img("maxDimension", v)}
           />
           <div>
-            <span className="text-sm font-medium">احفظها كـ</span>
-            <p className="mt-0.5 text-xs text-white/50">المتجر أصلاً بيبعت AVIF/WebP للزباين عن طريق Cloudinary. هاد بس للملف المحفوظ.</p>
+            <span className="text-sm font-medium">{tr("الحفظ كـ", "Save as")}</span>
+            <p className="mt-0.5 text-xs text-white/50">{tr("المتجر أصلاً بيبعت AVIF/WebP للزباين عن طريق Cloudinary. هاد بس للملف المحفوظ.", "The store already sends AVIF/WebP to customers through Cloudinary. This is only for the saved file.")}</p>
             <Segmented
               value={draft.images.format}
               disabled={!canWrite}
@@ -117,9 +118,9 @@ export function MediaSettingsCard() {
           </div>
           <NumberInput
             id="media-img-q"
-            label="الجودة لما تنحفظ من جديد"
+            label={tr("الجودة لما تنحفظ من جديد", "Quality when saved again")}
             unit="%"
-            hint={(v) => (v === 0 ? "تلقائي: 90" : `${v}%`)}
+            hint={(v) => (v === 0 ? tr("تلقائي: 90", "Automatic: 90") : `${v}%`)}
             value={draft.images.quality}
             def={defaults.images.quality}
             limits={limits.quality}
@@ -127,12 +128,22 @@ export function MediaSettingsCard() {
             disabled={!canWrite}
             onChange={(v) => img("quality", v)}
           />
+          <Toggle
+            label={tr("شيل الخلفية بـ Cloudinary كمان", "Also remove backgrounds with Cloudinary")}
+            help={tr(
+              "«شيل الخلفية» بيشتغل مجاناً على الجهاز. لما هاد يكون شغّال، بينضاف خيار Cloudinary: كل صورة بتنحسب 75 تحويلة من باقة Cloudinary (يعني مدفوع).",
+              "«Remove background» runs free on the device. When this is on, Cloudinary is offered too: each picture counts as 75 transformations of the Cloudinary plan (paid).",
+            )}
+            checked={draft.images.cloudCutout}
+            disabled={!canWrite}
+            onChange={(v) => img("cloudCutout", v)}
+          />
         </div>
         <div className="space-y-4">
-          <h3 className="text-sm font-medium">الفيديوهات</h3>
+          <h3 className="text-sm font-medium">{tr("الفيديوهات", "Videos")}</h3>
           <NumberInput
             id="media-vid-max"
-            label="أكبر حجم للفيديو"
+            label={tr("أكبر حجم للفيديو", "Largest video size")}
             unit="MB"
             value={draft.videos.maxUploadMb}
             def={defaults.videos.maxUploadMb}
@@ -142,13 +153,13 @@ export function MediaSettingsCard() {
             onChange={(v) => vid("maxUploadMb", v)}
           />
           <Toggle
-            label="اعمل نسخة تلقائياً بعد الرفع"
+            label={tr("نسخة تلقائية بعد الرفع", "Make a version automatically after upload")}
             checked={draft.videos.autoConvert}
             disabled={!canWrite}
             onChange={(v) => vid("autoConvert", v)}
           />
           <div className={draft.videos.autoConvert ? "" : "opacity-50"}>
-            <span className="text-sm font-medium">النسخة التلقائية</span>
+            <span className="text-sm font-medium">{tr("النسخة التلقائية", "The automatic version")}</span>
             <Segmented
               value={draft.videos.defaultPreset}
               disabled={!canWrite || !draft.videos.autoConvert}
@@ -158,9 +169,9 @@ export function MediaSettingsCard() {
           </div>
           <NumberInput
             id="media-vid-poster"
-            label="الغلاف من الثانية"
-            unit="ثانية"
-            help="صورة الغلاف بتنعمل من هالإطار. بتقدر تغيّرها بعدين من الفيديو."
+            label={tr("الغلاف من الثانية", "Cover from second")}
+            unit={tr("ثانية", "seconds")}
+            help={tr("صورة الغلاف بتنعمل من هالإطار. بتتغيّر بعدين من الفيديو.", "The cover is made from this frame. It can be changed later from the video.")}
             value={draft.videos.posterSecond}
             def={defaults.videos.posterSecond}
             limits={limits.posterSecond}
@@ -172,12 +183,12 @@ export function MediaSettingsCard() {
       </div>
       {canWrite && dirty ? (
         <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-white/10 pt-4">
-          {invalid ? <span className="text-xs text-red-300">في قيم برّا الحد المسموح</span> : null}
+          {invalid ? <span className="text-xs text-red-300">{tr("في قيم برّا الحد المسموح", "Some values are outside the allowed range")}</span> : null}
           <Button variant="ghost" onClick={() => setDraft(q.data.media)}>
-            تراجع
+            {tr("تراجع", "Undo")}
           </Button>
           <Button variant="primary" onClick={() => save.mutate()} isLoading={save.isPending} disabled={invalid}>
-            حفظ
+            {tr("حفظ", "Save")}
           </Button>
         </div>
       ) : null}

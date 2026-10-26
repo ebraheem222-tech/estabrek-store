@@ -4,6 +4,8 @@
  * messages are kept on this device and sent to /api/chatbot/message.
  */
 import { useCallback, useEffect, useState } from "react";
+import { tr } from "@/lib/words";
+import { useLanguage } from "@/components/cinematic/Language";
 
 export type ChatRole = "user" | "assistant";
 export type ChatProduct = { id: string; slug: string; title: string; imageUrl?: string | null; minPrice?: number | null };
@@ -17,6 +19,7 @@ function uid() {
 }
 
 export function useStoreChat(greeting: string, ar: boolean) {
+  const { language: lang } = useLanguage();
   const [sessionId, setSessionId] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -49,7 +52,7 @@ export function useStoreChat(greeting: string, ar: boolean) {
       const res = await fetch("/api/chatbot/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: conversationId ?? undefined, sessionId, locale: ar ? "ar" : "en", message: text, pageUrl: window.location.href }),
+        body: JSON.stringify({ conversationId: conversationId ?? undefined, sessionId, locale: lang, message: text, pageUrl: window.location.href }),
       });
       const json = (await res.json().catch(() => ({}))) as { reply?: string; conversationId?: string; products?: ChatProduct[]; error?: string };
       const reply = String(json?.reply ?? "").trim();
@@ -61,7 +64,7 @@ export function useStoreChat(greeting: string, ar: boolean) {
     } catch {
       const msg: ChatMessage = {
         id: uid(), role: "assistant", at: Date.now(),
-        text: ar ? "ما قدرت أوصل للمساعد هلأ 🙈 جرّبي كمان شوي، أو راسلينا على واتساب." : "I couldn't reach the assistant right now 🙈 try again soon, or message us on WhatsApp.",
+        text: tr(lang, "ما قدرت أوصل للمساعد هلأ 🙈 جرّبي كمان شوي، أو راسلينا على واتساب.", "I couldn't reach the assistant right now 🙈 try again soon, or message us on WhatsApp."),
       };
       setMessages((m) => [...m, msg]);
       return msg;

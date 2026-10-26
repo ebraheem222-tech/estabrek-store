@@ -37,7 +37,7 @@ export function RoseCmsInterior({ sections, kind, productLookup, renderQuickAdd,
       if (!composed && s.type === "CONTACT" && !d.themeId && !d.form?.action) node = <RoseContact data={d} heading={heading} />;
       else if (!composed && kind === "about" && s.type === "HERO") node = <RoseAboutHero data={d} />;
       else if (!composed && s.type === "CTA") node = <RoseCta data={d} />;
-      else node = <RoseNativeSections><CmsPageRenderer sections={[s]} productLookup={productLookup} renderQuickAdd={renderQuickAdd} renderProductCard={renderProductCard} /></RoseNativeSections>;
+      else node = <RoseNativeSections><CmsPageRenderer sections={[s]} markSections={false} productLookup={productLookup} renderQuickAdd={renderQuickAdd} renderProductCard={renderProductCard} /></RoseNativeSections>;
       return <div key={s.id} id={adapted ? s.anchorId || undefined : undefined} aria-label={adapted ? s.ariaLabel || undefined : undefined} data-cms-section={s.id} data-rose-palette={sectionPalette(s.type, d.rosePresentation)} data-rose-explicit={d.rosePresentation?.palette || undefined} data-rose-intensity={d.rosePresentation?.motionIntensity || "cinematic"}>{node}</div>;
     })}
   </RosePageFrame>;

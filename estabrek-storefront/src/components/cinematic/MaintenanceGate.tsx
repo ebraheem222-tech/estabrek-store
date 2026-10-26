@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
 import { whatsappLink } from "@/lib/whatsapp";
+import { tr } from "@/lib/words";
+import { useLanguage } from "./Language";
 
 export type MaintenanceInfo = { on: boolean; message: string | null; previewHash: string | null } | null | undefined;
 
@@ -42,6 +44,7 @@ export function MaintenanceGate({
   countryCode?: string | null;
   children: ReactNode;
 }) {
+  const { language: lang } = useLanguage();
   const on = maintenance?.on === true;
   const [preview, setPreview] = useState(false);
 
@@ -106,13 +109,13 @@ export function MaintenanceGate({
       <div className="rose-maint" role="main" data-testid="maintenance-screen">
         <div className="rose-maint-card">
           {logoUrl ? <img src={logoUrl} alt={siteName} className="rose-maint-logo" /> : <div className="rose-maint-name">{siteName}</div>}
-          <span className="atelier-eyebrow">صيانة قصيرة</span>
-          <h1>راجعين قريباً</h1>
-          <p>{maintenance?.message?.trim() || "منحدّث المتجر هلّق لنرجعلكِ بتجربة أحلى. ارجعي بعد شوي."}</p>
+          <span className="atelier-eyebrow">{tr(lang, "صيانة قصيرة", "Quick maintenance")}</span>
+          <h1>{tr(lang, "راجعين قريباً", "Back soon")}</h1>
+          <p>{maintenance?.message?.trim() || tr(lang, "منحدّث المتجر هلّق لنرجعلكِ بتجربة أحلى. ارجعي بعد شوي.", "We're updating the store to bring you something better. Please check back soon.")}</p>
           <div className="rose-maint-actions">
             {wa ? (
               <a className="atelier-button button-dark" href={wa} target="_blank" rel="noopener noreferrer">
-                راسلينا على واتساب
+                {tr(lang, "راسلينا على واتساب", "Message us on WhatsApp")}
               </a>
             ) : null}
             {contactEmail ? (

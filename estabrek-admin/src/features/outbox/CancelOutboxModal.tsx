@@ -62,7 +62,7 @@ export default function CancelOutboxModal({
         </div>
       }
     >
-      <div dir="rtl" className="space-y-4">
+      <div className="space-y-4">
         <Input
           label="سبب الإلغاء (اختياري)"
           value={reason}

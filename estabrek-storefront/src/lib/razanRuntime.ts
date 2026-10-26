@@ -5,6 +5,7 @@
  */
 import { RAZAN_DEFAULTS, type RazanSettings } from "./razanSettings";
 import { apiBaseClient } from "./apiClient";
+import { stripLang } from "./i18n";
 
 let current: RazanSettings = RAZAN_DEFAULTS;
 const BUBBLES_KEY = "razan_bubbles";
@@ -21,7 +22,8 @@ export function isPhone() {
   return typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches === true;
 }
 
-export function onQuietPage(path = typeof window !== "undefined" ? window.location.pathname : "/") {
+export function onQuietPage(raw = typeof window !== "undefined" ? window.location.pathname : "/") {
+  const path = stripLang(raw);
   return current.quietPaths.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`));
 }
 

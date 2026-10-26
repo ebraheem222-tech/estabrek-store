@@ -16,6 +16,8 @@ import { AppError } from "../../utils/httpError.js";
 import { emailConfigured, sendEmail } from "../outbox/sender/email.js";
 import { razanOf } from "../razan/razan.settings.js";
 import { requestsOf } from "./requests.settings.js";
+import { shopperLanguage, titleIn, urlInLanguage } from "../../lib/shopperLanguage.js";
+import { requestFoundText } from "../outbox/sender/emailTemplates.js";
 
 export type RequestPhoto = { location: string; bytes: number; width?: number; height?: number };
 
@@ -84,6 +86,7 @@ export type NewRequest = {
   wantedColor?: string | null;
   details?: string | null;
   source?: string | null;
+  lang?: string | null;
 };
 
 const perIp = new Map<string, number[]>();
@@ -157,6 +160,7 @@ export async function createRequest(input: NewRequest, files: Buffer[], ip?: str
       details: input.details?.trim().slice(0, 1000) || null,
       photos: saved as unknown as Prisma.InputJsonValue,
       source: input.source?.trim().slice(0, 40) || null,
+      locale: input.lang ? (await shopperLanguage(input.lang)).lang : null,
       ip: ip ?? null,
     },
     select: { id: true, kind: true, status: true, createdAt: true },
@@ -181,19 +185,23 @@ export function storefrontLink(path: string) {
 export async function notifyFound(id: string) {
   const r = await prisma.customerRequest.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, phone: true, linkedProduct: { select: { title: true, slug: true } } },
+    select: { id: true, name: true, email: true, phone: true, locale: true, linkedProduct: { select: { title: true, slug: true, translations: true } } },
   });
   if (!r) throw new AppError(404, "NOT_FOUND", "Request not found");
   if (!r.linkedProduct) throw new AppError(409, "NO_PRODUCT", "Choose the product first");
-  const url = storefrontLink(`/p/${encodeURIComponent(r.linkedProduct.slug)}`);
+  // In the language she asked in, and the store's way of speaking.
+  const c = await shopperLanguage(r.locale);
+  const url = urlInLanguage(storefrontLink(`/p/${encodeURIComponent(r.linkedProduct.slug)}`), c.lang, c.main);
   const first = r.name.trim().split(/\s+/)[0] ?? "";
-  const text = `أهلاً ${first} 🌸\nلقينا اللي طلبتيه: ${r.linkedProduct.title}${url ? `\n${url}` : ""}\nالكمية قليلة، فإذا عجبتكِ لا تتأخري.`;
+  const productTitle = titleIn(r.linkedProduct, c.lang);
+  const text = requestFoundText({ ...c, siteName: "", name: first, productTitle, url });
   let emailed = false;
   if (r.email && url) {
     const res = await sendEmail({
       to: r.email,
       template: "REQUEST_FOUND",
-      payload: { name: first, productTitle: r.linkedProduct.title, url },
+      lang: c.lang,
+      payload: { name: first, productTitle, url },
       idempotencyKey: `request-found-${r.id}-${r.linkedProduct.slug}`,
     });
     emailed = res.ok && emailConfigured();

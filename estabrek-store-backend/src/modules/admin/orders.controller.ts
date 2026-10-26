@@ -36,6 +36,8 @@ const ORDER_REQUEST_BASE_SELECT = {
   contactedAt: true,
   acceptedAt: true,
   rejectedAt: true,
+  // The shopper's language (ar/en/he): messages to them are written in it.
+  locale: true,
   createdAt: true,
   updatedAt: true,
 } as const;

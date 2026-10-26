@@ -24,6 +24,9 @@ import { createCheckoutSession, verifyCheckoutSession } from "./checkout.service
 import { noteSignals } from "../../lib/popularity.js";
 import { RumBodySchema, noteRum } from "../../lib/rum.js";
 import { AbBodySchema, noteAb, publicExperiments } from "../../lib/experiments.js";
+import { storedTree, treeFromSections } from "../../lib/pageTree.js";
+import { previewPageId } from "../../lib/previewToken.js";
+import { storedDraft } from "../../lib/pageDraft.js";
 
 const r = Router();
 
@@ -248,14 +251,8 @@ r.get("/pages", cacheResponse("pages"), asyncHandler(async (_req, res) => {
   res.json({ pages });
 }));
 
-r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asyncHandler(async (req, res) => {
-  const slug = String((req.query as any).slug);
-  const locale = String((req.query as any).locale ?? "ar") as ("ar"|"he"|"en");
-
-  const page = await getPageBySlugCached(slug, locale);
-
-  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
-
+/** A page as the shop gets it: its language's SEO and sections over the main ones, and its tree. */
+function pageForShop(page: any, opts: { tree?: unknown } = {}) {
   // i18n (DB): apply per-locale overrides from PageTranslation / PageSectionTranslation
   const pt = (page as any).translations?.[0];
   const outPage: any = { ...page };
@@ -278,7 +275,7 @@ r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asy
     return s;
   });
 
-res.json({
+return {
     id: outPage.id,
     name: outPage.name,
     slug: outPage.slug,
@@ -286,6 +283,9 @@ res.json({
     publishAt: outPage.publishAt,
     unpublishAt: outPage.unpublishAt,
     sections: outSections,
+    // The new CMS: 2 = draw the page from `tree` (old sections in it are `legacy` nodes pointing at `sections`).
+    format: opts.tree !== undefined ? 2 : outPage.format ?? 1,
+    tree: opts.tree !== undefined ? opts.tree : outPage.format === 2 ? storedTree(outPage.tree) : null,
     headScripts: outPage.headScripts,
     bodyScripts: outPage.bodyScripts,
     customCss: outPage.customCss,
@@ -296,7 +296,49 @@ res.json({
     noIndex: outPage.noIndex,
     updatedAt: outPage.updatedAt,
     createdAt: outPage.createdAt,
+  };
+}
+
+r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asyncHandler(async (req, res) => {
+  const slug = String((req.query as any).slug);
+  const locale = String((req.query as any).locale ?? "ar") as ("ar"|"he"|"en");
+
+  const page = await getPageBySlugCached(slug, locale);
+
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+
+  res.json(pageForShop(page));
+}));
+
+/**
+ * GET /storefront/page-preview?token=…&locale=… — one page's draft for the admin's
+ * new editor (lib/previewToken.ts): published or not, always as a tree (an
+ * unconverted page as the tree it would become). Never cached.
+ */
+r.get("/page-preview", asyncHandler(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex");
+  const pageId = previewPageId((req.query as any).token);
+  if (!pageId) return res.status(401).json({ error: "PREVIEW_TOKEN" });
+  const raw = String((req.query as any).locale ?? "ar");
+  const locale = (["ar", "he", "en"].includes(raw) ? raw : "ar") as "ar" | "he" | "en";
+  const page = await prisma.page.findUnique({
+    where: { id: pageId },
+    include: {
+      translations: { where: { locale } },
+      sections: { where: { isVisible: true }, orderBy: { order: "asc" }, include: { translations: { where: { locale } } } },
+    },
   });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  // With unpublished changes, the editor sees them.
+  const draft = storedDraft(page.draft);
+  if (draft) {
+    const sections = draft.sections
+      .filter((s) => s.isVisible)
+      .map((s, order) => ({ id: s.id, type: s.type, data: s.data, isVisible: true, order, translations: s.tr[locale] ? [{ locale, data: s.tr[locale] }] : [] }));
+    return res.json({ ...pageForShop({ ...page, sections }, { tree: draft.tree }), draft: { rev: draft.rev, updatedAt: draft.updatedAt } });
+  }
+  res.json(pageForShop(page, { tree: storedTree(page.tree) ?? treeFromSections(page.sections) }));
 }));
 
 /**

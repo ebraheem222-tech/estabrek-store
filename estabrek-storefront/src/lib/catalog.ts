@@ -7,6 +7,8 @@ export type CatalogCategory = {
   parentId?: string | null;
   iconUrl?: string | null;
   children?: CatalogCategory[];
+  /** The name in the shop's other languages (src/lib/localize.ts). */
+  translations?: unknown;
 };
 
 export type CatalogImage = {
@@ -38,6 +40,8 @@ export type CatalogVariant = {
 export type CatalogItem = {
   id: string;
   colorName?: string | null;
+  /** The colour's name in the page's language (colorName stays the key; src/lib/localize.ts). */
+  colorLabel?: string | null;
   boxLabel?: string | null;
   colorHex?: string | null;
   // Palette extracted / suggested for UI swatches (array of hex strings)
@@ -54,6 +58,12 @@ export type CatalogProduct = {
   title: string;
   slug: string;
   description?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  /** Its words in the shop's other languages; the page shows its own (src/lib/localize.ts). */
+  translations?: unknown;
+  /** Its 360° views (sprite sheets from a video; admin → المنتج → عرض 360°), each for a colour or for all. */
+  spins?: unknown;
   category?: CatalogCategory | null;
   items?: CatalogItem[];
   minPrice?: number | null;
@@ -86,9 +96,12 @@ export type CatalogProductType = {
   showSize: boolean;
   /** How it reaches the shopper: shipped, downloaded, or a booking with a ticket. */
   fulfillment?: "SHIPPING" | "DIGITAL" | "BOOKING";
+  fields?: Array<{ key: string; label: string; kind: string; unit?: string; options?: string[]; filterable?: boolean; optionLabels?: Record<string, string> }>;
+  translations?: unknown;
 };
 
-export type CatalogSpec = { key: string; label: string; value: string; kind?: string };
+/** A details row; raw is the saved value (the page writes it in its own language). */
+export type CatalogSpec = { key: string; label: string; value: string; kind?: string; raw?: unknown };
 
 export type CatalogProductsList = {
   items: CatalogProduct[];
@@ -117,10 +130,10 @@ export function catalogItemKey(
 }
 
 export function catalogItemLabel(
-  it: { colorName?: string | null; boxLabel?: string | null },
+  it: { colorName?: string | null; colorLabel?: string | null; boxLabel?: string | null },
   idx = 0
 ): string {
-  const name = normalizeLabel(it.colorName) || `Color ${idx + 1}`;
+  const name = normalizeLabel(it.colorLabel) || normalizeLabel(it.colorName) || `Color ${idx + 1}`;
   const box = normalizeLabel(it.boxLabel);
   return box ? `${name} — ${box}` : name;
 }
@@ -274,8 +287,7 @@ export function formatMoney(amount: number | null, currencyCode?: string | null)
   try {
     return new Intl.NumberFormat("ar", { style: "currency", currency: code }).format(n);
   } catch {
-    // Lightweight symbol mapping fallback.
-    const sym = code === "USD" ? "$" : code === "EUR" ? "€" : "₪";
-    return `${sym}${n.toFixed(2)}`;
+    // An unknown code: the number and the code as they are.
+    return `${n.toFixed(2)} ${code}`;
   }
 }

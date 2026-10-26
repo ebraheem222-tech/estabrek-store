@@ -4,6 +4,7 @@ import type { PreviewLine, ScheduleKind, ScheduleStatus, ScheduledChange } from 
 import type { Campaign } from "../../api/selling.api";
 import { MOTION_TEXT, NAMESPACE_TEXT } from "./cacheText";
 import { valueText } from "../discounts/abText";
+import { loc } from "@/lib/lang";
 
 export const KIND_TEXT: Record<ScheduleKind, { label: string; title: string }> = {
   theme: { label: "الثيم", title: "تغيير الثيم" },
@@ -59,7 +60,7 @@ export function previewLineText(l: PreviewLine, names: Names): string {
   return ns === "all" ? "كل الكاش بيفضى، والمتجر بيبني صفحاته من جديد." : `${NAMESPACE_TEXT[ns]?.label ?? ns} بيفضى.`;
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString("ar", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+const when = (iso: string) => new Date(iso).toLocaleString(loc("ar"), { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
 export function whenText(c: Pick<ScheduledChange, "runAt" | "undoAt">): string {
   return c.undoAt ? `${when(c.runAt)} ← بيرجع ${when(c.undoAt)}` : when(c.runAt);

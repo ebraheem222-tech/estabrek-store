@@ -2,6 +2,8 @@
 import { isAxiosError } from "axios";
 import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
+import type { Translations } from "../lib/translations";
+import { tr } from "@/lib/words";
 
 export type CatalogCategory = {
   id: string;
@@ -9,6 +11,8 @@ export type CatalogCategory = {
   slug: string;
   parentId?: string | null;
   iconUrl?: string | null;
+  /** The name in the shop's other languages ({ en: { name } }). */
+  translations?: unknown;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -28,6 +32,8 @@ export type CatalogProduct = {
   /** Search-engine title/description (empty: the page uses the title and description). */
   seoTitle?: string | null;
   seoDescription?: string | null;
+  /** Its texts in the shop's other languages (src/lib/translations.ts). */
+  translations?: unknown;
   isActive: boolean;
   categoryId: string;
   category?: CatalogCategory | null;
@@ -107,12 +113,12 @@ export async function listCategories() {
   return res.data as CatalogCategory[];
 }
 
-export async function createCategory(body: { name: string; slug: string; parentId?: string | null; iconUrl?: string | null }) {
+export async function createCategory(body: { name: string; slug: string; parentId?: string | null; iconUrl?: string | null; translations?: Translations }) {
   const res = await api.post(ENDPOINTS.admin.catalog.categories.base, body);
   return res.data as CatalogCategory;
 }
 
-export async function updateCategory(id: string, body: Partial<{ name: string; slug: string; parentId?: string | null; iconUrl?: string | null }>) {
+export async function updateCategory(id: string, body: Partial<{ name: string; slug: string; parentId?: string | null; iconUrl?: string | null; translations: Translations }>) {
   const res = await api.patch(ENDPOINTS.admin.catalog.categories.byId(id), body);
   return res.data as CatalogCategory;
 }
@@ -235,6 +241,7 @@ export type ProductDeepUpdateBody = {
     description?: string | null;
     seoTitle?: string | null;
     seoDescription?: string | null;
+    translations?: Translations;
     isActive?: boolean;
     categoryId?: string;
     typeId?: string | null;
@@ -285,26 +292,26 @@ export async function updateProductFull(id: string, body: ProductDeepUpdateBody)
 
 /** Why a product save was refused, in words the owner can act on. */
 export function describeSaveError(e: unknown): { message: string; skus?: string[]; attributeErrors?: Record<string, string> } {
-  if (!isAxiosError(e)) return { message: "تعذّر الحفظ. حاولي مرة أخرى." };
+  if (!isAxiosError(e)) return { message: tr("تعذّر الحفظ. يرجى المحاولة مرة أخرى.", "Couldn't save. Please try again.") };
   const status = e.response?.status;
   const data = (e.response?.data ?? {}) as { error?: string; message?: string; details?: any; target?: unknown };
   if (data.error === "SKU_TAKEN") {
     const rows = (data.details?.products ?? []) as Array<{ sku: string; title: string }>;
-    const list = rows.map((r) => `${r.sku} (${r.title})`).join("، ");
-    return { message: `كود SKU مستخدم في منتج آخر: ${list || (data.details?.skus ?? []).join("، ")}`, skus: data.details?.skus };
+    const list = rows.map((r) => `${r.sku} (${r.title})`).join(tr("، ", ", "));
+    return { message: tr(`كود SKU مستخدم في منتج آخر: ${list || (data.details?.skus ?? []).join(tr("، ", ", "))}`, "SKU code already used by another product: {0}", [list || (data.details?.skus ?? []).join(tr("، ", ", "))]), skus: data.details?.skus };
   }
-  if (data.error === "DUPLICATE_SKU") return { message: `نفس كود SKU مكتوب مرتين: ${(data.details?.skus ?? []).join("، ")}`, skus: data.details?.skus };
+  if (data.error === "DUPLICATE_SKU") return { message: tr(`نفس كود SKU مكتوب مرتين: ${(data.details?.skus ?? []).join(tr("، ", ", "))}`, "The same SKU is written twice: {0}", [(data.details?.skus ?? []).join(tr("، ", ", "))]), skus: data.details?.skus };
   if (data.error === "UNIQUE_CONSTRAINT") {
     const t = JSON.stringify(data.target ?? "");
-    if (/sku/i.test(t)) return { message: "أحد أكواد SKU مستخدم في منتج آخر. غيّري الكود وحاولي مرة أخرى." };
-    if (/size/i.test(t)) return { message: "نفس المقاس مكرر لنفس اللون." };
-    if (/slug/i.test(t)) return { message: "رابط المنتج مستخدم لمنتج آخر. غيّري الرابط." };
-    return { message: "يوجد تكرار في البيانات (لون أو مقاس أو كود)." };
+    if (/sku/i.test(t)) return { message: tr("أحد أكواد SKU مستخدم في منتج آخر. يرجى تغيير الكود والمحاولة مرة أخرى.", "One SKU code is used by another product. Change it and try again.") };
+    if (/size/i.test(t)) return { message: tr("نفس المقاس مكرر لنفس اللون.", "The same size is listed twice for one colour.") };
+    if (/slug/i.test(t)) return { message: tr("رابط المنتج مستخدم لمنتج آخر. يرجى تغيير الرابط.", "This product link is used by another product. Change the link.") };
+    return { message: tr("يوجد تكرار في البيانات (لون أو مقاس أو كود).", "Something is listed twice (a colour, size or code).") };
   }
-  if (data.error === "FOREIGN_KEY") return { message: "مقاس أو لون عليه طلبات لا يمكن حذفه. حدّثي الباكند ليُحفظ تلقائياً كـ«نفد»." };
-  if (data.error === "VALIDATION_ERROR") return { message: "بعض الحقول غير صحيحة. راجعي الأسعار والكميات." };
-  if (data.error === "ATTRIBUTES_INVALID") return { message: "في تفاصيل القطعة شي مش مكتوب صح. راجعي الحقول المعلّمة بالأحمر.", attributeErrors: data.details?.errors ?? {} };
-  if (data.error === "TYPE_NOT_FOUND") return { message: "نوع المنتج انحذف. اختاري نوع ثاني." };
-  if (status === 401 || status === 403) return { message: "انتهت الجلسة أو لا تملكين الصلاحية." };
-  return { message: data.message || "تعذّر الحفظ. حاولي مرة أخرى." };
+  if (data.error === "FOREIGN_KEY") return { message: tr("مقاس أو لون عليه طلبات ما بينحذف. لازم يتحدّث الباكند ليُحفظ تلقائياً كـ«نفد».", "A size or colour with orders can't be deleted. Update the backend so it's kept as “Sold out” instead.") };
+  if (data.error === "VALIDATION_ERROR") return { message: tr("بعض الحقول غير صحيحة. يرجى مراجعة الأسعار والكميات.", "Some fields aren't right. Check the prices and quantities.") };
+  if (data.error === "ATTRIBUTES_INVALID") return { message: tr("في تفاصيل القطعة شي مش مكتوب صح. يرجى مراجعة الحقول المعلّمة بالأحمر.", "Something in the details isn't right. Check the fields marked in red."), attributeErrors: data.details?.errors ?? {} };
+  if (data.error === "TYPE_NOT_FOUND") return { message: tr("نوع المنتج انحذف. يرجى اختيار نوع ثاني.", "The product type was deleted. Choose another one.") };
+  if (status === 401 || status === 403) return { message: tr("انتهت الجلسة أو ما في صلاحية.", "Your session ended, or you don't have permission.") };
+  return { message: data.message || tr("تعذّر الحفظ. يرجى المحاولة مرة أخرى.", "Couldn't save. Please try again.") };
 }

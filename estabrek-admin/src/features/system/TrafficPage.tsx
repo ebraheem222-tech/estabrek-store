@@ -35,7 +35,7 @@ const field = "h-10 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 t
 export default function TrafficPage() {
   const { hasPermission } = useAuth();
   return (
-    <div dir="rtl" className="space-y-4" data-testid="traffic-page">
+    <div className="space-y-4" data-testid="traffic-page">
       {hasPermission("settings:read") ? <MaintenanceCard /> : null}
       <PressureCard />
       <LiveCard />
@@ -542,7 +542,7 @@ function BlockDialog({ client, onClose }: { client: TrafficClient | null; onClos
         </div>
       }
     >
-      <div dir="rtl" className="space-y-3 text-sm">
+      <div className="space-y-3 text-sm">
           <p>هالـ IP ما رح يقدر يفتح الموقع ولا يحكي مع السيرفر طول المدة.</p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="المدة">
             {DURATIONS.map((o) => (

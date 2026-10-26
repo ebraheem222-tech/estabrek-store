@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { CartBadge } from "@/components/CartBadge";
 import { SearchBox } from "@/components/SearchBox";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";

@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/httpError.js";
+import { CONTENT_LANGS, TypeTranslations, translationsOf, type ContentLang } from "../../lib/translations.js";
 
 export const FIELD_KINDS = ["text", "longtext", "number", "select", "multiselect", "boolean", "date", "url"] as const;
 export type FieldKind = (typeof FIELD_KINDS)[number];
@@ -73,6 +74,8 @@ export const TypeBody = z.object({
   deliveryMinDays: z.number().int().min(0).max(120).nullable().optional(),
   deliveryMaxDays: z.number().int().min(0).max(120).nullable().optional(),
   position: z.number().int().min(0).max(1000).optional(),
+  /** Name, colour/size labels and each field's label, unit, help and choices in other languages. */
+  translations: TypeTranslations.optional(),
 });
 export const TypePatch = TypeBody.partial();
 
@@ -156,7 +159,7 @@ export function cleanAttributes(fields: FieldDef[], input: unknown): { values: J
 /** The product page's "details" rows: label + value as text. */
 export function specsOf(fields: FieldDef[], attributes: unknown) {
   const a = attributes && typeof attributes === "object" ? (attributes as Json) : {};
-  const out: Array<{ key: string; label: string; value: string; kind: FieldKind }> = [];
+  const out: Array<{ key: string; label: string; value: string; kind: FieldKind; raw: unknown }> = [];
   for (const f of fields) {
     if (f.showOnPage === false) continue;
     const v = a[f.key];
@@ -166,7 +169,7 @@ export function specsOf(fields: FieldDef[], attributes: unknown) {
     else if (Array.isArray(v)) text = v.map(String).join("، ");
     else if (f.kind === "number") text = `${v}${f.unit ? ` ${f.unit}` : ""}`;
     else text = String(v);
-    out.push({ key: f.key, label: f.label, value: text, kind: f.kind });
+    out.push({ key: f.key, label: f.label, value: text, kind: f.kind, raw: v });
   }
   return out;
 }
@@ -191,10 +194,11 @@ export function deliveryOf(product: DeliveryFields, type?: DeliveryFields | null
   return { shipsFrom, minDays: min, maxDays: max };
 }
 
-export function publicType(t: { id: string; name: string; slug: string; colorLabel: string; sizeLabel: string; showColor: boolean; showSize: boolean; fulfillment?: string | null; fields: unknown }) {
+export function publicType(t: { id: string; name: string; slug: string; colorLabel: string; sizeLabel: string; showColor: boolean; showSize: boolean; fulfillment?: string | null; fields: unknown; translations?: unknown }) {
   return {
     id: t.id,
     name: t.name,
+    translations: translationsOf(TypeTranslations, t.translations),
     slug: t.slug,
     colorLabel: t.colorLabel,
     sizeLabel: t.sizeLabel,
@@ -215,6 +219,7 @@ export const publicTypeSelect = {
   showSize: true,
   fulfillment: true,
   fields: true,
+  translations: true,
   shipsFrom: true,
   deliveryMinDays: true,
   deliveryMaxDays: true,
@@ -293,14 +298,16 @@ export async function attributeFacets(where: Prisma.ProductWhereInput, typeSlug?
   const types = await prisma.productType.findMany({
     where: typeSlug ? { slug: typeSlug } : {},
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    select: { id: true, fields: true },
+    select: { id: true, fields: true, translations: true },
   });
   const products = await prisma.product.findMany({ where, select: { typeId: true, attributes: true }, take: 5000 });
-  const out: Array<{ key: string; label: string; kind: FieldKind; options: Array<{ value: string; count: number }> }> = [];
+  type FieldWords = { label?: string; options?: Record<string, string> };
+  const out: Array<{ key: string; label: string; kind: FieldKind; options: Array<{ value: string; count: number }>; translations?: Partial<Record<ContentLang, FieldWords>> }> = [];
   const seen = new Set<string>();
   for (const t of types) {
     const inScope = products.filter((p) => p.typeId === t.id);
     if (!inScope.length) continue;
+    const tr = translationsOf(TypeTranslations, t.translations);
     for (const f of fieldsOf(t.fields)) {
       if (!f.filterable || seen.has(f.key)) continue;
       if (f.kind !== "select" && f.kind !== "multiselect" && f.kind !== "boolean") continue;
@@ -313,7 +320,13 @@ export async function attributeFacets(where: Prisma.ProductWhereInput, typeSlug?
       }
       const order = f.kind === "boolean" ? ["true", "false"] : f.options ?? [];
       const options = order.filter((o) => counts.get(o)).map((o) => ({ value: o, count: counts.get(o)! }));
-      if (options.length) out.push({ key: f.key, label: f.label, kind: f.kind, options });
+      // The filter's name and choices in the shop's other languages, when the owner wrote them.
+      const words: Partial<Record<ContentLang, FieldWords>> = {};
+      for (const lang of CONTENT_LANGS) {
+        const w = tr[lang]?.fields?.[f.key];
+        if (w?.label || w?.options) words[lang] = { ...(w.label ? { label: w.label } : {}), ...(w.options ? { options: w.options } : {}) };
+      }
+      if (options.length) out.push({ key: f.key, label: f.label, kind: f.kind, options, ...(Object.keys(words).length ? { translations: words } : {}) });
     }
   }
   return out;

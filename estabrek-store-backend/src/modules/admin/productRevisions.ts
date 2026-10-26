@@ -51,6 +51,8 @@ type Snap = {
   description: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  /** Missing on revisions kept before translations: restoring one keeps the current ones. */
+  translations?: unknown;
   isActive: boolean;
   categoryId: string;
   typeId: string | null;
@@ -108,6 +110,7 @@ export function deepInputFromSnapshot(s: Snap, current: Current) {
       description: s.description,
       seoTitle: s.seoTitle,
       seoDescription: s.seoDescription,
+      ...(s.translations !== undefined ? { translations: s.translations ?? {} } : {}),
       isActive: s.isActive,
       categoryId: s.categoryId,
       typeId: s.typeId,

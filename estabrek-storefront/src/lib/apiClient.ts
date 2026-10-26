@@ -1,6 +1,8 @@
 // Client-side API helpers (no React cache). Used for quick actions like "Add to cart".
 
 import type { CatalogProduct } from "./catalog";
+import type { Lang } from "./i18n";
+import { localizeList, localizeProduct } from "./localize";
 
 type CacheEntry<T> = { v: T; t: number };
 const SLUG_CACHE = new Map<string, CacheEntry<CatalogProduct | null>>();
@@ -54,7 +56,9 @@ async function fetchJson(url: string, opts?: { signal?: AbortSignal }) {
   return data;
 }
 
-export async function getProductBySlugClient(slug: string): Promise<CatalogProduct | null> {
+// With `lang`, the product comes back in that language (the cache keeps the store's own words).
+export async function getProductBySlugClient(slug: string, lang?: Lang): Promise<CatalogProduct | null> {
+  if (lang) return localizeProduct(await getProductBySlugClient(slug), lang) ?? null;
   const cached = getFresh(SLUG_CACHE, slug);
   if (cached !== undefined) return cached;
   const url = `${apiBaseClient()}/catalog/products/slug/${encodeURIComponent(slug)}`;
@@ -73,7 +77,8 @@ export async function getProductBySlugClient(slug: string): Promise<CatalogProdu
   }
 }
 
-export async function getProductByIdClient(id: string): Promise<CatalogProduct | null> {
+export async function getProductByIdClient(id: string, lang?: Lang): Promise<CatalogProduct | null> {
+  if (lang) return localizeProduct(await getProductByIdClient(id), lang) ?? null;
   const cached = getFresh(ID_CACHE, id);
   if (cached !== undefined) return cached;
   const url = `${apiBaseClient()}/catalog/products/${encodeURIComponent(id)}`;
@@ -104,8 +109,13 @@ export async function prefetchProductQuickAdd(opts: { slug?: string; id?: string
 
 export async function listProductsClient(
   params: Record<string, any>,
-  opts?: { signal?: AbortSignal; cacheMs?: number; bypassCache?: boolean }
-) {
+  opts?: { signal?: AbortSignal; cacheMs?: number; bypassCache?: boolean; lang?: Lang }
+): Promise<any> {
+  if (opts?.lang) {
+    const { lang, ...rest } = opts;
+    const out = await listProductsClient(params, rest);
+    return out && Array.isArray(out.items) ? localizeList(out, lang) : out;
+  }
   const usp = new URLSearchParams();
   for (const [k, v] of Object.entries(params || {})) {
     if (v === undefined || v === null || v === "") continue;

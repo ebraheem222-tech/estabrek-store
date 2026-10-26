@@ -1,7 +1,8 @@
 "use client";
 
 import Script from "next/script";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { Suspense, useEffect, useRef } from "react";
 import { analyticsReady, trackPageView } from "@/lib/analytics";
 

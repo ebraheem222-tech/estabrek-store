@@ -9,6 +9,9 @@ import { collectionSeed } from "@/lib/collectionTheme";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { tweenTheme } from "@/lib/themeTween";
 import { roseOutfit } from "@/lib/roseEvents";
+import { useStoreIdentity } from "@/store/storeIdentity";
+import { markOf } from "@/lib/storeIdentity";
+import { tr } from "@/lib/words";
 
 type Crumb = { label: string; href: string };
 
@@ -31,7 +34,9 @@ export function RoseCategoryIntro({
   imageUrl?: string | null;
   crumbs: Crumb[];
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
+  const id = useStoreIdentity();
   const theme = useRoseTheme();
 
   useEffect(() => {
@@ -55,7 +60,7 @@ export function RoseCategoryIntro({
   return (
     <section className="rose-shop-intro rose-category-intro" data-rose-palette="pearl">
       <div data-reveal>
-        <nav className="rose-crumbs" aria-label={ar ? "مسار التصفح" : "Breadcrumb"}>
+        <nav className="rose-crumbs" aria-label={tr(lang, "مسار التصفح", "Breadcrumb")}>
           {crumbs.map((c, i) => (
             <span key={c.href}>
               {i < crumbs.length - 1 ? <Link href={c.href}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}
@@ -63,18 +68,16 @@ export function RoseCategoryIntro({
             </span>
           ))}
         </nav>
-        <span className="atelier-eyebrow">{ar ? "مجموعة" : "COLLECTION"}</span>
+        <span className="atelier-eyebrow">{tr(lang, "مجموعة", "COLLECTION")}</span>
         <h1>
           {name}
-          <span>{ar ? "مختارة لكِ بحب." : "Chosen for you, with love."}</span>
+          <span>{tr(lang, "مختارة لكِ بحب.", "Chosen for you, with love.")}</span>
         </h1>
         <p>
-          {ar
-            ? `${count} في هذه المجموعة. اختاري اللون والمقاس، وأضيفي ما تحبين إلى حقيبتكِ.`
-            : `${count} in this collection. Pick your colour and size, and add what you love to your bag.`}
+          {tr(lang, `${count} في هذه المجموعة. اختاري اللون والمقاس، وأضيفي ما تحبين إلى حقيبتكِ.`, "{0} in this collection. Pick your colour and size, and add what you love to your bag.", [count])}
         </p>
         <a href="#shop-products" className="atelier-text-link">
-          {ar ? "تصفّحي القطع" : "Browse the pieces"}
+          {tr(lang, "تصفّحي القطع", "Browse the pieces")}
           <Icon name="down" />
         </a>
       </div>
@@ -86,7 +89,7 @@ export function RoseCategoryIntro({
           priority
           sizes="(max-width:760px) 100vw, 45vw"
         />
-        <span dir="ltr">THE ESTABREK EDIT / {slug.replace(/^-+/, "").toUpperCase()}</span>
+        <span dir="ltr">THE {markOf(id, "en").toUpperCase()} EDIT / {slug.replace(/^-+/, "").toUpperCase()}</span>
       </div>
     </section>
   );

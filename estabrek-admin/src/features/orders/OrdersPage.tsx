@@ -8,19 +8,20 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { Pagination } from "../../components/ui/Pagination";
 import { cn } from "../../components/ui/cn";
 import {
-  NEXT_STEP_LABEL, ORDER_STATUSES, STATUS_INFO, buildMessage, dayStart, isPaid, itemsCount, messageForStatus, nextStep, orderLines,
-  orderTotal, shekel, shortOrderId, timeAgo, waDigits, waLink, deliveryFor, type OrderLike, type OrderStatus,
+  NEXT_STEP_LABEL, messageLang, ORDER_STATUSES, STATUS_INFO, buildMessage, dayStart, isPaid, itemsCount, messageForStatus, nextStep, orderLines,
+  orderTotal, moneyText, shortOrderId, timeAgo, waDigits, waLink, deliveryFor, type OrderLike, type OrderStatus,
 } from "../../lib/orders";
 import { DeliverySettingsDialog, PaidChip, SourceChip, StatusPill, Thumb, WhatsAppIcon } from "./orderUi";
 import { useDelivery } from "./useDelivery";
+import { tr } from "@/lib/words";
 
 type DateRange = "all" | "today" | "yesterday" | "week" | "month";
 const RANGES: Array<{ key: DateRange; label: string }> = [
-  { key: "all", label: "كل الأوقات" },
-  { key: "today", label: "اليوم" },
-  { key: "yesterday", label: "أمس" },
-  { key: "week", label: "آخر ٧ أيام" },
-  { key: "month", label: "آخر ٣٠ يوماً" },
+  { key: "all", label: tr("كل الأوقات", "All time") },
+  { key: "today", label: tr("اليوم", "Today") },
+  { key: "yesterday", label: tr("أمس", "Yesterday") },
+  { key: "week", label: tr("آخر ٧ أيام", "Last 7 days") },
+  { key: "month", label: tr("آخر ٣٠ يوماً", "Last 30 days") },
 ];
 
 function rangeDates(r: DateRange): { from?: string; to?: string } {
@@ -71,7 +72,7 @@ export default function OrdersPage() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const { delivery, storeName } = useDelivery();
+  const { delivery, storeNameIn, audience } = useDelivery();
   // Refreshed with every poll, used for "new in the last hour".
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 30_000); return () => window.clearInterval(t); }, []);
@@ -113,24 +114,24 @@ export default function OrdersPage() {
   const printSelected = () => window.open(`/print/orders?ids=${selectedIds.join(",")}`, "_blank", "noopener");
 
   return (
-    <div dir="rtl" className="space-y-4" data-testid="orders-page">
+    <div className="space-y-4" data-testid="orders-page">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">الطلبات</h1>
+          <h1 className="text-xl font-semibold text-white">{tr("الطلبات", "Orders")}</h1>
           <p className="mt-1 text-sm text-white/55">
-            {counts.NEW ? <><b className="text-sky-300">{counts.NEW}</b> طلب جديد ينتظر التواصل · </> : null}
-            يتحدث تلقائياً كل ٣٠ ثانية
+            {counts.NEW ? <><b className="text-sky-300">{counts.NEW}</b> {tr("طلب جديد ينتظر التواصل ·", "new orders waiting for contact ·")} </> : null}
+            {tr("يتحدث تلقائياً كل ٣٠ ثانية", "Updates by itself every 30 seconds")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setDeliveryOpen(true)} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">🚚 أسعار التوصيل</button>
-          <button type="button" onClick={() => { void list.refetch(); void summary.refetch(); }} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{list.isFetching ? "جارٍ التحديث…" : "↻ تحديث"}</button>
+          <button type="button" onClick={() => setDeliveryOpen(true)} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{tr("🚚 أسعار التوصيل", "🚚 Delivery prices")}</button>
+          <button type="button" onClick={() => { void list.refetch(); void summary.refetch(); }} className="h-10 rounded-xl border border-white/[0.1] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{list.isFetching ? tr("جارٍ التحديث…", "Updating…") : tr("↻ تحديث", "↻ Refresh")}</button>
         </div>
       </div>
 
       {/* Status tabs with counts */}
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="tablist" aria-label="حالة الطلب">
-        <StatusTab active={!status} onClick={() => setStatus("")} label="الكل" count={allCount || undefined} />
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="tablist" aria-label={tr("حالة الطلب", "Order status")}>
+        <StatusTab active={!status} onClick={() => setStatus("")} label={tr("الكل", "All")} count={allCount || undefined} />
         {ORDER_STATUSES.map((s) => (
           <StatusTab key={s} active={status === s} onClick={() => setStatus(s)} label={STATUS_INFO[s].label} count={counts[s]} highlight={s === "NEW" && (counts.NEW ?? 0) > 0} />
         ))}
@@ -143,12 +144,12 @@ export default function OrdersPage() {
             <input
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="ابحثي بالاسم أو رقم الهاتف أو رقم الطلب"
+              placeholder={tr("بحث بالاسم أو رقم الهاتف أو رقم الطلب", "Search by name, phone or order number")}
               className="h-11 w-full rounded-xl border border-white/[0.08] bg-surface-925 pe-3 ps-10 text-sm text-white placeholder:text-white/35 focus:border-accent-500/50 focus:outline-none"
-              aria-label="بحث في الطلبات"
+              aria-label={tr("بحث في الطلبات", "Search orders")}
               type="search"
             />
-            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40" aria-hidden>⌕</span>
+            <span className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-white/40" aria-hidden>⌕</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {RANGES.map((r) => (
@@ -157,24 +158,24 @@ export default function OrdersPage() {
                 {r.label}
               </button>
             ))}
-            <button type="button" onClick={() => setShowMore((v) => !v)} className="h-9 rounded-full px-3 text-xs text-accent-300 hover:bg-accent-500/10">{showMore ? "فلاتر أقل" : "فلاتر أكثر"}</button>
+            <button type="button" onClick={() => setShowMore((v) => !v)} className="h-9 rounded-full px-3 text-xs text-accent-300 hover:bg-accent-500/10">{showMore ? tr("فلاتر أقل", "Fewer filters") : tr("فلاتر أكثر", "More filters")}</button>
           </div>
         </div>
         {showMore && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white" aria-label="مصدر الطلب">
-              <option value="">كل المصادر</option>
-              <option value="WHATSAPP_CART">واتساب</option>
-              <option value="DIRECT_CART">طلب مباشر</option>
-              <option value="EMAIL_CART">إيميل</option>
+            <select value={source} onChange={(e) => { setSource(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white" aria-label={tr("مصدر الطلب", "Order source")}>
+              <option value="">{tr("كل المصادر", "All sources")}</option>
+              <option value="WHATSAPP_CART">{tr("واتساب", "WhatsApp")}</option>
+              <option value="DIRECT_CART">{tr("طلب مباشر", "Direct order")}</option>
+              <option value="EMAIL_CART">{tr("إيميل", "Email")}</option>
             </select>
-            <select value={payment} onChange={(e) => { setPayment(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white" aria-label="الدفع">
-              <option value="">الدفع: الكل</option>
-              <option value="unpaid">لم يُستلم المبلغ</option>
-              <option value="paid">تم استلام المبلغ</option>
+            <select value={payment} onChange={(e) => { setPayment(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white" aria-label={tr("الدفع", "Payment")}>
+              <option value="">{tr("الدفع: الكل", "Payment: all")}</option>
+              <option value="unpaid">{tr("لم يُستلم المبلغ", "Not received")}</option>
+              <option value="paid">{tr("تم استلام المبلغ", "Received")}</option>
             </select>
-            <input value={city} onChange={(e) => { setCity(e.target.value); setPage(1); }} placeholder="المدينة" className="h-10 w-40 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label="المدينة" />
-            {filtering && <button type="button" onClick={() => { setSearch(""); setRange("all"); setSource(""); setPayment(""); setCity(""); }} className="h-10 rounded-xl px-3 text-sm text-white/60 hover:text-white">مسح الفلاتر</button>}
+            <input value={city} onChange={(e) => { setCity(e.target.value); setPage(1); }} placeholder={tr("المدينة", "City")} className="h-10 w-40 rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35" aria-label={tr("المدينة", "City")} />
+            {filtering && <button type="button" onClick={() => { setSearch(""); setRange("all"); setSource(""); setPayment(""); setCity(""); }} className="h-10 rounded-xl px-3 text-sm text-white/60 hover:text-white">{tr("مسح الفلاتر", "Clear filters")}</button>}
           </div>
         )}
       </div>
@@ -182,13 +183,13 @@ export default function OrdersPage() {
       {/* Bulk actions */}
       {selectedIds.length > 0 && (
         <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-accent-500/30 bg-surface-950/95 p-3 backdrop-blur">
-          <span className="text-sm text-white/80">تم اختيار <b>{selectedIds.length}</b></span>
-          <select disabled={bulkBusy} defaultValue="" onChange={(e) => { const v = e.target.value as OrderStatus; e.target.value = ""; if (v) void bulkMove(v); }} className="h-9 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label="تغيير حالة المختار">
-            <option value="">{bulkBusy ? "جارٍ التحديث…" : "تغيير الحالة إلى…"}</option>
+          <span className="text-sm text-white/80">{tr("تم اختيار", "Selected")} <b>{selectedIds.length}</b></span>
+          <select disabled={bulkBusy} defaultValue="" onChange={(e) => { const v = e.target.value as OrderStatus; e.target.value = ""; if (v) void bulkMove(v); }} className="h-9 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("تغيير حالة المختار", "Change status of the selected")}>
+            <option value="">{bulkBusy ? tr("جارٍ التحديث…", "Updating…") : tr("تغيير الحالة إلى…", "Change status to…")}</option>
             {ORDER_STATUSES.map((s) => <option key={s} value={s}>{STATUS_INFO[s].label}</option>)}
           </select>
-          <button type="button" onClick={printSelected} className="h-9 rounded-xl border border-white/[0.1] px-3 text-sm text-white/85 hover:bg-white/[0.06]">🖨 طباعة الفواتير</button>
-          <button type="button" onClick={() => setSelected({})} className="ms-auto h-9 rounded-xl px-3 text-sm text-white/55 hover:text-white">إلغاء الاختيار</button>
+          <button type="button" onClick={printSelected} className="h-9 rounded-xl border border-white/[0.1] px-3 text-sm text-white/85 hover:bg-white/[0.06]">{tr("🖨 طباعة الفواتير", "🖨 Print invoices")}</button>
+          <button type="button" onClick={() => setSelected({})} className="ms-auto h-9 rounded-xl px-3 text-sm text-white/55 hover:text-white">{tr("إلغاء الاختيار", "Clear selection")}</button>
         </div>
       )}
 
@@ -197,20 +198,20 @@ export default function OrdersPage() {
         {list.isLoading ? (
           <div className="space-y-2 p-3">{Array.from({ length: 6 }, (_, i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-white/[0.04]" />)}</div>
         ) : list.isError ? (
-          <div className="p-10 text-center text-sm text-red-300">تعذّر تحميل الطلبات. <button type="button" className="underline" onClick={() => void list.refetch()}>إعادة المحاولة</button></div>
+          <div className="p-10 text-center text-sm text-red-300">{tr("تعذّر تحميل الطلبات.", "The orders couldn't load.")} <button type="button" className="underline" onClick={() => void list.refetch()}>{tr("إعادة المحاولة", "Try again")}</button></div>
         ) : orders.length === 0 ? (
           <div className="p-12 text-center">
             <div className="text-4xl" aria-hidden>🌸</div>
-            <div className="mt-3 text-sm text-white/70">{filtering ? "لا توجد طلبات بهذه الفلاتر." : status ? `لا توجد طلبات «${STATUS_INFO[status].label}» حالياً.` : "لا توجد طلبات بعد."}</div>
+            <div className="mt-3 text-sm text-white/70">{filtering ? tr("لا توجد طلبات بهذه الفلاتر.", "No orders with these filters.") : status ? tr(`لا توجد طلبات «${STATUS_INFO[status].label}» حالياً.`, "No “{0}” orders right now.", [STATUS_INFO[status].label]) : tr("لا توجد طلبات بعد.", "No orders yet.")}</div>
           </div>
         ) : (
           <>
             <div className="hidden items-center gap-3 border-b border-white/[0.06] px-4 py-2 text-[11px] text-white/45 md:flex">
-              <input type="checkbox" aria-label="اختيار الكل" checked={orders.every((o) => selected[o.id])} onChange={(e) => setSelected(e.target.checked ? Object.fromEntries(orders.map((o) => [o.id, true])) : {})} />
-              <span className="flex-1">الزبونة والطلب</span>
-              <span className="w-24 text-center">المبلغ</span>
-              <span className="w-28 text-center">الحالة</span>
-              <span className="w-[220px] text-left">إجراءات</span>
+              <input type="checkbox" aria-label={tr("اختيار الكل", "Select all")} checked={orders.every((o) => selected[o.id])} onChange={(e) => setSelected(e.target.checked ? Object.fromEntries(orders.map((o) => [o.id, true])) : {})} />
+              <span className="flex-1">{tr("الزبون والطلب", "Customer and order")}</span>
+              <span className="w-24 text-center">{tr("المبلغ", "Amount")}</span>
+              <span className="w-28 text-center">{tr("الحالة", "Status")}</span>
+              <span className="w-[220px] text-end">{tr("إجراءات", "Actions")}</span>
             </div>
             <ul className="divide-y divide-white/[0.06]">
               {orders.map((o) => (
@@ -223,7 +224,7 @@ export default function OrdersPage() {
                   onOpen={() => nav(`/admin/orders/${o.id}`)}
                   onAdvance={(to) => updateStatus.mutate({ id: o.id, toStatus: to })}
                   busy={updateStatus.isPending && updateStatus.variables?.id === o.id}
-                  whatsappHref={waLink(o.whatsapp || o.phone, buildMessage(messageForStatus(o.status), o, { storeName, deliveryFee: deliveryFor(o.city, orderTotal(o), delivery).fee }))}
+                  whatsappHref={waLink(o.whatsapp || o.phone, buildMessage(messageForStatus(o.status), o, { storeName: storeNameIn(messageLang(o)), audience, deliveryFee: deliveryFor(o.city, orderTotal(o), delivery).fee }))}
                 />
               ))}
             </ul>
@@ -257,9 +258,9 @@ function OrderRow({ order: o, now, selected, onSelect, onOpen, onAdvance, busy, 
   const first = lines[0];
   return (
     <li className={cn("group relative flex flex-wrap items-center gap-3 px-3 py-3 transition hover:bg-white/[0.025] md:flex-nowrap md:px-4", fresh && "bg-sky-500/[0.05]")} data-testid="order-row">
-      {fresh && <span className="absolute inset-y-0 right-0 w-1 bg-sky-400" aria-hidden />}
-      <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={`اختيار طلب ${o.customerName}`} />
-      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 basis-[calc(100%-2.5rem)] items-center gap-3 text-right md:basis-auto">
+      {fresh && <span className="absolute inset-y-0 start-0 w-1 bg-sky-400" aria-hidden />}
+      <input type="checkbox" checked={selected} onChange={(e) => onSelect(e.target.checked)} aria-label={tr(`اختيار طلب ${o.customerName}`, "Select the order of {0}", [o.customerName])} />
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 basis-[calc(100%-2.5rem)] items-center gap-3 text-start md:basis-auto">
         <Thumb src={first?.imageUrl} className="h-14 w-11" />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
@@ -268,19 +269,19 @@ function OrderRow({ order: o, now, selected, onSelect, onOpen, onAdvance, busy, 
             <SourceChip source={o.source} />
           </span>
           <span className="mt-0.5 block truncate text-xs text-white/60">
-            {first?.productTitle}{lines.length > 1 ? ` +${lines.length - 1}` : ""} · {itemsCount(o)} قطع{o.city ? ` · ${o.city}` : ""}
+            {first?.productTitle}{lines.length > 1 ? ` +${lines.length - 1}` : ""} · {itemsCount(o)} {tr("قطع", "items")}{o.city ? ` · ${o.city}` : ""}
           </span>
           <span className="mt-0.5 block text-[11px] text-white/40"><span dir="ltr">{o.phone}</span> · {timeAgo(o.createdAt)}</span>
         </span>
       </button>
       <div className="flex items-center gap-2 ps-7 md:block md:w-24 md:ps-0 md:text-center">
-        <div className="text-sm font-semibold text-white">{shekel(orderTotal(o))}</div>
+        <div className="text-sm font-semibold text-white">{moneyText(orderTotal(o))}</div>
         <div className="md:mt-0.5"><PaidChip order={o} /></div>
       </div>
       <div className="md:w-28 md:text-center"><StatusPill status={o.status} /></div>
       <div className="flex w-full items-center justify-end gap-1.5 md:w-[220px]">
         {whatsappHref && (
-          <a href={whatsappHref} target="_blank" rel="noreferrer" className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" title="رسالة واتساب جاهزة" aria-label={`واتساب ${o.customerName}`}>
+          <a href={whatsappHref} target="_blank" rel="noreferrer" className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" title={tr("رسالة واتساب جاهزة", "Ready WhatsApp message")} aria-label={tr(`واتساب ${o.customerName}`, "WhatsApp {0}", [o.customerName])}>
             <WhatsAppIcon className="h-4 w-4" />
           </a>
         )}
@@ -289,7 +290,7 @@ function OrderRow({ order: o, now, selected, onSelect, onOpen, onAdvance, busy, 
             {busy ? "…" : NEXT_STEP_LABEL[next]}
           </button>
         )}
-        <Link to={`/admin/orders/${o.id}`} className="h-9 rounded-xl px-3 text-xs leading-9 text-white/60 hover:bg-white/[0.06] hover:text-white">فتح</Link>
+        <Link to={`/admin/orders/${o.id}`} className="h-9 rounded-xl px-3 text-xs leading-9 text-white/60 hover:bg-white/[0.06] hover:text-white">{tr("فتح", "Open")}</Link>
       </div>
     </li>
   );

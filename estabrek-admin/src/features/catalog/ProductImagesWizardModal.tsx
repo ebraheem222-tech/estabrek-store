@@ -14,6 +14,7 @@ import {
   type WizardAsset,
 } from "../../api/productImagesWizard.api";
 import { listSizes, type CatalogSize } from "../../api/catalog.api";
+import { tr } from "@/lib/words";
 
 type Props = {
   open: boolean;
@@ -129,10 +130,10 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
   const mUpload = useMutation({
     mutationFn: async (files: File[]) => batchUploadProductImages(productId!, files),
     onSuccess: (data) => {
-      toast.success(`تم رفع ${data.files.length} صورة`);
+      toast.success(tr(`تم رفع ${data.files.length} صورة`, "Uploaded {0} photos", [data.files.length]));
       setUnassigned((prev) => [...data.files.map((x) => ({ ...x, view: null, alt: null })), ...prev]);
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? "فشل رفع الصور"),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? tr("فشل رفع الصور", "The photos didn't upload")),
   });
 
   const mAutoGroup = useMutation({
@@ -148,9 +149,9 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       }));
       setGroups(next);
       setUnassigned([]); // all assigned by suggestion
-      toast.success(`تم عمل ${next.length} مجموعات`);
+      toast.success(tr(`تم عمل ${next.length} مجموعات`, "Made {0} groups", [next.length]));
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? "فشل التجميع"),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? tr("فشل التجميع", "Grouping failed")),
   });
 
   const mCommit = useMutation({
@@ -164,13 +165,13 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
               const price = Number(g.variants.priceBySize?.[sizeId]);
               if (!Number.isFinite(price) || price <= 0) {
                 const sizeName = sizes.find((s) => s.id === sizeId)?.name ?? sizeId;
-                throw new Error(`حدد سعر للمقاس ${sizeName} داخل اللون: ${label}`);
+                throw new Error(tr(`يرجى تحديد سعر للمقاس ${sizeName} داخل اللون: ${label}`, "Set a price for size {0} in the colour: {1}", [sizeName, label]));
               }
             }
           } else {
             const price = Number(g.variants.price);
             if (!Number.isFinite(price) || price <= 0) {
-              throw new Error(`حدد سعر للقياسات داخل اللون: ${label}`);
+              throw new Error(tr(`يرجى تحديد سعر للمقاسات داخل اللون: ${label}`, "Set a price for the sizes in the colour: {0}", [label]));
             }
           }
         }
@@ -218,11 +219,11 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       return commitProductImageGroups(productId!, payload);
     },
     onSuccess: () => {
-      toast.success("تم إنشاء الألوان/الصور من الرفع");
+      toast.success(tr("تم إنشاء الألوان/الصور من الرفع", "Colours/photos created from the upload"));
       onCommitted?.();
       onClose();
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? e?.message ?? "فشل حفظ المجموعات"),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? e?.message ?? tr("فشل حفظ المجموعات", "The groups weren't saved")),
   });
 
   function onPickFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -260,7 +261,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       ...prev,
       {
         id: newId(),
-        colorName: `لون ${prev.length + 1}`,
+        colorName: tr(`لون ${prev.length + 1}`, "Colour {0}", [prev.length + 1]),
         boxLabel: "",
         colorHex: "#111111",
         assets: [],
@@ -503,7 +504,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
   function setAssetView(groupId: string, asset: WizardAssetState, next: string | null) {
     const nextView = next?.trim() ?? "";
     if (nextView.toLowerCase() === "3d" && !isModelUrl(asset.url)) {
-      toast.error("اختيار 3D يتطلب رابط .glb أو .gltf");
+      toast.error(tr("اختيار 3D يتطلب رابط .glb أو .gltf", "Choosing 3D needs a .glb or .gltf link"));
       return;
     }
     setAssetMeta(groupId, asset.id, { view: nextView || null });
@@ -517,25 +518,25 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       onClose={onClose}
       title="Batch Upload + Auto Group"
       widthClassName="max-w-6xl"
-      description="ارفع صور كثيرة مرة وحدة، نخزّن الألوان (dominant/palette) ونقترح grouping حسب اللون. تقدر تعدّل بالسحب والإفلات."
+      description={tr("صور كثيرة بتنرفع مرة وحدة، بنخزّن الألوان (dominant/palette) وبنقترح تجميع حسب اللون. التعديل بالسحب والإفلات.", "Upload many photos at once; we store their colours and suggest grouping by colour. Adjust by drag and drop.")}
       footer={
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            إغلاق
+            {tr("إغلاق", "Close")}
           </Button>
           <Button
             variant="secondary"
             onClick={() => fileRef.current?.click()}
             disabled={busy || !productId}
           >
-            رفع صور
+            {tr("رفع صور", "Upload photos")}
           </Button>
           <Button
             variant="secondary"
             onClick={() => cameraRef.current?.click()}
             disabled={busy || !productId}
           >
-            تصوير بالكاميرا
+            {tr("تصوير بالكاميرا", "Take a photo")}
           </Button>
           <Button variant="secondary" onClick={() => mAutoGroup.mutate()} disabled={busy || !unassigned.length}>
             Auto group
@@ -555,18 +556,18 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
       <Modal
         open={!!cameraReview}
         onClose={discardCameraShot}
-        title="مراجعة صورة الكاميرا"
+        title={tr("مراجعة صورة الكاميرا", "Review the camera photo")}
         widthClassName="max-w-2xl"
         footer={
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={discardCameraShot} disabled={busy}>
-              تجاهل
+              {tr("تجاهل", "Discard")}
             </Button>
             <Button variant="secondary" onClick={() => cameraRef.current?.click()} disabled={busy}>
-              إعادة التصوير
+              {tr("إعادة التصوير", "Retake")}
             </Button>
             <Button variant="primary" onClick={acceptCameraShot} isLoading={mUpload.isPending}>
-              استخدم الصورة
+              {tr("استخدام الصورة", "Use the photo")}
             </Button>
           </div>
         }
@@ -576,7 +577,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30">
               <img src={cameraReview.url} alt="Camera preview" className="max-h-[62vh] w-full object-contain" />
             </div>
-            <div className="text-xs opacity-70">بعد التأكيد سيتم رفع الصورة إلى الصور غير المصنفة للتجميع.</div>
+            <div className="text-xs opacity-70">{tr("بعد التأكيد سيتم رفع الصورة إلى الصور غير المصنفة للتجميع.", "After confirming, the photo is uploaded to the ungrouped photos.")}</div>
           </div>
         ) : null}
       </Modal>
@@ -589,7 +590,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
         <div className="grid gap-4">
           {qPending.isError ? (
             <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-              فشل تحميل صور pending
+              {tr("فشل تحميل صور pending", "The pending photos couldn't load")}
             </div>
           ) : null}
 
@@ -639,7 +640,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                     onDrop={(e) => onDropToGroup(e, g.id, g.assets.length)}
                   >
                     {g.assets.length === 0 ? (
-                      <div className="text-xs opacity-70">اسحب الصور هون</div>
+                      <div className="text-xs opacity-70">{tr("الصور بتنسحب هون", "Drag the photos here")}</div>
                     ) : (
                       <div className="grid grid-cols-3 gap-2">
                         {g.assets.map((a, idx) => (
@@ -661,7 +662,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                                     <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-2">
                     <summary className="cursor-pointer select-none text-xs font-semibold">
                       Variants (Bulk sizes) {g.variants.sizeIds.length ? `(${g.variants.sizeIds.length})` : ""}
-                      <span className="ml-2 font-normal opacity-70">(قبل Create Items)</span>
+                      <span className="me-2 font-normal opacity-70">{tr("(قبل Create Items)", "(before Create Items)")}</span>
                     </summary>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -677,7 +678,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
 
                     <div className="mt-2 grid max-h-28 grid-cols-2 gap-2 overflow-auto rounded-lg border border-white/10 p-2">
                       {sizes.length === 0 ? (
-                        <div className="col-span-2 text-xs opacity-70">لا يوجد sizes (روح على المقاسات واضف)</div>
+                        <div className="col-span-2 text-xs opacity-70">{tr("لا يوجد sizes (بتنضاف من صفحة المقاسات)", "No sizes (add them on the sizes page)")}</div>
                       ) : (
                         sizes.map((s) => (
                           <label key={s.id} className="flex cursor-pointer items-center gap-2 text-xs">
@@ -701,7 +702,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                           onClick={() => updateGroupVariants(g.id, { priceMode: "default" })}
                           disabled={busy}
                         >
-                          سعر واحد
+                          {tr("سعر واحد", "One price")}
                         </button>
                         <button
                           type="button"
@@ -712,7 +713,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                           }}
                           disabled={busy}
                         >
-                          سعر حسب المقاس
+                          {tr("سعر حسب المقاس", "Price by size")}
                         </button>
                       </div>
                       <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-white/10 bg-white/5 p-1 text-xs">
@@ -722,7 +723,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                           onClick={() => updateGroupVariants(g.id, { stockMode: "default" })}
                           disabled={busy}
                         >
-                          مخزون واحد
+                          {tr("مخزون واحد", "One stock")}
                         </button>
                         <button
                           type="button"
@@ -733,7 +734,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                           }}
                           disabled={busy}
                         >
-                          مخزون حسب المقاس
+                          {tr("مخزون حسب المقاس", "Stock by size")}
                         </button>
                       </div>
                     </div>
@@ -829,13 +830,13 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
                             ))}
                         </div>
                         <div className="mt-2 text-[11px] opacity-70">
-                          إذا تركت size بدون قيمة، سيتم اعتباره 0. يمكنك استخدام زر “Fill all” لتعبئة الكل.
+                          {tr("إذا size ضل بدون قيمة، بيتحسب 0. زر “Fill all” بيعبّي الكل.", "A size left without a value counts as 0. Use “Fill all” to fill everything.")}
                         </div>
                       </div>
                     ) : null}
 
                     <div className="mt-2 text-[11px] opacity-70">
-                      سيتم إنشاء Variant لكل size محدد داخل هذا اللون وقت Create Items.
+                      {tr("سيتم إنشاء Variant لكل size محدد داخل هذا اللون وقت Create Items.", "A variant is created for each chosen size in this colour at Create Items.")}
                     </div>
                   </details>
 
@@ -846,7 +847,7 @@ export default function ProductImagesWizardModal({ open, productId, onClose, onC
           </div>
 
           <div className="text-xs opacity-70">
-            ملاحظة: لما تعمل Create Items، بننشئ Item لكل group (colorName). استخدم Box label لما يكون نفس اللون مكرر (نفس اللون، علبة مختلفة).
+            {tr("ملاحظة: مع Create Items، بننشئ Item لكل group (colorName). الـ Box label بيفرّق لما يكون نفس اللون مكرر (نفس اللون، علبة مختلفة).", "Note: Create Items makes an item per group (colorName). Use a box label when a colour repeats (same colour, different box).")}
           </div>
         </div>
       )}
@@ -874,7 +875,7 @@ function Column({
         onDrop={onDrop}
       >
         {items.length === 0 ? (
-          <div className="text-xs opacity-70">لا يوجد</div>
+          <div className="text-xs opacity-70">{tr("لا يوجد", "None")}</div>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {items.map((a) => (
@@ -922,18 +923,18 @@ function AssetThumb({
     >
       <img src={a.url} alt={a.displayName || ""} className="h-20 w-full object-cover" />
       {isPrimary ? (
-        <div className="absolute top-1 left-1 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 text-[10px] text-emerald-100">
+        <div className="absolute top-1 end-1 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 text-[10px] text-emerald-100">
           Primary
         </div>
       ) : null}
       {dc ? (
-        <div className="absolute bottom-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-          <span className="inline-block h-2 w-2 rounded-sm align-middle mr-1" style={{ background: dc }} />
+        <div className="absolute bottom-1 end-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+          <span className="inline-block h-2 w-2 rounded-sm align-middle ms-1" style={{ background: dc }} />
           {dc}
         </div>
       ) : null}
       {groupId ? (
-        <div className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1 py-0.5">
+        <div className="absolute bottom-1 start-1 rounded-md bg-black/60 px-1 py-0.5">
           <select
             value={a.view ?? ""}
             onChange={(e) => onChangeView?.(e.target.value ? e.target.value : null)}

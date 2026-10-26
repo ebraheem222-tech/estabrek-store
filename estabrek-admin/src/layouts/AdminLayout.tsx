@@ -17,6 +17,11 @@ import { Icons, NAV_GROUPS, type NavItem } from "./adminNav";
 import { CommandPalette } from "./shell/CommandPalette";
 import { MobileTabBar } from "./shell/MobileTabBar";
 import { SkinPicker, SkinToggleButton } from "./shell/SkinSwitch";
+import { LanguageSwitch } from "./shell/LanguageSwitch";
+import { storeNameOf } from "../lib/storeIdentity";
+import { setStoreCurrency } from "../lib/money";
+import { tr } from "@/lib/words";
+import { loc } from "@/lib/lang";
 
 // Counts shown next to sidebar items (e.g. new orders), keyed by link.
 const NavBadgeContext = createContext<Record<string, number>>({});
@@ -52,19 +57,19 @@ function NavItemLink({ to, label, icon }: NavItem) {
       {({ isActive }) => (
         <>
           {isActive && (
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-accent-500 rounded-l-full" />
+            <span className="absolute start-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-accent-500 rounded-e-full" />
           )}
           <span className={cn("transition-colors", isActive ? "text-accent-400" : "text-white/45 group-hover:text-white/70")}>
             {icon}
           </span>
           {!collapsed && <span>{label}</span>}
           {badge > 0 && (
-            <span className={cn("rounded-full bg-sky-500 px-1.5 text-center text-[10px] font-bold leading-4 text-white", collapsed ? "absolute left-1.5 top-1.5" : "mr-auto min-w-[1.2rem]")} aria-label={`${badge} جديد`}>
+            <span className={cn("rounded-full bg-sky-500 px-1.5 text-center text-[10px] font-bold leading-4 text-white", collapsed ? "absolute end-1.5 top-1.5" : "ms-auto min-w-[1.2rem]")} aria-label={tr(`${badge} جديد`, "{0} new", [badge])}>
               {badge}
             </span>
           )}
           {collapsed && (
-            <span className="absolute right-full mr-2 px-2 py-1 text-xs bg-surface-800 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10">
+            <span className="absolute start-full ms-2 px-2 py-1 text-xs bg-surface-800 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10">
               {label}
             </span>
           )}
@@ -115,58 +120,59 @@ function BrandMark({ name, logoUrl }: { name: string; logoUrl?: string | null })
 }
 
 const PAGE_TITLES: Array<[string, string]> = [
-  ["/dashboard", "لوحة التحكم"],
-  ["/orders", "الطلبات"],
-  ["/tickets", "التذاكر والدخول"],
-  ["/requests", "الطلبات الخاصة"],
-  ["/customers", "الزبائن"],
-  ["/outbox", "الرسائل"],
-  ["/categories", "التصنيفات"],
-  ["/products/new", "منتج جديد"],
-  ["/products", "المنتجات"],
-  ["/sizes", "المقاسات"],
-  ["/catalog/types", "أنواع المنتجات"],
-  ["/inventory/back-in-stock", "بانتظار التوفّر"],
-  ["/inventory/forecast", "توقّع المخزون"],
-  ["/inventory", "المخزون"],
-  ["/discounts/coupons/test", "تجربة كوبون"],
-  ["/discounts/smart", "البيع الذكي"],
-  ["/discounts/ab", "تجارب A/B"],
-  ["/discounts/coupons", "الكوبونات"],
-  ["/settings", "الإعدادات"],
-  ["/features", "الميزات"],
-  ["/razan", "رزان"],
-  ["/quiz", "سؤال وجواب"],
-  ["/ai", "الذكاء الاصطناعي"],
-  ["/media/videos", "الفيديوهات"],
-  ["/media", "الوسائط"],
-  ["/chatbot", "مساعد المتجر"],
-  ["/nav", "القوائم"],
-  ["/pages", "الصفحات"],
-  ["/ugc/comments", "التعليقات"],
-  ["/ugc/reviews", "التقييمات"],
-  ["/profile", "الملف الشخصي"],
-  ["/email", "تغيير البريد"],
-  ["/system/security", "حماية السيرفر"],
-  ["/system/traffic", "حماية الضغط والصيانة"],
-  ["/system/cache", "السرعة والكاش"],
-  ["/system/speed", "مراقبة السرعة والأولوية"],
-  ["/system/jobs", "المهام بالخلفية"],
-  ["/system/vault", "الخزنة والبرنامج"],
-  ["/system/schedule", "الجدول الزمني"],
-  ["/system/automations", "التلقائيات"],
-  ["/system/history", "السجل والرجوع"],
-  ["/system/backups", "النسخ الاحتياطي"],
-  ["/security", "الأمان"],
-  ["/team/activity", "سجل النشاط"],
-  ["/team", "الفريق والصلاحيات"],
+  ["/dashboard", tr("لوحة التحكم", "Dashboard")],
+  ["/orders", tr("الطلبات", "Orders")],
+  ["/tickets", tr("التذاكر والدخول", "Tickets & entry")],
+  ["/requests", tr("الطلبات الخاصة", "Special requests")],
+  ["/customers", tr("الزبائن", "Customers")],
+  ["/outbox", tr("الرسائل", "Messages")],
+  ["/categories", tr("التصنيفات", "Categories")],
+  ["/products/new", tr("منتج جديد", "New product")],
+  ["/products", tr("المنتجات", "Products")],
+  ["/sizes", tr("المقاسات", "Sizes")],
+  ["/catalog/types", tr("أنواع المنتجات", "Product types")],
+  ["/inventory/back-in-stock", tr("بانتظار التوفّر", "Waiting for stock")],
+  ["/inventory/forecast", tr("توقّع المخزون", "Stock forecast")],
+  ["/inventory", tr("المخزون", "Stock")],
+  ["/discounts/coupons/test", tr("تجربة كوبون", "Coupon tester")],
+  ["/discounts/smart", tr("البيع الذكي", "Smart selling")],
+  ["/discounts/ab", tr("تجارب A/B", "A/B tests")],
+  ["/discounts/coupons", tr("الكوبونات", "Coupons")],
+  ["/settings", tr("الإعدادات", "Settings")],
+  ["/features", tr("الميزات", "Features")],
+  ["/razan", tr("رزان", "Rose")],
+  ["/quiz", tr("سؤال وجواب", "Quiz")],
+  ["/ai", tr("الذكاء الاصطناعي", "AI")],
+  ["/media/videos", tr("الفيديوهات", "Videos")],
+  ["/media", tr("الوسائط", "Media")],
+  ["/chatbot", tr("مساعد المتجر", "Store assistant")],
+  ["/nav", tr("القوائم", "Menus")],
+  ["/pages", tr("الصفحات", "Pages")],
+  ["/themes", tr("ثيمات المتجر", "Store themes")],
+  ["/ugc/comments", tr("التعليقات", "Comments")],
+  ["/ugc/reviews", tr("التقييمات", "Reviews")],
+  ["/profile", tr("الملف الشخصي", "Profile")],
+  ["/email", tr("تغيير البريد", "Change email")],
+  ["/system/security", tr("حماية السيرفر", "Server protection")],
+  ["/system/traffic", tr("حماية الضغط والصيانة", "Traffic & maintenance")],
+  ["/system/cache", tr("السرعة والكاش", "Speed & cache")],
+  ["/system/speed", tr("مراقبة السرعة والأولوية", "Speed monitor")],
+  ["/system/jobs", tr("المهام بالخلفية", "Background jobs")],
+  ["/system/vault", tr("الخزنة والبرنامج", "Vault & launcher")],
+  ["/system/schedule", tr("الجدول الزمني", "Schedule")],
+  ["/system/automations", tr("التلقائيات", "Automations")],
+  ["/system/history", tr("السجل والرجوع", "History & undo")],
+  ["/system/backups", tr("النسخ الاحتياطي", "Backups")],
+  ["/security", tr("الأمان", "Security")],
+  ["/team/activity", tr("سجل النشاط", "Activity log")],
+  ["/team", tr("الفريق والصلاحيات", "Team & roles")],
 ];
 
 function greeting(name?: string | null) {
   const h = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Jerusalem" }).format(new Date()));
-  const part = h < 12 ? "صباح الخير" : h < 18 ? "مساء الخير" : "مساء النور";
+  const part = h < 12 ? tr("صباح الخير", "Good morning") : h < 18 ? tr("مساء الخير", "Good afternoon") : tr("مساء النور", "Good evening");
   const first = (name ?? "").trim().split(/\s+/)[0];
-  return first ? `${part}، ${first}` : part;
+  return first ? tr(`${part}، ${first}`, "{0}, {1}", [part, first]) : part;
 }
 
 export default function AdminLayout() {
@@ -180,7 +186,9 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  const storeName = qSettings.data?.siteName || "استبرق";
+  const storeName = storeNameOf(qSettings.data);
+  // Prices everywhere in the admin follow the store's currency (lib/money.ts).
+  setStoreCurrency(qSettings.data?.currencyCode);
   const logoUrl = qSettings.data?.logoUrl || null;
 
   useEffect(() => {
@@ -224,7 +232,7 @@ export default function AdminLayout() {
     }
   };
 
-  const pageTitle = PAGE_TITLES.find(([p]) => location.pathname.includes(p))?.[1] ?? "لوحة التحكم";
+  const pageTitle = PAGE_TITLES.find(([p]) => location.pathname.includes(p))?.[1] ?? tr("لوحة التحكم", "Dashboard");
   const isHome = location.pathname === "/admin" || location.pathname.startsWith("/admin/dashboard");
 
   const canViewNavItem = useCallback(
@@ -238,11 +246,11 @@ export default function AdminLayout() {
 
   const renderShell = (ordersBadge: number) => (
     <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
-      <div dir="rtl" className="min-h-screen bg-surface-950" data-skin-shell={skin}>
+      <div className="min-h-screen bg-surface-950" data-skin-shell={skin}>
         {/* Soft background glow */}
         <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-accent-500/[0.04] rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-600/[0.03] rounded-full blur-3xl" />
+          <div className="absolute top-0 start-0 w-[500px] h-[500px] bg-accent-500/[0.04] rounded-full blur-3xl" />
+          <div className="absolute bottom-0 end-0 w-[400px] h-[400px] bg-accent-600/[0.03] rounded-full blur-3xl" />
         </div>
 
         <div className="relative flex min-h-screen">
@@ -258,12 +266,13 @@ export default function AdminLayout() {
           {/* Sidebar */}
           <aside
             className={cn(
-              "fixed top-0 right-0 z-50 flex h-full flex-col border-l border-white/[0.07] bg-surface-950/95 backdrop-blur-xl transition-all duration-300 lg:z-40 lg:translate-x-0 lg:bg-surface-950/80",
-              mobileOpen ? "translate-x-0" : "translate-x-full",
+              "fixed top-0 start-0 z-50 flex h-full flex-col border-e border-white/[0.07] bg-surface-950/95 backdrop-blur-xl transition-all duration-300 lg:z-40 lg:translate-x-0 lg:bg-surface-950/80",
+              // Off-screen on its own side: the right in Arabic and Hebrew, the left in English.
+              mobileOpen ? "translate-x-0" : "rtl:translate-x-full ltr:-translate-x-full lg:rtl:translate-x-0 lg:ltr:translate-x-0",
               "w-[82vw] max-w-[320px]",
               collapsed ? "lg:w-[72px]" : "lg:w-[260px]"
             )}
-            aria-label="القائمة"
+            aria-label={tr("القائمة", "Menu")}
           >
             {/* Brand */}
             <div className={cn("flex h-16 items-center border-b border-white/[0.07] px-4", collapsed ? "justify-center" : "gap-3")}>
@@ -271,7 +280,7 @@ export default function AdminLayout() {
               {!collapsed && (
                 <div className="flex min-w-0 flex-col">
                   <span className="skin-display truncate text-[17px] font-bold leading-6 text-white">{storeName}</span>
-                  <span className="text-[11px] text-white/45">لوحة الإدارة</span>
+                  <span className="text-[11px] text-white/45">{tr("لوحة الإدارة", "Admin")}</span>
                 </div>
               )}
             </div>
@@ -298,7 +307,7 @@ export default function AdminLayout() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-white truncate">
-                        {admin?.name || "المدير"}
+                        {admin?.name || tr("المدير", "Admin")}
                       </div>
                       <div className="text-xs text-white/40 truncate">
                         {admin?.email || "—"}
@@ -316,7 +325,7 @@ export default function AdminLayout() {
                     ) : (
                       Icons.logout
                     )}
-                    <span>تسجيل الخروج</span>
+                    <span>{tr("تسجيل الخروج", "Sign out")}</span>
                   </button>
                 </div>
               ) : (
@@ -326,7 +335,7 @@ export default function AdminLayout() {
                     onClick={onLogout}
                     disabled={logout.isPending}
                     className="w-full flex items-center justify-center p-2 text-white/60 hover:text-white hover:bg-white/[0.05] rounded-lg transition-colors"
-                    title="تسجيل الخروج"
+                    title={tr("تسجيل الخروج", "Sign out")}
                   >
                     {logout.isPending ? (
                       <span className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
@@ -341,17 +350,17 @@ export default function AdminLayout() {
             {/* Collapse button */}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="absolute -left-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-surface-800 text-white/40 shadow-lg transition-all hover:bg-surface-700 hover:text-white lg:flex"
-              aria-label={collapsed ? "توسيع القائمة" : "تصغير القائمة"}
+              className="absolute -end-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-surface-800 text-white/40 shadow-lg transition-all hover:bg-surface-700 hover:text-white lg:flex"
+              aria-label={collapsed ? tr("توسيع القائمة", "Expand the menu") : tr("تصغير القائمة", "Collapse the menu")}
             >
-              <span className={cn("transition-transform duration-300", collapsed ? "rotate-180" : "")}>
+              <span className={cn("transition-transform duration-300 ltr:-scale-x-100", collapsed ? "rotate-180" : "")}>
                 {Icons.chevronLeft}
               </span>
             </button>
           </aside>
 
           {/* Main Content */}
-          <main className={cn("min-w-0 flex-1 transition-all duration-300 mr-0", collapsed ? "lg:mr-[72px]" : "lg:mr-[260px]")}>
+          <main className={cn("min-w-0 flex-1 transition-all duration-300 ms-0", collapsed ? "lg:ms-[72px]" : "lg:ms-[260px]")}>
             {/* Top bar */}
             <header className="sticky top-0 z-30 h-16 border-b border-white/[0.07] bg-surface-950/80 backdrop-blur-xl">
               <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-3">
@@ -360,7 +369,7 @@ export default function AdminLayout() {
                     type="button"
                     className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08] sm:inline-flex lg:hidden"
                     onClick={() => setMobileOpen(true)}
-                    aria-label="فتح القائمة"
+                    aria-label={tr("فتح القائمة", "Open the menu")}
                   >
                     {Icons.menu}
                   </button>
@@ -378,7 +387,7 @@ export default function AdminLayout() {
                   data-testid="open-search"
                 >
                   {Icons.search}
-                  <span className="flex-1 truncate text-right">ابحثي عن طلب، منتج، صفحة…</span>
+                  <span className="flex-1 truncate text-start">{tr("بحث عن طلب، منتج، صفحة…", "Search orders, products, pages…")}</span>
                   <kbd className="rounded-md border border-white/10 px-1.5 py-0.5 font-sans text-[10px] text-white/40" dir="ltr">Ctrl K</kbd>
                 </button>
 
@@ -387,12 +396,12 @@ export default function AdminLayout() {
                     type="button"
                     onClick={() => setPaletteOpen(true)}
                     className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/[0.06] md:hidden [&_svg]:h-[18px] [&_svg]:w-[18px]"
-                    aria-label="بحث"
+                    aria-label={tr("بحث", "Search")}
                   >
                     {Icons.search}
                   </button>
                   <div className="hidden text-xs text-white/40 2xl:block">
-                    {new Date().toLocaleDateString("ar-EG-u-nu-latn", {
+                    {new Date().toLocaleDateString(loc("ar-EG-u-nu-latn"), {
                       weekday: "long",
                       year: "numeric",
                       month: "long",
@@ -400,6 +409,7 @@ export default function AdminLayout() {
                       timeZone: "Asia/Jerusalem",
                     })}
                   </div>
+                  <LanguageSwitch />
                   {skin !== "classic" && <SkinToggleButton />}
                   <NotificationsBell />
                   {canSeeOrders && <OrdersBell />}
@@ -410,7 +420,7 @@ export default function AdminLayout() {
             {/* Page content */}
             <div className="p-4 pb-28 sm:p-6 sm:pb-28 lg:pb-6">
               <div className="max-w-7xl mx-auto animate-fade-in-up">
-                <ErrorBoundary title="حدث خطأ داخل الصفحة">
+                <ErrorBoundary title={tr("حدث خطأ داخل الصفحة", "Something went wrong on this page")}>
                   <Suspense
                     fallback={(
                       <div className="flex items-center justify-center py-12">

@@ -8,6 +8,8 @@ export const rosePalettes: Record<RosePaletteId, string> = {
   pearl: "#fff8f4", blush: "#f7dce8", rose: "#e8adc5",
   lilac: "#e4d8f0", berry: "#6b2446",
 };
+/** A rose colour set from code, repainted by a store theme like the stylesheet's (postcss/theme-tokens.cjs). */
+export const roseVar = (hex: string) => `var(--st-${hex.slice(1).toLowerCase()},${hex})`;
 export function isRosePalette(value: unknown): value is RosePaletteId {
   return typeof value === "string" && value in rosePalettes;
 }

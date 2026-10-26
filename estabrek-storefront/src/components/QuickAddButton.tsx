@@ -16,6 +16,7 @@ import { useToastShortcuts } from "@/components/Toast";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { startThemeCycle, stopThemeCycle } from "@/lib/themePreview";
 import { RoseProductSheet } from "@/components/cinematic/RoseProductSheet";
+import { tr } from "@/lib/words";
 
 type Props = {
   productId?: string;
@@ -64,7 +65,8 @@ function isInStock(v: CatalogVariant) {
 }
 
 export function QuickAddButton({ productId, slug, product, className, buttonLabel }: Props) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const settings = useStorefrontSettings();
   const { addItem } = useCart();
   const { fireConfetti } = useAnimationEffects();
@@ -91,8 +93,8 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
       let full: CatalogProduct | null = null;
       const slugToUse = slug ?? current?.slug ?? product?.slug;
       const idToUse = productId ?? current?.id ?? product?.id;
-      if (slugToUse) full = await getProductBySlugClient(slugToUse);
-      else if (idToUse) full = await getProductByIdClient(idToUse);
+      if (slugToUse) full = await getProductBySlugClient(slugToUse, lang);
+      else if (idToUse) full = await getProductByIdClient(idToUse, lang);
       setP(full);
       return full;
     } catch (e: any) {
@@ -120,7 +122,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
 
     if (auto) {
       if (!isInStock(auto)) {
-        setStatus(ar ? "غير متوفر حالياً" : "Currently unavailable");
+        setStatus(tr(lang, "غير متوفر حالياً", "Currently unavailable"));
         window.setTimeout(() => setStatus(null), 1600);
         return;
       }
@@ -128,7 +130,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
       trackAddToCart(productItem(full, { color: colorOf(full, auto), size: auto.size?.name, price: Number(auto.price) }), (full as any).currencyCode ?? undefined);
       fireConfetti(e?.clientX, e?.clientY);
       toast.cartAdded(full.title);
-      setStatus(ar ? "انضاف للسلة ✅" : "Added to your bag ✅");
+      setStatus(tr(lang, "انضاف للسلة ✅", "Added to your bag ✅"));
       window.setTimeout(() => setStatus(null), 1400);
       return;
     }
@@ -176,7 +178,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
           "border border-[color:var(--accent-2)]/50"
         }
       >
-        {buttonLabel ?? (ar ? "أضف للسلة" : "Add to bag")}
+        {buttonLabel ?? (tr(lang, "أضف للسلة", "Add to bag"))}
       </button>
 
       {status ? <div className="mt-2 text-xs text-emerald-700">{status}</div> : null}
@@ -208,7 +210,8 @@ function QuickAddDrawer({
   onClose: () => void;
   closing: boolean;
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const { addItem } = useCart();
   const { fireConfetti } = useAnimationEffects();
   const toast = useToastShortcuts();
@@ -282,7 +285,7 @@ function QuickAddDrawer({
       fireConfetti();
       toast.cartAdded(product.title);
     }
-    setStatus(ar ? "تمت الإضافة ✅" : "Added to your bag ✅");
+    setStatus(tr(lang, "تمت الإضافة ✅", "Added to your bag ✅"));
     window.setTimeout(() => {
       setStatus(null);
       onClose();
@@ -337,9 +340,9 @@ const colorHasAvailable = (key: string): boolean => {
       >
         <div className="flex items-start justify-between gap-3 border-b border-[color:var(--border)] p-5">
           <div>
-            <div className="text-base font-semibold">{ar ? "أضف للسلة" : "Add to bag"}</div>
+            <div className="text-base font-semibold">{tr(lang, "أضف للسلة", "Add to bag")}</div>
             <div className="mt-1 text-xs text-[color:var(--muted)]">
-              {ar ? "اختر اللون والمقاس" : "Choose a colour and size"}
+              {tr(lang, "اختر اللون والمقاس", "Choose a colour and size")}
             </div>
           </div>
           <button
@@ -358,11 +361,11 @@ const colorHasAvailable = (key: string): boolean => {
             </div>
           ) : !product ? (
             <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
-              {ar ? "ما قدرنا نجيب بيانات المنتج." : "Product details could not load."}
+              {tr(lang, "ما قدرنا نجيب بيانات المنتج.", "Product details could not load.")}
             </div>
           ) : variants.length === 0 ? (
             <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] p-4 text-sm text-[color:var(--muted)]">
-              {ar ? "هذا المنتج لا يحتوي خيارات (Variants) بعد." : "There are no options for this product yet."}
+              {tr(lang, "هذا المنتج لا يحتوي خيارات (Variants) بعد.", "There are no options for this product yet.")}
             </div>
           ) : (
             <>
@@ -376,7 +379,7 @@ const colorHasAvailable = (key: string): boolean => {
               {/* Colors */}
               {colorKeys.length > 0 ? (
                 <div className="mt-4">
-                  <div className="text-sm font-semibold">{ar ? "الألوان" : "Colours"}</div>
+                  <div className="text-sm font-semibold">{tr(lang, "الألوان", "Colours")}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {colorKeys.map((k, idx) => {
                       const active = k === sel.colorKey;
@@ -417,7 +420,7 @@ const colorHasAvailable = (key: string): boolean => {
               {/* Sizes */}
               {sizeKeys.length > 0 ? (
                 <div className="mt-4">
-                  <div className="text-sm font-semibold">{ar ? "المقاسات" : "Sizes"}</div>
+                  <div className="text-sm font-semibold">{tr(lang, "المقاسات", "Sizes")}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {sizeKeys.map((k) => {
                       const active = k === sel.sizeKey;
@@ -438,7 +441,7 @@ const colorHasAvailable = (key: string): boolean => {
                               : "border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text)] hover:brightness-95")
                           }
                         >
-                          {k === "default" ? (ar ? "مقاس واحد" : "One size") : k}
+                          {k === "default" ? (tr(lang, "مقاس واحد", "One size")) : k}
                         </button>
                       );
                     })}
@@ -469,12 +472,12 @@ const colorHasAvailable = (key: string): boolean => {
                       : "bg-[color:var(--surface-2)] text-[color:var(--text)] opacity-50")
                   }
                 >
-                  {ar ? "أضف للسلة" : "Add to bag"}
+                  {tr(lang, "أضف للسلة", "Add to bag")}
                 </button>
               </div>
 
               {status ? <div className="mt-3 text-sm text-emerald-300">{status}</div> : null}
-              {!canAdd ? <div className="mt-2 text-xs text-red-300">{ar ? "هذا الخيار غير متوفر حالياً." : "This option is currently unavailable."}</div> : null}
+              {!canAdd ? <div className="mt-2 text-xs text-red-300">{tr(lang, "هذا الخيار غير متوفر حالياً.", "This option is currently unavailable.")}</div> : null}
             </>
           )}
         </div>

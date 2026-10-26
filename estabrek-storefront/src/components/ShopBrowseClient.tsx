@@ -9,6 +9,7 @@ import { FiltersChips } from "@/components/FiltersChips";
 import { ShopToolbar } from "@/components/ShopToolbar";
 import ShopResultsClient from "@/components/ShopResultsClient";
 import { AttributeFilters } from "@/components/AttributeFilters";
+import { tr } from "@/lib/words";
 
 const ProductFiltersBar = dynamic(
   () => import("@/components/ProductFiltersBar").then((m) => m.ProductFiltersBar),
@@ -28,7 +29,8 @@ type Props = {
 };
 
 export default function ShopBrowseClient({ initial, initialFilters, categories, basePath = "/shop", appearance = "default", defaultCategoryId, navCategories }: Props) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const [filters, setFiltersState] = useState<CatalogFilters>(() => ({
     ...initialFilters,
     categoryId: initialFilters.categoryId ?? defaultCategoryId,
@@ -108,7 +110,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
 
   return (
     <div className={`shop-browse-candy-layout lg:grid lg:grid-cols-[300px,1fr] lg:gap-8 ${appearance === "rose" ? "rose-shop-browse" : ""}`}>
-      {appearance === "rose" && (navCategories ? navCategories.length > 0 : true) && <nav className="rose-shop-categories" aria-label={ar ? "أقسام المتجر" : "Shop categories"}><button onClick={() => handleCategorySelect(defaultCategoryId)} aria-pressed={!selectedCategoryId || selectedCategoryId === defaultCategoryId}>{ar ? "كل المجموعة" : "All pieces"}</button>{(navCategories ?? categories.filter(c => !c.parentId)).map(c => <button key={c.id} onClick={() => handleCategorySelect(c.id)} aria-pressed={selectedCategoryId === c.id}>{c.name}</button>)}</nav>}
+      {appearance === "rose" && (navCategories ? navCategories.length > 0 : true) && <nav className="rose-shop-categories" aria-label={tr(lang, "أقسام المتجر", "Shop categories")}><button onClick={() => handleCategorySelect(defaultCategoryId)} aria-pressed={!selectedCategoryId || selectedCategoryId === defaultCategoryId}>{tr(lang, "كل المجموعة", "All pieces")}</button>{(navCategories ?? categories.filter(c => !c.parentId)).map(c => <button key={c.id} onClick={() => handleCategorySelect(c.id)} aria-pressed={selectedCategoryId === c.id}>{c.name}</button>)}</nav>}
       {/* Desktop Sidebar */}
       <aside className="hidden lg:block filters-sidebar shop-right-filters-candy">
         <div className="sticky top-24 space-y-6 right-filter-stack-candy">

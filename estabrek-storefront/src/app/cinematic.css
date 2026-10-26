@@ -26,6 +26,36 @@
   font-display: swap;
   unicode-range: U+0600-06FF, U+0750-077F, U+0870-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FEFC;
 }
+/* Hebrew (OFL): IBM Plex Sans Hebrew for text, in the same family as the Arabic text face, and
+   Frank Ruhl Libre for headings. Each covers only Hebrew letters, so Arabic and English keep theirs. */
+@font-face {
+  font-family: Estabrek Text;
+  src: url("/fonts/plex-hebrew-400.woff2") format("woff2");
+  font-weight: 100 449;
+  font-display: swap;
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: Estabrek Text;
+  src: url("/fonts/plex-hebrew-500.woff2") format("woff2");
+  font-weight: 450 549;
+  font-display: swap;
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: Estabrek Text;
+  src: url("/fonts/plex-hebrew-600.woff2") format("woff2");
+  font-weight: 550 1000;
+  font-display: swap;
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: Rose Hebrew;
+  src: url("/fonts/frank-ruhl-hebrew-500.woff2") format("woff2");
+  font-weight: 300 800;
+  font-display: swap;
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
 @font-face {
   font-family: Atelier Serif;
   src: url("/fonts/cormorant-garamond.woff2") format("woff2");
@@ -43,7 +73,7 @@
   --atelier-ink: var(--selection-ink,#462c3b);
   --atelier-muted: var(--selection-muted,#8b6d7b);
   --atelier-line: var(--selection-line,#efdde5);
-  --atelier-serif: "Atelier Serif", Georgia, serif;
+  --atelier-serif: "Atelier Serif", "Rose Hebrew", Georgia, serif;
   --rose: var(--selection-accent,#a43b64);
   --rose-dark: var(--selection-accent,#7d2448);
   --rose-soft: var(--selection-soft,#f7dbe6);
@@ -88,7 +118,7 @@
 .cinematic-home[dir="rtl"],
 .cinematic-shell [dir="rtl"] {
   font-family: "Estabrek Text", "Atelier Sans", Arial, sans-serif;
-  --atelier-serif: "Rose Arabic", Arial, sans-serif;
+  --atelier-serif: "Rose Arabic", "Rose Hebrew", Arial, sans-serif;
 }
 .cinematic-shell *,
 .atelier-dialog * {
@@ -218,7 +248,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   text-decoration: none;
 }
 .brand-arabic {
-  font-family: "Rose Arabic", sans-serif;
+  font-family: "Rose Arabic", "Estabrek Text", sans-serif;
   font-size: 30px;
   font-weight: 750;
   letter-spacing: -1px;
@@ -227,7 +257,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
 }
 .brand-english {
   display: block;
-  font-family: "Atelier Sans", sans-serif;
+  font-family: "Atelier Sans", "Estabrek Text", sans-serif;
   font-size: 8px;
   letter-spacing: 0.3em;
   margin-top: 6px;
@@ -303,6 +333,11 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   color: var(--selection-muted,#795060);
   padding: 10px 3px;
 }
+/* Three languages: a short list under the button. */
+.language-switch { position: relative; }
+.language-menu { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: 60; min-width: 128px; padding: 6px; border-radius: 14px; background: var(--rose-surface, #fff); box-shadow: 0 12px 32px -14px rgb(60 20 40 / 0.35); border: 1px solid var(--selection-line, #e8ccd8); list-style: none; margin: 0; }
+.language-menu button { display: block; width: 100%; min-height: 40px; padding: 8px 12px; border-radius: 10px; text-align: start; font-size: 14px; color: var(--selection-ink, #3b1d2a); }
+.language-menu button:hover, .language-menu button[aria-checked="true"] { background: var(--selection-soft, #f6e7ee); }
 .action-divider {
   width: 1px;
   height: 19px;
@@ -367,7 +402,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   color: var(--selection-accent,#8a3d60);
   text-align: center;
   z-index: 4;
-  font-family: "Rose Arabic", "Atelier Sans", sans-serif;
+  font-family: "Rose Arabic", "Atelier Sans", "Estabrek Text", sans-serif;
   font-size: 9px;
 }
 .hero-brand-label {
@@ -794,7 +829,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   text-align: center;
   white-space: pre-line;
   z-index: 2;
-  font-family: "Rose Arabic", sans-serif;
+  font-family: "Rose Arabic", "Estabrek Text", sans-serif;
 }
 .rose-seal > svg {
   width: 25px;
@@ -811,7 +846,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   gap: 12px;
   font-size: 9px;
   color: var(--selection-muted,#9d7087);
-  font-family: "Rose Arabic", "Atelier Sans", sans-serif;
+  font-family: "Rose Arabic", "Atelier Sans", "Estabrek Text", sans-serif;
 }
 .image-edge-label {
   position: absolute;
@@ -1031,7 +1066,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   white-space: nowrap;
   font-size: 12px;
   color: var(--selection-accent,#963f65);
-  font-family: "Atelier Sans", "Rose Arabic", sans-serif;
+  font-family: "Atelier Sans", "Rose Arabic", "Estabrek Text", sans-serif;
 }
 .product-colors {
   display: flex;
@@ -1226,7 +1261,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   top: 26%;
   left: 50%;
   transform: translateX(-50%);
-  font-family: "Atelier Serif", "Rose Arabic", serif;
+  font-family: "Atelier Serif", "Rose Hebrew", "Rose Arabic", serif;
   font-size: clamp(75px, 10.5vw, 160px);
   font-weight: 500;
   color: color-mix(in srgb,var(--selection-decorative,#e1a9c2) 23.92157%,transparent);
@@ -1275,7 +1310,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   margin-top: 5px;
 }
 .model-caption > div:first-child {
-  font-family: "Rose Arabic", "Atelier Sans", sans-serif;
+  font-family: "Rose Arabic", "Atelier Sans", "Estabrek Text", sans-serif;
 }
 .model-rotation {
   display: flex;
@@ -1303,7 +1338,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   color: var(--selection-muted,#ad8198);
   letter-spacing: 0.08em;
   margin-top: 20px;
-  font-family: "Rose Arabic", "Atelier Sans", sans-serif;
+  font-family: "Rose Arabic", "Atelier Sans", "Estabrek Text", sans-serif;
 }
 .scene-loading {
   position: absolute;
@@ -1553,7 +1588,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   color: var(--selection-muted,#975b78);
 }
 .footer-wordmark {
-  font-family: "Rose Arabic", "Atelier Sans", sans-serif;
+  font-family: "Rose Arabic", "Atelier Sans", "Estabrek Text", sans-serif;
   font-weight: 700;
   text-align: center;
   font-size: 16vw;
@@ -1631,7 +1666,7 @@ html[data-cinematic-storefront="true"] .scroll-progress-bar {
   height: 19px;
 }
 .menu-index {
-  font-family: "Atelier Sans", sans-serif;
+  font-family: "Atelier Sans", "Estabrek Text", sans-serif;
   font-size: 9px;
   color: var(--selection-muted,#b78ea4);
 }
@@ -2714,6 +2749,8 @@ html:has(.rose-shop) { scroll-behavior:smooth; }
 .rose-about-values p { font-size:12px; line-height:2.3; }
 .rose-about-finale { min-height:550px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:30px; padding:70px 6%; }
 .rose-about-finale>img { object-fit:contain; }
+/* No logo yet: the store's name in its place. */
+.rose-about-wordmark { font-family:var(--atelier-serif); font-size:clamp(30px,4vw,48px); line-height:1; }
 .rose-about-finale h2 { font-family:var(--atelier-serif); font-size:clamp(35px,5vw,65px); font-weight:500; }
 .cinematic-shell[data-rose-tone="dark"] .atelier-header .language-button,
 .cinematic-shell[data-rose-tone="dark"] .atelier-desktop-nav>.rose-nav-item>a { color:var(--atelier-ink); }
@@ -2956,7 +2993,7 @@ html[data-cinematic-storefront="true"] .a11y-panel { left: auto !important; righ
 .size-guide-dialog::backdrop { background: rgba(40, 18, 30, .45); backdrop-filter: blur(3px); }
 .size-guide-body { padding: 26px 26px 22px; }
 .size-guide-head { display: flex; justify-content: space-between; align-items: center; }
-.size-guide-head h2 { font-family: "Rose Arabic", sans-serif; font-size: 26px; font-weight: 600; margin: 0; }
+.size-guide-head h2 { font-family: "Rose Arabic", "Estabrek Text", sans-serif; font-size: 26px; font-weight: 600; margin: 0; }
 .size-guide-head button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--selection-line,#e8d4de); background: transparent; color: inherit; }
 .size-guide-body > p { font-size: 12px; color: var(--selection-muted,#8b6d7b); margin: 8px 0 16px; }
 .size-guide-table-wrap { overflow-x: auto; }
@@ -3263,6 +3300,15 @@ html[data-cinematic-storefront="true"] .recent-activity-popup { bottom: 88px !im
 }
 .rose-pdp-wish:hover { transform: scale(1.1); }
 .rose-pdp-wish[aria-pressed="true"] { background: var(--selection-accent, #7d2448); color: var(--selection-surface, #fff8f4); }
+/* Its 360° view: a pill at the frame's bottom corner. */
+.rose-pdp-spin {
+  position: absolute; z-index: 3; bottom: 14px; inset-inline-end: 14px; min-height: 44px; padding: 0 16px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px;
+  background: color-mix(in srgb, var(--selection-surface, #fff8f4) 88%, transparent); backdrop-filter: blur(8px);
+  color: var(--selection-accent, #7d2448); transition: transform .3s cubic-bezier(.3,1.6,.5,1);
+}
+.rose-pdp-spin:hover { transform: scale(1.06); }
+.rose-pdp-spin:focus-visible { outline: 2px solid var(--selection-accent, #7d2448); outline-offset: 3px; }
 /* Icons (Phosphor Light): the heart fills in when the piece is in the wishlist. */
 svg[data-icon="heart"] .icon-fill { opacity: 0; transition: opacity .25s ease; }
 [aria-pressed="true"] > svg[data-icon="heart"] .icon-fill { opacity: 1; }

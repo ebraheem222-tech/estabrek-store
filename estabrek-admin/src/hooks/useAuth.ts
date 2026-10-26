@@ -9,6 +9,8 @@ import { hasTokens } from "../lib/storage";
 import { toast } from "../lib/toast";
 import type { AdminUser } from "../types/auth";
 import { permissionsOf, type AdminPermission } from "../lib/authz";
+import { followAccountLanguage } from "../lib/lang";
+import { tr } from "@/lib/words";
 
 export function useAuth() {
   const status = useAuthStore((s) => s.status);
@@ -25,6 +27,8 @@ export function useAuth() {
       // backend might return { admin: {...} } or direct admin.
       const adminObj: AdminUser = (res?.admin ?? res) as AdminUser;
       authStore.setAdmin(adminObj);
+      // The admin in this member's language (reloads once when it changes).
+      followAccountLanguage(adminObj);
       return adminObj;
     },
     enabled: hasTokens() && !admin,
@@ -36,16 +40,17 @@ export function useAuth() {
     onSuccess: (res) => {
       // If MFA required, do not set admin yet.
       if ((res as any)?.mfaRequired) {
-        toast.info("مطلوب رمز التحقق (2FA)");
+        toast.info(tr("مطلوب رمز التحقق (2FA)", "Verification code needed (2FA)"));
         return;
       }
       const ok = res as AuthAPI.LoginOk;
       authStore.syncFromStorage();
       if (ok?.admin) authStore.setAdmin(ok.admin as any);
-      toast.success("تم تسجيل الدخول");
+      followAccountLanguage(ok?.admin as AdminUser | undefined);
+      toast.success(tr("تم تسجيل الدخول", "Signed in"));
     },
     onError: (e) => {
-      toast.error("فشل تسجيل الدخول", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل تسجيل الدخول", "Sign-in failed"), { description: getApiErrorMessage(e) });
     },
   });
 
@@ -54,10 +59,11 @@ export function useAuth() {
     onSuccess: (res) => {
       authStore.syncFromStorage();
       if ((res as any)?.admin) authStore.setAdmin((res as any).admin);
-      toast.success("تم تأكيد الرمز وتسجيل الدخول");
+      followAccountLanguage((res as { admin?: AdminUser } | undefined)?.admin);
+      toast.success(tr("تم تأكيد الرمز وتسجيل الدخول", "Code confirmed, signed in"));
     },
     onError: (e) => {
-      toast.error("فشل تأكيد الرمز", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل تأكيد الرمز", "Couldn't confirm the code"), { description: getApiErrorMessage(e) });
     },
   });
 

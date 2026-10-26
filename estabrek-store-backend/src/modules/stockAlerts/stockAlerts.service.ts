@@ -5,6 +5,7 @@ import { AppError } from "../../utils/httpError.js";
 import { stockAlertsOn } from "../../lib/features.js";
 import { triggerJob } from "../../lib/jobs.js";
 import { emailConfigured, sendEmail } from "../outbox/sender/email.js";
+import { colorIn, languageResolver, shopperLanguage, titleIn, urlInLanguage } from "../../lib/shopperLanguage.js";
 
 /**
  * Back-in-stock alerts. A shopper (no account needed) leaves her email on a
@@ -31,7 +32,7 @@ export function stockAlertsReady() {
   return emailConfigured() && Boolean(env.STOREFRONT_URL);
 }
 
-export async function createStockAlert(input: { email: string; variantId: string }, ctx: { ip?: string }) {
+export async function createStockAlert(input: { email: string; variantId: string; lang?: string }, ctx: { ip?: string }) {
   if (!(await stockAlertsOn())) throw fail(404, "FEATURE_OFF", "Back-in-stock alerts are turned off");
   const email = input.email.trim().toLowerCase();
 
@@ -54,15 +55,17 @@ export async function createStockAlert(input: { email: string; variantId: string
   const waiting = await prisma.stockAlert.count({ where: { email, status: "WAITING" } });
   if (waiting >= PER_EMAIL_WAITING) throw fail(429, "TOO_MANY_ALERTS", "Too many alerts for this email");
 
+  // Her email comes in the shop's language she asked in.
+  const locale = input.lang ? (await shopperLanguage(input.lang)).lang : null;
   if (existing) {
     // Asked again after an earlier email (or after stopping it): wait again.
     await prisma.stockAlert.update({
       where: { id: existing.id },
-      data: { status: "WAITING", attempts: 0, notifiedAt: null, token: newToken(), ip: ctx.ip ?? null, createdAt: new Date() },
+      data: { status: "WAITING", attempts: 0, notifiedAt: null, token: newToken(), ip: ctx.ip ?? null, createdAt: new Date(), locale },
     });
   } else {
     await prisma.stockAlert.create({
-      data: { email, variantId: variant.id, productId: variant.item.product.id, token: newToken(), ip: ctx.ip ?? null },
+      data: { email, variantId: variant.id, productId: variant.item.product.id, token: newToken(), ip: ctx.ip ?? null, locale },
     });
   }
   return { ok: true as const };
@@ -104,6 +107,7 @@ export async function sweepStockAlerts(limit = SWEEP_BATCH) {
       token: true,
       attempts: true,
       createdAt: true,
+      locale: true,
       variant: {
         select: {
           size: { select: { name: true } },
@@ -111,7 +115,7 @@ export async function sweepStockAlerts(limit = SWEEP_BATCH) {
             select: {
               colorName: true,
               images: { orderBy: [{ isPrimary: "desc" }, { position: "asc" }], take: 1, select: { url: true } },
-              product: { select: { title: true, slug: true } },
+              product: { select: { title: true, slug: true, translations: true } },
             },
           },
         },
@@ -121,20 +125,23 @@ export async function sweepStockAlerts(limit = SWEEP_BATCH) {
 
   let sent = 0;
   let failed = 0;
+  const languageOf = await languageResolver();
   for (const a of due) {
     const claim = await prisma.stockAlert.updateMany({ where: { id: a.id, status: "WAITING" }, data: { status: "SENT", notifiedAt: new Date() } });
     if (claim.count !== 1) continue;
     const item = a.variant.item;
+    const { lang, main } = languageOf(a.locale);
     const res = await sendEmail({
       to: a.email,
       template: "STOCK_BACK_IN",
+      lang,
       payload: {
-        productTitle: item.product.title,
-        colorName: item.colorName,
+        productTitle: titleIn(item.product, lang),
+        colorName: colorIn(item.product, item.colorName, lang),
         sizeName: a.variant.size?.name ?? "",
         imageUrl: item.images[0]?.url ?? null,
-        url: storefrontLink(`/p/${encodeURIComponent(item.product.slug)}`),
-        stopUrl: storefrontLink(`/stock-alert/stop?t=${encodeURIComponent(a.token)}`),
+        url: urlInLanguage(storefrontLink(`/p/${encodeURIComponent(item.product.slug)}`), lang, main),
+        stopUrl: urlInLanguage(storefrontLink(`/stock-alert/stop?t=${encodeURIComponent(a.token)}`), lang, main),
       },
       idempotencyKey: `stock-alert-${a.id}-${a.createdAt.getTime()}`,
     });

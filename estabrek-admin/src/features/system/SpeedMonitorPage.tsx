@@ -95,7 +95,7 @@ export default function SpeedMonitorPage() {
   };
   if (tab === "shoppers") {
     return (
-      <div dir="rtl" className="space-y-4 pb-24" data-testid="speed-page">
+      <div className="space-y-4 pb-24" data-testid="speed-page">
         <PageTop tab={tab} onTab={onTab} />
         <ShopperSpeedPanel />
       </div>
@@ -103,7 +103,7 @@ export default function SpeedMonitorPage() {
   }
   if (!q.data || !draft) {
     return (
-      <div dir="rtl" className="space-y-4">
+      <div className="space-y-4">
         <PageTop tab={tab} onTab={onTab} />
         <div className={box}>{q.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div> : <Spinner />}</div>
       </div>
@@ -119,7 +119,7 @@ export default function SpeedMonitorPage() {
   const moveRoute = (route: string, lane: LaneName) => setDraft((p) => (p ? { ...p, routes: upsertRule(p.routes, ruleForRoute(route, lane)) } : p));
 
   return (
-    <div dir="rtl" className="space-y-4 pb-24" data-testid="speed-page">
+    <div className="space-y-4 pb-24" data-testid="speed-page">
       <PageTop tab={tab} onTab={onTab} />
       <section className={box}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -250,7 +250,7 @@ export default function SpeedMonitorPage() {
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[720px] text-xs" data-testid="speed-routes">
             <thead className="text-white/50">
-              <tr className="text-right">
+              <tr className="text-start">
                 <th className="py-2 font-normal">الرابط</th>
                 <th className="font-normal">مرات</th>
                 <th className="font-normal">المعدل</th>
@@ -372,7 +372,7 @@ export default function SpeedMonitorPage() {
       ) : null}
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:right-72" data-testid="speed-save-bar">
+        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:start-72" data-testid="speed-save-bar">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[var(--surface,#fff)] p-3 shadow-xl">
             <span className="text-sm">
               {bad.length ? <span className="text-red-300">في قيم برّا الحد المسموح: {describe(bad)}</span> : <>تغييرات مش محفوظة: {describe(speedChangedPaths(draft, d.config))}</>}

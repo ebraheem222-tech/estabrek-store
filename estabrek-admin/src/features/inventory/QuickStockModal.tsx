@@ -9,6 +9,7 @@ import { cn } from "../../components/ui/cn";
 import { applyStockChanges, productStock, type StockRow } from "../../api/inventory.api";
 import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
+import { tr } from "@/lib/words";
 
 const digits = (v: string) => v.replace(/[٠-٩]/g, (c) => String("٠١٢٣٤٥٦٧٨٩".indexOf(c))).replace(/[^\d]/g, "");
 
@@ -40,11 +41,11 @@ export function QuickStockModal({ productId, title, onClose }: { productId: stri
     try {
       const res = await applyStockChanges(changed.map((r) => ({ variantId: r.variantId, mode: "set" as const, value: Number(next[r.variantId]) })), reason.trim() || null);
       await Promise.all([qc.invalidateQueries({ queryKey: ["catalog", "products"] }), qc.invalidateQueries({ queryKey: ["inventory"] }), qc.invalidateQueries({ queryKey: ["admin-product-full"] })]);
-      if (res.failed) toast.error(`لم تُحفظ ${res.failed} من ${changed.length}`, { description: "حاولي مرة أخرى" });
-      else toast.success(`حُفظت كميات ${res.updated} ${res.updated === 1 ? "مقاس" : "مقاسات"}`);
+      if (res.failed) toast.error(tr(`لم تُحفظ ${res.failed} من ${changed.length}`, "{0} of {1} weren't saved", [res.failed, changed.length]), { description: tr("يرجى المحاولة مرة ثانية", "Try again") });
+      else toast.success(tr(`حُفظت كميات ${res.updated} ${res.updated === 1 ? "مقاس" : "مقاسات"}`, "Saved the quantities ({0})", [res.updated, res.updated === 1 ? "مقاس" : "مقاسات"]));
       onClose();
     } catch (e) {
-      toast.error("لم تُحفظ الكميات", { description: getApiErrorMessage(e) });
+      toast.error(tr("لم تُحفظ الكميات", "The quantities weren't saved"), { description: getApiErrorMessage(e) });
     } finally {
       setSaving(false);
     }
@@ -54,23 +55,23 @@ export function QuickStockModal({ productId, title, onClose }: { productId: stri
   return (
     <Modal
       open={Boolean(productId)}
-      title={title ? `كميات: ${title}` : "الكميات"}
+      title={title ? tr(`كميات: ${title}`, "Quantities: {0}", [title]) : tr("الكميات", "Quantities")}
       onClose={onClose}
       widthClassName="max-w-xl"
       footer={
         <div className="flex w-full flex-wrap items-center gap-2">
           <Button variant="primary" onClick={save} isLoading={saving} disabled={!rows}>
-            {changed.length ? `حفظ ${changed.length} ${changed.length === 1 ? "تغيير" : "تغييرات"}` : "تم"}
+            {changed.length ? tr(`حفظ ${changed.length} ${changed.length === 1 ? "تغيير" : "تغييرات"}`, "Save {0}", [changed.length, changed.length === 1 ? "تغيير" : "تغييرات"]) : tr("تم", "Done")}
           </Button>
-          {productId ? <Link to={`/admin/catalog/products/${productId}`} className="text-sm text-accent-300 hover:text-accent-200" onClick={onClose}>فتح صفحة المنتج</Link> : null}
-          <span className="ms-auto text-xs text-white/50">المجموع: <b className="text-white">{total}</b></span>
+          {productId ? <Link to={`/admin/catalog/products/${productId}`} className="text-sm text-accent-300 hover:text-accent-200" onClick={onClose}>{tr("فتح صفحة المنتج", "Open the product page")}</Link> : null}
+          <span className="ms-auto text-xs text-white/50">{tr("المجموع:", "Total:")} <b className="text-white">{total}</b></span>
         </div>
       }
     >
-      <div dir="rtl" data-testid="quick-stock">
+      <div data-testid="quick-stock">
         {error ? <div className="rounded-xl bg-red-500/10 p-3 text-sm text-red-200">{error}</div> : null}
-        {!rows && !error ? <div className="py-6 text-center text-sm text-white/55">جارٍ التحميل…</div> : null}
-        {rows && rows.length === 0 ? <div className="py-6 text-center text-sm text-white/55">لا توجد مقاسات لهذا المنتج.</div> : null}
+        {!rows && !error ? <div className="py-6 text-center text-sm text-white/55">{tr("جارٍ التحميل…", "Loading…")}</div> : null}
+        {rows && rows.length === 0 ? <div className="py-6 text-center text-sm text-white/55">{tr("لا توجد مقاسات لهذا المنتج.", "This product has no sizes.")}</div> : null}
         {rows && rows.length > 0 && (
           <>
             <ul className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.08]">
@@ -84,26 +85,26 @@ export function QuickStockModal({ productId, title, onClose }: { productId: stri
                       <div className="text-sm text-white">{r.colorName} · <b>{r.size}</b></div>
                       <div dir="ltr" className="truncate text-right font-mono text-[11px] text-white/45">{r.sku}</div>
                     </div>
-                    {dirty ? <span className="text-[11px] text-white/45">كان {r.stock}</span> : null}
+                    {dirty ? <span className="text-[11px] text-white/45">{tr("كان", "was")} {r.stock}</span> : null}
                     <div className="inline-flex items-center rounded-lg border border-white/[0.1] bg-white/[0.02]">
-                      <button type="button" onClick={() => step(r, -1)} className="h-9 w-9 text-white/60 hover:text-white" aria-label="إنقاص">−</button>
+                      <button type="button" onClick={() => step(r, -1)} className="h-9 w-9 text-white/60 hover:text-white" aria-label={tr("إنقاص", "Less")}>−</button>
                       <input
                         className={cn("h-9 w-14 bg-transparent text-center text-sm focus:outline-none", Number(v) <= 0 ? "text-red-300" : "text-white")}
                         inputMode="numeric"
                         value={v}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) => setNext((n) => ({ ...n, [r.variantId]: digits(e.target.value) }))}
-                        aria-label={`كمية ${r.colorName} ${r.size}`}
+                        aria-label={tr(`كمية ${r.colorName} ${r.size}`, "Quantity {0} {1}", [r.colorName, r.size])}
                       />
-                      <button type="button" onClick={() => step(r, 1)} className="h-9 w-9 text-white/60 hover:text-white" aria-label="زيادة">+</button>
+                      <button type="button" onClick={() => step(r, 1)} className="h-9 w-9 text-white/60 hover:text-white" aria-label={tr("زيادة", "More")}>+</button>
                     </div>
                   </li>
                 );
               })}
             </ul>
             <label className="mt-3 block text-xs text-white/55">
-              السبب (اختياري، يظهر في سجل المخزون)
-              <input className="mt-1 h-10 w-full rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white focus:outline-none" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثلاً: جرد، بضاعة وصلت، تالف" />
+              {tr("السبب (اختياري، يظهر في سجل المخزون)", "Reason (optional, shows in the stock history)")}
+              <input className="mt-1 h-10 w-full rounded-xl border border-white/[0.08] bg-surface-925 px-3 text-sm text-white focus:outline-none" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr("مثلاً: جرد، بضاعة وصلت، تالف", "e.g. count, goods arrived, damaged")} />
             </label>
           </>
         )}

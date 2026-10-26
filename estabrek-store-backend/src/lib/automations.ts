@@ -31,7 +31,7 @@ export const CONDITION_DEFAULTS: Record<Trigger, Record<string, number>> = {
 
 /** The words a message can use ({{name}}), with an example each (for "try it"). */
 export const SAMPLES: Record<Trigger, Record<string, string | number>> = {
-  "order.created": { orderId: "ORD-1042", customerName: "سارة", phone: "0599123456", total: 240, items: 2, city: "رام الله", link: "/admin/orders" },
+  "order.created": { orderId: "ORD-1042", customerName: "سارة", phone: "0599123456", total: 240, currency: "₪", items: 2, city: "رام الله", link: "/admin/orders" },
   "stock.low": { product: "حجاب شيفون", color: "أسود", size: "M", sku: "CH-BLK-M", stock: 2, threshold: 3, link: "/admin/inventory/low-stock" },
   "video.ready": { video: "فيلم الحملة", preset: "1080p", link: "/admin/media/videos" },
   "product.viral": { product: "فستان الورد", score: 64, before: 12, factor: 5.3, link: "/admin/system/cache#popular" },
@@ -39,7 +39,7 @@ export const SAMPLES: Record<Trigger, Record<string, string | number>> = {
 };
 
 export const DEFAULT_TEXT: Record<Trigger, string> = {
-  "order.created": "طلب جديد {{orderId}} من {{customerName}} ({{phone}}): {{total}} ₪، {{items}} قطعة. {{city}}",
+  "order.created": "طلب جديد {{orderId}} من {{customerName}} ({{phone}}): {{total}} {{currency}}، {{items}} قطعة. {{city}}",
   "stock.low": "المخزون قليل: {{product}} ({{color}} · {{size}}) باقي {{stock}}.",
   "video.ready": "الفيديو «{{video}}» جاهز ({{preset}}).",
   "product.viral": "«{{product}}» عم ينتشر: الشعبية صارت ×{{factor}} خلال ساعة.",

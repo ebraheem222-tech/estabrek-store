@@ -7,6 +7,8 @@ import { productStock, type StockRow } from "../../api/inventory.api";
 import { getApiErrorMessage } from "../../api/http";
 import { canEncode, code128Svg } from "../../lib/barcode";
 import { useDelivery } from "../orders/useDelivery";
+import { money } from "../../lib/money";
+import { tr } from "@/lib/words";
 
 export const LABELS_SESSION_KEY = "estabrek_labels_v1";
 type Handoff = { rows: StockRow[]; copies?: Record<string, number> };
@@ -19,9 +21,9 @@ export function openLabels(rows: StockRow[], copies?: Record<string, number>) {
 
 type Size = "50x30" | "40x25" | "a4";
 const SIZES: Record<Size, { label: string; w: number; h: number }> = {
-  "50x30": { label: "50×30 مم (طابعة ملصقات)", w: 50, h: 30 },
-  "40x25": { label: "40×25 مم (طابعة ملصقات)", w: 40, h: 25 },
-  a4: { label: "ورقة A4 — 24 ملصق (3×8)", w: 70, h: 37 },
+  "50x30": { label: tr("50×30 مم (طابعة ملصقات)", "50×30 mm (label printer)"), w: 50, h: 30 },
+  "40x25": { label: tr("40×25 مم (طابعة ملصقات)", "40×25 mm (label printer)"), w: 40, h: 25 },
+  a4: { label: tr("ورقة A4 — 24 ملصق (3×8)", "A4 sheet — 24 labels (3×8)"), w: 70, h: 37 },
 };
 
 const css = (size: Size) => {
@@ -105,39 +107,39 @@ export default function LabelsPrintPage() {
   const svgs = useMemo(() => new Map((rows ?? []).map((r) => [r.variantId, canEncode(r.sku) ? code128Svg(r.sku, { height: 60, module: 2 }) : null])), [rows]);
 
   return (
-    <div dir="rtl" className="lp-root" data-testid="labels-page">
+    <div className="lp-root" data-testid="labels-page">
       <style>{css(size)}</style>
       <div className="lp-bar">
-        <label>المقاس <select value={size} onChange={(e) => setSize(e.target.value as Size)}>{(Object.keys(SIZES) as Size[]).map((k) => <option key={k} value={k}>{SIZES[k].label}</option>)}</select></label>
-        <label>عدد الملصقات <select value={mode} onChange={(e) => { setMode(e.target.value as "one" | "stock"); setCopies({}); }}><option value="one">واحد لكل مقاس</option><option value="stock">حسب الكمية في المخزون</option></select></label>
-        <label><input type="checkbox" checked={showPrice} onChange={(e) => setShowPrice(e.target.checked)} /> السعر</label>
-        <span style={{ color: "#7a6570" }}>{labels.length} ملصق</span>
-        {tooLong.length ? <span style={{ color: "#a33", fontSize: 12 }} title={tooLong.map((r) => r.sku).join("\n")}>⚠ {tooLong.length} كود طويل لهذا المقاس — اختاري مقاساً أكبر أو كوداً أقصر</span> : null}
-        <button type="button" onClick={() => window.print()} disabled={!labels.length}>طباعة</button>
+        <label>{tr("المقاس", "Size")} <select value={size} onChange={(e) => setSize(e.target.value as Size)}>{(Object.keys(SIZES) as Size[]).map((k) => <option key={k} value={k}>{SIZES[k].label}</option>)}</select></label>
+        <label>{tr("عدد الملصقات", "Number of labels")} <select value={mode} onChange={(e) => { setMode(e.target.value as "one" | "stock"); setCopies({}); }}><option value="one">{tr("واحد لكل مقاس", "One per size")}</option><option value="stock">{tr("حسب الكمية في المخزون", "By the quantity in stock")}</option></select></label>
+        <label><input type="checkbox" checked={showPrice} onChange={(e) => setShowPrice(e.target.checked)} /> {tr("السعر", "Price")}</label>
+        <span style={{ color: "#7a6570" }}>{labels.length} {tr("ملصق", "labels")}</span>
+        {tooLong.length ? <span style={{ color: "#a33", fontSize: 12 }} title={tooLong.map((r) => r.sku).join("\n")}>⚠ {tooLong.length} {tr("كود طويل لهالمقاس — الأفضل مقاس أكبر أو كود أقصر", "A long code for this size — choose a bigger size or a shorter code")}</span> : null}
+        <button type="button" onClick={() => window.print()} disabled={!labels.length}>{tr("طباعة", "Print")}</button>
       </div>
 
       {rows && rows.length > 0 && (
         <details className="lp-list">
-          <summary>تعديل عدد الملصقات لكل مقاس ({rows.length})</summary>
+          <summary>{tr("تعديل عدد الملصقات لكل مقاس (", "Edit the number of labels per size (")}{rows.length})</summary>
           <table><tbody>
             {rows.map((r) => (
               <tr key={r.variantId}>
-                <td>{r.productTitle}</td><td>{r.colorName} · {r.size}</td><td dir="ltr" style={{ fontFamily: "monospace" }}>{r.sku}</td><td>في المخزون {r.stock}</td>
-                <td><input type="number" min={0} max={500} value={countOf(r)} onChange={(e) => setCopies((c) => ({ ...c, [r.variantId]: Math.max(0, Math.min(500, Number(e.target.value) || 0)) }))} aria-label={`عدد ملصقات ${r.sku}`} /></td>
+                <td>{r.productTitle}</td><td>{r.colorName} · {r.size}</td><td dir="ltr" style={{ fontFamily: "monospace" }}>{r.sku}</td><td>{tr("في المخزون", "in stock")} {r.stock}</td>
+                <td><input type="number" min={0} max={500} value={countOf(r)} onChange={(e) => setCopies((c) => ({ ...c, [r.variantId]: Math.max(0, Math.min(500, Number(e.target.value) || 0)) }))} aria-label={tr(`عدد ملصقات ${r.sku}`, "Labels for {0}", [r.sku])} /></td>
               </tr>
             ))}
           </tbody></table>
         </details>
       )}
 
-      {error ? <div className="lp-empty">تعذّر التحميل: {error}</div> : !rows ? <div className="lp-empty">جارٍ التحميل…</div> : !labels.length ? <div className="lp-empty">لا توجد ملصقات للطباعة.</div> : (
+      {error ? <div className="lp-empty">{tr("تعذّر التحميل:", "Couldn't load:")} {error}</div> : !rows ? <div className="lp-empty">{tr("جارٍ التحميل…", "Loading…")}</div> : !labels.length ? <div className="lp-empty">{tr("لا توجد ملصقات للطباعة.", "No labels to print.")}</div> : (
         <div className={`lp-sheet ${size === "a4" ? "a4" : ""}`}>
           {labels.map(({ r, i }) => (
             <div className="lbl" key={`${r.variantId}-${i}`} data-testid="label">
-              <div className="top"><span>{storeName || "استبرق"}</span>{showPrice ? <b>₪{Number(r.price || 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}</b> : null}</div>
+              <div className="top"><span>{storeName}</span>{showPrice ? <b>{money(Math.round(Number(r.price || 0) * 100) / 100)}</b> : null}</div>
               <div className="title">{r.productTitle}</div>
-              <div className="meta"><span>{r.colorName}</span><span>مقاس <b>{r.size}</b></span></div>
-              {svgs.get(r.variantId) ? <div className="bc" dangerouslySetInnerHTML={{ __html: svgs.get(r.variantId)! }} /> : <div className="nobc">هذا الكود فيه حروف عربية — غيّريه لحروف إنجليزية ليُطبع كباركود</div>}
+              <div className="meta"><span>{r.colorName}</span><span>{tr("مقاس", "Size")} <b>{r.size}</b></span></div>
+              {svgs.get(r.variantId) ? <div className="bc" dangerouslySetInnerHTML={{ __html: svgs.get(r.variantId)! }} /> : <div className="nobc">{tr("هالكود فيه حروف عربية — لازم يتغيّر لحروف إنجليزية عشان ينطبع كباركود", "This code has Arabic letters — change it to English letters to print it as a barcode")}</div>}
               <div className="sku">{r.sku}</div>
             </div>
           ))}

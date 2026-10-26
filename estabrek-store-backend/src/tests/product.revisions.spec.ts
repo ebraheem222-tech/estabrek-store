@@ -67,4 +67,10 @@ describe("A kept product, saved back", () => {
     expect(input.items[0].images[0]).not.toHaveProperty("id");
     expect(input.items[0].variants.map((v) => (v as { stock?: number }).stock)).toEqual([4, 7]);
   });
+
+  test("its translations come back with it; a version kept before translations leaves today's", () => {
+    const tr = { en: { title: "Rose dress" }, he: { title: "שמלת ורד" } };
+    expect(deepInputFromSnapshot({ ...structuredClone(snap), translations: tr }, { items: [] }).product.translations).toEqual(tr);
+    expect(deepInputFromSnapshot(structuredClone(snap), { items: [] }).product).not.toHaveProperty("translations");
+  });
 });

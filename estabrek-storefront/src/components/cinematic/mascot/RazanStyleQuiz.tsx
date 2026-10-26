@@ -11,6 +11,9 @@ import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
 import { razanCount } from "@/lib/razanRuntime";
 import { useSiteFeatures } from "@/store/siteFeatures";
+import { useStoreIdentity } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { useLanguage } from "../Language";
 
 type Start = {
   occasions: Array<{ key: string; label: string }>;
@@ -36,6 +39,8 @@ const saveTaste = (t: Taste) => { try { localStorage.setItem(TASTE_KEY, JSON.str
 const OCC_EMOJI: Record<string, string> = { daily: "☕", work: "💼", evening: "✨", wedding: "💍", prayer: "🤍", eid: "🌙" };
 
 export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void }) {
+  const { language: lang } = useLanguage();
+  const { currency } = useStoreIdentity();
   const { requests } = useSiteFeatures();
   const [start, setStart] = useState<Start | null>(null);
   const [failed, setFailed] = useState(false);
@@ -132,14 +137,14 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
     else { setDisliked((d) => (d.includes(id) ? d : [...d, id])); setLiked((l) => l.filter((x) => x !== id)); setResults((r) => r?.filter((x) => x.id !== id) ?? r); }
   };
 
-  if (failed) return <p className="razan-quiz-q" data-testid="razan-quiz">{ar ? "ما زبط أفتح الاختيارات هلأ. جربي كمان شوي 🌸" : "Couldn't load right now. Try again in a bit 🌸"}</p>;
-  if (!start) return <p className="razan-quiz-q" data-testid="razan-quiz">{ar ? "لحظة…" : "One moment…"}</p>;
+  if (failed) return <p className="razan-quiz-q" data-testid="razan-quiz">{tr(lang, "ما زبط أفتح الاختيارات هلأ. جربي كمان شوي 🌸", "Couldn't load right now. Try again in a bit 🌸")}</p>;
+  if (!start) return <p className="razan-quiz-q" data-testid="razan-quiz">{tr(lang, "لحظة…", "One moment…")}</p>;
 
   const chip = (label: React.ReactNode, on: boolean, onClick: () => void, key?: string) => (
     <button key={key} type="button" className="razan-help-pick razan-quiz-chip" aria-pressed={on} onClick={onClick}>{label}</button>
   );
   const skip = (next: Partial<Answers>) => (
-    <button type="button" className="razan-help-unsure" onClick={() => go(next)}>{ar ? "ما بتفرق معي" : "Doesn't matter"}</button>
+    <button type="button" className="razan-help-unsure" onClick={() => go(next)}>{tr(lang, "ما بتفرق معي", "Doesn't matter")}</button>
   );
   const at = step && step !== "results" ? steps.indexOf(step) : -1;
 
@@ -148,22 +153,22 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
       {at >= 0 ? (
         <>
           <div className="razan-help-dots" aria-hidden="true">{steps.map((s, i) => <i key={s} data-on={i <= at ? "" : undefined} />)}</div>
-          <p className="razan-help-count">{ar ? `سؤال ${at + 1} من ${steps.length}` : `Question ${at + 1} of ${steps.length}`}</p>
+          <p className="razan-help-count">{tr(lang, `سؤال ${at + 1} من ${steps.length}`, "Question {0} of {1}", [at + 1, steps.length])}</p>
         </>
       ) : null}
 
       {step === null && (
         <>
-          <p className="razan-help-q">{ar ? "خليني أختارلك! 🌸 جاوبيني على كم سؤال سريع وبطلعلك قطع بتناسبك." : "Let me pick for you! 🌸 A few quick questions and I'll find pieces that suit you."}</p>
-          <button type="button" className="razan-help-main" onClick={begin}>{ar ? "يلا نبلّش" : "Let's start"}</button>
-          {saved ? <button type="button" className="razan-help-unsure" onClick={again}>{ar ? "رجّعيلي اختياراتي من آخر مرة" : "Use my answers from last time"}</button> : null}
-          <small className="razan-quiz-note">{ar ? "اختياراتكِ بتضل على جهازكِ بس." : "Your answers stay on this device only."}</small>
+          <p className="razan-help-q">{tr(lang, "خليني أختارلك! 🌸 جاوبيني على كم سؤال سريع وبطلعلك قطع بتناسبك.", "Let me pick for you! 🌸 A few quick questions and I'll find pieces that suit you.")}</p>
+          <button type="button" className="razan-help-main" onClick={begin}>{tr(lang, "يلا نبلّش", "Let's start")}</button>
+          {saved ? <button type="button" className="razan-help-unsure" onClick={again}>{tr(lang, "رجّعيلي اختياراتي من آخر مرة", "Use my answers from last time")}</button> : null}
+          <small className="razan-quiz-note">{tr(lang, "اختياراتكِ بتضل على جهازكِ بس.", "Your answers stay on this device only.")}</small>
         </>
       )}
 
       {step === "occasion" && start && (
         <>
-          <p className="razan-help-q">{ar ? "لوين بدك تلبسي؟" : "What's the occasion?"}</p>
+          <p className="razan-help-q">{tr(lang, "لوين بدك تلبسي؟", "What's the occasion?")}</p>
           <div className="razan-help-sizes">{start.occasions.map((o) => chip(<>{OCC_EMOJI[o.key] ?? "🌸"} {o.label}</>, answers.occasion === o.key, () => go({ occasion: o.key }), o.key))}</div>
           {skip({ occasion: null })}
         </>
@@ -171,10 +176,10 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
 
       {step === "season" && (
         <>
-          <p className="razan-help-q">{ar ? "صيفي ولا شتوي؟" : "Summer or winter?"}</p>
+          <p className="razan-help-q">{tr(lang, "صيفي ولا شتوي؟", "Summer or winter?")}</p>
           <div className="razan-help-sizes">
-            {chip(ar ? "☀️ صيفي خفيف" : "☀️ Light summer", answers.season === "summer", () => go({ season: "summer" }))}
-            {chip(ar ? "❄️ شتوي دافي" : "❄️ Warm winter", answers.season === "winter", () => go({ season: "winter" }))}
+            {chip(tr(lang, "☀️ صيفي خفيف", "☀️ Light summer"), answers.season === "summer", () => go({ season: "summer" }))}
+            {chip(tr(lang, "❄️ شتوي دافي", "❄️ Warm winter"), answers.season === "winter", () => go({ season: "winter" }))}
           </div>
           {skip({ season: null })}
         </>
@@ -182,7 +187,7 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
 
       {step === "colors" && start && (
         <>
-          <p className="razan-help-q">{ar ? "شو الألوان اللي بتحبيها؟ (لحد 3)" : "Which colours do you love? (up to 3)"}</p>
+          <p className="razan-help-q">{tr(lang, "شو الألوان اللي بتحبيها؟ (لحد 3)", "Which colours do you love? (up to 3)")}</p>
           <div className="razan-quiz-colors">
             {start.colors.map((c) => {
               const on = answers.colors.includes(c.key);
@@ -195,18 +200,18 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
             })}
           </div>
           <div className="razan-help-nav">
-            <button type="button" className="ghost" onClick={back}>{ar ? "رجوع" : "Back"}</button>
-            <button type="button" className="razan-help-main" onClick={() => go({})}>{answers.colors.length ? (ar ? "التالي" : "Next") : ar ? "ما بتفرق" : "Any"}</button>
+            <button type="button" className="ghost" onClick={back}>{tr(lang, "رجوع", "Back")}</button>
+            <button type="button" className="razan-help-main" onClick={() => go({})}>{answers.colors.length ? (tr(lang, "التالي", "Next")) : tr(lang, "ما بتفرق", "Any")}</button>
           </div>
         </>
       )}
 
       {step === "look" && (
         <>
-          <p className="razan-help-q">{ar ? "بدك لبسة كاملة ولا قطعة تكمّلي فيها لبسك؟" : "A full look, or a piece to complete one?"}</p>
+          <p className="razan-help-q">{tr(lang, "بدك لبسة كاملة ولا قطعة تكمّلي فيها لبسك؟", "A full look, or a piece to complete one?")}</p>
           <div className="razan-help-sizes">
-            {chip(ar ? "👗 لبسة كاملة" : "👗 Full look", answers.look === "full", () => go({ look: "full" }))}
-            {chip(ar ? "🧣 قطعة بتكمّل" : "🧣 A piece", answers.look === "piece", () => go({ look: "piece" }))}
+            {chip(tr(lang, "👗 لبسة كاملة", "👗 Full look"), answers.look === "full", () => go({ look: "full" }))}
+            {chip(tr(lang, "🧣 قطعة بتكمّل", "🧣 A piece"), answers.look === "piece", () => go({ look: "piece" }))}
           </div>
           {skip({ look: null })}
         </>
@@ -214,7 +219,7 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
 
       {step === "size" && start && (
         <>
-          <p className="razan-help-q">{ar ? "شو مقاسكِ؟" : "Your size?"}</p>
+          <p className="razan-help-q">{tr(lang, "شو مقاسكِ؟", "Your size?")}</p>
           <div className="razan-help-sizes">{start.sizes.map((s) => chip(s, answers.size === s, () => go({ size: s }), s))}</div>
           {skip({ size: null })}
         </>
@@ -222,15 +227,15 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
 
       {step === "budget" && start && (
         <>
-          <p className="razan-help-q">{ar ? "قديش ميزانيتكِ تقريباً؟" : "Roughly your budget?"}</p>
-          <div className="razan-help-sizes">{start.budgets.map((b) => chip(ar ? `لحد ${formatMoney(b, "ILS")}` : `Up to ${formatMoney(b, "ILS")}`, answers.budgetMax === b, () => go({ budgetMax: b }), String(b)))}</div>
+          <p className="razan-help-q">{tr(lang, "قديش ميزانيتكِ تقريباً؟", "Roughly your budget?")}</p>
+          <div className="razan-help-sizes">{start.budgets.map((b) => chip(tr(lang, `لحد ${formatMoney(b, currency)}`, "Up to {0}", [formatMoney(b, currency)]), answers.budgetMax === b, () => go({ budgetMax: b }), String(b)))}</div>
           {skip({ budgetMax: null })}
         </>
       )}
 
       {step === "photos" && start && (
         <>
-          <p className="razan-help-q">{ar ? "أي وحدة من هدول بتعجبك؟ (اختياري)" : "Which of these do you like? (optional)"}</p>
+          <p className="razan-help-q">{tr(lang, "أي وحدة من هدول بتعجبك؟ (اختياري)", "Which of these do you like? (optional)")}</p>
           <div className="razan-help-colors">
             {start.photos.map((p) => (
               <button key={p.id} type="button" className="razan-help-pick" aria-pressed={liked.includes(p.id)} aria-label={p.title} onClick={() => setLiked((l) => (l.includes(p.id) ? l.filter((x) => x !== p.id) : [...l, p.id]))}>
@@ -241,8 +246,8 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
             ))}
           </div>
           <div className="razan-help-nav">
-            <button type="button" className="ghost" onClick={back}>{ar ? "رجوع" : "Back"}</button>
-            <button type="button" className="razan-help-main" disabled={busy} onClick={() => go({})}>{busy ? (ar ? "عم دوّر…" : "Looking…") : ar ? "ورجيني شو اخترتيلي" : "Show me"}</button>
+            <button type="button" className="ghost" onClick={back}>{tr(lang, "رجوع", "Back")}</button>
+            <button type="button" className="razan-help-main" disabled={busy} onClick={() => go({})}>{busy ? (tr(lang, "عم دوّر…", "Looking…")) : tr(lang, "ورجيني شو اخترتيلي", "Show me")}</button>
           </div>
         </>
       )}
@@ -251,16 +256,16 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
         <>
           {noMatch || !results?.length ? (
             <>
-              <p className="razan-help-q">{ar ? "ما لقيت إشي بيشبه اللي بدك هلأ 😔" : "I couldn't find something close right now 😔"}</p>
+              <p className="razan-help-q">{tr(lang, "ما لقيت إشي بيشبه اللي بدك هلأ 😔", "I couldn't find something close right now 😔")}</p>
               {requests.enabled && requests.kinds.newPiece ? (
-                <Link className="razan-help-main razan-quiz-link" href="/request" onClick={onPick}>{ar ? "احكيلنا عنها ونحن بندوّر" : "Tell us and we'll look for it"}</Link>
+                <Link className="razan-help-main razan-quiz-link" href="/request" onClick={onPick}>{tr(lang, "احكيلنا عنها ونحن بندوّر", "Tell us and we'll look for it")}</Link>
               ) : (
-                <Link className="razan-help-main razan-quiz-link" href="/contact" onClick={onPick}>{ar ? "احكي معنا" : "Talk to us"}</Link>
+                <Link className="razan-help-main razan-quiz-link" href="/contact" onClick={onPick}>{tr(lang, "احكي معنا", "Talk to us")}</Link>
               )}
             </>
           ) : (
             <>
-              <p className="razan-help-q">{ar ? "هدول اخترتلك ياهم 💗" : "I picked these for you 💗"}</p>
+              <p className="razan-help-q">{tr(lang, "هدول اخترتلك ياهم 💗", "I picked these for you 💗")}</p>
               <ul className="razan-quiz-results">
                 {results.map((p) => (
                   <li key={p.id} data-liked={liked.includes(p.id) ? "" : undefined}>
@@ -269,13 +274,13 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
                       {p.image ? <img src={cldUrl(p.image, { w: 160, h: 200, c: "fill", g: "auto" })} alt="" loading="lazy" /> : <span className="razan-help-swatch" />}
                       <span>
                         <b>{p.title}</b>
-                        {p.price != null ? <em>{formatMoney(p.price, "ILS")}</em> : null}
+                        {p.price != null ? <em>{formatMoney(p.price, currency)}</em> : null}
                         {p.reasons.map((r) => <small key={r}>✓ {r}</small>)}
                       </span>
                     </Link>
                     <div className="razan-quiz-thumbs">
-                      <button type="button" aria-label={ar ? "عجبتني" : "I like it"} aria-pressed={liked.includes(p.id)} onClick={() => thumbs(p.id, true)}>👍</button>
-                      <button type="button" aria-label={ar ? "مش ذوقي" : "Not for me"} onClick={() => thumbs(p.id, false)}>👎</button>
+                      <button type="button" aria-label={tr(lang, "عجبتني", "I like it")} aria-pressed={liked.includes(p.id)} onClick={() => thumbs(p.id, true)}>👍</button>
+                      <button type="button" aria-label={tr(lang, "مش ذوقي", "Not for me")} onClick={() => thumbs(p.id, false)}>👎</button>
                     </div>
                   </li>
                 ))}
@@ -283,9 +288,9 @@ export function RazanStyleQuiz({ ar, onPick }: { ar: boolean; onPick: () => void
             </>
           )}
           <div className="razan-quiz-actions">
-            {feedback ? <button type="button" className="razan-help-main" disabled={busy} onClick={() => void ask(answers)}>{ar ? "اختاريلي من جديد حسب رأيي 🔄" : "Pick again from my 👍/👎 🔄"}</button> : null}
-            {results?.length ? <button type="button" className="razan-help-unsure" disabled={busy} onClick={() => void ask(answers, { exclude: results.map((r) => r.id) })}>{ar ? "رجّعيلي غيرهم" : "Show me others"}</button> : null}
-            <button type="button" className="razan-help-unsure" onClick={begin}>{ar ? "من الأول" : "Start over"}</button>
+            {feedback ? <button type="button" className="razan-help-main" disabled={busy} onClick={() => void ask(answers)}>{tr(lang, "اختاريلي من جديد حسب رأيي 🔄", "Pick again from my 👍/👎 🔄")}</button> : null}
+            {results?.length ? <button type="button" className="razan-help-unsure" disabled={busy} onClick={() => void ask(answers, { exclude: results.map((r) => r.id) })}>{tr(lang, "رجّعيلي غيرهم", "Show me others")}</button> : null}
+            <button type="button" className="razan-help-unsure" onClick={begin}>{tr(lang, "من الأول", "Start over")}</button>
           </div>
         </>
       )}

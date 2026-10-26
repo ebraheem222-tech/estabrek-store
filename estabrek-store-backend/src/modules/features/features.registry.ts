@@ -208,6 +208,7 @@ export const FEATURES: FeatureDef[] = [
   aiFeature("adminAsk", "اسأل عن متجرك", "سؤال بكلامك («شو أكثر قطعة بعنا هالشهر؟») وجواب من أرقام متجرك.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
   aiFeature("replySuggest", "اقتراحات ردود واتساب", "بصفحة الطلب: 3 ردود جاهزة للزبونة حسب حالة الطلب ورسالتها.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
   aiFeature("photoStudio", "استوديو الصور", "خلفية نظيفة لصورة القطعة بكبسة — بتنضاف كصورة جديدة، الأصلية بتضل.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }, { label: "Cloudinary مضبوط (لحفظ الصورة الجديدة)", ok: isCloudinaryEnabled(), required: true }]),
+  aiFeature("translate", "ترجمة المتجر", "بصفحة كل منتج وقسم ونوع: مسودة بالإنجليزي أو العبري من النص العربي، بتراجعيها وبتعدّليها قبل الحفظ.", () => [{ label: "مفتاح OPENAI_API_KEY مضبوط بالسيرفر (Railway)", ok: aiKeyReady(), required: true }]),
   aiFeature("orderFlags", "طلبات بدها انتباه", "تنبيه بصفحة الطلب لما يكون في إشي غريب (نفس الرقم كذا مرة، كمية كبيرة…). قواعد بسيطة، ما بتحتاج مفتاح.", () => []),
 ];
 

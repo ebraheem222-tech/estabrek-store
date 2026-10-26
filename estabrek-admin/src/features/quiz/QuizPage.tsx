@@ -17,6 +17,8 @@ import * as QuizAPI from "../../api/quiz.api";
 import type { QuestionInput, QuizQuestion, QuizSettings } from "../../api/quiz.api";
 import { relativeTime } from "../team/teamText";
 import { LEVEL_LABELS, TOPIC_LABELS, chanceSteps, scheduleText } from "./quizText";
+import { loc } from "@/lib/lang";
+import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5";
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
@@ -24,9 +26,9 @@ const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03]
 export default function QuizPage() {
   const q = useQuery({ queryKey: ["quiz"], queryFn: QuizAPI.getQuiz });
   return (
-    <div dir="rtl" className="space-y-4 pb-24" data-testid="quiz-page">
+    <div className="space-y-4 pb-24" data-testid="quiz-page">
       {q.isLoading ? (
-        <div className={`${box} flex items-center gap-2 text-sm`}><Spinner /> جاري التحميل…</div>
+        <div className={`${box} flex items-center gap-2 text-sm`}><Spinner /> {tr("جاري التحميل…", "Loading…")}</div>
       ) : q.isError || !q.data ? (
         <div className={`${box} text-sm text-red-200`}>{getApiErrorMessage(q.error)}</div>
       ) : (
@@ -51,8 +53,8 @@ function Settings({ data }: { data: Awaited<ReturnType<typeof QuizAPI.getQuiz>> 
   const short = data.approved < s.questions;
   const save = useMutation({
     mutationFn: () => QuizAPI.saveQuiz(s),
-    onSuccess: () => { toast.success(s.enabled ? "«سؤال وجواب» شغّال" : "انحفظ"); qc.invalidateQueries({ queryKey: ["quiz"] }); qc.invalidateQueries({ queryKey: ["features"] }); },
-    onError: (e) => toast.error("ما انحفظ", { description: getApiErrorMessage(e) }),
+    onSuccess: () => { toast.success(s.enabled ? tr("«سؤال وجواب» شغّال", "“Questions and answers” is on") : tr("انحفظ", "Saved")); qc.invalidateQueries({ queryKey: ["quiz"] }); qc.invalidateQueries({ queryKey: ["features"] }); },
+    onError: (e) => toast.error(tr("ما انحفظ", "Not saved"), { description: getApiErrorMessage(e) }),
   });
   const num = (label: string, key: keyof QuizSettings, min: number, max: number, hint?: string) => (
     <label className="block">
@@ -66,27 +68,27 @@ function Settings({ data }: { data: Awaited<ReturnType<typeof QuizAPI.getQuiz>> 
     <section className={box} data-testid="quiz-settings">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold">سؤال وجواب 🎁</h1>
+          <h1 className="text-lg font-semibold">{tr("سؤال وجواب 🎁", "Questions and answers 🎁")}</h1>
           <p className="mt-1 text-sm text-white/60">
-            رزان بتعرض على زوار قليلين يجاوبوا على أسئلة دينية من السهل للصعب. اللي بتجاوب كلها صح بتربح كوبون خصم لمرة وحدة، لرقمها بس. الزبونة هي اللي بتختار تلعب.
+            {tr("رزان بتعرض على زوار قليلين يجاوبوا على أسئلة دينية من السهل للصعب. اللي بيجاوب كلها صح بيربح كوبون خصم لمرة وحدة، لرقمه بس. الزبون هو اللي بيختار يلعب.", "Razan invites a few visitors to answer religious questions from easy to hard. Whoever gets them all right wins a one-time discount coupon, for their number only. Customers choose whether to play.")}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-white/70">{s.enabled ? "شغّال" : "مطفي"}</span>
-          <ToggleSwitch checked={s.enabled} label="«سؤال وجواب» شغّال" disabled={!canWrite} onChange={(v) => set({ enabled: v })} />
+          <span className="text-sm text-white/70">{s.enabled ? tr("شغّال", "On") : tr("مطفي", "Off")}</span>
+          <ToggleSwitch checked={s.enabled} label={tr("«سؤال وجواب» شغّال", "“Questions and answers” is on")} disabled={!canWrite} onChange={(v) => set({ enabled: v })} />
         </div>
       </div>
       {short ? (
         <p className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100" data-testid="quiz-short">
-          لازم توافق على {s.questions} أسئلة على الأقل قبل ما تشغّله (موافق هلّق على {data.approved}). راجع الأسئلة تحت ووافق على اللي بتريدها.
+          {tr("لازم ينوافق على", "Approve at least")} {s.questions} {tr("أسئلة على الأقل قبل التشغيل (موافق هلّق على", "questions before turning it on (approved now:")} {data.approved}{tr("). الأسئلة تحت بتنراجع وبينوافق على المطلوب منها.", "). Review the questions below and approve the ones you want.")}
         </p>
       ) : null}
-      <p className="mt-2 text-xs text-white/45">رزان لازم تكون ظاهرة بالمتجر (<Link className="underline" to="/admin/razan">صفحة رزان</Link>) — هي اللي بتعرض الفرصة.</p>
+      <p className="mt-2 text-xs text-white/45">{tr("رزان لازم تكون ظاهرة بالمتجر (", "Razan has to be shown in the store (")}<Link className="underline" to="/admin/razan">{tr("صفحة رزان", "Razan's page")}</Link>{tr(") — هي اللي بتعرض الفرصة.", ") — she's the one who offers the chance.")}</p>
 
       <fieldset className="mt-4">
-        <legend className="mb-2 text-xs text-white/55">مين بياخد فرصة</legend>
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="طريقة الفرص">
-          {([["counter", "بالعدّ", `الزائرة رقم ${scheduleText(s.base, 5)} بهالفترة.`], ["chance", "بالحظ", `أول جائزة بفرصة ${s.startChance}%، وبعد كل جائزة الفرصة بتصير ÷${s.base}.`]] as const).map(([k, l, h]) => (
+        <legend className="mb-2 text-xs text-white/55">{tr("مين بياخد فرصة", "Who gets a chance")}</legend>
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={tr("طريقة الفرص", "How chances work")}>
+          {([["counter", tr("بالعدّ", "By count"), tr(`الزائر رقم ${scheduleText(s.base, 5)} بهالفترة.`, "Visitor number {0} in this period.", [scheduleText(s.base, 5)])], ["chance", tr("بالحظ", "By luck"), tr(`أول جائزة بفرصة ${s.startChance}%، وبعد كل جائزة الفرصة بتصير ÷${s.base}.`, "The first prize has a {0}% chance, and after each prize the chance becomes ÷{1}.", [s.startChance, s.base])]] as const).map(([k, l, h]) => (
             <button key={k} type="button" role="radio" aria-checked={s.mode === k} disabled={!canWrite} onClick={() => set({ mode: k })} className={`rounded-xl border p-3 text-start ${s.mode === k ? "border-accent-400/60 bg-accent-500/15" : "border-white/10 hover:border-white/25"}`}>
               <span className="block text-sm font-medium">{l}</span>
               <span className="mt-0.5 block text-[11px] text-white/50">{h}</span>
@@ -96,20 +98,20 @@ function Settings({ data }: { data: Awaited<ReturnType<typeof QuizAPI.getQuiz>> 
       </fieldset>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        {num("المضاعف (2 = 1، 3، 7، 15…)", "base", 2, 5, s.mode === "counter" ? `الفرص: ${scheduleText(s.base)}` : `الفرص: ${chanceSteps(s.startChance, s.base).join(" ← ")}`)}
-        {s.mode === "chance" ? num("فرصة أول جائزة (%)", "startChance", 1, 100) : null}
-        {num("العدّاد بيرجع من الصفر كل (يوم)", "resetDays", 1, 60, "7 = كل أسبوع (من يوم الأحد).")}
-        {num("أكثر عدد كوبونات بالفترة", "maxPerPeriod", 1, 200)}
-        {num("الخصم (%)", "percent", 1, 50)}
-        {num("الكوبون صالح (ساعة)", "hours", 6, 336)}
-        {num("عدد الأسئلة بالمحاولة", "questions", 3, 10, "لازم كلها صح.")}
+        {num(tr("المضاعف (2 = 1، 3، 7، 15…)", "Multiplier (2 = 1, 3, 7, 15…)"), "base", 2, 5, s.mode === "counter" ? tr(`الفرص: ${scheduleText(s.base)}`, "Chances: {0}", [scheduleText(s.base)]) : tr(`الفرص: ${chanceSteps(s.startChance, s.base).join(" ← ")}`, "Chances: {0}", [chanceSteps(s.startChance, s.base).join(tr(" ← ", " → "))]))}
+        {s.mode === "chance" ? num(tr("فرصة أول جائزة (%)", "First prize chance (%)"), "startChance", 1, 100) : null}
+        {num(tr("العدّاد بيرجع من الصفر كل (يوم)", "The counter restarts every (days)"), "resetDays", 1, 60, tr("7 = كل أسبوع (من يوم الأحد).", "7 = every week (from Sunday)."))}
+        {num(tr("أكثر عدد كوبونات بالفترة", "Most coupons per period"), "maxPerPeriod", 1, 200)}
+        {num(tr("الخصم (%)", "Discount (%)"), "percent", 1, 50)}
+        {num(tr("الكوبون صالح (ساعة)", "Coupon valid (hours)"), "hours", 6, 336)}
+        {num(tr("عدد الأسئلة بالمحاولة", "Questions per try"), "questions", 3, 10, tr("لازم كلها صح.", "All have to be right."))}
       </div>
       <p className="mt-4 text-[11px] leading-6 text-white/45">
-        مسابقة مجانية بالمعرفة، بدون شرط شراء، ومحاولة وحدة لكل فرصة. الكوبون بيشتغل مرة وحدة ومع نفس رقم الهاتف بس. تأكد إنها مناسبة لقوانين المسابقات عندك.
+        {tr("مسابقة مجانية بالمعرفة، بدون شرط شراء، ومحاولة وحدة لكل فرصة. الكوبون بيشتغل مرة وحدة ومع نفس رقم الهاتف بس. لازم تكون مناسبة لقوانين المسابقات بالبلد.", "A free knowledge contest, no purchase needed, one try per chance. The coupon works once and with the same phone number only. Make sure it fits the contest laws where you are.")}
       </p>
       {canWrite && dirty ? (
         <div className="mt-4 flex justify-end">
-          <Button variant="primary" isLoading={save.isPending} disabled={s.enabled && short} onClick={() => save.mutate()}>حفظ</Button>
+          <Button variant="primary" isLoading={save.isPending} disabled={s.enabled && short} onClick={() => save.mutate()}>{tr("حفظ", "Save")}</Button>
         </div>
       ) : null}
     </section>
@@ -118,19 +120,19 @@ function Settings({ data }: { data: Awaited<ReturnType<typeof QuizAPI.getQuiz>> 
 
 function Numbers({ data }: { data: Awaited<ReturnType<typeof QuizAPI.getQuiz>> }) {
   const st = data.stats;
-  const end = new Date(st.endsAt).toLocaleDateString("ar", { weekday: "long", day: "numeric", month: "long" });
+  const end = new Date(st.endsAt).toLocaleDateString(loc("ar"), { weekday: "long", day: "numeric", month: "long" });
   const facts: Array<[string, React.ReactNode]> = [
-    ["زوار بهالفترة", st.visitors],
-    ...(st.nextChanceAt ? ([["الفرصة الجاية للزائرة رقم", st.nextChanceAt]] as Array<[string, React.ReactNode]>) : []),
-    ["أخدوا فرصة", st.chances],
-    ["لعبوا", st.plays],
-    ["جاوبوا كلها صح", st.passes],
-    ["ربحوا كوبون", `${st.wins} / ${data.settings.maxPerPeriod}`],
+    [tr("زوار بهالفترة", "Visitors this period"), st.visitors],
+    ...(st.nextChanceAt ? ([[tr("الفرصة الجاية للزائر رقم", "Next chance for visitor number"), st.nextChanceAt]] as Array<[string, React.ReactNode]>) : []),
+    [tr("أخدوا فرصة", "Got a chance"), st.chances],
+    [tr("لعبوا", "Played"), st.plays],
+    [tr("جاوبوا كلها صح", "Got all right"), st.passes],
+    [tr("ربحوا كوبون", "Won a coupon"), `${st.wins} / ${data.settings.maxPerPeriod}`],
   ];
   return (
     <section className={box} data-testid="quiz-numbers">
-      <h2 className="font-semibold">هالفترة</h2>
-      <p className="mt-0.5 text-xs text-white/50">بتخلص {end} وبيرجع العدّاد من الصفر.</p>
+      <h2 className="font-semibold">{tr("هالفترة", "This period")}</h2>
+      <p className="mt-0.5 text-xs text-white/50">{tr("بتخلص", "ends")} {end} {tr("وبيرجع العدّاد من الصفر.", "and the counter restarts.")}</p>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {facts.map(([l, v]) => (
           <div key={l} className="rounded-xl border border-white/10 p-3">
@@ -156,12 +158,12 @@ function Questions() {
   const patch = useMutation({
     mutationFn: (v: { id: string; p: Partial<QuestionInput> }) => QuizAPI.updateQuestion(v.id, v.p),
     onSuccess: () => refresh(),
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
   const del = useMutation({
     mutationFn: (id: string) => QuizAPI.deleteQuestion(id),
-    onSuccess: () => { toast.success("انحذف السؤال"); setGone(null); refresh(); },
-    onError: (e) => toast.error("ما انحذف", { description: getApiErrorMessage(e) }),
+    onSuccess: () => { toast.success(tr("انحذف السؤال", "Question deleted")); setGone(null); refresh(); },
+    onError: (e) => toast.error(tr("ما انحذف", "Not deleted"), { description: getApiErrorMessage(e) }),
   });
   const list = q.data?.questions ?? [];
   const waiting = list.filter((x) => !x.approved).length;
@@ -170,12 +172,12 @@ function Questions() {
     <section className={box} data-testid="quiz-questions">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="font-semibold">الأسئلة</h2>
+          <h2 className="font-semibold">{tr("الأسئلة", "Questions")}</h2>
           <p className="mt-0.5 text-xs text-white/50">
-            بينسأل بس السؤال اللي وافقت عليه. بكل محاولة بتطلع أسئلة من كل مستوى، من السهل للصعب.{waiting ? ` ${waiting} سؤال بانتظار مراجعتك.` : ""}
+            {tr("بينسأل بس السؤال اللي انوافق عليه. بكل محاولة بتطلع أسئلة من كل مستوى، من السهل للصعب.", "Only approved questions are asked. Each try has questions from every level, easy to hard.")}{waiting ? tr(` ${waiting} سؤال بانتظار المراجعة.`, " {0} questions waiting for review.", [waiting]) : ""}
           </p>
         </div>
-        {canWrite ? <Button size="sm" variant="secondary" onClick={() => setEditing("new")}>+ سؤال</Button> : null}
+        {canWrite ? <Button size="sm" variant="secondary" onClick={() => setEditing("new")}>{tr("+ سؤال", "+ Question")}</Button> : null}
       </div>
       {editing === "new" ? <QuestionForm initial={EMPTY} onDone={() => { setEditing(null); refresh(); }} onCancel={() => setEditing(null)} /> : null}
       {q.isLoading ? <div className="mt-3 flex items-center gap-2 text-sm"><Spinner /> …</div> : null}
@@ -195,8 +197,8 @@ function Questions() {
                       <div className="flex flex-wrap items-start gap-2">
                         <p className="min-w-0 flex-1 text-sm font-medium">{x.text}</p>
                         <Badge variant="default" size="sm">{TOPIC_LABELS[x.topic] ?? x.topic}</Badge>
-                        {x.approved ? <Badge variant="success" size="sm">موافق عليه</Badge> : <Badge variant="warning" size="sm">بانتظار مراجعتك</Badge>}
-                        {!x.active ? <Badge variant="default" size="sm">موقّف</Badge> : null}
+                        {x.approved ? <Badge variant="success" size="sm">{tr("موافق عليه", "Approved")}</Badge> : <Badge variant="warning" size="sm">{tr("بانتظار المراجعة", "Waiting for review")}</Badge>}
+                        {!x.active ? <Badge variant="default" size="sm">{tr("موقّف", "Paused")}</Badge> : null}
                       </div>
                       <ul className="mt-2 flex flex-wrap gap-1.5 text-xs">
                         {x.choices.map((c, i) => (
@@ -206,11 +208,11 @@ function Questions() {
                       {canWrite ? (
                         <div className="mt-2 flex flex-wrap gap-2">
                           <Button size="sm" variant={x.approved ? "ghost" : "primary"} isLoading={patch.isPending && patch.variables?.id === x.id} onClick={() => patch.mutate({ id: x.id, p: { approved: !x.approved } })}>
-                            {x.approved ? "إلغاء الموافقة" : "موافق ✓"}
+                            {x.approved ? tr("إلغاء الموافقة", "Remove approval") : tr("موافقة ✓", "Approve ✓")}
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => patch.mutate({ id: x.id, p: { active: !x.active } })}>{x.active ? "وقّف" : "رجّع"}</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditing(x.id)}>تعديل</Button>
-                          <Button size="sm" variant="ghost" className="text-red-300" onClick={() => setGone(x)}>حذف</Button>
+                          <Button size="sm" variant="ghost" onClick={() => patch.mutate({ id: x.id, p: { active: !x.active } })}>{x.active ? tr("توقيف", "Pause") : tr("ترجيع", "Restore")}</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditing(x.id)}>{tr("تعديل", "Edit")}</Button>
+                          <Button size="sm" variant="ghost" className="text-red-300" onClick={() => setGone(x)}>{tr("حذف", "Delete")}</Button>
                         </div>
                       ) : null}
                     </>
@@ -221,7 +223,7 @@ function Questions() {
           </div>
         );
       })}
-      <ConfirmDialog open={Boolean(gone)} title="حذف السؤال" message={gone?.text ?? ""} confirmText="احذف" isLoading={del.isPending} onConfirm={() => { if (gone) del.mutate(gone.id); }} onClose={() => setGone(null)} />
+      <ConfirmDialog open={Boolean(gone)} title={tr("حذف السؤال", "Delete question")} message={gone?.text ?? ""} confirmText={tr("حذف", "Delete")} isLoading={del.isPending} onConfirm={() => { if (gone) del.mutate(gone.id); }} onClose={() => setGone(null)} />
     </section>
   );
 }
@@ -235,39 +237,39 @@ function QuestionForm({ initial, id, onDone, onCancel }: { initial: QuestionInpu
       const body = { ...v, text: v.text.trim(), choices: filled.map(([, c]) => c), answer: Math.max(0, filled.findIndex(([i]) => i === v.answer)) };
       return id ? QuizAPI.updateQuestion(id, body) : QuizAPI.createQuestion(body);
     },
-    onSuccess: () => { toast.success(id ? "انحفظ السؤال" : "انضاف السؤال — وافق عليه لما تكون جاهز"); onDone(); },
-    onError: (e) => toast.error("ما انحفظ", { description: getApiErrorMessage(e) }),
+    onSuccess: () => { toast.success(id ? tr("انحفظ السؤال", "Question saved") : tr("انضاف السؤال — الموافقة عليه لما يكون جاهز", "Question added — approve it when ready")); onDone(); },
+    onError: (e) => toast.error(tr("ما انحفظ", "Not saved"), { description: getApiErrorMessage(e) }),
   });
   const filled = v.choices.filter((c) => c.trim()).length;
   const ok = v.text.trim().length >= 5 && filled >= 2 && v.choices[v.answer]?.trim();
   return (
     <div className="mt-3 space-y-3 rounded-xl border border-white/10 p-3" data-testid="quiz-question-form">
       <label className="block">
-        <span className="mb-1 block text-xs text-white/55">السؤال</span>
-        <input className={field} value={v.text} maxLength={300} onChange={(e) => setV({ ...v, text: e.target.value })} aria-label="نص السؤال" />
+        <span className="mb-1 block text-xs text-white/55">{tr("السؤال", "Question")}</span>
+        <input className={field} value={v.text} maxLength={300} onChange={(e) => setV({ ...v, text: e.target.value })} aria-label={tr("نص السؤال", "Question text")} />
       </label>
       <fieldset>
-        <legend className="mb-1 text-xs text-white/55">الأجوبة (اختر الصح)</legend>
+        <legend className="mb-1 text-xs text-white/55">{tr("الأجوبة (اختيار الصح)", "Answers (choose the right one)")}</legend>
         <div className="space-y-2">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-2">
-              <input type="radio" name={`ans-${id ?? "new"}`} checked={v.answer === i} onChange={() => setV({ ...v, answer: i })} aria-label={`الجواب ${i + 1} هو الصح`} />
-              <input className={field} value={v.choices[i] ?? ""} maxLength={120} placeholder={i >= 2 ? "اختياري" : ""} onChange={(e) => { const c = [...v.choices]; c[i] = e.target.value; setV({ ...v, choices: c }); }} aria-label={`الجواب ${i + 1}`} />
+              <input type="radio" name={`ans-${id ?? "new"}`} checked={v.answer === i} onChange={() => setV({ ...v, answer: i })} aria-label={tr(`الجواب ${i + 1} هو الصح`, "Answer {0} is right", [i + 1])} />
+              <input className={field} value={v.choices[i] ?? ""} maxLength={120} placeholder={i >= 2 ? tr("اختياري", "optional") : ""} onChange={(e) => { const c = [...v.choices]; c[i] = e.target.value; setV({ ...v, choices: c }); }} aria-label={tr(`الجواب ${i + 1}`, "Answer {0}", [i + 1])} />
             </div>
           ))}
         </div>
       </fieldset>
       <div className="flex flex-wrap gap-3">
-        <select className={`${field} w-auto`} value={v.level} onChange={(e) => setV({ ...v, level: Number(e.target.value) })} aria-label="المستوى">
+        <select className={`${field} w-auto`} value={v.level} onChange={(e) => setV({ ...v, level: Number(e.target.value) })} aria-label={tr("المستوى", "Level")}>
           {[1, 2, 3].map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
         </select>
-        <select className={`${field} w-auto`} value={v.topic} onChange={(e) => setV({ ...v, topic: e.target.value })} aria-label="الموضوع">
+        <select className={`${field} w-auto`} value={v.topic} onChange={(e) => setV({ ...v, topic: e.target.value })} aria-label={tr("الموضوع", "Topic")}>
           {Object.entries(TOPIC_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
         </select>
       </div>
       <div className="flex gap-2">
-        <Button size="sm" variant="primary" disabled={!ok} isLoading={save.isPending} onClick={() => save.mutate()}>حفظ</Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>إلغاء</Button>
+        <Button size="sm" variant="primary" disabled={!ok} isLoading={save.isPending} onClick={() => save.mutate()}>{tr("حفظ", "Save")}</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>{tr("إلغاء", "Cancel")}</Button>
       </div>
     </div>
   );
@@ -278,9 +280,9 @@ function Winners() {
   const rows = q.data?.winners ?? [];
   return (
     <section className={box} data-testid="quiz-winners">
-      <h2 className="font-semibold">اللي ربحوا</h2>
+      <h2 className="font-semibold">{tr("اللي ربحوا", "Winners")}</h2>
       {q.isLoading ? <div className="mt-3 flex items-center gap-2 text-sm"><Spinner /> …</div> : !rows.length ? (
-        <p className="mt-2 text-sm text-white/50">لسا ما ربح حدا.</p>
+        <p className="mt-2 text-sm text-white/50">{tr("لسا ما ربح حدا.", "Nobody has won yet.")}</p>
       ) : (
         <ul className="mt-3 divide-y divide-white/[0.06]">
           {rows.map((w) => (
@@ -288,7 +290,7 @@ function Winners() {
               <span className="font-mono" dir="ltr">{w.code}</span>
               <span className="text-white/70">{w.name ? `${w.name} · ` : ""}<span dir="ltr">…{w.phone.slice(-4)}</span></span>
               <Badge variant={w.used ? "success" : w.endsAt && new Date(w.endsAt) < new Date() ? "default" : "warning"} size="sm">
-                {w.used ? "انستعمل" : w.endsAt && new Date(w.endsAt) < new Date() ? "خلصت مدته" : `${w.percent}% — لسا`}
+                {w.used ? tr("انستعمل", "Used") : w.endsAt && new Date(w.endsAt) < new Date() ? tr("خلصت مدته", "Expired") : tr(`${w.percent}% — لسا`, "{0}% — not yet", [w.percent])}
               </Badge>
               <span className="ms-auto text-xs text-white/45">{relativeTime(w.createdAt)}</span>
             </li>

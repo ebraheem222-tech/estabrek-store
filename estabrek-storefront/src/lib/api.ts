@@ -4,6 +4,13 @@ import { z } from "zod";
 import type { StorefrontBootstrap, StorefrontPage, SitePublicSettings } from "./types";
 import { normalizeStorefrontSettings } from "./storefrontSettings";
 import type { CatalogCategory, CatalogProduct, CatalogProductsList } from "./catalog";
+import type { Lang } from "./i18n";
+import { localizeCategories, localizeList, localizeProduct, localizeProducts } from "./localize";
+import { identityOf } from "./storeIdentity";
+import { setArabicTone } from "./words";
+
+/** The store's way of speaking Arabic comes with its settings (admin → هوية المتجر). */
+const toneFrom = (site: unknown) => setArabicTone(identityOf(site as Parameters<typeof identityOf>[0]).audience);
 
 function baseUrl() {
   return (
@@ -81,6 +88,7 @@ export const getBootstrap = cache(async (): Promise<StorefrontBootstrap> => {
     if (!res.ok) throw new Error(`bootstrap failed (${res.status})`);
     const json = await res.json();
     const parsed = BootstrapZ.parse(json) as StorefrontBootstrap;
+    toneFrom((parsed as any).site);
     return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as StorefrontBootstrap;
   } catch (error) {
     warnApiFallback("getBootstrap", error);
@@ -107,10 +115,10 @@ const pageMissing = unstable_cache(
   { revalidate: 60, tags: ["cms", "cms:pages"] },
 );
 
-export const getPageBySlug = cache(async (slug: string): Promise<StorefrontPage | null> => {
+export const getPageBySlug = cache(async (slug: string, lang?: Lang): Promise<StorefrontPage | null> => {
   try {
     if (await pageMissing(slug)) return null;
-    const url = `${baseUrl()}/storefront/page?slug=${encodeURIComponent(slug)}`;
+    const url = `${baseUrl()}/storefront/page?slug=${encodeURIComponent(slug)}${lang ? `&locale=${lang}` : ""}`;
     const res = await fetch(url, { next: { revalidate: 60, tags: ["cms", "cms:pages"] } });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`page failed (${res.status})`);
@@ -122,30 +130,50 @@ export const getPageBySlug = cache(async (slug: string): Promise<StorefrontPage 
   }
 });
 
+/**
+ * One page's draft for the admin's new editor (its frame: app/[lang]/studio-frame),
+ * opened with the 30-minute ticket the admin got (backend lib/previewToken.ts).
+ * Always fresh, always as a tree; null when the ticket is wrong or old.
+ */
+export async function getPagePreview(token: string, lang?: Lang): Promise<StorefrontPage | null> {
+  try {
+    const url = `${baseUrl()}/storefront/page-preview?token=${encodeURIComponent(token)}${lang ? `&locale=${lang}` : ""}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    return PageZ.parse(await res.json()) as StorefrontPage;
+  } catch (error) {
+    warnApiFallback("getPagePreview", error);
+    return null;
+  }
+}
+
 // -------------------------------
 // Catalog (public)
 // -------------------------------
 
-export const getCategoriesTree = cache(async (): Promise<CatalogCategory[]> => {
+// With `lang`, names and texts come in that language (src/lib/localize.ts).
+export const getCategoriesTree = cache(async (lang?: Lang): Promise<CatalogCategory[]> => {
   try {
     const url = `${baseUrl()}/catalog/categories/tree`;
     const res = await fetch(url, { next: { revalidate: 300, tags: ["catalog", "catalog:categories"] } });
     if (!res.ok) throw new Error(`categories tree failed (${res.status})`);
     const json = await res.json();
-    return CategoriesTreeZ.parse(json) as CatalogCategory[];
+    const tree = CategoriesTreeZ.parse(json) as CatalogCategory[];
+    return lang ? localizeCategories(tree, lang) : tree;
   } catch (error) {
     warnApiFallback("getCategoriesTree", error);
     return [];
   }
 });
 
-export const listCategories = cache(async (): Promise<CatalogCategory[]> => {
+export const listCategories = cache(async (lang?: Lang): Promise<CatalogCategory[]> => {
   try {
     const url = `${baseUrl()}/catalog/categories`;
     const res = await fetch(url, { next: { revalidate: 300, tags: ["catalog", "catalog:categories"] } });
     if (!res.ok) throw new Error(`categories failed (${res.status})`);
     const json = await res.json();
-    return CategoriesTreeZ.parse(json) as CatalogCategory[];
+    const list = CategoriesTreeZ.parse(json) as CatalogCategory[];
+    return lang ? localizeCategories(list, lang) : list;
   } catch (error) {
     warnApiFallback("listCategories", error);
     return [];
@@ -180,11 +208,13 @@ export const listProducts = cache(
     semantic?: boolean;
     /** Product-type fields: { fabric: ["كريب"] } → attr_fabric=كريب */
     attrs?: Record<string, string[]>;
+    /** The page's language (not sent: the shop picks the words). */
+    lang?: Lang;
   }): Promise<CatalogProductsList> => {
     try {
       const usp = new URLSearchParams();
       for (const [k, v] of Object.entries(params)) {
-        if (k === "attrs") continue;
+        if (k === "attrs" || k === "lang") continue;
         if (v === undefined || v === null || v === "") continue;
         usp.set(k, String(v));
       }
@@ -193,7 +223,8 @@ export const listProducts = cache(
       const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
       if (!res.ok) throw new Error(`products failed (${res.status})`);
       const json = await res.json();
-      return ProductsListZ.parse(json) as CatalogProductsList;
+      const out = ProductsListZ.parse(json) as CatalogProductsList;
+      return params.lang ? localizeList(out, params.lang) : out;
     } catch (error) {
       warnApiFallback("listProducts", error);
       return { ...EMPTY_PRODUCTS_LIST };
@@ -201,35 +232,37 @@ export const listProducts = cache(
   }
 );
 
-export const getProductById = cache(async (id: string): Promise<CatalogProduct | null> => {
+export const getProductById = cache(async (id: string, lang?: Lang): Promise<CatalogProduct | null> => {
   try {
     const url = `${baseUrl()}/catalog/products/${encodeURIComponent(id)}`;
     const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`product failed (${res.status})`);
     const json = await res.json();
-    return ProductZ.parse(json) as CatalogProduct;
+    const product = ProductZ.parse(json) as CatalogProduct;
+    return lang ? localizeProduct(product, lang) : product;
   } catch (error) {
     warnApiFallback("getProductById", error);
     return null;
   }
 });
 
-export const getProductBySlug = cache(async (slug: string): Promise<CatalogProduct | null> => {
+export const getProductBySlug = cache(async (slug: string, lang?: Lang): Promise<CatalogProduct | null> => {
   try {
     const url = `${baseUrl()}/catalog/products/slug/${encodeURIComponent(slug)}`;
     const res = await fetch(url, { next: { revalidate: 60, tags: ["catalog", "catalog:products"] } });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`product failed (${res.status})`);
     const json = await res.json();
-    return ProductZ.parse(json) as CatalogProduct;
+    const product = ProductZ.parse(json) as CatalogProduct;
+    return lang ? localizeProduct(product, lang) : product;
   } catch (error) {
     warnApiFallback("getProductBySlug", error);
     return null;
   }
 });
 
-export const listProductsByIds = cache(async (ids: string[], opts?: { lite?: boolean }): Promise<CatalogProduct[]> => {
+export const listProductsByIds = cache(async (ids: string[], opts?: { lite?: boolean; lang?: Lang }): Promise<CatalogProduct[]> => {
   try {
     const url = `${baseUrl()}/catalog/products/by-ids`;
     const res = await fetch(url, {
@@ -242,14 +275,15 @@ export const listProductsByIds = cache(async (ids: string[], opts?: { lite?: boo
     const json = await res.json();
     const parsed = ProductsByIdsZ.parse(json) as any;
     const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
-    return Array.isArray(items) ? (items as CatalogProduct[]) : [];
+    const list = Array.isArray(items) ? (items as CatalogProduct[]) : [];
+    return opts?.lang ? localizeProducts(list, opts.lang) : list;
   } catch (error) {
     warnApiFallback("listProductsByIds", error);
     return [];
   }
 });
 
-export const listProductsBySlugs = cache(async (slugs: string[], opts?: { lite?: boolean }): Promise<CatalogProduct[]> => {
+export const listProductsBySlugs = cache(async (slugs: string[], opts?: { lite?: boolean; lang?: Lang }): Promise<CatalogProduct[]> => {
   try {
     const url = `${baseUrl()}/catalog/products/by-slugs`;
     const res = await fetch(url, {
@@ -262,7 +296,8 @@ export const listProductsBySlugs = cache(async (slugs: string[], opts?: { lite?:
     const json = await res.json();
     const parsed = ProductsBySlugsZ.parse(json) as any;
     const items = Array.isArray(parsed?.items) ? parsed.items : parsed;
-    return Array.isArray(items) ? (items as CatalogProduct[]) : [];
+    const list = Array.isArray(items) ? (items as CatalogProduct[]) : [];
+    return opts?.lang ? localizeProducts(list, opts.lang) : list;
   } catch (error) {
     warnApiFallback("listProductsBySlugs", error);
     return [];
@@ -282,6 +317,7 @@ export const getPublicSettings = cache(async (): Promise<{ site: SitePublicSetti
     if (!res.ok) throw new Error(`settings failed (${res.status})`);
     const json = await res.json();
     const parsed = SettingsZ.parse(json) as { site: SitePublicSettings };
+    toneFrom((parsed as any).site);
     return { ...parsed, site: normalizeSiteSettings((parsed as any).site) } as { site: SitePublicSettings };
   } catch (error) {
     warnApiFallback("getPublicSettings", error);

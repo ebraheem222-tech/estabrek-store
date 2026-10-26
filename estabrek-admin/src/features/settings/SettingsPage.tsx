@@ -27,6 +27,8 @@ import {
   type MarketingConfig,
   type SeoConfig,
 } from "./settingsCentre";
+import { StoreIdentityCard } from "./StoreIdentityCard";
+import { StoreLanguagesCard } from "./StoreLanguagesCard";
 
 type HeaderConfig = {
   preset?: "classic" | "minimal" | "centered";
@@ -805,7 +807,7 @@ function ThemeColorField({
 }
 
 /** Header keys this page shows but doesn't own: always saved from the server's latest copy. */
-const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai"] as const;
+const HEADER_KEYS_OWNED_ELSEWHERE = ["delivery", "razan", "requests", "quiz", "ai", "scarcity", "identity", "languages"] as const;
 
 export default function SettingsPage() {
   const q = useSettings();
@@ -1350,7 +1352,7 @@ export default function SettingsPage() {
         )}
 
         {hasChildren ? (
-          <div className="space-y-3 border-r border-white/10 pr-3">
+          <div className="space-y-3 border-s border-white/10 ps-3">
             {children.map((child, idx) =>
               renderCmsNavItemEditor(child, [...path, idx], depth + 1, children.length)
             )}
@@ -1361,7 +1363,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div>
           <div className="text-lg font-semibold">إعدادات الموقع</div>
@@ -1467,7 +1469,7 @@ export default function SettingsPage() {
             </Card>
             </SettingsSection>
 
-            <SettingsSection id="brand" tab="brand" keywords="اسم شعار لوجو logo favicon ايميل هاتف تواصل">
+            <SettingsSection id="brand" tab="brand" keywords="اسم شعار لوجو logo favicon ايميل هاتف تواصل هوية عملة currency لغة">
             <Card>
               <CardHeader title="الإعدادات العامة" subtitle="بيانات الموقع والشعار والتواصل." />
               <CardContent>
@@ -1488,6 +1490,8 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+            <div className="mt-4"><StoreIdentityCard /></div>
+            <div className="mt-4"><StoreLanguagesCard /></div>
             </SettingsSection>
             <SettingsSection id="checkout" tab="checkout" keywords="دفع واتساب whatsapp stripe paypal طلب">
             <Card>
@@ -1738,7 +1742,6 @@ export default function SettingsPage() {
 	                          onSubmit={(e) => e.preventDefault()}
 	                        >
 	                          <input
-	                            dir="rtl"
 	                            className={selectedSearchInputStyle.inputClassName}
 	                            placeholder="بحث..."
 	                            readOnly
@@ -1864,7 +1867,7 @@ export default function SettingsPage() {
                             type="button"
                             onClick={() => updateTheme({ presetId: preset.id })}
                             className={
-                              "rounded-xl border p-3 text-right transition " +
+                              "rounded-xl border p-3 text-start transition " +
                               (active ? "border-accent-500/60 bg-white/10" : "border-white/10 bg-white/5 hover:border-white/20")
                             }
                             aria-pressed={active}

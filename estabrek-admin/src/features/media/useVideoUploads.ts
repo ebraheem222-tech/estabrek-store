@@ -6,6 +6,7 @@ import * as VideosAPI from "../../api/videos.api";
 import type { UploadSignature, Video } from "../../api/videos.api";
 import { newUploadId, sendInChunks, xhrPiece, type ChunkedUpload } from "../../lib/chunkedUpload";
 import { getApiErrorMessage } from "../../api/http";
+import { tr } from "@/lib/words";
 
 export type UploadItem = {
   id: string;
@@ -60,7 +61,7 @@ export function useVideoUploads(opts: { provider: "CLOUDINARY" | "LOCAL" | undef
           // A signature lasts an hour: a new one when less than 10 minutes are left.
           if (!run.sign || Date.parse(run.sign.expiresAt) - Date.now() < 10 * 60_000) run.sign = await VideosAPI.signVideoUpload();
           const sign = run.sign;
-          if (item.file.size > sign.maxBytes) throw new Error(`أكبر من الحد (${Math.round(sign.maxBytes / 1024 / 1024)} MB)`);
+          if (item.file.size > sign.maxBytes) throw new Error(tr(`أكبر من الحد (${Math.round(sign.maxBytes / 1024 / 1024)} MB)`, "Bigger than the limit ({0} MB)", [Math.round(sign.maxBytes / 1024 / 1024)]));
           const fields = { api_key: sign.apiKey, timestamp: String(sign.timestamp), signature: sign.signature, folder: sign.folder };
           const result = await sendInChunks({
             file: item.file,
@@ -121,7 +122,7 @@ export function useVideoUploads(opts: { provider: "CLOUDINARY" | "LOCAL" | undef
         status: opts.maxBytes && file.size > opts.maxBytes ? "failed" : "waiting",
         sent: 0,
         speed: 0,
-        error: opts.maxBytes && file.size > opts.maxBytes ? `أكبر من الحد (${Math.round(opts.maxBytes / 1024 / 1024)} MB)` : null,
+        error: opts.maxBytes && file.size > opts.maxBytes ? tr(`أكبر من الحد (${Math.round(opts.maxBytes / 1024 / 1024)} MB)`, "Bigger than the limit ({0} MB)", [Math.round(opts.maxBytes / 1024 / 1024)]) : null,
         video: null,
       }));
       setItems((list) => [...list, ...fresh]);

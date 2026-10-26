@@ -111,7 +111,7 @@ export const Select = forwardRef<HTMLSelectElement, Props>(
               ))
             )}
           </select>
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
+          <div className="absolute end-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
             </svg>

@@ -1,5 +1,6 @@
 // Plain-Arabic text for the Team & permissions pages. Pure functions (tested).
 import type { ActivityRow, MemberStatus, PermissionGroup } from "../../api/staff.api";
+import { loc } from "@/lib/lang";
 
 /** Admin areas as the activity log names them. */
 export const AREA_LABELS: Record<string, string> = {
@@ -169,5 +170,5 @@ export function relativeTime(iso: string | null | undefined, now = Date.now()): 
   if (hours < 24) return `قبل ${hours} ساعة`;
   const days = Math.round(hours / 24);
   if (days < 30) return days === 1 ? "أمس" : `قبل ${days} يوم`;
-  return new Date(t).toLocaleDateString("ar", { dateStyle: "medium" });
+  return new Date(t).toLocaleDateString(loc("ar"), { dateStyle: "medium" });
 }

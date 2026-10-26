@@ -170,7 +170,7 @@ function markStl(data: Buffer, kind: "binary" | "ascii", m: MarkInfo) {
     const copy = Buffer.from(data);
     // 80 bytes of free text; it must not start with "solid" (that means ASCII to readers).
     const header = Buffer.alloc(80, 0x20);
-    header.write(`Estabrek ${markLine(m)}`.slice(0, 80), 0, "ascii");
+    header.write(markLine(m).slice(0, 80), 0, "ascii");
     header.copy(copy, 0);
     return copy;
   }

@@ -12,12 +12,13 @@ import { Spinner } from "../../components/ui/Spinner";
 import { getApiErrorMessage } from "../../api/http";
 import { toast } from "../../lib/toast";
 import { useAuth } from "../../hooks/useAuth";
-import { formatCurrencyILS } from "../../lib/format";
+import { formatCurrency } from "../../lib/format";
 import { downloadText, toCsv } from "../../lib/csv";
 import * as InsightsAPI from "../../api/insights.api";
 import type { ForecastProduct, ForecastSettings, StockInsights } from "../../api/insights.api";
 import { NumberInput, Segmented, Stat } from "../system/cacheParts";
 import { STATUS_TEXT, SETTINGS_TEXT, daysText, filterProducts, forecastSentence, lastViewedText, paceText, reorderRows, type ForecastFilter } from "./forecastText";
+import { tr } from "@/lib/words";
 
 type Shelf = "unseen" | "looked";
 const KEY = ["insights", "stock"];
@@ -33,8 +34,8 @@ export default function StockForecastPage() {
 
   if (!q.data) {
     return (
-      <div dir="rtl">
-        <PageHeader title="توقّع المخزون" />
+      <div>
+        <PageHeader title={tr("توقّع المخزون", "Stock forecast")} />
         <Card>{q.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div> : <Spinner />}</Card>
       </div>
     );
@@ -43,32 +44,32 @@ export default function StockForecastPage() {
   const s = d.summary;
   const download = () => {
     const { head, rows } = reorderRows(d.products, d.settings);
-    if (!rows.length) return toast.info("ما في شي للطلب هلّق");
+    if (!rows.length) return toast.info(tr("ما في شي للطلب هلّق", "Nothing to order right now"));
     downloadText(`reorder-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(head, rows));
   };
 
   return (
-    <div dir="rtl" className="space-y-4 pb-16" data-testid="forecast-page">
+    <div className="space-y-4 pb-16" data-testid="forecast-page">
       <PageHeader
-        title="توقّع المخزون"
-        subtitle={`على سرعة البيع: آخر 7 أيام مع آخر ${d.settings.windowDays} يوم، والتوصيل من المورّد ${daysText(d.settings.leadDays)}.`}
+        title={tr("توقّع المخزون", "Stock forecast")}
+        subtitle={tr(`على سرعة البيع: آخر 7 أيام مع آخر ${d.settings.windowDays} يوم، والتوصيل من المورّد ${daysText(d.settings.leadDays)}.`, "At the selling pace: the last 7 days with the last {0} days, and supplier delivery {1}.", [d.settings.windowDays, daysText(d.settings.leadDays)])}
         right={
           <>
             <Button variant="ghost" onClick={() => setShowSettings(!showSettings)} aria-expanded={showSettings}>
-              الأرقام
+              {tr("الأرقام", "The numbers")}
             </Button>
             <Button variant="secondary" onClick={download} disabled={!s.reorderPieces}>
-              نزّل قائمة الطلب
+              {tr("تنزيل قائمة الطلب", "Download the order list")}
             </Button>
           </>
         }
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="بيخلص قريب" value={String(s.soon)} note={`قبل ما توصل طلبية (${daysText(d.settings.leadDays)})`} testId="forecast-soon" />
-        <Stat label="خلص وعليه طلب" value={String(s.soldOut)} />
-        <Stat label="للطلب من المورّد" value={s.reorderPieces.toLocaleString("en")} note="قطعة" />
-        <Stat label="ما حدا شافه" value={String(s.unseen)} note={s.unseenValue ? `${formatCurrencyILS(s.unseenValue)} بضاعة واقفة` : undefined} />
+        <Stat label={tr("بيخلص قريب", "Running out soon")} value={String(s.soon)} note={tr(`قبل ما توصل طلبية (${daysText(d.settings.leadDays)})`, "before an order arrives ({0})", [daysText(d.settings.leadDays)])} testId="forecast-soon" />
+        <Stat label={tr("خلص وعليه طلب", "Out, still wanted")} value={String(s.soldOut)} />
+        <Stat label={tr("للطلب من المورّد", "To order from the supplier")} value={s.reorderPieces.toLocaleString("en")} note={tr("قطعة", "pieces")} />
+        <Stat label={tr("ما حدا شافه", "Nobody saw it")} value={String(s.unseen)} note={s.unseenValue ? tr(`${formatCurrency(s.unseenValue)} بضاعة واقفة`, "{0} of goods standing still", [formatCurrency(s.unseenValue)]) : undefined} />
       </div>
 
       {showSettings ? <SettingsCard data={d} canWrite={canWrite} onSaved={() => qc.invalidateQueries({ queryKey: KEY })} /> : null}
@@ -76,8 +77,8 @@ export default function StockForecastPage() {
       {d.viewsDays < d.settings.unseenDays ? (
         <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">
           {d.viewsDays
-            ? `عدّ المشاهدات بلّش من ${daysText(d.viewsDays)} بس، فقائمة «ما حدا شافه» بتكمل بعد ${daysText(d.settings.unseenDays - d.viewsDays)}. لهلّق فيها بس اللي ما انشاف من ما بلّش العدّ.`
-            : "عدّ المشاهدات لسا ما بلّش (السرعة والكاش ← الشعبية). توقّع المخزون شغّال من الطلبات، بس «ما حدا شافه» و«بيتفرجوا وما بيشتروا» بيحتاجوه."}
+            ? tr(`عدّ المشاهدات بلّش من ${daysText(d.viewsDays)} بس، فقائمة «ما حدا شافه» بتكمل بعد ${daysText(d.settings.unseenDays - d.viewsDays)}. لهلّق فيها بس اللي ما انشاف من ما بلّش العدّ.`, "View counting started only {0} ago, so the “Nobody saw it” list completes in {1}. For now it only has what wasn't seen since counting began.", [daysText(d.viewsDays), daysText(d.settings.unseenDays - d.viewsDays)])
+            : tr("عدّ المشاهدات لسا ما بلّش (السرعة والكاش ← الشعبية). توقّع المخزون شغّال من الطلبات، بس «ما حدا شافه» و«بيتفرجوا وما بيشتروا» بيحتاجوه.", "View counting hasn't started (Speed and cache → Popularity). The stock forecast works from orders, but “Nobody saw it” and “Looked but didn't buy” need it.")}
         </p>
       ) : null}
 
@@ -86,38 +87,38 @@ export default function StockForecastPage() {
         disabled={false}
         onChange={setTab}
         options={[
-          { value: "urgent", label: `بيخلص (${s.soon + s.soldOut + s.watch})` },
-          { value: "reorder", label: "للطلب" },
-          { value: "all", label: "الكل" },
+          { value: "urgent", label: tr(`بيخلص (${s.soon + s.soldOut + s.watch})`, "Running out ({0})", [s.soon + s.soldOut + s.watch]) },
+          { value: "reorder", label: tr("للطلب", "To order") },
+          { value: "all", label: tr("الكل", "All") },
         ]}
       />
       <ProductList products={filterProducts(d.products, tab)} tab={tab} />
 
       <section className="space-y-3 pt-4" data-testid="forecast-still">
         <div>
-          <h2 className="text-lg font-semibold">بضاعة واقفة</h2>
-          <p className="text-sm text-white/60">على الرف وما عم تتحرّك: فرصة لصورة أوضح، مكان بالرئيسية، أو خصم.</p>
+          <h2 className="text-lg font-semibold">{tr("بضاعة واقفة", "Goods standing still")}</h2>
+          <p className="text-sm text-white/60">{tr("على الرف وما عم تتحرّك: فرصة لصورة أوضح، مكان بالرئيسية، أو خصم.", "On the shelf and not moving: a chance for a clearer photo, a spot on the home page, or a discount.")}</p>
         </div>
         <Segmented
           value={shelf}
           disabled={false}
           onChange={setShelf}
           options={[
-            { value: "unseen", label: `ما حدا شافه (${s.unseen})` },
-            { value: "looked", label: `بيتفرجوا وما بيشتروا (${s.lookedNotBought})` },
+            { value: "unseen", label: tr(`ما حدا شافه (${s.unseen})`, "Nobody saw it ({0})", [s.unseen]) },
+            { value: "looked", label: tr(`بيتفرجوا وما بيشتروا (${s.lookedNotBought})`, "Looked but didn't buy ({0})", [s.lookedNotBought]) },
           ]}
         />
         {shelf === "unseen" ? (
           <ShelfList
-            empty="ما في. كل المنتجات اللي بالمخزون انشافت بآخر الأيام."
-            rows={d.unseen.map((p) => ({ ...p, line: `${lastViewedText(p.lastViewedAt, d.now)} · على الرف من ${daysText(p.ageDays)}` }))}
-            hint={`على الرف أكثر من ${daysText(d.settings.unseenDays)}، وما حدا فتح صفحته ولا اشترى منه.`}
+            empty={tr("ما في. كل المنتجات اللي بالمخزون انشافت بآخر الأيام.", "None. Every product in stock was seen in the last days.")}
+            rows={d.unseen.map((p) => ({ ...p, line: tr(`${lastViewedText(p.lastViewedAt, d.now)} · على الرف من ${daysText(p.ageDays)}`, "{0} · on the shelf for {1}", [lastViewedText(p.lastViewedAt, d.now), daysText(p.ageDays)]) }))}
+            hint={tr(`على الرف أكثر من ${daysText(d.settings.unseenDays)}، وما حدا فتح صفحته ولا اشترى منه.`, "On the shelf more than {0}, and nobody opened its page or bought it.", [daysText(d.settings.unseenDays)])}
           />
         ) : (
           <ShelfList
-            empty="ما في."
-            rows={d.lookedNotBought.map((p) => ({ ...p, line: `${p.views.toLocaleString("en")} مشاهدة · ${p.bags.toLocaleString("en")} للسلة · ولا بيعة` }))}
-            hint={`انفتح كثير بآخر ${daysText(d.settings.unseenDays)} وما انباع: ممكن السعر، المقاسات، أو الصور ما بتوضّحه.`}
+            empty={tr("ما في.", "None.")}
+            rows={d.lookedNotBought.map((p) => ({ ...p, line: tr(`${p.views.toLocaleString("en")} مشاهدة · ${p.bags.toLocaleString("en")} للسلة · ولا بيعة`, "{0} views · {1} to the bag · no sales", [p.views.toLocaleString("en"), p.bags.toLocaleString("en")]) }))}
+            hint={tr(`انفتح كثير بآخر ${daysText(d.settings.unseenDays)} وما انباع: ممكن السعر، المقاسات، أو الصور ما بتوضّحه.`, "Opened a lot in the last {0} and not sold: maybe the price, the sizes, or the photos don't show it well.", [daysText(d.settings.unseenDays)])}
           />
         )}
       </section>
@@ -129,8 +130,8 @@ function SettingsCard({ data, canWrite, onSaved }: { data: StockInsights; canWri
   const [draft, setDraft] = useState<ForecastSettings>(data.settings);
   const save = useMutation({
     mutationFn: () => InsightsAPI.saveForecastSettings(draft),
-    onSuccess: () => (toast.success("انحفظت الأرقام"), onSaved()),
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onSuccess: () => (toast.success(tr("انحفظت الأرقام", "The numbers were saved")), onSaved()),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
   const keys = Object.keys(SETTINGS_TEXT) as Array<keyof ForecastSettings>;
   const bad = keys.some((k) => !Number.isInteger(draft[k]) || draft[k] < data.limits[k].min || draft[k] > data.limits[k].max);
@@ -157,11 +158,11 @@ function SettingsCard({ data, canWrite, onSaved }: { data: StockInsights; canWri
       {canWrite ? (
         <div className="mt-4 flex gap-2">
           <Button variant="primary" onClick={() => save.mutate()} isLoading={save.isPending} disabled={!dirty || bad}>
-            حفظ
+            {tr("حفظ", "Save")}
           </Button>
           {dirty ? (
             <Button variant="ghost" onClick={() => setDraft(data.settings)}>
-              تراجع
+              {tr("تراجع", "Undo")}
             </Button>
           ) : null}
         </div>
@@ -179,7 +180,7 @@ function ProductList({ products, tab }: { products: ForecastProduct[]; tab: Fore
   if (!products.length) {
     return (
       <Card>
-        <p className="text-sm text-white/60">{tab === "urgent" ? "ما في شي قرب يخلص على هالسرعة." : tab === "reorder" ? "ما في شي للطلب هلّق." : "ما في منتجات."}</p>
+        <p className="text-sm text-white/60">{tab === "urgent" ? tr("ما في شي قرب يخلص على هالسرعة.", "Nothing is close to running out at this pace.") : tab === "reorder" ? tr("ما في شي للطلب هلّق.", "Nothing to order right now.") : tr("ما في منتجات.", "No products.")}</p>
       </Card>
     );
   }
@@ -202,32 +203,32 @@ function ProductList({ products, tab }: { products: ForecastProduct[]; tab: Fore
                   </Badge>
                   {p.rising ? (
                     <Badge size="sm" variant="info">
-                      عم يطلب أكثر
+                      {tr("عم يطلب أكثر", "Being ordered more")}
                     </Badge>
                   ) : null}
                 </div>
                 <p className="mt-0.5 text-sm">{forecastSentence(p)}</p>
                 <p className="mt-0.5 text-xs text-white/50">
-                  {[`${paceText(p.pace)}`, `موجود ${p.available.toLocaleString("en")}`, p.stock !== p.available ? `${(p.stock - p.available).toLocaleString("en")} محجوز بطلبات` : null, p.reorder ? `اطلب ${p.reorder.toLocaleString("en")}` : null]
+                  {[`${paceText(p.pace)}`, tr(`موجود ${p.available.toLocaleString("en")}`, "{0} in stock", [p.available.toLocaleString("en")]), p.stock !== p.available ? tr(`${(p.stock - p.available).toLocaleString("en")} محجوز بطلبات`, "{0} held by orders", [(p.stock - p.available).toLocaleString("en")]) : null, p.reorder ? tr(`اطلب ${p.reorder.toLocaleString("en")}`, "Order {0}", [p.reorder.toLocaleString("en")]) : null]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
               </div>
               <button type="button" className="shrink-0 text-xs text-white/60 underline" onClick={() => setOpen(isOpen ? null : p.productId)} aria-expanded={isOpen}>
-                {isOpen ? "خبّي" : `المقاسات (${p.variants.length})`}
+                {isOpen ? tr("إخفاء", "Hide") : tr(`المقاسات (${p.variants.length})`, "Sizes ({0})", [p.variants.length])}
               </button>
             </div>
             {isOpen ? (
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full min-w-[640px] text-xs" data-testid={`forecast-variants-${p.productId}`}>
                   <thead className="text-white/50">
-                    <tr className="text-right">
-                      <th className="py-1.5 font-normal">اللون والمقاس</th>
-                      <th className="font-normal">موجود</th>
-                      <th className="font-normal">انباع آخر 7 أيام</th>
-                      <th className="font-normal">السرعة</th>
-                      <th className="font-normal">بيخلص بعد</th>
-                      <th className="font-normal">اطلب</th>
+                    <tr className="text-start">
+                      <th className="py-1.5 font-normal">{tr("اللون والمقاس", "Colour and size")}</th>
+                      <th className="font-normal">{tr("موجود", "In stock")}</th>
+                      <th className="font-normal">{tr("انباع آخر 7 أيام", "Sold last 7 days")}</th>
+                      <th className="font-normal">{tr("السرعة", "Pace")}</th>
+                      <th className="font-normal">{tr("بيخلص بعد", "Runs out in")}</th>
+                      <th className="font-normal">{tr("اطلب", "Order")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
@@ -239,9 +240,9 @@ function ProductList({ products, tab }: { products: ForecastProduct[]; tab: Fore
                             {`${v.color !== "Default" ? `${v.color} · ` : ""}${v.size}`}
                           </span>
                         </td>
-                        <td className="tabular-nums">{v.held ? `${v.available} (+${v.held} محجوز)` : v.available}</td>
+                        <td className="tabular-nums">{v.held ? tr(`${v.available} (+${v.held} محجوز)`, "{0} (+{1} held)", [v.available, v.held]) : v.available}</td>
                         <td className="tabular-nums">{v.sold7}</td>
-                        <td className={v.rough ? "text-white/50" : ""} title={v.rough ? "انباع منه أقل من 3 بهالمدة: تقريبي" : undefined}>
+                        <td className={v.rough ? "text-white/50" : ""} title={v.rough ? tr("انباع منه أقل من 3 بهالمدة: تقريبي", "Fewer than 3 sold in this time: rough") : undefined}>
                           {paceText(v.pace)}
                         </td>
                         <td className={`tabular-nums ${STATUS_TEXT[v.status].variant === "danger" ? "text-red-300" : STATUS_TEXT[v.status].variant === "warning" ? "text-amber-300" : ""}`}>
@@ -283,15 +284,15 @@ function ShelfList({ rows, empty, hint }: { rows: Array<{ productId: string; tit
                 </Link>
                 {p.onSale ? (
                   <Badge size="sm" variant="accent">
-                    عليه خصم
+                    {tr("عليه خصم", "On discount")}
                   </Badge>
                 ) : null}
               </div>
               <p className="mt-0.5 text-xs text-white/50">{p.line}</p>
             </div>
-            <div className="shrink-0 text-left text-xs">
-              <div className="tabular-nums">{`${p.stock.toLocaleString("en")} قطعة`}</div>
-              <div className="tabular-nums text-white/50">{formatCurrencyILS(p.stockValue)}</div>
+            <div className="shrink-0 text-end text-xs">
+              <div className="tabular-nums">{tr(`${p.stock.toLocaleString("en")} قطعة`, "{0} pcs", [p.stock.toLocaleString("en")])}</div>
+              <div className="tabular-nums text-white/50">{formatCurrency(p.stockValue)}</div>
             </div>
           </div>
         </Card>

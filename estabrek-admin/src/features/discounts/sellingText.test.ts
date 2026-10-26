@@ -13,7 +13,7 @@ describe("Sale rule texts", () => {
   test("what approving does", () => {
     expect(actionText({ kind: "discount", percent: 10, saleDays: 14 }, { price: 50, newPrice: 45 })).toBe(`خصم 10% لمدة 14 يوم: ${ils(50)} ← ${ils(45)}`);
     expect(actionText({ kind: "discount", percent: 5, saleDays: 7 })).toBe("خصم 5% لمدة 7 أيام");
-    expect(actionText({ kind: "endDiscount" })).toBe("وقّف الخصم: بيرجع لسعره العادي.");
+    expect(actionText({ kind: "endDiscount" })).toBe("توقيف الخصم: بيرجع لسعره العادي.");
   });
 
   test("a price change in the history", () => {
@@ -46,7 +46,7 @@ describe("Season texts", () => {
     const now = Date.parse("2026-03-01T00:00:00Z");
     const ok = { name: "رمضان", startsAt: "2026-03-10T00:00:00Z", endsAt: "2026-04-09T00:00:00Z", themePresetId: "luxury_gold", percentOff: null, categoryIds: [] };
     expect(campaignProblems(ok, now)).toEqual([]);
-    expect(campaignProblems({ ...ok, name: " ", themePresetId: null }, now)).toEqual(["اكتب اسم للموسم.", "اختار ثيم أو خصم (أو الاثنين)."]);
+    expect(campaignProblems({ ...ok, name: " ", themePresetId: null }, now)).toEqual(["لازم يكون للموسم اسم.", "لازم ينختار ثيم أو خصم (أو الاثنين)."]);
     expect(campaignProblems({ ...ok, endsAt: "2026-03-05T00:00:00Z" }, now)).toEqual(["النهاية لازم تكون بعد البداية."]);
     expect(campaignProblems({ ...ok, percentOff: 90 }, now)).toEqual(["الخصم من 1 لـ 70%."]);
   });

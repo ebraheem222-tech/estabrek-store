@@ -69,6 +69,45 @@ export async function deleteFromCloudinary(publicId: string) {
   return { ok: res.result === "ok" || res.result === "not found", result: res.result };
 }
 
+/* ---------------- 3D models ---------------- */
+
+/** Where the stores' own 3D models go on Cloudinary (uploads outside it are refused). */
+export const MODEL_FOLDER = "estabrek/models";
+
+/** What the admin's browser needs to send a .glb straight to Cloudinary (a raw file). Signed for one hour. */
+export function signModelUpload(now = Date.now()) {
+  const cld = getCloudinary();
+  if (!cld) throw new Error("CLOUDINARY_NOT_CONFIGURED");
+  const timestamp = Math.floor(now / 1000);
+  const params = { folder: MODEL_FOLDER, timestamp };
+  const signature = cld.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET as string);
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME as string;
+  return {
+    cloudName,
+    apiKey: process.env.CLOUDINARY_API_KEY as string,
+    timestamp,
+    signature,
+    folder: MODEL_FOLDER,
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
+    expiresAt: new Date((timestamp + 3600) * 1000).toISOString(),
+  };
+}
+
+/** Checks with Cloudinary that a raw file exists (and where it is). */
+export async function cloudinaryRaw(publicId: string) {
+  const cld = getCloudinary();
+  if (!cld) throw new Error("CLOUDINARY_NOT_CONFIGURED");
+  const res: any = await cld.api.resource(publicId, { resource_type: "raw" });
+  return { publicId: res.public_id as string, url: res.secure_url as string, bytes: Number(res.bytes) || 0 };
+}
+
+export async function deleteRawFromCloudinary(publicId: string) {
+  const cld = getCloudinary();
+  if (!cld) return { ok: false, reason: "CLOUDINARY_NOT_CONFIGURED" };
+  const res = await cld.uploader.destroy(publicId, { resource_type: "raw" });
+  return { ok: res.result === "ok" || res.result === "not found", result: res.result };
+}
+
 /* ---------------- Videos ---------------- */
 
 /** Where admin videos go on Cloudinary (uploads outside it are refused). */

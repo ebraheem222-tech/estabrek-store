@@ -90,6 +90,8 @@ export const CreateOrderRequestBody = z
       .transform((v) => v.toUpperCase())
       .optional(),
     source: z.string().trim().max(80).optional(),
+    /** The shop's language when she ordered (her emails come in it). */
+    lang: z.enum(["ar", "en", "he"]).optional(),
   })
   .superRefine((v, ctx) => {
     const hasItems = Array.isArray(v.items) && v.items.length > 0;

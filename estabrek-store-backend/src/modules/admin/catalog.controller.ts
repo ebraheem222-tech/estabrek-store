@@ -162,6 +162,7 @@ r.post("/products", validate({ body: CreateProductBody }), asyncHandler(async (r
         description: body.description ?? null,
         seoTitle: body.seoTitle ?? null,
         seoDescription: body.seoDescription ?? null,
+        translations: body.translations ?? {},
         isActive: body.isActive ?? false, // default draft
         categoryId: body.categoryId,
         eventStartsAt: body.eventStartsAt ?? null,
@@ -470,7 +471,7 @@ r.patch("/products/:id", validate({ body: UpdateProductBody }), asyncHandler(asy
   await keepProductRevision(req.params.id, "edit", req.user?.sub);
   const out = await prisma.product.update({ where: { id: req.params.id }, data: { ...rest, ...typed } });
   await syncDigitalStock({ productIds: [out.id] });
-  const shouldIndex = ["title", "description", "categoryId", "slug"].some((key) => key in (req.body ?? {}));
+  const shouldIndex = ["title", "description", "categoryId", "slug", "translations"].some((key) => key in (req.body ?? {}));
   if (shouldIndex) {
     void indexProductTextEmbedding(out.id).catch((err: any) => {
       console.warn("[product-embedding] failed", out.id, err?.message ?? err);

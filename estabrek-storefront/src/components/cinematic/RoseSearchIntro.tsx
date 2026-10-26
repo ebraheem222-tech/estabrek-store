@@ -10,6 +10,7 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { rememberSearch } from "@/lib/razanHistory";
 import { useSiteFeatures } from "@/store/siteFeatures";
 import { RazanSmartSearch } from "./RazanSmartSearch";
+import { tr } from "@/lib/words";
 
 type Suggestion = { label: string; href: string };
 
@@ -19,7 +20,8 @@ type Suggestion = { label: string; href: string };
  * collections when she isn't sure what to type.
  */
 export function RoseSearchIntro({ query, total, suggestions = [], filtered = false }: { query?: string; total: number; suggestions?: Suggestion[]; filtered?: boolean }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const router = useRouter();
   const { voiceSearchEnabled } = useStorefrontSettings();
   const { requests, ai } = useSiteFeatures();
@@ -53,10 +55,10 @@ export function RoseSearchIntro({ query, total, suggestions = [], filtered = fal
 
   return (
     <section className="rose-search-intro" data-rose-palette="pearl">
-      <span className="atelier-eyebrow">{ar ? "البحث" : "SEARCH"}</span>
+      <span className="atelier-eyebrow">{tr(lang, "البحث", "SEARCH")}</span>
       <h1>
-        {query ? (ar ? <>نتائج «{query}»</> : <>Results for “{query}”</>) : ar ? "عمّ تبحثين؟" : "What are you looking for?"}
-        <span>{query ? count : ar ? "اكتبي اسم القطعة، اللون أو القماش." : "Type a piece, a colour or a fabric."}</span>
+        {query ? (ar ? <>نتائج «{query}»</> : lang === "he" ? <>תוצאות עבור „{query}”</> : <>Results for “{query}”</>) : tr(lang, "عمّ تبحثين؟", "What are you looking for?")}
+        <span>{query ? count : tr(lang, "اكتبي اسم القطعة، اللون أو القماش.", "Type a piece, a colour or a fabric.")}</span>
       </h1>
       <form ref={box} className="rose-search-field" role="search" onSubmit={submit}>
         <Icon name="search" />
@@ -65,23 +67,23 @@ export function RoseSearchIntro({ query, total, suggestions = [], filtered = fal
           type="search"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={ar ? "ابحثي في المتجر…" : "Search the store…"}
-          aria-label={ar ? "ابحثي في المتجر" : "Search the store"}
+          placeholder={tr(lang, "ابحثي في المتجر…", "Search the store…")}
+          aria-label={tr(lang, "ابحثي في المتجر", "Search the store")}
           enterKeyHint="search"
         />
         {voiceSearchEnabled && <VoiceSearchButton className="rose-search-voice" />}
-        <button type="submit" className="atelier-button button-dark">{ar ? "ابحثي" : "Search"}</button>
+        <button type="submit" className="atelier-button button-dark">{tr(lang, "ابحثي", "Search")}</button>
       </form>
       {sentence ? <RazanSmartSearch query={query!.trim()} ar={ar} /> : null}
       {query && requests.enabled && requests.kinds.newPiece ? (
         <p className={`rose-search-request${total === 0 ? " empty" : ""}`}>
-          {total === 0 ? (ar ? "ما لقيناها عنا هلأ — بس بنقدر ندوّرلكِ عليها." : "We don't have it right now — but we can look for it.") : ar ? "ما لقيتي اللي بدك؟" : "Not what you wanted?"}{" "}
-          <Link href={`/request?q=${encodeURIComponent(query)}`}>{ar ? "اطلبيها منّا ←" : "Ask us for it →"}</Link>
+          {total === 0 ? (tr(lang, "ما لقيناها عنا هلأ — بس بنقدر ندوّرلكِ عليها.", "We don't have it right now — but we can look for it.")) : tr(lang, "ما لقيتي اللي بدك؟", "Not what you wanted?")}{" "}
+          <Link href={`/request?q=${encodeURIComponent(query)}`}>{tr(lang, "اطلبيها منّا ←", "Ask us for it →")}</Link>
         </p>
       ) : null}
       {suggestions.length > 0 && (
-        <nav className="rose-search-suggest" aria-label={ar ? "اقتراحات" : "Suggestions"}>
-          <span>{ar ? "جرّبي:" : "Try:"}</span>
+        <nav className="rose-search-suggest" aria-label={tr(lang, "اقتراحات", "Suggestions")}>
+          <span>{tr(lang, "جرّبي:", "Try:")}</span>
           {suggestions.slice(0, 6).map((s) => (
             <Link key={s.href} href={s.href}>{s.label}</Link>
           ))}

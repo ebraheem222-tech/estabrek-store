@@ -4,18 +4,22 @@ import { recommendProducts } from "@/lib/api";
 import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
 import { LqipImage } from "@/components/LqipImage";
+import type { Lang } from "@/lib/i18n";
+import { tr } from "@/lib/words";
 
 export default async function RecommendedProductsSection({
   productId,
-  title = "منتجات مقترحة",
+  title,
   limit = 8,
+  lang = "ar",
 }: {
   productId?: string;
   title?: string;
   limit?: number;
+  lang?: Lang;
 }) {
   const rec = await recommendProducts({
-    locale: "ar",
+    locale: lang,
     productId,
     limit,
     excludeIds: productId ? [productId] : undefined,
@@ -27,9 +31,9 @@ export default async function RecommendedProductsSection({
   return (
     <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold">{title}</div>
+        <div className="text-sm font-semibold">{title ?? tr(lang, "منتجات مقترحة", "You may also like")}</div>
         <Link href="/shop" className="text-xs text-white/60 hover:text-white">
-          عرض المزيد
+          {tr(lang, "عرض المزيد", "See more")}
         </Link>
       </div>
 

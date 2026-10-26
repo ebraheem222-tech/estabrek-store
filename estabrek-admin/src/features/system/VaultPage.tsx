@@ -54,11 +54,11 @@ export default function VaultPage() {
   const events = useQuery({ queryKey: ["vault-events"], queryFn: VaultAPI.vaultEvents, enabled: Boolean(left), refetchInterval: left ? 15_000 : false });
 
   if (!q.data) {
-    return <div dir="rtl" className={box}>{q.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div> : <Spinner />}</div>;
+    return <div className={box}>{q.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div> : <Spinner />}</div>;
   }
   const d = q.data;
   return (
-    <div dir="rtl" className="space-y-4 pb-24" data-testid="vault-page">
+    <div className="space-y-4 pb-24" data-testid="vault-page">
       <section className={box}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -157,7 +157,7 @@ function UnlockModal({ onClose, onOpened }: { onClose: () => void; onOpened: () 
         </div>
       }
     >
-      <form dir="rtl" className="space-y-3 text-sm" data-testid="vault-unlock" onSubmit={(e) => { e.preventDefault(); if (ok) go.mutate(); }}>
+      <form className="space-y-3 text-sm" data-testid="vault-unlock" onSubmit={(e) => { e.preventDefault(); if (ok) go.mutate(); }}>
         <p className="text-xs leading-6 text-white/55">للأمان، اكتبي كلمة السر من جديد والكود من تطبيق التحقق. الخزنة بتتسكّر لحالها بعد 20 دقيقة. 5 محاولات غلط بيقفلوها ربع ساعة.</p>
         <label className="block">
           <span className="mb-1 block text-xs text-white/55">كلمة السر</span>

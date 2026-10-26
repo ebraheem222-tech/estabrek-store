@@ -80,7 +80,7 @@ describe("Conversion profiles", () => {
 describe("Upload settings", () => {
   test("defaults keep the old behaviour, except removing the hidden data from photos", () => {
     const d = mediaSettingsDefaults();
-    expect(d.images).toEqual({ maxUploadMb: 10, maxDimension: 0, stripMetadata: true, format: "keep", quality: 0 });
+    expect(d.images).toEqual({ maxUploadMb: 10, maxDimension: 0, stripMetadata: true, format: "keep", quality: 0, cloudCutout: false });
     expect(d.videos).toMatchObject({ maxUploadMb: 500, defaultPreset: "web", autoConvert: true });
   });
 

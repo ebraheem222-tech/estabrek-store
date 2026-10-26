@@ -15,8 +15,9 @@ export function ToggleSwitch({ checked, label, disabled, busy, onChange }: { che
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
       ].join(" ")}
     >
+      {/* The knob slides towards the end: left in Arabic and Hebrew, right in English. */}
       <span
-        className={["inline-block h-5 w-5 rounded-full transition-transform", checked ? "-translate-x-6" : "-translate-x-1"].join(" ")}
+        className={["inline-block h-5 w-5 rounded-full transition-transform", checked ? "rtl:-translate-x-6 ltr:translate-x-6" : "rtl:-translate-x-1 ltr:translate-x-1"].join(" ")}
         style={{ background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }}
       />
     </button>

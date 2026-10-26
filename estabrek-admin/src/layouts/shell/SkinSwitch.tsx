@@ -4,11 +4,12 @@ import React from "react";
 import { cn } from "../../components/ui/cn";
 import { SKINS, setSkin, useSkin, type AdminSkin } from "../../theme/skin";
 import { Icons } from "../adminNav";
+import { tr } from "@/lib/words";
 
 export function SkinToggleButton() {
   const skin = useSkin();
   const next: AdminSkin = skin === "rose" ? "rose-night" : "rose";
-  const label = skin === "rose" ? "الوضع الليلي" : "الوضع النهاري";
+  const label = skin === "rose" ? tr("الوضع الليلي", "Dark mode") : tr("الوضع النهاري", "Light mode");
   return (
     <button
       type="button"
@@ -32,8 +33,8 @@ const SWATCH: Record<AdminSkin, string> = {
 export function SkinPicker({ compact }: { compact?: boolean }) {
   const skin = useSkin();
   return (
-    <div role="radiogroup" aria-label="مظهر لوحة الإدارة" className={cn("flex items-center gap-1.5", compact ? "flex-col" : "")}>
-      {!compact && <span className="ml-auto text-[11px] text-white/40">المظهر</span>}
+    <div role="radiogroup" aria-label={tr("مظهر لوحة الإدارة", "Admin look")} className={cn("flex items-center gap-1.5", compact ? "flex-col" : "")}>
+      {!compact && <span className="me-auto text-[11px] text-white/40">{tr("المظهر", "Look")}</span>}
       {SKINS.map((s) => (
         <button
           key={s.id}

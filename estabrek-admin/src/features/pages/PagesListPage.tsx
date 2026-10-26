@@ -8,6 +8,7 @@ import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Spinner } from "../../components/ui/Spinner";
 import { PAGE_TEMPLATES } from "./pageTemplates";
+import { PageFormatControl } from "./PageFormatControl";
 
 function slugify(input: string) {
   const core = input
@@ -152,6 +153,9 @@ const PageCard = ({
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>آخر تحديث: {new Date(page.updatedAt || Date.now()).toLocaleDateString('ar-EG')}</span>
+        </div>
+        <div className="mt-3">
+          <PageFormatControl page={page} />
         </div>
       </div>
 

@@ -30,6 +30,10 @@ export type AdminUser = {
   staffRole?: { id: ID; name: string } | null;
   /** What this admin may do, as the server enforces it. */
   permissions?: string[];
+  /** The admin's language for this member (their choice, else the store's main language). */
+  locale?: "ar" | "en" | "he";
+  /** They chose it (else it follows the store's main language). */
+  localeChosen?: boolean;
 
   createdAt?: ISODateString;
   updatedAt?: ISODateString;

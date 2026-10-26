@@ -1,6 +1,8 @@
 import { listProducts } from "@/lib/api";
 import { formatMoney, getProductMinPrice, getProductPrimaryImage, type CatalogCategory, type CatalogProduct } from "@/lib/catalog";
 import { getProductBadge, getProductSecondaryImage, type ProductBadge } from "@/lib/productBadges";
+import type { Lang } from "./i18n";
+import { localizeCategory } from "./localize";
 
 export type SeasonKey = "winter" | "spring";
 export type SeasonProduct = {
@@ -49,7 +51,8 @@ function findCategory(categories: CatalogCategory[], key: SeasonKey) {
 }
 
 /** Up to four pieces per season for the pinned winter → spring scene on the homepage. */
-export async function loadSeasonalEdits(categories: CatalogCategory[], currencyCode: string): Promise<SeasonEdit[]> {
+/** Categories are matched by their own (untranslated) slugs and names; `lang` words the result. */
+export async function loadSeasonalEdits(categories: CatalogCategory[], currencyCode: string, lang?: Lang): Promise<SeasonEdit[]> {
   const keys: SeasonKey[] = ["winter", "spring"];
   // Without seasonal categories in the catalog there is nothing to stage.
   if (!keys.some((key) => findCategory(categories, key))) return [];
@@ -57,9 +60,9 @@ export async function loadSeasonalEdits(categories: CatalogCategory[], currencyC
     keys.map(async (key) => {
       const category = findCategory(categories, key);
       if (!category) return { key, categoryName: null, href: "/shop", products: [] };
-      const list = await listProducts({ categoryId: category.id, sort: "latest", page: 1, pageSize: 4, includeFacets: false, lite: true });
+      const list = await listProducts({ categoryId: category.id, sort: "latest", page: 1, pageSize: 4, includeFacets: false, lite: true, lang });
       const products = (list.items ?? []).slice(0, 4).map((p) => toSeasonProduct(p, currencyCode));
-      return { key, categoryName: category.name, href: `/c/${encodeURIComponent(category.slug)}`, products };
+      return { key, categoryName: (lang ? localizeCategory(category, lang) : category).name, href: `/c/${encodeURIComponent(category.slug)}`, products };
     }),
   );
 }

@@ -12,6 +12,7 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { isNearWhite } from "@/lib/storefrontPalette";
+import { tr } from "@/lib/words";
 
 export const defaultCampaignVideo: VideoData = {
   url: "/editorial/rose-campaign.mp4", posterUrl: "/editorial/rose-campaign-poster.webp",
@@ -39,7 +40,8 @@ function deepen(hex: string) {
  * motion or CMS animations off, it is a still poster with a play button.
  */
 export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: VideoData }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const { scrollAnimationsEnabled } = useStorefrontSettings();
   const root = useRef<HTMLElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -185,7 +187,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
       data-motion="false"
       data-playback={playback}
       data-rose-palette={data.rosePresentation?.palette || "berry"}
-      aria-label={data.title || (ar ? "حكاية قماش" : "A story in fabric")}
+      aria-label={data.title || (tr(lang, "حكاية قماش", "A story in fabric"))}
     >
       <div className="rose-video-stage">
         <div ref={frame} className="rose-video-media">
@@ -197,7 +199,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
             muted
             loop={data.loop !== false}
             controls={data.controls === true && !scroll}
-            aria-label={ar ? "طيات قماش وردي تتحرك" : "Rose fabric in motion"}
+            aria-label={tr(lang, "طيات قماش وردي تتحرك", "Rose fabric in motion")}
             onPlay={() => setPlayback("playing")}
             onPause={() => { if (!scroll) setPlayback(video.current?.error ? "error" : "paused"); }}
           >
@@ -207,7 +209,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
             {near && isDefault && <source src="/editorial/rose-campaign-120.webm" type="video/webm" />}
             {near && <source src={isDefault ? "/editorial/rose-campaign-120.mp4" : data.url} type="video/mp4" />}
           </video>
-          {playback === "error" && <img className="video-error-poster" src={poster} alt={ar ? "طيات قماش وردي" : "Folds of rose fabric"} />}
+          {playback === "error" && <img className="video-error-poster" src={poster} alt={tr(lang, "طيات قماش وردي", "Folds of rose fabric")} />}
           {/* Dyes the fabric in the shopper's colour, keeping its folds and light (dark colours also deepen it). */}
           {(["rose-video-dye", "rose-video-deepen"] as const).map((layer) => (
             <span
@@ -222,20 +224,20 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
             <button
               type="button"
               className="rose-video-toggle"
-              aria-label={playback === "error" ? (ar ? "إعادة تحميل الفيديو" : "Reload video") : playback === "playing" ? (ar ? "إيقاف الفيديو" : "Pause video") : (ar ? "تشغيل الفيديو" : "Play video")}
+              aria-label={playback === "error" ? (tr(lang, "إعادة تحميل الفيديو", "Reload video")) : playback === "playing" ? (tr(lang, "إيقاف الفيديو", "Pause video")) : (tr(lang, "تشغيل الفيديو", "Play video"))}
               onClick={() => void toggle()}
             >
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">{playback === "playing" ? <path d="M7 5h3v14H7zM14 5h3v14h-3z" fill="currentColor" /> : <path d="m8 4 13 8-13 8z" fill="currentColor" />}</svg>
-              <span>{playback === "error" ? (ar ? "إعادة المحاولة" : "Retry") : playback === "playing" ? (ar ? "إيقاف" : "Pause") : (ar ? "تشغيل" : "Play")}</span>
+              <span>{playback === "error" ? (tr(lang, "إعادة المحاولة", "Retry")) : playback === "playing" ? (tr(lang, "إيقاف", "Pause")) : (tr(lang, "تشغيل", "Play"))}</span>
             </button>
           )}
         </div>
         <div className="rose-video-copy">
-          <span className="atelier-eyebrow">{ar ? "القماش بالحركة" : "FABRIC IN MOTION"}</span>
-          <h2>{data.title || (ar ? <>أناقةٌ تتحرّك.<br /><em>وتبقى في الذاكرة.</em></> : <>Elegance in motion.<br /><em>A feeling that stays.</em></>)}</h2>
-          <p>{data.subtitle || (ar ? "تفاصيل ناعمة، وطيات تحكي الكثير. مرّري ببطء، ودعي القماش يتحرّك معكِ." : "Soft details. Beautiful folds. Scroll slowly and let the fabric move with you.")}</p>
-          <Link href="/shop" className="atelier-text-link">{ar ? "اكتشفي المجموعة" : "Discover the collection"}<Icon name="arrow" /></Link>
-          {playback === "error" && <span className="video-status" role="status">{ar ? "تعذّر تحميل الفيديو. يمكنكِ إعادة المحاولة." : "Video could not load. You can try again."}</span>}
+          <span className="atelier-eyebrow">{tr(lang, "القماش بالحركة", "FABRIC IN MOTION")}</span>
+          <h2>{data.title || (ar ? <>أناقةٌ تتحرّك.<br /><em>وتبقى في الذاكرة.</em></> : lang === "he" ? <>אלגנטיות בתנועה.<br /><em>תחושה שנשארת.</em></> : <>Elegance in motion.<br /><em>A feeling that stays.</em></>)}</h2>
+          <p>{data.subtitle || (tr(lang, "تفاصيل ناعمة، وطيات تحكي الكثير. مرّري ببطء، ودعي القماش يتحرّك معكِ.", "Soft details. Beautiful folds. Scroll slowly and let the fabric move with you."))}</p>
+          <Link href="/shop" className="atelier-text-link">{tr(lang, "اكتشفي المجموعة", "Discover the collection")}<Icon name="arrow" /></Link>
+          {playback === "error" && <span className="video-status" role="status">{tr(lang, "تعذّر تحميل الفيديو. يمكنكِ إعادة المحاولة.", "Video could not load. You can try again.")}</span>}
         </div>
       </div>
     </section>

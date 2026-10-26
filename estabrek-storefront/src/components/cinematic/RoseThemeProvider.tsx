@@ -1,10 +1,10 @@
 "use client";
 import { createContext, useContext, useRef, useCallback, useEffect, useLayoutEffect, type ReactNode, type RefObject } from "react";
-import { rosePalettes } from "./roseDesign";
+import { rosePalettes, roseVar } from "./roseDesign";
 import { storefrontPalette } from "@/lib/storefrontPalette";
 import { crossfadeTheme, setThemeNow, tweenTheme, tweenThemeBack } from "@/lib/themeTween";
 import { themeHeld } from "@/lib/themeBase";
-import { discardThemePreview } from "@/lib/themePreview";
+import { discardThemePreview, storeThemeOn } from "@/lib/themePreview";
 
 type Theme = { root: RefObject<HTMLDivElement>; apply: (background: string) => void; reset: () => void };
 const ThemeContext = createContext<Theme | null>(null);
@@ -72,7 +72,7 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
     let ownColours: Map<string, string> | null = null;
     const select = (event: Event) => {
       const color = (event as CustomEvent<string>).detail;
-      if (!/^#[0-9a-f]{6}$/i.test(color) || !root.current) return;
+      if (!/^#[0-9a-f]{6}$/i.test(color) || !root.current || storeThemeOn()) return;
       const restored = Boolean((event as CustomEvent & { restored?: boolean }).restored);
       if (!restored) discardThemePreview();
       const palette = storefrontPalette(color);
@@ -223,7 +223,8 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
   }, [restoreSelection]);
   const apply = useCallback((background: string) => {
     const el = root.current;
-    if (!el) return;
+    // A store theme keeps one page colour; the scenes' colours belong to the rose design.
+    if (!el || storeThemeOn()) return;
     if (el.dataset.storefrontColor) return;
     const rgb = [1, 3, 5].map(i => parseInt(background.slice(i, i + 2), 16) / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4);
     const luminance = rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
@@ -248,7 +249,7 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
     if (root.current) delete root.current.dataset.roseTone;
   }, []);
   return <ThemeContext.Provider value={{ root, apply, reset }}>
-    <div ref={root} className={className} data-rose-theme="true" style={{ "--atelier-bg": className.includes("cinematic-home-shell") ? rosePalettes.blush : rosePalettes.pearl } as React.CSSProperties}>{children}</div>
+    <div ref={root} className={className} data-rose-theme="true" style={{ "--atelier-bg": roseVar(className.includes("cinematic-home-shell") ? rosePalettes.blush : rosePalettes.pearl) } as React.CSSProperties}>{children}</div>
   </ThemeContext.Provider>;
 }
 export function useRoseTheme() { return useContext(ThemeContext); }

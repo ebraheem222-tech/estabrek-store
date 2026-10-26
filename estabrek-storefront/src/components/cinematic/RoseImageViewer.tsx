@@ -7,6 +7,9 @@ import { cldUrl } from "@/lib/cloudinary";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
+import { tr } from "@/lib/words";
+import { dirOf } from "@/lib/i18n";
+import { isRtl } from "@/lib/i18n";
 
 /**
  * Full-screen product photos: opens from the main image on the product page.
@@ -28,7 +31,8 @@ export function RoseImageViewer({
   onIndex: (i: number) => void;
   onClose: () => void;
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -66,8 +70,8 @@ export function RoseImageViewer({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") return close();
       // In RTL the "next" photo is to the left.
-      if (e.key === "ArrowRight") go(ar ? -1 : 1);
-      if (e.key === "ArrowLeft") go(ar ? 1 : -1);
+      if (e.key === "ArrowRight") go(isRtl(lang) ? -1 : 1);
+      if (e.key === "ArrowLeft") go(isRtl(lang) ? 1 : -1);
       if (e.key === "Tab" && root.current) {
         const focusables = Array.from(root.current.querySelectorAll<HTMLElement>("button"));
         const first = focusables[0], last = focusables[focusables.length - 1];
@@ -99,14 +103,14 @@ export function RoseImageViewer({
       className="rose-viewer"
       role="dialog"
       aria-modal="true"
-      aria-label={ar ? `صور ${title}` : `${title} photos`}
-      dir={ar ? "rtl" : "ltr"}
+      aria-label={tr(lang, `صور ${title}`, "{0} photos", [title])}
+      dir={dirOf(lang)}
       onClick={(e) => { if (e.target === e.currentTarget) close(); }}
     >
       <header className="rose-viewer-bar">
         <span className="rose-viewer-title">{title}</span>
         {count > 1 && <span className="rose-viewer-count" dir="ltr">{index + 1} / {count}</span>}
-        <button ref={closeButton} type="button" className="rose-viewer-close" onClick={close} aria-label={ar ? "إغلاق" : "Close"}>
+        <button ref={closeButton} type="button" className="rose-viewer-close" onClick={close} aria-label={tr(lang, "إغلاق", "Close")}>
           <Icon name="close" />
         </button>
       </header>
@@ -123,9 +127,9 @@ export function RoseImageViewer({
           const end = e.changedTouches[0]?.clientX;
           if (start == null || end == null || zoomed || Math.abs(end - start) < 50) return;
           const forward = end < start;
-          go(forward !== ar ? 1 : -1);
+          go(forward !== isRtl(lang) ? 1 : -1);
         }}
-        title={zoomed ? (ar ? "اضغطي للتصغير" : "Click to zoom out") : (ar ? "اضغطي للتكبير" : "Click to zoom in")}
+        title={zoomed ? (tr(lang, "اضغطي للتصغير", "Click to zoom out")) : (tr(lang, "اضغطي للتكبير", "Click to zoom in"))}
       >
         {src && (
           <LqipImage
@@ -142,15 +146,15 @@ export function RoseImageViewer({
 
       {count > 1 && (
         <>
-          <button type="button" className="rose-viewer-nav prev" onClick={() => go(-1)} aria-label={ar ? "الصورة السابقة" : "Previous photo"}>
+          <button type="button" className="rose-viewer-nav prev" onClick={() => go(-1)} aria-label={tr(lang, "الصورة السابقة", "Previous photo")}>
             <Icon name="arrow" />
           </button>
-          <button type="button" className="rose-viewer-nav next" onClick={() => go(1)} aria-label={ar ? "الصورة التالية" : "Next photo"}>
+          <button type="button" className="rose-viewer-nav next" onClick={() => go(1)} aria-label={tr(lang, "الصورة التالية", "Next photo")}>
             <Icon name="arrow" />
           </button>
           <div className="rose-viewer-thumbs">
             {images.map((s, i) => (
-              <button key={s} type="button" aria-label={`${ar ? "صورة" : "Photo"} ${i + 1}`} aria-current={i === index} onClick={() => { setZoomed(false); onIndex(i); }}>
+              <button key={s} type="button" aria-label={`${tr(lang, "صورة", "Photo")} ${i + 1}`} aria-current={i === index} onClick={() => { setZoomed(false); onIndex(i); }}>
                 <LqipImage src={cldUrl(s, { w: 120, h: 150, c: "fill", g: "auto" })} alt="" fill sizes="60px" className="object-cover" showSkeleton={false} />
               </button>
             ))}

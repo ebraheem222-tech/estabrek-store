@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { useGsapMotion } from "./useGsapMotion";
 
 export default function MotionProvider({

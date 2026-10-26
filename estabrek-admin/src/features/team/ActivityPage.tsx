@@ -8,11 +8,12 @@ import { getApiErrorMessage } from "../../api/http";
 import { useAuth } from "../../hooks/useAuth";
 import * as StaffAPI from "../../api/staff.api";
 import { AREA_LABELS, describeActivity, describeDevice, describeFields, relativeTime } from "./teamText";
+import { loc } from "@/lib/lang";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
 function dayOf(iso: string) {
-  return new Date(iso).toLocaleDateString("ar", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jerusalem" });
+  return new Date(iso).toLocaleDateString(loc("ar"), { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jerusalem" });
 }
 
 export default function ActivityPage() {
@@ -43,7 +44,7 @@ export default function ActivityPage() {
   }, [rows]);
 
   return (
-    <div dir="rtl" className="space-y-4" data-testid="activity-page">
+    <div className="space-y-4" data-testid="activity-page">
       <div className={box}>
         <h1 className="text-lg font-semibold">سجل النشاط</h1>
         <p className="mt-1 text-sm text-white/60">

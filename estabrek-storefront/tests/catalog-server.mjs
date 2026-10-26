@@ -20,6 +20,16 @@ const site = {
   contactEmail: "hello@estabrek.test",
   whatsappNumber: "970599123456",
   header: {
+    // Admin → هوية المتجر, as the migration sets it for the Estabrek shop; identity.spec.ts swaps it (/__test/identity).
+    identity: {
+      name: { ar: "متجر استبرق", en: "Estabrek", he: "" },
+      shortName: { ar: "استبرق", en: "Estabrek", he: "" },
+      tagline: { ar: "", en: "MODESTLY, BEAUTIFULLY YOU", he: "" },
+      about: { ar: "حجاب، عبايات، فساتين وملابس محتشمة للنساء.", en: "Hijabs, abayas, dresses and modest clothing for women.", he: "" },
+      industry: "fashion",
+      audience: "women",
+      legalName: "",
+    },
     cmsNav: { enabled: false },
     storefront: {
       darkModeDefault: false,
@@ -35,6 +45,27 @@ const categories = [
   { id: "daily-hijabs", name: "حجاب يومي", slug: "daily-hijabs", parentId: "hijabs" },
 ];
 const stockAlerts = [];
+// The store's content in English and Hebrew (admin → each product, category, type); off
+// by default, POST /__test/content-translations {"on":true} turns it on (languages.spec.ts).
+const CONTENT_TR = {
+  product: {
+    en: { title: "Rose dress", seoTitle: "The rose dress", colors: { Rose: "Blush" } },
+    he: { title: "שמלת ורד", description: "שמלה רכה לערב.", colors: { Rose: "ורוד", Berry: "פטל" } },
+  },
+  category: { en: { name: "Dresses" }, he: { name: "שמלות" } },
+  type: {
+    he: {
+      colorLabel: "צבע",
+      sizeLabel: "מידה",
+      fields: {
+        fabric: { label: "בד", options: { "شيفون": "שיפון", "كريب": "קרפ" } },
+        occasion: { label: "אירוע", options: { "سهرة": "ערב", "عرس": "חתונה", "يومي": "יומיומי" } },
+        length: { label: "אורך", unit: "ס״מ" },
+      },
+    },
+  },
+};
+let contentTranslations = false;
 const products = [
   {
     id: "coat",
@@ -48,13 +79,18 @@ const products = [
     type: { id: "ptype_clothes", name: "ملابس", slug: "clothes", colorLabel: "اللون", sizeLabel: "المقاس", showColor: true, showSize: true },
     delivery: { shipsFrom: "رام الله", minDays: 2, maxDays: 4 },
     specs: [
-      { key: "fabric", label: "القماش", value: "شيفون", kind: "select" },
-      { key: "length", label: "الطول", value: "140 سم", kind: "number" },
-      { key: "occasion", label: "المناسبة", value: "سهرة، عرس", kind: "multiselect" },
+      { key: "fabric", label: "القماش", value: "شيفون", kind: "select", raw: "شيفون" },
+      { key: "length", label: "الطول", value: "140 سم", kind: "number", raw: 140 },
+      { key: "occasion", label: "المناسبة", value: "سهرة، عرس", kind: "multiselect", raw: ["سهرة", "عرس"] },
     ],
     items: [
       { id: "rose", colorName: "Rose", colorHex: "#c97794", variants: [{ id: "m", sizeId: "m", size: { id: "m", name: "M" }, price: 320.5, stock: 5 }] },
       { id: "berry", colorName: "Berry", colorHex: "#6b2446", variants: [{ id: "berry-m", sizeId: "m", size: { id: "m", name: "M" }, price: 320.5, stock: 5 }, { id: "berry-l", sizeId: "l", size: { id: "l", name: "L" }, price: 320.5, stock: 3 }] },
+    ],
+    // Its 360° views (product-spin.spec.ts): one for every colour (with a 3D model), Berry's own.
+    spins: [
+      { id: "spin-all", url: "http://127.0.0.1:4100/uploads/spins/spin-sheet.png", cols: 4, rows: 3, cellW: 120, cellH: 150, count: 12, itemId: null, modelUrl: "http://127.0.0.1:4100/uploads/models/stage-box.glb" },
+      { id: "spin-berry", url: "http://127.0.0.1:4100/uploads/spins/spin-sheet.png?c=berry", cols: 4, rows: 3, cellW: 120, cellH: 150, count: 12, itemId: "berry", modelUrl: null },
     ],
   },
   {
@@ -80,6 +116,168 @@ const sceneProducts = sceneCategories.flatMap((category) => [1, 2].map((n) => ({
   ...products[1], id: `${category.id}-${n}`, slug: `${category.id}-${n}`, title: `${category.name} ${n}`, category,
 })));
 let scenesOn = false;
+// The new CMS (page-tree.spec.ts): POST /__test/page-tree {"on":true} serves the pages
+// converted to a tree (each old section a `legacy` node), as admin's convert does.
+let pageTreeOn = false;
+const asTreePage = (p) =>
+  pageTreeOn
+    ? { ...p, format: 2, tree: { version: 1, root: { id: "page", type: "page", children: p.sections.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((s) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id } })) } } }
+    : p;
+// A page of new elements in three languages, with one old section in the middle.
+const treeDemo = {
+  id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
+  sections: [{ id: "demo-faq", type: "FAQ", order: 0, isVisible: true, data: { title: "أسئلة القسم القديم", items: [{ question: "سؤال قديم؟", answer: "جواب قديم." }] } }],
+  tree: {
+    version: 1,
+    root: {
+      id: "page", type: "page", props: {},
+      children: [
+        {
+          id: "intro", type: "section", props: { contained: true, anchor: "intro" }, style: { base: { bg: "accent-soft" } },
+          children: [
+            { id: "title", type: "heading", props: { level: 1, text: { ar: "عنوان من الشجرة", en: "A title from the tree", he: "כותרת מהעץ" } }, style: { base: { size: 44, textAlign: "center" }, mobile: { size: 30 } } },
+            { id: "only-ar", type: "text", props: { text: { ar: "نص بالعربي بس" } }, style: { base: { textAlign: "center", color: "muted" } } },
+            {
+              id: "cols", type: "grid", props: {}, style: { base: { columns: 3, gap: 20 } },
+              children: [
+                { id: "wide", type: "text", props: { text: { ar: "خلية عريضة", en: "A wide cell", he: "תא רחב" } }, style: { base: { col: "1 / 3", bg: "#ffffff", pad: [16, 16, 16, 16], radius: 16 } } },
+                { id: "go", type: "button", props: { label: { ar: "تسوّقي", en: "Shop", he: "לקנייה" }, href: "/shop" } },
+                { id: "away", type: "button", props: { label: { ar: "رابط برّا", en: "Outside", he: "בחוץ" }, href: "https://example.com/x", variant: "outline", newTab: true } },
+                { id: "bad", type: "button", props: { label: { ar: "رابط خطر", en: "Bad", he: "רע" }, href: "javascript:alert(1)" } },
+                { id: "heart", type: "icon", props: { name: "heart", label: { ar: "بحب", en: "Love", he: "אהבה" } } },
+              ],
+            },
+          ],
+        },
+        { id: "s-demo-faq", type: "legacy", props: { sectionId: "demo-faq" } },
+        {
+          id: "shop", type: "section", props: { contained: true },
+          children: [{ id: "picks", type: "products", props: { source: "picked", productIds: ["coat"], limit: 4, layout: "grid", title: { ar: "قطع مختارة", en: "Picked pieces", he: "פריטים נבחרים" } } }],
+        },
+        // Look and motion: a clip that sits tilted and straightens with the scroll, a title placed over it,
+        // a tilted badge that floats, a framed picture with a colour layer and a shine.
+        {
+          id: "tilt", type: "section", props: { contained: true },
+          children: [
+            {
+              id: "tilt-stage", type: "stack", props: {}, style: { base: { shape: "rounded", gap: 0 } },
+              motion: { scroll: { kind: "keys", from: { rx: 30, scale: 0.85, y: 80 }, to: { rx: 0, scale: 1, y: 0 }, start: 100, end: 35 } },
+              children: [
+                { id: "tilt-clip", type: "video", props: { src: "/editorial/hero-film-120.mp4", autoplay: true, loop: true, muted: true }, style: { base: { overlay: { color: "#000000", to: "accent", angle: 180, opacity: 0.45, blend: "multiply" } } } },
+                {
+                  id: "tilt-title", type: "heading", props: { level: 2, text: { ar: "فوق الفيديو", en: "Over the clip", he: "מעל הסרטון" } },
+                  style: { base: { layer: { x: 50, y: 50, anchor: "center" }, color: "white", size: 40, glow: { color: "accent", size: 24 }, z: 2 }, mobile: { layer: false, color: "text" } },
+                  motion: { enter: { kind: "up", duration: 0.5 } },
+                },
+              ],
+            },
+            {
+              id: "tilt-badge", type: "text", props: { text: { ar: "شارة مايلة", en: "A tilted badge", he: "תג נטוי" } },
+              style: { base: { rotateZ: -8, moveX: 12, opacity: 0.5, shade: { x: 0, y: 12, blur: 30, color: "#00000066" } } },
+              motion: { loop: { kind: "float", duration: 2 }, hover: { kind: "tilt" } },
+            },
+            {
+              id: "tilt-pic", type: "image", props: { src: "/editorial/scarves.webp", alt: { ar: "أوشحة", en: "Scarves", he: "צעיפים" } },
+              style: { base: { width: "320px", overlay: { color: "accent", opacity: 0.3, blend: "soft-light" } } },
+              motion: { fx: { kind: "shine", speed: 2 }, hover: { kind: "zoom" } },
+            },
+          ],
+        },
+        // Drawings: a blob that morphs into its second shape and back, a line that draws itself (its gradient's id
+        // gets the element's in front), and one carrying a script and an onclick that the shop drops.
+        {
+          id: "art", type: "section", props: { contained: true },
+          children: [
+            {
+              id: "art-blob", type: "svg", style: { base: { width: "220px" } }, motion: { enter: { kind: "draw", duration: 0.6 }, loop: { kind: "morph", duration: 2 } },
+              props: {
+                shape: "blob", label: { ar: "فقاعة", en: "A blob", he: "בועה" },
+                art: {
+                  viewBox: "0 0 200 200",
+                  morph: "M100 30 C150 20 185 60 175 105 C165 155 135 180 95 175 C45 170 20 135 25 95 C30 55 55 35 100 30 Z",
+                  nodes: [{ t: "path", a: { d: "M100 10 C160 10 190 50 190 100 C190 160 150 190 100 190 C40 190 10 150 10 100 C10 50 40 10 100 10 Z", fill: "accent-soft", stroke: "accent", "stroke-width": "3" } }],
+                },
+              },
+            },
+            {
+              id: "art-line", type: "svg", motion: { enter: { kind: "draw", duration: 1.2 } },
+              props: {
+                art: {
+                  viewBox: "0 0 300 60",
+                  nodes: [
+                    { t: "defs", a: {}, c: [{ t: "linearGradient", a: { id: "g", x1: "0", x2: "1", y1: "0", y2: "0" }, c: [{ t: "stop", a: { offset: "0", "stop-color": "accent" } }, { t: "stop", a: { offset: "1", "stop-color": "#7afcff" } }] }] },
+                    { t: "path", a: { d: "M5 30 Q 40 5 75 30 T 145 30 T 215 30 T 295 30", fill: "none", stroke: "url(#g)", "stroke-width": "6", "stroke-linecap": "round" } },
+                  ],
+                },
+              },
+            },
+            // A product's 360° view in the page: rose-dress in Berry (its own view), turning by itself.
+            { id: "spin-berry", type: "product360", props: { productId: "coat", itemId: "berry", label: { ar: "الفستان بيلف", en: "The dress turning", he: "השמלה מסתובבת" } }, style: { base: { width: "240px" } } },
+            { id: "art-bad", type: "svg", props: { art: { viewBox: "0 0 10 10", nodes: [{ t: "script", a: {} }, { t: "circle", a: { r: "4", cx: "5", cy: "5", onclick: "alert(1)", fill: "white", href: "https://x.test" } }] } } },
+          ],
+        },
+        // Columns: a third and two thirds, each cell its own little container (shapes, alignment), three more columns inside one.
+        {
+          id: "split", type: "section", props: { contained: true },
+          children: [
+            {
+              id: "two", type: "columns", props: { phone: "reverse" }, style: { base: { widths: [1, 2], gap: 24 } },
+              children: [
+                {
+                  id: "cell-a", type: "cell", props: {}, style: { base: { bg: "#ffffff", pad: [24, 24, 24, 24], shape: "rounded", justify: "center", align: "center", textAlign: "center" } },
+                  children: [
+                    { id: "cell-a-title", type: "heading", props: { level: 3, text: { ar: "خلية أولى", en: "First cell", he: "תא ראשון" } } },
+                    { id: "cell-a-go", type: "button", props: { label: { ar: "شوفي", en: "See", he: "לראות" }, href: "/shop" } },
+                  ],
+                },
+                {
+                  id: "cell-b", type: "cell", props: {}, style: { base: { bg: "accent-soft", pad: [24, 24, 24, 24], shape: "arch", minHeight: "240px" } },
+                  children: [
+                    { id: "cell-b-text", type: "text", props: { text: { ar: "خلية تانية", en: "Second cell", he: "תא שני" } } },
+                    {
+                      id: "three", type: "columns", props: {}, style: { base: { gap: 12 } },
+                      children: ["1", "2", "3"].map((k) => ({ id: `n${k}`, type: "cell", props: {}, style: { base: { bg: "#ffffff", pad: [8, 8, 8, 8] } }, children: [{ id: `n${k}-t`, type: "text", props: { text: { ar: `خانة ${k}` } } }] })),
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        // A slider in a cell that centres its things: two pictures and a clip, words in three languages, a bad address that drops out.
+        {
+          id: "slides", type: "section", props: { contained: true },
+          children: [
+            {
+              id: "slide-cols", type: "columns", props: {}, style: { base: { widths: [2, 1], gap: 24 } },
+              children: [
+                {
+                  id: "slide-cell", type: "cell", props: {}, style: { base: { bg: "#ffffff", pad: [16, 16, 16, 16], shape: "rounded", align: "center", textAlign: "center" } },
+                  children: [
+                    {
+                      id: "gallery", type: "slider",
+                      props: {
+                        slides: [
+                          { src: "/editorial/hijab-campaign.webp", kind: "image", alt: { ar: "حجاب", en: "A hijab", he: "חיג'אב" }, caption: { ar: "حجابات الموسم", en: "This season's hijabs", he: "חיג'אבים של העונה" }, href: "/shop" },
+                          { src: "/editorial/rose-campaign-mobile.mp4", kind: "video", caption: { ar: "فيلم الورد", en: "The rose film", he: "סרט הוורד" } },
+                          { src: "javascript:alert(1)", kind: "image", caption: { ar: "رابط خطر" } },
+                          { src: "/editorial/hero-film-poster.webp", kind: "image", caption: { ar: "بالعربي بس" } },
+                        ],
+                        autoplay: 3, loop: true, arrows: true, dots: true, aspect: "4 / 3",
+                      },
+                    },
+                    { id: "slide-note", type: "text", props: { text: { ar: "تحت السلايدر", en: "Under the slider", he: "מתחת לסליידר" } } },
+                  ],
+                },
+                { id: "slide-side", type: "cell", props: {}, children: [{ id: "slide-side-t", type: "text", props: { text: { ar: "جنب السلايدر", en: "Beside the slider", he: "ליד הסליידר" } } }] },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+};
 const extra = { ...products[1], id: "pearl", title: "حجاب لؤلؤي", slug: "pearl-hijab", minPrice: 280, items: [] };
 // Digital product and booking (fulfillment.spec.ts): only reachable by their page and the bag, never listed.
 const soon = new Date(Date.now() + 7 * 24 * 3600_000).toISOString();
@@ -131,9 +329,10 @@ const orderAccess = {
     shortId: "K1L2M3", status: "ACCEPTED", closed: false, delivered: true, firstName: "سما",
     items: [{ title: "سكربت ترتيب الطلبات", variant: null, quantity: 1, imageUrl: null, fulfillment: "DIGITAL" }],
     files: [], maxDownloads: 10, tickets: [], codes: [],
+    // Times counted from each request (the server may run for hours).
     licences: [
-      { id: "lic-ok", title: "سكربت ترتيب الطلبات", serial: "ESTB-7KQ2-M9XD-4HFA-PZ3C-W8RT", expiresAt: new Date(Date.now() + 5 * 3600_000 + 60_000).toISOString(), expired: false, downloadsLeft: 1, maxDownloads: 3, ready: true, devices: { used: 0, max: 1 } },
-      { id: "lic-late", title: "سكربت قديم", serial: "ESTB-AAAA-BBBB-CCCC-DDDD-EEEE", expiresAt: new Date(Date.now() - 3600_000).toISOString(), expired: true, downloadsLeft: 3, maxDownloads: 3, ready: true },
+      { id: "lic-ok", title: "سكربت ترتيب الطلبات", serial: "ESTB-7KQ2-M9XD-4HFA-PZ3C-W8RT", get expiresAt() { return new Date(Date.now() + 5 * 3600_000 + 60_000).toISOString(); }, expired: false, downloadsLeft: 1, maxDownloads: 3, ready: true, devices: { used: 0, max: 1 } },
+      { id: "lic-late", title: "سكربت قديم", serial: "ESTB-AAAA-BBBB-CCCC-DDDD-EEEE", get expiresAt() { return new Date(Date.now() - 3600_000).toISOString(); }, expired: true, downloadsLeft: 3, maxDownloads: 3, ready: true },
     ],
     launcher: { version: "1.0.0", bytes: 31744, path: "/licences/launcher/download" },
   },
@@ -375,6 +574,29 @@ http
       return res.end(JSON.stringify({ ok: true, scenes: scenesOn }));
     }
     if (pathname === "/__test/last-order") return res.end(JSON.stringify(globalThis.lastOrder ? { ...globalThis.lastOrder, signedIn: globalThis.lastOrderSignedIn ?? false } : null));
+    // Store themes (store-themes.spec.ts): POST {"id":"circuit","mode":"dark"} to pick one, {} for the rose design.
+    if (pathname === "/__test/store-theme" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        // {"options": {...}} also sets the store's own models and games for that theme.
+        const { options, ...choice } = data;
+        if (choice.id) site.header.storeTheme = choice; else delete site.header.storeTheme;
+        if (options && choice.id) site.header.storeThemeOptions = { [choice.id]: options }; else delete site.header.storeThemeOptions;
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
+    if (pathname === "/__test/preview-draft" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        globalThis.previewDraft = body ? JSON.parse(body) : null;
+        res.end("{}");
+      });
+      return;
+    }
     if (pathname === "/__test/hero-film") {
       home.sections[0].data.roseHeroFilm = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
       return res.end(JSON.stringify({ ok: true, roseHeroFilm: home.sections[0].data.roseHeroFilm }));
@@ -404,6 +626,78 @@ http
       req.on("end", () => {
         const data = JSON.parse(body || "{}");
         if (Object.keys(data).length) site.header.razan = data; else delete site.header.razan;
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
+    // The admin's new editor (studio-frame.spec.ts): a page that frames the shop like the
+    // admin does, collecting what the shop's bridge says (window.__msgs) and talking back (send).
+    // A store's own 3D model for the stage's tests (scripts/make-test-glb.py), served like the API's uploads.
+    // A 360° sprite sheet (scripts/make-test-spin.py); globalThis.spinHits counts how often it's fetched.
+    if (pathname === "/uploads/spins/spin-sheet.png") {
+      globalThis.spinHits = (globalThis.spinHits ?? 0) + 1;
+      res.setHeader("access-control-allow-origin", "*");
+      res.setHeader("content-type", "image/png");
+      return res.end(readFileSync(new URL("./fixtures/spin-sheet.png", import.meta.url)));
+    }
+    if (pathname === "/__test/spin-hits") {
+      const n = globalThis.spinHits ?? 0;
+      if (new URL(req.url, "http://localhost").searchParams.get("reset") === "1") globalThis.spinHits = 0;
+      return res.end(JSON.stringify({ hits: n }));
+    }
+    if (pathname === "/uploads/models/stage-box.glb") {
+      res.setHeader("access-control-allow-origin", "*");
+      res.setHeader("content-type", "model/gltf-binary");
+      return res.end(readFileSync(new URL("./fixtures/stage-box.glb", import.meta.url)));
+    }
+    if (pathname === "/__studio-harness") {
+      const src = new URL(req.url, "http://localhost").searchParams.get("src") || "/studio-frame?token=good";
+      res.setHeader("content-type", "text/html; charset=utf-8");
+      return res.end(`<!doctype html><html><body style="margin:0"><iframe id="f" src="http://127.0.0.1:3000${src}" style="width:1280px;height:900px;border:0"></iframe><script>
+window.__msgs=[];addEventListener("message",function(e){if(e.data&&e.data.source==="estabrek-studio")window.__msgs.push({origin:e.origin,data:e.data})});
+window.send=function(m){document.getElementById("f").contentWindow.postMessage(Object.assign({source:"estabrek-studio"},m),"http://127.0.0.1:3000")};
+</script></body></html>`);
+    }
+    if (pathname === "/__test/page-tree" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        pageTreeOn = Boolean(JSON.parse(body || "{}").on);
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
+    // The store's languages (languages.spec.ts): POST {enabled, default} to set header.languages, {} to clear.
+    if (pathname === "/__test/content-translations" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        contentTranslations = Boolean(JSON.parse(body || "{}").on);
+        products[0].translations = contentTranslations ? CONTENT_TR.product : undefined;
+        products[0].type.translations = contentTranslations ? CONTENT_TR.type : undefined;
+        categories[0].translations = contentTranslations ? CONTENT_TR.category : undefined;
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
+    if (pathname === "/__test/languages" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (Object.keys(data).length) site.header.languages = data; else delete site.header.languages;
+        res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
+    // Another store on the platform (identity.spec.ts): POST a JSON body to set header.identity, {} for Estabrek's again.
+    if (pathname === "/__test/identity" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        globalThis.estabrekIdentity ??= site.header.identity;
+        site.header.identity = Object.keys(data).length ? data : globalThis.estabrekIdentity;
         res.end(JSON.stringify({ ok: true }));
       });
       return;
@@ -703,7 +997,7 @@ http
           for (const p of all) for (const item of p.items || []) for (const v of item.variants || []) {
             if (v.id === it.variantId) {
               const img = item.images?.[0]?.url || p.images?.[0]?.url || p.primaryImageUrl;
-              return { variantId: v.id, quantity: it.quantity, productTitle: p.title, productSlug: p.slug, colorName: item.colorName, sizeName: v.size?.name, imageUrl: img, unitPrice: v.price, lineSubtotal: v.price * it.quantity, lineTotal: v.price * it.quantity, available: v.stock ?? 99, fulfillment: p.type?.fulfillment ?? "SHIPPING", eventStartsAt: p.eventStartsAt ?? null };
+              return { variantId: v.id, quantity: it.quantity, productTitle: p.title, productTranslations: p.translations ?? {}, productSlug: p.slug, colorName: item.colorName, sizeName: v.size?.name, imageUrl: img, unitPrice: v.price, lineSubtotal: v.price * it.quantity, lineTotal: v.price * it.quantity, available: v.stock ?? 99, fulfillment: p.type?.fulfillment ?? "SHIPPING", eventStartsAt: p.eventStartsAt ?? null };
             }
           }
           return null;
@@ -750,8 +1044,8 @@ http
       const all = [...products, extra];
       const count = (key, order) => order.map((value) => ({ value, count: all.filter((p) => { const v = p.attributes?.[key]; return Array.isArray(v) ? v.includes(value) : v === value; }).length })).filter((o) => o.count);
       return res.end(JSON.stringify({ fields: [
-        { key: "fabric", label: "القماش", kind: "select", options: count("fabric", ["كريب", "شيفون"]) },
-        { key: "occasion", label: "المناسبة", kind: "multiselect", options: count("occasion", ["يومي", "سهرة", "عرس"]) },
+        { key: "fabric", label: "القماش", kind: "select", options: count("fabric", ["كريب", "شيفون"]), ...(contentTranslations ? { translations: { he: CONTENT_TR.type.he.fields.fabric } } : {}) },
+        { key: "occasion", label: "المناسبة", kind: "multiselect", options: count("occasion", ["يومي", "سهرة", "عرس"]), ...(contentTranslations ? { translations: { he: CONTENT_TR.type.he.fields.occasion } } : {}) },
       ] }));
     }
     if (pathname.includes("/catalog/products/slug/")) {
@@ -787,13 +1081,41 @@ http
       const page = Number(sp.get("page") || 1), pageSize = 2;
       return res.end(JSON.stringify({ items: entries.slice((page-1)*pageSize,page*pageSize), total: entries.length, page, pageSize, totalPages: Math.max(1, Math.ceil(entries.length/pageSize)), facets: { colors: [{ name:"Rose",hex:"#c97794",count:1 },{ name:"Lilac",hex:"#a08cbd",count:1 }], sizes: [{id:"m",name:"M",count:1},{id:"one",name:"One size",count:1}] } }));
     }
+    // The editor's draft: "good" opens the tree demo, "good-home" the home page as a tree.
+    if (pathname.endsWith("/storefront/page-preview")) {
+      const token = new URL(req.url, "http://localhost").searchParams.get("token");
+      if (token === "good") return res.end(JSON.stringify(treeDemo));
+      // The admin's draft as the editor's end-to-end check posts it (/__test/preview-draft).
+      if (token === "good-draft" && globalThis.previewDraft) {
+        const d = globalThis.previewDraft;
+        const locale = new URL(req.url, "http://localhost").searchParams.get("locale") ?? "ar";
+        const over = (base, tr) => {
+          if (!tr || typeof tr !== "object" || Array.isArray(tr) || !base || typeof base !== "object" || Array.isArray(base)) return tr ?? base;
+          const out = { ...base };
+          for (const [k, v] of Object.entries(tr)) out[k] = over(base[k], v);
+          return out;
+        };
+        const sections = d.sections.filter((x) => x.isVisible).map((x, order) => ({ id: x.id, type: x.type, order, isVisible: true, data: x.tr?.[locale] ? over(x.data, x.tr[locale]) : x.data }));
+        return res.end(JSON.stringify({ ...home, id: d.pageId ?? home.id, sections, format: 2, tree: d.tree, draft: { rev: d.rev, updatedAt: d.updatedAt } }));
+      }
+      if (token === "good-home") {
+        const was = pageTreeOn;
+        pageTreeOn = true;
+        const out = asTreePage(home);
+        pageTreeOn = was;
+        return res.end(JSON.stringify(out));
+      }
+      res.statusCode = 401;
+      return res.end(JSON.stringify({ error: "PREVIEW_TOKEN" }));
+    }
     if (pathname.endsWith("/storefront/page")) {
       const slug = new URL(req.url, "http://localhost").searchParams.get(
         "slug",
       );
-      if (slug === "/") return res.end(JSON.stringify(home));
-      if (slug === "/contact") return res.end(JSON.stringify(contact));
-      if (slug === "/native-templates") return res.end(JSON.stringify({
+      if (slug === "/") return res.end(JSON.stringify(asTreePage(home)));
+      if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));
+      if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
+      if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [
           { id: "native-hero", type: "HERO", order: 0, data: { title: "حملة بالقالب المنشور", themeId: "basic-centered", primaryButton: { label: "وجهة الحملة", href: "/shop" } } },
@@ -802,7 +1124,7 @@ http
           { id: "native-contact", type: "CONTACT", order: 3, anchorId: "native-contact", data: { title: "نموذج القالب المنشور", themeId: "basic-simple", form: { submitLabel: "إرسال من CMS" } } },
           { id: "native-slider", type: "BRANDS_SLIDER", order: 4, data: { title: "صور القالب المنشور", themeId: "basic-simple", items: [{ name: "صورة من CMS", imageUrl: "/editorial/scarves.webp" }] } },
         ],
-      }));
+      })));
       res.statusCode = 404;
       return res.end("null");
     }

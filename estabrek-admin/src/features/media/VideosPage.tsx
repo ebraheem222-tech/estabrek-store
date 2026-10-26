@@ -14,6 +14,7 @@ import { formatBytes } from "../system/cacheText";
 import { ACCEPT_VIDEO, durationText, isVideoFile, renditionsLine, speedText } from "./videoText";
 import { useVideoUploads, type UploadItem } from "./useVideoUploads";
 import { VideoDetail } from "./VideoDetail";
+import { tr } from "@/lib/words";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
@@ -45,28 +46,28 @@ export default function VideosPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4" data-testid="videos-page">
+    <div className="space-y-4" data-testid="videos-page">
       <section className={box}>
-        <h1 className="text-lg font-semibold">الفيديوهات</h1>
+        <h1 className="text-lg font-semibold">{tr("الفيديوهات", "Videos")}</h1>
         <p className="mt-1 text-sm text-white/60">
-          ارفع الفيديو مرة وحدة، وحوّله لنسخ للعرض العادي أو للسكرول أو للتلفون، وطلّع منه صور (غلاف أو صور للمنتجات). انسخ الرابط وحطه بقسم الفيديو بأي صفحة، أو
-          اختاره من «اختار من الفيديوهات» بمحرر الصفحات.
+          {tr("الفيديو بينرفع مرة وحدة، وبيتحوّل لنسخ للعرض العادي أو للسكرول أو للتلفون، وبتطلع منه صور (غلاف أو صور للمنتجات). الرابط بينتسخ وبينحط بقسم الفيديو بأي صفحة، أو", "Upload the video once, convert it to versions for playback, scrolling or phones, and take photos from it (a cover or product photos). Copy the link into a video section on any page, or")}
+          {tr("بينختار من «اختار من الفيديوهات» بمحرر الصفحات.", "pick it from “Choose from videos” in the page editor.")}
         </p>
         {lib ? (
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <Badge size="sm" variant={lib.provider === "CLOUDINARY" ? "success" : "default"}>
-              {lib.provider === "CLOUDINARY" ? "Cloudinary: بيرفع مباشرة بقطع" : "على السيرفر (بدون Cloudinary)"}
+              {lib.provider === "CLOUDINARY" ? tr("Cloudinary: بيرفع مباشرة بقطع", "Cloudinary: uploads directly in pieces") : tr("على السيرفر (بدون Cloudinary)", "On the server (without Cloudinary)")}
             </Badge>
             <Badge size="sm" variant={lib.canConvert ? "success" : "warning"}>
-              {lib.canConvert ? "التحويل شغّال" : "التحويل بدو Cloudinary أو ffmpeg"}
+              {lib.canConvert ? tr("التحويل شغّال", "Conversion works") : tr("التحويل بدو Cloudinary أو ffmpeg", "Conversion needs Cloudinary or ffmpeg")}
             </Badge>
-            <Badge size="sm">الحد {lib.settings.maxUploadMb} MB</Badge>
-            {lib.settings.autoConvert ? <Badge size="sm">بعد الرفع: نسخة تلقائية</Badge> : null}
+            <Badge size="sm">{tr("الحد", "Limit")} {lib.settings.maxUploadMb} MB</Badge>
+            {lib.settings.autoConvert ? <Badge size="sm">{tr("بعد الرفع: نسخة تلقائية", "After upload: an automatic version")}</Badge> : null}
           </div>
         ) : null}
         {lib && lib.provider === "LOCAL" ? (
           <p className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-            بدون Cloudinary الفيديو بينحفظ على قرص السيرفر. على Railway القرص بيتفضّى مع كل نشر جديد، فهاد بس للتجربة على جهازك.
+            {tr("بدون Cloudinary الفيديو بينحفظ على قرص السيرفر. على Railway القرص بيتفضّى مع كل نشر جديد، فهاد بس للتجربة على جهاز محلي.", "Without Cloudinary the video is saved on the server's disk. On Railway the disk empties with every new deploy, so this is only for trying on a local machine.")}
           </p>
         ) : null}
       </section>
@@ -87,11 +88,11 @@ export default function VideosPage() {
           data-testid="video-drop"
         >
           <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <p className="text-sm">اسحب فيديوهات لهون، أو</p>
+            <p className="text-sm">{tr("الفيديوهات بتنسحب لهون، أو", "Drag videos here, or")}</p>
             <Button variant="primary" onClick={() => input.current?.click()} disabled={!lib}>
-              اختار فيديو
+              {tr("اختيار فيديو", "choose a video")}
             </Button>
-            <p className="text-xs text-white/50">MP4، WebM أو MOV. الفيديوهات الكبيرة بتنبعت بقطع، وإذا انقطع النت بتكمّل من مكانها.</p>
+            <p className="text-xs text-white/50">{tr("MP4، WebM أو MOV. الفيديوهات الكبيرة بتنبعت بقطع، وإذا انقطع النت بتكمّل من مكانها.", "MP4, WebM or MOV. Big videos are sent in pieces, and if the internet cuts out they carry on from where they stopped.")}</p>
             <input
               ref={input}
               type="file"
@@ -116,12 +117,12 @@ export default function VideosPage() {
 
       <section className={box}>
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-semibold">المكتبة</h2>
-          {lib ? <span className="text-xs text-white/50">{lib.items.length} فيديو</span> : null}
+          <h2 className="font-semibold">{tr("المكتبة", "Library")}</h2>
+          {lib ? <span className="text-xs text-white/50">{lib.items.length} {tr("فيديو", "video")}</span> : null}
         </div>
         {q.isLoading ? (
           <div className="mt-3 flex items-center gap-2 text-sm">
-            <Spinner /> جاري التحميل…
+            <Spinner /> {tr("جاري التحميل…", "Loading…")}
           </div>
         ) : q.isError ? (
           <div className="mt-3 text-sm text-red-200">{getApiErrorMessage(q.error)}</div>
@@ -132,7 +133,7 @@ export default function VideosPage() {
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-white/60">لسا ما في فيديوهات.</p>
+          <p className="mt-3 text-sm text-white/60">{tr("لسا ما في فيديوهات.", "No videos yet.")}</p>
         )}
       </section>
 
@@ -145,16 +146,16 @@ function UploadRow({ item, onPause, onResume, onRemove }: { item: UploadItem; on
   const fraction = item.file.size ? item.sent / item.file.size : 0;
   const label =
     item.status === "waiting"
-      ? "بالدور"
+      ? tr("بالدور", "Queued")
       : item.status === "uploading"
-        ? speedText(item.speed, item.file.size - item.sent) || "عم يرفع…"
+        ? speedText(item.speed, item.file.size - item.sent) || tr("عم يرفع…", "Uploading…")
         : item.status === "paused"
-          ? "موقّف"
+          ? tr("موقّف", "Paused")
           : item.status === "saving"
-            ? "عم يتجهّز…"
+            ? tr("عم يتجهّز…", "Getting ready…")
             : item.status === "done"
-              ? "انرفع"
-              : item.error || "ما زبط";
+              ? tr("انرفع", "Uploaded")
+              : item.error || tr("ما زبط", "That didn't work");
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center" data-testid="upload-row">
       <div className="min-w-0 flex-1">
@@ -177,17 +178,17 @@ function UploadRow({ item, onPause, onResume, onRemove }: { item: UploadItem; on
       <div className="flex shrink-0 gap-2">
         {item.status === "uploading" ? (
           <Button size="xs" variant="ghost" onClick={onPause}>
-            وقّف
+            {tr("توقيف", "Pause")}
           </Button>
         ) : null}
         {item.status === "paused" || item.status === "failed" ? (
           <Button size="xs" variant="secondary" onClick={onResume}>
-            كمّل
+            {tr("متابعة", "Resume")}
           </Button>
         ) : null}
         {item.status !== "saving" ? (
           <Button size="xs" variant="ghost" onClick={onRemove}>
-            {item.status === "done" ? "إخفاء" : "إلغاء"}
+            {item.status === "done" ? tr("إخفاء", "Hide") : tr("إلغاء", "Cancel")}
           </Button>
         ) : null}
       </div>
@@ -198,15 +199,15 @@ function UploadRow({ item, onPause, onResume, onRemove }: { item: UploadItem; on
 function VideoCard({ video, onOpen }: { video: Video; onOpen: () => void }) {
   return (
     <li>
-      <button type="button" onClick={onOpen} className="w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-right hover:border-white/20" data-testid="video-card">
+      <button type="button" onClick={onOpen} className="w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-start hover:border-white/20" data-testid="video-card">
         <div className="relative aspect-video w-full bg-black/40">
           {video.posterUrl ? <img src={video.posterUrl} alt="" loading="lazy" className="h-full w-full object-cover" /> : null}
-          <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] tabular-nums text-white">{durationText(video.durationMs)}</span>
+          <span className="absolute bottom-2 end-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] tabular-nums text-white">{durationText(video.durationMs)}</span>
         </div>
         <div className="p-3">
-          <div className="truncate text-sm font-medium">{video.displayName || "فيديو"}</div>
+          <div className="truncate text-sm font-medium">{video.displayName || tr("فيديو", "video")}</div>
           <div className="mt-1 text-[11px] text-white/50">
-            {[video.width && video.height ? `${video.width}×${video.height}` : null, video.fps ? `${Math.round(video.fps)} إطار` : null, formatBytes(video.size)].filter(Boolean).join(" · ")}
+            {[video.width && video.height ? `${video.width}×${video.height}` : null, video.fps ? tr(`${Math.round(video.fps)} إطار`, "{0} fps", [Math.round(video.fps)]) : null, formatBytes(video.size)].filter(Boolean).join(" · ")}
           </div>
           <div className="mt-1 text-[11px] text-white/60">{renditionsLine(video.renditions)}</div>
         </div>

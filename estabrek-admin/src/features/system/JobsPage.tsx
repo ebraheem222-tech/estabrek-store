@@ -69,7 +69,7 @@ export default function JobsPage() {
 
   if (!q.data) {
     return (
-      <div dir="rtl" className={box}>
+      <div className={box}>
         {q.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div> : <Spinner />}
       </div>
     );
@@ -82,7 +82,7 @@ export default function JobsPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4 pb-24" data-testid="jobs-page">
+    <div className="space-y-4 pb-24" data-testid="jobs-page">
       <section className={box}>
         <h1 className="text-lg font-semibold">المهام بالخلفية</h1>
         <p className="mt-1 text-sm text-white/60">

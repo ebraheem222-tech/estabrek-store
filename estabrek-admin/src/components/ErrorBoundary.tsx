@@ -1,4 +1,5 @@
 import React from "react";
+import { tr } from "@/lib/words";
 
 type Props = {
   children: React.ReactNode;
@@ -29,9 +30,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return (
       <div className="p-6">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-lg font-semibold">{this.props.title ?? "حدث خطأ"}</div>
+          <div className="text-lg font-semibold">{this.props.title ?? tr("حدث خطأ", "Something went wrong")}</div>
           <div className="mt-2 text-sm opacity-80">
-            افتح الـ Console عشان تشوف السطر اللي سبب المشكلة.
+            {tr("تفاصيل المشكلة بتطلع بالـ Console.", "Open the Console to see the line that caused it.")}
           </div>
           <pre className="mt-4 max-h-[50vh] overflow-auto rounded-xl bg-black/40 p-3 text-xs leading-relaxed">
             {String(error?.stack ?? error?.message ?? error)}

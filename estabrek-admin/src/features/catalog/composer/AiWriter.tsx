@@ -10,6 +10,7 @@ import type { ProductType } from "../../../api/productTypes.api";
 import type { ComposerDraft } from "./composerModel";
 import { fieldCls } from "./styles";
 import { cn } from "../../../components/ui/cn";
+import { tr } from "@/lib/words";
 
 type Props = {
   draft: ComposerDraft;
@@ -28,7 +29,7 @@ export function AiWriter({ draft, update, type, categoryName }: Props) {
   const write = useMutation({
     mutationFn: () => AiAPI.writeProduct({ images, title: draft.title || undefined, category: categoryName || undefined, type: type?.name, notes: notes.trim() || undefined, fields }),
     onSuccess: (r) => setResult(r),
-    onError: (e) => toast.error("ما زبطت الكتابة", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبطت الكتابة", "The writing didn't work"), { description: getApiErrorMessage(e) }),
   });
   if (!status.data?.productWriter) return null;
 
@@ -44,7 +45,7 @@ export function AiWriter({ draft, update, type, categoryName }: Props) {
       attributes: { ...(d.attributes ?? {}), ...result.attributes },
     }));
     setResult(null);
-    toast.success("انكتبت — راجعيها قبل الحفظ");
+    toast.success(tr("انكتبت — بدها مراجعة قبل الحفظ", "Written — check it before saving"));
   };
   const applyOne = (patch: (d: ComposerDraft) => ComposerDraft) => update(patch);
 
@@ -58,25 +59,25 @@ export function AiWriter({ draft, update, type, categoryName }: Props) {
           className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent-500 px-4 text-sm font-medium text-white disabled:opacity-50"
         >
           {write.isPending ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : "✨"}
-          {write.isPending ? "عم نكتب من الصور…" : "اكتبيلي من الصور"}
+          {write.isPending ? tr("عم نكتب من الصور…", "Writing from the photos…") : tr("اكتب من الصور", "Write it from the photos")}
         </button>
-        <span className="text-xs text-white/55">{images.length ? `من ${images.length} صور — إنتِ بتراجعي قبل ما يتغيّر إشي.` : "ارفعي صورة وحدة على الأقل أول."}</span>
+        <span className="text-xs text-white/55">{images.length ? tr(`من ${images.length} صور — المراجعة قبل ما يتغيّر إشي.`, "From {0} photos — you check it before anything changes.", [images.length]) : tr("لازم تنرفع صورة وحدة على الأقل أول.", "Upload at least one photo first.")}</span>
       </div>
-      <input className={cn(fieldCls, "mt-2 h-10 text-sm")} value={notes} maxLength={600} onChange={(e) => setNotes(e.target.value)} placeholder="ملاحظة للكتابة (اختياري): القماش، الطول، لمين مناسبة…" aria-label="ملاحظة للكتابة" />
+      <input className={cn(fieldCls, "mt-2 h-10 text-sm")} value={notes} maxLength={600} onChange={(e) => setNotes(e.target.value)} placeholder={tr("ملاحظة للكتابة (اختياري): القماش، الطول، لمين مناسبة…", "A note for the writing (optional): fabric, length, who it suits…")} aria-label={tr("ملاحظة للكتابة", "A note for the writing")} />
 
       {result ? (
         <div className="mt-3 space-y-2 text-sm" data-testid="ai-writer-result">
-          <Suggestion label="الاسم" value={result.title} onUse={() => applyOne((d) => ({ ...d, title: result.title }))} />
-          <Suggestion label="الوصف" value={result.description} multiline onUse={() => applyOne((d) => ({ ...d, description: result.description }))} />
-          <Suggestion label="العنوان بجوجل" value={result.seoTitle} onUse={() => applyOne((d) => ({ ...d, seoTitle: result.seoTitle }))} />
-          <Suggestion label="الوصف بجوجل" value={result.seoDescription} onUse={() => applyOne((d) => ({ ...d, seoDescription: result.seoDescription }))} />
+          <Suggestion label={tr("الاسم", "Name")} value={result.title} onUse={() => applyOne((d) => ({ ...d, title: result.title }))} />
+          <Suggestion label={tr("الوصف", "Description")} value={result.description} multiline onUse={() => applyOne((d) => ({ ...d, description: result.description }))} />
+          <Suggestion label={tr("العنوان بجوجل", "Title on Google")} value={result.seoTitle} onUse={() => applyOne((d) => ({ ...d, seoTitle: result.seoTitle }))} />
+          <Suggestion label={tr("الوصف بجوجل", "Description on Google")} value={result.seoDescription} onUse={() => applyOne((d) => ({ ...d, seoDescription: result.seoDescription }))} />
           {Object.entries(result.attributes).map(([k, v]) => (
-            <Suggestion key={k} label={label(k)} value={Array.isArray(v) ? v.join("، ") : String(v)} onUse={() => applyOne((d) => ({ ...d, attributes: { ...(d.attributes ?? {}), [k]: v } }))} />
+            <Suggestion key={k} label={label(k)} value={Array.isArray(v) ? v.join(tr("، ", ", ")) : String(v)} onUse={() => applyOne((d) => ({ ...d, attributes: { ...(d.attributes ?? {}), [k]: v } }))} />
           ))}
-          {result.colors.length ? <p className="text-xs text-white/50">الألوان اللي شافتها: {result.colors.join("، ")}</p> : null}
+          {result.colors.length ? <p className="text-xs text-white/50">{tr("الألوان اللي انشافت:", "Colours it saw:")} {result.colors.join(tr("، ", ", "))}</p> : null}
           <div className="flex flex-wrap gap-2 pt-1">
-            <button type="button" onClick={useAll} className="h-9 rounded-xl bg-accent-500 px-4 text-sm text-white">استعملي الكل</button>
-            <button type="button" onClick={() => setResult(null)} className="h-9 rounded-xl border border-white/[0.12] px-4 text-sm text-white/75">تجاهلي</button>
+            <button type="button" onClick={useAll} className="h-9 rounded-xl bg-accent-500 px-4 text-sm text-white">{tr("استعمال الكل", "Use all")}</button>
+            <button type="button" onClick={() => setResult(null)} className="h-9 rounded-xl border border-white/[0.12] px-4 text-sm text-white/75">{tr("تجاهل", "Ignore")}</button>
           </div>
         </div>
       ) : null}
@@ -93,7 +94,7 @@ function Suggestion({ label, value, onUse, multiline }: { label: string; value: 
         <span className="block text-[11px] text-white/45">{label}</span>
         <span className={cn("block text-white/90", multiline ? "whitespace-pre-wrap leading-6" : "truncate")}>{value}</span>
       </div>
-      <button type="button" onClick={() => { onUse(); setUsed(true); }} className="shrink-0 rounded-lg border border-white/[0.12] px-2 py-1 text-xs text-white/80 hover:border-white/25">{used ? "✓" : "استعملي"}</button>
+      <button type="button" onClick={() => { onUse(); setUsed(true); }} className="shrink-0 rounded-lg border border-white/[0.12] px-2 py-1 text-xs text-white/80 hover:border-white/25">{used ? "✓" : tr("استعمال", "Use")}</button>
     </div>
   );
 }

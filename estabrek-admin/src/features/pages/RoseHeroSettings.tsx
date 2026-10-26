@@ -14,7 +14,7 @@ export function RoseHeroSettings({
       dir="rtl"
     >
       <summary className="cursor-pointer text-sm font-semibold text-pink-200">
-        استبرق — الصفحة الوردية وتجربة الأقمشة 3D
+        التصميم الوردي — الصفحة الوردية وتجربة الأقمشة 3D
       </summary>
       <div className="mt-4 space-y-4">
         <p className="text-xs leading-6 text-white/60">
@@ -44,14 +44,14 @@ export function RoseHeroSettings({
               rows={4}
               className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-white outline-none focus:border-pink-300/50"
             />
-            <span className="block text-xs text-white/50">حتى 6 جمل. اتركيها فارغة لاستخدام جمل استبرق.</span>
+            <span className="block text-xs text-white/50">حتى 6 جمل. اتركيها فارغة لاستخدام جمل التصميم الجاهزة.</span>
           </label>
           <label className="block space-y-2 text-sm">
             <span>الجملة الختامية</span>
             <textarea
               value={value.roseFilmClosing || ""}
               onChange={(e) => onChange({ ...value, roseFilmClosing: e.target.value })}
-              placeholder={"استبرق…\nأناقةٌ تليق بكِ."}
+              placeholder={"اسم المتجر…\nأناقةٌ تليق بكِ."}
               rows={2}
               className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-white outline-none focus:border-pink-300/50"
             />

@@ -19,6 +19,10 @@ import { LqipImage } from "@/components/LqipImage";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { roseReact } from "@/lib/roseEvents";
+import { StoreMark } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { dirOf } from "@/lib/i18n";
+import { isRtl } from "@/lib/i18n";
 
 type Mode = "quickview" | "quickadd";
 
@@ -33,7 +37,8 @@ function shellHost() {
  * product photo, follow the chosen colour, and add to the bag.
  */
 export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: { product: CatalogProduct; mode: Mode; onClose: () => void; onAdded?: () => void }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const [product, setProduct] = useState(initial);
   const items = useMemo(() => product.items ?? [], [product]);
   const [colorKey, setColorKey] = useState(() => (items[0] ? catalogItemKey(items[0], 0) : ""));
@@ -68,11 +73,11 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
     const thin = !imagesFor(initial, initial.items?.[0]).length || (initial.items ?? []).some((it) => (it.variants ?? []).some((v) => !v.size?.name));
     if (!thin) return;
     let alive = true;
-    (initial.slug ? getProductBySlugClient(initial.slug) : getProductByIdClient(initial.id))
+    (initial.slug ? getProductBySlugClient(initial.slug, lang) : getProductByIdClient(initial.id, lang))
       .then((full) => { if (alive && full) setProduct(full); })
       .catch(() => {});
     return () => { alive = false; };
-  }, [initial]);
+  }, [initial, lang]);
 
   // The sheet takes the piece's colour on its own (the shopper's current colour
   // when the piece comes in it, otherwise its first colour in stock).
@@ -90,7 +95,7 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
 
   useEffect(() => {
     const el = panel.current;
-    if (el) gsap.fromTo(el, mode === "quickview" ? { opacity: 0, y: 24, scale: 0.98 } : { opacity: 0, x: ar ? -40 : 40 }, { opacity: 1, y: 0, x: 0, scale: 1, duration: 0.35, ease: "power3.out", clearProps: "transform" });
+    if (el) gsap.fromTo(el, mode === "quickview" ? { opacity: 0, y: 24, scale: 0.98 } : { opacity: 0, x: isRtl(lang) ? -40 : 40 }, { opacity: 1, y: 0, x: 0, scale: 1, duration: 0.35, ease: "power3.out", clearProps: "transform" });
     closeButton.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", onKey);
@@ -108,7 +113,7 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
     setClosing(true);
     const el = panel.current;
     if (!el) return onClose();
-    gsap.to(el, { opacity: 0, ...(mode === "quickview" ? { y: 16 } : { x: ar ? -40 : 40 }), duration: 0.22, ease: "power1.in", onComplete: onClose });
+    gsap.to(el, { opacity: 0, ...(mode === "quickview" ? { y: 16 } : { x: isRtl(lang) ? -40 : 40 }), duration: 0.22, ease: "power1.in", onComplete: onClose });
   }
 
   const pickColor = (key: string, hex: string | null) => {
@@ -123,7 +128,7 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
     trackAddToCart(productItem(product, { color: item?.colorName, size: (variant as any).size?.name, price, quantity: Math.max(1, qty) }), (product as any).currencyCode ?? undefined);
     fireConfetti(event.clientX, event.clientY);
     toast.cartAdded(product.title);
-    setStatus(ar ? "أُضيفت القطعة إلى حقيبتكِ." : "Added to your bag.");
+    setStatus(tr(lang, "أُضيفت القطعة إلى حقيبتكِ.", "Added to your bag."));
     onAdded?.();
     window.setTimeout(close, 800);
   };
@@ -133,17 +138,17 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
 
   const current = images[Math.min(photo, Math.max(0, images.length - 1))];
   const sheet = (
-    <div className={`rose-sheet-layer rose-sheet-${mode}${closing ? " closing" : ""}`} dir={ar ? "rtl" : "ltr"} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+    <div className={`rose-sheet-layer rose-sheet-${mode}${closing ? " closing" : ""}`} dir={dirOf(lang)} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
       <div
         ref={panel}
         className="rose-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label={mode === "quickview" ? (ar ? `معاينة ${product.title}` : `Preview ${product.title}`) : (ar ? `أضيفي ${product.title} للحقيبة` : `Add ${product.title} to bag`)}
+        aria-label={mode === "quickview" ? (tr(lang, `معاينة ${product.title}`, "Preview {0}", [product.title])) : (tr(lang, `أضيفي ${product.title} للحقيبة`, "Add {0} to bag", [product.title]))}
       >
         <div className="rose-sheet-top">
-          <span className="atelier-eyebrow">{mode === "quickview" ? (ar ? "معاينة سريعة" : "QUICK VIEW") : (ar ? "إضافة سريعة" : "QUICK ADD")}</span>
-          <button ref={closeButton} type="button" className="rose-sheet-close" onClick={close} aria-label={ar ? "إغلاق" : "Close"}><Icon name="close" /></button>
+          <span className="atelier-eyebrow">{mode === "quickview" ? (tr(lang, "معاينة سريعة", "QUICK VIEW")) : (tr(lang, "إضافة سريعة", "QUICK ADD"))}</span>
+          <button ref={closeButton} type="button" className="rose-sheet-close" onClick={close} aria-label={tr(lang, "إغلاق", "Close")}><Icon name="close" /></button>
         </div>
 
         <div className="rose-sheet-media">
@@ -151,18 +156,18 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
             {current ? (
               <LqipImage key={current} src={cldUrl(current, { w: 900, h: 1125, c: "fill", g: "auto" })} alt={`${product.title}${item ? ` — ${catalogItemLabel(item, itemIndex)}` : ""}`} fill priority sizes={mode === "quickview" ? "(max-width: 760px) 100vw, 420px" : "160px"} className="object-cover" />
             ) : (
-              <span className="rose-image-placeholder">استبرق</span>
+              <span className="rose-image-placeholder"><StoreMark /></span>
             )}
           </Link>
           {mode === "quickview" && (
-            <button type="button" className="rose-pdp-wish rose-sheet-wish" aria-pressed={saved} onClick={toggleWish} aria-label={saved ? (ar ? "إزالة من المفضلة" : "Remove from wishlist") : (ar ? "أضيفي للمفضلة" : "Save to wishlist")}>
+            <button type="button" className="rose-pdp-wish rose-sheet-wish" aria-pressed={saved} onClick={toggleWish} aria-label={saved ? (tr(lang, "إزالة من المفضلة", "Remove from wishlist")) : (tr(lang, "أضيفي للمفضلة", "Save to wishlist"))}>
               <Icon name="heart" />
             </button>
           )}
           {mode === "quickview" && images.length > 1 && (
-            <div className="rose-sheet-thumbs" role="tablist" aria-label={ar ? "اختاري صورة" : "Choose a photo"}>
+            <div className="rose-sheet-thumbs" role="tablist" aria-label={tr(lang, "اختاري صورة", "Choose a photo")}>
               {images.slice(0, 6).map((src, i) => (
-                <button key={src} type="button" role="tab" aria-selected={i === photo} aria-label={`${ar ? "صورة" : "Photo"} ${i + 1}`} onClick={() => setPhoto(i)}>
+                <button key={src} type="button" role="tab" aria-selected={i === photo} aria-label={`${tr(lang, "صورة", "Photo")} ${i + 1}`} onClick={() => setPhoto(i)}>
                   <LqipImage src={cldUrl(src, { w: 120, h: 150, c: "fill", g: "auto" })} alt="" fill sizes="56px" className="object-cover" showSkeleton={false} />
                 </button>
               ))}
@@ -174,14 +179,14 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
           {product.category?.name && <span className="rose-sheet-category">{product.category.name}</span>}
           <h2>{product.title}</h2>
           <div className="rose-sheet-price">
-            {price != null && price > 0 ? <strong>{formatMoney(price, (product as any).currencyCode ?? undefined)}</strong> : <strong>{ar ? "تواصلي معنا للسعر" : "Ask us for the price"}</strong>}
+            {price != null && price > 0 ? <strong>{formatMoney(price, (product as any).currencyCode ?? undefined)}</strong> : <strong>{tr(lang, "تواصلي معنا للسعر", "Ask us for the price")}</strong>}
             {compareAt && price && compareAt > price ? <s>{formatMoney(compareAt, (product as any).currencyCode ?? undefined)}</s> : null}
           </div>
 
           {items.length > 0 && (
             <div className="rose-sheet-option">
-              <div className="rose-sheet-label">{ar ? "اللون" : "Colour"}: <b>{item ? catalogItemLabel(item, itemIndex) : ""}</b></div>
-              <div className="rose-pdp-swatches rose-sheet-swatches" role="radiogroup" aria-label={ar ? "اللون" : "Colour"}>
+              <div className="rose-sheet-label">{tr(lang, "اللون", "Colour")}: <b>{item ? catalogItemLabel(item, itemIndex) : ""}</b></div>
+              <div className="rose-pdp-swatches rose-sheet-swatches" role="radiogroup" aria-label={tr(lang, "اللون", "Colour")}>
                 {items.map((it, i) => {
                   const key = catalogItemKey(it, i);
                   const hex = itemHex(it);
@@ -209,13 +214,13 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
 
           {sizes.length > 0 && !(sizes.length === 1 && sizes[0] === "default") && (
             <div className="rose-sheet-option">
-              <div className="rose-sheet-label">{ar ? "المقاس" : "Size"}: <b>{sizeKey === "default" ? (ar ? "مقاس واحد" : "One size") : sizeKey}</b></div>
-              <div className="rose-pdp-sizes" role="radiogroup" aria-label={ar ? "المقاس" : "Size"}>
+              <div className="rose-sheet-label">{tr(lang, "المقاس", "Size")}: <b>{sizeKey === "default" ? (tr(lang, "مقاس واحد", "One size")) : sizeKey}</b></div>
+              <div className="rose-pdp-sizes" role="radiogroup" aria-label={tr(lang, "المقاس", "Size")}>
                 {sizes.map((key) => {
                   const v = variants.find((x) => sizeKeyOf(x) === key);
                   return (
                     <button key={key} type="button" role="radio" aria-checked={key === sizeKey} disabled={!inStock(v)} className={key === sizeKey ? "active" : undefined} onClick={() => { setSizeKey(key); setStatus(null); roseReact("size-pick"); }}>
-                      {key === "default" ? (ar ? "مقاس واحد" : "One size") : key}
+                      {key === "default" ? (tr(lang, "مقاس واحد", "One size")) : key}
                     </button>
                   );
                 })}
@@ -224,19 +229,19 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
           )}
 
           <div className="rose-pdp-buy rose-sheet-buy">
-            <div className="rose-pdp-qty" aria-label={ar ? "الكمية" : "Quantity"}>
-              <button type="button" aria-label={ar ? "زيادة" : "More"} onClick={() => setQty((q) => Math.min(20, q + 1))}>+</button>
-              <input type="number" min={1} max={20} value={qty} onChange={(e) => setQty(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} aria-label={ar ? "الكمية" : "Quantity"} />
-              <button type="button" aria-label={ar ? "إنقاص" : "Less"} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
+            <div className="rose-pdp-qty" aria-label={tr(lang, "الكمية", "Quantity")}>
+              <button type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQty((q) => Math.min(20, q + 1))}>+</button>
+              <input type="number" min={1} max={20} value={qty} onChange={(e) => setQty(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} aria-label={tr(lang, "الكمية", "Quantity")} />
+              <button type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
             </div>
             <button type="button" className="atelier-button button-dark rose-pdp-add" disabled={!available} onClick={add}>
-              {available ? (ar ? "أضيفي للحقيبة" : "Add to bag") : (ar ? "غير متوفر" : "Unavailable")}
+              {available ? (tr(lang, "أضيفي للحقيبة", "Add to bag")) : (tr(lang, "غير متوفر", "Unavailable"))}
               <Icon name="bag" />
             </button>
           </div>
           {status && <p className="rose-pdp-status" role="status">{status}</p>}
           <Link href={href} className="atelier-text-link rose-sheet-details" onClick={() => onClose()}>
-            {ar ? "كل التفاصيل" : "Full details"}
+            {tr(lang, "كل التفاصيل", "Full details")}
             <Icon name="arrow" />
           </Link>
         </div>

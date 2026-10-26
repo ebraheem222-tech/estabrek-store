@@ -3,6 +3,8 @@ import React, { useEffect, useState } from "react";
 import { cn } from "../../components/ui/cn";
 import { STATUS_INFO, TONE_CLASS, isPaid, sourceLabel, type DeliverySettings, type DeliveryZone, type OrderStatus } from "../../lib/orders";
 import { useSaveDelivery } from "./useDelivery";
+import { currencySign } from "../../lib/money";
+import { tr } from "@/lib/words";
 
 export function StatusPill({ status, className }: { status: string; className?: string }) {
   const info = STATUS_INFO[status as OrderStatus];
@@ -26,8 +28,8 @@ export function SourceChip({ source }: { source?: string | null }) {
 
 export function PaidChip({ order }: { order: { paymentStatus?: string | null } }) {
   return isPaid(order)
-    ? <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] text-emerald-300">✓ تم الدفع</span>
-    : <span className="inline-flex items-center whitespace-nowrap rounded-full bg-white/[0.05] px-2 py-0.5 text-[11px] text-white/50">الدفع عند الاستلام</span>;
+    ? <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] text-emerald-300">{tr("✓ تم الدفع", "✓ Paid")}</span>
+    : <span className="inline-flex items-center whitespace-nowrap rounded-full bg-white/[0.05] px-2 py-0.5 text-[11px] text-white/50">{tr("الدفع عند الاستلام", "Pay on delivery")}</span>;
 }
 
 export function WhatsAppIcon({ className }: { className?: string }) {
@@ -77,41 +79,41 @@ function DeliveryForm({ value, onClose }: { value: DeliverySettings; onClose: ()
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-label="أسعار التوصيل" dir="rtl" className="glass max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-surface-950 p-5">
+      <div role="dialog" aria-modal="true" aria-label={tr("أسعار التوصيل", "Delivery prices")} className="glass max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-surface-950 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">أسعار التوصيل</h2>
-            <p className="mt-1 text-xs leading-5 text-white/55">مناطق التوصيل وسعر كل منطقة. نختار المنطقة من مدينة الزبونة تلقائياً، وتظهر في الطلب والفاتورة ورسالة الواتساب.</p>
+            <h2 className="text-lg font-semibold text-white">{tr("أسعار التوصيل", "Delivery prices")}</h2>
+            <p className="mt-1 text-xs leading-5 text-white/55">{tr("مناطق التوصيل وسعر كل منطقة. بنختار المنطقة من مدينة الزبون تلقائياً، وبتظهر بالطلب والفاتورة ورسالة الواتساب.", "Delivery areas and each one's price. We pick the area from the customer's city automatically; it shows on the order, the invoice and the WhatsApp message.")}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-white/60 hover:bg-white/[0.06] hover:text-white" aria-label="إغلاق">✕</button>
+          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-white/60 hover:bg-white/[0.06] hover:text-white" aria-label={tr("إغلاق", "Close")}>✕</button>
         </div>
         <div className="mt-4 space-y-3">
           {zones.map((z, i) => (
             <div key={z.id} className="grid gap-2 rounded-xl border border-white/[0.08] p-3 sm:grid-cols-[1fr_110px_auto]">
-              <input className={field} placeholder="اسم المنطقة (مثلاً: القدس)" value={z.name} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} aria-label="اسم المنطقة" />
+              <input className={field} placeholder={tr("اسم المنطقة (مثلاً: القدس)", "Area name (e.g. Jerusalem)")} value={z.name} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} aria-label={tr("اسم المنطقة", "Area name")} />
               <div className="relative">
-                <input className={cn(field, "ps-7")} inputMode="decimal" placeholder="السعر" value={z.feeText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, feeText: e.target.value.replace(/[^\d.]/g, "") } : x)))} aria-label="سعر التوصيل" />
-                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-white/40">₪</span>
+                <input className={cn(field, "ps-7")} inputMode="decimal" placeholder={tr("السعر", "Price")} value={z.feeText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, feeText: e.target.value.replace(/[^\d.]/g, "") } : x)))} aria-label={tr("سعر التوصيل", "Delivery price")} />
+                <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-xs text-white/40">{currencySign()}</span>
               </div>
-              <button type="button" onClick={() => setZones((all) => all.filter((_, j) => j !== i))} className="h-10 rounded-xl px-3 text-sm text-red-300/80 hover:bg-red-500/10">حذف</button>
-              <input className={cn(field, "sm:col-span-3")} placeholder="المدن (افصلي بفاصلة): القدس، بيت حنينا، شعفاط" value={z.citiesText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, citiesText: e.target.value } : x)))} aria-label="المدن" />
+              <button type="button" onClick={() => setZones((all) => all.filter((_, j) => j !== i))} className="h-10 rounded-xl px-3 text-sm text-red-300/80 hover:bg-red-500/10">{tr("حذف", "Delete")}</button>
+              <input className={cn(field, "sm:col-span-3")} placeholder={tr("المدن (مفصولة بفاصلة): القدس، بيت حنينا، شعفاط", "Cities (separated by commas): Jerusalem, Beit Hanina, Shuafat")} value={z.citiesText} onChange={(e) => setZones((all) => all.map((x, j) => (j === i ? { ...x, citiesText: e.target.value } : x)))} aria-label={tr("المدن", "Cities")} />
             </div>
           ))}
-          <button type="button" onClick={() => setZones((all) => [...all, { id: `z${Date.now().toString(36)}`, name: "", fee: 0, cities: [], citiesText: "", feeText: "" }])} className="text-sm text-accent-300 hover:text-accent-200">+ إضافة منطقة</button>
+          <button type="button" onClick={() => setZones((all) => [...all, { id: `z${Date.now().toString(36)}`, name: "", fee: 0, cities: [], citiesText: "", feeText: "" }])} className="text-sm text-accent-300 hover:text-accent-200">{tr("+ إضافة منطقة", "+ Add an area")}</button>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-white/60">
-            سعر التوصيل لباقي المدن
-            <input className={cn(field, "mt-1")} inputMode="decimal" placeholder="اتركيها فارغة إذا غير معروف" value={defaultFee} onChange={(e) => setDefaultFee(e.target.value.replace(/[^\d.]/g, ""))} />
+            {tr("سعر التوصيل لباقي المدن", "Delivery price for the other cities")}
+            <input className={cn(field, "mt-1")} inputMode="decimal" placeholder={tr("فارغ إذا غير معروف", "Leave empty if unknown")} value={defaultFee} onChange={(e) => setDefaultFee(e.target.value.replace(/[^\d.]/g, ""))} />
           </label>
           <label className="text-xs text-white/60">
-            توصيل مجاني للطلبات فوق
-            <input className={cn(field, "mt-1")} inputMode="decimal" placeholder="مثلاً 300 — فارغ = بدون" value={freeOver} onChange={(e) => setFreeOver(e.target.value.replace(/[^\d.]/g, ""))} />
+            {tr("توصيل مجاني للطلبات فوق", "Free delivery for orders over")}
+            <input className={cn(field, "mt-1")} inputMode="decimal" placeholder={tr("مثلاً 300 — فارغ = بدون", "e.g. 300 — empty = none")} value={freeOver} onChange={(e) => setFreeOver(e.target.value.replace(/[^\d.]/g, ""))} />
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-sm text-white/70 hover:bg-white/[0.06]">إلغاء</button>
-          <button type="button" disabled={save.isPending} onClick={() => void submit()} className="h-10 rounded-xl bg-accent-500 px-5 text-sm font-semibold text-white hover:bg-accent-400 disabled:opacity-60">{save.isPending ? "جارٍ الحفظ…" : "حفظ"}</button>
+          <button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-sm text-white/70 hover:bg-white/[0.06]">{tr("إلغاء", "Cancel")}</button>
+          <button type="button" disabled={save.isPending} onClick={() => void submit()} className="h-10 rounded-xl bg-accent-500 px-5 text-sm font-semibold text-white hover:bg-accent-400 disabled:opacity-60">{save.isPending ? tr("جارٍ الحفظ…", "Saving…") : tr("حفظ", "Save")}</button>
         </div>
       </div>
     </div>

@@ -24,6 +24,9 @@ import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
 import { RoseMascot, type MascotHandle, type PalmRef } from "./mascot/RoseMascot";
 import type { RoseExtras, RoseOutfit } from "@/lib/roseEvents";
+import { useNames } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { isRtl } from "@/lib/i18n";
 
 const CollectionModelsScene = dynamic(() => import("./CollectionModelsScene"), { ssr: false, loading: () => null });
 
@@ -37,29 +40,32 @@ const STORY_OUTFIT: Record<StoryKey, { outfit: RoseOutfit; extras: RoseExtras }>
 };
 
 /** What Rose says as she lifts each chapter's model. */
-const ROSE_LINE: Record<StoryKey, { ar: string; en: string }> = {
-  accessories: { ar: "شوفي هالتفاصيل الحلوة ✨", en: "Look at these little details ✨" },
-  kids: { ar: "للصغيرات الحلوات 💕", en: "For the little ones 💕" },
-  incense: { ar: "ريحة البخور بتجنن 🤍", en: "Smell that bakhoor 🤍" },
+const ROSE_LINE: Record<StoryKey, { ar: string; en: string; he: string }> = {
+  accessories: { ar: "شوفي هالتفاصيل الحلوة ✨", en: "Look at these little details ✨", he: "איזה פרטים קטנים ויפים ✨" },
+  kids: { ar: "للصغيرات الحلوات 💕", en: "For the little ones 💕", he: "לקטנות המתוקות 💕" },
+  incense: { ar: "ريحة البخور بتجنن 🤍", en: "Smell that bakhoor 🤍", he: "ריח הקטורת פשוט מדהים 🤍" },
 };
-const STORY: Record<StoryKey, { seed: string; fallback: string; ar: Copy; en: Copy }> = {
+const STORY: Record<StoryKey, { seed: string; fallback: string; ar: Copy; en: Copy; he: Copy }> = {
   accessories: {
     seed: "#c4a266",
     fallback: "/editorial/scarves.webp",
     ar: { eyebrow: "الإكسسوارات", title: "معاصم، دبابيس\nوقمطات.", text: "خاتم التسبيح الإلكتروني، دبابيس الشال، المعاصم والبيسك… كل ما يثبّت لفّتكِ ويكمّلها.", cta: "تسوّقي الإكسسوارات" },
     en: { eyebrow: "ACCESSORIES", title: "Sleeves, pins\nand underscarves.", text: "The electronic tasbih ring, shawl pins, sleeves and underscarves: everything that holds your wrap in place.", cta: "Shop accessories" },
+    he: { eyebrow: "אקססוריז", title: "שרוולים, סיכות\nוכיסויים פנימיים.", text: "טבעת תשביח אלקטרונית, סיכות לצעיף, שרוולים וכיסויים פנימיים: כל מה שמחזיק את הכיסוי במקום ומשלים אותו.", cta: "לאקססוריז" },
   },
   kids: {
     seed: "#e59b9b",
     fallback: "/editorial/hijab-campaign.webp",
     ar: { eyebrow: "للصغيرات", title: "فساتين وأطقم\nللبنات الصغيرات.", text: "فساتين مورّدة وأطقم مريحة بألوان فرحة.", cta: "تسوّقي الأطفال" },
     en: { eyebrow: "FOR LITTLE ONES", title: "Dresses and sets\nfor little girls.", text: "Floral dresses and comfy sets in happy colours.", cta: "Shop kids" },
+    he: { eyebrow: "לקטנות", title: "שמלות וסטים\nלבנות קטנות.", text: "שמלות פרחוניות וסטים נוחים בצבעים שמחים.", cta: "לקולקציית הילדות" },
   },
   incense: {
     seed: "#9b6b4e",
     fallback: "/editorial/rose-campaign-poster.webp",
     ar: { eyebrow: "المباخر", title: "مباخر خشب\nونقش عربي.", text: "مباخر من الخشب والبورسلان بنقوش عربية، مع عيدان البخور وتوزيعات العطر.", cta: "تسوّقي المباخر" },
     en: { eyebrow: "INCENSE BURNERS", title: "Wooden burners,\nArabic carving.", text: "Wood and porcelain burners with Arabic carving, plus incense sticks and perfume favours.", cta: "Shop incense burners" },
+    he: { eyebrow: "מבערי קטורת", title: "מבערים מעץ\nועיטור ערבי.", text: "מבערי קטורת מעץ ומפורצלן עם עיטורים ערביים, יחד עם מקלות קטורת ומתנות בושם.", cta: "למבערי הקטורת" },
   },
 };
 
@@ -85,6 +91,7 @@ class SceneBoundary extends Component<{ children: ReactNode; onError: () => void
 }
 
 function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
+  const { language: lang } = useLanguage();
   const fallback = STORY[chapter.key].fallback;
   if (!chapter.products.length) return null;
   return (
@@ -100,7 +107,7 @@ function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
             <span className="season-card-title">{p.title}</span>
             {p.priceText && <span className="season-card-price">{p.priceText}</span>}
           </Link>
-          <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={ar ? "إضافة سريعة" : "Quick add"} />
+          <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={tr(lang, "إضافة سريعة", "Quick add")} />
         </article>
       ))}
     </div>
@@ -115,7 +122,9 @@ function StoryRack({ chapter, ar }: { chapter: StoryChapter; ar: boolean }) {
  */
 export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) {
   const { language } = useLanguage();
-  const ar = language === "ar";
+  const lang = language;
+  const ar = lang === "ar";
+  const n = useNames();
   const settings = useStorefrontSettings();
   const theme = useRoseTheme();
   const root = useRef<HTMLElement>(null);
@@ -302,11 +311,11 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
     const key = chapters[lead]?.key;
     if (!key) return;
     const t = window.setTimeout(() => {
-      rose.current?.say(ROSE_LINE[key][ar ? "ar" : "en"], 2600);
+      rose.current?.say(ROSE_LINE[key][lang], 2600);
       rose.current?.joy();
     }, 350);
     return () => window.clearTimeout(t);
-  }, [lead, motion, inView, chapters, ar]);
+  }, [lead, motion, inView, chapters, ar, lang]);
 
   // Phones: stand in the free corner above the products (measured, see phoneSpot.ts).
   useEffect(() => {
@@ -329,7 +338,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
       data-chapter={chapters[0].key}
       data-scene={sceneReady && !sceneFailed ? "ready" : "static"}
       style={{ "--chapters": chapters.length } as CSSProperties}
-      aria-label={ar ? "من عوالم استبرق" : "More from Estabrek"}
+      aria-label={tr(lang, `من عوالم ${n.store}`, "More from {0}", [n.store])}
     >
       <div className="stories-sticky">
         <div className="story-sky" aria-hidden="true">
@@ -362,14 +371,14 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
             pose={sceneFailed ? "idle" : "hold"}
             outfit={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].outfit}
             extras={STORY_OUTFIT[chapters[lead]?.key ?? "accessories"].extras}
-            mirrored={!ar}
+            mirrored={!isRtl(lang)}
             palm={palm}
-            label={ar ? "رَزان تعرض المجموعة" : "Rose presents the collection"}
+            label={tr(lang, `${n.assistantFull} تعرض المجموعة`, "{0} presents the collection", [n.assistantFull])}
           />
         )}
         <div className="story-stage">
           {chapters.map((chapter, i) => {
-            const c = STORY[chapter.key][ar ? "ar" : "en"];
+            const c = STORY[chapter.key][lang];
             return (
               <div key={chapter.key} className={`story-layer story-${chapter.key}`} style={{ "--v": i === 0 ? "1" : "0" } as CSSProperties}>
                 <div className="season-copy story-copy">
@@ -394,7 +403,7 @@ export function RoseCollectionStory({ chapters }: { chapters: StoryChapter[] }) 
           {chapters.map((chapter, i) => (
             <li key={chapter.key} className="story-meter-step" data-active={i === 0 ? "" : undefined}>
               <span />
-              {STORY[chapter.key][ar ? "ar" : "en"].eyebrow}
+              {STORY[chapter.key][lang].eyebrow}
             </li>
           ))}
         </ol>

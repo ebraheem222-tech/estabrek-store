@@ -51,9 +51,11 @@ export function rememberSearch(q: string) {
   const text = q.trim().slice(0, 80);
   if (!text || !on()) return;
   const s = read();
+  // The same search again (the page reloaded or drew twice) isn't a second search.
+  const again = s.searches[0]?.q === text;
   s.searches = [{ q: text, at: Date.now() }, ...s.searches.filter((x) => x.q !== text)].slice(0, 10);
   write(s);
-  bumpTrail("search");
+  if (!again) bumpTrail("search");
 }
 
 export function rememberRemoved(e: Omit<RemovedEntry, "at">) {
@@ -109,6 +111,8 @@ function bumpTrail(kind: "search") {
 export function noteVisit(path: string): "revisit" | "search-again" | null {
   const t = trail();
   const isPiece = path.startsWith("/p/");
+  // The same piece again with nothing between (a reload, or the page drawn twice) isn't a new visit.
+  if (isPiece && t.pages[t.pages.length - 1] === path) return null;
   const seenBefore = isPiece && t.pages.includes(path);
   const others = new Set(t.pages.filter((p) => p !== path && p.startsWith("/p/"))).size;
   if (isPiece) t.pages.push(path);

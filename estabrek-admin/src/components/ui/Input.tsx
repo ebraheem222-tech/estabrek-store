@@ -28,7 +28,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(
         )}
         <div className="relative group">
           {leftIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
+            <div className="absolute start-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
               {leftIcon}
             </div>
           )}
@@ -44,8 +44,8 @@ export const Input = forwardRef<HTMLInputElement, Props>(
               error
                 ? "border-red-500/50 focus:ring-red-500/20 focus:border-red-500/50"
                 : "border-white/[0.06] hover:border-white/[0.1]",
-              !!leftIcon && "pr-10",
-              !!rightIcon && "pl-10",
+              !!leftIcon && "ps-10",
+              !!rightIcon && "pe-10",
               className
             )}
             onChange={(e) => {
@@ -75,7 +75,7 @@ export const Input = forwardRef<HTMLInputElement, Props>(
             {...rest}
           />
           {rightIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
+            <div className="absolute end-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-accent-400">
               {rightIcon}
             </div>
           )}

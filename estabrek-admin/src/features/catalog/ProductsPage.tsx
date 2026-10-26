@@ -11,6 +11,7 @@ import type { ProductImportRow } from "../../api/catalog.api";
 import { toast } from "@/lib/toast";
 import { makeSlug, parsePrice } from "../../lib/productComposer";
 import { ProductList } from "./ProductList";
+import { tr } from "@/lib/words";
 
 // Arabic titles become latin links too ("فستان الورد" → "fstan-alwrd").
 function slugify(input: string) {
@@ -127,10 +128,10 @@ function validateImportRows(rows: ProductImportRow[], opts: { defaultCategoryId?
   const issues: Record<number, string[]> = {};
   rows.forEach((r, idx) => {
     const errs: string[] = [];
-    if (!r.title?.trim()) errs.push("العنوان (title) مطلوب");
-    if (r.slug && !/^[a-z0-9-]+$/.test(r.slug)) errs.push("slug غير صالح (استخدم أحرف/أرقام و - فقط)");
+    if (!r.title?.trim()) errs.push(tr("العنوان (title) مطلوب", "The title is required"));
+    if (r.slug && !/^[a-z0-9-]+$/.test(r.slug)) errs.push(tr("slug غير صالح (أحرف/أرقام و - فقط)", "The slug isn't valid (letters, digits and - only)"));
     const hasCategory = Boolean(r.categoryId || r.categorySlug || r.categoryName || opts.defaultCategoryId);
-    if (!hasCategory) errs.push("لا يوجد تصنيف (category) — اختر default category أو ضع categoryId/categorySlug/categoryName");
+    if (!hasCategory) errs.push(tr("لا يوجد قسم (category) — يرجى اختيار default category أو تعبئة categoryId/categorySlug/categoryName", "No category — choose a default category or fill categoryId/categorySlug/categoryName"));
     if (errs.length) issues[idx] = errs;
   });
   return issues;
@@ -214,9 +215,9 @@ export default function ProductsPage() {
     };
 
     const nextErrors: { title?: string; slug?: string; categoryId?: string } = {};
-    if (!body.title) nextErrors.title = "العنوان مطلوب";
-    if (!body.slug) nextErrors.slug = "الـ slug مطلوب (بالإنجليزي)";
-    if (!body.categoryId) nextErrors.categoryId = "اختر تصنيف";
+    if (!body.title) nextErrors.title = tr("العنوان مطلوب", "The title is required");
+    if (!body.slug) nextErrors.slug = tr("الـ slug مطلوب (بالإنجليزي)", "The slug is required (in English)");
+    if (!body.categoryId) nextErrors.categoryId = tr("يرجى اختيار قسم", "Choose a category");
 
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
@@ -272,15 +273,15 @@ export default function ProductsPage() {
       const seen = new Set<string>();
       mapped.forEach((row, idx) => {
         const errs: string[] = [];
-        if (!row.title?.trim()) errs.push("العنوان مطلوب");
-        if (!row.slug?.trim()) errs.push("الـslug مطلوب أو اكتب title ليتولد");
+        if (!row.title?.trim()) errs.push(tr("العنوان مطلوب", "The title is required"));
+        if (!row.slug?.trim()) errs.push(tr("الـslug مطلوب، أو بيتولّد من title", "The slug is required, or write a title to make one"));
         if (row.slug) {
           const key = row.slug.trim().toLowerCase();
-          if (seen.has(key)) errs.push("slug مكرر داخل الملف");
+          if (seen.has(key)) errs.push(tr("slug مكرر داخل الملف", "The slug repeats inside the file"));
           seen.add(key);
         }
         if (!row.categoryId && !row.categoryName && !importDefaultCategoryId) {
-          errs.push("اختر default category أو ضع categoryId/categoryName");
+          errs.push(tr("يرجى اختيار default category أو تعبئة categoryId/categoryName", "Choose a default category or fill categoryId/categoryName"));
         }
         if (errs.length) issues[idx] = errs;
       });
@@ -289,7 +290,7 @@ export default function ProductsPage() {
       setImportRowIssues(issues);
       setImportErr(null);
     } catch (e) {
-      setImportErr((e as any)?.message ?? "فشل قراءة الملف");
+      setImportErr((e as any)?.message ?? tr("فشل قراءة الملف", "The file couldn't be read"));
     }
   };
 
@@ -301,7 +302,7 @@ const doImport = async () => {
   try {
     // let backend validate rows too, but we block obvious issues for better UX
     if (Object.keys(importRowIssues).length) {
-      toast.error("في صفوف فيها أخطاء. صلحها قبل الاستيراد.");
+      toast.error(tr("في صفوف فيها أخطاء. لازم تتصلّح قبل الاستيراد.", "Some rows have errors. Fix them before importing."));
       return;
     }
 
@@ -321,7 +322,7 @@ const doImport = async () => {
 };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <ProductList
         products={products}
         categories={categories}
@@ -336,12 +337,12 @@ const doImport = async () => {
         onImport={() => { setImportDefaultCategoryId(categoryId); setImportOpen(true); }}
         bulkBar={hasSelection ? (
           <div className="glass flex flex-col gap-2 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-white/80">محدد: {selectedIds.length}</div>
+            <div className="text-sm text-white/80">{tr("محدد:", "Selected:")} {selectedIds.length}</div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: true })} isLoading={actions.bulkProducts.isPending}>نشر</Button>
-              <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: false })} isLoading={actions.bulkProducts.isPending}>تحويل لمسودة</Button>
-              <Button variant="secondary" onClick={() => window.open(`/print/labels?productIds=${selectedIds.join(",")}`, "_blank")}>ملصقات باركود</Button>
-              <Button variant="danger" onClick={() => { if (!confirm("حذف كل المنتجات المحددة؟")) return; runBulk({ action: "delete" }); }} isLoading={actions.bulkProducts.isPending}>حذف</Button>
+              <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: true })} isLoading={actions.bulkProducts.isPending}>{tr("نشر", "Publish")}</Button>
+              <Button variant="secondary" onClick={() => runBulk({ action: "setActive", isActive: false })} isLoading={actions.bulkProducts.isPending}>{tr("تحويل لمسودة", "Make draft")}</Button>
+              <Button variant="secondary" onClick={() => window.open(`/print/labels?productIds=${selectedIds.join(",")}`, "_blank")}>{tr("ملصقات باركود", "Barcode labels")}</Button>
+              <Button variant="danger" onClick={() => { if (!confirm(tr("حذف كل المنتجات المحددة؟", "Delete all the selected products?"))) return; runBulk({ action: "delete" }); }} isLoading={actions.bulkProducts.isPending}>{tr("حذف", "Delete")}</Button>
             </div>
           </div>
         ) : null}
@@ -349,20 +350,20 @@ const doImport = async () => {
 
       <Modal
         open={open}
-        title={editingId ? "تعديل منتج" : "إضافة منتج"}
+        title={editingId ? tr("تعديل منتج", "Edit product") : tr("إضافة منتج", "Add product")}
         onClose={() => setOpen(false)}
         widthClassName="max-w-2xl"
         footer={
           <div className="flex gap-2">
             <Button variant="primary" onClick={onSave} isLoading={actions.createProduct.isPending || actions.updateProduct.isPending}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div className="space-y-4">
           <Input
-            label="العنوان"
+            label={tr("العنوان", "Title")}
             value={title}
             error={errors.title}
             onChange={(e) => {
@@ -373,7 +374,7 @@ const doImport = async () => {
           />
 
           <Input
-            label="Slug (إنجليزي)"
+            label={tr("Slug (إنجليزي)", "Slug (English)")}
             value={slug}
             error={errors.slug}
             onChange={(e) => {
@@ -395,7 +396,7 @@ const doImport = async () => {
           />
 
           <div>
-            <label className="mb-2 block text-sm font-medium">الوصف (اختياري)</label>
+            <label className="mb-2 block text-sm font-medium">{tr("الوصف (اختياري)", "Description (optional)")}</label>
             <textarea
               className="min-h-[120px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
               value={description}
@@ -412,7 +413,7 @@ const doImport = async () => {
 
       <Modal
         open={importOpen}
-        title="استيراد منتجات من CSV"
+        title={tr("استيراد منتجات من CSV", "Import products from CSV")}
         onClose={() => {
           setImportOpen(false);
           setImportErr(null);
@@ -421,16 +422,16 @@ const doImport = async () => {
         footer={
           <div className="flex gap-2">
             <Button variant="primary" onClick={doImport} disabled={!importRows.length || Object.keys(importRowIssues).length > 0} isLoading={actions.importProducts.isPending}>
-              استيراد
+              {tr("استيراد", "Import")}
             </Button>
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div className="space-y-4">
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm opacity-90">
-            <div className="font-semibold">الأعمدة المدعومة</div>
+            <div className="font-semibold">{tr("الأعمدة المدعومة", "Supported columns")}</div>
             <div className="mt-1 opacity-80">
-              title (أو «الاسم»)، category (أو «القسم»)، price («السعر»)، stock («الكمية»)، color («اللون»)، size («المقاس»)، images («الصور» مفصولة بفاصلة)، description («الوصف»)، isActive (نعم/لا)، slug، skuBase، colorHex. صف لكل لون ومقاس، بنفس الاسم.
+              {tr("title (أو «الاسم»)، category (أو «القسم»)، price («السعر»)، stock («الكمية»)، color («اللون»)، size («المقاس»)، images («الصور» مفصولة بفاصلة)، description («الوصف»)، isActive (نعم/لا)، slug، skuBase، colorHex. صف لكل لون ومقاس، بنفس الاسم.", "title, category, price, stock, color, size, images (separated by commas), description, isActive (yes/no), slug, skuBase, colorHex. One row per colour and size, with the same title.")}
             </div>
           </div>
 
@@ -444,36 +445,36 @@ const doImport = async () => {
               value={importMode}
               onChange={(e) => setImportMode(e.target.value as any)}
               options={[
-                { value: "create", label: "إنشاء فقط (Create-only)" },
-                { value: "upsertBySlug", label: "تحديث حسب slug (Upsert)" },
+                { value: "create", label: tr("إنشاء فقط (Create-only)", "Create only") },
+                { value: "upsertBySlug", label: tr("تحديث حسب slug (Upsert)", "Update by slug (upsert)") },
               ]}
             />
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={importCreateMissingCats} onChange={(e) => setImportCreateMissingCats(e.target.checked)} />
-              إنشاء تصنيفات غير موجودة
+              {tr("إنشاء تصنيفات غير موجودة", "Create missing categories")}
             </label>
             <Select
               value={importDefaultCategoryId}
               onValueChange={(v: string) => setImportDefaultCategoryId(v)}
-              options={[{ value: "", label: "القسم الافتراضي: بدون" }, ...categories.map((c) => ({ value: c.id, label: `القسم الافتراضي: ${c.name}` }))]}
+              options={[{ value: "", label: tr("القسم الافتراضي: بدون", "Default category: none") }, ...categories.map((c) => ({ value: c.id, label: tr(`القسم الافتراضي: ${c.name}`, "Default category: {0}", [c.name]) }))]}
             />
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-sm opacity-80">عدد الصفوف: {importRows.length}</div>
+            <div className="text-sm opacity-80">{tr("عدد الصفوف:", "Rows:")} {importRows.length}</div>
             {importRows.length > 0 ? (
               <div className="mt-3 overflow-auto">
                 <table className="min-w-[700px] text-sm">
   <thead className="sticky top-0 bg-zinc-950/80 backdrop-blur">
     <tr className="text-zinc-400">
-      <th className="px-3 py-2 text-right">#</th>
-      <th className="px-3 py-2 text-right">العنوان</th>
-      <th className="px-3 py-2 text-right">slug</th>
-      <th className="px-3 py-2 text-right">التصنيف</th>
-      <th className="px-3 py-2 text-right">السعر</th>
-      <th className="px-3 py-2 text-right">المخزون</th>
-      <th className="px-3 py-2 text-right">الحالة</th>
-      <th className="px-3 py-2 text-right">ملاحظات</th>
+      <th className="px-3 py-2 text-start">#</th>
+      <th className="px-3 py-2 text-start">{tr("العنوان", "Title")}</th>
+      <th className="px-3 py-2 text-start">slug</th>
+      <th className="px-3 py-2 text-start">التصنيف</th>
+      <th className="px-3 py-2 text-start">{tr("السعر", "Price")}</th>
+      <th className="px-3 py-2 text-start">{tr("المخزون", "Stock")}</th>
+      <th className="px-3 py-2 text-start">{tr("الحالة", "Status")}</th>
+      <th className="px-3 py-2 text-start">{tr("ملاحظات", "Notes")}</th>
     </tr>
   </thead>
   <tbody className="divide-y divide-white/5">
@@ -481,7 +482,7 @@ const doImport = async () => {
       const issues = importRowIssues[idx];
       const cat = r.categoryId || r.categorySlug || r.categoryName || (importDefaultCategoryId ? "(importDefaultCategoryId)" : "");
       const status =
-        typeof r.isActive === "boolean" ? (r.isActive ? "Active" : "Draft") : "(غير محدد)";
+        typeof r.isActive === "boolean" ? (r.isActive ? "Active" : "Draft") : tr("(غير محدد)", "(not set)");
       return (
         <tr key={idx} className={issues ? "bg-red-500/5" : undefined}>
           <td className="px-3 py-2 text-zinc-500">{idx + 1}</td>
@@ -507,23 +508,23 @@ const doImport = async () => {
 
           {Object.keys(importRowIssues).length ? (
             <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-500/5 p-3 text-sm text-amber-100">
-              في {Object.keys(importRowIssues).length} صف/صفوف فيها أخطاء. صحح CSV أو استخدم defaultCategoryId قبل الاستيراد.
+              {tr("في", "There are")} {Object.keys(importRowIssues).length} {tr("صف/صفوف فيها أخطاء. لازم يتصحّح الـ CSV أو ينحط defaultCategoryId قبل الاستيراد.", "rows with errors. Fix the CSV or use defaultCategoryId before importing.")}
             </div>
           ) : null}
           
           {importReport ? (
             <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="font-semibold">تقرير الاستيراد</div>
-                <Button variant="ghost" onClick={() => setImportReport(null)}>إخفاء</Button>
+                <div className="font-semibold">{tr("تقرير الاستيراد", "Import report")}</div>
+                <Button variant="ghost" onClick={() => setImportReport(null)}>{tr("إخفاء", "Hide")}</Button>
               </div>
           
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-zinc-200">
-                <div>الإجمالي: <span className="font-semibold">{importReport.summary?.total}</span></div>
-                <div>المود: <span className="font-mono text-xs">{importReport.summary?.mode}</span></div>
-                <div>تم إنشاء: <span className="font-semibold">{importReport.summary?.created}</span></div>
-                <div>تم تحديث: <span className="font-semibold">{importReport.summary?.updated}</span></div>
-                <div>فشل: <span className="font-semibold">{importReport.summary?.failed}</span></div>
+                <div>{tr("الإجمالي:", "Total:")} <span className="font-semibold">{importReport.summary?.total}</span></div>
+                <div>{tr("المود:", "Mode:")} <span className="font-mono text-xs">{importReport.summary?.mode}</span></div>
+                <div>{tr("تم إنشاء:", "Created:")} <span className="font-semibold">{importReport.summary?.created}</span></div>
+                <div>{tr("تم تحديث:", "Updated:")} <span className="font-semibold">{importReport.summary?.updated}</span></div>
+                <div>{tr("فشل:", "Failed:")} <span className="font-semibold">{importReport.summary?.failed}</span></div>
               </div>
           
               {importReport.summary?.failed ? (
@@ -531,10 +532,10 @@ const doImport = async () => {
                   <table className="min-w-[700px] text-sm">
                     <thead className="sticky top-0 bg-zinc-950/80 backdrop-blur">
                       <tr className="text-zinc-400">
-                        <th className="px-3 py-2 text-right">#</th>
-                        <th className="px-3 py-2 text-right">slug</th>
-                        <th className="px-3 py-2 text-right">العنوان</th>
-                        <th className="px-3 py-2 text-right">السبب</th>
+                        <th className="px-3 py-2 text-start">#</th>
+                        <th className="px-3 py-2 text-start">slug</th>
+                        <th className="px-3 py-2 text-start">{tr("العنوان", "Title")}</th>
+                        <th className="px-3 py-2 text-start">{tr("السبب", "Reason")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -553,7 +554,7 @@ const doImport = async () => {
                   </table>
                 </div>
               ) : (
-                <div className="mt-3 text-sm text-emerald-200">كل الصفوف نجحت ✅</div>
+                <div className="mt-3 text-sm text-emerald-200">{tr("كل الصفوف نجحت ✅", "Every row worked ✅")}</div>
               )}
             </div>
           ) : null}
@@ -562,11 +563,11 @@ const doImport = async () => {
 
       <ConfirmDialog
         open={!!confirmId}
-        title="تأكيد الحذف"
-        message="هل أنت متأكد من حذف هذا المنتج؟"
+        title={tr("تأكيد الحذف", "Confirm delete")}
+        message={tr("حذف هالمنتج أكيد؟", "Delete this product for sure?")}
         variant="danger"
-        confirmText="حذف"
-        cancelText="إلغاء"
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onConfirm={onDelete}
         onCancel={() => setConfirmId(null)}
       />

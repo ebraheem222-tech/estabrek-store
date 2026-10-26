@@ -2,6 +2,9 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiBaseClient } from "@/lib/apiClient";
+import { useLanguage } from "@/components/cinematic/Language";
+import { tr } from "@/lib/words";
+import type { Lang } from "@/lib/i18n";
 
 /**
  * The shopper's account (optional). Signing in sends a 6-digit code by email;
@@ -51,6 +54,7 @@ async function readJson(res: Response) {
 }
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
+  const { language } = useLanguage();
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUserState] = useState<Customer | null>(null);
   const token = useRef<{ value: string; exp: number } | null>(null);
@@ -136,12 +140,13 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const res = await fetch(`${apiBaseClient()}/customer/auth/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      // The code's email comes in the page's language.
+      body: JSON.stringify({ email, lang: language }),
     });
     const data = await readJson(res);
     if (!res.ok) throw new AccountError(data?.error ?? "REQUEST_FAILED", res.status, data?.message);
     return { minutes: Number(data.minutes) || 5, devCode: data.devCode as string | undefined };
-  }, []);
+  }, [language]);
 
   const verifyCode = useCallback(async (email: string, code: string) => {
     const res = await fetch("/api/account/verify", {
@@ -187,26 +192,26 @@ export function useOptionalAccount() {
   return useContext(AccountContext);
 }
 
-/** Plain-Arabic text for the account errors. */
-export function accountErrorText(e: unknown): string {
+/** The account errors in the page's language. */
+export function accountErrorText(e: unknown, lang: Lang = "ar"): string {
   const code = e instanceof AccountError ? e.code : "";
   switch (code) {
     case "WRONG_CODE":
-      return "الكود مش صحيح. تأكدي منه وجرّبي كمان مرة.";
+      return tr(lang, "الكود مش صحيح. تأكدي منه وجرّبي كمان مرة.", "That code isn't right. Check it and try again.");
     case "CODE_EXPIRED":
-      return "الكود انتهى. اطلبي كود جديد.";
+      return tr(lang, "الكود انتهى. اطلبي كود جديد.", "The code has expired. Ask for a new one.");
     case "TOO_MANY_ATTEMPTS":
-      return "محاولات كثيرة. اطلبي كود جديد.";
+      return tr(lang, "محاولات كثيرة. اطلبي كود جديد.", "Too many tries. Ask for a new code.");
     case "TOO_MANY_CODES":
     case "RATE_LIMIT":
-      return "طلبتِ أكواد كثيرة. استني كم دقيقة وجرّبي.";
+      return tr(lang, "طلبتِ أكواد كثيرة. استني كم دقيقة وجرّبي.", "Too many codes asked for. Wait a few minutes and try again.");
     case "ACCOUNT_SUSPENDED":
-      return "هذا الحساب موقوف. تواصلي معنا.";
+      return tr(lang, "هذا الحساب موقوف. تواصلي معنا.", "This account is suspended. Contact us.");
     case "VALIDATION_ERROR":
-      return "في معلومة مش مكتوبة صح. راجعيها.";
+      return tr(lang, "في معلومة مش مكتوبة صح. راجعيها.", "Something isn't filled in right. Please check it.");
     case "SIGNED_OUT":
-      return "انتهت الجلسة. سجّلي دخول من جديد.";
+      return tr(lang, "انتهت الجلسة. سجّلي دخول من جديد.", "Your session ended. Please sign in again.");
     default:
-      return "صار خطأ. جرّبي كمان مرة.";
+      return tr(lang, "صار خطأ. جرّبي كمان مرة.", "Something went wrong. Please try again.");
   }
 }

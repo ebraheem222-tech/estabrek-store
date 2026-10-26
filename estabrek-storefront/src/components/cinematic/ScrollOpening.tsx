@@ -6,12 +6,14 @@ import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { useLanguage } from "./Language";
 import { createScrollProgressMotion } from "./scrollProgressMotion";
 import { sectionMotionOn, sectionSmoothTime } from "@/lib/motionSettings";
+import { useNames } from "@/store/storeIdentity";
 
 /** Static-first campaign, progressively enhanced with one reversible held scene. */
 export function ScrollOpening({ children, model, subtle = false }: { children: ReactNode; model?: ReactNode; subtle?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const { scrollAnimationsEnabled } = useStorefrontSettings();
   const { language } = useLanguage();
+  const n = useNames();
   useEffect(() => {
     const scene = root.current;
     if (!scene || !scrollAnimationsEnabled || !sectionMotionOn("opening")) return;
@@ -76,7 +78,7 @@ export function ScrollOpening({ children, model, subtle = false }: { children: R
   }, [language, scrollAnimationsEnabled, Boolean(model), subtle]);
   return <div ref={root} className="rose-opening" data-motion="false" data-model={Boolean(model)} data-intensity={subtle ? "subtle" : "cinematic"}>
     <div className="rose-opening-sticky">
-      <span className="opening-wordmark" aria-hidden="true">{language === "ar" ? "استبرق" : "Estabrek"}</span>
+      <span className="opening-wordmark" aria-hidden="true">{n.store}</span>
       {children}
       {model && <div className="opening-fabric">{model}</div>}
     </div>

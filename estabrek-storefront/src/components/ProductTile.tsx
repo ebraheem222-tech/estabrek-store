@@ -21,6 +21,8 @@ import { LqipImage } from "@/components/LqipImage";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { getProductBadge } from "@/lib/productBadges";
 import { RoseBadge } from "./cinematic/RoseBadge";
+import { StoreMark } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
 
 function normalizeHex(v?: string | null): string | null {
   if (!v) return null;
@@ -137,7 +139,8 @@ function prefersReducedMotion(): boolean {
 }
 
 export function ProductTile({ product, appearance = "default" }: { product: CatalogProduct; appearance?: "rose" | "default" }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const settings = useStorefrontSettings();
   const { openQuickView } = useQuickView();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -282,7 +285,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
   if (appearance === "rose") return <article ref={cardRef} className="rose-product-tile" onMouseEnter={() => setIsHovered(true)} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
     <Link className={`rose-product-image${secondary && shownImg === primary ? " has-alt" : ""}`} href={`/p/${product.slug}`} prefetch={prefetchEnabled}>
       {discountPercent ? <span className="rose-product-discount">−{discountPercent}%</span> : <RoseBadge badge={badge} ar={ar} />}
-      {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-main" /> : <span className="rose-image-placeholder">استبرق</span>}
+      {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-main" /> : <span className="rose-image-placeholder"><StoreMark /></span>}
       {secondary && shownImg === primary ? <LqipImage src={cldUrl(secondary, { w: 640, h: 800, c: "fill", g: "auto" })} alt="" fill loading="lazy" showSkeleton={false} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-alt" /> : null}
     </Link>
     <div className="rose-product-meta">
@@ -290,7 +293,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
       <Link href={`/p/${product.slug}`}><h3>{product.title}</h3></Link>
       <span className="rose-product-price">{product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "—"}</span>
       {!!swatches.length && <div className="rose-product-swatches">{swatches.map(s => <button key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={() => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}
-      <div className="rose-product-actions"><QuickAddButton product={product} className="rose-product-add" buttonLabel={ar ? "إضافة للحقيبة" : "Add to bag"} />{quickViewEnabled && <button className="rose-product-preview" onClick={() => openQuickView(product)} aria-label={`${ar ? "معاينة" : "Preview"} ${product.title}`}>{ar ? "معاينة" : "Preview"}</button>}</div>
+      <div className="rose-product-actions"><QuickAddButton product={product} className="rose-product-add" buttonLabel={tr(lang, "إضافة للحقيبة", "Add to bag")} />{quickViewEnabled && <button className="rose-product-preview" onClick={() => openQuickView(product)} aria-label={`${tr(lang, "معاينة", "Preview")} ${product.title}`}>{tr(lang, "معاينة", "Preview")}</button>}</div>
     </div>
   </article>;
   return (

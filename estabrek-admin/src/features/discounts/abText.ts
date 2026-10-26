@@ -1,13 +1,14 @@
-// Plain-Arabic texts and small helpers for A/B tests (تجارب A/B). Pure (tested).
+// Plain texts and small helpers for A/B tests (تجارب A/B). Pure (tested).
 import type { Comparison, Experiment, ExperimentKind, ExperimentStatus } from "../../api/experiments.api";
 import type { StorefrontMotion } from "../../api/cache.api";
 import { MOTION_TEXT, PRELOAD_TEXT } from "../system/cacheText";
 import { daysText } from "../inventory/forecastText";
+import { tr } from "@/lib/words";
 
 export const STATUS_TEXT: Record<ExperimentStatus, { label: string; variant: "default" | "success" | "info" }> = {
-  draft: { label: "مسودة", variant: "default" },
-  running: { label: "شغّالة", variant: "success" },
-  stopped: { label: "توقّفت", variant: "info" },
+  draft: { label: tr("مسودة", "Draft"), variant: "default" },
+  running: { label: tr("شغّالة", "Running"), variant: "success" },
+  stopped: { label: tr("توقّفت", "Stopped"), variant: "info" },
 };
 
 export type FieldInput =
@@ -29,18 +30,18 @@ export const FIELD_INPUT: Record<string, FieldInput> = {
   maxStepMs: { type: "number", min: 50, max: 500, unit: "ms" },
 };
 
-export const HERO_TEXT: Record<string, string> = { film: "فيلم الوشاح", photo: "الصورة" };
+export const HERO_TEXT: Record<string, string> = { film: tr("فيلم الوشاح", "The scarf film"), photo: tr("الصورة", "The photo") };
 
 export function whatText(kind: ExperimentKind, field: string | null): string {
-  return kind === "heroOpening" ? "افتتاحية الرئيسية" : MOTION_TEXT[field ?? ""] ?? field ?? "";
+  return kind === "heroOpening" ? tr("افتتاحية الرئيسية", "Home page opening") : MOTION_TEXT[field ?? ""] ?? field ?? "";
 }
 
 export function valueText(kind: ExperimentKind, field: string | null, v: unknown): string {
   if (kind === "heroOpening") return HERO_TEXT[String(v)] ?? String(v);
   const input = FIELD_INPUT[field ?? ""];
-  if (input?.type === "bool") return v ? "شغّال" : "مطفي";
+  if (input?.type === "bool") return v ? tr("شغّال", "On") : tr("مطفي", "Off");
   if (field === "videoPreload") return PRELOAD_TEXT[v as StorefrontMotion["videoPreload"]] ?? String(v);
-  if (field === "maxFps") return `${v} إطار/ث`;
+  if (field === "maxFps") return tr(`${v} إطار/ث`, "{0} fps", [v]);
   if (input?.type === "number") return `${v}${input.unit === "%" ? "%" : ` ${input.unit}`}`;
   return String(v);
 }
@@ -71,20 +72,24 @@ export function startValues(kind: ExperimentKind, field: string | null, current:
 export const rateText = (r: number) => `${(r * 100).toLocaleString("en", { maximumFractionDigits: 1, minimumFractionDigits: r > 0 && r < 0.1 ? 1 : 0 })}%`;
 export const splitText = (split: number) => `${100 - split}% A · ${split}% B`;
 
-const MEASURE: Record<"bags" | "orders", string> = { bags: "بتجيب إضافات للسلة", orders: "بتجيب طلبات" };
+const MEASURE: Record<"bags" | "orders", string> = { bags: tr("بتجيب إضافات للسلة", "brings more adds to bag"), orders: tr("بتجيب طلبات", "brings more orders") };
 
 /** The test's answer for one measure, in a sentence. */
 export function verdictText(c: Comparison, measure: "bags" | "orders"): string {
   // Never "100% sure": a test can't be.
-  const sure = `متأكدين ${Math.min(99, Math.round(c.confidence * 100))}%`;
-  if (c.verdict === "early") return "لسا بكير: بدها زيارات وطلبات أكثر ليبين الفرق.";
+  const pct = Math.min(99, Math.round(c.confidence * 100));
+  const sure = tr(`متأكدين ${pct}%`, "{0}% sure", [pct]);
+  if (c.verdict === "early") return tr("لسا بكير: بدها زيارات وطلبات أكثر ليبين الفرق.", "Too early: it needs more visits and orders to show the difference.");
   if (c.verdict === "same") {
-    const more = c.moreVisits ? ` بدها تقريباً ${c.moreVisits.toLocaleString("en")} زيارة كمان لكل جهة.` : "";
-    return `ما في فرق واضح لهلّق (${sure}).${more}`;
+    const visits = c.moreVisits ? c.moreVisits.toLocaleString("en") : "";
+    const more = c.moreVisits ? tr(` بدها تقريباً ${visits} زيارة كمان لكل جهة.`, " It needs about {0} more visits on each side.", [visits]) : "";
+    return tr(`ما في فرق واضح لهلّق (${sure}).${more}`, "No clear difference yet ({0}).{1}", [sure, more]);
   }
   const [win, lose] = c.verdict === "B" ? [c.rateB, c.rateA] : [c.rateA, c.rateB];
   const lift = lose > 0 ? Math.round(((win - lose) / lose) * 100) : null;
-  return `${c.verdict} ${MEASURE[measure]} أكثر${lift != null ? ` بـ ${lift}%` : ""} (${sure}).`;
+  return lift != null
+    ? tr(`${c.verdict} ${MEASURE[measure]} أكثر بـ ${lift}% (${sure}).`, "{0} {1} by {2}% ({3}).", [c.verdict, MEASURE[measure], lift, sure])
+    : tr(`${c.verdict} ${MEASURE[measure]} أكثر (${sure}).`, "{0} {1} ({2}).", [c.verdict, MEASURE[measure], sure]);
 }
 
 /** "صرلها 5 أيام" / "اشتغلت 12 يوم". */
@@ -92,6 +97,6 @@ export function runningForText(e: Pick<Experiment, "status" | "startedAt" | "sto
   if (!e.startedAt) return null;
   const end = e.stoppedAt ? Date.parse(e.stoppedAt) : now;
   const days = Math.max(0, (end - Date.parse(e.startedAt)) / 86400_000);
-  const d = days < 1 ? "أقل من يوم" : daysText(Math.floor(days));
-  return e.status === "running" ? `صرلها ${d}` : `اشتغلت ${d}`;
+  const d = days < 1 ? tr("أقل من يوم", "less than a day") : daysText(Math.floor(days));
+  return e.status === "running" ? tr(`صرلها ${d}`, "Running for {0}", [d]) : tr(`اشتغلت ${d}`, "Ran for {0}", [d]);
 }

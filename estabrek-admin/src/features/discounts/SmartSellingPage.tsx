@@ -35,11 +35,12 @@ import {
   toLocalInput,
   type CampaignDraft,
 } from "./sellingText";
+import { tr } from "@/lib/words";
 
 type Tab = "suggestions" | "seasons" | "history";
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
 const themeName = (id: string) => THEME_PRESETS.find((p) => p.id === id)?.name ?? id;
-const onError = (e: unknown) => toast.error("ما زبط", { description: getApiErrorMessage(e) });
+const onError = (e: unknown) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) });
 
 export default function SmartSellingPage() {
   const [tab, setTab] = useState<Tab>(() => (typeof window !== "undefined" && window.location.hash === "#seasons" ? "seasons" : window.location.hash === "#history" ? "history" : "suggestions"));
@@ -52,10 +53,10 @@ export default function SmartSellingPage() {
     }
   };
   return (
-    <div dir="rtl" className="space-y-4 pb-16" data-testid="selling-page">
+    <div className="space-y-4 pb-16" data-testid="selling-page">
       <PageHeader
-        title="البيع الذكي"
-        subtitle="اقتراحات خصم من أرقام المخزون والمشاهدات، ومواسم بثيم وأسعار بتبلّش وبتخلص لحالها. ولا شي بيتغيّر بدون موافقتك، وكل تغيير بينرجع."
+        title={tr("البيع الذكي", "Smart selling")}
+        subtitle={tr("اقتراحات خصم من أرقام المخزون والمشاهدات، ومواسم بثيم وأسعار بتبلّش وبتخلص لحالها. ولا شي بيتغيّر بدون موافقة، وكل تغيير بينرجع.", "Discount ideas from stock and view numbers, and seasons with a theme and prices that start and end by themselves. Nothing changes without approval, and every change can be undone.")}
       />
       <div className="sm:max-w-lg">
         <Segmented
@@ -63,9 +64,9 @@ export default function SmartSellingPage() {
           disabled={false}
           onChange={pick}
           options={[
-            { value: "suggestions", label: "اقتراحات" },
-            { value: "seasons", label: "المواسم" },
-            { value: "history", label: "سجل التغييرات" },
+            { value: "suggestions", label: tr("اقتراحات", "Suggestions") },
+            { value: "seasons", label: tr("المواسم", "Seasons") },
+            { value: "history", label: tr("سجل التغييرات", "Change history") },
           ]}
         />
       </div>
@@ -91,16 +92,16 @@ function SuggestionsTab() {
     onSuccess: ({ results }) => {
       const ok = results.filter((r) => r.ok && r.changed).length;
       const failed = results.filter((r) => !r.ok).length;
-      if (ok) toast.success(ok === 1 ? "انطبّق" : `انطبّق على ${ok} منتجات`, { description: "بترجّعه من «سجل التغييرات»." });
-      if (failed) toast.error(`ما زبط على ${failed}`);
-      if (!ok && !failed) toast.info("ما في شي تغيّر", { description: "المقاسات عليها خصم أصلاً." });
+      if (ok) toast.success(ok === 1 ? tr("انطبّق", "Applied") : tr(`انطبّق على ${ok} منتجات`, "Applied to {0} products", [ok]), { description: tr("بيرجع من «سجل التغييرات».", "Undo it from “Change history”.") });
+      if (failed) toast.error(tr(`ما زبط على ${failed}`, "Didn't work for {0}", [failed]));
+      if (!ok && !failed) toast.info(tr("ما في شي تغيّر", "Nothing changed"), { description: tr("المقاسات عليها خصم أصلاً.", "The sizes are already discounted.") });
       refresh();
     },
     onError,
   });
   const skip = useMutation({
     mutationFn: (s: Suggestion) => SellingAPI.skipSuggestion(s.rule, s.productId, 30),
-    onSuccess: () => (toast.success("ما رح ينقترح لشهر"), refresh()),
+    onSuccess: () => (toast.success(tr("ما رح ينقترح لشهر", "Won't be suggested for a month")), refresh()),
     onError,
   });
 
@@ -109,14 +110,14 @@ function SuggestionsTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-white/70">{d.suggestions.length ? `${d.suggestions.length} اقتراح` : "ما في اقتراحات هلّق."}</p>
+        <p className="text-sm text-white/70">{d.suggestions.length ? tr(`${d.suggestions.length} اقتراح`, "{0} suggestions", [d.suggestions.length]) : tr("ما في اقتراحات هلّق.", "No suggestions right now.")}</p>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={() => setShowRules(!showRules)} aria-expanded={showRules}>
-            القواعد
+            {tr("القواعد", "Rules")}
           </Button>
           {canWrite && d.suggestions.length > 1 ? (
             <Button variant="secondary" size="sm" onClick={() => approve.mutate(d.suggestions)} isLoading={approve.isPending}>
-              وافق على الكل
+              {tr("موافقة على الكل", "Approve all")}
             </Button>
           ) : null}
         </div>
@@ -124,7 +125,7 @@ function SuggestionsTab() {
       {showRules ? <RulesCard data={d} canWrite={canWrite} onSaved={refresh} /> : null}
       {d.viewsDays < d.unseenDays ? (
         <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-          عدّ المشاهدات صرله {d.viewsDays} يوم بس: اقتراحات «ما حدا شافه» بتصير أدق لما يكمل {d.unseenDays} يوم.
+          {tr("عدّ المشاهدات صرله", "View counting has run for")} {d.viewsDays} {tr("يوم بس: اقتراحات «ما حدا شافه» بتصير أدق لما يكمل", "days only: “Nobody saw it” ideas get more accurate once it reaches")} {d.unseenDays} {tr("يوم.", "days.")}
         </p>
       ) : null}
       {d.suggestions.map((s) => (
@@ -146,10 +147,10 @@ function SuggestionsTab() {
             {canWrite ? (
               <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
                 <Button size="sm" variant="primary" onClick={() => approve.mutate([s])} disabled={approve.isPending}>
-                  موافق
+                  {tr("موافقة", "Approve")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => skip.mutate(s)} disabled={skip.isPending}>
-                  مش هلّق
+                  {tr("مش هلّق", "Not now")}
                 </Button>
               </div>
             ) : null}
@@ -162,7 +163,7 @@ function SuggestionsTab() {
 
 function RulesCard({ data, canWrite, onSaved }: { data: SuggestionsPage; canWrite: boolean; onSaved: () => void }) {
   const [draft, setDraft] = useState<RuleSettings>(data.rules);
-  const save = useMutation({ mutationFn: () => SellingAPI.saveRules(draft), onSuccess: () => (toast.success("انحفظت القواعد"), onSaved()), onError });
+  const save = useMutation({ mutationFn: () => SellingAPI.saveRules(draft), onSuccess: () => (toast.success(tr("انحفظت القواعد", "Rules saved")), onSaved()), onError });
   const set = <K extends RuleName>(k: K, patch: Partial<RuleSettings[K]>) => setDraft({ ...draft, [k]: { ...draft[k], ...patch } });
   const L = data.limits;
   const inRange = (v: number, l: { min: number; max: number }) => Number.isInteger(v) && v >= l.min && v <= l.max;
@@ -175,32 +176,32 @@ function RulesCard({ data, canWrite, onSaved }: { data: SuggestionsPage; canWrit
           <div key={k}>
             <Toggle label={RULE_TEXT[k].label} help={RULE_TEXT[k].what} checked={draft[k].on} disabled={!canWrite} onChange={(on) => set(k, { on })} />
             <div className={`mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 ${draft[k].on ? "" : "opacity-50"}`}>
-              <NumberInput id={`rule-${k}-percent`} label="الخصم" unit="%" value={draft[k].percent} def={data.defaults[k].percent} limits={L.percent} invalid={!inRange(draft[k].percent, L.percent)} disabled={!canWrite || !draft[k].on} onChange={(percent) => set(k, { percent })} />
-              <NumberInput id={`rule-${k}-days`} label="لمدة" unit="يوم" value={draft[k].saleDays} def={data.defaults[k].saleDays} limits={L.saleDays} invalid={!inRange(draft[k].saleDays, L.saleDays)} disabled={!canWrite || !draft[k].on} onChange={(saleDays) => set(k, { saleDays })} />
+              <NumberInput id={`rule-${k}-percent`} label={tr("الخصم", "Discount")} unit="%" value={draft[k].percent} def={data.defaults[k].percent} limits={L.percent} invalid={!inRange(draft[k].percent, L.percent)} disabled={!canWrite || !draft[k].on} onChange={(percent) => set(k, { percent })} />
+              <NumberInput id={`rule-${k}-days`} label={tr("لمدة", "For")} unit={tr("يوم", "days")} value={draft[k].saleDays} def={data.defaults[k].saleDays} limits={L.saleDays} invalid={!inRange(draft[k].saleDays, L.saleDays)} disabled={!canWrite || !draft[k].on} onChange={(saleDays) => set(k, { saleDays })} />
             </div>
           </div>
         ))}
         <div>
           <Toggle label={RULE_TEXT.hotLowStock.label} help={RULE_TEXT.hotLowStock.what} checked={draft.hotLowStock.on} disabled={!canWrite} onChange={(on) => set("hotLowStock", { on })} />
           <div className={`mt-3 sm:max-w-xs ${draft.hotLowStock.on ? "" : "opacity-50"}`}>
-            <NumberInput id="rule-hot-left" label="لما يبقى" unit="قطعة أو أقل" value={draft.hotLowStock.maxLeft} def={data.defaults.hotLowStock.maxLeft} limits={L.maxLeft} invalid={!inRange(draft.hotLowStock.maxLeft, L.maxLeft)} disabled={!canWrite || !draft.hotLowStock.on} onChange={(maxLeft) => set("hotLowStock", { maxLeft })} />
+            <NumberInput id="rule-hot-left" label={tr("لما يبقى", "When there are")} unit={tr("قطعة أو أقل", "pieces or fewer left")} value={draft.hotLowStock.maxLeft} def={data.defaults.hotLowStock.maxLeft} limits={L.maxLeft} invalid={!inRange(draft.hotLowStock.maxLeft, L.maxLeft)} disabled={!canWrite || !draft.hotLowStock.on} onChange={(maxLeft) => set("hotLowStock", { maxLeft })} />
           </div>
         </div>
         <p className="text-xs text-white/50">
-          «ما حدا شافه» و«بيتفرجوا وما بيشتروا» بيستعملوا المدة من{" "}
+          {tr("«ما حدا شافه» و«بيتفرجوا وما بيشتروا» بيستعملوا المدة من", "“Nobody saw it” and “Looked but didn't buy” use the time from")}{" "}
           <Link to="/admin/inventory/forecast" className="underline">
-            توقّع المخزون
+            {tr("توقّع المخزون", "Stock forecast")}
           </Link>{" "}
-          ({data.unseenDays} يوم).
+          ({data.unseenDays} {tr("يوم).", "days).")}
         </p>
         {canWrite ? (
           <div className="flex gap-2">
             <Button variant="primary" onClick={() => save.mutate()} isLoading={save.isPending} disabled={!dirty || bad}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
             {dirty ? (
               <Button variant="ghost" onClick={() => setDraft(data.rules)}>
-                تراجع
+                {tr("تراجع", "Undo")}
               </Button>
             ) : null}
           </div>
@@ -232,7 +233,7 @@ function SeasonsTab() {
   const refresh = () => void qc.invalidateQueries({ queryKey: ["selling"] });
   const catName = useMemo(() => {
     const m = new Map((cats.data ?? []).map((c) => [c.id, c.name]));
-    return (id: string) => m.get(id) ?? "تصنيف محذوف";
+    return (id: string) => m.get(id) ?? tr("تصنيف محذوف", "Deleted category");
   }, [cats.data]);
   const save = useMutation({
     mutationFn: (d: CampaignDraft) => {
@@ -240,7 +241,7 @@ function SeasonsTab() {
       return editing ? SellingAPI.updateCampaign(editing, body) : SellingAPI.createCampaign(body);
     },
     onSuccess: ({ campaign }) => {
-      toast.success(campaign.status === "running" ? "بلّش الموسم" : "انحفظ الموسم", { description: campaign.status === "running" ? undefined : `بيبلّش ${campaignWhen(campaign).split(" ← ")[0]}` });
+      toast.success(campaign.status === "running" ? tr("بلّش الموسم", "The season started") : tr("انحفظ الموسم", "Season saved"), { description: campaign.status === "running" ? undefined : tr(`بيبلّش ${campaignWhen(campaign).split(` ${tr("←", "→")} `)[0]}`, "Starts {0}", [campaignWhen(campaign).split(` ${tr("←", "→")} `)[0]]) });
       setDraft(null);
       setEditing(null);
       refresh();
@@ -249,7 +250,7 @@ function SeasonsTab() {
   });
   const end = useMutation({
     mutationFn: (c: Campaign) => SellingAPI.endCampaign(c.id),
-    onSuccess: ({ campaign }) => (toast.success("توقّف الموسم", { description: campaignLogText(campaign) ?? undefined }), setEnding(null), refresh()),
+    onSuccess: ({ campaign }) => (toast.success(tr("توقّف الموسم", "The season stopped"), { description: campaignLogText(campaign) ?? undefined }), setEnding(null), refresh()),
     onError,
   });
 
@@ -259,7 +260,7 @@ function SeasonsTab() {
     <div className="space-y-3">
       {canWrite && !draft ? (
         <Button variant="primary" onClick={() => (setEditing(null), setDraft(emptyDraft()))}>
-          موسم جديد
+          {tr("موسم جديد", "New season")}
         </Button>
       ) : null}
       {draft ? (
@@ -277,7 +278,7 @@ function SeasonsTab() {
       ) : null}
       {!list.length && !draft ? (
         <Card>
-          <p className="text-sm text-white/60">ما في مواسم لسا. مثلاً: «رمضان» بثيم ذهبي وخصم 15% على العبايات، من أول رمضان لآخره، وبعدها كل شي بيرجع لحاله.</p>
+          <p className="text-sm text-white/60">{tr("ما في مواسم لسا. مثلاً: «رمضان» بثيم ذهبي وخصم 15% على العبايات، من أول رمضان لآخره، وبعدها كل شي بيرجع لحاله.", "No seasons yet. e.g. “Ramadan” with a gold theme and 15% off abayas, from the start of Ramadan to its end, then everything goes back by itself.")}</p>
         </Card>
       ) : null}
       {list.map((c) => {
@@ -308,11 +309,11 @@ function SeasonsTab() {
                         setDraft({ name: c.name, startsAt: c.startsAt, endsAt: c.endsAt, themePresetId: c.themePresetId, percentOff: c.percentOff, categoryIds: c.categoryIds });
                       }}
                     >
-                      تعديل
+                      {tr("تعديل", "Edit")}
                     </Button>
                   ) : null}
                   <Button size="sm" variant="secondary" onClick={() => setEnding(c)}>
-                    {c.status === "running" ? "وقّفه هلّق" : "إلغاء"}
+                    {c.status === "running" ? tr("توقيف هلّق", "Stop it now") : tr("إلغاء", "Cancel")}
                   </Button>
                 </div>
               ) : null}
@@ -322,9 +323,9 @@ function SeasonsTab() {
       })}
       <ConfirmDialog
         open={!!ending}
-        title={ending?.status === "running" ? `توقيف «${ending?.name}» هلّق` : `إلغاء «${ending?.name ?? ""}»`}
-        message={ending?.status === "running" ? "الثيم والأسعار بيرجعوا متل ما كانوا قبل الموسم (اللي غيّرته بإيدك بالنص بيضل)." : "الموسم ما بلّش، فما في شي يرجع."}
-        confirmText={ending?.status === "running" ? "وقّف" : "إلغاء الموسم"}
+        title={ending?.status === "running" ? tr(`توقيف «${ending?.name}» هلّق`, "Stop “{0}” now", [ending?.name]) : tr(`إلغاء «${ending?.name ?? ""}»`, "Cancel “{0}”", [ending?.name ?? ""])}
+        message={ending?.status === "running" ? tr("الثيم والأسعار بيرجعوا متل ما كانوا قبل الموسم (اللي تغيّر باليد بالنص بيضل).", "The theme and prices go back to how they were before the season (what was changed by hand in between stays).") : tr("الموسم ما بلّش، فما في شي يرجع.", "The season hasn't started, so there's nothing to undo.")}
+        confirmText={ending?.status === "running" ? tr("توقيف", "Stop") : tr("إلغاء الموسم", "Cancel season")}
         variant="warning"
         isLoading={end.isPending}
         onConfirm={() => {
@@ -371,31 +372,31 @@ function SeasonForm({
     <Card>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="season-form">
         <label className="block sm:col-span-2">
-          <span className="text-sm font-medium">الاسم</span>
-          <input className={`${field} mt-1.5`} value={draft.name} maxLength={80} placeholder="رمضان" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          <span className="text-sm font-medium">{tr("الاسم", "Name")}</span>
+          <input className={`${field} mt-1.5`} value={draft.name} maxLength={80} placeholder={tr("رمضان", "Ramadan")} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </label>
         <label className="block">
-          <span className="text-sm font-medium">بيبلّش</span>
+          <span className="text-sm font-medium">{tr("بيبلّش", "Starts")}</span>
           <input type="datetime-local" className={`${field} mt-1.5`} value={toLocalInput(draft.startsAt)} onChange={(e) => setDraft({ ...draft, startsAt: fromLocalInput(e.target.value) ?? draft.startsAt })} />
         </label>
         <label className="block">
-          <span className="text-sm font-medium">بيخلص</span>
+          <span className="text-sm font-medium">{tr("بيخلص", "Ends")}</span>
           <input type="datetime-local" className={`${field} mt-1.5`} value={toLocalInput(draft.endsAt)} onChange={(e) => setDraft({ ...draft, endsAt: fromLocalInput(e.target.value) ?? draft.endsAt })} />
         </label>
         <label className="block">
-          <span className="text-sm font-medium">الثيم وقت الموسم</span>
+          <span className="text-sm font-medium">{tr("الثيم وقت الموسم", "Theme during the season")}</span>
           <select className={`${field} mt-1.5`} value={draft.themePresetId ?? ""} disabled={!canTheme} onChange={(e) => setDraft({ ...draft, themePresetId: e.target.value || null })}>
-            <option value="">بدون تغيير</option>
+            <option value="">{tr("بدون تغيير", "No change")}</option>
             {THEME_PRESETS.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>
-          {!canTheme ? <span className="mt-1 block text-xs text-white/50">تغيير الثيم بدّه صلاحية الإعدادات.</span> : <span className="mt-1 block text-xs text-white/50">بيرجع للثيم الحالي بالنهاية.</span>}
+          {!canTheme ? <span className="mt-1 block text-xs text-white/50">{tr("تغيير الثيم بدّه صلاحية الإعدادات.", "Changing the theme needs the settings permission.")}</span> : <span className="mt-1 block text-xs text-white/50">{tr("بيرجع للثيم الحالي بالنهاية.", "It goes back to the current theme at the end.")}</span>}
         </label>
         <label className="block">
-          <span className="text-sm font-medium">خصم وقت الموسم</span>
+          <span className="text-sm font-medium">{tr("خصم وقت الموسم", "Discount during the season")}</span>
           <div className="mt-1.5 flex items-center gap-2">
             <input
               type="number"
@@ -404,19 +405,19 @@ function SeasonForm({
               max={70}
               className={field}
               value={draft.percentOff ?? ""}
-              placeholder="بدون خصم"
+              placeholder={tr("بدون خصم", "No discount")}
               onChange={(e) => setDraft({ ...draft, percentOff: e.target.value === "" ? null : Math.round(Number(e.target.value)) })}
             />
             <span className="text-sm text-white/60">%</span>
           </div>
-          <span className="mt-1 block text-xs text-white/50">المقاسات اللي عليها خصم تاني بتضل متل ما هي. الأسعار بترجع لحالها بالنهاية.</span>
+          <span className="mt-1 block text-xs text-white/50">{tr("المقاسات اللي عليها خصم تاني بتضل متل ما هي. الأسعار بترجع لحالها بالنهاية.", "Sizes with another discount stay as they are. Prices go back by themselves at the end.")}</span>
         </label>
         {draft.percentOff ? (
           <div className="sm:col-span-2">
-            <span className="text-sm font-medium">على شو</span>
+            <span className="text-sm font-medium">{tr("على شو", "On what")}</span>
             <div className="mt-1.5 flex flex-wrap gap-2">
               <button type="button" onClick={() => setDraft({ ...draft, categoryIds: [] })} className={`rounded-full border px-3 py-1 text-xs ${scopeAll ? "border-white/40 bg-white/10" : "border-white/10 text-white/60"}`}>
-                كل المنتجات
+                {tr("كل المنتجات", "All products")}
               </button>
               {categories.map((c) => {
                 const on = draft.categoryIds.includes(c.id);
@@ -435,7 +436,9 @@ function SeasonForm({
             </div>
             {preview.data ? (
               <p className="mt-2 text-xs text-white/60" data-testid="season-preview">
-                {`${preview.data.products} منتج، ${preview.data.sizes} مقاس${preview.data.onSaleAlready ? `؛ ${preview.data.onSaleAlready} عليهم خصم تاني وبيضلّوا متل ما هم` : ""}.`}
+                {tr(`${preview.data.products} منتج، ${preview.data.sizes} مقاس`, "{0} products, {1} sizes", [preview.data.products, preview.data.sizes]) +
+                  (preview.data.onSaleAlready ? tr(`؛ ${preview.data.onSaleAlready} عليهم خصم تاني وبيضلّوا متل ما هم`, "; {0} already have another discount and stay as they are", [preview.data.onSaleAlready]) : "") +
+                  "."}
               </p>
             ) : null}
           </div>
@@ -457,10 +460,10 @@ function SeasonForm({
             if (!problems.length) onSave();
           }}
         >
-          {editing ? "حفظ التعديل" : Date.parse(draft.startsAt) <= now ? "احفظ وبلّش هلّق" : "احفظ الموسم"}
+          {editing ? tr("حفظ التعديل", "Save changes") : Date.parse(draft.startsAt) <= now ? tr("حفظ وبدء هلّق", "Save and start now") : tr("حفظ الموسم", "Save season")}
         </Button>
         <Button variant="ghost" onClick={onCancel}>
-          إلغاء
+          {tr("إلغاء", "Cancel")}
         </Button>
       </div>
     </Card>
@@ -477,7 +480,7 @@ function HistoryTab() {
   const undo = useMutation({
     mutationFn: (id: string) => SellingAPI.undoPriceAction(id),
     onSuccess: (r) => {
-      toast.success("انرجع", { description: r.changedSince ? `${r.changedSince} مقاس تغيّر من بعدها، تركناه متل ما هو.` : undefined });
+      toast.success(tr("انرجع", "Undone"), { description: r.changedSince ? tr(`${r.changedSince} مقاس تغيّر من بعدها، تركناه متل ما هو.`, "{0} sizes changed since then; left as they are.", [r.changedSince]) : undefined });
       void qc.invalidateQueries({ queryKey: ["selling"] });
     },
     onError,
@@ -486,7 +489,7 @@ function HistoryTab() {
   if (!q.data.actions.length)
     return (
       <Card>
-        <p className="text-sm text-white/60">ما في تغييرات لسا.</p>
+        <p className="text-sm text-white/60">{tr("ما في تغييرات لسا.", "No changes yet.")}</p>
       </Card>
     );
   return (
@@ -506,7 +509,7 @@ function HistoryTab() {
             </div>
             {canWrite && a.status === "applied" && !a.campaignId ? (
               <Button size="sm" variant="ghost" onClick={() => undo.mutate(a.id)} isLoading={undo.isPending && undo.variables === a.id}>
-                رجّع
+                {tr("ترجيع", "Undo")}
               </Button>
             ) : null}
           </li>

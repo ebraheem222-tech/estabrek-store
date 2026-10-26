@@ -125,6 +125,31 @@ describe("The email when it's back", () => {
     expect(a).toMatchObject({ status: "FAILED", attempts: 3 });
   });
 
+  test("asked on the Hebrew shop → the email is in Hebrew, with the translated name and Hebrew links", async () => {
+    const sent = fakeResend();
+    const s = (await prisma.siteSettings.findFirst())!;
+    const header = (s.header && typeof s.header === "object" ? s.header : {}) as Record<string, unknown>;
+    await prisma.siteSettings.update({ where: { id: s.id }, data: { header: { ...header, languages: { enabled: ["ar", "en", "he"], default: "ar" } } as any } });
+    await prisma.product.update({ where: { id: "p1" }, data: { translations: { he: { title: "חולצה כחולה", colors: { Blue: "כחול" } } } } });
+    await soldOut();
+    await request(app).post("/v1/stock-alerts").send({ email: "dana@shop.test", variantId: "cvariant01", lang: "he" }).expect(201);
+    expect((await prisma.stockAlert.findFirst())!.locale).toBe("he");
+    await restock();
+    expect(await sweepStockAlerts()).toMatchObject({ sent: 1 });
+    expect(sent[0].subject).toBe("חזר למלאי: חולצה כחולה");
+    expect(sent[0].html).toContain('<html lang="he" dir="rtl">');
+    expect(sent[0].html).toContain("כחול");
+    expect(sent[0].html).toContain("https://shop.estabrek.test/he/p/blue-shirt");
+    expect(sent[0].html).toContain("https://shop.estabrek.test/he/stock-alert/stop?t=");
+    // A language the store doesn't offer is its main one.
+    await prisma.stockAlert.deleteMany();
+    await soldOut();
+    await prisma.siteSettings.update({ where: { id: s.id }, data: { header: { ...header, languages: { enabled: ["ar", "en"], default: "ar" } } as any } });
+    await request(app).post("/v1/stock-alerts").send({ email: "dana@shop.test", variantId: "cvariant01", lang: "he" }).expect(201);
+    expect((await prisma.stockAlert.findFirst())!.locale).toBe("ar");
+    await prisma.siteSettings.update({ where: { id: s.id }, data: { header: header as any } });
+  });
+
   test("the stop link stops it (or all of hers)", async () => {
     await soldOut();
     await ask("sara@shop.test").expect(201);

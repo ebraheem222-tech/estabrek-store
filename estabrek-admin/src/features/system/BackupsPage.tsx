@@ -13,6 +13,7 @@ import * as FeaturesAPI from "../../api/features.api";
 import type { BackupsView } from "../../api/system.api";
 import { relativeTime } from "../team/teamText";
 import { STATUS_TEXT, TRIGGER_TEXT, backupHealth, errorText, hourText, humanBytes } from "./backupText";
+import { loc } from "@/lib/lang";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
@@ -25,7 +26,7 @@ const HEALTH_STYLE = {
 export default function BackupsPage() {
   const q = useQuery({ queryKey: ["backups"], queryFn: SystemAPI.getBackups, refetchInterval: (query) => (query.state.data?.runs.some((r) => r.status === "RUNNING") ? 3000 : false) });
   return (
-    <div dir="rtl" className="space-y-4" data-testid="backups-page">
+    <div className="space-y-4" data-testid="backups-page">
       {q.isLoading ? (
         <div className={`${box} flex items-center gap-2 text-sm`}>
           <Spinner /> جاري التحميل…
@@ -118,7 +119,7 @@ function StatusCard({ v }: { v: BackupsView }) {
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Fact label="آخر نسخة" value={v.last ? relativeTime(v.last.startedAt) : "—"} />
         <Fact label="حجمها" value={v.last ? humanBytes(v.last.sizeBytes) : "—"} />
-        <Fact label="سجلات" value={v.last?.rows != null ? v.last.rows.toLocaleString("ar") : "—"} />
+        <Fact label="سجلات" value={v.last?.rows != null ? v.last.rows.toLocaleString(loc("ar")) : "—"} />
         <Fact label="مكان الحفظ" value={v.storage.ready ? (v.storage.kind === "cloudinary" ? "Cloudinary (خاص)" : v.storage.kind) : "مش مضبوط"} />
       </div>
 
@@ -163,7 +164,7 @@ function HistoryCard({ v }: { v: BackupsView }) {
             <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span>{new Date(r.startedAt).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" })}</span>
+                  <span>{new Date(r.startedAt).toLocaleString(loc("ar"), { dateStyle: "medium", timeStyle: "short" })}</span>
                   <Badge size="sm" variant={STATUS_TEXT[r.status].variant}>
                     {STATUS_TEXT[r.status].label}
                   </Badge>
@@ -172,7 +173,7 @@ function HistoryCard({ v }: { v: BackupsView }) {
                 <div className="text-xs text-white/50">
                   {r.status === "FAILED"
                     ? errorText(r.error)
-                    : [humanBytes(r.sizeBytes), r.rows != null ? `${r.rows.toLocaleString("ar")} سجل` : "", r.status === "SUCCEEDED" && !r.location ? "انحذفت من مكان الحفظ (قديمة)" : ""]
+                    : [humanBytes(r.sizeBytes), r.rows != null ? `${r.rows.toLocaleString(loc("ar"))} سجل` : "", r.status === "SUCCEEDED" && !r.location ? "انحذفت من مكان الحفظ (قديمة)" : ""]
                         .filter(Boolean)
                         .join(" · ")}
                 </div>

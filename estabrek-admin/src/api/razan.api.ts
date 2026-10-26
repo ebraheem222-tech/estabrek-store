@@ -1,11 +1,13 @@
 // Admin → رزان: the storefront guide's settings, preview link and report.
 import { api } from "./http";
 
-export type RazanText = { ar: string; en: string };
+export type RazanText = { ar: string; en: string; he?: string };
 export type RazanSeason = "ramadan" | "eid" | "summer" | "winter";
 export type RazanOutfit = "abaya" | "dress" | "coat" | "khimar" | "tunic" | "eid";
 
 export type RazanSettings = {
+  /** Her name in the shop (empty = «رزان» / "Rose" / «רוז»). Missing on an older backend. */
+  name?: RazanText;
   enabled: boolean;
   greeting: boolean;
   reactions: boolean;

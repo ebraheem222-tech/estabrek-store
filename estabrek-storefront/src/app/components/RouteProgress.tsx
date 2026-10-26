@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type ProgressState = {

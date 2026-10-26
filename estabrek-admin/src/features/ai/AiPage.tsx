@@ -19,7 +19,7 @@ const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03]
 export default function AiPage() {
   const q = useQuery({ queryKey: ["ai"], queryFn: AiAPI.getAi });
   return (
-    <div dir="rtl" className="space-y-4 pb-24" data-testid="ai-page">
+    <div className="space-y-4 pb-24" data-testid="ai-page">
       {q.isLoading ? (
         <div className={`${box} flex items-center gap-2 text-sm`}><Spinner /> جاري التحميل…</div>
       ) : q.isError || !q.data ? (
@@ -46,7 +46,7 @@ function Editor({ data }: { data: Awaited<ReturnType<typeof AiAPI.getAi>> }) {
     onError: (e) => toast.error("ما انحفظ", { description: getApiErrorMessage(e) }),
   });
   const groups: Array<{ title: string; keys: AiFeature[] }> = [
-    { title: "للمنتجات", keys: ["productWriter", "photoStudio"] },
+    { title: "للمنتجات", keys: ["productWriter", "photoStudio", "translate"] },
     { title: "للزبونات بالمتجر", keys: ["smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary"] },
     { title: "إلك", keys: ["adminAsk", "replySuggest", "orderFlags"] },
   ];

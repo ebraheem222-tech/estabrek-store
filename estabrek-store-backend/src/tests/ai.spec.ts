@@ -31,6 +31,8 @@ beforeEach(async () => {
   await prisma.aiCache.deleteMany();
   await prisma.aiUsage.deleteMany();
   await setAi({}).expect(200);
+  // The store these prompts speak for (its own name, not left over from another test file).
+  await prisma.siteSettings.updateMany({ data: { siteName: "استبرق ستور" } });
   await resetDb();
   clearStyleCache();
   await prisma.category.createMany({ data: [{ id: "caicat00001", name: "عبايات", slug: "ai-abayas" }, { id: "caicat00002", name: "حجابات", slug: "ai-hijabs" }] });
@@ -160,7 +162,10 @@ describe("AI features", () => {
     expect(f.level).not.toBe("ok");
 
     answer = (p) => {
-      expect(p.user).toContain("Her first name: سارة");
+      expect(p.user).toContain("Customer's first name: سارة");
+      // The prompt speaks for this store (admin → هوية المتجر), not a fixed one.
+      expect(p.system).toContain("استبرق ستور is an online shop");
+      expect(p.system).not.toContain("modest");
       expect(p.user).toContain("بدي أغيّر المقاس");
       return { replies: [{ label: "تغيير المقاس", text: "أهلاً سارة 🌸 أكيد، أي مقاس بدك؟" }, { label: "", text: "  " }] };
     };
@@ -173,7 +178,7 @@ describe("AI features", () => {
     setStudioFetch(async () => sharp({ create: { width: 20, height: 30, channels: 3, background: "#888" } }).jpeg().toBuffer());
     setStudioUpload(async () => "https://res.test/studio.png");
     await setAi({ photoStudio: true }).expect(200);
-    expect((await request(app).get("/v1/admin/ai-catalog/status").expect(200)).body).toEqual({ productWriter: false, photoStudio: false }); // no Cloudinary here
+    expect((await request(app).get("/v1/admin/ai-catalog/status").expect(200)).body).toEqual({ productWriter: false, photoStudio: false, translate: false }); // no Cloudinary here
     const res = await request(app).post("/v1/admin/ai-catalog/photo-studio").send({ imageUrl: "https://img.test/caiabaya001.jpg", style: "white" });
     expect(res.status).toBe(409);
     expect(res.body.error).toBe("CLOUDINARY_NOT_CONFIGURED");

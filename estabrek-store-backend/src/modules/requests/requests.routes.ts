@@ -28,6 +28,8 @@ const Body = z.object({
   wantedColor: z.string().trim().max(60).optional(),
   details: z.string().trim().max(1000).optional(),
   source: z.string().trim().max(40).optional(),
+  /** The shop's language (the «found it» email comes in it). */
+  lang: z.enum(["ar", "en", "he"]).optional(),
 });
 
 r.post(

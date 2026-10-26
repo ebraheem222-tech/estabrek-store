@@ -11,6 +11,7 @@ import { ProductCodesBlock } from "./ProductCodesBlock";
 import { ProtectedFilesBlock, ProtectionSettings } from "./ProtectedFilesBlock";
 import { FULFILLMENT, deliveryLine } from "../types/typeText";
 import { deliveryForSave } from "./composerModel";
+import { tr } from "@/lib/words";
 
 export function TypeFieldsBlock({
   types,
@@ -37,13 +38,13 @@ export function TypeFieldsBlock({
   return (
     <div className="mt-5 border-t border-white/[0.06] pt-4" data-testid="type-fields">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-white/55">نوع القطعة</span>
+        <span className="text-xs text-white/55">{tr("نوع القطعة", "Item type")}</span>
         <Link to="/admin/catalog/types" className="text-xs text-accent-300 hover:underline">
-          إدارة الأنواع والحقول
+          {tr("إدارة الأنواع والحقول", "Manage types and fields")}
         </Link>
       </div>
       {types.length > 1 ? (
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="نوع القطعة">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={tr("نوع القطعة", "Item type")}>
           {types.map((t) => (
             <Chip key={t.id} active={t.id === active.id} onClick={() => update((d) => ({ ...d, typeId: t.id }))}>
               {t.name}
@@ -61,15 +62,15 @@ export function TypeFieldsBlock({
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-white/45">هالنوع ما إله حقول بعد. بتقدري تضيفي حقول (مثل القماش أو الطول) من «إدارة الأنواع والحقول».</p>
+        <p className="mt-3 text-xs text-white/45">{tr("هالنوع ما إله حقول بعد. الحقول (مثل القماش أو الطول) بتنضاف من «إدارة الأنواع والحقول».", "This type has no fields yet. Add fields (like fabric or length) in “Manage types and fields”.")}</p>
       )}
 
       {active.fulfillment && active.fulfillment !== "SHIPPING" ? (
         <p className="mt-4 rounded-xl bg-white/[0.04] px-3 py-2 text-xs leading-5 text-white/65" data-testid="fulfillment-note">
           {FULFILLMENT[active.fulfillment].icon} <b className="text-white/85">{FULFILLMENT[active.fulfillment].label}:</b>{" "}
           {active.fulfillment === "DIGITAL"
-            ? "ما في داعي للكمية — المنتج الرقمي ما بيخلص (إلا إذا بتبيعي أكواد: وقتها الكمية = الأكواد المتاحة). الزبونة بتلاقي الملفات والأكواد بصفحة طلبها بعد الدفع أونلاين أو لما تقبلي الطلب."
-            : "الكمية بقسم المقاسات = عدد المقاعد. كل مقعد بيطلعله تذكرة بكود لما تنقبل الطلبية أو تندفع أونلاين."}
+            ? tr("ما في داعي للكمية — المنتج الرقمي ما بيخلص (إلا إذا المنتج أكواد: وقتها الكمية = الأكواد المتاحة). الزبون بيلاقي الملفات والأكواد بصفحة طلبه بعد الدفع أونلاين أو لما ينقبل الطلب.", "No quantity needed — a digital product doesn't run out (unless it sells codes: then the quantity is the codes left). The customer finds the files and codes on their order page after paying online or once the order is accepted.")
+            : tr("الكمية بقسم المقاسات = عدد المقاعد. كل مقعد بيطلعله تذكرة بكود لما تنقبل الطلبية أو تندفع أونلاين.", "The quantity in the sizes section is the number of seats. Each seat gets a ticket with a code once the order is accepted or paid online.")}
         </p>
       ) : null}
       {(active.fulfillment ?? "SHIPPING") === "SHIPPING" ? <ShippingFields type={active} draft={draft} update={update} /> : null}
@@ -81,17 +82,17 @@ export function TypeFieldsBlock({
           <ProductFilesBlock productId={draft.edit?.productId ?? null} />
           <ProductCodesBlock productId={draft.edit?.productId ?? null} />
           <label className="mt-4 block">
-            <span className="mb-1.5 block text-xs text-white/55">كيف تستعمل الكود (اختياري)</span>
+            <span className="mb-1.5 block text-xs text-white/55">{tr("طريقة استعمال الكود (اختياري)", "How to use the code (optional)")}</span>
             <textarea
               rows={2}
               maxLength={500}
               className={cn(fieldCls, "min-h-[64px] py-2")}
               value={draft.redeemNote ?? ""}
               onChange={(e) => update((d) => ({ ...d, redeemNote: e.target.value }))}
-              placeholder="مثلاً: افتحي Steam ← إضافة لعبة ← تفعيل منتج، والصقي الكود"
-              aria-label="كيف تستعمل الكود"
+              placeholder={tr("مثلاً: فتح Steam ← إضافة لعبة ← تفعيل منتج، ولصق الكود", "e.g. Open Steam → Add a game → Activate a product, and paste the code")}
+              aria-label={tr("طريقة استعمال الكود", "How to use the code")}
             />
-            <span className="mt-1 block text-[11px] text-white/40">بيطلع جنب الكود بصفحة طلبها.</span>
+            <span className="mt-1 block text-[11px] text-white/40">{tr("بيطلع جنب الكود بصفحة الطلب.", "Shown next to the code on the order page.")}</span>
           </label>
         </>
       ) : null}
@@ -111,19 +112,19 @@ function ShippingFields({ type, draft, update }: { type: ProductType; draft: Com
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr]" data-testid="shipping-fields">
       <label className="block">
-        <span className="mb-1.5 block text-xs text-white/55">بينشحن من</span>
-        <input className={cn(fieldCls, "h-11")} value={dv.shipsFrom} maxLength={80} onChange={(e) => set({ shipsFrom: e.target.value })} placeholder={type.shipsFrom ? `${type.shipsFrom} (حسب النوع)` : "مثلاً: رام الله، تركيا، الصين"} aria-label="بينشحن من" />
+        <span className="mb-1.5 block text-xs text-white/55">{tr("بينشحن من", "Ships from")}</span>
+        <input className={cn(fieldCls, "h-11")} value={dv.shipsFrom} maxLength={80} onChange={(e) => set({ shipsFrom: e.target.value })} placeholder={type.shipsFrom ? tr(`${type.shipsFrom} (حسب النوع)`, "{0} (from the type)", [type.shipsFrom]) : tr("مثلاً: رام الله، تركيا، الصين", "e.g. Ramallah, Turkey, China")} aria-label={tr("بينشحن من", "Ships from")} />
       </label>
       <div>
-        <span className="mb-1.5 block text-xs text-white/55">التوصيل خلال (أيام)</span>
+        <span className="mb-1.5 block text-xs text-white/55">{tr("التوصيل خلال (أيام)", "Delivery in (days)")}</span>
         <div className="flex items-center gap-2">
-          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.minDays} onChange={(e) => set({ minDays: e.target.value })} placeholder={ph(type.deliveryMinDays)} aria-label="أقل عدد أيام" />
-          <span className="text-xs text-white/45">لحد</span>
-          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.maxDays} onChange={(e) => set({ maxDays: e.target.value })} placeholder={ph(type.deliveryMaxDays)} aria-label="أكثر عدد أيام" />
+          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.minDays} onChange={(e) => set({ minDays: e.target.value })} placeholder={ph(type.deliveryMinDays)} aria-label={tr("أقل عدد أيام", "Fewest days")} />
+          <span className="text-xs text-white/45">{tr("لحد", "to")}</span>
+          <input inputMode="numeric" dir="ltr" className={cn(fieldCls, "h-11 max-w-[5rem] px-2 text-center", bad && "border-red-500/50")} value={dv.maxDays} onChange={(e) => set({ maxDays: e.target.value })} placeholder={ph(type.deliveryMaxDays)} aria-label={tr("أكثر عدد أيام", "Most days")} />
         </div>
       </div>
       <p className={cn("text-[11px] sm:col-span-2", bad ? "text-red-400" : "text-white/45")} data-testid="delivery-preview">
-        {bad ? "أيام التوصيل رقم من 0 لـ 120، و«لحد» أكبر من «من»" : line ? <>الزبونة بتشوف: «{line}»</> : "فاضي = ما بينكتب وقت التوصيل. بتقدري تحطي وقت لكل المنتجات من هالنوع بـ«إدارة الأنواع»."}
+        {bad ? tr("أيام التوصيل رقم من 0 لـ 120، و«لحد» أكبر من «من»", "Delivery days are a number from 0 to 120, and “to” is more than “from”") : line ? <>{tr("الزبون بيشوف: «", "The customer sees: “")}{line}»</> : tr("فاضي = ما بينكتب وقت التوصيل. وقت لكل منتجات هالنوع بينحط من «إدارة الأنواع».", "Empty = no delivery time shown. Set one for every product of this type in “Manage types”.")}
       </p>
     </div>
   );
@@ -136,19 +137,19 @@ function BookingFields({ draft, update }: { draft: ComposerDraft; update: (fn: (
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="booking-fields">
       <label className="block">
-        <span className="mb-1.5 block text-xs text-white/55">بيبلش</span>
-        <input type="datetime-local" dir="ltr" className={cn(fieldCls, "h-11")} value={ev.startsAt} onChange={(e) => set({ startsAt: e.target.value })} aria-label="موعد البداية" />
+        <span className="mb-1.5 block text-xs text-white/55">{tr("بيبلش", "Starts")}</span>
+        <input type="datetime-local" dir="ltr" className={cn(fieldCls, "h-11")} value={ev.startsAt} onChange={(e) => set({ startsAt: e.target.value })} aria-label={tr("موعد البداية", "Start time")} />
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-xs text-white/55">بيخلص (اختياري)</span>
-        <input type="datetime-local" dir="ltr" className={cn(fieldCls, "h-11", bad && "border-red-500/50")} value={ev.endsAt} min={ev.startsAt || undefined} onChange={(e) => set({ endsAt: e.target.value })} aria-label="موعد النهاية" />
-        {bad ? <span className="mt-1 block text-xs text-red-400">النهاية لازم تكون بعد البداية</span> : null}
+        <span className="mb-1.5 block text-xs text-white/55">{tr("بيخلص (اختياري)", "Ends (optional)")}</span>
+        <input type="datetime-local" dir="ltr" className={cn(fieldCls, "h-11", bad && "border-red-500/50")} value={ev.endsAt} min={ev.startsAt || undefined} onChange={(e) => set({ endsAt: e.target.value })} aria-label={tr("موعد النهاية", "End time")} />
+        {bad ? <span className="mt-1 block text-xs text-red-400">{tr("النهاية لازم تكون بعد البداية", "The end has to be after the start")}</span> : null}
       </label>
       <label className="block sm:col-span-2">
-        <span className="mb-1.5 block text-xs text-white/55">المكان</span>
-        <input className={cn(fieldCls, "h-11")} value={ev.location} onChange={(e) => set({ location: e.target.value })} placeholder="مثلاً: سخنين، قاعة البلدية — أو «أونلاين (Zoom)»" aria-label="المكان" />
+        <span className="mb-1.5 block text-xs text-white/55">{tr("المكان", "Place")}</span>
+        <input className={cn(fieldCls, "h-11")} value={ev.location} onChange={(e) => set({ location: e.target.value })} placeholder={tr("مثلاً: سخنين، قاعة البلدية — أو «أونلاين (Zoom)»", "e.g. Sakhnin, the town hall — or “Online (Zoom)”")} aria-label={tr("المكان", "Place")} />
       </label>
-      <p className="text-[11px] text-white/40 sm:col-span-2">بعد ما يمرق الموعد، المتجر بيوقف يستقبل طلبات عليه لحاله.</p>
+      <p className="text-[11px] text-white/40 sm:col-span-2">{tr("بعد ما يمرق الموعد، المتجر بيوقف يستقبل طلبات عليه لحاله.", "Once the time has passed, the store stops taking orders for it by itself.")}</p>
     </div>
   );
 }
@@ -179,7 +180,7 @@ function FieldInput({ field: f, value, error, onChange }: { field: TypeField; va
       input = <input id={id} type="url" dir="ltr" className={cn(fieldCls, "h-11", error && "border-red-500/50")} value={str} onChange={(e) => onChange(e.target.value)} placeholder="https://" />;
       break;
     case "boolean":
-      input = <Toggle checked={value === true} onChange={(v) => onChange(v)} label={value === true ? "نعم" : "لا"} />;
+      input = <Toggle checked={value === true} onChange={(v) => onChange(v)} label={value === true ? tr("نعم", "Yes") : tr("لا", "No")} />;
       break;
     case "select":
       input = (

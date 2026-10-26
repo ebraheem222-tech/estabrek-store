@@ -10,7 +10,7 @@ import { Icon } from "./Icons";
 import { ScrollOpening } from "./ScrollOpening";
 import { DesignStudy } from "./DesignStudy";
 import type { RosePresentationOptions } from "./roseDesign";
-import { RoseVideoSection } from "./RoseVideoSection";
+import { RoseVideoSection, defaultCampaignVideo } from "./RoseVideoSection";
 import { HeroMascot } from "./mascot/HeroMascot";
 import { RoseHeroFilm } from "./RoseHeroFilm";
 import { useHeroFilm } from "@/lib/useAb";
@@ -24,6 +24,9 @@ import {
   endThemePreview,
   previewTheme,
 } from "@/lib/themePreview";
+import { useNames } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { isRtl } from "@/lib/i18n";
 
 export type RoseHeroData = {
   title?: string;
@@ -46,6 +49,15 @@ export type RoseHeroData = {
   rosePresentation?: RosePresentationOptions;
   primaryButton?: { label?: string; href?: string };
   secondaryButton?: { label?: string; href?: string };
+  /** The new editor's words in place of the shop's own lines (empty = the shop's). */
+  roseKicker?: string;
+  roseNote?: string;
+  roseScrollCue?: string;
+  roseBrandCaption?: string;
+  roseImageCaption?: string;
+  roseCategoryNavLabel?: string;
+  /** The campaign clip under the opening (empty = the shop's own). */
+  roseVideo?: { url?: string; posterUrl?: string };
 };
 export type RoseCollection = {
   label?: string;
@@ -77,14 +89,16 @@ export function RoseHero({
   showVideo?: boolean;
 }) {
   const { language } = useLanguage();
-  const ar = language === "ar";
+  const lang = language;
+  const ar = lang === "ar";
+  const n = useNames();
   const primaryButton = polishButton(data.primaryButton);
   const secondaryButton = polishButton(data.secondaryButton);
   const subtitle = polishCopy(data.subtitle);
   const title =
     data.roseTitle ||
     (data.title !== siteName ? polishCopy(data.title) : "") ||
-    (ar ? "أناقة تشبهكِ.\nبكل تفاصيلكِ." : "Modesty,\nbeautifully yours.");
+    (tr(lang, "أناقة تشبهكِ.\nبكل تفاصيلكِ.", "Modesty,\nbeautifully yours."));
   const lines = title.split("\n");
   const image =
     data.roseImageUrl ||
@@ -124,14 +138,16 @@ export function RoseHero({
           <div className="hero-copy">
             <div className="atelier-eyebrow hero-eyebrow">
               <span className="rose-line" />
-              {data.eyebrow ||
-                (ar ? "استبرق · أناقة محتشمة" : "ESTABREK · MODERN MODESTY")}
+              <span data-edit="eyebrow">
+                {data.eyebrow ||
+                  (tr(lang, `${n.store} · أناقة محتشمة`, "{0} · MODERN MODESTY", [n.store.toUpperCase()]))}
+              </span>
             </div>
             <div className="rose-hero-kicker">
-              {ar ? "لأن كل تفاصيلكِ، جميلة" : "Made for every side of you"}
+              <span data-edit="roseKicker">{data.roseKicker || tr(lang, "لأن كل تفاصيلكِ، جميلة", "Made for every side of you")}</span>
               <Icon name="spark" />
             </div>
-            <h1 id="hero-title" className="hero-headline">
+            <h1 id="hero-title" className="hero-headline" data-edit="roseTitle" data-edit-lines="">
               {lines.map((line, i) => (
                 <span
                   key={i}
@@ -145,55 +161,51 @@ export function RoseHero({
                 </span>
               ))}
             </h1>
-            <p className="hero-description">
+            <p className="hero-description" data-edit="subtitle">
               {subtitle ||
-                (ar
-                  ? "حجاب، فساتين، وقطع تختارينها بحب. إطلالات تجمع الاحتشام والراحة، بلمسة تشبهكِ."
-                  : "Hijabs, dresses, and pieces to love. A little softness, a little confidence. Completely you.")}
+                (tr(lang, "حجاب، فساتين، وقطع تختارينها بحب. إطلالات تجمع الاحتشام والراحة، بلمسة تشبهكِ.", "Hijabs, dresses, and pieces to love. A little softness, a little confidence. Completely you."))}
             </p>
             <div className="hero-actions">
               <Link
                 href={primary?.href || "/shop"}
                 className="atelier-button button-dark"
               >
-                {primary?.label ||
-                  (ar ? "تسوّقي الآن" : "Shop now")}
+                <span data-edit={primary === secondaryButton ? "secondaryButton.label" : "primaryButton.label"}>
+                  {primary?.label ||
+                    (tr(lang, "تسوّقي الآن", "Shop now"))}
+                </span>
                 <Icon name="arrow" />
               </Link>
               {secondary?.href && secondary.label ? (
                 <Link href={secondary.href} className="atelier-text-link">
-                  {secondary.label}
+                  <span data-edit={secondary === primaryButton ? "primaryButton.label" : "secondaryButton.label"}>{secondary.label}</span>
                   <Icon name="arrow" />
                 </Link>
               ) : showStudy ? (
                 <a href="#craft" className="atelier-text-link">
-                  {ar ? "اكتشفي عالم الأقمشة" : "Explore the fabric story"}
+                  {tr(lang, "اكتشفي عالم الأقمشة", "Explore the fabric story")}
                   <Icon name="rotate" />
                 </a>
               ) : null}
             </div>
             <div className="hero-bottom">
-              <span className="hero-note">
-                {ar
-                  ? "احتشامٌ بثقة. وأناقةٌ بطريقتكِ."
-                  : "Soft by nature. Confident by choice."}
+              <span className="hero-note" data-edit="roseNote">
+                {data.roseNote || tr(lang, "احتشامٌ بثقة. وأناقةٌ بطريقتكِ.", "Soft by nature. Confident by choice.")}
               </span>
               <a href="#arrivals" className="scroll-cue">
                 <Icon name="down" />
-                {ar ? "مرّري للاكتشاف" : "SCROLL TO DISCOVER"}
+                <span data-edit="roseScrollCue">{data.roseScrollCue || tr(lang, "مرّري للاكتشاف", "SCROLL TO DISCOVER")}</span>
               </a>
             </div>
           </div>
           <div className="hero-visual">
             <div className="hero-orbit" aria-hidden="true" />
-            <div className="hero-image-wrap">
+            <div className="hero-image-wrap" data-edit-media="roseImageUrl">
               <Image
                 src={image}
                 alt={
                   data.roseImageAlt ||
-                  (ar
-                    ? "إطلالة محتشمة بحجاب وفستان وردي"
-                    : "A modest look with a rose hijab and flowing dress")
+                  (tr(lang, "إطلالة محتشمة بحجاب وفستان وردي", "A modest look with a rose hijab and flowing dress"))
                 }
                 fill
                 priority
@@ -207,26 +219,30 @@ export function RoseHero({
             </div>
             <HeroMascot ar={ar} />
             <div className="hero-brand-card">
-              <span className="hero-brand-label">
-                {data.badge || (ar ? "مختارات استبرق" : "THE ROSE EDIT")}
+              <span className="hero-brand-label" data-edit="badge">
+                {data.badge || (tr(lang, `مختارات ${n.store}`, "THE ROSE EDIT"))}
               </span>
               <div className="hero-brand-image">
-                <Image
-                  src={logoUrl || "/editorial/estabrek-logo.webp"}
-                  alt={siteName || "متجر استبرق"}
-                  fill
-                  sizes="180px"
-                />
+                {logoUrl ? (
+                  <Image
+                    src={logoUrl}
+                    alt={siteName || n.storeName}
+                    fill
+                    sizes="180px"
+                  />
+                ) : (
+                  <span className="rose-image-placeholder">{n.store}</span>
+                )}
               </div>
-              <span>{ar ? "أناقة تليق بكِ" : "BEAUTIFULLY YOU"}</span>
+              <span data-edit="roseBrandCaption">{data.roseBrandCaption || tr(lang, "أناقة تليق بكِ", "BEAUTIFULLY YOU")}</span>
             </div>
             <div className="hero-image-caption">
-              <span>
-                {ar ? "حكايتكِ تبدأ بتفصيلة" : "Every detail tells your story"}
+              <span data-edit="roseImageCaption">
+                {data.roseImageCaption || tr(lang, "حكايتكِ تبدأ بتفصيلة", "Every detail tells your story")}
               </span>
             </div>
             <span className="image-edge-label" aria-hidden="true">
-              {ar ? "النعومة حضور" : "SOFTNESS IS A STATEMENT"}
+              {tr(lang, "النعومة حضور", "SOFTNESS IS A STATEMENT")}
             </span>
           </div>
         </section>
@@ -236,9 +252,9 @@ export function RoseHero({
       {categories.length > 0 && (
         <div
           className="rose-category-nav"
-          aria-label={ar ? "أقسام المتجر" : "Shop categories"}
+          aria-label={tr(lang, "أقسام المتجر", "Shop categories")}
         >
-          <span>{ar ? "اكتشفي أسلوبكِ" : "Find your style"}</span>
+          <span data-edit="roseCategoryNavLabel">{data.roseCategoryNavLabel || tr(lang, "اكتشفي أسلوبكِ", "Find your style")}</span>
           {categories
             .filter((c) => !c.parentId)
             .slice(0, 6)
@@ -250,7 +266,11 @@ export function RoseHero({
             ))}
         </div>
       )}
-      {showVideo && data.roseVideoEnabled !== false && <RoseVideoSection />}
+      {showVideo && data.roseVideoEnabled !== false && (
+        <div data-edit-media="roseVideo.url" data-edit-media-kind="video">
+          <RoseVideoSection data={data.roseVideo?.url ? { ...defaultCampaignVideo, ...data.roseVideo } : undefined} />
+        </div>
+      )}
     </>
   );
 }
@@ -275,27 +295,29 @@ export function RoseProductGrid({
   anchor?: string;
   layout?: "grid" | "slider";
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
+  const n = useNames();
   const reel = useRef<HTMLDivElement>(null);
   return (
     <section id={anchor} className="atelier-arrivals atelier-section">
       <div className="atelier-section-heading" data-reveal>
         <div>
           <span className="atelier-eyebrow">
-            {ar ? "اختيارات تستحق أن تكون لكِ" : "YOUR NEXT LITTLE OBSESSION"}
+            {tr(lang, "اختيارات تستحق أن تكون لكِ", "YOUR NEXT LITTLE OBSESSION")}
           </span>
-          <h2>{title || (ar ? "جديد، ويشبهكِ." : "New. And so you.")}</h2>
-          {subtitle && <p className="section-description">{subtitle}</p>}
+          <h2 data-edit="title">{title || (tr(lang, "جديد، ويشبهكِ.", "New. And so you."))}</h2>
+          {subtitle && <p className="section-description" data-edit="subtitle">{subtitle}</p>}
         </div>
         <Link href="/shop" className="atelier-text-link">
-          {ar ? "كل المنتجات" : "Shop all pieces"}
+          {tr(lang, "كل المنتجات", "Shop all pieces")}
           <Icon name="arrow" />
         </Link>
       </div>
       {categories.length > 0 && (
         <div className="collection-tabs" data-reveal>
           <Link href="/shop" className="collection-tab active">
-            {ar ? "كل الاختيارات" : "All pieces"}
+            {tr(lang, "كل الاختيارات", "All pieces")}
             <span className="tab-dot" />
           </Link>
           {categories.slice(0, 5).map((c) => (
@@ -312,17 +334,15 @@ export function RoseProductGrid({
       {layout === "slider" && products.length > 4 && (
         <div className="rose-reel-controls">
           <span>
-            {ar
-              ? "اختيارات أكثر، مرّري لاستكشافها"
-              : "More to love. Scroll to explore."}
+            {tr(lang, "اختيارات أكثر، مرّري لاستكشافها", "More to love. Scroll to explore.")}
           </span>
           <button
             type="button"
             className="atelier-icon-button"
-            aria-label={ar ? "المنتجات السابقة" : "Previous products"}
+            aria-label={tr(lang, "المنتجات السابقة", "Previous products")}
             onClick={() =>
               reel.current?.scrollBy({
-                left: (ar ? 1 : -1) * reel.current.clientWidth * 0.85,
+                left: (isRtl(lang) ? 1 : -1) * reel.current.clientWidth * 0.85,
                 behavior: "smooth",
               })
             }
@@ -332,10 +352,10 @@ export function RoseProductGrid({
           <button
             type="button"
             className="atelier-icon-button"
-            aria-label={ar ? "المنتجات التالية" : "Next products"}
+            aria-label={tr(lang, "المنتجات التالية", "Next products")}
             onClick={() =>
               reel.current?.scrollBy({
-                left: (ar ? -1 : 1) * reel.current.clientWidth * 0.85,
+                left: (isRtl(lang) ? -1 : 1) * reel.current.clientWidth * 0.85,
                 behavior: "smooth",
               })
             }
@@ -393,7 +413,7 @@ export function RoseProductGrid({
                 <div className="product-info">
                   <span className="product-category">
                     {p.category ||
-                      (ar ? "مجموعة استبرق" : "THE ESTABREK COLLECTION")}
+                      (tr(lang, `مجموعة ${n.store}`, "THE {0} COLLECTION", [n.store.toUpperCase()]))}
                   </span>
                   <div className="product-title-row">
                     <h3>{p.title}</h3>
@@ -404,7 +424,7 @@ export function RoseProductGrid({
               {p.colors?.length ? (
                 <div
                   className="product-colors"
-                  aria-label={ar ? "ألوان متاحة" : "Available colors"}
+                  aria-label={tr(lang, "ألوان متاحة", "Available colors")}
                 >
                   {p.colors.slice(0, 5).map((c, i) => (
                     <span key={i} style={{ backgroundColor: c }} />
@@ -416,7 +436,7 @@ export function RoseProductGrid({
                   <QuickAddButton
                     productId={p.id}
                     slug={p.slug}
-                    buttonLabel={ar ? "إضافة سريعة" : "Quick add"}
+                    buttonLabel={tr(lang, "إضافة سريعة", "Quick add")}
                   />
                 </div>
               )}
@@ -427,17 +447,17 @@ export function RoseProductGrid({
         <div className="rose-empty-edit">
           <Image
             src="/editorial/scarves.webp"
-            alt={ar ? "إلهام لألوان الحجاب" : "Hijab color inspiration"}
+            alt={tr(lang, "إلهام لألوان الحجاب", "Hijab color inspiration")}
             width={1500}
             height={1000}
           />
           <div>
             <span className="atelier-eyebrow">
-              {ar ? "إلهام لإطلالتكِ" : "EDITORIAL INSPIRATION"}
+              {tr(lang, "إلهام لإطلالتكِ", "EDITORIAL INSPIRATION")}
             </span>
-            <h3>{ar ? "اختاري ما يشبهكِ." : "Find your own softness."}</h3>
+            <h3>{tr(lang, "اختاري ما يشبهكِ.", "Find your own softness.")}</h3>
             <Link href="/shop" className="atelier-button button-dark">
-              {ar ? "زيارة المتجر" : "Explore the store"}
+              {tr(lang, "زيارة المتجر", "Explore the store")}
               <Icon name="arrow" />
             </Link>
           </div>
@@ -458,7 +478,8 @@ export function RoseCollections({
   subtitle?: string;
   anchor?: string;
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const grid = useRef<HTMLDivElement>(null);
   const active = useRef<number | null>(null);
   const intent = useRef(0);
@@ -496,18 +517,16 @@ export function RoseCollections({
       <div className="atelier-section-heading" data-reveal>
         <div>
           <span className="atelier-eyebrow">
-            {ar ? "لكل يوم، ولكل حكاية" : "A LITTLE SOMETHING FOR EVERY DAY"}
+            {tr(lang, "لكل يوم، ولكل حكاية", "A LITTLE SOMETHING FOR EVERY DAY")}
           </span>
-          <h2>
+          <h2 data-edit="title">
             {title ||
-              (ar ? "عالم من الاختيارات." : "A world of possibilities.")}
+              (tr(lang, "عالم من الاختيارات.", "A world of possibilities."))}
           </h2>
         </div>
-        <p className="heading-aside">
+        <p className="heading-aside" data-edit="subtitle">
           {subtitle ||
-            (ar
-              ? "قطع تقترب منكِ.\nوتفاصيل تجعل إطلالتكِ أجمل."
-              : "Pieces that feel like you.\nDetails that make your day.")}
+            (tr(lang, "قطع تقترب منكِ.\nوتفاصيل تجعل إطلالتكِ أجمل.", "Pieces that feel like you.\nDetails that make your day."))}
         </p>
       </div>
       <div ref={grid} className="editorial-collection-grid" onMouseLeave={restore} onBlur={leaveFocus}>
@@ -517,6 +536,7 @@ export function RoseCollections({
             key={`${item.href}-${i}`}
             className={`editorial-collection-card ${i % 2 ? "collection-landscape" : "collection-portrait"}`}
             data-reveal
+            data-edit-media={`items.${i}.imageUrl`}
             onMouseEnter={(event) => preview(i, event.currentTarget)}
             onFocus={(event) => preview(i, event.currentTarget)}
             onClick={() => { discardThemePreview(); active.current = null; }}
@@ -531,18 +551,18 @@ export function RoseCollections({
               alt={
                 item.label ||
                 item.title ||
-                (ar ? "اكتشفي المجموعة" : "Explore the collection")
+                (tr(lang, "اكتشفي المجموعة", "Explore the collection"))
               }
               fill
               sizes="(max-width:760px) 100vw, 48vw"
             />
             <div className="collection-overlay">
               <span className="atelier-eyebrow">
-                {ar ? "مختارة لكِ بحب" : "CURATED WITH LOVE"}
+                {tr(lang, "مختارة لكِ بحب", "CURATED WITH LOVE")}
               </span>
-              <h3>{item.label || item.title}</h3>
+              <h3 data-edit={item.label || !item.title ? `items.${i}.label` : `items.${i}.title`}>{item.label || item.title}</h3>
               <span className="collection-card-link">
-                {ar ? "اكتشفي المجموعة" : "Explore the collection"}
+                {tr(lang, "اكتشفي المجموعة", "Explore the collection")}
                 <Icon name="arrow" />
               </span>
             </div>
@@ -554,9 +574,10 @@ export function RoseCollections({
 }
 
 export function RoseEditorialPanel({ data }: { data: RoseHeroData }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const configuredActions = [polishButton(data.primaryButton), polishButton(data.secondaryButton)].filter(button => button?.href);
-  const actions = configuredActions.length ? configuredActions : [{ href: "/shop", label: ar ? "اكتشفي المزيد" : "Discover more" }];
+  const actions = configuredActions.length ? configuredActions : [{ href: "/shop", label: tr(lang, "اكتشفي المزيد", "Discover more") }];
   return (
     <section className="rose-editorial-panel atelier-section" data-reveal>
       <div className="rose-editorial-photo">
@@ -575,11 +596,11 @@ export function RoseEditorialPanel({ data }: { data: RoseHeroData }) {
         <span className="atelier-eyebrow">
           {data.eyebrow ||
             data.badge ||
-            (ar ? "لمسات تكمل إطلالتكِ" : "THE LITTLE DETAILS")}
+            (tr(lang, "لمسات تكمل إطلالتكِ", "THE LITTLE DETAILS"))}
         </span>
-        <h2>{data.roseTitle || polishCopy(data.title)}</h2>
-        <p>{polishCopy(data.subtitle)}</p>
-        <div className="rose-editorial-actions">{actions.map((button, i) => <Link key={i} className="atelier-text-link" href={button!.href!}>{button!.label || (ar ? "اكتشفي المزيد" : "Discover more")}<Icon name="arrow" /></Link>)}</div>
+        <h2 data-edit={data.roseTitle ? "roseTitle" : "title"}>{data.roseTitle || polishCopy(data.title)}</h2>
+        <p data-edit="subtitle">{polishCopy(data.subtitle)}</p>
+        <div className="rose-editorial-actions">{actions.map((button, i) => <Link key={i} className="atelier-text-link" href={button!.href!}>{button!.label || (tr(lang, "اكتشفي المزيد", "Discover more"))}<Icon name="arrow" /></Link>)}</div>
       </div>
       <Icon name="spark" className="editorial-flower" />
     </section>
@@ -593,26 +614,27 @@ export function RoseFaq({
   title?: string;
   items: { question: string; answer: string }[];
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const entries = ar ? completeFaq(items) : items;
   return (
     <section className="rose-faq atelier-section" data-reveal>
       <div>
         <span className="atelier-eyebrow">
-          {ar ? "يسعدنا مساعدتكِ" : "LET’S MAKE IT EASY"}
+          {tr(lang, "يسعدنا مساعدتكِ", "LET’S MAKE IT EASY")}
         </span>
-        <h2>
-          {(title && polishCopy(title)) || (ar ? "أسئلتكِ، بكل حب." : "A little help, with love.")}
+        <h2 data-edit="title">
+          {(title && polishCopy(title)) || (tr(lang, "أسئلتكِ، بكل حب.", "A little help, with love."))}
         </h2>
       </div>
       <div className="rose-faq-items">
         {entries.map((item, i) => (
           <details key={i}>
             <summary>
-              {item.question}
+              <span data-edit={i < items.length ? `items.${i}.question` : undefined}>{item.question}</span>
               <span aria-hidden="true">+</span>
             </summary>
-            <p>{item.answer}</p>
+            <p data-edit={i < items.length ? `items.${i}.answer` : undefined}>{item.answer}</p>
           </details>
         ))}
       </div>
@@ -632,32 +654,32 @@ export function RoseCta({
     button?: { label?: string; href?: string };
   };
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
+  const n = useNames();
   return (
     <section className="atelier-manifesto rose-cta">
       <span className="atelier-eyebrow" data-reveal>
-        {ar ? "من استبرق، بكل حب" : "FROM ESTABREK, WITH LOVE"}
+        {tr(lang, `من ${n.store}، بكل حب`, "FROM {0}, WITH LOVE", [n.store.toUpperCase()])}
       </span>
       <Icon name="spark" className="manifesto-star" width="42" height="42" />
-      <h2 data-reveal>
+      <h2 data-reveal data-edit="title" data-edit-lines="">
         {polishCopy(data.title) ||
-          (ar
-            ? "كوني أنتِ.\nالجمال في تفاصيلكِ."
-            : "Be yourself.\nBeautifully, always.")}
+          (tr(lang, "كوني أنتِ.\nالجمال في تفاصيلكِ.", "Be yourself.\nBeautifully, always."))}
       </h2>
-      <p data-reveal>
+      <p data-reveal data-edit={data.text && !data.subtitle ? "text" : "subtitle"}>
         {polishCopy(data.subtitle || data.text) ||
-          (ar
-            ? "أناقة محتشمة، وخيارات تليق بيومكِ. نحن هنا لنساعدكِ في العثور على ما تحبين."
-            : "Modern modesty, made for your everyday. We’re here to help you find the pieces you love.")}
+          (tr(lang, "أناقة محتشمة، وخيارات تليق بيومكِ. نحن هنا لنساعدكِ في العثور على ما تحبين.", "Modern modesty, made for your everyday. We’re here to help you find the pieces you love."))}
       </p>
       <Link
         href={data.buttonHref || data.button?.href || "/contact"}
         className="atelier-button button-dark"
         data-reveal
       >
-        {polishCopy(data.buttonLabel || data.button?.label) ||
-          (ar ? "تواصلي معنا" : "Let’s stay in touch")}
+        <span data-edit={data.buttonLabel || !data.button?.label ? "buttonLabel" : "button.label"}>
+          {polishCopy(data.buttonLabel || data.button?.label) ||
+            (tr(lang, "تواصلي معنا", "Let’s stay in touch"))}
+        </span>
         <Icon name="arrow" />
       </Link>
     </section>
@@ -666,14 +688,16 @@ export function RoseCta({
 
 /** Three promises shoppers look for before their first order. */
 export function RoseTrustBar() {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
+  const n = useNames();
   const items: { icon: "truck" | "cash" | "swap"; title: string; text: string }[] = [
-    { icon: "truck", title: ar ? "توصيل لكل البلاد" : "Delivery nationwide", text: ar ? "لباب بيتكِ أينما كنتِ" : "To your door, wherever you are" },
-    { icon: "cash", title: ar ? "الدفع عند الاستلام" : "Cash on delivery", text: ar ? "ادفعي عندما تصلكِ القطعة" : "Pay when your piece arrives" },
-    { icon: "swap", title: ar ? "استبدال سهل" : "Easy exchange", text: ar ? "المقاس لم يناسبكِ؟ نستبدله لكِ" : "Wrong size? We’ll swap it" },
+    { icon: "truck", title: tr(lang, "توصيل لكل البلاد", "Delivery nationwide"), text: tr(lang, "لباب بيتكِ أينما كنتِ", "To your door, wherever you are") },
+    { icon: "cash", title: tr(lang, "الدفع عند الاستلام", "Cash on delivery"), text: tr(lang, "ادفعي عندما تصلكِ القطعة", "Pay when your piece arrives") },
+    { icon: "swap", title: tr(lang, "استبدال سهل", "Easy exchange"), text: tr(lang, "المقاس لم يناسبكِ؟ نستبدله لكِ", "Wrong size? We’ll swap it") },
   ];
   return (
-    <ul className="rose-trust-bar" aria-label={ar ? "لماذا استبرق" : "Why Estabrek"}>
+    <ul className="rose-trust-bar" aria-label={tr(lang, `لماذا ${n.store}`, "Why {0}", [n.store])}>
       {items.map((item) => (
         <li key={item.icon}>
           <span className="trust-icon"><Icon name={item.icon} /></span>
@@ -695,22 +719,23 @@ export function RoseTestimonials({
   title?: string;
   items: { name?: string; role?: string; quote?: string; imageUrl?: string; avatarUrl?: string }[];
 }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const quotes = items.filter((t) => t?.quote);
   if (!quotes.length) return null;
   return (
     <section className="rose-testimonials atelier-section">
       <div className="atelier-section-heading" data-reveal>
         <div>
-          <span className="atelier-eyebrow">{ar ? "من زبوناتنا" : "FROM OUR CUSTOMERS"}</span>
-          <h2>{(title && polishCopy(title)) || (ar ? "بكلماتهنّ." : "In their words.")}</h2>
+          <span className="atelier-eyebrow">{tr(lang, "من زبوناتنا", "FROM OUR CUSTOMERS")}</span>
+          <h2 data-edit="title">{(title && polishCopy(title)) || (tr(lang, "بكلماتهنّ.", "In their words."))}</h2>
         </div>
       </div>
       <div className="testimonial-grid">
         {quotes.map((t, i) => (
           <figure key={i} className="testimonial-card" data-reveal>
             <span className="testimonial-mark" aria-hidden="true">”</span>
-            <blockquote>{polishCopy(t.quote)}</blockquote>
+            <blockquote data-edit={`items.${items.indexOf(t)}.quote`}>{polishCopy(t.quote)}</blockquote>
             <figcaption>
               {t.avatarUrl || t.imageUrl ? (
                 <Image src={(t.avatarUrl || t.imageUrl)!} alt="" width={40} height={40} />
@@ -718,7 +743,7 @@ export function RoseTestimonials({
                 <span className="testimonial-initial" aria-hidden="true">{String(t.name || "؟").trim().charAt(0)}</span>
               )}
               <span>
-                <strong>{t.name}</strong>
+                <strong data-edit={`items.${items.indexOf(t)}.name`}>{t.name}</strong>
                 {t.role ? <small>{t.role}</small> : null}
               </span>
             </figcaption>
@@ -731,7 +756,9 @@ export function RoseTestimonials({
 
 /** Invitation to the store’s real Instagram, shown when no testimonials are published yet. */
 export function RoseInstagram({ images = [] }: { images?: string[] }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
+  const n = useNames();
   const store = useRoseStore();
   if (!store.instagram) return null;
   const handle = (() => {
@@ -747,20 +774,18 @@ export function RoseInstagram({ images = [] }: { images?: string[] }) {
       <div className="instagram-copy">
         <span className="atelier-eyebrow">
           <Icon name="camera" />
-          {ar ? "على إنستغرام" : "ON INSTAGRAM"}
+          {tr(lang, "على إنستغرام", "ON INSTAGRAM")}
         </span>
-        <h2>{ar ? "تابعينا على إنستغرام." : "Follow us on Instagram."}</h2>
+        <h2>{tr(lang, "تابعينا على إنستغرام.", "Follow us on Instagram.")}</h2>
         <p>
-          {ar
-            ? "نشارك هناك القطع الجديدة أولاً بأول. شاركينا إطلالتكِ بقطع استبرق مع الإشارة إلى حسابنا."
-            : "Follow our new arrivals and share your Estabrek look by tagging us."}
+          {tr(lang, `نشارك هناك القطع الجديدة أولاً بأول. شاركينا إطلالتكِ بقطع ${n.store} مع الإشارة إلى حسابنا.`, "Follow our new arrivals and share your {0} look by tagging us.", [n.store])}
         </p>
         <a href={store.instagram} target="_blank" rel="noreferrer" className="atelier-button button-dark" dir="ltr">
           {handle}
           <Icon name="arrow" />
         </a>
       </div>
-      <a href={store.instagram} target="_blank" rel="noreferrer" className="instagram-tiles" aria-label={ar ? "افتحي حسابنا على إنستغرام" : "Open our Instagram"}>
+      <a href={store.instagram} target="_blank" rel="noreferrer" className="instagram-tiles" aria-label={tr(lang, "افتحي حسابنا على إنستغرام", "Open our Instagram")}>
         {tiles.map((src, i) => (
           <span key={src + i} className="instagram-tile">
             <Image src={src} alt="" fill sizes="(max-width:760px) 45vw, 18vw" />

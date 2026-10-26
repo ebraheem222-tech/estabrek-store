@@ -4,15 +4,24 @@
 import { env } from "../../../config/env.js";
 import { prisma } from "../../../lib/prisma.js";
 import { renderEmail } from "./emailTemplates.js";
+import { identityOf, storeName, type Audience, type Industry } from "../../identity/identity.js";
+import type { ContentLang } from "../../../lib/translations.js";
 
-let siteNameCache: { v: string; at: number } | null = null;
-async function siteName() {
-  if (siteNameCache && Date.now() - siteNameCache.at < 5 * 60_000) return siteNameCache.v;
-  const s = await prisma.siteSettings.findFirst({ select: { siteName: true } }).catch(() => null);
-  const v = s?.siteName?.trim() || "استبرق";
-  siteNameCache = { v, at: Date.now() };
+type Store = { name: Record<ContentLang, string>; audience: Audience; industry: Industry };
+let storeCache: { v: Store; at: number } | null = null;
+async function store(): Promise<Store> {
+  if (storeCache && Date.now() - storeCache.at < 5 * 60_000) return storeCache.v;
+  const s = await prisma.siteSettings.findFirst({ select: { siteName: true, header: true } }).catch(() => null);
+  // The store's own name (admin → هوية المتجر), never the platform's; and how it speaks.
+  const id = identityOf(s);
+  const v = { name: { ar: storeName(s, "ar"), en: storeName(s, "en"), he: storeName(s, "he") }, audience: id.audience, industry: id.industry };
+  storeCache = { v, at: Date.now() };
   return v;
 }
+/** Tests change the store between emails. */
+export const forgetEmailStore = () => {
+  storeCache = null;
+};
 
 export const emailConfigured = () => Boolean(env.RESEND_API_KEY && env.EMAIL_FROM);
 
@@ -22,8 +31,13 @@ export async function sendEmail(params: {
   payload?: any;
   /** Same key within 24 h = sent once (Resend). */
   idempotencyKey?: string;
+  /** The shopper's language (emails to the team are Arabic). */
+  lang?: ContentLang;
 }): Promise<{ ok: true; providerId: string } | { ok: false; error: string }> {
-  const rendered = renderEmail(params.template, params.payload ?? {}, await siteName());
+  const s = await store();
+  // Queued emails (outbox) carry it in the payload.
+  const lang: ContentLang = params.lang ?? (["ar", "en", "he"].includes(params.payload?.lang) ? params.payload.lang : "ar");
+  const rendered = renderEmail(params.template, params.payload ?? {}, s.name[lang], { lang, audience: s.audience, industry: s.industry });
 
   if (!rendered || !emailConfigured()) {
     // Not one of ours, or no provider set up yet: log only (never print codes in production).

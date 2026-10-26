@@ -67,10 +67,10 @@ describe("Fields and values", () => {
 
   test("the product page rows skip hidden and empty fields", () => {
     expect(specsOf(FIELDS, { fabric: "كريب", length: 140, occasion: ["يومي", "سهرة"], care: "يدوي", lined: false })).toEqual([
-      { key: "fabric", label: "القماش", value: "كريب", kind: "select" },
-      { key: "length", label: "الطول", value: "140 سم", kind: "number" },
-      { key: "occasion", label: "المناسبة", value: "يومي، سهرة", kind: "multiselect" },
-      { key: "lined", label: "مبطّن", value: "لا", kind: "boolean" },
+      { key: "fabric", label: "القماش", value: "كريب", kind: "select", raw: "كريب" },
+      { key: "length", label: "الطول", value: "140 سم", kind: "number", raw: 140 },
+      { key: "occasion", label: "المناسبة", value: "يومي، سهرة", kind: "multiselect", raw: ["يومي", "سهرة"] },
+      { key: "lined", label: "مبطّن", value: "لا", kind: "boolean", raw: false },
     ]);
   });
 

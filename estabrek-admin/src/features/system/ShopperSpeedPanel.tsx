@@ -156,7 +156,7 @@ function Report({ report: r }: { report: RumReport }) {
           <h3 className="text-sm font-semibold">حسب الصفحة والجهاز</h3>
           <table className="mt-3 w-full min-w-[860px] text-xs" data-testid="rum-table">
             <thead className="text-white/50">
-              <tr className="text-right">
+              <tr className="text-start">
                 <th className="py-2 font-normal">الصفحة</th>
                 <th className="font-normal">الجهاز</th>
                 <th className="font-normal">زيارات</th>

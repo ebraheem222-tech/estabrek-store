@@ -8,10 +8,11 @@ import { listOrders } from "../../api/orders.api";
 import { listProducts } from "../../api/catalog.api";
 import { cn } from "../../components/ui/cn";
 import { env } from "../../config/env";
-import { shekel, shortOrderId, statusLabel, orderTotal, type OrderLike } from "../../lib/orders";
+import { moneyText, shortOrderId, statusLabel, orderTotal, type OrderLike } from "../../lib/orders";
 import { setSkin, SKINS, type AdminSkin } from "../../theme/skin";
 import { Icons, NAV_GROUPS, type NavItem } from "../adminNav";
 import { normalizeSearch, phoneDigits } from "./search";
+import { tr } from "@/lib/words";
 
 type Hit = {
   id: string;
@@ -75,12 +76,12 @@ function Palette({ onClose, canView, can }: {
 
     // Actions first: the things done every day.
     const actions: Hit[] = [];
-    if (can("catalog:write")) actions.push({ id: "a-new-product", group: "إجراءات", label: "منتج جديد", hint: "إضافة سريعة بالصور", icon: Icons.plus, run: go("/admin/catalog/products/new") });
-    if (can("orders:read")) actions.push({ id: "a-new-orders", group: "إجراءات", label: "الطلبات الجديدة", hint: "اللي تنتظر التواصل", icon: Icons.orders, run: go("/admin/orders?status=NEW") });
-    if (can("orders:read")) actions.push({ id: "a-today", group: "إجراءات", label: "طلبات اليوم", icon: Icons.orders, run: go("/admin/orders?range=today") });
-    actions.push({ id: "a-store", group: "إجراءات", label: "فتح المتجر", hint: "في نافذة جديدة", icon: Icons.store, run: () => { onClose(); window.open(storefrontUrl(), "_blank", "noopener"); } });
+    if (can("catalog:write")) actions.push({ id: "a-new-product", group: tr("إجراءات", "Actions"), label: tr("منتج جديد", "New product"), hint: tr("إضافة سريعة بالصور", "Quick add with photos"), icon: Icons.plus, run: go("/admin/catalog/products/new") });
+    if (can("orders:read")) actions.push({ id: "a-new-orders", group: tr("إجراءات", "Actions"), label: tr("الطلبات الجديدة", "New orders"), hint: tr("بانتظار التواصل", "Waiting to be contacted"), icon: Icons.orders, run: go("/admin/orders?status=NEW") });
+    if (can("orders:read")) actions.push({ id: "a-today", group: tr("إجراءات", "Actions"), label: tr("طلبات اليوم", "Today's orders"), icon: Icons.orders, run: go("/admin/orders?range=today") });
+    actions.push({ id: "a-store", group: tr("إجراءات", "Actions"), label: tr("فتح المتجر", "Open the store"), hint: tr("في نافذة جديدة", "In a new window"), icon: Icons.store, run: () => { onClose(); window.open(storefrontUrl(), "_blank", "noopener"); } });
     for (const s of SKINS) {
-      actions.push({ id: `a-skin-${s.id}`, group: "إجراءات", label: `المظهر: ${s.label}`, hint: s.hint, icon: s.id === "rose" ? Icons.sun : Icons.moon, run: () => { setSkin(s.id as AdminSkin); onClose(); } });
+      actions.push({ id: `a-skin-${s.id}`, group: tr("إجراءات", "Actions"), label: tr(`المظهر: ${s.label}`, "Look: {0}", [s.label]), hint: s.hint, icon: s.id === "rose" ? Icons.sun : Icons.moon, run: () => { setSkin(s.id as AdminSkin); onClose(); } });
     }
     out.push(...actions.filter((a) => match(a.label, a.hint, a.id === "a-store" ? "store shop" : "")));
 
@@ -88,7 +89,7 @@ function Palette({ onClose, canView, can }: {
     for (const g of NAV_GROUPS) {
       for (const item of g.items) {
         if (!canView(item) || !match(item.label, g.title)) continue;
-        out.push({ id: `p-${item.to}`, group: "الصفحات", label: item.label.replace(/^\+\s*/, ""), hint: g.title, icon: item.icon, run: go(item.to) });
+        out.push({ id: `p-${item.to}`, group: tr("الصفحات", "Pages"), label: item.label.replace(/^\+\s*/, ""), hint: g.title, icon: item.icon, run: go(item.to) });
       }
     }
     if (!searching) return out;
@@ -105,9 +106,9 @@ function Palette({ onClose, canView, can }: {
     for (const o of orders) {
       out.push({
         id: `o-${o.id}`,
-        group: "طلبات",
+        group: tr("طلبات", "Orders"),
         label: `${o.customerName} · #${shortOrderId(o.id)}`,
-        hint: [statusLabel(o.status), shekel(orderTotal(o)), o.city].filter(Boolean).join(" · "),
+        hint: [statusLabel(o.status), moneyText(orderTotal(o)), o.city].filter(Boolean).join(" · "),
         icon: Icons.orders,
         run: go(`/admin/orders/${o.id}`),
       });
@@ -120,8 +121,8 @@ function Palette({ onClose, canView, can }: {
       .filter(({ p, sku }) => sku || normalizeSearch(p.title).includes(term) || p.slug.includes(debounced.toLowerCase()))
       .slice(0, 6);
     for (const { p, sku } of products) {
-      const hint = [sku ? `SKU ${sku}` : null, p.category?.name, p.isActive ? "منشور" : "مسودة", p.summary ? `${p.summary.stockTotal} قطعة` : null].filter(Boolean).join(" · ");
-      out.push({ id: `pr-${p.id}`, group: "منتجات", label: p.title, hint, icon: Icons.products, run: go(`/admin/catalog/products/${p.id}`) });
+      const hint = [sku ? `SKU ${sku}` : null, p.category?.name, p.isActive ? tr("منشور", "Published") : tr("مسودة", "Draft"), p.summary ? tr(`${p.summary.stockTotal} قطعة`, "{0} in stock", [p.summary.stockTotal]) : null].filter(Boolean).join(" · ");
+      out.push({ id: `pr-${p.id}`, group: tr("منتجات", "Products"), label: p.title, hint, icon: Icons.products, run: go(`/admin/catalog/products/${p.id}`) });
     }
     return out;
     // `go` only closes over stable values.
@@ -146,16 +147,16 @@ function Palette({ onClose, canView, can }: {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/50 p-3 pt-[10vh] backdrop-blur-sm sm:p-6 sm:pt-[12vh]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} data-testid="command-palette">
-      <div role="dialog" aria-modal="true" aria-label="بحث سريع" dir="rtl" className="glass w-full max-w-xl overflow-hidden rounded-2xl bg-surface-925 shadow-2xl" onKeyDown={onKey}>
+      <div role="dialog" aria-modal="true" aria-label={tr("بحث سريع", "Quick search")} className="glass w-full max-w-xl overflow-hidden rounded-2xl bg-surface-925 shadow-2xl" onKeyDown={onKey}>
         <div className="flex items-center gap-3 border-b border-white/[0.08] px-4">
           <span className="text-white/45">{Icons.search}</span>
           <input
             ref={inputRef}
             value={q}
             onChange={(e) => { setQ(e.target.value); setActive(0); }}
-            placeholder="ابحثي عن صفحة، طلب (اسم أو هاتف)، أو منتج…"
+            placeholder={tr("بحث عن صفحة، طلب (اسم أو هاتف)، أو منتج…", "Search a page, an order (name or phone), or a product…")}
             className="h-14 flex-1 bg-transparent text-[15px] text-white placeholder:text-white/35 focus:outline-none"
-            aria-label="بحث"
+            aria-label={tr("بحث", "Search")}
             role="combobox"
             aria-expanded="true"
             aria-controls="palette-list"
@@ -165,7 +166,7 @@ function Palette({ onClose, canView, can }: {
         </div>
         <div ref={listRef} id="palette-list" role="listbox" className="max-h-[min(60vh,440px)] overflow-y-auto p-2">
           {hits.length === 0 && (
-            <p className="px-3 py-8 text-center text-sm text-white/50">{loading ? "جارٍ البحث…" : "ما لقينا شيء. جرّبي اسماً آخر أو آخر 4 أرقام من الهاتف."}</p>
+            <p className="px-3 py-8 text-center text-sm text-white/50">{loading ? tr("جارٍ البحث…", "Searching…") : tr("ما لقينا شيء. ممكن تجربة اسم آخر أو آخر 4 أرقام من الهاتف.", "Nothing found. Try another name or the phone's last 4 digits.")}</p>
           )}
           {hits.map((h, i) => {
             const header = h.group !== lastGroup ? h.group : null;
@@ -181,7 +182,7 @@ function Palette({ onClose, canView, can }: {
                   data-index={i}
                   onMouseMove={() => setActive(i)}
                   onClick={h.run}
-                  className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-right transition-colors", i === current ? "bg-accent-500/[0.12] text-white" : "text-white/80")}
+                  className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors", i === current ? "bg-accent-500/[0.12] text-white" : "text-white/80")}
                 >
                   <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg [&_svg]:h-4 [&_svg]:w-4", i === current ? "bg-accent-500/20 text-accent-400" : "bg-white/[0.05] text-white/50")}>{h.icon}</span>
                   <span className="min-w-0 flex-1">
@@ -195,9 +196,9 @@ function Palette({ onClose, canView, can }: {
           })}
         </div>
         <div className="hidden items-center gap-4 border-t border-white/[0.08] px-4 py-2 text-[11px] text-white/40 sm:flex">
-          <span><kbd className="font-sans">↑ ↓</kbd> للتنقل</span>
-          <span><kbd className="font-sans">↵</kbd> للفتح</span>
-          <span className="mr-auto">Ctrl K في أي وقت</span>
+          <span><kbd className="font-sans">↑ ↓</kbd> {tr("للتنقل", "to move")}</span>
+          <span><kbd className="font-sans">↵</kbd> {tr("للفتح", "to open")}</span>
+          <span className="ms-auto">{tr("Ctrl K في أي وقت", "Ctrl K anytime")}</span>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 // AI features (off until OPENAI_API_KEY is on the server; each has its own switch).
 import { api } from "./http";
 
-export const AI_FEATURE_KEYS = ["productWriter", "smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary", "adminAsk", "replySuggest", "photoStudio", "orderFlags"] as const;
+export const AI_FEATURE_KEYS = ["productWriter", "smartSearch", "shopTheLook", "sizeAdvice", "reviewSummary", "adminAsk", "replySuggest", "photoStudio", "orderFlags", "translate"] as const;
 export type AiFeature = (typeof AI_FEATURE_KEYS)[number];
 export type AiSettings = Record<AiFeature, boolean> & { dailyLimit: number };
 
@@ -12,12 +12,16 @@ export async function saveAi(s: AiSettings) {
   return (await api.put("/admin/ai", s)).data as { settings: AiSettings };
 }
 export async function catalogAiStatus() {
-  return (await api.get("/admin/ai-catalog/status")).data as { productWriter: boolean; photoStudio: boolean };
+  return (await api.get("/admin/ai-catalog/status")).data as { productWriter: boolean; photoStudio: boolean; translate?: boolean };
 }
 export type WriterField = { key: string; label: string; kind?: string; options?: string[] };
 export type WriterResult = { title: string; description: string; seoTitle: string; seoDescription: string; colors: string[]; attributes: Record<string, unknown> };
 export async function writeProduct(body: { images: string[]; title?: string; category?: string; type?: string; notes?: string; fields?: WriterField[] }) {
   return (await api.post("/admin/ai-catalog/product-writer", body, { timeout: 90_000 })).data as WriterResult;
+}
+/** Draft translations of the store's texts (same keys back); nothing is saved by this. */
+export async function translateTexts(body: { to: "ar" | "en" | "he"; from?: "ar" | "en" | "he"; context?: string; texts: Record<string, string> }) {
+  return (await api.post("/admin/ai-catalog/translate", body, { timeout: 90_000 })).data as { texts: Record<string, string> };
 }
 export async function photoStudio(body: { imageUrl: string; style: "white" | "studio" | "soft"; title?: string }) {
   return (await api.post("/admin/ai-catalog/photo-studio", body, { timeout: 180_000 })).data as { url: string };

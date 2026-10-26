@@ -1,1 +1,0 @@
-import{a as s,E as t}from"./cms-editor-panels-Dg_ILKgQ.js";async function i(){return(await s.get(t.admin.features.base)).data?.groups??[]}async function u(a,e){return(await s.patch(t.admin.features.byKey(a),{enabled:e})).data}export{i as l,u as s};

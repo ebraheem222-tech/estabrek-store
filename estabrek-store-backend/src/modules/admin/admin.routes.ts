@@ -25,6 +25,8 @@ import features from "./features.controller.js";
 import traffic from "./traffic.controller.js";
 import cache from "./cache.controller.js";
 import videos from "./videos.controller.js";
+import models3d from "./models3d.controller.js";
+import scans from "./scans.controller.js";
 import speed from "./speed.controller.js";
 import jobs from "./jobs.controller.js";
 import insights from "./insights.controller.js";
@@ -131,6 +133,10 @@ r.use(
 );
 // The video library and the image/video upload settings (الوسائط → الفيديوهات).
 r.use("/media/videos", areaAccess({ read: "media:read", write: "media:write" }), videos);
+// The store's own 3D models (.glb) for a gaming theme's stage: uploaded from the theme editor too.
+r.use("/media/models", areaAccess({ read: ["media:read", "settings:read"], write: ["media:write", "settings:write"] }), models3d);
+// 360° scans of products from a filmed turn (الوسائط → مسح 3D).
+r.use("/media/scans", areaAccess({ read: "media:read", write: "media:write" }), scans);
 r.use("/inventory", areaAccess({ read: "inventory:read", write: "inventory:write" }), inventory);
 r.use("/coupons", areaAccess({ read: "discounts:read", write: "discounts:write" }), coupons);
 // Smart selling: sale rules and seasons (البيع الذكي).

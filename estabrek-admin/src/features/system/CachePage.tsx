@@ -45,6 +45,7 @@ import {
   shortKey,
   uptimeText,
 } from "./cacheText";
+import { loc } from "@/lib/lang";
 
 const box = "rounded-2xl border border-white/10 bg-white/5 p-5";
 
@@ -121,7 +122,7 @@ export default function CachePage() {
 
   if (q.isLoading || !draft || !motionDraft || !q.data) {
     return (
-      <div dir="rtl" className={box}>
+      <div className={box}>
         {q.isError ? (
           <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div>
         ) : (
@@ -141,7 +142,7 @@ export default function CachePage() {
     setDraft((prev) => (prev ? { ...prev, namespaces: { ...prev.namespaces, [name]: { ...prev.namespaces[name], [field]: value } } } : prev));
 
   return (
-    <div dir="rtl" className="space-y-4 pb-24" data-testid="cache-page">
+    <div className="space-y-4 pb-24" data-testid="cache-page">
       <div className={box}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -320,14 +321,14 @@ export default function CachePage() {
                 <li>
                   <span className="text-white/60">بداية أو نهاية العرض الجاي: </span>
                   {live.nextChange.catalog ? (
-                    <span>{new Date(live.nextChange.catalog).toLocaleString("ar")}</span>
+                    <span>{new Date(live.nextChange.catalog).toLocaleString(loc("ar"))}</span>
                   ) : (
                     <span className="text-white/50">ما في</span>
                   )}
                 </li>
                 <li>
                   <span className="text-white/60">نشر أو إخفاء الصفحة الجاية: </span>
-                  {live.nextChange.cms ? <span>{new Date(live.nextChange.cms).toLocaleString("ar")}</span> : <span className="text-white/50">ما في</span>}
+                  {live.nextChange.cms ? <span>{new Date(live.nextChange.cms).toLocaleString(loc("ar"))}</span> : <span className="text-white/50">ما في</span>}
                 </li>
               </ul>
               <h3 className="mt-4 text-sm font-medium">آخر تعديل فضّى الكاش</h3>
@@ -380,7 +381,7 @@ export default function CachePage() {
       </section>
 
       {canWrite && dirty ? (
-        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:right-72" data-testid="cache-save-bar">
+        <div className="fixed inset-x-0 bottom-16 z-30 px-4 sm:bottom-4 lg:start-72" data-testid="cache-save-bar">
           <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[var(--surface,#fff)] p-3 shadow-xl">
             <span className="text-sm">
               {bad.length ? (

@@ -155,7 +155,7 @@ export async function getMe(adminId: string) {
  */
 export async function updateProfile(
   adminId: string,
-  data: { name?: string; phone?: string | null; secondEmail?: string | null; secondPhone?: string | null }
+  data: { name?: string; phone?: string | null; secondEmail?: string | null; secondPhone?: string | null; locale?: "ar" | "en" | "he" | null }
 ) {
   return prisma.adminUser.update({
     where: { id: adminId },
@@ -165,6 +165,7 @@ export async function updateProfile(
       email: true,
       name: true,
       role: true,
+      locale: true,
       phone: true,
       secondEmail: true,
       secondPhone: true,

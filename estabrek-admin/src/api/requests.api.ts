@@ -19,6 +19,8 @@ export type CustomerRequestRow = {
   wantedColor: string | null;
   details: string | null;
   photoCount: number;
+  /** The language they asked in (ar/en/he). */
+  locale?: string | null;
   photosDeletedAt: string | null;
   source: string | null;
   linkedProductId: string | null;
@@ -32,6 +34,8 @@ export type CustomerRequestRow = {
 
 export type CustomerRequestDetails = Omit<CustomerRequestRow, "photoCount"> & {
   photoCount: number;
+  /** The language they asked in (ar/en/he). */
+  locale?: string | null;
   photos: Array<{ url: string | null; width: number | null; height: number | null }>;
   productUrl: string | null;
   linkedUrl: string | null;

@@ -82,6 +82,18 @@ export const ENDPOINTS = {
         forgive: "/admin/system/traffic/forgive",
       },
       // The video library and upload settings (الوسائط → الفيديوهات)
+      // 360° scans of products from a filmed turn (مسح 3D)
+      mediaScans: {
+        base: "/admin/media/scans",
+        one: (id: string) => `/admin/media/scans/${id}`,
+      },
+      // The store's own 3D models (.glb) for a gaming theme's stage (محرّر المشهد)
+      mediaModels: {
+        base: "/admin/media/models",
+        sign: "/admin/media/models/sign",
+        local: "/admin/media/models/local",
+        one: (id: string) => `/admin/media/models/${id}`,
+      },
       mediaVideos: {
         base: "/admin/media/videos",
         settings: "/admin/media/videos/settings",
@@ -135,6 +147,12 @@ export const ENDPOINTS = {
         sections: (pageId: string) => `/admin/pages/${pageId}/sections`,
         sectionById: (sectionId: string) => `/admin/pages/sections/${sectionId}`,
         moveSection: (sectionId: string) => `/admin/pages/sections/${sectionId}/move`,
+        tree: (id: string) => `/admin/pages/${id}/tree`,
+        format: (id: string) => `/admin/pages/${id}/format`,
+        previewToken: (id: string) => `/admin/pages/${id}/preview-token`,
+        draft: (id: string) => `/admin/pages/${id}/draft`,
+        draftOps: (id: string) => `/admin/pages/${id}/draft/ops`,
+        draftPublish: (id: string) => `/admin/pages/${id}/draft/publish`,
         validateSection: "/admin/pages/sections/validate",
         aiSuggestSections: "/admin/pages/ai/suggest-sections",
         aiTranslate: "/admin/pages/ai/translate",
@@ -153,6 +171,8 @@ export const ENDPOINTS = {
         imageFolderById: (id: string) => `/admin/uploads/images/folders/${id}`,
         imageTags: "/admin/uploads/images/tags",
         imageDuplicates: "/admin/uploads/images/duplicates",
+        // «شيل الخلفية» with Cloudinary (GET: is it switched on; POST: the cut-out PNG)
+        backgroundRemoval: "/admin/uploads/background-removal",
       },
 
       // One history for everything (السجل)

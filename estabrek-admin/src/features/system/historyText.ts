@@ -3,6 +3,7 @@ import type { HistoryArea, HistoryEntry } from "../../api/history.api";
 import { describeField } from "./cacheText";
 import { KIND_TEXT } from "./scheduleText";
 import { ltr } from "./automationText";
+import { loc } from "@/lib/lang";
 
 export const AREA_TEXT: Record<HistoryArea, string> = {
   settings: "الإعدادات",
@@ -121,7 +122,7 @@ export function groupByDay(entries: HistoryEntry[], now = Date.now()) {
     const k = dayKey(e.at);
     let g = groups.find((x) => x.key === k);
     if (!g) {
-      const label = k === today ? "اليوم" : k === yesterday ? "مبارح" : new Date(e.at).toLocaleDateString("ar", { weekday: "long", day: "numeric", month: "long" });
+      const label = k === today ? "اليوم" : k === yesterday ? "مبارح" : new Date(e.at).toLocaleDateString(loc("ar"), { weekday: "long", day: "numeric", month: "long" });
       g = { key: k, label, entries: [] };
       groups.push(g);
     }

@@ -1,23 +1,25 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { useRecentlyViewed } from "@/store/recentlyViewed";
 import { LoadingImg } from "@/components/LoadingImg";
 import { useLanguage } from "./Language";
+import { tr } from "@/lib/words";
+import type { Lang } from "@/lib/i18n";
 
 const DISMISS_KEY = "estabrek_recent_hidden";
 const FIRST_DELAY = 6000; // let the page be seen first
 const VISIBLE_FOR = 7000; // then a short reminder…
 const GAP = 45000; // …and the next one much later
 
-function ago(ts: number, ar: boolean) {
+function ago(ts: number, lang: Lang) {
   const m = Math.max(1, Math.floor((Date.now() - ts) / 60000));
-  if (m < 60) return ar ? (m === 1 ? "منذ دقيقة" : m === 2 ? "منذ دقيقتين" : m <= 10 ? `منذ ${m} دقائق` : `منذ ${m} دقيقة`) : `${m} min ago`;
+  if (m < 60) return lang === "ar" ? (m === 1 ? "منذ دقيقة" : m === 2 ? "منذ دقيقتين" : m <= 10 ? `منذ ${m} دقائق` : `منذ ${m} دقيقة`) : lang === "he" ? (m === 1 ? "לפני דקה" : `לפני ${m} דקות`) : `${m} min ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return ar ? (h === 1 ? "منذ ساعة" : h === 2 ? "منذ ساعتين" : h <= 10 ? `منذ ${h} ساعات` : `منذ ${h} ساعة`) : `${h} h ago`;
-  return ar ? "منذ أيام" : "days ago";
+  if (h < 24) return lang === "ar" ? (h === 1 ? "منذ ساعة" : h === 2 ? "منذ ساعتين" : h <= 10 ? `منذ ${h} ساعات` : `منذ ${h} ساعة`) : lang === "he" ? (h === 1 ? "לפני שעה" : h === 2 ? "לפני שעתיים" : `לפני ${h} שעות`) : `${h} h ago`;
+  return tr(lang, "منذ أيام", "days ago");
 }
 
 /**
@@ -26,7 +28,8 @@ function ago(ts: number, ar: boolean) {
  * never on the product page she is already on, and the × hides it for the visit.
  */
 export function RoseRecentlyViewed() {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const pathname = usePathname();
   const { items } = useRecentlyViewed();
   const list = useMemo(() => items.filter((it) => pathname !== `/p/${it.slug}`).slice(0, 5), [items, pathname]);
@@ -80,11 +83,11 @@ export function RoseRecentlyViewed() {
           {item.image ? <LoadingImg src={item.image} alt="" blurDataUrl={item.imageBlurDataUrl ?? undefined} className="h-full w-full object-cover" /> : null}
         </span>
         <span className="rose-recent-text">
-          <small>{ar ? "شاهدتِها مؤخراً" : "You viewed"} · {ago(item.viewedAt, ar)}</small>
+          <small>{tr(lang, "شاهدتِها مؤخراً", "You viewed")} · {ago(item.viewedAt, lang)}</small>
           <b>{item.title}</b>
         </span>
       </Link>
-      <button type="button" className="rose-recent-close" onClick={hide} tabIndex={shown ? 0 : -1} aria-label={ar ? "إخفاء" : "Hide"}>×</button>
+      <button type="button" className="rose-recent-close" onClick={hide} tabIndex={shown ? 0 : -1} aria-label={tr(lang, "إخفاء", "Hide")}>×</button>
     </div>
   );
 }

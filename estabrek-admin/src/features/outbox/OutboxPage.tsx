@@ -54,7 +54,7 @@ export default function OutboxPage() {
   const totalPages = data?.totalPages ?? 1;
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>

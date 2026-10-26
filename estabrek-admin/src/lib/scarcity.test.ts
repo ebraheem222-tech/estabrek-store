@@ -28,7 +28,7 @@ describe("«باقي قطعتان» setting", () => {
   it("says what shoppers will see", () => {
     expect(scarcitySummary(SCARCITY_DEFAULTS)).toBe("بيبين على الصورة وجنب السعر لما يضل 3 قطع أو أقل.");
     expect(scarcitySummary({ ...SCARCITY_DEFAULTS, showAt: 1, nearPrice: false })).toBe("بيبين على الصورة بس لما تضل آخر قطعة.");
-    expect(scarcitySummary({ ...SCARCITY_DEFAULTS, enabled: false })).toContain("ما بيشوفن");
+    expect(scarcitySummary({ ...SCARCITY_DEFAULTS, enabled: false })).toContain("ما بيشوفوا");
     expect(scarcitySummary({ ...SCARCITY_DEFAULTS, onPhoto: false, nearPrice: false })).toContain("ما في مكان");
     expect(scarcityShows({ ...SCARCITY_DEFAULTS, onPhoto: false, nearPrice: false })).toBe(false);
     expect(sameScarcity(SCARCITY_DEFAULTS, { ...SCARCITY_DEFAULTS })).toBe(true);

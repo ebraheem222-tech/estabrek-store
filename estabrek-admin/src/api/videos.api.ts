@@ -68,7 +68,7 @@ export type VideoLibrary = {
 };
 
 export type MediaSettings = {
-  images: { maxUploadMb: number; maxDimension: number; stripMetadata: boolean; format: "keep" | "webp" | "avif" | "jpeg"; quality: number };
+  images: { maxUploadMb: number; maxDimension: number; stripMetadata: boolean; format: "keep" | "webp" | "avif" | "jpeg"; quality: number; cloudCutout: boolean };
   videos: { maxUploadMb: number; defaultPreset: VideoPreset; autoConvert: boolean; posterSecond: number };
 };
 
@@ -123,6 +123,8 @@ export async function uploadLocalVideo(file: File, opts: { displayName?: string;
   form.append("file", file);
   if (opts.displayName) form.append("displayName", opts.displayName);
   const res = await api.post(V.local, form, {
+    // Multipart, not the client's default JSON (which would drop the file).
+    headers: { "Content-Type": "multipart/form-data" },
     timeout: 0,
     signal: opts.signal,
     onUploadProgress: (e) => opts.onProgress?.(e.total ? e.loaded / e.total : 0),

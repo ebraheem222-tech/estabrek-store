@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { useEffect, useRef, useState } from "react";
 import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
@@ -23,6 +23,11 @@ import { RAZAN_HESITATION_EVENT, RAZAN_PRODUCT_EVENT, razanProduct } from "@/lib
 import { ROSE_EVENT } from "@/lib/roseEvents";
 import type { CatalogProduct } from "@/lib/catalog";
 import { pickText, seasonNow, seasonOutfit } from "@/lib/razanSettings";
+import { useNames } from "@/store/storeIdentity";
+import { fill } from "@/lib/storeNames";
+import { useStoreIdentity } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { dirOf } from "@/lib/i18n";
 
 /** Rose's little face for the chat messages. */
 function RoseFace() {
@@ -47,9 +52,10 @@ function WhatsAppGlyph() {
   );
 }
 
-const QUICK: Record<"ar" | "en", string[]> = {
+const QUICK: Record<"ar" | "en" | "he", string[]> = {
   ar: ["الشحن والتوصيل 🚚", "كيف أختار مقاسي؟", "الاستبدال والإرجاع", "ساعديني أختار فستان 👗"],
   en: ["Shipping & delivery 🚚", "Which size am I?", "Exchanges & returns", "Help me pick a dress 👗"],
+  he: ["משלוחים 🚚", "איך בוחרים מידה?", "החלפות והחזרות", "עזרה בבחירת שמלה 👗"],
 };
 
 /**
@@ -61,7 +67,10 @@ const QUICK: Record<"ar" | "en", string[]> = {
  */
 export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: { side?: "left" | "right" | "center"; chat?: boolean; whatsapp?: string | null }) {
   const { language } = useLanguage();
-  const ar = language === "ar";
+  const lang = language;
+  const ar = lang === "ar";
+  const n = useNames();
+  const { currency } = useStoreIdentity();
   const sceneRose = useSceneRoseOnScreen();
   const rose = useRef<MascotHandle>(null);
   const razan = useRazan();
@@ -107,10 +116,10 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
   const [text, setText] = useState("");
   const listEnd = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
-  const greeting = chat
-    ? pickText(razan.texts.greetingChat, ar, ar ? "أهلاً! أنا رزان 🌸 اسأليني عن المقاسات، التوصيل، الاستبدال، أو خليني أساعدك تختاري." : "Hi! I'm Rose 🌸 ask me about sizes, delivery, exchanges — or let me help you choose.")
-    : pickText(razan.texts.greetingOffline, ar, ar ? "أهلاً! أنا رزان 🌸 فريقنا بيرد عليكِ بسرعة على واتساب، أو تصفّحي المجموعة معي." : "Hi! I'm Rose 🌸 our team answers fast on WhatsApp — or browse the collection with me.");
-  const wa = whatsappLink(whatsapp, ar ? "مرحباً، عندي سؤال عن المتجر 🌸" : "Hi! I have a question about the shop 🌸");
+  const greeting = fill(chat
+    ? pickText(razan.texts.greetingChat, lang, tr(lang, "أهلاً! أنا {assistant} 🌸 اسأليني عن المقاسات، التوصيل، الاستبدال، أو خليني أساعدك تختاري.", "Hi! I'm {assistant} 🌸 ask me about sizes, delivery, exchanges — or let me help you choose."))
+    : pickText(razan.texts.greetingOffline, lang, tr(lang, "أهلاً! أنا {assistant} 🌸 فريقنا بيرد عليكِ بسرعة على واتساب، أو تصفّحي المجموعة معي.", "Hi! I'm {assistant} 🌸 our team answers fast on WhatsApp — or browse the collection with me.")), n);
+  const wa = whatsappLink(whatsapp, tr(lang, "مرحباً، عندي سؤال عن المتجر 🌸", "Hi! I have a question about the shop 🌸"));
   const chatState = useStoreChat(greeting, ar);
   const away = sceneRose && !open;
   const offline = !chat;
@@ -121,13 +130,13 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
       const next = (e as CustomEvent<{ outfit: RoseOutfit; extras: RoseExtras }>).detail;
       setLook((current) => {
         if (current.outfit === next.outfit && Boolean(current.extras.pearls) === Boolean(next.extras.pearls)) return current;
-        window.setTimeout(() => rose.current?.say(ROSE_OUTFIT_LINES[next.outfit][ar ? "ar" : "en"], 2200, "outfit"), 650);
+        window.setTimeout(() => rose.current?.say(ROSE_OUTFIT_LINES[next.outfit][lang], 2200, "outfit"), 650);
         return next;
       });
     };
     window.addEventListener(ROSE_OUTFIT_EVENT, onOutfit);
     return () => window.removeEventListener(ROSE_OUTFIT_EVENT, onOutfit);
-  }, [ar]);
+  }, [ar, lang]);
 
   // She seems lost (back to a piece after two others, a second search, or leaving): offer her history once a visit.
   useEffect(() => {
@@ -137,7 +146,7 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
       if (offered() || open || seenCount.current < 2 || onQuietPage()) return;
       if (!razanMaySpeak("offer")) return;
       try { sessionStorage.setItem("razan_offer_history", "1"); } catch { /* ignore */ }
-      setOffer({ kind: "history", text: ar ? "بتدوّري على إشي شفتيه قبل شوي؟" : "Looking for something you saw earlier?" });
+      setOffer({ kind: "history", text: tr(lang, "بتدوّري على إشي شفتيه قبل شوي؟", "Looking for something you saw earlier?") });
       razanCount("offer:history");
       rose.current?.wave();
     };
@@ -147,7 +156,7 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
     document.addEventListener("mouseout", onLeave);
     return () => document.removeEventListener("mouseout", onLeave);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, historyOn, razan.history.offer, ar]);
+  }, [pathname, historyOn, razan.history.offer, ar, lang]);
 
   // The offer goes away on its own after a while.
   useEffect(() => {
@@ -183,7 +192,7 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
       if (added || snoozed() || openRef.current || onQuietPage()) return;
       if (!razanMaySpeak("offer")) return;
       try { sessionStorage.setItem("razan_offer_help", "1"); } catch { /* ignore */ }
-      setOffer({ kind: "help", text: ar ? "بتحبي أساعدكِ تطلبي هالقطعة؟ خطوة بخطوة 🌸" : "Want me to help you order this piece, step by step? 🌸" });
+      setOffer({ kind: "help", text: tr(lang, "بتحبي أساعدكِ تطلبي هالقطعة؟ خطوة بخطوة 🌸", "Want me to help you order this piece, step by step? 🌸") });
       razanCount("offer:help");
       rose.current?.wave();
     };
@@ -210,7 +219,7 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
       window.removeEventListener(RAZAN_HESITATION_EVENT, onHesitate);
       window.removeEventListener(ROSE_EVENT, onReact);
     };
-  }, [helpCfg.enabled, helpCfg.idleSeconds, helpProduct, ar]);
+  }, [helpCfg.enabled, helpCfg.idleSeconds, helpProduct, ar, lang]);
 
   // Leaving the piece takes its offer away.
   useEffect(() => {
@@ -236,12 +245,12 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
         try { if (sessionStorage.getItem("razan_offer_quiz") === "1") return; } catch { return; }
         if (openRef.current || onQuietPage() || !razanMaySpeak("offer")) return;
         try { sessionStorage.setItem("razan_offer_quiz", "1"); } catch { /* ignore */ }
-        setOffer({ kind: "questions", text: ar ? `🎁 عندك فرصة تربحي كوبون خصم ${c.percent}%! بتجاوبي على ${c.questions} أسئلة دينية؟` : `🎁 A chance to win ${c.percent}% off! Answer ${c.questions} questions?` });
+        setOffer({ kind: "questions", text: tr(lang, `🎁 عندك فرصة تربحي كوبون خصم ${c.percent}%! بتجاوبي على ${c.questions} أسئلة دينية؟`, "🎁 A chance to win {0}% off! Answer {1} questions?", [c.percent, c.questions]) });
         rose.current?.wave();
       }, 6000);
     });
     return () => { alive = false; window.clearTimeout(t); };
-  }, [razan.enabled, questionsOn, ar]);
+  }, [razan.enabled, questionsOn, ar, lang]);
 
   // Anywhere in the shop can open her panel on a tab (e.g. «رزان بتختارلك» on the shop page).
   useEffect(() => {
@@ -300,28 +309,28 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
   return (
     <div className="rose-companion" data-side={side} data-away={away ? "true" : undefined} data-chat={chat ? "true" : undefined} data-open={open ? "true" : undefined}>
       {open && (
-        <div className="rose-chat" data-offline={offline ? "" : undefined} role="dialog" aria-label={ar ? "محادثة مع رزان" : "Chat with Rose"} dir={ar ? "rtl" : "ltr"}>
+        <div className="rose-chat" data-offline={offline ? "" : undefined} role="dialog" aria-label={tr(lang, `محادثة مع ${n.assistant}`, "Chat with {0}", [n.assistant])} dir={dirOf(lang)}>
           <header className="rose-chat-head">
             <RoseFace />
             <div>
-              <strong>{ar ? "رزان" : "Rose"}</strong>
-              <span>{ar ? "دليلتكِ في استبرق" : "Your Estabrek guide"}</span>
+              <strong>{n.assistant}</strong>
+              <span>{tr(lang, `دليلتكِ في ${n.store}`, "Your {0} guide", [n.store])}</span>
             </div>
             {wa && (
-              <a className="rose-chat-icon rose-chat-wa" href={wa} target="_blank" rel="noopener noreferrer" aria-label={ar ? "واتساب" : "WhatsApp"} title={ar ? "واتساب" : "WhatsApp"}>
+              <a className="rose-chat-icon rose-chat-wa" href={wa} target="_blank" rel="noopener noreferrer" aria-label={tr(lang, "واتساب", "WhatsApp")} title={tr(lang, "واتساب", "WhatsApp")}>
                 <WhatsAppGlyph />
               </a>
             )}
-            {!offline && <button type="button" className="rose-chat-icon" onClick={chatState.clear} aria-label={ar ? "محادثة جديدة" : "New chat"} title={ar ? "محادثة جديدة" : "New chat"}>↺</button>}
-            <button type="button" className="rose-chat-icon" onClick={() => setOpen(false)} aria-label={ar ? "إغلاق" : "Close"}>✕</button>
+            {!offline && <button type="button" className="rose-chat-icon" onClick={chatState.clear} aria-label={tr(lang, "محادثة جديدة", "New chat")} title={tr(lang, "محادثة جديدة", "New chat")}>↺</button>}
+            <button type="button" className="rose-chat-icon" onClick={() => setOpen(false)} aria-label={tr(lang, "إغلاق", "Close")}>✕</button>
           </header>
           {tabsOn ? (
-            <div className="razan-tabs" role="tablist" aria-label={ar ? "لوحة رزان" : "Rose's panel"}>
-              <button type="button" role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")}>{offline ? (ar ? "تواصلي" : "Contact") : ar ? "المحادثة" : "Chat"}</button>
-              {helpOn ? <button type="button" role="tab" aria-selected={tab === "help"} onClick={() => openHelp()}>{ar ? "ساعديني أطلب" : "Help me order"}</button> : null}
-              {quizOn ? <button type="button" role="tab" aria-selected={tab === "quiz"} onClick={() => setTab("quiz")}>{ar ? "بتختارلك" : "Pick for me"}</button> : null}
-              {questionsTab ? <button type="button" role="tab" aria-selected={tab === "questions"} onClick={() => setTab("questions")}>{ar ? "🎁 سؤال وجواب" : "🎁 Quiz"}</button> : null}
-              {historyOn ? <button type="button" role="tab" aria-selected={tab === "history"} onClick={() => { setTab("history"); razanCount("accept:history"); }}>{ar ? "شو كنتِ شايفة" : "Seen earlier"}</button> : null}
+            <div className="razan-tabs" role="tablist" aria-label={tr(lang, `لوحة ${n.assistant}`, "{0}'s panel", [n.assistant])}>
+              <button type="button" role="tab" aria-selected={tab === "chat"} onClick={() => setTab("chat")}>{offline ? (tr(lang, "تواصلي", "Contact")) : tr(lang, "المحادثة", "Chat")}</button>
+              {helpOn ? <button type="button" role="tab" aria-selected={tab === "help"} onClick={() => openHelp()}>{tr(lang, "ساعديني أطلب", "Help me order")}</button> : null}
+              {quizOn ? <button type="button" role="tab" aria-selected={tab === "quiz"} onClick={() => setTab("quiz")}>{tr(lang, "بتختارلك", "Pick for me")}</button> : null}
+              {questionsTab ? <button type="button" role="tab" aria-selected={tab === "questions"} onClick={() => setTab("questions")}>{tr(lang, "🎁 سؤال وجواب", "🎁 Quiz")}</button> : null}
+              {historyOn ? <button type="button" role="tab" aria-selected={tab === "history"} onClick={() => { setTab("history"); razanCount("accept:history"); }}>{tr(lang, "شو كنتِ شايفة", "Seen earlier")}</button> : null}
             </div>
           ) : null}
           {questionsTab && tab === "questions" ? (
@@ -355,7 +364,7 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           {p.imageUrl ? <img src={cldUrl(p.imageUrl, { w: 240, h: 300, c: "fill", g: "auto" })} alt="" loading="lazy" /> : <span className="rose-chat-noimg" />}
                           <span>{p.title}</span>
-                          {p.minPrice != null && <em>{formatMoney(p.minPrice, "ILS")}</em>}
+                          {p.minPrice != null && <em>{formatMoney(p.minPrice, currency)}</em>}
                         </Link>
                       ))}
                     </div>
@@ -366,28 +375,28 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
             {chatState.loading && (
               <div className="rose-chat-row" data-role="assistant">
                 <RoseFace />
-                <div className="rose-chat-msg rose-chat-typing" aria-label={ar ? "رزان عم تكتب" : "Rose is typing"}><i /><i /><i /></div>
+                <div className="rose-chat-msg rose-chat-typing" aria-label={tr(lang, `${n.assistant} عم تكتب`, "{0} is typing", [n.assistant])}><i /><i /><i /></div>
               </div>
             )}
             <div ref={listEnd} />
           </div>
           {offline ? (
             <div className="rose-chat-quick rose-chat-links">
-              {wa && <a className="rose-chat-cta" href={wa} target="_blank" rel="noopener noreferrer"><WhatsAppGlyph /> {ar ? "راسلينا على واتساب" : "Message us on WhatsApp"}</a>}
-              <Link href="/shop" onClick={() => setOpen(false)}>{ar ? "تصفّحي المجموعة 🛍️" : "Browse the collection 🛍️"}</Link>
-              <Link href="/contact" onClick={() => setOpen(false)}>{ar ? "صفحة التواصل" : "Contact page"}</Link>
+              {wa && <a className="rose-chat-cta" href={wa} target="_blank" rel="noopener noreferrer"><WhatsAppGlyph /> {tr(lang, "راسلينا على واتساب", "Message us on WhatsApp")}</a>}
+              <Link href="/shop" onClick={() => setOpen(false)}>{tr(lang, "تصفّحي المجموعة 🛍️", "Browse the collection 🛍️")}</Link>
+              <Link href="/contact" onClick={() => setOpen(false)}>{tr(lang, "صفحة التواصل", "Contact page")}</Link>
             </div>
           ) : (
             <>
           {chatState.messages.length <= 2 && (
             <div className="rose-chat-quick">
-              {QUICK[ar ? "ar" : "en"].map((q) => <button key={q} type="button" onClick={() => void ask(q)}>{q}</button>)}
-              {wa && <a href={wa} target="_blank" rel="noopener noreferrer">{ar ? "واتساب 💬" : "WhatsApp 💬"}</a>}
+              {QUICK[lang].map((q) => <button key={q} type="button" onClick={() => void ask(q)}>{q}</button>)}
+              {wa && <a href={wa} target="_blank" rel="noopener noreferrer">{tr(lang, "واتساب 💬", "WhatsApp 💬")}</a>}
             </div>
           )}
           <form className="rose-chat-form" onSubmit={(e) => { e.preventDefault(); void ask(text); }}>
-            <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder={ar ? "اكتبي سؤالك لرزان…" : "Ask Rose…"} aria-label={ar ? "رسالتك" : "Your message"} maxLength={500} />
-            <button type="submit" disabled={!text.trim() || chatState.loading} aria-label={ar ? "إرسال" : "Send"}>➤</button>
+            <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder={tr(lang, `اكتبي سؤالك لـ${n.assistant}…`, "Ask {0}…", [n.assistant])} aria-label={tr(lang, "رسالتك", "Your message")} maxLength={500} />
+            <button type="submit" disabled={!text.trim() || chatState.loading} aria-label={tr(lang, "إرسال", "Send")}>➤</button>
           </form>
             </>
           )}
@@ -400,19 +409,19 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
           <p>{offer.text}</p>
           <div>
             {offer.kind === "questions" ? (
-              <button type="button" onClick={() => { setOffer(null); setTab("questions"); setOpen(true); }}>{ar ? "بدي ألعب 🎁" : "Let's play 🎁"}</button>
+              <button type="button" onClick={() => { setOffer(null); setTab("questions"); setOpen(true); }}>{tr(lang, "بدي ألعب 🎁", "Let's play 🎁")}</button>
             ) : offer.kind === "help" ? (
-              <button type="button" onClick={() => openHelp()}>{ar ? "أيوه، ساعديني" : "Yes, help me"}</button>
+              <button type="button" onClick={() => openHelp()}>{tr(lang, "أيوه، ساعديني", "Yes, help me")}</button>
             ) : (
-              <button type="button" onClick={openHistory}>{ar ? "أيوه، ورجيني" : "Yes, show me"}</button>
+              <button type="button" onClick={openHistory}>{tr(lang, "أيوه، ورجيني", "Yes, show me")}</button>
             )}
-            <button type="button" className="ghost" onClick={declineOffer}>{offer.kind === "questions" ? (ar ? "مش هلأ" : "Not now") : ar ? "لا شكراً" : "No thanks"}</button>
+            <button type="button" className="ghost" onClick={declineOffer}>{offer.kind === "questions" ? (tr(lang, "مش هلأ", "Not now")) : tr(lang, "لا شكراً", "No thanks")}</button>
           </div>
         </div>
       ) : null}
       {away && (
         // Another Rose has the stage: the chat stays one tap away as Rose's little face.
-        <button type="button" className="rose-companion-mini" onClick={() => setOpen(true)} aria-label={ar ? "احكي مع رزان" : "Chat with Rose"}>
+        <button type="button" className="rose-companion-mini" onClick={() => setOpen(true)} aria-label={tr(lang, `احكي مع ${n.assistant}`, "Chat with {0}", [n.assistant])}>
           <RoseFace />
           <span aria-hidden="true">💬</span>
         </button>
@@ -428,12 +437,12 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
           outfit={look.outfit}
           extras={look.extras}
           mirrored={side === "right"}
-          label={ar ? "رَزان، دليلتكِ في المتجر" : "Rose, your shop guide"}
+          label={tr(lang, `${n.assistantFull}، دليلتكِ في المتجر`, "{0}, your shop guide", [n.assistantFull])}
         />
         <button
           type="button"
           className="rose-companion-hit"
-          aria-label={open ? (ar ? "إغلاق المحادثة مع رزان" : "Close chat with Rose") : (ar ? "احكي مع رزان" : "Chat with Rose")}
+          aria-label={open ? (tr(lang, `إغلاق المحادثة مع ${n.assistant}`, "Close chat with {0}", [n.assistant])) : (tr(lang, `احكي مع ${n.assistant}`, "Chat with {0}", [n.assistant]))}
           aria-expanded={open}
           onClick={tap}
         />
@@ -441,7 +450,7 @@ export function RoseCompanion({ side = "left", chat = false, whatsapp = null }: 
       </div>
       {wa && !open && (
         // WhatsApp stands beside Rose, never on top of her.
-        <a className="rose-companion-wa" href={wa} target="_blank" rel="noopener noreferrer" aria-label={ar ? "تواصلي معنا على واتساب" : "Chat with us on WhatsApp"}>
+        <a className="rose-companion-wa" href={wa} target="_blank" rel="noopener noreferrer" aria-label={tr(lang, "تواصلي معنا على واتساب", "Chat with us on WhatsApp")}>
           <WhatsAppGlyph />
         </a>
       )}

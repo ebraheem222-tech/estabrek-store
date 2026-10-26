@@ -25,7 +25,7 @@ describe("product type helpers", () => {
   it("values to send and what's missing", () => {
     expect(tidyAttributes(F, { fabric: " كريب ", length: "140,5", lined: true, occ: [], junk: "x" })).toEqual({ fabric: "كريب", length: 140.5, lined: true });
     expect(missingRequired(F, { fabric: "كريب" })).toEqual(["length"]);
-    expect(fieldProblems([{ key: "a", label: "", kind: "text" }, { key: "b", label: "B", kind: "select", options: [] }])).toEqual({ a: "اكتبي اسم الحقل", b: "أضيفي اختيار واحد على الأقل" });
+    expect(fieldProblems([{ key: "a", label: "", kind: "text" }, { key: "b", label: "B", kind: "select", options: [] }])).toEqual({ a: "لازم يكون للحقل اسم", b: "لازم يكون في اختيار واحد على الأقل" });
   });
 });
 

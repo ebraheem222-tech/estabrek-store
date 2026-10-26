@@ -1,11 +1,14 @@
 import { z } from "zod";
 import { PriceNumber } from "../../schemas/common.js";
+import { CategoryTranslations, ProductTranslations } from "../../lib/translations.js";
 
 export const CreateCategoryBody = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
   parentId: z.string().cuid().nullable().optional(),
   iconUrl: z.string().min(1).nullable().optional(),
+  /** The name in the shop's other languages ({ en: { name }, he: { name } }). */
+  translations: CategoryTranslations.optional(),
 });
 export const UpdateCategoryBody = CreateCategoryBody.partial();
 
@@ -19,6 +22,8 @@ export const CreateProductBody = z.object({
   description: z.string().nullable().optional(),
   seoTitle: SeoTitle,
   seoDescription: SeoDescription,
+  /** Title, description, SEO, written values and colour names in the shop's other languages. */
+  translations: ProductTranslations.optional(),
   isActive: z.boolean().optional(),
   categoryId: z.string().cuid(),
   /** The kind of product (admin → أنواع المنتجات) and its fields' values; checked against the type. */
@@ -111,6 +116,7 @@ export const ProductDeepUpdateBody = z.object({
     description: z.string().nullable().optional(),
     seoTitle: SeoTitle,
     seoDescription: SeoDescription,
+    translations: ProductTranslations.optional(),
     isActive: z.boolean().optional(),
     categoryId: z.string().cuid().optional(),
     typeId: z.string().min(1).max(64).nullable().optional(),

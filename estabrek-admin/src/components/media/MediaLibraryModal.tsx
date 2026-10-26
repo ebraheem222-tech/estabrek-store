@@ -28,6 +28,12 @@ import {
   type MediaImage,
   type MediaUsage,
 } from "../../api/uploads.api";
+import { tr } from "@/lib/words";
+import { CutoutEditor } from "./CutoutEditor";
+import type { CutoutTarget } from "./cutoutShared";
+import { CutoutBatch, type BatchTarget } from "./CutoutBatch";
+
+const cutoutTargetOf = (img: MediaImage): BatchTarget => ({ key: img.id, url: img.url, name: img.displayName || img.filename, folder: img.folder });
 
 type Props = {
   open: boolean;
@@ -147,6 +153,14 @@ export function MediaLibraryModal({
   const [deleteOlderConfirmOpen, setDeleteOlderConfirmOpen] = useState(false);
   const [deleteOlderIds, setDeleteOlderIds] = useState<string[]>([]);
 
+  // «شيل الخلفية»: one picture (with the brush), or the selected ones at once.
+  const [cutout, setCutout] = useState<CutoutTarget | null>(null);
+  const [cutoutMany, setCutoutMany] = useState<BatchTarget[] | null>(null);
+  const addCutout = (asset: MediaImage) => {
+    setItems((prev) => [asset, ...prev.filter((x) => x.id !== asset.id)]);
+    void fetchMeta();
+  };
+
   const pickedSet = useMemo(() => new Set(picked), [picked]);
   const bulkSet = useMemo(() => new Set(bulkSelected), [bulkSelected]);
   const duplicateSelectedSet = useMemo(() => new Set(duplicateSelected), [duplicateSelected]);
@@ -171,7 +185,7 @@ export function MediaLibraryModal({
       else setItems((prev) => [...prev, ...res.items]);
       setCursor(res.nextCursor);
     } catch (e: any) {
-      toastApiError(e, "فشل تحميل الصور");
+      toastApiError(e, tr("فشل تحميل الصور", "Couldn't load the images"));
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -191,7 +205,7 @@ export function MediaLibraryModal({
       setDuplicateGroups(res.groups as Array<DuplicateGroupExact | DuplicateGroupNear>);
       setDuplicateSelected([]);
     } catch (e: any) {
-      toastApiError(e, "فشل تحميل التكرارات");
+      toastApiError(e, tr("فشل تحميل التكرارات", "Couldn't load the duplicates"));
     } finally {
       setDuplicatesLoading(false);
     }
@@ -230,7 +244,7 @@ export function MediaLibraryModal({
       if (set.has(url)) set.delete(url);
       else {
         if (set.size >= maxSelect) {
-          toast.error(`الحد الأقصى ${maxSelect} صور`);
+          toast.error(tr(`الحد الأقصى ${maxSelect} صور`, "{0} images at most", [maxSelect]));
           return prev;
         }
         set.add(url);
@@ -286,7 +300,7 @@ export function MediaLibraryModal({
     try {
       setDeleting(true);
       await deleteImagesBulk(duplicateSelected);
-      toast.success("تم حذف الصور المحددة");
+      toast.success(tr("تم حذف الصور المحددة", "Selected images deleted"));
       setDuplicateSelected([]);
       await fetchMeta();
       await load(true);
@@ -299,10 +313,10 @@ export function MediaLibraryModal({
         const merged = Object.values(usageById).flat();
         setUsageList(merged);
         setUsageOpen(true);
-        toast.error("في صور مستخدمة — ما انحذفت");
+        toast.error(tr("في صور مستخدمة — ما انحذفت", "Some images are in use — not deleted"));
         return;
       }
-      toastApiError(e, "فشل حذف الصور");
+      toastApiError(e, tr("فشل حذف الصور", "Couldn't delete the images"));
     } finally {
       setDeleting(false);
     }
@@ -339,7 +353,7 @@ export function MediaLibraryModal({
     try {
       setDeleting(true);
       await deleteImagesBulk(deleteOlderIds);
-      toast.success("تم حذف الأقدم من كل المجموعات");
+      toast.success(tr("تم حذف الأقدم من كل المجموعات", "The oldest of each group deleted"));
       setDeleteOlderIds([]);
       setDeleteOlderConfirmOpen(false);
       await fetchMeta();
@@ -353,10 +367,10 @@ export function MediaLibraryModal({
         const merged = Object.values(usageById).flat();
         setUsageList(merged);
         setUsageOpen(true);
-        toast.error("في صور مستخدمة — ما انحذفت");
+        toast.error(tr("في صور مستخدمة — ما انحذفت", "Some images are in use — not deleted"));
         return;
       }
-      toastApiError(e, "فشل حذف التكرارات");
+      toastApiError(e, tr("فشل حذف التكرارات", "Couldn't delete the duplicates"));
     } finally {
       setDeleting(false);
     }
@@ -369,11 +383,11 @@ export function MediaLibraryModal({
       const out = await uploadImages(Array.from(files), {
         folder: folder && folder !== "__unfiled__" ? folder : undefined,
       });
-      toast.success(`تم رفع ${out.files.length} صورة`);
+      toast.success(tr(`تم رفع ${out.files.length} صورة`, "{0} images uploaded", [out.files.length]));
       await fetchMeta();
       await load(true);
     } catch (e: any) {
-      toastApiError(e, "فشل رفع الصور");
+      toastApiError(e, tr("فشل رفع الصور", "Couldn't upload the images"));
     } finally {
       setLoading(false);
     }
@@ -401,12 +415,12 @@ export function MediaLibraryModal({
         folder: manageFolder ? manageFolder.trim() : null,
         tags: tagsArr,
       });
-      toast.success("تم الحفظ");
+      toast.success(tr("تم الحفظ", "Saved"));
       setManage(updated);
       setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
       await fetchMeta();
     } catch (e: any) {
-      toastApiError(e, "فشل الحفظ");
+      toastApiError(e, tr("فشل الحفظ", "Couldn't save"));
     } finally {
       setSavingMeta(false);
     }
@@ -432,7 +446,7 @@ export function MediaLibraryModal({
     try {
       setDeleting(true);
       await deleteImage(deleteConfirm.id);
-      toast.success("تم حذف الصورة");
+      toast.success(tr("تم حذف الصورة", "Image deleted"));
       setItems((prev) => prev.filter((x) => x.id !== deleteConfirm.id));
       setManage((m) => (m?.id === deleteConfirm.id ? null : m));
       setBulkSelected((prev) => prev.filter((id) => id !== deleteConfirm.id));
@@ -445,10 +459,10 @@ export function MediaLibraryModal({
         setUsageList(data.usage as MediaUsage[]);
         setUsageOpen(true);
         setDeleteConfirm(null);
-        toast.error("ما بزبط تنحذف — الصورة مستخدمة");
+        toast.error(tr("ما بزبط تنحذف — الصورة مستخدمة", "It can't be deleted — the image is in use"));
         return;
       }
-      toastApiError(e, "فشل حذف الصورة");
+      toastApiError(e, tr("فشل حذف الصورة", "Couldn't delete the image"));
     } finally {
       setDeleting(false);
     }
@@ -458,11 +472,11 @@ export function MediaLibraryModal({
     if (!bulkSelected.length) return;
     try {
       await updateImagesBulk({ ids: bulkSelected, folder: folderName });
-      toast.success("تم تحديث المجلد للصور المحددة");
+      toast.success(tr("تم تحديث المجلد للصور المحددة", "Folder updated for the selected images"));
       await fetchMeta();
       await load(true);
     } catch (e: any) {
-      toastApiError(e, "فشل تحديث المجلد");
+      toastApiError(e, tr("فشل تحديث المجلد", "Couldn't update the folder"));
     }
   }
 
@@ -476,11 +490,11 @@ export function MediaLibraryModal({
     if (!bulkSelected.length || !addTags.length) return;
     try {
       await updateImagesBulk({ ids: bulkSelected, addTags });
-      toast.success("تم إضافة Tags");
+      toast.success(tr("تم إضافة Tags", "Tags added"));
       await fetchMeta();
       await load(true);
     } catch (e: any) {
-      toastApiError(e, "فشل إضافة Tags");
+      toastApiError(e, tr("فشل إضافة Tags", "Couldn't add the tags"));
     }
   }
 
@@ -494,11 +508,11 @@ export function MediaLibraryModal({
     if (!bulkSelected.length || !removeTags.length) return;
     try {
       await updateImagesBulk({ ids: bulkSelected, removeTags });
-      toast.success("تم إزالة Tags");
+      toast.success(tr("تم إزالة Tags", "Tags removed"));
       await fetchMeta();
       await load(true);
     } catch (e: any) {
-      toastApiError(e, "فشل إزالة Tags");
+      toastApiError(e, tr("فشل إزالة Tags", "Couldn't remove the tags"));
     }
   }
 
@@ -507,7 +521,7 @@ export function MediaLibraryModal({
     try {
       setDeleting(true);
       await deleteImagesBulk(bulkSelected);
-      toast.success("تم حذف الصور المحددة");
+      toast.success(tr("تم حذف الصور المحددة", "Selected images deleted"));
       setBulkSelected([]);
       setManage(null);
       await fetchMeta();
@@ -520,10 +534,10 @@ export function MediaLibraryModal({
         const merged = Object.values(usageById).flat();
         setUsageList(merged);
         setUsageOpen(true);
-        toast.error("في صور مستخدمة — ما انحذفت");
+        toast.error(tr("في صور مستخدمة — ما انحذفت", "Some images are in use — not deleted"));
         return;
       }
-      toastApiError(e, "فشل الحذف");
+      toastApiError(e, tr("فشل الحذف", "Couldn't delete"));
     } finally {
       setDeleting(false);
     }
@@ -534,12 +548,12 @@ export function MediaLibraryModal({
     if (!name) return;
     try {
       await createImageFolder(name);
-      toast.success("تم إنشاء المجلد");
+      toast.success(tr("تم إنشاء المجلد", "Folder created"));
       setCreateFolderOpen(false);
       setNewFolderName("");
       await fetchMeta();
     } catch (e: any) {
-      toastApiError(e, "فشل إنشاء المجلد");
+      toastApiError(e, tr("فشل إنشاء المجلد", "Couldn't create the folder"));
     }
   }
 
@@ -549,7 +563,7 @@ export function MediaLibraryModal({
     if (!name) return;
     try {
       await renameImageFolder(folderToRename.id, name);
-      toast.success("تم تغيير اسم المجلد");
+      toast.success(tr("تم تغيير اسم المجلد", "Folder renamed"));
       setRenameFolderOpen(false);
       setFolderToRename(null);
       setRenameFolderName("");
@@ -558,7 +572,7 @@ export function MediaLibraryModal({
       await fetchMeta();
       await load(true);
     } catch (e: any) {
-      toastApiError(e, "فشل تغيير الاسم");
+      toastApiError(e, tr("فشل تغيير الاسم", "Couldn't rename"));
     }
   }
 
@@ -566,7 +580,7 @@ export function MediaLibraryModal({
     if (!deleteFolderConfirm) return;
     try {
       await deleteImageFolder(deleteFolderConfirm.id);
-      toast.success("تم حذف المجلد");
+      toast.success(tr("تم حذف المجلد", "Folder deleted"));
       if (folder === deleteFolderConfirm.name) setFolder(null);
       setDeleteFolderConfirm(null);
       await fetchMeta();
@@ -574,17 +588,17 @@ export function MediaLibraryModal({
       const status = e?.response?.status;
       const data = e?.response?.data;
       if (status === 409 && data?.count) {
-        toast.error("المجلد مش فاضي — انقل الصور أولاً");
+        toast.error(tr("المجلد مش فاضي — لازم تنتقل الصور أولاً", "The folder isn't empty — move its images first"));
         return;
       }
-      toastApiError(e, "فشل حذف المجلد");
+      toastApiError(e, tr("فشل حذف المجلد", "Couldn't delete the folder"));
     }
   }
 
   const folderOptions = useMemo(() => {
     const opts = [
-      { value: "", label: "الكل" },
-      { value: "__unfiled__", label: `بدون مجلد (${unfiledCount})` },
+      { value: "", label: tr("الكل", "All") },
+      { value: "__unfiled__", label: tr(`بدون مجلد (${unfiledCount})`, "No folder ({0})", [unfiledCount]) },
       ...folders.map((f) => ({ value: f.name, label: `${f.name} (${f.count})` })),
     ];
     return opts;
@@ -601,7 +615,7 @@ export function MediaLibraryModal({
           {/* Top bar */}
           <div className="flex flex-col lg:flex-row gap-3 lg:items-end">
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="بحث (اسم الملف / اسم العرض)" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("بحث (اسم الملف / اسم العرض)", "Search (file name / display name)")} />
               <div className="grid grid-cols-2 gap-3">
                 <Select
                   value={folder ?? ""}
@@ -611,7 +625,7 @@ export function MediaLibraryModal({
                 <Select
                   value={tag ?? ""}
                   onChange={(e) => setTag(e.target.value || null)}
-                  options={[{ value: "", label: "كل Tags" }, ...tags.map((t) => ({ value: t.tag, label: `${t.tag} (${t.count})` }))]}
+                  options={[{ value: "", label: tr("كل Tags", "All tags") }, ...tags.map((t) => ({ value: t.tag, label: `${t.tag} (${t.count})` }))]}
                 />
               </div>
             </div>
@@ -627,11 +641,11 @@ export function MediaLibraryModal({
                     setBulkSelected([]);
                   }}
                 />
-                وضع الإدارة
+                {tr("وضع الإدارة", "Manage mode")}
               </label>
 
               <Button variant="ghost" onClick={() => setDuplicatesOpen(true)}>
-                التكرارات
+                {tr("التكرارات", "Duplicates")}
               </Button>
 
               <div className="inline-flex items-center">
@@ -646,7 +660,7 @@ export function MediaLibraryModal({
                   }}
                 />
                 <Button type="button" onClick={() => uploadInputRef.current?.click()}>
-                  رفع صور
+                  {tr("رفع صور", "Upload images")}
                 </Button>
               </div>
 
@@ -656,11 +670,11 @@ export function MediaLibraryModal({
                   disabled={!picked.length}
                   onClick={() => {
                     onSelectMultiple?.(picked);
-                    toast.success(`تم اختيار ${picked.length} صورة`);
+                    toast.success(tr(`تم اختيار ${picked.length} صورة`, "{0} images chosen", [picked.length]));
                     onClose();
                   }}
                 >
-                  تطبيق الاختيار ({picked.length})
+                  {tr("تطبيق الاختيار (", "Use the selection (")}{picked.length})
                 </Button>
               )}
             </div>
@@ -669,17 +683,24 @@ export function MediaLibraryModal({
           {/* Bulk bar */}
           {manageMode && bulkCount > 0 && (
             <div className="flex flex-col lg:flex-row gap-3 lg:items-center bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
-              <div className="text-sm text-white/70">محدد: <span className="text-white">{bulkCount}</span></div>
+              <div className="text-sm text-white/70">{tr("محدد:", "Selected:")} <span className="text-white">{bulkCount}</span></div>
               <div className="flex-1 flex flex-col md:flex-row gap-2">
                 <BulkFolderMove folderNames={folderNames} onMove={bulkMoveFolder} />
                 <BulkTags onAdd={bulkAddTags} onRemove={bulkRemoveTags} />
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setCutoutMany(items.filter((x) => bulkSet.has(x.id)).map(cutoutTargetOf))}
+                  data-testid="media-cutout-selected"
+                >
+                  {tr("✂ شيل الخلفية عن المحدد", "✂ Remove the background from the selected")}
+                </Button>
                 <Button variant="danger" onClick={bulkDelete} isLoading={deleting}>
-                  حذف المحدد
+                  {tr("حذف المحدد", "Delete selected")}
                 </Button>
                 <Button variant="ghost" onClick={() => setBulkSelected([])}>
-                  إلغاء التحديد
+                  {tr("إلغاء التحديد", "Clear selection")}
                 </Button>
               </div>
             </div>
@@ -698,13 +719,13 @@ export function MediaLibraryModal({
 
               <div className="space-y-1">
                 <FolderRow
-                  label={`الكل`}
+                  label={tr(`الكل`, "All")}
                   active={folder === null}
                   count={items.length}
                   onClick={() => setFolder(null)}
                 />
                 <FolderRow
-                  label={`بدون مجلد`}
+                  label={tr(`بدون مجلد`, "No folder")}
                   active={folder === "__unfiled__"}
                   count={unfiledCount}
                   onClick={() => setFolder("__unfiled__")}
@@ -728,11 +749,11 @@ export function MediaLibraryModal({
 
               <div className="mt-6">
                 <div className="text-sm font-semibold text-white mb-2">Tags</div>
-                <div className="space-y-1 max-h-64 overflow-auto pr-1">
+                <div className="space-y-1 max-h-64 overflow-auto ps-1">
                   {tags.map((t) => (
                     <button
                       key={t.tag}
-                      className={`w-full text-right px-3 py-2 rounded-xl text-sm border transition ${
+                      className={`w-full text-start px-3 py-2 rounded-xl text-sm border transition ${
                         tag === t.tag
                           ? "bg-white/[0.06] border-white/[0.12] text-white"
                           : "bg-transparent border-transparent text-white/70 hover:bg-white/[0.04]"
@@ -755,7 +776,7 @@ export function MediaLibraryModal({
               ) : (
                 <>
                   {items.length === 0 ? (
-                    <div className="text-center text-white/60 py-20">لا يوجد نتائج</div>
+                    <div className="text-center text-white/60 py-20">{tr("لا يوجد نتائج", "No results")}</div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                       {items.map((img) => {
@@ -771,27 +792,27 @@ export function MediaLibraryModal({
                             {/* Selection overlays */}
                             {manageMode ? (
                               <button
-                                className={`absolute top-2 left-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
+                                className={`absolute top-2 end-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
                                   isBulk ? "bg-white/20 border-white/30" : "bg-black/30 border-white/20 hover:bg-black/40"
                                 }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleBulk(img.id);
                                 }}
-                                title="تحديد"
+                                title={tr("تحديد", "Select")}
                               >
                                 {isBulk ? "✓" : ""}
                               </button>
                             ) : multiple ? (
                               <button
-                                className={`absolute top-2 left-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
+                                className={`absolute top-2 end-2 z-10 w-7 h-7 rounded-lg border flex items-center justify-center transition ${
                                   isPicked ? "bg-white/20 border-white/30" : "bg-black/30 border-white/20 hover:bg-black/40"
                                 }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   togglePicked(img.url);
                                 }}
-                                title="اختيار"
+                                title={tr("اختيار", "Choose")}
                               >
                                 {isPicked ? "✓" : ""}
                               </button>
@@ -823,8 +844,24 @@ export function MediaLibraryModal({
                               </div>
                             </div>
 
+                            <div className="absolute top-2 start-2 z-10 flex gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                              <button
+                                type="button"
+                                className="grid h-7 w-7 place-items-center rounded-lg border border-white/20 bg-black/50 text-sm text-white hover:bg-black/70"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCutout(cutoutTargetOf(img));
+                                }}
+                                title={tr("شيل الخلفية", "Remove background")}
+                                aria-label={tr("شيل الخلفية", "Remove background")}
+                                data-testid="media-cutout"
+                              >
+                                ✂
+                              </button>
+                            </div>
+
                             {manageMode && (
-                              <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                              <div className="absolute bottom-2 start-2 opacity-0 group-hover:opacity-100 transition">
                                 <Button
                                   variant="ghost"
                                   className="!px-2 !py-1 text-xs"
@@ -833,7 +870,7 @@ export function MediaLibraryModal({
                                     openManage(img);
                                   }}
                                 >
-                                  إدارة
+                                  {tr("إدارة", "Manage")}
                                 </Button>
                               </div>
                             )}
@@ -846,7 +883,7 @@ export function MediaLibraryModal({
                   {cursor && (
                     <div className="flex justify-center mt-4">
                       <Button variant="ghost" onClick={() => load(false)} isLoading={loadingMore}>
-                        تحميل المزيد
+                        {tr("تحميل المزيد", "Load more")}
                       </Button>
                     </div>
                   )}
@@ -857,7 +894,7 @@ export function MediaLibraryModal({
             {/* Manage panel */}
             <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4">
               {!manage ? (
-                <div className="text-white/60 text-sm">اختار صورة (وضع الإدارة) عشان تعدّلها.</div>
+                <div className="text-white/60 text-sm">{tr("اختيار صورة (وضع الإدارة) لتعديلها.", "Pick an image (manage mode) to edit it.")}</div>
               ) : (
                 <div className="flex flex-col gap-4">
                   <div className="rounded-xl overflow-hidden border border-white/[0.06]">
@@ -876,7 +913,7 @@ export function MediaLibraryModal({
                         list="media-folder-list"
                         value={manageFolder ?? ""}
                         onChange={(e) => setManageFolder(e.target.value || null)}
-                        placeholder="مثال: homepage"
+                        placeholder={tr("مثال: homepage", "e.g. homepage")}
                       />
                       <datalist id="media-folder-list">
                         {folderNames.map((n) => (
@@ -892,19 +929,22 @@ export function MediaLibraryModal({
 
                     <div className="flex items-center gap-2">
                       <Button variant="primary" onClick={saveManage} isLoading={savingMeta}>
-                        حفظ
+                        {tr("حفظ", "Save")}
                       </Button>
                       <Button
                         variant="danger"
                         onClick={() => handleDeleteRequest(manage)}
                         isLoading={deleting}
                       >
-                        حذف
+                        {tr("حذف", "Delete")}
                       </Button>
                       <Button variant="ghost" onClick={() => setManage(null)}>
-                        إغلاق
+                        {tr("إغلاق", "Close")}
                       </Button>
                     </div>
+                    <Button variant="secondary" onClick={() => setCutout(cutoutTargetOf(manage))} data-testid="media-cutout-manage">
+                      {tr("✂ شيل الخلفية (صورة جديدة)", "✂ Remove background (new picture)")}
+                    </Button>
 
                     <div className="text-xs text-white/40 space-y-1">
                       <div>filename: {manage.filename}</div>
@@ -923,16 +963,16 @@ export function MediaLibraryModal({
       <Modal
         open={createFolderOpen}
         onClose={() => setCreateFolderOpen(false)}
-        title="إنشاء مجلد"
+        title={tr("إنشاء مجلد", "New folder")}
         widthClassName="max-w-md"
       >
         <div className="space-y-3">
-          <Input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="اسم المجلد" />
+          <Input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder={tr("اسم المجلد", "Folder name")} />
           <div className="flex items-center gap-2">
-            <Button variant="primary" onClick={createFolder}>إنشاء</Button>
-            <Button variant="ghost" onClick={() => setCreateFolderOpen(false)}>إلغاء</Button>
+            <Button variant="primary" onClick={createFolder}>{tr("إنشاء", "Create")}</Button>
+            <Button variant="ghost" onClick={() => setCreateFolderOpen(false)}>{tr("إلغاء", "Cancel")}</Button>
           </div>
-          <div className="text-xs text-white/50">ملاحظة: تقدر تنقل الصور للمجلد من وضع الإدارة أو Bulk.</div>
+          <div className="text-xs text-white/50">{tr("ملاحظة: نقل الصور للمجلد بيصير من وضع الإدارة أو Bulk.", "Tip: move images into the folder from manage mode or Bulk.")}</div>
         </div>
       </Modal>
 
@@ -940,14 +980,14 @@ export function MediaLibraryModal({
       <Modal
         open={renameFolderOpen}
         onClose={() => setRenameFolderOpen(false)}
-        title="تغيير اسم المجلد"
+        title={tr("تغيير اسم المجلد", "Rename folder")}
         widthClassName="max-w-md"
       >
         <div className="space-y-3">
-          <Input value={renameFolderName} onChange={(e) => setRenameFolderName(e.target.value)} placeholder="اسم جديد" />
+          <Input value={renameFolderName} onChange={(e) => setRenameFolderName(e.target.value)} placeholder={tr("اسم جديد", "New name")} />
           <div className="flex items-center gap-2">
-            <Button variant="primary" onClick={renameFolder}>حفظ</Button>
-            <Button variant="ghost" onClick={() => setRenameFolderOpen(false)}>إلغاء</Button>
+            <Button variant="primary" onClick={renameFolder}>{tr("حفظ", "Save")}</Button>
+            <Button variant="ghost" onClick={() => setRenameFolderOpen(false)}>{tr("إلغاء", "Cancel")}</Button>
           </div>
         </div>
       </Modal>
@@ -955,11 +995,11 @@ export function MediaLibraryModal({
       {/* Delete folder confirm */}
       <ConfirmDialog
         open={!!deleteFolderConfirm}
-        title="حذف مجلد"
+        title={tr("حذف مجلد", "Delete folder")}
         variant="warning"
-        message={deleteFolderConfirm ? `بدك تحذف مجلد "${deleteFolderConfirm.name}"؟ (بس إذا فاضي)` : ""}
-        confirmText="حذف"
-        cancelText="إلغاء"
+        message={deleteFolderConfirm ? tr(`حذف مجلد "${deleteFolderConfirm.name}"؟ (بس إذا فاضي)`, "Delete the folder \"{0}\"? (only if it's empty)", [deleteFolderConfirm.name]) : ""}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onCancel={() => setDeleteFolderConfirm(null)}
         onConfirm={deleteFolderConfirmed}
       />
@@ -967,11 +1007,11 @@ export function MediaLibraryModal({
       {/* Delete image confirm */}
       <ConfirmDialog
         open={!!deleteConfirm}
-        title="حذف صورة"
+        title={tr("حذف صورة", "Delete image")}
         variant="danger"
-        message={deleteConfirm ? `بدك تحذف "${deleteConfirm.displayName || deleteConfirm.filename}"؟` : ""}
-        confirmText="حذف"
-        cancelText="إلغاء"
+        message={deleteConfirm ? tr(`حذف "${deleteConfirm.displayName || deleteConfirm.filename}"؟`, "Delete \"{0}\"?", [deleteConfirm.displayName || deleteConfirm.filename]) : ""}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         isLoading={deleting}
         onCancel={() => setDeleteConfirm(null)}
         onConfirm={confirmDelete}
@@ -980,11 +1020,11 @@ export function MediaLibraryModal({
       {/* Delete older duplicates confirm */}
       <ConfirmDialog
         open={deleteOlderConfirmOpen}
-        title="حذف التكرارات"
+        title={tr("حذف التكرارات", "Delete duplicates")}
         variant="warning"
-        message={`بدك تحذف ${deleteOlderIds.length} صورة مكررة (الأقدم)؟`}
-        confirmText="حذف"
-        cancelText="إلغاء"
+        message={tr(`حذف ${deleteOlderIds.length} صورة مكررة (الأقدم)؟`, "Delete {0} duplicate images (the oldest)?", [deleteOlderIds.length])}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         isLoading={deleting}
         onCancel={() => {
           setDeleteOlderConfirmOpen(false);
@@ -997,7 +1037,7 @@ export function MediaLibraryModal({
       <Modal
         open={duplicatesOpen}
         onClose={() => setDuplicatesOpen(false)}
-        title="الصور المكررة"
+        title={tr("الصور المكررة", "Duplicate images")}
         widthClassName="max-w-6xl"
       >
         <div className="flex flex-col gap-4">
@@ -1007,8 +1047,8 @@ export function MediaLibraryModal({
                 value={duplicatesMode}
                 onChange={(e) => setDuplicatesMode(e.target.value as DuplicatesMode)}
                 options={[
-                  { value: "exact", label: "تطابق كامل" },
-                  { value: "near", label: "قريب (تشابه)" },
+                  { value: "exact", label: tr("تطابق كامل", "Exact match") },
+                  { value: "near", label: tr("قريب (تشابه)", "Close (similar)") },
                 ]}
               />
               <Input
@@ -1017,33 +1057,33 @@ export function MediaLibraryModal({
                 max={200}
                 value={duplicatesLimit}
                 onChange={(e) => setDuplicatesLimit(Math.max(1, Math.min(200, Number(e.target.value) || 30)))}
-                placeholder="عدد المجموعات"
+                placeholder={tr("عدد المجموعات", "Number of groups")}
               />
               <Button variant="ghost" onClick={loadDuplicates} isLoading={duplicatesLoading}>
-                تحديث
+                {tr("تحديث", "Refresh")}
               </Button>
             </div>
 
             <div className="flex items-center gap-2">
               <Button variant="danger" onClick={deleteSelectedDuplicates} disabled={!duplicateSelected.length} isLoading={deleting}>
-                حذف المحدد ({duplicateSelected.length})
+                {tr("حذف المحدد (", "Delete selected (")}{duplicateSelected.length})
               </Button>
               <Button
                 variant="danger"
                 onClick={() => {
                   const ids = collectOlderDuplicateIds();
                   if (!ids.length) {
-                    toast.error("لا يوجد تكرارات للحذف");
+                    toast.error(tr("لا يوجد تكرارات للحذف", "No duplicates to delete"));
                     return;
                   }
                   setDeleteOlderIds(ids);
                   setDeleteOlderConfirmOpen(true);
                 }}
               >
-                حذف الأقدم في كل المجموعات
+                {tr("حذف الأقدم في كل المجموعات", "Delete the oldest in every group")}
               </Button>
               <Button variant="ghost" onClick={() => setDuplicateSelected([])}>
-                إلغاء التحديد
+                {tr("إلغاء التحديد", "Clear selection")}
               </Button>
             </div>
           </div>
@@ -1053,7 +1093,7 @@ export function MediaLibraryModal({
               <Spinner />
             </div>
           ) : duplicateGroups.length === 0 ? (
-            <div className="text-center text-white/60 py-16">لا يوجد تكرارات</div>
+            <div className="text-center text-white/60 py-16">{tr("لا يوجد تكرارات", "No duplicates")}</div>
           ) : (
             <div className="flex flex-col gap-4">
               {duplicatesMode === "exact"
@@ -1061,11 +1101,11 @@ export function MediaLibraryModal({
                     <div key={group.hash} className="border border-white/[0.06] rounded-2xl p-4 bg-white/[0.02]">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm text-white/80">
-                          Hash: <span className="text-white/60">{group.hash}</span> • عدد:{" "}
+                          Hash: <span className="text-white/60">{group.hash}</span> {tr("• عدد:", "• Count:")}{" "}
                           <span className="text-white">{group.count}</span>
                         </div>
                         <Button variant="ghost" onClick={() => selectGroupOlderExact(group.items)}>
-                          تحديد الأقدم
+                          {tr("تحديد الأقدم", "Select the oldest")}
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -1074,13 +1114,13 @@ export function MediaLibraryModal({
                             <div className="relative">
                               <img src={img.url} className="w-full h-24 object-cover" />
                               <button
-                                className={`absolute top-2 left-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
+                                className={`absolute top-2 end-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
                                   duplicateSelectedSet.has(img.id)
                                     ? "bg-white/20 border-white/30"
                                     : "bg-black/40 border-white/20"
                                 }`}
                                 onClick={() => toggleDuplicate(img.id)}
-                                title="تحديد للحذف"
+                                title={tr("تحديد للحذف", "Select to delete")}
                               >
                                 {duplicateSelectedSet.has(img.id) ? "✓" : ""}
                               </button>
@@ -1104,7 +1144,7 @@ export function MediaLibraryModal({
                           Base: <span className="text-white/60">{group.baseId}</span>
                         </div>
                         <Button variant="ghost" onClick={() => selectGroupOlderNear(group.items)}>
-                          تحديد الأقدم
+                          {tr("تحديد الأقدم", "Select the oldest")}
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -1113,17 +1153,17 @@ export function MediaLibraryModal({
                             <div className="relative">
                               <img src={entry.item.url} className="w-full h-24 object-cover" />
                               <button
-                                className={`absolute top-2 left-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
+                                className={`absolute top-2 end-2 w-6 h-6 rounded-lg border text-xs flex items-center justify-center ${
                                   duplicateSelectedSet.has(entry.item.id)
                                     ? "bg-white/20 border-white/30"
                                     : "bg-black/40 border-white/20"
                                 }`}
                                 onClick={() => toggleDuplicate(entry.item.id)}
-                                title="تحديد للحذف"
+                                title={tr("تحديد للحذف", "Select to delete")}
                               >
                                 {duplicateSelectedSet.has(entry.item.id) ? "✓" : ""}
                               </button>
-                              <div className="absolute bottom-2 right-2 text-[10px] bg-black/50 text-white/80 px-1.5 py-0.5 rounded">
+                              <div className="absolute bottom-2 start-2 text-[10px] bg-black/50 text-white/80 px-1.5 py-0.5 rounded">
                                 d={entry.distance}
                               </div>
                             </div>
@@ -1144,11 +1184,14 @@ export function MediaLibraryModal({
         </div>
       </Modal>
 
+      <CutoutEditor open={!!cutout} target={cutout} onClose={() => setCutout(null)} onSaved={(asset) => addCutout(asset)} />
+      <CutoutBatch open={!!cutoutMany} targets={cutoutMany ?? []} onClose={() => setCutoutMany(null)} onSaved={(_key, asset) => addCutout(asset)} />
+
       {/* Usage dialog */}
-      <Modal open={usageOpen} onClose={() => setUsageOpen(false)} title="الصورة مستخدمة" widthClassName="max-w-lg">
+      <Modal open={usageOpen} onClose={() => setUsageOpen(false)} title={tr("الصورة مستخدمة", "The image is in use")} widthClassName="max-w-lg">
         <div className="space-y-4">
           <div className="text-sm text-white/70">
-            ما بزبط تنحذف — لازم تشيلها من الأماكن اللي بتستخدمها أولاً.
+            {tr("ما بزبط تنحذف — لازم تنشال من الأماكن اللي بتستخدمها أولاً.", "It can't be deleted — remove it from the places that use it first.")}
           </div>
           {usageList.length === 0 ? (
             <div className="text-white/50 text-sm">No usage info.</div>
@@ -1156,7 +1199,7 @@ export function MediaLibraryModal({
             <UsageList usage={usageList} />
           )}
           <div className="flex justify-end">
-            <Button variant="primary" onClick={() => setUsageOpen(false)}>تمام</Button>
+            <Button variant="primary" onClick={() => setUsageOpen(false)}>{tr("تمام", "OK")}</Button>
           </div>
         </div>
       </Modal>
@@ -1181,7 +1224,7 @@ function FolderRow({
 }) {
   return (
     <div className={`group flex items-center gap-2 px-3 py-2 rounded-xl border transition ${active ? "bg-white/[0.06] border-white/[0.12]" : "border-transparent hover:bg-white/[0.04]"}`}>
-      <button className="flex-1 text-right text-sm text-white/80" onClick={onClick}>
+      <button className="flex-1 text-start text-sm text-white/80" onClick={onClick}>
         {label}
         <span className="text-white/40"> ({count})</span>
       </button>
@@ -1222,8 +1265,8 @@ function BulkFolderMove({
         value={val}
         onChange={(e) => setVal(e.target.value)}
       >
-        <option value="">نقل لمجلد…</option>
-        <option value="__unfiled__">بدون مجلد</option>
+        <option value="">{tr("نقل لمجلد…", "Move to folder…")}</option>
+        <option value="__unfiled__">{tr("بدون مجلد", "No folder")}</option>
         {folderNames.map((n) => (
           <option key={n} value={n}>
             {n}
@@ -1239,7 +1282,7 @@ function BulkFolderMove({
           setVal("");
         }}
       >
-        نقل
+        {tr("نقل", "Move")}
       </Button>
     </div>
   );

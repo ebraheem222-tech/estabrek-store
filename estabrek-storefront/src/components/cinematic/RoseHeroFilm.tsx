@@ -15,6 +15,10 @@ import { watchScarfFlight } from "./scarfFlight";
 import { placeHeroMascotOnPhone } from "./mascot/phoneSpot";
 import { motionLevel } from "@/lib/motionBudget";
 import { motionSettings, sectionMotionOn } from "@/lib/motionSettings";
+import { useNames } from "@/store/storeIdentity";
+import { fill } from "@/lib/storeNames";
+import { tr } from "@/lib/words";
+import { useLanguage } from "./Language";
 
 /**
  * The opening film: a sheer scarf flies in, wraps itself into a hijab and
@@ -32,10 +36,12 @@ import { motionSettings, sectionMotionOn } from "@/lib/motionSettings";
 export const FILM_LINES = {
   ar: ["أناقة تشبهكِ.", "نعومةٌ تلتفّ حولكِ.", "تفاصيل تحكي ذوقكِ.", "ألوانٌ تشبه مزاجكِ."],
   en: ["Elegance that feels like you.", "Softness that wraps around you.", "Details that tell your taste.", "Colours that match your mood."],
+  he: ["אלגנטיות שמרגישה כמוך.", "רכות שעוטפת אותך.", "פרטים שמספרים על הטעם שלך.", "צבעים שמתאימים למצב הרוח."],
 };
 const FILM_CLOSING = {
-  ar: { title: "استبرق…\nأناقةٌ تليق بكِ.", text: "حجاب، فساتين وتفاصيل مختارة بحب، لتكوني أنتِ بكل ثقة." },
-  en: { title: "Estabrek.\nBeautifully, you.", text: "Hijabs, dresses and details chosen with love, so you can be you, with confidence." },
+  ar: { title: "{store}…\nأناقةٌ تليق بكِ.", text: "حجاب، فساتين وتفاصيل مختارة بحب، لتكوني أنتِ بكل ثقة." },
+  en: { title: "{store}.\nBeautifully, you.", text: "Hijabs, dresses and details chosen with love, so you can be you, with confidence." },
+  he: { title: "{store}…\nאלגנטיות שמתאימה לך.", text: "חיג'אבים, שמלות ופרטים שנבחרו באהבה, כדי להרגיש את עצמך בביטחון מלא." },
 };
 /** One colour per line, readable on the light page; the closing line takes the shopper's own colour. */
 const LINE_COLORS = ["#b2486a", "#7c5fa8", "#3f7f78", "#a87a2c"];
@@ -86,10 +92,11 @@ export function RoseHeroFilm({
   const rose = useRef<MascotHandle>(null);
   // "on": the scarf floats on the page (black taken out live); "off": no WebGL, the film shows in a dark arch.
   const [cutout, setCutout] = useState<"on" | "off">("on");
-  const lang = ar ? "ar" : "en";
+  const { language: lang } = useLanguage();
+  const n = useNames();
   const authored = (customLines ?? []).map((l) => l.trim()).filter(Boolean).slice(0, 6);
   const lines = authored.length ? authored : FILM_LINES[lang];
-  const closing = customClosing?.trim() || FILM_CLOSING[lang].title;
+  const closing = customClosing?.trim() || fill(FILM_CLOSING[lang].title, n);
   const [step, setStep] = useState(0);
   const [motion, setMotion] = useState(false);
   const final = step >= lines.length;
@@ -278,7 +285,7 @@ export function RoseHeroFilm({
         t = window.setTimeout(() => {
           window.removeEventListener("scroll", wait);
           rose.current?.cheer();
-          rose.current?.say(ar ? "شو هالحلا! ✨" : "So lovely! ✨", 2600);
+          rose.current?.say(tr(lang, "شو هالحلا! ✨", "So lovely! ✨"), 2600);
         }, 700);
       };
       window.addEventListener("scroll", wait, { passive: true });
@@ -286,7 +293,7 @@ export function RoseHeroFilm({
       return () => { window.clearTimeout(t); window.removeEventListener("scroll", wait); };
     }
     if (!final) seenFinal.current = false;
-  }, [step, final, motion, ar]);
+  }, [step, final, motion, ar, lang]);
 
   // Take the black out of the film, and dye the scarf in the shopper's colour.
   useEffect(() => {
@@ -359,7 +366,7 @@ export function RoseHeroFilm({
   }, [motion]);
 
   const accent = final ? "var(--selection-accent, #a43b64)" : LINE_COLORS[step % LINE_COLORS.length];
-  const shop = primary?.href ? primary : { href: "/shop", label: ar ? "تسوّقي الآن" : "Shop now" };
+  const shop = primary?.href ? primary : { href: "/shop", label: tr(lang, "تسوّقي الآن", "Shop now") };
   return (
     <section
       ref={root}
@@ -403,14 +410,12 @@ export function RoseHeroFilm({
               })}
             </span>
           </h1>
-          <p className="hero-description">
-            {final ? FILM_CLOSING[lang].text : description || (ar
-              ? "حجاب، فساتين، وقطع تختارينها بحب. إطلالات تجمع الاحتشام والراحة، بلمسة تشبهكِ."
-              : "Hijabs, dresses, and pieces to love. A little softness, a little confidence. Completely you.")}
+          <p className="hero-description" data-edit={final ? undefined : "subtitle"}>
+            {final ? FILM_CLOSING[lang].text : description || (tr(lang, "حجاب، فساتين، وقطع تختارينها بحب. إطلالات تجمع الاحتشام والراحة، بلمسة تشبهكِ.", "Hijabs, dresses, and pieces to love. A little softness, a little confidence. Completely you."))}
           </p>
           <div className="hero-actions">
             <Link href={shop.href || "/shop"} className="atelier-button button-dark film-cta">
-              {shop.label || (ar ? "تسوّقي الآن" : "Shop now")}
+              {shop.label || (tr(lang, "تسوّقي الآن", "Shop now"))}
               <Icon name="arrow" />
             </Link>
             {secondary?.href && secondary.label ? (
@@ -430,7 +435,7 @@ export function RoseHeroFilm({
           {motion && (
             <span className="film-cue" aria-hidden="true">
               <Icon name="down" />
-              {ar ? "مرّري ودعي الحجاب يكتمل" : "Scroll and watch the hijab come together"}
+              {tr(lang, "مرّري ودعي الحجاب يكتمل", "Scroll and watch the hijab come together")}
             </span>
           )}
         </div>
@@ -444,7 +449,7 @@ export function RoseHeroFilm({
               preload="auto"
               src={filmSrc ?? undefined}
               poster="/editorial/hero-film-poster.webp"
-              aria-label={ar ? "شال شفاف يتطاير ويلتفّ ليصبح حجاباً" : "A sheer scarf flies and wraps itself into a hijab"}
+              aria-label={tr(lang, "شال شفاف يتطاير ويلتفّ ليصبح حجاباً", "A sheer scarf flies and wraps itself into a hijab")}
             >
               {streamed && (
                 <>

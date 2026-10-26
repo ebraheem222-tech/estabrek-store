@@ -6,10 +6,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiBaseClient } from "@/lib/apiClient";
+import { useNames } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { useLanguage } from "./Language";
 
 type Parsed = { q: string; categoryId: string | null; colors: string[]; sizeIds: string[]; minPrice: number | null; maxPrice: number | null; summary: string };
 
 export function RazanSmartSearch({ query, ar }: { query: string; ar: boolean }) {
+  const { language: lang } = useLanguage();
+  const n = useNames();
   const [parsed, setParsed] = useState<Parsed | null>(null);
   useEffect(() => {
     let alive = true;
@@ -32,8 +37,8 @@ export function RazanSmartSearch({ query, ar }: { query: string; ar: boolean }) 
   if (parsed.maxPrice) sp.set("maxPrice", String(parsed.maxPrice));
   return (
     <p className="rose-smart-search" data-testid="smart-search">
-      <span>✨ {ar ? "رزان فهمت:" : "Rose understood:"} <b>{parsed.summary || parsed.q}</b></span>
-      <Link href={`/search?${sp.toString()}`}>{ar ? "ورجيني هيك ←" : "Show me →"}</Link>
+      <span>✨ {tr(lang, `${n.assistant} فهمت:`, "{0} understood:", [n.assistant])} <b>{parsed.summary || parsed.q}</b></span>
+      <Link href={`/search?${sp.toString()}`}>{tr(lang, "ورجيني هيك ←", "Show me →")}</Link>
     </p>
   );
 }

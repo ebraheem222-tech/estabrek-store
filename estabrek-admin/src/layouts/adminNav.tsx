@@ -3,6 +3,7 @@
 // the command palette (Ctrl+K) and the phone tab bar.
 import React from "react";
 import type { AdminPermission } from "../lib/authz";
+import { tr } from "@/lib/words";
 
 // Icons as inline SVGs for modern look
 export const Icons = {
@@ -217,82 +218,85 @@ export type NavItem = {
 };
 
 const NAV_MAIN: NavItem[] = [
-  { to: "/admin/dashboard", label: "لوحة التحكم", icon: Icons.dashboard, requirePermissions: ["dashboard:read"] },
-  { to: "/admin/orders", label: "الطلبات", icon: Icons.orders, requirePermissions: ["orders:read"] },
-  { to: "/admin/tickets", label: "التذاكر والدخول", icon: Icons.ticket, requirePermissions: ["orders:read"] },
-  { to: "/admin/requests", label: "الطلبات الخاصة", icon: Icons.bell, requirePermissions: ["orders:read"] },
-  { to: "/admin/customers", label: "الزبائن", icon: Icons.profile, requirePermissions: ["customers:read"] },
-  { to: "/admin/outbox", label: "الرسائل", icon: Icons.outbox, requirePermissions: ["outbox:read"] },
+  { to: "/admin/dashboard", label: tr("لوحة التحكم", "Dashboard"), icon: Icons.dashboard, requirePermissions: ["dashboard:read"] },
+  { to: "/admin/orders", label: tr("الطلبات", "Orders"), icon: Icons.orders, requirePermissions: ["orders:read"] },
+  { to: "/admin/tickets", label: tr("التذاكر والدخول", "Tickets & entry"), icon: Icons.ticket, requirePermissions: ["orders:read"] },
+  { to: "/admin/requests", label: tr("الطلبات الخاصة", "Special requests"), icon: Icons.bell, requirePermissions: ["orders:read"] },
+  { to: "/admin/customers", label: tr("الزبائن", "Customers"), icon: Icons.profile, requirePermissions: ["customers:read"] },
+  { to: "/admin/outbox", label: tr("الرسائل", "Messages"), icon: Icons.outbox, requirePermissions: ["outbox:read"] },
 ];
 
 const NAV_CATALOG: NavItem[] = [
-  { to: "/admin/catalog/categories", label: "التصنيفات", icon: Icons.categories, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/products", label: "المنتجات", icon: Icons.products, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/products/new", label: "+ منتج جديد", icon: Icons.products, requirePermissions: ["catalog:write"] },
-  { to: "/admin/catalog/sizes", label: "المقاسات", icon: Icons.sizes, requirePermissions: ["catalog:read"] },
-  { to: "/admin/catalog/types", label: "أنواع المنتجات", icon: Icons.categories, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/categories", label: tr("التصنيفات", "Categories"), icon: Icons.categories, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/products", label: tr("المنتجات", "Products"), icon: Icons.products, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/products/new", label: tr("+ منتج جديد", "+ New product"), icon: Icons.products, requirePermissions: ["catalog:write"] },
+  { to: "/admin/catalog/sizes", label: tr("المقاسات", "Sizes"), icon: Icons.sizes, requirePermissions: ["catalog:read"] },
+  { to: "/admin/catalog/types", label: tr("أنواع المنتجات", "Product types"), icon: Icons.categories, requirePermissions: ["catalog:read"] },
 ];
 
 const NAV_INVENTORY: NavItem[] = [
-  { to: "/admin/inventory/stock", label: "المخزون والباركود", icon: Icons.stock, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/low-stock", label: "تنبيهات المخزون", icon: Icons.inventory, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/forecast", label: "توقّع المخزون", icon: Icons.forecast, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/back-in-stock", label: "بانتظار التوفّر", icon: Icons.bell, requirePermissions: ["inventory:read"] },
-  { to: "/admin/inventory/adjustments", label: "سجل المخزون", icon: Icons.inventory, requirePermissions: ["inventory:write"] },
+  { to: "/admin/inventory/stock", label: tr("المخزون والباركود", "Stock & barcodes"), icon: Icons.stock, requirePermissions: ["inventory:read"] },
+  { to: "/admin/inventory/low-stock", label: tr("تنبيهات المخزون", "Low stock"), icon: Icons.inventory, requirePermissions: ["inventory:read"] },
+  { to: "/admin/inventory/forecast", label: tr("توقّع المخزون", "Stock forecast"), icon: Icons.forecast, requirePermissions: ["inventory:read"] },
+  { to: "/admin/inventory/back-in-stock", label: tr("بانتظار التوفّر", "Waiting for stock"), icon: Icons.bell, requirePermissions: ["inventory:read"] },
+  { to: "/admin/inventory/adjustments", label: tr("سجل المخزون", "Stock log"), icon: Icons.inventory, requirePermissions: ["inventory:write"] },
 ];
 
 const NAV_DISCOUNTS: NavItem[] = [
-  { to: "/admin/discounts/coupons", label: "الكوبونات", icon: Icons.coupon, requirePermissions: ["discounts:read"] },
-  { to: "/admin/discounts/coupons/test", label: "تجربة كوبون", icon: Icons.coupon, requirePermissions: ["discounts:write"] },
-  { to: "/admin/discounts/smart", label: "البيع الذكي", icon: Icons.forecast, requirePermissions: ["discounts:read"] },
-  { to: "/admin/discounts/ab", label: "تجارب A/B", icon: Icons.toggles, requirePermissions: ["discounts:read"] },
+  { to: "/admin/discounts/coupons", label: tr("الكوبونات", "Coupons"), icon: Icons.coupon, requirePermissions: ["discounts:read"] },
+  { to: "/admin/discounts/coupons/test", label: tr("تجربة كوبون", "Coupon tester"), icon: Icons.coupon, requirePermissions: ["discounts:write"] },
+  { to: "/admin/discounts/smart", label: tr("البيع الذكي", "Smart selling"), icon: Icons.forecast, requirePermissions: ["discounts:read"] },
+  { to: "/admin/discounts/ab", label: tr("تجارب A/B", "A/B tests"), icon: Icons.toggles, requirePermissions: ["discounts:read"] },
 ];
 
 const NAV_SITE: NavItem[] = [
-  { to: "/admin/features", label: "الميزات", icon: Icons.toggles, requirePermissions: ["settings:read"] },
-  { to: "/admin/razan", label: "رزان (دليلة المتجر)", icon: Icons.chatbot, requirePermissions: ["settings:read"] },
-  { to: "/admin/quiz", label: "سؤال وجواب 🎁", icon: Icons.coupon, requirePermissions: ["settings:read"] },
-  { to: "/admin/ai", label: "الذكاء الاصطناعي ✨", icon: Icons.chatbot, requirePermissions: ["settings:read"] },
-  { to: "/admin/settings", label: "الإعدادات", icon: Icons.settings, requirePermissions: ["settings:read"] },
-  { to: "/admin/media", label: "الوسائط", icon: Icons.media, requirePermissions: ["media:read"] },
-  { to: "/admin/media/videos", label: "الفيديوهات", icon: Icons.media, requirePermissions: ["media:read"] },
-  { to: "/admin/chatbot", label: "مساعد المتجر (AI)", icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
-  { to: "/admin/nav", label: "القوائم", icon: Icons.nav, requirePermissions: ["nav:write"] },
-  { to: "/admin/pages", label: "الصفحات", icon: Icons.pages, requirePermissions: ["pages:read"] },
-  { to: "/admin/ugc/reviews", label: "التقييمات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
-  { to: "/admin/ugc/comments", label: "التعليقات", icon: Icons.reviews, requirePermissions: ["ugc:read"] },
+  { to: "/admin/features", label: tr("الميزات", "Features"), icon: Icons.toggles, requirePermissions: ["settings:read"] },
+  { to: "/admin/razan", label: tr("رزان (دليلة المتجر)", "Rose (store guide)"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
+  { to: "/admin/quiz", label: tr("سؤال وجواب 🎁", "Quiz 🎁"), icon: Icons.coupon, requirePermissions: ["settings:read"] },
+  { to: "/admin/ai", label: tr("الذكاء الاصطناعي ✨", "AI ✨"), icon: Icons.chatbot, requirePermissions: ["settings:read"] },
+  { to: "/admin/settings", label: tr("الإعدادات", "Settings"), icon: Icons.settings, requirePermissions: ["settings:read"] },
+  { to: "/admin/media", label: tr("الوسائط", "Media"), icon: Icons.media, requirePermissions: ["media:read"] },
+  { to: "/admin/media/videos", label: tr("الفيديوهات", "Videos"), icon: Icons.media, requirePermissions: ["media:read"] },
+  { to: "/admin/media/scan", label: tr("مسح 3D من فيديو", "3D scan from a video"), icon: Icons.media, requirePermissions: ["media:read"] },
+  { to: "/admin/media/spin", label: tr("360° من فيديو عادي", "360° from a plain video"), icon: Icons.media, requirePermissions: ["media:read"] },
+  { to: "/admin/chatbot", label: tr("مساعد المتجر (AI)", "Store assistant (AI)"), icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
+  { to: "/admin/nav", label: tr("القوائم", "Menus"), icon: Icons.nav, requirePermissions: ["nav:write"] },
+  { to: "/admin/pages", label: tr("الصفحات", "Pages"), icon: Icons.pages, requirePermissions: ["pages:read"] },
+  { to: "/admin/themes", label: tr("ثيمات المتجر", "Store themes"), icon: Icons.sun, requirePermissions: ["settings:read"] },
+  { to: "/admin/ugc/reviews", label: tr("التقييمات", "Reviews"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
+  { to: "/admin/ugc/comments", label: tr("التعليقات", "Comments"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
 ];
 
 const NAV_TEAM: NavItem[] = [
-  { to: "/admin/team", label: "الفريق والصلاحيات", icon: Icons.team, requirePermissions: ["staff:read"] },
-  { to: "/admin/team/activity", label: "سجل النشاط", icon: Icons.activity, requirePermissions: ["activity:read"] },
-  { to: "/admin/system/security", label: "حماية السيرفر", icon: Icons.security, requirePermissions: ["system:read"] },
-  { to: "/admin/system/traffic", label: "حماية الضغط والصيانة", icon: Icons.activity, requirePermissions: ["system:read"] },
-  { to: "/admin/system/cache", label: "السرعة والكاش", icon: Icons.speed, requirePermissions: ["system:read"] },
-  { to: "/admin/system/speed", label: "مراقبة السرعة والأولوية", icon: Icons.activity, requirePermissions: ["system:read"] },
-  { to: "/admin/system/jobs", label: "المهام بالخلفية", icon: Icons.jobs, requirePermissions: ["system:read"] },
-  { to: "/admin/system/schedule", label: "الجدول الزمني", icon: Icons.calendar, requirePermissions: ["system:read"] },
-  { to: "/admin/system/automations", label: "التلقائيات", icon: Icons.bell, requirePermissions: ["settings:read"] },
-  { to: "/admin/system/history", label: "السجل والرجوع", icon: Icons.activity, noLanding: true },
-  { to: "/admin/system/backups", label: "النسخ الاحتياطي", icon: Icons.backup, requirePermissions: ["system:read"] },
-  { to: "/admin/system/vault", label: "الخزنة والبرنامج", icon: Icons.security, requirePermissions: ["system:read"] },
+  { to: "/admin/team", label: tr("الفريق والصلاحيات", "Team & roles"), icon: Icons.team, requirePermissions: ["staff:read"] },
+  { to: "/admin/team/activity", label: tr("سجل النشاط", "Activity log"), icon: Icons.activity, requirePermissions: ["activity:read"] },
+  { to: "/admin/system/security", label: tr("حماية السيرفر", "Server protection"), icon: Icons.security, requirePermissions: ["system:read"] },
+  { to: "/admin/system/traffic", label: tr("حماية الضغط والصيانة", "Traffic & maintenance"), icon: Icons.activity, requirePermissions: ["system:read"] },
+  { to: "/admin/system/cache", label: tr("السرعة والكاش", "Speed & cache"), icon: Icons.speed, requirePermissions: ["system:read"] },
+  { to: "/admin/system/speed", label: tr("مراقبة السرعة والأولوية", "Speed monitor"), icon: Icons.activity, requirePermissions: ["system:read"] },
+  { to: "/admin/system/jobs", label: tr("المهام بالخلفية", "Background jobs"), icon: Icons.jobs, requirePermissions: ["system:read"] },
+  { to: "/admin/system/schedule", label: tr("الجدول الزمني", "Schedule"), icon: Icons.calendar, requirePermissions: ["system:read"] },
+  { to: "/admin/system/automations", label: tr("التلقائيات", "Automations"), icon: Icons.bell, requirePermissions: ["settings:read"] },
+  { to: "/admin/system/history", label: tr("السجل والرجوع", "History & undo"), icon: Icons.activity, noLanding: true },
+  { to: "/admin/system/backups", label: tr("النسخ الاحتياطي", "Backups"), icon: Icons.backup, requirePermissions: ["system:read"] },
+  { to: "/admin/system/vault", label: tr("الخزنة والبرنامج", "Vault & launcher"), icon: Icons.security, requirePermissions: ["system:read"] },
 ];
 
 const NAV_ACCOUNT: NavItem[] = [
-  { to: "/admin/account/profile", label: "الملف الشخصي", icon: Icons.profile, requirePermissions: ["account:read"] },
-  { to: "/admin/account/email", label: "تغيير البريد", icon: Icons.email, requirePermissions: ["account:write"] },
-  { to: "/admin/account/security", label: "الأمان", icon: Icons.security, requirePermissions: ["security:read", "audit:read"] },
+  { to: "/admin/account/profile", label: tr("الملف الشخصي", "Profile"), icon: Icons.profile, requirePermissions: ["account:read"] },
+  { to: "/admin/account/email", label: tr("تغيير البريد", "Change email"), icon: Icons.email, requirePermissions: ["account:write"] },
+  { to: "/admin/account/security", label: tr("الأمان", "Security"), icon: Icons.security, requirePermissions: ["security:read", "audit:read"] },
 ];
 
 /** Sidebar groups, in order. The command palette and the phone tab bar use the same list. */
 export const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
-  { id: "main", title: "الإدارة", items: NAV_MAIN },
-  { id: "catalog", title: "الكتالوج", items: NAV_CATALOG },
-  { id: "inventory", title: "المخزون", items: NAV_INVENTORY },
-  { id: "discounts", title: "التسويق", items: NAV_DISCOUNTS },
-  { id: "site", title: "الموقع", items: NAV_SITE },
-  { id: "team", title: "الفريق والأمان", items: NAV_TEAM },
-  { id: "account", title: "الحساب", items: NAV_ACCOUNT },
+  { id: "main", title: tr("الإدارة", "Overview"), items: NAV_MAIN },
+  { id: "catalog", title: tr("الكتالوج", "Catalog"), items: NAV_CATALOG },
+  { id: "inventory", title: tr("المخزون", "Stock"), items: NAV_INVENTORY },
+  { id: "discounts", title: tr("التسويق", "Marketing"), items: NAV_DISCOUNTS },
+  { id: "site", title: tr("الموقع", "Website"), items: NAV_SITE },
+  { id: "team", title: tr("الفريق والأمان", "Team & security"), items: NAV_TEAM },
+  { id: "account", title: tr("الحساب", "Account"), items: NAV_ACCOUNT },
 ];
 
 /** The first page this admin may open (a team member may not have the dashboard). */

@@ -1,0 +1,227 @@
+import React from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getProductBySlug, getPublicSettings, listCategories, listProducts } from "@/lib/api";
+import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
+import { RoseProduct } from "@/components/cinematic/RoseProduct";
+import { formatMoney, getProductMinPrice } from "@/lib/catalog";
+import ProductDetail from "@/components/ProductDetail";
+import ShareButton from "@/components/ShareButton";
+import RecommendedProductsSection from "@/components/RecommendedProductsSection";
+import { RecentlyViewedSection } from "@/components/RecentlyViewedSection";
+import { ProductPageEnhancements } from "@/components/ProductPageEnhancements";
+import { ProductViewSignal } from "@/components/ProductViewSignal";
+
+import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
+import type { Metadata } from "next";
+import { routeLang, seoAlternates } from "@/lib/seoLang";
+import { tr } from "@/lib/words";
+
+export const revalidate = 120;
+
+export async function generateMetadata({ params }: { params: { slug: string; lang: string } }): Promise<Metadata> {
+  const lang = routeLang(params);
+  const product = await getProductBySlug(params.slug, lang);
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const slug = encodeURIComponent((product as any)?.slug ?? params.slug);
+  const alternates = await seoAlternates(`/p/${slug}`, lang);
+  const canonical = alternates.canonical;
+
+  if (!product) {
+    return {
+      title: "Product",
+      alternates: { canonical },
+      robots: { index: false, follow: false },
+    };
+  }
+
+  // A search-engine title from the admin is used as written (no "| Store" added after it).
+  const seoTitle = String((product as any).seoTitle ?? "").trim();
+  const title = seoTitle || (product as any).title || "Product";
+  // Search results and shared links show ~160 characters: the start of the description, tidied.
+  const rawDescription = String((product as any).seoDescription ?? (product as any).description ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const description = rawDescription ? (rawDescription.length > 160 ? `${rawDescription.slice(0, 157).trimEnd()}…` : rawDescription) : tr(lang, `${(product as any).title ?? ""} — تسوّقيها الآن مع توصيل والدفع عند الاستلام.`, "{0} — order now with delivery and cash on delivery.", [(product as any).title ?? ""]);
+  const productImageUrl = (product as any).images?.[0]?.url;
+  const fallbackOgUrl = new URL(`/api/og/product?slug=${slug}`, base).toString();
+  const openGraphImages = productImageUrl
+    ? [{ url: productImageUrl }]
+    : [{ url: fallbackOgUrl, width: 1200, height: 630 }];
+  const twitterImages = [productImageUrl ?? fallbackOgUrl];
+
+  return {
+    title: seoTitle ? { absolute: seoTitle } : title,
+    description,
+    alternates,
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: "website",
+      images: openGraphImages,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: twitterImages,
+    },
+    robots: { index: true, follow: true },
+  };
+}
+
+
+
+export default async function ProductPage({ params }: { params: { slug: string; lang: string } }) {
+  const lang = routeLang(params);
+  // Settings and categories don't depend on the product: ask for all three at once.
+  const settingsPromise = getPublicSettings().catch(() => null);
+  const categoriesPromise = listCategories(lang).catch(() => []);
+  const product = await getProductBySlug(params.slug, lang);
+  if (!product) notFound();
+  const relatedCategoryId = (product as any).category?.id ?? (product as any).categoryId;
+  const relatedPromise = relatedCategoryId && process.env.ESTABREK_HOME_MODE !== "cms"
+    ? listProducts({ categoryId: relatedCategoryId, page: 1, pageSize: 5, sort: "latest", includeFacets: false, lite: true, lang }).then((out) => out.items ?? []).catch(() => [])
+    : Promise.resolve([]);
+  const settings = await settingsPromise;
+  const storefrontSettings = (settings?.site as any)?.header?.storefront ?? {};
+  const breadcrumbsEnabled = storefrontSettings.breadcrumbsEnabled !== false;
+  const recommendationsEnabled = storefrontSettings.productRecommendations !== false;
+  const recommendationsCount = Number(storefrontSettings.productRecommendationsCount ?? 8);
+
+  const price = getProductMinPrice(product);
+
+
+function flattenCategories(nodes: any[]): any[] {
+  const out: any[] = [];
+  const walk = (arr: any[]) => {
+    for (const n of arr || []) {
+      out.push(n);
+      if (n.children?.length) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+const crumbs: Crumb[] = [{ label: tr(lang, "الرئيسية", "Home"), href: "/" }, { label: tr(lang, "المتجر", "Shop"), href: "/shop" }];
+
+if ((product as any).category?.slug || (product as any).categoryId) {
+  const catsRaw = await categoriesPromise;
+  const cats = Array.isArray(catsRaw) ? flattenCategories(catsRaw as any[]) : [];
+  const byId = new Map(cats.map((c) => [c.id, c]));
+  const bySlug = new Map(cats.map((c) => [c.slug, c]));
+  let cur: any | undefined =
+    (product as any).categoryId ? byId.get((product as any).categoryId) : undefined;
+  if (!cur && (product as any).category?.slug) cur = bySlug.get((product as any).category.slug);
+
+  const chain: any[] = [];
+  while (cur) {
+    chain.push(cur);
+    const pid = cur.parentId;
+    if (!pid) break;
+    const nxt = byId.get(pid);
+    if (!nxt || chain.some((x) => x.id === nxt.id)) break;
+    cur = nxt;
+  }
+  chain.reverse().forEach((c) => crumbs.push({ label: c.name, href: `/c/${c.slug}` }));
+}
+
+crumbs.push({ label: (product as any).title ?? "Product", href: `/p/${encodeURIComponent(params.slug)}` });
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: crumbs.map((c, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: c.label,
+    item: new URL(c.href, SITE).toString(),
+  })),
+};
+
+const productLd: any = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: (product as any).title,
+  description: (product as any).description ?? undefined,
+  image: (product as any).images?.map((x: any) => x.url) ?? undefined,
+  sku: (product as any).sku ?? undefined,
+  brand: (product as any).brand?.name ? { "@type": "Brand", name: (product as any).brand.name } : undefined,
+  offers: {
+    "@type": "Offer",
+    priceCurrency: (product as any).currency ?? "ILS",
+    price: Number(price),
+    availability: ((product as any).inStock ?? true)
+      ? "https://schema.org/InStock"
+      : "https://schema.org/OutOfStock",
+    url: new URL(`/p/${encodeURIComponent((product as any).slug ?? params.slug)}`, SITE).toString(),
+  },
+};
+
+
+  // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
+
+  if (process.env.ESTABREK_HOME_MODE !== "cms") {
+    const related = (await relatedPromise).filter((p) => p.id !== (product as any).id).slice(0, 4);
+    return (
+      <main id="main-content" tabIndex={-1}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
+        <ProductViewSignal productId={String((product as any).id)} />
+        <RosePageFrame className="rose-shop rose-product-page">
+          <RoseProduct product={product as any} crumbs={crumbs} related={related} />
+        </RosePageFrame>
+      </main>
+    );
+  }
+
+  return (
+    <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 space-y-8">
+      {breadcrumbsEnabled ? <Breadcrumbs items={crumbs} /> : null}
+
+      {breadcrumbsEnabled ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      ) : null}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
+      
+      {/* All Product Enhancements - Client Component */}
+      <ProductViewSignal productId={String((product as any).id)} />
+      <ProductPageEnhancements product={product as any} />
+      
+      <ProductDetail product={product as any} />
+
+      {/* Description Section */}
+      {product.description ? (
+        <div className="glass-card rounded-3xl p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[var(--text)]">وصف المنتج</h2>
+              <p className="text-xs text-[var(--muted)]">تفاصيل ومعلومات إضافية</p>
+            </div>
+          </div>
+          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="prose prose-sm prose-invert max-w-none">
+            <p className="whitespace-pre-wrap text-sm text-[var(--text)]/80 leading-relaxed">{product.description}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Recently Viewed */}
+      <RecentlyViewedSection excludeId={(product as any).id} />
+
+      {/* Recommended Products */}
+      {recommendationsEnabled ? (
+        <RecommendedProductsSection productId={(product as any).id} limit={recommendationsCount} lang={lang} />
+      ) : null}
+      
+      {/* Share Button */}
+      <ShareButton title={product.title} />
+    </main>
+  );
+}

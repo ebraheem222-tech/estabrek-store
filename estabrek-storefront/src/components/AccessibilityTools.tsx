@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { tr } from "@/lib/words";
+import { useLanguage } from "@/components/cinematic/Language";
 
 type A11yState = {
   fontLarge: boolean;
@@ -49,6 +51,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function AccessibilityTools() {
+  const { language: lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<A11yState>(DEFAULT_STATE);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -126,26 +129,26 @@ export function AccessibilityTools() {
     () => [
       {
         key: "fontLarge",
-        label: "تكبير الخط",
-        desc: "زيادة حجم النصوص لقراءة أسهل",
+        label: tr(lang, "تكبير الخط", "Larger text"),
+        desc: tr(lang, "زيادة حجم النصوص لقراءة أسهل", "Bigger text, easier to read"),
       },
       {
         key: "highContrast",
-        label: "تباين عالي",
-        desc: "تعزيز التباين بين النص والخلفية",
+        label: tr(lang, "تباين عالي", "High contrast"),
+        desc: tr(lang, "تعزيز التباين بين النص والخلفية", "Stronger contrast between text and background"),
       },
       {
         key: "underlineLinks",
-        label: "تسطير الروابط",
-        desc: "إظهار الروابط بخط سفلي واضح",
+        label: tr(lang, "تسطير الروابط", "Underline links"),
+        desc: tr(lang, "إظهار الروابط بخط سفلي واضح", "Show links with a clear underline"),
       },
       {
         key: "reduceMotion",
-        label: "تقليل الحركة",
-        desc: "إيقاف الأنيميشن للحساسية من الحركة",
+        label: tr(lang, "تقليل الحركة", "Reduce motion"),
+        desc: tr(lang, "إيقاف الأنيميشن للحساسية من الحركة", "Stop animations for motion sensitivity"),
       },
     ],
-    []
+    [lang]
   );
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -187,7 +190,7 @@ export function AccessibilityTools() {
       <button
         type="button"
         className="a11y-fab"
-        aria-label="أدوات إمكانية الوصول"
+        aria-label={tr(lang, "أدوات إمكانية الوصول", "Accessibility tools")}
         aria-expanded={open}
         ref={fabRef}
         onClick={() => {
@@ -207,7 +210,7 @@ export function AccessibilityTools() {
         }
       >
         <span aria-hidden>♿</span>
-        <span className="sr-only">إمكانية الوصول</span>
+        <span className="sr-only">{tr(lang, "إمكانية الوصول", "Accessibility")}</span>
       </button>
 
       {open ? (
@@ -215,7 +218,7 @@ export function AccessibilityTools() {
           ref={panelRef}
           className="a11y-panel"
           role="dialog"
-          aria-label="أدوات إمكانية الوصول"
+          aria-label={tr(lang, "أدوات إمكانية الوصول", "Accessibility tools")}
           style={
             panelPosition
               ? { left: `${panelPosition.x}px`, top: `${panelPosition.y}px`, bottom: "auto", right: "auto" }
@@ -223,8 +226,8 @@ export function AccessibilityTools() {
           }
         >
           <div className="a11y-panel-header">
-            <div className="a11y-panel-title">أدوات إمكانية الوصول</div>
-            <button type="button" className="a11y-close" onClick={() => setOpen(false)} aria-label="إغلاق">
+            <div className="a11y-panel-title">{tr(lang, "أدوات إمكانية الوصول", "Accessibility tools")}</div>
+            <button type="button" className="a11y-close" onClick={() => setOpen(false)} aria-label={tr(lang, "إغلاق", "Close")}>
               ✕
             </button>
           </div>

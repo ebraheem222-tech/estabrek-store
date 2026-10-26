@@ -1,5 +1,6 @@
 import { prisma } from "./prisma.js";
 import { getOpenAIEmbeddingModel, openaiEmbedText } from "./openai.js";
+import { CONTENT_LANGS, ProductTranslations, translationsOf } from "./translations.js";
 
 type ProductEmbeddingSource = {
   id: string;
@@ -7,6 +8,7 @@ type ProductEmbeddingSource = {
   slug: string;
   description?: string | null;
   category?: { name?: string | null } | null;
+  translations?: unknown;
   embedding?: any;
   embeddingText?: string | null;
   embeddingModel?: string | null;
@@ -26,6 +28,13 @@ export function buildProductEmbeddingText(product: ProductEmbeddingSource): stri
   if (product.category?.name) parts.push(`Category: ${product.category.name}`);
   if (product.description) parts.push(product.description);
   if (product.slug) parts.push(`Slug: ${product.slug}`);
+  // Its names in the shop's other languages, so a search in English or Hebrew finds it.
+  const tr = translationsOf(ProductTranslations, product.translations);
+  for (const lang of CONTENT_LANGS) {
+    const one = tr[lang];
+    if (one?.title) parts.push(`Title (${lang}): ${one.title}`);
+    if (one?.description) parts.push(one.description.slice(0, 600));
+  }
   return compactText(parts.join("\n"));
 }
 
@@ -37,6 +46,7 @@ export async function indexProductTextEmbedding(productId: string, opts?: { forc
       title: true,
       slug: true,
       description: true,
+      translations: true,
       embedding: true,
       embeddingText: true,
       embeddingModel: true,

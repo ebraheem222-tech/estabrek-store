@@ -3,6 +3,7 @@
  * The owner can switch them off, pick at how many pieces they start, and choose
  * where they show: on the product photo / cards, and next to the price.
  */
+import type { Lang } from "./i18n";
 export type ScarcitySettings = {
   enabled: boolean;
   /** Shown when this many pieces or fewer are left. */
@@ -35,9 +36,10 @@ export function showsLeft(s: ScarcitySettings, left: number | null | undefined, 
   return where === "photo" ? s.onPhoto : s.nearPrice;
 }
 
-/** "آخر قطعة", "باقي قطعتان", "باقي 5 قطع", "باقي 12 قطعة". */
-export function piecesLeftText(left: number, ar: boolean) {
-  if (!ar) return left === 1 ? "Last one" : `Only ${left} left`;
+/** "آخر قطعة", "باقي قطعتان", "باقي 5 قطع", "باقي 12 قطعة"; "Last one"; "הפריט האחרון". */
+export function piecesLeftText(left: number, lang: Lang) {
+  if (lang === "en") return left === 1 ? "Last one" : `Only ${left} left`;
+  if (lang === "he") return left === 1 ? "הפריט האחרון" : `נשארו רק ${left}`;
   if (left === 1) return "آخر قطعة";
   if (left === 2) return "باقي قطعتان";
   return left <= 10 ? `باقي ${left} قطع` : `باقي ${left} قطعة`;

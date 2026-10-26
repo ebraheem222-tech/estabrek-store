@@ -67,7 +67,7 @@ export function TH({ children, className, ...rest }: THProps) {
   return (
     <th
       className={cn(
-        "px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white/50",
+        "px-4 py-3 text-start text-xs font-semibold uppercase tracking-wider text-white/50",
         className
       )}
       {...rest}

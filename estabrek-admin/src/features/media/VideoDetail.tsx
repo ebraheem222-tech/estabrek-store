@@ -13,15 +13,16 @@ import type { ImageAsset, Rendition, StreamLadder, StreamProfile, Video, VideoLi
 import { formatBytes } from "../system/cacheText";
 import { Segmented, Toggle } from "../system/cacheParts";
 import { CODEC_TEXT, LADDER_TEXT, PRESET_TEXT, QUALITY_TEXT, STATUS_TEXT, codecsFor, durationText, frameTimes, profileSummary, renditionSummary, timeText } from "./videoText";
+import { tr } from "@/lib/words";
 
 const field = "h-9 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
 
 async function copy(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success("انتسخ الرابط");
+    toast.success(tr("انتسخ الرابط", "Link copied"));
   } catch {
-    toast.error("ما قدرت أنسخ", { description: text });
+    toast.error(tr("ما قدرنا ننسخ", "Couldn't copy"), { description: text });
   }
 }
 
@@ -36,7 +37,7 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
   const [confirmDelete, setConfirmDelete] = useState<null | { usage: number }>(null);
   const duration = (video.durationMs ?? 0) / 1000;
   const refresh = () => qc.invalidateQueries({ queryKey: ["media", "videos"] });
-  const onError = (e: unknown) => toast.error("ما زبط", { description: getApiErrorMessage(e) });
+  const onError = (e: unknown) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) });
 
   // A rename saved elsewhere (or a new video in the same window) starts the field over.
   const [named, setNamed] = useState(video.displayName);
@@ -48,7 +49,7 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
   const poster = useMutation({
     mutationFn: () => VideosAPI.grabFrames(video.id, { seconds: [t], as: "poster" }),
     onSuccess: () => {
-      toast.success("صار غلاف الفيديو");
+      toast.success(tr("صار غلاف الفيديو", "It's now the video's cover"));
       refresh();
     },
     onError,
@@ -57,16 +58,16 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
     mutationFn: (seconds: number[]) => VideosAPI.grabFrames(video.id, { seconds, as: "image" }),
     onSuccess: (out) => {
       setFrames(out.images);
-      toast.success(out.images.length === 1 ? "انحفظت الصورة بمكتبة الصور (مجلد frames)" : `انحفظت ${out.images.length} صور بمكتبة الصور (مجلد frames)`);
+      toast.success(out.images.length === 1 ? tr("انحفظت الصورة بمكتبة الصور (مجلد frames)", "The photo was saved in the photo library (frames folder)") : tr(`انحفظت ${out.images.length} صور بمكتبة الصور (مجلد frames)`, "{0} photos were saved in the photo library (frames folder)", [out.images.length]));
     },
     onError,
   });
-  const rename = useMutation({ mutationFn: () => VideosAPI.updateVideo(video.id, { displayName: name.trim() }), onSuccess: () => (toast.success("انحفظ الاسم"), refresh()), onError });
+  const rename = useMutation({ mutationFn: () => VideosAPI.updateVideo(video.id, { displayName: name.trim() }), onSuccess: () => (toast.success(tr("انحفظ الاسم", "Name saved")), refresh()), onError });
   const removeRendition = useMutation({ mutationFn: (rid: string) => VideosAPI.deleteRendition(video.id, rid), onSuccess: refresh, onError });
   const remove = useMutation({
     mutationFn: () => VideosAPI.deleteVideo(video.id),
     onSuccess: () => {
-      toast.success("انحذف الفيديو");
+      toast.success(tr("انحذف الفيديو", "Video deleted"));
       refresh();
       onClose();
     },
@@ -88,8 +89,8 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
   const ready = video.renditions.filter((r) => r.status === "ready" && r.url && r.kind !== "hls");
 
   return (
-    <Modal open title={video.displayName || "فيديو"} onClose={onClose} widthClassName="max-w-4xl">
-      <div dir="rtl" className="max-h-[75vh] space-y-5 overflow-y-auto pe-1" data-testid="video-detail">
+    <Modal open title={video.displayName || tr("فيديو", "video")} onClose={onClose} widthClassName="max-w-4xl">
+      <div className="max-h-[75vh] space-y-5 overflow-y-auto pe-1" data-testid="video-detail">
         <div className="space-y-2">
           <video
             ref={player}
@@ -104,9 +105,9 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
           />
           {ready.length ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-white/50">اللي عم يشتغل:</span>
+              <span className="text-white/50">{tr("اللي عم يشتغل:", "Playing:")}</span>
               <button type="button" className={`rounded-lg px-2 py-1 ${source === video.url ? "bg-white/10" : "text-white/60"}`} onClick={() => setSource(video.url)}>
-                الأصلي
+                {tr("الأصلي", "Original")}
               </button>
               {ready.map((r) => (
                 <button key={r.id} type="button" className={`rounded-lg px-2 py-1 ${source === r.url ? "bg-white/10" : "text-white/60"}`} onClick={() => setSource(r.url!)}>
@@ -118,8 +119,8 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
         </div>
 
         <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <h3 className="font-medium">صور من الفيديو</h3>
-          <p className="mt-0.5 text-xs text-white/50">حرّك المؤشر للإطار اللي بدك ياه (أو شغّل ووقّف الفيديو)، وبعدين اختار شو بدك تعمل فيه.</p>
+          <h3 className="font-medium">{tr("صور من الفيديو", "Photos from the video")}</h3>
+          <p className="mt-0.5 text-xs text-white/50">{tr("المؤشر بيتحرّك للإطار المطلوب (أو تشغيل وتوقيف الفيديو)، وبعدها اختيار شو ينعمل فيه.", "Move the marker to the frame you want (or play and pause the video), then choose what to do with it.")}</p>
           <div className="mt-3 flex items-center gap-3">
             <input
               type="range"
@@ -130,7 +131,7 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
               onChange={(e) => seek(Number(e.target.value))}
               className="w-full"
               dir="ltr"
-              aria-label="مكان الإطار"
+              aria-label={tr("مكان الإطار", "Frame position")}
               disabled={!duration}
             />
             <span className="w-16 shrink-0 text-xs tabular-nums" dir="ltr">
@@ -141,13 +142,13 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
             library.canGrabFrames ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="secondary" onClick={() => poster.mutate()} isLoading={poster.isPending}>
-                  خلّيه غلاف الفيديو
+                  {tr("تعيينه غلاف الفيديو", "Make it the video's cover")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => asImages.mutate([t])} isLoading={asImages.isPending && asImages.variables?.length === 1}>
-                  احفظه كصورة
+                  {tr("حفظه كصورة", "Save it as a photo")}
                 </Button>
                 <span className="mx-1 h-5 w-px bg-white/10" />
-                <span className="text-xs text-white/60">صورة كل</span>
+                <span className="text-xs text-white/60">{tr("صورة كل", "A photo every")}</span>
                 <input
                   type="number"
                   min={0.25}
@@ -156,9 +157,9 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
                   onChange={(e) => setEvery(Number(e.target.value))}
                   className={`${field} w-20`}
                   dir="ltr"
-                  aria-label="كل كم ثانية"
+                  aria-label={tr("كل كم ثانية", "Every how many seconds")}
                 />
-                <span className="text-xs text-white/60">ثانية</span>
+                <span className="text-xs text-white/60">{tr("ثانية", "seconds")}</span>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -166,18 +167,18 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
                   onClick={() => asImages.mutate(frameTimes(video.durationMs, every))}
                   isLoading={asImages.isPending && (asImages.variables?.length ?? 0) > 1}
                 >
-                  {`صدّر ${frameTimes(video.durationMs, every).length} صور`}
+                  {tr(`تصدير ${frameTimes(video.durationMs, every).length} صور`, "Export {0} photos", [frameTimes(video.durationMs, every).length])}
                 </Button>
               </div>
             ) : (
-              <p className="mt-3 text-xs text-amber-200">الصور من الفيديو بدها Cloudinary أو ffmpeg على السيرفر.</p>
+              <p className="mt-3 text-xs text-amber-200">{tr("الصور من الفيديو بدها Cloudinary أو ffmpeg على السيرفر.", "Photos from the video need Cloudinary or ffmpeg on the server.")}</p>
             )
           ) : null}
           {frames.length ? (
             <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
               {frames.map((img) => (
                 <li key={img.id}>
-                  <button type="button" onClick={() => copy(img.url)} title="نسخ الرابط" className="block w-full overflow-hidden rounded-lg border border-white/10">
+                  <button type="button" onClick={() => copy(img.url)} title={tr("نسخ الرابط", "Copy link")} className="block w-full overflow-hidden rounded-lg border border-white/10">
                     <img src={img.url} alt="" className="aspect-video w-full object-cover" />
                   </button>
                 </li>
@@ -187,8 +188,8 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
         </section>
 
         <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <h3 className="font-medium">النسخ المحوّلة</h3>
-          <p className="mt-0.5 text-xs text-white/50">كل نسخة إلها رابط: انسخه وحطه بقسم الفيديو بالصفحة. النسخ بتنعمل بالخلفية، وبتتحدّث هون لحالها.</p>
+          <h3 className="font-medium">{tr("النسخ المحوّلة", "Converted versions")}</h3>
+          <p className="mt-0.5 text-xs text-white/50">{tr("كل نسخة إلها رابط: بينتسخ وبينحط بقسم الفيديو بالصفحة. النسخ بتنعمل بالخلفية، وبتتحدّث هون لحالها.", "Each version has a link: copy it into a video section on the page. Versions are made in the background and update here by themselves.")}</p>
           {video.renditions.length ? (
             <ul className="mt-3 divide-y divide-white/10">
               {video.renditions.map((r) => (
@@ -196,38 +197,38 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-white/60">ما في نسخ بعد.</p>
+            <p className="mt-3 text-sm text-white/60">{tr("ما في نسخ بعد.", "No versions yet.")}</p>
           )}
           {canWrite ? <ConvertForm video={video} library={library} onDone={refresh} /> : null}
         </section>
 
         <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <h3 className="font-medium">معلومات</h3>
+          <h3 className="font-medium">{tr("معلومات", "Info")}</h3>
           <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
-            <Info label="المدة" value={durationText(video.durationMs)} />
-            <Info label="الحجم" value={video.width && video.height ? `${video.width}×${video.height}` : "—"} />
-            <Info label="الإطارات" value={video.fps ? `${Math.round(video.fps * 100) / 100} بالثانية` : "—"} />
-            <Info label="الملف" value={formatBytes(video.size)} />
-            <Info label="الترميز" value={video.meta?.codec ?? "—"} />
-            <Info label="الصوت" value={video.meta?.hasAudio ? "في" : "ما في"} />
-            <Info label="مكانه" value={video.provider === "CLOUDINARY" ? "Cloudinary" : "السيرفر"} />
+            <Info label={tr("المدة", "Duration")} value={durationText(video.durationMs)} />
+            <Info label={tr("الحجم", "Size")} value={video.width && video.height ? `${video.width}×${video.height}` : "—"} />
+            <Info label={tr("الإطارات", "Frames")} value={video.fps ? tr(`${Math.round(video.fps * 100) / 100} بالثانية`, "{0} a second", [Math.round(video.fps * 100) / 100]) : "—"} />
+            <Info label={tr("الملف", "File")} value={formatBytes(video.size)} />
+            <Info label={tr("الترميز", "Codec")} value={video.meta?.codec ?? "—"} />
+            <Info label={tr("الصوت", "Sound")} value={video.meta?.hasAudio ? tr("في", "Yes") : tr("ما في", "No")} />
+            <Info label={tr("مكانه", "Stored on")} value={video.provider === "CLOUDINARY" ? "Cloudinary" : tr("السيرفر", "The server")} />
           </dl>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" variant="ghost" onClick={() => copy(video.url)}>
-              نسخ رابط الأصلي
+              {tr("نسخ رابط الأصلي", "Copy the original's link")}
             </Button>
           </div>
           {canWrite ? (
             <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-white/10 pt-4">
               <label className="min-w-0 flex-1">
-                <span className="block text-xs text-white/60">الاسم</span>
+                <span className="block text-xs text-white/60">{tr("الاسم", "Name")}</span>
                 <input value={name} onChange={(e) => setName(e.target.value)} className={`${field} mt-1 w-full`} />
               </label>
               <Button size="sm" variant="secondary" onClick={() => rename.mutate()} disabled={!name.trim() || name.trim() === video.displayName} isLoading={rename.isPending}>
-                حفظ الاسم
+                {tr("حفظ الاسم", "Save name")}
               </Button>
               <Button size="sm" variant="danger" onClick={askDelete} isLoading={remove.isPending}>
-                حذف الفيديو
+                {tr("حذف الفيديو", "Delete video")}
               </Button>
             </div>
           ) : null}
@@ -236,13 +237,13 @@ export function VideoDetail({ video, library, canWrite, onClose }: { video: Vide
 
       <ConfirmDialog
         open={!!confirmDelete}
-        title="حذف الفيديو"
+        title={tr("حذف الفيديو", "Delete video")}
         message={
           confirmDelete?.usage
-            ? `هالفيديو مستعمل بـ ${confirmDelete.usage} مكان (صفحات أو أقسام). إذا حذفته، رح يختفي من هناك. الحذف نهائي، مع كل النسخ.`
-            : "الفيديو وكل نسخه بينحذفوا نهائياً."
+            ? tr(`هالفيديو مستعمل بـ ${confirmDelete.usage} مكان (صفحات أو أقسام). إذا انحذف، رح يختفي من هناك. الحذف نهائي، مع كل النسخ.`, "This video is used in {0} places (pages or sections). If deleted, it disappears from there. Deleting is final, with every version.", [confirmDelete.usage])
+            : tr("الفيديو وكل نسخه بينحذفوا نهائياً.", "The video and all its versions are deleted for good.")
         }
-        confirmText="احذف"
+        confirmText={tr("حذف", "Delete")}
         variant="danger"
         isLoading={remove.isPending}
         onConfirm={() => remove.mutate()}
@@ -273,23 +274,23 @@ function RenditionRow({ r, canWrite, onDelete }: { r: Rendition; canWrite: boole
           {r.bytes ? <span className="text-xs tabular-nums text-white/50">{formatBytes(r.bytes)}</span> : null}
         </div>
         <div className="mt-0.5 text-xs text-white/50">{renditionSummary(r)}</div>
-        {r.kind === "hls" && r.status === "ready" ? <div className="mt-0.5 text-[11px] text-white/40">بيشتغل بالمتجر (بقسم فيديو بالصفحة). المشغّل هون للملفات بس.</div> : null}
+        {r.kind === "hls" && r.status === "ready" ? <div className="mt-0.5 text-[11px] text-white/40">{tr("بيشتغل بالمتجر (بقسم فيديو بالصفحة). المشغّل هون للملفات بس.", "Plays in the store (in a page's video section). The player here is for files only.")}</div> : null}
         {r.status === "failed" && r.error ? <div className="mt-0.5 text-xs text-red-300">{r.error}</div> : null}
       </div>
       <div className="flex shrink-0 gap-2">
         {r.status === "ready" && r.url ? (
           <>
             <Button size="xs" variant="secondary" onClick={() => copy(r.url!)}>
-              نسخ الرابط
+              {tr("نسخ الرابط", "Copy link")}
             </Button>
             <a href={r.url} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-lg px-2 text-xs underline opacity-80 hover:opacity-100">
-              فتح
+              {tr("فتح", "Open")}
             </a>
           </>
         ) : null}
         {canWrite ? (
           <Button size="xs" variant="ghost" onClick={onDelete}>
-            حذف
+            {tr("حذف", "Delete")}
           </Button>
         ) : null}
       </div>
@@ -312,19 +313,19 @@ function ConvertForm({ video, library, onDone }: { video: Video; library: VideoL
     mutationFn: () =>
       VideosAPI.addRendition(video.id, preset === "custom" ? { preset: "custom", profile } : preset === "hls" ? { preset: "hls", stream } : { preset }),
     onSuccess: () => {
-      toast.success("بلّش التحويل", { description: "بيبيّن جاهز لحاله لما يخلص." });
+      toast.success(tr("بلّش التحويل", "Conversion started"), { description: tr("بيبيّن جاهز لحاله لما يخلص.", "It shows as ready by itself when done.") });
       onDone();
     },
-    onError: (e) => toast.error("ما زبط", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما زبط", "That didn't work"), { description: getApiErrorMessage(e) }),
   });
-  if (!library.canConvert) return <p className="mt-3 text-xs text-amber-200">التحويل بده Cloudinary أو ffmpeg على السيرفر.</p>;
+  if (!library.canConvert) return <p className="mt-3 text-xs text-amber-200">{tr("التحويل بده Cloudinary أو ffmpeg على السيرفر.", "Conversion needs Cloudinary or ffmpeg on the server.")}</p>;
   const summary =
     preset === "hls"
       ? renditionSummary({ kind: "hls", profile: null, stream, heights: (library.streams?.ladders[stream.ladder] ?? []).filter((h) => !video.height || h <= video.height) })
       : profileSummary(preset === "custom" ? profile : library.presets[preset]);
   return (
     <div className="mt-4 space-y-3 border-t border-white/10 pt-4" data-testid="convert-form">
-      <span className="text-sm font-medium">تحويل جديد</span>
+      <span className="text-sm font-medium">{tr("تحويل جديد", "New conversion")}</span>
       <Segmented
         value={preset}
         disabled={false}
@@ -340,7 +341,7 @@ function ConvertForm({ video, library, onDone }: { video: Video; library: VideoL
       {preset === "hls" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <span className="block text-xs text-white/60">أعلى جودة بالبث</span>
+            <span className="block text-xs text-white/60">{tr("أعلى جودة بالبث", "Best quality in the stream")}</span>
             <Segmented
               value={stream.ladder}
               disabled={false}
@@ -350,7 +351,7 @@ function ConvertForm({ video, library, onDone }: { video: Video; library: VideoL
           </div>
           {library.provider === "LOCAL" ? (
             <label className="block">
-              <span className="block text-xs text-white/60">طول القطعة (ثانية)</span>
+              <span className="block text-xs text-white/60">{tr("طول القطعة (ثانية)", "Piece length (seconds)")}</span>
               <input
                 type="number"
                 min={2}
@@ -363,34 +364,34 @@ function ConvertForm({ video, library, onDone }: { video: Video; library: VideoL
               />
             </label>
           ) : (
-            <p className="self-end text-xs text-white/50">Cloudinary بيقسم القطع بنفسه.</p>
+            <p className="self-end text-xs text-white/50">{tr("Cloudinary بيقسم القطع بنفسه.", "Cloudinary cuts the pieces itself.")}</p>
           )}
         </div>
       ) : null}
       {preset === "custom" ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Pick label="الصيغة" value={profile.format} options={["mp4", "webm"].map((f) => ({ value: f, label: f.toUpperCase() }))} onChange={(v) => set("format", v as VideoProfile["format"])} />
-          <Pick label="الترميز" value={profile.codec} options={codecsFor(profile.format).map((c) => ({ value: c, label: CODEC_TEXT[c] }))} onChange={(v) => set("codec", v as VideoProfile["codec"])} />
+          <Pick label={tr("الصيغة", "Format")} value={profile.format} options={["mp4", "webm"].map((f) => ({ value: f, label: f.toUpperCase() }))} onChange={(v) => set("format", v as VideoProfile["format"])} />
+          <Pick label={tr("الترميز", "Codec")} value={profile.codec} options={codecsFor(profile.format).map((c) => ({ value: c, label: CODEC_TEXT[c] }))} onChange={(v) => set("codec", v as VideoProfile["codec"])} />
           <Pick
-            label="أعرض شي"
+            label={tr("أعرض شي", "Widest")}
             value={String(profile.maxWidth)}
-            options={library.choices.widths.map((w) => ({ value: String(w), label: w ? `${w}px` : "الأصلي" }))}
+            options={library.choices.widths.map((w) => ({ value: String(w), label: w ? `${w}px` : tr("الأصلي", "Original") }))}
             onChange={(v) => set("maxWidth", Number(v))}
           />
           <Pick
-            label="الإطارات بالثانية"
+            label={tr("الإطارات بالثانية", "Frames per second")}
             value={String(profile.fps)}
-            options={library.choices.fps.map((f) => ({ value: String(f), label: f ? String(f) : "الأصلي" }))}
+            options={library.choices.fps.map((f) => ({ value: String(f), label: f ? String(f) : tr("الأصلي", "Original") }))}
             onChange={(v) => set("fps", Number(v))}
           />
           <Pick
-            label="الجودة"
+            label={tr("الجودة", "Quality")}
             value={profile.quality}
             options={(Object.keys(QUALITY_TEXT) as VideoProfile["quality"][]).map((q) => ({ value: q, label: QUALITY_TEXT[q] }))}
             onChange={(v) => set("quality", v as VideoProfile["quality"])}
           />
           <label className="block">
-            <span className="block text-xs text-white/60">إطار رئيسي كل (ث)</span>
+            <span className="block text-xs text-white/60">{tr("إطار رئيسي كل (ث)", "Keyframe every (s)")}</span>
             <input
               type="number"
               min={0}
@@ -403,13 +404,13 @@ function ConvertForm({ video, library, onDone }: { video: Video; library: VideoL
             />
           </label>
           <div className="col-span-2 flex flex-wrap items-center gap-4 pt-4">
-            <Toggle label="بدون صوت" checked={profile.mute} disabled={false} onChange={(v) => set("mute", v)} />
-            <Toggle label="قص للتلفون (9:16)" checked={profile.crop === "phone"} disabled={false} onChange={(v) => set("crop", v ? "phone" : "none")} />
+            <Toggle label={tr("بدون صوت", "No sound")} checked={profile.mute} disabled={false} onChange={(v) => set("mute", v)} />
+            <Toggle label={tr("قص للتلفون (9:16)", "Crop for phones (9:16)")} checked={profile.crop === "phone"} disabled={false} onChange={(v) => set("crop", v ? "phone" : "none")} />
           </div>
         </div>
       ) : null}
       <Button size="sm" variant="primary" onClick={() => start.mutate()} isLoading={start.isPending}>
-        ابدأ التحويل
+        {tr("بدء التحويل", "Start conversion")}
       </Button>
     </div>
   );

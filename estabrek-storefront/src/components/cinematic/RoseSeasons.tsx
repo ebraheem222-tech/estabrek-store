@@ -23,15 +23,18 @@ import { useRoseTheme } from "./RoseThemeProvider";
 import { mixHex } from "./roseDesign";
 import { placeMascotOnPhone, watchMascotSpot } from "./mascot/phoneSpot";
 import { RoseMascot, type MascotHandle } from "./mascot/RoseMascot";
+import { useNames } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { isRtl } from "@/lib/i18n";
 
 const SeasonsScene = dynamic(() => import("./SeasonsScene"), { ssr: false, loading: () => null });
 
 /** Seeds for the temporary storefront theme while each season is on stage. */
 const SEASON_SEED: Record<SeasonKey, string> = { winter: "#7d8ec4", spring: "#e9a27c" };
 /** What Rose says when the season turns. */
-const ROSE_LINE: Record<SeasonKey, { ar: string; en: string }> = {
-  winter: { ar: "بررر! وقت الدفا ☔", en: "Brrr! Time for warm layers ☔" },
-  spring: { ar: "الربيع وصل! 🌸", en: "Spring is here! 🌸" },
+const ROSE_LINE: Record<SeasonKey, { ar: string; en: string; he: string }> = {
+  winter: { ar: "بررر! وقت الدفا ☔", en: "Brrr! Time for warm layers ☔", he: "ברררר! הגיע הזמן לשכבות חמות ☔" },
+  spring: { ar: "الربيع وصل! 🌸", en: "Spring is here! 🌸", he: "האביב הגיע! 🌸" },
 };
 
 const smooth = (a: number, b: number, x: number) => {
@@ -39,14 +42,17 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-const COPY: Record<SeasonKey, { ar: { eyebrow: string; title: string; text: string; cta: string }; en: { eyebrow: string; title: string; text: string; cta: string } }> = {
+type SeasonCopy = { eyebrow: string; title: string; text: string; cta: string };
+const COPY: Record<SeasonKey, { ar: SeasonCopy; en: SeasonCopy; he: SeasonCopy }> = {
   winter: {
     ar: { eyebrow: "مجموعة الشتاء", title: "عبايات وأطقم\nلأيام الشتاء.", text: "أقمشة أثقل وألوان أعمق، بقصّات واسعة ومحتشمة.", cta: "تسوّقي الشتاء" },
     en: { eyebrow: "THE WINTER EDIT", title: "Abayas and sets\nfor winter days.", text: "Heavier fabrics and deeper tones, in loose, modest cuts.", cta: "Shop winter" },
+    he: { eyebrow: "קולקציית החורף", title: "עבאיות וסטים\nלימי החורף.", text: "בדים כבדים יותר וגוונים עמוקים, בגזרות רחבות וצנועות.", cta: "לקולקציית החורף" },
   },
   spring: {
     ar: { eyebrow: "مجموعة الربيع", title: "فساتين خفيفة\nللربيع والصيف.", text: "أقمشة تتنفّس وألوان فاتحة للأيام الدافئة.", cta: "تسوّقي الربيع" },
     en: { eyebrow: "THE SPRING EDIT", title: "Light dresses\nfor spring and summer.", text: "Breathable fabrics and light colours for warm days.", cta: "Shop spring" },
+    he: { eyebrow: "קולקציית האביב", title: "שמלות קלילות\nלאביב ולקיץ.", text: "בדים נושמים וצבעים בהירים לימים החמים.", cta: "לקולקציית האביב" },
   },
 };
 
@@ -58,6 +64,7 @@ class SceneBoundary extends Component<{ children: ReactNode; onError: () => void
 }
 
 function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
+  const { language: lang } = useLanguage();
   const fallbackImage = edit.key === "winter" ? "/editorial/hijab-campaign.webp" : "/editorial/scarves.webp";
   if (!edit.products.length) {
     return (
@@ -66,7 +73,7 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
           <span className="season-card-image">
             <Image src={fallbackImage} alt="" fill sizes="(max-width:760px) 60vw, 22vw" />
           </span>
-          <span className="season-card-title">{edit.categoryName || (ar ? "اكتشفي المجموعة" : "Explore the edit")}</span>
+          <span className="season-card-title">{edit.categoryName || (tr(lang, "اكتشفي المجموعة", "Explore the edit"))}</span>
         </Link>
       </div>
     );
@@ -90,7 +97,7 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
             <span className="season-card-title">{p.title}</span>
             {p.priceText && <span className="season-card-price">{p.priceText}</span>}
           </Link>
-          <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={ar ? "إضافة سريعة" : "Quick add"} />
+          <QuickAddButton className="season-card-add" productId={p.id} slug={p.slug} buttonLabel={tr(lang, "إضافة سريعة", "Quick add")} />
         </article>
       ))}
     </div>
@@ -104,7 +111,9 @@ function SeasonRack({ edit, ar }: { edit: SeasonEdit; ar: boolean }) {
  */
 export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
   const { language } = useLanguage();
-  const ar = language === "ar";
+  const lang = language;
+  const ar = lang === "ar";
+  const n = useNames();
   const settings = useStorefrontSettings();
   const theme = useRoseTheme();
   const root = useRef<HTMLElement>(null);
@@ -301,11 +310,11 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
   useEffect(() => {
     if (!motion || !inView) return;
     const t = window.setTimeout(() => {
-      rose.current?.say(ROSE_LINE[season][ar ? "ar" : "en"], 2600);
+      rose.current?.say(ROSE_LINE[season][lang], 2600);
       if (season === "spring") rose.current?.joy();
     }, 300);
     return () => window.clearTimeout(t);
-  }, [season, motion, inView, ar]);
+  }, [season, motion, inView, ar, lang]);
 
   // Phones: stand in the free corner above the products (measured, see phoneSpot.ts).
   useEffect(() => {
@@ -319,7 +328,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
     return () => window.clearTimeout(t);
   }, [season, motion, near]);
 
-  const copy = (key: SeasonKey) => COPY[key][ar ? "ar" : "en"];
+  const copy = (key: SeasonKey) => COPY[key][lang];
   const block = (edit: SeasonEdit) => {
     const c = copy(edit.key);
     return (
@@ -349,7 +358,7 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
       data-motion="false"
       data-season="winter"
       data-scene={sceneReady && !sceneFailed ? "ready" : "static"}
-      aria-label={ar ? "من الشتاء إلى الربيع" : "From winter to spring"}
+      aria-label={tr(lang, "من الشتاء إلى الربيع", "From winter to spring")}
     >
       <div className="rose-seasons-sticky">
         <div className="season-sky" aria-hidden="true">
@@ -382,8 +391,8 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
             prop={season === "winter" ? "umbrella" : "flower"}
             outfit={season === "winter" ? "coat" : "dress"}
             mood={season === "winter" ? "cold" : "happy"}
-            mirrored={!ar}
-            label={ar ? "رَزان تعيش الفصول" : "Rose through the seasons"}
+            mirrored={!isRtl(lang)}
+            label={tr(lang, `${n.assistantFull} تعيش الفصول`, "{0} through the seasons", [n.assistantFull])}
           />
         )}
         <div className="season-stage">
@@ -391,9 +400,9 @@ export function RoseSeasons({ seasons }: { seasons: SeasonEdit[] }) {
           {block(spring)}
         </div>
         <div className="season-meter" aria-hidden="true">
-          <span className="meter-winter">{ar ? "شتاء" : "Winter"}</span>
+          <span className="meter-winter">{tr(lang, "شتاء", "Winter")}</span>
           <span className="meter-track"><span /></span>
-          <span className="meter-spring">{ar ? "ربيع" : "Spring"}</span>
+          <span className="meter-spring">{tr(lang, "ربيع", "Spring")}</span>
         </div>
       </div>
     </section>

@@ -92,7 +92,7 @@ function ThemeCard({
       type="button"
       onClick={() => onSelect(item.websiteThemeId)}
       className={
-        "group w-full rounded-2xl border p-3 text-right transition " +
+        "group w-full rounded-2xl border p-3 text-start transition " +
         (active
           ? "border-accent-500/60 bg-white/10 shadow-[0_0_0_1px_rgba(139,92,246,0.3)]"
           : "border-white/10 bg-white/[0.04] hover:border-white/20")
@@ -132,7 +132,7 @@ function ThemeCard({
         </div>
 
         <div className="space-y-3 px-3 py-3">
-          <div className="space-y-1 text-right">
+          <div className="space-y-1 text-start">
             <div className="text-sm font-bold" style={{ color: c.text }}>
               عنوان
             </div>

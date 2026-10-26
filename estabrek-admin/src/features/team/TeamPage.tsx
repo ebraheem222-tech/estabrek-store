@@ -35,7 +35,7 @@ export default function TeamPage() {
   const canWrite = hasPermission("staff:write");
 
   return (
-    <div dir="rtl" className="space-y-4" data-testid="team-page">
+    <div className="space-y-4" data-testid="team-page">
       <div className={box}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -334,7 +334,7 @@ function InviteModal({
         </Button>
       }
     >
-      <div dir="rtl" className="space-y-4">
+      <div className="space-y-4">
         <Input label="الاسم" placeholder="مثال: سارة" value={name} error={errors.name} onChange={(e) => setName(e.target.value)} />
         <Input
           label="الإيميل"
@@ -399,11 +399,11 @@ function LinkModal({ value, onClose }: { value: { member: Pick<TeamMember, "name
         {url}
       </div>
       {value?.link.emailed ? (
-        <p className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-2 text-xs text-emerald-200" dir="rtl">
+        <p className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-2 text-xs text-emerald-200">
           انبعت الرابط كمان على إيميله.
         </p>
       ) : null}
-      <p className="mt-3 text-xs text-white/60" dir="rtl">
+      <p className="mt-3 text-xs text-white/60">
         الرابط بيظهر هون مرة وحدة بس. إذا ضاع، اعمل رابط جديد من قائمة الأعضاء (والقديم بيوقف).
       </p>
     </Modal>
@@ -422,7 +422,7 @@ function MemberDetailsModal({ id, onClose }: { id: string | null; onClose: () =>
       ) : q.isError ? (
         <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div>
       ) : d ? (
-        <div dir="rtl" className="space-y-5">
+        <div className="space-y-5">
           <section>
             <h3 className="text-sm font-semibold">الأجهزة الداخلة هلّق</h3>
             {d.sessions.length ? (
@@ -629,7 +629,7 @@ function RoleEditor({ value, groups, onClose }: { value: StaffRole | "new" | nul
         </Button>
       }
     >
-      <div dir="rtl" className="space-y-4">
+      <div className="space-y-4">
         <Input
           label="اسم الدور"
           placeholder="مثال: خدمة الزبائن"

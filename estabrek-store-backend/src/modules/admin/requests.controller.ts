@@ -36,6 +36,7 @@ const select = {
   linkedProductId: true,
   notifiedAt: true,
   adminNote: true,
+  locale: true,
   createdAt: true,
   updatedAt: true,
   product: { select: { id: true, title: true, slug: true } },

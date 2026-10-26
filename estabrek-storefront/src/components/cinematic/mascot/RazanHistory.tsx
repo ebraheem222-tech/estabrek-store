@@ -4,14 +4,18 @@ import { useEffect, useState } from "react";
 import { useRecentlyViewed, type RecentlyViewedItem } from "@/store/recentlyViewed";
 import { HISTORY_EVENT, clearRazanHistory, readRazanHistory } from "@/lib/razanHistory";
 import { cldUrl } from "@/lib/cloudinary";
+import { tr } from "@/lib/words";
+import { useLanguage } from "../Language";
+import type { Lang } from "@/lib/i18n";
 
-function ago(ts: number, ar: boolean) {
+function ago(ts: number, lang: Lang) {
+  const ar = lang === "ar", he = lang === "he";
   const m = Math.max(1, Math.floor((Date.now() - ts) / 60000));
-  if (m < 60) return ar ? (m === 1 ? "قبل دقيقة" : m === 2 ? "قبل دقيقتين" : `قبل ${m} دقيقة`) : `${m} min ago`;
+  if (m < 60) return ar ? (m === 1 ? "قبل دقيقة" : m === 2 ? "قبل دقيقتين" : `قبل ${m} دقيقة`) : he ? (m === 1 ? "לפני דקה" : `לפני ${m} דקות`) : `${m} min ago`;
   const h = Math.floor(m / 60);
-  if (h < 24) return ar ? (h === 1 ? "قبل ساعة" : h === 2 ? "قبل ساعتين" : `قبل ${h} ساعات`) : `${h} h ago`;
+  if (h < 24) return ar ? (h === 1 ? "قبل ساعة" : h === 2 ? "قبل ساعتين" : `قبل ${h} ساعات`) : he ? (h === 1 ? "לפני שעה" : h === 2 ? "לפני שעתיים" : `לפני ${h} שעות`) : `${h} h ago`;
   const d = Math.floor(h / 24);
-  return ar ? (d === 1 ? "مبارح" : `قبل ${d} أيام`) : `${d} d ago`;
+  return ar ? (d === 1 ? "مبارح" : `قبل ${d} أيام`) : he ? (d === 1 ? "אתמול" : `לפני ${d} ימים`) : `${d} d ago`;
 }
 
 /** The piece as she left it: same colour and size. */
@@ -25,6 +29,7 @@ export function pieceHref(slug: string, color?: string | null, size?: string | n
 
 /** «شو كنتِ شايفة»: what she opened, searched and took out of the bag (her device only). */
 export function RazanHistory({ ar, onPick }: { ar: boolean; onPick: () => void }) {
+  const { language: lang } = useLanguage();
   const { items, clearRecentlyViewed } = useRecentlyViewed();
   const [extra, setExtra] = useState(() => readRazanHistory());
   useEffect(() => {
@@ -37,16 +42,16 @@ export function RazanHistory({ ar, onPick }: { ar: boolean; onPick: () => void }
   const hour = Date.now() - 3600_000;
   const startOfDay = new Date().setHours(0, 0, 0, 0);
   const groups: Array<{ title: string; list: RecentlyViewedItem[] }> = [
-    { title: ar ? "قبل شوي" : "Just now", list: items.filter((i) => i.viewedAt >= hour) },
-    { title: ar ? "اليوم" : "Today", list: items.filter((i) => i.viewedAt < hour && i.viewedAt >= startOfDay) },
-    { title: ar ? "قبل" : "Earlier", list: items.filter((i) => i.viewedAt < startOfDay) },
+    { title: tr(lang, "قبل شوي", "Just now"), list: items.filter((i) => i.viewedAt >= hour) },
+    { title: tr(lang, "اليوم", "Today"), list: items.filter((i) => i.viewedAt < hour && i.viewedAt >= startOfDay) },
+    { title: tr(lang, "قبل", "Earlier"), list: items.filter((i) => i.viewedAt < startOfDay) },
   ].filter((g) => g.list.length);
   const empty = !items.length && !extra.searches.length && !extra.removed.length;
 
   return (
     <div className="razan-history" data-testid="razan-history">
       {empty ? (
-        <p className="razan-history-empty">{ar ? "لسا ما شفتي إشي. لما تفتحي قطع بتلاقيها هون." : "Nothing yet. Pieces you open show up here."}</p>
+        <p className="razan-history-empty">{tr(lang, "لسا ما شفتي إشي. لما تفتحي قطع بتلاقيها هون.", "Nothing yet. Pieces you open show up here.")}</p>
       ) : null}
       {groups.map((g) => (
         <section key={g.title}>
@@ -59,7 +64,7 @@ export function RazanHistory({ ar, onPick }: { ar: boolean; onPick: () => void }
                   {i.image ? <img src={cldUrl(i.image, { w: 120, h: 150, c: "fill", g: "auto" })} alt="" loading="lazy" /> : <span className="razan-history-noimg" />}
                   <span className="razan-history-info">
                     <b>{i.title}</b>
-                    <small>{[i.color, i.size].filter(Boolean).join(" · ")}{i.color || i.size ? " · " : ""}{ago(i.viewedAt, ar)}</small>
+                    <small>{[i.color, i.size].filter(Boolean).join(" · ")}{i.color || i.size ? " · " : ""}{ago(i.viewedAt, lang)}</small>
                   </span>
                 </Link>
               </li>
@@ -69,7 +74,7 @@ export function RazanHistory({ ar, onPick }: { ar: boolean; onPick: () => void }
       ))}
       {extra.removed.length ? (
         <section>
-          <h4>{ar ? "شلتيها من الحقيبة" : "Taken out of your bag"}</h4>
+          <h4>{tr(lang, "شلتيها من الحقيبة", "Taken out of your bag")}</h4>
           <ul>
             {extra.removed.map((r) => (
               <li key={r.id}>
@@ -79,7 +84,7 @@ export function RazanHistory({ ar, onPick }: { ar: boolean; onPick: () => void }
                     {r.image ? <img src={cldUrl(r.image, { w: 120, h: 150, c: "fill", g: "auto" })} alt="" loading="lazy" /> : <span className="razan-history-noimg" />}
                     <span className="razan-history-info">
                       <b>{r.title}</b>
-                      <small>{[r.color, r.size].filter((x) => x && x.toLowerCase() !== "default").join(" · ")} · {ago(r.at, ar)}</small>
+                      <small>{[r.color, r.size].filter((x) => x && x.toLowerCase() !== "default").join(" · ")} · {ago(r.at, lang)}</small>
                     </span>
                   </Link>
                 ) : (
@@ -92,7 +97,7 @@ export function RazanHistory({ ar, onPick }: { ar: boolean; onPick: () => void }
       ) : null}
       {extra.searches.length ? (
         <section>
-          <h4>{ar ? "دوّرتي على" : "You searched for"}</h4>
+          <h4>{tr(lang, "دوّرتي على", "You searched for")}</h4>
           <div className="razan-history-searches">
             {extra.searches.map((s) => (
               <Link key={s.q} href={`/search?q=${encodeURIComponent(s.q)}`} onClick={onPick}>
@@ -104,10 +109,10 @@ export function RazanHistory({ ar, onPick }: { ar: boolean; onPick: () => void }
       ) : null}
       {!empty ? (
         <button type="button" className="razan-history-clear" onClick={() => { clearRecentlyViewed(); clearRazanHistory(); }}>
-          {ar ? "امسحي سجلّي" : "Clear my history"}
+          {tr(lang, "امسحي سجلّي", "Clear my history")}
         </button>
       ) : null}
-      <p className="razan-history-note">{ar ? "محفوظ على جهازكِ بس، وبينمسح لحاله." : "Kept on your device only, and it clears itself."}</p>
+      <p className="razan-history-note">{tr(lang, "محفوظ على جهازكِ بس، وبينمسح لحاله.", "Kept on your device only, and it clears itself.")}</p>
     </div>
   );
 }

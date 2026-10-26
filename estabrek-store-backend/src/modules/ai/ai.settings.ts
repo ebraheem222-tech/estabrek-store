@@ -15,6 +15,7 @@ export const AI_FEATURES = [
   "replySuggest",
   "photoStudio",
   "orderFlags",
+  "translate",
 ] as const;
 export type AiFeature = (typeof AI_FEATURES)[number];
 
@@ -31,6 +32,8 @@ export const AiSchema = z.object({
   replySuggest: z.boolean().default(false),
   photoStudio: z.boolean().default(false),
   orderFlags: z.boolean().default(false),
+  /** Drafts of the shop's content in its other languages (admin → each product, category, type). */
+  translate: z.boolean().default(false),
   /** Most AI calls a day from shoppers (search, size, look…): a ceiling on the bill. */
   dailyLimit: z.number().int().min(10).max(20000).default(500),
 });

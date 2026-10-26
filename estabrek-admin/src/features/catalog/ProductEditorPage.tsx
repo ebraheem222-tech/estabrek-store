@@ -19,6 +19,7 @@ import { isEyeDropperSupported, pickScreenColor } from "../../lib/eyeDropper";
 import { getNearestNamedColor, skuSegmentFromColorName } from "../../lib/colorNames";
 import ProductImagesWizardModal from "./ProductImagesWizardModal";
 import { transliterate } from "../../lib/productComposer";
+import { tr } from "@/lib/words";
 
 // === Backend endpoints (حسب مشروعك) ===
 // ملاحظة: اذا عندك base مختلف (/admin بدل /v1/admin) عدّل هون
@@ -377,7 +378,7 @@ function DiscountShapeBadge({ discount, compact = false }: { discount: DiscountI
     discount.state === "active"
       ? "bg-rose-500/90 text-white border-rose-200/40"
       : "bg-amber-500/90 text-black border-amber-100/70";
-  const label = discount.state === "active" ? `-${discount.percent}%` : "خصم قريب";
+  const label = discount.state === "active" ? `-${discount.percent}%` : tr("خصم قريب", "Discount coming");
   return (
     <span
       className={[
@@ -385,7 +386,7 @@ function DiscountShapeBadge({ discount, compact = false }: { discount: DiscountI
         compact ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs",
         tone,
       ].join(" ")}
-      title={discount.state === "active" ? `خصم ${discount.percent}%` : "يوجد خصم مجدول"}
+      title={discount.state === "active" ? tr(`خصم ${discount.percent}%`, "{0}% off", [discount.percent]) : tr("يوجد خصم مجدول", "A discount is scheduled")}
     >
       {label}
     </span>
@@ -656,7 +657,7 @@ export default function ProductEditorPage() {
   const pickItemColorWithEyeDropper = async (localId: string) => {
     setItemError(null);
     if (!isEyeDropperSupported()) {
-      setItemError("القطّارة غير مدعومة على هذا المتصفح.");
+      setItemError(tr("القطّارة غير مدعومة على هذا المتصفح.", "The colour picker isn't supported on this browser."));
       return;
     }
 
@@ -795,7 +796,7 @@ export default function ProductEditorPage() {
     const item = items.find((x) => x.localId === varItemLocalId);
     if (!item) return;
 
-    if (!vSizeId) return setVarError("اختر المقاس");
+    if (!vSizeId) return setVarError(tr("يرجى اختيار المقاس", "Choose the size"));
     let nextSku = vSku.trim();
     if (!nextSku && !editingVarId) {
       nextSku = buildVariantSku(item, vSizeId);
@@ -804,7 +805,7 @@ export default function ProductEditorPage() {
         setVSku(nextSku);
       }
     }
-    if (!nextSku) return setVarError("SKU مطلوب");
+    if (!nextSku) return setVarError(tr("SKU مطلوب", "SKU is required"));
     const skuKey = nextSku.toUpperCase();
     const duplicateSku = items.some((it) =>
       (it.variants ?? []).some((v) => {
@@ -818,29 +819,29 @@ export default function ProductEditorPage() {
         return existingSku === skuKey;
       })
     );
-    if (duplicateSku) return setVarError("SKU مكرر. لازم يكون فريد لكل المقاسات/الألوان.");
+    if (duplicateSku) return setVarError(tr("SKU مكرر. لازم يكون فريد لكل المقاسات/الألوان.", "The SKU repeats. It has to be unique across sizes/colours."));
     const priceN = toNumber(vPrice);
-    if (priceN <= 0) return setVarError("السعر لازم يكون أكبر من 0");
+    if (priceN <= 0) return setVarError(tr("السعر لازم يكون أكبر من 0", "The price has to be more than 0"));
     const stockN = Math.max(0, parseInt(vStock || "0", 10) || 0);
     const thresholdN = Math.max(0, parseInt(vThreshold || "0", 10) || 0);
     const originalRaw = vOriginalPrice.trim();
     const saleRaw = vSalePrice.trim();
     const originalN = originalRaw ? toNumber(originalRaw) : editingVarId ? null : undefined;
     const salePriceN = saleRaw ? toNumber(saleRaw) : null;
-    if (saleRaw && salePriceN != null && salePriceN <= 0) return setVarError("سعر التخفيض لازم يكون أكبر من 0");
+    if (saleRaw && salePriceN != null && salePriceN <= 0) return setVarError(tr("سعر التخفيض لازم يكون أكبر من 0", "The sale price has to be more than 0"));
     const saleStartIso = vSaleStartsAt.trim() ? fromDateTimeInput(vSaleStartsAt) : null;
     const saleEndIso = vSaleEndsAt.trim() ? fromDateTimeInput(vSaleEndsAt) : null;
-    if (vSaleStartsAt.trim() && !saleStartIso) return setVarError("تاريخ بداية الخصم غير صالح");
-    if (vSaleEndsAt.trim() && !saleEndIso) return setVarError("تاريخ نهاية الخصم غير صالح");
+    if (vSaleStartsAt.trim() && !saleStartIso) return setVarError(tr("تاريخ بداية الخصم غير صالح", "The discount start date isn't valid"));
+    if (vSaleEndsAt.trim() && !saleEndIso) return setVarError(tr("تاريخ نهاية الخصم غير صالح", "The discount end date isn't valid"));
     if (saleStartIso && saleEndIso && new Date(saleStartIso) > new Date(saleEndIso)) {
-      return setVarError("تاريخ نهاية الخصم لازم يكون بعد البداية");
+      return setVarError(tr("تاريخ نهاية الخصم لازم يكون بعد البداية", "The discount end has to be after the start"));
     }
 
     // منع تكرار size لنفس item
     const duplicate = item.variants.some((x) => x.sizeId === vSizeId && (editingVarId ? x.id !== editingVarId : true));
     // ملاحظة: للـvariants اللي بدون id (جدد) بنقارنه بطريقة ثانية:
     const duplicateNew = item.variants.some((x) => x.sizeId === vSizeId && !x.id && !editingVarId);
-    if (duplicate || duplicateNew) return setVarError("هذا المقاس موجود مسبقًا لنفس اللون/الـItem. اختار مقاس ثاني.");
+    if (duplicate || duplicateNew) return setVarError(tr("هذا المقاس موجود مسبقًا لنفس اللون/الـItem. يرجى اختيار مقاس ثاني.", "This size already exists for this colour/Item. Choose another size."));
 
     const payload: LocalVariant = {
       id: editingVarId && editingVarId !== "__noid__" ? editingVarId : undefined,
@@ -940,7 +941,7 @@ export default function ProductEditorPage() {
     setBulkWeight(suggested.weight);
     setBulkSuggestionNote(
       opts?.preselectAll
-        ? `تم تحديد ${suggested.availableIds.length} مقاس متاح واستخدام أقرب سعر/مخزون كاقتراح.`
+        ? tr(`تم تحديد ${suggested.availableIds.length} مقاس متاح واستخدام أقرب سعر/مخزون كاقتراح.`, "{0} available sizes selected, using the nearest price/stock as a suggestion.", [suggested.availableIds.length])
         : ""
     );
     setBulkError(null);
@@ -950,7 +951,7 @@ export default function ProductEditorPage() {
   const openSuggestedBulkAddSizes = (itemLocalId: string) => {
     const suggested = getSuggestedBulkDefaults(itemLocalId);
     if (!suggested.availableIds.length) {
-      setItemError("لا يوجد مقاسات متاحة لهذا اللون. كل المقاسات الفعالة موجودة بالفعل.");
+      setItemError(tr("لا يوجد مقاسات متاحة لهذا اللون. كل المقاسات الفعالة موجودة بالفعل.", "No sizes available for this colour. Every active size is already there."));
       return;
     }
     setItemError(null);
@@ -1033,17 +1034,17 @@ export default function ProductEditorPage() {
 
     const usedSizeIds = new Set((it.variants ?? []).map((v) => v.sizeId));
     const pickIds = (bulkSelectedSizeIds ?? []).filter((id) => !usedSizeIds.has(id));
-    if (!pickIds.length) return setBulkError("اختر على الأقل مقاس واحد (غير مستخدم).");
+    if (!pickIds.length) return setBulkError(tr("يرجى اختيار مقاس واحد على الأقل (غير مستخدم).", "Choose at least one (unused) size."));
 
     const defaultPriceN = toNumber(bulkPrice);
-    if (bulkPriceMode === "default" && defaultPriceN <= 0) return setBulkError("السعر لازم يكون أكبر من 0");
+    if (bulkPriceMode === "default" && defaultPriceN <= 0) return setBulkError(tr("السعر لازم يكون أكبر من 0", "The price has to be more than 0"));
     const priceBySize = new Map<string, number>();
     if (bulkPriceMode === "manual") {
       for (const sizeId of pickIds) {
         const price = toNumber(bulkPriceBySize[sizeId]);
         if (price <= 0) {
           const label = sizes.find((s) => s.id === sizeId)?.name ?? sizeId;
-          return setBulkError(`حدد سعر صالح للمقاس: ${label}`);
+          return setBulkError(tr(`يرجى تحديد سعر صالح للمقاس: ${label}`, "Set a valid price for the size: {0}", [label]));
         }
         priceBySize.set(sizeId, price);
       }
@@ -1151,20 +1152,20 @@ export default function ProductEditorPage() {
     const it = items.find((x) => x.localId === editingItemLocalId);
     if (!it) return setOpenItemModal(false);
 
-    if (!it.colorName.trim()) return setItemError("اسم اللون مطلوب");
-      if (!it.skuBase.trim()) return setItemError("skuBase مطلوب");
+    if (!it.colorName.trim()) return setItemError(tr("اسم اللون مطلوب", "The colour name is required"));
+      if (!it.skuBase.trim()) return setItemError(tr("skuBase مطلوب", "skuBase is required"));
 
       const normalizedName = normalizeColorNameInput(it.colorName);
       const normalizedBox = normalizeBoxLabelInput(it.boxLabel);
       const sameColor = items.some((x) => x.localId !== it.localId && normalizeColorNameInput(x.colorName) === normalizedName);
       if (sameColor && !normalizedBox) {
-        return setItemError("نفس اللون موجود مسبقًا. أضف اسم/تمييز للعلبة لتمييزه.");
+        return setItemError(tr("نفس اللون موجود مسبقًا. لازم ينضاف اسم/تمييز للعلبة لتمييزه.", "The same colour already exists. Add a box name/label to tell them apart."));
       }
 
       // enforce unique colorName + boxLabel per product
       const key = itemKeyFromParts(it.colorName, it.boxLabel);
       const duplicate = items.some((x) => x.localId !== it.localId && itemKeyFromParts(x.colorName, x.boxLabel) === key);
-      if (duplicate) return setItemError("هذا اللون مع نفس اسم العلبة موجود مسبقًا.");
+      if (duplicate) return setItemError(tr("هذا اللون مع نفس اسم العلبة موجود مسبقًا.", "This colour with the same box name already exists."));
 
       const normHex = normalizeHex(it.colorHex.trim()) ?? "";
       const uniqueSkuBase = ensureUniqueSkuBase(it.skuBase.trim(), items as any, it.localId);
@@ -1237,11 +1238,11 @@ export default function ProductEditorPage() {
     setPageError(null);
     if (!productId) return;
 
-    if (!title.trim()) return setPageError("عنوان المنتج مطلوب");
-    if (!slug.trim()) return setPageError("Slug مطلوب");
-    if (!categoryId) return setPageError("اختر تصنيف");
+    if (!title.trim()) return setPageError(tr("عنوان المنتج مطلوب", "The product title is required"));
+    if (!slug.trim()) return setPageError(tr("Slug مطلوب", "Slug is required"));
+    if (!categoryId) return setPageError(tr("يرجى اختيار قسم", "Choose a category"));
     if (categories.length && !categories.some((c) => c.id === categoryId)) {
-      return setPageError("التصنيف غير موجود أو تم حذفه. اختر تصنيفًا صالحًا.");
+      return setPageError(tr("القسم غير موجود أو انحذف. يرجى اختيار قسم صالح.", "The category doesn't exist or was deleted. Choose a valid one."));
     }
 
     // extra validation: each item should have unique colorName + boxLabel
@@ -1249,7 +1250,7 @@ export default function ProductEditorPage() {
       .map((x) => itemKeyFromParts(x.colorName, x.boxLabel))
       .filter((k) => k.replace("::", "").trim());
     const uniq = new Set(keys);
-    if (uniq.size !== keys.length) return setPageError("في تكرار بالألوان مع نفس اسم العلبة (items).");
+    if (uniq.size !== keys.length) return setPageError(tr("في تكرار بالألوان مع نفس اسم العلبة (items).", "Colours repeat with the same box name (items)."));
 
     // if same color is used multiple times, require boxLabel for distinction
     const byColor = new Map<string, number>();
@@ -1262,7 +1263,7 @@ export default function ProductEditorPage() {
       const nameKey = normalizeColorNameInput(it.colorName);
       if (!nameKey) continue;
       if ((byColor.get(nameKey) ?? 0) > 1 && !normalizeBoxLabelInput(it.boxLabel)) {
-        return setPageError(`لون مكرر بدون اسم علبة: ${it.colorName}. أضف تمييز للعلبة.`);
+        return setPageError(tr(`لون مكرر بدون اسم علبة: ${it.colorName}. لازم ينضاف تمييز للعلبة.`, "A repeated colour without a box name: {0}. Add a box label.", [it.colorName]));
       }
     }
 
@@ -1270,8 +1271,8 @@ export default function ProductEditorPage() {
     for (const it of items) {
       const seen = new Set<string>();
       for (const v of (it.variants ?? [])) {
-        if (!v.sizeId) return setPageError(`في Variant بدون size داخل item: ${it.colorName}`);
-        if (seen.has(v.sizeId)) return setPageError(`تكرار size داخل item: ${it.colorName}`);
+        if (!v.sizeId) return setPageError(tr(`في Variant بدون size داخل item: ${it.colorName}`, "A variant without a size in item: {0}", [it.colorName]));
+        if (seen.has(v.sizeId)) return setPageError(tr(`تكرار size داخل item: ${it.colorName}`, "A repeated size in item: {0}", [it.colorName]));
         seen.add(v.sizeId);
       }
     }
@@ -1281,9 +1282,9 @@ export default function ProductEditorPage() {
     for (const it of items) {
       for (const v of (it.variants ?? [])) {
         const sku = (v.sku ?? "").trim();
-        if (!sku) return setPageError(`في Variant بدون SKU داخل item: ${it.colorName}`);
+        if (!sku) return setPageError(tr(`في Variant بدون SKU داخل item: ${it.colorName}`, "A variant without a SKU in item: {0}", [it.colorName]));
         const key = sku.toUpperCase();
-        if (skuSeen.has(key)) return setPageError(`SKU مكرر: ${sku}`);
+        if (skuSeen.has(key)) return setPageError(tr(`SKU مكرر: ${sku}`, "Repeated SKU: {0}", [sku]));
         skuSeen.add(key);
       }
     }
@@ -1293,7 +1294,7 @@ export default function ProductEditorPage() {
       for (const it of items) {
         for (const v of (it.variants ?? [])) {
           if (!validSizeIds.has(v.sizeId)) {
-            return setPageError(`المقاس غير موجود أو تم حذفه. رجاءً عدّل المقاسات في اللون: ${it.colorName || "بدون اسم"}`);
+            return setPageError(tr(`المقاس غير موجود أو انحذف. يرجى تعديل المقاسات في اللون: ${it.colorName || "بدون اسم"}`, "The size doesn't exist or was deleted. Please fix the sizes in the colour: {0}", [it.colorName || "بدون اسم"]));
           }
         }
       }
@@ -1302,15 +1303,15 @@ export default function ProductEditorPage() {
     if (isActive) {
       const activeItems = items.filter((it) => it.isActive);
       if (activeItems.length === 0) {
-        return setPageError("لا يوجد أي لون (Item) فعّال للمنتج.");
+        return setPageError(tr("لا يوجد أي لون (Item) فعّال للمنتج.", "The product has no active colour (Item)."));
       }
       for (const it of activeItems) {
-        const label = it.colorName?.trim() || "بدون اسم";
+        const label = it.colorName?.trim() || tr("بدون اسم", "untitled");
         if (!(it.images ?? []).length) {
-          return setPageError(`اللون "${label}" بدون صور. أضف صورة واحدة على الأقل قبل النشر.`);
+          return setPageError(tr(`اللون "${label}" بدون صور. لازم تنضاف صورة واحدة على الأقل قبل النشر.`, "The colour “{0}” has no photos. Add at least one photo before publishing.", [label]));
         }
         if (!(it.variants ?? []).length) {
-          return setPageError(`اللون "${label}" بدون مقاسات (Variants). أضف مقاس واحد على الأقل قبل النشر.`);
+          return setPageError(tr(`اللون "${label}" بدون مقاسات (Variants). لازم ينضاف مقاس واحد على الأقل قبل النشر.`, "The colour “{0}” has no sizes (variants). Add at least one size before publishing.", [label]));
         }
       }
     }
@@ -1346,7 +1347,7 @@ export default function ProductEditorPage() {
     setPageError(null);
     const sizeId = getFirstActiveSizeId();
     if (!sizeId) {
-      setPageError("لا يوجد مقاسات فعّالة. أولاً أضف مقاس من صفحة المقاسات (مثلاً: One Size) ثم ارجع هون.");
+      setPageError(tr("لا يوجد مقاسات فعّالة. أولاً لازم ينضاف مقاس من صفحة المقاسات (مثلاً: One Size) وبعدها الرجوع لهون.", "No active sizes. First add a size on the sizes page (e.g. One Size), then come back here."));
       return;
     }
 
@@ -1386,11 +1387,11 @@ export default function ProductEditorPage() {
 
   if (qProduct.isLoading) {
     return (
-      <div dir="rtl" className="space-y-4">
+      <div className="space-y-4">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
           <div className="mb-4 flex items-center gap-2">
             <Spinner />
-            <div className="text-sm opacity-80">جاري تحميل المنتج…</div>
+            <div className="text-sm opacity-80">{tr("جاري تحميل المنتج…", "Loading the product…")}</div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <Skeleton className="h-11" />
@@ -1424,11 +1425,11 @@ export default function ProductEditorPage() {
 
   if (qProduct.isError || !qProduct.data) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-red-400/20 bg-red-500/10 p-6 text-red-100">
-        فشل تحميل المنتج.
+      <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-6 text-red-100">
+        {tr("فشل تحميل المنتج.", "The product couldn't load.")}
         <div className="mt-4">
           <Button variant="ghost" onClick={() => nav("/admin/catalog/products")}>
-            رجوع
+            {tr("رجوع", "Back")}
           </Button>
         </div>
       </div>
@@ -1438,43 +1439,43 @@ export default function ProductEditorPage() {
   const p = qProduct.data;
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       {/* Header */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="text-lg font-semibold">تحرير المنتج</div>
+            <div className="text-lg font-semibold">{tr("تحرير المنتج", "Edit product")}</div>
             <div className="mt-1 text-xs opacity-70 break-all">ID: {p.id}</div>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" onClick={() => nav("/admin/catalog/products")}>
-              رجوع
+              {tr("رجوع", "Back")}
             </Button>
             {items.length === 0 ? (
               <Button variant="secondary" onClick={quickCreateFirstItemAndVariant}>
-                إعداد سريع (لون + سعر)
+                {tr("إعداد سريع (لون + سعر)", "Quick setup (colour + price)")}
               </Button>
             ) : null}
             <Button variant="secondary" onClick={() => setWizardOpen(true)} disabled={!productId}>
-              رفع وتجميع الصور
+              {tr("رفع وتجميع الصور", "Upload and group photos")}
             </Button>
             <Button variant="secondary" onClick={openCreateItem}>
-              إضافة مجموعة لون
+              {tr("إضافة مجموعة لون", "Add a colour group")}
             </Button>
             <Button variant="primary" onClick={onSaveAll} isLoading={mSave.isPending}>
-              حفظ الكل
+              {tr("حفظ الكل", "Save all")}
             </Button>
 
             </div>
           </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <Input label="العنوان" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input label={tr("العنوان", "Title")} value={title} onChange={(e) => setTitle(e.target.value)} />
           <Input label="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
 
           <Select
-            label="التصنيف"
+            label={tr("التصنيف", "Category")}
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
@@ -1482,11 +1483,11 @@ export default function ProductEditorPage() {
 
           <div className="flex items-center gap-2 pt-7">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            <span className="text-sm">فعال</span>
+            <span className="text-sm">{tr("فعال", "Active")}</span>
           </div>
 
           <div className="lg:col-span-2">
-            <label className="mb-2 block text-sm font-medium">الوصف (اختياري)</label>
+            <label className="mb-2 block text-sm font-medium">{tr("الوصف (اختياري)", "Description (optional)")}</label>
             <textarea
               className="min-h-[140px] w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/20 focus:ring-2 focus:ring-white/10"
               value={description}
@@ -1505,25 +1506,25 @@ export default function ProductEditorPage() {
       {/* Empty state: product has no items yet */}
       {items.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="text-sm font-semibold">ليش اختفت الصور/السعر/المخزون؟</div>
+          <div className="text-sm font-semibold">{tr("ليش اختفت الصور/السعر/المخزون؟", "Where did the photos/price/stock go?")}</div>
           <div className="mt-1 text-xs opacity-80 leading-6">
-            بهالنسخة، <span className="font-semibold">الصور</span> على مستوى <span className="font-semibold">اللون (Item)</span>، و<span className="font-semibold">السعر/المخزون</span>
-            على مستوى <span className="font-semibold">Variant</span>. إذا المنتج ما فيه Items بعد، رح تشوف بس بيانات المنتج.
+            {tr("بهالنسخة،", "In this version,")} <span className="font-semibold">{tr("الصور", "photos")}</span> {tr("على مستوى", "are per")} <span className="font-semibold">{tr("اللون (Item)", "colour (Item)")}</span>{tr("، و", ", and")}<span className="font-semibold">{tr("السعر/المخزون", "price/stock")}</span>
+            {tr("على مستوى", "are per")} <span className="font-semibold">Variant</span>{tr(". إذا المنتج ما فيه Items بعد، بتظهر بس بيانات المنتج.", ". If the product has no items yet, only the product's details show.")}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="primary" onClick={quickCreateFirstItemAndVariant}>
-              إنشاء لون افتراضي + فتح السعر
+              {tr("إنشاء لون افتراضي + فتح السعر", "Create a default colour + open the price")}
             </Button>
             <Button variant="secondary" onClick={openCreateItem}>
-              إنشاء لون يدوي
+              {tr("إنشاء لون يدوي", "Create a colour by hand")}
             </Button>
             <Button
               variant="ghost"
               onClick={() => nav("/admin/catalog/sizes")}
-              title="إذا ما عندك مقاسات، لازم تضيف واحد (مثل One Size)"
+              title={tr("إذا ما في مقاسات، لازم ينضاف واحد (مثل One Size)", "Without sizes you need to add one (like One Size)")}
             >
-              افتح صفحة المقاسات
+              {tr("فتح صفحة المقاسات", "Open the sizes page")}
             </Button>
           </div>
         </div>
@@ -1533,11 +1534,11 @@ export default function ProductEditorPage() {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold">مجموعات الألوان</div>
-              <div className="mt-1 text-xs opacity-70">اختر مجموعة لفتح الصور والمقاسات الخاصة بها.</div>
+              <div className="text-sm font-semibold">{tr("مجموعات الألوان", "Colour groups")}</div>
+              <div className="mt-1 text-xs opacity-70">{tr("اختيار مجموعة بيفتح صورها ومقاساتها.", "Choose a group to open its photos and sizes.")}</div>
             </div>
             <Button variant="primary" onClick={openCreateItem}>
-              إضافة مجموعة لون
+              {tr("إضافة مجموعة لون", "Add a colour group")}
             </Button>
           </div>
 
@@ -1557,7 +1558,7 @@ export default function ProductEditorPage() {
                   />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold">
-                      {it.colorName || "لون جديد"}
+                      {it.colorName || tr("لون جديد", "New colour")}
                       {it.boxLabel ? ` - ${it.boxLabel}` : ""}
                     </span>
                     <span className="block truncate text-xs opacity-65" dir="ltr">
@@ -1590,11 +1591,11 @@ export default function ProductEditorPage() {
                     ) : null}
                     <div className="text-lg font-semibold truncate">
                       {(() => {
-                        const name = it.colorName || "(بدون اسم لون)";
+                        const name = it.colorName || tr("(بدون اسم لون)", "(no colour name)");
                         const box = (it.boxLabel ?? "").trim();
                         return box ? `${name} — ${box}` : name;
                       })()}
-                      {!it.isActive ? <span className="ms-2 text-xs opacity-60">(غير فعال)</span> : null}
+                      {!it.isActive ? <span className="ms-2 text-xs opacity-60">{tr("(غير فعال)", "(inactive)")}</span> : null}
                     </div>
                   </div>
                   <div className="mt-1 text-xs opacity-70">skuBase: {it.skuBase || "—"}</div>
@@ -1615,14 +1616,14 @@ export default function ProductEditorPage() {
                         )}
                       </div>
                       {itemDiscount ? (
-                        <div className="pointer-events-none absolute -right-2 -top-2 z-10">
+                        <div className="pointer-events-none absolute -start-2 -top-2 z-10">
                           <DiscountShapeBadge discount={itemDiscount} compact />
                         </div>
                       ) : null}
                     </div>
 
                     <div className="text-xs opacity-80">
-                      <div>صور: {(it.images ?? []).length}</div>
+                      <div>{tr("صور:", "Photos:")} {(it.images ?? []).length}</div>
                       <div>Variants: {(it.variants ?? []).length}</div>
                     </div>
                   </div>
@@ -1630,10 +1631,10 @@ export default function ProductEditorPage() {
 
                 <div className="flex flex-wrap gap-2">
                   <Button variant="secondary" onClick={() => openEditItem(it)}>
-                    إدارة اللون (Modal)
+                    {tr("إدارة اللون (Modal)", "Manage colour")}
                   </Button>
                   <Button variant="danger" onClick={() => setConfirmDeleteItemLocalId(it.localId)}>
-                    حذف Item
+                    {tr("حذف Item", "Delete item")}
                   </Button>
                 </div>
               </div>
@@ -1644,23 +1645,23 @@ export default function ProductEditorPage() {
       {/* Item Modal */}
       <Modal
         open={openItemModal}
-        title="إدارة لون المنتج (Item)"
+        title={tr("إدارة لون المنتج (Item)", "Manage the product's colour (Item)")}
         onCancel={cancelItemModal}
         widthClassName="max-w-6xl"
         footer={
           <div className="flex gap-2">
             <Button variant="ghost" onClick={cancelItemModal}>
-              إغلاق
+              {tr("إغلاق", "Close")}
             </Button>
             <Button variant="primary" onClick={saveItemModal}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
       >
         {(() => {
           const it = items.find((x) => x.localId === editingItemLocalId);
-          if (!it) return <div className="text-sm opacity-70">Item غير موجود.</div>;
+          if (!it) return <div className="text-sm opacity-70">{tr("Item غير موجود.", "Item not found.")}</div>;
 
           const palette = it.detectedColors ?? [];
           const safeHex = normalizeHex(it.colorHex) ?? "#000000";
@@ -1678,41 +1679,41 @@ export default function ProductEditorPage() {
           ];
 
           return (
-            <div dir="rtl" className="space-y-4">
+            <div className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input
-                      label="اسم اللون بالعربي"
+                      label={tr("اسم اللون", "Colour name")}
                       value={it.colorName}
                       onChange={(e) => handleColorNameChange(it.localId, e.target.value)}
                     />
 
                     <Input
-                      label="اسم العلبة (boxLabel) اختياري"
+                      label={tr("اسم العلبة (boxLabel) اختياري", "Box name (boxLabel), optional")}
                       value={it.boxLabel}
                       onChange={(e) => handleBoxLabelChange(it.localId, e.target.value)}
-                      placeholder="مثال: علبة A"
+                      placeholder={tr("مثال: علبة A", "e.g. Box A")}
                     />
 
                     <Input
                       label="SKU base (English)"
                       value={it.skuBase}
                       onChange={(e) => updateItem(it.localId, { skuBase: e.target.value })}
-                      placeholder="مثال: TSHIRT-BLACK"
+                      placeholder={tr("مثال: TSHIRT-BLACK", "e.g. TSHIRT-BLACK")}
                     />
 
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:col-span-2">
                       <div className="mb-2 flex items-center justify-between">
-                        <div className="text-sm font-semibold">اختيار اللون</div>
+                        <div className="text-sm font-semibold">{tr("اختيار اللون", "Choose colour")}</div>
                         <div className="flex items-center gap-2" dir="ltr">
                           <Button
                             variant="ghost"
                             onClick={() => pickItemColorWithEyeDropper(it.localId)}
                             disabled={!isEyeDropperSupported()}
-                            title={isEyeDropperSupported() ? "قطّارة" : "المتصفح لا يدعم EyeDropper"}
+                            title={isEyeDropperSupported() ? tr("قطّارة", "Colour picker") : tr("المتصفح لا يدعم EyeDropper", "The browser doesn't support EyeDropper")}
                           >
-                            قطّارة
+                            {tr("قطّارة", "Colour picker")}
                           </Button>
                           <input
                             type="color"
@@ -1726,7 +1727,7 @@ export default function ProductEditorPage() {
                       </div>
 
                       <Input
-                        label="Hex (اختياري)"
+                        label={tr("Hex (اختياري)", "Hex (optional)")}
                         value={it.colorHex}
                         onChange={(e) => applyColorHex(it.localId, e.target.value)}
                         placeholder="#000000"
@@ -1747,7 +1748,7 @@ export default function ProductEditorPage() {
 
                       {palette.length ? (
                         <div className="mt-3">
-                          <div className="text-xs opacity-70 mb-2">ألوان مقترحة من الصورة:</div>
+                          <div className="text-xs opacity-70 mb-2">{tr("ألوان مقترحة من الصورة:", "Colours suggested from the photo:")}</div>
                           <div className="flex flex-wrap gap-2">
                             {palette.map((c) => (
                               <button
@@ -1765,7 +1766,7 @@ export default function ProductEditorPage() {
                                 if (palette[0]) applyColorHex(it.localId, palette[0]);
                               }}
                             >
-                              استخدم الأفضل
+                              {tr("استخدام الأفضل", "Use the best")}
                             </Button>
                           </div>
                         </div>
@@ -1778,7 +1779,7 @@ export default function ProductEditorPage() {
                         checked={it.isActive}
                         onChange={(e) => updateItem(it.localId, { isActive: e.target.checked })}
                       />
-                      <span className="text-sm">فعال</span>
+                      <span className="text-sm">{tr("فعال", "Active")}</span>
                     </div>
 
                     {itemError ? (
@@ -1790,11 +1791,11 @@ export default function ProductEditorPage() {
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-sm font-semibold">ملخص</div>
+                  <div className="text-sm font-semibold">{tr("ملخص", "Summary")}</div>
                   <div className="mt-2 text-xs opacity-80 space-y-1">
-                    <div>صور: {(it.images ?? []).length}</div>
+                    <div>{tr("صور:", "Photos:")} {(it.images ?? []).length}</div>
                     <div>Variants: {(it.variants ?? []).length}</div>
-                    <div className="opacity-70">ملاحظة: الصور على مستوى اللون (Item) والسعر/المخزون على مستوى Variant.</div>
+                    <div className="opacity-70">{tr("ملاحظة: الصور على مستوى اللون (Item) والسعر/المخزون على مستوى Variant.", "Note: photos are per colour (Item) and price/stock per variant.")}</div>
                   </div>
                 </div>
               </div>
@@ -1816,18 +1817,18 @@ export default function ProductEditorPage() {
                   <div className="mb-3 flex items-center justify-between">
                     <div>
                       <div className="text-sm font-semibold">Variants</div>
-                      <div className="text-xs opacity-70">مقاس + سعر + مخزون</div>
+                      <div className="text-xs opacity-70">{tr("مقاس + سعر + مخزون", "Size + price + stock")}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-xs opacity-70">{(it.variants ?? []).length} variants</div>
                       <Button variant="success" onClick={() => openSuggestedBulkAddSizes(it.localId)}>
-                        اقتراح سريع
+                        {tr("اقتراح سريع", "Quick suggestion")}
                       </Button>
                       <Button variant="secondary" onClick={() => openBulkAddSizes(it.localId)}>
-                        إضافة عدة مقاسات
+                        {tr("إضافة عدة مقاسات", "Add several sizes")}
                       </Button>
                       <Button variant="primary" onClick={() => openCreateVariant(it.localId)}>
-                        إضافة Variant
+                        {tr("إضافة Variant", "Add variant")}
                       </Button>
                     </div>
                   </div>
@@ -1835,11 +1836,11 @@ export default function ProductEditorPage() {
                   <Table>
                     <THead>
                       <TR>
-                        <TH>المقاس</TH>
+                        <TH>{tr("المقاس", "Size")}</TH>
                         <TH>SKU</TH>
-                        <TH>السعر</TH>
-                        <TH>المخزون</TH>
-                        <TH className="w-72">إجراءات</TH>
+                        <TH>{tr("السعر", "Price")}</TH>
+                        <TH>{tr("المخزون", "Stock")}</TH>
+                        <TH className="w-72">{tr("إجراءات", "Actions")}</TH>
                       </TR>
                     </THead>
 
@@ -1873,10 +1874,10 @@ export default function ProductEditorPage() {
                               <td className="px-3 py-2">
                                 <div className="flex flex-wrap gap-2">
                                   <Button variant="secondary" onClick={() => openEditVariant(it.localId, v)}>
-                                    تعديل
+                                    {tr("تعديل", "Edit")}
                                   </Button>
                                   <Button variant="danger" onClick={() => deleteVariant(it.localId, v)}>
-                                    حذف
+                                    {tr("حذف", "Delete")}
                                   </Button>
                                 </div>
                               </td>
@@ -1887,9 +1888,9 @@ export default function ProductEditorPage() {
                         <TR>
                           <td className="px-3 py-3 text-sm opacity-70" colSpan={5}>
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span>لا يوجد Variants بعد.</span>
+                              <span>{tr("لا يوجد Variants بعد.", "No variants yet.")}</span>
                               <Button size="sm" variant="success" onClick={() => openSuggestedBulkAddSizes(it.localId)}>
-                                إنشاء من المقاسات الفعالة
+                                {tr("إنشاء من المقاسات الفعالة", "Create from the active sizes")}
                               </Button>
                             </div>
                           </td>
@@ -1907,13 +1908,13 @@ export default function ProductEditorPage() {
       {/* Variant Modal */}
       <Modal
         open={openVarModal}
-        title={editingVarId ? "تعديل Variant" : "إضافة Variant"}
+        title={editingVarId ? tr("تعديل Variant", "Edit variant") : tr("إضافة Variant", "Add variant")}
         onCancel={() => setOpenVarModal(false)}
         widthClassName="max-w-3xl"
         footer={
           <div className="flex gap-2">
             <Button variant="primary" onClick={saveVariant}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
@@ -1923,56 +1924,56 @@ export default function ProductEditorPage() {
           const options = it ? sizeOptionsForItem(it, editingVarId ? vSizeId : undefined) : [];
 
           return (
-            <div dir="rtl" className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Select
-                label="المقاس"
+                label={tr("المقاس", "Size")}
                 value={vSizeId}
                 onChange={(e) => handleVariantSizeChange(e.target.value)}
                 options={[
-                  ...(editingVarId ? [{ value: vSizeId, label: sizes.find((s) => s.id === vSizeId)?.name ?? "المقاس الحالي" }] : []),
+                  ...(editingVarId ? [{ value: vSizeId, label: sizes.find((s) => s.id === vSizeId)?.name ?? tr("المقاس الحالي", "Current size") }] : []),
                   ...options,
                 ].filter((x) => x.value)}
-                placeholder="اختر المقاس"
+                placeholder={tr("يرجى اختيار المقاس", "Choose the size")}
               />
 
               <Input label="SKU" value={vSku} onChange={(e) => handleVariantSkuChange(e.target.value)} />
 
-              <Input label="السعر" value={vPrice} onChange={(e) => setVPrice(e.target.value)} />
-              <Input label="compareAt (اختياري)" value={vCompareAt} onChange={(e) => setVCompareAt(e.target.value)} />
+              <Input label={tr("السعر", "Price")} value={vPrice} onChange={(e) => setVPrice(e.target.value)} />
+              <Input label={tr("compareAt (اختياري)", "compareAt (optional)")} value={vCompareAt} onChange={(e) => setVCompareAt(e.target.value)} />
               <Input
-                label="السعر الأصلي (اختياري)"
+                label={tr("السعر الأصلي (اختياري)", "Original price (optional)")}
                 value={vOriginalPrice}
                 onChange={(e) => setVOriginalPrice(e.target.value)}
-                hint="سيعود السعر لهذا الرقم بعد انتهاء التخفيض (إذا مفعّل)"
+                hint={tr("سيعود السعر لهذا الرقم بعد انتهاء التخفيض (إذا مفعّل)", "The price goes back to this after the sale ends (if on)")}
               />
               <Input
-                label="سعر التخفيض (اختياري)"
+                label={tr("سعر التخفيض (اختياري)", "Sale price (optional)")}
                 value={vSalePrice}
                 onChange={(e) => setVSalePrice(e.target.value)}
               />
               <Input
                 type="datetime-local"
-                label="بداية التخفيض"
+                label={tr("بداية التخفيض", "Sale start")}
                 value={vSaleStartsAt}
                 onChange={(e) => setVSaleStartsAt(e.target.value)}
               />
               <Input
                 type="datetime-local"
-                label="نهاية التخفيض"
+                label={tr("نهاية التخفيض", "Sale end")}
                 value={vSaleEndsAt}
                 onChange={(e) => setVSaleEndsAt(e.target.value)}
               />
 
-              <Input label="المخزون" value={vStock} onChange={(e) => setVStock(e.target.value)} />
+              <Input label={tr("المخزون", "Stock")} value={vStock} onChange={(e) => setVStock(e.target.value)} />
               <div>
                 <Input
-                  label="حد التنبيه (اختياري)"
+                  label={tr("حد التنبيه (اختياري)", "Alert level (optional)")}
                   value={vThreshold}
                   onChange={(e) => setVThreshold(e.target.value)}
-                  hint="0 يعني تعطيل تنبيهات المخزون لهذا الـVariant"
+                  hint={tr("0 يعني تعطيل تنبيهات المخزون لهذا الـVariant", "0 turns off stock alerts for this variant")}
                 />
               </div>
-              <Input label="weightGrams (اختياري)" value={vWeight} onChange={(e) => setVWeight(e.target.value)} />
+              <Input label={tr("weightGrams (اختياري)", "weightGrams (optional)")} value={vWeight} onChange={(e) => setVWeight(e.target.value)} />
 
               {varError ? (
                 <div className="sm:col-span-2 rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-100">
@@ -1987,23 +1988,23 @@ export default function ProductEditorPage() {
       {/* Bulk add sizes Modal */}
       <Modal
         open={openBulkModal}
-        title="إضافة عدة مقاسات دفعة واحدة"
+        title={tr("إضافة عدة مقاسات دفعة واحدة", "Add several sizes at once")}
         onCancel={() => setOpenBulkModal(false)}
         widthClassName="max-w-3xl"
         footer={
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setOpenBulkModal(false)}>
-              إلغاء
+              {tr("إلغاء", "Cancel")}
             </Button>
             <Button variant="primary" onClick={saveBulkAddSizes}>
-              إضافة
+              {tr("إضافة", "Add")}
             </Button>
           </div>
         }
       >
         {(() => {
           const it = items.find((x) => x.localId === bulkItemLocalId);
-          if (!it) return <div className="text-sm opacity-70">Item غير موجود.</div>;
+          if (!it) return <div className="text-sm opacity-70">{tr("Item غير موجود.", "Item not found.")}</div>;
 
           const used = new Set((it.variants ?? []).map((v) => v.sizeId));
           const list = sizes
@@ -2013,7 +2014,7 @@ export default function ProductEditorPage() {
           const availableIds = list.filter((x) => !x.disabled).map((x) => x.id);
 
           return (
-            <div dir="rtl" className="space-y-4">
+            <div className="space-y-4">
               {bulkSuggestionNote ? (
                 <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">
                   {bulkSuggestionNote}
@@ -2022,20 +2023,20 @@ export default function ProductEditorPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input
-                  label="SKU Prefix (افتراضي: skuBase)"
+                  label={tr("SKU Prefix (افتراضي: skuBase)", "SKU prefix (default: skuBase)")}
                   value={bulkSkuPrefix}
                   onChange={(e) => setBulkSkuPrefix(e.target.value)}
                   placeholder={it.skuBase || "SKU"}
                 />
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">نوع السعر</label>
+                  <label className="block text-sm font-medium">{tr("نوع السعر", "Price type")}</label>
                   <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
                     <button
                       type="button"
                       className={`rounded-lg px-3 py-2 ${bulkPriceMode === "default" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
                       onClick={() => setBulkPriceMode("default")}
                     >
-                      سعر لكل المقاسات
+                      {tr("سعر لكل المقاسات", "One price for all sizes")}
                     </button>
                     <button
                       type="button"
@@ -2045,24 +2046,24 @@ export default function ProductEditorPage() {
                         fillSelectedBulkPrices();
                       }}
                     >
-                      سعر لكل مقاس
+                      {tr("سعر لكل مقاس", "A price per size")}
                     </button>
                   </div>
                 </div>
                 <Input
-                  label={bulkPriceMode === "default" ? "السعر الافتراضي" : "سعر التعبئة"}
+                  label={bulkPriceMode === "default" ? tr("السعر الافتراضي", "Default price") : tr("سعر التعبئة", "Fill price")}
                   value={bulkPrice}
                   onChange={(e) => setBulkPrice(e.target.value)}
                 />
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">نوع المخزون</label>
+                  <label className="block text-sm font-medium">{tr("نوع المخزون", "Stock type")}</label>
                   <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
                     <button
                       type="button"
                       className={`rounded-lg px-3 py-2 ${bulkStockMode === "default" ? "bg-white/15" : "opacity-70 hover:bg-white/5"}`}
                       onClick={() => setBulkStockMode("default")}
                     >
-                      مخزون لكل المقاسات
+                      {tr("مخزون لكل المقاسات", "One stock for all sizes")}
                     </button>
                     <button
                       type="button"
@@ -2072,41 +2073,41 @@ export default function ProductEditorPage() {
                         fillSelectedBulkStocks();
                       }}
                     >
-                      مخزون لكل مقاس
+                      {tr("مخزون لكل مقاس", "Stock per size")}
                     </button>
                   </div>
                 </div>
                 <Input
-                  label={bulkStockMode === "default" ? "المخزون الافتراضي" : "مخزون التعبئة"}
+                  label={bulkStockMode === "default" ? tr("المخزون الافتراضي", "Default stock") : tr("مخزون التعبئة", "Fill stock")}
                   value={bulkStock}
                   onChange={(e) => setBulkStock(e.target.value)}
                 />
                 <Input
-                  label="حد التنبيه (اختياري)"
+                  label={tr("حد التنبيه (اختياري)", "Alert level (optional)")}
                   value={bulkThreshold}
                   onChange={(e) => setBulkThreshold(e.target.value)}
-                  hint="0 يعني تعطيل تنبيهات المخزون"
+                  hint={tr("0 يعني تعطيل تنبيهات المخزون", "0 turns off stock alerts")}
                 />
                 <Input
-                  label="weightGrams (اختياري)"
+                  label={tr("weightGrams (اختياري)", "weightGrams (optional)")}
                   value={bulkWeight}
                   onChange={(e) => setBulkWeight(e.target.value)}
-                  hint="إذا تركته فارغ، ما منبعث وزن."
+                  hint={tr("إذا ضل فارغ، ما منبعث وزن.", "Left empty, no weight is sent.")}
                 />
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="text-sm font-semibold">اختر المقاسات</div>
-                    <div className="text-xs opacity-70">المقاسات الموجودة مسبقًا لنفس اللون تكون معطّلة.</div>
+                    <div className="text-sm font-semibold">{tr("اختيار المقاسات", "Choose sizes")}</div>
+                    <div className="text-xs opacity-70">{tr("المقاسات الموجودة مسبقًا لنفس اللون تكون معطّلة.", "Sizes already in this colour are disabled.")}</div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" onClick={() => selectAllBulkSizes(availableIds)}>
-                      تحديد الكل
+                      {tr("تحديد الكل", "Select all")}
                     </Button>
                     <Button variant="ghost" onClick={clearBulkSizes}>
-                      مسح
+                      {tr("مسح", "Clear")}
                     </Button>
                   </div>
                 </div>
@@ -2130,17 +2131,17 @@ export default function ProductEditorPage() {
                             />
                             <span>{s.name}</span>
                           </div>
-                          {s.disabled ? <span className="text-xs opacity-70">موجود</span> : null}
+                          {s.disabled ? <span className="text-xs opacity-70">{tr("موجود", "exists")}</span> : null}
                         </label>
                       ))
                     ) : (
-                      <div className="px-3 py-3 text-sm opacity-70">لا يوجد مقاسات.</div>
+                      <div className="px-3 py-3 text-sm opacity-70">{tr("لا يوجد مقاسات.", "No sizes.")}</div>
                     )}
                   </div>
                 </div>
 
                 <div className="mt-2 text-xs opacity-70">
-                  مختار: {bulkSelectedSizeIds.length} / متاح: {availableIds.length}
+                  {tr("مختار:", "Chosen:")} {bulkSelectedSizeIds.length} {tr("/ متاح:", "/ available:")} {availableIds.length}
                 </div>
               </div>
 
@@ -2148,11 +2149,11 @@ export default function ProductEditorPage() {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="text-sm font-semibold">السعر حسب المقاس</div>
-                      <div className="text-xs opacity-70">كل مقاس محدد يحصل على سعره الخاص.</div>
+                      <div className="text-sm font-semibold">{tr("السعر حسب المقاس", "Price by size")}</div>
+                      <div className="text-xs opacity-70">{tr("كل مقاس محدد يحصل على سعره الخاص.", "Each chosen size gets its own price.")}</div>
                     </div>
                     <Button variant="secondary" onClick={fillSelectedBulkPrices}>
-                      تعبئة الكل من السعر الافتراضي
+                      {tr("تعبئة الكل من السعر الافتراضي", "Fill all from the default price")}
                     </Button>
                   </div>
 
@@ -2176,11 +2177,11 @@ export default function ProductEditorPage() {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="text-sm font-semibold">المخزون حسب المقاس</div>
-                      <div className="text-xs opacity-70">كل مقاس محدد يحصل على مخزونه الخاص.</div>
+                      <div className="text-sm font-semibold">{tr("المخزون حسب المقاس", "Stock by size")}</div>
+                      <div className="text-xs opacity-70">{tr("كل مقاس محدد يحصل على مخزونه الخاص.", "Each chosen size gets its own stock.")}</div>
                     </div>
                     <Button variant="secondary" onClick={fillSelectedBulkStocks}>
-                      تعبئة الكل من المخزون الافتراضي
+                      {tr("تعبئة الكل من المخزون الافتراضي", "Fill all from the default stock")}
                     </Button>
                   </div>
 
@@ -2211,10 +2212,10 @@ export default function ProductEditorPage() {
       {/* Confirm delete item */}
       <ConfirmDialog
         open={!!confirmDeleteItemLocalId}
-        title="تأكيد حذف Item"
-        message="حذف الـItem رح يحذف كل الصور والـvariants التابعة إله (من قاعدة البيانات). متأكد؟"
-        confirmText="حذف"
-        cancelText="إلغاء"
+        title={tr("تأكيد حذف Item", "Confirm deleting the item")}
+        message={tr("حذف الـItem رح يحذف كل الصور والـvariants التابعة إله (من قاعدة البيانات). أكيد؟", "Deleting the item deletes all its photos and variants (from the database). Sure?")}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onConfirm={async () => {
           if (!confirmDeleteItemLocalId) return;
           removeItem(confirmDeleteItemLocalId);

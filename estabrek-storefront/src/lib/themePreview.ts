@@ -187,11 +187,14 @@ function restoreImmediately(
  *
  * `source` should be the actual hovered card/button.
  */
+/** A store theme keeps its own colours: the shop follows the shopper's colour only in the rose design. */
+export const storeThemeOn = () => typeof document !== "undefined" && Boolean(document.documentElement.dataset.storeTheme);
+
 export function previewTheme(
   source: HTMLElement | null,
   seed: string,
 ) {
-  if (!source) {
+  if (!source || storeThemeOn()) {
     return;
   }
 
@@ -450,6 +453,7 @@ export function startThemeCycle(
   source: HTMLElement,
   everyMs = 2200,
 ) {
+  if (storeThemeOn()) return;
   const shell =
     shellOf(source);
 

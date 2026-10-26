@@ -3,7 +3,7 @@ import { selectStorefrontColor } from "@/lib/storefrontColor";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import type { CatalogProduct } from "@/lib/catalog";
 import { catalogItemLabel, getProductMinPrice, getProductImageBlurDataUrl, getVariantCompareAtPrice, getVariantEffectivePrice } from "@/lib/catalog";
 import { useCart } from "@/store/cart";

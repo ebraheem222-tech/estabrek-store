@@ -61,11 +61,13 @@ export type MediaUsage =
  *  - folder?: string
  *  - tags?: comma string OR JSON array
  */
-export async function uploadImages(files: File[], opts?: { folder?: string | null; tags?: string[] }) {
+export async function uploadImages(files: File[], opts?: { folder?: string | null; tags?: string[]; keepAsNew?: boolean }) {
   const form = new FormData();
   files.forEach((f) => form.append("files", f));
   if (opts?.folder) form.append("folder", opts.folder);
   if (opts?.tags?.length) form.append("tags", JSON.stringify(opts.tags));
+  // A picture made from another (a cut-out) stays a new item even when it looks like one we have.
+  if (opts?.keepAsNew) form.append("keepAsNew", "1");
 
   const res = await api.post(ENDPOINTS.admin.uploads.images, form, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -163,4 +165,40 @@ export async function updateImagesBulk(body: {
 export async function deleteImagesBulk(ids: string[]) {
   const res = await api.delete(ENDPOINTS.admin.uploads.imagesBulk, { data: { ids } });
   return res.data as { ok: true };
+}
+
+/** Cloudinary's background removal: switched on in media settings, and the store has Cloudinary. */
+export type CloudCutoutStatus = { on: boolean; ready: boolean; transformations: number };
+
+export async function getCloudCutoutStatus() {
+  const res = await api.get(ENDPOINTS.admin.uploads.backgroundRemoval);
+  return (res.data as { cloudinary: CloudCutoutStatus }).cloudinary;
+}
+
+export class CloudCutoutError extends Error {
+  readonly code: string;
+  readonly status: number;
+  constructor(code: string, message: string, status: number) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+/**
+ * The picture at `url` (on the store's Cloudinary) without its background, as a PNG with
+ * transparency. Cloudinary can take up to a minute the first time.
+ */
+export async function cloudCutout(body: { url: string; fineEdges?: boolean }, signal?: AbortSignal): Promise<Blob> {
+  try {
+    const res = await api.post(ENDPOINTS.admin.uploads.backgroundRemoval, body, { responseType: "blob", timeout: 150_000, signal });
+    return res.data as Blob;
+  } catch (e) {
+    const ax = e as { response?: { status?: number; data?: unknown }; message?: string };
+    let data: { error?: string; message?: string } = {};
+    const raw = ax.response?.data;
+    if (raw instanceof Blob) data = await raw.text().then((t) => JSON.parse(t)).catch(() => ({}));
+    else if (raw && typeof raw === "object") data = raw as typeof data;
+    throw new CloudCutoutError(data.error || "CLOUD_FAILED", data.message || ax.message || "", ax.response?.status ?? 0);
+  }
 }

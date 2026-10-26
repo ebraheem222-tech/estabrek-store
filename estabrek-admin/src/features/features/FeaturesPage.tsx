@@ -22,7 +22,7 @@ export default function FeaturesPage() {
   const total = (q.data ?? []).flatMap((g) => g.features).length;
 
   return (
-    <div dir="rtl" className="space-y-4" data-testid="features-page">
+    <div className="space-y-4" data-testid="features-page">
       <div className={box}>
         <h1 className="text-lg font-semibold">الميزات</h1>
         <p className="mt-1 text-sm text-white/60">
@@ -134,7 +134,7 @@ function Switch({ checked, label, disabled, busy, onChange }: { checked: boolean
       <span
         className={[
           "inline-block h-5 w-5 rounded-full transition-transform",
-          checked ? "-translate-x-6" : "-translate-x-1",
+          checked ? "rtl:-translate-x-6 ltr:translate-x-6" : "rtl:-translate-x-1 ltr:translate-x-1",
         ].join(" ")}
         style={{ background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.25)" }}
       />

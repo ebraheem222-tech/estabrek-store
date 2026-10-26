@@ -4,10 +4,12 @@
 import React, { useMemo, useState } from "react";
 import type { CatalogSize } from "../../../api/catalog.api";
 import { cn } from "../../../components/ui/cn";
-import { formatShekel, parsePrice, sizePresets } from "../../../lib/productComposer";
+import { formatMoney, parsePrice, sizePresets } from "../../../lib/productComposer";
 import { autoSkus, cleanSku, hasSize, lowOf, madeCount, priceOf, setSizeFor, sizesOf, stockKey, stockOf, type ComposerDraft } from "./composerModel";
 import { Chip, Section, Swatch, Toggle } from "./ui";
 import { fieldCls } from "./styles";
+import { currencySign } from "../../../lib/money";
+import { tr } from "@/lib/words";
 
 type Props = {
   draft: ComposerDraft;
@@ -88,59 +90,59 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
     <Section
       id="sizes"
       step={step}
-      title="المقاسات والكمية"
-      hint="كل لون × مقاس هو SKU مستقل: له كود وسعر وكمية وتنبيه. الكود يُكتب تلقائياً ويمكن تغييره."
+      title={tr("المقاسات والكمية", "Sizes and quantity")}
+      hint={tr("كل لون × مقاس هو SKU مستقل: له كود وسعر وكمية وتنبيه. الكود يُكتب تلقائياً ويمكن تغييره.", "Each colour × size is its own SKU: a code, price, quantity and alert. The code is written automatically and can be changed.")}
       error={error}
     >
       {presets.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-white/50">جاهز:</span>
+          <span className="text-xs text-white/50">{tr("جاهز:", "Ready:")}</span>
           {presets.map((p) => (
             <Chip key={p.key} active={sameSet(p.sizeIds, draft.sizeIds)} onClick={() => applyPreset(p.sizeIds)}>{p.label}</Chip>
           ))}
         </div>
       )}
-      <div className="flex flex-wrap gap-2" role="group" aria-label="المقاسات">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={tr("المقاسات", "Sizes")}>
         {chips.map((s) => (
           <Chip key={s.id} active={draft.sizeIds.includes(s.id)} onClick={() => toggleSize(s.id)} className="min-w-[3rem] justify-center">{s.name}</Chip>
         ))}
         <div className="inline-flex items-center gap-1">
-          <input className={cn(fieldCls, "h-9 w-28 rounded-full px-3")} placeholder="مقاس جديد" value={newSize} onChange={(e) => setNewSize(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void createSize(); } }} aria-label="إضافة مقاس جديد" />
-          {newSize.trim() && <button type="button" disabled={adding} onClick={() => void createSize()} className="h-9 rounded-full bg-accent-500/20 px-3 text-sm text-accent-200 hover:bg-accent-500/30">{adding ? "…" : "إضافة"}</button>}
+          <input className={cn(fieldCls, "h-9 w-28 rounded-full px-3")} placeholder={tr("مقاس جديد", "New size")} value={newSize} onChange={(e) => setNewSize(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void createSize(); } }} aria-label={tr("إضافة مقاس جديد", "Add a new size")} />
+          {newSize.trim() && <button type="button" disabled={adding} onClick={() => void createSize()} className="h-9 rounded-full bg-accent-500/20 px-3 text-sm text-accent-200 hover:bg-accent-500/30">{adding ? "…" : tr("إضافة", "Add")}</button>}
         </div>
       </div>
 
       {selected.length > 0 && draft.groups.length > 0 && (
         <div className="mt-5">
           <div className="mb-3 flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1" role="tablist" aria-label="طريقة العرض">
-              <button type="button" role="tab" aria-selected={view === "skus"} onClick={() => chooseView("skus")} className={cn("h-8 rounded-lg px-3 text-sm", view === "skus" ? "bg-accent-500/25 text-white" : "text-white/60 hover:text-white")}>جدول SKU</button>
-              <button type="button" role="tab" aria-selected={view === "grid"} onClick={() => chooseView("grid")} className={cn("h-8 rounded-lg px-3 text-sm", view === "grid" ? "bg-accent-500/25 text-white" : "text-white/60 hover:text-white")}>شبكة الكميات</button>
+            <div className="inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1" role="tablist" aria-label={tr("طريقة العرض", "View")}>
+              <button type="button" role="tab" aria-selected={view === "skus"} onClick={() => chooseView("skus")} className={cn("h-8 rounded-lg px-3 text-sm", view === "skus" ? "bg-accent-500/25 text-white" : "text-white/60 hover:text-white")}>{tr("جدول SKU", "SKU table")}</button>
+              <button type="button" role="tab" aria-selected={view === "grid"} onClick={() => chooseView("grid")} className={cn("h-8 rounded-lg px-3 text-sm", view === "grid" ? "bg-accent-500/25 text-white" : "text-white/60 hover:text-white")}>{tr("شبكة الكميات", "Quantity grid")}</button>
             </div>
             <label className="flex items-center gap-2 text-xs text-white/55">
-              {edit ? "كمية المقاسات الجديدة" : "الكمية لكل مقاس"}
+              {edit ? tr("كمية المقاسات الجديدة", "Quantity for new sizes") : tr("الكمية لكل مقاس", "Quantity per size")}
               <input
                 className={cn(fieldCls, "h-9 w-20 px-2 text-center")}
                 inputMode="numeric"
                 value={draft.defaultStock}
                 onChange={(e) => update((d) => ({ ...d, defaultStock: digits(e.target.value) }))}
-                aria-label="الكمية لكل مقاس"
+                aria-label={tr("الكمية لكل مقاس", "Quantity per size")}
               />
             </label>
-            {!edit && <button type="button" onClick={fillAll} className="h-9 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">تطبيق على الكل</button>}
-            <span className="ms-auto text-xs text-white/50"><b className="text-white">{skuCount}</b> SKU · <b className="text-white">{total}</b> قطعة</span>
+            {!edit && <button type="button" onClick={fillAll} className="h-9 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("تطبيق على الكل", "Apply to all")}</button>}
+            <span className="ms-auto text-xs text-white/50"><b className="text-white">{skuCount}</b> SKU · <b className="text-white">{total}</b> {tr("قطعة", "pcs")}</span>
           </div>
 
           {selected.length > 1 ? (
             <div className="mb-4 rounded-xl border border-white/[0.08] bg-white/[0.015] p-3" data-testid="sizes-per-colour">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-medium text-white">كل لون بأي مقاسات؟</span>
+                <span className="text-sm font-medium text-white">{tr("كل لون بأي مقاسات؟", "Which sizes for each colour?")}</span>
                 {someOff ? (
-                  <button type="button" onClick={() => update((d) => ({ ...d, sizesOff: {} }))} className="rounded-lg px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/10">
-                    نفس المقاسات لكل الألوان
+                  <button type="button" onClick={() => update((d) => ({ ...d, sizesOff: {} }))} className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-accent-300 hover:bg-accent-500/10 sm:h-7 sm:px-2 sm:text-xs">
+                    {tr("نفس المقاسات لكل الألوان", "Same sizes for every colour")}
                   </button>
                 ) : (
-                  <span className="text-[11px] text-white/40">كل الألوان بكل المقاسات. شيلي المقاس اللي مش موجود بلون معيّن.</span>
+                  <span className="text-[11px] text-white/40">{tr("كل الألوان بكل المقاسات. المقاس اللي مش موجود بلون معيّن بينشال من هون.", "Every colour in every size. Remove a size a colour doesn't come in.")}</span>
                 )}
               </div>
               <ul className="space-y-2">
@@ -148,8 +150,8 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                   const mine = sizesOf(draft, g.key).length;
                   return (
                     <li key={g.key} className="flex flex-wrap items-center gap-2" data-testid="colour-sizes">
-                      <span className="inline-flex min-w-[6rem] items-center gap-2 text-sm text-white/85"><Swatch hex={g.hex} size={14} />{g.name || `لون ${gi + 1}`}</span>
-                      <div className="flex flex-wrap gap-1.5" role="group" aria-label={`مقاسات ${g.name || `لون ${gi + 1}`}`}>
+                      <span className="inline-flex min-w-[6rem] items-center gap-2 text-sm text-white/85"><Swatch hex={g.hex} size={14} />{g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}</span>
+                      <div className="flex flex-wrap gap-1.5" role="group" aria-label={tr(`مقاسات ${g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}`, "Sizes of {0}", [g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])])}>
                         {selected.map((sz) => {
                           const on = hasSize(draft, g.key, sz.id);
                           return (
@@ -162,14 +164,14 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                                 "h-8 min-w-[2.75rem] rounded-full border px-2.5 text-xs transition",
                                 on ? "border-accent-400/60 bg-accent-500/20 text-white" : "border-dashed border-white/[0.14] text-white/35 line-through hover:text-white/60",
                               )}
-                              title={on ? `«${g.name}» ما بييجي بمقاس ${sz.name}؟ اضغطي لتشيليه` : `ضيفي مقاس ${sz.name} لـ«${g.name}»`}
+                              title={on ? tr(`«${g.name}» ما بييجي بمقاس ${sz.name}؟ الضغط بيشيله`, "“{0}” doesn't come in size {1}? Click to remove it", [g.name, sz.name]) : tr(`إضافة مقاس ${sz.name} لـ«${g.name}»`, "Add size {0} to “{1}”", [sz.name, g.name])}
                             >
                               {sz.name}
                             </button>
                           );
                         })}
                       </div>
-                      {!mine ? <span className="text-[11px] text-red-300">لازم مقاس واحد على الأقل</span> : null}
+                      {!mine ? <span className="text-[11px] text-red-300">{tr("لازم مقاس واحد على الأقل", "At least one size is needed")}</span> : null}
                     </li>
                   );
                 })}
@@ -186,25 +188,25 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                   <div key={g.key} className={cn("rounded-xl border border-white/[0.08] bg-white/[0.015]", g.hidden && "opacity-70")}>
                     <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] px-3 py-2 text-sm">
                       <Swatch hex={g.hex} size={16} />
-                      <b className="text-white">{g.name || `لون ${gi + 1}`}</b>
+                      <b className="text-white">{g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}</b>
                       {g.boxLabel ? <span className="text-xs text-white/45">({g.boxLabel})</span> : null}
-                      {g.hidden ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-200">مخفي من المتجر</span> : null}
-                      <span className="ms-auto text-xs text-white/45">{colourTotal} قطعة</span>
+                      {g.hidden ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-200">{tr("مخفي من المتجر", "Hidden from the store")}</span> : null}
+                      <span className="ms-auto text-xs text-white/45">{colourTotal} {tr("قطعة", "pcs")}</span>
                       {edit && g.itemId ? (
                         <button
                           type="button"
                           onClick={() => update((d) => ({ ...d, groups: d.groups.map((x) => (x.key === g.key ? { ...x, hidden: !x.hidden } : x)) }))}
-                          className="rounded-lg px-2 py-0.5 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"
-                          title="اللون المخفي لا يظهر في المتجر لكن يبقى بكمياته وطلباته"
+                          className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-white/55 hover:bg-white/[0.06] hover:text-white sm:h-7 sm:px-2 sm:text-xs"
+                          title={tr("اللون المخفي لا يظهر في المتجر لكن يبقى بكمياته وطلباته", "A hidden colour doesn't show in the store but keeps its quantities and orders")}
                         >
-                          {g.hidden ? "إظهار في المتجر" : "إخفاء"}
+                          {g.hidden ? tr("إظهار في المتجر", "Show in the store") : tr("إخفاء", "Hide")}
                         </button>
                       ) : null}
                     </div>
                     <div className="hidden grid-cols-[64px_minmax(150px,1.6fr)_104px_128px_76px_64px] gap-2 px-3 pt-2 text-[11px] text-white/40 sm:grid">
-                      <span>المقاس</span><span>SKU</span><span>السعر</span><span className="text-center">الكمية</span><span className="text-center">تنبيه عند</span><span />
+                      <span>{tr("المقاس", "Size")}</span><span>SKU</span><span>{tr("السعر", "Price")}</span><span className="text-center">{tr("الكمية", "Quantity")}</span><span className="text-center">{tr("تنبيه عند", "Alert at")}</span><span />
                     </div>
-                    {!mineSizes.length ? <p className="px-3 py-3 text-xs text-red-300">ما في مقاسات لهاللون: اختاري مقاس من «كل لون بأي مقاسات؟».</p> : null}
+                    {!mineSizes.length ? <p className="px-3 py-3 text-xs text-red-300">{tr("ما في مقاسات لهاللون: المقاس بيتختار من «كل لون بأي مقاسات؟».", "No sizes for this colour: pick one in “Which sizes for each colour?”.")}</p> : null}
                     <ul className="divide-y divide-white/[0.05]">
                       {mineSizes.map((s) => {
                         const key = stockKey(g.key, s.id);
@@ -218,7 +220,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                           <li key={s.id} className="grid grid-cols-[76px_minmax(0,1fr)_60px] items-center gap-2 px-3 py-2.5 sm:grid-cols-[64px_minmax(150px,1.6fr)_104px_128px_76px_64px]" data-testid="sku-row">
                             <span className="text-sm font-semibold text-white">
                               {s.name}
-                              {isNew ? <span className="ms-1 align-middle text-[10px] font-normal text-emerald-300">جديد</span> : null}
+                              {isNew ? <span className="ms-1 align-middle text-[10px] font-normal text-emerald-300">{tr("جديد", "New")}</span> : null}
                             </span>
                             <input
                               dir="ltr"
@@ -227,34 +229,34 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                               placeholder={auto[key]}
                               onChange={(e) => setField("skus", key, e.target.value.toUpperCase())}
                               onBlur={(e) => { const v = cleanSku(e.target.value); setField("skus", key, v && v !== auto[key] ? v : edit?.variantIds[key] ? v : ""); }}
-                              aria-label={`SKU ${g.name} مقاس ${s.name}`}
+                              aria-label={tr(`SKU ${g.name} مقاس ${s.name}`, "SKU {0} size {1}", [g.name, s.name])}
                               aria-invalid={wrong || undefined}
-                              title={wrong ? "هذا الكود مكرر أو مستخدم في منتج آخر" : "اتركيه فارغاً للكود التلقائي"}
+                              title={wrong ? tr("هذا الكود مكرر أو مستخدم في منتج آخر", "This code is repeated or used by another product") : tr("الفارغ بياخد الكود التلقائي", "Leave it empty for the automatic code")}
                             />
                             <label className="relative">
-                              <span className="sr-only">السعر</span>
+                              <span className="sr-only">{tr("السعر", "Price")}</span>
                               <input
                                 className={cn(fieldCls, "h-9 ps-7 pe-2 text-center")}
                                 inputMode="decimal"
                                 value={draft.priceBy[key] ?? ""}
                                 placeholder={String(priceOf({ ...draft, priceBy: {} }, g.key, s.id) || "")}
                                 onChange={(e) => setField("priceBy", key, decimal(e.target.value))}
-                                aria-label={`سعر ${g.name} مقاس ${s.name}`}
+                                aria-label={tr(`سعر ${g.name} مقاس ${s.name}`, "Price {0} size {1}", [g.name, s.name])}
                               />
-                              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-white/35">₪</span>
+                              <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-xs text-white/35">{currencySign()}</span>
                             </label>
                             <div className="flex items-center justify-center gap-1">
                               <div className="inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.02]">
-                                <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, -1)} className="h-9 w-8 text-white/50 hover:text-white" aria-label="إنقاص">−</button>
+                                <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, -1)} className="h-9 w-8 text-white/50 hover:text-white" aria-label={tr("إنقاص", "Less")}>−</button>
                                 <input
                                   className="h-9 w-12 bg-transparent text-center text-sm text-white focus:outline-none"
                                   inputMode="numeric"
                                   value={draft.stock[key] !== undefined ? draft.stock[key] : draft.defaultStock}
                                   onChange={(e) => setStock(g.key, s.id, e.target.value)}
                                   onFocus={(e) => e.target.select()}
-                                  aria-label={`كمية ${g.name} مقاس ${s.name}`}
+                                  aria-label={tr(`كمية ${g.name} مقاس ${s.name}`, "Quantity {0} size {1}", [g.name, s.name])}
                                 />
-                                <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, 1)} className="h-9 w-8 text-white/50 hover:text-white" aria-label="زيادة">+</button>
+                                <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, 1)} className="h-9 w-8 text-white/50 hover:text-white" aria-label={tr("زيادة", "More")}>+</button>
                               </div>
                             </div>
                             <input
@@ -263,14 +265,14 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                               value={draft.lowBy[key] ?? ""}
                               placeholder={draft.lowStock || "0"}
                               onChange={(e) => setField("lowBy", key, digits(e.target.value))}
-                              aria-label={`تنبيه ${g.name} مقاس ${s.name}`}
-                              title="نبّهيني عندما تبقى هذه الكمية أو أقل"
+                              aria-label={tr(`تنبيه ${g.name} مقاس ${s.name}`, "Alert {0} size {1}", [g.name, s.name])}
+                              title={tr("تنبيه لما تبقى هالكمية أو أقل", "Alert me when this many or fewer are left")}
                             />
                             <span className="col-span-3 text-start text-[11px] sm:col-span-1 sm:text-center">
-                              {qty <= 0 ? <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-red-300">نفد</span>
-                                : low > 0 && qty <= low ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-200">قليل</span>
-                                : <span className="text-white/35">متوفر</span>}
-                              {loaded !== undefined && loaded !== qty ? <span className="mt-0.5 block text-white/40">كان {loaded}</span> : null}
+                              {qty <= 0 ? <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-red-300">{tr("نفد", "Sold out")}</span>
+                                : low > 0 && qty <= low ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-200">{tr("قليل", "Low")}</span>
+                                : <span className="text-white/35">{tr("متوفر", "In stock")}</span>}
+                              {loaded !== undefined && loaded !== qty ? <span className="mt-0.5 block text-white/40">{tr("كان", "was")} {loaded}</span> : null}
                             </span>
                           </li>
                         );
@@ -280,7 +282,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                 );
               })}
               <p className="text-[11px] leading-5 text-white/40">
-                الحقول الفارغة تأخذ القيمة الرمادية: الكود التلقائي، سعر المنتج، وتنبيه المخزون العام ({draft.lowStock || 0}).
+                {tr("الحقول الفارغة تأخذ القيمة الرمادية: الكود التلقائي، سعر المنتج، وتنبيه المخزون العام (", "Empty fields take the grey value: the automatic code, the product price, and the general stock alert (")}{draft.lowStock || 0}).
               </p>
             </div>
           ) : (
@@ -288,22 +290,22 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
               <table className="w-full min-w-[420px] border-collapse text-sm" data-testid="stock-grid">
                 <thead>
                   <tr className="bg-white/[0.03] text-xs text-white/55">
-                    <th className="sticky right-0 z-10 bg-surface-925 px-3 py-2 text-right font-medium">اللون</th>
+                    <th className="sticky start-0 z-10 bg-surface-925 px-3 py-2 text-start font-medium">{tr("اللون", "Colour")}</th>
                     {selected.map((s) => <th key={s.id} className="px-2 py-2 text-center font-medium">{s.name}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {draft.groups.map((g, gi) => (
                     <tr key={g.key} className="border-t border-white/[0.06]">
-                      <td className="sticky right-0 z-10 bg-surface-925 px-3 py-2">
-                        <span className="inline-flex items-center gap-2 whitespace-nowrap"><Swatch hex={g.hex} size={14} />{g.name || `لون ${gi + 1}`}</span>
+                      <td className="sticky start-0 z-10 bg-surface-925 px-3 py-2">
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap"><Swatch hex={g.hex} size={14} />{g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])}</span>
                       </td>
                       {selected.map((s) => {
                         const explicit = draft.stock[stockKey(g.key, s.id)] !== undefined;
                         if (!hasSize(draft, g.key, s.id)) {
                           return (
                             <td key={s.id} className="px-1.5 py-1.5 text-center">
-                              <button type="button" onClick={() => toggleFor(g.key, s.id)} className="h-8 w-[5.25rem] rounded-lg border border-dashed border-white/[0.12] text-xs text-white/35 hover:text-white/70" title={`ضيفي مقاس ${s.name} لـ«${g.name}»`} aria-label={`${g.name || `لون ${gi + 1}`} مش متوفر بمقاس ${s.name}`}>
+                              <button type="button" onClick={() => toggleFor(g.key, s.id)} className="h-8 w-[5.25rem] rounded-lg border border-dashed border-white/[0.12] text-xs text-white/35 hover:text-white/70" title={tr(`إضافة مقاس ${s.name} لـ«${g.name}»`, "Add size {0} to “{1}”", [s.name, g.name])} aria-label={tr(`${g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])} مش متوفر بمقاس ${s.name}`, "{0} isn't available in size {1}", [g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1]), s.name])}>
                                 —
                               </button>
                             </td>
@@ -312,16 +314,16 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                         return (
                           <td key={s.id} className="px-1.5 py-1.5 text-center">
                             <div className="inline-flex items-center rounded-lg border border-white/[0.08] bg-white/[0.02]">
-                              <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, -1)} className="h-8 w-7 text-white/50 hover:text-white" aria-label="إنقاص">−</button>
+                              <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, -1)} className="h-8 w-7 text-white/50 hover:text-white" aria-label={tr("إنقاص", "Less")}>−</button>
                               <input
                                 className={cn("h-8 w-10 bg-transparent text-center text-sm focus:outline-none", explicit ? "text-white" : "text-white/55")}
                                 inputMode="numeric"
                                 value={explicit ? draft.stock[stockKey(g.key, s.id)] : draft.defaultStock}
                                 onChange={(e) => setStock(g.key, s.id, e.target.value)}
                                 onFocus={(e) => e.target.select()}
-                                aria-label={`كمية ${g.name || `لون ${gi + 1}`} مقاس ${s.name}`}
+                                aria-label={tr(`كمية ${g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1])} مقاس ${s.name}`, "Quantity {0} size {1}", [g.name || tr(`لون ${gi + 1}`, "Colour {0}", [gi + 1]), s.name])}
                               />
-                              <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, 1)} className="h-8 w-7 text-white/50 hover:text-white" aria-label="زيادة">+</button>
+                              <button type="button" tabIndex={-1} onClick={() => stepStock(g.key, s.id, 1)} className="h-8 w-7 text-white/50 hover:text-white" aria-label={tr("زيادة", "More")}>+</button>
                             </div>
                           </td>
                         );
@@ -334,7 +336,7 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
           )}
 
           <div className="mt-4">
-            <Toggle checked={perSizePrice} onChange={(v) => { setPerSizePrice(v); if (!v) update((d) => ({ ...d, priceBySize: {} })); }} label="بعض المقاسات سعرها مختلف (لكل الألوان)" />
+            <Toggle checked={perSizePrice} onChange={(v) => { setPerSizePrice(v); if (!v) update((d) => ({ ...d, priceBySize: {} })); }} label={tr("بعض المقاسات سعرها مختلف (لكل الألوان)", "Some sizes have a different price (for every colour)")} />
             {perSizePrice && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {selected.map((s) => (
@@ -343,21 +345,21 @@ export function SizesStockSection({ draft, update, sizes, onCreateSize, error, b
                     <input
                       className="h-8 w-20 rounded-lg border border-white/[0.08] bg-surface-925 px-2 text-center text-white focus:outline-none"
                       inputMode="decimal"
-                      placeholder={basePrice != null ? String(basePrice) : "₪"}
+                      placeholder={basePrice != null ? String(basePrice) : currencySign()}
                       value={draft.priceBySize[s.id] ?? ""}
                       onChange={(e) => update((d) => ({ ...d, priceBySize: { ...d.priceBySize, [s.id]: decimal(e.target.value) } }))}
-                      aria-label={`سعر مقاس ${s.name}`}
+                      aria-label={tr(`سعر مقاس ${s.name}`, "Price of size {0}", [s.name])}
                     />
                   </label>
                 ))}
-                <span className="self-center text-xs text-white/45">الفارغ يأخذ السعر الأساسي {formatShekel(basePrice)}</span>
+                <span className="self-center text-xs text-white/45">{tr("الفارغ يأخذ السعر الأساسي", "Empty takes the base price")} {formatMoney(basePrice)}</span>
               </div>
             )}
           </div>
         </div>
       )}
       {selected.length > 0 && draft.groups.length === 0 && (
-        <p className="mt-4 rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-white/55">أضيفي صوراً أو لوناً في الخطوة ١ ليظهر جدول المقاسات.</p>
+        <p className="mt-4 rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-white/55">{tr("الصور أو اللون بالخطوة ١ بيطلّعوا جدول المقاسات.", "Add photos or a colour in step 1 to see the sizes table.")}</p>
       )}
     </Section>
   );

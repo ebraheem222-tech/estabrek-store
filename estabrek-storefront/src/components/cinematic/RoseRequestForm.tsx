@@ -11,6 +11,7 @@ import { shrinkPhoto, takeHandedPhoto } from "@/lib/requestHandover";
 import { useOptionalAccount } from "@/store/account";
 import { useSiteFeatures } from "@/store/siteFeatures";
 import { useLanguage } from "./Language";
+import { tr } from "@/lib/words";
 
 type Kind = "SIZE" | "COLOR" | "NEW_PIECE";
 type Props = {
@@ -26,14 +27,15 @@ type Props = {
   onClose?: () => void;
 };
 
-const KIND_TEXT: Record<Kind, { ar: string; en: string }> = {
-  SIZE: { ar: "مقاس مش موجود", en: "A missing size" },
-  COLOR: { ar: "لون مش موجود", en: "A missing colour" },
-  NEW_PIECE: { ar: "قطعة جديدة", en: "A new piece" },
+const KIND_TEXT: Record<Kind, { ar: string; en: string; he: string }> = {
+  SIZE: { ar: "مقاس مش موجود", en: "A missing size", he: "מידה שחסרה" },
+  COLOR: { ar: "لون مش موجود", en: "A missing colour", he: "צבע שחסר" },
+  NEW_PIECE: { ar: "قطعة جديدة", en: "A new piece", he: "פריט חדש" },
 };
 
 export function RoseRequestForm({ product, variantId, source, initialKind, initialDetails = "", withHandedPhoto, onClose }: Props) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const { requests: cfg } = useSiteFeatures();
   const account = useOptionalAccount();
   const kinds = (["SIZE", "COLOR", "NEW_PIECE"] as Kind[]).filter((k) => (k === "SIZE" ? cfg.kinds.size : k === "COLOR" ? cfg.kinds.color : cfg.kinds.newPiece));
@@ -69,10 +71,10 @@ export function RoseRequestForm({ product, variantId, source, initialKind, initi
     setError(null);
     const room = cfg.maxPhotos - photos.length;
     const picked = Array.from(list).filter((f) => f.type.startsWith("image/")).slice(0, Math.max(0, room));
-    if (list.length > room) setError(ar ? `بتقدري ترفعي ${cfg.maxPhotos} صور بس.` : `Up to ${cfg.maxPhotos} photos.`);
+    if (list.length > room) setError(tr(lang, `بتقدري ترفعي ${cfg.maxPhotos} صور بس.`, "Up to {0} photos.", [cfg.maxPhotos]));
     const ready = await Promise.all(picked.map((f) => shrinkPhoto(f)));
     const big = ready.filter((f) => f.size > 8 * 1024 * 1024);
-    if (big.length) setError(ar ? "صورة كبيرة كتير (أكثر من 8MB)." : "A photo is too big (over 8 MB).");
+    if (big.length) setError(tr(lang, "صورة كبيرة كتير (أكثر من 8MB).", "A photo is too big (over 8 MB)."));
     setPhotos((p) => [...p, ...ready.filter((f) => f.size <= 8 * 1024 * 1024).map((file) => ({ file, url: URL.createObjectURL(file) }))]);
     if (picker.current) picker.current.value = "";
   };
@@ -89,9 +91,9 @@ export function RoseRequestForm({ product, variantId, source, initialKind, initi
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!wantOk) return setError(kind === "SIZE" ? (ar ? "شو المقاس اللي بدك؟" : "Which size?") : kind === "COLOR" ? (ar ? "شو اللون اللي بدك؟" : "Which colour?") : ar ? "احكيلنا عن القطعة أو ارفعي صورة." : "Tell us about the piece or add a photo.");
-    if (!nameOk || !phoneOk) return setError(ar ? "اكتبي اسمكِ ورقمكِ لنخبّركِ." : "Add your name and phone so we can tell you.");
-    if (!emailOk) return setError(ar ? "الإيميل مش مكتوب صح." : "That email doesn't look right.");
+    if (!wantOk) return setError(kind === "SIZE" ? (tr(lang, "شو المقاس اللي بدك؟", "Which size?")) : kind === "COLOR" ? (tr(lang, "شو اللون اللي بدك؟", "Which colour?")) : tr(lang, "احكيلنا عن القطعة أو ارفعي صورة.", "Tell us about the piece or add a photo."));
+    if (!nameOk || !phoneOk) return setError(tr(lang, "اكتبي اسمكِ ورقمكِ لنخبّركِ.", "Add your name and phone so we can tell you."));
+    if (!emailOk) return setError(tr(lang, "الإيميل مش مكتوب صح.", "That email doesn't look right."));
     setState("sending");
     setError(null);
     const body = new FormData();
@@ -105,6 +107,7 @@ export function RoseRequestForm({ product, variantId, source, initialKind, initi
     if (kind !== "SIZE" && form.wantedColor.trim()) body.set("wantedColor", form.wantedColor.trim());
     if (form.details.trim()) body.set("details", form.details.trim());
     body.set("source", source);
+    body.set("lang", lang);
     photos.forEach((p) => body.append("photos", p.file, p.file.name));
     try {
       const res = await fetch(`${apiBaseClient()}/requests`, { method: "POST", body });
@@ -112,20 +115,20 @@ export function RoseRequestForm({ product, variantId, source, initialKind, initi
       if (!res.ok) {
         const code = data?.error;
         throw new Error(
-          code === "TOO_MANY_REQUESTS" ? (ar ? "وصلتنا طلبات كتير منكِ اليوم. جربي بكرا أو راسلينا." : "We've had several requests from you today. Try tomorrow or message us.")
-          : code === "PHOTO_TOO_BIG" ? (ar ? "صورة كبيرة كتير (أكثر من 8MB)." : "A photo is too big (over 8 MB).")
-          : code === "BAD_PHOTO" ? (ar ? "ما قدرنا نقرأ وحدة من الصور. جربي صورة تانية." : "We couldn't read one of the photos. Try another.")
-          : code === "BAD_PHONE" ? (ar ? "رقم الهاتف مش صحيح." : "That phone number isn't right.")
-          : code === "KIND_OFF" || code === "FEATURE_OFF" ? (ar ? "هالخدمة مش متاحة هلأ." : "This isn't available right now.")
-          : code === "STORAGE_NOT_READY" ? (ar ? "ما زبط نرفع الصور هلأ. ابعتي بدون صور أو جربي بعدين." : "Photos can't be uploaded right now. Send without photos or try later.")
-          : ar ? `ما زبط نبعت الطلب (${res.status}).` : `Could not send (${res.status}).`,
+          code === "TOO_MANY_REQUESTS" ? (tr(lang, "وصلتنا طلبات كتير منكِ اليوم. جربي بكرا أو راسلينا.", "We've had several requests from you today. Try tomorrow or message us."))
+          : code === "PHOTO_TOO_BIG" ? (tr(lang, "صورة كبيرة كتير (أكثر من 8MB).", "A photo is too big (over 8 MB)."))
+          : code === "BAD_PHOTO" ? (tr(lang, "ما قدرنا نقرأ وحدة من الصور. جربي صورة تانية.", "We couldn't read one of the photos. Try another."))
+          : code === "BAD_PHONE" ? (tr(lang, "رقم الهاتف مش صحيح.", "That phone number isn't right."))
+          : code === "KIND_OFF" || code === "FEATURE_OFF" ? (tr(lang, "هالخدمة مش متاحة هلأ.", "This isn't available right now."))
+          : code === "STORAGE_NOT_READY" ? (tr(lang, "ما زبط نرفع الصور هلأ. ابعتي بدون صور أو جربي بعدين.", "Photos can't be uploaded right now. Send without photos or try later."))
+          : tr(lang, `ما زبط نبعت الطلب (${res.status}).`, "Could not send ({0}).", [res.status]),
         );
       }
       razanCount("request:sent");
       setState("done");
     } catch (e: any) {
       setState("idle");
-      setError(e?.message || (ar ? "صار خطأ" : "Something went wrong"));
+      setError(e?.message || (tr(lang, "صار خطأ", "Something went wrong")));
     }
   };
 
@@ -133,64 +136,64 @@ export function RoseRequestForm({ product, variantId, source, initialKind, initi
     return (
       <div className="rose-request rose-request-done" data-testid="request-done" role="status">
         <span aria-hidden="true">🌸</span>
-        <strong>{ar ? "وصلنا طلبكِ!" : "We have your request!"}</strong>
-        <p>{ar ? "رح ندوّر عليها بأقصى جهدنا، ونخبّركِ على رقمكِ أول ما تصير عنا." : "We'll do our best to find it and let you know as soon as it's here."}</p>
-        {onClose ? <button type="button" className="atelier-button" onClick={onClose}>{ar ? "تمام" : "OK"}</button> : null}
+        <strong>{tr(lang, "وصلنا طلبكِ!", "We have your request!")}</strong>
+        <p>{tr(lang, "رح ندوّر عليها بأقصى جهدنا، ونخبّركِ على رقمكِ أول ما تصير عنا.", "We'll do our best to find it and let you know as soon as it's here.")}</p>
+        {onClose ? <button type="button" className="atelier-button" onClick={onClose}>{tr(lang, "تمام", "OK")}</button> : null}
       </div>
     );
   }
 
   return (
     <form className="rose-request" onSubmit={submit} data-testid="request-form" noValidate>
-      {product ? <p className="rose-request-for">{ar ? "عن:" : "About:"} <b>{product.title}</b></p> : null}
+      {product ? <p className="rose-request-for">{tr(lang, "عن:", "About:")} <b>{product.title}</b></p> : null}
       {kinds.length > 1 ? (
-        <div className="rose-request-kinds" role="radiogroup" aria-label={ar ? "شو بدك؟" : "What are you after?"}>
+        <div className="rose-request-kinds" role="radiogroup" aria-label={tr(lang, "شو بدك؟", "What are you after?")}>
           {kinds.map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => { setKind(k); setError(null); }}>{KIND_TEXT[k][ar ? "ar" : "en"]}</button>
+            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => { setKind(k); setError(null); }}>{KIND_TEXT[k][lang]}</button>
           ))}
         </div>
       ) : null}
 
       {kind === "SIZE" ? (
-        <label className="rose-request-field"><span>{ar ? "المقاس اللي بدك" : "Size you need"}</span><input value={form.wantedSize} onChange={set("wantedSize")} maxLength={40} placeholder={ar ? "مثلاً: XL أو 54" : "e.g. XL or 54"} /></label>
+        <label className="rose-request-field"><span>{tr(lang, "المقاس اللي بدك", "Size you need")}</span><input value={form.wantedSize} onChange={set("wantedSize")} maxLength={40} placeholder={tr(lang, "مثلاً: XL أو 54", "e.g. XL or 54")} /></label>
       ) : (
-        <label className="rose-request-field"><span>{kind === "COLOR" ? (ar ? "اللون اللي بدك" : "Colour you want") : ar ? "اللون (اختياري)" : "Colour (optional)"}</span><input value={form.wantedColor} onChange={set("wantedColor")} maxLength={60} placeholder={ar ? "مثلاً: زيتي" : "e.g. olive"} /></label>
+        <label className="rose-request-field"><span>{kind === "COLOR" ? (tr(lang, "اللون اللي بدك", "Colour you want")) : tr(lang, "اللون (اختياري)", "Colour (optional)")}</span><input value={form.wantedColor} onChange={set("wantedColor")} maxLength={60} placeholder={tr(lang, "مثلاً: زيتي", "e.g. olive")} /></label>
       )}
       <label className="rose-request-field">
-        <span>{kind === "NEW_PIECE" ? (ar ? "احكيلنا عن القطعة" : "Tell us about the piece") : ar ? "تفاصيل (اختياري)" : "Details (optional)"}</span>
-        <textarea value={form.details} onChange={set("details")} maxLength={1000} rows={3} placeholder={kind === "NEW_PIECE" ? (ar ? "مثلاً: حجاب شيفون طويل، أو عباية زي اللي بالصورة" : "e.g. a long chiffon hijab, or an abaya like the photo") : ""} />
+        <span>{kind === "NEW_PIECE" ? (tr(lang, "احكيلنا عن القطعة", "Tell us about the piece")) : tr(lang, "تفاصيل (اختياري)", "Details (optional)")}</span>
+        <textarea value={form.details} onChange={set("details")} maxLength={1000} rows={3} placeholder={kind === "NEW_PIECE" ? (tr(lang, "مثلاً: حجاب شيفون طويل، أو عباية زي اللي بالصورة", "e.g. a long chiffon hijab, or an abaya like the photo")) : ""} />
       </label>
 
       {cfg.maxPhotos > 0 ? (
         <div className="rose-request-photos">
-          <span>{ar ? `صور (لحد ${cfg.maxPhotos}) — اختياري` : `Photos (up to ${cfg.maxPhotos}) — optional`}</span>
+          <span>{tr(lang, `صور (لحد ${cfg.maxPhotos}) — اختياري`, "Photos (up to {0}) — optional", [cfg.maxPhotos])}</span>
           <div>
             {photos.map((p, i) => (
               <figure key={p.url}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.url} alt={ar ? `صورة ${i + 1}` : `Photo ${i + 1}`} />
-                <button type="button" onClick={() => removePhoto(i)} aria-label={ar ? "شيلي الصورة" : "Remove photo"}>✕</button>
+                <img src={p.url} alt={tr(lang, `صورة ${i + 1}`, "Photo {0}", [i + 1])} />
+                <button type="button" onClick={() => removePhoto(i)} aria-label={tr(lang, "شيلي الصورة", "Remove photo")}>✕</button>
               </figure>
             ))}
             {photos.length < cfg.maxPhotos ? (
-              <button type="button" className="rose-request-add" onClick={() => picker.current?.click()} aria-label={ar ? "ارفعي صورة" : "Add a photo"}>＋<small>{ar ? "صورة" : "Photo"}</small></button>
+              <button type="button" className="rose-request-add" onClick={() => picker.current?.click()} aria-label={tr(lang, "ارفعي صورة", "Add a photo")}>＋<small>{tr(lang, "صورة", "Photo")}</small></button>
             ) : null}
           </div>
           <input ref={picker} type="file" accept="image/*" multiple hidden onChange={(e) => void addPhotos(e.target.files)} data-testid="request-photos" />
-          <small>{ar ? `الصور بنشوفها نحن بس، وبتنمسح لحالها بعد ${cfg.photoDays} يوم.` : `Only our team sees the photos; they're deleted after ${cfg.photoDays} days.`}</small>
+          <small>{tr(lang, `الصور بنشوفها نحن بس، وبتنمسح لحالها بعد ${cfg.photoDays} يوم.`, "Only our team sees the photos; they're deleted after {0} days.", [cfg.photoDays])}</small>
         </div>
       ) : null}
 
       <div className="rose-request-two">
-        <label className="rose-request-field"><span>{ar ? "الاسم" : "Name"}</span><input value={form.name} onChange={set("name")} autoComplete="name" maxLength={120} /></label>
-        <label className="rose-request-field"><span>{ar ? "رقم الهاتف" : "Phone"}</span><input value={form.phone} onChange={set("phone")} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={40} /></label>
+        <label className="rose-request-field"><span>{tr(lang, "الاسم", "Name")}</span><input value={form.name} onChange={set("name")} autoComplete="name" maxLength={120} /></label>
+        <label className="rose-request-field"><span>{tr(lang, "رقم الهاتف", "Phone")}</span><input value={form.phone} onChange={set("phone")} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={40} /></label>
       </div>
-      <label className="rose-request-field"><span>{ar ? "الإيميل (اختياري)" : "Email (optional)"}</span><input value={form.email} onChange={set("email")} type="email" autoComplete="email" dir="ltr" maxLength={160} /></label>
+      <label className="rose-request-field"><span>{tr(lang, "الإيميل (اختياري)", "Email (optional)")}</span><input value={form.email} onChange={set("email")} type="email" autoComplete="email" dir="ltr" maxLength={160} /></label>
 
       {error ? <p className="rose-request-err" role="alert">{error}</p> : null}
       <div className="rose-request-actions">
-        <button type="submit" className="atelier-button button-dark" disabled={state === "sending"}>{state === "sending" ? (ar ? "عم نبعت…" : "Sending…") : ar ? "ابعتي الطلب" : "Send request"}</button>
-        {onClose ? <button type="button" className="rose-request-cancel" onClick={onClose}>{ar ? "إلغاء" : "Cancel"}</button> : null}
+        <button type="submit" className="atelier-button button-dark" disabled={state === "sending"}>{state === "sending" ? (tr(lang, "عم نبعت…", "Sending…")) : tr(lang, "ابعتي الطلب", "Send request")}</button>
+        {onClose ? <button type="button" className="rose-request-cancel" onClick={onClose}>{tr(lang, "إلغاء", "Cancel")}</button> : null}
       </div>
     </form>
   );

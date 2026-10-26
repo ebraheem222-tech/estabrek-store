@@ -6,7 +6,8 @@ import "./index.css";
 import "./App.css";
 import "./theme/skins.css";
 import "./cms/effects/effects.css";
-import "./i18n";
+// The admin's language and direction before anything renders (src/lib/lang.ts).
+import "./lib/lang";
 import { queryClient } from "./lib/queryClient";
 import { applySkin, readSkin } from "./theme/skin";
 

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { tr } from "@/lib/words";
+import { useLanguage } from "@/components/cinematic/Language";
 
 function getSpeechRecognitionCtor(): any | null {
   if (typeof window === "undefined") return null;
@@ -15,6 +17,7 @@ type Props = {
 };
 
 export function VoiceSearchButton({ className, withLabel, label }: Props) {
+  const { language: lang } = useLanguage();
   const router = useRouter();
   const [active, setActive] = useState(false);
   const [supported, setSupported] = useState(true);
@@ -106,7 +109,7 @@ export function VoiceSearchButton({ className, withLabel, label }: Props) {
   }
 
   const ar = typeof document !== "undefined" && document.documentElement?.lang?.startsWith("ar");
-  const title = error || (supported ? (ar ? "بحث بالصوت" : "Voice search") : ar ? "البحث بالصوت غير مدعوم" : "Voice search not supported");
+  const title = error || (supported ? (tr(lang, "بحث بالصوت", "Voice search")) : tr(lang, "البحث بالصوت غير مدعوم", "Voice search not supported"));
 
   return (
     <>
@@ -114,7 +117,7 @@ export function VoiceSearchButton({ className, withLabel, label }: Props) {
         type="button"
         onClick={onToggle}
         className={className}
-        aria-label={ar ? "بحث بالصوت" : "Voice search"}
+        aria-label={tr(lang, "بحث بالصوت", "Voice search")}
         aria-pressed={active}
         disabled={!supported}
         title={title}

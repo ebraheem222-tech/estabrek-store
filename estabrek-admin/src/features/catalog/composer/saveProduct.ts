@@ -6,6 +6,7 @@ import { createProduct, getProductFull, updateProductFull, type CatalogSize, typ
 import { backendHasStockTools } from "../../../api/inventory.api";
 import { shortId } from "../../../lib/productComposer";
 import { buildItems, effectiveSlug, removedIds, type ComposerDraft } from "./composerModel";
+import { tidyTranslations } from "../../../lib/translations";
 
 /** The kind of product and its values, as the server takes them (the type's fields come from the page). */
 export type TypedValues = {
@@ -84,6 +85,7 @@ export async function saveComposedProduct(opts: {
           description: draft.description.trim() || null,
           seoTitle: draft.seoTitle.trim() || null,
           seoDescription: draft.seoDescription.trim() || null,
+          translations: tidyTranslations(draft.translations),
           isActive: publish,
           ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}), ...(opts.typed.delivery ?? {}), ...(opts.typed.redeemNote !== undefined ? { redeemNote: opts.typed.redeemNote } : {}), ...(opts.typed.protection ?? {}) } : {}),
         },
@@ -126,6 +128,7 @@ export async function saveEditedProduct(opts: {
       description: draft.description.trim() || null,
       seoTitle: draft.seoTitle.trim() || null,
       seoDescription: draft.seoDescription.trim() || null,
+      translations: tidyTranslations(draft.translations),
       isActive: publish,
       ...(opts.typed ? { ...(opts.typed.typeId ? { typeId: opts.typed.typeId } : {}), attributes: opts.typed.attributes, ...(opts.typed.event ?? {}), ...(opts.typed.delivery ?? {}), ...(opts.typed.redeemNote !== undefined ? { redeemNote: opts.typed.redeemNote } : {}), ...(opts.typed.protection ?? {}) } : {}),
     },

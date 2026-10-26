@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { MediaLibraryModal } from "./MediaLibraryModal";
+import { tr } from "@/lib/words";
 
 type Props = {
   label?: string;
@@ -48,12 +49,12 @@ export function MediaUrlInput({
         </div>
 
         <Button type="button" variant="secondary" className="h-10" onClick={() => setOpen(true)}>
-          اختيار
+          {tr("اختيار", "Choose")}
         </Button>
 
         {allowClear ? (
           <Button type="button" variant="ghost" className="h-10" onClick={() => onChange("")} disabled={!has}>
-            مسح
+            {tr("مسح", "Clear")}
           </Button>
         ) : null}
       </div>

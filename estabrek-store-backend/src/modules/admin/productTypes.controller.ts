@@ -68,6 +68,7 @@ r.post(
         deliveryMinDays: b.deliveryMinDays ?? null,
         deliveryMaxDays: b.deliveryMaxDays ?? null,
         position: b.position ?? (last ? last.position + 1 : 0),
+        translations: (b.translations ?? {}) as any,
       },
     });
     refresh();

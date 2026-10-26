@@ -2,6 +2,7 @@
 // phone and in-app browsers block or answer "no" to without showing anything.
 import React, { useCallback, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { tr } from "@/lib/words";
 
 type Ask = { title: string; message: string; confirmText?: string; cancelText?: string; variant?: "danger" | "warning" | "info" };
 
@@ -27,8 +28,8 @@ export function useConfirm() {
       open={Boolean(ask)}
       title={ask?.title}
       message={ask?.message}
-      confirmText={ask?.confirmText ?? "حذف"}
-      cancelText={ask?.cancelText ?? "إلغاء"}
+      confirmText={ask?.confirmText ?? tr("حذف", "Delete")}
+      cancelText={ask?.cancelText ?? tr("إلغاء", "Cancel")}
       variant={ask?.variant ?? "danger"}
       onConfirm={() => close(true)}
       onClose={() => close(false)}

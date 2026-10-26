@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { apiBaseClient } from "@/lib/apiClient";
 import { useOptionalAccount } from "@/store/account";
 import { useLanguage } from "./Language";
+import { tr } from "@/lib/words";
 
 const EMAIL_KEY = "estabrek_alert_email";
 
@@ -11,7 +12,8 @@ const EMAIL_KEY = "estabrek_alert_email";
  * (no account needed) and gets one email when the size is back in stock.
  */
 export function RoseStockAlert({ variantId, label }: { variantId: string; label: string }) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
   const account = useOptionalAccount();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "done" | "hidden">("idle");
@@ -40,7 +42,7 @@ export function RoseStockAlert({ variantId, label }: { variantId: string; label:
     event.preventDefault();
     const value = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setError(ar ? "اكتبي إيميل صحيح." : "Please enter a valid email.");
+      setError(tr(lang, "اكتبي إيميل صحيح.", "Please enter a valid email."));
       return;
     }
     setState("sending");
@@ -49,7 +51,7 @@ export function RoseStockAlert({ variantId, label }: { variantId: string; label:
       const res = await fetch(`${apiBaseClient()}/stock-alerts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: value, variantId }),
+        body: JSON.stringify({ email: value, variantId, lang }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -57,12 +59,12 @@ export function RoseStockAlert({ variantId, label }: { variantId: string; label:
         setState("idle");
         setError(
           data?.error === "IN_STOCK"
-            ? ar ? "هذا المقاس رجع متوفر! حدّثي الصفحة." : "This size is back! Refresh the page."
+            ? tr(lang, "هذا المقاس رجع متوفر! حدّثي الصفحة.", "This size is back! Refresh the page.")
             : data?.error === "TOO_MANY_ALERTS" || data?.error === "RATE_LIMIT" || res.status === 429
-              ? ar ? "طلبات كثيرة. جرّبي بعد شوي." : "Too many requests. Try again shortly."
+              ? tr(lang, "طلبات كثيرة. جرّبي بعد شوي.", "Too many requests. Try again shortly.")
               : data?.error === "VALIDATION_ERROR"
-                ? ar ? "اكتبي إيميل صحيح." : "Please enter a valid email."
-                : ar ? "صار خطأ. جرّبي كمان مرة." : "Something went wrong. Please try again.",
+                ? tr(lang, "اكتبي إيميل صحيح.", "Please enter a valid email.")
+                : tr(lang, "صار خطأ. جرّبي كمان مرة.", "Something went wrong. Please try again."),
         );
         return;
       }
@@ -74,23 +76,23 @@ export function RoseStockAlert({ variantId, label }: { variantId: string; label:
       setState("done");
     } catch {
       setState("idle");
-      setError(ar ? "ما في اتصال. جرّبي كمان مرة." : "No connection. Please try again.");
+      setError(tr(lang, "ما في اتصال. جرّبي كمان مرة.", "No connection. Please try again."));
     }
   };
 
   if (state === "done") {
     return (
       <div className="rose-stock-alert done" role="status" data-testid="stock-alert-done">
-        <strong>{ar ? "تمام، سجّلناكِ." : "You're on the list."}</strong>
-        <p>{ar ? `أول ما يرجع ${label} منبعتلكِ إيميل على ${email.trim()}.` : `We'll email ${email.trim()} as soon as ${label} is back.`}</p>
+        <strong>{tr(lang, "تمام، سجّلناكِ.", "You're on the list.")}</strong>
+        <p>{tr(lang, `أول ما يرجع ${label} منبعتلكِ إيميل على ${email.trim()}.`, "We'll email {0} as soon as {1} is back.", [email.trim(), label])}</p>
       </div>
     );
   }
 
   return (
     <form className="rose-stock-alert" onSubmit={submit} noValidate data-testid="stock-alert">
-      <strong>{ar ? "بلّغيني لما يرجع" : "Tell me when it's back"}</strong>
-      <p>{ar ? `${label} نفد. اتركي إيميلكِ ومنبعتلكِ رسالة وحدة أول ما يرجع.` : `${label} is sold out. Leave your email and we'll send one message when it's back.`}</p>
+      <strong>{tr(lang, "بلّغيني لما يرجع", "Tell me when it's back")}</strong>
+      <p>{tr(lang, `${label} نفد. اتركي إيميلكِ ومنبعتلكِ رسالة وحدة أول ما يرجع.`, "{0} is sold out. Leave your email and we'll send one message when it's back.", [label])}</p>
       <div className="rose-stock-alert-row">
         <input
           type="email"
@@ -98,12 +100,12 @@ export function RoseStockAlert({ variantId, label }: { variantId: string; label:
           autoComplete="email"
           dir="ltr"
           placeholder="name@example.com"
-          aria-label={ar ? "الإيميل" : "Email"}
+          aria-label={tr(lang, "الإيميل", "Email")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <button type="submit" className="atelier-button button-dark" disabled={state === "sending"}>
-          {state === "sending" ? (ar ? "لحظة…" : "One moment…") : ar ? "بلّغيني" : "Notify me"}
+          {state === "sending" ? (tr(lang, "لحظة…", "One moment…")) : tr(lang, "بلّغيني", "Notify me")}
         </button>
       </div>
       {error ? <p className="rose-form-error" role="alert">{error}</p> : null}

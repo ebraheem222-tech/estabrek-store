@@ -10,9 +10,13 @@ export const OUTFITS = ["abaya", "dress", "coat", "khimar", "tunic", "eid"] as c
 export const SEASONS = ["ramadan", "eid", "summer", "winter"] as const;
 
 const Line = z.string().trim().max(160);
-const Txt = z.object({ ar: Line.default(""), en: Line.default("") }).default({ ar: "", en: "" });
+const Txt = z.object({ ar: Line.default(""), en: Line.default(""), he: Line.default("") }).default({ ar: "", en: "", he: "" });
 
 export const RazanSchema = z.object({
+  /** Her name in the shop (empty = «رزان» / "Rose" / «רוז»); another store can call her anything. */
+  name: z
+    .object({ ar: z.string().trim().max(30).default(""), en: z.string().trim().max(30).default(""), he: z.string().trim().max(30).default("") })
+    .default({ ar: "", en: "", he: "" }),
   /** Razan on the shop at all (rose design). */
   enabled: z.boolean().default(true),
   /** She walks in and says hello on the home page. */

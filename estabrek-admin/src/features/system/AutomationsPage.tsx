@@ -17,6 +17,7 @@ import * as AutoAPI from "../../api/automations.api";
 import type { Action, AutomationRule, AutomationsPage as Data, RuleInput, Trigger } from "../../api/automations.api";
 import { relativeTime } from "../team/teamText";
 import { ACTION_TEXT, TRIGGER_TEXT, WORD_TEXT, channelWarning, cooldownText, newRule, ruleSentence, runDetailText } from "./automationText";
+import { currencySign } from "../../lib/money";
 
 const field = "h-10 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-sm disabled:opacity-60";
 const KEY = ["automations"];
@@ -50,7 +51,7 @@ export default function AutomationsPage() {
 
   if (!q.data) {
     return (
-      <div dir="rtl">
+      <div>
         <PageHeader title="التلقائيات" />
         <Card>{q.isError ? <div className="text-sm text-red-200">{getApiErrorMessage(q.error)}</div> : <Spinner />}</Card>
       </div>
@@ -60,7 +61,7 @@ export default function AutomationsPage() {
   const ruleName = (id: string) => d.rules.find((r) => r.id === id)?.name ?? "قاعدة محذوفة";
 
   return (
-    <div dir="rtl" className="space-y-4 pb-16" data-testid="automations-page">
+    <div className="space-y-4 pb-16" data-testid="automations-page">
       <PageHeader
         title="التلقائيات"
         subtitle="لما يصير شي، اعمل شي: طلب جديد ← واتساب إلك، مقاس قرب يخلص ← إيميل، فيديو جهز ← إشعار، منتج عم ينتشر ← تثبيت بالكاش."
@@ -203,7 +204,7 @@ function RuleForm({ draft, setDraft, data, editing, canPin, saving, onSave, onCa
 
         {draft.trigger === "order.created" ? (
           <label className="block">
-            <span className="text-sm font-medium">بس الطلبات من (₪، اختياري)</span>
+            <span className="text-sm font-medium">بس الطلبات من ({currencySign()}، اختياري)</span>
             <input type="number" min={0} className={`${field} mt-1.5`} value={draft.conditions.minTotal ?? ""} placeholder="كل الطلبات" onChange={(e) => setDraft({ ...draft, conditions: e.target.value === "" ? {} : { minTotal: Number(e.target.value) } })} />
           </label>
         ) : null}

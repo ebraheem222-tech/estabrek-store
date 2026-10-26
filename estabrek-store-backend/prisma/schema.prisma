@@ -162,6 +162,8 @@ model AdminUser {
   passwordHash String
   role         Role   @default(SUPERADMIN)
   status       AdminStatus @default(ACTIVE)
+  /// The admin's language for this member (top bar switch); empty = the store's main language.
+  locale       Locale?
   /// For STAFF accounts: what they may do. Owners (SUPERADMIN) ignore it.
   staffRoleId  String?
   staffRole    StaffRole?  @relation(fields: [staffRoleId], references: [id], onDelete: SetNull)
@@ -858,6 +860,13 @@ model Page {
   translations PageTranslation[]
   revisions PageRevision[]
 
+  /// 1 = the list of sections; 2 = `tree` (the new CMS: elements with parents and
+  /// children, words in ar/en/he). Old sections stay rows, as `legacy` nodes.
+  format Int  @default(1)
+  tree   Json?
+  /// The new editor's unpublished changes (src/lib/pageDraft.ts); null = none.
+  draft  Json?
+
   headScripts Json?
   bodyScripts Json?
   customCss   String?
@@ -897,6 +906,8 @@ model PageRevision {
   bodyScripts    Json?
 
   sections  Json
+  format    Int     @default(1)
+  tree      Json?
   reason    String?
   createdBy String?
   createdAt DateTime @default(now())
@@ -956,7 +967,7 @@ palette          Json?
   posterUrl  String?
   /** Converted versions: [{ id, preset, profile, status, url, bytes, error, createdAt, checkedAt }] (lib/videoProfiles.ts). */
   renditions Json?
-  /** What the upload was: codec, sound, the original's address. */
+  /** What the upload was: codec, sound, the original's address. Scans (kind = "SCAN"): the 360° sheet's manifest (scans.controller.ts). */
   videoMeta  Json?
   @@index([folder])
   @@index([kind, folder, createdAt])
@@ -1088,6 +1099,8 @@ model Category {
   name      String
   slug      String     @unique
   iconUrl   String?
+  /// Other languages ({ en?: {...}, he?: {...} }); the fields above are the main language. See src/lib/translations.ts.
+  translations Json @default("{}")
   parentId  String?
   parent    Category?  @relation("CategoryToChildren", fields: [parentId], references: [id], onDelete: SetNull)
   children  Category[] @relation("CategoryToChildren")
@@ -1106,6 +1119,8 @@ model Product {
   /// Search-engine title and description (the page falls back to the title and description).
   seoTitle       String?
   seoDescription String?
+  /// Other languages ({ en?: {...}, he?: {...} }); the fields above are the main language. See src/lib/translations.ts.
+  translations Json @default("{}")
   /** semantic search embedding (vector as JSON array) */
   embedding        Json?
   /** text used to generate embedding */
@@ -1181,6 +1196,8 @@ model ProductType {
   /// What the two choices are called for this kind ("اللون"/"المقاس", or e.g. "الدرجة"), and whether they show.
   colorLabel  String    @default("اللون")
   sizeLabel   String    @default("المقاس")
+  /// Other languages ({ en?: {...}, he?: {...} }); the fields above are the main language. See src/lib/translations.ts.
+  translations Json @default("{}")
   showColor   Boolean   @default(true)
   showSize    Boolean   @default(true)
   /// How it reaches the shopper: shipped, downloaded, or a booking with a ticket.
@@ -1429,6 +1446,8 @@ model OrderRequest {
   total          Decimal? @db.Decimal(10, 2)
 
   currencyCode   String   @default("ILS")
+  /// The shopper's language (her emails); empty = the store's main language.
+  locale Locale?
 
   items          OrderRequestItem[]
 
@@ -1729,6 +1748,8 @@ model StockAlert {
   productId  String
   product    Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   status     StockAlertStatus @default(WAITING)
+  /// The shopper's language (her emails); empty = the store's main language.
+  locale Locale?
   /** For the stop link in the email. */
   token      String           @unique
   attempts   Int              @default(0)
@@ -1809,6 +1830,8 @@ model CustomerRequest {
   name            String
   phone           String
   email           String?
+  /// The shopper's language (her emails); empty = the store's main language.
+  locale Locale?
   /// The piece she was looking at, if any.
   productId       String?
   product         Product?      @relation("RequestProduct", fields: [productId], references: [id], onDelete: SetNull)

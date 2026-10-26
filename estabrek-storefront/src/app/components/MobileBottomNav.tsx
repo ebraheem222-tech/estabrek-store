@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";

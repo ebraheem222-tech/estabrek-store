@@ -5,13 +5,16 @@ import { getProductBadge, getProductSecondaryImage } from "@/lib/productBadges";
 import { loadSeasonalEdits } from "@/lib/seasonalEdits";
 import { loadCollectionStories } from "@/lib/collectionStories";
 import LegacyFallbackHome from "@/components/LegacyFallbackHome";
+import type { Lang } from "@/lib/i18n";
+import { localizeCategories } from "@/lib/localize";
 
-export default async function FallbackHome() {
+export default async function FallbackHome({ lang }: { lang?: Lang } = {}) {
   if (process.env.ESTABREK_HOME_MODE === "cms") return <LegacyFallbackHome />;
   const [bootstrap, categories, catalog] = await Promise.all([
     getBootstrap(),
     listCategories(),
     listProducts({
+      lang,
       sort: "latest",
       page: 1,
       pageSize: 4,
@@ -21,8 +24,8 @@ export default async function FallbackHome() {
   ]);
   const currencyCode = bootstrap.site.currencyCode || "ILS";
   const [seasons, stories] = await Promise.all([
-    loadSeasonalEdits(categories ?? [], currencyCode),
-    loadCollectionStories(categories ?? [], currencyCode),
+    loadSeasonalEdits(categories ?? [], currencyCode, lang),
+    loadCollectionStories(categories ?? [], currencyCode, lang),
   ]);
   const products = (catalog.items ?? []).map((product) => ({
     id: product.id,
@@ -40,7 +43,7 @@ export default async function FallbackHome() {
   return (
     <RoseHome
       products={products}
-      categories={categories ?? []}
+      categories={lang ? localizeCategories(categories, lang) : categories ?? []}
       currencyCode={currencyCode}
       seasons={seasons}
       stories={stories}

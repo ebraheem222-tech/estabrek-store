@@ -19,6 +19,10 @@ import { razanSelection } from "@/lib/razanProduct";
 import { useOptionalAccount } from "@/store/account";
 import { useSiteFeatures } from "@/store/siteFeatures";
 import { showsLeft } from "@/lib/scarcity";
+import { useNames } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { translatedTypeLabel } from "@/lib/localize";
+import { useLanguage } from "../Language";
 
 type Step = "color" | "size" | "qty" | "name" | "phone" | "address" | "summary";
 type Done = { kind: "order"; orderId?: string } | { kind: "call" };
@@ -27,6 +31,8 @@ const PHONE_OK = (v: string) => v.replace(/\D/g, "").length >= 7;
 const MAX_QTY = 10;
 
 export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProduct; ar: boolean; onClose: () => void }) {
+  const { language: lang } = useLanguage();
+  const n = useNames();
   const account = useOptionalAccount();
   const { delivery: deliveryRaw, scarcity } = useSiteFeatures();
   const cities = useMemo(() => deliveryCities(normalizeDelivery(deliveryRaw)).flatMap((g) => g.cities), [deliveryRaw]);
@@ -34,8 +40,8 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
   const fulfillment = kind?.fulfillment ?? "SHIPPING";
   const ships = fulfillment === "SHIPPING";
   const items = useMemo(() => (product.items ?? []).filter((it) => (it.variants ?? []).length > 0), [product]);
-  const colorWord = ar ? kind?.colorLabel || "اللون" : "colour";
-  const sizeWord = ar ? kind?.sizeLabel || "المقاس" : "size";
+  const colorWord = ar ? kind?.colorLabel || "اللون" : translatedTypeLabel(kind, lang, "colorLabel") || tr(lang, "اللون", "colour");
+  const sizeWord = ar ? kind?.sizeLabel || "المقاس" : translatedTypeLabel(kind, lang, "sizeLabel") || tr(lang, "المقاس", "size");
 
   // Start from what the page has selected.
   const [colorKey, setColorKey] = useState(() => {
@@ -121,12 +127,12 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
 
   async function order() {
     if (!variant || busy) return;
-    if (!emailOk) { setErr(ar ? "الإيميل مش مكتوب صح." : "That email doesn't look right."); return; }
+    if (!emailOk) { setErr(tr(lang, "الإيميل مش مكتوب صح.", "That email doesn't look right.")); return; }
     setBusy(true);
     setErr(null);
     const note = [
-      ar ? "طلب بمساعدة رزان" : "Ordered with Razan's help",
-      unsure ? (ar ? "مش متأكدة من المقاس — بدها حدا يساعدها فيه" : "Not sure about the size — please help her choose") : "",
+      tr(lang, `طلب بمساعدة ${n.assistant}`, "Ordered with {0}'s help", [n.assistant]),
+      unsure ? (tr(lang, "مش متأكدة من المقاس — بدها حدا يساعدها فيه", "Not sure about the size — please help her choose")) : "",
     ].filter(Boolean).join(" · ");
     try {
       const res = await fetch(`${apiBaseClient()}/catalog/order-requests`, {
@@ -134,6 +140,7 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
         headers: { "Content-Type": "application/json", ...((await account?.authHeaders()) ?? {}) },
         body: JSON.stringify({
           items: [{ variantId: variant.id, quantity: qty }],
+          lang,
           customerName: form.name.trim(),
           phone: form.phone.trim(),
           ...(form.email.trim() ? { email: form.email.trim() } : {}),
@@ -147,17 +154,17 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") {
         const a = data?.details?.lines?.[0]?.available ?? 0;
         throw new Error(a > 0
-          ? ar ? `ضايل منها ${a} بس. غيّري الكمية وجربي كمان مرة.` : `Only ${a} left. Change the quantity and try again.`
-          : ar ? "خلصت هالقطعة بهاد الاختيار هلأ. اختاري لون أو مقاس تاني، أو اطلبي حدا يحكيكِ." : "This choice just sold out. Pick another colour or size, or ask us to call you.");
+          ? tr(lang, `ضايل منها ${a} بس. غيّري الكمية وجربي كمان مرة.`, "Only {0} left. Change the quantity and try again.", [a])
+          : tr(lang, "خلصت هالقطعة بهاد الاختيار هلأ. اختاري لون أو مقاس تاني، أو اطلبي حدا يحكيكِ.", "This choice just sold out. Pick another colour or size, or ask us to call you."));
       }
-      if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(ar ? "موعد هالحجز مرق، فما عاد فينا نحجزه." : "This booking has already taken place.");
-      if (!res.ok) throw new Error(ar ? `ما زبط نبعت الطلب (${res.status}). جربي كمان مرة.` : `Could not send the order (${res.status}). Please try again.`);
+      if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(tr(lang, "موعد هالحجز مرق، فما عاد فينا نحجزه.", "This booking has already taken place."));
+      if (!res.ok) throw new Error(tr(lang, `ما زبط نبعت الطلب (${res.status}). جربي كمان مرة.`, "Could not send the order ({0}). Please try again.", [res.status]));
       const orderId = data?.id ? String(data.id) : undefined;
       trackLead([productItem(product, { color: item?.colorName, size: variant.size?.name, price, quantity: qty })], (price ?? 0) * qty, currency ?? undefined, orderId);
       razanCount("order:help");
       setDone({ kind: "order", orderId });
     } catch (e: any) {
-      setErr(e?.message || (ar ? "صار خطأ" : "Something went wrong"));
+      setErr(e?.message || (tr(lang, "صار خطأ", "Something went wrong")));
     } finally {
       setBusy(false);
     }
@@ -171,15 +178,15 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
       const res = await fetch(`${apiBaseClient()}/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "CALLBACK", name: form.name.trim(), phone: form.phone.trim(), productId: product.id, ...(variant ? { variantId: variant.id } : {}), source: "RAZAN_HELP" }),
+        body: JSON.stringify({ kind: "CALLBACK", name: form.name.trim(), phone: form.phone.trim(), productId: product.id, ...(variant ? { variantId: variant.id } : {}), source: "RAZAN_HELP", lang }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 429) throw new Error(ar ? "وصلتنا طلباتكِ، فريقنا رح يحكيكِ قريباً." : "We already have your request; we'll call you soon.");
-      if (!res.ok) throw new Error(data?.message || (ar ? "ما زبط نبعت الطلب. جربي كمان مرة." : "Could not send. Please try again."));
+      if (res.status === 429) throw new Error(tr(lang, "وصلتنا طلباتكِ، فريقنا رح يحكيكِ قريباً.", "We already have your request; we'll call you soon."));
+      if (!res.ok) throw new Error(data?.message || (tr(lang, "ما زبط نبعت الطلب. جربي كمان مرة.", "Could not send. Please try again.")));
       razanCount("call:help");
       setDone({ kind: "call" });
     } catch (e: any) {
-      setErr(e?.message || (ar ? "صار خطأ" : "Something went wrong"));
+      setErr(e?.message || (tr(lang, "صار خطأ", "Something went wrong")));
     } finally {
       setBusy(false);
     }
@@ -197,17 +204,17 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
           <span aria-hidden="true">🌸</span>
           {done.kind === "order" ? (
             <>
-              <h3>{ar ? "وصلنا طلبكِ!" : "We have your order!"}</h3>
-              {done.orderId ? <p>{ar ? "رقم الطلب" : "Order number"}: <b dir="ltr">{done.orderId}</b></p> : null}
-              <p>{ar ? "رح نتواصل معكِ على رقمكِ لنأكد الطلب والتوصيل." : "We'll contact you on your number to confirm the order and delivery."}</p>
+              <h3>{tr(lang, "وصلنا طلبكِ!", "We have your order!")}</h3>
+              {done.orderId ? <p>{tr(lang, "رقم الطلب", "Order number")}: <b dir="ltr">{done.orderId}</b></p> : null}
+              <p>{tr(lang, "رح نتواصل معكِ على رقمكِ لنأكد الطلب والتوصيل.", "We'll contact you on your number to confirm the order and delivery.")}</p>
             </>
           ) : (
             <>
-              <h3>{ar ? "تمام، رح نحكيكِ!" : "Done — we'll call you!"}</h3>
-              <p>{ar ? "حدا من فريقنا رح يتصل فيكِ قريباً ويساعدكِ تطلبي." : "Someone from our team will call you soon and help you order."}</p>
+              <h3>{tr(lang, "تمام، رح نحكيكِ!", "Done — we'll call you!")}</h3>
+              <p>{tr(lang, "حدا من فريقنا رح يتصل فيكِ قريباً ويساعدكِ تطلبي.", "Someone from our team will call you soon and help you order.")}</p>
             </>
           )}
-          <button type="button" className="razan-help-main" onClick={onClose}>{ar ? "تمام، شكراً" : "Thanks!"}</button>
+          <button type="button" className="razan-help-main" onClick={onClose}>{tr(lang, "تمام، شكراً", "Thanks!")}</button>
         </div>
       </div>
     );
@@ -216,14 +223,14 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
   if (call) {
     return (
       <div className="razan-help" ref={box} data-testid="razan-help">
-        <p className="razan-help-q">{ar ? "ولا يهمّك! اكتبيلنا اسمكِ ورقمكِ وحدا من فريقنا بيحكيكِ." : "No problem! Leave your name and number and we'll call you."}</p>
-        <label className="razan-help-field"><span>{ar ? "الاسم" : "Name"}</span><input {...field("name")} autoComplete="name" maxLength={80} /></label>
-        <label className="razan-help-field"><span>{ar ? "رقم الهاتف" : "Phone"}</span><input {...field("phone")} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={24} /></label>
+        <p className="razan-help-q">{tr(lang, "ولا يهمّك! اكتبيلنا اسمكِ ورقمكِ وحدا من فريقنا بيحكيكِ.", "No problem! Leave your name and number and we'll call you.")}</p>
+        <label className="razan-help-field"><span>{tr(lang, "الاسم", "Name")}</span><input {...field("name")} autoComplete="name" maxLength={80} /></label>
+        <label className="razan-help-field"><span>{tr(lang, "رقم الهاتف", "Phone")}</span><input {...field("phone")} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={24} /></label>
         {err ? <p className="razan-help-err" role="alert">{err}</p> : null}
         <div className="razan-help-nav">
-          <button type="button" className="ghost" onClick={() => { setCall(false); setErr(null); }}>{ar ? "رجوع" : "Back"}</button>
+          <button type="button" className="ghost" onClick={() => { setCall(false); setErr(null); }}>{tr(lang, "رجوع", "Back")}</button>
           <button type="button" className="razan-help-main" disabled={busy || form.name.trim().length < 2 || !PHONE_OK(form.phone)} onClick={() => void askCall()}>
-            {busy ? (ar ? "لحظة…" : "One moment…") : ar ? "احكوني" : "Call me"}
+            {busy ? (tr(lang, "لحظة…", "One moment…")) : tr(lang, "احكوني", "Call me")}
           </button>
         </div>
       </div>
@@ -234,8 +241,8 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
   if (!items.some((it) => (it.variants ?? []).some(inStock))) {
     return (
       <div className="razan-help" ref={box} data-testid="razan-help">
-        <p className="razan-help-q">{ar ? "هالقطعة خلصت هلأ 😔 بس فينا نحكيكِ أول ما ترجع أو نلاقيلك إشي شبهها." : "This piece is sold out right now 😔 we can call you when it's back or find you something similar."}</p>
-        <button type="button" className="razan-help-main" onClick={() => setCall(true)}>{ar ? "📞 احكوني" : "📞 Call me"}</button>
+        <p className="razan-help-q">{tr(lang, "هالقطعة خلصت هلأ 😔 بس فينا نحكيكِ أول ما ترجع أو نلاقيلك إشي شبهها.", "This piece is sold out right now 😔 we can call you when it's back or find you something similar.")}</p>
+        <button type="button" className="razan-help-main" onClick={() => setCall(true)}>{tr(lang, "📞 احكوني", "📞 Call me")}</button>
       </div>
     );
   }
@@ -248,11 +255,11 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
       <div className="razan-help-dots" aria-hidden="true">
         {steps.map((s, i) => <i key={s} data-on={i <= at ? "" : undefined} />)}
       </div>
-      <p className="razan-help-count">{ar ? `خطوة ${at + 1} من ${steps.length}` : `Step ${at + 1} of ${steps.length}`}</p>
+      <p className="razan-help-count">{tr(lang, `خطوة ${at + 1} من ${steps.length}`, "Step {0} of {1}", [at + 1, steps.length])}</p>
 
       {step === "color" && (
         <>
-          <p className="razan-help-q">{ar ? `أي ${colorWord} بدك؟` : `Which ${colorWord}?`}</p>
+          <p className="razan-help-q">{tr(lang, `أي ${colorWord} بدك؟`, "Which {0}?", [colorWord])}</p>
           <div className="razan-help-colors">
             {items.map((it, i) => {
               const key = catalogItemKey(it, i);
@@ -263,7 +270,7 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
                 <button key={key} type="button" className="razan-help-pick" aria-pressed={key === colorKey} disabled={out} onClick={() => pickColor(key)}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {img ? <img src={cldUrl(img, { w: 160, h: 200, c: "fill", g: "auto" })} alt="" loading="lazy" /> : <span className="razan-help-swatch" style={{ background: hex ?? "#ccc" }} />}
-                  <span>{catalogItemLabel(it, i)}{out ? (ar ? " · خلص" : " · sold out") : ""}</span>
+                  <span>{catalogItemLabel(it, i)}{out ? (tr(lang, " · خلص", " · sold out")) : ""}</span>
                 </button>
               );
             })}
@@ -273,14 +280,14 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
 
       {step === "size" && (
         <>
-          <p className="razan-help-q">{ar ? `شو ${sizeWord} اللي بدك؟` : `Which ${sizeWord}?`}</p>
+          <p className="razan-help-q">{tr(lang, `شو ${sizeWord} اللي بدك؟`, "Which {0}?", [sizeWord])}</p>
           <div className="razan-help-sizes">
             {variants.map((v) => {
               const key = sizeKeyOf(v);
               return (
                 <button key={v.id} type="button" className="razan-help-pick" aria-pressed={key === sizeKey} disabled={!inStock(v)} onClick={() => { setSizeKey(key); setUnsure(false); }}>
-                  {key === "default" ? (ar ? "مقاس واحد" : "One size") : key}
-                  {!inStock(v) ? <small>{ar ? "خلص" : "sold out"}</small> : null}
+                  {key === "default" ? (tr(lang, "مقاس واحد", "One size")) : key}
+                  {!inStock(v) ? <small>{tr(lang, "خلص", "sold out")}</small> : null}
                 </button>
               );
             })}
@@ -296,68 +303,68 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
               if (ok.length) setSizeKey(sizeKeyOf(ok[Math.floor((ok.length - 1) / 2)]));
             }}
           >
-            {ar ? "مش متأكدة؟ 🤔" : "Not sure? 🤔"}
+            {tr(lang, "مش متأكدة؟ 🤔", "Not sure? 🤔")}
           </button>
-          {unsure ? <p className="razan-help-hint">{ar ? "اخترتلك المقاس الوسط، وفريقنا رح يتأكد معكِ منه قبل ما نبعت. بتقدري تغيّريه." : "I picked the middle size; our team will check it with you before sending. You can change it."}</p> : null}
+          {unsure ? <p className="razan-help-hint">{tr(lang, "اخترتلك المقاس الوسط، وفريقنا رح يتأكد معكِ منه قبل ما نبعت. بتقدري تغيّريه.", "I picked the middle size; our team will check it with you before sending. You can change it.")}</p> : null}
         </>
       )}
 
       {step === "qty" && (
         <>
-          <p className="razan-help-q">{ar ? "قديش قطعة بدك؟" : "How many?"}</p>
+          <p className="razan-help-q">{tr(lang, "قديش قطعة بدك؟", "How many?")}</p>
           <div className="razan-help-qty">
-            <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1} aria-label={ar ? "أقل" : "Fewer"}>−</button>
+            <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1} aria-label={tr(lang, "أقل", "Fewer")}>−</button>
             <output aria-live="polite">{qty}</output>
-            <button type="button" onClick={() => setQty((q) => Math.min(Math.max(1, left), q + 1))} disabled={qty >= left} aria-label={ar ? "أكثر" : "More"}>+</button>
+            <button type="button" onClick={() => setQty((q) => Math.min(Math.max(1, left), q + 1))} disabled={qty >= left} aria-label={tr(lang, "أكثر", "More")}>+</button>
           </div>
-          {showsLeft(scarcity, variant?.stock, "price") ? <p className="razan-help-hint">{ar ? `ضايل ${variant?.stock} بس` : `Only ${variant?.stock} left`}</p> : null}
+          {showsLeft(scarcity, variant?.stock, "price") ? <p className="razan-help-hint">{tr(lang, `ضايل ${variant?.stock} بس`, "Only {0} left", [variant?.stock])}</p> : null}
         </>
       )}
 
       {step === "name" && (
         <>
-          <p className="razan-help-q">{ar ? "شو اسمكِ؟" : "What's your name?"}</p>
-          <label className="razan-help-field"><input {...field("name")} aria-label={ar ? "الاسم" : "Name"} autoComplete="name" maxLength={80} onKeyDown={(e) => e.key === "Enter" && next()} /></label>
+          <p className="razan-help-q">{tr(lang, "شو اسمكِ؟", "What's your name?")}</p>
+          <label className="razan-help-field"><input {...field("name")} aria-label={tr(lang, "الاسم", "Name")} autoComplete="name" maxLength={80} onKeyDown={(e) => e.key === "Enter" && next()} /></label>
         </>
       )}
 
       {step === "phone" && (
         <>
-          <p className="razan-help-q">{ar ? "رقم هاتفكِ؟ (لنأكد معكِ الطلب)" : "Your phone number? (to confirm with you)"}</p>
-          <label className="razan-help-field"><input {...field("phone")} aria-label={ar ? "رقم الهاتف" : "Phone"} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={24} onKeyDown={(e) => e.key === "Enter" && next()} /></label>
+          <p className="razan-help-q">{tr(lang, "رقم هاتفكِ؟ (لنأكد معكِ الطلب)", "Your phone number? (to confirm with you)")}</p>
+          <label className="razan-help-field"><input {...field("phone")} aria-label={tr(lang, "رقم الهاتف", "Phone")} type="tel" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={24} onKeyDown={(e) => e.key === "Enter" && next()} /></label>
           {!ships ? (
-            <label className="razan-help-field"><span>{ar ? "إيميلكِ (اختياري، لنبعتلك الرابط)" : "Email (optional, for your link)"}</span><input {...field("email")} type="email" autoComplete="email" dir="ltr" maxLength={120} /></label>
+            <label className="razan-help-field"><span>{tr(lang, "إيميلكِ (اختياري، لنبعتلك الرابط)", "Email (optional, for your link)")}</span><input {...field("email")} type="email" autoComplete="email" dir="ltr" maxLength={120} /></label>
           ) : null}
         </>
       )}
 
       {step === "address" && (
         <>
-          <p className="razan-help-q">{ar ? "لوين نبعتلك؟" : "Where should we deliver?"}</p>
+          <p className="razan-help-q">{tr(lang, "لوين نبعتلك؟", "Where should we deliver?")}</p>
           <label className="razan-help-field">
-            <span>{ar ? "المدينة / البلد" : "City / town"}</span>
+            <span>{tr(lang, "المدينة / البلد", "City / town")}</span>
             <input {...field("city")} autoComplete="address-level2" maxLength={80} list={cities.length ? "razan-help-cities" : undefined} />
           </label>
           {cities.length ? <datalist id="razan-help-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist> : null}
-          <label className="razan-help-field"><span>{ar ? "العنوان (الحي، الشارع…) — اختياري" : "Address (optional)"}</span><input {...field("address")} autoComplete="street-address" maxLength={200} /></label>
+          <label className="razan-help-field"><span>{tr(lang, "العنوان (الحي، الشارع…) — اختياري", "Address (optional)")}</span><input {...field("address")} autoComplete="street-address" maxLength={200} /></label>
         </>
       )}
 
       {step === "summary" && (
         <>
-          <p className="razan-help-q">{ar ? "هيك طلبكِ، صح؟" : "Here's your order — all good?"}</p>
+          <p className="razan-help-q">{tr(lang, "هيك طلبكِ، صح؟", "Here's your order — all good?")}</p>
           <div className="razan-help-summary">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {item && photo(item) ? <img src={cldUrl(photo(item)!, { w: 160, h: 200, c: "fill", g: "auto" })} alt="" /> : null}
             <dl>
-              <div><dt>{ar ? "القطعة" : "Piece"}</dt><dd>{product.title}</dd></div>
+              <div><dt>{tr(lang, "القطعة", "Piece")}</dt><dd>{product.title}</dd></div>
               {showColor && item ? <div><dt>{colorWord}</dt><dd>{catalogItemLabel(item, itemIndex)}</dd></div> : null}
-              {showSize && variant ? <div><dt>{sizeWord}</dt><dd>{sizeKeyOf(variant)}{unsure ? (ar ? " (رح نتأكد معكِ)" : " (we'll check)") : ""}</dd></div> : null}
-              <div><dt>{ar ? "الكمية" : "Qty"}</dt><dd>{qty}</dd></div>
-              <div><dt>{ar ? "الاسم" : "Name"}</dt><dd>{form.name.trim()}</dd></div>
-              <div><dt>{ar ? "الهاتف" : "Phone"}</dt><dd dir="ltr">{form.phone.trim()}</dd></div>
-              {ships ? <div><dt>{ar ? "التوصيل" : "Delivery"}</dt><dd>{[form.city.trim(), form.address.trim()].filter(Boolean).join("، ")}</dd></div> : null}
-              {total != null ? <div className="razan-help-total"><dt>{ar ? "المجموع" : "Total"}</dt><dd>{formatMoney(total, currency)}{ships ? <small>{ar ? " + التوصيل (منأكده معكِ)" : " + delivery (we'll confirm)"}</small> : null}</dd></div> : null}
+              {showSize && variant ? <div><dt>{sizeWord}</dt><dd>{sizeKeyOf(variant)}{unsure ? (tr(lang, " (رح نتأكد معكِ)", " (we'll check)")) : ""}</dd></div> : null}
+              <div><dt>{tr(lang, "الكمية", "Qty")}</dt><dd>{qty}</dd></div>
+              <div><dt>{tr(lang, "الاسم", "Name")}</dt><dd>{form.name.trim()}</dd></div>
+              <div><dt>{tr(lang, "الهاتف", "Phone")}</dt><dd dir="ltr">{form.phone.trim()}</dd></div>
+              {ships ? <div><dt>{tr(lang, "التوصيل", "Delivery")}</dt><dd>{[form.city.trim(), form.address.trim()].filter(Boolean).join("، ")}</dd></div> : null}
+              {total != null ? <div className="razan-help-total"><dt>{tr(lang, "المجموع", "Total")}</dt><dd>{formatMoney(total, currency)}{ships ? <small>{tr(lang, " + التوصيل (منأكده معكِ)", " + delivery (we'll confirm)")}</small> : null}</dd></div> : null}
             </dl>
           </div>
         </>
@@ -366,17 +373,17 @@ export function RazanHelpOrder({ product, ar, onClose }: { product: CatalogProdu
       {err ? <p className="razan-help-err" role="alert">{err}</p> : null}
 
       <div className="razan-help-nav">
-        {at > 0 ? <button type="button" className="ghost" onClick={back}>{ar ? "رجوع" : "Back"}</button> : <span />}
+        {at > 0 ? <button type="button" className="ghost" onClick={back}>{tr(lang, "رجوع", "Back")}</button> : <span />}
         {step === "summary" ? (
           <button type="button" className="razan-help-main" disabled={!can("summary")} onClick={() => void order()}>
-            {busy ? (ar ? "عم نبعت…" : "Sending…") : ar ? "أكّدي الطلب ✓" : "Confirm order ✓"}
+            {busy ? (tr(lang, "عم نبعت…", "Sending…")) : tr(lang, "أكّدي الطلب ✓", "Confirm order ✓")}
           </button>
         ) : (
-          <button type="button" className="razan-help-main" disabled={!can(step)} onClick={next}>{ar ? "التالي" : "Next"}</button>
+          <button type="button" className="razan-help-main" disabled={!can(step)} onClick={next}>{tr(lang, "التالي", "Next")}</button>
         )}
       </div>
       <button type="button" className="razan-help-call" onClick={() => { setCall(true); setErr(null); }}>
-        {ar ? "📞 بدي حدا يحكيني" : "📞 I'd rather someone called me"}
+        {tr(lang, "📞 بدي حدا يحكيني", "📞 I'd rather someone called me")}
       </button>
     </div>
   );

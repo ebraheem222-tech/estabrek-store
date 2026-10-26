@@ -4,26 +4,29 @@
  * Keep these pure and easy to test.
  */
 
-export function formatCurrencyILS(amount: number | string | null | undefined): string {
+/** Whole amounts in the store's currency. */
+import { money, storeCurrency } from "./money";
+import { loc } from "@/lib/lang";
+export function formatCurrency(amount: number | string | null | undefined): string {
     const n = typeof amount === "string" ? Number(amount) : amount ?? 0;
-    if (!Number.isFinite(n)) return "₪0";
+    if (!Number.isFinite(n)) return money(0);
   
     try {
       return new Intl.NumberFormat("he-IL", {
         style: "currency",
-        currency: "ILS",
+        currency: storeCurrency(),
         maximumFractionDigits: 0,
       }).format(n);
     } catch {
       // fallback
-      return `₪${Math.round(n)}`;
+      return money(Math.round(n));
     }
   }
   
   export function formatNumber(n: number | string | null | undefined): string {
     const x = typeof n === "string" ? Number(n) : n ?? 0;
     if (!Number.isFinite(x)) return "0";
-    return new Intl.NumberFormat("ar").format(x);
+    return new Intl.NumberFormat(loc("ar")).format(x);
   }
   
   export function formatDateTime(date: string | Date | null | undefined): string {
@@ -33,7 +36,7 @@ export function formatCurrencyILS(amount: number | string | null | undefined): s
   
     // Arabic + Israel timezone by default
     try {
-      return new Intl.DateTimeFormat("ar", {
+      return new Intl.DateTimeFormat(loc("ar"), {
         dateStyle: "medium",
         timeStyle: "short",
         timeZone: "Asia/Jerusalem",
@@ -49,7 +52,7 @@ export function formatCurrencyILS(amount: number | string | null | undefined): s
     if (Number.isNaN(d.getTime())) return "";
   
     try {
-      return new Intl.DateTimeFormat("ar", {
+      return new Intl.DateTimeFormat(loc("ar"), {
         dateStyle: "medium",
         timeZone: "Asia/Jerusalem",
       }).format(d);
@@ -83,5 +86,5 @@ export function formatCurrencyILS(amount: number | string | null | undefined): s
     return s.slice(0, max - 1) + "…";
   }
   
-  // Alias for formatCurrencyILS
-  export const formatPrice = formatCurrencyILS;
+  // Alias for formatCurrency
+  export const formatPrice = formatCurrency;

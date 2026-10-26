@@ -24,6 +24,7 @@ type DeepInput = {
     description: string | null;
     seoTitle: string | null;
     seoDescription: string | null;
+    translations: any;
     isActive: boolean;
     categoryId: string;
     typeId: string | null;

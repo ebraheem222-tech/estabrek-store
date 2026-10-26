@@ -21,6 +21,8 @@ import { emailConfigured, sendEmail } from "../outbox/sender/email.js";
 import { assignCodesInTx, codesForOrder, returnUnseenCodesInTx, syncCodeStock } from "./codes.service.js";
 import { issueLicencesInTx, licencesForOrder, revokeLicencesInTx } from "../protected/protected.service.js";
 import { currentLauncher } from "../protected/launcher.service.js";
+import { shopperLanguage, titleIn, urlInLanguage } from "../../lib/shopperLanguage.js";
+import type { ContentLang } from "../../lib/translations.js";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -88,6 +90,7 @@ async function orderLines(db: Db, orderId: string) {
       deliveredAt: true,
       deliveryEmailAt: true,
       createdAt: true,
+      locale: true,
       items: {
         orderBy: { createdAt: "asc" },
         select: { id: true, productId: true, variantId: true, quantity: true, productTitle: true, colorName: true, sizeName: true, imageUrl: true },
@@ -254,11 +257,13 @@ export function eventIsOver(p: { eventStartsAt?: Date | null; eventEndsAt?: Date
 /* ---------------- What the shopper sees ---------------- */
 
 const ISRAEL = "Asia/Jerusalem";
-export function eventWhen(start?: Date | null, end?: Date | null) {
+export function eventWhen(start?: Date | null, end?: Date | null, lang: ContentLang = "ar") {
   if (!start) return null;
-  const day = new Intl.DateTimeFormat("ar", { timeZone: ISRAEL, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(start);
-  const time = (d: Date) => new Intl.DateTimeFormat("ar", { timeZone: ISRAEL, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
-  return end ? `${day}، ${time(start)}–${time(end)}` : `${day}، ${time(start)}`;
+  const locale = lang === "he" ? "he-IL" : lang === "en" ? "en-GB" : "ar";
+  const day = new Intl.DateTimeFormat(locale, { timeZone: ISRAEL, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(start);
+  const time = (d: Date) => new Intl.DateTimeFormat(locale, { timeZone: ISRAEL, hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+  const comma = lang === "ar" ? "، " : ", ";
+  return end ? `${day}${comma}${time(start)}–${time(end)}` : `${day}${comma}${time(start)}`;
 }
 
 async function downloadsFor(db: Db, orderId: string, productIds: string[]) {
@@ -268,7 +273,7 @@ async function downloadsFor(db: Db, orderId: string, productIds: string[]) {
       // A protected product's files go out only as the buyer's encrypted copy.
       where: { productId: { in: productIds }, product: { isProtected: false } },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-      select: { id: true, productId: true, name: true, kind: true, bytes: true, format: true, product: { select: { title: true } } },
+      select: { id: true, productId: true, name: true, kind: true, bytes: true, format: true, product: { select: { title: true, translations: true } } },
     }),
     db.orderDownload.findMany({ where: { orderRequestId: orderId }, select: { fileId: true, count: true } }),
   ]);
@@ -277,6 +282,7 @@ async function downloadsFor(db: Db, orderId: string, productIds: string[]) {
     id: f.id,
     name: f.name,
     productTitle: f.product.title,
+    productTranslations: f.product.translations,
     kind: f.kind,
     bytes: f.bytes,
     format: f.format,
@@ -444,7 +450,8 @@ export async function sendDeliveryEmail(orderId: string, opts?: { force?: boolea
   if (!o.deliveredAt || !o.accessToken) return { sent: false, why: "NOT_RELEASED" } as const;
   if (CLOSED_STATUSES.has(o.status)) return { sent: false, why: "ORDER_CLOSED" } as const;
   if (o.deliveryEmailAt && !opts?.force) return { sent: false, why: "ALREADY_SENT" } as const;
-  const url = orderPageUrl(o.accessToken);
+  const { lang, main } = await shopperLanguage(o.locale);
+  const url = urlInLanguage(orderPageUrl(o.accessToken), lang, main);
   if (!url) return { sent: false, why: "NO_STOREFRONT_URL" } as const;
 
   const digitalIds = [...new Set(loaded.lines.filter((l) => l.fulfillment === "DIGITAL").map((l) => l.productId))];
@@ -453,7 +460,7 @@ export async function sendDeliveryEmail(orderId: string, opts?: { force?: boolea
     prisma.ticket.findMany({
       where: { orderRequestId: o.id, status: { not: "CANCELLED" } },
       orderBy: { createdAt: "asc" },
-      select: { code: true, label: true, product: { select: { title: true, eventStartsAt: true, eventEndsAt: true, eventLocation: true } } },
+      select: { code: true, label: true, product: { select: { title: true, translations: true, eventStartsAt: true, eventEndsAt: true, eventLocation: true } } },
     }),
     // Codes stay on the private page (an email is less private): only how many.
     prisma.digitalCode.count({ where: { orderRequestId: o.id, status: "delivered" } }),
@@ -463,16 +470,17 @@ export async function sendDeliveryEmail(orderId: string, opts?: { force?: boolea
   const res = await sendEmail({
     to: o.email,
     template: "ORDER_DELIVERY",
+    lang,
     payload: {
       name: (o.customerName ?? "").trim().split(/\s+/)[0] ?? "",
       orderNo: o.id.slice(-6).toUpperCase(),
       url,
-      files: fileRows.map((f) => ({ name: f.name, productTitle: f.productTitle })),
+      files: fileRows.map((f) => ({ name: f.name, productTitle: titleIn({ title: f.productTitle, translations: f.productTranslations }, lang) })),
       tickets: tickets.map((t) => ({
         code: t.code,
-        title: t.product.title,
+        title: titleIn(t.product, lang),
         label: t.label,
-        when: eventWhen(t.product.eventStartsAt, t.product.eventEndsAt),
+        when: eventWhen(t.product.eventStartsAt, t.product.eventEndsAt, lang),
         location: t.product.eventLocation,
       })),
       maxDownloads: env.DIGITAL_MAX_DOWNLOADS,

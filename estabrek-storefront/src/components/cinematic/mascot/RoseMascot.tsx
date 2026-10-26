@@ -13,6 +13,8 @@ import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useSyncExter
 import { razanMaySpeak, razanNow, type SpeakKind } from "@/lib/razanRuntime";
 import { pageScrolling } from "@/lib/pageRest";
 import { ROSE_EVENT, roseLine, type RoseExtras, type RoseMoment, type RoseOutfit } from "@/lib/roseEvents";
+import { fillAuto } from "@/lib/storeNames";
+import { useLanguage } from "../Language";
 
 /* Which scene Roses (hero, seasons, collections) are on screen, so the floating companion can step aside. */
 const sceneOnScreen = new Set<string>();
@@ -131,6 +133,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
   },
   ref,
 ) {
+  const { language: lang } = useLanguage();
   const uid = useId().replace(/[^a-z0-9]/gi, "");
   const id = (name: string) => `${name}-${uid}`;
   const wrap = useRef<HTMLDivElement>(null);
@@ -176,9 +179,11 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       }
     };
     api.current = {
-      say: (text, ms = 2400, kind = "react") => {
+      say: (line, ms = 2400, kind = "react") => {
         const b = bubble.current;
         if (!b || !razanMaySpeak(kind)) return;
+        // Built-in lines carry {store} / {assistant} (lib/storeNames.ts).
+        const text = fillAuto(line);
         b.textContent = text;
         b.dataset.show = "true";
         state.current.talkUntil = now() + Math.min(1.6, 0.4 + text.length * 0.05);
@@ -455,7 +460,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       else if (kind === "color-pick") api.current.joy();
       else if (kind === "product-view") api.current.surprise();
       else { api.current.wave(); api.current.wink(); }
-      api.current.say(roseLine(kind, ar), 2400);
+      api.current.say(roseLine(kind, lang), 2400);
     };
     const onMoment = (e: Event) => answer((e as CustomEvent<RoseMoment>).detail);
     const onColor = (e: Event) => { const c = e as Event & { restored?: boolean; auto?: boolean }; if (!c.restored && !c.auto) answer("color-pick"); };
@@ -483,7 +488,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
       nearby.disconnect();
       el.removeAttribute("data-away");
     };
-  }, [greeting, mirrored, palm, reactive, companion, ar, uid, walkIn, idleHabits]);
+  }, [greeting, mirrored, palm, reactive, companion, ar, lang, uid, walkIn, idleHabits]);
 
   const g = (name: string) => `url(#${id(name)})`;
   return (

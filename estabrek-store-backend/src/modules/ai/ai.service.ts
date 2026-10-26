@@ -11,8 +11,28 @@ import { phoneKey } from "../../lib/phoneKey.js";
 import { AppError, NotFound } from "../../utils/httpError.js";
 import { aiEditImage, aiJson, cacheKey, cached, clip } from "./ai.client.js";
 import { stylePieces } from "../razan/styleQuiz.service.js";
+import { identityOf, storeBrief, storeName, type Audience, type Industry } from "../identity/identity.js";
+import { mainLanguage, type ContentLang } from "../../lib/translations.js";
 
 const money = (v: unknown) => Math.round(Number(v ?? 0) * 100) / 100;
+
+/** The store the prompts speak for: its own name, what it sells and who it talks to (admin → هوية المتجر). */
+type Shop = { brief: string; name: string; currency: string; industry: Industry; audience: Audience };
+let shopMemo: { at: number; value: Promise<Shop> } | null = null;
+async function shop(): Promise<Shop> {
+  if (shopMemo && Date.now() - shopMemo.at < 60_000) return shopMemo.value;
+  const value = prisma.siteSettings
+    .findFirst({ select: { siteName: true, header: true, currencyCode: true } })
+    .then((s) => {
+      const id = identityOf(s);
+      return { brief: storeBrief(s), name: storeName(s, "ar"), currency: s?.currencyCode || "ILS", industry: id.industry, audience: id.audience };
+    });
+  shopMemo = { at: Date.now(), value };
+  value.catch(() => { shopMemo = null; });
+  return value;
+}
+const dressed = (i: Industry) => i === "fashion" || i === "shoes" || i === "jewelry";
+const addressing = (a: Audience) => (a === "women" ? ", addressing her in the feminine" : a === "men" ? ", addressing him in the masculine" : "");
 
 /* ---------------- 1. Product writer (from photos) ---------------- */
 
@@ -33,9 +53,10 @@ export async function writeProduct(input: WriterInput) {
   const fieldText = fields.length
     ? fields.map((f) => `- ${f.key} (${clip(f.label, 40)})${f.options?.length ? `: one of [${f.options.map((o) => clip(o, 30)).join(", ")}]` : f.kind === "number" ? ": a number" : ""}`).join("\n")
     : "(none)";
+  const { brief } = await shop();
   const raw = await aiJson<unknown>("productWriter", {
     system:
-      "You write product pages for Estabrek, a modest-fashion shop (abayas, hijabs, dresses) in Palestine/Israel. Write in clear, warm Modern Standard Arabic suitable for women shoppers. Describe only what is visible in the photos or given in the notes: never invent fabric, sizes, measurements or prices you can't see. Reply with JSON only.",
+      `You write product pages for an online shop. ${brief} Write in clear, warm Modern Standard Arabic. Describe only what is visible in the photos or given in the notes: never invent materials, sizes, measurements, specifications or prices you can't see. Reply with JSON only.`,
     user: `Write the page for this piece.
 Current title: ${clip(input.title, 120) || "(none)"}
 Category: ${clip(input.category, 60) || "(unknown)"}; kind: ${clip(input.type, 60) || "(unknown)"}
@@ -90,9 +111,10 @@ export async function parseSearch(q: string) {
     prisma.size.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { order: "asc" } }),
   ]);
   const colors = colorRows.map((c) => c.colorName).filter(Boolean);
+  const { brief, currency } = await shop();
   return cached(cacheKey("search", query.toLowerCase(), cats.length, colors.length), 24, async () => {
     const raw = await aiJson<unknown>("smartSearch", {
-      system: "You turn a shopper's sentence into search filters for a modest-fashion shop. Use only the given lists. Prices are in ₪. Reply with JSON only.",
+      system: `You turn a shopper's sentence into search filters for an online shop. ${brief} Use only the given lists. Prices are in ${currency}. Reply with JSON only.`,
       user: `Sentence: «${query}»
 Categories (id: name): ${cats.map((c) => `${c.id}: ${c.name}`).join("; ")}
 Colours: ${colors.join(", ")}
@@ -135,8 +157,11 @@ export async function shopTheLook(productId: string) {
     };
     const candidates = pool.map((p) => ({ p, s: near(p) })).sort((a, b) => b.s - a.s).slice(0, 24).map((x) => x.p);
     if (candidates.length < 2) return { products: [] };
+    const { brief, industry } = await shop();
     const raw = await aiJson<unknown>("shopTheLook", {
-      system: "You are a modest-fashion stylist. Pick pieces that complete an outfit with the given piece (colours that go together, a hijab or accessory for an abaya, etc.). Only use ids from the list. Reply with JSON only.",
+      system: dressed(industry)
+        ? `You are a stylist for an online shop. ${brief} Pick pieces that complete an outfit with the given piece (colours that go together, an accessory that suits it, etc.). Only use ids from the list. Reply with JSON only.`
+        : `You pick products that go well with the given one for an online shop (accessories, add-ons, matching items). ${brief} Only use ids from the list. Reply with JSON only.`,
       user: `The piece: ${base.title} — colours: ${base.colors.map((c) => c.name).join(", ") || "?"}
 Candidates (id | title | colours | price):
 ${candidates.map((p) => `${p.id} | ${clip(p.title, 60)} | ${p.colors.map((c) => c.name).join("/")} | ${p.price ?? "?"}`).join("\n")}
@@ -170,12 +195,13 @@ export async function sizeAdvice(productId: string, body: { height: number; weig
   const all = p.items.flatMap((i) => i.variants);
   const sizes = [...new Map(all.sort((a, b) => a.size.order - b.size.order).map((v) => [v.size.name, v])).values()];
   if (sizes.length < 2) throw new AppError(409, "ONE_SIZE", "This piece comes in one size");
+  const { brief, audience } = await shop();
   const raw = await aiJson<unknown>("sizeAdvice", {
-    system: "You help a woman choose her size for a modest-fashion piece. Be careful and honest: if unsure, say so and pick the safer (looser) size, since modest pieces are worn loose. Answer in short, warm Arabic. Reply with JSON only.",
+    system: `You help a shopper choose their size. ${brief} Be careful and honest: if unsure, say so and pick the safer (looser) size. Answer in short, warm Arabic${addressing(audience)}. Reply with JSON only.`,
     user: `Piece: ${clip(p.title, 100)} (${clip(p.category?.name, 40)})
 Details: ${clip(p.description, 500) || "-"}; fields: ${clip(JSON.stringify(p.attributes ?? {}), 300)}
 Sizes (in stock?): ${sizes.map((v) => `${v.size.name}${v.stock > 0 ? "" : " (sold out)"}`).join(", ")}
-Her height: ${body.height} cm, weight: ${body.weight} kg, usual size: ${clip(body.usual, 10) || "?"}, likes it: ${body.fit ?? "regular"}
+Height: ${body.height} cm, weight: ${body.weight} kg, usual size: ${clip(body.usual, 10) || "?"}, likes it: ${body.fit ?? "regular"}
 JSON: {"size": one of the sizes, "confidence": "high"|"medium"|"low", "why": one or two short sentences}`,
     maxTokens: 300,
   });
@@ -194,9 +220,10 @@ export async function reviewSummary(productId: string) {
   if (reviews.length < 3) return { summary: null, count: reviews.length };
   const avg = Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10;
   const stamp = reviews.reduce((m, r) => Math.max(m, r.updatedAt.getTime()), 0);
+  const { brief } = await shop();
   const summary = await cached(cacheKey("reviews", productId, reviews.length, stamp), 24 * 7, async () => {
     const raw = await aiJson<unknown>("reviewSummary", {
-      system: "You summarise customer reviews for a modest-fashion shop, fairly (mention real complaints). Never quote names. Reply with JSON only.",
+      system: `You summarise customer reviews for an online shop, fairly (mention real complaints). ${brief} Never quote names. Reply with JSON only.`,
       user: `Reviews (rating | text):
 ${reviews.map((r) => `${r.rating} | ${clip(`${r.title ?? ""} ${r.body}`, 300)}`).join("\n")}
 JSON: {"ar": 2 sentences in Arabic, "en": the same in English, "pros": up to 3 short Arabic points, "cons": up to 2 short Arabic points (empty if none)}`,
@@ -267,16 +294,16 @@ export async function replySuggestions(orderId: string, message?: string | null)
     select: { customerName: true, status: true, total: true, currencyCode: true, city: true, paymentStatus: true, createdAt: true, items: { select: { productTitle: true, colorName: true, sizeName: true, quantity: true } } },
   });
   if (!o) throw NotFound("Order not found");
-  const shop = await prisma.siteSettings.findFirst({ select: { siteName: true } });
+  const store = await shop();
   const first = clip(o.customerName, 40).split(" ")[0];
   const raw = await aiJson<unknown>("replySuggest", {
     system:
-      "You draft WhatsApp replies for a small modest-fashion shop to a woman customer. Warm, short, polite Levantine Arabic, addressing her in the feminine. Never promise things not in the order data (no delivery dates, no discounts). Reply with JSON only.",
-    user: `Shop: ${clip(shop?.siteName || "استبرق", 40)}
+      `You draft WhatsApp replies from a small online shop to a customer. ${store.brief} Warm, short, polite Levantine Arabic${addressing(store.audience)}. Never promise things not in the order data (no delivery dates, no discounts). Reply with JSON only.`,
+    user: `Shop: ${clip(store.name, 40)}
 Order: status ${o.status}, total ${money(o.total)} ${o.currencyCode}, city ${clip(o.city, 40) || "-"}, payment ${o.paymentStatus ?? "-"}
 Items: ${o.items.map((i) => `${clip(i.productTitle, 50)} ${[i.colorName, i.sizeName].filter(Boolean).join(" ")} ×${i.quantity}`).join("; ")}
-Her first name: ${first}
-Her message: ${clip(message, 500) || "(none — suggest a message for this order's status)"}
+Customer's first name: ${first}
+Customer's message: ${clip(message, 500) || "(none — suggest a message for this order's status)"}
 JSON: {"replies": [{"label": 2-3 word Arabic label, "text": the message (max 400 chars)}]} — 3 different replies.`,
     maxTokens: 900,
   });
@@ -363,4 +390,53 @@ export async function orderFlags(orderId: string) {
   if (ships && !o.city?.trim() && !o.address?.trim()) reasons.push({ text: "ما في عنوان للتوصيل", points: 10 });
   const score = Math.min(100, reasons.reduce((s, r) => s + r.points, 0));
   return { level: score >= 45 ? "risky" : score >= 20 ? "check" : "ok", score, reasons: reasons.map((r) => r.text), paid: o.paymentStatus === "PAID" };
+}
+
+/* ---------------- 10. Translations (drafts the owner checks before saving) ---------------- */
+
+const LANG_NAME: Record<ContentLang, string> = { ar: "Modern Standard Arabic", en: "English", he: "Hebrew" };
+const PLACEHOLDER = /\{[a-zA-Z]+\}/g;
+
+export type TranslateInput = { to: ContentLang; from?: ContentLang; context?: string; texts: Record<string, string> };
+
+/** The shop's own texts in another language: same keys back, placeholders and codes kept. */
+export async function translateTexts(input: TranslateInput) {
+  const entries = Object.entries(input.texts)
+    .map(([k, v]) => [k, String(v ?? "").trim()] as const)
+    .filter(([, v]) => v)
+    .slice(0, 80);
+  const s = await prisma.siteSettings.findFirst({ select: { header: true } });
+  const from = input.from ?? mainLanguage(s?.header);
+  if (!entries.length || from === input.to) return { texts: {} as Record<string, string> };
+  const { brief, audience } = await shop();
+  const tone =
+    input.to === "en"
+      ? ""
+      : audience === "women"
+        ? ", speaking to the shopper in the feminine"
+        : audience === "men"
+          ? ", speaking to the shopper in the masculine"
+          : ", in forms that suit any shopper (no feminine-only or masculine-only address)";
+  const source = Object.fromEntries(entries.map(([k, v]) => [k, v.slice(0, 5000)]));
+  const raw = await cached(cacheKey("translate", from, input.to, audience, source), 24 * 30, () =>
+    aiJson<unknown>("translate", {
+      system: `You translate an online shop's own texts for its customers. ${brief} Translate from ${LANG_NAME[from]} into natural, warm ${LANG_NAME[input.to]}${tone}. Keep the meaning, length and tone. Keep exactly as they are: brand and product names written in Latin letters, codes, sizes (S, M, 38), numbers, units, emojis, line breaks, bullet marks and placeholders in curly braces like {store}. Never add or drop information. Reply with JSON only.`,
+      user: `What these texts are: ${clip(input.context, 200) || "shop content"}
+Texts to translate (keep every key):
+${JSON.stringify(source)}
+JSON: {"texts": {"<same key>": "<translation>"}}`,
+      maxTokens: Math.min(4000, 400 + entries.reduce((n, [, v]) => n + v.length, 0)),
+    }),
+  );
+  const out = z.object({ texts: z.record(z.string(), z.unknown()).default({}) }).parse(raw ?? {});
+  const texts: Record<string, string> = {};
+  for (const [k, v] of entries) {
+    const t = typeof out.texts[k] === "string" ? String(out.texts[k]).trim() : "";
+    if (!t) continue;
+    // A draft that lost a placeholder ({store}) would show the wrong words: leave that one to the owner.
+    const need = (v.match(PLACEHOLDER) ?? []).sort().join();
+    if ((t.match(PLACEHOLDER) ?? []).sort().join() !== need) continue;
+    texts[k] = t.slice(0, Math.max(60, v.length * 3));
+  }
+  return { texts };
 }

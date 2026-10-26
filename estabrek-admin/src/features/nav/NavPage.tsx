@@ -44,7 +44,7 @@ export default function NavPage() {
   const parentOptions = useMemo(() => {
     const items = activeMenu?.items ?? [];
     return [
-      { value: "", label: "بدون (رئيسي)" },
+      { value: "", label: tr("بدون (رئيسي)", "None (top level)") },
       ...items
         .filter((it: any) => it.id !== itemEditingId)
         .map((it: any) => ({ value: it.id, label: it.label ?? it.id })),
@@ -57,7 +57,7 @@ export default function NavPage() {
       setActiveMenuId(menus[0].id);
       return true;
     }
-    toast.error("لا يوجد قائمة. أنشئ قائمة أولاً");
+    toast.error(tr("لا يوجد قائمة. لازم تنعمل قائمة أولاً", "No menu. Create a menu first"));
     return false;
   };
 
@@ -79,7 +79,7 @@ export default function NavPage() {
   const saveMenu = async () => {
     const body = { name: menuName.trim() };
     const nextErrors: { name?: string } = {};
-    if (!body.name) nextErrors.name = "الاسم مطلوب";
+    if (!body.name) nextErrors.name = tr("الاسم مطلوب", "The name is required");
 
     if (Object.keys(nextErrors).length) {
       setMenuErrors(nextErrors);
@@ -135,8 +135,8 @@ export default function NavPage() {
     };
 
     const nextErrors: { label?: string; href?: string } = {};
-    if (!body.label) nextErrors.label = "العنوان مطلوب";
-    if (!body.href) nextErrors.href = "الرابط مطلوب";
+    if (!body.label) nextErrors.label = tr("العنوان مطلوب", "The title is required");
+    if (!body.href) nextErrors.href = tr("الرابط مطلوب", "The link is required");
 
     if (Object.keys(nextErrors).length) {
       setItemErrors(nextErrors);
@@ -177,11 +177,11 @@ export default function NavPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-lg font-semibold">القوائم</div>
+            <div className="text-lg font-semibold">{tr("القوائم", "Menus")}</div>
             <div className="mt-1 text-xs opacity-70">Navigation menus</div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -191,7 +191,7 @@ export default function NavPage() {
               onChange={(e) => setActiveMenuId(e.target.value)}
               disabled={!menus.length}
             >
-              {!menus.length ? <option value="">لا يوجد قوائم</option> : null}
+              {!menus.length ? <option value="">{tr("لا يوجد قوائم", "No menus")}</option> : null}
               {menus.map((m: any) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -200,11 +200,11 @@ export default function NavPage() {
             </select>
 
             <Button variant="secondary" onClick={openCreateMenu} className="w-full sm:w-auto">
-              إضافة قائمة
+              {tr("إضافة قائمة", "Add menu")}
             </Button>
 
             <Button variant="primary" onClick={openCreateItem} disabled={!menus.length} className="w-full sm:w-auto">
-              إضافة رابط
+              {tr("إضافة رابط", "Add link")}
             </Button>
           </div>
         </div>
@@ -214,21 +214,21 @@ export default function NavPage() {
         {q.isLoading ? (
           <div className="flex items-center gap-2">
             <Spinner />
-            <div className="text-sm opacity-80">جاري التحميل…</div>
+            <div className="text-sm opacity-80">{tr("جاري التحميل…", "Loading…")}</div>
           </div>
         ) : q.isError ? (
-          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">فشل تحميل القوائم.</div>
+          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">{tr("فشل تحميل القوائم.", "The menus couldn't load.")}</div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-semibold">قوائم</div>
+                <div className="text-sm font-semibold">{tr("قوائم", "Menus")}</div>
                 <div className="flex items-center gap-2">
                   <Button variant="secondary" onClick={() => activeMenuId && openEditMenu(activeMenuId)} disabled={!activeMenuId}>
-                    تعديل
+                    {tr("تعديل", "Edit")}
                   </Button>
                   <Button variant="danger" onClick={() => activeMenuId && setConfirmMenuId(activeMenuId)} disabled={!activeMenuId}>
-                    حذف
+                    {tr("حذف", "Delete")}
                   </Button>
                 </div>
               </div>
@@ -254,10 +254,10 @@ export default function NavPage() {
                             openEditMenu(m.id);
                           }}
                         >
-                          تعديل
+                          {tr("تعديل", "Edit")}
                         </Button>
                         <Button size="sm" variant="danger" className="flex-1" onClick={() => setConfirmMenuId(m.id)}>
-                          حذف
+                          {tr("حذف", "Delete")}
                         </Button>
                       </div>
                     </div>
@@ -267,9 +267,9 @@ export default function NavPage() {
                   <Table>
                 <THead>
                   <TR>
-                    <TH>الاسم</TH>
-                    <TH className="w-28">روابط</TH>
-                    <TH className="w-36">إجراءات</TH>
+                    <TH>{tr("الاسم", "Name")}</TH>
+                    <TH className="w-28">{tr("روابط", "Links")}</TH>
+                    <TH className="w-36">{tr("إجراءات", "Actions")}</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -286,10 +286,10 @@ export default function NavPage() {
                               openEditMenu(m.id);
                             }}
                           >
-                            تعديل
+                            {tr("تعديل", "Edit")}
                           </Button>
                           <Button variant="danger" onClick={() => setConfirmMenuId(m.id)}>
-                            حذف
+                            {tr("حذف", "Delete")}
                           </Button>
                         </div>
                       </TD>
@@ -303,12 +303,12 @@ export default function NavPage() {
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-semibold">روابط القائمة</div>
+                <div className="text-sm font-semibold">{tr("روابط القائمة", "Menu links")}</div>
                 <div className="text-sm opacity-70">{activeMenu ? activeMenu.name : "—"}</div>
               </div>
 
               {!activeMenu ? (
-                <div className="text-sm opacity-80">اختر قائمة لعرض الروابط.</div>
+                <div className="text-sm opacity-80">{tr("اختيار قائمة بيعرض روابطها.", "Choose a menu to see its links.")}</div>
               ) : (
                 <div className="space-y-3">
                   <div className="space-y-3 sm:hidden">
@@ -325,10 +325,10 @@ export default function NavPage() {
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <Button size="sm" variant="secondary" className="flex-1" onClick={() => openEditItem(it)}>
-                            تعديل
+                            {tr("تعديل", "Edit")}
                           </Button>
                           <Button size="sm" variant="danger" className="flex-1" onClick={() => setConfirmItemId(it.id)}>
-                            حذف
+                            {tr("حذف", "Delete")}
                           </Button>
                         </div>
                       </div>
@@ -338,10 +338,10 @@ export default function NavPage() {
                     <Table>
                   <THead>
                     <TR>
-                      <TH>العنوان</TH>
-                      <TH>الرابط</TH>
-                      <TH className="w-24">ترتيب</TH>
-                      <TH className="w-40">إجراءات</TH>
+                      <TH>{tr("العنوان", "Title")}</TH>
+                      <TH>{tr("الرابط", "Link")}</TH>
+                      <TH className="w-24">{tr("ترتيب", "Order")}</TH>
+                      <TH className="w-40">{tr("إجراءات", "Actions")}</TH>
                     </TR>
                   </THead>
                   <TBody>
@@ -355,10 +355,10 @@ export default function NavPage() {
                         <TD>
                           <div className="flex gap-2">
                             <Button variant="secondary" onClick={() => openEditItem(it)}>
-                              تعديل
+                              {tr("تعديل", "Edit")}
                             </Button>
                             <Button variant="danger" onClick={() => setConfirmItemId(it.id)}>
-                              حذف
+                              {tr("حذف", "Delete")}
                             </Button>
                           </div>
                         </TD>
@@ -377,20 +377,20 @@ export default function NavPage() {
       {/* Menu modal */}
       <Modal
         open={menuOpen}
-        title={menuEditingId ? "تعديل قائمة" : "إضافة قائمة"}
+        title={menuEditingId ? tr("تعديل قائمة", "Edit menu") : tr("إضافة قائمة", "Add menu")}
         onClose={() => setMenuOpen(false)}
         widthClassName="max-w-lg"
         footer={
           <div className="flex gap-2">
             <Button variant="primary" onClick={saveMenu} isLoading={actions.createMenu.isPending || actions.updateMenu.isPending}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div className="space-y-4">
           <Input
-            label="اسم القائمة"
+            label={tr("اسم القائمة", "Menu name")}
             value={menuName}
             error={menuErrors.name}
             onChange={(e) => {
@@ -404,20 +404,20 @@ export default function NavPage() {
       {/* Item modal */}
       <Modal
         open={itemOpen}
-        title={itemEditingId ? "تعديل رابط" : "إضافة رابط"}
+        title={itemEditingId ? tr("تعديل رابط", "Edit link") : tr("إضافة رابط", "Add link")}
         onClose={() => setItemOpen(false)}
         widthClassName="max-w-lg"
         footer={
           <div className="flex gap-2">
             <Button variant="primary" onClick={saveItem} isLoading={actions.createItem.isPending || actions.updateItem.isPending}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div className="space-y-4">
           <Input
-            label="العنوان"
+            label={tr("العنوان", "Title")}
             value={itemLabel}
             error={itemErrors.label}
             onChange={(e) => {
@@ -426,41 +426,41 @@ export default function NavPage() {
             }}
           />
           <Input
-            label="الرابط"
+            label={tr("الرابط", "Link")}
             value={itemHref}
             error={itemErrors.href}
-            placeholder="/about أو https://..."
+            placeholder={tr("/about أو https://...", "/about or https://...")}
             onChange={(e) => {
               setItemHref(e.target.value);
               setItemErrors((p) => ({ ...p, href: undefined }));
             }}
           />
           <Select
-            label="العنصر الأب (اختياري)"
+            label={tr("العنصر الأب (اختياري)", "Parent item (optional)")}
             value={itemParentId}
             onChange={(v) => setItemParentId(v as string)}
             options={parentOptions}
           />
-          <Input label="الترتيب" type="number" value={String(itemOrder)} onChange={(e) => setItemOrder(parseInt(e.target.value || "0", 10))} />
+          <Input label={tr("الترتيب", "Order")} type="number" value={String(itemOrder)} onChange={(e) => setItemOrder(parseInt(e.target.value || "0", 10))} />
         </div>
       </Modal>
 
       <ConfirmDialog
         open={!!confirmMenuId}
-        title="تأكيد حذف القائمة"
-        message="هل أنت متأكد؟ سيتم حذف القائمة وروابطها."
-        confirmText="حذف"
-        cancelText="إلغاء"
+        title={tr("تأكيد حذف القائمة", "Confirm deleting the menu")}
+        message={tr("الحذف أكيد؟ القائمة وروابطها رح ينحذفوا.", "Sure? The menu and its links will be deleted.")}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onConfirm={deleteMenu}
         onCancel={() => setConfirmMenuId(null)}
       />
 
       <ConfirmDialog
         open={!!confirmItemId}
-        title="تأكيد حذف الرابط"
-        message="هل أنت متأكد؟"
-        confirmText="حذف"
-        cancelText="إلغاء"
+        title={tr("تأكيد حذف الرابط", "Confirm deleting the link")}
+        message={tr("الحذف أكيد؟", "Sure?")}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onConfirm={deleteItem}
         onCancel={() => setConfirmItemId(null)}
       />
@@ -469,3 +469,5 @@ export default function NavPage() {
 }
 
 
+
+import { tr } from "@/lib/words";

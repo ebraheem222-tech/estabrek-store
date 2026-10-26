@@ -7,6 +7,7 @@ import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Spinner } from "../../components/ui/Spinner";
+import { tr } from "@/lib/words";
 
 export default function SizesPage() {
   const q = useSizes();
@@ -43,7 +44,7 @@ export default function SizesPage() {
     const body = { name: name.trim(), order: Number.isFinite(order) ? order : 0 };
 
     const nextErrors: { name?: string } = {};
-    if (!body.name) nextErrors.name = "الاسم مطلوب";
+    if (!body.name) nextErrors.name = tr("الاسم مطلوب", "The name is required");
 
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
@@ -74,15 +75,15 @@ export default function SizesPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-lg font-semibold">المقاسات</div>
+            <div className="text-lg font-semibold">{tr("المقاسات", "Sizes")}</div>
             <div className="mt-1 text-xs opacity-70">Sizes</div>
           </div>
           <Button variant="primary" onClick={openCreate}>
-            إضافة مقاس
+            {tr("إضافة مقاس", "Add size")}
           </Button>
         </div>
       </div>
@@ -91,17 +92,17 @@ export default function SizesPage() {
         {q.isLoading ? (
           <div className="flex items-center gap-2">
             <Spinner />
-            <div className="text-sm opacity-80">جاري التحميل…</div>
+            <div className="text-sm opacity-80">{tr("جاري التحميل…", "Loading…")}</div>
           </div>
         ) : q.isError ? (
-          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">فشل تحميل المقاسات.</div>
+          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">{tr("فشل تحميل المقاسات.", "The sizes couldn't load.")}</div>
         ) : (
           <Table>
             <THead>
               <TR>
-                <TH>الاسم</TH>
-                <TH>الترتيب</TH>
-                <TH className="w-40">إجراءات</TH>
+                <TH>{tr("الاسم", "Name")}</TH>
+                <TH>{tr("الترتيب", "Order")}</TH>
+                <TH className="w-40">{tr("إجراءات", "Actions")}</TH>
               </TR>
             </THead>
             <TBody>
@@ -112,10 +113,10 @@ export default function SizesPage() {
                   <TD>
                     <div className="flex gap-2">
                       <Button variant="secondary" onClick={() => openEdit(s)}>
-                        تعديل
+                        {tr("تعديل", "Edit")}
                       </Button>
                       <Button variant="danger" onClick={() => setConfirmId(s.id)}>
-                        حذف
+                        {tr("حذف", "Delete")}
                       </Button>
                     </div>
                   </TD>
@@ -128,20 +129,20 @@ export default function SizesPage() {
 
       <Modal
         open={open}
-        title={editingId ? "تعديل مقاس" : "إضافة مقاس"}
+        title={editingId ? tr("تعديل مقاس", "Edit size") : tr("إضافة مقاس", "Add size")}
         onCancel={() => setOpen(false)}
         widthClassName="max-w-lg"
         footer={
           <div className="flex gap-2">
             <Button variant="primary" onClick={onSave} isLoading={actions.createSize.isPending || actions.updateSize.isPending}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div className="space-y-4">
           <Input
-            label="الاسم"
+            label={tr("الاسم", "Name")}
             value={name}
             error={errors.name}
             onChange={(e) => {
@@ -151,7 +152,7 @@ export default function SizesPage() {
           />
 
           <Input
-            label="الترتيب"
+            label={tr("الترتيب", "Order")}
             type="number"
             value={String(order)}
             onChange={(e) => setOrder(parseInt(e.target.value || "0", 10))}
@@ -161,10 +162,10 @@ export default function SizesPage() {
 
       <ConfirmDialog
         open={!!confirmId}
-        title="تأكيد الحذف"
-        message="هل أنت متأكد؟ قد يفشل الحذف إذا المقاس مرتبط بمنتجات."
-        confirmText="حذف"
-        cancelText="إلغاء"
+        title={tr("تأكيد الحذف", "Confirm delete")}
+        message={tr("الحذف أكيد؟ ممكن ما يزبط إذا المقاس مرتبط بمنتجات.", "Delete for sure? It may fail if the size is used by products.")}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onConfirm={onDelete}
         onCancel={() => setConfirmId(null)}
       />

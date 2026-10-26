@@ -111,7 +111,7 @@ export default function OrderMessageModal({ open, order, onClose }: Props) {
         </div>
       }
     >
-      <div dir="rtl" className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Select
           label="القناة"
           value={channel}

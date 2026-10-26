@@ -16,7 +16,8 @@ import { AppError } from "../../utils/httpError.js";
 import { AI_DEFAULTS, AI_FEATURES, AiSchema, NO_KEY_NEEDED, aiOf } from "../ai/ai.settings.js";
 import { aiKeyReady, aiUsage } from "../ai/ai.client.js";
 import { needFeature } from "../ai/ai.guard.js";
-import { askShop, orderFlags, photoStudio, replySuggestions, writeProduct } from "../ai/ai.service.js";
+import { askShop, orderFlags, photoStudio, replySuggestions, translateTexts, writeProduct } from "../ai/ai.service.js";
+import { CONTENT_LANGS } from "../../lib/translations.js";
 import { adminIdOf, changedKeys, getOrCreateSettings, keepRevision, triggerSettingsRevalidate } from "./settings.controller.js";
 
 const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -73,6 +74,25 @@ aiCatalogAdmin.post(
   }),
 );
 
+/** Draft translations of the shop's content; nothing is saved here (the owner checks, then saves). */
+aiCatalogAdmin.post(
+  "/translate",
+  validate({
+    body: z.object({
+      to: z.enum(CONTENT_LANGS),
+      from: z.enum(CONTENT_LANGS).optional(),
+      context: z.string().max(200).optional(),
+      texts: z
+        .record(z.string().max(80), z.string().max(5000))
+        .refine((t) => Object.keys(t).length <= 80 && Object.values(t).reduce((n, v) => n + v.length, 0) <= 20000, "Too much text at once"),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    await needFeature("translate");
+    res.json(await translateTexts(req.body));
+  }),
+);
+
 aiCatalogAdmin.post(
   "/photo-studio",
   validate({ body: z.object({ imageUrl: z.string().url().max(1000), style: z.enum(["white", "studio", "soft"]).default("white"), title: z.string().max(200).optional() }) }),
@@ -91,7 +111,7 @@ aiCatalogAdmin.get(
     const s = await getOrCreateSettings();
     const ai = aiOf(s.header);
     const key = aiKeyReady();
-    res.json({ productWriter: ai.productWriter && key, photoStudio: ai.photoStudio && key && isCloudinaryEnabled() });
+    res.json({ productWriter: ai.productWriter && key, photoStudio: ai.photoStudio && key && isCloudinaryEnabled(), translate: ai.translate && key });
   }),
 );
 

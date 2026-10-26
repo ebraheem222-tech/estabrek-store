@@ -1,6 +1,8 @@
 // State, validation and save payload for the one-screen product page (add and edit).
 import type { CatalogCategory, CatalogSize, ProductDeep, ProductDeepUpdateBody } from "../../../api/catalog.api";
 import { colorCode, makeSlug, parsePrice, skuPart } from "../../../lib/productComposer";
+import { translationsOf, type Translations } from "../../../lib/translations";
+import { tr } from "@/lib/words";
 
 export type PhotoStatus = "queued" | "uploading" | "done" | "error";
 
@@ -67,6 +69,8 @@ export type ComposerDraft = {
   /** Search-engine title and description; empty = the product's own title and description. */
   seoTitle: string;
   seoDescription: string;
+  /** The same texts in the shop's other languages (الترجمة); empty = the original in the shop. */
+  translations: Translations;
   price: string;
   onSale: boolean;
   compareAt: string;
@@ -110,6 +114,7 @@ export function emptyDraft(partial?: Partial<ComposerDraft>): ComposerDraft {
     protection: { on: false, hours: "", downloads: "", devices: "" },
     seoTitle: "",
     seoDescription: "",
+    translations: {},
     price: "",
     onSale: false,
     compareAt: "",
@@ -190,30 +195,30 @@ export type ComposerErrors = Partial<Record<"photos" | "title" | "category" | "p
 export function validateDraft(d: ComposerDraft, opts: { publish: boolean; sizes?: CatalogSize[] }): ComposerErrors {
   const e: ComposerErrors = {};
   const photos = Object.values(d.photos);
-  if (!d.title.trim()) e.title = "اكتبي اسم المنتج";
-  if (!d.categoryId) e.category = "اختاري القسم";
+  if (!d.title.trim()) e.title = tr("لازم ينكتب اسم المنتج", "Write the product's name");
+  if (!d.categoryId) e.category = tr("لازم يكون في قسم", "Choose a category");
   const price = parsePrice(d.price);
-  if (price == null || price <= 0) e.price = "اكتبي السعر";
+  if (price == null || price <= 0) e.price = tr("لازم ينكتب السعر", "Write the price");
   if (d.onSale) {
     const before = parsePrice(d.compareAt);
-    if (before == null || price == null || before <= price) e.compareAt = "السعر قبل الخصم لازم يكون أعلى من السعر الحالي";
+    if (before == null || price == null || before <= price) e.compareAt = tr("السعر قبل الخصم لازم يكون أعلى من السعر الحالي", "The price before the discount has to be higher than the current price");
   }
-  if (!d.sizeIds.length) e.sizes = "اختاري مقاساً واحداً على الأقل";
+  if (!d.sizeIds.length) e.sizes = tr("لازم يكون في مقاس واحد على الأقل", "Choose at least one size");
   else {
     const bare = d.groups.find((g) => !sizesOf(d, g.key).length);
-    if (bare) e.sizes = `كل لون لازم يكون إله مقاس واحد على الأقل («${bare.name.trim() || "لون"}» ما إله)`;
+    if (bare) e.sizes = tr(`كل لون لازم يكون إله مقاس واحد على الأقل («${bare.name.trim() || "لون"}» ما إله)`, "Every colour needs at least one size (“{0}” has none)", [bare.name.trim() || "لون"]);
   }
-  if (!d.groups.length) e.colors = "أضيفي لوناً واحداً على الأقل";
+  if (!d.groups.length) e.colors = tr("لازم يكون في لون واحد على الأقل", "Add at least one colour");
   else {
     const names = d.groups.map((g) => `${g.name.trim()}|${(g.boxLabel ?? "").trim()}`);
-    if (d.groups.some((g) => !g.name.trim())) e.colors = "اكتبي اسم كل لون";
-    else if (new Set(names).size !== names.length) e.colors = "يوجد لونان بنفس الاسم";
+    if (d.groups.some((g) => !g.name.trim())) e.colors = tr("لازم ينكتب اسم كل لون", "Name every colour");
+    else if (new Set(names).size !== names.length) e.colors = tr("يوجد لونان بنفس الاسم", "Two colours have the same name");
   }
   const dup = duplicateSkus(d, opts.sizes ?? []);
-  if (dup.length) e.skus = `نفس كود SKU مكتوب أكثر من مرة: ${dup.join("، ")}`;
-  if (opts.publish && !photos.length) e.photos = "أضيفي صورة واحدة على الأقل قبل النشر";
-  if (opts.publish && d.groups.some((g) => !g.photoKeys.length)) e.photos = "كل لون يحتاج صورة قبل النشر";
-  if (photos.some((p) => p.status === "error")) e.uploads = "بعض الصور لم تُرفع. أعيدي المحاولة أو احذفيها";
+  if (dup.length) e.skus = tr(`نفس كود SKU مكتوب أكثر من مرة: ${dup.join("، ")}`, "The same SKU is written more than once: {0}", [dup.join(", ")]);
+  if (opts.publish && !photos.length) e.photos = tr("لازم تكون في صورة واحدة على الأقل قبل النشر", "Add at least one photo before publishing");
+  if (opts.publish && d.groups.some((g) => !g.photoKeys.length)) e.photos = tr("كل لون يحتاج صورة قبل النشر", "Every colour needs a photo before publishing");
+  if (photos.some((p) => p.status === "error")) e.uploads = tr("بعض الصور لم تُرفع. يرجى المحاولة من جديد أو حذفها", "Some photos didn't upload. Try again or remove them");
   return e;
 }
 
@@ -221,11 +226,11 @@ export function validateDraft(d: ComposerDraft, opts: { publish: boolean; sizes?
 export function checklist(d: ComposerDraft) {
   const price = parsePrice(d.price);
   return [
-    { key: "photos", label: "الصور", done: Object.keys(d.photos).length > 0 && d.groups.every((g) => g.photoKeys.length > 0) },
-    { key: "title", label: "اسم المنتج", done: Boolean(d.title.trim()) },
-    { key: "category", label: "القسم", done: Boolean(d.categoryId) },
-    { key: "price", label: "السعر", done: price != null && price > 0 },
-    { key: "sizes", label: "المقاسات والكمية", done: d.sizeIds.length > 0 && d.groups.length > 0 && d.groups.every((g) => sizesOf(d, g.key).length > 0) },
+    { key: "photos", label: tr("الصور", "Photos"), done: Object.keys(d.photos).length > 0 && d.groups.every((g) => g.photoKeys.length > 0) },
+    { key: "title", label: tr("اسم المنتج", "Product name"), done: Boolean(d.title.trim()) },
+    { key: "category", label: tr("القسم", "Category"), done: Boolean(d.categoryId) },
+    { key: "price", label: tr("السعر", "Price"), done: price != null && price > 0 },
+    { key: "sizes", label: tr("المقاسات والكمية", "Sizes and quantity"), done: d.sizeIds.length > 0 && d.groups.length > 0 && d.groups.every((g) => sizesOf(d, g.key).length > 0) },
   ];
 }
 
@@ -424,6 +429,7 @@ export function draftForEdit(p: ProductDeep): ComposerDraft {
     protection: protectionOf(p),
     seoTitle: p.seoTitle ?? "",
     seoDescription: p.seoDescription ?? "",
+    translations: translationsOf(p.translations),
     price: Number.isFinite(base) && base > 0 ? String(base) : "",
     onSale: Number.isFinite(compare) && compare > base,
     compareAt: Number.isFinite(compare) && compare > base ? String(compare) : "",
@@ -486,6 +492,7 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
     delivery: deliveryOf(p),
     redeemNote: (p as { redeemNote?: string | null }).redeemNote ?? "",
     protection: protectionOf(p),
+    translations: carriedTranslations(p.translations),
     price: Number.isFinite(price) && price > 0 ? String(price) : "",
     onSale: Number.isFinite(compare) && compare > price,
     compareAt: Number.isFinite(compare) && compare > price ? String(compare) : "",
@@ -495,6 +502,17 @@ export function draftFromProduct(p: ProductDeep, opts: { keepPhotos: boolean; ti
     groups: opts.keepPhotos ? groups : [],
     photos,
   });
+}
+
+/** A similar product keeps the translated description, details and colours, not the name. */
+function carriedTranslations(raw: unknown): Translations {
+  const out: Translations = {};
+  for (const [lang, words] of Object.entries(translationsOf(raw))) {
+    if (!words) continue;
+    const { title: _t, seoTitle: _s, seoDescription: _d, ...rest } = words as Record<string, unknown>;
+    if (Object.keys(rest).length) out[lang as keyof Translations] = rest;
+  }
+  return out;
 }
 
 /* ------------------------------------------------------ local storage */
@@ -593,9 +611,9 @@ export function protectionForSave(d: Pick<ComposerDraft, "protection">) {
 export function protectionProblem(d: Pick<ComposerDraft, "protection">): string | null {
   const v = protectionForSave(d);
   if (!v.isProtected) return null;
-  if (Number.isNaN(v.licenceHours)) return "مدة التنزيل: عدد ساعات صحيح، من 1 لـ 8760 (سنة)";
-  if (Number.isNaN(v.licenceDownloads)) return "عدد التنزيلات: رقم صحيح من 1 لـ 100";
-  if (Number.isNaN(v.licenceDevices)) return "عدد الأجهزة: رقم صحيح من 1 لـ 50";
+  if (Number.isNaN(v.licenceHours)) return tr("مدة التنزيل: عدد ساعات صحيح، من 1 لـ 8760 (سنة)", "Download window: whole hours, from 1 to 8760 (a year)");
+  if (Number.isNaN(v.licenceDownloads)) return tr("عدد التنزيلات: رقم صحيح من 1 لـ 100", "Downloads: a whole number from 1 to 100");
+  if (Number.isNaN(v.licenceDevices)) return tr("عدد الأجهزة: رقم صحيح من 1 لـ 50", "Devices: a whole number from 1 to 50");
   return null;
 }
 
@@ -623,8 +641,8 @@ export function deliveryForSave(d: Pick<ComposerDraft, "delivery">) {
 /** What's wrong with the shipping days, in words (null = fine). */
 export function deliveryProblem(d: Pick<ComposerDraft, "delivery">): string | null {
   const v = deliveryForSave(d);
-  if (Number.isNaN(v.deliveryMinDays) || Number.isNaN(v.deliveryMaxDays)) return "أيام التوصيل رقم من 0 لـ 120";
-  if (v.deliveryMinDays != null && v.deliveryMaxDays != null && v.deliveryMaxDays < v.deliveryMinDays) return "«لحد» لازم يكون أكبر من «من»";
+  if (Number.isNaN(v.deliveryMinDays) || Number.isNaN(v.deliveryMaxDays)) return tr("أيام التوصيل رقم من 0 لـ 120", "Delivery days are a number from 0 to 120");
+  if (v.deliveryMinDays != null && v.deliveryMaxDays != null && v.deliveryMaxDays < v.deliveryMinDays) return tr("«لحد» لازم يكون أكبر من «من»", "“To” has to be more than “From”");
   return null;
 }
 

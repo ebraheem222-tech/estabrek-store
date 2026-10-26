@@ -35,8 +35,8 @@ const Token = z.string().min(20).max(200);
 
 /* ---------- sign in ---------- */
 
-r.post("/auth/start", validate({ body: z.object({ email: Email }) }), asyncHandler(async (req, res) => {
-  res.json(await startLogin(req.body.email, ctxOf(req)));
+r.post("/auth/start", validate({ body: z.object({ email: Email, lang: z.enum(["ar", "en", "he"]).optional() }) }), asyncHandler(async (req, res) => {
+  res.json(await startLogin(req.body.email, { ...ctxOf(req), lang: req.body.lang }));
 }));
 
 r.post(

@@ -73,7 +73,7 @@ describe("Where the mark goes", () => {
     const b = mark("part.stl", tri);
     expect(b.placed).toBe("inside");
     expect(b.data.length).toBe(tri.length);
-    expect(b.data.subarray(0, 80).toString("ascii")).toMatch(/^Estabrek Licensed copy for order G7H8J9/);
+    expect(b.data.subarray(0, 80).toString("ascii")).toMatch(/^Licensed copy for order G7H8J9/);
     expect(b.data.subarray(80).equals(tri.subarray(80))).toBe(true);
     const ascii = Buffer.from("solid part\nfacet normal 0 0 1\nendfacet\nendsolid part\n");
     expect(mark("part.stl", ascii).data.toString()).toBe("solid part estb:K7QM2XHPAB\nfacet normal 0 0 1\nendfacet\nendsolid part\n");

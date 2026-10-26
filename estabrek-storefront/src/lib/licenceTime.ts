@@ -1,20 +1,24 @@
 // A protected download's window, in words: "باقي 5 ساعات" / "5 hours left".
 
+import type { Lang } from "./i18n";
 const arHours = (h: number) => (h === 1 ? "ساعة" : h === 2 ? "ساعتين" : h <= 10 ? `${h} ساعات` : `${h} ساعة`);
 const arDays = (d: number) => (d === 1 ? "يوم" : d === 2 ? "يومين" : d <= 10 ? `${d} أيام` : `${d} يوم`);
 const arMinutes = (m: number) => (m === 1 ? "دقيقة" : m === 2 ? "دقيقتين" : m <= 10 ? `${m} دقائق` : `${m} دقيقة`);
 const en = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"} left`;
+const he = (n: number, unit: "minute" | "hour" | "day") =>
+  unit === "minute" ? (n === 1 ? "נשארה דקה" : `נשארו ${n} דקות`) : unit === "hour" ? (n === 1 ? "נשארה שעה" : n === 2 ? "נשארו שעתיים" : `נשארו ${n} שעות`) : n === 1 ? "נשאר יום" : n === 2 ? "נשארו יומיים" : `נשארו ${n} ימים`;
 
 /** Null when the window is over. */
-export function licenceTimeLeft(expiresAt: string, ar: boolean, now = Date.now()): string | null {
+export function licenceTimeLeft(expiresAt: string, lang: Lang, now = Date.now()): string | null {
+  const ar = lang === "ar";
   const ms = new Date(expiresAt).getTime() - now;
   if (!(ms > 0)) return null;
   const min = Math.ceil(ms / 60_000);
-  if (min < 60) return ar ? `باقي ${arMinutes(min)}` : en(min, "minute");
+  if (min < 60) return ar ? `باقي ${arMinutes(min)}` : lang === "he" ? he(min, "minute") : en(min, "minute");
   const h = Math.round(min / 60);
-  if (h < 48) return ar ? `باقي ${arHours(h)}` : en(h, "hour");
+  if (h < 48) return ar ? `باقي ${arHours(h)}` : lang === "he" ? he(h, "hour") : en(h, "hour");
   const d = Math.round(h / 24);
-  return ar ? `باقي ${arDays(d)}` : en(d, "day");
+  return ar ? `باقي ${arDays(d)}` : lang === "he" ? he(d, "day") : en(d, "day");
 }
 
 /** The file name the server sent (Content-Disposition), or a fallback. */

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import dynamic from "next/dynamic";
 import { CartProvider } from "@/store/cart";
 import { WishlistProvider } from "@/store/wishlist";
@@ -15,6 +15,11 @@ import MotionProvider from "@/motion/MotionProvider";
 import { RazanProvider } from "@/store/razan";
 import { normalizeRequests } from "@/lib/requestsSettings";
 import { normalizeScarcity } from "@/lib/scarcity";
+import { identityOf, type StoreIdentity } from "@/lib/storeIdentity";
+import { NamesBridge, StoreIdentityProvider } from "@/store/storeIdentity";
+import { setArabicTone } from "@/lib/words";
+import { LanguageProvider } from "@/components/cinematic/Language";
+import type { Lang, LangConfig } from "@/lib/i18n";
 import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
@@ -70,6 +75,9 @@ export default function Providers({
   quiz,
   ai,
   scarcity,
+  identity,
+  lang = "ar",
+  languages,
 }: {
   children: React.ReactNode;
   initialStorefrontSettings?: Partial<StorefrontSettings>;
@@ -90,6 +98,11 @@ export default function Providers({
   ai?: unknown;
   /** Admin → تنبيهات المخزون (header.scarcity): the "pieces left" labels. */
   scarcity?: unknown;
+  /** Admin → هوية المتجر (header.identity): the store's own name, line and audience. */
+  identity?: StoreIdentity;
+  /** The page's language (its address) and the store's languages (admin → اللغات). */
+  lang?: Lang;
+  languages?: LangConfig;
 }) {
   const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
   const defaultTheme = darkModeDisabled
@@ -114,10 +127,17 @@ export default function Providers({
     clearBodyScrollLocks();
   }, [pathname]);
 
+  // The store's way of speaking Arabic (to her, to him, to everyone), before anything below speaks.
+  const store = identity ?? identityOf(null);
+  setArabicTone(store.audience);
+
   return (
+    <LanguageProvider initial={lang} config={languages}>
     <ThemeProvider defaultTheme={defaultTheme} disableDarkMode={darkModeDisabled}>
+      <StoreIdentityProvider value={store}>
       <SiteFeaturesProvider value={features}>
       <RazanProvider value={razan}>
+      <NamesBridge />
       <CartProvider>
         <MaybeAccounts enabled={accountsEnabled}>
         <WishlistProvider>
@@ -143,6 +163,8 @@ export default function Providers({
       </CartProvider>
       </RazanProvider>
       </SiteFeaturesProvider>
+      </StoreIdentityProvider>
     </ThemeProvider>
+    </LanguageProvider>
   );
 }

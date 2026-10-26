@@ -1,11 +1,12 @@
-export const LEVEL_LABELS: Record<number, string> = { 1: "سهل", 2: "متوسط", 3: "صعب" };
-export const TOPIC_LABELS: Record<string, string> = { quran: "القرآن", seerah: "السيرة", manners: "الآداب", worship: "العبادات", general: "عام" };
+import { tr } from "@/lib/words";
+export const LEVEL_LABELS: Record<number, string> = { 1: tr("سهل", "Easy"), 2: tr("متوسط", "Medium"), 3: tr("صعب", "Hard") };
+export const TOPIC_LABELS: Record<string, string> = { quran: tr("القرآن", "Quran"), seerah: tr("السيرة", "The Prophet's life"), manners: tr("الآداب", "Manners"), worship: tr("العبادات", "Worship"), general: tr("عام", "General") };
 
 /** "1، 3، 7، 15، 31…" — the visitors who get a chance in counter mode. */
 export function scheduleText(base: number, count = 6) {
   const out: number[] = [];
   for (let p = 1; out.length < count; p = base * p + 1) out.push(p);
-  return `${out.join("، ")}…`;
+  return `${out.join(tr("، ", ", "))}…`;
 }
 
 /** Chance mode: the odds for the 1st, 2nd, 3rd… prize of a period. */

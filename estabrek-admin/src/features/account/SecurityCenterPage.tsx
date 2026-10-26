@@ -16,6 +16,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { authStore } from "../../store/auth.store";
 import { useAdminSessions, useAdminSecurityEvents, useSecurityActions } from "../../hooks/useSecurity";
 import { listLocalAdminAuditEvents, type LocalAdminAuditEvent } from "../../lib/adminAudit";
+import { tr } from "@/lib/words";
 
 type Tab = "SECURITY" | "SESSIONS" | "AUDIT";
 
@@ -47,13 +48,13 @@ export default function SecurityCenterPage() {
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
   const [totpUri, setTotpUri] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
-  const [totpLabel, setTotpLabel] = useState("هاتف");
+  const [totpLabel, setTotpLabel] = useState(tr("هاتف", "Phone"));
   const [isTotpLoading, setIsTotpLoading] = useState(false);
 
   // --- 2FA (SMS)
   const [smsChallengeId, setSmsChallengeId] = useState<string | null>(null);
   const [smsCode, setSmsCode] = useState("");
-  const [smsLabel, setSmsLabel] = useState("رقم الهاتف");
+  const [smsLabel, setSmsLabel] = useState(tr("رقم الهاتف", "Phone number"));
   const [isSmsLoading, setIsSmsLoading] = useState(false);
 
   // --- Recovery
@@ -215,19 +216,19 @@ export default function SecurityCenterPage() {
     <div className="space-y-4">
       {mustSetUp2fa && !admin?.twoFactorEnabled ? (
         <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-200" data-testid="setup-2fa-required">
-          صاحب المتجر طلب تفعيل التحقق بخطوتين لكل الحسابات. فعّله هون (تطبيق المصادقة أو SMS)، وبعدها بتفتح باقي صفحات لوحة الإدارة.
+          {tr("صاحب المتجر طلب التحقق بخطوتين لكل الحسابات. بيتفعّل من هون (تطبيق المصادقة أو SMS)، وبعدها بتفتح باقي صفحات لوحة الإدارة.", "The store owner asked for two-step sign-in on every account. Turn it on here (authenticator app or SMS) and the rest of the admin opens.")}
         </div>
       ) : null}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-bold">الأمان</h1>
-          <p className="text-white/60 text-sm">إدارة الحماية، الجلسات، وسجل التدقيق (Audit Log).</p>
+          <h1 className="text-xl font-bold">{tr("الأمان", "Security")}</h1>
+          <p className="text-white/60 text-sm">{tr("إدارة الحماية، الجلسات، وسجل التدقيق (Audit Log).", "Protection, sessions and the audit log.")}</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant={tab === "SECURITY" ? "primary" : "ghost"} onClick={() => setTab("SECURITY")}>الحماية</Button>
-          <Button variant={tab === "SESSIONS" ? "primary" : "ghost"} onClick={() => setTab("SESSIONS")}>الجلسات</Button>
-          <Button variant={tab === "AUDIT" ? "primary" : "ghost"} onClick={() => setTab("AUDIT")}>سجل التدقيق</Button>
+          <Button variant={tab === "SECURITY" ? "primary" : "ghost"} onClick={() => setTab("SECURITY")}>{tr("الحماية", "Protection")}</Button>
+          <Button variant={tab === "SESSIONS" ? "primary" : "ghost"} onClick={() => setTab("SESSIONS")}>{tr("الجلسات", "Sessions")}</Button>
+          <Button variant={tab === "AUDIT" ? "primary" : "ghost"} onClick={() => setTab("AUDIT")}>{tr("سجل التدقيق", "Audit log")}</Button>
         </div>
       </div>
 
@@ -236,25 +237,25 @@ export default function SecurityCenterPage() {
           <Card>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">التحقق بخطوتين (2FA)</h2>
-                <p className="text-white/60 text-sm">ننصح بتفعيل 2FA قبل نشر المشروع.</p>
+                <h2 className="text-lg font-semibold">{tr("التحقق بخطوتين (2FA)", "Two-step sign-in (2FA)")}</h2>
+                <p className="text-white/60 text-sm">{tr("ننصح بتفعيل 2FA قبل نشر المشروع.", "We recommend turning on 2FA before going live.")}</p>
               </div>
-              {admin?.twoFactorEnabled ? <Badge variant="success">مفعّل</Badge> : <Badge variant="default">غير مفعّل</Badge>}
+              {admin?.twoFactorEnabled ? <Badge variant="success">{tr("مفعّل", "On")}</Badge> : <Badge variant="default">{tr("غير مفعّل", "Off")}</Badge>}
             </div>
 
             <div className="mt-4 space-y-3">
               {!admin?.twoFactorEnabled ? (
                 <>
                   <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button onClick={setupTotp} isLoading={isTotpLoading}>تجهيز TOTP</Button>
-                    <Button variant="secondary" onClick={startSms2fa} isLoading={isSmsLoading}>تفعيل SMS 2FA</Button>
+                    <Button onClick={setupTotp} isLoading={isTotpLoading}>{tr("تجهيز TOTP", "Set up TOTP")}</Button>
+                    <Button variant="secondary" onClick={startSms2fa} isLoading={isSmsLoading}>{tr("تفعيل SMS 2FA", "Turn on SMS 2FA")}</Button>
                   </div>
 
                   {totpSecret && (
                     <div className="rounded-2xl border border-white/[0.08] p-4 space-y-3">
                       <div className="text-sm text-white/70">
-                        1) افتح Google Authenticator / Microsoft Authenticator<br />
-                        2) أضف حساب جديد واكتب الـ Secret يدويًا
+                        {tr("1) فتح Google Authenticator / Microsoft Authenticator", "1) Open Google Authenticator / Microsoft Authenticator")}<br />
+                        {tr("2) إضافة حساب جديد وكتابة الـ Secret يدويًا", "2) Add a new account and type the secret by hand")}
                       </div>
 
                       <div className="grid grid-cols-1 gap-3">
@@ -265,9 +266,9 @@ export default function SecurityCenterPage() {
                             <Button
                               variant="ghost"
                               onClick={() => navigator.clipboard.writeText(totpSecret)}
-                              title="نسخ"
+                              title={tr("نسخ", "Copy")}
                             >
-                              نسخ
+                              {tr("نسخ", "Copy")}
                             </Button>
                           </div>
                         </div>
@@ -276,17 +277,17 @@ export default function SecurityCenterPage() {
                         )}
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
-                            <div className="text-xs text-white/50 mb-1">اسم الجهاز</div>
+                            <div className="text-xs text-white/50 mb-1">{tr("اسم الجهاز", "Device name")}</div>
                             <Input value={totpLabel} onChange={(e) => setTotpLabel(e.target.value)} />
                           </div>
                           <div>
-                            <div className="text-xs text-white/50 mb-1">كود 6 أرقام</div>
+                            <div className="text-xs text-white/50 mb-1">{tr("كود 6 أرقام", "6-digit code")}</div>
                             <Input value={totpCode} onChange={(e) => setTotpCode(e.target.value)} placeholder="123456" />
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button onClick={enableTotp} isLoading={isTotpLoading} disabled={!totpCode.trim()}>تفعيل</Button>
-                          <Button variant="ghost" onClick={() => { setTotpSecret(null); setTotpUri(null); }}>إلغاء</Button>
+                          <Button onClick={enableTotp} isLoading={isTotpLoading} disabled={!totpCode.trim()}>{tr("تفعيل", "Turn on")}</Button>
+                          <Button variant="ghost" onClick={() => { setTotpSecret(null); setTotpUri(null); }}>{tr("إلغاء", "Cancel")}</Button>
                         </div>
                       </div>
                     </div>
@@ -294,27 +295,27 @@ export default function SecurityCenterPage() {
 
                   {smsChallengeId && (
                     <div className="rounded-2xl border border-white/[0.08] p-4 space-y-3">
-                      <div className="text-sm text-white/70">تم إرسال كود إلى رقم هاتفك. أدخل الكود للتفعيل.</div>
+                      <div className="text-sm text-white/70">{tr("انبعت كود لرقم الهاتف. إدخال الكود بيفعّل الخدمة.", "A code was sent to your phone. Enter it to turn this on.")}</div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
-                          <div className="text-xs text-white/50 mb-1">اسم الجهاز</div>
+                          <div className="text-xs text-white/50 mb-1">{tr("اسم الجهاز", "Device name")}</div>
                           <Input value={smsLabel} onChange={(e) => setSmsLabel(e.target.value)} />
                         </div>
                         <div>
-                          <div className="text-xs text-white/50 mb-1">الكود</div>
+                          <div className="text-xs text-white/50 mb-1">{tr("الكود", "Code")}</div>
                           <Input value={smsCode} onChange={(e) => setSmsCode(e.target.value)} placeholder="123456" />
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button onClick={confirmSms2fa} isLoading={isSmsLoading} disabled={!smsCode.trim()}>تأكيد</Button>
-                        <Button variant="ghost" onClick={() => { setSmsChallengeId(null); setSmsCode(""); }}>إلغاء</Button>
+                        <Button onClick={confirmSms2fa} isLoading={isSmsLoading} disabled={!smsCode.trim()}>{tr("تأكيد", "Confirm")}</Button>
+                        <Button variant="ghost" onClick={() => { setSmsChallengeId(null); setSmsCode(""); }}>{tr("إلغاء", "Cancel")}</Button>
                       </div>
                     </div>
                   )}
                 </>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <div className="text-sm text-white/70">2FA مفعّل. إذا فقدت جهازك استخدم Recovery Codes.</div>
+                  <div className="text-sm text-white/70">{tr("2FA مفعّل. إذا ضاع الجهاز، أكواد الاسترجاع (Recovery Codes) بتفتح الحساب.", "2FA is on. If you lose your device, use your recovery codes.")}</div>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="secondary"
@@ -324,9 +325,9 @@ export default function SecurityCenterPage() {
                         setRecoveryOpen(true);
                       }}
                     >
-                      توليد Recovery Codes
+                      {tr("توليد Recovery Codes", "Make recovery codes")}
                     </Button>
-                    <Button variant="danger" onClick={disable2fa}>إلغاء تفعيل 2FA</Button>
+                    <Button variant="danger" onClick={disable2fa}>{tr("إلغاء تفعيل 2FA", "Turn off 2FA")}</Button>
                   </div>
                 </div>
               )}
@@ -334,12 +335,12 @@ export default function SecurityCenterPage() {
           </Card>
 
           <Card>
-            <h2 className="text-lg font-semibold">نصائح سريعة</h2>
-            <ul className="mt-3 space-y-2 text-sm text-white/70 list-disc pr-5">
-              <li>فعّل 2FA (TOTP أفضل من SMS إن أمكن).</li>
-              <li>راجع الجلسات واحذف أي جلسة مش مشهورة.</li>
-              <li>راقب Audit Log خصوصاً محاولات الدخول الفاشلة.</li>
-              <li>لا تخزن Recovery Codes داخل المتصفح—احفظها بمكان آمن.</li>
+            <h2 className="text-lg font-semibold">{tr("نصائح سريعة", "Quick tips")}</h2>
+            <ul className="mt-3 space-y-2 text-sm text-white/70 list-disc ps-5">
+              <li>{tr("تفعيل 2FA (TOTP أفضل من SMS إن أمكن).", "Turn on 2FA (TOTP is better than SMS where possible).")}</li>
+              <li>{tr("مراجعة الجلسات وإنهاء أي جلسة مش معروفة.", "Check the sessions and end any you don't recognise.")}</li>
+              <li>{tr("متابعة سجل التدقيق، خصوصاً محاولات الدخول الفاشلة.", "Keep an eye on the audit log, especially failed sign-ins.")}</li>
+              <li>{tr("أكواد الاسترجاع مكانها برّا المتصفح — بمكان آمن.", "Don't keep recovery codes in the browser — store them somewhere safe.")}</li>
             </ul>
           </Card>
         </div>
@@ -349,15 +350,15 @@ export default function SecurityCenterPage() {
         <Card>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-lg font-semibold">الجلسات</h2>
-              <p className="text-white/60 text-sm">شاهد الأجهزة المسجّلة عندك واحذف أي جلسة غير معروفة.</p>
+              <h2 className="text-lg font-semibold">{tr("الجلسات", "Sessions")}</h2>
+              <p className="text-white/60 text-sm">{tr("الأجهزة المسجّلة بالحساب، وإنهاء أي جلسة غير معروفة.", "See the devices signed in and end any session you don't know.")}</p>
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Select
                 value={sessStatus}
                 onChange={(e) => setSessStatus(e.target.value as any)}
-                placeholder="كل الحالات"
+                placeholder={tr("كل الحالات", "All statuses")}
                 options={[
                   { value: "ACTIVE", label: "ACTIVE" },
                   { value: "REVOKED", label: "REVOKED" },
@@ -372,9 +373,9 @@ export default function SecurityCenterPage() {
                 }}
                 disabled={!currentSessionId}
                 isLoading={actions.revokeOthers.isPending}
-                title={!currentSessionId ? "لا يوجد refreshToken" : ""}
+                title={!currentSessionId ? tr("لا يوجد refreshToken", "No refresh token") : ""}
               >
-                تسجيل خروج من باقي الأجهزة
+                {tr("تسجيل خروج من باقي الأجهزة", "Sign out everywhere else")}
               </Button>
             </div>
           </div>
@@ -383,10 +384,10 @@ export default function SecurityCenterPage() {
                         <>
               <div className="space-y-3 sm:hidden">
                 {sessionsQuery.isLoading && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">جارٍ التحميل...</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("جارٍ التحميل...", "Loading…")}</div>
                 )}
                 {!sessionsQuery.isLoading && sessionRows.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">لا يوجد جلسات.</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("لا يوجد جلسات.", "No sessions.")}</div>
                 )}
                 {sessionRows.map((s) => {
                   const isCurrent = !!currentSessionId && s.id === currentSessionId;
@@ -395,13 +396,13 @@ export default function SecurityCenterPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <Badge variant={s.status === "ACTIVE" ? "success" : s.status === "REVOKED" ? "danger" : "warning"}>{s.status}</Badge>
-                          {isCurrent && <Badge variant="info">الجلسة الحالية</Badge>}
+                          {isCurrent && <Badge variant="info">{tr("الجلسة الحالية", "This session")}</Badge>}
                         </div>
                         <div className="text-xs opacity-70">{formatDateTime(s.createdAt)}</div>
                       </div>
                       <div className="mt-2 text-xs opacity-80">IP: {s.ip ?? "-"}</div>
                       <div className="mt-1 text-xs opacity-70">{s.userAgent ? truncate(s.userAgent, 80) : "-"}</div>
-                      <div className="mt-2 text-xs opacity-70">تنتهي: {formatDateTime(s.expiresAt)}</div>
+                      <div className="mt-2 text-xs opacity-70">{tr("تنتهي:", "Ends:")} {formatDateTime(s.expiresAt)}</div>
                       <div className="mt-3">
                         <Button
                           variant="danger"
@@ -409,7 +410,7 @@ export default function SecurityCenterPage() {
                           disabled={s.status !== "ACTIVE" || isCurrent}
                           onClick={() => setRevokeId(s.id)}
                         >
-                          إنهاء الجلسة
+                          {tr("إنهاء الجلسة", "End session")}
                         </Button>
                       </div>
                     </div>
@@ -420,23 +421,23 @@ export default function SecurityCenterPage() {
                 <Table>
                   <THead>
                     <TR>
-                      <TH>الحالة</TH>
+                      <TH>{tr("الحالة", "Status")}</TH>
                       <TH>IP</TH>
                       <TH>UA</TH>
-                      <TH>الإنشاء</TH>
-                      <TH>الانتهاء</TH>
+                      <TH>{tr("الإنشاء", "Created")}</TH>
+                      <TH>{tr("الانتهاء", "Ends")}</TH>
                       <TH></TH>
                     </TR>
                   </THead>
                   <TBody>
                     {sessionsQuery.isLoading && (
                       <TR>
-                        <TD colSpan={6} className="text-center py-6 text-white/60">جارٍ التحميل...</TD>
+                        <TD colSpan={6} className="text-center py-6 text-white/60">{tr("جارٍ التحميل...", "Loading…")}</TD>
                       </TR>
                     )}
                     {!sessionsQuery.isLoading && sessionRows.length === 0 && (
                       <TR>
-                        <TD colSpan={6} className="text-center py-6 text-white/60">لا يوجد جلسات.</TD>
+                        <TD colSpan={6} className="text-center py-6 text-white/60">{tr("لا يوجد جلسات.", "No sessions.")}</TD>
                       </TR>
                     )}
                     {sessionRows.map((s) => {
@@ -446,21 +447,21 @@ export default function SecurityCenterPage() {
                           <TD>
                             <div className="flex items-center gap-2">
                               <Badge variant={s.status === "ACTIVE" ? "success" : s.status === "REVOKED" ? "danger" : "warning"}>{s.status}</Badge>
-                              {isCurrent && <Badge variant="info">الجلسة الحالية</Badge>}
+                              {isCurrent && <Badge variant="info">{tr("الجلسة الحالية", "This session")}</Badge>}
                             </div>
                           </TD>
                           <TD className="text-xs">{s.ip ?? "-"}</TD>
                           <TD className="text-xs">{s.userAgent ? truncate(s.userAgent, 60) : "-"}</TD>
                           <TD className="text-xs">{formatDateTime(s.createdAt)}</TD>
                           <TD className="text-xs">{formatDateTime(s.expiresAt)}</TD>
-                          <TD className="text-left">
+                          <TD className="text-end">
                             <Button
                               variant="danger"
                               size="sm"
                               disabled={s.status !== "ACTIVE" || isCurrent}
                               onClick={() => setRevokeId(s.id)}
                             >
-                              إلغاء
+                              {tr("إلغاء", "Cancel")}
                             </Button>
                           </TD>
                         </TR>
@@ -479,13 +480,13 @@ export default function SecurityCenterPage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold">Audit Log</h2>
-              <p className="text-white/60 text-sm">سجلّ الأحداث الأمنية (تسجيل دخول، فشل، جلسات...).</p>
+              <p className="text-white/60 text-sm">{tr("سجلّ الأحداث الأمنية (تسجيل دخول، فشل، جلسات...).", "Security events (sign-ins, failures, sessions…).")}</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Select
                 value={eventType}
                 onValueChange={(value) => setEventType(value)}
-                placeholder="كل الأنواع"
+                placeholder={tr("كل الأنواع", "All kinds")}
                 options={knownEventTypes.map((t) => ({ value: t, label: t }))}
               />
               <Button
@@ -495,15 +496,15 @@ export default function SecurityCenterPage() {
                   refreshLocalAuditEvents();
                 }}
               >
-                تحديث
+                {tr("تحديث", "Refresh")}
               </Button>
             </div>
           </div>
           {showLocalFallbackHint ? (
             <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
               {eventsQuery.isError
-                ? "تعذر تحميل سجل التدقيق من الخادم. يتم عرض السجل المحلي (fallback)."
-                : "يتم عرض السجل المحلي (fallback) إلى جانب سجل الخادم."}
+                ? tr("تعذر تحميل سجل التدقيق من الخادم. يتم عرض السجل المحلي (fallback).", "Couldn't load the audit log from the server. Showing the local log instead.")
+                : tr("يتم عرض السجل المحلي (fallback) إلى جانب سجل الخادم.", "Showing the local log next to the server's.")}
             </div>
           ) : null}
           {hasLocalAuditFallback ? (
@@ -516,10 +517,10 @@ export default function SecurityCenterPage() {
                         <>
               <div className="space-y-3 sm:hidden">
                 {eventsQuery.isLoading && auditRows.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">جارٍ التحميل...</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("جارٍ التحميل...", "Loading…")}</div>
                 )}
                 {!eventsQuery.isLoading && auditRows.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">لا يوجد سجل.</div>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm opacity-70">{tr("لا يوجد سجل.", "Nothing logged.")}</div>
                 )}
                 {auditRows.map((e) => (
                   <div key={e.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -547,22 +548,22 @@ export default function SecurityCenterPage() {
                 <Table>
                   <THead>
                     <TR>
-                      <TH>الوقت</TH>
-                      <TH>النوع</TH>
-                      <TH>المصدر</TH>
+                      <TH>{tr("الوقت", "Time")}</TH>
+                      <TH>{tr("النوع", "Kind")}</TH>
+                      <TH>{tr("المصدر", "Source")}</TH>
                       <TH>IP</TH>
-                      <TH>البيانات</TH>
+                      <TH>{tr("البيانات", "Data")}</TH>
                     </TR>
                   </THead>
                   <TBody>
                     {eventsQuery.isLoading && auditRows.length === 0 && (
                       <TR>
-                        <TD colSpan={5} className="text-center py-6 text-white/60">جارٍ التحميل...</TD>
+                        <TD colSpan={5} className="text-center py-6 text-white/60">{tr("جارٍ التحميل...", "Loading…")}</TD>
                       </TR>
                     )}
                     {!eventsQuery.isLoading && auditRows.length === 0 && (
                       <TR>
-                        <TD colSpan={5} className="text-center py-6 text-white/60">لا يوجد سجل.</TD>
+                        <TD colSpan={5} className="text-center py-6 text-white/60">{tr("لا يوجد سجل.", "Nothing logged.")}</TD>
                       </TR>
                     )}
                     {auditRows.map((e) => (
@@ -596,10 +597,10 @@ export default function SecurityCenterPage() {
 
       <ConfirmDialog
         open={!!revokeId}
-        title="إلغاء جلسة"
-        message="هل أنت متأكد؟ سيتم تسجيل خروج هذا الجهاز فوراً."
-        confirmText="إلغاء"
-        cancelText="رجوع"
+        title={tr("إلغاء جلسة", "End a session")}
+        message={tr("متأكدين؟ هذا الجهاز رح يطلع من الحساب فوراً.", "Are you sure? This device will be signed out right away.")}
+        confirmText={tr("إلغاء", "Cancel")}
+        cancelText={tr("رجوع", "Back")}
         variant="danger"
         isLoading={actions.revokeSession.isPending}
         onConfirm={async () => {
@@ -619,18 +620,18 @@ export default function SecurityCenterPage() {
         onClose={() => setRecoveryOpen(false)}
         disableBackdropClose
         title="Recovery Codes"
-        description="احفظ هذه الأكواد بمكان آمن. ستظهر مرة واحدة فقط."
+        description={tr("هالأكواد لازم تنحفظ بمكان آمن. بتظهر مرة وحدة بس.", "Keep these codes somewhere safe. They're shown only once.")}
         footer={
           <div className="flex flex-wrap gap-2">
             <Button
               variant="primary"
               onClick={() => setRecoveryOpen(false)}
             >
-              نسختها
+              {tr("نسختها", "I've copied them")}
             </Button>
           </div>
         }
-        closeText="إغلاق"
+        closeText={tr("إغلاق", "Close")}
       >
         <div className="space-y-2">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -645,7 +646,7 @@ export default function SecurityCenterPage() {
               variant="secondary"
               onClick={() => navigator.clipboard.writeText(recoveryCodes.join("\n"))}
             >
-              نسخ الكل
+              {tr("نسخ الكل", "Copy all")}
             </Button>
           )}
         </div>

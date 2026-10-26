@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { onCLS, onINP, onLCP, onFCP, onTTFB, type Metric } from "web-vitals";
 import { apiBaseClient } from "@/lib/apiClient";
 import { motionSettings } from "@/lib/motionSettings";
 import { motionStats } from "@/lib/motionBudget";
 import { createScrollMeter, deviceKind, osKind, pageKind, type RumPage } from "@/lib/rum";
+import { stripLang } from "@/lib/i18n";
 
 /**
  * Real shoppers' speed: one small report per page, when it's left or hidden
@@ -68,7 +69,7 @@ export function WebVitalsReporter() {
     if (!on) return;
     const meter = createScrollMeter(() => motionStats.hz);
     // The 3D scenes' frames measured since the last report (none when no scene ran on the page).
-    const s = { on, page: pageKind(window.location.pathname), vitals: {} as Numbers, meter, windows: motionStats.windows, frameMsTotal: motionStats.frameMsTotal };
+    const s = { on, page: pageKind(stripLang(window.location.pathname)), vitals: {} as Numbers, meter, windows: motionStats.windows, frameMsTotal: motionStats.frameMsTotal };
     state.current = s;
     const keep = (metric: Metric) => {
       const key = NAMES[metric.name];

@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { ALL_PERMISSIONS, OWN_ACCOUNT_PERMISSIONS, cleanPermissions } from "./permissions.js";
+import { mainLanguage } from "../../lib/translations.js";
 
 /**
  * The signed-in admin as the admin app needs it: profile, owner or team
@@ -14,6 +15,7 @@ export async function adminProfile(adminId: string) {
       name: true,
       role: true,
       status: true,
+      locale: true,
       phone: true,
       secondEmail: true,
       secondPhone: true,
@@ -25,6 +27,8 @@ export async function adminProfile(adminId: string) {
     },
   });
   if (!a) return null;
+  // Their own choice, else the store's main language (admin → لغات المتجر).
+  const settings = a.locale ? null : await prisma.siteSettings.findFirst({ select: { header: true } });
   const owner = a.role === "SUPERADMIN";
   const permissions = owner
     ? [...ALL_PERMISSIONS, ...OWN_ACCOUNT_PERMISSIONS]
@@ -32,6 +36,8 @@ export async function adminProfile(adminId: string) {
   const { staffRole, ...rest } = a;
   return {
     ...rest,
+    locale: a.locale ?? mainLanguage(settings?.header),
+    localeChosen: Boolean(a.locale),
     owner,
     staffRole: staffRole ? { id: staffRole.id, name: staffRole.name } : null,
     permissions,

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "@/lib/shopPath";
 import { canonicalizeSearchParams } from "@/lib/filtersUrl";
 
 export default function NormalizeFilters({ basePath }: { basePath: string }) {

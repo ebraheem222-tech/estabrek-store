@@ -35,6 +35,8 @@ export const MediaSettingsSchema = z.object({
     format: z.enum(["keep", "webp", "avif", "jpeg"]),
     /** 1–100 when re-saved (0 = automatic: 90 with Cloudinary, 82 on disk). */
     quality: n("quality"),
+    /** «شيل الخلفية» may use Cloudinary (paid per picture; the free engine is in the admin's browser). */
+    cloudCutout: z.boolean(),
   }),
   videos: z.object({
     maxUploadMb: n("videoMaxUploadMb"),
@@ -50,7 +52,7 @@ export type MediaSettings = z.infer<typeof MediaSettingsSchema>;
 
 export function mediaSettingsDefaults(): MediaSettings {
   return {
-    images: { maxUploadMb: 10, maxDimension: 0, stripMetadata: true, format: "keep", quality: 0 },
+    images: { maxUploadMb: 10, maxDimension: 0, stripMetadata: true, format: "keep", quality: 0, cloudCutout: false },
     videos: { maxUploadMb: 500, defaultPreset: "web", autoConvert: true, posterSecond: 1 },
   };
 }

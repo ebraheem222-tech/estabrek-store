@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as CatalogAPI from "../api/catalog.api";
 import { getApiErrorMessage } from "../api/http";
 import { toast } from "../lib/toast";
+import { tr } from "@/lib/words";
 
 const keys = {
   categories: ["catalog", "categories"] as const,
@@ -47,11 +48,11 @@ export function useCatalogActions() {
   const createCategory = useMutation({
     mutationFn: CatalogAPI.createCategory,
     onSuccess: async () => {
-      toast.success("تم إنشاء التصنيف");
+      toast.success(tr("تم إنشاء التصنيف", "Category created"));
       await qc.invalidateQueries({ queryKey: keys.categories });
     },
     onError: (e) => {
-      toast.error("فشل إنشاء التصنيف", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل إنشاء التصنيف", "Couldn't create the category"), { description: getApiErrorMessage(e) });
     },
   });
 
@@ -59,33 +60,33 @@ export function useCatalogActions() {
     mutationFn: (vars: { id: string; body: Parameters<typeof CatalogAPI.updateCategory>[1] }) =>
       CatalogAPI.updateCategory(vars.id, vars.body),
     onSuccess: async () => {
-      toast.success("تم تحديث التصنيف");
+      toast.success(tr("تم تحديث التصنيف", "Category updated"));
       await qc.invalidateQueries({ queryKey: keys.categories });
     },
     onError: (e) => {
-      toast.error("فشل تحديث التصنيف", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل تحديث التصنيف", "Couldn't update the category"), { description: getApiErrorMessage(e) });
     },
   });
 
   const deleteCategory = useMutation({
     mutationFn: CatalogAPI.deleteCategory,
     onSuccess: async () => {
-      toast.success("تم حذف التصنيف");
+      toast.success(tr("تم حذف التصنيف", "Category deleted"));
       await qc.invalidateQueries({ queryKey: keys.categories });
     },
     onError: (e) => {
-      toast.error("فشل حذف التصنيف", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل حذف التصنيف", "Couldn't delete the category"), { description: getApiErrorMessage(e) });
     },
   });
 
   const createSize = useMutation({
     mutationFn: CatalogAPI.createSize,
     onSuccess: async () => {
-      toast.success("تم إنشاء المقاس");
+      toast.success(tr("تم إنشاء المقاس", "Size created"));
       await qc.invalidateQueries({ queryKey: keys.sizes });
     },
     onError: (e) => {
-      toast.error("فشل إنشاء المقاس", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل إنشاء المقاس", "Couldn't create the size"), { description: getApiErrorMessage(e) });
     },
   });
 
@@ -93,33 +94,33 @@ export function useCatalogActions() {
     mutationFn: (vars: { id: string; body: Parameters<typeof CatalogAPI.updateSize>[1] }) =>
       CatalogAPI.updateSize(vars.id, vars.body),
     onSuccess: async () => {
-      toast.success("تم تحديث المقاس");
+      toast.success(tr("تم تحديث المقاس", "Size updated"));
       await qc.invalidateQueries({ queryKey: keys.sizes });
     },
     onError: (e) => {
-      toast.error("فشل تحديث المقاس", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل تحديث المقاس", "Couldn't update the size"), { description: getApiErrorMessage(e) });
     },
   });
 
   const deleteSize = useMutation({
     mutationFn: CatalogAPI.deleteSize,
     onSuccess: async () => {
-      toast.success("تم حذف المقاس");
+      toast.success(tr("تم حذف المقاس", "Size deleted"));
       await qc.invalidateQueries({ queryKey: keys.sizes });
     },
     onError: (e) => {
-      toast.error("فشل حذف المقاس", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل حذف المقاس", "Couldn't delete the size"), { description: getApiErrorMessage(e) });
     },
   });
 
   const createProduct = useMutation({
     mutationFn: CatalogAPI.createProduct,
     onSuccess: async () => {
-      toast.success("تم إنشاء المنتج");
+      toast.success(tr("تم إنشاء المنتج", "Product created"));
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
     },
     onError: (e) => {
-      toast.error("فشل إنشاء المنتج", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل إنشاء المنتج", "Couldn't create the product"), { description: getApiErrorMessage(e) });
     },
   });
 
@@ -127,11 +128,11 @@ export function useCatalogActions() {
     mutationFn: (vars: { id: string; body: Parameters<typeof CatalogAPI.updateProduct>[1] }) =>
       CatalogAPI.updateProduct(vars.id, vars.body),
     onSuccess: async () => {
-      toast.success("تم تحديث المنتج");
+      toast.success(tr("تم تحديث المنتج", "Product updated"));
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
     },
     onError: (e) => {
-      toast.error("فشل تحديث المنتج", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل تحديث المنتج", "Couldn't update the product"), { description: getApiErrorMessage(e) });
     },
   });
 
@@ -139,16 +140,16 @@ export function useCatalogActions() {
     mutationFn: CatalogAPI.deleteProduct,
     onSuccess: async (res) => {
       if ((res as any)?.archived) {
-        toast.success("تمت أرشفة المنتج", {
-          description: "لا يمكن حذف منتج مرتبط بطلبات. تم إيقافه بدل الحذف للحفاظ على سجل الطلبات.",
+        toast.success(tr("تمت أرشفة المنتج", "Product archived"), {
+          description: tr("لا يمكن حذف منتج مرتبط بطلبات. تم إيقافه بدل الحذف للحفاظ على سجل الطلبات.", "A product with orders can't be deleted. It was turned off instead, to keep the orders' history."),
         });
       } else {
-        toast.success("تم حذف المنتج");
+        toast.success(tr("تم حذف المنتج", "Product deleted"));
       }
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
     },
     onError: (e) => {
-      toast.error("فشل حذف المنتج", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل حذف المنتج", "Couldn't delete the product"), { description: getApiErrorMessage(e) });
     },
   });
 
@@ -156,34 +157,34 @@ export function useCatalogActions() {
     mutationFn: (vars: { id: string; body: CatalogAPI.ProductDeepUpdateBody }) =>
       CatalogAPI.updateProductFull(vars.id, vars.body),
     onSuccess: async (_data, vars) => {
-      toast.success("تم حفظ تفاصيل المنتج");
+      toast.success(tr("تم حفظ تفاصيل المنتج", "Product details saved"));
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
       await qc.invalidateQueries({ queryKey: keys.productFull(vars.id) });
     },
     onError: (e) => {
-      toast.error("فشل حفظ تفاصيل المنتج", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل حفظ تفاصيل المنتج", "Couldn't save the product details"), { description: getApiErrorMessage(e) });
     },
   });
 
   const bulkProducts = useMutation({
     mutationFn: CatalogAPI.bulkProducts,
     onSuccess: async () => {
-      toast.success("تم تنفيذ العملية على المنتجات المحددة");
+      toast.success(tr("تم تنفيذ العملية على المنتجات المحددة", "Done for the selected products"));
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
     },
     onError: (e) => {
-      toast.error("فشل تنفيذ العملية", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل تنفيذ العملية", "Couldn't do that"), { description: getApiErrorMessage(e) });
     },
   });
 
   const importProducts = useMutation({
     mutationFn: CatalogAPI.importProducts,
     onSuccess: async () => {
-      toast.success("تم استيراد المنتجات");
+      toast.success(tr("تم استيراد المنتجات", "Products imported"));
       await qc.invalidateQueries({ queryKey: ["catalog", "products"] });
     },
     onError: (e) => {
-      toast.error("فشل استيراد المنتجات", { description: getApiErrorMessage(e) });
+      toast.error(tr("فشل استيراد المنتجات", "Couldn't import the products"), { description: getApiErrorMessage(e) });
     },
   });
 

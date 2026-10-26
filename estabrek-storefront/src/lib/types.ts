@@ -63,6 +63,9 @@ export type StorefrontPage = {
   slug: string;
   status: string;
   sections: any[];
+  /** The new CMS: 2 = draw from `tree` (src/pageTree); 1 or missing = from `sections`. */
+  format?: number;
+  tree?: unknown;
   headScripts?: any;
   bodyScripts?: any;
   customCss?: string | null;

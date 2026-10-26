@@ -32,6 +32,8 @@ export const StorefrontCheckoutCreateBody = z.object({
   couponCode: z.string().max(40).nullable().optional(),
   country: z.string().max(80).nullable().optional(),
   city: z.string().max(80).nullable().optional(),
+  /** The shop's language (her order emails). */
+  lang: z.enum(["ar", "en", "he"]).optional(),
 });
 
 export const StorefrontCheckoutVerifyQuery = z.object({

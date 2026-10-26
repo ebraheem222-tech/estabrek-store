@@ -14,11 +14,22 @@ import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useOptionalAccount } from "@/store/account";
 import { rememberRemoved } from "@/lib/razanHistory";
+import { StoreMark } from "@/store/storeIdentity";
+import { useNames } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import type { Lang } from "@/lib/i18n";
+import { isRtl } from "@/lib/i18n";
+import { localizeCartLine } from "@/lib/localize";
+import { toneAr } from "@/lib/words";
 
 type Line = {
   variantId: string;
   quantity: number;
   productTitle?: string;
+  /** The product's other languages (src/lib/localize.ts). */
+  productTranslations?: unknown;
+  /** The colour's name in the page's language. */
+  colorLabel?: string;
   productSlug?: string | null;
   colorName?: string | null;
   boxLabel?: string | null;
@@ -48,9 +59,9 @@ function apiBase() {
 }
 
 /** A booking's date in the bag (Israel time). */
-function eventDate(iso: string, ar: boolean) {
+function eventDate(iso: string, lang: Lang) {
   try {
-    return new Intl.DateTimeFormat(ar ? "ar" : "en", { timeZone: "Asia/Jerusalem", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+    return new Intl.DateTimeFormat(lang, { timeZone: "Asia/Jerusalem", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
   } catch {
     return "";
   }
@@ -63,7 +74,7 @@ function money(value: string | number | null | undefined, currency?: string | nu
   try {
     return new Intl.NumberFormat("ar", { style: "currency", currency: currency || "ILS" }).format(n);
   } catch {
-    return `₪${n.toFixed(2)}`;
+    return `${n.toFixed(2)} ${currency}`;
   }
 }
 
@@ -84,10 +95,14 @@ type Props = {
  * recorded in the store first, then the WhatsApp message opens ready to send.
  */
 export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmail, stripeEnabled, paypalEnabled, countryCode, delivery: deliveryRaw }: Props) {
-  const ar = useLanguage().language === "ar";
+  const { language: lang } = useLanguage();
+  const ar = lang === "ar";
+  const n = useNames();
   const settings = useStorefrontSettings();
   const { items, setQty, removeItem, clear } = useCart();
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [rawQuote, setQuote] = useState<Quote | null>(null);
+  // Titles and colours in the page's language (the quote itself has the store's own).
+  const quote = useMemo(() => (rawQuote ? { ...rawQuote, lines: rawQuote.lines?.map((l) => localizeCartLine(l, lang)) } : null), [rawQuote, lang]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [coupon, setCoupon] = useState("");
@@ -182,11 +197,11 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(eventOverMessage(data));
-      if (!res.ok) throw new Error(data?.message || (ar ? "تعذّر حساب الحقيبة" : "Could not price your bag"));
+      if (!res.ok) throw new Error(data?.message || (tr(lang, "تعذّر حساب الحقيبة", "Could not price your bag")));
       setQuote(data);
       return data as Quote;
     } catch (e: any) {
-      setErr(e?.message || (ar ? "حدث خطأ غير متوقع" : "Something went wrong"));
+      setErr(e?.message || (tr(lang, "حدث خطأ غير متوقع", "Something went wrong")));
       return null;
     } finally {
       setLoading(false);
@@ -200,7 +215,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     if (l) rememberRemoved({ id: variantId, title: l.productTitle ?? "", slug: l.productSlug, image: l.imageUrl, color: l.colorName, size: l.sizeName });
     const row = list.current?.querySelector<HTMLElement>(`[data-variant="${CSS.escape(variantId)}"]`);
     if (!row) return removeItem(variantId);
-    gsap.to(row, { opacity: 0, x: ar ? 40 : -40, height: 0, marginBottom: 0, paddingBlock: 0, duration: 0.35, ease: "power2.in", onComplete: () => removeItem(variantId) });
+    gsap.to(row, { opacity: 0, x: isRtl(lang) ? 40 : -40, height: 0, marginBottom: 0, paddingBlock: 0, duration: 0.35, ease: "power2.in", onComplete: () => removeItem(variantId) });
   };
 
   const applyCoupon = async (event: FormEvent) => {
@@ -208,20 +223,20 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     const code = coupon.trim();
     if (!code) return;
     const data = await refresh(code);
-    setCouponMsg(data?.coupon?.code ? (ar ? `تم تطبيق الكوبون ${data.coupon.code}` : `Coupon ${data.coupon.code} applied`) : (ar ? "الكوبون غير صالح" : "This coupon isn't valid"));
+    setCouponMsg(data?.coupon?.code ? (tr(lang, `تم تطبيق الكوبون ${data.coupon.code}`, "Coupon {0} applied", [data.coupon.code])) : (tr(lang, "الكوبون غير صالح", "This coupon isn't valid")));
     if (!data?.coupon?.code) setCoupon("");
   };
 
   /** The store refused the coupon at order time (e.g. a prize coupon for another phone). */
   const couponMessage = (code: string | undefined) =>
-    code === "COUPON_PHONE" ? (ar ? "هالكوبون لرقم تاني — اكتبي نفس الرقم اللي ربحتي فيه." : "This coupon belongs to another phone number.")
-    : code === "COUPON_USAGE_LIMIT_REACHED" ? (ar ? "هالكوبون انستعمل قبل." : "This coupon was already used.")
-    : code === "COUPON_EXPIRED" ? (ar ? "هالكوبون خلصت مدته." : "This coupon has expired.")
-    : code === "COUPON_NOT_FOUND" || code === "COUPON_INACTIVE" ? (ar ? "الكوبون مش صالح." : "This coupon isn't valid.")
+    code === "COUPON_PHONE" ? (tr(lang, "هالكوبون لرقم تاني — اكتبي نفس الرقم اللي ربحتي فيه.", "This coupon belongs to another phone number."))
+    : code === "COUPON_USAGE_LIMIT_REACHED" ? (tr(lang, "هالكوبون انستعمل قبل.", "This coupon was already used."))
+    : code === "COUPON_EXPIRED" ? (tr(lang, "هالكوبون خلصت مدته.", "This coupon has expired."))
+    : code === "COUPON_NOT_FOUND" || code === "COUPON_INACTIVE" ? (tr(lang, "الكوبون مش صالح.", "This coupon isn't valid."))
     : null;
   const eventOverMessage = (data: any) => {
     const t = data?.details?.productTitle ?? "";
-    return ar ? `موعد «${t}» مرق، فما عاد فينا نحجزه. شيليه من الحقيبة.` : `"${t}" has already taken place; please remove it from your bag.`;
+    return tr(lang, `موعد «${t}» مرق، فما عاد فينا نحجزه. شيليه من الحقيبة.`, "\"{0}\" has already taken place; please remove it from your bag.", [t]);
   };
   const emailOk = !form.email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
   const nameOk = form.name.trim().length >= 2;
@@ -232,38 +247,38 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   const stockMessage = (data: any) => {
     const rows = (data?.details?.lines ?? []) as Array<{ productTitle?: string; colorName?: string | null; sizeName?: string | null; available?: number }>;
     void refresh();
-    const names = rows.map((r) => [r.productTitle, r.colorName, r.sizeName].filter(Boolean).join(" · ") + (ar ? ` (متوفر ${r.available ?? 0})` : ` (${r.available ?? 0} left)`)).join("، ");
-    return ar ? `بعض القطع لم تعد متوفرة بهذه الكمية: ${names}` : `Some pieces are no longer available in this quantity: ${names}`;
+    const names = rows.map((r) => [r.productTitle, r.colorName, r.sizeName].filter(Boolean).join(" · ") + (tr(lang, ` (متوفر ${r.available ?? 0})`, " ({0} left)", [r.available ?? 0]))).join("، ");
+    return tr(lang, `بعض القطع لم تعد متوفرة بهذه الكمية: ${names}`, "Some pieces are no longer available in this quantity: {0}", [names]);
   };
 
   const orderText = (orderId?: string) => {
     const lines = (quote?.lines ?? []).map((l) => {
-      const details = [[l.colorName, l.boxLabel].filter(Boolean).join(" — "), l.sizeName ? `${ar ? "مقاس" : "size"} ${l.sizeName}` : ""].filter(Boolean).join("، ");
-      return `• ${l.productTitle || (ar ? "منتج" : "Item")}${details ? ` (${details})` : ""} × ${l.quantity} = ${money(l.lineTotal ?? l.lineSubtotal, currency)}`;
+      const details = [[l.colorLabel ?? l.colorName, l.boxLabel].filter(Boolean).join(" — "), l.sizeName ? `${tr(lang, "مقاس", "size")} ${l.sizeName}` : ""].filter(Boolean).join("، ");
+      return `• ${l.productTitle || (tr(lang, "منتج", "Item"))}${details ? ` (${details})` : ""} × ${l.quantity} = ${money(l.lineTotal ?? l.lineSubtotal, currency)}`;
     });
     return [
-      ar ? "🌸 طلب جديد من متجر استبرق" : "🌸 New order from Estabrek",
-      ...(orderId ? [`${ar ? "رقم الطلب" : "Order"}: ${orderId}`] : []),
+      tr(lang, `🌸 طلب جديد من ${n.storeName}`, "🌸 New order from {0}", [n.storeName]),
+      ...(orderId ? [`${tr(lang, "رقم الطلب", "Order")}: ${orderId}`] : []),
       "",
       ...lines,
       "",
-      ...(discount > 0 ? [`${ar ? "الخصم" : "Discount"}: −${money(discount, currency)}`] : []),
-      ...(priced && feeKnown ? [`${ar ? "التوصيل" : "Delivery"}: ${feeNow === 0 ? (ar ? "مجاني" : "Free") : money(feeNow, currency)}`] : []),
-      `${ar ? "الإجمالي" : "Total"}: ${money(grandTotal ?? quote?.total, currency)}`,
+      ...(discount > 0 ? [`${tr(lang, "الخصم", "Discount")}: −${money(discount, currency)}`] : []),
+      ...(priced && feeKnown ? [`${tr(lang, "التوصيل", "Delivery")}: ${feeNow === 0 ? (tr(lang, "مجاني", "Free")) : money(feeNow, currency)}`] : []),
+      `${tr(lang, "الإجمالي", "Total")}: ${money(grandTotal ?? quote?.total, currency)}`,
       "",
-      `${ar ? "الاسم" : "Name"}: ${form.name.trim()}`,
-      `${ar ? "الهاتف" : "Phone"}: ${form.phone.trim()}`,
-      ...(form.email.trim() ? [`${ar ? "الإيميل" : "Email"}: ${form.email.trim()}`] : []),
-      ...(form.city.trim() ? [`${ar ? "المدينة" : "City"}: ${form.city.trim()}`] : []),
-      ...(form.address.trim() ? [`${ar ? "العنوان" : "Address"}: ${form.address.trim()}`] : []),
-      ...(form.note.trim() ? [`${ar ? "ملاحظات" : "Notes"}: ${form.note.trim()}`] : []),
+      `${tr(lang, "الاسم", "Name")}: ${form.name.trim()}`,
+      `${tr(lang, "الهاتف", "Phone")}: ${form.phone.trim()}`,
+      ...(form.email.trim() ? [`${tr(lang, "الإيميل", "Email")}: ${form.email.trim()}`] : []),
+      ...(form.city.trim() ? [`${tr(lang, "المدينة", "City")}: ${form.city.trim()}`] : []),
+      ...(form.address.trim() ? [`${tr(lang, "العنوان", "Address")}: ${form.address.trim()}`] : []),
+      ...(form.note.trim() ? [`${tr(lang, "ملاحظات", "Notes")}: ${form.note.trim()}`] : []),
     ].join("\n");
   };
 
   async function placeOrder(via: "whatsapp" | "direct" | "email") {
     setTouched(true);
-    if (!nameOk || !phoneOk) { setErr(ar ? "أكملي الاسم ورقم الهاتف حتى نتواصل معكِ." : "Add your name and phone so we can reach you."); return; }
-    if (!emailOk) { setErr(ar ? "الإيميل مش مكتوب صح." : "That email doesn't look right."); return; }
+    if (!nameOk || !phoneOk) { setErr(tr(lang, "أكملي الاسم ورقم الهاتف حتى نتواصل معكِ.", "Add your name and phone so we can reach you.")); return; }
+    if (!emailOk) { setErr(tr(lang, "الإيميل مش مكتوب صح.", "That email doesn't look right.")); return; }
     setErr(null);
     setSubmitting(true);
     const tracked = bagItems(quote?.lines ?? []);
@@ -277,6 +292,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
         headers: { "Content-Type": "application/json", ...((await account?.authHeaders()) ?? {}) },
         body: JSON.stringify({
           items: payload,
+          lang,
           customerName: form.name.trim(),
           phone: form.phone.trim(),
           ...(via === "whatsapp" ? { whatsapp: form.phone.trim() } : {}),
@@ -292,7 +308,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
       if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(eventOverMessage(data));
       if (couponMessage(data?.error)) throw new Error(couponMessage(data?.error)!);
-      if (!res.ok) throw new Error(ar ? `تعذّر إرسال الطلب (${res.status})` : `Could not send the order (${res.status})`);
+      if (!res.ok) throw new Error(tr(lang, `تعذّر إرسال الطلب (${res.status})`, "Could not send the order ({0})", [res.status]));
       const orderId = data?.id ? String(data.id) : undefined;
       trackLead(tracked, trackedValue, currency ?? undefined, orderId);
       const text = orderText(orderId);
@@ -308,7 +324,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       window.scrollTo({ top: 0 });
     } catch (e: any) {
       chat?.close();
-      setErr(e?.message || (ar ? "حدث خطأ" : "Something went wrong"));
+      setErr(e?.message || (tr(lang, "حدث خطأ", "Something went wrong")));
     } finally {
       setSubmitting(false);
     }
@@ -316,21 +332,21 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
 
   async function pay(provider: "stripe" | "paypal") {
     setTouched(true);
-    if (!nameOk || !phoneOk) { setErr(ar ? "أكملي الاسم ورقم الهاتف." : "Add your name and phone."); return; }
-    if (!emailOk) { setErr(ar ? "الإيميل مش مكتوب صح." : "That email doesn't look right."); return; }
+    if (!nameOk || !phoneOk) { setErr(tr(lang, "أكملي الاسم ورقم الهاتف.", "Add your name and phone.")); return; }
+    if (!emailOk) { setErr(tr(lang, "الإيميل مش مكتوب صح.", "That email doesn't look right.")); return; }
     setSubmitting(true);
     setErr(null);
     try {
       const res = await fetch(`${apiBase()}/storefront/checkout/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...((await account?.authHeaders()) ?? {}) },
-        body: JSON.stringify({ provider, items: payload, customerName: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, address: noShipping ? undefined : [form.city.trim(), form.address.trim()].filter(Boolean).join("، ") || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined }),
+        body: JSON.stringify({ provider, items: payload, lang, customerName: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, address: noShipping ? undefined : [form.city.trim(), form.address.trim()].filter(Boolean).join("، ") || undefined, note: form.note.trim() || undefined, couponCode: coupon.trim() || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409 && data?.error === "OUT_OF_STOCK") throw new Error(stockMessage(data));
       if (res.status === 409 && data?.error === "EVENT_OVER") throw new Error(eventOverMessage(data));
       if (couponMessage(data?.error)) throw new Error(couponMessage(data?.error)!);
-      if (!res.ok || !data?.redirectUrl) throw new Error(data?.message || (ar ? "تعذّر بدء الدفع" : "Could not start payment"));
+      if (!res.ok || !data?.redirectUrl) throw new Error(data?.message || (tr(lang, "تعذّر بدء الدفع", "Could not start payment")));
       // The sale is counted on the success page, once the payment is confirmed.
       const tracked = bagItems(quote?.lines ?? []);
       const value = Number(grandTotal ?? quote?.total ?? 0) || 0;
@@ -338,7 +354,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
       rememberPurchase(tracked, value, currency ?? undefined);
       window.location.href = data.redirectUrl;
     } catch (e: any) {
-      setErr(e?.message || (ar ? "حدث خطأ" : "Something went wrong"));
+      setErr(e?.message || (tr(lang, "حدث خطأ", "Something went wrong")));
       setSubmitting(false);
     }
   }
@@ -347,20 +363,20 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     return (
       <section className="rose-cart rose-cart-done" aria-live="polite">
         <span className="rose-cart-done-mark"><Icon name="spark" /></span>
-        <span className="atelier-eyebrow">{ar ? "وصل طلبكِ" : "ORDER RECEIVED"}</span>
-        <h1>{ar ? "شكراً لكِ، طلبكِ عندنا." : "Thank you — we have your order."}</h1>
-        {done.orderId && <p className="rose-cart-order-id">{ar ? "رقم الطلب" : "Order number"}: <b dir="ltr">{done.orderId}</b></p>}
+        <span className="atelier-eyebrow">{tr(lang, "وصل طلبكِ", "ORDER RECEIVED")}</span>
+        <h1>{tr(lang, "شكراً لكِ، طلبكِ عندنا.", "Thank you — we have your order.")}</h1>
+        {done.orderId && <p className="rose-cart-order-id">{tr(lang, "رقم الطلب", "Order number")}: <b dir="ltr">{done.orderId}</b></p>}
         <p>
           {done.via === "whatsapp"
-            ? ar ? "فتحنا لكِ محادثة واتساب فيها تفاصيل الطلب. أرسلي الرسالة لنؤكد معكِ التوصيل." : "We opened a WhatsApp chat with your order details. Send it and we'll confirm delivery with you."
-            : ar ? "سنتواصل معكِ قريباً على رقمكِ لتأكيد الطلب والتوصيل." : "We'll contact you soon to confirm your order and delivery."}
+            ? tr(lang, "فتحنا لكِ محادثة واتساب فيها تفاصيل الطلب. أرسلي الرسالة لنؤكد معكِ التوصيل.", "We opened a WhatsApp chat with your order details. Send it and we'll confirm delivery with you.")
+            : tr(lang, "سنتواصل معكِ قريباً على رقمكِ لتأكيد الطلب والتوصيل.", "We'll contact you soon to confirm your order and delivery.")}
         </p>
         {done.handover ? (
           <p className="rose-cart-handover" data-testid="cart-handover">
-            {ar ? `لما نأكد الطلب، بيوصلكِ رابط ${done.handover} على الإيميل أو الواتساب.` : `Once we confirm the order, the link to your ${done.handover} reaches you by email or WhatsApp.`}
+            {tr(lang, `لما نأكد الطلب، بيوصلكِ رابط ${done.handover} على الإيميل أو الواتساب.`, "Once we confirm the order, the link to your {0} reaches you by email or WhatsApp.", [done.handover])}
           </p>
         ) : null}
-        <Link href="/shop" className="atelier-button button-dark">{ar ? "متابعة التسوق" : "Keep shopping"}<Icon name="arrow" /></Link>
+        <Link href="/shop" className="atelier-button button-dark">{tr(lang, "متابعة التسوق", "Keep shopping")}<Icon name="arrow" /></Link>
       </section>
     );
   }
@@ -369,12 +385,12 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
     return (
       <section className="rose-cart rose-cart-empty">
         <span className="rose-cart-empty-icon"><Icon name="bag" /></span>
-        <span className="atelier-eyebrow">{ar ? "حقيبة التسوق" : "YOUR BAG"}</span>
-        <h1>{ar ? "حقيبتكِ فارغة حالياً." : "Your bag is empty."}</h1>
-        <p>{ar ? "اكتشفي الجديد، وأضيفي القطع التي تحبينها." : "Discover what's new and add the pieces you love."}</p>
+        <span className="atelier-eyebrow">{tr(lang, "حقيبة التسوق", "YOUR BAG")}</span>
+        <h1>{tr(lang, "حقيبتكِ فارغة حالياً.", "Your bag is empty.")}</h1>
+        <p>{tr(lang, "اكتشفي الجديد، وأضيفي القطع التي تحبينها.", "Discover what's new and add the pieces you love.")}</p>
         <div className="rose-cart-empty-actions">
-          <Link href="/shop" className="atelier-button button-dark">{ar ? "تسوّقي الآن" : "Shop now"}<Icon name="arrow" /></Link>
-          <Link href="/wishlist" className="atelier-text-link">{ar ? "المفضلة" : "Your wishlist"}<Icon name="heart" /></Link>
+          <Link href="/shop" className="atelier-button button-dark">{tr(lang, "تسوّقي الآن", "Shop now")}<Icon name="arrow" /></Link>
+          <Link href="/wishlist" className="atelier-text-link">{tr(lang, "المفضلة", "Your wishlist")}<Icon name="heart" /></Link>
         </div>
       </section>
     );
@@ -383,12 +399,12 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   return (
     <section className="rose-cart">
       <header className="rose-cart-head">
-        <span className="atelier-eyebrow">{ar ? "حقيبة التسوق" : "YOUR BAG"}</span>
-        <h1>{ar ? "حقيبتكِ." : "Your bag."}<span>{ar ? (count === 1 ? "قطعة واحدة" : count === 2 ? "قطعتان" : `${count} قطع`) : `${count} piece${count === 1 ? "" : "s"}`}</span></h1>
-        <ol className="rose-cart-steps" aria-label={ar ? "خطوات الطلب" : "Order steps"}>
-          <li data-on="">{ar ? "الحقيبة" : "Bag"}</li>
-          <li data-on={nameOk && phoneOk ? "" : undefined}>{ar ? "بياناتكِ" : "Your details"}</li>
-          <li>{ar ? "التأكيد" : "Confirm"}</li>
+        <span className="atelier-eyebrow">{tr(lang, "حقيبة التسوق", "YOUR BAG")}</span>
+        <h1>{tr(lang, "حقيبتكِ.", "Your bag.")}<span>{ar ? (count === 1 ? "قطعة واحدة" : count === 2 ? "قطعتان" : `${count} قطع`) : lang === "he" ? (count === 1 ? "פריט אחד" : `${count} פריטים`) : `${count} piece${count === 1 ? "" : "s"}`}</span></h1>
+        <ol className="rose-cart-steps" aria-label={tr(lang, "خطوات الطلب", "Order steps")}>
+          <li data-on="">{tr(lang, "الحقيبة", "Bag")}</li>
+          <li data-on={nameOk && phoneOk ? "" : undefined}>{tr(lang, "بياناتكِ", "Your details")}</li>
+          <li>{tr(lang, "التأكيد", "Confirm")}</li>
         </ol>
       </header>
 
@@ -398,36 +414,36 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             {items.map((it) => {
               const l = lineBy.get(it.variantId);
               const href = l?.productSlug ? `/p/${encodeURIComponent(l.productSlug)}` : "/shop";
-              const color = [l?.colorName, l?.boxLabel].filter(Boolean).join(" — ");
+              const color = [l?.colorLabel ?? l?.colorName, l?.boxLabel].filter(Boolean).join(" — ");
               return (
                 <li key={it.variantId} data-variant={it.variantId} className="rose-cart-line">
                   <Link href={href} className="rose-cart-thumb">
-                    {l?.imageUrl ? <LqipImage src={cldUrl(l.imageUrl, { w: 240, h: 300, c: "fill", g: "auto" })} alt={l.productTitle ?? ""} fill sizes="110px" blurDataUrl={l.imageBlurDataUrl ?? undefined} className="object-cover" /> : <span className="rose-image-placeholder">استبرق</span>}
+                    {l?.imageUrl ? <LqipImage src={cldUrl(l.imageUrl, { w: 240, h: 300, c: "fill", g: "auto" })} alt={l.productTitle ?? ""} fill sizes="110px" blurDataUrl={l.imageBlurDataUrl ?? undefined} className="object-cover" /> : <span className="rose-image-placeholder"><StoreMark /></span>}
                   </Link>
                   <div className="rose-cart-info">
-                    <Link href={href} className="rose-cart-title">{l?.productTitle ?? (loading ? "…" : ar ? "قطعة" : "Item")}</Link>
+                    <Link href={href} className="rose-cart-title">{l?.productTitle ?? (loading ? "…" : tr(lang, "قطعة", "Item"))}</Link>
                     <div className="rose-cart-chips">
-                      {color && color.toLowerCase() !== "default" && <span>{ar ? "اللون" : "Colour"}: {color}</span>}
-                      {l?.sizeName && l.sizeName.toLowerCase() !== "default" && <span>{ar ? "المقاس" : "Size"}: {l.sizeName}</span>}
-                      {l?.fulfillment === "DIGITAL" && <span data-testid="cart-digital">{ar ? "⬇️ تنزيل رقمي" : "⬇️ Digital download"}</span>}
-                      {l?.fulfillment === "BOOKING" && <span data-testid="cart-booking">🎟️ {l.eventStartsAt ? eventDate(l.eventStartsAt, ar) : ar ? "حجز" : "Booking"}</span>}
+                      {color && color.toLowerCase() !== "default" && <span>{tr(lang, "اللون", "Colour")}: {color}</span>}
+                      {l?.sizeName && l.sizeName.toLowerCase() !== "default" && <span>{tr(lang, "المقاس", "Size")}: {l.sizeName}</span>}
+                      {l?.fulfillment === "DIGITAL" && <span data-testid="cart-digital">{tr(lang, "⬇️ تنزيل رقمي", "⬇️ Digital download")}</span>}
+                      {l?.fulfillment === "BOOKING" && <span data-testid="cart-booking">🎟️ {l.eventStartsAt ? eventDate(l.eventStartsAt, lang) : tr(lang, "حجز", "Booking")}</span>}
                     </div>
                     <span className="rose-cart-unit">{money(l?.unitPrice, currency)}</span>
                     {typeof l?.available === "number" && it.quantity > l.available ? (
                       <span className="rose-cart-stock" role="status" data-testid="cart-stock-note">
-                        {l.available <= 0 ? (ar ? "نفدت هذه القطعة" : "Sold out") : ar ? `متوفر ${l.available} فقط` : `Only ${l.available} left`}
+                        {l.available <= 0 ? (tr(lang, "نفدت هذه القطعة", "Sold out")) : tr(lang, `متوفر ${l.available} فقط`, "Only {0} left", [l.available])}
                       </span>
                     ) : null}
                   </div>
-                  <div className="rose-cart-qty" aria-label={ar ? "الكمية" : "Quantity"}>
-                    <button type="button" aria-label={ar ? "زيادة" : "More"} onClick={() => setQty(it.variantId, it.quantity + 1)}>+</button>
+                  <div className="rose-cart-qty" aria-label={tr(lang, "الكمية", "Quantity")}>
+                    <button type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQty(it.variantId, it.quantity + 1)}>+</button>
                     <span aria-live="polite">{it.quantity}</span>
-                    <button type="button" aria-label={ar ? "إنقاص" : "Less"} onClick={() => (it.quantity <= 1 ? remove(it.variantId) : setQty(it.variantId, it.quantity - 1))}>−</button>
+                    <button type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => (it.quantity <= 1 ? remove(it.variantId) : setQty(it.variantId, it.quantity - 1))}>−</button>
                   </div>
                   <div className="rose-cart-line-end">
                     <strong>{money(l?.lineTotal ?? l?.lineSubtotal, currency)}</strong>
-                    <button type="button" className="rose-cart-remove" onClick={() => remove(it.variantId)} aria-label={`${ar ? "إزالة" : "Remove"} ${l?.productTitle ?? ""}`}>
-                      {ar ? "إزالة" : "Remove"}
+                    <button type="button" className="rose-cart-remove" onClick={() => remove(it.variantId)} aria-label={`${tr(lang, "إزالة", "Remove")} ${l?.productTitle ?? ""}`}>
+                      {tr(lang, "إزالة", "Remove")}
                     </button>
                   </div>
                 </li>
@@ -435,142 +451,142 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             })}
           </ul>
           <div className="rose-cart-under">
-            <Link href="/shop" className="atelier-text-link">{ar ? "متابعة التسوق" : "Keep shopping"}<Icon name="arrow" /></Link>
-            <button type="button" className="rose-cart-clear" onClick={() => clear()}>{ar ? "إفراغ الحقيبة" : "Empty the bag"}</button>
+            <Link href="/shop" className="atelier-text-link">{tr(lang, "متابعة التسوق", "Keep shopping")}<Icon name="arrow" /></Link>
+            <button type="button" className="rose-cart-clear" onClick={() => clear()}>{tr(lang, "إفراغ الحقيبة", "Empty the bag")}</button>
           </div>
         </div>
 
-        <aside className="rose-cart-summary" aria-label={ar ? "ملخص الطلب" : "Order summary"}>
-          <h2>{ar ? "ملخص الطلب" : "Order summary"}</h2>
+        <aside className="rose-cart-summary" aria-label={tr(lang, "ملخص الطلب", "Order summary")}>
+          <h2>{tr(lang, "ملخص الطلب", "Order summary")}</h2>
           <dl>
-            <div><dt>{ar ? "المجموع الفرعي" : "Subtotal"}</dt><dd>{loading && !quote ? "…" : money(quote?.subtotal, currency)}</dd></div>
-            {discount > 0 && <div className="discount"><dt>{ar ? "الخصم" : "Discount"}{quote?.coupon?.code ? ` (${quote.coupon.code})` : ""}</dt><dd>−{money(discount, currency)}</dd></div>}
+            <div><dt>{tr(lang, "المجموع الفرعي", "Subtotal")}</dt><dd>{loading && !quote ? "…" : money(quote?.subtotal, currency)}</dd></div>
+            {discount > 0 && <div className="discount"><dt>{tr(lang, "الخصم", "Discount")}{quote?.coupon?.code ? ` (${quote.coupon.code})` : ""}</dt><dd>−{money(discount, currency)}</dd></div>}
             <div data-testid="cart-delivery">
-              <dt>{ar ? "التوصيل" : "Delivery"}{priced && ship.zone && !allFree ? <small> ({ship.zone.name})</small> : null}</dt>
+              <dt>{tr(lang, "التوصيل", "Delivery")}{priced && ship.zone && !allFree ? <small> ({ship.zone.name})</small> : null}</dt>
               <dd className={feeKnown && feeNow > 0 ? undefined : "muted"}>
-                {noShipping ? (ar ? "ما في توصيل" : "Nothing to ship")
-                  : !priced ? (ar ? "نؤكده معكِ" : "Confirmed with you")
-                  : allFree || (feeKnown && feeNow === 0) ? <b className="rose-cart-free">{ar ? "مجاني" : "Free"}</b>
+                {noShipping ? (tr(lang, "ما في توصيل", "Nothing to ship"))
+                  : !priced ? (tr(lang, "نؤكده معكِ", "Confirmed with you"))
+                  : allFree || (feeKnown && feeNow === 0) ? <b className="rose-cart-free">{tr(lang, "مجاني", "Free")}</b>
                   : feeKnown ? money(feeNow, currency)
-                  : form.city.trim() ? (ar ? "نؤكده معكِ" : "Confirmed with you")
-                  : lowestFee(delivery) != null ? (ar ? `من ${money(lowestFee(delivery), currency)} · اختاري المدينة` : `From ${money(lowestFee(delivery), currency)} · pick your city`)
-                  : (ar ? "اختاري المدينة" : "Pick your city")}
+                  : form.city.trim() ? (tr(lang, "نؤكده معكِ", "Confirmed with you"))
+                  : lowestFee(delivery) != null ? (tr(lang, `من ${money(lowestFee(delivery), currency)} · اختاري المدينة`, "From {0} · pick your city", [money(lowestFee(delivery), currency)]))
+                  : (tr(lang, "اختاري المدينة", "Pick your city"))}
               </dd>
             </div>
-            <div className="total"><dt>{ar ? "الإجمالي" : "Total"}</dt><dd data-testid="cart-total">{loading && !quote ? "…" : money(grandTotal ?? quote?.total, currency)}</dd></div>
+            <div className="total"><dt>{tr(lang, "الإجمالي", "Total")}</dt><dd data-testid="cart-total">{loading && !quote ? "…" : money(grandTotal ?? quote?.total, currency)}</dd></div>
           </dl>
           {priced && !noShipping && freeLeft != null && freeLeft > 0 && (
             <p className="rose-cart-free-note" data-testid="cart-free-note">
-              {ar ? <>أضيفي بـ<b>{money(freeLeft, currency)}</b> فقط ويصير التوصيل مجاناً</> : <>Add <b>{money(freeLeft, currency)}</b> more for free delivery</>}
+              {ar ? <>{toneAr("أضيفي")} بـ<b>{money(freeLeft, currency)}</b> فقط ويصير التوصيل مجاناً</> : lang === "he" ? <>עוד <b>{money(freeLeft, currency)}</b> והמשלוח בחינם</> : <>Add <b>{money(freeLeft, currency)}</b> more for free delivery</>}
               <span className="rose-cart-free-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, (subtotalNum / (delivery.freeOver || 1)) * 100)}%` }} /></span>
             </p>
           )}
 
           {couponOpen ? (
             <form className="rose-cart-coupon" onSubmit={applyCoupon}>
-              <input value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder={ar ? "رمز الكوبون" : "Coupon code"} aria-label={ar ? "رمز الكوبون" : "Coupon code"} dir="ltr" />
-              <button type="submit" disabled={loading}>{ar ? "تطبيق" : "Apply"}</button>
+              <input value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder={tr(lang, "رمز الكوبون", "Coupon code")} aria-label={tr(lang, "رمز الكوبون", "Coupon code")} dir="ltr" />
+              <button type="submit" disabled={loading}>{tr(lang, "تطبيق", "Apply")}</button>
             </form>
           ) : (
-            <button type="button" className="rose-cart-coupon-toggle" onClick={() => setCouponOpen(true)}>{ar ? "عندكِ كوبون خصم؟" : "Have a coupon?"}</button>
+            <button type="button" className="rose-cart-coupon-toggle" onClick={() => setCouponOpen(true)}>{tr(lang, "عندكِ كوبون خصم؟", "Have a coupon?")}</button>
           )}
           {couponMsg && <p className="rose-cart-note" role="status">{couponMsg}</p>}
 
           <div className="rose-cart-form">
-            <h3>{noShipping ? (ar ? "بياناتكِ" : "Your details") : ar ? "بياناتكِ للتوصيل" : "Your delivery details"}</h3>
+            <h3>{noShipping ? (tr(lang, "بياناتكِ", "Your details")) : tr(lang, "بياناتكِ للتوصيل", "Your delivery details")}</h3>
             {signedIn ? (
-              <p className="rose-cart-account" data-testid="cart-signed-in">{ar ? `الطلب رح ينحفظ بحسابكِ (${account?.user?.email}).` : `This order will be saved to your account (${account?.user?.email}).`}</p>
+              <p className="rose-cart-account" data-testid="cart-signed-in">{tr(lang, `الطلب رح ينحفظ بحسابكِ (${account?.user?.email}).`, "This order will be saved to your account ({0}).", [account?.user?.email])}</p>
             ) : account?.status === "guest" ? (
-              <p className="rose-cart-account"><Link href="/account?next=/cart">{ar ? "عندكِ حساب؟ سجّلي دخول لتتابعي طلباتكِ" : "Have an account? Sign in to follow your orders"}</Link></p>
+              <p className="rose-cart-account"><Link href="/account?next=/cart">{tr(lang, "عندكِ حساب؟ سجّلي دخول لتتابعي طلباتكِ", "Have an account? Sign in to follow your orders")}</Link></p>
             ) : null}
             <label className={touched && !nameOk ? "invalid" : undefined}>
-              <span>{ar ? "الاسم" : "Name"} *</span>
+              <span>{tr(lang, "الاسم", "Name")} *</span>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoComplete="name" required />
             </label>
             <label className={touched && !phoneOk ? "invalid" : undefined}>
-              <span>{ar ? "رقم الهاتف" : "Phone"} *</span>
+              <span>{tr(lang, "رقم الهاتف", "Phone")} *</span>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} type="tel" autoComplete="tel" dir="ltr" required />
             </label>
             {hasDigital || hasBooking ? (
               <label className={touched && !emailOk ? "invalid" : undefined}>
-                <span>{ar ? "الإيميل" : "Email"}</span>
+                <span>{tr(lang, "الإيميل", "Email")}</span>
                 <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" autoComplete="email" dir="ltr" data-testid="cart-email" />
-                <small className="rose-cart-hint">{ar ? `عليه بيوصلكِ رابط ${handover} (اختياري — بنبعته كمان بالواتساب).` : `Where we send your ${handover} link (optional — we also send it on WhatsApp).`}</small>
+                <small className="rose-cart-hint">{tr(lang, `عليه بيوصلكِ رابط ${handover} (اختياري — بنبعته كمان بالواتساب).`, "Where we send your {0} link (optional — we also send it on WhatsApp).", [handover])}</small>
               </label>
             ) : null}
             {noShipping ? null : priced && cityGroups.some((g) => g.cities.length) ? (
               <label>
-                <span>{ar ? "المدينة" : "City"}</span>
+                <span>{tr(lang, "المدينة", "City")}</span>
                 {!otherCity ? (
                   <select
                     value={form.city}
                     onChange={(e) => { if (e.target.value === "__other") { setOtherCity(true); setForm({ ...form, city: "" }); } else setForm({ ...form, city: e.target.value }); }}
-                    aria-label={ar ? "المدينة" : "City"}
+                    aria-label={tr(lang, "المدينة", "City")}
                     data-testid="cart-city"
                   >
-                    <option value="">{ar ? "اختاري مدينتكِ" : "Choose your city"}</option>
+                    <option value="">{tr(lang, "اختاري مدينتكِ", "Choose your city")}</option>
                     {cityGroups.filter((g) => g.cities.length).map((g) => (
-                      <optgroup key={g.zone} label={`${g.zone} — ${g.fee === 0 ? (ar ? "مجاني" : "free") : money(g.fee, currency)}`}>
+                      <optgroup key={g.zone} label={`${g.zone} — ${g.fee === 0 ? (tr(lang, "مجاني", "free")) : money(g.fee, currency)}`}>
                         {g.cities.map((c) => <option key={c} value={c}>{c}</option>)}
                       </optgroup>
                     ))}
-                    <option value="__other">{ar ? "مدينة أخرى…" : "Another city…"}</option>
+                    <option value="__other">{tr(lang, "مدينة أخرى…", "Another city…")}</option>
                   </select>
                 ) : (
                   <span className="rose-cart-city-other">
-                    <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" placeholder={ar ? "اكتبي اسم المدينة" : "Type your city"} autoFocus />
-                    <button type="button" onClick={() => { setOtherCity(false); setForm({ ...form, city: "" }); }}>{ar ? "القائمة" : "List"}</button>
+                    <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" placeholder={tr(lang, "اكتبي اسم المدينة", "Type your city")} autoFocus />
+                    <button type="button" onClick={() => { setOtherCity(false); setForm({ ...form, city: "" }); }}>{tr(lang, "القائمة", "List")}</button>
                   </span>
                 )}
               </label>
             ) : priced ? (
               <label>
-                <span>{ar ? "المدينة" : "City"}</span>
+                <span>{tr(lang, "المدينة", "City")}</span>
                 <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" />
               </label>
             ) : null}
             {noShipping ? null : <label>
-              <span>{ar ? "العنوان" : "Address"}</span>
-              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} autoComplete="street-address" placeholder={priced ? (ar ? "الحي، الشارع، رقم البيت" : "Area, street, house") : ar ? "المدينة، الحي، الشارع" : "City, area, street"} />
+              <span>{tr(lang, "العنوان", "Address")}</span>
+              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} autoComplete="street-address" placeholder={priced ? (tr(lang, "الحي، الشارع، رقم البيت", "Area, street, house")) : tr(lang, "المدينة، الحي، الشارع", "City, area, street")} />
             </label>}
             <label>
-              <span>{ar ? "ملاحظات" : "Notes"}</span>
-              <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={noShipping ? (ar ? "أي تفصيلة بتحبي نعرفها" : "Anything we should know") : ar ? "وقت مناسب للتوصيل، أو أي تفصيلة" : "A good delivery time, or any detail"} />
+              <span>{tr(lang, "ملاحظات", "Notes")}</span>
+              <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={noShipping ? (tr(lang, "أي تفصيلة بتحبي نعرفها", "Anything we should know")) : tr(lang, "وقت مناسب للتوصيل، أو أي تفصيلة", "A good delivery time, or any detail")} />
             </label>
           </div>
 
           {shortLines.length > 0 && (
             <div className="rose-cart-short" role="alert" data-testid="cart-short">
-              <p>{ar ? "بعض القطع أقل من الكمية في حقيبتكِ." : "Some pieces have fewer left than in your bag."}</p>
-              <button type="button" onClick={fitToStock}>{ar ? "تعديل للكمية المتوفرة" : "Fit to what's left"}</button>
+              <p>{tr(lang, "بعض القطع أقل من الكمية في حقيبتكِ.", "Some pieces have fewer left than in your bag.")}</p>
+              <button type="button" onClick={fitToStock}>{tr(lang, "تعديل للكمية المتوفرة", "Fit to what's left")}</button>
             </div>
           )}
           {err && <p className="rose-cart-error" role="alert">{err}</p>}
 
           <div className="rose-cart-actions">
-            {wantsStripe && <button type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("stripe")}>{ar ? "الدفع بالبطاقة" : "Pay by card"}<Icon name="arrow" /></button>}
-            {wantsPaypal && <button type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("paypal")}>{ar ? "الدفع عبر PayPal" : "Pay with PayPal"}<Icon name="arrow" /></button>}
+            {wantsStripe && <button type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("stripe")}>{tr(lang, "الدفع بالبطاقة", "Pay by card")}<Icon name="arrow" /></button>}
+            {wantsPaypal && <button type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("paypal")}>{tr(lang, "الدفع عبر PayPal", "Pay with PayPal")}<Icon name="arrow" /></button>}
             {allowManual && waReady && (
               <button type="button" className="atelier-button rose-cart-wa" disabled={!canOrder} onClick={() => void placeOrder("whatsapp")}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12.05 2a9.9 9.9 0 0 0-8.5 14.95L2 22l5.2-1.5A9.9 9.9 0 1 0 12.05 2Zm5.8 14.1c-.25.7-1.45 1.33-2 1.4-.5.08-1.15.11-1.85-.12-.43-.13-.98-.32-1.69-.62-2.98-1.29-4.93-4.29-5.08-4.49-.15-.2-1.21-1.61-1.21-3.07 0-1.46.77-2.18 1.04-2.48.27-.3.6-.37.79-.37h.57c.18 0 .43-.07.67.51.25.6.84 2.06.92 2.21.07.15.12.33.02.52-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.15-.3.31-.13.6.17.3.77 1.27 1.65 2.05 1.13 1.01 2.09 1.32 2.38 1.47.3.15.47.12.65-.07.17-.2.74-.87.94-1.17.2-.3.4-.25.67-.15.27.1 1.73.82 2.03.97.3.15.5.22.57.35.08.12.08.72-.17 1.41Z" /></svg>
-                {submitting ? (ar ? "جارٍ الإرسال…" : "Sending…") : ar ? "أرسلي الطلب عبر واتساب" : "Order on WhatsApp"}
+                {submitting ? (tr(lang, "جارٍ الإرسال…", "Sending…")) : tr(lang, "أرسلي الطلب عبر واتساب", "Order on WhatsApp")}
               </button>
             )}
             {allowManual && (
               <button type="button" className={waReady ? "rose-cart-direct" : "atelier-button button-dark"} disabled={!canOrder} onClick={() => void placeOrder("direct")}>
-                {ar ? (waReady ? "أو أرسلي الطلب ونتصل بكِ" : "أرسلي الطلب") : waReady ? "Or send the order and we'll call you" : "Send the order"}
+                {waReady ? tr(lang, "أو أرسلي الطلب ونتصل بكِ", "Or send the order and we'll call you") : tr(lang, "أرسلي الطلب", "Send the order")}
               </button>
             )}
             {allowManual && ordersEmail && (
-              <button type="button" className="rose-cart-direct" disabled={!canOrder} onClick={() => void placeOrder("email")}>{ar ? "إرسال الطلب بالبريد" : "Send by email"}</button>
+              <button type="button" className="rose-cart-direct" disabled={!canOrder} onClick={() => void placeOrder("email")}>{tr(lang, "إرسال الطلب بالبريد", "Send by email")}</button>
             )}
           </div>
 
           {noShipping ? null : (
             <ul className="rose-pdp-trust rose-cart-trust">
-              <li><Icon name="truck" />{ar ? "توصيل لكل البلاد" : "Delivery nationwide"}</li>
-              <li><Icon name="cash" />{ar ? "الدفع عند الاستلام" : "Cash on delivery"}</li>
-              <li><Icon name="swap" />{ar ? "استبدال سهل" : "Easy exchange"}</li>
+              <li><Icon name="truck" />{tr(lang, "توصيل لكل البلاد", "Delivery nationwide")}</li>
+              <li><Icon name="cash" />{tr(lang, "الدفع عند الاستلام", "Cash on delivery")}</li>
+              <li><Icon name="swap" />{tr(lang, "استبدال سهل", "Easy exchange")}</li>
             </ul>
           )}
         </aside>

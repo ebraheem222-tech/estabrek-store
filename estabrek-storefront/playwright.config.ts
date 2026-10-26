@@ -26,6 +26,8 @@ export default defineConfig({
       env: {
         API_BASE_URL: "http://127.0.0.1:4100/v1",
         NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:4100/v1",
+        // The admin's new editor frames the shop (studio-frame.spec.ts frames it from the test API's page).
+        ADMIN_ORIGIN: "http://127.0.0.1:4100",
       },
     },
   ],

@@ -45,10 +45,10 @@ export function Chip({ active, onClick, children, title, disabled, className }: 
 
 export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: React.ReactNode }) {
   return (
-    <label className="inline-flex cursor-pointer select-none items-center gap-2.5 text-sm text-white/80">
+    <label className="inline-flex min-h-10 cursor-pointer select-none items-center gap-2.5 text-sm text-white/80 sm:min-h-0">
       <span className={cn("relative h-6 w-11 rounded-full transition-colors", checked ? "bg-accent-500" : "bg-white/15")}>
         <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-        <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", checked ? "right-[1.375rem]" : "right-0.5")} />
+        <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", checked ? "start-[1.375rem]" : "start-0.5")} />
       </span>
       {label}
     </label>

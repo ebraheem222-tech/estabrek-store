@@ -6,6 +6,7 @@ import { env } from "../../config/env.js";
 import { signCustomerToken } from "../../config/security.js";
 import { policy } from "../../lib/securityPolicy.js";
 import { sendEmail } from "../outbox/sender/email.js";
+import { shopperLanguage } from "../../lib/shopperLanguage.js";
 
 /**
  * Shopper accounts: sign in with a 6-digit code sent by email (no password),
@@ -23,7 +24,7 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 /* ============================== Sign in ============================== */
 
 /** Sends a sign-in code. Always answers the same way (doesn't reveal who has an account). */
-export async function startLogin(emailRaw: string, ctx: { ip?: string }) {
+export async function startLogin(emailRaw: string, ctx: { ip?: string; lang?: string }) {
   const email = normalizeEmail(emailRaw);
   const recent = await prisma.customerOtp.count({ where: { email, createdAt: { gt: new Date(Date.now() - 15 * 60_000) } } });
   if (recent >= CODES_PER_15_MIN) throw fail(429, "TOO_MANY_CODES", "Too many codes requested; try again in a few minutes");
@@ -38,7 +39,7 @@ export async function startLogin(emailRaw: string, ctx: { ip?: string }) {
   });
   // A suspended account gets no code (and the answer looks the same).
   if (user?.status !== "SUSPENDED") {
-    await sendEmail({ to: email, template: "CUSTOMER_LOGIN_CODE", payload: { code, minutes } });
+    await sendEmail({ to: email, template: "CUSTOMER_LOGIN_CODE", payload: { code, minutes }, lang: (await shopperLanguage(ctx.lang)).lang });
   }
   return { ok: true as const, minutes, ...(env.NODE_ENV !== "production" ? { devCode: code } : {}) };
 }

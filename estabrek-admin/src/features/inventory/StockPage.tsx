@@ -14,6 +14,8 @@ import { Button } from "../../components/ui/Button";
 import { downloadText, parseCsv, toCsv, toInt } from "../../lib/csv";
 import { toast } from "../../lib/toast";
 import { openLabels } from "./LabelsPrintPage";
+import { money } from "../../lib/money";
+import { tr } from "@/lib/words";
 
 type Edit = { stock?: string; low?: string };
 const digits = (v: string) => v.replace(/[٠-٩]/g, (c) => String("٠١٢٣٤٥٦٧٨٩".indexOf(c))).replace(/[^\d]/g, "");
@@ -78,11 +80,11 @@ export default function StockPage() {
     setScan("");
     let row = all.find((r) => r.sku.toUpperCase() === code.toUpperCase()) ?? null;
     if (!row) row = await findBySku(code).catch(() => null);
-    if (!row) { setLastScan({ sku: code, ok: false, text: "لا يوجد مقاس بهذا الكود" }); return; }
+    if (!row) { setLastScan({ sku: code, ok: false, text: tr("لا يوجد مقاس بهذا الكود", "No size with this code") }); return; }
     setQ(""); setFilter("all"); setCat("");
     if (scanMode === "receive") bump(row, 1);
     const after = scanMode === "receive" ? stockOf(row) + 1 : stockOf(row);
-    setLastScan({ sku: row.sku, ok: true, text: `${row.productTitle} · ${row.colorName} · ${row.size} — ${scanMode === "receive" ? `صارت ${after}` : `الكمية ${after}`}` });
+    setLastScan({ sku: row.sku, ok: true, text: `${row.productTitle} · ${row.colorName} · ${row.size} — ${scanMode === "receive" ? tr(`صارت ${after}`, "now {0}", [after]) : tr(`الكمية ${after}`, "quantity {0}", [after])}` });
     setFlash(row.variantId);
     const idx = all.findIndex((r) => r.variantId === row!.variantId);
     if (idx >= limit) setLimit(idx + 20);
@@ -108,10 +110,10 @@ export default function StockPage() {
       setEdits((e) => Object.fromEntries(Object.entries(e).filter(([id]) => failed.has(id))));
       setReason("");
       await Promise.all([qc.invalidateQueries({ queryKey: ["inventory"] }), qc.invalidateQueries({ queryKey: ["catalog", "products"] })]);
-      if (res.failed) toast.error(`حُفظ ${res.updated} ولم يُحفظ ${res.failed}`, { description: "الصفوف التي لم تُحفظ بقيت معلّمة" });
-      else toast.success(`حُفظت ${res.updated} ${res.updated === 1 ? "كمية" : "كميات"} وسُجّلت في سجل المخزون`);
+      if (res.failed) toast.error(tr(`حُفظ ${res.updated} ولم يُحفظ ${res.failed}`, "{0} saved, {1} not saved", [res.updated, res.failed]), { description: tr("الصفوف التي لم تُحفظ بقيت معلّمة", "The rows that weren't saved stay marked") });
+      else toast.success(tr(`حُفظت ${res.updated} ${res.updated === 1 ? "كمية" : "كميات"} وسُجّلت في سجل المخزون`, "Saved {0} and logged in the stock history", [res.updated, res.updated === 1 ? "كمية" : "كميات"]));
     } catch (e) {
-      toast.error("لم تُحفظ الكميات", { description: getApiErrorMessage(e) });
+      toast.error(tr("لم تُحفظ الكميات", "The quantities weren't saved"), { description: getApiErrorMessage(e) });
     } finally {
       setSaving(false);
     }
@@ -137,10 +139,10 @@ export default function StockPage() {
   /* ------------------------------------------------ render */
   if (tools.data === false) {
     return (
-      <div dir="rtl" className="glass mx-auto max-w-2xl rounded-2xl p-6 text-sm leading-7 text-white/75">
-        <h1 className="mb-2 text-lg font-semibold text-white">المخزون</h1>
-        هذه الصفحة تحتاج تحديث الباكند (Railway) — بعد رفع آخر نسخة من <b>estabrek-store-backend</b> تظهر هنا كل المقاسات مع البحث والمسح بالباركود والتعديل الجماعي.
-        <div className="mt-4 flex gap-3"><Link className="text-accent-300" to="/admin/inventory/low-stock">تنبيهات المخزون</Link><Link className="text-accent-300" to="/admin/catalog/products">المنتجات</Link></div>
+      <div className="glass mx-auto max-w-2xl rounded-2xl p-6 text-sm leading-7 text-white/75">
+        <h1 className="mb-2 text-lg font-semibold text-white">{tr("المخزون", "Stock")}</h1>
+        {tr("هذه الصفحة تحتاج تحديث الباكند (Railway) — بعد رفع آخر نسخة من", "This page needs a backend (Railway) update — after deploying the latest version of")} <b>estabrek-store-backend</b> {tr("تظهر هنا كل المقاسات مع البحث والمسح بالباركود والتعديل الجماعي.", "every size shows here with search, barcode scanning and bulk editing.")}
+        <div className="mt-4 flex gap-3"><Link className="text-accent-300" to="/admin/inventory/low-stock">{tr("تنبيهات المخزون", "Stock alerts")}</Link><Link className="text-accent-300" to="/admin/catalog/products">{tr("المنتجات", "Products")}</Link></div>
       </div>
     );
   }
@@ -148,25 +150,25 @@ export default function StockPage() {
   const visible = rows.slice(0, limit);
   const allChecked = visible.length > 0 && visible.every((r) => checked[r.variantId]);
   return (
-    <div dir="rtl" className="space-y-4 pb-28" data-testid="stock-page">
+    <div className="space-y-4 pb-28" data-testid="stock-page">
       <div className="glass rounded-2xl p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-white">المخزون</h1>
-            <p className="mt-0.5 text-xs text-white/50">كل مقاس لكل لون هو SKU. عدّلي الكميات واحفظي مرة واحدة — كل تغيير يُسجّل في السجل.</p>
+            <h1 className="text-xl font-semibold text-white">{tr("المخزون", "Stock")}</h1>
+            <p className="mt-0.5 text-xs text-white/50">{tr("كل مقاس لكل لون هو SKU. الكميات بتتعدّل وبتنحفظ مرة وحدة — كل تغيير بينسجّل بالسجل.", "Each size of each colour is a SKU. Edit the quantities and save once — every change is logged.")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setImportOpen(true)} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">استيراد جرد (Excel/CSV)</button>
-            <button type="button" onClick={exportCsv} disabled={!rows.length} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">تصدير Excel</button>
-            <button type="button" onClick={printLabels} disabled={!rows.length} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">{selectedRows.length ? `ملصقات (${selectedRows.length})` : "ملصقات باركود"}</button>
-            <Link to="/admin/inventory/adjustments" className="grid h-10 place-items-center rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">سجل المخزون</Link>
+            <button type="button" onClick={() => setImportOpen(true)} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("استيراد جرد (Excel/CSV)", "Import a stock count (Excel/CSV)")}</button>
+            <button type="button" onClick={exportCsv} disabled={!rows.length} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">{tr("تصدير Excel", "Export Excel")}</button>
+            <button type="button" onClick={printLabels} disabled={!rows.length} className="h-10 rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50">{selectedRows.length ? tr(`ملصقات (${selectedRows.length})`, "Labels ({0})", [selectedRows.length]) : tr("ملصقات باركود", "Barcode labels")}</button>
+            <Link to="/admin/inventory/adjustments" className="grid h-10 place-items-center rounded-xl border border-white/[0.12] px-3 text-sm text-white/80 hover:bg-white/[0.06]">{tr("سجل المخزون", "Stock history")}</Link>
           </div>
         </div>
 
         {totals && (
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {([["all", "SKU", totals.skus, ""], ["ok", "قطعة متوفرة", totals.units, "text-emerald-300"], ["low", "قليل", totals.low, "text-amber-200"], ["out", "نفد", totals.out, "text-red-300"]] as const).map(([k, label, n, tone]) => (
-              <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={cn("rounded-xl border px-3 py-2.5 text-right transition", filter === k ? "border-accent-500/50 bg-accent-500/10" : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]")}>
+            {([["all", "SKU", totals.skus, ""], ["ok", tr("قطعة متوفرة", "pieces in stock"), totals.units, "text-emerald-300"], ["low", tr("قليل", "Low"), totals.low, "text-amber-200"], ["out", tr("نفد", "Sold out"), totals.out, "text-red-300"]] as const).map(([k, label, n, tone]) => (
+              <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} className={cn("rounded-xl border px-3 py-2.5 text-start transition", filter === k ? "border-accent-500/50 bg-accent-500/10" : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]")}>
                 <div className={cn("text-xl font-semibold text-white", tone)}>{n}</div>
                 <div className="text-xs text-white/55">{label}</div>
               </button>
@@ -184,14 +186,14 @@ export default function StockPage() {
               value={scan}
               onChange={(e) => setScan(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onScan(scan); } }}
-              placeholder="امسحي الباركود أو اكتبي SKU ثم Enter"
-              className="h-11 min-w-[220px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-right font-mono text-sm text-white placeholder:text-white/35 focus:border-accent-500/50 focus:outline-none"
-              aria-label="مسح باركود"
+              placeholder={tr("مسح الباركود أو كتابة SKU ثم Enter", "Scan the barcode or type a SKU, then Enter")}
+              className="h-11 min-w-[220px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-start font-mono text-sm text-white placeholder:text-white/35 focus:border-accent-500/50 focus:outline-none"
+              aria-label={tr("مسح باركود", "Scan barcode")}
               data-testid="scan-input"
             />
-            <div className="inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1" role="tablist" aria-label="عند المسح">
-              <button type="button" role="tab" aria-selected={scanMode === "find"} onClick={() => { setScanMode("find"); scanRef.current?.focus(); }} className={cn("h-9 rounded-lg px-3 text-sm", scanMode === "find" ? "bg-accent-500/25 text-white" : "text-white/60")}>إيجاد</button>
-              <button type="button" role="tab" aria-selected={scanMode === "receive"} onClick={() => { setScanMode("receive"); scanRef.current?.focus(); }} className={cn("h-9 rounded-lg px-3 text-sm", scanMode === "receive" ? "bg-accent-500/25 text-white" : "text-white/60")}>استلام بضاعة (+1)</button>
+            <div className="inline-flex rounded-xl border border-white/[0.1] bg-white/[0.03] p-1" role="tablist" aria-label={tr("عند المسح", "On scan")}>
+              <button type="button" role="tab" aria-selected={scanMode === "find"} onClick={() => { setScanMode("find"); scanRef.current?.focus(); }} className={cn("h-9 rounded-lg px-3 text-sm", scanMode === "find" ? "bg-accent-500/25 text-white" : "text-white/60")}>{tr("إيجاد", "Find")}</button>
+              <button type="button" role="tab" aria-selected={scanMode === "receive"} onClick={() => { setScanMode("receive"); scanRef.current?.focus(); }} className={cn("h-9 rounded-lg px-3 text-sm", scanMode === "receive" ? "bg-accent-500/25 text-white" : "text-white/60")}>{tr("استلام بضاعة (+1)", "Receive goods (+1)")}</button>
             </div>
           </div>
           {lastScan ? (
@@ -199,15 +201,15 @@ export default function StockPage() {
               <span dir="ltr" className="font-mono">{lastScan.sku}</span> — {lastScan.text}
             </p>
           ) : (
-            <p className="mt-2 text-xs text-white/45">قارئ الباركود يكتب الكود ويضغط Enter وحده. في «استلام بضاعة» كل مسحة تزيد قطعة، ثم احفظي.</p>
+            <p className="mt-2 text-xs text-white/45">{tr("قارئ الباركود بيكتب الكود وبيضغط Enter لحاله. بـ«استلام بضاعة» كل مسحة بتزيد قطعة، وبعدها الحفظ.", "A barcode reader types the code and presses Enter by itself. In “Receive goods” each scan adds one piece; then save.")}</p>
           )}
         </div>
 
         {/* filters */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} placeholder="بحث بالاسم، اللون، المقاس أو SKU…" className="h-10 min-w-[200px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35 focus:outline-none" aria-label="بحث في المخزون" />
-          <select value={cat} onChange={(e) => setCat(e.target.value)} className="h-10 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label="القسم">
-            <option value="">كل الأقسام</option>
+          <input value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} placeholder={tr("بحث بالاسم، اللون، المقاس أو SKU…", "Search by name, colour, size or SKU…")} className="h-10 min-w-[200px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white placeholder:text-white/35 focus:outline-none" aria-label={tr("بحث في المخزون", "Search stock")} />
+          <select value={cat} onChange={(e) => setCat(e.target.value)} className="h-10 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white" aria-label={tr("القسم", "Category")}>
+            <option value="">{tr("كل الأقسام", "All categories")}</option>
             {(cats.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.parentId ? `— ${c.name}` : c.name}</option>)}
           </select>
         </div>
@@ -215,17 +217,17 @@ export default function StockPage() {
 
       <div className="glass overflow-hidden rounded-2xl">
         {list.isLoading || tools.isLoading ? (
-          <div className="p-8 text-center text-sm text-white/55">جارٍ تحميل المخزون…</div>
+          <div className="p-8 text-center text-sm text-white/55">{tr("جارٍ تحميل المخزون…", "Loading stock…")}</div>
         ) : list.isError ? (
-          <div className="p-6 text-sm text-red-200">تعذّر تحميل المخزون: {getApiErrorMessage(list.error)}</div>
+          <div className="p-6 text-sm text-red-200">{tr("تعذّر تحميل المخزون:", "The stock couldn't load:")} {getApiErrorMessage(list.error)}</div>
         ) : !rows.length ? (
-          <div className="p-10 text-center text-sm text-white/55">لا توجد مقاسات بهذا البحث.</div>
+          <div className="p-10 text-center text-sm text-white/55">{tr("لا توجد مقاسات بهذا البحث.", "No sizes match this search.")}</div>
         ) : (
           <>
             <div className="hidden grid-cols-[28px_44px_minmax(0,2.2fr)_minmax(0,1.4fr)_72px_150px_80px] items-center gap-3 border-b border-white/[0.06] px-4 py-2 text-[11px] text-white/45 md:grid">
-              <input type="checkbox" checked={allChecked} onChange={(e) => setChecked((c) => ({ ...c, ...Object.fromEntries(visible.map((r) => [r.variantId, e.target.checked])) }))} aria-label="تحديد الكل" />
+              <input type="checkbox" checked={allChecked} onChange={(e) => setChecked((c) => ({ ...c, ...Object.fromEntries(visible.map((r) => [r.variantId, e.target.checked])) }))} aria-label={tr("تحديد الكل", "Select all")} />
               <span />
-              <span>المنتج · اللون · المقاس</span><span>SKU</span><span>السعر</span><span className="text-center">الكمية</span><span className="text-center">تنبيه عند</span>
+              <span>{tr("المنتج · اللون · المقاس", "Product · colour · size")}</span><span>SKU</span><span>{tr("السعر", "Price")}</span><span className="text-center">{tr("الكمية", "Quantity")}</span><span className="text-center">{tr("تنبيه عند", "Alert at")}</span>
             </div>
             <ul className="divide-y divide-white/[0.05]" data-testid="stock-rows">
               {visible.map((r) => {
@@ -240,35 +242,35 @@ export default function StockPage() {
                     className={cn("grid grid-cols-[28px_44px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors md:grid-cols-[28px_44px_minmax(0,2.2fr)_minmax(0,1.4fr)_72px_150px_80px]", dirty && "bg-accent-500/[0.07]", flash === r.variantId && "bg-emerald-500/15")}
                     data-testid="stock-row"
                   >
-                    <input type="checkbox" checked={Boolean(checked[r.variantId])} onChange={(ev) => setChecked((c) => ({ ...c, [r.variantId]: ev.target.checked }))} aria-label={`تحديد ${r.sku}`} />
+                    <input type="checkbox" checked={Boolean(checked[r.variantId])} onChange={(ev) => setChecked((c) => ({ ...c, [r.variantId]: ev.target.checked }))} aria-label={tr(`تحديد ${r.sku}`, "Select {0}", [r.sku])} />
                     <div className="h-11 w-11 overflow-hidden rounded-lg border border-white/10 bg-black/20">{r.imageUrl ? <img src={r.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</div>
                     <div className="min-w-0">
                       <Link to={`/admin/catalog/products/${r.productId}`} className="block truncate text-sm font-medium text-white hover:text-accent-200">{r.productTitle}</Link>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-white/55">
                         <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded-full border border-white/25" style={{ background: r.colorHex || "#888" }} />{r.colorName}</span>
                         <b className="text-white/85">{r.size}</b>
-                        {!r.productActive ? <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px]">مسودة</span> : null}
-                        {st <= 0 ? <span className="rounded-full bg-red-500/15 px-1.5 text-[10px] text-red-300">نفد</span> : lw > 0 && st <= lw ? <span className="rounded-full bg-amber-500/15 px-1.5 text-[10px] text-amber-200">قليل</span> : null}
+                        {!r.productActive ? <span className="rounded-full bg-white/[0.08] px-1.5 text-[10px]">{tr("مسودة", "Draft")}</span> : null}
+                        {st <= 0 ? <span className="rounded-full bg-red-500/15 px-1.5 text-[10px] text-red-300">{tr("نفد", "Sold out")}</span> : lw > 0 && st <= lw ? <span className="rounded-full bg-amber-500/15 px-1.5 text-[10px] text-amber-200">{tr("قليل", "Low")}</span> : null}
                         <span dir="ltr" className="font-mono text-[11px] text-white/45 md:hidden">{r.sku}</span>
                       </div>
                     </div>
                     <span dir="ltr" className="hidden truncate text-right font-mono text-xs text-white/70 md:block" title={r.sku}>{r.sku}</span>
-                    <span className="hidden text-sm text-white/70 md:block">₪{r.price}</span>
+                    <span className="hidden text-sm text-white/70 md:block">{money(Number(r.price))}</span>
                     <div className="col-span-2 col-start-2 flex items-center gap-2 md:col-span-1 md:col-start-auto md:justify-center">
                       <div className="inline-flex items-center rounded-lg border border-white/[0.1] bg-white/[0.02]">
-                        <button type="button" onClick={() => bump(r, -1)} className="h-9 w-9 text-white/55 hover:text-white" aria-label={`إنقاص ${r.sku}`}>−</button>
-                        <input className={cn("h-9 w-14 bg-transparent text-center text-sm focus:outline-none", st <= 0 ? "text-red-300" : "text-white")} inputMode="numeric" value={e?.stock ?? String(r.stock)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { stock: digits(ev.target.value) })} aria-label={`كمية ${r.sku}`} />
-                        <button type="button" onClick={() => bump(r, 1)} className="h-9 w-9 text-white/55 hover:text-white" aria-label={`زيادة ${r.sku}`}>+</button>
+                        <button type="button" onClick={() => bump(r, -1)} className="h-9 w-9 text-white/55 hover:text-white" aria-label={tr(`إنقاص ${r.sku}`, "Less {0}", [r.sku])}>−</button>
+                        <input className={cn("h-9 w-14 bg-transparent text-center text-sm focus:outline-none", st <= 0 ? "text-red-300" : "text-white")} inputMode="numeric" value={e?.stock ?? String(r.stock)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { stock: digits(ev.target.value) })} aria-label={tr(`كمية ${r.sku}`, "Quantity {0}", [r.sku])} />
+                        <button type="button" onClick={() => bump(r, 1)} className="h-9 w-9 text-white/55 hover:text-white" aria-label={tr(`زيادة ${r.sku}`, "More {0}", [r.sku])}>+</button>
                       </div>
-                      {dirty && e?.stock !== undefined && Number(e.stock) !== r.stock ? <span className="text-[11px] text-white/45">كان {r.stock}</span> : null}
+                      {dirty && e?.stock !== undefined && Number(e.stock) !== r.stock ? <span className="text-[11px] text-white/45">{tr("كان", "was")} {r.stock}</span> : null}
                     </div>
-                    <input className="hidden h-9 w-16 justify-self-center rounded-lg border border-white/[0.1] bg-surface-925 text-center text-sm text-white focus:outline-none md:block" inputMode="numeric" value={e?.low ?? String(r.lowStockThreshold)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { low: digits(ev.target.value) })} aria-label={`تنبيه ${r.sku}`} />
+                    <input className="hidden h-9 w-16 justify-self-center rounded-lg border border-white/[0.1] bg-surface-925 text-center text-sm text-white focus:outline-none md:block" inputMode="numeric" value={e?.low ?? String(r.lowStockThreshold)} onFocus={(ev) => ev.target.select()} onChange={(ev) => setEdit(r.variantId, { low: digits(ev.target.value) })} aria-label={tr(`تنبيه ${r.sku}`, "Alert {0}", [r.sku])} />
                   </li>
                 );
               })}
             </ul>
             {rows.length > limit ? (
-              <div className="p-3 text-center"><button type="button" onClick={() => setLimit((l) => l + PAGE)} className="h-10 rounded-xl border border-white/[0.12] px-4 text-sm text-white/80 hover:bg-white/[0.06]">عرض المزيد ({rows.length - limit})</button></div>
+              <div className="p-3 text-center"><button type="button" onClick={() => setLimit((l) => l + PAGE)} className="h-10 rounded-xl border border-white/[0.12] px-4 text-sm text-white/80 hover:bg-white/[0.06]">{tr("عرض المزيد (", "Show more (")}{rows.length - limit})</button></div>
             ) : null}
           </>
         )}
@@ -277,10 +279,10 @@ export default function StockPage() {
       {changes.length > 0 && (
         <div className="glass sticky bottom-[84px] z-30 rounded-2xl border border-accent-500/30 p-3 shadow-2xl lg:bottom-4" data-testid="stock-savebar">
           <div className="flex flex-wrap items-center gap-2">
-            <b className="text-sm text-white">{changes.length} {changes.length === 1 ? "تغيير" : "تغييرات"}</b>
-            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="السبب (اختياري): جرد، بضاعة وصلت…" className="h-10 min-w-[180px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white focus:outline-none" aria-label="سبب التغيير" />
-            <button type="button" onClick={() => setEdits({})} className="h-10 rounded-xl px-3 text-sm text-white/70 hover:bg-white/[0.06]">تراجع</button>
-            <button type="button" onClick={save} disabled={saving} className="h-10 rounded-xl bg-accent-500 px-5 text-sm font-semibold text-white hover:bg-accent-400 disabled:opacity-60">{saving ? "جارٍ الحفظ…" : "حفظ الكميات"}</button>
+            <b className="text-sm text-white">{changes.length} {changes.length === 1 ? tr("تغيير", "change") : tr("تغييرات", "changes")}</b>
+            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={tr("السبب (اختياري): جرد، بضاعة وصلت…", "Reason (optional): count, goods arrived…")} className="h-10 min-w-[180px] flex-1 rounded-xl border border-white/[0.1] bg-surface-925 px-3 text-sm text-white focus:outline-none" aria-label={tr("سبب التغيير", "Reason for the change")} />
+            <button type="button" onClick={() => setEdits({})} className="h-10 rounded-xl px-3 text-sm text-white/70 hover:bg-white/[0.06]">{tr("تراجع", "Undo")}</button>
+            <button type="button" onClick={save} disabled={saving} className="h-10 rounded-xl bg-accent-500 px-5 text-sm font-semibold text-white hover:bg-accent-400 disabled:opacity-60">{saving ? tr("جارٍ الحفظ…", "Saving…") : tr("حفظ الكميات", "Save quantities")}</button>
           </div>
         </div>
       )}
@@ -330,33 +332,33 @@ function ImportModal({ open, onClose, rows, onApply }: { open: boolean; onClose:
   return (
     <Modal
       open={open}
-      title="استيراد جرد من ملف"
+      title={tr("استيراد جرد من ملف", "Import a stock count from a file")}
       onClose={onClose}
       widthClassName="max-w-2xl"
       footer={<Button variant="primary" disabled={!changed.length} onClick={() => onApply(Object.fromEntries(changed.map((f) => [f.r.variantId, { ...(f.stock !== null ? { stock: String(f.stock) } : {}), ...(f.low !== null ? { low: String(f.low) } : {}) }])))}>
-        {changed.length ? `تجهيز ${changed.length} تغيير للمراجعة` : "لا تغييرات"}
+        {changed.length ? tr(`تجهيز ${changed.length} تغيير للمراجعة`, "Prepare {0} changes for review", [changed.length]) : tr("لا تغييرات", "No changes")}
       </Button>}
     >
-      <div dir="rtl" className="space-y-3 text-sm text-white/75">
+      <div className="space-y-3 text-sm text-white/75">
         <p className="leading-6">
-          ملف Excel محفوظ كـ CSV فيه عمود <b dir="ltr">sku</b> (أو «الكود») وعمود <b dir="ltr">stock</b> (أو «الكمية») للكمية الجديدة،
-          أو عمود <b dir="ltr">add</b> (أو «إضافة») لما وصل فوق الموجود. أسهل طريقة: «تصدير Excel» ثم تعديل الكميات ورفعه هنا.
-          لا شيء يُحفظ قبل أن تراجعي وتضغطي «حفظ الكميات».
+          {tr("ملف Excel محفوظ كـ CSV فيه عمود", "An Excel file saved as CSV with a")} <b dir="ltr">sku</b> {tr("(أو «الكود») وعمود", "column and a")} <b dir="ltr">stock</b> {tr("(أو «الكمية») للكمية الجديدة،", "column for the new quantity,")}
+          {tr("أو عمود", "or an")} <b dir="ltr">add</b> {tr("(أو «إضافة») لما وصل فوق الموجود. أسهل طريقة: «تصدير Excel» ثم تعديل الكميات ورفعه هنا.", "column for what arrived on top of what's there. Easiest: “Export Excel”, edit the quantities and upload it here.")}
+          {tr("ما بينحفظ إشي قبل المراجعة والضغط على «حفظ الكميات».", "Nothing is saved until you review and press “Save quantities”.")}
         </p>
-        <input type="file" accept=".csv,text/csv,.txt" onChange={(e) => void read(e.target.files?.[0] ?? null)} aria-label="ملف الجرد" className="block w-full text-sm" />
+        <input type="file" accept=".csv,text/csv,.txt" onChange={(e) => void read(e.target.files?.[0] ?? null)} aria-label={tr("ملف الجرد", "Stock count file")} className="block w-full text-sm" />
         {parsed && (
           <div className="rounded-xl border border-white/[0.08] p-3" data-testid="import-summary">
             <div className="font-medium text-white">{name}</div>
             <ul className="mt-1 space-y-0.5 text-xs">
-              <li className="text-emerald-300">{changed.length} كمية ستتغير</li>
-              <li>{parsed.found.length - changed.length} بدون تغيير</li>
-              {parsed.missing.length ? <li className="text-amber-200">{parsed.missing.length} كود غير موجود: <span dir="ltr" className="font-mono">{parsed.missing.slice(0, 8).join(", ")}{parsed.missing.length > 8 ? "…" : ""}</span></li> : null}
-              {parsed.bad ? <li className="text-red-300">{parsed.bad} صف بدون كود أو كمية</li> : null}
+              <li className="text-emerald-300">{changed.length} {tr("كمية ستتغير", "quantities will change")}</li>
+              <li>{parsed.found.length - changed.length} {tr("بدون تغيير", "unchanged")}</li>
+              {parsed.missing.length ? <li className="text-amber-200">{parsed.missing.length} {tr("كود غير موجود:", "Code not found:")} <span dir="ltr" className="font-mono">{parsed.missing.slice(0, 8).join(", ")}{parsed.missing.length > 8 ? "…" : ""}</span></li> : null}
+              {parsed.bad ? <li className="text-red-300">{parsed.bad} {tr("صف بدون كود أو كمية", "rows without a code or quantity")}</li> : null}
             </ul>
             {changed.length > 0 && (
               <ul className="mt-2 max-h-48 space-y-1 overflow-auto text-xs">
                 {changed.slice(0, 60).map((f) => (
-                  <li key={f.r.variantId} className="flex justify-between gap-2"><span>{f.r.productTitle} · {f.r.colorName} · {f.r.size}</span><span>{f.stock !== null ? `${f.r.stock} → ${f.stock}` : ""}{f.low !== null && f.low !== f.r.lowStockThreshold ? ` · تنبيه ${f.low}` : ""}</span></li>
+                  <li key={f.r.variantId} className="flex justify-between gap-2"><span>{f.r.productTitle} · {f.r.colorName} · {f.r.size}</span><span>{f.stock !== null ? `${f.r.stock} → ${f.stock}` : ""}{f.low !== null && f.low !== f.r.lowStockThreshold ? tr(` · تنبيه ${f.low}`, " · alert {0}", [f.low]) : ""}</span></li>
                 ))}
               </ul>
             )}

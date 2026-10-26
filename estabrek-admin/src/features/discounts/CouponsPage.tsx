@@ -104,29 +104,29 @@ export default function CouponsPage() {
 
   const validateForm = () => {
     const next: typeof errors = {};
-    if (!code.trim()) next.code = "الكود مطلوب";
+    if (!code.trim()) next.code = tr("الكود مطلوب", "The code is required");
 
     const dv = discountValue.trim();
-    if (!dv) next.discountValue = "قيمة الخصم مطلوبة";
+    if (!dv) next.discountValue = tr("قيمة الخصم مطلوبة", "The discount value is required");
     else {
       const n = Number(dv);
-      if (!Number.isFinite(n) || n <= 0) next.discountValue = "لازم يكون رقم > 0";
-      if (discountType === "PERCENT" && Number.isFinite(n) && n > 100) next.discountValue = "النسبة لازم تكون <= 100";
+      if (!Number.isFinite(n) || n <= 0) next.discountValue = tr("لازم يكون رقم > 0", "Has to be a number > 0");
+      if (discountType === "PERCENT" && Number.isFinite(n) && n > 100) next.discountValue = tr("النسبة لازم تكون <= 100", "The percentage has to be <= 100");
     }
 
     if (maxDiscount.trim()) {
       const n = Number(maxDiscount);
-      if (!Number.isFinite(n) || n < 0) next.maxDiscount = "لازم يكون رقم >= 0";
+      if (!Number.isFinite(n) || n < 0) next.maxDiscount = tr("لازم يكون رقم >= 0", "Has to be a number >= 0");
     }
 
     if (usageLimit.trim()) {
       const n = Number(usageLimit);
-      if (!Number.isFinite(n) || n < 1) next.usageLimit = "لازم يكون رقم >= 1";
+      if (!Number.isFinite(n) || n < 1) next.usageLimit = tr("لازم يكون رقم >= 1", "Has to be a number >= 1");
     }
 
     if (minCart.trim()) {
       const n = Number(minCart);
-      if (!Number.isFinite(n) || n < 0) next.minCart = "لازم يكون رقم >= 0";
+      if (!Number.isFinite(n) || n < 0) next.minCart = tr("لازم يكون رقم >= 0", "Has to be a number >= 0");
     }
 
     setErrors(next);
@@ -168,22 +168,22 @@ export default function CouponsPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-lg font-semibold">الكوبونات</div>
+            <div className="text-lg font-semibold">{tr("الكوبونات", "Coupons")}</div>
             <div className="mt-1 text-xs opacity-70">Coupons</div>
           </div>
           <Button variant="primary" onClick={openCreate} className="w-full sm:w-auto">
-            إضافة كوبون
+            {tr("إضافة كوبون", "Add coupon")}
           </Button>
         </div>
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <Input
-            label="بحث بالكود"
-            placeholder="مثال: WELCOME10"
+            label={tr("بحث بالكود", "Search by code")}
+            placeholder={tr("مثال: WELCOME10", "e.g. WELCOME10")}
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -192,16 +192,16 @@ export default function CouponsPage() {
           />
 
           <Select
-            label="الحالة"
+            label={tr("الحالة", "Status")}
             value={active}
             onChange={(e) => {
               setActive(e.target.value as any);
               setPage(1);
             }}
             options={[
-              { value: "", label: "الكل" },
-              { value: "true", label: "مفعل" },
-              { value: "false", label: "غير مفعل" },
+              { value: "", label: tr("الكل", "All") },
+              { value: "true", label: tr("مفعل", "Active") },
+              { value: "false", label: tr("غير مفعل", "Inactive") },
             ]}
           />
 
@@ -215,9 +215,9 @@ export default function CouponsPage() {
                 setPage(1);
               }}
             >
-              مسح الفلاتر
+              {tr("مسح الفلاتر", "Clear filters")}
             </Button>
-            <div className="text-xs text-white/50">{meta ? `الإجمالي: ${meta.total}` : ""}</div>
+            <div className="text-xs text-white/50">{meta ? tr(`الإجمالي: ${meta.total}`, "Total: {0}", [meta.total]) : ""}</div>
           </div>
         </div>
       </div>
@@ -226,12 +226,12 @@ export default function CouponsPage() {
         {couponsQ.isLoading ? (
           <div className="flex items-center gap-2">
             <Spinner />
-            <div className="text-sm opacity-80">جاري التحميل…</div>
+            <div className="text-sm opacity-80">{tr("جاري التحميل…", "Loading…")}</div>
           </div>
         ) : couponsQ.isError ? (
-          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">فشل تحميل الكوبونات.</div>
+          <div className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">{tr("فشل تحميل الكوبونات.", "The coupons couldn't load.")}</div>
         ) : rows.length === 0 ? (
-          <div className="text-sm text-white/60">ما في كوبونات.</div>
+          <div className="text-sm text-white/60">{tr("ما في كوبونات.", "No coupons.")}</div>
         ) : (
           <>
                         <div className="space-y-3 sm:hidden">
@@ -241,10 +241,10 @@ export default function CouponsPage() {
                     <div className="font-mono text-sm font-semibold tracking-wider">{c.code}</div>
                     {c.isActive ? (
                       <Badge variant="success" dot>
-                        فعال
+                        {tr("فعال", "Active")}
                       </Badge>
                     ) : (
-                      <Badge variant="danger">غير فعال</Badge>
+                      <Badge variant="danger">{tr("غير فعال", "Inactive")}</Badge>
                     )}
                   </div>
                   <div className="mt-2 text-sm opacity-80">{discountText(c)}</div>
@@ -253,10 +253,10 @@ export default function CouponsPage() {
                   <div className="mt-1 text-xs opacity-70">{formatDateTime(c.createdAt)}</div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button size="sm" variant="secondary" className="flex-1" onClick={() => openEdit(c)}>
-                      تعديل
+                      {tr("تعديل", "Edit")}
                     </Button>
                     <Button size="sm" variant="danger" className="flex-1" onClick={() => setConfirmId(c.id)}>
-                      حذف
+                      {tr("حذف", "Delete")}
                     </Button>
                   </div>
                 </div>
@@ -266,13 +266,13 @@ export default function CouponsPage() {
               <Table>
                 <THead>
                   <TR>
-                    <TH>الكود</TH>
-                    <TH>الحالة</TH>
-                    <TH>الخصم</TH>
-                    <TH>الاستخدام</TH>
-                    <TH>الحد الأدنى</TH>
-                    <TH>تاريخ الإنشاء</TH>
-                    <TH className="w-44">الإجراءات</TH>
+                    <TH>{tr("الكود", "Code")}</TH>
+                    <TH>{tr("الحالة", "Status")}</TH>
+                    <TH>{tr("الخصم", "Discount")}</TH>
+                    <TH>{tr("الاستخدام", "Uses")}</TH>
+                    <TH>{tr("الحد الأدنى", "Minimum")}</TH>
+                    <TH>{tr("تاريخ الإنشاء", "Created")}</TH>
+                    <TH className="w-44">{tr("الإجراءات", "Actions")}</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -282,10 +282,10 @@ export default function CouponsPage() {
                       <TD>
                         {c.isActive ? (
                           <Badge variant="success" dot>
-                            فعال
+                            {tr("فعال", "Active")}
                           </Badge>
                         ) : (
-                          <Badge variant="danger">غير فعال</Badge>
+                          <Badge variant="danger">{tr("غير فعال", "Inactive")}</Badge>
                         )}
                       </TD>
                       <TD className="opacity-80">{discountText(c)}</TD>
@@ -295,10 +295,10 @@ export default function CouponsPage() {
                       <TD>
                         <div className="flex gap-2">
                           <Button variant="secondary" onClick={() => openEdit(c)}>
-                            تعديل
+                            {tr("تعديل", "Edit")}
                           </Button>
                           <Button variant="danger" onClick={() => setConfirmId(c.id)}>
-                            حذف
+                            {tr("حذف", "Delete")}
                           </Button>
                         </div>
                       </TD>
@@ -320,7 +320,7 @@ export default function CouponsPage() {
 
       <Modal
         open={open}
-        title={editing ? "تعديل كوبون" : "إضافة كوبون"}
+        title={editing ? tr("تعديل كوبون", "Edit coupon") : tr("إضافة كوبون", "Add coupon")}
         onCancel={() => setOpen(false)}
         widthClassName="max-w-lg"
         footer={
@@ -330,14 +330,14 @@ export default function CouponsPage() {
               onClick={onSave}
               isLoading={actions.createCoupon.isPending || actions.updateCoupon.isPending}
             >
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
           </div>
         }
       >
-        <div dir="rtl" className="space-y-4">
+        <div className="space-y-4">
           <Input
-            label="كود الكوبون"
+            label={tr("كود الكوبون", "Coupon code")}
             placeholder="WELCOME10"
             value={code}
             error={errors.code}
@@ -349,7 +349,7 @@ export default function CouponsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Select
-              label="نوع الخصم"
+              label={tr("نوع الخصم", "Discount type")}
               value={discountType}
               error={errors.discountType}
               onChange={(e) => {
@@ -357,18 +357,18 @@ export default function CouponsPage() {
                 setErrors((prev) => ({ ...prev, discountValue: undefined, maxDiscount: undefined }));
               }}
               options={[
-                { value: "PERCENT", label: "نسبة %" },
-                { value: "FIXED", label: "قيمة ثابتة" },
+                { value: "PERCENT", label: tr("نسبة %", "Percentage %") },
+                { value: "FIXED", label: tr("قيمة ثابتة", "Fixed amount") },
               ]}
             />
 
             <Input
-              label={discountType === "PERCENT" ? "قيمة الخصم (%)" : "قيمة الخصم"}
-              placeholder={discountType === "PERCENT" ? "مثال: 10" : "مثال: 20"}
+              label={discountType === "PERCENT" ? tr("قيمة الخصم (%)", "Discount value (%)") : tr("قيمة الخصم", "Discount value")}
+              placeholder={discountType === "PERCENT" ? tr("مثال: 10", "e.g. 10") : tr("مثال: 20", "e.g. 20")}
               type="number"
               value={discountValue}
               error={errors.discountValue}
-              hint={discountType === "PERCENT" ? "10 يعني خصم 10%" : "قيمة ثابتة تُخصم من الإجمالي"}
+              hint={discountType === "PERCENT" ? tr("10 يعني خصم 10%", "10 means 10% off") : tr("قيمة ثابتة تُخصم من الإجمالي", "A fixed amount off the total")}
               onChange={(e) => {
                 setDiscountValue(e.target.value);
                 setErrors((prev) => ({ ...prev, discountValue: undefined }));
@@ -376,12 +376,12 @@ export default function CouponsPage() {
             />
 
             <Input
-              label="سقف الخصم (اختياري)"
-              placeholder="مثال: 50"
+              label={tr("سقف الخصم (اختياري)", "Discount cap (optional)")}
+              placeholder={tr("مثال: 50", "e.g. 50")}
               type="number"
               value={maxDiscount}
               error={errors.maxDiscount}
-              hint="مفيد مع خصم النسبة حتى لا يتجاوز حد معين"
+              hint={tr("مفيد مع خصم النسبة حتى لا يتجاوز حد معين", "Useful with a percentage so it doesn't go past a limit")}
               onChange={(e) => {
                 setMaxDiscount(e.target.value);
                 setErrors((prev) => ({ ...prev, maxDiscount: undefined }));
@@ -390,8 +390,8 @@ export default function CouponsPage() {
           </div>
 
           <Input
-            label="حد الاستخدام (اختياري)"
-            placeholder="مثال: 100"
+            label={tr("حد الاستخدام (اختياري)", "Use limit (optional)")}
+            placeholder={tr("مثال: 100", "e.g. 100")}
             type="number"
             value={usageLimit}
             error={errors.usageLimit}
@@ -402,8 +402,8 @@ export default function CouponsPage() {
           />
 
           <Input
-            label="حد أدنى للسلة (اختياري)"
-            placeholder="مثال: 200"
+            label={tr("حد أدنى للسلة (اختياري)", "Minimum bag (optional)")}
+            placeholder={tr("مثال: 200", "e.g. 200")}
             type="number"
             value={minCart}
             error={errors.minCart}
@@ -414,19 +414,19 @@ export default function CouponsPage() {
           />
 
           <Select
-            label="الحالة"
+            label={tr("الحالة", "Status")}
             value={isActive ? "true" : "false"}
             onChange={(e) => setIsActive(e.target.value === "true")}
             options={[
-              { value: "true", label: "مفعل" },
-              { value: "false", label: "غير مفعل" },
+              { value: "true", label: tr("مفعل", "Active") },
+              { value: "false", label: tr("غير مفعل", "Inactive") },
             ]}
           />
 
           {editing ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/60">
-              <div>الاستخدام الحالي: {usageText(editing)}</div>
-              <div className="mt-1">آخر تحديث: {formatDateTime(editing.updatedAt)}</div>
+              <div>{tr("الاستخدام الحالي:", "Uses so far:")} {usageText(editing)}</div>
+              <div className="mt-1">{tr("آخر تحديث:", "Last updated:")} {formatDateTime(editing.updatedAt)}</div>
             </div>
           ) : null}
         </div>
@@ -434,10 +434,10 @@ export default function CouponsPage() {
 
       <ConfirmDialog
         open={!!confirmId}
-        title="حذف الكوبون"
-        description="متأكد؟ ما رح تقدر ترجع الكوبون بعد الحذف."
-        confirmText="حذف"
-        cancelText="إلغاء"
+        title={tr("حذف الكوبون", "Delete coupon")}
+        description={tr("الحذف أكيد؟ الكوبون ما بيرجع بعد الحذف.", "Sure? The coupon can't be brought back after deleting.")}
+        confirmText={tr("حذف", "Delete")}
+        cancelText={tr("إلغاء", "Cancel")}
         onConfirm={onDelete}
         onCancel={() => setConfirmId(null)}
       />
@@ -447,3 +447,5 @@ export default function CouponsPage() {
 
 
 
+
+import { tr } from "@/lib/words";

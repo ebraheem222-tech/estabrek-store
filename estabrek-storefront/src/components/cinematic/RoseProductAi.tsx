@@ -9,12 +9,18 @@ import { useEffect, useState, type FormEvent } from "react";
 import { apiBaseClient } from "@/lib/apiClient";
 import { cldUrl } from "@/lib/cloudinary";
 import { formatMoney } from "@/lib/catalog";
+import { useNames } from "@/store/storeIdentity";
+import { useStoreIdentity } from "@/store/storeIdentity";
+import { tr } from "@/lib/words";
+import { useLanguage } from "./Language";
 
 /* ---------------- Size advice ---------------- */
 
 type Advice = { size: string; inStock: boolean; confidence: "high" | "medium" | "low"; why: string };
 
 export function RoseSizeAdvice({ productId, ar, onPick }: { productId: string; ar: boolean; onPick: (size: string) => void }) {
+  const { language: lang } = useLanguage();
+  const n = useNames();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ height: "", weight: "", usual: "", fit: "regular" as "tight" | "regular" | "loose" });
   const [busy, setBusy] = useState(false);
@@ -24,13 +30,13 @@ export function RoseSizeAdvice({ productId, ar, onPick }: { productId: string; a
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const height = Number(form.height), weight = Number(form.weight);
-    if (!(height >= 120 && height <= 210) || !(weight >= 30 && weight <= 200)) return setErr(ar ? "اكتبي الطول بالسنتيمتر (مثلاً 162) والوزن بالكيلو." : "Height in cm (e.g. 162) and weight in kg.");
+    if (!(height >= 120 && height <= 210) || !(weight >= 30 && weight <= 200)) return setErr(tr(lang, "اكتبي الطول بالسنتيمتر (مثلاً 162) والوزن بالكيلو.", "Height in cm (e.g. 162) and weight in kg."));
     setBusy(true);
     setErr(null);
     try {
       const res = await fetch(`${apiBaseClient()}/ai/size`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, height, weight, usual: form.usual.trim() || undefined, fit: form.fit }) });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d?.error === "AI_BUSY" ? (ar ? "رزان مشغولة شوي، جربي بعد شوي." : "Busy, try again soon.") : ar ? "ما قدرت أحدد مقاس هلأ. جربي دليل المقاسات أو راسلينا." : "Couldn't tell right now.");
+      if (!res.ok) throw new Error(d?.error === "AI_BUSY" ? (tr(lang, `${n.assistant} مشغولة شوي، جربي بعد شوي.`, "Busy, try again soon.")) : tr(lang, "ما قدرت أحدد مقاس هلأ. جربي دليل المقاسات أو راسلينا.", "Couldn't tell right now."));
       setAdvice(d);
     } catch (e: any) {
       setErr(e?.message ?? null);
@@ -40,33 +46,33 @@ export function RoseSizeAdvice({ productId, ar, onPick }: { productId: string; a
   };
 
   if (!open) {
-    return <button type="button" className="rose-ai-link" onClick={() => setOpen(true)}>{ar ? "✨ مش متأكدة من مقاسك؟ اسألي رزان" : "✨ Not sure of your size? Ask Rose"}</button>;
+    return <button type="button" className="rose-ai-link" onClick={() => setOpen(true)}>{tr(lang, `✨ مش متأكدة من مقاسك؟ اسألي ${n.assistant}`, "✨ Not sure of your size? Ask {0}", [n.assistant])}</button>;
   }
   return (
     <form className="rose-ai-card rose-size-advice" onSubmit={submit} data-testid="size-advice">
       <div className="rose-ai-row">
-        <label><span>{ar ? "الطول (سم)" : "Height (cm)"}</span><input inputMode="numeric" dir="ltr" value={form.height} onChange={(e) => setForm({ ...form, height: e.target.value })} maxLength={3} /></label>
-        <label><span>{ar ? "الوزن (كغ)" : "Weight (kg)"}</span><input inputMode="numeric" dir="ltr" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} maxLength={3} /></label>
-        <label><span>{ar ? "مقاسك العادي" : "Usual size"}</span><input dir="ltr" value={form.usual} onChange={(e) => setForm({ ...form, usual: e.target.value })} maxLength={10} placeholder="M" /></label>
+        <label><span>{tr(lang, "الطول (سم)", "Height (cm)")}</span><input inputMode="numeric" dir="ltr" value={form.height} onChange={(e) => setForm({ ...form, height: e.target.value })} maxLength={3} /></label>
+        <label><span>{tr(lang, "الوزن (كغ)", "Weight (kg)")}</span><input inputMode="numeric" dir="ltr" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} maxLength={3} /></label>
+        <label><span>{tr(lang, "مقاسك العادي", "Usual size")}</span><input dir="ltr" value={form.usual} onChange={(e) => setForm({ ...form, usual: e.target.value })} maxLength={10} placeholder="M" /></label>
       </div>
-      <div className="rose-ai-chips" role="radiogroup" aria-label={ar ? "كيف بتحبيها" : "How you like it"}>
-        {([["tight", ar ? "مزبوطة" : "Fitted"], ["regular", ar ? "عادية" : "Regular"], ["loose", ar ? "واسعة" : "Loose"]] as const).map(([k, l]) => (
+      <div className="rose-ai-chips" role="radiogroup" aria-label={tr(lang, "كيف بتحبيها", "How you like it")}>
+        {([["tight", tr(lang, "مزبوطة", "Fitted")], ["regular", tr(lang, "عادية", "Regular")], ["loose", tr(lang, "واسعة", "Loose")]] as const).map(([k, l]) => (
           <button key={k} type="button" role="radio" aria-checked={form.fit === k} onClick={() => setForm({ ...form, fit: k })}>{l}</button>
         ))}
       </div>
       {err ? <p className="rose-ai-err" role="alert">{err}</p> : null}
       {advice ? (
         <div className="rose-ai-answer" role="status">
-          <p><b>{ar ? `مقاسكِ: ${advice.size}` : `Your size: ${advice.size}`}</b>{advice.confidence !== "high" ? <small>{ar ? (advice.confidence === "medium" ? " (على الأغلب)" : " (تقريباً)") : ` (${advice.confidence})`}</small> : null}</p>
+          <p><b>{tr(lang, `مقاسكِ: ${advice.size}`, "Your size: {0}", [advice.size])}</b>{advice.confidence !== "high" ? <small>{ar ? (advice.confidence === "medium" ? " (على الأغلب)" : " (تقريباً)") : lang === "he" ? (advice.confidence === "medium" ? " (כנראה)" : " (בערך)") : ` (${advice.confidence})`}</small> : null}</p>
           {advice.why ? <p>{advice.why}</p> : null}
-          {advice.inStock ? <button type="button" onClick={() => onPick(advice.size)}>{ar ? `اختاري ${advice.size}` : `Pick ${advice.size}`}</button> : <p>{ar ? "هالمقاس خلص هلأ." : "This size is sold out."}</p>}
+          {advice.inStock ? <button type="button" onClick={() => onPick(advice.size)}>{tr(lang, `اختاري ${advice.size}`, "Pick {0}", [advice.size])}</button> : <p>{tr(lang, "هالمقاس خلص هلأ.", "This size is sold out.")}</p>}
         </div>
       ) : null}
       <div className="rose-ai-actions">
-        <button type="submit" disabled={busy}>{busy ? (ar ? "لحظة…" : "One moment…") : ar ? "شو مقاسي؟" : "My size?"}</button>
-        <button type="button" className="ghost" onClick={() => setOpen(false)}>{ar ? "إغلاق" : "Close"}</button>
+        <button type="submit" disabled={busy}>{busy ? (tr(lang, "لحظة…", "One moment…")) : tr(lang, "شو مقاسي؟", "My size?")}</button>
+        <button type="button" className="ghost" onClick={() => setOpen(false)}>{tr(lang, "إغلاق", "Close")}</button>
       </div>
-      <small className="rose-ai-note">{ar ? "اقتراح من رزان بالذكاء الاصطناعي، ما بينحفظ إشي عنكِ." : "An AI suggestion; nothing about you is kept."}</small>
+      <small className="rose-ai-note">{tr(lang, `اقتراح من ${n.assistant} بالذكاء الاصطناعي، ما بينحفظ إشي عنكِ.`, "An AI suggestion; nothing about you is kept.")}</small>
     </form>
   );
 }
@@ -76,6 +82,8 @@ export function RoseSizeAdvice({ productId, ar, onPick }: { productId: string; a
 type LookPiece = { id: string; title: string; slug: string; image: string | null; price: number | null; reason: string };
 
 export function RoseShopTheLook({ productId, ar }: { productId: string; ar: boolean }) {
+  const { language: lang } = useLanguage();
+  const { currency } = useStoreIdentity();
   const [pieces, setPieces] = useState<LookPiece[] | null>(null);
   useEffect(() => {
     let alive = true;
@@ -88,8 +96,8 @@ export function RoseShopTheLook({ productId, ar }: { productId: string; ar: bool
   }, [productId]);
   if (!pieces?.length) return null;
   return (
-    <section className="rose-ai-look" data-testid="shop-the-look" aria-label={ar ? "كمّلي اللبسة" : "Complete the look"}>
-      <h2>{ar ? "✨ كمّلي اللبسة" : "✨ Complete the look"}</h2>
+    <section className="rose-ai-look" data-testid="shop-the-look" aria-label={tr(lang, "كمّلي اللبسة", "Complete the look")}>
+      <h2>{tr(lang, "✨ كمّلي اللبسة", "✨ Complete the look")}</h2>
       <ul>
         {pieces.map((p) => (
           <li key={p.id}>
@@ -97,7 +105,7 @@ export function RoseShopTheLook({ productId, ar }: { productId: string; ar: bool
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {p.image ? <img src={cldUrl(p.image, { w: 240, h: 300, c: "fill", g: "auto" })} alt="" loading="lazy" /> : <span className="rose-ai-noimg" />}
               <b>{p.title}</b>
-              {p.price != null ? <em>{formatMoney(p.price, "ILS")}</em> : null}
+              {p.price != null ? <em>{formatMoney(p.price, currency)}</em> : null}
               {p.reason ? <small>{p.reason}</small> : null}
             </Link>
           </li>
@@ -111,9 +119,11 @@ export function RoseShopTheLook({ productId, ar }: { productId: string; ar: bool
 
 type Summary = { ar: string; en: string; pros: string[]; cons: string[] };
 
-export function RoseReviewSummary({ productId, ar }: { productId: string; ar: boolean }) {
+export function RoseReviewSummary({ productId }: { productId: string; ar?: boolean }) {
   const [data, setData] = useState<{ summary: Summary | null; count: number; average?: number } | null>(null);
-  const [lang, setLang] = useState<"ar" | "en">(ar ? "ar" : "en");
+  // The summary is written in Arabic and English: a Hebrew page shows the English one.
+  const { language: pageLang } = useLanguage();
+  const [lang, setLang] = useState<"ar" | "en">(pageLang === "ar" ? "ar" : "en");
   useEffect(() => {
     let alive = true;
     fetch(`${apiBaseClient()}/ai/reviews/${encodeURIComponent(productId)}`)
@@ -122,7 +132,7 @@ export function RoseReviewSummary({ productId, ar }: { productId: string; ar: bo
       .catch(() => undefined);
     return () => { alive = false; };
   }, [productId]);
-  useEffect(() => setLang(ar ? "ar" : "en"), [ar]);
+  useEffect(() => setLang(pageLang === "ar" ? "ar" : "en"), [pageLang]);
   if (!data?.summary) return null;
   const s = data.summary;
   return (

@@ -5,8 +5,9 @@ import React, { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueries } from "@tanstack/react-query";
 import { getOrder } from "../../api/orders.api";
-import { dateTime, deliveryFor, isPaid, num, orderLines, orderTotal, shekel, shortOrderId, type OrderLike } from "../../lib/orders";
+import { dateTime, deliveryFor, isPaid, num, orderLines, orderTotal, moneyText, shortOrderId, type OrderLike } from "../../lib/orders";
 import { useDelivery } from "./useDelivery";
+import { tr } from "@/lib/words";
 
 const css = `
   .print-root { background:#f5f1ee; color:#2a1b22; min-height:100vh; padding:24px; font-family:"IBM Plex Sans Arabic","Cairo",system-ui,sans-serif; }
@@ -58,7 +59,7 @@ export default function OrderPrintPage() {
   const orders = results.map((r) => r.data as (OrderLike & { couponCode?: string | null }) | undefined).filter(Boolean) as OrderLike[];
 
   useEffect(() => {
-    document.title = type === "slip" ? "ملصقات التوصيل" : "فواتير";
+    document.title = type === "slip" ? tr("ملصقات التوصيل", "Delivery labels") : tr("فواتير", "Invoices");
     if (!ready || !loaded) return;
     const t = window.setTimeout(() => window.print(), 600);
     return () => window.clearTimeout(t);
@@ -67,34 +68,34 @@ export default function OrderPrintPage() {
   const setType = (t: "invoice" | "slip") => { const n = new URLSearchParams(params); n.set("type", t); setParams(n, { replace: true }); };
 
   return (
-    <div dir="rtl" className="print-root" data-testid="print-page">
+    <div className="print-root" data-testid="print-page">
       <style>{css}</style>
       <div className="pr-toolbar">
-        <button type="button" onClick={() => window.print()}>🖨 طباعة</button>
-        <button type="button" className="alt" onClick={() => setType(type === "slip" ? "invoice" : "slip")}>{type === "slip" ? "عرض الفواتير" : "عرض ملصقات التوصيل"}</button>
+        <button type="button" onClick={() => window.print()}>{tr("🖨 طباعة", "🖨 Print")}</button>
+        <button type="button" className="alt" onClick={() => setType(type === "slip" ? "invoice" : "slip")}>{type === "slip" ? tr("عرض الفواتير", "Show invoices") : tr("عرض ملصقات التوصيل", "Show delivery labels")}</button>
       </div>
-      {!ready && <p style={{ textAlign: "center" }}>جارٍ تحميل {ids.length} طلب…</p>}
-      {ready && !orders.length && <p style={{ textAlign: "center" }}>لم نجد الطلبات.</p>}
+      {!ready && <p style={{ textAlign: "center" }}>{tr("جارٍ تحميل", "Loading")} {ids.length} {tr("طلب…", "orders…")}</p>}
+      {ready && !orders.length && <p style={{ textAlign: "center" }}>{tr("لم نجد الطلبات.", "We couldn't find the orders.")}</p>}
       {orders.map((o) => {
         const subtotal = o.subtotal != null ? num(o.subtotal) : orderLines(o).reduce((s, l) => s + num(l.lineSubtotal ?? num(l.unitPrice) * l.quantity), 0);
         const discount = num(o.discountAmount);
         const total = orderTotal(o);
         const d = deliveryFor(o.city, subtotal, delivery);
         const collect = total + (d.fee ?? 0);
-        const address = [o.city, o.address].filter(Boolean).join("، ");
+        const address = [o.city, o.address].filter(Boolean).join(tr("، ", ", "));
         if (type === "slip") {
           return (
             <section key={o.id} className="sheet slip">
               <div className="brand"><span className="name">{storeName}</span><span className="muted" dir="ltr">#{shortOrderId(o.id)}</span></div>
               <div style={{ marginTop: 12, fontSize: 15, lineHeight: 1.9 }}>
-                <div><span className="muted">إلى: </span><b style={{ fontSize: 20 }}>{o.customerName}</b></div>
-                <div><span className="muted">هاتف: </span><b dir="ltr">{o.phone}</b></div>
-                <div><span className="muted">العنوان: </span><b>{address || "—"}</b></div>
-                {o.note ? <div><span className="muted">ملاحظة: </span>{o.note}</div> : null}
+                <div><span className="muted">{tr("إلى:", "To:")} </span><b style={{ fontSize: 20 }}>{o.customerName}</b></div>
+                <div><span className="muted">{tr("هاتف:", "Phone:")} </span><b dir="ltr">{o.phone}</b></div>
+                <div><span className="muted">{tr("العنوان:", "Address:")} </span><b>{address || "—"}</b></div>
+                {o.note ? <div><span className="muted">{tr("ملاحظة:", "Note:")} </span>{o.note}</div> : null}
               </div>
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div><div className="muted">المبلغ عند الاستلام</div><div className="collect">{isPaid(o) ? "مدفوع" : shekel(collect)}</div></div>
-                <div className="muted" style={{ textAlign: "left" }}>{orderLines(o).reduce((s, l) => s + l.quantity, 0)} قطع<br />{storePhone ? <span dir="ltr">{storePhone}</span> : null}</div>
+                <div><div className="muted">{tr("المبلغ عند الاستلام", "Amount on delivery")}</div><div className="collect">{isPaid(o) ? tr("مدفوع", "Paid") : moneyText(collect)}</div></div>
+                <div className="muted" style={{ textAlign: "end" }}>{orderLines(o).reduce((s, l) => s + l.quantity, 0)} {tr("قطع", "items")}<br />{storePhone ? <span dir="ltr">{storePhone}</span> : null}</div>
               </div>
             </section>
           );
@@ -103,38 +104,38 @@ export default function OrderPrintPage() {
           <section key={o.id} className="sheet">
             <div className="brand">
               <div>{logoUrl ? <img src={logoUrl} alt={storeName} /> : <span className="name">{storeName}</span>}</div>
-              <div style={{ textAlign: "left" }}>
-                <h1 style={{ fontSize: 20, color: "#7d2448" }}>فاتورة</h1>
+              <div style={{ textAlign: "end" }}>
+                <h1 style={{ fontSize: 20, color: "#7d2448" }}>{tr("فاتورة", "Invoice")}</h1>
                 <div className="muted" dir="ltr">#{shortOrderId(o.id)}</div>
                 <div className="muted">{dateTime(o.createdAt)}</div>
               </div>
             </div>
             <div className="grid2">
-              <div className="box"><div className="muted">الزبونة</div><b>{o.customerName}</b><br /><span dir="ltr">{o.phone}</span><br />{address || "—"}</div>
-              <div className="box"><div className="muted">الدفع والتوصيل</div>{isPaid(o) ? <span className="stamp">مدفوع</span> : <b>الدفع نقداً عند الاستلام</b>}<br />التوصيل: {d.zone?.name ?? (o.city || "—")}{o.note ? <><br /><span className="muted">ملاحظة: </span>{o.note}</> : null}</div>
+              <div className="box"><div className="muted">{tr("الزبون", "Customer")}</div><b>{o.customerName}</b><br /><span dir="ltr">{o.phone}</span><br />{address || "—"}</div>
+              <div className="box"><div className="muted">{tr("الدفع والتوصيل", "Payment and delivery")}</div>{isPaid(o) ? <span className="stamp">{tr("مدفوع", "Paid")}</span> : <b>{tr("الدفع نقداً عند الاستلام", "Cash on delivery")}</b>}<br />{tr("التوصيل:", "Delivery:")} {d.zone?.name ?? (o.city || "—")}{o.note ? <><br /><span className="muted">{tr("ملاحظة:", "Note:")} </span>{o.note}</> : null}</div>
             </div>
             <table className="lines">
-              <thead><tr><th></th><th>القطعة</th><th>اللون / المقاس</th><th className="n">السعر</th><th className="n">الكمية</th><th className="n">المجموع</th></tr></thead>
+              <thead><tr><th></th><th>{tr("القطعة", "Item")}</th><th>{tr("اللون / المقاس", "Colour / size")}</th><th className="n">{tr("السعر", "Price")}</th><th className="n">{tr("الكمية", "Qty")}</th><th className="n">{tr("المجموع", "Total")}</th></tr></thead>
               <tbody>
                 {orderLines(o).map((l, i) => (
                   <tr key={i}>
                     <td style={{ width: 40 }}>{l.imageUrl ? <img className="thumb" src={l.imageUrl} alt="" /> : null}</td>
                     <td><b>{l.productTitle}</b>{l.sku ? <div className="muted" dir="ltr">{l.sku}</div> : null}</td>
                     <td>{[l.colorName, l.sizeName].filter(Boolean).join(" / ") || "—"}</td>
-                    <td className="n">{shekel(l.unitPrice)}</td>
+                    <td className="n">{moneyText(l.unitPrice)}</td>
                     <td className="n">{l.quantity}</td>
-                    <td className="n">{shekel(l.lineTotal ?? l.lineSubtotal ?? num(l.unitPrice) * l.quantity)}</td>
+                    <td className="n">{moneyText(l.lineTotal ?? l.lineSubtotal ?? num(l.unitPrice) * l.quantity)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div className="totals">
-              <div><span>المجموع</span><span>{shekel(subtotal)}</span></div>
-              {discount > 0 ? <div><span>الخصم{o.couponCode ? ` (${o.couponCode})` : ""}</span><span>−{shekel(discount)}</span></div> : null}
-              <div><span>التوصيل</span><span>{d.fee == null ? "—" : d.free ? "مجاني" : shekel(d.fee)}</span></div>
-              <div className="grand"><span>{isPaid(o) ? "المدفوع" : "المطلوب عند الاستلام"}</span><span>{shekel(collect)}</span></div>
+              <div><span>{tr("المجموع", "Total")}</span><span>{moneyText(subtotal)}</span></div>
+              {discount > 0 ? <div><span>{tr("الخصم", "Discount")}{o.couponCode ? ` (${o.couponCode})` : ""}</span><span>−{moneyText(discount)}</span></div> : null}
+              <div><span>{tr("التوصيل", "Delivery")}</span><span>{d.fee == null ? "—" : d.free ? tr("مجاني", "Free") : moneyText(d.fee)}</span></div>
+              <div className="grand"><span>{isPaid(o) ? tr("المدفوع", "Paid") : tr("المطلوب عند الاستلام", "Due on delivery")}</span><span>{moneyText(collect)}</span></div>
             </div>
-            <p className="muted" style={{ marginTop: 18, textAlign: "center" }}>شكراً لاختياركِ {storeName} 🌸{storePhone ? <> · للاستفسار: <span dir="ltr">{storePhone}</span></> : null}</p>
+            <p className="muted" style={{ marginTop: 18, textAlign: "center" }}>{tr("شكراً لاختياركم", "Thank you for choosing")} {storeName} 🌸{storePhone ? <> {tr("· للاستفسار:", "· Questions:")} <span dir="ltr">{storePhone}</span></> : null}</p>
           </section>
         );
       })}

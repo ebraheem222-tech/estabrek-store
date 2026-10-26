@@ -2,19 +2,20 @@
 // product's codes block and the order's delivery card. Pure (tested).
 import type { CodeStatus, CodesImportResult, ProductCode, ProductCodesInfo } from "../../../api/fulfillment.api";
 import { timeAgo } from "../../../lib/orders";
+import { tr } from "@/lib/words";
 
 export const CODE_STATUS: Record<CodeStatus, { label: string; cls: string }> = {
-  available: { label: "متاح", cls: "bg-emerald-500/15 text-emerald-300" },
-  delivered: { label: "انباع", cls: "bg-sky-500/15 text-sky-300" },
-  void: { label: "ملغي", cls: "bg-white/10 text-white/50" },
+  available: { label: tr("متاح", "Available"), cls: "bg-emerald-500/15 text-emerald-300" },
+  delivered: { label: tr("انباع", "Sold"), cls: "bg-sky-500/15 text-sky-300" },
+  void: { label: tr("ملغي", "Cancelled"), cls: "bg-white/10 text-white/50" },
 };
 
 /** 1 → "كود واحد", 2 → "كودين", 3–10 → "3 أكواد", more → "25 كود". */
 export function codesCount(n: number) {
-  if (n === 0) return "ولا كود";
-  if (n === 1) return "كود واحد";
-  if (n === 2) return "كودين";
-  return n <= 10 ? `${n} أكواد` : `${n} كود`;
+  if (n === 0) return tr("ولا كود", "no codes");
+  if (n === 1) return tr("كود واحد", "1 code");
+  if (n === 2) return tr("كودين", "2 codes");
+  return tr(n <= 10 ? `${n} أكواد` : `${n} كود`, "{0} codes", [n]);
 }
 
 const MIN_LEN = 4;
@@ -62,12 +63,14 @@ export function previewCodes(text: string) {
 /** After an upload: what went in, and what didn't. */
 export function importMessage(r: CodesImportResult): { title: string; description?: string } {
   const skipped = [
-    r.duplicates ? `${codesCount(r.duplicates)} موجود من قبل أو مكرر` : "",
-    r.invalid ? `${codesCount(r.invalid)} مش مزبوط${r.invalidExamples.length ? ` (مثل «${r.invalidExamples[0]}»)` : ""}` : "",
+    r.duplicates ? tr(`${codesCount(r.duplicates)} موجود من قبل أو مكرر`, "{0} already there or repeated", [codesCount(r.duplicates)]) : "",
+    r.invalid
+      ? tr(`${codesCount(r.invalid)} مش مزبوط${r.invalidExamples.length ? ` (مثل «${r.invalidExamples[0]}»)` : ""}`, r.invalidExamples.length ? "{0} not right (like “{1}”)" : "{0} not right", [codesCount(r.invalid), r.invalidExamples[0]])
+      : "",
   ].filter(Boolean);
   return {
-    title: r.added ? `انضاف ${codesCount(r.added)} · صار المتاح ${r.available}` : "ما انضاف ولا كود جديد",
-    description: skipped.length ? `تخطّينا: ${skipped.join("، ")}` : undefined,
+    title: r.added ? tr(`انضاف ${codesCount(r.added)} · صار المتاح ${r.available}`, "{0} added · {1} available now", [codesCount(r.added), r.available]) : tr("ما انضاف ولا كود جديد", "No new codes added"),
+    description: skipped.length ? tr(`تخطّينا: ${skipped.join("، ")}`, "Skipped: {0}", [skipped.join(", ")]) : undefined,
   };
 }
 
@@ -84,10 +87,10 @@ export const masked = (last4: string) => `•••• ${last4}`;
 export function codeNote(c: Pick<ProductCode, "status" | "batch" | "createdAt" | "deliveredAt" | "viewedAt">, now = Date.now()) {
   const parts: string[] = [];
   if (c.status === "delivered" || (c.status === "void" && c.deliveredAt)) {
-    if (c.deliveredAt) parts.push(`انباع ${timeAgo(c.deliveredAt, now)}`);
-    parts.push(c.viewedAt ? `شافته ${timeAgo(c.viewedAt, now)}` : "لسا ما شافته");
+    if (c.deliveredAt) parts.push(tr(`انباع ${timeAgo(c.deliveredAt, now)}`, "Sold {0}", [timeAgo(c.deliveredAt, now)]));
+    parts.push(c.viewedAt ? tr(`شافته ${timeAgo(c.viewedAt, now)}`, "Seen {0}", [timeAgo(c.viewedAt, now)]) : tr("لسا ما شافته", "Not seen yet"));
   } else {
-    parts.push(`انضاف ${timeAgo(c.createdAt, now)}`);
+    parts.push(tr(`انضاف ${timeAgo(c.createdAt, now)}`, "Added {0}", [timeAgo(c.createdAt, now)]));
   }
   if (c.batch) parts.push(c.batch);
   return parts.join(" · ");

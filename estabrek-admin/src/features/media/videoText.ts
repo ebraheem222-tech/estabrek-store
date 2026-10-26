@@ -1,37 +1,38 @@
 // Plain-Arabic labels and small helpers for the video library. Pure (tested).
 import type { Rendition, StreamLadder, VideoPreset, VideoProfile } from "../../api/videos.api";
+import { tr } from "@/lib/words";
 
 export const PRESET_TEXT: Record<VideoPreset | "custom" | "hls", { label: string; hint: string }> = {
-  web: { label: "للعرض العادي", hint: "MP4 بيشتغل بكل مكان، عرض 1280." },
-  scroll: { label: "للسكرول (كمبيوتر)", hint: "إطار رئيسي كل 0.05 ثانية: أي مكان بالسكرول بيبيّن فوراً. بدون صوت، عرض 1920." },
-  scrollPhone: { label: "للسكرول (تلفون 9:16)", hint: "متل اللي قبله بس مقصوص طولي للتلفون، عرض 720." },
-  small: { label: "أصغر حجم (WebM)", hint: "VP9 بعرض 854: للإنترنت البطيء." },
-  custom: { label: "مخصص", hint: "اختار كل شي بنفسك." },
+  web: { label: tr("للعرض العادي", "For normal playback"), hint: tr("MP4 بيشتغل بكل مكان، عرض 1280.", "MP4 that plays everywhere, 1280 wide.") },
+  scroll: { label: tr("للسكرول (كمبيوتر)", "For scrolling (computer)"), hint: tr("إطار رئيسي كل 0.05 ثانية: أي مكان بالسكرول بيبيّن فوراً. بدون صوت، عرض 1920.", "A keyframe every 0.05 seconds: any point of the scroll shows at once. No sound, 1920 wide.") },
+  scrollPhone: { label: tr("للسكرول (تلفون 9:16)", "For scrolling (phone 9:16)"), hint: tr("متل اللي قبله بس مقصوص طولي للتلفون، عرض 720.", "Like the one before but cropped tall for phones, 720 wide.") },
+  small: { label: tr("أصغر حجم (WebM)", "Smallest size (WebM)"), hint: tr("VP9 بعرض 854: للإنترنت البطيء.", "VP9 at 854 wide: for slow internet.") },
+  custom: { label: tr("مخصص", "Custom"), hint: tr("كل شي بيتحدد باليد.", "Choose everything yourself.") },
   hls: {
-    label: "بث متكيّف (HLS)",
-    hint: "متل يوتيوب: الفيديو بينقسم قطع صغيرة بكذا جودة، والمشغّل بيختار حسب سرعة نت الزبون وبيغيّر وهو شغّال. ما حدا بينزّل الفيديو كامل. للعرض العادي بس، مش للسكرول.",
+    label: tr("بث متكيّف (HLS)", "Adaptive streaming (HLS)"),
+    hint: tr("متل يوتيوب: الفيديو بينقسم قطع صغيرة بكذا جودة، والمشغّل بيختار حسب سرعة نت الزبون وبيغيّر وهو شغّال. ما حدا بينزّل الفيديو كامل. للعرض العادي بس، مش للسكرول.", "Like YouTube: the video is cut into small pieces at several qualities, and the player picks by the customer's internet speed and switches while playing. Nobody downloads the whole video. For normal playback only, not scrolling."),
   },
 };
 
-export const LADDER_TEXT: Record<StreamLadder, string> = { full_hd: "لحد 1080p", hd: "لحد 720p", sd: "لحد 480p (نت بطيء)" };
+export const LADDER_TEXT: Record<StreamLadder, string> = { full_hd: tr("لحد 1080p", "Up to 1080p"), hd: tr("لحد 720p", "Up to 720p"), sd: tr("لحد 480p (نت بطيء)", "Up to 480p (slow internet)") };
 
 /** What a version is, in one line: a file's settings, or a stream's sizes. */
 export function renditionSummary(r: Pick<Rendition, "kind" | "profile" | "stream" | "heights">): string {
   if (r.kind === "hls" || !r.profile) {
-    const sizes = r.heights?.length ? r.heights.map((h) => `${h}p`).join("، ") : r.stream ? LADDER_TEXT[r.stream.ladder] : "";
-    return ["HLS", sizes, r.stream ? `قطع ${r.stream.segmentSeconds} ث` : null].filter(Boolean).join(" · ");
+    const sizes = r.heights?.length ? r.heights.map((h) => `${h}p`).join(tr("، ", ", ")) : r.stream ? LADDER_TEXT[r.stream.ladder] : "";
+    return ["HLS", sizes, r.stream ? tr(`قطع ${r.stream.segmentSeconds} ث`, "{0}s pieces", [r.stream.segmentSeconds]) : null].filter(Boolean).join(" · ");
   }
   return profileSummary(r.profile);
 }
 
-export const QUALITY_TEXT: Record<VideoProfile["quality"], string> = { best: "أعلى جودة", good: "جيدة", eco: "توفير", low: "أصغر حجم" };
+export const QUALITY_TEXT: Record<VideoProfile["quality"], string> = { best: tr("أعلى جودة", "Best quality"), good: tr("جيدة", "Good"), eco: tr("توفير", "Saver"), low: tr("أصغر حجم", "Smallest") };
 
 export const CODEC_TEXT: Record<VideoProfile["codec"], string> = { h264: "H.264", h265: "H.265", vp9: "VP9", av1: "AV1" };
 
 export const STATUS_TEXT: Record<Rendition["status"], { label: string; variant: "success" | "warning" | "danger" }> = {
-  ready: { label: "جاهز", variant: "success" },
-  processing: { label: "عم ينعمل…", variant: "warning" },
-  failed: { label: "ما زبط", variant: "danger" },
+  ready: { label: tr("جاهز", "Ready"), variant: "success" },
+  processing: { label: tr("عم ينعمل…", "Working…"), variant: "warning" },
+  failed: { label: tr("ما زبط", "That didn't work"), variant: "danger" },
 };
 
 /** Codecs a container takes. */
@@ -43,12 +44,12 @@ export function codecsFor(format: VideoProfile["format"]): VideoProfile["codec"]
 export function profileSummary(p: VideoProfile): string {
   return [
     `${p.format.toUpperCase()} · ${CODEC_TEXT[p.codec]}`,
-    p.maxWidth ? `${p.maxWidth}px` : "الحجم الأصلي",
+    p.maxWidth ? `${p.maxWidth}px` : tr("الحجم الأصلي", "Original size"),
     p.crop === "phone" ? "9:16" : null,
-    p.fps ? `${p.fps} إطار` : null,
+    p.fps ? tr(`${p.fps} إطار`, "{0} fps", [p.fps]) : null,
     QUALITY_TEXT[p.quality],
-    p.mute ? "بدون صوت" : null,
-    p.keyframeSeconds > 0 ? `إطار رئيسي كل ${p.keyframeSeconds} ث` : null,
+    p.mute ? tr("بدون صوت", "No sound") : null,
+    p.keyframeSeconds > 0 ? tr(`إطار رئيسي كل ${p.keyframeSeconds} ث`, "A keyframe every {0}s", [p.keyframeSeconds]) : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -88,9 +89,9 @@ export function renditionCounts(list: Rendition[]) {
 
 /** "2 جاهزة · 1 عم تنعمل" for a card. */
 export function renditionsLine(list: Rendition[]): string {
-  if (!list.length) return "ما في نسخ محوّلة";
+  if (!list.length) return tr("ما في نسخ محوّلة", "No converted versions");
   const c = renditionCounts(list);
-  return [c.ready ? `${c.ready} جاهزة` : null, c.processing ? `${c.processing} عم تنعمل` : null, c.failed ? `${c.failed} ما زبطت` : null].filter(Boolean).join(" · ");
+  return [c.ready ? tr(`${c.ready} جاهزة`, "{0} ready", [c.ready]) : null, c.processing ? tr(`${c.processing} عم تنعمل`, "{0} working", [c.processing]) : null, c.failed ? tr(`${c.failed} ما زبطت`, "{0} failed", [c.failed]) : null].filter(Boolean).join(" · ");
 }
 
 /** Upload speed and what's left: "4.2 MB/ث · باقي دقيقتين". */
@@ -98,8 +99,8 @@ export function speedText(bytesPerSecond: number, remainingBytes: number): strin
   if (!(bytesPerSecond > 0)) return "";
   const mbs = bytesPerSecond / (1024 * 1024);
   const left = remainingBytes / bytesPerSecond;
-  const leftText = left < 60 ? `${Math.max(1, Math.round(left))} ثانية` : left < 120 ? "دقيقة" : `${Math.round(left / 60)} دقايق`;
-  return `${mbs >= 10 ? Math.round(mbs) : mbs.toFixed(1)} MB/ث · باقي ${leftText}`;
+  const leftText = left < 60 ? tr(`${Math.max(1, Math.round(left))} ثانية`, "{0} seconds", [Math.max(1, Math.round(left))]) : left < 120 ? tr("دقيقة", "1 minute") : tr(`${Math.round(left / 60)} دقايق`, "{0} minutes", [Math.round(left / 60)]);
+  return tr(`${mbs >= 10 ? Math.round(mbs) : mbs.toFixed(1)} MB/ث · باقي ${leftText}`, "{0} MB/s · {1} left", [mbs >= 10 ? Math.round(mbs) : mbs.toFixed(1), leftText]);
 }
 
 export const ACCEPT_VIDEO = "video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v";

@@ -1,6 +1,6 @@
 // Plain-Arabic texts and small helpers for automations (التلقائيات). Pure (tested).
 import type { Action, AutomationRule, AutomationsPage, Trigger } from "../../api/automations.api";
-import { formatCurrencyILS } from "../../lib/format";
+import { formatCurrency } from "../../lib/format";
 
 export const TRIGGER_TEXT: Record<Trigger, { label: string; when: string }> = {
   "order.created": { label: "طلب جديد", when: "لما يجي طلب جديد" },
@@ -49,7 +49,7 @@ export const ltr = (s: string) => `⁦${s}⁩`;
 export function ruleSentence(r: Pick<AutomationRule, "trigger" | "conditions" | "action" | "config">, shop: AutomationsPage["shop"]): string {
   const c = r.conditions ?? {};
   let when = TRIGGER_TEXT[r.trigger].when;
-  if (r.trigger === "order.created" && c.minTotal) when += ` (${formatCurrencyILS(c.minTotal)} وفوق)`;
+  if (r.trigger === "order.created" && c.minTotal) when += ` (${formatCurrency(c.minTotal)} وفوق)`;
   if (r.trigger === "stock.low") when = `لما يصير مقاس ${c.threshold ?? 3} أو أقل`;
   if (r.trigger === "product.viral") when += ` (×${c.factor ?? 3} خلال ساعة)`;
   const to =

@@ -45,6 +45,7 @@ import { DEFAULT_MOTION_BY_SECTION_TYPE } from "@/motion/gsapPresets";
 import { HeroRenderer, ContactFormRenderer, FeatureRenderer, PricingRenderer, SliderRenderer } from "./NativeThemeRenderers";
 import { alertComponents, additionalAlertComponents, type AlertType } from "../alert-themes";
 import { StreamVideo } from "@/components/StreamVideo";
+import { TreeNodeView } from "@/pageTree/TreeNodeView";
 
 type QuickAddRef = { productId?: string; slug?: string };
 
@@ -847,6 +848,23 @@ function Section({
 
   const type = (section as any).type as string;
   const data = (section as any).data;
+  // The new CMS: a page-level element of a page tree (pageTree/TreeNodeView).
+  if (type === "TREE_NODE") {
+    if (!data?.node || !data?.ctx) return null;
+    return (
+      <TreeNodeView
+        node={data.node}
+        ctx={{
+          ...data.ctx,
+          productLookup,
+          renderProductCard,
+          renderSection: (s) => (
+            <Section section={s as any} renderProductCard={renderProductCard} renderQuickAdd={renderQuickAdd} productLookup={productLookup} depth={nextDepth} seen={nextSeen} />
+          ),
+        }}
+      />
+    );
+  }
   const anchorId = (section.anchorId ?? "").trim();
   const ariaLabel = (section.ariaLabel ?? "").trim();
   const attrs: any = {};
@@ -3313,12 +3331,15 @@ export function CmsPageRenderer({
   renderQuickAdd,
   productLookup,
   className,
+  markSections = true,
 }: {
   sections: CmsSection[];
   renderProductCard?: (productId: string) => React.ReactNode;
   renderQuickAdd?: (ref: QuickAddRef) => React.ReactNode;
   productLookup?: Record<string, ProductMini>;
   className?: string;
+  /** data-cms-section on each wrapper (the editor's bridge finds sections by it); off when the caller already marks it. */
+  markSections?: boolean;
 }) {
   const sorted = (sections ?? []).filter((s) => s.isVisible !== false).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const seen = new Set<any>();
@@ -3341,7 +3362,7 @@ export function CmsPageRenderer({
               : undefined;
 
           return (
-            <div key={sec.id} className={cls(colSpanClass)} style={rowStyle}>
+            <div key={sec.id} className={cls(colSpanClass)} style={rowStyle} data-cms-section={markSections ? sec.id : undefined}>
               <Section
                 section={sec as any}
                 renderProductCard={renderProductCard}

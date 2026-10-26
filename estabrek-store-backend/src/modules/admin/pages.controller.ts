@@ -17,12 +17,19 @@ import {
   AiTranslatePageBody,
   SavePageTranslationBody,
   ValidateSectionBody,
+  PageTreeBody,
+  PageFormatBody,
 } from "./pages.schemas.js";
+import { previewToken } from "../../lib/previewToken.js";
+import { DraftError, applyOps, draftFromPage, needsTree, publishOrder, sectionsHash, storedDraft } from "../../lib/pageDraft.js";
+import { mainLanguage } from "../../lib/translations.js";
+import { PAGE_FORMAT, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../../lib/pageTree.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
 import { cacheDel, cacheDelPrefix } from "../../lib/cache.js";
 import { BadRequest } from "../../utils/httpError.js";
+import { INDUSTRY_WORD, identityOf, pick, storeName } from "../identity/identity.js";
 
 const r = Router();
 const PAGE_SECTION_TYPES = new Set<string>(PageSectionTypeZ.options as unknown as string[]);
@@ -84,9 +91,15 @@ function validateScheduleWindow(publishAt?: Date | null, unpublishAt?: Date | nu
   }
 }
 
-function fallbackLanding(locale: "ar"|"he"|"en", brandName?: string, storeCategory?: string): { sections: SuggestedSection[]; seo: { seoTitle: string; seoDescription: string } } {
-  const brand = brandName ?? "Estabrek";
-  const cat = storeCategory ?? "ملابس";
+/** The store's own name and what it sells, in the page's language (admin → هوية المتجر). */
+async function storeContext(locale: "ar" | "he" | "en") {
+  const s = await prisma.siteSettings.findFirst({ select: { siteName: true, header: true } }).catch(() => null);
+  return { brand: storeName(s, locale), category: pick(INDUSTRY_WORD[identityOf(s).industry], locale) };
+}
+
+function fallbackLanding(locale: "ar"|"he"|"en", brandName: string, storeCategory: string): { sections: SuggestedSection[]; seo: { seoTitle: string; seoDescription: string } } {
+  const brand = brandName;
+  const cat = storeCategory;
   if (locale === "he") {
     return {
       seo: {
@@ -169,6 +182,7 @@ export async function capturePageRevision(pageId: string, reason: string, actor?
       sections: {
         orderBy: { order: "asc" },
         select: {
+          id: true,
           type: true,
           data: true,
           order: true,
@@ -196,6 +210,8 @@ export async function capturePageRevision(pageId: string, reason: string, actor?
       headScripts: toNullableJsonInput(page.headScripts),
       bodyScripts: toNullableJsonInput(page.bodyScripts),
       sections: page.sections as any,
+      format: page.format,
+      tree: toNullableJsonInput(page.tree),
       reason: normalizedReason,
       createdBy: actor?.email || actor?.sub || null,
     },
@@ -217,6 +233,7 @@ export async function restorePageRevision(pageId: string, revisionId: string, re
         sections: {
           orderBy: { order: "asc" },
           select: {
+            id: true,
             type: true,
             data: true,
             order: true,
@@ -244,6 +261,8 @@ export async function restorePageRevision(pageId: string, revisionId: string, re
         headScripts: toNullableJsonInput(current.headScripts),
         bodyScripts: toNullableJsonInput(current.bodyScripts),
         sections: current.sections as any,
+        format: current.format,
+        tree: toNullableJsonInput(current.tree),
         reason: reason || `Pre-restore snapshot (${revision.id})`,
         createdBy: actor?.email || actor?.sub || null,
       },
@@ -265,6 +284,9 @@ export async function restorePageRevision(pageId: string, revisionId: string, re
         customCss: revision.customCss,
         headScripts: toNullableJsonInput(revision.headScripts),
         bodyScripts: toNullableJsonInput(revision.bodyScripts),
+        // An older snapshot has no tree: the page goes back to its sections.
+        format: revision.tree ? revision.format : PAGE_FORMAT.sections,
+        tree: toNullableJsonInput(revision.tree),
       },
     });
 
@@ -273,6 +295,8 @@ export async function restorePageRevision(pageId: string, revisionId: string, re
     if (sections.length) {
       await tx.pageSection.createMany({
         data: sections.map((section, index) => ({
+          // Same ids as before, so the restored tree's old sections still find them.
+          ...(typeof section.id === "string" && section.id ? { id: section.id } : {}),
           pageId,
           type: section.type,
           data: section.data ?? {},
@@ -287,7 +311,8 @@ export async function restorePageRevision(pageId: string, revisionId: string, re
 // pages
 r.get("/", asyncHandler(async (_req, res) => {
   const pages = await prisma.page.findMany({ orderBy: { createdAt: "desc" } });
-  res.json(pages);
+  // The list doesn't need the trees (GET /:id/tree has them).
+  res.json(pages.map(({ tree: _tree, draft, ...p }) => ({ ...p, hasDraft: Boolean(draft) })));
 }));
 
 r.post("/", validate({ body: CreatePageBody }), asyncHandler(async (req, res) => {
@@ -322,6 +347,163 @@ r.get("/:id", asyncHandler(async (req, res) => {
       }
     }
     res.json({ ...page, i18n });
+}));
+
+/* ------------------------------------------------ the page as a tree (new CMS) */
+
+/** A converted page follows the old editor's sections: added, deleted, moved. */
+async function syncPageTree(pageId: string | null | undefined) {
+  if (!pageId) return;
+  const page = await prisma.page.findUnique({ where: { id: pageId }, select: { format: true, tree: true, sections: { select: { id: true, order: true } } } });
+  if (!page || page.format !== PAGE_FORMAT.tree) return;
+  const tree = storedTree(page.tree);
+  if (!tree) return;
+  const next = syncWithSections(tree, page.sections);
+  if (next.changed) await prisma.page.update({ where: { id: pageId }, data: { tree: next.tree as any } });
+}
+
+async function pageForTree(id: string) {
+  return prisma.page.findUnique({ where: { id }, select: { id: true, slug: true, format: true, tree: true, sections: { select: { id: true, order: true } } } });
+}
+
+/** GET /admin/pages/:id/tree — the page's tree; an unconverted page gets the tree it would convert to. */
+r.get("/:id/tree", asyncHandler(async (req, res) => {
+  const page = await pageForTree(req.params.id);
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  const saved = storedTree(page.tree);
+  res.json({ format: page.format, tree: saved ?? treeFromSections(page.sections), saved: Boolean(saved) });
+}));
+
+/** PUT /admin/pages/:id/tree — saves the tree (checked); the page's format doesn't change. */
+r.put("/:id/tree", validate({ body: PageTreeBody }), asyncHandler(async (req, res) => {
+  const page = await pageForTree(req.params.id);
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  const checked = checkTree((req.body as any).tree);
+  if (!checked.ok) return res.status(400).json({ error: "TREE_INVALID", issues: checked.issues });
+  const own = new Set(page.sections.map((s) => s.id));
+  const refs = legacySectionIds(checked.tree);
+  const foreign = refs.filter((id) => !own.has(id));
+  const twice = refs.filter((id, i) => refs.indexOf(id) !== i);
+  if (foreign.length || twice.length) {
+    return res.status(400).json({
+      error: "TREE_INVALID",
+      issues: [
+        ...(foreign.length ? [{ path: "tree", message: `Old sections that aren't on this page: ${foreign.join(", ")}` }] : []),
+        ...(twice.length ? [{ path: "tree", message: `An old section is in the page twice: ${twice.join(", ")}` }] : []),
+      ],
+    });
+  }
+  await capturePageRevision(page.id, "Update page tree", req.user as any);
+  await prisma.page.update({ where: { id: page.id }, data: { tree: checked.tree as any } });
+  if (page.format === PAGE_FORMAT.tree) triggerCmsRevalidate([page.slug]);
+  res.json({ format: page.format, tree: checked.tree, saved: true });
+}));
+
+/**
+ * POST /admin/pages/:id/format { format: 1 | 2 } — 2 shows the page from its tree
+ * (converting its sections the first time), 1 back from its sections. The tree is
+ * kept either way, and a revision is saved first.
+ */
+r.post("/:id/format", validate({ body: PageFormatBody }), asyncHandler(async (req, res) => {
+  const page = await pageForTree(req.params.id);
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  const format = Number((req.body as any).format);
+  let tree = storedTree(page.tree);
+  if (format === PAGE_FORMAT.tree) tree = tree ? syncWithSections(tree, page.sections).tree : treeFromSections(page.sections);
+  if (format !== page.format) await capturePageRevision(page.id, format === PAGE_FORMAT.tree ? "Show page from its tree" : "Show page from its sections", req.user as any);
+  await prisma.page.update({ where: { id: page.id }, data: { format, ...(tree ? { tree: tree as any } : {}) } });
+  triggerCmsRevalidate([page.slug]);
+  res.json({ format, tree: tree ?? treeFromSections(page.sections), saved: Boolean(tree) });
+}));
+
+/* --------------------------------------------- the new editor's draft */
+
+const DRAFT_PAGE = { sections: { orderBy: { order: "asc" as const }, include: { translations: { select: { locale: true, data: true } } } } };
+
+async function storeMain() {
+  const s = await prisma.siteSettings.findFirst({ select: { header: true } }).catch(() => null);
+  return mainLanguage(s?.header);
+}
+
+/** GET /admin/pages/:id/draft — the unpublished changes (null when there are none). */
+r.get("/:id/draft", asyncHandler(async (req, res) => {
+  const page = await prisma.page.findUnique({ where: { id: req.params.id }, select: { id: true, draft: true } });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  res.json({ draft: storedDraft(page.draft), main: await storeMain() });
+}));
+
+/** POST /admin/pages/:id/draft/ops { ops, rev? } — changes the draft (starting one from the page if needed). */
+r.post("/:id/draft/ops", asyncHandler(async (req, res) => {
+  const page = await prisma.page.findUnique({ where: { id: req.params.id }, include: DRAFT_PAGE });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  const current = storedDraft(page.draft) ?? draftFromPage(page as any);
+  const rev = (req.body as any)?.rev;
+  if (typeof rev === "number" && rev !== current.rev) return res.status(409).json({ error: "DRAFT_CHANGED", draft: current });
+  try {
+    const next = applyOps(current, (req.body as any)?.ops, {
+      main: await storeMain(),
+      checkSection: (type, data) => (PAGE_SECTION_TYPES.has(type) ? validateSectionData(type as any, data) : data),
+    });
+    await prisma.page.update({ where: { id: page.id }, data: { draft: next as any } });
+    res.json({ draft: next });
+  } catch (e) {
+    if (e instanceof DraftError) return res.status(400).json({ error: "DRAFT_INVALID", message: e.message });
+    if (e instanceof ZodError) return res.status(400).json({ error: "DRAFT_INVALID", message: e.issues[0]?.message ?? "Not valid", issues: mapZodIssues(e) });
+    throw e;
+  }
+}));
+
+/** DELETE /admin/pages/:id/draft — drops the unpublished changes. */
+r.delete("/:id/draft", asyncHandler(async (req, res) => {
+  await prisma.page.update({ where: { id: req.params.id }, data: { draft: Prisma.DbNull } });
+  res.json({ ok: true });
+}));
+
+/**
+ * POST /admin/pages/:id/draft/publish { force? } — writes the draft to the page:
+ * sections' data, words in each language, visibility and order, deleted sections,
+ * and the tree. Refused when the page changed elsewhere since the draft began,
+ * unless forced. A revision is saved first.
+ */
+r.post("/:id/draft/publish", asyncHandler(async (req, res) => {
+  const page = await prisma.page.findUnique({ where: { id: req.params.id }, include: DRAFT_PAGE });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  const draft = storedDraft(page.draft);
+  if (!draft) return res.status(400).json({ error: "NO_DRAFT" });
+  if ((req.body as any)?.force !== true && sectionsHash(page.sections as any, page.tree) !== draft.baseHash) {
+    return res.status(409).json({ error: "PAGE_CHANGED" });
+  }
+  await capturePageRevision(page.id, "Publish from the new editor", req.user as any);
+  const order = publishOrder(draft);
+  const keep = new Set(draft.sections.map((s) => s.id));
+  await prisma.$transaction(async (tx) => {
+    for (const s of draft.sections) {
+      if (!page.sections.some((x) => x.id === s.id)) continue;
+      await tx.pageSection.update({ where: { id: s.id }, data: { data: (s.data ?? {}) as any, isVisible: s.isVisible, order: order.get(s.id) ?? 0 } });
+      for (const locale of ["ar", "en", "he"] as const) {
+        const t = s.tr[locale];
+        if (t && typeof t === "object" && Object.keys(t).length) {
+          await tx.pageSectionTranslation.upsert({ where: { sectionId_locale: { sectionId: s.id, locale } }, create: { sectionId: s.id, locale, data: t as any }, update: { data: t as any } });
+        } else {
+          await tx.pageSectionTranslation.deleteMany({ where: { sectionId: s.id, locale } });
+        }
+      }
+    }
+    await tx.pageSection.deleteMany({ where: { pageId: page.id, id: { notIn: [...keep] } } });
+    await tx.page.update({
+      where: { id: page.id },
+      data: { tree: draft.tree as any, format: needsTree(draft.tree) ? PAGE_FORMAT.tree : page.format, draft: Prisma.DbNull },
+    });
+  });
+  triggerCmsRevalidate([page.slug]);
+  res.json({ ok: true, format: needsTree(draft.tree) ? PAGE_FORMAT.tree : page.format });
+}));
+
+/** POST /admin/pages/:id/preview-token — a 30-minute ticket for the shop to show this page's draft in the new editor. */
+r.post("/:id/preview-token", asyncHandler(async (req, res) => {
+  const page = await prisma.page.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  res.json(previewToken(page.id));
 }));
 
 r.get("/:id/revisions", validate({ query: PageRevisionsQuery }), asyncHandler(async (req, res) => {
@@ -458,6 +640,7 @@ r.post("/:id/sections", validate({ body: CreateSectionBody }), asyncHandler(asyn
     data: { pageId: req.params.id, ...req.body },
     include: { page: { select: { slug: true } } },
   });
+  await syncPageTree(section.pageId);
   triggerCmsRevalidate([section.page?.slug]);
   res.status(201).json(section);
 }));
@@ -492,6 +675,7 @@ r.post("/sections/:sectionId/move", validate({ body: MoveSectionBody }), asyncHa
     data: { order: req.body.order },
     include: { page: { select: { slug: true } } },
   });
+  await syncPageTree(sec.pageId);
   triggerCmsRevalidate([sec.page?.slug]);
   res.json(sec);
 }));
@@ -508,6 +692,7 @@ r.delete("/sections/:sectionId", asyncHandler(async (req, res) => {
     where: { id: req.params.sectionId },
     include: { page: { select: { slug: true } } },
   });
+  await syncPageTree(sec.pageId);
   triggerCmsRevalidate([sec.page?.slug]);
   res.json({ ok: true });
 }));
@@ -527,7 +712,10 @@ r.post("/ai/suggest-sections", validate({ body: AiSuggestSectionsBody }), asyncH
   const locale = ((body.locale ?? "ar") as ("ar"|"he"|"en"));
 
   // Fallback always works even without OpenAI
-  const fb = fallbackLanding(locale, body.brandName, body.storeCategory);
+  const store = await storeContext(locale);
+  const brandName = body.brandName ?? store.brand;
+  const storeCategory = body.storeCategory ?? store.category;
+  const fb = fallbackLanding(locale, brandName, storeCategory);
 
   const model = getDefaultOpenAIModel();
   const sys = `You are a senior e-commerce CMS assistant. Output STRICT JSON only.`;
@@ -539,8 +727,8 @@ r.post("/ai/suggest-sections", validate({ body: AiSuggestSectionsBody }), asyncH
       rtl: locale !== "en",
     },
     context: {
-      brandName: body.brandName ?? "Estabrek",
-      storeCategory: body.storeCategory ?? "اسلامي fashion",
+      brandName,
+      storeCategory,
       page: { name: body.pageName, slug: body.pageSlug },
       hints: body.hints ?? [],
     },
@@ -576,15 +764,18 @@ r.post("/ai/suggest-sections", validate({ body: AiSuggestSectionsBody }), asyncH
 r.post("/ai/improve-seo", validate({ body: AiImproveSeoBody }), asyncHandler(async (req, res) => {
   const body = req.body as any;
   const locale = ((body.locale ?? "ar") as ("ar"|"he"|"en"));
-  const fb = fallbackLanding(locale, body.brandName, body.storeCategory).seo;
+  const store = await storeContext(locale);
+  const brandName = body.brandName ?? store.brand;
+  const storeCategory = body.storeCategory ?? store.category;
+  const fb = fallbackLanding(locale, brandName, storeCategory).seo;
 
   const model = getDefaultOpenAIModel();
   const sys = `You are an SEO copywriter for e-commerce. Output STRICT JSON only.`;
   const user = {
     task: "improve_seo",
     locale,
-    brandName: body.brandName ?? "Estabrek",
-    storeCategory: body.storeCategory ?? "Islamic fashion",
+    brandName,
+    storeCategory,
     page: { name: body.pageName, slug: body.pageSlug, summary: body.pageSummary ?? "" },
     current: { title: body.currentTitle ?? "", description: body.currentDescription ?? "" },
     output: { seoTitle: "<=120 chars", seoDescription: "<=300 chars" },

@@ -3,13 +3,14 @@
 // rose version; "classic" is the original dark violet admin (and the only one
 // where the theme presets from the settings page apply).
 import { useSyncExternalStore } from "react";
+import { tr } from "@/lib/words";
 
 export type AdminSkin = "rose" | "rose-night" | "classic";
 
 export const SKINS: Array<{ id: AdminSkin; label: string; hint: string }> = [
-  { id: "rose", label: "روز نهاري", hint: "فاتح مثل المتجر" },
-  { id: "rose-night", label: "روز ليلي", hint: "داكن ومريح للعين" },
-  { id: "classic", label: "الكلاسيكي", hint: "الشكل القديم البنفسجي" },
+  { id: "rose", label: tr("روز نهاري", "Rose light"), hint: tr("فاتح مثل المتجر", "Light, like the store") },
+  { id: "rose-night", label: tr("روز ليلي", "Rose dark"), hint: tr("داكن ومريح للعين", "Dark and easy on the eyes") },
+  { id: "classic", label: tr("الكلاسيكي", "Classic"), hint: tr("الشكل القديم البنفسجي", "The original purple look") },
 ];
 
 const KEY = "estabrek_admin_skin_v1";

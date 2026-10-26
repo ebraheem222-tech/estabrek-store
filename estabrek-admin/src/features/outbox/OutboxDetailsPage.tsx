@@ -47,7 +47,7 @@ export default function OutboxDetailsPage() {
 
   if (q.isLoading) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
         <div className="flex items-center gap-2">
           <Spinner />
           <div className="text-sm opacity-80">جاري التحميل…</div>
@@ -58,7 +58,7 @@ export default function OutboxDetailsPage() {
 
   if (q.isError || !msg) {
     return (
-      <div dir="rtl" className="rounded-2xl border border-red-400/20 bg-red-500/10 p-6 text-red-100">
+      <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-6 text-red-100">
         فشل تحميل الرسالة.
         <div className="mt-4">
           <Button variant="ghost" onClick={() => nav("/admin/outbox")}>
@@ -70,7 +70,7 @@ export default function OutboxDetailsPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>

@@ -22,6 +22,7 @@ import {
   scarcitySummary,
   type ScarcitySettings,
 } from "../../lib/scarcity";
+import { tr } from "@/lib/words";
 
 export function ScarcityCard() {
   const qc = useQueryClient();
@@ -43,10 +44,10 @@ export function ScarcityCard() {
       return updateSettings({ header: { ...(current.header ?? {}), scarcity: next } });
     },
     onSuccess: async (_out, next) => {
-      toast.success(scarcityShows(next) ? "انحفظ. المتجر بيبين العدد حسب اختيارك" : "انحفظ. المتجر ما بيبين كم قطعة باقية");
+      toast.success(scarcityShows(next) ? tr("انحفظ. المتجر بيبين العدد حسب الاختيار", "Saved. The store shows the count as chosen") : tr("انحفظ. المتجر ما بيبين كم قطعة باقية", "Saved. The store doesn't show how many are left"));
       await qc.invalidateQueries({ queryKey: ["settings"] });
     },
-    onError: (e) => toast.error("ما انحفظ", { description: getApiErrorMessage(e) }),
+    onError: (e) => toast.error(tr("ما انحفظ", "Not saved"), { description: getApiErrorMessage(e) }),
   });
 
   if (!saved) return null;
@@ -61,24 +62,24 @@ export function ScarcityCard() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-semibold">«آخر قطعة» و«باقي قطعتان» بالمتجر</h2>
+              <h2 className="font-semibold">{tr("«آخر قطعة» و«باقي قطعتان» بالمتجر", "“Last piece” and “2 left” in the store")}</h2>
               {on ? (
                 <Badge size="sm" variant="success" dot>
-                  ظاهرة
+                  {tr("ظاهرة", "Shown")}
                 </Badge>
               ) : (
                 <Badge size="sm" dot>
-                  مخفية
+                  {tr("مخفية", "Hidden")}
                 </Badge>
               )}
             </div>
             <p className="mt-1 text-sm text-white/60">
-              الكلمة اللي بتطلع فوق صورة القطعة وجنب سعرها لما يضل منها قطع قليلة. هاد بس للزبونات، والتنبيهات اللي تحت إلك وما بتتغيّر.
+              {tr("الكلمة اللي بتطلع فوق صورة القطعة وجنب سعرها لما يضل منها قطع قليلة. هاد بس للزبائن، والتنبيهات اللي تحت للفريق وما بتتغيّر.", "The words over the product photo and next to its price when only a few are left. This is just for customers; the alerts below are the team's and don't change.")}
             </p>
           </div>
           <ToggleSwitch
             checked={draft.enabled}
-            label="عرض كم قطعة باقية للزبونات"
+            label={tr("عرض كم قطعة باقية للزبائن", "Show customers how many are left")}
             disabled={!canChange}
             onChange={(v) => set({ enabled: v })}
           />
@@ -88,10 +89,10 @@ export function ScarcityCard() {
           <div className="mt-4 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-start sm:gap-6">
               <label htmlFor="scarcity-show-at" className="text-sm">
-                يبين لما يضل كم قطعة أو أقل؟
+                {tr("يبين لما يضل كم قطعة أو أقل؟", "Show it when how many or fewer are left?")}
               </label>
               <div className="flex items-center gap-1" dir="ltr">
-                <Button size="sm" variant="ghost" aria-label="أقل" disabled={!canChange || draft.showAt <= 1} onClick={() => bump(-1)}>
+                <Button size="sm" variant="ghost" aria-label={tr("أقل", "Less")} disabled={!canChange || draft.showAt <= 1} onClick={() => bump(-1)}>
                   −
                 </Button>
                 <input
@@ -105,33 +106,33 @@ export function ScarcityCard() {
                   onChange={(e) => set({ showAt: normalizeScarcity({ showAt: e.target.value }).showAt })}
                   className="h-9 w-16 rounded-xl border border-white/15 bg-white/5 text-center text-sm outline-none focus:border-white/30"
                 />
-                <Button size="sm" variant="ghost" aria-label="أكثر" disabled={!canChange || draft.showAt >= SCARCITY_MAX} onClick={() => bump(1)}>
+                <Button size="sm" variant="ghost" aria-label={tr("أكثر", "More")} disabled={!canChange || draft.showAt >= SCARCITY_MAX} onClick={() => bump(1)}>
                   +
                 </Button>
               </div>
             </div>
 
             <fieldset className="space-y-2" disabled={!canChange}>
-              <legend className="mb-1 text-sm">وين يبين؟</legend>
+              <legend className="mb-1 text-sm">{tr("وين يبين؟", "Where does it show?")}</legend>
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" className="mt-1" checked={draft.onPhoto} onChange={(e) => set({ onPhoto: e.target.checked })} />
                 <span>
-                  على صورة القطعة
-                  <span className="block text-xs text-white/50">بصفحة القطعة وبطاقات المنتجات بالصفحة الرئيسية والمتجر</span>
+                  {tr("على صورة القطعة", "On the product photo")}
+                  <span className="block text-xs text-white/50">{tr("بصفحة القطعة وبطاقات المنتجات بالصفحة الرئيسية والمتجر", "On the product page and the product cards on the home page and the store")}</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" className="mt-1" checked={draft.nearPrice} onChange={(e) => set({ nearPrice: e.target.checked })} />
                 <span>
-                  جنب السعر
-                  <span className="block text-xs text-white/50">لما الزبونة تختار المقاس، ومع رزان وهي بتساعدها تطلب</span>
+                  {tr("جنب السعر", "Next to the price")}
+                  <span className="block text-xs text-white/50">{tr("لما الزبون يختار المقاس، ومع رزان وهي بتساعده يطلب", "When the customer picks a size, and with Razan while she helps them order")}</span>
                 </span>
               </label>
             </fieldset>
 
             {scarcityShows(draft) ? (
               <div>
-                <div className="mb-1 text-xs text-white/50">هيك بتشوفها الزبونة:</div>
+                <div className="mb-1 text-xs text-white/50">{tr("هيك بيشوفها الزبون:", "This is how the customer sees it:")}</div>
                 <div className="flex flex-wrap gap-2" data-testid="scarcity-examples">
                   {scarcityExamples(draft.showAt).map((x) => (
                     <span key={x.left} className="rounded-full bg-rose-500/80 px-3 py-1 text-xs font-semibold text-white">
@@ -151,20 +152,20 @@ export function ScarcityCard() {
         {canChange ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="primary" disabled={!dirty} isLoading={save.isPending} onClick={() => save.mutate(draft)}>
-              حفظ
+              {tr("حفظ", "Save")}
             </Button>
             {dirty ? (
               <Button variant="ghost" onClick={() => setDraft(saved)}>
-                تراجع
+                {tr("تراجع", "Undo")}
               </Button>
             ) : !sameScarcity(saved, SCARCITY_DEFAULTS) ? (
               <Button variant="ghost" onClick={() => setDraft(SCARCITY_DEFAULTS)}>
-                مثل الأول (3 قطع)
+                {tr("مثل الأول (3 قطع)", "As at first (3 pieces)")}
               </Button>
             ) : null}
           </div>
         ) : (
-          <p className="mt-2 text-xs text-white/50">التغيير بدّه صلاحية «تعديل الإعدادات».</p>
+          <p className="mt-2 text-xs text-white/50">{tr("التغيير بدّه صلاحية «تعديل الإعدادات».", "Changing it needs the “Edit settings” permission.")}</p>
         )}
       </Card>
     </div>
