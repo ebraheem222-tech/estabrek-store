@@ -14,6 +14,9 @@ const studioHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Built into the server code, so a value from .env.production (read at build time) also
+  // reaches lib/studioOrigins.ts when the host only passes its own variables at runtime.
+  env: { ADMIN_ORIGIN: process.env.ADMIN_ORIGIN ?? "" },
   staticPageGenerationTimeout: 180,
   // The opening film, the campaign clip and their stills (public/editorial) are kept by the
   // browser for a week (and reused while it checks for a newer one for a month): they were
