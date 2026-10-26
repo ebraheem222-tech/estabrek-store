@@ -10,6 +10,7 @@ export type Texts = { ar: string; en: string; he: string };
 export const INDUSTRIES = [
   "fashion", "shoes", "electronics", "phones", "gaming", "books", "beauty", "jewelry",
   "home", "kids", "food", "digital", "marketplace", "general",
+  "computers", "sports", "art", "pets", "flowers", "music",
 ] as const;
 export type Industry = (typeof INDUSTRIES)[number];
 export const AUDIENCES = ["women", "men", "everyone"] as const;
@@ -30,6 +31,12 @@ export const INDUSTRY_LABEL: Record<Industry, string> = {
   digital: tr("منتجات رقمية", "Digital products"),
   marketplace: tr("سوق فيه بائعين كتير", "Marketplace with many sellers"),
   general: tr("متجر عام", "General store"),
+  computers: tr("كمبيوترات ولابتوبات", "Computers & laptops"),
+  sports: tr("رياضة ولياقة", "Sport & fitness"),
+  art: tr("فن وأدوات رسم", "Art & art supplies"),
+  pets: tr("حيوانات أليفة", "Pets"),
+  flowers: tr("زهور ونباتات", "Flowers & plants"),
+  music: tr("موسيقى وآلات", "Music & instruments"),
 };
 
 export const AUDIENCE_LABEL: Record<Audience, { title: string; hint: string }> = {

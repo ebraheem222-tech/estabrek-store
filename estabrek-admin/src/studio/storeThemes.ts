@@ -20,6 +20,10 @@ export type StoreThemeInfo = {
   swatch: string[];
   hero: string;
   motion: string;
+  /** Every colour of each mode, its corners and shadows (for the customizer). */
+  palettes?: { light?: Record<string, string>; dark?: Record<string, string> };
+  round?: number;
+  shadow?: "flat" | "soft" | "deep" | "glow";
   /** Gaming themes: the 3D stage the store can fill with its own models and games. */
   stage?: { layout: string; floor?: string; finish?: string; models: string[]; games: Array<{ name: Words; color: string; model: string }> } | null;
 };
@@ -79,7 +83,7 @@ export type StageOptions = {
   games?: Array<{ name: string; color: string; href?: string; imageUrl?: string; model?: string }>;
   scene?: StageScene;
 };
-export type StoreThemeChoice = { id: string; mode?: "light" | "dark" | null };
+export type StoreThemeChoice = { id: string; mode?: "light" | "dark" | null; /** The store's changes (features/themes/customize.ts). */ custom?: unknown };
 
 /** The rose design (no theme), shown first in the gallery. */
 export const ROSE_ID = "rose";
@@ -92,14 +96,16 @@ export const shopOrigin = () => {
   }
 };
 
-export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; models: StageModelInfo[]; stageDefaults: StageDefaults | null }> {
+export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; models: StageModelInfo[]; stageDefaults: StageDefaults | null; defaults: Record<string, string> }> {
   const res = await fetch(`${shopOrigin()}/api/store-themes`, { credentials: "omit" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = (await res.json()) as { themes?: StoreThemeInfo[]; models?: StageModelInfo[]; stageDefaults?: StageDefaults };
+  const data = (await res.json()) as { themes?: StoreThemeInfo[]; models?: StageModelInfo[]; stageDefaults?: StageDefaults; defaults?: Record<string, string> };
   return {
     themes: Array.isArray(data.themes) ? data.themes : [],
     models: Array.isArray(data.models) ? data.models : [],
     stageDefaults: data.stageDefaults?.camera && data.stageDefaults.lights ? data.stageDefaults : null,
+    // Each kind of store's theme when none is chosen (storeThemes/index.ts DEFAULT_THEME in the shop).
+    defaults: data.defaults && typeof data.defaults === "object" ? data.defaults : {},
   };
 }
 export const listStoreThemes = async () => (await loadStoreThemes()).themes;
@@ -130,6 +136,18 @@ export async function saveStoreTheme(choice: StoreThemeChoice | null) {
   const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
   if (choice && choice.id !== ROSE_ID) header.storeTheme = { id: choice.id, mode: choice.mode ?? null };
   else delete header.storeTheme;
+  return updateSettings({ header } as never);
+}
+
+/** Saves the store's changes to its current theme (its id and mode kept); null = the theme as made. */
+export async function saveThemeCustom(themeId: string, custom: unknown | null) {
+  const latest = await getSettings();
+  const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
+  const now = (header.storeTheme ?? {}) as StoreThemeChoice;
+  if (now.id !== themeId) throw new Error("THEME_CHANGED");
+  const next: StoreThemeChoice = { id: now.id, mode: now.mode ?? null };
+  if (custom) next.custom = custom;
+  header.storeTheme = next;
   return updateSettings({ header } as never);
 }
 

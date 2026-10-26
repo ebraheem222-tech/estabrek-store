@@ -15,10 +15,13 @@ import { getApiErrorMessage } from "../../api/http";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useSettings } from "../../hooks/useSettings";
 import { adminLang } from "../../lib/lang";
+import { identityOf } from "../../lib/storeIdentity";
 import { toast } from "../../lib/toast";
 import { tr } from "../../lib/words";
 import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStoreTheme, shopOrigin, stageOptionsOf, type StoreThemeInfo } from "../../studio/storeThemes";
 import { StageWorkspace, type StageTab } from "./StageWorkspace";
+import { ThemeCustomizer } from "./ThemeCustomizer";
+import { customParam, type ThemeCustom } from "./customize";
 
 type View = "home" | "product" | "cart";
 const SIZES = { computer: { w: 1280, h: 800 }, phone: { w: 390, h: 844 } } as const;
@@ -45,9 +48,14 @@ export default function ThemesPage() {
   const pagesQ = useQuery({ queryKey: ["pages"], queryFn: PagesAPI.listPages });
   const productsQ = useQuery({ queryKey: ["catalog", "products", "active"], queryFn: () => listProducts("active") });
   const current = currentStoreTheme(settings.data?.header);
-  const currentId = current?.id ?? ROSE_ID;
+  // The rose design is for modest fashion stores alone; any other store with no theme chosen
+  // shows its kind's theme (the shop's DEFAULT_THEME), so that one is its current theme here.
+  const identity = identityOf(settings.data?.header);
+  const modest = identity.industry === "fashion" && identity.audience === "women";
+  const defaults = themesQ.data?.defaults;
+  const currentId = current?.id ?? (modest ? ROSE_ID : defaults?.[identity.industry] ?? defaults?.general ?? ROSE_ID);
 
-  const all = useMemo(() => [ROSE, ...(themesQ.data?.themes ?? [])], [themesQ.data]);
+  const all = useMemo(() => [...(modest ? [ROSE] : []), ...(themesQ.data?.themes ?? [])], [themesQ.data, modest]);
   const [picked, setPicked] = useState<string | null>(null);
   const [mode, setMode] = useState<"light" | "dark" | null>(null);
   const [view, setView] = useState<View>("home");
@@ -78,7 +86,12 @@ export default function ThemesPage() {
   }, [home?.id]);
   const product = productsQ.data?.find((p) => p.slug);
   const origin = shopOrigin();
-  const q = `storeTheme=${encodeURIComponent(shown.id)}${shown.id === ROSE_ID ? "" : `&themeMode=${shownMode}`}`;
+  // The current theme shows with the store's changes: the ones being tried, else the saved ones.
+  const savedCustom = (current?.custom && typeof current.custom === "object" ? current.custom : null) as ThemeCustom | null;
+  const [customDraft, setCustomDraft] = useState<ThemeCustom | null | undefined>(undefined);
+  const isCurrent = shown.id === currentId && shown.id !== ROSE_ID;
+  const custom = isCurrent ? (customDraft === undefined ? savedCustom : customDraft) : null;
+  const q = `storeTheme=${encodeURIComponent(shown.id)}${shown.id === ROSE_ID ? "" : `&themeMode=${shownMode}`}${customParam(custom)}`;
   const src =
     view === "home"
       ? ticket
@@ -242,6 +255,20 @@ export default function ThemesPage() {
           <p className="text-[11px] text-white/40">
             {tr("المعاينة بتبيّن هون بس، والزبائن بيشوفوا الثيم بعد التطبيق.", "The preview shows here only; customers see the theme after it is applied.")}
           </p>
+          {isCurrent ? (
+            <ThemeCustomizer
+              theme={shown}
+              mode={shownMode}
+              saved={savedCustom}
+              onDraft={setCustomDraft}
+              onSaved={() => {
+                setCustomDraft(undefined);
+                void qc.invalidateQueries({ queryKey: ["settings"] });
+              }}
+            />
+          ) : shown.id !== ROSE_ID ? (
+            <p className="text-[11px] text-white/40">{tr("بعد ما تطبّق الثيم، بتقدر تخصّص ألوانه وخطوطه وزواياه من هون.", "Once the theme is applied, its colours, fonts and corners can be customised here.")}</p>
+          ) : null}
           </div>
           {shown.stage ? (
             <div className={scene ? "min-w-0 xl:overflow-y-auto" : ""} style={scene ? { maxHeight: Math.max(480, dev.h * scale + 40) } : undefined}>

@@ -13,6 +13,8 @@ import { RoseCompanion } from "@/components/cinematic/mascot/RoseCompanion";
 import { ScrollProgressBar } from "@/components/ScrollProgressBar";
 import { AccessibilityTools } from "@/components/AccessibilityTools";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import { useStoreIdentity } from "@/store/storeIdentity";
+import { modestShop } from "@/lib/storeIdentity";
 import {
   DEFAULT_STOREFRONT_SETTINGS,
   normalizeStorefrontSettings,
@@ -39,6 +41,10 @@ export function StorefrontFeaturesProvider({
   initialSettings,
   cinematic = false,
 }: StorefrontFeaturesProviderProps) {
+  // Rose, the shop guide in a hijab, belongs to modest fashion stores; every other store
+  // keeps the plain chat, WhatsApp and back-to-top buttons (Settings → هوية المتجر).
+  const identity = useStoreIdentity();
+  const rose = cinematic && modestShop(identity);
   const parseMaybeJson = (value: unknown) => {
     if (typeof value !== "string") return value;
     try {
@@ -156,16 +162,16 @@ export function StorefrontFeaturesProvider({
           )}
           {settings.scrollProgressEnabled && !cinematic && <ScrollProgressBar />}
           {settings.mobileBottomNavEnabled && <MobileBottomNav />}
-          {!cinematic && <ScrollToTop />}
+          {!rose && <ScrollToTop />}
           {settings.accessibilityToolsEnabled !== false && <AccessibilityTools />}
           {settings.voiceSearchEnabled && !cinematic && <VoiceSearchButton />}
           {/* On the rose design the chat is Rose herself (see RoseCompanion below). */}
-          {settings.chatbotEnabled && !cinematic && (
+          {settings.chatbotEnabled && !rose && (
             <ChatWidget position={settings.chatbotPosition} draggable={settings.chatbotDraggable} />
           )}
           {settings.recentPurchasesPopup && (cinematic ? <RoseRecentlyViewed /> : <RecentActivityPopup />)}
           {/* Rose, the shop guide, follows the shopper; with the chat on, she is the chat. */}
-          {cinematic && (
+          {rose && (
             <RoseCompanion
               chat={Boolean(settings.chatbotEnabled)}
               whatsapp={settings.whatsappEnabled ? settings.whatsappNumber : null}
@@ -175,7 +181,7 @@ export function StorefrontFeaturesProvider({
           
           {/* WhatsApp Button */}
           {/* On the rose design WhatsApp sits beside Rose instead (no overlap). */}
-          {settings.whatsappEnabled && settings.whatsappNumber && !cinematic && (
+          {settings.whatsappEnabled && settings.whatsappNumber && !rose && (
             <WhatsAppFloatingButton phone={settings.whatsappNumber} />
           )}
         </>

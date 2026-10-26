@@ -7,7 +7,8 @@ import type { Words } from "../types";
 
 export const MODEL_KINDS = ["controller", "headset", "console", "handheld", "keyboard", "mouse", "arcade", "vr", "wheel", "dice", "trophy", "coin", "sword", "shield", "potion", "rocket", "helmet", "tv", "chair", "cartridge",
   // Products of every other kind of store.
-  "phone", "laptop", "tablet", "watch", "camera", "speaker", "book", "perfume", "lipstick", "jar", "sneaker", "handbag", "hanger", "ring", "gem", "mug", "plant", "lamp", "dumbbell", "ball", "guitar", "vinyl", "vase", "blocks", "palette"] as const;
+  "phone", "laptop", "tablet", "watch", "camera", "speaker", "book", "perfume", "lipstick", "jar", "sneaker", "handbag", "hanger", "ring", "gem", "mug", "plant", "lamp", "dumbbell", "ball", "guitar", "vinyl", "vase", "blocks", "palette",
+  "easel", "frame", "racket", "cake", "teddy", "bone"] as const;
 export type ModelKind = (typeof MODEL_KINDS)[number];
 
 const w = (ar: string, en: string, he: string): Words => ({ ar, en, he });
@@ -57,7 +58,13 @@ export const MODEL_INFO: Record<ModelKind, { label: Words; find: string[] }> = {
   vinyl: { label: w("أسطوانات", "Records", "תקליטים"), find: ["vinyl", "record", "album", "cd", "اسطوانة", "أسطوانات", "ألبوم", "تسجيلات", "תקליט"] },
   vase: { label: w("فخار وخزف", "Ceramics", "קרמיקה"), find: ["vase", "ceramic", "pottery", "clay", "فازة", "مزهرية", "فخار", "خزف", "אגרטל", "קרמיקה"] },
   blocks: { label: w("ألعاب أطفال", "Kids' toys", "צעצועים"), find: ["toy", "kids", "baby", "lego", "blocks", "ألعاب", "أطفال", "اطفال", "مكعبات", "צעצוע", "ילדים"] },
-  palette: { label: w("فن ورسم", "Art supplies", "אמנות וציור"), find: ["art", "paint", "brush", "canvas", "drawing", "فن", "رسم", "ألوان", "لوحة", "لوحات", "אמנות", "ציור"] },
+  palette: { label: w("فن ورسم", "Art supplies", "אמנות וציור"), find: ["paint", "brush", "supplies", "drawing", "ألوان", "فراشي", "أدوات رسم", "رسم", "צבע", "מכחול"] },
+  easel: { label: w("لوحات", "Paintings", "ציורים"), find: ["painting", "canvas", "easel", "art", "لوحات", "لوحة", "مرسم", "فن", "ציור", "קנבס", "אמנות"] },
+  frame: { label: w("طبعات وإطارات", "Prints & frames", "הדפסים ומסגרות"), find: ["frame", "print", "poster", "gallery", "إطار", "براويز", "طبعات", "ملصقات", "מסגרת", "הדפס", "פוסטר"] },
+  racket: { label: w("مضارب وتنس", "Rackets & tennis", "מחבטים וטניס"), find: ["tennis", "racket", "padel", "badminton", "squash", "تنس", "مضرب", "بادل", "طائرة", "טניס", "מחבט", "פאדל"] },
+  cake: { label: w("كيك وحلويات", "Cakes & sweets", "עוגות ומתוקים"), find: ["cake", "bakery", "dessert", "sweet", "pastry", "كيك", "كعك", "حلويات", "مخبوزات", "مخبز", "עוגה", "מאפה", "קינוח"] },
+  teddy: { label: w("دمى وألعاب ناعمة", "Plush toys", "בובות רכות"), find: ["teddy", "plush", "doll", "soft toy", "baby", "دب", "دمى", "دمية", "مواليد", "דובי", "בובה", "תינוק"] },
+  bone: { label: w("للكلاب", "For dogs", "לכלבים"), find: ["dog", "puppy", "bone", "chew", "كلب", "كلاب", "جرو", "عظمة", "כלב", "גור", "עצם"] },
 };
 
 export const ANIMS = ["none", "spin", "float", "bounce", "pulse", "swing", "orbit"] as const;
@@ -122,6 +129,12 @@ export const MODEL_KNOBS: Record<ModelKind, KnobSpec[]> = {
   vase: [knob("belly", w("عرض البطن", "Belly width", "רוחב הבטן"), 0.6, 1.5), knob("neck", w("طول العنق", "Neck length", "אורך הצוואר"), 0.5, 1.8)],
   blocks: [count("count", w("عدد المكعبات", "Blocks", "קוביות"), 2, 6, 4), knob("size", w("الحجم", "Size", "גודל"), 0.7, 1.3)],
   palette: [count("paints", w("عدد الألوان", "Paints", "צבעים"), 3, 7, 5), knob("brush", w("الفرشاة", "Brush", "מכחול"), 0, 1.4)],
+  easel: [knob("canvas", w("حجم اللوحة", "Canvas size", "גודל הקנבס"), 0.7, 1.3), knob("lean", w("الميلان", "Lean", "הטיה"), 0, 1.6)],
+  frame: [knob("border", w("عرض الإطار", "Frame width", "רוחב המסגרת"), 0.4, 2), knob("tall", w("الطول", "Height", "גובה"), 0.7, 1.4)],
+  racket: [knob("head", w("حجم الرأس", "Head size", "גודל הראש"), 0.75, 1.3), count("strings", w("عدد الأوتار", "Strings", "מיתרים"), 4, 12, 8)],
+  cake: [count("tiers", w("عدد الطوابق", "Tiers", "קומות"), 1, 3, 2), count("candles", w("عدد الشموع", "Candles", "נרות"), 0, 7, 3)],
+  teddy: [knob("ears", w("حجم الأذنين", "Ear size", "גודל האוזניים"), 0.6, 1.6), knob("bow", w("الفيونكة", "Bow", "פפיון"), 0, 1.4)],
+  bone: [knob("length", w("الطول", "Length", "אורך"), 0.7, 1.4), knob("ends", w("حجم الأطراف", "End size", "גודל הקצוות"), 0.7, 1.4)],
 };
 
 /** A model's knobs with the store's values (else each knob's own), each kept in range. */

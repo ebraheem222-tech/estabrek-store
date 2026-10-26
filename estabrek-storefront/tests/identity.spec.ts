@@ -64,8 +64,10 @@ test("another store: its own name everywhere, nothing of Estabrek", async ({ pag
       expect(all, `${lang} ${path}`).not.toMatch(/استبرق|estabrek/i);
       expect(all, `${lang} ${path}: the guide`).not.toMatch(/رزان|رَزان|\bRose (is|understood|presents|through|,)/);
       // A shop for everyone doesn't speak Arabic to women only (src/lib/words.tone.ts). The home
-      // and about pages also carry the first store's fashion copy (industry packs replace it).
-      if (lang === "ar" && !["/", "/about"].includes(path)) expect(all, `${path}: to everyone`).not.toMatch(/تسوّقي|اختاري|أضيفي|ابحثي|حقيبتكِ|اكتبي|جرّبي|عندكِ|تواصلي|لأجلكِ/);
+      // carries the mock's own words (the owner's), so it is left out.
+      if (lang === "ar" && path !== "/") expect(all, `${path}: to everyone`).not.toMatch(/تسوّقي|اختاري|أضيفي|ابحثي|حقيبتكِ|اكتبي|جرّبي|عندكِ|تواصلي|لأجلكِ/);
+      // Hijabs and fabrics are the modest fashion store's (the shop's own pages, not the mock's products).
+      if (["/about", "/contact", "/cart"].includes(path)) expect(all, `${lang} ${path}: nothing of a hijab shop`).not.toMatch(/حجاب|محتشم|أقمشة|قماش|hijab|modest|fabric/i);
     }
   }
   await open(page, "/cart", "ar");
@@ -75,7 +77,10 @@ test("another store: its own name everywhere, nothing of Estabrek", async ({ pag
   await expect(page.locator(".atelier-brand .brand-english").first()).toHaveText("ALL TECH IN ONE PLACE");
   await expect(page.locator(".footer-wordmark")).toHaveText("نور");
   expect(await page.title()).toBe("متجر نور");
-  await expect(page.locator(".hero-mascot [aria-label*='سما'], [aria-label*='سما']").first()).toBeAttached();
+  // Not a modest fashion store: its kind's theme (electronics), never the rose design's hijab film or guide.
+  await expect(page.locator("html")).toHaveAttribute("data-store-theme", "circuit");
+  await expect(page.locator(".th-home").first()).toBeVisible();
+  await expect(page.locator(".hero-mascot, .rose-companion")).toHaveCount(0);
   await open(page, "/", "en");
   await expect(page.locator(".atelier-brand .brand-arabic").first()).toHaveText("Noor");
 });

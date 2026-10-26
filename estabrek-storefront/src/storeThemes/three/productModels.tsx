@@ -905,6 +905,259 @@ function Vinyl({ m, style, k }: Draw) {
   );
 }
 
+/* ------------------------------------------- art, sport, sweets, kids, pets */
+
+function Easel({ m, style, k }: Draw) {
+  const s = seg(style, 16);
+  const c = k.canvas;
+  const lean = 0.14 * k.lean;
+  return (
+    <group rotation={[0, -0.45, 0]} position={[0, -0.1, 0]}>
+      {/* Three legs: two in front, one behind. */}
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 0.55, -0.15, 0.05]} rotation={[lean, 0, side * -0.18]} material={m.trim}>
+          <cylinderGeometry args={[0.045, 0.06, 2.7, s]} />
+        </mesh>
+      ))}
+      <mesh position={[0, -0.25, -0.55]} rotation={[-0.42, 0, 0]} material={m.trim}>
+        <cylinderGeometry args={[0.04, 0.05, 2.5, s]} />
+      </mesh>
+      {/* The tray and the canvas with a painting on it. */}
+      <Block style={style} size={[1.5, 0.08, 0.2]} radius={0.03} position={[0, -0.42, 0.18]} rotation={[lean, 0, 0]} material={m.trim} />
+      <group position={[0, 0.35, 0.12]} rotation={[lean, 0, 0]} scale={c}>
+        <Block style={style} size={[1.5, 1.15, 0.06]} radius={0.02} material={m.paper} />
+        <mesh position={[-0.25, 0.12, 0.035]} material={m.accent}>
+          <circleGeometry args={[0.28, seg(style, 32)]} />
+        </mesh>
+        <mesh position={[0.3, -0.18, 0.036]} rotation={[0, 0, 0.3]} material={m.glow}>
+          <planeGeometry args={[0.55, 0.32]} />
+        </mesh>
+        <mesh position={[0.05, -0.35, 0.037]} material={m.body}>
+          <planeGeometry args={[1.2, 0.08]} />
+        </mesh>
+      </group>
+      {/* A brush resting on the tray. */}
+      <group position={[0.4, -0.35, 0.28]} rotation={[0, 0, 1.35]}>
+        <mesh material={m.body}>
+          <cylinderGeometry args={[0.025, 0.02, 0.6, 8]} />
+        </mesh>
+        <mesh position={[0, 0.34, 0]} material={m.accent}>
+          <coneGeometry args={[0.035, 0.12, 8]} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function Frame({ m, style, k }: Draw) {
+  const b = 0.16 * k.border;
+  const w = 1.8;
+  const h = 2.2 * k.tall;
+  return (
+    <group rotation={[0.05, -0.4, 0.03]}>
+      {/* The moulding: four sides, gilded. */}
+      <Block style={style} size={[w + b * 2, b, 0.16]} radius={0.03} position={[0, h / 2 + b / 2, 0]} material={m.metal} />
+      <Block style={style} size={[w + b * 2, b, 0.16]} radius={0.03} position={[0, -h / 2 - b / 2, 0]} material={m.metal} />
+      <Block style={style} size={[b, h, 0.16]} radius={0.03} position={[-w / 2 - b / 2, 0, 0]} material={m.metal} />
+      <Block style={style} size={[b, h, 0.16]} radius={0.03} position={[w / 2 + b / 2, 0, 0]} material={m.metal} />
+      {/* The mount and the work inside it. */}
+      <mesh position={[0, 0, -0.02]} material={m.paper}>
+        <boxGeometry args={[w, h, 0.04]} />
+      </mesh>
+      <mesh position={[0, 0.05, 0.005]} material={m.body}>
+        <planeGeometry args={[w * 0.7, h * 0.72]} />
+      </mesh>
+      <mesh position={[-0.15, 0.25, 0.01]} material={m.accent}>
+        <circleGeometry args={[0.32, seg(style, 32)]} />
+      </mesh>
+      <mesh position={[0.25, -0.25, 0.012]} rotation={[0, 0, 0.6]} material={m.glow}>
+        <planeGeometry args={[0.5, 0.5]} />
+      </mesh>
+    </group>
+  );
+}
+
+function Racket({ m, style, k }: Draw) {
+  const s = seg(style, 40);
+  const head = k.head;
+  const n = Math.round(k.strings);
+  return (
+    <group rotation={[0.25, -0.35, -0.55]} position={[0, -0.15, 0]}>
+      {/* Grip, throat and the oval head. */}
+      <mesh position={[0, -1.0, 0]} material={m.body}>
+        <cylinderGeometry args={[0.1, 0.11, 1.0, seg(style, 8)]} />
+      </mesh>
+      <mesh position={[0, -1.52, 0]} material={m.trim}>
+        <cylinderGeometry args={[0.12, 0.12, 0.06, seg(style, 8)]} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 0.13, -0.33, 0]} rotation={[0, 0, side * -0.32]} material={m.accent}>
+          <boxGeometry args={[0.06, 0.6, 0.08]} />
+        </mesh>
+      ))}
+      <group position={[0, 0.55 * head, 0]} scale={[head, head * 1.18, head]}>
+        <mesh material={m.accent}>
+          <torusGeometry args={[0.62, 0.05, seg(style, 10), s]} />
+        </mesh>
+        {/* Strings both ways, inside the oval. */}
+        {Array.from({ length: n }, (_, i) => {
+          const x = -0.5 + (i * 1.0) / Math.max(1, n - 1);
+          const len = 2 * Math.sqrt(Math.max(0, 0.62 * 0.62 - x * x)) - 0.04;
+          return (
+            <group key={i}>
+              <mesh position={[x, 0, 0]} material={m.paper}>
+                <boxGeometry args={[0.012, len, 0.012]} />
+              </mesh>
+              <mesh position={[0, x, 0]} material={m.paper}>
+                <boxGeometry args={[len, 0.012, 0.012]} />
+              </mesh>
+            </group>
+          );
+        })}
+      </group>
+      {/* A ball beside it. */}
+      <mesh position={[0.95, -0.6, 0.3]} material={m.glow}>
+        <sphereGeometry args={[0.2, seg(style, 20), seg(style, 14)]} />
+      </mesh>
+    </group>
+  );
+}
+
+function Cake({ m, style, k }: Draw) {
+  const s = seg(style, 40);
+  const tiers = Math.round(k.tiers);
+  const candles = Math.round(k.candles);
+  const sizes = [1.05, 0.78, 0.52].slice(0, tiers);
+  let y = -0.9;
+  const rows = sizes.map((r, i) => {
+    const h = 0.55 - i * 0.06;
+    const row = { r, h, y: y + h / 2, mat: i % 2 ? m.body : m.paper };
+    y += h;
+    return row;
+  });
+  const top = y;
+  const topR = sizes[sizes.length - 1];
+  return (
+    <group rotation={[0.3, 0, 0]} position={[0, -0.05, 0]}>
+      <mesh position={[0, -0.95, 0]} material={m.metal}>
+        <cylinderGeometry args={[1.3, 1.25, 0.08, s]} />
+      </mesh>
+      {rows.map((t, i) => (
+        <group key={i}>
+          <mesh position={[0, t.y, 0]} material={t.mat}>
+            <cylinderGeometry args={[t.r, t.r, t.h, s]} />
+          </mesh>
+          {/* Icing round the top edge. */}
+          <mesh position={[0, t.y + t.h / 2, 0]} rotation={[Math.PI / 2, 0, 0]} material={m.accent}>
+            <torusGeometry args={[t.r * 0.97, 0.06, 8, s]} />
+          </mesh>
+        </group>
+      ))}
+      {Array.from({ length: candles }, (_, i) => {
+        const a = (i / Math.max(1, candles)) * Math.PI * 2;
+        const r = candles === 1 ? 0 : topR * 0.55;
+        return (
+          <group key={i} position={[Math.cos(a) * r, top + 0.18, Math.sin(a) * r]}>
+            <mesh material={m.trim}>
+              <cylinderGeometry args={[0.035, 0.035, 0.32, 8]} />
+            </mesh>
+            <mesh position={[0, 0.22, 0]} scale={[1, 1.6, 1]} material={m.glow}>
+              <sphereGeometry args={[0.05, 10, 8]} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function Teddy({ m, style, k }: Draw) {
+  const s = seg(style, 28);
+  const ball = (r: number) => <sphereGeometry args={[r, s, seg(style, 20)]} />;
+  return (
+    <group position={[0, -0.25, 0]} rotation={[0.08, -0.35, 0]}>
+      {/* Body, belly, head and snout. */}
+      <mesh position={[0, -0.35, 0]} scale={[1, 1.1, 0.9]} material={m.body}>
+        {ball(0.62)}
+      </mesh>
+      <mesh position={[0, -0.32, 0.38]} scale={[1, 1.2, 0.5]} material={m.paper}>
+        {ball(0.36)}
+      </mesh>
+      <mesh position={[0, 0.55, 0]} material={m.body}>
+        {ball(0.48)}
+      </mesh>
+      <mesh position={[0, 0.48, 0.4]} scale={[1, 0.8, 0.8]} material={m.paper}>
+        {ball(0.19)}
+      </mesh>
+      <mesh position={[0, 0.54, 0.55]} material={m.dark}>
+        {ball(0.06)}
+      </mesh>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <mesh position={[side * 0.17, 0.66, 0.4]} material={m.dark}>
+            {ball(0.05)}
+          </mesh>
+          {/* Ears, arms and legs. */}
+          <group position={[side * 0.36, 0.92, -0.02]} scale={k.ears}>
+            <mesh material={m.body}>{ball(0.17)}</mesh>
+            <mesh position={[0, 0, 0.08]} scale={[1, 1, 0.4]} material={m.paper}>
+              {ball(0.1)}
+            </mesh>
+          </group>
+          <mesh position={[side * 0.62, -0.15, 0.1]} rotation={[0.4, 0, side * 0.7]} material={m.body}>
+            <capsuleGeometry args={[0.17, 0.42, 6, s]} />
+          </mesh>
+          <mesh position={[side * 0.36, -0.95, 0.25]} rotation={[1.35, 0, 0]} material={m.body}>
+            <capsuleGeometry args={[0.2, 0.32, 6, s]} />
+          </mesh>
+          <mesh position={[side * 0.36, -1.05, 0.48]} scale={[1, 1, 0.35]} material={m.paper}>
+            {ball(0.14)}
+          </mesh>
+        </group>
+      ))}
+      {shown(k.bow) ? (
+        <group position={[0, 0.12, 0.42]} scale={k.bow}>
+          {[-1, 1].map((side) => (
+            <mesh key={side} position={[side * 0.16, 0, 0]} rotation={[0, 0, (side * Math.PI) / 2]} material={m.accent}>
+              <coneGeometry args={[0.12, 0.26, seg(style, 12)]} />
+            </mesh>
+          ))}
+          <mesh material={m.accent}>{ball(0.07)}</mesh>
+        </group>
+      ) : null}
+    </group>
+  );
+}
+
+function Bone({ m, style, k }: Draw) {
+  const s = seg(style, 24);
+  const len = 1.5 * k.length;
+  const e = 0.34 * k.ends;
+  return (
+    <group rotation={[0.5, -0.4, 0.35]}>
+      <mesh rotation={[0, 0, Math.PI / 2]} material={m.paper}>
+        <capsuleGeometry args={[0.2, len, 6, s]} />
+      </mesh>
+      {[-1, 1].map((side) =>
+        [-1, 1].map((up) => (
+          <mesh key={`${side}${up}`} position={[side * (len / 2 + 0.18), up * 0.2, 0]} material={m.paper}>
+            <sphereGeometry args={[e, s, seg(style, 16)]} />
+          </mesh>
+        )),
+      )}
+      {/* A collar tag beside it, in the theme's colour. */}
+      <group position={[0.2, -0.85, 0.3]} rotation={[0.2, 0, 0]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} material={m.accent}>
+          <torusGeometry args={[0.42, 0.06, 8, s]} />
+        </mesh>
+        <mesh position={[0, -0.5, 0]} material={m.metal}>
+          <cylinderGeometry args={[0.13, 0.13, 0.03, s]} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 export const PRODUCT_MODELS = {
   phone: Phone,
   laptop: Laptop,
@@ -931,4 +1184,10 @@ export const PRODUCT_MODELS = {
   vase: Vase,
   blocks: Blocks,
   palette: Palette,
+  easel: Easel,
+  frame: Frame,
+  racket: Racket,
+  cake: Cake,
+  teddy: Teddy,
+  bone: Bone,
 } satisfies Partial<Record<ModelKind, (p: Draw) => ReactNode>>;

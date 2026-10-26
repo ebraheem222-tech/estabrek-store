@@ -351,8 +351,9 @@ export const TECH_THEMES: StoreTheme[] = [
       layout: "podium",
       floor: "grid",
       finish: "metal",
-      models: ["dumbbell", "ball", "sneaker", "watch"],
+      models: ["dumbbell", "ball", "racket", "sneaker", "watch"],
       games: [
+        pick(w("تنس وبادل", "Tennis & padel", "טניס ופאדל"), "#eab308", "racket", "tennis"),
         pick(w("قوة", "Strength", "כוח"), "#ef4444", "dumbbell", "weights"),
         pick(w("كارديو", "Cardio", "קרדיו"), "#f97316", "sneaker", "cardio"),
         pick(w("رياضات جماعية", "Team sports", "ספורט קבוצתי"), "#3b82f6", "ball", "ball"),

@@ -9,6 +9,7 @@ import core from "./admin.controller.js";
 import settings from "./settings.controller.js";
 import nav from "./nav.controller.js";
 import pages from "./pages.controller.js";
+import setup from "./setup.controller.js";
 import catalog from "./catalog.controller.js";
 import orders from "./orders.controller.js";
 import outbox from "./outbox.controller.js";
@@ -97,6 +98,8 @@ r.use("/orders", (req, res, next) => {
 r.use("/settings", areaAccess({ read: "settings:read", write: "settings:write" }), settings);
 r.use("/features", areaAccess({ read: "settings:read", write: "settings:write" }), features);
 r.use("/razan", areaAccess({ read: "settings:read", write: "settings:write" }), razan);
+// Setting up a new store: anyone with the settings may look; the owner applies (inside).
+r.use("/setup", areaAccess({ read: "settings:read", write: "settings:write" }), setup);
 r.use("/nav", areaAccess({ read: ["nav:read", "nav:write"], write: "nav:write" }), nav);
 r.use("/pages", areaAccess({ read: "pages:read", write: "pages:write", extra: pagePublishing }), pages);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);

@@ -106,4 +106,4 @@ export type ThemeCopy = {
 };
 
 /** The store's choice (Settings: header.storeTheme). No id = the rose design. */
-export type StoreThemeChoice = { id?: string | null; mode?: "light" | "dark" | null };
+export type StoreThemeChoice = { id?: string | null; mode?: "light" | "dark" | null; /** The store's changes (custom.ts). */ custom?: unknown };
