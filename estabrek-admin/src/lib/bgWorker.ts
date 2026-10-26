@@ -5,7 +5,6 @@
  * and cuts. One model is kept ready at a time.
  */
 import * as ort from "onnxruntime-web/webgpu";
-import wasmUrl from "onnxruntime-web/ort-wasm-simd-threaded.asyncify.wasm?url";
 import { logitsToMask, resizeMask, toModelInput } from "./cutout";
 import type { Backend, BgErrorCode, ModelSpec, Phase, WorkerIn, WorkerOut } from "./bgEngine";
 
@@ -20,7 +19,12 @@ type Scope = {
 };
 const scope = self as unknown as Scope;
 
-ort.env.wasm.wasmPaths = { wasm: new URL(wasmUrl, scope.location.href).href };
+// The runtime file is 25.5 MiB, over Cloudflare's 25 MiB per-file limit, so it isn't built
+// into the admin: it comes from jsDelivr's copy of the exact npm version installed here.
+const ORT_VERSION = ort.env.versions.web ?? ort.env.versions.common;
+ort.env.wasm.wasmPaths = {
+  wasm: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort-wasm-simd-threaded.asyncify.wasm`,
+};
 // Several threads only work when the page is cross-origin isolated (the admin isn't).
 ort.env.wasm.numThreads = scope.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
 ort.env.logLevel = "error";
