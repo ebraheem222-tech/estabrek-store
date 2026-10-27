@@ -1,11 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
-  DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, distToBox, insidePolygon, pickAt, queenStep, rayHitsBox, toScreen, zoomAround,
+  DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, distToBox, insidePolygon, pickAt, queenStep, rayHitsBox, toScreen, visiblePart, zoomAround,
   type Shape,
 } from "./geometry";
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
 const shape = (id: string, b: ReturnType<typeof box>, depth = 1, parentId: string | null = "page"): Shape => ({ id, box: b, depth, parentId });
+
+describe("what shows of a selection", () => {
+  const view = box(100, 50, 800, 600);
+  it("a scene many screens tall shows as the frame's height, going on above and below", () => {
+    expect(visiblePart(box(100, -2000, 800, 5000), view)).toEqual({ box: view, above: true, below: true, before: false, after: false });
+  });
+  it("a small piece shows whole; one out of sight shows nothing", () => {
+    expect(visiblePart(box(200, 100, 50, 20), view)).toEqual({ box: box(200, 100, 50, 20), above: false, below: false, before: false, after: false });
+    expect(visiblePart(box(200, 700, 50, 20), view)).toBeNull();
+  });
+});
 
 describe("distance and rays", () => {
   it("measures from a point to a box, 0 inside", () => {

@@ -26,6 +26,7 @@ import {
 } from "@/lib/themePreview";
 import { useNames } from "@/store/storeIdentity";
 import { tr } from "@/lib/words";
+import { sceneField, sceneWord } from "./sceneWords";
 import { isRtl } from "@/lib/i18n";
 
 export type RoseHeroData = {
@@ -128,6 +129,7 @@ export function RoseHero({
           description={subtitle}
           primary={primary}
           secondary={secondary}
+          lineColors={(data as { roseFilmColors?: string[] }).roseFilmColors}
         />
       ) : (
       <ScrollOpening subtle={data.rosePresentation?.motionIntensity === "subtle"} model={showStudy && openingStudy ? <DesignStudy language={language} embedded words={data.roseStoryWords} /> : undefined}>
@@ -169,16 +171,18 @@ export function RoseHero({
               <Link
                 href={primary?.href || "/shop"}
                 className="atelier-button button-dark"
+                data-edit-box={primary === secondaryButton ? "secondaryButton.label" : "primaryButton.label"}
+                data-edit-link={primary === secondaryButton ? "secondaryButton.href" : "primaryButton.href"}
               >
-                <span data-edit={primary === secondaryButton ? "secondaryButton.label" : "primaryButton.label"}>
+                <span data-edit={primary === secondaryButton ? "secondaryButton.label" : "primaryButton.label"} data-edit-boxed="">
                   {primary?.label ||
                     (tr(lang, "تسوّقي الآن", "Shop now"))}
                 </span>
                 <Icon name="arrow" />
               </Link>
               {secondary?.href && secondary.label ? (
-                <Link href={secondary.href} className="atelier-text-link">
-                  <span data-edit={secondary === primaryButton ? "primaryButton.label" : "secondaryButton.label"}>{secondary.label}</span>
+                <Link href={secondary.href} className="atelier-text-link" data-edit-box={secondary === primaryButton ? "primaryButton.label" : "secondaryButton.label"} data-edit-link={secondary === primaryButton ? "primaryButton.href" : "secondaryButton.href"}>
+                  <span data-edit={secondary === primaryButton ? "primaryButton.label" : "secondaryButton.label"} data-edit-boxed="">{secondary.label}</span>
                   <Icon name="arrow" />
                 </Link>
               ) : showStudy ? (
@@ -374,12 +378,13 @@ export function RoseProductGrid({
               className="editorial-product"
               key={p.id || p.slug || index}
               data-reveal
+              data-part="card"
             >
               <Link
                 href={p.slug ? `/p/${encodeURIComponent(p.slug)}` : "/shop"}
                 className="editorial-product-link"
               >
-                <div className={`editorial-product-image${p.secondaryImageUrl ? " has-alt" : ""}`}>
+                <div className={`editorial-product-image${p.secondaryImageUrl ? " has-alt" : ""}`} data-part="card-image">
                   <RoseBadge badge={p.badge} ar={ar} />
                   {p.imageUrl ? (
                     <>
@@ -411,13 +416,13 @@ export function RoseProductGrid({
                   </span>
                 </div>
                 <div className="product-info">
-                  <span className="product-category">
+                  <span className="product-category" data-part="card-category">
                     {p.category ||
                       (tr(lang, `مجموعة ${n.store}`, "THE {0} COLLECTION", [n.store.toUpperCase()]))}
                   </span>
                   <div className="product-title-row">
-                    <h3>{p.title}</h3>
-                    <span className="product-price">{p.priceText}</span>
+                    <h3 data-part="card-name">{p.title}</h3>
+                    <span className="product-price" data-part="card-price">{p.priceText}</span>
                   </div>
                 </div>
               </Link>
@@ -432,7 +437,7 @@ export function RoseProductGrid({
                 </div>
               ) : null}
               {(p.id || p.slug) && (
-                <div className="rose-quick-add">
+                <div className="rose-quick-add" data-part="card-add">
                   <QuickAddButton
                     productId={p.id}
                     slug={p.slug}
@@ -629,7 +634,7 @@ export function RoseFaq({
       </div>
       <div className="rose-faq-items">
         {entries.map((item, i) => (
-          <details key={i}>
+          <details key={i} data-part="faq-item">
             <summary>
               <span data-edit={i < items.length ? `items.${i}.question` : undefined}>{item.question}</span>
               <span aria-hidden="true">+</span>
@@ -675,8 +680,10 @@ export function RoseCta({
         href={data.buttonHref || data.button?.href || "/contact"}
         className="atelier-button button-dark"
         data-reveal
+        data-edit-box={data.buttonLabel || !data.button?.label ? "buttonLabel" : "button.label"}
+        data-edit-link={data.buttonLabel || !data.button?.label ? "buttonHref" : "button.href"}
       >
-        <span data-edit={data.buttonLabel || !data.button?.label ? "buttonLabel" : "button.label"}>
+        <span data-edit={data.buttonLabel || !data.button?.label ? "buttonLabel" : "button.label"} data-edit-boxed="">
           {polishCopy(data.buttonLabel || data.button?.label) ||
             (tr(lang, "تواصلي معنا", "Let’s stay in touch"))}
         </span>
@@ -755,7 +762,8 @@ export function RoseTestimonials({
 }
 
 /** Invitation to the store’s real Instagram, shown when no testimonials are published yet. */
-export function RoseInstagram({ images = [] }: { images?: string[] }) {
+/** `words`: the admin's words for this scene (the opening's roseScenes.instagram, see sceneWords.ts). */
+export function RoseInstagram({ images = [], words }: { images?: string[]; words?: unknown }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const n = useNames();
@@ -774,20 +782,20 @@ export function RoseInstagram({ images = [] }: { images?: string[] }) {
       <div className="instagram-copy">
         <span className="atelier-eyebrow">
           <Icon name="camera" />
-          {tr(lang, "على إنستغرام", "ON INSTAGRAM")}
+          <span data-edit={sceneField("instagram", ["eyebrow"], lang)}>{sceneWord(words, ["eyebrow"], lang, tr(lang, "على إنستغرام", "ON INSTAGRAM"))}</span>
         </span>
-        <h2>{tr(lang, "تابعينا على إنستغرام.", "Follow us on Instagram.")}</h2>
-        <p>
-          {tr(lang, `نشارك هناك القطع الجديدة أولاً بأول. شاركينا إطلالتكِ بقطع ${n.store} مع الإشارة إلى حسابنا.`, "Follow our new arrivals and share your {0} look by tagging us.", [n.store])}
+        <h2 data-edit={sceneField("instagram", ["title"], lang)}>{sceneWord(words, ["title"], lang, tr(lang, "تابعينا على إنستغرام.", "Follow us on Instagram."))}</h2>
+        <p data-edit={sceneField("instagram", ["text"], lang)}>
+          {sceneWord(words, ["text"], lang, tr(lang, `نشارك هناك القطع الجديدة أولاً بأول. شاركينا إطلالتكِ بقطع ${n.store} مع الإشارة إلى حسابنا.`, "Follow our new arrivals and share your {0} look by tagging us.", [n.store]))}
         </p>
-        <a href={store.instagram} target="_blank" rel="noreferrer" className="atelier-button button-dark" dir="ltr">
+        <a href={store.instagram} target="_blank" rel="noreferrer" className="atelier-button button-dark" dir="ltr" data-part="handle">
           {handle}
           <Icon name="arrow" />
         </a>
       </div>
-      <a href={store.instagram} target="_blank" rel="noreferrer" className="instagram-tiles" aria-label={tr(lang, "افتحي حسابنا على إنستغرام", "Open our Instagram")}>
+      <a href={store.instagram} target="_blank" rel="noreferrer" className="instagram-tiles" aria-label={tr(lang, "افتحي حسابنا على إنستغرام", "Open our Instagram")} data-part="tiles">
         {tiles.map((src, i) => (
-          <span key={src + i} className="instagram-tile">
+          <span key={src + i} className="instagram-tile" data-part="tile">
             <Image src={src} alt="" fill sizes="(max-width:760px) 45vw, 18vw" />
           </span>
         ))}

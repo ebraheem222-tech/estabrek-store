@@ -33,13 +33,15 @@ export type ScreenStyle = {
   border?: { width: number; color: string; style?: "solid" | "dashed" | "dotted" };
   shadow?: "none" | "sm" | "md" | "lg";
   opacity?: number;
-  font?: "heading" | "body";
+  font?: "heading" | "body" | "serif" | "sans" | "mono";
   size?: number;
   weight?: number;
   lineHeight?: number;
   letterSpacing?: number;
   textAlign?: "start" | "center" | "end";
   fit?: "cover" | "contain";
+  /** A picture's or clip's point that stays in sight when it's cut to its frame (% across, % down). */
+  focus?: { x: number; y: number };
   aspect?: string;
   shape?: "rect" | "rounded" | "pill" | "arch" | "circle";
   rotateX?: number;
@@ -70,6 +72,55 @@ export type TreeNode = {
   children?: TreeNode[];
 };
 export type PageTree = { version: 1; root: TreeNode };
+
+/* ------------------------------------------------------------------- looks */
+
+/**
+ * The look and motion of a part of an old section or a rose scene (the editor's
+ * "looks", kept in the tree's root as props.looks): its target names the section
+ * ("s:<id>") or scene ("b:<name>"), and inside it a field ("/<path>", its [data-edit])
+ * or a marked piece ("/@<name>", its [data-part], all of them alike).
+ */
+export type LookKind = "text" | "button" | "image" | "video" | "box";
+export type Look = { kind: LookKind; style?: Partial<Record<Screen, ScreenStyle>>; motion?: unknown };
+const LOOK_TARGET = /^(s|b):([A-Za-z0-9_-]{1,80})(?:\/(@[a-z0-9-]{1,40}|[A-Za-z0-9_.]{1,120}))?$/;
+export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
+export const LOOKS_MAX = 300;
+
+/**
+ * The CSS selector of a look's target (null for a bad one). Attributes are named twice so
+ * the look wins over the section's own styles; a field's button is its whole button.
+ */
+export function lookSelector(target: string): string | null {
+  const m = LOOK_TARGET.exec(target);
+  if (!m) return null;
+  const owner = m[1] === "s" ? `[data-cms-section="${m[2]}"][data-cms-section]` : `[data-rose-block="${m[2]}"][data-rose-block]`;
+  const at = m[3];
+  if (!at) return owner;
+  if (at.startsWith("@")) return `${owner} [data-part="${at.slice(1)}"][data-part]`;
+  // A scene's words name their language at the end (…title.en): one look for all of them.
+  return [at, `${at}.ar`, `${at}.en`, `${at}.he`]
+    .flatMap((p) => [`${owner} [data-edit-box="${p}"][data-edit-box]`, `${owner} [data-edit="${p}"][data-edit]:not([data-edit-boxed])`])
+    .concat(`${owner} [data-edit-media="${at}"][data-edit-media]`)
+    .join(",");
+}
+
+/** The page's looks the shop may draw (known kinds, good targets), at most LOOKS_MAX. */
+export function looksOf(tree: PageTree): Array<[string, Look]> {
+  const raw = tree.root.props?.looks;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const out: Array<[string, Look]> = [];
+  for (const [target, v] of Object.entries(raw as Record<string, any>)) {
+    if (out.length >= LOOKS_MAX) break;
+    if (!lookSelector(target) || !v || typeof v !== "object") continue;
+    const kind = (LOOK_KINDS as readonly string[]).includes(v.kind) ? (v.kind as LookKind) : "box";
+    out.push([target, { kind, style: v.style && typeof v.style === "object" ? v.style : undefined, motion: v.motion }]);
+  }
+  return out;
+}
+
+/** A look's motion as a node's (for motionOf and the motion engine). */
+export const lookNode = (target: string, look: Look): TreeNode => ({ id: target, type: look.kind === "box" ? "section" : look.kind, props: {}, style: look.style, motion: look.motion });
 
 /* ------------------------------------------------------------------ motion */
 
@@ -210,6 +261,7 @@ export function treeNeeds(tree: PageTree) {
   const spinProducts = new Set<string>();
   eachNode(tree, (n) => {
     if (!motion && motionOf(n)) motion = true;
+    if (!motion && n === tree.root) motion = looksOf(tree).some(([t, l]) => Boolean(motionOf(lookNode(t, l))));
     if (n.type === "product360" && typeof n.props?.productId === "string" && /^[\w-]{1,64}$/.test(n.props.productId)) spinProducts.add(n.props.productId);
   });
   return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12) };

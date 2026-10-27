@@ -17,7 +17,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { studioLink } from "./studioLink";
-import { motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
+import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
 
 type Gsap = typeof import("gsap").gsap;
 type ST = typeof import("gsap/ScrollTrigger").ScrollTrigger;
@@ -85,7 +85,7 @@ type Env = { phone: boolean; mouse: boolean; rtl: boolean; live: boolean; only: 
 function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElement, m: TreeMotionSpec, env: Env, off: Array<() => void>) {
   if (env.phone && m.phone === "off") return;
   const lite = env.phone && m.phone === "lite";
-  const id = el.dataset.treeNode ?? "";
+  const id = el.dataset.treeNode ?? el.dataset.ptLook ?? "";
   const plays = env.live || env.only === id;
   let enterEnds = 0;
 
@@ -184,6 +184,21 @@ export function TreeMotion() {
   useEffect(() => {
     const root = document.documentElement;
     const done = () => root.classList.remove("pt-pending");
+    // Parts of old sections and scenes that move (the editor's looks, #pt-looks): they get their motion too.
+    try {
+      const looks = JSON.parse(document.getElementById("pt-looks")?.textContent || "[]") as Array<[string, unknown]>;
+      for (const [target, motion] of Array.isArray(looks) ? looks : []) {
+        const sel = typeof target === "string" ? lookSelector(target) : null;
+        if (!sel) continue;
+        document.querySelectorAll<HTMLElement>(sel).forEach((el) => {
+          if (el.dataset.treeNode) return;
+          el.dataset.ptLook = target;
+          el.dataset.ptMotion = JSON.stringify(motion);
+        });
+      }
+    } catch {
+      /* no looks, or broken ones: nothing more moves */
+    }
     const els = Array.from(document.querySelectorAll<HTMLElement>("[data-pt-motion]"));
     if (!els.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
     const studio = window.parent !== window && /\/studio-frame/.test(window.location.pathname);
@@ -228,7 +243,7 @@ export function TreeMotion() {
           for (const el of els) {
             let spec: TreeMotionSpec | null = null;
             try {
-              spec = motionOf({ id: el.dataset.treeNode ?? "", type: "", props: {}, motion: JSON.parse(el.dataset.ptMotion ?? "null") });
+              spec = motionOf({ id: el.dataset.treeNode ?? el.dataset.ptLook ?? "", type: "", props: {}, motion: JSON.parse(el.dataset.ptMotion ?? "null") });
             } catch {
               spec = null;
             }

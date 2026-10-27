@@ -393,7 +393,12 @@ export function StorefrontChrome({
   storeData?: RoseStoreData;
 }) {
   const pathname = usePathname();
-  const home = pathname === "/";
+  // The admin's editor shows a page at /studio-frame: the home there looks as the home does
+  // (the frame marks it), and the shopper's picked colour stays out of it.
+  const studio = /(^|\/)studio-frame$/.test(pathname);
+  const [studioHome, setStudioHome] = useState(false);
+  useEffect(() => setStudioHome(studio && Boolean(document.querySelector("[data-studio-home]"))), [studio, pathname]);
+  const home = pathname === "/" || studioHome;
   useEffect(() => {
     document.documentElement.dataset.cinematicHome =
       enabled && home ? "true" : "false";
@@ -416,7 +421,7 @@ export function StorefrontChrome({
   return (
       <StoreContext.Provider value={storeData}>
         <RoseThemeProvider key={pathname}
-          restoreSelection={!pathname.startsWith("/about")}
+          restoreSelection={!pathname.startsWith("/about") && !studio}
           className={`cinematic-shell ${home ? "cinematic-home-shell" : "cinematic-interior-shell"}`}
         >
           <Header />

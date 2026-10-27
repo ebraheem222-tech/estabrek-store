@@ -4,9 +4,12 @@
  * (worked out one after the other, so a batch that moves things and then removes
  * their old place undoes cleanly).
  */
-import type { PageDraft, PageDraftOp, DraftSection, PageTree, PageTreeNode } from "../api/pages.api";
+import type { PageDraft, PageDraftOp, DraftSection, LookEntry, PageTree, PageTreeNode } from "../api/pages.api";
 
 export type Lang = "ar" | "en" | "he";
+
+/** The page's looks for parts of old sections and scenes (the tree root's props.looks). */
+export const looksOf = (d: { tree: PageTree } | null | undefined): Record<string, LookEntry> => ((d?.tree.root.props?.looks ?? {}) as Record<string, LookEntry>);
 
 /** "items.2.question" → ["items", 2, "question"]. */
 export const parsePath = (p: string): Array<string | number> => p.split(".").filter(Boolean).map((s) => (/^\d+$/.test(s) ? Number(s) : s));
@@ -34,7 +37,7 @@ export function fieldValue(s: DraftSection | undefined, lang: Lang, main: Lang, 
 }
 
 /** What only this language's translation holds at the path (undefined = it follows the main words). */
-const ownValue = (s: DraftSection | undefined, lang: Lang, main: Lang, path: Array<string | number>) =>
+export const ownValue = (s: DraftSection | undefined, lang: Lang, main: Lang, path: Array<string | number>) =>
   lang === main ? getPath(s?.data, path) : getPath(s?.tr?.[lang], path);
 
 /** An element anywhere in the tree, with its parent and its place there. */
@@ -95,9 +98,20 @@ export function inverseOf(op: PageDraftOp, d: PageDraft, main: Lang): PageDraftO
       const s = d.sections.find((x) => x.id === op.sectionId);
       return [{ op: "setVisible", sectionId: op.sectionId, visible: s?.isVisible !== false }];
     }
+    case "setLookStyle": {
+      const old = looksOf(d)[op.target]?.style?.[op.screen];
+      return [{ ...op, style: old ? structuredClone(old) : null }];
+    }
+    case "setLookMotion": {
+      const old = looksOf(d)[op.target]?.motion;
+      return [{ ...op, motion: old ? structuredClone(old) : null }];
+    }
     case "placeBlock": {
       const at = kids.findIndex((n) => n.id === `rb-${op.block}`);
-      return [{ op: "placeBlock", block: op.block, index: at >= 0 ? at : null }];
+      const back: PageDraftOp[] = [{ op: "placeBlock", block: op.block, index: at >= 0 ? at : null }];
+      // A scene taken off the page takes the objects placed over it: they come back with it.
+      if (at >= 0 && (op.index === null || op.index === undefined)) (kids[at].children ?? []).forEach((c, i) => back.push({ op: "insert", parentId: kids[at].id, index: i, node: structuredClone(c) }));
+      return back;
     }
   }
 }
@@ -107,10 +121,35 @@ export function inverseOf(op: PageDraftOp, d: PageDraft, main: Lang): PageDraftO
  * the old sections' words and visibility leave the tree as it is.
  */
 export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
-  if (!["move", "remove", "insert", "setProps", "setStyle", "setMotion"].includes(op.op)) return d;
+  if (!["move", "remove", "insert", "setProps", "setStyle", "setMotion", "placeBlock", "setLookStyle", "setLookMotion"].includes(op.op)) return d;
   const tree = structuredClone(d.tree);
   tree.root.children ??= [];
   switch (op.op) {
+    case "setLookStyle":
+    case "setLookMotion": {
+      const looks = { ...((tree.root.props.looks ?? {}) as Record<string, LookEntry>) };
+      const entry: LookEntry = { ...(looks[op.target] ?? {}), kind: op.kind };
+      if (op.op === "setLookStyle") {
+        const style = { ...(entry.style ?? {}) };
+        if (op.style && Object.keys(op.style).length) style[op.screen] = structuredClone(op.style);
+        else delete style[op.screen];
+        if (Object.keys(style).length) entry.style = style;
+        else delete entry.style;
+      } else if (op.motion && Object.keys(op.motion).length) entry.motion = structuredClone(op.motion);
+      else delete entry.motion;
+      if (entry.style || entry.motion) looks[op.target] = entry;
+      else delete looks[op.target];
+      tree.root.props = { ...tree.root.props, looks };
+      if (!Object.keys(looks).length) delete tree.root.props.looks;
+      break;
+    }
+    case "placeBlock": {
+      const kids = tree.root.children;
+      const at = kids.findIndex((n) => n.id === `rb-${op.block}`);
+      const node = at >= 0 ? kids.splice(at, 1)[0] : { id: `rb-${op.block}`, type: "roseBlock", props: { block: op.block } };
+      if (op.index !== null && op.index !== undefined) kids.splice(clamp(op.index, kids.length), 0, node);
+      break;
+    }
     case "move": {
       const at = locate(tree, op.nodeId);
       const into = op.parentId === undefined ? tree.root : locate(tree, op.parentId)?.node;
@@ -127,6 +166,8 @@ export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
     }
     case "insert": {
       const into = locate(tree, op.parentId)?.node;
+      // An old section or a scene starts holding objects placed over it.
+      if (into && !into.children && (into.type === "legacy" || into.type === "roseBlock")) into.children = [];
       if (!into?.children) return d;
       into.children.splice(clamp(op.index, into.children.length), 0, structuredClone(op.node));
       break;

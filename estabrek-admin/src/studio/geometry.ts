@@ -259,6 +259,20 @@ export function zoomAround(pan: Pt, zoom: number, cursor: Pt, nextZoom: number) 
   return { zoom: z, pan: { x: cursor.x - (cursor.x - pan.x) * k, y: cursor.y - (cursor.y - pan.y) * k } };
 }
 
+/**
+ * The part of a box that shows inside `view` (the frame on the screen), and which of its
+ * sides go past it: a scene many screens tall is drawn as what shows of it, its label on
+ * top of that. Null when none of it shows.
+ */
+export function visiblePart(b: Box, view: Box): { box: Box; above: boolean; below: boolean; before: boolean; after: boolean } | null {
+  const x = Math.max(b.x, view.x);
+  const y = Math.max(b.y, view.y);
+  const x2 = Math.min(b.x + b.w, view.x + view.w);
+  const y2 = Math.min(b.y + b.h, view.y + view.h);
+  if (x2 <= x || y2 <= y) return null;
+  return { box: { x, y, w: x2 - x, h: y2 - y }, above: b.y < view.y - 0.5, below: b.y + b.h > view.y + view.h + 0.5, before: b.x < view.x - 0.5, after: b.x + b.w > view.x + view.w + 0.5 };
+}
+
 /** A box on the page (page coordinates, with the frame's scroll) as a box on the screen. */
 export function toScreen(b: Box, scroll: Pt, origin: Pt, zoom: number): Box {
   return { x: origin.x + (b.x - scroll.x) * zoom, y: origin.y + (b.y - scroll.y) * zoom, w: b.w * zoom, h: b.h * zoom };

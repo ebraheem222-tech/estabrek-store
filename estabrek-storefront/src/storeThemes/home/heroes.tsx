@@ -56,14 +56,14 @@ function Title({ lines, className = "th-hero-title" }: { lines: string[]; classN
 function Buttons({ w, ghost = true }: { w: ReturnType<typeof words>; ghost?: boolean }) {
   return (
     <div className="th-hero-actions" data-th-reveal="block">
-      <Link href={w.primary.href} className="th-button" data-th-magnetic="" data-edit="primaryButton.label">
+      <Link href={w.primary.href} className="th-button" data-th-magnetic="" data-edit="primaryButton.label" data-edit-link="primaryButton.href">
         {w.primary.label}
         <span className="th-arrow" aria-hidden>
           →
         </span>
       </Link>
       {w.secondary && ghost ? (
-        <Link href={w.secondary.href} className="th-button th-button-ghost" data-edit="secondaryButton.label">
+        <Link href={w.secondary.href} className="th-button th-button-ghost" data-edit="secondaryButton.label" data-edit-link="secondaryButton.href">
           {w.secondary.label}
         </Link>
       ) : null}

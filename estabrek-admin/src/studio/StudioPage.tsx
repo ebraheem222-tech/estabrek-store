@@ -28,21 +28,26 @@ import { getApiErrorMessage } from "../api/http";
 import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme } from "./storeThemes";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toast } from "../lib/toast";
-import { History, fieldValue, parsePath, undoOf } from "./draft";
-import { MediaSlot, SectionActions, SectionSettings, ThemePanel } from "./StudioPanels";
+import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
+import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
+import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
-import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newElement, newSection, reduceWidths, styleOp, twelfths, type NewKind } from "./columns";
+import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
+import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
+import { AddPanel } from "./AddPanel";
+import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
+import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import { LookPanel, MotionPanel } from "./LookPanels";
 import { SvgPanel } from "./SvgPanel";
 import { Product360Panel } from "./Product360Panel";
-import { placeFor, placedOn } from "./look";
+import { motionOp, placeFor, placedOn, withPreset, type Motion } from "./look";
 import { env } from "../config/env";
 import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
 import { languagesOf } from "../lib/storeLanguages";
 import { tr } from "../lib/words";
-import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, pickAt, queenStep, toScreen, zoomAround, type Box, type Pt, type Shape } from "./geometry";
-import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, pathTo, shapesOf, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
+import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
+import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, partLabel, pathTo, shapesOf, tagLabel, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
 
 const SOURCE = "estabrek-studio";
 const DEVICES = {
@@ -57,12 +62,26 @@ const BLOCK_LABEL: Record<string, () => string> = {
   seasons: () => tr("المواسم", "Seasons"),
   stories: () => tr("قصص الكولكشن", "Collection stories"),
   instagram: () => tr("إنستغرام", "Instagram"),
+  fabric: () => tr("دراسة القماش", "Fabric study"),
 };
 /** The opening's switch that shows each rose scene. */
-const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled" };
+const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled" };
+/** Scenes that keep their own place (the fabric study follows the first products). */
+const FIXED_BLOCKS = new Set(["fabric"]);
 const statusOf = (e: unknown) => (e as { response?: { status?: number } })?.response?.status;
-/** Where a dragged element would land: the place, its index there, and the line to draw. */
-type Drop = { parentId: string; index: number; line: Box; box: Box };
+/** What a marked piece is drawn as, for its look (the rest are boxes). */
+const PART_KIND: Record<string, PagesAPI.LookKind> = {
+  "card-image": "image", tile: "image", film: "video",
+  "card-name": "text", "card-price": "text", "card-category": "text", category: "text", "closing-text": "text", cue: "text",
+  handle: "button", "card-add": "button",
+};
+/** A field that names its language at its end (a scene's word: roseScenes.seasons.winter.title.en). */
+const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
+/**
+ * Where a dragged element would land: the place, its index there, and the line to draw;
+ * or (from the Add panel) beside a page item, or over a section or scene at a spot of it.
+ */
+type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
 const shopOrigin = () => {
   try {
@@ -106,7 +125,13 @@ export default function StudioPage() {
   const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" }>(null);
   const [drop, setDrop] = useState<Drop | null>(null);
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
-  const adding = useRef<NewKind | null>(null);
+  const adding = useRef<AddKind | null>(null);
+  // The left column: the Add panel or the layers; where a click on the Add panel adds.
+  const [leftTab, setLeftTab] = useState<"add" | "layers">("add");
+  const [addWhere, setAddWhere] = useState<Where>("after");
+  /** A picture or clip being chosen for something about to be added. */
+  const [asked, setAsked] = useState<{ media: "image" | "video"; then: (url: string) => void } | null>(null);
+  const [askedUrl, setAskedUrl] = useState("");
   // Motion in the frame: everything plays while "live"; after a motion change that element plays once.
   const [motionLive, setMotionLive] = useState(false);
   const liveRef = useRef(false);
@@ -243,9 +268,11 @@ export default function StudioPage() {
   }, [canvas.w, canvas.h, dev.w, dev.h]);
   useEffect(() => fit(), [fit]);
 
-  const measured = useMemo(() => (index && layout ? shapesOf(index, layout, pan, zoom) : { shapes: [] as Shape[], extras: new Map<string, Extra>() }), [index, layout, pan, zoom]);
+  const measured = useMemo(() => (index && layout ? shapesOf(index, layout, pan, zoom) : { shapes: [] as Shape[], extras: new Map<string, Extra>(), up: new Map<string, string | null>() }), [index, layout, pan, zoom]);
   const shapes = measured.shapes;
   const extras = measured.extras;
+  /** The parent of every measured thing that isn't a tree node (a field, a piece of a section or scene). */
+  const up = measured.up;
   const grid = useMemo(() => new SpatialGrid(shapes, 64, { x: 0, y: 0, w: canvas.w, h: canvas.h }), [shapes, canvas.w, canvas.h]);
   const shapeOf = (sid: string | null) => (sid ? shapes.find((s) => s.id === sid) ?? null : null);
   const frameBox: Box = { x: pan.x, y: pan.y, w: dev.w * zoom, h: dev.h * zoom };
@@ -259,7 +286,9 @@ export default function StudioPage() {
     setSelected(sid);
     if (!reveal || !sid || !index) return;
     const x = extras.get(sid);
-    if (x?.kind === "slot") return send({ type: "reveal", sectionId: x.sectionId, path: x.path });
+    if (x?.kind === "slot") return send({ type: "reveal", owner: x.owner, sectionId: x.sectionId, path: x.path });
+    if (x?.kind === "part") return send({ type: "reveal", owner: x.owner, part: x.name, n: x.n });
+    if (x?.kind === "auto") return send({ type: "reveal", owner: x.owner });
     if (x?.kind === "block") return send({ type: "reveal", block: x.block });
     const n = index.nodes.get(sid)?.node;
     if (n?.type === "legacy") send({ type: "reveal", sectionId: n.props.sectionId });
@@ -320,14 +349,16 @@ export default function StudioPage() {
   const onTextEdited = useRef<(sectionId: string, path: string, value: string) => void>(() => {});
   onTextEdited.current = (sectionId, path, value) => {
     const p = parsePath(path);
-    const before = fieldValue(sectionOf(sectionId), shopLang, main, p);
+    // A scene's word names its language in its path (…title.en): kept with the main words.
+    const lang = wordLang(path) ? main : shopLang;
+    const before = fieldValue(sectionOf(sectionId), lang, main, p);
     if ((typeof before === "string" ? before : "") === value) return;
-    void setField(sectionId, p, value, shopLang, false);
+    void setField(sectionId, p, value, lang, false);
   };
   const startText = (sid: string | null) => {
     const x = sid ? extras.get(sid) : undefined;
-    if (!x || x.kind !== "slot" || x.edit === "media") return false;
-    const v = fieldValue(sectionOf(x.sectionId), shopLang, main, parsePath(x.path));
+    if (!x || x.kind !== "slot" || x.edit === "media" || x.edit === "list") return false;
+    const v = fieldValue(sectionOf(x.sectionId), wordLang(x.path) ? main : shopLang, main, parsePath(x.path));
     setEditing({ sectionId: x.sectionId, path: x.path });
     send({ type: "editText", sectionId: x.sectionId, path: x.path, value: typeof v === "string" ? v : undefined });
     return true;
@@ -340,7 +371,8 @@ export default function StudioPage() {
     if (!s) return pageKids.length;
     const after = pageKids.findIndex((n) => {
       const o = shapes.find((x) => x.id === n.id);
-      return o && o.box.y > s.box.y;
+      // An empty scene (nothing to show) sits right where the next item starts.
+      return o && (o.box.y > s.box.y || (s.box.h < 1 && o.box.y >= s.box.y));
     });
     return after < 0 ? pageKids.length : after;
   };
@@ -445,7 +477,7 @@ export default function StudioPage() {
     // Dragging the selected element (or from inside it) moves it; sections move in the layers.
     const sel = nodeOf(selected);
     const hit = !panning && !touch && e.button === 0 && sel && isFree(sel.type) && sel.type !== "section" ? pickAt(grid.near(p), p) : null;
-    const grab = hit && index && selected && pathTo(index, hit.id).includes(selected) ? selected : null;
+    const grab = hit && index && selected && pathTo(index, hit.id, up).includes(selected) ? selected : null;
     down.current = { p, pan, panning, touch, moved: false, y: p.y, grab, box: grab ? shapeOf(grab)?.box : undefined, holder: grab ? holderOf(grab) : null };
   };
 
@@ -470,7 +502,7 @@ export default function StudioPage() {
     let target = e.ctrlKey || e.metaKey ? now?.id ?? null : clickTarget(now, filter.current.current);
     // A second click at the same spot climbs to the parent.
     const again = lastClick.current && Math.hypot(p.x - lastClick.current.x, p.y - lastClick.current.y) < 4;
-    if (again && !(e.ctrlKey || e.metaKey) && selected && target && pathTo(index, target).includes(selected)) target = parentOf(selected) ?? selected;
+    if (again && !(e.ctrlKey || e.metaKey) && selected && target && pathTo(index, target, up).includes(selected)) target = parentOf(selected) ?? selected;
     lastClick.current = p;
     select(target);
   };
@@ -537,6 +569,17 @@ export default function StudioPage() {
         else zoomBy(e.key === "-" ? 1 / 1.25 : 1.25);
         return;
       }
+      // Delete takes the selected element out (asking first), Ctrl/⌘+D copies it.
+      if ((e.key === "Delete" || e.key === "Backspace") && selected && selFree && selFree.type !== "cell") {
+        e.preventDefault();
+        setAsking({ kind: "delete", nodeId: selected, name: label(selected), tree: true });
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d" && selFree && selFree.type !== "cell") {
+        e.preventDefault();
+        copySelected();
+        return;
+      }
       if (e.key === "Escape") {
         if (themeOpen) return setThemeOpen(false);
         setSelected((s) => parentOf(s));
@@ -555,7 +598,7 @@ export default function StudioPage() {
         const v = { x: (h.has("ArrowRight") ? 1 : 0) - (h.has("ArrowLeft") ? 1 : 0), y: (h.has("ArrowDown") ? 1 : 0) - (h.has("ArrowUp") ? 1 : 0) };
         const dir = v.x && v.y ? { x: v.x * Math.SQRT1_2, y: v.y * Math.SQRT1_2 } : v.x > 0 ? DIRECTIONS.right : v.x < 0 ? DIRECTIONS.left : v.y > 0 ? DIRECTIONS.down : DIRECTIONS.up;
         const from = shapeOf(selected);
-        const next = from ? queenStep(from, shapes.filter((s) => s.id !== index.root), dir, { related: isRelated(index) }) : null;
+        const next = from ? queenStep(from, shapes.filter((s) => s.id !== index.root), dir, { related: isRelated(index, up) }) : null;
         if (next) select(next.id, true);
       }
     };
@@ -571,14 +614,22 @@ export default function StudioPage() {
     };
   });
 
+  // The layers list follows what's selected on the page.
+  useEffect(() => {
+    if (!selected) return;
+    document.querySelectorAll(`[data-testid="studio-layer"][data-node="${CSS.escape(selected)}"]`).forEach((el) => el.scrollIntoView({ block: "nearest" }));
+  }, [selected]);
+
   /* ----------------------------------------------------------- drawing */
 
   const label = (sid: string) => {
     const x = extras.get(sid);
     if (x?.kind === "block" || sid.startsWith("block:")) return `${tr("مشهد", "Scene")} · ${BLOCK_LABEL[x?.kind === "block" ? x.block : sid.slice(6)]?.() ?? sid}`;
+    if (x?.kind === "part") return x.count > 1 ? `${partLabel(x.name)} ${x.n + 1}` : partLabel(x.name);
+    if (x?.kind === "auto") return x.label ? `${tagLabel(x.tag)} · ${x.label.length > 30 ? `${x.label.slice(0, 30)}…` : x.label}` : tagLabel(x.tag);
     if (x?.kind === "slot" || sid.startsWith("slot:")) {
       const path = x?.kind === "slot" ? x.path : sid.split(":").slice(2).join(":");
-      const v = x?.kind === "slot" && x.edit !== "media" ? fieldValue(sectionOf(x.sectionId), shopLang, main, parsePath(path)) : null;
+      const v = x?.kind === "slot" && x.edit !== "media" ? fieldValue(sectionOf(x.sectionId), wordLang(path) ? main : shopLang, main, parsePath(path)) : null;
       const name = fieldLabel(path);
       return typeof v === "string" && v ? `${name} · ${v.length > 30 ? `${v.slice(0, 30)}…` : v}` : name;
     }
@@ -592,29 +643,86 @@ export default function StudioPage() {
   const outline = (sid: string | null, kind: "hover" | "selected" | "parent") => {
     const s = shapeOf(sid);
     if (!s || sid === index?.root) return null;
-    const style = { left: s.box.x - frameBox.x, top: s.box.y - frameBox.y, width: s.box.w, height: s.box.h };
+    // Only what shows of it: a scene many screens tall keeps its label and edges in sight.
+    const seen = visiblePart(s.box, frameBox);
+    if (!seen) return null;
+    const style = { left: seen.box.x - frameBox.x, top: seen.box.y - frameBox.y, width: seen.box.w, height: seen.box.h };
     const cls =
-      kind === "selected" ? "border-2 border-accent-400" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
+      kind === "selected" ? "border-2 border-accent-400 bg-accent-400/[0.06]" : kind === "hover" ? "border border-dashed border-accent-300/90" : "border border-accent-400/35";
+    // Where it goes on past the frame, its side is dashed.
+    const cut = { borderTopStyle: seen.above ? "dashed" : undefined, borderBottomStyle: seen.below ? "dashed" : undefined } as const;
     return (
-      <div key={`${kind}-${sid}`} className={`pointer-events-none absolute ${cls}`} style={style} data-testid={`studio-${kind}`}>
+      <div key={`${kind}-${sid}`} className={`pointer-events-none absolute ${cls}`} style={{ ...style, ...cut }} data-testid={`studio-${kind}`} data-cut={seen.above || seen.below ? "1" : undefined}>
         {kind !== "parent" ? (
-          // Above the box; inside it when the box touches the top of the frame.
-          <span className={`absolute start-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${style.top < 24 ? "top-0" : "-top-6"} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`}>
+          // Above the box; inside it when the box touches the top of the frame (or goes on above it).
+          <span className={`absolute start-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] ${style.top < 24 || seen.above ? "top-0" : "-top-6"} ${kind === "selected" ? "bg-accent-500 text-white" : "bg-surface-900/90 text-white/85"}`}>
+            {seen.above ? <span aria-hidden="true">↑</span> : null}
             <span>{label(sid!)}</span>
             {kind === "selected" ? <span className="opacity-75" dir="ltr">{Math.round(s.box.w / zoom)}×{Math.round(s.box.h / zoom)}</span> : null}
           </span>
         ) : null}
+        {kind === "selected" && seen.below ? <span className="absolute bottom-1 start-1/2 -translate-x-1/2 rounded-full bg-accent-500 px-1.5 text-[11px] text-white" aria-hidden="true">↓</span> : null}
       </div>
     );
   };
 
-  const selPath = index ? pathTo(index, selected) : [];
-  const parentOf = (sid: string | null) => (sid && index ? pathTo(index, sid).slice(-2, -1)[0] ?? null : null);
+  const selPath = index ? pathTo(index, selected, up) : [];
+  /** A step of the path above what's selected, by its kind. */
+  const crumb = (pid: string) => {
+    const n = index?.nodes.get(pid)?.node;
+    if (n) return n.type === "roseBlock" ? tr("مشهد", "Scene") : typeLabel(n.type);
+    const x = extras.get(pid);
+    if (x?.kind === "part") return partLabel(x.name);
+    if (x?.kind === "auto") return tagLabel(x.tag);
+    if (x?.kind === "slot") return x.edit === "media" ? (x.media === "video" ? typeLabel("video") : typeLabel("image")) : x.link ? typeLabel("button") : typeLabel("text");
+    return pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text");
+  };
+  const parentOf = (sid: string | null) => (sid && index ? pathTo(index, sid, up).slice(-2, -1)[0] ?? null : null);
   const selNode = selected ? index?.nodes.get(selected) : undefined;
   const selShape = shapeOf(selected);
   const selExtra = selected ? extras.get(selected) : undefined;
   const selBlock = selExtra?.kind === "block" ? selExtra.block : selNode?.node.type === "roseBlock" ? String(selNode.node.props.block) : selected?.startsWith("block:") ? selected.slice(6) : null;
   const selSection = selNode?.node.type === "legacy" ? sectionOf(String(selNode.node.props.sectionId)) : undefined;
+
+  /* -------------------------------------- looks: parts of old sections and scenes */
+
+  /** What's selected as a look's target (a field or marked piece of an old section or scene, or the whole of one). */
+  const lookTarget: { target: string; kind: PagesAPI.LookKind } | null = (() => {
+    const x = selExtra;
+    // A scene's words are one look for every language (…title, not …title.en).
+    if (x?.kind === "slot") return { target: `${x.owner}/${x.path.replace(/\.(ar|en|he)$/, "")}`, kind: x.edit === "media" ? (x.media === "video" ? "video" : "image") : x.link ? "button" : "text" };
+    if (x?.kind === "part") return { target: `${x.owner}/@${x.name}`, kind: PART_KIND[x.name] ?? "box" };
+    if (selSection) return { target: `s:${selSection.id}`, kind: "box" };
+    if (selBlock) return { target: `b:${selBlock}`, kind: "box" };
+    return null;
+  })();
+  const looks = looksOf(working);
+  /** The look as a node, for the look and motion panels (their changes become setLookStyle/setLookMotion). */
+  const lookSel: PagesAPI.PageTreeNode | null = lookTarget
+    ? { id: `look:${lookTarget.target}`, type: { text: "text", button: "button", image: "image", video: "video", box: "section" }[lookTarget.kind], props: {}, style: looks[lookTarget.target]?.style, motion: looks[lookTarget.target]?.motion }
+    : null;
+  const lookChange = (label: string, ops: PagesAPI.PageDraftOp[]) => {
+    if (!lookTarget) return;
+    const mapped = ops.map((o): PagesAPI.PageDraftOp =>
+      o.op === "setStyle" && o.nodeId.startsWith("look:")
+        ? { op: "setLookStyle", target: o.nodeId.slice(5), kind: lookTarget.kind, screen: o.screen, style: o.style }
+        : o.op === "setMotion" && o.nodeId.startsWith("look:")
+          ? { op: "setLookMotion", target: o.nodeId.slice(5), kind: lookTarget.kind, motion: o.motion }
+          : o,
+    );
+    void change(label, mapped);
+  };
+  /** A field's words in a language: a scene's word in its own field (…title.en), else that language's own. */
+  const wordOf = (x: Extract<Extra, { kind: "slot" }>, l: Lang) => {
+    const s = sectionOf(x.sectionId);
+    const v = wordLang(x.path) ? getPath(s?.data, parsePath(x.path.replace(/\.(ar|en|he)$/, `.${l}`))) : ownValue(s, l, main, parsePath(x.path));
+    return typeof v === "string" ? v : "";
+  };
+  const saveWord = (x: Extract<Extra, { kind: "slot" }>, l: Lang, v: string) => {
+    const empty = !v.trim();
+    if (wordLang(x.path)) return void setField(x.sectionId, parsePath(x.path.replace(/\.(ar|en|he)$/, `.${l}`)), empty ? null : v, main);
+    void setField(x.sectionId, parsePath(x.path), empty ? null : v, l);
+  };
   const canUndo = history.current.done.length > 0;
   const canRedo = history.current.undone.length > 0;
   const topAt = selected ? pageKids.findIndex((n) => n.id === selected) : -1;
@@ -634,26 +742,41 @@ export default function StudioPage() {
     setSelected(then);
     revealNext.current = then;
   };
-  const probe = (kind: NewKind): PagesAPI.PageTreeNode => ({ id: "__new", type: kind, props: {}, children: kind === "columns" ? [] : undefined });
-  /** Where something new goes: inside the selected place (at its end), else right after the selected element. */
-  const addPlace = (node: PagesAPI.PageTreeNode) => {
-    const here = selected ? index?.nodes.get(selected) : undefined;
-    if (!index || !here || !selected) return null;
-    if (canHold(index, selected, node)) return { parentId: selected, index: here.children.length };
-    if (here.parentId && here.parentId !== index.root && canHold(index, here.parentId, node)) return { parentId: here.parentId, index: index.nodes.get(here.parentId)!.children.indexOf(selected) + 1 };
-    return null;
+  const probe = (kind: AddKind): PagesAPI.PageTreeNode => {
+    const n = makeNode(kind, shopLang, (p) => `__${p}`);
+    return { ...n, id: "__new" };
   };
-  const addNew = (kind: NewKind, src?: string, place = addPlace(probe(kind))) => {
-    if (!place) return;
-    const node = newElement(kind, shopLang, makeIds(), src);
-    void change(tr("إضافة", "Add"), [{ op: "insert", parentId: place.parentId, index: place.index, node }], node.id);
+  /** What adding works from: the page, what's measured, and where a scene without a place shows. */
+  const insertCtx = (ids = makeIds()): InsertCtx | null => (index ? { index, up, extras, pageIndex: indexAt, ids } : null);
+  /** Adds `node` before, after or inside `anchor` (at `spot` over a section). */
+  const addNode = (node: PagesAPI.PageTreeNode, where: Where, anchor: string | null, spot?: Spot, label = tr("إضافة", "Add"), ids = makeIds()) => {
+    const c = insertCtx(ids);
+    const plan = c ? insertOps(c, anchor, node, where, spot) : null;
+    if (!plan) return void toast.error(tr("ما بينفع يتضاف هون", "It can't be added here"));
+    void change(label, plan.ops, plan.select);
   };
-  /** A new section with columns, after the selected item of the page (or at its end). */
-  const addSection = (widths: number[]) => {
-    if (!index) return;
-    const node = newSection(widths, makeIds());
-    void change(tr("قسم بأعمدة", "Section with columns"), [{ op: "insert", parentId: index.root, index: topAt >= 0 ? topAt + 1 : pageKids.length, node }], node.children![0].id);
+  /** Adds a kind from the Add panel (or a drop); a picture or clip is chosen first. */
+  const addKind = (kind: AddKind, src?: string, where: Where = addWhereNow, anchor: string | null = selected, spot?: Spot) => {
+    const need = NEEDS[kind];
+    if (need && !src) return setAsked({ media: need, then: (url) => addKind(kind, url, where, anchor, spot) });
+    const ids = makeIds();
+    addNode(makeNode(kind, shopLang, ids, src), where, anchor, spot, tr("إضافة", "Add"), ids);
   };
+  /** A new section with columns, after the selection's page item (or at the page's end). */
+  const addSection = (widths: number[], where: Where = "after") => {
+    const ids = makeIds();
+    const node = newSection(widths, ids);
+    const c = insertCtx(ids);
+    const plan = c ? insertOps(c, selected, node, where) ?? insertOps(c, null, node, "after") : null;
+    if (plan) void change(tr("قسم بأعمدة", "Section with columns"), plan.ops, node.children![0].id);
+  };
+  /** Whether something can go where chosen next to the selection (a probe, nothing is sent). */
+  const canAdd = (kind: AddKind, where: Where) => {
+    const c = insertCtx((p) => `__${p}`);
+    return Boolean(c && insertOps(c, selected, probe(kind), where));
+  };
+  const whereOk: Record<Where, boolean> = { before: canAdd("heading", "before"), after: canAdd("heading", "after"), inside: canAdd("heading", "inside") || canAdd("section", "inside") };
+  const addWhereNow: Where = whereOk[addWhere] ? addWhere : whereOk.after ? "after" : whereOk.inside ? "inside" : "before";
   /** Moves an element to a place (its index there counted without the element itself). */
   const moveTo = (nodeId: string, place: { parentId: string; index: number }) => {
     const at = index?.nodes.get(nodeId);
@@ -678,9 +801,11 @@ export default function StudioPage() {
   const dropAt = (p: Pt, node: PagesAPI.PageTreeNode): Drop | null => {
     if (!index || !inFrame(p)) return null;
     const hit = pickAt(grid.near(p), p);
-    for (let at: string | null = hit?.inside ? hit.id : null; at && at !== index.root; at = index.nodes.get(at)?.parentId ?? null) {
+    for (let at: string | null = hit?.inside ? hit.id : null; at && at !== index.root; at = index.nodes.get(at)?.parentId ?? up.get(at) ?? null) {
       const box = shapeOf(at)?.box;
-      if (!box || !canHold(index, at, node)) continue;
+      // Over an old section or a scene, things are placed freely (dropFor), not in a row.
+      const kind = index.nodes.get(at)?.node.type;
+      if (!box || kind === "legacy" || kind === "roseBlock" || !index.nodes.has(at) || !canHold(index, at, node)) continue;
       const here = index.nodes.get(at)!;
       const kids = here.children.filter((c) => c !== node.id);
       const across = here.node.type === "columns";
@@ -701,6 +826,44 @@ export default function StudioPage() {
       return { parentId: at, index: i, line, box };
     }
     return null;
+  };
+
+  /**
+   * Where something dragged from the Add panel lands: inside a place of the tree that takes
+   * it; on the line between two page items (near it); else over the old section or scene
+   * under the pointer, placed freely where it's dropped.
+   */
+  const dropFor = (p: Pt, kind: AddKind): Drop | null => {
+    if (!index || !layout || !inFrame(p)) return null;
+    const node = probe(kind);
+    const inTree = dropAt(p, node);
+    if (inTree) return inTree;
+    const items = topItems.map((id) => ({ id, box: shapeOf(id)?.box })).filter((x): x is { id: string; box: Box } => Boolean(x.box && x.box.h > 0));
+    const band = 28;
+    for (let i = 0; i <= items.length; i++) {
+      const above = items[i - 1];
+      const below = items[i];
+      const y = above && below ? (above.box.y + above.box.h + below.box.y) / 2 : above ? above.box.y + above.box.h : below ? below.box.y : null;
+      if (y === null || Math.abs(p.y - y) > band) continue;
+      const anchor = above ? above.id : below!.id;
+      const where: Where = above ? "after" : "before";
+      const c = insertCtx((x) => `__${x}`);
+      if (!c || !insertOps(c, anchor, node, where)) continue;
+      return { parentId: index.root, index: -1, line: { x: frameBox.x, y: y - 2, w: frameBox.w, h: 4 }, box: { x: frameBox.x, y: y - 14, w: frameBox.w, h: 28 }, page: { anchor, where } };
+    }
+    // Over a section or scene: the page item under the pointer, at the pointer's spot of its layer.
+    const under = items.find((x) => p.y >= x.box.y && p.y <= x.box.y + x.box.h);
+    if (!under) return null;
+    const c = insertCtx((x) => `__${x}`);
+    if (!c || !insertOps(c, under.id, node, "inside")) return null;
+    // The layer objects sit on: the section, or one screen of a taller scene (it stays in sight).
+    const vh = layout.viewport.h * zoom;
+    const h = Math.min(under.box.h, vh);
+    const top = Math.min(Math.max(under.box.y, frameBox.y), under.box.y + under.box.h - h);
+    const holder = { x: under.box.x, y: top, w: under.box.w, h };
+    const spot = placeFor({ x: p.x, y: p.y, w: 0, h: 0 }, holder, "center", layout.dir === "rtl");
+    const mark = { x: p.x - 60, y: p.y - 22, w: 120, h: 44 };
+    return { parentId: index.root, index: -1, line: { x: mark.x, y: mark.y + mark.h - 2, w: mark.w, h: 2 }, box: mark, over: { anchor: under.id, spot } };
   };
 
   // The lines between side-by-side cells of the selected columns (or of the selected cell's columns).
@@ -757,7 +920,7 @@ export default function StudioPage() {
             <span key={pid} className="flex items-center gap-1">
               {i ? <span className="inline-block ltr:-scale-x-100">‹</span> : null}
               <button type="button" onClick={() => select(pid, true)} className={`rounded px-1 hover:bg-white/[0.06] ${pid === selected ? "text-white" : ""}`}>
-                {index.nodes.get(pid) ? typeLabel(index.nodes.get(pid)!.node.type) : pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text")}
+                {crumb(pid)}
               </button>
             </span>
           ))}
@@ -771,7 +934,33 @@ export default function StudioPage() {
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
         </dl>
 
-        {selExtra?.kind === "slot" && selExtra.edit !== "media" ? (
+        {selExtra?.kind === "slot" && selExtra.edit === "list" ? (
+          <Field
+            label={`${tr("سطر لكل لفّة، بلغة الصفحة المعروضة", "One line per turn, in the shown page language")}: ${LANG_NAME[shopLang]}`}
+            multiline
+            value={(() => {
+              const v = fieldValue(sectionOf(selExtra.sectionId), shopLang, main, parsePath(selExtra.path));
+              return Array.isArray(v) ? v.join("\n") : "";
+            })()}
+            onSave={(v) => void setField(selExtra.sectionId, parsePath(selExtra.path), v.split("\n").map((x) => x.trim()).filter(Boolean), shopLang)}
+            testId="studio-slot-list"
+          />
+        ) : null}
+        {selExtra?.kind === "slot" && selExtra.link ? (
+          <Field
+            label={tr("رابط الزر (صفحة بالمتجر متل /shop، أو https://…)", "The button's link (a store page like /shop, or https://…)")}
+            value={String(fieldValue(sectionOf(selExtra.sectionId), main, main, parsePath(selExtra.link)) ?? "")}
+            onSave={(v) => {
+              const t = v.trim();
+              if (!t) void setField(selExtra.sectionId, parsePath(selExtra.link!), null, main);
+              else if (/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i.test(t)) void setField(selExtra.sectionId, parsePath(selExtra.link!), t, main);
+              else toast.error(tr("الرابط لازم يبلّش بـ / أو https://", "A link starts with / or https://"));
+            }}
+            testId="studio-slot-link"
+          />
+        ) : null}
+        {selExtra?.kind === "part" || selExtra?.kind === "auto" ? <PartInfo extra={selExtra} /> : null}
+        {selExtra?.kind === "slot" && selExtra.edit !== "media" && selExtra.edit !== "list" ? (
           <div className="space-y-2">
             <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing)} onClick={() => startText(selected)} data-testid="studio-edit-text">
               {editing ? tr("عم تكتب بالصفحة… (Enter للحفظ، Esc للإلغاء)", "Writing in the page… (Enter saves, Esc cancels)") : tr("كتابة النص مكانه", "Write the text in place")}
@@ -782,6 +971,17 @@ export default function StudioPage() {
             </p>
           </div>
         ) : null}
+        {selExtra?.kind === "slot" && (selExtra.edit === "text" || selExtra.edit === "lines") ? (
+          <WordsPanel
+            langs={langs.enabled}
+            main={main}
+            names={LANG_NAME}
+            multiline={selExtra.edit === "lines"}
+            busy={busy}
+            valueOf={(l) => wordOf(selExtra, l)}
+            onSave={(l, v) => saveWord(selExtra, l, v)}
+          />
+        ) : null}
         {selExtra?.kind === "slot" && selExtra.edit === "media" ? (
           <MediaSlot
             kind={selExtra.media === "video" ? "video" : "image"}
@@ -789,6 +989,34 @@ export default function StudioPage() {
             busy={busy}
             onSet={(url) => void setField(selExtra.sectionId, parsePath(selExtra.path), url, main)}
           />
+        ) : null}
+
+        {/* A part of an old section or scene: its look and motion (all of its kind, for a marked piece). */}
+        {lookSel && lookTarget ? (
+          <div className="space-y-3" data-testid="studio-look-target" data-target={lookTarget.target}>
+            {selExtra?.kind === "part" && selExtra.count > 1 ? <p className="text-[11px] leading-5 text-accent-200/80">{tr(`الشكل والحركة بيتغيّروا للـ ${selExtra.count} كلهم.`, "The look and motion change for all {0} of them.", [selExtra.count])}</p> : null}
+            {lookTarget.kind === "text" ? <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+            {lookTarget.kind === "button" ? (
+              <>
+                <ButtonStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+                <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight"]} />
+              </>
+            ) : null}
+            {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+            <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
+            {lookTarget.kind !== "box" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
+            {!lookTarget.target.startsWith("b:") || lookTarget.target.includes("/") ? (
+              <MotionPanel
+                node={lookSel}
+                busy={busy}
+                onOps={(l, ops) => {
+                  playNext.current = lookTarget.target;
+                  lookChange(l, ops);
+                }}
+                onPlay={() => send({ type: "motionPlay", nodeId: lookTarget.target })}
+              />
+            ) : null}
+          </div>
         ) : null}
 
         {selSection && topAt >= 0 ? (
@@ -818,8 +1046,8 @@ export default function StudioPage() {
         {selBlock ? (
           <div className="space-y-2">
             <SectionActions
-              canUp={(topAt >= 0 ? topAt : indexAt(selected)) > 0}
-              canDown={topAt >= 0 ? topAt < pageKids.length - 1 : indexAt(selected) < pageKids.length}
+              canUp={!FIXED_BLOCKS.has(selBlock) && (topAt >= 0 ? topAt : indexAt(selected)) > 0}
+              canDown={!FIXED_BLOCKS.has(selBlock) && (topAt >= 0 ? topAt < pageKids.length - 1 : indexAt(selected) < pageKids.length)}
               hidden={false}
               busy={busy}
               onUp={() => void moveItem(selected, -1)}
@@ -829,15 +1057,28 @@ export default function StudioPage() {
                 if (flag && heroSection) void run(tr("إخفاء", "Hide"), [{ op: "setField", sectionId: heroSection.id, lang: main, path: [flag], value: false }]);
               }}
             />
+            {heroSection ? (
+              <SceneSettings
+                block={selBlock}
+                scene={(((heroSection.data as Record<string, unknown>)?.roseScenes ?? {}) as Record<string, Record<string, unknown> | undefined>)[selBlock]}
+                shown={(heroSection.data as Record<string, unknown>)?.[BLOCK_FLAG[selBlock]] !== false}
+                busy={busy}
+                onShown={(on) => void run(on ? tr("إظهار", "Show") : tr("إخفاء", "Hide"), [{ op: "setField", sectionId: heroSection.id, lang: main, path: [BLOCK_FLAG[selBlock]], value: on }])}
+                onSeed={(part, hex) => void setField(heroSection.id, ["roseScenes", selBlock, part, "seed"], hex, main)}
+              />
+            ) : null}
             {topAt >= 0 ? (
               <button type="button" className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1]" disabled={busy} onClick={() => void run(tr("مكان تلقائي", "Automatic place"), [{ op: "placeBlock", block: selBlock as "seasons", index: null }])}>
                 {tr("رجوع لمكانه التلقائي", "Back to its automatic place")}
               </button>
             ) : null}
             <p className="text-[11px] leading-5 text-white/40">
-              {BLOCK_FLAG[selBlock]
-                ? tr("الإخفاء بيصير من إعدادات الافتتاح، ومن هناك بيرجع.", "Hiding goes through the opening's settings, and it comes back from there.")
-                : tr("بيطلع لما ما في آراء زبائن بالصفحة.", "It shows when the page has no customer reviews.")}
+              {tr("الإخفاء بيصير من إعدادات الافتتاح، ومن هناك بيرجع.", "Hiding goes through the opening's settings, and it comes back from there.")}{" "}
+              {selBlock === "instagram"
+                ? tr("بيطلع لما يكون للمتجر رابط إنستغرام (الإعدادات ← أسفل الصفحة) وما في آراء زبائن بالصفحة.", "It shows when the store has an Instagram link (Settings → footer) and the page has no customer reviews.")
+                : selBlock === "fabric"
+                  ? tr("مكانه ثابت: بعد أول قسم منتجات.", "Its place is fixed: after the first products section.")
+                  : null}
             </p>
           </div>
         ) : null}
@@ -859,6 +1100,16 @@ export default function StudioPage() {
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["size", "color", "align"]} /> : null}
+            {selFree.type === "button" ? (
+              <>
+                <ButtonStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["font", "size", "weight"]} />
+              </>
+            ) : null}
+            {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
@@ -872,21 +1123,24 @@ export default function StudioPage() {
               onPlay={() => send({ type: "motionPlay", nodeId: selected })}
             />
             <AddMenu
-              kinds={ADDABLE.filter((k) => addPlace(probe(k)))}
+              kinds={ADDABLE.filter((k) => canAdd(k, "inside") || canAdd(k, "after"))}
               busy={busy}
               title={index && canHold(index, selected, probe("text")) ? tr("إضافة لجوّا", "Add inside") : tr("إضافة بعده", "Add after it")}
-              onAdd={(k, src) => addNew(k, src)}
+              onAdd={(k, src) => addKind(k, src, canAdd(k, "inside") ? "inside" : "after")}
               onDragKind={(k) => (adding.current = k)}
             />
           </div>
         ) : null}
 
-        {selected === index.root || topAt >= 0 ? (
+        {selected === index.root || pageItemOf({ index, up, extras, pageIndex: indexAt, ids: makeIds() }, selected) ? (
           <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-add-section">
             <div className="text-xs font-medium text-white/70">
               {selected === index.root ? tr("قسم جديد بأعمدة، آخر الصفحة", "A new section with columns, at the end of the page") : tr("قسم جديد بأعمدة، بعد هاد", "A new section with columns, after this one")}
             </div>
-            <SplitPicker busy={busy} onPick={addSection} testId="studio-new-section" />
+            <SplitPicker busy={busy} onPick={(w) => addSection(w)} testId="studio-new-section" />
+            <button type="button" className="w-full rounded-lg bg-accent-500/20 px-2 py-1.5 text-xs text-accent-100 hover:bg-accent-500/30" onClick={() => setLeftTab("add")} data-testid="studio-open-add">
+              + {tr("إضافة أي إشي هون (لوحة الإضافة)", "Add anything here (the Add panel)")}
+            </button>
           </div>
         ) : null}
 
@@ -900,13 +1154,39 @@ export default function StudioPage() {
 
   // The page's own items, in order, with the rose scenes that show without a place yet.
   const topItems = (() => {
-    const placed = pageKids.map((n) => n.id);
-    const loose = shapes.filter((s) => s.id.startsWith("block:")).map((s) => s.id);
-    const out = [...placed];
-    for (const b of loose) out.splice(indexAt(b), 0, b);
-    return out;
+    // Each scene just before the page item it shows above (in the order they show).
+    const keyed = pageKids.map((n, i) => ({ id: n.id, k: i }));
+    shapes
+      .filter((s) => s.id.startsWith("block:"))
+      .sort((a, b) => a.box.y - b.box.y)
+      .forEach((s, j) => keyed.push({ id: s.id, k: indexAt(s.id) - 0.5 + j * 1e-3 }));
+    return keyed.sort((a, b) => a.k - b.k).map((x) => x.id);
   })();
-  const slotsOf = (sid: string) => shapes.filter((s) => s.parentId === sid && s.id.startsWith("slot:")).map((s) => s.id);
+  /** What's measured inside an old section, scene, field or piece (not the tree's own elements). */
+  const piecesOf = (sid: string) => shapes.filter((s) => s.parentId === sid && extras.has(s.id) && extras.get(s.id)!.kind !== "block").map((s) => s.id);
+  // The rows under an item that's open: its fields and pieces, and theirs while one of them is open.
+  const pieceRows = (sid: string, depth: number, pick: (sid: string) => void): React.ReactNode[] => {
+    const kids = piecesOf(sid);
+    const shown = kids.length > 40 && !kids.some((k) => selPath.includes(k)) ? kids.slice(0, 40) : kids;
+    const rows = shown.flatMap((f) => [
+      <button
+        key={f}
+        type="button"
+        onClick={() => pick(f)}
+        onMouseEnter={() => setHovered(f)}
+        onMouseLeave={() => setHovered(null)}
+        className={`flex w-full truncate rounded-md py-0.5 pe-2 text-start text-[11px] ${selected === f ? "bg-accent-500/25 text-white" : hovered === f ? "bg-white/[0.06] text-white" : "text-white/55 hover:bg-white/[0.04]"}`}
+        style={{ paddingInlineStart: 20 + depth * 12 }}
+        data-testid="studio-layer"
+        data-node={f}
+      >
+        {label(f)}
+      </button>,
+      ...(selPath.includes(f) ? pieceRows(f, depth + 1, pick) : []),
+    ]);
+    if (shown.length < kids.length) rows.push(<p key={`${sid}-more`} className="py-0.5 text-[10px] text-white/30" style={{ paddingInlineStart: 20 + depth * 12 }}>+{kids.length - shown.length}</p>);
+    return rows;
+  };
   const dropOn = (target: string) => {
     const from = dragged.current;
     dragged.current = null;
@@ -962,16 +1242,58 @@ export default function StudioPage() {
             {n && n.type !== "legacy" ? (
               <Layers index={index!} id={sid} selected={selected} hovered={hovered} sectionTypes={sectionTypes} onPick={pick} onHover={setHovered} onDragStart={(x) => (dragged.current = x)} onDropOn={dropAny} depth={2} childrenOnly />
             ) : null}
-            {open
-              ? slotsOf(sid).map((f) => (
-                  <button key={f} type="button" onClick={() => pick(f)} className={`flex w-full truncate rounded-md py-0.5 pe-2 ps-9 text-start text-[11px] ${selected === f ? "bg-accent-500/25 text-white" : "text-white/55 hover:bg-white/[0.04]"}`} data-testid="studio-layer" data-node={f}>
-                    {label(f)}
-                  </button>
-                ))
-              : null}
+            {open ? pieceRows(sid, 1, pick) : null}
           </div>
         );
       })}
+    </div>
+  );
+
+  // The Add panel: what's added goes before, after or inside the selection (see insert.ts).
+  const addTarget = (() => {
+    if (!index || !selected || selected === index.root) return tr("آخر الصفحة", "at the end of the page");
+    const c = insertCtx((x) => `__${x}`);
+    const n = index.nodes.get(selected);
+    // Beside the tree's own elements; beside (or over) the page item around anything else.
+    const beside = n && isFree(n.node.type) && n.parentId !== index.root ? selected : (c && pageItemOf(c, selected)) || selected;
+    const what = `«${label(addWhereNow === "inside" ? (n && isFree(n.node.type) ? selected : beside) : beside)}»`;
+    return addWhereNow === "before" ? `${tr("قبل", "before")} ${what}` : addWhereNow === "after" ? `${tr("بعد", "after")} ${what}` : `${tr("جوّا أو فوق", "inside or over")} ${what}`;
+  })();
+  // Motion from the Add panel goes on the selected element, or on the selected part of a section or scene.
+  const motionNode = selFree ?? (lookTarget && lookTarget.kind !== "box" ? lookSel : null);
+  const addPanel = () => (
+    <AddPanel
+      where={addWhereNow}
+      canWhere={whereOk}
+      target={addTarget}
+      busy={busy}
+      can={(k) => canAdd(k, addWhereNow)}
+      onWhere={setAddWhere}
+      onAdd={(k) => addKind(k)}
+      onDragKind={(k) => (adding.current = k)}
+      onSplit={(w) => addSection(w, addWhereNow === "before" ? "before" : "after")}
+      motionNode={motionNode}
+      motion={motionNode?.motion as Motion | undefined}
+      onMotion={(p) => {
+        if (!motionNode) return;
+        const op = motionOp(motionNode, withPreset(motionNode.motion as Motion | undefined, p));
+        if (motionNode === selFree) {
+          playNext.current = motionNode.id;
+          void change(p.label(), [op]);
+        } else if (lookTarget) {
+          playNext.current = lookTarget.target;
+          lookChange(p.label(), [op]);
+        }
+      }}
+    />
+  );
+  const leftTabs = (
+    <div className="mb-2 flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist" aria-label={tr("لوحة جانبية", "Side panel")}>
+      {(["add", "layers"] as const).map((t) => (
+        <button key={t} type="button" role="tab" aria-selected={leftTab === t} onClick={() => setLeftTab(t)} className={`flex-1 rounded-lg px-2 py-1.5 text-xs ${leftTab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tab-${t}`}>
+          {t === "add" ? `+ ${tr("إضافة", "Add")}` : tr("الطبقات", "Layers")}
+        </button>
+      ))}
     </div>
   );
 
@@ -988,6 +1310,18 @@ export default function StudioPage() {
         <h1 className="me-2 truncate text-sm font-semibold">{pageQ.data?.name ?? "…"}</h1>
         <button type="button" onClick={() => setSheet((v) => !v)} aria-expanded={sheet} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs md:hidden" data-testid="studio-layers-toggle">
           {tr("الطبقات", "Layers")}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setLeftTab("add");
+            if (window.matchMedia("(max-width: 767.98px)").matches) setSheet(true);
+          }}
+          aria-pressed={leftTab === "add"}
+          className="rounded-lg bg-accent-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-accent-400"
+          data-testid="studio-add-toggle"
+        >
+          + {tr("إضافة", "Add")}
         </button>
         <span className="rounded-md bg-accent-500/15 px-2 py-0.5 text-[11px] text-accent-200">{tr("المحرر الجديد", "New editor")}</span>
         <div className="ms-auto flex flex-wrap items-center gap-1" role="group" aria-label={tr("حجم الشاشة", "Screen size")}>
@@ -1038,10 +1372,16 @@ export default function StudioPage() {
       ) : null}
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-60 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={tr("الطبقات", "Layers")}>
-          <h2 className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-white/40">{tr("الطبقات", "Layers")}</h2>
-          {index ? layersList((sid) => select(sid, true)) : null}
-          <p className="px-2 pt-2 text-[10px] leading-4 text-white/30">{tr("اسحب سطر لتغيير الترتيب، أو لجوّا خلية.", "Drag a row to change the order, or into a cell.")}</p>
+        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : tr("الطبقات", "Layers")}>
+          {leftTabs}
+          {leftTab === "add" ? (
+            index ? addPanel() : null
+          ) : (
+            <>
+              {index ? layersList((sid) => select(sid, true)) : null}
+              <p className="px-2 pt-2 text-[10px] leading-4 text-white/30">{tr("اسحب سطر لتغيير الترتيب، أو لجوّا خلية.", "Drag a row to change the order, or into a cell.")}</p>
+            </>
+          )}
         </aside>
 
         <main
@@ -1073,8 +1413,9 @@ export default function StudioPage() {
             onDragOver={(e) => {
               const k = adding.current;
               if (!k) return;
-              const t = dropAt(local(e), probe(k));
-              setDrop((was) => (was && t && was.parentId === t.parentId && was.index === t.index ? was : t));
+              const t = dropFor(local(e), k);
+              const same = (a: Drop | null, b: Drop | null) => Boolean(a && b && a.parentId === b.parentId && a.index === b.index && a.page?.anchor === b.page?.anchor && a.page?.where === b.page?.where && !a.over && !b.over);
+              setDrop((was) => (same(was, t) ? was : t));
               if (t) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = "copy";
@@ -1084,10 +1425,23 @@ export default function StudioPage() {
             onDrop={(e) => {
               e.preventDefault();
               const k = adding.current;
-              const t = drop;
+              // Where the pointer is now (the last dragover may not have been drawn yet).
+              const t = k ? dropFor(local(e), k) ?? drop : null;
               adding.current = null;
               setDrop(null);
-              if (k && t) addNew(k, undefined, { parentId: t.parentId, index: t.index });
+              if (!k || !t) return;
+              if (t.over) addKind(k, undefined, "inside", t.over.anchor, t.over.spot);
+              else if (t.page) addKind(k, undefined, t.page.where, t.page.anchor);
+              else {
+                // Into a place of the tree, at the line shown.
+                const need = NEEDS[k];
+                const put = (url?: string) => {
+                  const node = makeNode(k, shopLang, makeIds(), url);
+                  void change(tr("إضافة", "Add"), [{ op: "insert", parentId: t.parentId, index: t.index, node }], node.id);
+                };
+                if (need) setAsked({ media: need, then: put });
+                else put();
+              }
             }}
             data-testid="studio-overlay"
             data-shapes={shapes.length}
@@ -1104,10 +1458,46 @@ export default function StudioPage() {
               ) : null}
               {drop ? (
                 <>
-                  <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-emerald-400/80 bg-emerald-400/5" style={rel(drop.box)} data-testid="studio-drop" />
+                  <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-emerald-400/80 bg-emerald-400/5" style={rel(drop.box)} data-testid="studio-drop" data-drop={drop.over ? "over" : drop.page ? "page" : "inside"}>
+                    {drop.over || drop.page ? (
+                      <span className="absolute start-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-emerald-500 px-1.5 py-0.5 text-[11px] text-white">
+                        {drop.over ? `${tr("فوق القسم", "Over the section")} · ${Math.round(drop.over.spot.x)}% · ${Math.round(drop.over.spot.y)}%` : tr("قسم جديد هون", "A new section here")}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="pointer-events-none absolute rounded-full bg-emerald-400" style={rel(drop.line)} />
                 </>
               ) : null}
+              {/* A quick way to add before or after the selected page item, on its edges. */}
+              {!drop && !editing && selected && index && selected !== index.root
+                ? (() => {
+                    const c = insertCtx((x) => `__${x}`);
+                    const item = c ? pageItemOf(c, selected) : null;
+                    const s = item ? shapeOf(item) : null;
+                    const seen = s ? visiblePart(s.box, frameBox) : null;
+                    if (!item || !seen) return null;
+                    const pill = (where: Where, y: number) =>
+                      c && insertOps(c, item, probe("heading"), where) ? (
+                        <button
+                          key={where}
+                          type="button"
+                          className="pointer-events-auto absolute start-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-500 px-2.5 py-0.5 text-[11px] font-medium text-white shadow-lg hover:bg-accent-400"
+                          style={{ top: y - frameBox.y }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={() => {
+                            select(item);
+                            setAddWhere(where);
+                            setLeftTab("add");
+                            if (window.matchMedia("(max-width: 767.98px)").matches) setSheet(true);
+                          }}
+                          data-testid={`studio-add-${where}`}
+                        >
+                          + {where === "before" ? tr("إضافة قبل", "Add before") : tr("إضافة بعد", "Add after")}
+                        </button>
+                      ) : null;
+                    return [seen.above ? null : pill("before", seen.box.y + 2), seen.below ? null : pill("after", seen.box.y + seen.box.h - 2)];
+                  })()
+                : null}
               {handles.map((h) => {
                 const live = resize && resize.colsId === handleCols && resize.i === h.i ? resize : null;
                 const share = live ? live.w12[h.i] / (live.w12[h.i] + live.w12[h.i + 1]) : null;
@@ -1179,12 +1569,15 @@ export default function StudioPage() {
             <div className="flex justify-end">
               <button type="button" onClick={() => setSheet(false)} className="h-7 w-7 rounded-lg text-white/60 hover:bg-white/[0.06]" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
             </div>
-            {selected || themeOpen ? <div className="mb-3 border-b border-white/[0.08] px-1 pb-3 text-sm">{inspector()}</div> : null}
+            {(selected || themeOpen) && leftTab !== "add" ? <div className="mb-3 border-b border-white/[0.08] px-1 pb-3 text-sm">{inspector()}</div> : null}
             <div className="md:hidden">
-              {layersList((sid) => {
-                select(sid, true);
-                setSheet(false);
-              })}
+              {leftTabs}
+              {leftTab === "add"
+                ? addPanel()
+                : layersList((sid) => {
+                    select(sid, true);
+                    setSheet(false);
+                  })}
             </div>
           </div>
         ) : null}
@@ -1201,6 +1594,53 @@ export default function StudioPage() {
           {selExtra?.kind === "slot" && selExtra.edit !== "media" ? <button type="button" onClick={() => startText(selected)} className="rounded-lg bg-accent-500 px-2 py-1 text-white" data-testid="studio-bar-edit">{tr("كتابة", "Write")}</button> : null}
           <button type="button" onClick={() => setSheet(true)} className="rounded-lg bg-white/[0.06] px-2 py-1" data-testid="studio-bar-more">{tr("إعدادات", "Settings")}</button>
           {parentOf(selected) ? <button type="button" onClick={() => select(parentOf(selected), true)} className="rounded-lg bg-white/[0.06] px-2 py-1">{tr("الأب (Esc)", "Parent (Esc)")}</button> : null}
+        </div>
+      ) : null}
+
+      {/* A picture or clip for what's being added: from the library (with upload), or a clip's link. */}
+      <MediaLibraryModal
+        open={asked?.media === "image"}
+        onClose={() => setAsked(null)}
+        title={tr("صورة", "Picture")}
+        onSelect={(u) => {
+          const a = asked;
+          setAsked(null);
+          a?.then(u);
+        }}
+      />
+      <VideoPickerModal
+        open={asked?.media === "video" && askedUrl === ""}
+        onClose={() => setAsked(null)}
+        onPick={({ url }) => {
+          const a = asked;
+          setAsked(null);
+          a?.then(url);
+        }}
+      />
+      {asked?.media === "video" ? (
+        <div className="fixed bottom-4 start-1/2 z-[70] w-[min(28rem,92vw)] -translate-x-1/2 space-y-1 rounded-xl border border-white/[0.1] bg-surface-950 p-3 text-xs shadow-2xl" data-testid="studio-video-link">
+          <label className="block text-[11px] text-white/55">
+            {tr("أو رابط فيديو (MP4، https)", "Or a video link (MP4, https)")}
+            <input dir="ltr" className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" value={askedUrl} onChange={(e) => setAskedUrl(e.target.value)} placeholder="https://…/clip.mp4" data-testid="studio-video-link-url" />
+          </label>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              className="rounded-lg bg-accent-500 px-2 py-1 text-white disabled:opacity-40"
+              disabled={!/^(\/(?!\/)|https:\/\/)[^\s<>"'`\\]+$/i.test(askedUrl.trim())}
+              onClick={() => {
+                const a = asked;
+                const u = askedUrl.trim();
+                setAsked(null);
+                setAskedUrl("");
+                a?.then(u);
+              }}
+              data-testid="studio-video-link-add"
+            >
+              {tr("إضافة", "Add")}
+            </button>
+            <button type="button" className="rounded-lg bg-white/[0.06] px-2 py-1" onClick={() => { setAsked(null); setAskedUrl(""); }}>{tr("إلغاء", "Cancel")}</button>
+          </div>
         </div>
       ) : null}
 

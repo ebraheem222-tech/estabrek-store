@@ -41,6 +41,13 @@ export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 export const SLIDER_LIMITS = { slides: 12, minSeconds: 2, maxSeconds: 30 } as const;
 /** Nodes that sit straight under the page, and only there. */
 export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy"]);
+/**
+ * An old section or a rose scene can hold objects placed freely over it (words, a picture,
+ * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
+ */
+export const OVERLAY_HOSTS: ReadonlySet<NodeType> = new Set(["legacy", "roseBlock"]);
+export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon"]);
+export const OVERLAY_LIMIT = 40;
 
 export const ICON_NAMES = ["heart", "star", "truck", "shield", "gift", "phone", "whatsapp", "mail", "check", "sparkle", "bag", "return"] as const;
 /** Theme colours (the shop maps them to its CSS variables); anything else must be a hex colour. */
@@ -115,13 +122,15 @@ export const ScreenStyle = z.object({
   border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
   shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
   opacity: z.number().min(0).max(1).optional(),
-  font: z.enum(["heading", "body"]).optional(),
+  font: z.enum(["heading", "body", "serif", "sans", "mono"]).optional(),
   size: px(8, 200).optional(),
   weight: z.number().int().min(100).max(900).refine((w) => w % 100 === 0, "100, 200 … 900").optional(),
   lineHeight: z.number().min(0.8).max(3).optional(),
   letterSpacing: px(-5, 20).optional(),
   textAlign: z.enum(["start", "center", "end"]).optional(),
   fit: z.enum(["cover", "contain"]).optional(),
+  // A picture's or clip's point that stays in sight when it's cut to its frame (% across, % down).
+  focus: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   aspect: z.string().trim().regex(/^\d{1,2}\s*\/\s*\d{1,2}$/, "Like 16 / 9").optional(),
   shape: z.enum(["rect", "rounded", "pill", "arch", "circle"]).optional(), // what clips it (a picture inside takes the shape)
   // Turned (degrees) and moved (px); with perspective a turn around X or Y looks 3D.
@@ -179,11 +188,26 @@ export const NodeMotion = z.object({
   phone: z.enum(["same", "lite", "off"]).optional(),
 });
 
+/* ------------------------------------------------------------------ looks */
+
+/**
+ * The look and motion of a part of an old section or a rose scene, kept on the page
+ * (root props.looks): "s:<section id>" or "b:<scene>", then "/<field path>" or
+ * "/@<piece>" for something inside it. The shop turns them into CSS for that part.
+ */
+export const LOOK_TARGET = /^(s|b):([A-Za-z0-9_-]{1,80})(?:\/(@[a-z0-9-]{1,40}|[A-Za-z0-9_.]{1,120}))?$/;
+export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
+export const LOOKS_LIMIT = 300;
+export const LookEntry = z.object({ kind: z.enum(LOOK_KINDS), style: NodeStyle.optional(), motion: NodeMotion.optional() });
+const Looks = z
+  .record(z.string().regex(LOOK_TARGET, "Not a part of a section or scene"), LookEntry)
+  .refine((r) => Object.keys(r).length <= LOOKS_LIMIT, `At most ${LOOKS_LIMIT} looks on a page`);
+
 /* ------------------------------------------------------------- each type */
 
 const none = z.object({});
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
-  page: none,
+  page: z.object({ looks: Looks.optional() }),
   section: z.object({
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
@@ -328,6 +352,7 @@ export function checkTree(input: unknown): TreeCheck {
     if (parent === "columns" && type !== "cell") add(`${path}.type`, `“${type}” goes inside a cell of the columns`);
     if (type === "cell" && parent !== "columns") add(`${path}.type`, "A cell goes inside columns");
     if (type === "columns" && columnsAbove >= COLUMNS_LIMITS.nested) add(`${path}.type`, `Columns go at most ${COLUMNS_LIMITS.nested} deep`);
+    if (parent !== null && OVERLAY_HOSTS.has(parent) && !OVERLAY_TYPES.has(type)) add(`${path}.type`, `“${type}” can't be placed over a section`);
 
     const props = NODE_PROPS[type].safeParse(raw.props ?? {});
     if (!props.success) for (const i of props.error.issues) add(`${path}.props${i.path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("")}`, i.message);
@@ -341,7 +366,10 @@ export function checkTree(input: unknown): TreeCheck {
     let children: TreeNode[] | undefined;
     if (raw.children !== undefined) {
       if (!Array.isArray(raw.children)) add(`${path}.children`, "Expected a list");
-      else if (!CONTAINER_TYPES.has(type)) {
+      else if (OVERLAY_HOSTS.has(type)) {
+        if (raw.children.length > OVERLAY_LIMIT) add(`${path}.children`, `More than ${OVERLAY_LIMIT} objects over one section`);
+        else children = raw.children.map((c, i) => walk(c, `${path}.children[${i}]`, depth + 1, type, columnsAbove)).filter((c): c is TreeNode => Boolean(c));
+      } else if (!CONTAINER_TYPES.has(type)) {
         if (raw.children.length) add(`${path}.children`, `“${type}” can't hold other elements`);
       } else if (raw.children.length > TREE_LIMITS.children) add(`${path}.children`, `More than ${TREE_LIMITS.children} elements in one place`);
       else if (type === "columns" && raw.children.length > COLUMNS_LIMITS.cells) add(`${path}.children`, `Columns hold 1–${COLUMNS_LIMITS.cells} cells`);
@@ -352,6 +380,7 @@ export function checkTree(input: unknown): TreeCheck {
     if (style?.success && Object.keys(style.data).length) node.style = style.data;
     if (motion?.success && Object.keys(motion.data).length) node.motion = motion.data;
     if (CONTAINER_TYPES.has(type)) node.children = children ?? [];
+    else if (OVERLAY_HOSTS.has(type) && children?.length) node.children = children;
     if (type === "columns" && !(Array.isArray(raw.children) && raw.children.length)) add(`${path}.children`, `Columns hold 1–${COLUMNS_LIMITS.cells} cells`);
     return node;
   };

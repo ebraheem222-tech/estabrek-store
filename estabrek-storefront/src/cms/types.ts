@@ -1,5 +1,6 @@
 // Shared CMS core types (Admin + Storefront).
 import type { TwTokens } from "./style/tokens";
+import type { SectionOverlay } from "@/pageTree/OverlayLayer";
 
 export type PageStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
@@ -75,6 +76,8 @@ export type CmsSection = {
 
   createdAt?: string;
   updatedAt?: string;
+  /** Objects the editor placed freely over this section (a page tree's legacy node's children). */
+  overlay?: SectionOverlay;
 };
 
 // -----------------------------

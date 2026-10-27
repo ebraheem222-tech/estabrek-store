@@ -177,9 +177,13 @@ const HOLDERS = new Set(["section", "grid", "stack", "cell"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock"].includes(type!);
 
+/** What can be placed freely over an old section or a rose scene (the backend's OVERLAY_TYPES). */
+export const OVER_TYPES = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon"]);
+
 /** Whether a `child` may go straight inside `parent`. */
 export function accepts(parent: string, child: string): boolean {
   if (parent === "page") return child === "section";
+  if (parent === "legacy" || parent === "roseBlock") return OVER_TYPES.has(child);
   if (parent === "columns") return child === "cell";
   if (!HOLDERS.has(parent)) return false;
   return CONTENT.has(child) || child === "columns" || child === "grid" || child === "stack";

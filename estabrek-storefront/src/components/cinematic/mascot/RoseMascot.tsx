@@ -492,7 +492,7 @@ export const RoseMascot = forwardRef<MascotHandle, Props>(function RoseMascot(
 
   const g = (name: string) => `url(#${id(name)})`;
   return (
-    <div ref={wrap} className={`rose-mascot${className ? ` ${className}` : ""}`} data-mirrored={mirrored ? "true" : undefined}>
+    <div ref={wrap} className={`rose-mascot${className ? ` ${className}` : ""}`} data-mirrored={mirrored ? "true" : undefined} data-part="mascot">
       <span ref={bubble} className="rose-mascot-bubble" aria-live="polite" />
       <svg ref={svg} viewBox="0 0 300 420" role="img" aria-label={label} onClick={() => { api.current.joy(); api.current.wink(); }}>
         <defs>

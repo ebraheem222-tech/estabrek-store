@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { CmsSection, ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { CmsPageRenderer } from "@/cms";
+import { OverlayLayer, type SectionOverlay } from "@/pageTree/OverlayLayer";
 import { RoseHomeFrame, RoseFabricStudy, RoseNativeSections } from "./RoseHome";
 import { sectionPalette } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
@@ -80,6 +81,10 @@ export function RoseCmsHome({
   const storiesAfter = sorted.find(isCollections)?.id;
   let storiesShown = false;
   const hasTestimonials = sorted.some((s) => s.type === "TESTIMONIALS");
+  // The Instagram strip shows without reviews on the page, unless the admin switched it off.
+  const instagramOn = !hasTestimonials && (hero?.data as any)?.roseInstagramEnabled !== false;
+  // The scenes' own words and colours from the admin (see sceneWords.ts).
+  const scenes = ((hero?.data as any)?.roseScenes ?? {}) as Record<string, unknown>;
   const instagramBefore = sorted.find((s) => s.type === "FAQ")?.id || sorted.find((s) => s.type === "CTA")?.id;
   const instagramImages = Object.entries(productLookup)
     .filter(([key]) => !key.startsWith("slug:"))
@@ -87,11 +92,22 @@ export function RoseCmsHome({
     .filter((url): url is string => Boolean(url))
     .slice(0, 4);
   let instagramShown = placed.has("instagram");
+  // A scene's wrapper: the editor picks it (and its words, kept in the opening's data) by these.
+  // A placed scene's objects (the editor's roseBlock node's children) go over it.
+  const overOf = (name: string): SectionOverlay | undefined => {
+    const s = sorted.find((x) => (x.type as string) === "TREE_NODE" && (x.data as any)?.node?.type === "roseBlock" && (x.data as any).node.props?.block === name);
+    const n = (s?.data as any)?.node;
+    return n?.children?.length ? { nodes: n.children, ctx: (s!.data as any).ctx } : undefined;
+  };
   const block = (name: string, node: ReactNode) => (
-    <div key={`block-${name}`} data-rose-block={name}>
+    <div key={`block-${name}`} data-rose-block={name} data-edit-section={hero?.id}>
       {node}
+      <OverlayLayer over={overOf(name)} />
     </div>
   );
+  const seasonsScene = () => block("seasons", <RoseSeasons seasons={seasons} words={scenes.seasons} />);
+  const storiesScene = () => block("stories", <RoseCollectionStory chapters={stories} words={scenes.stories} />);
+  const instagramScene = () => block("instagram", <RoseInstagram images={instagramImages} words={scenes.instagram} />);
   const nodes: ReactNode[] = [];
   let native: CmsSection[] = [];
   const flush = () => {
@@ -107,6 +123,7 @@ export function RoseCmsHome({
           renderProductCard={renderProductCard}
         />
       </RoseNativeSections>
+      <OverlayLayer over={section.overlay} />
       </div>
     )));
     native = [];
@@ -115,25 +132,25 @@ export function RoseCmsHome({
     const d = (section.data ?? {}) as any;
     if (section.id === seasonsBefore && showSeasons) {
       flush();
-      nodes.push(block("seasons", <RoseSeasons seasons={seasons} />));
+      nodes.push(seasonsScene());
     }
     if (showStories && !storiesShown && !storiesAfter && section.id === instagramBefore) {
       flush();
       storiesShown = true;
-      nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
+      nodes.push(storiesScene());
     }
-    if (!hasTestimonials && !instagramShown && section.id === instagramBefore) {
+    if (instagramOn && !instagramShown && section.id === instagramBefore) {
       flush();
       instagramShown = true;
-      nodes.push(block("instagram", <RoseInstagram images={instagramImages} />));
+      nodes.push(instagramScene());
     }
     // A rose block where the editor put it.
     if ((section.type as string) === "TREE_NODE" && d.node?.type === "roseBlock") {
       flush();
       const name = String(d.node.props?.block);
-      if (name === "seasons" && seasonsOn) nodes.push(block("seasons", <RoseSeasons seasons={seasons} />));
-      else if (name === "stories" && storiesOn) nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
-      else if (name === "instagram" && !hasTestimonials) nodes.push(block("instagram", <RoseInstagram images={instagramImages} />));
+      if (name === "seasons" && seasonsOn) nodes.push(seasonsScene());
+      else if (name === "stories" && storiesOn) nodes.push(storiesScene());
+      else if (name === "instagram" && instagramOn) nodes.push(instagramScene());
       continue;
     }
     let node: ReactNode;
@@ -222,25 +239,26 @@ export function RoseCmsHome({
           aria-label={section.ariaLabel || undefined}
         >
           {node}
+          <OverlayLayer over={section.overlay} />
         </div>,
       );
     } else native.push(section);
     if (section.id === studyAfter && showStudy) {
       flush();
-      nodes.push(<RoseFabricStudy key="fabric-study" words={(hero?.data as any)?.roseStoryWords} />);
+      nodes.push(block("fabric", <RoseFabricStudy words={(hero?.data as any)?.roseStoryWords} />));
     }
     if (showStories && !storiesShown && section.id === storiesAfter) {
       flush();
       storiesShown = true;
-      nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
+      nodes.push(storiesScene());
     }
     if (section.id === seasonsAfter && showSeasons) {
       flush();
-      nodes.push(block("seasons", <RoseSeasons seasons={seasons} />));
+      nodes.push(seasonsScene());
     }
   }
   flush();
-  if (showStories && !storiesShown) nodes.push(block("stories", <RoseCollectionStory chapters={stories} />));
-  if (!hasTestimonials && !instagramShown) nodes.push(block("instagram", <RoseInstagram images={instagramImages} />));
+  if (showStories && !storiesShown) nodes.push(storiesScene());
+  if (instagramOn && !instagramShown) nodes.push(instagramScene());
   return <RoseHomeFrame>{nodes}</RoseHomeFrame>;
 }

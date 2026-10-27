@@ -77,6 +77,96 @@ test("in the editor's frame nothing waits unseen, and a look can be tried before
   await expect.poll(() => title.evaluate((el) => Number(getComputedStyle(el).opacity)), { timeout: 5000 }).toBe(1);
 });
 
+test("inside the home's sections and scenes: each word, button and card is measured, and the home looks as the home", async ({ page, request }) => {
+  // The scenes need their categories; the shop's cache is cleared so it sees them.
+  await request.get("http://127.0.0.1:4100/__test/scenes?on=1");
+  await page.request.post("/api/revalidate", { data: { tags: ["cms:pages", "catalog"] } });
+  try {
+    await page.goto(`${HARNESS}?src=${encodeURIComponent("/studio-frame?token=good-home")}`);
+    const has = (match: (i: any) => boolean) => async () => Boolean((await lastLayout(page))?.items?.some(match));
+    await expect.poll(has((i) => i.kind === "block" && i.block === "seasons"), { timeout: 45_000 }).toBe(true);
+    // A scene's words are kept in the opening's data, each language its own; the scene is their owner.
+    await expect.poll(has((i) => i.kind === "slot" && i.owner === "b:seasons" && i.sectionId === "hero" && i.path === "roseScenes.seasons.winter.title.ar" && i.edit === "lines")).toBe(true);
+    // A button is measured whole, with its link's field (once it has come in, as the page scrolls to it).
+    await page.frameLocator("#f").locator('[data-cms-section="cta"]').scrollIntoViewIfNeeded();
+    await expect.poll(has((i) => i.kind === "slot" && i.owner === "s:cta" && i.path === "buttonLabel" && i.link === "buttonHref")).toBe(true);
+    const layout = await lastLayout(page);
+    // Product cards, and what's inside each one under it.
+    const card = layout.items.find((i: any) => i.kind === "part" && i.owner === "s:products" && i.name === "card" && i.n === 0);
+    expect(card?.count).toBeGreaterThan(0);
+    expect(layout.items.find((i: any) => i.kind === "part" && i.owner === "s:products" && i.name === "card-name" && i.n === 0)?.within).toBe("p:card:0");
+    // Anything else that shows can be picked too.
+    expect(layout.items.some((i: any) => i.kind === "auto" && i.owner.startsWith("s:"))).toBe(true);
+    // The editor's frame shows the home as the home does.
+    await expect.poll(() => page.frameLocator("#f").locator("html").getAttribute("data-cinematic-home")).toBe("true");
+  } finally {
+    await request.get("http://127.0.0.1:4100/__test/scenes?on=0");
+    await page.request.post("/api/revalidate", { data: { tags: ["cms:pages", "catalog"] } });
+  }
+});
+
+test("objects placed over an old section show on a layer over it, measured with that layer as their holder", async ({ page, request }) => {
+  const home = await (await request.get("http://127.0.0.1:4100/v1/storefront/page?slug=/")).json();
+  const sections = home.sections.map((s: any) => ({ id: s.id, type: s.type, data: s.data, isVisible: s.isVisible !== false, tr: {} }));
+  const words = { id: "over-faq", type: "heading", props: { level: 2, text: { ar: "كلام فوق الأسئلة" } }, style: { base: { layer: { x: 20, y: 30, anchor: "center" } } } };
+  const tree = { version: 1, root: { id: "page", type: "page", props: {}, children: home.sections.map((s: any) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id }, ...(s.id === "faq" ? { children: [words] } : {}) })) } };
+  await request.post("http://127.0.0.1:4100/__test/preview-draft", { data: { pageId: "home", sections, tree, rev: 1, updatedAt: "" } });
+  await page.goto(`${HARNESS}?src=${encodeURIComponent("/studio-frame?token=good-draft")}`);
+  const frame = page.frameLocator("#f");
+  const over = frame.locator('[data-cms-section="faq"] > .pt-over [data-tree-node="over-faq"]');
+  await expect(over).toHaveText("كلام فوق الأسئلة");
+  expect(await over.evaluate((el) => getComputedStyle(el).position)).toBe("absolute");
+  await over.scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await lastLayout(page))?.items?.find((i: any) => i.kind === "node" && i.id === "over-faq")?.holder?.w ?? 0, { timeout: 30_000 }).toBeGreaterThan(600);
+  // Its section is still measured whole, and the layer lets clicks through to it.
+  const layout = await lastLayout(page);
+  expect(layout.items.some((i: any) => i.kind === "legacy" && i.sectionId === "faq")).toBe(true);
+  expect(await frame.locator('[data-cms-section="faq"] > .pt-over').evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+});
+
+test("looks on parts of old sections and scenes: words, cards and hiding per screen, tried live before saving", async ({ page, request }) => {
+  const home = await (await request.get("http://127.0.0.1:4100/v1/storefront/page?slug=/")).json();
+  const sections = home.sections.map((s: any) => ({ id: s.id, type: s.type, data: s.data, isVisible: s.isVisible !== false, tr: {} }));
+  const looks = {
+    "s:faq/title": { kind: "text", style: { base: { font: "serif", size: 44, color: "#123456", textAlign: "center", letterSpacing: 2 } } },
+    "s:products/@card-name": { kind: "text", style: { base: { color: "#00aa00" } } },
+    "s:cta/buttonLabel": { kind: "button", style: { base: { bg: "#111111", radius: 0 } } },
+    // Shown on a computer, hidden on a phone.
+    "s:collections": { kind: "box", style: { mobile: { hidden: true } } },
+    "s:faq/@faq-item": { kind: "box", motion: { enter: { kind: "up", duration: 0.6 } } },
+  };
+  const tree = { version: 1, root: { id: "page", type: "page", props: { looks }, children: home.sections.map((s: any) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id } })) } };
+  await request.post("http://127.0.0.1:4100/__test/preview-draft", { data: { pageId: "home", sections, tree, rev: 1, updatedAt: "" } });
+  await page.goto(`${HARNESS}?src=${encodeURIComponent("/studio-frame?token=good-draft")}`);
+  const frame = page.frameLocator("#f");
+  const title = frame.locator('[data-cms-section="faq"] [data-edit="title"]');
+  await expect(title).toBeVisible();
+  const css = await title.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { size: s.fontSize, color: s.color, align: s.textAlign, spacing: s.letterSpacing, font: s.fontFamily };
+  });
+  expect(css).toMatchObject({ size: "44px", color: "rgb(18, 52, 86)", align: "center", spacing: "2px" });
+  expect(css.font).toContain("Georgia");
+  expect(await frame.locator('[data-cms-section="products"] [data-part="card-name"]').first().evaluate((el) => getComputedStyle(el).color)).toBe("rgb(0, 170, 0)");
+  // A button's look goes on the whole button.
+  const button = frame.locator('[data-cms-section="cta"] [data-edit-box="buttonLabel"]');
+  expect(await button.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopLeftRadius].join(" "))).toBe("rgb(17, 17, 17) 0px");
+  expect(await frame.locator('[data-cms-section="collections"]').evaluate((el) => getComputedStyle(el).display)).not.toBe("none");
+  // The FAQ's questions come in: the motion engine is on the page for them.
+  await expect.poll(() => frame.locator('[data-cms-section="faq"] [data-part="faq-item"][data-pt-look="s:faq/@faq-item"]').count()).toBeGreaterThan(0);
+  // A look tried in the editor before it's saved shows on every element it names.
+  await page.evaluate(() => (window as any).send({ type: "previewLook", target: "s:products/@card-name", vars: { "--pt-rz": "8deg" } }));
+  await expect.poll(() => frame.locator('[data-cms-section="products"] [data-part="card-name"]').first().evaluate((el) => el.style.getPropertyValue("--pt-rz"))).toBe("8deg");
+  // On a phone the collections are hidden.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    const f = document.getElementById("f") as HTMLIFrameElement;
+    f.style.width = "390px";
+    f.style.height = "844px";
+  });
+  await expect.poll(() => frame.locator('[data-cms-section="collections"]').evaluate((el) => getComputedStyle(el).display)).toBe("none");
+});
+
 test("the home page as a tree, in English: old sections are measured as whole blocks", async ({ page }) => {
   await page.goto(`${HARNESS}?src=${encodeURIComponent("/en/studio-frame?token=good-home")}`);
   await expect.poll(async () => (await lastLayout(page))?.items?.length ?? 0, { timeout: 45_000 }).toBeGreaterThan(2);

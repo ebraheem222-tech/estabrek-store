@@ -47,7 +47,13 @@ export type PageDraftOp =
   | { op: "insert"; parentId: string; index: number; node: PageTreeNode }
   | { op: "setProps"; nodeId: string; props: Record<string, unknown> }
   | { op: "setStyle"; nodeId: string; screen: TreeScreen; style: Record<string, unknown> | null }
-  | { op: "setMotion"; nodeId: string; motion: Record<string, unknown> | null };
+  | { op: "setMotion"; nodeId: string; motion: Record<string, unknown> | null }
+  /** A part of an old section or scene ("s:<id>" or "b:<scene>", then "/<field>" or "/@<piece>"): its look on one screen. */
+  | { op: "setLookStyle"; target: string; kind: LookKind; screen: TreeScreen; style: Record<string, unknown> | null }
+  | { op: "setLookMotion"; target: string; kind: LookKind; motion: Record<string, unknown> | null };
+/** What a part of an old section or scene is drawn as, for its look. */
+export type LookKind = "text" | "button" | "image" | "video" | "box";
+export type LookEntry = { kind: LookKind; style?: Partial<Record<TreeScreen, Record<string, unknown>>>; motion?: Record<string, unknown> };
 /** A tree element's look is kept per screen size: computer (base), tablet, phone (mobile). */
 export type TreeScreen = "base" | "tablet" | "mobile";
 

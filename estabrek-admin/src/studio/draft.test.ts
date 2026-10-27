@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageDraft } from "../api/pages.api";
-import { History, fieldValue, inverseOf, locate, mergeTranslated, parsePath, simulate, undoOf } from "./draft";
+import { History, fieldValue, inverseOf, locate, looksOf, mergeTranslated, parsePath, simulate, undoOf } from "./draft";
 
 const draft = (): PageDraft => ({
   version: 1,
@@ -18,6 +18,37 @@ const draft = (): PageDraft => ({
     { id: "rb-seasons", type: "roseBlock", props: { block: "seasons" } },
     { id: "s-faq", type: "legacy", props: { sectionId: "faq" } },
   ] } },
+});
+
+describe("looks of parts of old sections and scenes", () => {
+  it("each change comes back with undo, per screen, and the looks go when empty", () => {
+    const d = draft();
+    const set = { op: "setLookStyle" as const, target: "s:faq/title", kind: "text" as const, screen: "base" as const, style: { size: 40, color: "#7d2448" } };
+    const after = simulate(d, set);
+    expect(looksOf(after)["s:faq/title"]).toEqual({ kind: "text", style: { base: { size: 40, color: "#7d2448" } } });
+    expect(inverseOf(set, d, "ar")).toEqual([{ ...set, style: null }]);
+    const move = { op: "setLookMotion" as const, target: "s:faq/title", kind: "text" as const, motion: { enter: { kind: "up" } } };
+    const both = simulate(after, move);
+    expect(inverseOf({ ...set, style: { size: 12 } }, both, "ar")).toEqual([{ ...set, style: { size: 40, color: "#7d2448" } }]);
+    expect(inverseOf({ ...move, motion: null }, both, "ar")).toEqual([move]);
+    // Undoing both leaves no looks at all.
+    const back = undoOf([set, move], d, "ar").reduce(simulate, both);
+    expect(back.tree.root.props.looks).toBeUndefined();
+  });
+});
+
+describe("objects placed over a section or scene", () => {
+  it("a scene given a place and an object over it come off again with one undo", () => {
+    const d = draft();
+    d.tree.root.children = d.tree.root.children!.filter((n) => n.id !== "rb-seasons");
+    const obj = { id: "o1", type: "text", props: {}, style: { base: { layer: { x: 10, y: 20 } } } };
+    const ops = [{ op: "placeBlock" as const, block: "seasons" as const, index: 1 }, { op: "insert" as const, parentId: "rb-seasons", index: 0, node: obj }];
+    expect(undoOf(ops, d, "ar")).toEqual([{ op: "remove", nodeId: "o1" }, { op: "placeBlock", block: "seasons", index: null }]);
+    const after = ops.reduce(simulate, d);
+    expect(locate(after.tree, "o1")?.parent?.id).toBe("rb-seasons");
+    // Taking the scene off the page brings its objects back on undo.
+    expect(inverseOf({ op: "placeBlock", block: "seasons", index: null }, after, "ar")).toEqual([{ op: "placeBlock", block: "seasons", index: 1 }, { op: "insert", parentId: "rb-seasons", index: 0, node: obj }]);
+  });
 });
 
 describe("the editor's draft", () => {
