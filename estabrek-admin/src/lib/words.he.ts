@@ -3646,4 +3646,7 @@ export const HE: Record<string, string> = {
   "While the scene shows, the page and its header wear the season's colour: the ready winter colour is the lilac.": "בזמן שהסצנה מוצגת, הדף והכותרת העליונה שלו לובשים את צבע העונה: צבע החורף המוכן הוא הלילך.",
   "While the scene shows, the page and its header wear the chapter's colour.": "בזמן שהסצנה מוצגת, הדף והכותרת העליונה שלו לובשים את צבע הפרק.",
   "To change any word of the scene: click it on the page, and write it in each language.": "כדי לשנות מילה בסצנה: לוחצים עליה בדף וכותבים אותה בכל שפה.",
+  "A new version of the admin is out": "יצאה גרסה חדשה של לוח הניהול",
+  "Reload to use it. Finish anything unsaved first.": "צריך לרענן כדי לעבוד איתה. קודם לסיים כל דבר שלא נשמר.",
+  "Reload now": "לרענן עכשיו",
 };
