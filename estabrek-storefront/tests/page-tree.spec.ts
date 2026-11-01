@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
-import { declarations, sliderAspect, treeCss } from "../src/pageTree/css";
+import { declarations, sliderAspect, treeCss, treeFamilies } from "../src/pageTree/css";
+import { TREE_FONTS, editorFonts, fontStack, googleFontsHref } from "../src/pageTree/fonts";
 import { TREE_TRANSFORM, asTree, motionOf, pickText, siteStylesOf, sliderSeconds, sliderSlides, styleClass } from "../src/pageTree/tree";
 import { artHasLines, safeArt } from "../src/pageTree/svgArt";
 import { Fragment, createElement } from "react";
@@ -202,6 +203,39 @@ test.describe("styles become safe CSS", () => {
     expect(css).toMatch(/@media \(hover:hover\)\{:is\(\[data-cms-section="abc"\]\[data-cms-section\] \[data-edit-box="title"\]/);
     // Headings take the store theme's display font when there is one.
     expect(css).toContain(":root{--pt-font-heading:var(--st-font-display,\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif);--pt-flip:1}");
+  });
+
+  test("the font library: Google's families by their own name, one stylesheet for a page's; the shop's own copy wins", () => {
+    const of = (s: string) => TREE_FONTS.filter((f) => f.scripts.includes(s as "arabic")).length;
+    expect(TREE_FONTS.length).toBeGreaterThan(200);
+    expect([of("arabic"), of("hebrew")].every((n) => n >= 50)).toBe(true);
+    // The shop's own copy of Cairo wins over Google's; a library family goes by its name.
+    expect(fontStack("cairo")).toBe('"th-cairo",system-ui,sans-serif');
+    expect(fontStack("noto-kufi-arabic")).toBe('"Noto Kufi Arabic",system-ui,sans-serif');
+    expect(fontStack("jetbrains-mono")).toBe('"JetBrains Mono",ui-monospace,monospace');
+    expect(fontStack("nope")).toBeUndefined();
+    const tree = {
+      version: 1,
+      root: {
+        id: "page", type: "page", props: { looks: { "s:abc/title": { kind: "text", style: { tablet: { family: "great-vibes" } } } } },
+        children: [{ id: "s", type: "section", props: {}, children: [{ id: "h", type: "heading", props: {}, style: { base: { family: "heebo" }, mobile: { family: "playfair-display" } } }] }],
+      },
+    } as any;
+    const site = [{ id: "h1", style: { base: { family: "noto-kufi-arabic" } } }] as any;
+    expect([...treeFamilies(tree, site)].sort()).toEqual(["great-vibes", "heebo", "noto-kufi-arabic", "playfair-display"]);
+    // Heebo is the shop's own; the rest come in one ask, each with the weights it has.
+    expect(googleFontsHref(treeFamilies(tree, site))).toBe(
+      "https://fonts.googleapis.com/css2?family=Great+Vibes&family=Noto+Kufi+Arabic:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap",
+    );
+    expect(googleFontsHref(["heebo", "nope"])).toBeNull();
+    const css = treeCss(tree, site);
+    expect(css).toContain('@font-face{font-family:"th-heebo"');
+    expect(css).toContain('font-family:"Playfair Display",Georgia,serif');
+    expect(css).not.toContain("googleapis");
+    // The editor gets every family: the shop's own with their files, the library's with their ask.
+    const listed = editorFonts();
+    expect(listed.find((f) => f.slug === "heebo")).toMatchObject({ source: "theme", faces: expect.any(Array) });
+    expect(listed.find((f) => f.slug === "rubik-glitch")).toMatchObject({ source: "google", kind: "display", scripts: ["hebrew", "latin"], q: "Rubik+Glitch" });
   });
 
   test("shared styles: every heading of a level, the body text and each button kind take theirs; named ones by class; an element's own look wins", () => {
@@ -417,6 +451,17 @@ test.describe.serial("a page of new elements", () => {
     await expect.poll(() => blob.locator("path").getAttribute("d"), { timeout: 8000 }).not.toBe(d0);
     await line.scrollIntoViewIfNeeded();
     await expect.poll(() => line.locator("path").evaluate((el) => (el as SVGPathElement).style.strokeDasharray), { timeout: 8000 }).not.toBe("");
+  });
+
+  test("a library font: the page asks Google once for the families it uses; the shop's own copy stays its own", async ({ page }) => {
+    await page.goto("/tree-demo");
+    const links = page.locator("link[data-page-tree-fonts]");
+    await expect(links).toHaveCount(1);
+    const href = (await links.getAttribute("href"))!;
+    expect(href).toContain("family=Noto+Kufi+Arabic:wght@100..900");
+    expect(href).not.toContain("Heebo");
+    expect(await page.locator('[data-tree-node="lib-font"]').evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"Noto Kufi Arabic"/);
+    expect(await page.locator('[data-tree-node="own-font"]').evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?th-heebo/);
   });
 
   test("an icon from the library: its own drawing at its own size per screen, in the words' colour; the built-in ones as before", async ({ page }) => {

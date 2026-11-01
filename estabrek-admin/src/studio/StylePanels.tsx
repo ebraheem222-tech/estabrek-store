@@ -10,7 +10,7 @@ import { styleOp } from "./columns";
 import { lookOf, shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
-import { FontPicker } from "./TypePanels";
+import { FontPicker, useTreeFonts } from "./TypePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
@@ -38,6 +38,9 @@ export function TextStylePanel({ node, screen, busy, onOps, only }: { node: Page
   const v = (k: string) => shownLook(node, screen, k);
   const save = (label: string, patch: Record<string, unknown>) => onOps(label, [styleOp(node, screen, patch)]);
   const lh = typeof v("lineHeight") === "number" ? (v("lineHeight") as number) : null;
+  // A family from the library has its own weights: the others are drawn as the nearest one.
+  const fam = useTreeFonts().find((f) => f.slug === v("family"));
+  const hasWeight = (w: string) => !w || !fam || (Number(w) >= fam.weights[0] && Number(w) <= fam.weights[1]);
   const ls = typeof v("letterSpacing") === "number" ? (v("letterSpacing") as number) : null;
   return (
     <div className={box} data-testid="studio-text-style">
@@ -52,7 +55,7 @@ export function TextStylePanel({ node, screen, busy, onOps, only }: { node: Page
         <label className="block text-[11px] text-white/55">
           {tr("سماكة الخط", "Weight")}
           <select className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" disabled={busy} value={String(v("weight") ?? "")} onChange={(e) => save(tr("سماكة الخط", "Weight"), { weight: e.target.value ? Number(e.target.value) : null })} data-testid="studio-style-weight">
-            {WEIGHTS.map(([k, name]) => <option key={k} value={k}>{name()}</option>)}
+            {WEIGHTS.map(([k, name]) => <option key={k} value={k} disabled={!hasWeight(k)}>{name()}{hasWeight(k) ? "" : ` (${tr("مش بهالخط", "not in this font")})`}</option>)}
           </select>
         </label>
       ) : null}

@@ -214,6 +214,9 @@ const treeDemo = {
             // A product's 360° view in the page: rose-dress in Berry (its own view), turning by itself.
             { id: "spin-berry", type: "product360", props: { productId: "coat", itemId: "berry", label: { ar: "الفستان بيلف", en: "The dress turning", he: "השמלה מסתובבת" } }, style: { base: { width: "240px" } } },
             { id: "art-bad", type: "svg", props: { art: { viewBox: "0 0 10 10", nodes: [{ t: "script", a: {} }, { t: "circle", a: { r: "4", cx: "5", cy: "5", onclick: "alert(1)", fill: "white", href: "https://x.test" } }] } } },
+            // Words in a font from the library (Google Fonts), and one in the shop's own copy.
+            { id: "lib-font", type: "heading", props: { text: { ar: "خط من المكتبة", en: "A library font", he: "גופן מהספרייה" }, level: 3 }, style: { base: { family: "noto-kufi-arabic" } } },
+            { id: "own-font", type: "text", props: { text: { ar: "خط المتجر", en: "The shop's font", he: "גופן החנות" } }, style: { base: { family: "heebo" } } },
             // An icon from the library: its own drawing, its own size, the words' colour.
             {
               id: "lib-icon", type: "icon", style: { base: { iconSize: 48, color: "#123456" }, mobile: { iconSize: 32 } },

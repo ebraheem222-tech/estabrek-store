@@ -3929,4 +3929,8 @@ export const HE: Record<string, string> = {
   "Vehicles": "כלי רכב",
   "Weather": "מזג אוויר",
   "Zodiac": "מזלות",
+  "not in this font": "לא בגופן הזה",
+  "Every script": "כל הכתבים",
+  "Every kind": "כל הסוגים",
+  "{0} fonts": "{0} גופנים",
 };

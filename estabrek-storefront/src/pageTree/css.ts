@@ -462,6 +462,22 @@ export function siteTarget(s: SiteStyle): { sel: string; type: string } {
   return auto && auto[0] === s.kind ? { sel: auto[1], type: auto[2] } : { sel: `.ps-${s.id}`, type: KIND_TYPE[s.kind] };
 }
 
+/** The font families a page's elements, its old sections' parts and the shared styles use. */
+export function treeFamilies(tree: PageTree, site: SiteStyle[] = []): Set<string> {
+  const out = new Set<string>();
+  const add = (style: Partial<Record<Screen, ScreenStyle>> | undefined) => {
+    for (const sc of [style?.base, style?.tablet, style?.mobile]) if (typeof sc?.family === "string") out.add(sc.family);
+  };
+  const walk = (n: TreeNode) => {
+    if (SAFE_ID.test(n.id ?? "")) add(n.style);
+    n.children?.forEach(walk);
+  };
+  walk(tree.root);
+  for (const [, look] of looksOf(tree)) add(look.style);
+  for (const s of site) add(s.style);
+  return out;
+}
+
 /**
  * The whole page's CSS ("" for a page that is only old sections). `site`: the store's shared
  * styles, drawn after the base CSS and before each element's own look, so its own look wins.
@@ -478,8 +494,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   const fx: string[] = [];
   const staggered = new Set<string>();
   const hidden: string[] = [];
-  // Font families used (their @font-face), and whether a state glides a turn (typed turn values).
-  const families = new Set<string>();
+  // Whether a state glides a turn (typed turn values).
   let glides = false;
   let drawn = 0;
   const walk = (n: TreeNode, parent: TreeNode | null) => {
@@ -489,7 +504,6 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
       const screens = [n.style?.base, n.style?.tablet, n.style?.mobile];
       const motion = motionOf(n);
       if (motion?.enter?.stagger) staggered.add(n.id);
-      for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
       if (screens.some(glidesOn)) glides = true;
       const turns = screens.some(turnsOn);
       if (motion || turns || (parent && staggered.has(parent.id))) turned.push(sel);
@@ -537,7 +551,6 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
     const screens = [look.style?.base, look.style?.tablet, look.style?.mobile];
     if (motionOf(node) || screens.some(turnsOn)) turned.push(sel);
     if (screens.some(glidesOn)) glides = true;
-    for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
     const media = look.kind === "image" || look.kind === "video";
     const keys = stateKeysOf(look.style);
     // A picture's fit and focus go on the picture itself (the field is often its frame).
@@ -563,7 +576,6 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   for (const s of site) {
     const { sel, type } = siteTarget(s);
     const screens = [s.style.base, s.style.tablet, s.style.mobile];
-    for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
     if (screens.some(turnsOn)) turned.push(sel);
     if (screens.some(glidesOn)) glides = true;
     if (screens.some(coveredOn)) {
@@ -582,7 +594,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   }
   const layer = "content:\"\";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--pt-ov);opacity:var(--pt-ovo);mix-blend-mode:var(--pt-ovb)";
   return [
-    fontFaceCss(families),
+    fontFaceCss(treeFamilies(tree, site)),
     glides ? TURN_PROPERTIES : "",
     BASE_CSS,
     // Before each element's own rule, so its own values win.
