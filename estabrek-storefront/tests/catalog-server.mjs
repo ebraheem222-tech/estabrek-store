@@ -235,6 +235,16 @@ const treeDemo = {
           },
           children: [{ id: "heart-pic", type: "image", props: { src: "https://res.cloudinary.com/demo/image/upload/sample.jpg", alt: { ar: "قلب" } }, style: { base: { width: "200px", aspect: "1 / 1", shape: "heart" } } }],
         },
+        // Words that move: letter by letter (Arabic word by word), a number counting up, scrambled letters, lit up with the scroll.
+        {
+          id: "words-motion", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24] } },
+          children: [
+            { id: "wm-letters", type: "heading", props: { level: 3, text: { ar: "أهلاً وسهلاً", en: "Hello there", he: "שלום לכם" } }, motion: { enter: { kind: "letters", duration: 0.5 } } },
+            { id: "wm-count", type: "text", props: { text: { ar: "+1,200 زبونة سعيدة", en: "+1,200 happy customers", he: "+1,200 לקוחות" } }, motion: { enter: { kind: "count", duration: 1.5 } } },
+            { id: "wm-scramble", type: "heading", props: { level: 4, text: { ar: "عرض خاص", en: "Special offer", he: "מבצע מיוחד" } }, motion: { enter: { kind: "scramble", duration: 1 } } },
+            { id: "wm-scroll", type: "text", props: { text: { ar: "كل كلمة بتضوي لما تنزلي", en: "Each word lights up as you scroll", he: "כל מילה נדלקת בגלילה" } }, motion: { scroll: { kind: "words", start: 100, end: 0 } } },
+          ],
+        },
         // The mouse: a short play once, a light that follows it, a ripple where it's pressed, a spring.
         {
           id: "hovers", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24] } },

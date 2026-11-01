@@ -12,7 +12,7 @@ export type Look = Record<string, unknown>;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
 export type Motion = {
   enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
-  scroll?: { kind: "parallax" | "keys"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string };
+  scroll?: { kind: "parallax" | "keys" | "words" | "pin"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
   loop?: { kind: string; duration?: number; amount?: number };
   hover?: { kind: string; amount?: number; color?: string };
   fx?: { kind: string; speed?: number; color?: string; to?: string };
@@ -97,7 +97,14 @@ export const ENTER_LABEL: Record<string, () => string> = {
   circle: () => tr("دائرة بتكبر", "A growing circle"),
   words: () => tr("كلمة كلمة", "Word by word"),
   draw: () => tr("بترسم حالها", "Draws itself"),
+  letters: () => tr("حرف حرف (العربي كلمة كلمة)", "Letter by letter (Arabic word by word)"),
+  lines: () => tr("سطر سطر من تحت قناع", "Line by line from under a mask"),
+  scramble: () => tr("حروف ملخبطة بتترتّب", "Scrambled letters falling into place"),
+  typewriter: () => tr("آلة كاتبة", "Typewriter"),
+  count: () => tr("الرقم بيعدّ لحاله", "Its number counts up"),
 };
+/** Coming in that only words have. */
+export const WORDS_ONLY = new Set(["words", "letters", "lines", "scramble", "typewriter", "count"]);
 export const LOOP_LABEL: Record<string, () => string> = {
   float: () => tr("يطفو", "Floats"),
   pulse: () => tr("ينبض", "Pulses"),
@@ -108,6 +115,7 @@ export const LOOP_LABEL: Record<string, () => string> = {
   bounce: () => tr("ينط", "Bounces"),
   morph: () => tr("بتتحوّل لشكلها التاني وبترجع", "Turns into its second shape and back"),
   dash: () => tr("خطوطها ماشية", "Its lines run"),
+  type: () => tr("بينكتب وبينمسح", "Types and erases"),
 };
 export const HOVER_LABEL: Record<string, () => string> = {
   lift: () => tr("يرتفع", "Lifts"),
@@ -162,12 +170,22 @@ export function drawingHasLines(n: PageTreeNode): boolean {
   const walk = (list: unknown): boolean => Array.isArray(list) && list.some((x: { a?: Record<string, string>; c?: unknown[] }) => (x?.a?.stroke && x.a.stroke !== "none") || walk(x?.c));
   return n.type === "svg" && walk((n.props?.art as ArtLike | undefined)?.nodes);
 }
+/** Words with a number in them (to count up). */
+export const hasNumber = (n: PageTreeNode) => Object.values(((n.props?.text ?? n.props?.label) ?? {}) as Record<string, unknown>).some((w) => typeof w === "string" && /[\d٠-٩]/.test(w));
 /** A drawing with a second shape to turn into. */
 export const drawingMorphs = (n: PageTreeNode) => n.type === "svg" && typeof (n.props?.art as ArtLike | undefined)?.morph === "string";
 export const MOTION_PRESETS: MotionPreset[] = [
   { key: "tilt-scroll", label: () => tr("مايل وبيتعدّل مع السكرول", "Tilted, straightens with the scroll"), motion: { scroll: { kind: "keys", from: { rx: 28, scale: 0.88, y: 60 }, to: { rx: 0, scale: 1, y: 0 }, start: 100, end: 35 } } },
   { key: "rise", label: () => tr("بيطلع من تحت", "Rises in"), motion: { enter: { kind: "up", duration: 0.8, ease: "strong", distance: 40 } } },
   { key: "words", label: () => tr("كلمة كلمة", "Word by word"), motion: { enter: { kind: "words", duration: 0.7, stagger: 0.06 } }, only: WORDY },
+  { key: "letters", label: () => tr("حرف حرف", "Letter by letter"), motion: { enter: { kind: "letters", duration: 0.6, ease: "back" } }, only: WORDY },
+  { key: "lines", label: () => tr("سطر سطر", "Line by line"), motion: { enter: { kind: "lines", duration: 0.9, ease: "strong" } }, only: WORDY },
+  { key: "scramble", label: () => tr("حروف بتترتّب", "Unscrambles"), motion: { enter: { kind: "scramble", duration: 1.4 } }, only: WORDY },
+  { key: "typewriter", label: () => tr("آلة كاتبة", "Typewriter"), motion: { enter: { kind: "typewriter", duration: 1.6 } }, only: WORDY },
+  { key: "count", label: () => tr("الرقم بيعدّ", "Counts up"), motion: { enter: { kind: "count", duration: 2 } }, only: WORDY, fits: hasNumber },
+  { key: "scroll-words", label: () => tr("الكلمات بتضوي مع السكرول", "Words light up with the scroll"), motion: { scroll: { kind: "words" } }, only: WORDY },
+  { key: "typing", label: () => tr("بينكتب وبينمسح", "Types and erases"), motion: { loop: { kind: "type", duration: 2.5 } }, only: WORDY },
+  { key: "pin", label: () => tr("بيثبت والصفحة ماشية", "Holds while the page scrolls"), motion: { scroll: { kind: "pin", length: 100 } }, only: new Set(["section"]) },
   { key: "wipe", label: () => tr("بينكشف بالمسح", "Wipes in"), motion: { enter: { kind: "wipe-start", duration: 1, ease: "strong" } } },
   { key: "circle", label: () => tr("بينكشف بدائرة", "Opens in a circle"), motion: { enter: { kind: "circle", duration: 1.1, ease: "smooth" } } },
   { key: "flip", label: () => tr("بينقلب لمكانه", "Flips into place"), motion: { enter: { kind: "flip-x", duration: 0.9, ease: "back" } } },

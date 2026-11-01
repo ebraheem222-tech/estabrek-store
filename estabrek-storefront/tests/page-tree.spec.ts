@@ -6,6 +6,7 @@ import { artHasLines, safeArt } from "../src/pageTree/svgArt";
 import { Fragment, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { hasRich, parseRich, richNodes } from "../src/pageTree/rich";
+import { countUpText, scrambleChars } from "../src/pageTree/textMotion";
 
 // The new CMS's page tree (src/pageTree): a converted page draws exactly as before,
 // and a page of new elements draws on the server in three languages.
@@ -303,6 +304,20 @@ test.describe("styles become safe CSS", () => {
     expect(safeArt({ viewBox: "javascript:alert(1)", nodes: [{ t: "path", a: { d: "M0 0" } }] })).toBeNull();
   });
 
+  test("a number counting up keeps its words, digits, separators and decimals", () => {
+    const a = countUpText("+1,200 زبونة سعيدة")!;
+    expect([a.before, a.target, a.after, a.format(600), a.format(1200)]).toEqual(["+", 1200, " زبونة سعيدة", "600", "1,200"]);
+    const b = countUpText("٣٥٠٠ طلب")!;
+    expect([b.target, b.format(1200), b.format(3500)]).toEqual([3500, "١٢٠٠", "٣٥٠٠"]);
+    const c = countUpText("Rated 4.8 of 5")!;
+    expect([c.before, c.target, c.format(2.45), c.after]).toEqual(["Rated ", 4.8, "2.5", " of 5"]);
+    expect(countUpText("99% happy.")!.after).toBe("% happy.");
+    expect(countUpText("no number")).toBeNull();
+    expect(scrambleChars("عرض")).toMatch(/^[\u0600-\u06FF]+$/);
+    expect(scrambleChars("מבצע")).toMatch(/^[\u0590-\u05FF]+$/);
+    expect(scrambleChars("Sale")).toBe("upperAndLowerCase");
+  });
+
   test("words fall back to the store's main language; a broken tree reads as none", () => {
     expect(pickText({ ar: "مرحبا", en: "Hi" }, "he", "ar")).toBe("مرحبا");
     expect(pickText({ en: "Hi" }, "he", "ar")).toBe("Hi");
@@ -530,6 +545,32 @@ test.describe.serial("a page of new elements", () => {
     await page.mouse.move(jb.x - 40, jb.y - 40);
     await page.mouse.move(jb.x + jb.width / 2, jb.y + jb.height / 2, { steps: 4 });
     await expect.poll(() => v("hv-jelly", "--pt-hs").then(Number), { timeout: 3000 }).toBeGreaterThan(1.05);
+  });
+
+  test("words that move: Arabic word by word and English letter by letter, a number counting up, a scramble, words lit with the scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const [path, pieces, count] of [["/tree-demo", 2, "+1,200 زبونة سعيدة"], ["/en/tree-demo", 10, "+1,200 happy customers"]] as const) {
+      await page.goto(path);
+      const letters = page.locator('[data-tree-node="wm-letters"]');
+      await letters.scrollIntoViewIfNeeded();
+      // Arabic stays joined: its words move, never its letters; English moves letter by letter.
+      // The pieces that move are the innermost ones: Arabic words, English letters.
+      await expect.poll(() => letters.evaluate((el) => [...el.querySelectorAll("div")].filter((d) => !d.querySelector("div")).length)).toBe(pieces);
+      const counter = page.locator('[data-tree-node="wm-count"]');
+      await counter.scrollIntoViewIfNeeded();
+      await expect.poll(() => counter.innerText(), { timeout: 4000 }).toBe(count);
+    }
+    // Scrambled letters fall into place (the shop now remembers English).
+    await page.goto("/en/tree-demo");
+    const sc = page.locator('[data-tree-node="wm-scramble"]');
+    await sc.scrollIntoViewIfNeeded();
+    await expect.poll(() => sc.innerText(), { timeout: 4000 }).toBe("Special offer");
+    // With the scroll: low on the screen its words are dim, higher up they light.
+    const w = page.locator('[data-tree-node="wm-scroll"]');
+    await w.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight + 10));
+    await expect.poll(() => w.evaluate((el) => Number(getComputedStyle(el.querySelector("div") ?? el).opacity)), { timeout: 4000 }).toBeLessThan(0.6);
+    await w.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().bottom + window.scrollY + 20));
+    await expect.poll(() => w.evaluate((el) => Number(getComputedStyle([...el.querySelectorAll("div")].at(-1) ?? el).opacity)), { timeout: 4000 }).toBeGreaterThan(0.9);
   });
 
   test("a library font: the page asks Google once for the families it uses; the shop's own copy stays its own", async ({ page }) => {

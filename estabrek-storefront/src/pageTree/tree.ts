@@ -183,8 +183,17 @@ export const lookNode = (target: string, look: Look): TreeNode => ({ id: target,
 /* ------------------------------------------------------------------ motion */
 
 // A drawing's own: "draw" draws its lines, "morph" turns its shape into its second one and back, "dash" runs its lines.
-export const ENTER_KINDS = ["fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn", "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw"] as const;
-export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash"] as const;
+// Words' own: "letters" one by one (Arabic word by word, so its letters stay joined), "lines" from under a mask,
+// "scramble" from scrambled letters, "typewriter" typed, "count" a number counting up to itself.
+export const ENTER_KINDS = [
+  "fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn",
+  "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw",
+  "letters", "lines", "scramble", "typewriter", "count",
+] as const;
+// "type" types its words, waits, and takes them back, again and again.
+export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
+// "words" lights its words up one by one with the scroll; "pin" holds a section in place for `length` % of a screen.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin"] as const;
 // Then one-time plays as the mouse comes over it, a light that follows the mouse, a ripple where it's
 // pressed (a finger too), and springy ones (Motion's springs): it follows the mouse, or wobbles like jelly.
 export const HOVER_KINDS = [
@@ -197,7 +206,7 @@ export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
 export type TreeMotionSpec = {
   enter?: { kind: (typeof ENTER_KINDS)[number]; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
-  scroll?: { kind: "parallax" | "keys"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string };
+  scroll?: { kind: (typeof SCROLL_KINDS)[number]; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
   loop?: { kind: (typeof LOOP_KINDS)[number]; duration?: number; amount?: number };
   hover?: { kind: (typeof HOVER_KINDS)[number]; amount?: number; color?: string };
   fx?: { kind: (typeof FX_KINDS)[number]; speed?: number; color?: string; to?: string };
@@ -221,8 +230,8 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
   const out: TreeMotionSpec = {};
   const enter = inList(m.enter?.kind, ENTER_KINDS);
   if (enter) out.enter = { kind: enter, duration: within(m.enter.duration, 0, 6), delay: within(m.enter.delay, 0, 6), ease: inList(m.enter.ease, EASES), distance: within(m.enter.distance, 0, 400), stagger: within(m.enter.stagger, 0, 1) };
-  const scroll = inList(m.scroll?.kind, ["parallax", "keys"] as const);
-  if (scroll) out.scroll = { kind: scroll, speed: within(m.scroll.speed, -1, 1), from: keysOf(m.scroll.from), to: keysOf(m.scroll.to), start: within(m.scroll.start, 0, 100), end: within(m.scroll.end, 0, 100), ease: inList(m.scroll.ease, EASES) };
+  const scroll = inList(m.scroll?.kind, SCROLL_KINDS);
+  if (scroll) out.scroll = { kind: scroll, speed: within(m.scroll.speed, -1, 1), from: keysOf(m.scroll.from), to: keysOf(m.scroll.to), start: within(m.scroll.start, 0, 100), end: within(m.scroll.end, 0, 100), ease: inList(m.scroll.ease, EASES), length: within(m.scroll.length, 10, 400) };
   const loop = inList(m.loop?.kind, LOOP_KINDS);
   if (loop) out.loop = { kind: loop, duration: within(m.loop.duration, 0.2, 20), amount: within(m.loop.amount, 0.1, 3) };
   const hover = inList(m.hover?.kind, HOVER_KINDS);

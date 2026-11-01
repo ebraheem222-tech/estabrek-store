@@ -10,7 +10,7 @@ import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import { tr } from "../lib/words";
 import { styleOp } from "./columns";
 import {
-  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, WORDY,
+  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, WORDS_ONLY, WORDY, hasNumber,
   drawingHasLines, drawingMorphs, hasPreset, lookOf, motionOp, placedOn, presetsFor, previewOf, shownLook, withPreset,
   type Motion, type MotionKeys,
 } from "./look";
@@ -237,8 +237,8 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
   const fx = m.fx;
   const holds = HOLDS.has(node.type);
   // Kinds that suit the element, and whatever it already has (so the list always shows it).
-  const enterKinds = Object.keys(ENTER_LABEL).filter((k) => k === m.enter?.kind || ((k !== "words" || WORDY.has(node.type)) && (k !== "draw" || drawingHasLines(node))));
-  const loopKinds = Object.keys(LOOP_LABEL).filter((k) => k === m.loop?.kind || ((k !== "morph" || drawingMorphs(node)) && (k !== "dash" || drawingHasLines(node))));
+  const enterKinds = Object.keys(ENTER_LABEL).filter((k) => k === m.enter?.kind || ((!WORDS_ONLY.has(k) || WORDY.has(node.type)) && (k !== "count" || hasNumber(node)) && (k !== "draw" || drawingHasLines(node))));
+  const loopKinds = Object.keys(LOOP_LABEL).filter((k) => k === m.loop?.kind || ((k !== "morph" || drawingMorphs(node)) && (k !== "dash" || drawingHasLines(node)) && (k !== "type" || WORDY.has(node.type))));
   const moves = Object.keys(m).some((k) => k !== "phone");
   return (
     <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-motion">
@@ -264,7 +264,7 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
             <Range label={tr("المدة", "Duration")} min={0.2} max={3} step={0.1} unit="s" busy={busy} value={enter.duration ?? 0.8} onSave={(v) => part("enter", { ...enter, duration: v })} />
             <Range label={tr("بيستنى قبل", "Waits first")} min={0} max={3} step={0.1} unit="s" busy={busy} value={enter.delay ?? 0} onSave={(v) => part("enter", { ...enter, delay: v || undefined })} />
             {["up", "down", "start", "end"].includes(enter.kind) ? <Range label={tr("المسافة", "Distance")} min={0} max={200} unit="px" busy={busy} value={enter.distance ?? 40} onSave={(v) => part("enter", { ...enter, distance: v })} /> : null}
-            {holds || enter.kind === "words" ? <Range label={tr("واحد ورا التاني كل", "One after another every")} min={0} max={0.5} step={0.02} unit="s" busy={busy} value={enter.stagger ?? 0} onSave={(v) => part("enter", { ...enter, stagger: v || undefined })} /> : null}
+            {holds || ["words", "letters", "lines"].includes(enter.kind) ? <Range label={tr("واحد ورا التاني كل", "One after another every")} min={0} max={0.5} step={0.02} unit="s" busy={busy} value={enter.stagger ?? 0} onSave={(v) => part("enter", { ...enter, stagger: v || undefined })} /> : null}
             <Pick label={tr("نوع الحركة", "Kind of motion")} value={enter.ease ?? "smooth"} busy={busy} options={Object.keys(EASE_LABEL).map((k): [string, string] => [k, EASE_LABEL[k]()])} onPick={(v) => part("enter", { ...enter, ease: v })} />
           </>
         ) : null}
@@ -273,9 +273,14 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
       <Part title={tr("مع السكرول", "With the scroll")} open={Boolean(scroll)}>
         <Choice
           label={tr("السكرول", "Scroll")} value={scroll?.kind ?? ""} busy={busy} testId="studio-scroll-kind"
-          options={[["", tr("بلا", "None")], ["parallax", tr("أبطأ أو أسرع منه", "Slower or faster than it")], ["keys", tr("من شكل لشكل", "From one look to another")]]}
-          onPick={(v) => part("scroll", v === "parallax" ? { kind: "parallax", speed: 0.4 } : v === "keys" ? { kind: "keys", from: { rx: 28, scale: 0.88, y: 60 }, to: { rx: 0, scale: 1, y: 0 }, start: 100, end: 35 } : undefined)}
+          options={[
+            ["", tr("بلا", "None")], ["parallax", tr("أبطأ أو أسرع منه", "Slower or faster than it")], ["keys", tr("من شكل لشكل", "From one look to another")],
+            ...(WORDY.has(node.type) || scroll?.kind === "words" ? [["words", tr("الكلمات بتضوي", "Words light up")] as [string, string]] : []),
+            ...(node.type === "section" || scroll?.kind === "pin" ? [["pin", tr("بيثبت", "Holds still")] as [string, string]] : []),
+          ]}
+          onPick={(v) => part("scroll", v === "parallax" ? { kind: "parallax", speed: 0.4 } : v === "keys" ? { kind: "keys", from: { rx: 28, scale: 0.88, y: 60 }, to: { rx: 0, scale: 1, y: 0 }, start: 100, end: 35 } : v === "words" ? { kind: "words" } : v === "pin" ? { kind: "pin", length: 100 } : undefined)}
         />
+        {scroll?.kind === "pin" ? <Range label={tr("بيضل ثابت لمسافة (من طول الشاشة)", "Holds for (of a screen's height)")} min={10} max={400} step={10} unit="%" busy={busy} value={scroll.length ?? 100} onSave={(v) => part("scroll", { ...scroll, length: v })} testId="studio-pin-length" /> : null}
         {scroll?.kind === "parallax" ? <Range label={tr("السرعة (سالب = بعكس السكرول)", "Speed (minus = against the scroll)")} min={-1} max={1} step={0.1} busy={busy} value={scroll.speed ?? 0.4} onSave={(v) => part("scroll", { ...scroll, speed: v })} /> : null}
         {scroll?.kind === "keys" ? (
           <>

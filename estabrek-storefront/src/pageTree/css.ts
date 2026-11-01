@@ -753,6 +753,9 @@ export const BASE_CSS = [
   "@media (hover:hover){.pt-hv-spot:hover>.pt-spot{opacity:1}}",
   ".pt-rpl{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;background:var(--pt-rpc,currentColor);opacity:.28;transform:translate(-50%,-50%) scale(0);animation:pt-ripple .65s ease-out forwards}",
   "@keyframes pt-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}",
+  // Words being typed: a blinking caret after them.
+  ".pt-typing::after{content:\"\";display:inline-block;width:2px;height:1em;margin-inline-start:3px;background:currentColor;vertical-align:-.12em;animation:pt-caret .8s steps(1) infinite}",
+  "@keyframes pt-caret{50%{opacity:0}}",
   // Animated layers.
   ".pt-fx{position:absolute;inset:0;z-index:1;overflow:hidden;border-radius:inherit;pointer-events:none}",
   ".pt-fx-shine::before{content:\"\";position:absolute;top:-25%;bottom:-25%;left:0;width:40%;background:linear-gradient(90deg,transparent,var(--pt-fxc,rgba(255,255,255,.55)),transparent);transform:translateX(-150%) skewX(-18deg);animation:pt-shine var(--pt-fxs,3s) ease-in-out infinite}",

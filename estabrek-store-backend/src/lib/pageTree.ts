@@ -235,8 +235,16 @@ export const NodeStyle = z.object({ base: ScreenStyle.optional(), tablet: Screen
 /* ------------------------------------------------------------------ motion */
 
 // "draw" draws a drawing's lines, "morph" turns its shape into its second one and back, "dash" runs its lines.
-export const ENTER_KINDS = ["fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn", "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw"] as const;
-export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash"] as const;
+// Words: "letters" one by one, "lines" from under a mask, "scramble", "typewriter", "count" (a number counting up).
+export const ENTER_KINDS = [
+  "fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn",
+  "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw",
+  "letters", "lines", "scramble", "typewriter", "count",
+] as const;
+// "type" types its words, waits and takes them back, again and again.
+export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
+// "words" lights its words up one by one with the scroll; "pin" holds it in place for `length` % of a screen.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin"] as const;
 // Then plays once as the mouse comes over it, a light following the mouse, a ripple where it's pressed, springy ones.
 export const HOVER_KINDS = [
   "lift", "grow", "tilt", "magnetic", "glow", "zoom",
@@ -262,7 +270,7 @@ const MotionKeys = z.object({
  */
 export const NodeMotion = z.object({
   enter: z.object({ kind: z.enum(ENTER_KINDS), duration: seconds(6).optional(), delay: seconds(6).optional(), ease: z.enum(EASES).optional(), distance: px(0, 400).optional(), stagger: seconds(1).optional() }).optional(),
-  scroll: z.object({ kind: z.enum(["parallax", "keys"]), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional() }).optional(),
+  scroll: z.object({ kind: z.enum(SCROLL_KINDS), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional(), length: z.number().min(10).max(400).optional() }).optional(),
   loop: z.object({ kind: z.enum(LOOP_KINDS), duration: z.number().min(0.2).max(20).optional(), amount: z.number().min(0.1).max(3).optional() }).optional(),
   hover: z.object({ kind: z.enum(HOVER_KINDS), amount: z.number().min(0.1).max(3).optional(), color: color.optional() }).optional(),
   fx: z.object({ kind: z.enum(FX_KINDS), speed: z.number().min(0.2).max(5).optional(), color: color.optional(), to: color.optional() }).optional(),

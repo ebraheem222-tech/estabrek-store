@@ -177,6 +177,11 @@ describe("checking a page tree", () => {
     expect(moves({ hover: { kind: "spotlight", color: "accent-soft", amount: 2 } })).toEqual([]);
     expect(moves({ hover: { kind: "ripple", color: "red" } })).toEqual(["root.children[0].children[0].motion.hover.color"]);
     expect(moves({ hover: { kind: "explode" } }).length).toBe(1);
+    // Words: letters, lines, scramble, typed, a number counting up; lit up with the scroll; a typing loop; a pinned section.
+    for (const kind of ["letters", "lines", "scramble", "typewriter", "count"]) expect(moves({ enter: { kind, duration: 1.2 } }), kind).toEqual([]);
+    expect(moves({ scroll: { kind: "words", start: 85, end: 45 }, loop: { kind: "type", duration: 3 } })).toEqual([]);
+    expect(moves({ scroll: { kind: "pin", length: 150 } })).toEqual([]);
+    expect(moves({ scroll: { kind: "pin", length: 900 } }).length).toBe(1);
     // The old sections and scenes don't take motion.
     expect(issuesOf(page([{ id: "old", type: "legacy", props: { sectionId: "a" }, motion: { enter: { kind: "fade" } } }]))[0].message).toMatch(/moves with its own settings/);
     // Empty motion is left out.
