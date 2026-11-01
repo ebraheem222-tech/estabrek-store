@@ -14,6 +14,7 @@ import { ColourPick, NumberField } from "./StudioTreePanels";
 import { Field } from "./StudioPanels";
 import { hasLines, importSvg, lineWidthOf, paletteOf, recolor, setLineWidth, type Art, type ArtNode } from "./svgArt";
 import { SHAPES, defaultsOf, shapeByKey } from "./svgShapes";
+import { DecorPicker } from "./DecorPicker";
 import { IconPicker } from "./IconPicker";
 import { iconAsDrawing, iconShown } from "./iconLibrary";
 
@@ -59,6 +60,7 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
   const [paste, setPaste] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [icons, setIcons] = useState(false);
+  const [decor, setDecor] = useState(false);
   const setProps = (label: string, patch: Record<string, unknown>) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
   const take = (text: string) => {
     const r = importSvg(text);
@@ -86,6 +88,14 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
           </button>
         ))}
       </div>
+      <button type="button" className={`${btn} w-full`} disabled={busy} onClick={() => setDecor(true)} data-testid="studio-svg-decor">{tr("زخارف جاهزة: موجات، أقواس، فقاعات، إطارات…", "Ready decorations: waves, arcs, blobs, frames…")}</button>
+      <DecorPicker
+        open={decor} onClose={() => setDecor(false)}
+        onPick={(d) => {
+          setDecor(false);
+          setProps(d.name(), { art: d.art, shape: undefined, knobs: undefined });
+        }}
+      />
       <button type="button" className={`${btn} w-full`} disabled={busy} onClick={() => setIcons(true)} data-testid="studio-svg-icon">{tr("أو أيقونة من المكتبة (بتقدر تغيّر ألوانها)", "Or an icon from the library (its colours can change)")}</button>
       <IconPicker
         open={icons} line={2} onClose={() => setIcons(false)}

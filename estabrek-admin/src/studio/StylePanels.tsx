@@ -11,6 +11,7 @@ import { lookOf, shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
 import { FontPicker, useTreeFonts } from "./TypePanels";
+import { ShapePicker } from "./ShapePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
@@ -134,6 +135,7 @@ export function MediaStylePanel({ node, screen, busy, onOps }: { node: PageTreeN
         options={[["cover", tr("بتعبّيه كله (بتنقص من الأطراف)", "Fills it (edges may be cut)")], ["contain", tr("كلها بتبيّن", "Shows whole")]]}
         onPick={(f) => save(tr("تعبئة الإطار", "Fill"), { fit: f === "cover" ? null : f })}
       />
+      <ShapePicker value={v("shape")} busy={busy} onPick={(k) => save(tr("الشكل", "Shape"), { shape: k, radius: null })} testId="studio-media-shape" />
       <div className="text-[11px] text-white/55">
         {tr("النقطة اللي بتضل ظاهرة", "The point that stays in sight")}
         <div className="mt-1 flex items-start gap-3">

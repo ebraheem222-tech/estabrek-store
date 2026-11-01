@@ -14,6 +14,7 @@ import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { MAX_CELLS, MAX_SLIDES, PRESETS, addSlides, changeSlide, dropCellOps, layoutOps, moveSlide, reduceWidths, sameWidths, shownWidths, slidesOf, styleOp, type NewKind, type Slide } from "./columns";
 import { Field } from "./StudioPanels";
+import { ShapePicker } from "./ShapePanels";
 import { IconGlyph, IconPicker } from "./IconPicker";
 import { iconLineOf, iconShown, withIconLine } from "./iconLibrary";
 import type { Art } from "./svgArt";
@@ -197,14 +198,6 @@ export function ColumnsPanel({ node, screen, busy, ids, onOps }: { node: PageTre
 
 /* ------------------------------------------------------------------- cell */
 
-const SHAPES: Array<[string, () => string, string]> = [
-  ["rect", () => tr("مربع", "Square"), "rounded-none"],
-  ["rounded", () => tr("زوايا ناعمة", "Soft corners"), "rounded-md"],
-  ["pill", () => tr("كبسولة", "Pill"), "rounded-full"],
-  ["arch", () => tr("قوس", "Arch"), "rounded-t-full"],
-  ["circle", () => tr("دائرة", "Circle"), "rounded-full aspect-square"],
-];
-
 export function CellPanel({ node, cols, busy, onOps }: { node: PageTreeNode; cols: PageTreeNode | null; busy: boolean; onOps: Ops }) {
   const base = lookOf(node, "base");
   const set = (label: string, patch: Look) => onOps(label, [styleOp(node, "base", patch)]);
@@ -216,17 +209,7 @@ export function CellPanel({ node, cols, busy, onOps }: { node: PageTreeNode; col
     <div className={box} data-testid="studio-cell">
       <div className="text-xs font-medium text-white/70">{tr("شكل الخلية", "The cell's look")}</div>
       <ColourPick label={tr("الخلفية", "Background")} value={base.bg} busy={busy} onPick={(v) => set(tr("لون الخلية", "Cell colour"), { bg: v })} testId="studio-cell-bg" />
-      <div className="text-[11px] text-white/55">
-        {tr("الشكل", "Shape")}
-        <div className="mt-1 flex flex-wrap gap-1" role="group" aria-label={tr("الشكل", "Shape")} data-testid="studio-cell-shape">
-          {SHAPES.map(([k, name, cls]) => (
-            <button key={k} type="button" title={name()} aria-label={name()} aria-pressed={base.shape === k} disabled={busy} className={`${chip(base.shape === k)} flex items-center gap-1.5`} onClick={() => set(tr("شكل الخلية", "The cell's look"), { shape: base.shape === k ? null : k, radius: null })} data-value={k}>
-              <span className={`inline-block h-4 w-5 border border-current ${cls}`} aria-hidden="true" />
-              <span>{name()}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <ShapePicker value={base.shape} busy={busy} onPick={(k) => set(tr("شكل الخلية", "The cell's look"), { shape: k, radius: null })} testId="studio-cell-shape" />
       <NumberField label={tr("المسافة جوّا الخلية", "Space inside the cell")} suffix="px" value={pad} min={0} max={160} testId="studio-cell-pad" onSave={(v) => set(tr("المسافة", "Spacing"), { pad: v ? [v, v, v, v] : null })} />
       <Choice
         label={tr("الإطار", "Frame")}

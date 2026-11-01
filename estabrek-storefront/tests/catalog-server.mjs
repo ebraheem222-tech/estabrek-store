@@ -224,6 +224,17 @@ const treeDemo = {
             },
           ],
         },
+        // A section with a wave along its top and an angle at its bottom, a pattern, and a picture cut to a heart.
+        {
+          id: "edged", type: "section", style: { base: { bg: "#fff0f6", pad: [80, 24, 80, 24], pattern: { kind: "dots", color: "accent", size: 22, opacity: 0.3 } } },
+          props: {
+            edges: {
+              top: { art: { viewBox: "0 0 1440 120", nodes: [{ t: "path", a: { d: "M0 60C480 0 960 120 1440 60V120H0Z", fill: "currentColor" } }, { t: "script", a: {} }] }, height: 60, phone: 30, color: "#ff0000" },
+              bottom: { art: { viewBox: "0 0 1440 120", nodes: [{ t: "path", a: { d: "M0 120L1440 0V120Z", fill: "currentColor" } }] }, height: 50, color: "bg", flip: true, front: true },
+            },
+          },
+          children: [{ id: "heart-pic", type: "image", props: { src: "https://res.cloudinary.com/demo/image/upload/sample.jpg", alt: { ar: "قلب" } }, style: { base: { width: "200px", aspect: "1 / 1", shape: "heart" } } }],
+        },
         // Columns: a third and two thirds, each cell its own little container (shapes, alignment), three more columns inside one.
         {
           id: "split", type: "section", props: { contained: true },

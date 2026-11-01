@@ -4,7 +4,7 @@
  * file only builds the markup. Links to the shop's own pages get the language
  * prefix; links and file addresses are checked again before they're used.
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { withLang, type LangConfig } from "@/lib/i18n";
@@ -17,6 +17,7 @@ import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSli
 import { richNodes } from "./rich";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt } from "./svgArt";
+import { color } from "./css";
 import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
@@ -48,6 +49,22 @@ const SLIDER_WORDS: Record<TreeLang, SliderWords & { carousel: string }> = {
   he: { carousel: "מצגת", slide: "שקופית", prev: "השקופית הקודמת", next: "השקופית הבאה", pause: "השהיה", play: "הפעלה" },
 };
 
+/** A section's band along its top or bottom (a checked drawing stretched the full width), or null. */
+function sectionEdge(id: string, where: "top" | "bottom", raw: unknown): ReactNode {
+  const e = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+  const art = e ? safeArt(e.art) : null;
+  const h = Number(e?.height);
+  const tint = color(e?.color);
+  if (!e || !art || !(h >= 4 && h <= 400) || !tint) return null;
+  const phone = Number(e.phone);
+  const style = { "--pt-eh": `${h}px`, ...(phone >= 4 && phone <= 400 ? { "--pt-ehp": `${phone}px` } : {}), color: tint } as CSSProperties;
+  return (
+    <div key={where} className={`pt-edge pt-edge-${where}${e.flip === true ? " pt-edge-flip" : ""}${e.front === true ? " pt-edge-front" : ""}`} style={style} aria-hidden="true">
+      <ArtView art={art} prefix={`${id}-${where}`} stretch />
+    </div>
+  );
+}
+
 export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode {
   const p = node.props ?? {};
   const say = (t: unknown) => pickText(t, ctx.lang, ctx.main);
@@ -73,8 +90,10 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
     case "section": {
       const Tag = (["header", "footer", "aside"].includes(p.tag) ? p.tag : "section") as "section";
       const anchor = typeof p.anchor === "string" && /^[A-Za-z][\w-]{0,40}$/.test(p.anchor) ? p.anchor : undefined;
+      const edges = (["top", "bottom"] as const).map((where) => sectionEdge(node.id, where, p.edges?.[where])).filter(Boolean);
       return (
-        <Tag className={cls(node)} id={anchor} {...mark}>
+        <Tag className={`${cls(node)}${edges.length ? " pt-has-edges" : ""}`} id={anchor} {...mark}>
+          {edges}
           {p.contained ? <div className="pt-inner">{kids()}</div> : kids()}
         </Tag>
       );

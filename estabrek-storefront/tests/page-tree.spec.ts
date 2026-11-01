@@ -60,7 +60,7 @@ test.describe("styles become safe CSS", () => {
     const tree = (cols: Record<string, unknown>) => ({ version: 1 as const, root: { id: "page", type: "page", props: {}, children: [{ id: "s", type: "section", props: {}, children: [{ id: "c", type: "columns", props: {}, children: [cell("a"), cell("b"), cell("x")], ...cols }] }] } });
     expect(declarations({ widths: [1, 2], shape: "arch" }, "columns")).toEqual(["grid-template-columns:minmax(0,1fr) minmax(0,2fr)", "border-radius:999px 999px 0 0", "overflow:hidden"]);
     expect(declarations({ shape: "circle" }, "cell")).toEqual(["border-radius:50%", "aspect-ratio:1/1", "overflow:hidden"]);
-    expect(declarations({ widths: [0, 2], shape: "star" } as any, "columns")).toEqual([]);
+    expect(declarations({ widths: [0, 2], shape: "octopus" } as any, "columns")).toEqual([]);
 
     // Three equal cells: two on a tablet with the last one across, one under the other on a phone.
     const css = treeCss(tree({}));
@@ -153,6 +153,26 @@ test.describe("styles become safe CSS", () => {
     expect(declarations({ lines: 2, textColumns: 2 }, "button")).toEqual([]);
     expect(declarations({ shadows: [{ x: 0, y: 2, blur: 0, color: "#00000033" }], glow: { color: "white", size: 12 } }, "heading")).toEqual(["text-shadow:0px 2px 0px #00000033,0 0 12px #fff"]);
     expect(declarations({ family: "x;color:red", caps: "shout", decoration: { line: "zigzag" }, stroke: { width: 99, color: "#000" }, fill: { color: "accent" }, shadows: [{ x: 0, y: 0, blur: 0, color: "red" }] } as any, "text")).toEqual([]);
+  });
+
+  test("patterns over the background in a theme colour, over its gradient; shapes that cut with a mask", () => {
+    const d = (s: unknown) => declarations(s as any, "cell").join(";");
+    expect(d({ pattern: { kind: "dots", color: "accent", size: 20, opacity: 0.25 } })).toBe(
+      "background-image:radial-gradient(color-mix(in srgb,var(--accent) 25%,transparent) 2.4px,transparent 3px);background-size:20px 20px;background-position:0 0",
+    );
+    // Over a gradient, each layer with its own size and place.
+    expect(d({ gradient: { color: "#ffffff", to: "#000000" }, pattern: { kind: "polka", color: "#ff0000", size: 30 } })).toContain(
+      "background-image:radial-gradient(#ff0000 3.6px,transparent 4.2px),radial-gradient(#ff0000 3.6px,transparent 4.2px),linear-gradient(180deg,#ffffff,#000000);background-size:30px 30px,30px 30px,auto;background-position:0 0,15px 15px,0 0",
+    );
+    for (const kind of ["grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"]) expect(d({ pattern: { kind, color: "text", size: 24 } }), kind).toContain("background-image:");
+    expect(d({ pattern: { kind: "plaid", color: "text", size: 24 } })).toBe("");
+    expect(d({ pattern: { kind: "dots", color: "red", size: 24 } })).toBe("");
+    // A mask: the outline stretched to the box; the old shapes as they were.
+    const heart = d({ shape: "heart" });
+    expect(heart).toMatch(/^-webkit-mask:url\("data:image\/svg\+xml,%3Csvg[^"]*"\) center\/100% 100% no-repeat;mask:url\(/);
+    expect(decodeURIComponent(heart.match(/svg\+xml,([^"]*)/)![1])).toContain("preserveAspectRatio='none'><path d='M50 92C20 70");
+    expect(d({ shape: "pill" })).toBe("border-radius:999px;overflow:hidden");
+    expect(d({ shape: "octopus" })).toBe("");
   });
 
   test("boxes: gradients, frosted glass and picture filters", () => {
@@ -451,6 +471,25 @@ test.describe.serial("a page of new elements", () => {
     await expect.poll(() => blob.locator("path").getAttribute("d"), { timeout: 8000 }).not.toBe(d0);
     await line.scrollIntoViewIfNeeded();
     await expect.poll(() => line.locator("path").evaluate((el) => (el as SVGPathElement).style.strokeDasharray), { timeout: 8000 }).not.toBe("");
+  });
+
+  test("a section's edges: a wave along its top and an angle at its bottom, stretched, coloured, flipped and sized per screen", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/tree-demo");
+    const sec = page.locator('[data-tree-node="edged"]');
+    await expect(sec).toHaveClass(/pt-has-edges/);
+    const top = sec.locator(":scope > .pt-edge-top");
+    const bottom = sec.locator(":scope > .pt-edge-bottom");
+    expect(await top.evaluate((el) => [Math.round(el.getBoundingClientRect().height), getComputedStyle(el).color, getComputedStyle(el).zIndex, el.querySelector("svg")!.getAttribute("preserveAspectRatio")].join("|"))).toBe("60|rgb(255, 0, 0)|-1|none");
+    expect(await bottom.evaluate((el) => [el.className.includes("pt-edge-flip"), getComputedStyle(el).zIndex].join("|"))).toBe("true|2");
+    // What isn't allowed in the drawing never reaches the page; under the section's own content.
+    expect(await top.locator("script").count()).toBe(0);
+    expect(await sec.locator(".pt-edge path").count()).toBe(2);
+    // A pattern over its background, and a picture cut to a heart.
+    expect(await sec.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain("radial-gradient");
+    expect(await page.locator('[data-tree-node="heart-pic"]').evaluate((el) => getComputedStyle(el).maskImage || getComputedStyle(el).webkitMaskImage)).toContain("data:image/svg+xml");
+    await page.setViewportSize({ width: 390, height: 800 });
+    await expect.poll(() => top.evaluate((el) => Math.round(el.getBoundingClientRect().height))).toBe(30);
   });
 
   test("a library font: the page asks Google once for the families it uses; the shop's own copy stays its own", async ({ page }) => {

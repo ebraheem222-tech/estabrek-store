@@ -156,6 +156,27 @@ const VISUAL = {
 export const StateStyle = z.object(VISUAL);
 export const STATES = ["hover", "focused", "pressed"] as const;
 
+/** What can cut an element to a shape (the shop's pageTree/css.ts draws each). */
+export const SHAPES = [
+  "rect", "rounded", "pill", "arch", "circle",
+  "hexagon", "octagon", "diamond", "triangle", "pentagon", "star", "heart", "blob", "blob2", "flower",
+  "leaf", "drop", "shield", "squircle", "ticket", "bubble", "plus", "slant", "wave", "tilt",
+] as const;
+/** A pattern over the background, drawn in one colour (the shop's pageTree/css.ts). */
+export const PATTERNS = ["dots", "polka", "grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"] as const;
+/** A band along a section's top or bottom: a drawing stretched the full width (a wave, an angle…). */
+const SectionEdge = z.object({
+  art: z.unknown().superRefine((v, ctx) => {
+    const problem = checkArt(v);
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+  }).transform((v) => v as Art),
+  height: px(4, 400),
+  phone: px(4, 400).optional(), // its height on a phone
+  color,
+  flip: z.boolean().optional(), // mirrored, end to start
+  front: z.boolean().optional(), // over the section's content instead of under it
+});
+
 /** How a node looks on one screen size. Every key is optional; the shop turns it into CSS. */
 export const ScreenStyle = z.object({
   ...VISUAL,
@@ -195,7 +216,8 @@ export const ScreenStyle = z.object({
   // A picture's or clip's point that stays in sight when it's cut to its frame (% across, % down).
   focus: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   aspect: z.string().trim().regex(/^\d{1,2}\s*\/\s*\d{1,2}$/, "Like 16 / 9").optional(),
-  shape: z.enum(["rect", "rounded", "pill", "arch", "circle"]).optional(), // what clips it (a picture inside takes the shape)
+  shape: z.enum(SHAPES).optional(), // what clips it (a picture inside takes the shape)
+  pattern: z.object({ kind: z.enum(PATTERNS), color, size: px(4, 200), opacity: z.number().min(0).max(1).optional() }).optional(),
   perspective: px(200, 4000).optional(),
   origin: z.enum(["center", "top", "bottom"]).optional(),
   // Placed freely over its container, its anchor at x% from the line's start and y% from the top; false = back in the flow on this screen.
@@ -266,6 +288,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
     contained: z.boolean().optional(), // the content keeps to the page width
+    edges: z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() }).optional(),
   }),
   grid: none,
   stack: none,

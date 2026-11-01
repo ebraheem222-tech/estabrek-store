@@ -15,6 +15,7 @@ import { Range } from "./LookPanels";
 import { NEEDS_NORMAL, STATES, STATE_LABEL, presetsOf, statesOf, type StateChoice, type StateName } from "./states";
 import { loadStoreThemes, shopOrigin, type TreeFontInfo } from "./storeThemes";
 import { SAMPLE, loadPreviews, previewFamily } from "./fontPreview";
+import { PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch, effectPreview } from "./textEffects";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -212,6 +213,17 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
   return (
     <div className={box} data-testid="studio-type-more">
       <Head title={inState ? tr("طلاء الكلام", "The words' paint") : tr("الكلام بالتفصيل", "The words in detail")} screen={screen} />
+      <Fold title={tr("تأثيرات جاهزة للكلام", "Ready word effects")} open={Boolean(effectOf(v))} testId="studio-type-effects">
+        <div className="grid grid-cols-3 gap-1">
+          {TEXT_EFFECTS.filter((e) => !inState || Object.keys(e.paint).length).map((e) => (
+            <button key={e.key} type="button" disabled={busy} aria-pressed={effectOf(v) === e.key} title={e.name()} onClick={() => save(e.name(), effectPatch(e, inState))} className={`rounded-lg border bg-[#fffaf7] px-1 py-1.5 text-center hover:bg-[#fff3ee] ${effectOf(v) === e.key ? "border-[#c86b98] ring-2 ring-[#c86b98]/60" : "border-[#ead7df]"} disabled:opacity-40`} data-effect={e.key}>
+              <span className="block truncate text-base font-bold leading-6 text-[#3b2530]" style={effectPreview(e)}>أب Aa</span>
+              <span className="block truncate text-[9px] text-[#8d7380]">{e.name()}</span>
+            </button>
+          ))}
+        </div>
+        {PAINT_KEYS.some((k) => v(k) !== undefined) ? <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(tr("بلا تأثير", "No effect"), Object.fromEntries(PAINT_KEYS.map((k) => [k, null])))} data-testid="studio-type-effect-none">{tr("بلا تأثير", "No effect")}</button> : null}
+      </Fold>
       {!inState ? (
         <>
           {toggle(tr("مايل", "Italic"), v("italic") === true, busy, (on) => save(tr("مايل", "Italic"), { italic: on || null }), "studio-type-italic")}

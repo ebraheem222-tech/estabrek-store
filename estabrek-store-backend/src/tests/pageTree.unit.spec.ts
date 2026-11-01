@@ -85,7 +85,7 @@ describe("checking a page tree", () => {
     expect(issuesOf(look({ widths: [0, 2] })).length).toBe(1);
     expect(issuesOf(look({ widths: [1, 1, 1, 1, 1] })).length).toBe(1);
     expect(issuesOf(look({ widths: [1.5, 2] })).length).toBe(1);
-    expect(issuesOf(look({ shape: "star" })).length).toBe(1);
+    expect(issuesOf(look({ shape: "octopus" })).length).toBe(1);
     expect(issuesOf(page([section("s", [cols("c", [cell("a")], { props: { phone: "sideways" } })])])).length).toBe(1);
   });
 
@@ -257,6 +257,18 @@ describe("checking a page tree", () => {
     for (let i = 0; i < 12; i++) deep = { t: "g", a: {}, c: [deep] };
     expect(bad([deep])).toMatch(/nested more than/);
     expect(bad(Array.from({ length: 700 }, () => ({ t: "circle", a: { r: "1" } })))).toMatch(/More than 600 shapes/);
+  });
+
+  test("a section's edges, a pattern over the background, and the shapes that cut an element", () => {
+    const wave = { viewBox: "0 0 1440 120", nodes: [{ t: "path", a: { d: "M0 60C480 0 960 120 1440 60V120H0Z", fill: "currentColor" } }] };
+    const tree = (props: unknown, style?: unknown) => page([{ id: "s", type: "section", props, ...(style ? { style } : {}), children: [{ id: "c", type: "text", props: { text: { ar: "x" } }, style: { base: { shape: "heart" } } }] }]);
+    const r = checkTree(tree({ edges: { top: { art: wave, height: 80, phone: 40, color: "bg", flip: true }, bottom: { art: wave, height: 60, color: "#ffffff", front: true } } }, { base: { pattern: { kind: "dots", color: "accent", size: 24, opacity: 0.3 } } }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].props.edges.top).toMatchObject({ height: 80, phone: 40, color: "bg", flip: true });
+    expect(issuesOf(tree({ edges: { top: { art: { viewBox: "0 0 1 1", nodes: [{ t: "image", a: {} }] }, height: 80, color: "bg" } } })).length).toBeGreaterThan(0);
+    expect(issuesOf(tree({ edges: { top: { art: wave, height: 900, color: "bg" } } })).length).toBeGreaterThan(0);
+    expect(issuesOf(tree({}, { base: { pattern: { kind: "plaid", color: "accent", size: 24 } } })).length).toBeGreaterThan(0);
+    expect(issuesOf(tree({}, { base: { shape: "octopus" } })).length).toBeGreaterThan(0);
   });
 
   test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {
