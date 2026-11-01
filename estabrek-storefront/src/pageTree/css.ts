@@ -172,6 +172,8 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   if (j) d.push(`justify-content:${JUSTIFY[j]}`);
   const a = pick(s.align, ["start", "center", "end", "stretch"] as const);
   if (a) d.push(`align-items:${ALIGN[a]}`);
+  const self = pick(s.self, ["start", "center", "end", "stretch"] as const);
+  if (self) d.push(`align-self:${ALIGN[self]}`);
   push("grid-column", place(s.col));
   push("grid-row", place(s.row));
   const order = num(s.order, -50, 50);
@@ -621,7 +623,8 @@ export const BASE_CSS = [
   ".pt-inner,.pt-grid,.pt-stack,.pt-columns,.pt-cell{position:relative}",
   // A cell is a small container: its things one under the other, at the start; text and wide things take the whole width.
   ".pt-cell{display:flex;flex-direction:column;align-items:flex-start;gap:16px;min-width:0}",
-  ".pt-cell>:is(.pt-heading,.pt-text,.pt-video,.pt-slider,.pt-product360,.pt-products,.pt-categories,.pt-form,.pt-columns,.pt-grid,.pt-stack,.pt-divider,.pt-spacer){align-self:stretch}",
+  // (:where, so an element's own "where it sits" wins.)
+  ".pt-cell>:where(.pt-heading,.pt-text,.pt-video,.pt-slider,.pt-product360,.pt-products,.pt-categories,.pt-form,.pt-columns,.pt-grid,.pt-stack,.pt-divider,.pt-spacer){align-self:stretch}",
   ".pt-cell>.pt-image,.pt-cell>.pt-image-link{max-width:100%}",
   ".pt-heading{margin:0;font-family:var(--pt-font-heading);line-height:1.2;white-space:pre-line}",
   ".pt-text{margin:0;line-height:1.75;white-space:pre-line}",

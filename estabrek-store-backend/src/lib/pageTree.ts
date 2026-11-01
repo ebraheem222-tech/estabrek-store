@@ -171,6 +171,7 @@ export const ScreenStyle = z.object({
   wrap: z.boolean().optional(),
   justify: z.enum(["start", "center", "end", "between", "around"]).optional(),
   align: z.enum(["start", "center", "end", "stretch"]).optional(),
+  self: z.enum(["start", "center", "end", "stretch"]).optional(), // where it sits across its row or column, whatever its container says
   col: place.optional(), // its cell in the parent grid
   row: place.optional(),
   order: z.number().int().min(-50).max(50).optional(),

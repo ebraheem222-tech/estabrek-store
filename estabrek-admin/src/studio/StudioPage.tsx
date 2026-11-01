@@ -46,7 +46,9 @@ import { useAuth } from "../hooks/useAuth";
 import { stateOps, stateView, type StateChoice } from "./states";
 import { SvgPanel } from "./SvgPanel";
 import { Product360Panel } from "./Product360Panel";
-import { motionOp, placeFor, placedOn, withPreset, type Motion } from "./look";
+import { motionOp, placeFor, placedOn, shownLook, withPreset, type Motion } from "./look";
+import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./MultiPanel";
+import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
 import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
@@ -123,6 +125,13 @@ export default function StudioPage() {
   const [canvas, setCanvas] = useState({ w: 0, h: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // Other elements selected with it (Shift+click, a box dragged on the page): the tree's own elements only.
+  const [more, setMore] = useState<string[]>([]);
+  const [marquee, setMarquee] = useState<{ a: Pt; b: Pt } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  // Locked in the layers (kept in this browser for the page): clicks on the page go through them.
+  const [locked, setLocked] = useState<Set<string>>(() => lockedOf(id));
+  const [layerFind, setLayerFind] = useState("");
   // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
   const [styleState, setStyleState] = useState<StateChoice>("normal");
   const [panMode, setPanMode] = useState(false);
@@ -134,7 +143,7 @@ export default function StudioPage() {
   const [themePreview, setThemePreview] = useState<string | null>(null);
   const [themeMode, setThemeMode] = useState<"light" | "dark" | null>(null);
   const [themeSaving, setThemeSaving] = useState(false);
-  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
+  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "deleteMany"; ids: string[] } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
   const [drop, setDrop] = useState<Drop | null>(null);
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
   const adding = useRef<AddKind | null>(null);
@@ -291,7 +300,8 @@ export default function StudioPage() {
   const extras = measured.extras;
   /** The parent of every measured thing that isn't a tree node (a field, a piece of a section or scene). */
   const up = measured.up;
-  const grid = useMemo(() => new SpatialGrid(shapes, 64, { x: 0, y: 0, w: canvas.w, h: canvas.h }), [shapes, canvas.w, canvas.h]);
+  const lockedIn = useMemo(() => (index ? withInside(index, locked) : new Set<string>()), [index, locked]);
+  const grid = useMemo(() => new SpatialGrid(shapes.filter((x) => !lockedIn.has(x.id)), 64, { x: 0, y: 0, w: canvas.w, h: canvas.h }), [shapes, lockedIn, canvas.w, canvas.h]);
   const shapeOf = (sid: string | null) => (sid ? shapes.find((s) => s.id === sid) ?? null : null);
   const frameBox: Box = { x: pan.x, y: pan.y, w: dev.w * zoom, h: dev.h * zoom };
 
@@ -302,6 +312,7 @@ export default function StudioPage() {
   const inFrame = (p: Pt) => p.x >= frameBox.x && p.x <= frameBox.x + frameBox.w && p.y >= frameBox.y && p.y <= frameBox.y + frameBox.h;
   const select = (sid: string | null, reveal = false) => {
     setSelected(sid);
+    setMore([]);
     if (!reveal || !sid || !index) return;
     const x = extras.get(sid);
     if (x?.kind === "slot") return send({ type: "reveal", owner: x.owner, sectionId: x.sectionId, path: x.path });
@@ -477,6 +488,10 @@ export default function StudioPage() {
         setPan({ x: d.pan.x + p.x - d.p.x, y: d.pan.y + p.y - d.p.y });
         return;
       }
+      if (d.moved && !d.grab && !d.touch && inFrame(d.p)) {
+        setMarquee({ a: d.p, b: p });
+        return;
+      }
       if (d.touch && d.moved) {
         send({ type: "scrollBy", dx: 0, dy: (d.y - p.y) / zoom });
         d.y = p.y;
@@ -494,9 +509,9 @@ export default function StudioPage() {
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const panning = e.button === 1 || panMode || !inFrame(p);
     const touch = e.pointerType === "touch";
-    // Dragging the selected element (or from inside it) moves it; sections move in the layers.
+    // Dragging the selected element (or from inside it) moves it; sections move in the layers. With Shift a box is drawn instead.
     const sel = nodeOf(selected);
-    const hit = !panning && !touch && e.button === 0 && sel && isFree(sel.type) && sel.type !== "section" ? pickAt(grid.near(p), p) : null;
+    const hit = !panning && !touch && !e.shiftKey && e.button === 0 && sel && isFree(sel.type) && sel.type !== "section" ? pickAt(grid.near(p), p) : null;
     const grab = hit && index && selected && pathTo(index, hit.id, up).includes(selected) ? selected : null;
     down.current = { p, pan, panning, touch, moved: false, y: p.y, grab, box: grab ? shapeOf(grab)?.box : undefined, holder: grab ? holderOf(grab) : null };
   };
@@ -504,6 +519,15 @@ export default function StudioPage() {
   const onPointerUp = (e: ReactPointerEvent) => {
     const d = down.current;
     down.current = null;
+    if (marquee) {
+      const picked = index ? inBox(boxOf(marquee.a, marquee.b), shapes, index, (x) => lockedIn.has(x)) : [];
+      setMarquee(null);
+      if (picked.length) {
+        setSelected(picked[picked.length - 1]);
+        setMore(e.shiftKey ? [...new Set([...chosen, ...picked.slice(0, -1)])] : picked.slice(0, -1));
+      }
+      return;
+    }
     if (d?.grab && d.moved) {
       const t = drop;
       const placed = placing;
@@ -524,6 +548,7 @@ export default function StudioPage() {
     const again = lastClick.current && Math.hypot(p.x - lastClick.current.x, p.y - lastClick.current.y) < 4;
     if (again && !(e.ctrlKey || e.metaKey) && selected && target && pathTo(index, target, up).includes(selected)) target = parentOf(selected) ?? selected;
     lastClick.current = p;
+    if (e.shiftKey && target && isFree(index.nodes.get(target)?.node.type)) return toggleChosen(target);
     select(target);
   };
 
@@ -589,19 +614,52 @@ export default function StudioPage() {
         else zoomBy(e.key === "-" ? 1 / 1.25 : 1.25);
         return;
       }
-      // Delete takes the selected element out (asking first), Ctrl/⌘+D copies it.
-      if ((e.key === "Delete" || e.key === "Backspace") && selected && selFree && selFree.type !== "cell") {
+      // Delete takes the selected elements out (asking first), Ctrl/⌘+D copies them.
+      if ((e.key === "Delete" || e.key === "Backspace") && loose.length) {
         e.preventDefault();
-        setAsking({ kind: "delete", nodeId: selected, name: label(selected), tree: true });
+        if (loose.length > 1) setAsking({ kind: "deleteMany", ids: loose });
+        else setAsking({ kind: "delete", nodeId: loose[0], name: label(loose[0]), tree: true });
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d" && selFree && selFree.type !== "cell") {
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+      if (mod && k === "d" && loose.length) {
         e.preventDefault();
-        copySelected();
+        duplicateChosen();
+        return;
+      }
+      // The clipboard: elements (Ctrl+C/X/V) and looks (Ctrl+Alt+C/V); grouping (Ctrl+G, Shift to undo it); all beside it (Ctrl+A).
+      if (mod && e.altKey && (k === "c" || k === "v")) {
+        e.preventDefault();
+        if (k === "c") copyLookOf();
+        else pasteLook();
+        return;
+      }
+      if (mod && (k === "c" || k === "x") && chosen.length) {
+        e.preventDefault();
+        if (k === "c") copyChosen();
+        else cutChosen();
+        return;
+      }
+      if (mod && k === "v") {
+        e.preventDefault();
+        pasteHere();
+        return;
+      }
+      if (mod && k === "g") {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelected();
+        else groupChosen();
+        return;
+      }
+      if (mod && k === "a" && selected) {
+        e.preventDefault();
+        selectBeside();
         return;
       }
       if (e.key === "Escape") {
         if (themeOpen) return setThemeOpen(false);
+        if (more.length) return setMore([]);
         setSelected((s) => parentOf(s));
         return;
       }
@@ -792,6 +850,7 @@ export default function StudioPage() {
     if (!ops.length) return;
     if (!(await run(label, ops)) || then === undefined) return;
     setSelected(then);
+    setMore([]);
     revealNext.current = then;
   };
   const probe = (kind: AddKind): PagesAPI.PageTreeNode => {
@@ -895,6 +954,154 @@ export default function StudioPage() {
     } catch (e) {
       toast.error(tr("ما قدرنا نجيب البلوك", "Couldn't get the block"), { description: getApiErrorMessage(e) });
     }
+  };
+  /** Every selected element of the tree (the main one last), and those that can be copied or deleted (not cells). */
+  const chosen = [...new Set([...more, ...(selected ? [selected] : [])])].filter((x) => isFree(index?.nodes.get(x)?.node.type));
+  const loose = chosen.filter((x) => nodeOf(x)?.type !== "cell");
+  const multi = chosen.length > 1;
+  const rtl = layout?.dir === "rtl";
+  /** Shift+click: adds an element to the selection, or takes it out. */
+  const toggleChosen = (x: string) => {
+    if (chosen.includes(x)) {
+      const rest = chosen.filter((c) => c !== x);
+      setSelected(rest.at(-1) ?? null);
+      setMore(rest.slice(0, -1));
+    } else {
+      setMore(chosen);
+      setSelected(x);
+    }
+  };
+  /** Ctrl+A: everything beside the selected element (in the same place). */
+  const selectBeside = () => {
+    const parent = selected ? index?.nodes.get(selected)?.parentId : null;
+    const all = parent ? (index!.nodes.get(parent)!.children.filter((c) => isFree(index!.nodes.get(c)?.node.type))) : [];
+    if (all.length < 2) return;
+    setSelected(all[all.length - 1]);
+    setMore(all.slice(0, -1));
+  };
+  /** Every element of the page like the selected one (same kind). */
+  const selectSimilar = () => {
+    const type = selFree?.type;
+    if (!index || !type) return;
+    const all = inTreeOrder(index, [...index.nodes.values()].filter((n) => n.node.type === type).map((n) => n.node.id));
+    setSelected(all[all.length - 1] ?? null);
+    setMore(all.slice(0, -1));
+  };
+  const copyChosen = () => {
+    if (!index || !loose.length) return;
+    if (copyNodes(inTreeOrder(index, loose).map((x) => nodeOf(x)!))) toast.success(loose.length > 1 ? tr(`انسخوا ${loose.length}`, "{0} copied", [loose.length]) : tr("انسخ", "Copied"));
+  };
+  const cutChosen = () => {
+    if (!loose.length) return;
+    copyChosen();
+    void change(tr("قص", "Cut"), loose.map((x): PagesAPI.PageDraftOp => ({ op: "remove", nodeId: x })), null);
+  };
+  const pasteHere = () => {
+    if (!index) return;
+    const nodes = clipboardNodes();
+    if (!nodes.length) return void toast.error(tr("ما في إشي منسوخ", "Nothing is copied"));
+    const plan = pasteOps(index, selected && index.nodes.has(selected) ? selected : null, nodes, makeIds());
+    if (plan) void change(tr("لصق", "Paste"), plan.ops, plan.first);
+  };
+  /** Each selected element copied right after itself (the last ones first, so places stay right). */
+  const duplicateChosen = () => {
+    if (!index || !loose.length) return;
+    const ids = makeIds();
+    const ops: PagesAPI.PageDraftOp[] = [];
+    for (const x of inTreeOrder(index, loose).reverse()) {
+      const at = index.nodes.get(x);
+      if (!at?.parentId) continue;
+      ops.push({ op: "insert", parentId: at.parentId, index: index.nodes.get(at.parentId)!.children.indexOf(x) + 1, node: copyOf(at.node, ids) });
+    }
+    const last = ops[0];
+    void change(tr("نسخة", "Copy"), ops, last && last.op === "insert" ? last.node.id : null);
+  };
+  const copyLookOf = () => {
+    const n = nodeOf(selected);
+    if (n && isFree(n.type) && copyLook(n)) toast.success(tr("انسخ الشكل", "The look was copied"));
+  };
+  const pasteLook = () => {
+    const look = clipboardLook();
+    if (!look) return void toast.error(tr("ما في شكل منسوخ", "No look is copied"));
+    if (chosen.length) void change(tr("لصق الشكل", "Paste the look"), chosen.flatMap((x) => pasteLookOps(nodeOf(x)!, look)));
+  };
+  const groupChosen = () => {
+    const g = index ? groupOps(index, chosen, makeIds()) : null;
+    if (g) void change(tr("تجميع", "Group"), g.ops, g.group);
+  };
+  const ungroupSelected = () => {
+    const ops = index && selected ? ungroupOps(index, selected) : null;
+    if (ops) void change(tr("فك التجميع", "Ungroup"), ops, index!.nodes.get(selected!)?.children[0] ?? null);
+  };
+  const toggleLock = (x: string) => {
+    const next = new Set(locked);
+    if (next.has(x)) next.delete(x);
+    else next.add(x);
+    setLocked(next);
+    saveLocked(id, next);
+  };
+  /** Hidden on the screen shown (and the smaller ones that follow it), or shown again there. */
+  const hiddenHere = (x: string) => {
+    const n = nodeOf(x);
+    return Boolean(n && shownLook(n, screen, "hidden") === true);
+  };
+  const toggleHidden = (x: string) => {
+    const n = nodeOf(x);
+    if (!n || !isFree(n.type)) return;
+    const hide = !hiddenHere(x);
+    void change(hide ? tr("إخفاء", "Hide") : tr("إظهار", "Show"), [styleOp(n, screen, { hidden: hide ? true : screen === "base" ? null : false })]);
+  };
+  const rename = (x: string, name: string) => void change(tr("اسم", "Name"), [{ op: "setName", nodeId: x, name: name.trim() || null }]);
+  const placedItems = () =>
+    chosen.flatMap((x) => {
+      const node = nodeOf(x);
+      const box = shapeOf(x)?.box;
+      const holder = holderOf(x);
+      return node && box && holder ? [{ node, box, holder }] : [];
+    });
+  const allPlaced = multi && chosen.every((x) => Boolean(placedOn(nodeOf(x)!, screen)));
+  const multiActions: MultiActions = {
+    onDelete: () => setAsking({ kind: "deleteMany", ids: loose }),
+    onDuplicate: duplicateChosen,
+    onCopy: copyChosen,
+    onGroup: index && groupOps(index, chosen, (x) => `__${x}`) ? groupChosen : null,
+    onAlign: allPlaced ? (how) => void change(tr("صفّ", "Line up"), alignOps(placedItems(), how, screen, rtl)) : null,
+    onDistribute: allPlaced && chosen.length >= 3 ? (across) => void change(tr("مسافات متساوية", "Even gaps"), distributeOps(placedItems(), across, screen, rtl)) : null,
+    onSelf: (self) => void change(tr("وين بيقعدوا", "Where they sit"), chosen.map((x) => styleOp(nodeOf(x)!, screen, { self }))),
+    onSameWidth: () => {
+      const first = shapeOf(chosen[0]);
+      if (first) void change(tr("نفس العرض", "Same width"), chosen.slice(1).map((x) => styleOp(nodeOf(x)!, screen, { width: `${Math.round(first.box.w / zoom)}px` })));
+    },
+    onSameLook: () => {
+      const first = nodeOf(chosen[0]);
+      if (first) void change(tr("نفس الشكل", "Same look"), chosen.slice(1).flatMap((x) => pasteLookOps(nodeOf(x)!, { v: 1, style: first.style, motion: first.motion, type: first.type })));
+    },
+    onClear: () => setMore([]),
+  };
+  /** The right-click menu for what's selected. */
+  const menuItems = (): MenuItem[] => {
+    const one = selected && isFree(nodeOf(selected)?.type) ? selected : null;
+    const kind = nodeOf(selected)?.type;
+    return [
+      { label: tr("نسخ", "Copy"), keys: "Ctrl+C", onClick: copyChosen, disabled: !loose.length },
+      { label: tr("قص", "Cut"), keys: "Ctrl+X", onClick: cutChosen, disabled: !loose.length },
+      { label: tr("لصق", "Paste"), keys: "Ctrl+V", onClick: pasteHere, disabled: !clipboardNodes().length },
+      { label: tr("نسخة هون", "Duplicate"), keys: "Ctrl+D", onClick: duplicateChosen, disabled: !loose.length },
+      "line",
+      { label: tr("نسخ الشكل", "Copy the look"), keys: "Ctrl+Alt+C", onClick: copyLookOf, disabled: !one },
+      { label: tr("لصق الشكل", "Paste the look"), keys: "Ctrl+Alt+V", onClick: pasteLook, disabled: !chosen.length || !clipboardLook() },
+      "line",
+      { label: tr("جمّعهم", "Group them"), keys: "Ctrl+G", onClick: groupChosen, disabled: !(index && groupOps(index, chosen, (x) => `__${x}`)) },
+      { label: tr("فك التجميع", "Ungroup"), keys: "Ctrl+Shift+G", onClick: ungroupSelected, disabled: !(index && selected && ungroupOps(index, selected)) },
+      { label: tr("حدد الأب", "Select the parent"), keys: "Esc", onClick: () => select(parentOf(selected), true), disabled: !parentOf(selected) },
+      { label: tr("حدد كل اللي متله", "Select all like it"), onClick: selectSimilar, disabled: !one },
+      { label: tr("حدد اللي جنبه", "Select those beside it"), keys: "Ctrl+A", onClick: selectBeside, disabled: !one },
+      "line",
+      { label: one && locked.has(one) ? tr("فك القفل", "Unlock") : tr("اقفل (ما بينختار بالكبس)", "Lock (clicks pass through)"), onClick: () => one && toggleLock(one), disabled: !one || kind === "cell" },
+      { label: one && hiddenHere(one) ? tr("أظهره على هالشاشة", "Show it on this screen") : tr("خبّيه على هالشاشة", "Hide it on this screen"), onClick: () => one && toggleHidden(one), disabled: !one },
+      "line",
+      { label: multi ? tr(`احذف ${loose.length}`, "Delete {0}", [loose.length]) : tr("احذف", "Delete"), keys: "Del", danger: true, onClick: () => (loose.length > 1 ? setAsking({ kind: "deleteMany", ids: loose }) : loose[0] && setAsking({ kind: "delete", nodeId: loose[0], name: label(loose[0]), tree: true })), disabled: !loose.length },
+    ];
   };
   const copySelected = () => {
     if (!selFree || !selNode?.parentId) return;
@@ -1051,6 +1258,7 @@ export default function StudioPage() {
         </p>
       );
     }
+    if (multi) return <MultiPanel names={chosen.map(label)} busy={busy} actions={multiActions} />;
     return (
       <div className="space-y-3">
         <nav className="flex flex-wrap items-center gap-1 text-[11px] text-white/50" aria-label={tr("المسار", "Path")} data-testid="studio-path">
@@ -1386,12 +1594,28 @@ export default function StudioPage() {
     const t = index.nodes.get(target);
     if (t?.parentId && canHold(index, t.parentId, node)) moveTo(from, { parentId: t.parentId, index: index.nodes.get(t.parentId)!.children.filter((c) => c !== from).indexOf(target) });
   };
-  const layersList = (pick: (sid: string) => void) => (
+  // The layers' search: rows whose name, kind or words match, and the rows above them.
+  const layerMatch = (() => {
+    const q = layerFind.trim().toLowerCase();
+    if (!q || !index) return null;
+    const hit = new Set<string>();
+    for (const [nid] of index.nodes) {
+      if (!label(nid).toLowerCase().includes(q)) continue;
+      for (let at: string | null = nid; at; at = index.nodes.get(at)?.parentId ?? null) hit.add(at);
+    }
+    return hit;
+  })();
+  const rowTools = { locked, chosen, match: layerMatch, hidden: hiddenHere, onLock: toggleLock, onHide: toggleHidden, onRename: rename };
+  const layersList = (pick: (sid: string, add?: boolean) => void) => (
     <div>
+      <input
+        type="search" value={layerFind} onChange={(e) => setLayerFind(e.target.value)} placeholder={tr("دوّر بالطبقات", "Find in the layers")}
+        className="mb-1.5 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1 text-xs text-white" data-testid="studio-layer-find"
+      />
       <button type="button" onClick={() => pick(index!.root)} className={`flex w-full rounded-md px-2 py-1 text-start text-xs ${selected === index!.root ? "bg-accent-500/25 text-white" : "text-white/70 hover:bg-white/[0.04]"}`} data-testid="studio-layer" data-node={index!.root}>
         {typeLabel("page")}
       </button>
-      {topItems.map((sid) => {
+      {topItems.filter((sid) => !layerMatch || layerMatch.has(sid)).map((sid) => {
         const n = index!.nodes.get(sid)?.node;
         const sec = n?.type === "legacy" ? sectionOf(String(n.props.sectionId)) : undefined;
         const open = selPath.includes(sid);
@@ -1401,10 +1625,10 @@ export default function StudioPage() {
               type="button"
               draggable
               onDragStart={() => (dragged.current = sid)}
-              onClick={() => pick(sid)}
+              onClick={(e) => pick(sid, e.shiftKey)}
               onMouseEnter={() => setHovered(sid)}
               onMouseLeave={() => setHovered(null)}
-              className={`flex w-full cursor-grab items-center gap-1.5 truncate rounded-md py-1 pe-2 ps-5 text-start text-xs ${selected === sid ? "bg-accent-500/25 text-white" : hovered === sid ? "bg-white/[0.06] text-white" : "text-white/70 hover:bg-white/[0.04]"} ${sec && !sec.isVisible ? "opacity-45" : ""}`}
+              className={`flex w-full cursor-grab items-center gap-1.5 truncate rounded-md py-1 pe-2 ps-5 text-start text-xs ${selected === sid || chosen.includes(sid) ? "bg-accent-500/25 text-white" : hovered === sid ? "bg-white/[0.06] text-white" : "text-white/70 hover:bg-white/[0.04]"} ${sec && !sec.isVisible ? "opacity-45" : ""}`}
               data-testid="studio-layer"
               data-node={sid}
             >
@@ -1413,7 +1637,7 @@ export default function StudioPage() {
               {sec && !sec.isVisible ? <span className="ms-auto shrink-0 text-[10px]">{tr("مخفي", "Hidden")}</span> : null}
             </button>
             {n && n.type !== "legacy" ? (
-              <Layers index={index!} id={sid} selected={selected} hovered={hovered} sectionTypes={sectionTypes} onPick={pick} onHover={setHovered} onDragStart={(x) => (dragged.current = x)} onDropOn={dropAny} depth={2} childrenOnly />
+              <Layers index={index!} id={sid} selected={selected} hovered={hovered} sectionTypes={sectionTypes} onPick={pick} onHover={setHovered} onDragStart={(x) => (dragged.current = x)} onDropOn={dropAny} depth={2} childrenOnly tools={rowTools} />
             ) : null}
             {open ? pieceRows(sid, 1, pick) : null}
           </div>
@@ -1567,7 +1791,7 @@ export default function StudioPage() {
             <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
           ) : (
             <>
-              {index ? layersList((sid) => select(sid, true)) : null}
+              {index ? layersList((sid, add) => (add && isFree(nodeOf(sid)?.type) ? toggleChosen(sid) : select(sid, true))) : null}
               <p className="px-2 pt-2 text-[10px] leading-4 text-white/30">{tr("اسحب سطر لتغيير الترتيب، أو لجوّا خلية.", "Drag a row to change the order, or into a cell.")}</p>
             </>
           )}
@@ -1599,6 +1823,13 @@ export default function StudioPage() {
             onPointerDown={onPointerDown}
             onPointerUp={onPointerUp}
             onPointerLeave={() => setHovered(filter.current.push(performance.now() + 1000, null))}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              const p = local(e);
+              const hit = inFrame(p) ? pickAt(grid.near(p), p) : null;
+              if (hit && !chosen.includes(hit.id)) select(hit.id);
+              setMenu({ x: e.clientX, y: e.clientY });
+            }}
             onDragOver={(e) => {
               const k = adding.current;
               if (!k) return;
@@ -1640,6 +1871,8 @@ export default function StudioPage() {
               {selNode?.parentId ? outline(selNode.parentId, "parent") : null}
               {hovered && hovered !== selected ? outline(hovered, "hover") : null}
               {outline(selected, "selected")}
+              {more.filter((x) => x !== selected).map((x) => outline(x, "selected"))}
+              {marquee ? <div className="pointer-events-none absolute border border-sky-400 bg-sky-400/10" style={rel(boxOf(marquee.a, marquee.b))} data-testid="studio-marquee" /> : null}
               {placing ? (
                 <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-sky-400 bg-sky-400/10" style={rel(placing.box)} data-testid="studio-placing">
                   <span className="absolute start-0 -top-6 whitespace-nowrap rounded-md bg-sky-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr">{placing.x}% · {placing.y}%</span>
@@ -1835,12 +2068,14 @@ export default function StudioPage() {
         </div>
       ) : null}
 
+      {menu ? <ContextMenu at={menu} items={menuItems()} onClose={() => setMenu(null)} /> : null}
       <ConfirmDialog
         open={asking !== null}
-        variant={asking?.kind === "delete" || asking?.kind === "deleteBlock" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}
+        variant={asking?.kind === "delete" || asking?.kind === "deleteMany" || asking?.kind === "deleteBlock" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}
         isLoading={busy || themeSaving}
         title={
           asking?.kind === "delete" ? (asking.tree ? tr("حذف العنصر؟", "Delete the element?") : tr("حذف القسم؟", "Delete the section?"))
+          : asking?.kind === "deleteMany" ? tr(`حذف ${asking.ids.length} عناصر؟`, "Delete {0} elements?", [asking.ids.length])
           : asking?.kind === "publish" ? (asking.force ? tr("الصفحة تغيّرت من مكان تاني", "The page changed elsewhere") : tr("نشر التغييرات؟", "Publish the changes?"))
           : asking?.kind === "discard" ? tr("إلغاء المسودة؟", "Discard the draft?")
           : asking?.kind === "deleteBlock" ? tr("حذف البلوك؟", "Delete the block?")
@@ -1850,6 +2085,7 @@ export default function StudioPage() {
           asking?.kind === "delete" ? (asking.tree
             ? `${asking.name}. ${tr("بيروح من المسودة مع كل اللي جوّاه، وبيرجع بالتراجع.", "It leaves the draft with everything inside it, and comes back with undo.")}`
             : `${asking.name}. ${tr("بيروح من المسودة، وبيرجع بالتراجع أو بإلغاء المسودة. بالمتجر بينحذف بس بعد النشر.", "It leaves the draft, and comes back with undo or by discarding the draft. The store loses it only after publishing.")}`)
+          : asking?.kind === "deleteMany" ? tr("بيروحوا من المسودة مع كل اللي جوّاهم، وبيرجعوا بالتراجع.", "They leave the draft with everything inside them, and come back with undo.")
           : asking?.kind === "publish" ? (asking.force
             ? tr("انحفظت تغييرات على الصفحة بعد ما بلشت المسودة. النشر هلّق بيكتب المسودة فوقها. نسخة من الحالية بتنحفظ بالسجل.", "The page was changed after the draft began. Publishing now writes the draft over it. A copy of the current one is kept in the history.")
             : tr("الزبائن رح يشوفوا الصفحة متل ما هي هون. نسخة من المنشورة هلّق بتنحفظ بالسجل.", "Customers will see the page as it is here. A copy of what's live now is kept in the history."))
@@ -1857,7 +2093,7 @@ export default function StudioPage() {
           : asking?.kind === "deleteBlock" ? `${asking.block.name}. ${asking.block.uses ? tr(`مربوط بـ ${asking.block.uses} صفحات: هالأماكن ما رح يبيّن فيها إشي.`, "Linked on {0} pages: nothing will show in those places.", [asking.block.uses]) : tr("مش مربوط بأي صفحة.", "It isn't linked on any page.")} ${tr("النسخ اللي انحطت كنسخة بتضل.", "Copies placed as copies stay.")}`
           : tr("الثيم بيتغيّر لكل صفحات المتجر فوراً، مش بس هالصفحة.", "The theme changes for every page of the store right away, not only this one.")
         }
-        confirmText={asking?.kind === "delete" || asking?.kind === "deleteBlock" ? tr("حذف", "Delete") : asking?.kind === "publish" ? tr("نشر", "Publish") : asking?.kind === "discard" ? tr("إلغاء المسودة", "Discard draft") : tr("حفظ", "Save")}
+        confirmText={asking?.kind === "delete" || asking?.kind === "deleteMany" || asking?.kind === "deleteBlock" ? tr("حذف", "Delete") : asking?.kind === "publish" ? tr("نشر", "Publish") : asking?.kind === "discard" ? tr("إلغاء المسودة", "Discard draft") : tr("حفظ", "Save")}
         onClose={() => setAsking(null)}
         onConfirm={async () => {
           const a = asking;
@@ -1865,6 +2101,12 @@ export default function StudioPage() {
           if (a.kind === "delete") {
             setAsking(null);
             if (await run(tr("حذف", "Delete"), [{ op: "remove", nodeId: a.nodeId }])) setSelected(null);
+          } else if (a.kind === "deleteMany") {
+            setAsking(null);
+            if (await run(tr("حذف", "Delete"), a.ids.map((x): PagesAPI.PageDraftOp => ({ op: "remove", nodeId: x })))) {
+              setSelected(null);
+              setMore([]);
+            }
           } else if (a.kind === "deleteBlock") {
             setAsking(null);
             try {
@@ -1894,29 +2136,48 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn, depth = 0, childrenOnly = false }: {
+/** What a layer row can do beside picking: lock it, hide it on the screen shown, rename it; the search's matches. */
+type RowTools = {
+  locked: Set<string>;
+  chosen: string[];
+  /** Rows the layers' search keeps (null = all). */
+  match: Set<string> | null;
+  hidden: (id: string) => boolean;
+  onLock: (id: string) => void;
+  onHide: (id: string) => void;
+  onRename: (id: string, name: string) => void;
+};
+
+function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn, depth = 0, childrenOnly = false, tools }: {
   index: ReturnType<typeof indexTree>;
   id: string;
   selected: string | null;
   hovered: string | null;
   sectionTypes: Map<string, string>;
-  onPick: (id: string) => void;
+  /** `add`: Shift was held (adds the element to the selection, or takes it out). */
+  onPick: (id: string, add?: boolean) => void;
   onHover: (id: string | null) => void;
   /** Rows of the tree's own elements can be dragged onto another row (into it, or before it). */
   onDragStart?: (id: string) => void;
   onDropOn?: (id: string) => void;
   depth?: number;
   childrenOnly?: boolean;
+  tools?: RowTools;
 }) {
+  const [naming, setNaming] = useState(false);
   const at = index.nodes.get(id);
   if (!at) return null;
-  const pass = { index, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn };
+  if (tools?.match && !tools.match.has(id)) return null;
+  const pass = { index, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn, tools };
   if (childrenOnly) {
     return <>{at.children.map((c) => <Layers key={c} {...pass} id={c} depth={depth} />)}</>;
   }
   const n = at.node;
   const name = n.type === "page" ? typeLabel("page") : n.type === "cell" ? nodeTitle(index, id) : nodeName(n, n.type === "legacy" ? sectionTypes.get(String(n.props.sectionId)) : undefined);
   const free = isFree(n.type) && Boolean(onDragStart);
+  const isLocked = Boolean(tools?.locked.has(id));
+  const isHidden = Boolean(tools && isFree(n.type) && tools.hidden(id));
+  const on = selected === id || Boolean(tools?.chosen.includes(id));
   return (
     <div
       onDragOver={onDropOn ? (e) => e.preventDefault() : undefined}
@@ -1926,24 +2187,51 @@ function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, o
         onDropOn(id);
       } : undefined}
     >
-      <button
-        type="button"
-        draggable={free}
-        onDragStart={free ? (e) => {
-          e.stopPropagation();
-          onDragStart!(id);
-        } : undefined}
-        onClick={() => onPick(id)}
-        onMouseEnter={() => onHover(id)}
-        onMouseLeave={() => onHover(null)}
-        className={`flex w-full items-center gap-1.5 truncate rounded-md py-1 pe-2 text-start text-xs ${selected === id ? "bg-accent-500/25 text-white" : hovered === id ? "bg-white/[0.06] text-white" : "text-white/70 hover:bg-white/[0.04]"}`}
-        style={{ paddingInlineStart: 8 + depth * 12 }}
-        data-testid="studio-layer"
-        data-node={id}
-      >
-        <span className="shrink-0 text-[10px] text-white/35">{n.type === "cell" ? name : typeLabel(n.type)}</span>
-        <span className="truncate">{n.type === "page" || n.type === "cell" || name === typeLabel(n.type) ? "" : name}</span>
-      </button>
+      <div className={`group flex items-center rounded-md ${on ? "bg-accent-500/25 text-white" : hovered === id ? "bg-white/[0.06] text-white" : "text-white/70 hover:bg-white/[0.04]"} ${isHidden ? "opacity-45" : ""}`}>
+        {naming && tools ? (
+          <input
+            autoFocus defaultValue={n.name ?? ""} maxLength={60} aria-label={tr("اسم العنصر", "The element's name")}
+            className="m-0.5 min-w-0 flex-1 rounded border border-accent-400/60 bg-surface-925 px-1.5 py-0.5 text-xs text-white"
+            style={{ marginInlineStart: 6 + depth * 12 }}
+            onBlur={(e) => {
+              setNaming(false);
+              if (e.target.value.trim() !== (n.name ?? "")) tools.onRename(id, e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              if (e.key === "Escape") setNaming(false);
+            }}
+            data-testid="studio-layer-name"
+          />
+        ) : (
+          <button
+            type="button"
+            draggable={free && !isLocked}
+            onDragStart={free ? (e) => {
+              e.stopPropagation();
+              onDragStart!(id);
+            } : undefined}
+            onClick={(e) => onPick(id, e.shiftKey)}
+            onDoubleClick={() => tools && isFree(n.type) && setNaming(true)}
+            onMouseEnter={() => onHover(id)}
+            onMouseLeave={() => onHover(null)}
+            className="flex min-w-0 flex-1 items-center gap-1.5 truncate py-1 pe-1 text-start text-xs"
+            style={{ paddingInlineStart: 8 + depth * 12 }}
+            title={tools && isFree(n.type) ? tr("كبستين لتغيير الاسم", "Double-click to rename") : undefined}
+            data-testid="studio-layer"
+            data-node={id}
+          >
+            <span className="shrink-0 text-[10px] text-white/35">{n.type === "cell" ? name : typeLabel(n.type)}</span>
+            <span className="truncate">{n.type === "page" || n.type === "cell" || name === typeLabel(n.type) ? "" : name}</span>
+          </button>
+        )}
+        {tools && isFree(n.type) && !naming ? (
+          <span className={`flex shrink-0 items-center pe-1 ${isLocked || isHidden ? "" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}>
+            <button type="button" className="h-5 w-5 rounded text-[11px] hover:bg-white/[0.1]" onClick={() => tools.onHide(id)} aria-pressed={isHidden} aria-label={isHidden ? tr("أظهره على هالشاشة", "Show it on this screen") : tr("خبّيه على هالشاشة", "Hide it on this screen")} title={isHidden ? tr("أظهره على هالشاشة", "Show it on this screen") : tr("خبّيه على هالشاشة", "Hide it on this screen")} data-testid="studio-layer-hide">{isHidden ? "◌" : "◉"}</button>
+            {n.type !== "cell" ? <button type="button" className="h-5 w-5 rounded text-[11px] hover:bg-white/[0.1]" onClick={() => tools.onLock(id)} aria-pressed={isLocked} aria-label={isLocked ? tr("فك القفل", "Unlock") : tr("اقفل", "Lock")} title={isLocked ? tr("فك القفل", "Unlock") : tr("اقفل (ما بينختار بالكبس على الصفحة)", "Lock (not picked by clicks on the page)")} data-testid="studio-layer-lock">{isLocked ? "🔒" : "🔓"}</button> : null}
+          </span>
+        ) : null}
+      </div>
       {at.children.map((c) => (
         <Layers key={c} {...pass} id={c} depth={depth + 1} />
       ))}

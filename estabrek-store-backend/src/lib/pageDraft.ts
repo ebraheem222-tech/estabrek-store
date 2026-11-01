@@ -41,6 +41,8 @@ export type DraftOp =
   | { op: "insert"; parentId: string; index: number; node: TreeNode }
   /** An element's settings, all of them (words in every language included). */
   | { op: "setProps"; nodeId: string; props: Record<string, unknown> }
+  /** An element's name in the editor's layers (null = its kind again). */
+  | { op: "setName"; nodeId: string; name: string | null }
   /** An element's look on one screen size; null clears it. */
   | { op: "setStyle"; nodeId: string; screen: (typeof SCREENS)[number]; style: Record<string, unknown> | null }
   /** How an element moves (coming in, scroll, loop, pointer, animated layer); null stops it. */
@@ -274,6 +276,15 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
         if (!at || FIXED_TYPES.has(at.node.type)) throw new DraftError(`No element ${String(raw.nodeId)} with settings`);
         if (!isPlain(raw.props)) throw new DraftError("Settings are an object");
         at.node.props = clone(raw.props);
+        break;
+      }
+      case "setName": {
+        const at = locate(d.tree, raw.nodeId);
+        if (!at || at.node.type === "page") throw new DraftError(`No element ${String(raw.nodeId)} to name`);
+        if (raw.name !== null && typeof raw.name !== "string") throw new DraftError("A name is words");
+        const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 60) : "";
+        if (name) at.node.name = name;
+        else delete at.node.name;
         break;
       }
       case "setStyle": {

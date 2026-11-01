@@ -87,7 +87,7 @@ test.describe("styles become safe CSS", () => {
     expect(css).toContain(".pt-sl{aspect-ratio:4/5}");
     expect(css).toMatch(/639\.98px\)\{[^@]*\.pt-sl\{aspect-ratio:1\/1\}/);
     // A slider in a cell takes the cell's whole width.
-    expect(css).toMatch(/\.pt-cell>:is\([^)]*\.pt-slider[^)]*\)\{align-self:stretch\}/);
+    expect(css).toMatch(/\.pt-cell>:where\([^)]*\.pt-slider[^)]*\)\{align-self:stretch\}/);
   });
 
   test("turns, moves, colour layers, shadows and free places become safe CSS", () => {

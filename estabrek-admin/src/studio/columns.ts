@@ -74,7 +74,7 @@ export function idMaker(taken: (id: string) => boolean) {
     }
   };
 }
-type Ids = (prefix: string) => string;
+export type Ids = (prefix: string) => string;
 
 export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "icon", "spacer", "divider", "categories", "form", "columns"] as const;
 export type NewKind = (typeof ADDABLE)[number];

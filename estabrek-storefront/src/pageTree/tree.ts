@@ -24,6 +24,8 @@ export type ScreenStyle = {
   wrap?: boolean;
   justify?: "start" | "center" | "end" | "between" | "around";
   align?: "start" | "center" | "end" | "stretch";
+  /** Where it sits across its row or column, whatever its container says. */
+  self?: "start" | "center" | "end" | "stretch";
   col?: string;
   row?: string;
   order?: number;
