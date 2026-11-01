@@ -89,6 +89,13 @@ const ITEMS: Partial<Record<BlockKind, { fields: FieldSpec[]; max: number; title
       { key: "href", label: () => tr("رابط (اختياري)", "Link (optional)"), kind: "link" },
     ],
   },
+  menu: {
+    max: 20, title: "label",
+    fields: [
+      { key: "label", label: () => tr("الكلام", "The words"), kind: "words" },
+      { key: "href", label: () => tr("الرابط", "The link"), kind: "link" },
+    ],
+  },
   logos: {
     max: 40, title: "alt",
     fields: [
@@ -307,6 +314,33 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           <Range label={tr("التقريب", "Zoom")} min={1} max={20} busy={busy} value={typeof p.zoom === "number" ? p.zoom : 14} onSave={(v) => set(tr("الخريطة", "Map"), { zoom: v })} testId="block-zoom" />
           {words("label", tr("اسمها لقارئ الشاشة", "Its name for screen readers"))}
           <p className="text-[10px] leading-4 text-white/35">{tr("الخريطة من خرائط Google، وبتتحمّل بس لما توصلها الصفحة.", "The map comes from Google Maps, and loads only when the page gets to it.")}</p>
+        </>
+      ) : null}
+      {kind === "search" ? (
+        <>
+          <Choice
+            label={tr("الشكل", "Look")} value={String(p.look ?? "pill")} busy={busy} testId="block-look"
+            options={[["pill", tr("كبسولة", "Pill")], ["rounded", tr("زوايا ناعمة", "Soft corners")], ["boxed", tr("مربع", "Square")], ["underline", tr("خط تحت", "Underline")], ["glass", tr("زجاج", "Glass")]]}
+            onPick={(v) => set(tr("الشكل", "Look"), { look: v })}
+          />
+          {words("placeholder", tr("الكلام جوّا الخانة (فاضي = متل المتجر)", "The words inside it (empty = the shop's)"))}
+          {words("button", tr("كلام الزر (فاضي = سهم)", "Button words (empty = an arrow)"))}
+          <p className="text-[10px] leading-4 text-white/35">{tr("بيبعت لصفحة البحث بالمتجر.", "It sends to the shop's search page.")}</p>
+        </>
+      ) : null}
+      {kind === "menu" ? (
+        <>
+          <Choice label={tr("الترتيب", "Layout")} value={String(p.layout ?? "row")} busy={busy} options={[["row", tr("بصف", "In a row")], ["column", tr("بعمود", "In a column")]]} onPick={(v) => set(tr("الترتيب", "Layout"), { layout: v })} testId="block-layout" />
+          <Choice
+            label={tr("الشكل", "Look")} value={String(p.look ?? "plain")} busy={busy} testId="block-look"
+            options={[["plain", tr("عادي", "Plain")], ["underline", tr("خط تحت", "Underline")], ["pills", tr("كبسولات", "Pills")], ["buttons", tr("أزرار", "Buttons")]]}
+            onPick={(v) => set(tr("الشكل", "Look"), { look: v })}
+          />
+          <label className="flex items-center justify-between gap-2 text-xs">
+            <span className="text-white/75">{tr("على الموبايل بتنطوي تحت زر", "Folds under a button on a phone")}</span>
+            <input type="checkbox" disabled={busy} checked={p.phone === "fold"} onChange={(e) => set(tr("القائمة", "Menu"), { phone: e.target.checked ? "fold" : undefined })} data-testid="block-fold" />
+          </label>
+          {words("label", tr("اسمها لقارئ الشاشة (فاضي = القائمة)", "Its name for screen readers (empty = Menu)"))}
         </>
       ) : null}
       {kind === "tabs" ? <Choice label={tr("الشكل", "Look")} value={String(p.look ?? "underline")} busy={busy} options={[["underline", tr("خط تحت", "Underline")], ["pills", tr("كبسولات", "Pills")], ["boxed", tr("مربعات", "Boxes")]]} onPick={(v) => set(tr("الشكل", "Look"), { look: v })} testId="block-look" /> : null}

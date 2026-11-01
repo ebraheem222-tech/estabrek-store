@@ -31,7 +31,7 @@ export const NODE_TYPES = [
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
   "lottie", "rive", "model3d",
   "accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee",
-  "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup",
+  "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -443,8 +443,17 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     limit: z.number().int().min(1).max(48).default(8),
     layout: z.enum(["grid", "row"]).default("grid"),
     title: local(160).optional(),
+    // How each card sits (around the shop's own product card) and how many in a row on a computer.
+    card: z.enum(["plain", "bordered", "shadow", "soft", "lift"]).optional(),
+    columns: z.number().int().min(1).max(6).optional(),
   }),
-  categories: z.object({ ids: z.array(id).max(24).optional(), limit: z.number().int().min(1).max(24).default(6), title: local(160).optional() }),
+  categories: z.object({
+    ids: z.array(id).max(24).optional(),
+    limit: z.number().int().min(1).max(24).default(6),
+    title: local(160).optional(),
+    look: z.enum(["tall", "square", "circle", "overlay", "pill", "banner"]).optional(),
+    columns: z.number().int().min(1).max(6).optional(),
+  }),
   form: z.object({ kind: z.enum(["newsletter", "contact"]), title: local(160).optional() }),
   // Content blocks, each a list of items the editor adds, removes and orders.
   // Questions and answers (also the page's FAQ for search engines); `single` = one open at a time.
@@ -504,6 +513,16 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     size: z.enum(["s", "m", "l"]).optional(),
     place: z.enum(["center", "bottom", "corner"]).optional(),
     label: local(120).optional(),
+  }),
+  // A search box sending to the shop's search page.
+  search: z.object({ placeholder: local(80).optional(), button: local(30).optional(), look: z.enum(["rounded", "pill", "underline", "boxed", "glass"]).optional() }),
+  // Links in a row or a column (a header's or a footer's); on a phone it can fold under a button.
+  menu: z.object({
+    items: z.array(z.object({ label: local(60), href })).min(1).max(20),
+    layout: z.enum(["row", "column"]).optional(),
+    look: z.enum(["plain", "pills", "underline", "buttons"]).optional(),
+    phone: z.enum(["same", "fold"]).optional(),
+    label: local(80).optional(),
   }),
   // Words running along a line, again and again (a full loop takes `speed` seconds).
   marquee: z.object({

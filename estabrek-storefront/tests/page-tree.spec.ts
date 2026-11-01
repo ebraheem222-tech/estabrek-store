@@ -766,6 +766,35 @@ test.describe.serial("a page of new elements", () => {
     await expect(page.locator('[data-tree-node="pop-load"] dialog')).not.toHaveAttribute("open", "");
   });
 
+  test("store pieces: a search box sending to the search page, a menu folding on a phone, category cards in circles", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/blocks-demo");
+    // The search box: the shop's search page, the words asked for as `q`.
+    const find = page.locator('[data-tree-node="find"]');
+    await expect(find).toHaveAttribute("role", "search");
+    await expect(find).toHaveClass(/pt-search-underline/);
+    expect(await find.getAttribute("action")).toBe("/search");
+    await find.locator('input[name="q"]').fill("شال");
+    await Promise.all([page.waitForURL(/\/search\?q=/), find.locator("button").click()]);
+    expect(decodeURIComponent(new URL(page.url()).searchParams.get("q")!)).toBe("شال");
+    // The menu: its safe links in a row; an unsafe one left out.
+    await page.goto("/blocks-demo");
+    const nav = page.locator('[data-tree-node="nav"]');
+    await expect(nav).toHaveAttribute("aria-label", "القائمة");
+    await expect(nav.locator(":scope > .pt-menu-list a")).toHaveCount(2);
+    await expect(nav.locator(":scope > .pt-menu-list")).toBeVisible();
+    await expect(nav.locator(".pt-menu-fold")).toBeHidden();
+    // Category cards in circles, five in a row.
+    const cats = page.locator('[data-tree-node="cats"] .pt-tiles');
+    await expect(cats).toHaveClass(/pt-tiles-circle/);
+    expect(await cats.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(5);
+    // On a phone the menu folds under a button.
+    await page.setViewportSize({ width: 390, height: 800 });
+    await expect(nav.locator(":scope > .pt-menu-list")).toBeHidden();
+    await nav.locator(".pt-menu-fold > summary").click();
+    await expect(nav.locator(".pt-menu-fold .pt-menu-list a").first()).toBeVisible();
+  });
+
   test("with reduced motion: no particles and no smooth scrolling; animations stay still", async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: "reduce" });
     const page = await ctx.newPage();

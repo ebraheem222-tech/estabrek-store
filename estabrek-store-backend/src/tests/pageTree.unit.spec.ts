@@ -359,6 +359,21 @@ describe("checking a page tree", () => {
     expect(issuesOf(page([{ ...pop, props: { trigger: "hover" } }])).length).toBe(1);
   });
 
+  test("store pieces: a search box, a menu of links, and the looks of product and category cards", () => {
+    const ok = (type: string, props: unknown) => checkTree(page([section("s", [{ id: "x", type, props }])])).ok;
+    const bad = (type: string, props: unknown) => issuesOf(page([section("s", [{ id: "x", type, props }])])).length > 0;
+    const w = (ar: string) => ({ ar });
+    expect(ok("search", { placeholder: w("دوّري"), button: w("بحث"), look: "pill" })).toBe(true);
+    expect(bad("search", { look: "neon" })).toBe(true);
+    expect(ok("menu", { items: [{ label: w("الكل"), href: "/shop" }, { label: w("تواصل"), href: "/contact" }], layout: "row", look: "underline", phone: "fold" })).toBe(true);
+    expect(bad("menu", { items: [] })).toBe(true);
+    expect(bad("menu", { items: [{ label: w("x"), href: "javascript:alert(1)" }] })).toBe(true);
+    expect(ok("products", { source: "new", card: "lift", columns: 3 })).toBe(true);
+    expect(bad("products", { source: "new", card: "glow" })).toBe(true);
+    expect(ok("categories", { look: "circle", columns: 6 })).toBe(true);
+    expect(bad("categories", { look: "hexagon" })).toBe(true);
+  });
+
   test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {
     const art = { viewBox: "0 0 24 24", nodes: [{ t: "g", a: { fill: "none", stroke: "currentColor", "stroke-width": "1.5" }, c: [{ t: "path", a: { d: "M3 12h18" } }] }] };
     const icon = (props: unknown, style?: unknown) => page([section("s", [{ id: "i", type: "icon", props, ...(style ? { style } : {}) }])]);

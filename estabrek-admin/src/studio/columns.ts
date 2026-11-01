@@ -154,6 +154,8 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
     case "beforeAfter":
     case "hotspots":
     case "map":
+    case "search":
+    case "menu":
       return newBlock(kind, lang, id, src);
     case "popup":
       return newPopup(lang, id);

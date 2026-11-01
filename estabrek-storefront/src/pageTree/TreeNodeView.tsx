@@ -264,6 +264,8 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
     case "beforeAfter":
     case "hotspots":
     case "map":
+    case "search":
+    case "menu":
       return <BlockView node={node} className={cls(node)} mark={mark as Record<string, string>} say={say} link={link} lang={ctx.lang} />;
     case "model3d": {
       // A 3D model: its place is drawn here, its canvas only near the screen (Model3dSpot).
@@ -319,8 +321,8 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       return (
         <div className={cls(node)} {...mark}>
           {title ? <h2 className="pt-block-title">{title}</h2> : null}
-          <div className={p.layout === "row" ? "pt-products-row" : "pt-products-grid"}>
-            {shown.map((id) => <div key={id}>{ctx.renderProductCard?.(id)}</div>)}
+          <div className={p.layout === "row" ? "pt-products-row" : "pt-products-grid"} style={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 6 ? ({ "--pt-cols": String(p.columns) } as Record<string, string>) : undefined}>
+            {shown.map((id) => <div key={id} className={`pt-card pt-card-${["bordered", "shadow", "soft", "lift"].includes(p.card) ? p.card : "plain"}`}>{ctx.renderProductCard?.(id)}</div>)}
           </div>
         </div>
       );
@@ -335,7 +337,7 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       return (
         <div className={cls(node)} {...mark}>
           {title ? <h2 className="pt-block-title">{title}</h2> : null}
-          <div className="pt-tiles">
+          <div className={`pt-tiles pt-tiles-${["square", "circle", "overlay", "pill", "banner"].includes(p.look) ? p.look : "tall"}`} style={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 6 ? ({ "--pt-cols": String(p.columns) } as Record<string, string>) : undefined}>
             {shown.map((c) => {
               const img = safeSrc(c.iconUrl);
               return (

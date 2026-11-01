@@ -21,11 +21,11 @@ type Item = Record<string, unknown>;
 const itemsOf = (v: unknown, max: number): Item[] => (Array.isArray(v) ? v.filter((i): i is Item => Boolean(i) && typeof i === "object").slice(0, max) : []);
 const cols = (v: unknown, max: number, def: number) => (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= max ? v : def);
 
-type Said = { stars: string; close: string; units: [string, string, string, string]; handle: string; before: string; after: string; map: string; see: string };
+type Said = { stars: string; close: string; units: [string, string, string, string]; handle: string; before: string; after: string; map: string; see: string; find: string; search: string; menu: string };
 export const WORDS: Record<TreeLang, Said> = {
-  ar: { stars: "{0} من 5", close: "إغلاق", units: ["يوم", "ساعة", "دقيقة", "ثانية"], handle: "حرّكي للمقارنة", before: "قبل", after: "بعد", map: "خريطة", see: "شوفيها" },
-  en: { stars: "{0} out of 5", close: "Close", units: ["Days", "Hours", "Minutes", "Seconds"], handle: "Slide to compare", before: "Before", after: "After", map: "Map", see: "See it" },
-  he: { stars: "{0} מתוך 5", close: "סגירה", units: ["ימים", "שעות", "דקות", "שניות"], handle: "הזיזו כדי להשוות", before: "לפני", after: "אחרי", map: "מפה", see: "לצפייה" },
+  ar: { stars: "{0} من 5", close: "إغلاق", units: ["يوم", "ساعة", "دقيقة", "ثانية"], handle: "حرّكي للمقارنة", before: "قبل", after: "بعد", map: "خريطة", see: "شوفيها", find: "دوّري على قطعتك…", search: "بحث", menu: "القائمة" },
+  en: { stars: "{0} out of 5", close: "Close", units: ["Days", "Hours", "Minutes", "Seconds"], handle: "Slide to compare", before: "Before", after: "After", map: "Map", see: "See it", find: "Find your piece…", search: "Search", menu: "Menu" },
+  he: { stars: "{0} מתוך 5", close: "סגירה", units: ["ימים", "שעות", "דקות", "שניות"], handle: "הזיזו כדי להשוות", before: "לפני", after: "אחרי", map: "מפה", see: "לצפייה", find: "חפשו את הפריט שלכם…", search: "חיפוש", menu: "תפריט" },
 };
 
 /** Words that run along a line: the list twice, so the loop never shows a gap (the second copy is hidden from screen readers). */
@@ -244,9 +244,44 @@ export function BlockView({ node, className, mark, say, link, lang }: Helpers): 
         </div>
       );
     }
+    case "search": {
+      const look = ["rounded", "pill", "underline", "boxed", "glass"].includes(p.look) ? p.look : "pill";
+      const label = say(p.placeholder) || w.find;
+      return (
+        <form className={`${className} pt-search pt-search-${look}`} action={link("/search") ?? "/search"} role="search" {...mark}>
+          <svg className="pt-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+          <input type="search" name="q" required placeholder={label} aria-label={label} />
+          {say(p.button) ? <button type="submit" className="pt-btn pt-btn-solid">{say(p.button)}</button> : <button type="submit" className="pt-search-go" aria-label={w.search}>→</button>}
+        </form>
+      );
+    }
+    case "menu": {
+      const items = itemsOf(p.items, 20).map((i) => ({ label: say(i.label), to: link(i.href) })).filter((i) => i.label && i.to);
+      if (!items.length) return null;
+      const layout = p.layout === "column" ? "column" : "row";
+      const look = ["plain", "pills", "underline", "buttons"].includes(p.look) ? p.look : "plain";
+      const name = say(p.label) || w.menu;
+      const list = (cls: string) => (
+        <ul className={cls}>
+          {items.map((i, n) => <li key={n}><a href={i.to!}>{i.label}</a></li>)}
+        </ul>
+      );
+      return (
+        <nav className={`${className} pt-menu pt-menu-${layout} pt-menu-${look}${p.phone === "fold" ? " pt-menu-folds" : ""}`} aria-label={name} {...mark}>
+          {list("pt-menu-list")}
+          {p.phone === "fold" ? (
+            // On a phone the links fold under a button (the list above is hidden there).
+            <details className="pt-menu-fold">
+              <summary aria-label={name}><span aria-hidden="true">☰</span> {name}</summary>
+              {list("pt-menu-list")}
+            </details>
+          ) : null}
+        </nav>
+      );
+    }
     default:
       return null;
   }
 }
 
-export const BLOCK_TYPES = new Set(["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map"]);
+export const BLOCK_TYPES = new Set(["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu"]);

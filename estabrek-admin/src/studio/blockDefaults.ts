@@ -36,9 +36,20 @@ const TABS: Array<[Words, Words]> = [
   [w("العناية", "Care", "טיפול"), w("غسيل بارد، وكوي على حرارة خفيفة.", "Wash cold, iron on low heat.", "כביסה קרה, גיהוץ בחום נמוך.")],
   [w("المقاسات", "Sizes", "מידות"), w("من S لـ XL، والقصّة واسعة شوي.", "From S to XL, cut a little loose.", "מ-S עד XL, גזרה מעט רחבה.")],
 ];
+const LINKS: Array<[Words, string]> = [
+  [w("كل القطع", "Everything", "הכול"), "/shop"],
+  [w("وصل جديد", "New in", "חדש"), "/shop?sort=new"],
+  [w("من نحن", "About us", "עלינו"), "/about"],
+  [w("تواصل", "Contact", "צור קשר"), "/contact"],
+];
+const HELP: Array<[Words, string]> = [
+  [w("الشحن والإرجاع", "Delivery and returns", "משלוחים והחזרות"), "/policies"],
+  [w("الأسئلة الشائعة", "Questions", "שאלות נפוצות"), "/contact"],
+  [w("حسابي", "My account", "החשבון שלי"), "/account"],
+];
 const RUNNING: Words[] = [w("شحن مجاني فوق ₪200", "Free delivery over ₪200", "משלוח חינם מעל ₪200"), w("خصم 20٪ على الجديد", "20% off what's new", "20% הנחה על החדש"), w("إرجاع خلال 14 يوم", "Returns within 14 days", "החזרה תוך 14 יום")];
 
-export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map"] as const;
+export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu"] as const;
 export type BlockKind = (typeof BLOCK_KINDS)[number];
 
 /** One more item of a block's list, ready to edit. */
@@ -70,6 +81,10 @@ export function newItem(kind: BlockKind, lang: Lang, n = 0): Record<string, unkn
     }
     case "hotspots":
       return { x: 50, y: 50, title: one(lang, w("شوفي هاد", "Look at this", "תראו את זה")) };
+    case "menu": {
+      const [label, href] = LINKS[n % LINKS.length];
+      return { label: one(lang, label), href };
+    }
     default:
       return {};
   }
@@ -80,6 +95,40 @@ export function inAWeek(now = new Date()): string {
   const d = new Date(now.getTime() + 7 * 86_400_000);
   const two = (v: number) => String(v).padStart(2, "0");
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
+/** A ready header (the store's name, its menu, a search box) and footer (about, links, help). */
+export function newHeader(lang: Lang, id: Ids): PageTreeNode {
+  const cell = (children: PageTreeNode[], style?: Record<string, unknown>) => ({ id: id("cell"), type: "cell", props: {}, ...(style ? { style } : {}), children });
+  return {
+    id: id("sec"), type: "section", name: w("الهيدر", "Header", "כותרת")[lang], props: { tag: "header", contained: true }, style: { base: { pad: [16, 0, 16, 0] } },
+    children: [{
+      id: id("cols"), type: "columns", props: { phone: "stack" }, style: { base: { widths: [1, 2, 1], gap: 24 } },
+      children: [
+        cell([{ id: id("h"), type: "heading", props: { level: 3, text: one(lang, w("اسم المتجر", "Store name", "שם החנות")) } }], { base: { justify: "center" } }),
+        cell([{ id: id("menu"), type: "menu", props: { items: LINKS.map(([label, href]) => ({ label: one(lang, label), href })), layout: "row", phone: "fold" } }], { base: { justify: "center", align: "center" } }),
+        cell([{ id: id("srch"), type: "search", props: { look: "pill" } }], { base: { justify: "center" } }),
+      ],
+    }],
+  };
+}
+export function newFooter(lang: Lang, id: Ids): PageTreeNode {
+  const cell = (children: PageTreeNode[]) => ({ id: id("cell"), type: "cell", props: {}, children });
+  const links = (list: Array<[Words, string]>) => ({ id: id("menu"), type: "menu", props: { items: list.map(([label, href]) => ({ label: one(lang, label), href })), layout: "column" } });
+  return {
+    id: id("sec"), type: "section", name: w("الفوتر", "Footer", "כותרת תחתונה")[lang], props: { tag: "footer", contained: true }, style: { base: { pad: [48, 0, 48, 0], bg: "surface" } },
+    children: [{
+      id: id("cols"), type: "columns", props: { phone: "stack" }, style: { base: { widths: [2, 1, 1], gap: 32 } },
+      children: [
+        cell([
+          { id: id("h"), type: "heading", props: { level: 3, text: one(lang, w("اسم المتجر", "Store name", "שם החנות")) } },
+          { id: id("t"), type: "text", props: { text: one(lang, w("قطع مختارة بحب، بتوصل لباب بيتك.", "Pieces chosen with care, brought to your door.", "פריטים שנבחרו באהבה, עד הבית.")) } },
+        ]),
+        cell([links(LINKS)]),
+        cell([links(HELP)]),
+      ],
+    }],
+  };
 }
 
 /** A popup on the page: a heading, words and a button, shown on arrival once a visit. */
@@ -123,5 +172,9 @@ export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): Pa
       return { id: id("hot"), type: "hotspots", props: { src, items: items(1) } };
     case "map":
       return { id: id("map"), type: "map", props: { query: w("الناصرة", "Nazareth", "נצרת")[lang], zoom: 13 } };
+    case "search":
+      return { id: id("srch"), type: "search", props: { look: "pill" } };
+    case "menu":
+      return { id: id("menu"), type: "menu", props: { items: items(4), layout: "row", phone: "fold" } };
   }
 }

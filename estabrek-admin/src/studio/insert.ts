@@ -12,6 +12,7 @@
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
 import { canHold, isFree, newColumns, newElement, OVER_TYPES, type NewKind } from "./columns";
+import { newFooter, newHeader } from "./blockDefaults";
 import type { Extra, TreeIndex } from "./treeIndex";
 
 export type Where = "before" | "after" | "inside";
@@ -124,7 +125,7 @@ export function insertOps(c: InsertCtx, selected: string | null, node: PageTreeN
 /* ------------------------------------------------------------- ready blocks */
 
 /** Ready-made blocks: a few elements already put together. */
-export const READY = ["ready-intro", "ready-split", "ready-video", "ready-gallery"] as const;
+export const READY = ["ready-intro", "ready-split", "ready-video", "ready-gallery", "ready-header", "ready-footer"] as const;
 export type ReadyKind = (typeof READY)[number];
 export type AddKind = NewKind | ReadyKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
@@ -155,6 +156,10 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
     }
     case "ready-gallery":
       return { id: ids("sec"), type: "section", props: { contained: true }, children: [el("slider", src)] };
+    case "ready-header":
+      return newHeader(lang, ids);
+    case "ready-footer":
+      return newFooter(lang, ids);
     default:
       return el(kind, src);
   }
