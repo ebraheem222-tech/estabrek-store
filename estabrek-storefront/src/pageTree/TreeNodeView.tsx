@@ -18,6 +18,7 @@ import { richNodes } from "./rich";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt } from "./svgArt";
 import { color } from "./css";
+import { particlesOf } from "./particles";
 import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
@@ -92,8 +93,12 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       const Tag = (["header", "footer", "aside"].includes(p.tag) ? p.tag : "section") as "section";
       const anchor = typeof p.anchor === "string" && /^[A-Za-z][\w-]{0,40}$/.test(p.anchor) ? p.anchor : undefined;
       const edges = (["top", "bottom"] as const).map((where) => sectionEdge(node.id, where, p.edges?.[where])).filter(Boolean);
+      // Particles behind its content (TreeMedia draws them), in its colour.
+      const dots = particlesOf(p.particles);
+      const tint = dots?.color ? color(dots.color) : undefined;
       return (
-        <Tag className={`${cls(node)}${edges.length ? " pt-has-edges" : ""}`} id={anchor} {...mark}>
+        <Tag className={`${cls(node)}${edges.length || dots ? " pt-has-edges" : ""}`} id={anchor} {...mark}>
+          {dots ? <div className="pt-particles" data-pt-particles={JSON.stringify({ kind: dots.kind, amount: dots.amount, speed: dots.speed })} style={tint ? { color: tint } : undefined} aria-hidden="true" /> : null}
           {edges}
           {p.contained ? <div className="pt-inner">{kids()}</div> : kids()}
         </Tag>
@@ -220,6 +225,24 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
           <ArtView art={art} prefix={node.id} />
           {fx}
         </span>
+      );
+    }
+    case "lottie":
+    case "rive": {
+      // An animation file: TreeMedia plays it on the canvas (nothing until it has a file).
+      const lottie = node.type === "lottie";
+      const src = safeSrc(p.src);
+      if (!src || !(lottie ? /\.(json|lottie)([?#]|$)/i : /\.riv([?#]|$)/i).test(src)) return null;
+      const play = typeof p.play === "string" && (lottie ? ["auto", "view", "hover", "scroll"] : ["auto", "view", "hover"]).includes(p.play) ? p.play : "auto";
+      const name = (v: unknown) => (typeof v === "string" && v.trim() && v.length <= 60 ? v.trim() : undefined);
+      const spec = lottie
+        ? { src, play, loop: p.loop === false ? false : undefined, speed: typeof p.speed === "number" && p.speed >= 0.1 && p.speed <= 4 ? p.speed : undefined }
+        : { src, play, stateMachine: name(p.stateMachine), artboard: name(p.artboard) };
+      const label = say(p.label);
+      return (
+        <div className={cls(node)} {...mark} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
+          <canvas className="pt-anim-canvas" {...{ [lottie ? "data-pt-lottie" : "data-pt-rive"]: JSON.stringify(spec) }} />
+        </div>
       );
     }
     case "spacer":

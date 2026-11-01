@@ -281,6 +281,21 @@ describe("checking a page tree", () => {
     expect(issuesOf(tree({}, { base: { shape: "octopus" } })).length).toBeGreaterThan(0);
   });
 
+  test("Lottie and Rive animations, particles behind a section, a smoothly scrolling page", () => {
+    const one = (n: unknown, sec: Record<string, unknown> = {}) => ({ version: 1, root: { id: "page", type: "page", props: { smooth: true }, children: [{ id: "s", type: "section", props: sec, children: [n] }] } });
+    const ok = (n: unknown, sec?: Record<string, unknown>) => checkTree(one(n, sec)).ok;
+    expect(ok({ id: "l", type: "lottie", props: { src: "https://lottie.host/abc/anim.lottie", play: "scroll", loop: true, speed: 1.5, label: { ar: "قلب" } } })).toBe(true);
+    expect(ok({ id: "l", type: "lottie", props: { src: "/lottie/pulse.json?v=2", play: "view" } })).toBe(true);
+    expect(ok({ id: "l", type: "lottie", props: {} })).toBe(true); // no file yet
+    expect(ok({ id: "r", type: "rive", props: { src: "https://cdn.rive.app/animations/vehicles.riv", stateMachine: "bumpy", artboard: "Truck", play: "hover" } })).toBe(true);
+    expect(issuesOf(one({ id: "l", type: "lottie", props: { src: "https://x.test/a.gif" } }))[0].message).toMatch(/\.json or \.lottie/);
+    expect(issuesOf(one({ id: "r", type: "rive", props: { src: "javascript:alert(1).riv" } })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ id: "l", type: "lottie", props: { play: "scroll", speed: 9 } })).length).toBe(1);
+    expect(ok({ id: "t", type: "text", props: { text: { ar: "x" } } }, { particles: { kind: "snow", color: "white", amount: 1.5, speed: 0.5 } })).toBe(true);
+    expect(issuesOf(one({ id: "t", type: "text", props: { text: { ar: "x" } } }, { particles: { kind: "rain" } })).length).toBe(1);
+    expect(issuesOf({ version: 1, root: { id: "page", type: "page", props: { smooth: "yes" }, children: [] } }).length).toBe(1);
+  });
+
   test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {
     const art = { viewBox: "0 0 24 24", nodes: [{ t: "g", a: { fill: "none", stroke: "currentColor", "stroke-width": "1.5" }, c: [{ t: "path", a: { d: "M3 12h18" } }] }] };
     const icon = (props: unknown, style?: unknown) => page([section("s", [{ id: "i", type: "icon", props, ...(style ? { style } : {}) }])]);

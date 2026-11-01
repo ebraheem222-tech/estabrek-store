@@ -337,7 +337,13 @@ export function treeNeeds(tree: PageTree) {
     if (!motion && n === tree.root) motion = looksOf(tree).some(([t, l]) => Boolean(motionOf(lookNode(t, l))));
     if (n.type === "product360" && typeof n.props?.productId === "string" && /^[\w-]{1,64}$/.test(n.props.productId)) spinProducts.add(n.props.productId);
   });
-  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12) };
+  // Animated media (Lottie, Rive, particles) and smooth scrolling, each player loaded only then (TreeMedia).
+  let media = false;
+  eachNode(tree, (n) => {
+    if (((n.type === "lottie" || n.type === "rive") && typeof n.props?.src === "string") || (n.type === "section" && n.props?.particles)) media = true;
+  });
+  const smooth = tree.root.props?.smooth === true;
+  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth };
 }
 
 /** True when the page is only old sections (a freshly converted page draws exactly as before). */

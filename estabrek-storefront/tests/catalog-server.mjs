@@ -123,6 +123,28 @@ const asTreePage = (p) =>
   pageTreeOn
     ? { ...p, format: 2, tree: { version: 1, root: { id: "page", type: "page", children: p.sections.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((s) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id } })) } } }
     : p;
+// Animated media: a Lottie playing by itself and one following the scroll, a Rive file, snow behind a
+// section, and the page scrolling smoothly.
+const mediaDemo = {
+  id: "media-demo", slug: "/media-demo", name: "Media demo", status: "PUBLISHED", format: 2, sections: [],
+  tree: {
+    version: 1,
+    root: {
+      id: "page", type: "page", props: { smooth: true },
+      children: [
+        {
+          id: "snowy", type: "section", props: { contained: true, particles: { kind: "snow", color: "#ff0000", amount: 1.5 } }, style: { base: { pad: [60, 24, 60, 24], minHeight: "420px" } },
+          children: [
+            { id: "lt-auto", type: "lottie", props: { src: "/lottie/pulse.json", label: { ar: "نبض", en: "Pulse", he: "דופק" } }, style: { base: { width: "200px" } } },
+            { id: "rv", type: "rive", props: { src: "https://cdn.rive.app/animations/vehicles.riv", stateMachine: "bumpy", play: "view" }, style: { base: { width: "300px", aspect: "4 / 3" } } },
+          ],
+        },
+        { id: "tall", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "lt-scroll", type: "lottie", props: { src: "/lottie/pulse.json", play: "scroll" }, style: { base: { width: "200px" } } }] },
+        { id: "after", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "end-t", type: "text", props: { text: { ar: "النهاية", en: "The end", he: "הסוף" } } }] },
+      ],
+    },
+  },
+};
 // A page of new elements in three languages, with one old section in the middle.
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
@@ -1155,6 +1177,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/") return res.end(JSON.stringify(asTreePage(home)));
       if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));
       if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
+      if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
       if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [

@@ -31,7 +31,7 @@ import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
 import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
-import { EdgesPanel, PatternPanel } from "./ShapePanels";
+import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
@@ -1582,6 +1582,7 @@ export default function StudioPage() {
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <EdgesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {WRITABLE.has(selFree.type) ? (
               <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(selected)} data-testid="studio-edit-node">
@@ -1643,6 +1644,19 @@ export default function StudioPage() {
               + {tr("إضافة أي إشي هون (لوحة الإضافة)", "Add anything here (the Add panel)")}
             </button>
           </div>
+        ) : null}
+
+        {selected === index.root ? (
+          <label className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] p-3 text-xs" data-testid="studio-page-smooth">
+            <span className="text-white/75">
+              {tr("سكرول ناعم للصفحة كلها", "Smooth scrolling for the whole page")}
+              <span className="block text-[10px] text-white/40">{tr("مش للي طالب حركة أقل بجهازه.", "Not for whoever asked their device for less motion.")}</span>
+            </span>
+            <input
+              type="checkbox" disabled={busy} checked={index.nodes.get(index.root)?.node.props?.smooth === true}
+              onChange={(e) => void change(tr("سكرول ناعم", "Smooth scrolling"), [{ op: "setProps", nodeId: index.root, props: { smooth: e.target.checked || undefined } }])}
+            />
+          </label>
         ) : null}
 
         <div className="flex flex-wrap gap-1">
@@ -2111,7 +2125,7 @@ export default function StudioPage() {
             <SelectionHandles
               box={selShape.box}
               zoom={zoom}
-              sides={["image", "video", "slider", "svg", "product360", "stack", "grid"].includes(selFree.type) ? "all" : "width"}
+              sides={["image", "video", "slider", "svg", "product360", "lottie", "rive", "stack", "grid"].includes(selFree.type) ? "all" : "width"}
               turn={Number(shownLook(selFree, screen, "rotateZ") ?? 0)}
               local={local}
               onSize={(w, h) => void change(tr("الحجم", "Size"), [styleOp(selFree, screen, { ...(w !== null ? { width: `${w}px` } : {}), ...(h !== null ? { height: `${h}px` } : {}) })])}

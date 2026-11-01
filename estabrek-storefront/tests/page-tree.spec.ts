@@ -7,6 +7,7 @@ import { Fragment, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { hasRich, parseRich, richNodes } from "../src/pageTree/rich";
 import { countUpText, scrambleChars } from "../src/pageTree/textMotion";
+import { PARTICLE_KINDS, particleOptions, particlesOf } from "../src/pageTree/particles";
 
 // The new CMS's page tree (src/pageTree): a converted page draws exactly as before,
 // and a page of new elements draws on the server in three languages.
@@ -304,6 +305,18 @@ test.describe("styles become safe CSS", () => {
     expect(safeArt({ viewBox: "javascript:alert(1)", nodes: [{ t: "path", a: { d: "M0 0" } }] })).toBeNull();
   });
 
+  test("particles: known kinds and numbers in range only; each kind's options in the section's colour", () => {
+    expect(particlesOf({ kind: "snow", color: "accent", amount: 9, speed: 2 })).toEqual({ kind: "snow", amount: 1, speed: 2, color: "accent" });
+    expect(particlesOf({ kind: "rain" })).toBeNull();
+    for (const kind of PARTICLE_KINDS) {
+      const o = particleOptions({ kind, amount: 2, speed: 1 }, "rgb(1, 2, 3)") as any;
+      expect(o.fullScreen.enable, kind).toBe(false);
+      expect(o.pauseOnOutsideViewport, kind).toBe(true);
+      expect(JSON.stringify(o.particles.color), kind).toContain("rgb(1, 2, 3)");
+    }
+    expect((particleOptions({ kind: "snow", amount: 2 }, "red") as any).particles.number.value).toBe(160);
+  });
+
   test("a number counting up keeps its words, digits, separators and decimals", () => {
     const a = countUpText("+1,200 زبونة سعيدة")!;
     expect([a.before, a.target, a.after, a.format(600), a.format(1200)]).toEqual(["+", 1200, " زبونة سعيدة", "600", "1,200"]);
@@ -571,6 +584,49 @@ test.describe.serial("a page of new elements", () => {
     await expect.poll(() => w.evaluate((el) => Number(getComputedStyle(el.querySelector("div") ?? el).opacity)), { timeout: 4000 }).toBeLessThan(0.6);
     await w.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().bottom + window.scrollY + 20));
     await expect.poll(() => w.evaluate((el) => Number(getComputedStyle([...el.querySelectorAll("div")].at(-1) ?? el).opacity)), { timeout: 4000 }).toBeGreaterThan(0.9);
+  });
+
+  test("animated media: Lottie plays and follows the scroll, Rive loads its player from the shop, snow falls behind a section, the page scrolls smoothly", async ({ page }) => {
+    const wasm: string[] = [];
+    page.on("request", (r) => /\.wasm(\?|$)/.test(r.url()) && wasm.push(new URL(r.url()).host + new URL(r.url()).pathname));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/media-demo");
+    // A Lottie drawing on its canvas (some of its pixels painted), its words for screen readers.
+    const auto = page.locator('[data-tree-node="lt-auto"]');
+    await expect(auto).toHaveAttribute("aria-label", "نبض");
+    const painted = (id: string) => page.locator(`[data-tree-node="${id}"] canvas`).evaluate((c: HTMLCanvasElement) => c.width > 0 && c.height > 0);
+    await expect.poll(() => painted("lt-auto"), { timeout: 10000 }).toBe(true);
+    // Snow behind the section: a canvas inside the particles' layer, under the content.
+    const dots = page.locator('[data-tree-node="snowy"] > .pt-particles');
+    await expect(dots.locator("canvas")).toHaveCount(1, { timeout: 10000 });
+    expect(await dots.evaluate((el) => [getComputedStyle(el).zIndex, getComputedStyle(el).color].join("|"))).toBe("-1|rgb(255, 0, 0)");
+    // Smooth scrolling is on (Lenis marks the page).
+    await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(true);
+    // The scroll's Lottie shows another frame as the page moves on.
+    const frame = () => page.locator('[data-tree-node="lt-scroll"] canvas').evaluate((c: HTMLCanvasElement) => c.toDataURL());
+    const at = (y: number) => page.evaluate((top) => window.scrollTo(0, top), y);
+    const top = await page.locator('[data-tree-node="lt-scroll"]').evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    await at(top - 800);
+    await expect.poll(() => page.locator('[data-tree-node="lt-scroll"] canvas').evaluate((c: HTMLCanvasElement) => c.width > 0), { timeout: 10000 }).toBe(true);
+    await page.waitForTimeout(500);
+    const early = await frame();
+    await at(top - 200);
+    await expect.poll(frame, { timeout: 5000 }).not.toBe(early);
+    // The players' WebAssembly comes from the shop itself, never a public CDN.
+    await expect.poll(() => wasm.some((u) => u.endsWith("/vendor/dotlottie-player.wasm")), { timeout: 10000 }).toBe(true);
+    await expect.poll(() => wasm.some((u) => /\/vendor\/rive(_fallback)?\.wasm$/.test(u)), { timeout: 10000 }).toBe(true);
+    expect(wasm.filter((u) => !u.startsWith("127.0.0.1:3000/vendor/"))).toEqual([]);
+  });
+
+  test("with reduced motion: no particles and no smooth scrolling; animations stay still", async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: "reduce" });
+    const page = await ctx.newPage();
+    await page.goto("/media-demo");
+    await expect.poll(() => page.locator('[data-tree-node="lt-auto"] canvas').evaluate((c: HTMLCanvasElement) => c.width > 0), { timeout: 10000 }).toBe(true);
+    await page.waitForTimeout(800);
+    expect(await page.locator(".pt-particles canvas").count()).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(false);
+    await ctx.close();
   });
 
   test("a library font: the page asks Google once for the families it uses; the shop's own copy stays its own", async ({ page }) => {

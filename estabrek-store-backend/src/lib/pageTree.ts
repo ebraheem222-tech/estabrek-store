@@ -29,6 +29,7 @@ export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 *
 export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
+  "lottie", "rive",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -46,7 +47,7 @@ export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "rose
  * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
  */
 export const OVERLAY_HOSTS: ReadonlySet<NodeType> = new Set(["legacy", "roseBlock"]);
-export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon"]);
+export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive"]);
 export const OVERLAY_LIMIT = 40;
 
 export const ICON_NAMES = ["heart", "star", "truck", "shield", "gift", "phone", "whatsapp", "mail", "check", "sparkle", "bag", "return"] as const;
@@ -162,6 +163,8 @@ export const SHAPES = [
   "hexagon", "octagon", "diamond", "triangle", "pentagon", "star", "heart", "blob", "blob2", "flower",
   "leaf", "drop", "shield", "squircle", "ticket", "bubble", "plus", "slant", "wave", "tilt",
 ] as const;
+/** Particles behind a section (tsParticles, the shop's pageTree/TreeMedia.tsx). */
+export const PARTICLES = ["snow", "stars", "bubbles", "links", "fireflies", "confetti", "hearts", "sparkles"] as const;
 /** A pattern over the background, drawn in one colour (the shop's pageTree/css.ts). */
 export const PATTERNS = ["dots", "polka", "grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"] as const;
 /** A band along a section's top or bottom: a drawing stretched the full width (a wave, an angle…). */
@@ -296,12 +299,14 @@ const Looks = z
 
 const none = z.object({});
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
-  page: z.object({ looks: Looks.optional() }),
+  // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
+  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional() }),
   section: z.object({
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
     contained: z.boolean().optional(), // the content keeps to the page width
     edges: z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() }).optional(),
+    particles: z.object({ kind: z.enum(PARTICLES), color: color.optional(), amount: z.number().min(0.2).max(3).optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
   }),
   grid: none,
   stack: none,
@@ -325,6 +330,22 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // A product's 360° view (a scan linked to it, lib/productSpins.ts): that colour's, else the one for every colour.
   // Without a product yet it draws nothing in the shop (the editor shows its place).
   product360: z.object({ productId: id.optional(), itemId: id.optional(), auto: z.boolean().optional(), label: local(120).optional() }),
+  // A Lottie animation (.json or .lottie) or a Rive one (.riv, with its state machine): it plays by itself,
+  // once it's seen, with the mouse over it, or (Lottie) with the scroll. No file yet = nothing in the shop.
+  lottie: z.object({
+    src: src.refine((v) => /\.(json|lottie)([?#]|$)/i.test(v), "A Lottie file ends in .json or .lottie").optional(),
+    play: z.enum(["auto", "view", "hover", "scroll"]).optional(),
+    loop: z.boolean().optional(),
+    speed: z.number().min(0.1).max(4).optional(),
+    label: local(120).optional(),
+  }),
+  rive: z.object({
+    src: src.refine((v) => /\.riv([?#]|$)/i.test(v), "A Rive file ends in .riv").optional(),
+    stateMachine: z.string().trim().min(1).max(60).optional(),
+    artboard: z.string().trim().min(1).max(60).optional(),
+    play: z.enum(["auto", "view", "hover"]).optional(),
+    label: local(120).optional(),
+  }),
   // A drawing: a shape from the editor's library (`shape` + `knobs` let it be changed again) or one's own SVG, as data.
   svg: z.object({
     art: z.unknown().superRefine((v, ctx) => {

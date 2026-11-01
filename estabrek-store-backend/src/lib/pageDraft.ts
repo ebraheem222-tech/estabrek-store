@@ -273,6 +273,14 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
       }
       case "setProps": {
         const at = locate(d.tree, raw.nodeId);
+        // The page's own settings: only its smooth scrolling (its looks change through their own ops).
+        if (at?.node.type === "page" && isPlain(raw.props)) {
+          const props = { ...(at.node.props ?? {}) };
+          if (raw.props.smooth === true) props.smooth = true;
+          else delete props.smooth;
+          at.node.props = props;
+          break;
+        }
         if (!at || FIXED_TYPES.has(at.node.type)) throw new DraftError(`No element ${String(raw.nodeId)} with settings`);
         if (!isPlain(raw.props)) throw new DraftError("Settings are an object");
         at.node.props = clone(raw.props);

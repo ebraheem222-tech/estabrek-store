@@ -753,6 +753,13 @@ export const BASE_CSS = [
   "@media (hover:hover){.pt-hv-spot:hover>.pt-spot{opacity:1}}",
   ".pt-rpl{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;background:var(--pt-rpc,currentColor);opacity:.28;transform:translate(-50%,-50%) scale(0);animation:pt-ripple .65s ease-out forwards}",
   "@keyframes pt-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}",
+  // Animations on a canvas (TreeMedia), square unless the element says; particles behind a section.
+  ".pt-lottie,.pt-rive{display:block;width:100%;aspect-ratio:1/1}",
+  ".pt-anim-canvas{display:block;width:100%;height:100%}",
+  ".pt-particles{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;color:var(--accent)}",
+  ".pt-particles canvas{display:block;width:100%!important;height:100%!important}",
+  // Smooth scrolling (Lenis) takes over the page's scroll.
+  "html.lenis,html.lenis body{height:auto}.lenis.lenis-smooth{scroll-behavior:auto!important}.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}.lenis.lenis-stopped{overflow:hidden}",
   // Words being typed: a blinking caret after them.
   ".pt-typing::after{content:\"\";display:inline-block;width:2px;height:1em;margin-inline-start:3px;background:currentColor;vertical-align:-.12em;animation:pt-caret .8s steps(1) infinite}",
   "@keyframes pt-caret{50%{opacity:0}}",

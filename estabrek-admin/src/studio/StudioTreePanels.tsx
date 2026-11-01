@@ -448,7 +448,7 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
   );
 }
 
-export const EDITABLE = new Set(["heading", "text", "button", "image", "video", "slider", "icon", "spacer", "categories", "form"]);
+export const EDITABLE = new Set(["heading", "text", "button", "image", "video", "slider", "icon", "spacer", "categories", "form", "lottie", "rive"]);
 
 export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
   const [media, setMedia] = useState(false);
@@ -520,6 +520,53 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
             {words("label", tr("كلام جنبها (اختياري)", "Words beside it (optional)"))}
           </>
         );
+      case "lottie":
+      case "rive": {
+        const lottie = node.type === "lottie";
+        const fileOk = (v: string) => SAFE_FILE.test(v) && (lottie ? /\.(json|lottie)([?#]|$)/i : /\.riv([?#]|$)/i).test(v);
+        const name = (key: string, label: string) => (
+          <Field label={label} value={typeof p[key] === "string" ? (p[key] as string) : ""} testId={`studio-prop-${key}`} onSave={(v) => setProps({ [key]: v.trim() ? v.trim().slice(0, 60) : undefined })} />
+        );
+        return (
+          <>
+            <Field
+              label={lottie ? tr("رابط ملف Lottie (‎.json أو ‎.lottie)", "The Lottie file's link (.json or .lottie)") : tr("رابط ملف Rive (‎.riv)", "The Rive file's link (.riv)")}
+              value={typeof p.src === "string" ? p.src : ""} testId="studio-prop-src"
+              onSave={(v) => (!v.trim() ? setProps({ src: undefined }) : fileOk(v.trim()) && setProps({ src: v.trim() }))}
+            />
+            {!p.src ? <p className="text-[11px] leading-5 text-amber-200/80">{tr("حطّي رابط الملف لحتى يبيّن بالمتجر.", "Add the file's link so it shows in the shop.")}</p> : null}
+            <p className="text-[10px] leading-4 text-white/40">
+              {lottie
+                ? tr("من LottieFiles: افتحي الرسمة، «Share» ثم انسخي رابط ‎.lottie أو ‎.json.", "From LottieFiles: open the animation, “Share”, then copy its .lottie or .json link.")
+                : tr("من Rive: صدّري الملف ‎.riv وارفعيه، أو حطّي رابطه المباشر.", "From Rive: export the .riv file and put up its direct link.")}
+            </p>
+            <Choice
+              label={tr("بتشتغل", "It plays")} value={String(p.play ?? "auto")} busy={busy} testId="studio-anim-play"
+              options={[
+                ["auto", tr("لحالها", "By itself")], ["view", tr("لما تبيّن", "Once it's seen")], ["hover", tr("مع الماوس", "With the mouse")],
+                ...(lottie ? [["scroll", tr("مع السكرول", "With the scroll")] as [string, string]] : []),
+              ]}
+              onPick={(v) => setProps({ play: v === "auto" ? undefined : v })}
+            />
+            {lottie ? (
+              <>
+                {p.play !== "scroll" ? toggle("loop", tr("بتعيد من الأول", "Loops"), true) : null}
+                <Choice
+                  label={tr("السرعة", "Speed")} value={String(p.speed ?? 1)} busy={busy} testId="studio-anim-speed"
+                  options={[["0.5", tr("نص", "Half")], ["1", tr("عادية", "Normal")], ["1.5", "×1.5"], ["2", "×2"]]}
+                  onPick={(v) => setProps({ speed: v === "1" ? undefined : Number(v) })}
+                />
+              </>
+            ) : (
+              <>
+                {name("stateMachine", tr("اسم الـ State Machine (اختياري)", "The state machine's name (optional)"))}
+                {name("artboard", tr("اسم الـ Artboard (اختياري)", "The artboard's name (optional)"))}
+              </>
+            )}
+            {words("label", tr("وصفها لقارئ الشاشة (فاضي = زينة بس)", "Its description for screen readers (empty = decoration only)"))}
+          </>
+        );
+      }
       case "spacer":
         return <NumberField label={tr("الارتفاع", "Height")} suffix="px" value={typeof p.size === "number" ? p.size : 32} min={0} max={400} onSave={(v) => setProps({ size: v ?? 0 })} />;
       case "categories":
