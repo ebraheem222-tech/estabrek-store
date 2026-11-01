@@ -21,6 +21,7 @@ import { color } from "./css";
 import { particlesOf } from "./particles";
 import { model3dOf } from "./model3d";
 import { Model3dSpot } from "./Model3dSpot";
+import { BlockView } from "./blocks";
 import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
@@ -229,6 +230,14 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
         </span>
       );
     }
+    case "accordion":
+    case "testimonials":
+    case "pricing":
+    case "team":
+    case "logos":
+    case "alert":
+    case "marquee":
+      return <BlockView node={node} className={cls(node)} mark={mark as Record<string, string>} say={say} link={link} lang={ctx.lang} />;
     case "model3d": {
       // A 3D model: its place is drawn here, its canvas only near the screen (Model3dSpot).
       const spec = model3dOf(p);

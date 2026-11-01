@@ -30,6 +30,7 @@ export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
   "lottie", "rive", "model3d",
+  "accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -443,6 +444,41 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   }),
   categories: z.object({ ids: z.array(id).max(24).optional(), limit: z.number().int().min(1).max(24).default(6), title: local(160).optional() }),
   form: z.object({ kind: z.enum(["newsletter", "contact"]), title: local(160).optional() }),
+  // Content blocks, each a list of items the editor adds, removes and orders.
+  // Questions and answers (also the page's FAQ for search engines); `single` = one open at a time.
+  accordion: z.object({
+    items: z.array(z.object({ q: local(200), a: local(3000), open: z.boolean().optional() })).max(30),
+    single: z.boolean().optional(),
+    look: z.enum(["lines", "cards", "plus"]).optional(),
+  }),
+  testimonials: z.object({
+    items: z.array(z.object({ quote: local(800), name: local(80), role: local(80).optional(), photo: src.optional(), stars: z.number().int().min(1).max(5).optional() })).max(24),
+    layout: z.enum(["grid", "row", "single"]).optional(),
+    columns: z.number().int().min(1).max(4).optional(),
+  }),
+  // Plans side by side: their features one per line; one can stand out.
+  pricing: z.object({
+    items: z.array(z.object({ name: local(60), price: local(40), period: local(40).optional(), features: local(1500).optional(), badge: local(40).optional(), featured: z.boolean().optional(), cta: local(40).optional(), href: href.optional() })).max(6),
+  }),
+  team: z.object({
+    items: z.array(z.object({ name: local(80), role: local(80).optional(), photo: src.optional(), href: href.optional() })).max(24),
+    columns: z.number().int().min(1).max(6).optional(),
+  }),
+  // Brands or partners: a grid, or a line that moves; grey until the mouse comes over.
+  logos: z.object({
+    items: z.array(z.object({ src, alt: local(80).optional(), href: href.optional() })).max(40),
+    gray: z.boolean().optional(),
+    moving: z.boolean().optional(),
+  }),
+  alert: z.object({ text: local(600), title: local(120).optional(), kind: z.enum(["info", "success", "warning", "danger", "promo"]).optional(), close: z.boolean().optional() }),
+  // Words running along a line, again and again (a full loop takes `speed` seconds).
+  marquee: z.object({
+    items: z.array(local(200)).min(1).max(20),
+    speed: z.number().min(4).max(120).optional(),
+    reverse: z.boolean().optional(),
+    pause: z.boolean().optional(),
+    separator: z.string().trim().max(4).optional(),
+  }),
   roseBlock: z.object({ block: z.enum(["seasons", "stories", "instagram"]) }),
   legacy: z.object({ sectionId: id }),
   // A saved block linked here (lib/pageBlocks.ts): the shop draws the block's sections in its place.

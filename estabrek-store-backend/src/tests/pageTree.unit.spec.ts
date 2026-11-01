@@ -45,7 +45,7 @@ describe("checking a page tree", () => {
     expect(where(page([section("s", [{ id: "l", type: "legacy", props: { sectionId: "a" } }])]))[0]).toMatch(/goes straight on the page/);
     expect(where(page([section("s", [{ id: "t", type: "text", props: { text: {} }, children: [{ id: "u", type: "text" }] }])]))[0]).toMatch(/can't hold other elements/);
     expect(where({ version: 1, root: { id: "s", type: "section" } })[0]).toMatch(/starts with a page/);
-    expect(where(page([section("s", [{ id: "x", type: "marquee" }])]))[0]).toMatch(/Unknown element “marquee”/);
+    expect(where(page([section("s", [{ id: "x", type: "hologram" }])]))[0]).toMatch(/Unknown element “hologram”/);
   });
 
   test("columns hold 1–4 cells, each cell holds any content, and columns nest once", () => {
@@ -314,6 +314,26 @@ describe("checking a page tree", () => {
     expect(issuesOf(one({ turn: { x: 0, y: 400, z: 0 } })).length).toBe(1);
     expect(issuesOf(one({ lights: { preset: "disco" } })).length).toBe(1);
     expect(issuesOf(one({ anim: { type: "spin", speed: 9 } })).length).toBe(1);
+  });
+
+  test("content blocks: questions, testimonials, plans, a team, logos, a notice and running words", () => {
+    const ok = (type: string, props: unknown) => checkTree(page([section("s", [{ id: "x", type, props }])])).ok;
+    const bad = (type: string, props: unknown) => issuesOf(page([section("s", [{ id: "x", type, props }])])).length > 0;
+    const w = (ar: string) => ({ ar });
+    expect(ok("accordion", { items: [{ q: w("سؤال؟"), a: w("جواب."), open: true }], single: true, look: "plus" })).toBe(true);
+    expect(bad("accordion", { items: Array.from({ length: 31 }, () => ({ q: w("q"), a: w("a") })) })).toBe(true);
+    expect(ok("testimonials", { items: [{ quote: w("حلو"), name: w("سارة"), role: w("زبونة"), photo: "https://res.cloudinary.com/x/a.jpg", stars: 5 }], layout: "row", columns: 3 })).toBe(true);
+    expect(bad("testimonials", { items: [{ quote: w("x"), name: w("y"), stars: 6 }] })).toBe(true);
+    expect(ok("pricing", { items: [{ name: w("أساسي"), price: w("₪49"), period: w("بالشهر"), features: w("واحد\nاتنين"), featured: true, badge: w("الأشهر"), cta: w("اشتركي"), href: "/shop" }] })).toBe(true);
+    expect(bad("pricing", { items: Array.from({ length: 7 }, () => ({ name: w("x"), price: w("1") })) })).toBe(true);
+    expect(ok("team", { items: [{ name: w("ليلى"), role: w("مصممة"), photo: "/img/a.jpg", href: "https://x.test" }], columns: 4 })).toBe(true);
+    expect(ok("logos", { items: [{ src: "https://res.cloudinary.com/x/l.png", alt: w("براند"), href: "/brands/x" }], gray: true, moving: true })).toBe(true);
+    expect(bad("logos", { items: [{ src: "javascript:alert(1)" }] })).toBe(true);
+    expect(ok("alert", { text: w("شحن مجاني"), title: w("خبر"), kind: "promo", close: true })).toBe(true);
+    expect(bad("alert", { text: w("x"), kind: "explode" })).toBe(true);
+    expect(ok("marquee", { items: [w("خصم ٢٠٪"), w("شحن مجاني")], speed: 30, reverse: true, pause: true, separator: "✦" })).toBe(true);
+    expect(bad("marquee", { items: [] })).toBe(true);
+    expect(bad("marquee", { items: [w("x")], speed: 1 })).toBe(true);
   });
 
   test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {

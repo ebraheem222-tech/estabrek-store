@@ -171,6 +171,31 @@ const modelsDemo = {
     },
   },
 };
+// Content blocks: questions, testimonials, plans, a team, logos, a notice and running words.
+const W = (ar, en, he) => ({ ar, en, he });
+const blocksDemo = {
+  id: "blocks-demo", slug: "/blocks-demo", name: "Blocks demo", status: "PUBLISHED", format: 2, sections: [],
+  tree: {
+    version: 1,
+    root: {
+      id: "page", type: "page", props: {},
+      children: [
+        {
+          id: "blocks", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24], gap: 32 } },
+          children: [
+            { id: "faq", type: "accordion", props: { single: true, look: "plus", items: [{ q: W("كم بياخد التوصيل؟", "How long is delivery?", "כמה זמן?"), a: W("يومين.", "Two days.", "יומיים."), open: true }, { q: W("فيني أرجّع؟", "Can I return it?", "אפשר להחזיר?"), a: W("آه.", "Yes.", "כן.") }] } },
+            { id: "says", type: "testimonials", props: { layout: "grid", columns: 2, items: [{ quote: W("حلو كتير", "Lovely", "מקסים"), name: W("سارة", "Sarah", "שרה"), role: W("زبونة", "Customer", "לקוחה"), stars: 4 }] } },
+            { id: "plans", type: "pricing", props: { items: [{ name: W("أساسي", "Basic", "בסיסי"), price: W("₪49", "₪49", "₪49"), features: W("واحد\nاتنين", "One\nTwo", "אחד\nשניים"), cta: W("اختاري", "Choose", "לבחור"), href: "/shop" }, { name: W("مميز", "Plus", "פלוס"), price: W("₪99", "₪99", "₪99"), featured: true, badge: W("الأشهر", "Most loved", "הכי אהוב") }] } },
+            { id: "crew", type: "team", props: { columns: 3, items: [{ name: W("ليلى", "Layla", "ליילה"), role: W("المؤسسة", "Founder", "מייסדת"), photo: "http://127.0.0.1:4100/editorial/hijab-campaign.webp" }] } },
+            { id: "brands", type: "logos", props: { gray: true, moving: true, items: [{ src: "/editorial/a.png", alt: W("براند", "Brand", "מותג") }, { src: "/editorial/b.png", href: "/brands/b" }, { src: "javascript:alert(1)" }] } },
+            { id: "note", type: "alert", props: { kind: "promo", title: W("خبر حلو", "Good news", "חדשות טובות"), text: W("شحن مجاني", "Free delivery", "משלוח חינם"), close: true } },
+            { id: "run", type: "marquee", props: { items: [W("خصم", "Sale", "מבצע"), W("جديد", "New", "חדש")], speed: 20, separator: "✦", pause: true } },
+          ],
+        },
+      ],
+    },
+  },
+};
 // A page of new elements in three languages, with one old section in the middle.
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
@@ -1205,6 +1230,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
       if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));
+      if (slug === "/blocks-demo") return res.end(JSON.stringify(blocksDemo));
       if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [

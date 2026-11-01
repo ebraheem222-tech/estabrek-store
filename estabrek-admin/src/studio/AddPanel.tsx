@@ -64,6 +64,19 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["form", () => typeLabel("form"), "✉"],
     ],
   },
+  {
+    key: "blocks",
+    title: () => tr("بلوكات محتوى", "Content blocks"),
+    kinds: [
+      ["accordion", () => typeLabel("accordion"), "☰"],
+      ["testimonials", () => typeLabel("testimonials"), "❝"],
+      ["pricing", () => typeLabel("pricing"), "₪"],
+      ["team", () => typeLabel("team"), "☺"],
+      ["logos", () => typeLabel("logos"), "◎"],
+      ["alert", () => typeLabel("alert"), "!"],
+      ["marquee", () => typeLabel("marquee"), "⇢"],
+    ],
+  },
 ];
 
 const WHERE: Array<[Where, () => string]> = [

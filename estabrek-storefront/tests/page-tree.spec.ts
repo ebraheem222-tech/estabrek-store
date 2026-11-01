@@ -671,6 +671,47 @@ test.describe.serial("a page of new elements", () => {
     await expect(all).toHaveCount(6, { timeout: 20000 });
   });
 
+  test("content blocks: questions (one open at a time, an FAQ for search engines), testimonials, plans, a team, logos, a notice that closes, running words", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/blocks-demo");
+    // Questions: the first open; opening the second closes it; the page's FAQ for search engines.
+    const faq = page.locator('[data-tree-node="faq"]');
+    await expect(faq.locator("details")).toHaveCount(2);
+    expect(await faq.locator("details").first().getAttribute("open")).toBe("");
+    await faq.locator("summary").nth(1).click();
+    await expect(faq.locator("details").nth(1)).toHaveAttribute("open", "");
+    await expect(faq.locator("details").first()).not.toHaveAttribute("open", "");
+    const ld = JSON.parse((await faq.locator('script[type="application/ld+json"]').textContent())!);
+    expect([ld["@type"], ld.mainEntity.length, ld.mainEntity[0].name, ld.mainEntity[0].acceptedAnswer.text]).toEqual(["FAQPage", 2, "كم بياخد التوصيل؟", "يومين."]);
+    // Testimonials: their stars said in words.
+    await expect(page.locator('[data-tree-node="says"] .pt-stars')).toHaveAttribute("aria-label", "4 من 5");
+    expect(await page.locator('[data-tree-node="says"] blockquote').innerText()).toBe("حلو كتير");
+    // Plans: one per line, the featured one stands out, a button only with words and a link.
+    const plans = page.locator('[data-tree-node="plans"] .pt-plan');
+    await expect(plans).toHaveCount(2);
+    await expect(plans.first().locator("li")).toHaveCount(2);
+    expect(await plans.first().locator("a.pt-btn").getAttribute("href")).toBe("/shop");
+    await expect(plans.nth(1)).toHaveClass(/pt-plan-featured/);
+    expect(await plans.nth(1).locator(".pt-plan-badge").innerText()).toBe("الأشهر");
+    await expect(plans.nth(1).locator("a")).toHaveCount(0);
+    // A team member: photo, name, role.
+    expect(await page.locator('[data-tree-node="crew"] .pt-member-name').innerText()).toBe("ليلى");
+    // Logos moving along a line: twice (the second hidden from screen readers); an unsafe one left out.
+    const brands = page.locator('[data-tree-node="brands"]');
+    await expect(brands).toHaveClass(/pt-logos-gray/);
+    await expect(brands.locator(".pt-mq-item")).toHaveCount(4);
+    await expect(brands.locator('.pt-mq-item[aria-hidden="true"]')).toHaveCount(2);
+    // The notice closes.
+    const note = page.locator('[data-tree-node="note"]');
+    await expect(note).toHaveAttribute("role", "status");
+    await note.locator(".pt-alert-close").click();
+    await expect(note).toBeHidden();
+    // Running words: moving, twice over.
+    const run = page.locator('[data-tree-node="run"]');
+    await expect(run.locator(".pt-mq-item")).toHaveCount(4);
+    expect(await run.locator(".pt-mq-track").evaluate((el) => [getComputedStyle(el).animationName, getComputedStyle(el).animationDuration].join("|"))).toBe("pt-mq|20s");
+  });
+
   test("with reduced motion: no particles and no smooth scrolling; animations stay still", async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: "reduce" });
     const page = await ctx.newPage();
