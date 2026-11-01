@@ -77,6 +77,18 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["marquee", () => typeLabel("marquee"), "⇢"],
     ],
   },
+  {
+    key: "interactive",
+    title: () => tr("تفاعلية", "Interactive"),
+    kinds: [
+      ["tabs", () => typeLabel("tabs"), "▭"],
+      ["countdown", () => typeLabel("countdown"), "⏱"],
+      ["beforeAfter", () => typeLabel("beforeAfter"), "◧"],
+      ["hotspots", () => typeLabel("hotspots"), "◉"],
+      ["map", () => typeLabel("map"), "⌖"],
+      ["popup", () => typeLabel("popup"), "▣"],
+    ],
+  },
 ];
 
 const WHERE: Array<[Where, () => string]> = [

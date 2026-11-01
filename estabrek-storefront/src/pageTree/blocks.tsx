@@ -6,6 +6,7 @@
  */
 import type { ReactNode } from "react";
 import { BlockClose } from "./BlockClose";
+import { BeforeAfterView, CountdownView, TabsView } from "./Interactive";
 import { safeSrc, type TreeLang, type TreeNode } from "./tree";
 
 type Helpers = {
@@ -20,10 +21,11 @@ type Item = Record<string, unknown>;
 const itemsOf = (v: unknown, max: number): Item[] => (Array.isArray(v) ? v.filter((i): i is Item => Boolean(i) && typeof i === "object").slice(0, max) : []);
 const cols = (v: unknown, max: number, def: number) => (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= max ? v : def);
 
-const WORDS: Record<TreeLang, { stars: string; close: string; faq: string }> = {
-  ar: { stars: "{0} من 5", close: "إغلاق", faq: "أسئلة" },
-  en: { stars: "{0} out of 5", close: "Close", faq: "Questions" },
-  he: { stars: "{0} מתוך 5", close: "סגירה", faq: "שאלות" },
+type Said = { stars: string; close: string; units: [string, string, string, string]; handle: string; before: string; after: string; map: string; see: string };
+export const WORDS: Record<TreeLang, Said> = {
+  ar: { stars: "{0} من 5", close: "إغلاق", units: ["يوم", "ساعة", "دقيقة", "ثانية"], handle: "حرّكي للمقارنة", before: "قبل", after: "بعد", map: "خريطة", see: "شوفيها" },
+  en: { stars: "{0} out of 5", close: "Close", units: ["Days", "Hours", "Minutes", "Seconds"], handle: "Slide to compare", before: "Before", after: "After", map: "Map", see: "See it" },
+  he: { stars: "{0} מתוך 5", close: "סגירה", units: ["ימים", "שעות", "דקות", "שניות"], handle: "הזיזו כדי להשוות", before: "לפני", after: "אחרי", map: "מפה", see: "לצפייה" },
 };
 
 /** Words that run along a line: the list twice, so the loop never shows a gap (the second copy is hidden from screen readers). */
@@ -178,9 +180,73 @@ export function BlockView({ node, className, mark, say, link, lang }: Helpers): 
         />
       );
     }
+    case "tabs": {
+      const items = itemsOf(p.items, 12).filter((i) => say(i.label));
+      if (!items.length) return null;
+      const look = ["pills", "underline", "boxed"].includes(p.look) ? p.look : "underline";
+      return (
+        <div className={className} {...mark}>
+          <TabsView items={items.map((i) => ({ label: say(i.label), text: say(i.text), image: safeSrc(i.image) }))} look={look} />
+        </div>
+      );
+    }
+    case "countdown": {
+      const until = typeof p.until === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(p.until) && !Number.isNaN(Date.parse(p.until)) ? p.until : null;
+      if (!until) return null;
+      return (
+        <div className={className} {...mark}>
+          <CountdownView until={until} done={say(p.done)} look={p.look === "plain" ? "plain" : "boxes"} words={w.units} />
+        </div>
+      );
+    }
+    case "beforeAfter": {
+      const [before, after] = [safeSrc(p.before), safeSrc(p.after)];
+      if (!before || !after) return null;
+      const start = typeof p.start === "number" && p.start >= 0 && p.start <= 100 ? p.start : 50;
+      return (
+        <div className={className} {...mark}>
+          <BeforeAfterView before={before} after={after} beforeLabel={say(p.beforeLabel) || w.before} afterLabel={say(p.afterLabel) || w.after} start={start} handle={w.handle} />
+        </div>
+      );
+    }
+    case "hotspots": {
+      const src = safeSrc(p.src);
+      if (!src) return null;
+      const at = (v: unknown) => (typeof v === "number" && v >= 0 && v <= 100 ? v : null);
+      const spots = itemsOf(p.items, 20).filter((i) => at(i.x) !== null && at(i.y) !== null && say(i.title));
+      return (
+        <div className={`${className} pt-hot`} {...mark}>
+          <img src={src} alt={say(p.alt)} loading="lazy" />
+          {spots.map((i, n) => {
+            const to = link(i.href);
+            return (
+              // Measured on the picture itself (from its left), whatever the page's direction.
+              <details key={n} className={`pt-hot-spot${(i.x as number) > 60 ? " pt-hot-end" : ""}`} style={{ left: `${i.x}%`, top: `${i.y}%` }} name={`hot-${node.id}`}>
+                <summary aria-label={say(i.title)}><span aria-hidden="true" /></summary>
+                <div className="pt-hot-card">
+                  <strong>{say(i.title)}</strong>
+                  {say(i.text) ? <p>{say(i.text)}</p> : null}
+                  {to ? <a href={to}>{w.see}</a> : null}
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      );
+    }
+    case "map": {
+      const q = typeof p.query === "string" ? p.query.trim().slice(0, 200) : "";
+      if (q.length < 2) return null;
+      const zoom = typeof p.zoom === "number" && p.zoom >= 1 && p.zoom <= 20 ? Math.round(p.zoom) : 14;
+      return (
+        <div className={`${className} pt-map`} {...mark}>
+          <iframe src={`https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=${zoom}&hl=${lang}&output=embed`} title={say(p.label) || w.map} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
+        </div>
+      );
+    }
     default:
       return null;
   }
 }
 
-export const BLOCK_TYPES = new Set(["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee"]);
+export const BLOCK_TYPES = new Set(["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map"]);

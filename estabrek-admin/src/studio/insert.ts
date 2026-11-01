@@ -53,7 +53,7 @@ export function sceneOf(c: InsertCtx, id: string): string | null {
 }
 
 /** What's added at the page's own level comes in a section of its own (a section goes as it is). */
-export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" || node.type === "block" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
+export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" || node.type === "block" || node.type === "popup" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
 
 const round = (v: number) => Math.round(Math.max(0, Math.min(100, v)));
 /** The node placed freely at a spot of what holds it. */
@@ -128,7 +128,7 @@ export const READY = ["ready-intro", "ready-split", "ready-video", "ready-galler
 export type ReadyKind = (typeof READY)[number];
 export type AddKind = NewKind | ReadyKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
-export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video" };
+export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video", beforeAfter: "image", hotspots: "image" };
 
 /** A new element, ready block or empty section, in the language being edited. */
 export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): PageTreeNode {

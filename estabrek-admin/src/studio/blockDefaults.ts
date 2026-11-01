@@ -31,9 +31,14 @@ const PEOPLE: Array<[Words, Words]> = [
   [w("ريم", "Reem", "רים"), w("مصممة", "Designer", "מעצבת")],
   [w("ديما", "Dima", "דימה"), w("خدمة الزباين", "Customer care", "שירות לקוחות")],
 ];
+const TABS: Array<[Words, Words]> = [
+  [w("المواد", "Materials", "חומרים"), w("قطن ناعم مع لمسة كتان.", "Soft cotton with a touch of linen.", "כותנה רכה עם נגיעת פשתן.")],
+  [w("العناية", "Care", "טיפול"), w("غسيل بارد، وكوي على حرارة خفيفة.", "Wash cold, iron on low heat.", "כביסה קרה, גיהוץ בחום נמוך.")],
+  [w("المقاسات", "Sizes", "מידות"), w("من S لـ XL، والقصّة واسعة شوي.", "From S to XL, cut a little loose.", "מ-S עד XL, גזרה מעט רחבה.")],
+];
 const RUNNING: Words[] = [w("شحن مجاني فوق ₪200", "Free delivery over ₪200", "משלוח חינם מעל ₪200"), w("خصم 20٪ على الجديد", "20% off what's new", "20% הנחה על החדש"), w("إرجاع خلال 14 يوم", "Returns within 14 days", "החזרה תוך 14 יום")];
 
-export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee"] as const;
+export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map"] as const;
 export type BlockKind = (typeof BLOCK_KINDS)[number];
 
 /** One more item of a block's list, ready to edit. */
@@ -59,12 +64,37 @@ export function newItem(kind: BlockKind, lang: Lang, n = 0): Record<string, unkn
       return { src: "" };
     case "marquee":
       return one(lang, RUNNING[n % RUNNING.length]);
-    case "alert":
+    case "tabs": {
+      const [label, text] = TABS[n % TABS.length];
+      return { label: one(lang, label), text: one(lang, text) };
+    }
+    case "hotspots":
+      return { x: 50, y: 50, title: one(lang, w("شوفي هاد", "Look at this", "תראו את זה")) };
+    default:
       return {};
   }
 }
 
-export function newBlock(kind: BlockKind, lang: Lang, id: Ids): PageTreeNode {
+/** A moment a week from now, as the countdown keeps it (the shop's own time). */
+export function inAWeek(now = new Date()): string {
+  const d = new Date(now.getTime() + 7 * 86_400_000);
+  const two = (v: number) => String(v).padStart(2, "0");
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
+/** A popup on the page: a heading, words and a button, shown on arrival once a visit. */
+export function newPopup(lang: Lang, id: Ids): PageTreeNode {
+  return {
+    id: id("pop"), type: "popup", props: { trigger: "load", delay: 3, often: "visit", size: "m", place: "center" },
+    children: [
+      { id: id("h"), type: "heading", props: { level: 2, text: one(lang, w("خصم 10٪ على أول طلب", "10% off your first order", "10% הנחה על ההזמנה הראשונה")) } },
+      { id: id("t"), type: "text", props: { text: one(lang, w("استعملي الكود WELCOME10 عند الدفع.", "Use the code WELCOME10 at checkout.", "השתמשו בקוד WELCOME10 בתשלום.")) } },
+      { id: id("b"), type: "button", props: { label: one(lang, w("تسوّقي", "Shop now", "לקנייה")), href: "/shop", variant: "solid" } },
+    ],
+  };
+}
+
+export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): PageTreeNode {
   const items = (count: number) => Array.from({ length: count }, (_, n) => newItem(kind, lang, n));
   switch (kind) {
     case "accordion":
@@ -82,5 +112,16 @@ export function newBlock(kind: BlockKind, lang: Lang, id: Ids): PageTreeNode {
       return { id: id("al"), type: "alert", props: { text: one(lang, RUNNING[0]), kind: "promo", close: true } };
     case "marquee":
       return { id: id("mq"), type: "marquee", props: { items: items(3), speed: 30, pause: true, separator: "✦" } };
+    case "tabs":
+      return { id: id("tabs"), type: "tabs", props: { items: items(3), look: "underline" } };
+    case "countdown":
+      return { id: id("cd"), type: "countdown", props: { until: inAWeek(), look: "boxes", done: one(lang, w("بلّش العرض!", "The offer is on!", "המבצע התחיל!")) } };
+    case "beforeAfter":
+      // The picture chosen on adding, on both sides until the other is changed.
+      return { id: id("ba"), type: "beforeAfter", props: { before: src, after: src, start: 50 } };
+    case "hotspots":
+      return { id: id("hot"), type: "hotspots", props: { src, items: items(1) } };
+    case "map":
+      return { id: id("map"), type: "map", props: { query: w("الناصرة", "Nazareth", "נצרת")[lang], zoom: 13 } };
   }
 }

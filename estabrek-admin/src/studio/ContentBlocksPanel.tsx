@@ -16,7 +16,7 @@ import { newItem, type BlockKind } from "./blockDefaults";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Item = Record<string, unknown>;
-type FieldSpec = { key: string; label: () => string; kind: "words" | "long" | "link" | "image" | "stars" | "toggle" };
+type FieldSpec = { key: string; label: () => string; kind: "words" | "long" | "link" | "image" | "stars" | "toggle" | "percent" };
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
 const SAFE_LINK = /^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i;
@@ -71,6 +71,24 @@ const ITEMS: Partial<Record<BlockKind, { fields: FieldSpec[]; max: number; title
       { key: "href", label: () => tr("رابط (اختياري)", "Link (optional)"), kind: "link" },
     ],
   },
+  tabs: {
+    max: 12, title: "label",
+    fields: [
+      { key: "label", label: () => tr("اسم التبويب", "Tab name"), kind: "words" },
+      { key: "text", label: () => tr("الكلام", "The words"), kind: "long" },
+      { key: "image", label: () => tr("صورة (اختياري)", "Picture (optional)"), kind: "image" },
+    ],
+  },
+  hotspots: {
+    max: 20, title: "title",
+    fields: [
+      { key: "x", label: () => tr("مكانها بالعرض (من الشمال)", "Across (from the left)"), kind: "percent" },
+      { key: "y", label: () => tr("مكانها بالطول (من فوق)", "Down (from the top)"), kind: "percent" },
+      { key: "title", label: () => tr("العنوان", "Title"), kind: "words" },
+      { key: "text", label: () => tr("الكلام (اختياري)", "Words (optional)"), kind: "long" },
+      { key: "href", label: () => tr("رابط (اختياري)", "Link (optional)"), kind: "link" },
+    ],
+  },
   logos: {
     max: 40, title: "alt",
     fields: [
@@ -111,6 +129,8 @@ function ItemFields({ item, fields, lang, busy, onSave }: { item: Item; fields: 
             );
           case "stars":
             return <Choice key={f.key} label={f.label()} value={String(v ?? "")} busy={busy} options={[["", tr("بلا", "None")], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]]} onPick={(s) => put(f.key, s ? Number(s) : undefined)} />;
+          case "percent":
+            return <Range key={f.key} label={f.label()} min={0} max={100} unit="%" busy={busy} value={typeof v === "number" ? v : 50} onSave={(n) => put(f.key, n)} testId={`block-item-${f.key}`} />;
           case "toggle":
             return (
               <label key={f.key} className="flex items-center justify-between gap-2 text-xs">
@@ -171,6 +191,19 @@ function ItemsEditor({ node, kind, lang, busy, onOps }: { node: PageTreeNode; ki
           onSelectMultiple={(urls) => { setAdding(false); save(tr("إضافة", "Add"), [...items, ...urls.map((src) => ({ src }))], items.length); }}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** A picture of the element's own, chosen from the media library. */
+function PictureField({ label, value, busy, onPick, testId }: { label: string; value: unknown; busy: boolean; onPick: (url: string) => void; testId?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex items-center gap-2 text-[11px] text-white/55">
+      {typeof value === "string" && value ? <img src={value} alt="" className="h-10 w-10 rounded-md object-cover" /> : <span className="grid h-10 w-10 place-items-center rounded-md bg-white/[0.06]">—</span>}
+      <span className="min-w-0 flex-1">{label}</span>
+      <button type="button" className={btn} disabled={busy} onClick={() => setOpen(true)} data-testid={testId}>{tr("اختاري", "Choose")}</button>
+      <MediaLibraryModal open={open} onClose={() => setOpen(false)} title={label} onSelect={(u) => { setOpen(false); onPick(u); }} />
     </div>
   );
 }
@@ -238,6 +271,45 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           {toggle("close", tr("فيه زر إغلاق", "Has a close button"))}
         </>
       ) : null}
+      {kind === "countdown" ? (
+        <>
+          <label className="block text-[11px] text-white/55">
+            {tr("لحد إمتى (بوقت المتجر)", "Until when (the shop's time)")}
+            <input
+              type="datetime-local" dir="ltr" disabled={busy} defaultValue={typeof p.until === "string" ? p.until.slice(0, 16) : ""} key={String(p.until)}
+              className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white"
+              onChange={(e) => e.target.value && set(tr("موعد العدّ", "Countdown time"), { until: e.target.value })} data-testid="block-until"
+            />
+          </label>
+          <Choice label={tr("الشكل", "Look")} value={String(p.look ?? "boxes")} busy={busy} options={[["boxes", tr("مربعات", "Boxes")], ["plain", tr("أرقام بس", "Numbers only")]]} onPick={(v) => set(tr("الشكل", "Look"), { look: v })} testId="block-look" />
+          {words("done", tr("الكلام لما يخلص (فاضي = بيختفي)", "The words when it ends (empty = it goes)"))}
+        </>
+      ) : null}
+      {kind === "beforeAfter" ? (
+        <>
+          <PictureField label={tr("صورة «قبل»", "The “before” picture")} value={p.before} busy={busy} onPick={(u) => set(tr("صورة قبل", "Before picture"), { before: u })} testId="block-before" />
+          <PictureField label={tr("صورة «بعد»", "The “after” picture")} value={p.after} busy={busy} onPick={(u) => set(tr("صورة بعد", "After picture"), { after: u })} testId="block-after" />
+          {words("beforeLabel", tr("كلمة «قبل» (فاضي = قبل)", "The “before” word (empty = Before)"))}
+          {words("afterLabel", tr("كلمة «بعد» (فاضي = بعد)", "The “after” word (empty = After)"))}
+          <Range label={tr("وين بيبلّش المقبض", "Where the handle starts")} min={0} max={100} unit="%" busy={busy} value={typeof p.start === "number" ? p.start : 50} onSave={(v) => set(tr("المقبض", "Handle"), { start: v })} testId="block-start" />
+        </>
+      ) : null}
+      {kind === "hotspots" ? (
+        <>
+          <PictureField label={tr("الصورة", "The picture")} value={p.src} busy={busy} onPick={(u) => set(tr("الصورة", "Picture"), { src: u })} testId="block-src" />
+          {words("alt", tr("وصفها لقارئ الشاشة", "Its description for screen readers"))}
+          <p className="text-[10px] leading-4 text-white/35">{tr("كل نقطة بتفتح كرت صغير. مكانها بالنسبة للصورة نفسها.", "Each point opens a little card. Its place is measured on the picture itself.")}</p>
+        </>
+      ) : null}
+      {kind === "map" ? (
+        <>
+          <Field label={tr("العنوان أو المكان", "The address or place")} value={typeof p.query === "string" ? p.query : ""} onSave={(v) => v.trim().length >= 2 && set(tr("الخريطة", "Map"), { query: v.trim().slice(0, 200) })} testId="block-query" />
+          <Range label={tr("التقريب", "Zoom")} min={1} max={20} busy={busy} value={typeof p.zoom === "number" ? p.zoom : 14} onSave={(v) => set(tr("الخريطة", "Map"), { zoom: v })} testId="block-zoom" />
+          {words("label", tr("اسمها لقارئ الشاشة", "Its name for screen readers"))}
+          <p className="text-[10px] leading-4 text-white/35">{tr("الخريطة من خرائط Google، وبتتحمّل بس لما توصلها الصفحة.", "The map comes from Google Maps, and loads only when the page gets to it.")}</p>
+        </>
+      ) : null}
+      {kind === "tabs" ? <Choice label={tr("الشكل", "Look")} value={String(p.look ?? "underline")} busy={busy} options={[["underline", tr("خط تحت", "Underline")], ["pills", tr("كبسولات", "Pills")], ["boxed", tr("مربعات", "Boxes")]]} onPick={(v) => set(tr("الشكل", "Look"), { look: v })} testId="block-look" /> : null}
       {kind === "marquee" ? (
         <>
           <RunningWords node={node} lang={lang} busy={busy} onOps={onOps} />
@@ -253,6 +325,42 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           <ItemsEditor node={node} kind={kind} lang={lang} busy={busy} onOps={onOps} />
         </>
       ) : null}
+    </div>
+  );
+}
+
+/** A popup's moment (on arrival, at a share of the scroll, as the mouse leaves, from a link), how often, its size and place. */
+export function PopupPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
+  const p = (node.props ?? {}) as Item;
+  const set = (label: string, patch: Item) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
+  const trigger = String(p.trigger ?? "load");
+  return (
+    <div className={box} data-testid="studio-popup">
+      <div className="text-xs font-medium text-white/70">{tr("النافذة المنبثقة", "The popup")}</div>
+      <p className="text-[10px] leading-4 text-white/40">{tr("بالمحرر بتبيّن مفتوحة بمكانها لتعدّلي محتواها. بالمتجر بتطلع فوق الصفحة.", "In the editor it stays open in its place so its content can be edited. In the shop it shows over the page.")}</p>
+      <Choice
+        label={tr("إمتى بتطلع", "When it shows")} value={trigger} busy={busy} testId="popup-trigger"
+        options={[["load", tr("لما تفتح الصفحة", "When the page opens")], ["scroll", tr("بعد شوي سكرول", "After some scrolling")], ["exit", tr("لما الماوس يطلع", "As the mouse leaves")], ["click", tr("من رابط أو زر", "From a link or button")]]}
+        onPick={(v) => set(tr("إمتى بتطلع", "When it shows"), { trigger: v })}
+      />
+      {trigger === "load" ? <Range label={tr("بعد", "After")} min={0} max={60} unit="s" busy={busy} value={typeof p.delay === "number" ? p.delay : 3} onSave={(v) => set(tr("التأخير", "Delay"), { delay: v })} testId="popup-delay" /> : null}
+      {trigger === "scroll" ? <Range label={tr("لما توصل", "Once down")} min={5} max={100} unit="%" busy={busy} value={typeof p.scroll === "number" ? p.scroll : 50} onSave={(v) => set(tr("السكرول", "Scroll"), { scroll: v })} testId="popup-scroll" /> : null}
+      <Field
+        label={tr("اسمها للروابط (رابط لـ #الاسم بيفتحها)", "Its name for links (a link to #name opens it)")} value={typeof p.anchor === "string" ? p.anchor : ""} testId="popup-anchor"
+        onSave={(v) => {
+          const a = v.trim().replace(/^#/, "");
+          if (!a) set(tr("الاسم", "Name"), { anchor: undefined });
+          else if (/^[A-Za-z][\w-]{0,40}$/.test(a)) set(tr("الاسم", "Name"), { anchor: a });
+        }}
+      />
+      <Choice
+        label={tr("قديش بتطلع", "How often")} value={String(p.often ?? "visit")} busy={busy} testId="popup-often"
+        options={[["visit", tr("مرة كل زيارة", "Once a visit")], ["day", tr("مرة باليوم", "Once a day")], ["once", tr("مرة وحدة بس", "Once ever")], ["always", tr("كل مرة", "Every time")]]}
+        onPick={(v) => set(tr("قديش بتطلع", "How often"), { often: v })}
+      />
+      <Choice label={tr("الحجم", "Size")} value={String(p.size ?? "m")} busy={busy} options={[["s", tr("صغيرة", "Small")], ["m", tr("وسط", "Medium")], ["l", tr("كبيرة", "Large")]]} onPick={(v) => set(tr("الحجم", "Size"), { size: v })} testId="popup-size" />
+      <Choice label={tr("مكانها", "Where")} value={String(p.place ?? "center")} busy={busy} options={[["center", tr("بالنص (والصفحة بتغمق)", "Centre (the page dims)")], ["bottom", tr("تحت", "Bottom")], ["corner", tr("بالزاوية", "Corner")]]} onPick={(v) => set(tr("مكانها", "Where"), { place: v })} testId="popup-place" />
+      <Field label={tr("اسمها لقارئ الشاشة", "Its name for screen readers")} value={wordsOf(p.label, lang)} onSave={(v) => set(tr("تعديل", "Edit"), { label: withWords(p.label, lang, v) })} />
     </div>
   );
 }

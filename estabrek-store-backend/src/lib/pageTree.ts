@@ -31,18 +31,20 @@ export const NODE_TYPES = [
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
   "lottie", "rive", "model3d",
   "accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee",
+  "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
 /** Nodes that hold other nodes. */
-export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell"]);
+export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell", "popup"]);
 /** Columns hold this many cells, and columns sit inside a cell at most this deep (columns › cell › columns). */
 export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 /** A slider holds at most this many slides, and turns by itself every 2–30 seconds (or not at all). */
 export const SLIDER_LIMITS = { slides: 12, minSeconds: 2, maxSeconds: 30 } as const;
 /** Nodes that sit straight under the page, and only there. */
-export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy", "block"]);
+// A popup sits on the page like a section and holds content like one; it shows over the page when its moment comes.
+export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy", "block", "popup"]);
 /**
  * An old section or a rose scene can hold objects placed freely over it (words, a picture,
  * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
@@ -471,6 +473,38 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     moving: z.boolean().optional(),
   }),
   alert: z.object({ text: local(600), title: local(120).optional(), kind: z.enum(["info", "success", "warning", "danger", "promo"]).optional(), close: z.boolean().optional() }),
+  // Tabs: each a label and its words (and a picture); the keyboard moves between them.
+  tabs: z.object({
+    items: z.array(z.object({ label: local(60), text: local(3000), image: src.optional() })).min(1).max(12),
+    look: z.enum(["pills", "underline", "boxed"]).optional(),
+  }),
+  // Down to a moment (an ISO date and time); then its words for after, or nothing.
+  countdown: z.object({
+    until: z.string().trim().max(40).refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && !Number.isNaN(Date.parse(v)), "A date and time like 2026-12-31T23:59"),
+    done: local(200).optional(),
+    look: z.enum(["boxes", "plain"]).optional(),
+  }),
+  // Two pictures, one over the other, a handle between them (`start` % across).
+  beforeAfter: z.object({ before: src, after: src, beforeLabel: local(40).optional(), afterLabel: local(40).optional(), start: z.number().min(0).max(100).optional() }),
+  // A picture with points on it (x, y = % across and down), each opening a little card.
+  hotspots: z.object({
+    src, alt: local(200).optional(),
+    items: z.array(z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100), title: local(80), text: local(400).optional(), href: href.optional() })).max(20),
+  }),
+  // A map of a place by its address (or "lat,lng"), zoomed 1 (the world) to 20 (a street).
+  map: z.object({ query: z.string().trim().min(2).max(200), zoom: z.number().int().min(1).max(20).optional(), label: local(120).optional() }),
+  // Over the page when its moment comes: on arrival (after `delay` s), at `scroll` % down, as the mouse leaves the
+  // page (`exit`), or from a link to "#<anchor>"; shown always, once a visit, once a day or once ever.
+  popup: z.object({
+    trigger: z.enum(["load", "scroll", "exit", "click"]).optional(),
+    delay: z.number().min(0).max(120).optional(),
+    scroll: z.number().min(0).max(100).optional(),
+    anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
+    often: z.enum(["always", "visit", "day", "once"]).optional(),
+    size: z.enum(["s", "m", "l"]).optional(),
+    place: z.enum(["center", "bottom", "corner"]).optional(),
+    label: local(120).optional(),
+  }),
   // Words running along a line, again and again (a full loop takes `speed` seconds).
   marquee: z.object({
     items: z.array(local(200)).min(1).max(20),

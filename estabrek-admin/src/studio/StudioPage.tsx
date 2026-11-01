@@ -33,7 +33,7 @@ import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSetti
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
 import { Model3dPanel } from "./Model3dPanel";
-import { ContentBlocksPanel } from "./ContentBlocksPanel";
+import { ContentBlocksPanel, PopupPanel } from "./ContentBlocksPanel";
 import { BLOCK_KINDS } from "./blockDefaults";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
@@ -1614,6 +1614,7 @@ export default function StudioPage() {
                 <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "popup" ? <PopupPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {(BLOCK_KINDS as readonly string[]).includes(selFree.type) ? <ContentBlocksPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "model3d" ? <Model3dPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}

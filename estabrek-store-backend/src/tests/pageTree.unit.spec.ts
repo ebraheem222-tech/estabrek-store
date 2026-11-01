@@ -336,6 +336,29 @@ describe("checking a page tree", () => {
     expect(bad("marquee", { items: [w("x")], speed: 1 })).toBe(true);
   });
 
+  test("interactive elements: tabs, a countdown, before and after, hotspots, a map, and a popup holding content on the page", () => {
+    const ok = (type: string, props: unknown) => checkTree(page([section("s", [{ id: "x", type, props }])])).ok;
+    const bad = (type: string, props: unknown) => issuesOf(page([section("s", [{ id: "x", type, props }])])).length > 0;
+    const w = (ar: string) => ({ ar });
+    expect(ok("tabs", { items: [{ label: w("المواد"), text: w("قطن"), image: "/a.jpg" }], look: "underline" })).toBe(true);
+    expect(bad("tabs", { items: [] })).toBe(true);
+    expect(ok("countdown", { until: "2026-12-31T23:59", done: w("بلّش العرض"), look: "boxes" })).toBe(true);
+    expect(ok("countdown", { until: "2026-12-31T23:59:00+02:00" })).toBe(true);
+    expect(bad("countdown", { until: "next friday" })).toBe(true);
+    expect(ok("beforeAfter", { before: "https://res.cloudinary.com/x/a.jpg", after: "https://res.cloudinary.com/x/b.jpg", beforeLabel: w("قبل"), start: 40 })).toBe(true);
+    expect(bad("beforeAfter", { before: "/a.jpg" })).toBe(true);
+    expect(ok("hotspots", { src: "/look.jpg", items: [{ x: 30, y: 60, title: w("الشال"), text: w("حرير"), href: "/p/scarf" }] })).toBe(true);
+    expect(bad("hotspots", { src: "/look.jpg", items: [{ x: 130, y: 0, title: w("x") }] })).toBe(true);
+    expect(ok("map", { query: "رام الله، فلسطين", zoom: 14 })).toBe(true);
+    expect(bad("map", { query: "x", zoom: 30 })).toBe(true);
+    // A popup sits on the page and holds content like a section; never inside one.
+    const pop = { id: "pop", type: "popup", props: { trigger: "load", delay: 3, often: "visit", size: "m", place: "center" }, children: [{ id: "t", type: "text", props: { text: w("خصم ١٠٪") } }] };
+    expect(checkTree(page([pop])).ok).toBe(true);
+    expect(checkTree(page([{ ...pop, props: { trigger: "click", anchor: "offer" } }])).ok).toBe(true);
+    expect(issuesOf(page([section("s", [pop])]))[0].message).toMatch(/straight on the page/);
+    expect(issuesOf(page([{ ...pop, props: { trigger: "hover" } }])).length).toBe(1);
+  });
+
   test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {
     const art = { viewBox: "0 0 24 24", nodes: [{ t: "g", a: { fill: "none", stroke: "currentColor", "stroke-width": "1.5" }, c: [{ t: "path", a: { d: "M3 12h18" } }] }] };
     const icon = (props: unknown, style?: unknown) => page([section("s", [{ id: "i", type: "icon", props, ...(style ? { style } : {}) }])]);
