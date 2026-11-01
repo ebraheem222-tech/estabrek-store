@@ -218,6 +218,18 @@ describe("checking a page tree", () => {
     expect(nested.ok && nested.tree.root.children![0].children![0].style).toEqual({ base: { hover: {} } });
   });
 
+  test("a heading, text or button can say its words carry formatting", () => {
+    const r = checkTree(page([section("s", [
+      { id: "h", type: "heading", props: { text: { ar: "[b]عرض[/b] اليوم" }, rich: true } },
+      { id: "t", type: "text", props: { text: { ar: "x" }, rich: false } },
+      { id: "b", type: "button", props: { label: { ar: "[color=accent]تسوّق[/color]" }, href: "/shop", rich: true } },
+    ])]));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.tree.root.children![0].children!.map((n) => n.props.rich)).toEqual([true, false, true]);
+    expect(issuesOf(page([section("s", [{ id: "h", type: "heading", props: { text: { ar: "x" }, rich: "yes" } }])])).length).toBe(1);
+  });
+
   test("a drawing is kept as checked data: shapes and safe values only", () => {
     const blob = { viewBox: "0 0 200 200", morph: "M10 10 C 50 0 150 0 190 10 Z", nodes: [
       { t: "defs", a: {}, c: [{ t: "linearGradient", a: { id: "g1", x1: "0", y1: "0", x2: "1", y2: "1" }, c: [{ t: "stop", a: { offset: "0%", "stop-color": "accent" } }, { t: "stop", a: { offset: "100%", "stop-color": "#ffd1e3" } }] }] },

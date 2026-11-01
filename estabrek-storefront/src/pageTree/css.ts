@@ -628,6 +628,9 @@ export const BASE_CSS = [
   ".pt-cell>.pt-image,.pt-cell>.pt-image-link{max-width:100%}",
   ".pt-heading{margin:0;font-family:var(--pt-font-heading);line-height:1.2;white-space:pre-line}",
   ".pt-text{margin:0;line-height:1.75;white-space:pre-line}",
+  // Formatted words (pageTree/rich.ts).
+  ".pt-mark{background:var(--accent-soft);color:inherit;padding:0 .15em;border-radius:.2em}",
+  ".pt-inline-link{color:var(--accent);text-decoration:underline;text-underline-offset:3px}",
   ".pt-image{display:block;max-width:100%;height:auto}",
   ".pt-image-link{display:block}",
   ".pt-video{display:block;width:100%;height:auto}",

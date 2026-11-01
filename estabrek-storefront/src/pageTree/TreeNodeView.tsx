@@ -14,6 +14,7 @@ import { RoseSeasons } from "@/components/cinematic/RoseSeasons";
 import { RoseCollectionStory } from "@/components/cinematic/RoseCollectionStory";
 import { RoseInstagram } from "@/components/cinematic/RoseSections";
 import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, styleClass, type TreeLang, type TreeNode } from "./tree";
+import { richNodes } from "./rich";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt } from "./svgArt";
 import { SpinView } from "@/components/cinematic/ProductSpin";
@@ -55,6 +56,8 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
     if (!v) return null;
     return v.startsWith("/") ? withLang(v, ctx.lang, ctx.cfg) : v;
   };
+  // Words with formatting ([b]…[/b], links…) when the element says so; plain words otherwise.
+  const words = (t: unknown) => (p.rich === true ? richNodes(say(t), link) : say(t));
   // How it moves goes to the motion engine (TreeMotion) as data; an animated layer is drawn inside it.
   const motion = motionOf(node);
   const mark = { "data-tree-node": node.id, ...(motion ? { "data-pt-motion": JSON.stringify(motion) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
@@ -84,10 +87,10 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
     case "heading": {
       const level = Math.min(6, Math.max(1, Number(p.level) || 2));
       const H = `h${level}` as "h2";
-      return <H className={cls(node)} {...mark}>{say(p.text)}{fx}</H>;
+      return <H className={cls(node)} {...mark}>{words(p.text)}{fx}</H>;
     }
     case "text":
-      return <p className={cls(node)} {...mark}>{say(p.text)}{fx}</p>;
+      return <p className={cls(node)} {...mark}>{words(p.text)}{fx}</p>;
     case "image": {
       const src = safeSrc(p.src);
       if (!src) return null;
@@ -107,7 +110,7 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       const variant = ["solid", "outline", "link"].includes(p.variant) ? p.variant : "solid";
       return (
         <a className={cls(node, `pt-btn pt-btn-${variant}`)} {...mark} href={to ?? "#"} {...(p.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-          {say(p.label)}
+          {words(p.label)}
           {fx}
         </a>
       );

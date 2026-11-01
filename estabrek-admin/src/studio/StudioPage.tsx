@@ -78,6 +78,10 @@ const BLOCK_LABEL: Record<string, () => string> = {
 const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled" };
 /** Scenes that keep their own place (the fabric study follows the first products). */
 const FIXED_BLOCKS = new Set(["fabric"]);
+/** Tree elements whose words are written on the page itself (with a formatting bar). */
+const WRITABLE = new Set(["heading", "text", "button"]);
+/** Formatted words: a known tag that closes (the shop's pageTree/rich.ts). */
+const RICH_TAG = /\[(b|i|u|mark|color=[^\]\s]+|link=[^\]\s]+)\][\s\S]*?\[\/(b|i|u|mark|color|link)\]/;
 /** Elements whose words get the text panels in a state (a button and an icon get their colour there too). */
 const WORDY_TYPES = new Set(["heading", "text"]);
 const statusOf = (e: unknown) => (e as { response?: { status?: number } })?.response?.status;
@@ -145,7 +149,9 @@ export default function StudioPage() {
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
   const [busy, setBusy] = useState(false);
   const [frameKey, setFrameKey] = useState(0);
-  const [editing, setEditing] = useState<{ sectionId: string; path: string } | null>(null);
+  // Words being written in the frame: a field of an old section or scene, or a tree element's words.
+  const [editing, setEditing] = useState<{ sectionId: string; path: string } | { nodeId: string } | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [themePreview, setThemePreview] = useState<string | null>(null);
   const [themeMode, setThemeMode] = useState<"light" | "dark" | null>(null);
@@ -270,6 +276,11 @@ export default function StudioPage() {
         setEditing(null);
         canvasRef.current?.focus({ preventScroll: true });
         if (d.type === "textEdited") onTextEdited.current(m.sectionId, m.path, String(m.value ?? ""));
+      } else if (d.type === "nodeEdited" || d.type === "nodeCancelled") {
+        const m = d as unknown as { nodeId: string; value?: string };
+        setEditing(null);
+        canvasRef.current?.focus({ preventScroll: true });
+        if (d.type === "nodeEdited") onNodeEdited.current(m.nodeId, String(m.value ?? ""));
       } else if (d.type === "key") {
         onFrameKey.current((d as unknown as { action?: string }).action);
       }
@@ -378,6 +389,18 @@ export default function StudioPage() {
     const e = history.current.takeRedo();
     if (e && !(await run(e.label, e.ops, { record: false }))) history.current.drop(e);
   };
+  /** Back (negative) or forward through the history, one change at a time; stops at one that fails. */
+  const stepHistory = async (n: number) => {
+    setHistoryOpen(false);
+    for (let i = 0; i < Math.abs(n); i++) {
+      const e = n < 0 ? history.current.takeUndo() : history.current.takeRedo();
+      if (!e) break;
+      if (!(await run(e.label, n < 0 ? e.undo : e.ops, { record: false }))) {
+        history.current.drop(e);
+        break;
+      }
+    }
+  };
   const onFrameKey = useRef<(action?: string) => void>(() => {});
   onFrameKey.current = (action) => void (action === "redo" ? redoLast() : action === "undo" ? undoLast() : undefined);
   const setField = (sectionId: string, path: Array<string | number>, value: unknown, lang: Lang = main, reloadAfter = true) =>
@@ -393,7 +416,29 @@ export default function StudioPage() {
     if ((typeof before === "string" ? before : "") === value) return;
     void setField(sectionId, p, value, lang, false);
   };
+  // A tree element's words written in place: saved in the language shown, as formatted words when they carry any.
+  const onNodeEdited = useRef<(nodeId: string, value: string) => void>(() => {});
+  onNodeEdited.current = (nodeId, value) => {
+    const n = index?.nodes.get(nodeId)?.node;
+    if (!n) return;
+    const field = n.type === "button" ? "label" : "text";
+    const words = { ...((n.props[field] ?? {}) as Record<string, string>) };
+    if ((words[shopLang] ?? "") === value) return;
+    if (value.trim()) words[shopLang] = value;
+    else delete words[shopLang];
+    const rich = Object.values(words).some((w) => RICH_TAG.test(w));
+    void change(tr("الكلام", "The words"), [{ op: "setProps", nodeId, props: { ...n.props, [field]: words, rich: rich || undefined } }]);
+  };
+  /** Writing a heading's, text's or button's words on the page (with its formatting bar). */
+  const startNodeText = (sid: string | null) => {
+    const n = sid ? index?.nodes.get(sid)?.node : undefined;
+    if (!n || !WRITABLE.has(n.type)) return false;
+    setEditing({ nodeId: n.id });
+    send({ type: "editNode", nodeId: n.id, lines: n.type === "text", linkable: n.type !== "button" });
+    return true;
+  };
   const startText = (sid: string | null) => {
+    if (startNodeText(sid)) return true;
     const x = sid ? extras.get(sid) : undefined;
     if (!x || x.kind !== "slot" || x.edit === "media" || x.edit === "list") return false;
     const v = fieldValue(sectionOf(x.sectionId), wordLang(x.path) ? main : shopLang, main, parsePath(x.path));
@@ -1534,6 +1579,11 @@ export default function StudioPage() {
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
+            {WRITABLE.has(selFree.type) ? (
+              <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(selected)} data-testid="studio-edit-node">
+                {editing ? tr("عم تكتب بالصفحة… (Enter للحفظ، Esc للإلغاء)", "Writing in the page… (Enter saves, Esc cancels)") : tr("اكتب بالصفحة مع تنسيق (أو كبستين عليه)", "Write on the page with formatting (or double-click it)")}
+              </button>
+            ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
             <StatesBar node={selFree} state={styleState} onState={setStyleState} />
@@ -1829,6 +1879,19 @@ export default function StudioPage() {
           </span>
           <button type="button" onClick={() => void undoLast()} disabled={!canUndo || busy} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06] disabled:opacity-30" title="Ctrl+Z" data-testid="studio-undo">↶ {tr("تراجع", "Undo")}</button>
           <button type="button" onClick={() => void redoLast()} disabled={!canRedo || busy} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06] disabled:opacity-30" title="Ctrl+Shift+Z" data-testid="studio-redo">↷ {tr("إعادة", "Redo")}</button>
+          <div className="relative">
+            <button type="button" onClick={() => setHistoryOpen((v) => !v)} disabled={(!canUndo && !canRedo) || busy} aria-expanded={historyOpen} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-history-toggle">☰ {tr("السجل", "History")}</button>
+            {historyOpen ? (
+              <HistoryList
+                done={history.current.done.map((x) => x.label)}
+                undone={history.current.undone.map((x) => x.label)}
+                busy={busy}
+                onBack={(n) => void stepHistory(-n)}
+                onForward={(n) => void stepHistory(n)}
+                onClose={() => setHistoryOpen(false)}
+              />
+            ) : null}
+          </div>
           <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
           {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
@@ -1879,7 +1942,7 @@ export default function StudioPage() {
             onDoubleClick={(e) => {
               const p = local(e);
               const at = inFrame(p) ? pickAt(grid.near(p), p) : null;
-              if (at && extras.get(at.id)?.kind === "slot") {
+              if (at && (extras.get(at.id)?.kind === "slot" || WRITABLE.has(index?.nodes.get(at.id)?.node.type ?? ""))) {
                 select(at.id);
                 startText(at.id);
               }
@@ -2318,6 +2381,35 @@ function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, o
       {at.children.map((c) => (
         <Layers key={c} {...pass} id={c} depth={depth + 1} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * The changes made in this visit, newest first: a click goes back to just after that one
+ * (undoing the newer ones); the ones undone can be done again up to the one clicked.
+ */
+function HistoryList({ done, undone, busy, onBack, onForward, onClose }: { done: string[]; undone: string[]; busy: boolean; onBack: (n: number) => void; onForward: (n: number) => void; onClose: () => void }) {
+  return (
+    <div className="absolute end-0 top-8 z-50 max-h-80 w-64 overflow-y-auto rounded-xl border border-white/[0.1] bg-surface-950 p-1 text-xs shadow-2xl" role="menu" data-testid="studio-history" onMouseLeave={onClose}>
+      {undone.length ? (
+        <>
+          <div className="px-2 pb-1 pt-1.5 text-[10px] text-white/40">{tr("بترجع بالإعادة", "Can be redone")}</div>
+          {undone.map((label, i) => (
+            // The last one undone is first to come back.
+            <button key={`u${i}`} type="button" role="menuitem" disabled={busy} className="block w-full truncate rounded-lg px-2 py-1 text-start text-white/40 line-through hover:bg-white/[0.06] disabled:opacity-40" onClick={() => onForward(undone.length - i)} data-testid="studio-history-redo">
+              {label}
+            </button>
+          ))}
+          <div className="my-1 border-t border-white/[0.08]" />
+        </>
+      ) : null}
+      {[...done].reverse().map((label, i) => (
+        <button key={`d${i}`} type="button" role="menuitem" disabled={busy || i === 0} className="block w-full truncate rounded-lg px-2 py-1 text-start text-white/80 hover:bg-white/[0.06] disabled:cursor-default disabled:hover:bg-transparent" onClick={() => onBack(i)} title={i ? tr("رجوع لهون (بيتراجع عن اللي بعده)", "Back to here (undoes what came after)") : undefined} data-testid="studio-history-step">
+          {i === 0 ? "● " : ""}{label}
+        </button>
+      ))}
+      {!done.length ? <div className="px-2 py-1 text-white/40">{tr("لسا ما في تغييرات", "No changes yet")}</div> : null}
     </div>
   );
 }

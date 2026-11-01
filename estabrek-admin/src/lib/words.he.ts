@@ -3876,4 +3876,8 @@ export const HE: Record<string, string> = {
   "Drag to turn it (Shift: every 15°)": "גוררים כדי לסובב (Shift: כל 15°)",
   "Nudge": "הזזה קטנה",
   "Natural size": "גודל טבעי",
+  "Write on the page with formatting (or double-click it)": "כתיבה על הדף עם עיצוב (או לחיצה כפולה עליו)",
+  "Can be redone": "אפשר לבצע שוב",
+  "Back to here (undoes what came after)": "חזרה לכאן (מבטל את מה שבא אחרי)",
+  "No changes yet": "עדיין אין שינויים",
 };

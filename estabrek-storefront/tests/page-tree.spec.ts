@@ -2,6 +2,9 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 import { declarations, sliderAspect, treeCss } from "../src/pageTree/css";
 import { TREE_TRANSFORM, asTree, motionOf, pickText, siteStylesOf, sliderSeconds, sliderSlides, styleClass } from "../src/pageTree/tree";
 import { artHasLines, safeArt } from "../src/pageTree/svgArt";
+import { Fragment, createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { hasRich, parseRich, richNodes } from "../src/pageTree/rich";
 
 // The new CMS's page tree (src/pageTree): a converted page draws exactly as before,
 // and a page of new elements draws on the server in three languages.
@@ -248,6 +251,32 @@ test.describe("styles become safe CSS", () => {
     expect(pickText({ ar: "مرحبا", en: "Hi" }, "he", "ar")).toBe("مرحبا");
     expect(pickText({ en: "Hi" }, "he", "ar")).toBe("Hi");
     expect(asTree({ version: 1, root: { id: "x", type: "section" } })).toBeNull();
+  });
+});
+
+test.describe("formatted words", () => {
+  const html = (t: string) =>
+    renderToStaticMarkup(createElement(Fragment, null, ...richNodes(t, (h) => (h.startsWith("/") && !h.startsWith("//") ? `/en${h}` : /^https:\/\//.test(h) ? h : null))));
+
+  test("tags become elements, nested too; colours and links are checked", () => {
+    expect(html("[b]عرض[/b] اليوم")).toBe("<strong>عرض</strong> اليوم");
+    expect(html("[i][u]x[/u][/i] [mark]y[/mark]")).toBe('<em><u>x</u></em> <mark class="pt-mark">y</mark>');
+    expect(html("[color=accent]a[/color][color=#ff0000]b[/color]")).toBe('<span style="color:var(--accent)">a</span><span style="color:#ff0000">b</span>');
+    expect(html("[color=red]a[/color]")).toBe("<span>a</span>");
+    expect(html("[link=/shop]تسوّق[/link]")).toBe('<a class="pt-inline-link" href="/en/shop">تسوّق</a>');
+    expect(html("[link=javascript:alert(1)]x[/link]")).toBe("<span>x</span>");
+    // Words are words: never HTML.
+    expect(html("[b]<script>x</script>[/b]")).toBe("<strong>&lt;script&gt;x&lt;/script&gt;</strong>");
+  });
+
+  test("what doesn't pair up stays as written", () => {
+    expect(html("[b]open")).toBe("[b]open");
+    expect(html("a[/b]")).toBe("a[/b]");
+    expect(html("[x]y[/x]")).toBe("[x]y[/x]");
+    expect(html("[b]a[i]b[/b]c[/i]")).toBe("[b]a<em>b[/b]c</em>");
+    expect(parseRich("plain")).toEqual(["plain"]);
+    expect(hasRich("plain [b] text")).toBe(false);
+    expect(hasRich("[mark]x[/mark]")).toBe(true);
   });
 });
 
