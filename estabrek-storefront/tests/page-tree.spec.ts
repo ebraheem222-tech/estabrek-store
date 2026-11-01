@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { hasRich, parseRich, richNodes } from "../src/pageTree/rich";
 import { countUpText, scrambleChars } from "../src/pageTree/textMotion";
 import { PARTICLE_KINDS, particleOptions, particlesOf } from "../src/pageTree/particles";
+import { model3dMoves, model3dOf } from "../src/pageTree/model3d";
 
 // The new CMS's page tree (src/pageTree): a converted page draws exactly as before,
 // and a page of new elements draws on the server in three languages.
@@ -303,6 +304,22 @@ test.describe("styles become safe CSS", () => {
     expect(artHasLines(art!)).toBe(true);
     expect(safeArt({ viewBox: "0 0 10 10", nodes: [{ t: "script", a: {} }] })).toBeNull();
     expect(safeArt({ viewBox: "javascript:alert(1)", nodes: [{ t: "path", a: { d: "M0 0" } }] })).toBeNull();
+  });
+
+  test("a 3D model: a model the shop knows or a .glb (the file wins); its knobs, turns, light and motion checked", () => {
+    expect(model3dOf({ model: "robot-x" })).toBeNull();
+    expect(model3dOf({ file: { url: "javascript:alert(1).glb" } })).toBeNull();
+    const s = model3dOf({ model: "sneaker", knobs: { nope: 2 }, turn: { x: 0, y: 90, z: 400 }, size: 9, lights: { preset: "neon", rim: 10 }, anim: { type: "float", trigger: "hover" }, href: "/shop", drag: true })!;
+    expect(s.model).toBe("sneaker");
+    expect(s.knobs).toEqual({});
+    expect(s.turn.map((r) => +r.toFixed(3))).toEqual([0, 1.571, 0]);
+    expect([s.size, s.floor, s.finish, s.lights.rim, s.lights.ambient, s.lights.colours[0]]).toEqual([1, "shadow", "metal", 10, 0.3, "accent"]);
+    // A link makes it a link: shoppers don't turn it by hand then.
+    expect(s.drag).toBe(false);
+    expect(model3dMoves(s)).toBe(true);
+    const f = model3dOf({ model: "sneaker", file: { url: "https://res.cloudinary.com/x/raw/upload/m/a.glb", clip: "*" } })!;
+    expect(f.file).toEqual({ url: "https://res.cloudinary.com/x/raw/upload/m/a.glb", clip: "*" });
+    expect(model3dMoves(model3dOf({ model: "mug" })!)).toBe(false);
   });
 
   test("particles: known kinds and numbers in range only; each kind's options in the section's colour", () => {
@@ -616,6 +633,28 @@ test.describe.serial("a page of new elements", () => {
     await expect.poll(() => wasm.some((u) => u.endsWith("/vendor/dotlottie-player.wasm")), { timeout: 10000 }).toBe(true);
     await expect.poll(() => wasm.some((u) => /\/vendor\/rive(_fallback)?\.wasm$/.test(u)), { timeout: 10000 }).toBe(true);
     expect(wasm.filter((u) => !u.startsWith("127.0.0.1:3000/vendor/"))).toEqual([]);
+  });
+
+  test("3D models: their canvas only near the screen, the store's own file fetched, a link over one, an unknown model not drawn", async ({ page }) => {
+    const files: string[] = [];
+    page.on("request", (r) => /\.glb(\?|$)/.test(r.url()) && files.push(r.url()));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/media-demo");
+    const code = page.locator('[data-tree-node="m3d-code"]');
+    await code.scrollIntoViewIfNeeded();
+    await expect(code.locator(".pt-model3d-stage")).toHaveAttribute("aria-label", "حذاء");
+    await expect(code.locator("canvas")).toHaveCount(1, { timeout: 15000 });
+    expect(await code.locator("canvas").evaluate((c: HTMLCanvasElement) => [c.width > 0, Boolean(c.getContext("webgl2") || c.getContext("webgl"))].join("|"))).toBe("true|true");
+    const file = page.locator('[data-tree-node="m3d-file"]');
+    await expect(file.locator("canvas")).toHaveCount(1, { timeout: 15000 });
+    await expect.poll(() => files.some((u) => u.endsWith("/uploads/models/stage-box.glb")), { timeout: 15000 }).toBe(true);
+    expect(await file.locator("a.pt-model3d-link").getAttribute("href")).toBe("/shop");
+    expect(await page.locator('[data-tree-node="m3d-none"]').count()).toBe(0);
+    // Far down the page its canvas goes (a page holds only a few at once), and comes back near it.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(code.locator("canvas")).toHaveCount(0, { timeout: 10000 });
+    await code.scrollIntoViewIfNeeded();
+    await expect(code.locator("canvas")).toHaveCount(1, { timeout: 15000 });
   });
 
   test("with reduced motion: no particles and no smooth scrolling; animations stay still", async ({ browser }) => {

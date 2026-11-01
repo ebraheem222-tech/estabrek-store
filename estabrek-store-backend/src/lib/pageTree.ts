@@ -29,7 +29,7 @@ export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 *
 export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
-  "lottie", "rive",
+  "lottie", "rive", "model3d",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -47,7 +47,7 @@ export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "rose
  * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
  */
 export const OVERLAY_HOSTS: ReadonlySet<NodeType> = new Set(["legacy", "roseBlock"]);
-export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive"]);
+export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d"]);
 export const OVERLAY_LIMIT = 40;
 
 export const ICON_NAMES = ["heart", "star", "truck", "shield", "gift", "phone", "whatsapp", "mail", "check", "sparkle", "bag", "return"] as const;
@@ -163,6 +163,23 @@ export const SHAPES = [
   "hexagon", "octagon", "diamond", "triangle", "pentagon", "star", "heart", "blob", "blob2", "flower",
   "leaf", "drop", "shield", "squircle", "ticket", "bubble", "plus", "slant", "wave", "tilt",
 ] as const;
+/**
+ * A 3D model anywhere on the page (the shop's pageTree/model3d.ts): one of the shop's built-in
+ * models by name (an unknown name draws nothing) or the store's own .glb file, kept apart
+ * from everything else about it so swapping one for another keeps its look, light and motion.
+ */
+export const FINISHES_3D = ["neon", "metal", "toy", "voxel", "matte", "glass", "gold"] as const;
+export const ANIMS_3D = ["none", "spin", "float", "bounce", "pulse", "swing", "orbit"] as const;
+export const LIGHTS_3D = ["studio", "soft", "sunset", "neon", "night", "warm"] as const;
+export const FLOORS_3D = ["none", "shadow", "grid", "disc"] as const;
+const degrees = z.number().finite().min(-180).max(180);
+/** A .glb's address: https or the shop's own path, and while developing a local server's (as the theme stage allows). */
+const glbSrc = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((v) => NO_ODD_CHARS.test(v) && (/^(\/(?!\/)|https:\/\/)/i.test(v) || (process.env.NODE_ENV !== "production" && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(v))), "Not a safe file address")
+  .refine((v) => /\.glb([?#]|$)/i.test(v), "A 3D file ends in .glb");
 /** Particles behind a section (tsParticles, the shop's pageTree/TreeMedia.tsx). */
 export const PARTICLES = ["snow", "stars", "bubbles", "links", "fireflies", "confetti", "hearts", "sparkles"] as const;
 /** A pattern over the background, drawn in one colour (the shop's pageTree/css.ts). */
@@ -344,6 +361,34 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     stateMachine: z.string().trim().min(1).max(60).optional(),
     artboard: z.string().trim().min(1).max(60).optional(),
     play: z.enum(["auto", "view", "hover"]).optional(),
+    label: local(120).optional(),
+  }),
+  model3d: z.object({
+    model: z.string().trim().regex(/^[a-z][a-z0-9-]{1,30}$/).optional(),
+    file: z.object({ url: glbSrc, name: z.string().trim().max(200).optional(), clip: z.string().trim().max(100).optional() }).optional(),
+    finish: z.enum(FINISHES_3D).optional(),
+    colours: z.object({ body: color.optional(), trim: color.optional(), accent: color.optional(), glow: color.optional(), screen: color.optional(), metal: color.optional() }).optional(),
+    knobs: z.record(z.string().regex(/^[a-zA-Z][a-zA-Z0-9]{0,20}$/), z.number().finite().min(-100).max(100)).refine((k) => Object.keys(k).length <= 16, "At most 16 knobs").optional(),
+    turn: z.object({ x: degrees, y: degrees, z: degrees }).optional(),
+    size: z.number().min(0.2).max(3).optional(),
+    lift: z.number().min(-2).max(2).optional(),
+    anim: z.object({ type: z.enum(ANIMS_3D), speed: z.number().min(0).max(5).optional(), amount: z.number().min(0).max(2).optional(), trigger: z.enum(["always", "hover", "scroll"]).optional() }).optional(),
+    camera: z.object({ fov: z.number().min(15).max(80).optional(), distance: z.number().min(2).max(20).optional(), height: z.number().min(-5).max(5).optional() }).optional(),
+    lights: z.object({
+      preset: z.enum(LIGHTS_3D).optional(),
+      ambient: z.number().min(0).max(3).optional(),
+      key: z.number().min(0).max(8).optional(),
+      env: z.number().min(0).max(4).optional(),
+      rim: z.number().min(0).max(120).optional(),
+      colours: z.tuple([color, color]).optional(),
+    }).optional(),
+    floor: z.enum(FLOORS_3D).optional(),
+    bg: color.optional(), // none = the page shows through
+    drag: z.boolean().optional(), // the shopper turns it with the mouse or a finger
+    zoom: z.boolean().optional(),
+    auto: z.number().min(-2).max(2).optional(), // turns by itself (minus = the other way)
+    tilt: z.boolean().optional(), // leans toward the mouse
+    href: href.optional(), // the whole model is a link (then it isn't turned by hand)
     label: local(120).optional(),
   }),
   // A drawing: a shape from the editor's library (`shape` + `knobs` let it be changed again) or one's own SVG, as data.

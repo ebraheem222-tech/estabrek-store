@@ -755,6 +755,10 @@ export const BASE_CSS = [
   "@keyframes pt-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}",
   // Animations on a canvas (TreeMedia), square unless the element says; particles behind a section.
   ".pt-lottie,.pt-rive{display:block;width:100%;aspect-ratio:1/1}",
+  // A 3D model: square unless the element says; its link covers it.
+  ".pt-model3d{display:block;width:100%;aspect-ratio:1/1;position:relative}",
+  ".pt-model3d-stage{position:absolute;inset:0;border-radius:inherit;overflow:hidden}.pt-model3d-stage canvas{display:block;touch-action:pan-y}",
+  ".pt-model3d-link{position:absolute;inset:0;z-index:1}",
   ".pt-anim-canvas{display:block;width:100%;height:100%}",
   ".pt-particles{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;color:var(--accent)}",
   ".pt-particles canvas{display:block;width:100%!important;height:100%!important}",

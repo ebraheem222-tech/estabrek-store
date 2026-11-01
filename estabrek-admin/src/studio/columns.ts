@@ -76,7 +76,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "icon", "lottie", "rive", "spacer", "divider", "categories", "form", "columns"] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "model3d", "icon", "lottie", "rive", "spacer", "divider", "categories", "form", "columns"] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -122,6 +122,9 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
       return { id: id("sl"), type: "slider", props: { slides: src ? [{ src, kind: "image" }] : [], loop: true, arrows: true, dots: true } };
     case "icon":
       return { id: id("i"), type: "icon", props: { name: "heart" } };
+    case "model3d":
+      // A built-in model turning slowly on a soft shadow; shoppers can turn it by hand.
+      return { id: id("m3d"), type: "model3d", props: { model: "sneaker", anim: { type: "float", speed: 1, amount: 1, trigger: "always" }, auto: 0.6, drag: true } };
     case "lottie":
       // A small pulse the shop keeps, until its own file is chosen.
       return { id: id("lt"), type: "lottie", props: { src: "/lottie/pulse.json" } };
@@ -178,13 +181,13 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "products", "categories", "form"]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form"]);
 const HOLDERS = new Set(["section", "grid", "stack", "cell"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);
 
 /** What can be placed freely over an old section or a rose scene (the backend's OVERLAY_TYPES). */
-export const OVER_TYPES = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive"]);
+export const OVER_TYPES = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d"]);
 
 /** Whether a `child` may go straight inside `parent`. */
 export function accepts(parent: string, child: string): boolean {

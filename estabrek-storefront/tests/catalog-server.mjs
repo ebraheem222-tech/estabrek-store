@@ -139,6 +139,15 @@ const mediaDemo = {
             { id: "rv", type: "rive", props: { src: "https://cdn.rive.app/animations/vehicles.riv", stateMachine: "bumpy", play: "view" }, style: { base: { width: "300px", aspect: "4 / 3" } } },
           ],
         },
+        // 3D models: a built-in one turning, the shopper may turn it; the store's own file as a link.
+        {
+          id: "models", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24] } },
+          children: [
+            { id: "m3d-code", type: "model3d", props: { model: "sneaker", finish: "toy", knobs: { nope: 3 }, anim: { type: "spin", speed: 1 }, floor: "shadow", drag: true, label: { ar: "حذاء", en: "Sneaker", he: "נעל" } }, style: { base: { width: "320px" } } },
+            { id: "m3d-file", type: "model3d", props: { file: { url: "http://127.0.0.1:4100/uploads/models/stage-box.glb", name: "Box" }, floor: "disc", href: "/shop", drag: true, label: { ar: "صندوق", en: "Box", he: "קופסה" } }, style: { base: { width: "320px" } } },
+            { id: "m3d-none", type: "model3d", props: { model: "robot-x" } },
+          ],
+        },
         { id: "tall", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "lt-scroll", type: "lottie", props: { src: "/lottie/pulse.json", play: "scroll" }, style: { base: { width: "200px" } } }] },
         { id: "after", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "end-t", type: "text", props: { text: { ar: "النهاية", en: "The end", he: "הסוף" } } }] },
       ],

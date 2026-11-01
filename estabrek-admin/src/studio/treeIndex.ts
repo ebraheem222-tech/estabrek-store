@@ -43,6 +43,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   icon: () => tr("أيقونة", "Icon"),
   lottie: () => tr("رسوم متحركة Lottie", "Lottie animation"),
   rive: () => tr("رسوم تفاعلية Rive", "Rive animation"),
+  model3d: () => tr("موديل ثلاثي الأبعاد", "3D model"),
   products: () => tr("منتجات", "Products"),
   categories: () => tr("أقسام المتجر", "Store categories"),
   form: () => tr("نموذج", "Form"),
