@@ -40,6 +40,7 @@ import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import { LookPanel, MotionPanel } from "./LookPanels";
 import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
+import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
 import { styleNode, styleOf, withOps } from "./siteStyles";
 import { useAuth } from "../hooks/useAuth";
 import { stateOps, stateView, type StateChoice } from "./states";
@@ -100,6 +101,8 @@ const shopOrigin = () => {
 
 export default function StudioPage() {
   const { id = "" } = useParams();
+  // The page a saved block was opened from (its "edit the block").
+  const fromPage = new URLSearchParams(window.location.search).get("from");
   const qc = useQueryClient();
   const treeQ = useQuery({ queryKey: ["pages", id, "tree"], queryFn: () => PagesAPI.getPageTree(id), enabled: Boolean(id) });
   const pageQ = useQuery({ queryKey: ["pages", id], queryFn: () => PagesAPI.getPage(id), enabled: Boolean(id) });
@@ -131,7 +134,7 @@ export default function StudioPage() {
   const [themePreview, setThemePreview] = useState<string | null>(null);
   const [themeMode, setThemeMode] = useState<"light" | "dark" | null>(null);
   const [themeSaving, setThemeSaving] = useState(false);
-  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" }>(null);
+  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
   const [drop, setDrop] = useState<Drop | null>(null);
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
   const adding = useRef<AddKind | null>(null);
@@ -840,6 +843,59 @@ export default function StudioPage() {
     if (!at?.parentId || !index) return;
     moveTo(nodeId, { parentId: at.parentId, index: index.nodes.get(at.parentId)!.children.indexOf(nodeId) + delta });
   };
+  /** Where a page-level item goes: after the selection's own page-level item, else at the end. */
+  const pageSpot = () => {
+    const kids = index?.nodes.get(index.root)?.children ?? [];
+    let at = selected;
+    while (at && index?.nodes.get(at)?.parentId && index.nodes.get(at)!.parentId !== index.root) at = index.nodes.get(at)!.parentId;
+    const i = at ? kids.indexOf(at) : -1;
+    return i >= 0 ? i + 1 : kids.length;
+  };
+  /** A block's published sections as copies of their own (new ids), to place on this page. */
+  const blockCopies = async (blockId: string) => {
+    const { tree } = await PagesAPI.getPageTree(blockId);
+    const ids = makeIds();
+    return (tree.root.children ?? []).filter((n) => n.type === "section").map((n) => copyOf(n, ids));
+  };
+  const saveBlock = async (section: PagesAPI.PageTreeNode, name: string, link: boolean) => {
+    try {
+      const block = await PagesAPI.createBlock(name, [section]);
+      void qc.invalidateQueries({ queryKey: ["page-blocks"] });
+      toast.success(tr("انحفظ البلوك", "The block was saved"));
+      if (!link || !index) return;
+      const at = index.nodes.get(index.root)?.children.indexOf(section.id) ?? -1;
+      const linkNode: PagesAPI.PageTreeNode = { id: makeIds()("blk"), type: "block", props: { blockId: block.id } };
+      void change(tr("ربط البلوك", "Link the block"), [{ op: "insert", parentId: index.root, index: Math.max(0, at), node: linkNode }, { op: "remove", nodeId: section.id }], linkNode.id);
+    } catch (e) {
+      toast.error(tr("ما انحفظ البلوك", "The block wasn't saved"), { description: getApiErrorMessage(e) });
+    }
+  };
+  const addBlock = async (b: PagesAPI.BlockInfo, linked: boolean) => {
+    if (!index) return;
+    const at = pageSpot();
+    if (linked) {
+      const linkNode: PagesAPI.PageTreeNode = { id: makeIds()("blk"), type: "block", props: { blockId: b.id } };
+      return void change(tr("بلوك مربوط", "Linked block"), [{ op: "insert", parentId: index.root, index: at, node: linkNode }], linkNode.id);
+    }
+    try {
+      const copies = await blockCopies(b.id);
+      if (copies.length) void change(tr("نسخة من بلوك", "A copy of a block"), copies.map((node, i) => ({ op: "insert" as const, parentId: index.root, index: at + i, node })), copies[0].id);
+    } catch (e) {
+      toast.error(tr("ما قدرنا نجيب البلوك", "Couldn't get the block"), { description: getApiErrorMessage(e) });
+    }
+  };
+  /** A linked block becomes copies of its sections here, changed on their own. */
+  const unlinkBlock = async (linkNode: PagesAPI.PageTreeNode) => {
+    if (!index) return;
+    try {
+      const copies = await blockCopies(String(linkNode.props.blockId));
+      const at = index.nodes.get(index.root)?.children.indexOf(linkNode.id) ?? -1;
+      if (at < 0) return;
+      void change(tr("فكّ ربط البلوك", "Unlink the block"), [...copies.map((node, i) => ({ op: "insert" as const, parentId: index.root, index: at + i, node })), { op: "remove", nodeId: linkNode.id }], copies[0]?.id);
+    } catch (e) {
+      toast.error(tr("ما قدرنا نجيب البلوك", "Couldn't get the block"), { description: getApiErrorMessage(e) });
+    }
+  };
   const copySelected = () => {
     if (!selFree || !selNode?.parentId) return;
     const copy = copyOf(selFree, makeIds());
@@ -1174,6 +1230,20 @@ export default function StudioPage() {
           </div>
         ) : null}
 
+        {selNode?.node.type === "block" ? (
+          <div className="space-y-3">
+            <NodeActions
+              canUp={selPos > 0}
+              canDown={selPos >= 0 && selPos < selSiblings.length - 1}
+              busy={busy}
+              onUp={() => nudge(selected, -1)}
+              onDown={() => nudge(selected, 1)}
+              onDelete={() => setAsking({ kind: "delete", nodeId: selected, name: label(selected), tree: true })}
+            />
+            <BlockLinkPanel node={selNode.node} busy={busy} onEdit={(blockId) => window.location.assign(`/studio/${encodeURIComponent(blockId)}?from=${encodeURIComponent(id)}`)} onUnlink={() => void unlinkBlock(selNode.node)} />
+          </div>
+        ) : null}
+
         {selFree ? (
           <div className="space-y-3">
             <NodeActions
@@ -1190,6 +1260,7 @@ export default function StudioPage() {
               <CellPanel node={selFree} cols={nodeOf(selNode?.parentId) ?? null} busy={busy} onOps={(l, ops) => void change(l, ops, ops.some((o) => o.op === "remove" && o.nodeId === selected) ? selNode?.parentId ?? null : undefined)} />
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
             <StatesBar node={selFree} state={styleState} onState={setStyleState} />
@@ -1364,6 +1435,7 @@ export default function StudioPage() {
   // Motion from the Add panel goes on the selected element, or on the selected part of a section or scene.
   const motionNode = selFree ?? (lookTarget && lookTarget.kind !== "box" ? lookSel : null);
   const addPanel = () => (
+    <>
     <AddPanel
       where={addWhereNow}
       canWhere={whereOk}
@@ -1388,6 +1460,12 @@ export default function StudioPage() {
         }
       }}
     />
+    {pageQ.data?.kind === "block" ? null : (
+      <div className="mt-4">
+        <MyBlocks busy={busy} onLink={(b) => void addBlock(b, true)} onCopy={(b) => void addBlock(b, false)} onDelete={(b) => setAsking({ kind: "deleteBlock", block: b })} />
+      </div>
+    )}
+    </>
   );
   const leftTabs = (
     <div className="mb-2 flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist" aria-label={tr("لوحة جانبية", "Side panel")}>
@@ -1426,6 +1504,13 @@ export default function StudioPage() {
           + {tr("إضافة", "Add")}
         </button>
         <span className="rounded-md bg-accent-500/15 px-2 py-0.5 text-[11px] text-accent-200">{tr("المحرر الجديد", "New editor")}</span>
+        {pageQ.data?.kind === "block" ? (
+          // A saved block: what it changes reaches every page that links it once it's published.
+          <span className="flex items-center gap-2 rounded-md bg-amber-300/10 px-2 py-0.5 text-[11px] text-amber-100" data-testid="studio-block-banner">
+            ⧉ {tr("عم تعدّل بلوك محفوظ: نشره بيغيّر كل صفحة مربوط فيها.", "Editing a saved block: publishing it changes every page that links it.")}
+            {fromPage ? <a href={`/studio/${encodeURIComponent(fromPage)}`} className="text-accent-300 hover:underline">{tr("رجوع للصفحة", "Back to the page")}</a> : null}
+          </span>
+        ) : null}
         <div className="ms-auto flex flex-wrap items-center gap-1" role="group" aria-label={tr("حجم الشاشة", "Screen size")}>
           {(Object.keys(DEVICES) as Device[]).map((k) => (
             <button key={k} type="button" onClick={() => setDevice(k)} aria-pressed={device === k} className={`rounded-lg px-2 py-1 text-xs ${device === k ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/[0.06]"}`}>
@@ -1752,12 +1837,13 @@ export default function StudioPage() {
 
       <ConfirmDialog
         open={asking !== null}
-        variant={asking?.kind === "delete" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}
+        variant={asking?.kind === "delete" || asking?.kind === "deleteBlock" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}
         isLoading={busy || themeSaving}
         title={
           asking?.kind === "delete" ? (asking.tree ? tr("حذف العنصر؟", "Delete the element?") : tr("حذف القسم؟", "Delete the section?"))
           : asking?.kind === "publish" ? (asking.force ? tr("الصفحة تغيّرت من مكان تاني", "The page changed elsewhere") : tr("نشر التغييرات؟", "Publish the changes?"))
           : asking?.kind === "discard" ? tr("إلغاء المسودة؟", "Discard the draft?")
+          : asking?.kind === "deleteBlock" ? tr("حذف البلوك؟", "Delete the block?")
           : tr("حفظ الثيم لكل المتجر؟", "Save the theme for the whole store?")
         }
         message={
@@ -1768,9 +1854,10 @@ export default function StudioPage() {
             ? tr("انحفظت تغييرات على الصفحة بعد ما بلشت المسودة. النشر هلّق بيكتب المسودة فوقها. نسخة من الحالية بتنحفظ بالسجل.", "The page was changed after the draft began. Publishing now writes the draft over it. A copy of the current one is kept in the history.")
             : tr("الزبائن رح يشوفوا الصفحة متل ما هي هون. نسخة من المنشورة هلّق بتنحفظ بالسجل.", "Customers will see the page as it is here. A copy of what's live now is kept in the history."))
           : asking?.kind === "discard" ? tr("كل التغييرات اللي مش منشورة بتروح، والصفحة بترجع متل المنشورة.", "Every unpublished change goes, and the page goes back to what's live.")
+          : asking?.kind === "deleteBlock" ? `${asking.block.name}. ${asking.block.uses ? tr(`مربوط بـ ${asking.block.uses} صفحات: هالأماكن ما رح يبيّن فيها إشي.`, "Linked on {0} pages: nothing will show in those places.", [asking.block.uses]) : tr("مش مربوط بأي صفحة.", "It isn't linked on any page.")} ${tr("النسخ اللي انحطت كنسخة بتضل.", "Copies placed as copies stay.")}`
           : tr("الثيم بيتغيّر لكل صفحات المتجر فوراً، مش بس هالصفحة.", "The theme changes for every page of the store right away, not only this one.")
         }
-        confirmText={asking?.kind === "delete" ? tr("حذف", "Delete") : asking?.kind === "publish" ? tr("نشر", "Publish") : asking?.kind === "discard" ? tr("إلغاء المسودة", "Discard draft") : tr("حفظ", "Save")}
+        confirmText={asking?.kind === "delete" || asking?.kind === "deleteBlock" ? tr("حذف", "Delete") : asking?.kind === "publish" ? tr("نشر", "Publish") : asking?.kind === "discard" ? tr("إلغاء المسودة", "Discard draft") : tr("حفظ", "Save")}
         onClose={() => setAsking(null)}
         onConfirm={async () => {
           const a = asking;
@@ -1778,6 +1865,15 @@ export default function StudioPage() {
           if (a.kind === "delete") {
             setAsking(null);
             if (await run(tr("حذف", "Delete"), [{ op: "remove", nodeId: a.nodeId }])) setSelected(null);
+          } else if (a.kind === "deleteBlock") {
+            setAsking(null);
+            try {
+              await PagesAPI.deletePage(a.block.id);
+              void qc.invalidateQueries({ queryKey: ["page-blocks"] });
+              reload();
+            } catch (e) {
+              toast.error(tr("ما انحذف البلوك", "The block wasn't deleted"), { description: getApiErrorMessage(e) });
+            }
           } else if (a.kind === "publish") await publish(a.force);
           else if (a.kind === "discard") await discard();
           else {

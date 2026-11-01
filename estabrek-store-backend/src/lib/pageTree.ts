@@ -29,7 +29,7 @@ export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 *
 export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
-  "products", "categories", "form", "roseBlock", "legacy",
+  "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -40,7 +40,7 @@ export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 /** A slider holds at most this many slides, and turns by itself every 2–30 seconds (or not at all). */
 export const SLIDER_LIMITS = { slides: 12, minSeconds: 2, maxSeconds: 30 } as const;
 /** Nodes that sit straight under the page, and only there. */
-export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy"]);
+export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "roseBlock", "legacy", "block"]);
 /**
  * An old section or a rose scene can hold objects placed freely over it (words, a picture,
  * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
@@ -328,11 +328,13 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   form: z.object({ kind: z.enum(["newsletter", "contact"]), title: local(160).optional() }),
   roseBlock: z.object({ block: z.enum(["seasons", "stories", "instagram"]) }),
   legacy: z.object({ sectionId: id }),
+  // A saved block linked here (lib/pageBlocks.ts): the shop draws the block's sections in its place.
+  block: z.object({ blockId: id }),
 };
 /** A shared style an element takes by name (lib/siteStyles.ts); its own look still wins. Not for the page or old sections. */
 export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);
 for (const t of NODE_TYPES) {
-  if (t === "page" || t === "legacy" || t === "roseBlock") continue;
+  if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
   NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).extend({ styleId: STYLE_REF.optional() });
 }
 
@@ -417,7 +419,8 @@ export function checkTree(input: unknown): TreeCheck {
     if (raw.name !== undefined && (typeof raw.name !== "string" || raw.name.length > 60)) add(`${path}.name`, "A name is up to 60 characters");
     const motion = raw.motion === undefined || raw.motion === null ? undefined : NodeMotion.safeParse(raw.motion);
     if (motion && !motion.success) for (const i of motion.error.issues) add(`${path}.motion.${i.path.map(String).join(".")}`, i.message);
-    if (motion?.success && ["page", "legacy", "roseBlock"].includes(type)) add(`${path}.motion`, `“${type}” moves with its own settings`);
+    if (motion?.success && ["page", "legacy", "roseBlock", "block"].includes(type)) add(`${path}.motion`, `“${type}” moves with its own settings`);
+    if (style?.success && type === "block") add(`${path}.style`, "A saved block takes its look from the block");
 
     let children: TreeNode[] | undefined;
     if (raw.children !== undefined) {

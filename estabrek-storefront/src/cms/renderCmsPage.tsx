@@ -152,6 +152,8 @@ export async function renderCmsPageBySlug(
         // Objects placed over the section in the editor go with it.
         return s ? [{ ...s, order: i, ...(n.children?.length ? { overlay: { nodes: n.children, ctx: treeCtx } } : {}) }] : [];
       }
+      // A saved block comes drawn in place by the API; one still here is gone (or not published yet).
+      if (n.type === "block") return [];
       return [{ id: `tree-${n.id}`, type: "TREE_NODE", order: i, isVisible: true, data: { node: n, ctx: treeCtx } }];
     });
   }

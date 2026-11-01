@@ -154,6 +154,8 @@ export const ENDPOINTS = {
         draftOps: (id: string) => `/admin/pages/${id}/draft/ops`,
         draftPublish: (id: string) => `/admin/pages/${id}/draft/publish`,
         // The new editor's shared styles (h1–h6, body, buttons, named ones), kept in the settings.
+        // Saved blocks: sections kept once and linked or copied onto pages.
+        blocks: "/admin/pages/blocks",
         siteStyles: "/admin/site-styles",
         siteStylesDraft: "/admin/site-styles/draft",
         siteStylesPublish: "/admin/site-styles/publish",

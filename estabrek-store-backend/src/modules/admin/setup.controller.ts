@@ -28,7 +28,7 @@ r.get(
     const s = await getOrCreateSettings();
     const header = headerOf(s.header);
     const setup = (header.setup && typeof header.setup === "object" ? header.setup : null) as { done?: boolean; industry?: string; at?: string } | null;
-    const [products, categories, pages] = await Promise.all([prisma.product.count(), prisma.category.count(), prisma.page.count()]);
+    const [products, categories, pages] = await Promise.all([prisma.product.count(), prisma.category.count(), prisma.page.count({ where: { kind: "page" } })]);
     const home = await prisma.page.findUnique({ where: { slug: "/" }, select: { id: true } });
     res.json({
       // A store that already sells (Estabrek, or one set up by hand) never gets the wizard on its own.

@@ -45,6 +45,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   categories: () => tr("أقسام المتجر", "Store categories"),
   form: () => tr("نموذج", "Form"),
   roseBlock: () => tr("بلوك ورد", "Rose block"),
+  block: () => tr("بلوك محفوظ (مربوط)", "Saved block (linked)"),
   legacy: () => tr("قسم", "Section"),
 };
 export const typeLabel = (type: string) => TYPE_LABEL[type]?.() ?? type;
