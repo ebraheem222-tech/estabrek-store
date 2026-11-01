@@ -14,6 +14,9 @@ import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { MAX_CELLS, MAX_SLIDES, PRESETS, addSlides, changeSlide, dropCellOps, layoutOps, moveSlide, reduceWidths, sameWidths, shownWidths, slidesOf, styleOp, type NewKind, type Slide } from "./columns";
 import { Field } from "./StudioPanels";
+import { IconGlyph, IconPicker } from "./IconPicker";
+import { iconLineOf, iconShown, withIconLine } from "./iconLibrary";
+import type { Art } from "./svgArt";
 import { typeLabel } from "./treeIndex";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -297,21 +300,6 @@ const withWords = (t: unknown, lang: Lang, v: string) => {
   return out;
 };
 const wordsOf = (t: unknown, lang: Lang) => (t && typeof t === "object" ? String((t as Record<string, string>)[lang] ?? "") : typeof t === "string" ? t : "");
-const ICONS: Array<[string, () => string]> = [
-  ["heart", () => tr("قلب", "Heart")],
-  ["star", () => tr("نجمة", "Star")],
-  ["truck", () => tr("توصيل", "Delivery")],
-  ["shield", () => tr("حماية", "Protection")],
-  ["gift", () => tr("هدية", "Gift")],
-  ["phone", () => tr("هاتف", "Phone")],
-  ["whatsapp", () => tr("واتساب", "WhatsApp")],
-  ["mail", () => tr("بريد", "Mail")],
-  ["check", () => tr("صح", "Tick")],
-  ["sparkle", () => tr("لمعة", "Sparkle")],
-  ["bag", () => tr("شنطة", "Bag")],
-  ["return", () => tr("إرجاع", "Return")],
-];
-
 /** The frames a slider can take (its width to its height). */
 const ASPECTS: Array<[string, () => string]> = [
   ["16 / 9", () => tr("عريض", "Wide")],
@@ -326,6 +314,46 @@ const ASPECTS: Array<[string, () => string]> = [
  * by their link, each slide's words in the language being edited, its link, its place
  * in the row; turning by itself, looping, arrows, dots and the frame.
  */
+/** An icon: which one (the library), and a line icon's line width. */
+function IconFields({ node, busy, setProps }: { node: PageTreeNode; busy: boolean; setProps: (patch: Record<string, unknown>) => void }) {
+  const p = (node.props ?? {}) as Record<string, unknown>;
+  const [open, setOpen] = useState(false);
+  const art = iconShown(p);
+  const line = iconLineOf(p.art);
+  const [width, setWidth] = useState<number | null>(null);
+  const name = String(p.name ?? "");
+  const commit = () => {
+    if (width !== null && line !== undefined && width !== line) setProps({ art: withIconLine(p.art as Art, width) });
+    setWidth(null);
+  };
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-white/[0.06] text-white/85" data-testid="studio-icon-now">{art ? <IconGlyph art={art} className="h-7 w-7" /> : null}</div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[11px] text-white/55" dir="ltr">{name.replace(/^([a-z-]+):/, "$1 · ")}</div>
+          <button type="button" className="mt-1 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40" disabled={busy} onClick={() => setOpen(true)} data-testid="studio-icon-pick">
+            {tr("غيّر الأيقونة (أكتر من 16 ألف)", "Change the icon (over 16,000)")}
+          </button>
+        </div>
+      </div>
+      {line !== undefined ? (
+        <label className="block text-[11px] text-white/55">
+          {tr("سماكة الخط", "Line width")} <span className="text-white/40" dir="ltr">{width ?? line}</span>
+          <input type="range" min={0.5} max={3} step={0.25} value={width ?? line} disabled={busy} className="mt-1 w-full accent-[#c86b98]" onChange={(e) => setWidth(Number(e.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} data-testid="studio-icon-line" />
+        </label>
+      ) : null}
+      <IconPicker
+        open={open} current={name} line={line ?? 2} onClose={() => setOpen(false)}
+        onPick={(ref, picked) => {
+          setOpen(false);
+          setProps({ name: ref, art: picked ?? undefined });
+        }}
+      />
+    </>
+  );
+}
+
 function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang: Lang; busy: boolean; setProps: (patch: Record<string, unknown>) => void }) {
   const p = (node.props ?? {}) as Record<string, unknown>;
   const slides = slidesOf(node);
@@ -505,12 +533,7 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
       case "icon":
         return (
           <>
-            <label className="block text-[11px] text-white/55">
-              {tr("الأيقونة", "Icon")}
-              <select className={control} disabled={busy} value={String(p.name ?? "heart")} onChange={(e) => setProps({ name: e.target.value })}>
-                {ICONS.map(([k, name]) => <option key={k} value={k}>{name()}</option>)}
-              </select>
-            </label>
+            <IconFields node={node} busy={busy} setProps={setProps} />
             {words("label", tr("كلام جنبها (اختياري)", "Words beside it (optional)"))}
           </>
         );

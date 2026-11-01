@@ -14,6 +14,8 @@ import { ColourPick, NumberField } from "./StudioTreePanels";
 import { Field } from "./StudioPanels";
 import { hasLines, importSvg, lineWidthOf, paletteOf, recolor, setLineWidth, type Art, type ArtNode } from "./svgArt";
 import { SHAPES, defaultsOf, shapeByKey } from "./svgShapes";
+import { IconPicker } from "./IconPicker";
+import { iconAsDrawing, iconShown } from "./iconLibrary";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
@@ -56,6 +58,7 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
   const knobs = (p.knobs ?? {}) as Record<string, number>;
   const [paste, setPaste] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  const [icons, setIcons] = useState(false);
   const setProps = (label: string, patch: Record<string, unknown>) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
   const take = (text: string) => {
     const r = importSvg(text);
@@ -83,6 +86,15 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
           </button>
         ))}
       </div>
+      <button type="button" className={`${btn} w-full`} disabled={busy} onClick={() => setIcons(true)} data-testid="studio-svg-icon">{tr("أو أيقونة من المكتبة (بتقدر تغيّر ألوانها)", "Or an icon from the library (its colours can change)")}</button>
+      <IconPicker
+        open={icons} line={2} onClose={() => setIcons(false)}
+        onPick={(ref, picked) => {
+          setIcons(false);
+          const drawn = picked ?? iconShown({ name: ref });
+          if (drawn) setProps(tr("أيقونة كرسمة", "Icon as a drawing"), { art: iconAsDrawing(drawn), shape: undefined, knobs: undefined });
+        }}
+      />
       {lib && lib.knobs.length ? (
         <div className="space-y-2">
           {lib.knobs.map((kn) => (

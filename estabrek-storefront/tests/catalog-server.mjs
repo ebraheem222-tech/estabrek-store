@@ -214,6 +214,11 @@ const treeDemo = {
             // A product's 360° view in the page: rose-dress in Berry (its own view), turning by itself.
             { id: "spin-berry", type: "product360", props: { productId: "coat", itemId: "berry", label: { ar: "الفستان بيلف", en: "The dress turning", he: "השמלה מסתובבת" } }, style: { base: { width: "240px" } } },
             { id: "art-bad", type: "svg", props: { art: { viewBox: "0 0 10 10", nodes: [{ t: "script", a: {} }, { t: "circle", a: { r: "4", cx: "5", cy: "5", onclick: "alert(1)", fill: "white", href: "https://x.test" } }] } } },
+            // An icon from the library: its own drawing, its own size, the words' colour.
+            {
+              id: "lib-icon", type: "icon", style: { base: { iconSize: 48, color: "#123456" }, mobile: { iconSize: 32 } },
+              props: { name: "lucide:shopping-cart", art: { viewBox: "0 0 24 24", nodes: [{ t: "g", a: { fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" }, c: [{ t: "circle", a: { cx: "8", cy: "21", r: "1" } }, { t: "path", a: { d: "M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78" } }, { t: "script", a: {} }] }] } },
+            },
           ],
         },
         // Columns: a third and two thirds, each cell its own little container (shapes, alignment), three more columns inside one.

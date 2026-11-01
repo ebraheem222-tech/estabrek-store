@@ -208,9 +208,12 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       return <hr className={cls(node)} {...mark} />;
     case "icon": {
       const label = say(p.label);
+      // One from the library carries its drawing; the few built in go by name.
+      const art = safeArt(p.art);
+      const name = String(p.name ?? "");
       return (
-        <span className={cls(node)} {...mark} role={label ? undefined : "img"} aria-label={label ? undefined : String(p.name ?? "")}>
-          <TreeIcon name={String(p.name ?? "")} />
+        <span className={cls(node)} {...mark} role={label ? undefined : "img"} aria-label={label ? undefined : name.replace(/^[a-z-]+:/, "").replace(/-/g, " ")}>
+          {art ? <ArtView art={art} prefix={node.id} /> : <TreeIcon name={name} />}
           {label ? <span>{label}</span> : null}
         </span>
       );

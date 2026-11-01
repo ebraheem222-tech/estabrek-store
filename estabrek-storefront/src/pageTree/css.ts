@@ -207,6 +207,7 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   const sizeMin = num(s.sizeMin, 8, 200);
   if (size !== undefined && sizeMin !== undefined && sizeMin < size) d.push(`font-size:${fluidSize(sizeMin, size)}`);
   else push("font-size", size, "px");
+  push("--pt-isz", num(s.iconSize, 8, 400), "px");
   const w = num(s.weight, 100, 900);
   if (w !== undefined && w % 100 === 0) d.push(`font-weight:${w}`);
   push("line-height", num(s.lineHeight, 0.8, 3));
@@ -684,7 +685,7 @@ export const BASE_CSS = [
   ".pt-svg>svg{display:block;width:100%;height:auto;overflow:visible}",
   ".pt-divider{border:0;border-top:1px solid var(--border);margin:0;width:100%}",
   ".pt-icon{display:inline-flex;align-items:center;gap:8px;color:var(--accent)}",
-  ".pt-icon svg{width:24px;height:24px;flex:none}",
+  ".pt-icon svg{width:var(--pt-isz,24px);height:var(--pt-isz,24px);flex:none}",
   ".pt-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 22px;border-radius:999px;font-weight:600;text-decoration:none;cursor:pointer;transition:filter .2s ease,background-color .2s ease}",
   ".pt-btn-solid{background:var(--accent);color:var(--accent-contrast,#fff)}",
   ".pt-btn-outline{border:1px solid currentColor;color:var(--accent)}",

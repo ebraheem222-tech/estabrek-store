@@ -259,6 +259,19 @@ describe("checking a page tree", () => {
     expect(bad(Array.from({ length: 700 }, () => ({ t: "circle", a: { r: "1" } })))).toMatch(/More than 600 shapes/);
   });
 
+  test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {
+    const art = { viewBox: "0 0 24 24", nodes: [{ t: "g", a: { fill: "none", stroke: "currentColor", "stroke-width": "1.5" }, c: [{ t: "path", a: { d: "M3 12h18" } }] }] };
+    const icon = (props: unknown, style?: unknown) => page([section("s", [{ id: "i", type: "icon", props, ...(style ? { style } : {}) }])]);
+    expect(checkTree(icon({ name: "heart" })).ok).toBe(true);
+    const r = checkTree(icon({ name: "ph-duotone:shopping-bag", art, styleId: "badge" }, { base: { iconSize: 48 }, mobile: { iconSize: 32 } }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props).toMatchObject({ name: "ph-duotone:shopping-bag", art, styleId: "badge" });
+    expect(issuesOf(icon({ name: "lucide:heart" }))[0].message).toMatch(/carries its drawing/);
+    expect(issuesOf(icon({ name: "fontawesome:heart", art })).length).toBeGreaterThan(0);
+    expect(issuesOf(icon({ name: "tabler:x", art: { viewBox: "0 0 24 24", nodes: [{ t: "script", a: {} }] } }))[0].message).toMatch(/Not a shape/);
+    expect(issuesOf(icon({ name: "heart" }, { base: { iconSize: 900 } })).length).toBeGreaterThan(0);
+  });
+
   test("a product's 360° view goes in a cell like anything else, a product or not yet", () => {
     const spin = (props: unknown) => page([section("s", [{ id: "c", type: "columns", children: [{ id: "a", type: "cell", children: [{ id: "p", type: "product360", props }] }] }])]);
     const r = checkTree(spin({ productId: "coat", itemId: "berry", auto: false, label: { ar: "الفستان بيلف" } }));

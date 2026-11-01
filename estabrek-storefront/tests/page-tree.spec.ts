@@ -419,6 +419,21 @@ test.describe.serial("a page of new elements", () => {
     await expect.poll(() => line.locator("path").evaluate((el) => (el as SVGPathElement).style.strokeDasharray), { timeout: 8000 }).not.toBe("");
   });
 
+  test("an icon from the library: its own drawing at its own size per screen, in the words' colour; the built-in ones as before", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/tree-demo");
+    const icon = page.locator('[data-tree-node="lib-icon"]');
+    await expect(icon).toHaveAttribute("aria-label", "shopping cart");
+    const svg = icon.locator("svg");
+    expect(await svg.getAttribute("viewBox")).toBe("0 0 24 24");
+    expect(await svg.evaluate((el) => [Math.round(el.getBoundingClientRect().width), getComputedStyle(el.querySelector("g")!).stroke].join("|"))).toBe("48|rgb(18, 52, 86)");
+    expect(await icon.locator("script").count()).toBe(0);
+    expect(await icon.locator("circle, path").count()).toBe(2);
+    await expect(page.locator('[data-tree-node="heart"] svg path')).toHaveCount(1);
+    await page.setViewportSize({ width: 390, height: 800 });
+    await expect.poll(() => svg.evaluate((el) => Math.round(el.getBoundingClientRect().width))).toBe(32);
+  });
+
   test("a product's 360° view in the page: its colour's own view, turning, in each language", async ({ page }) => {
     await page.request.post("/api/revalidate", { data: { tags: ["catalog", "catalog:products"] } });
     await page.setViewportSize({ width: 1280, height: 900 });
