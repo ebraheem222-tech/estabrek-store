@@ -97,8 +97,66 @@ const box = (min: number) => z.tuple([px(min, 400), px(min, 400), px(min, 400), 
 const length = z.string().trim().regex(/^(auto|\d{1,4}(\.\d{1,2})?(px|%|rem|vw|vh))$/, "A length like 320px, 50% or auto");
 const place = z.string().trim().regex(/^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/, "Like “1 / 3” or “span 2”");
 
+/** How a motion speeds up and slows down (also a state change's). */
+export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear"] as const;
+const seconds = (max: number) => z.number().finite().min(0).max(max);
+const turnAngle = (max: number) => z.number().finite().min(-max).max(max);
+const textShadow = z.object({ x: px(-100, 100), y: px(-100, 100), blur: px(0, 200), color });
+
+/**
+ * What an element's look can change to while the mouse is over it, it has the keyboard's
+ * focus, or it's pressed: its colours, frame, shadows, turns and the paint of its words.
+ * Never its size or place, so nothing around it jumps.
+ */
+const VISUAL = {
+  bg: color.optional(),
+  // A background of two or three colours (over `bg`); radial = from the middle out.
+  gradient: z.object({ color, to: color, via: color.optional(), angle: z.number().int().min(0).max(360).optional(), radial: z.boolean().optional() }).optional(),
+  // Frosted glass: what's behind it is blurred.
+  backdrop: z.object({ blur: px(0, 40), saturate: z.number().min(0).max(3).optional() }).optional(),
+  color: color.optional(),
+  radius: px(0, 999).optional(),
+  border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
+  shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  weight: z.number().int().min(100).max(900).refine((w) => w % 100 === 0, "100, 200 … 900").optional(),
+  letterSpacing: px(-5, 20).optional(),
+  wordSpacing: px(-10, 40).optional(),
+  // A line under, over or through the words.
+  decoration: z.object({ line: z.enum(["none", "underline", "overline", "through"]), style: z.enum(["solid", "wavy", "dotted", "dashed", "double"]).optional(), color: color.optional(), width: px(1, 12).optional(), offset: px(-10, 30).optional() }).optional(),
+  // The letters' outline, and letters painted with a gradient.
+  stroke: z.object({ width: px(0, 10), color }).optional(),
+  fill: z.object({ color, to: color, via: color.optional(), angle: z.number().int().min(0).max(360).optional() }).optional(),
+  shadows: z.array(textShadow).max(4).optional(), // shadows of the words (a glow adds its own)
+  filters: z
+    .object({
+      blur: px(0, 40).optional(),
+      bright: z.number().min(0).max(3).optional(),
+      contrast: z.number().min(0).max(3).optional(),
+      saturate: z.number().min(0).max(3).optional(),
+      gray: z.number().min(0).max(1).optional(),
+      hue: z.number().int().min(-180).max(180).optional(),
+    })
+    .optional(),
+  // Turned (degrees) and moved (px); with perspective a turn around X or Y looks 3D.
+  rotateX: turnAngle(180).optional(),
+  rotateY: turnAngle(180).optional(),
+  rotateZ: turnAngle(360).optional(),
+  scale: z.number().finite().min(0.1).max(4).optional(),
+  moveX: px(-1000, 1000).optional(),
+  moveY: px(-1000, 1000).optional(),
+  // A colour, or a gradient of two, over it: over a picture or clip, under the words of anything else.
+  overlay: z.object({ color, to: color.optional(), angle: z.number().int().min(0).max(360).optional(), opacity: z.number().min(0).max(1), blend: z.enum(BLENDS).optional() }).optional(),
+  // Its own shadow; `follow` = around its shape (a cut-out picture, words), else around its box.
+  shade: z.object({ x: px(-100, 100), y: px(-100, 100), blur: px(0, 200), color, follow: z.boolean().optional() }).optional(),
+  glow: z.object({ color, size: px(0, 120) }).optional(),
+};
+export const StateStyle = z.object(VISUAL);
+export const STATES = ["hover", "focused", "pressed"] as const;
+
 /** How a node looks on one screen size. Every key is optional; the shop turns it into CSS. */
 export const ScreenStyle = z.object({
+  ...VISUAL,
   pad: box(0).optional(), // top, end, bottom, start (follows the text direction)
   margin: box(-400).optional(),
   width: length.optional(),
@@ -116,41 +174,35 @@ export const ScreenStyle = z.object({
   col: place.optional(), // its cell in the parent grid
   row: place.optional(),
   order: z.number().int().min(-50).max(50).optional(),
-  bg: color.optional(),
-  color: color.optional(),
-  radius: px(0, 999).optional(),
-  border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
-  shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
-  opacity: z.number().min(0).max(1).optional(),
   font: z.enum(["heading", "body", "serif", "sans", "mono"]).optional(),
+  // A family from the shop's fonts library by its name ("cairo"); it wins over `font`. The shop skips one it doesn't have.
+  family: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/).optional(),
+  italic: z.boolean().optional(),
   size: px(8, 200).optional(),
-  weight: z.number().int().min(100).max(900).refine((w) => w % 100 === 0, "100, 200 … 900").optional(),
+  // Fluid: the words grow from this size on a phone to `size` on a computer.
+  sizeMin: px(8, 200).optional(),
   lineHeight: z.number().min(0.8).max(3).optional(),
-  letterSpacing: px(-5, 20).optional(),
   textAlign: z.enum(["start", "center", "end"]).optional(),
+  caps: z.enum(["none", "upper", "lower", "title", "small"]).optional(),
+  lines: z.number().int().min(1).max(12).optional(), // at most this many lines, then "…"
+  balance: z.enum(["balance", "pretty"]).optional(), // even lines (headings) or no lonely last word (text)
+  textColumns: z.number().int().min(1).max(4).optional(),
   fit: z.enum(["cover", "contain"]).optional(),
   // A picture's or clip's point that stays in sight when it's cut to its frame (% across, % down).
   focus: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   aspect: z.string().trim().regex(/^\d{1,2}\s*\/\s*\d{1,2}$/, "Like 16 / 9").optional(),
   shape: z.enum(["rect", "rounded", "pill", "arch", "circle"]).optional(), // what clips it (a picture inside takes the shape)
-  // Turned (degrees) and moved (px); with perspective a turn around X or Y looks 3D.
-  rotateX: z.number().finite().min(-180).max(180).optional(),
-  rotateY: z.number().finite().min(-180).max(180).optional(),
-  rotateZ: z.number().finite().min(-360).max(360).optional(),
   perspective: px(200, 4000).optional(),
-  scale: z.number().finite().min(0.1).max(4).optional(),
-  moveX: px(-1000, 1000).optional(),
-  moveY: px(-1000, 1000).optional(),
   origin: z.enum(["center", "top", "bottom"]).optional(),
-  // A colour, or a gradient of two, over it: over a picture or clip, under the words of anything else.
-  overlay: z.object({ color, to: color.optional(), angle: z.number().int().min(0).max(360).optional(), opacity: z.number().min(0).max(1), blend: z.enum(BLENDS).optional() }).optional(),
-  // Its own shadow; `follow` = around its shape (a cut-out picture, words), else around its box.
-  shade: z.object({ x: px(-100, 100), y: px(-100, 100), blur: px(0, 200), color, follow: z.boolean().optional() }).optional(),
-  glow: z.object({ color, size: px(0, 120) }).optional(),
   // Placed freely over its container, its anchor at x% from the line's start and y% from the top; false = back in the flow on this screen.
   layer: z.union([z.literal(false), z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100), anchor: z.enum(ANCHORS).optional() })]).optional(),
   z: z.number().int().min(-10).max(50).optional(), // which goes on top
   hidden: z.boolean().optional(),
+  // Its look while the mouse is over it, it has the keyboard's focus, or it's pressed; and how fast it changes.
+  hover: StateStyle.optional(),
+  focused: StateStyle.optional(),
+  pressed: StateStyle.optional(),
+  transition: z.object({ duration: seconds(3), ease: z.enum(EASES).optional(), delay: seconds(3).optional() }).optional(),
 });
 export const NodeStyle = z.object({ base: ScreenStyle.optional(), tablet: ScreenStyle.optional(), mobile: ScreenStyle.optional() });
 
@@ -161,8 +213,6 @@ export const ENTER_KINDS = ["fade", "up", "down", "start", "end", "zoom-in", "zo
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash"] as const;
 export const HOVER_KINDS = ["lift", "grow", "tilt", "magnetic", "glow", "zoom"] as const;
 export const FX_KINDS = ["shine", "gradient", "grain"] as const;
-export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear"] as const;
-const seconds = (max: number) => z.number().finite().min(0).max(max);
 /** A moment of a scroll animation, added to the element's own look (opacity as it is). */
 const MotionKeys = z.object({
   rx: z.number().finite().min(-180).max(180).optional(),

@@ -5,7 +5,8 @@
  * so a bad saved value can't become CSS. Sides follow the text direction
  * (padding-inline-start…), so the same tree is right in Arabic, Hebrew and English.
  */
-import { TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type TreeNode } from "./tree";
+import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type TreeNode } from "./tree";
+import { fontFaceCss, fontStack } from "./fonts";
 
 export const TABLET_MAX = 1023.98;
 export const PHONE_MAX = 639.98;
@@ -57,6 +58,55 @@ const FONTS: Record<string, string> = {
 };
 /** Its glow is a light around the letters, not around the box. */
 const TEXTISH = new Set(["heading", "text", "icon"]);
+/** Words that can be cut to a number of lines or set in columns (a box that is only text). */
+const WORDS = new Set(["heading", "text"]);
+const CAPS: Record<string, string> = { none: "text-transform:none", upper: "text-transform:uppercase", lower: "text-transform:lowercase", title: "text-transform:capitalize", small: "font-variant-caps:small-caps" };
+const LINES: Record<string, string> = { none: "none", underline: "underline", overline: "overline", through: "line-through" };
+/** How a state change speeds up and slows down (the motion's names, as CSS). */
+export const EASE_CSS: Record<string, string> = {
+  smooth: "cubic-bezier(.2,.7,.2,1)",
+  soft: "cubic-bezier(.45,0,.55,1)",
+  strong: "cubic-bezier(.7,0,.2,1)",
+  back: "cubic-bezier(.34,1.56,.64,1)",
+  elastic: "cubic-bezier(.68,-.6,.32,1.6)",
+  bounce: "cubic-bezier(.5,1.8,.5,.8)",
+  linear: "linear",
+};
+/** What a state may change (the backend's StateStyle): never the size or place, so nothing around it jumps. */
+export const STATE_KEYS = new Set([
+  "bg", "gradient", "backdrop", "color", "radius", "border", "shadow", "opacity", "weight", "letterSpacing", "wordSpacing", "decoration",
+  "stroke", "fill", "shadows", "filters", "rotateX", "rotateY", "rotateZ", "scale", "moveX", "moveY", "overlay", "shade", "glow",
+]);
+/** The CSS properties a state's keys change, for the element's transition (only those, so a motion's own fade isn't slowed). */
+const STATE_PROPS: Record<string, string[]> = {
+  bg: ["background-color"],
+  color: ["color", "-webkit-text-fill-color"],
+  radius: ["border-radius"],
+  border: ["border-color", "border-width"],
+  shadow: ["box-shadow"],
+  shade: ["box-shadow", "filter"],
+  glow: ["box-shadow", "text-shadow"],
+  shadows: ["text-shadow"],
+  opacity: ["opacity"],
+  weight: ["font-weight"],
+  letterSpacing: ["letter-spacing"],
+  wordSpacing: ["word-spacing"],
+  decoration: ["text-decoration-color"],
+  stroke: ["-webkit-text-stroke-color", "-webkit-text-stroke-width"],
+  filters: ["filter"],
+  backdrop: ["backdrop-filter"],
+  rotateX: ["--pt-rx"],
+  rotateY: ["--pt-ry"],
+  rotateZ: ["--pt-rz"],
+  scale: ["--pt-s"],
+  moveX: ["--pt-x"],
+  moveY: ["--pt-y"],
+};
+/** The look's own turn and move as typed values, so a state can glide to them (each element sets its own: they don't inherit). */
+const TURN_PROPERTIES =
+  '@property --pt-x{syntax:"<length>";inherits:false;initial-value:0px}@property --pt-y{syntax:"<length>";inherits:false;initial-value:0px}' +
+  '@property --pt-rx{syntax:"<angle>";inherits:false;initial-value:0deg}@property --pt-ry{syntax:"<angle>";inherits:false;initial-value:0deg}' +
+  '@property --pt-rz{syntax:"<angle>";inherits:false;initial-value:0deg}@property --pt-s{syntax:"<number>";inherits:false;initial-value:1}';
 /** A colour layer goes over these (a picture, a clip, slides) and under the words of anything else. */
 const MEDIA = new Set(["image", "video", "slider"]);
 
@@ -67,6 +117,22 @@ export const color = (v: unknown) =>
 const length = (v: unknown) => (typeof v === "string" && /^(auto|\d{1,4}(\.\d{1,2})?(px|%|rem|vw|vh))$/.test(v) ? v : undefined);
 const place = (v: unknown) => (typeof v === "string" && /^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/.test(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, list: readonly T[]) => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : undefined);
+const obj = (v: unknown): Record<string, any> | undefined => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, any>) : undefined);
+/** Two or three colours along an angle ("linear-gradient(90deg,a,b,c)"), or from the middle out. */
+function gradientOf(g: unknown, radial = false): string | undefined {
+  const o = obj(g);
+  if (!o) return undefined;
+  const [a, via, b] = [color(o.color), o.via === undefined ? undefined : color(o.via), color(o.to)];
+  if (!a || !b || (o.via !== undefined && !via)) return undefined;
+  const stops = [a, via, b].filter(Boolean).join(",");
+  return radial ? `radial-gradient(circle at 50% 50%,${stops})` : `linear-gradient(${Math.round(num(o.angle, 0, 360) ?? 180)}deg,${stops})`;
+}
+/** Words growing from `min` on a phone (375px wide) to `max` on a computer (1280px). */
+export function fluidSize(min: number, max: number): string {
+  const slope = (max - min) / (1280 - 375);
+  const at0 = min - slope * 375;
+  return `clamp(${min}px,${+at0.toFixed(2)}px + ${+(slope * 100).toFixed(3)}vw,${max}px)`;
+}
 const four = (v: unknown, min: number) =>
   Array.isArray(v) && v.length === 4 && v.every((x) => num(x, min, 400) !== undefined) ? (v as [number, number, number, number]) : undefined;
 /** Columns' shares as grid tracks ("minmax(0,1fr) minmax(0,2fr)"). */
@@ -111,6 +177,16 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   const order = num(s.order, -50, 50);
   if (order !== undefined && Number.isInteger(order)) d.push(`order:${order}`);
   push("background", color(s.bg));
+  const bgGrad = gradientOf(s.gradient, obj(s.gradient)?.radial === true);
+  if (bgGrad) d.push(`background-image:${bgGrad}`);
+  const glass = obj(s.backdrop);
+  if (glass) {
+    const [blur, sat] = [num(glass.blur, 0, 40), num(glass.saturate, 0, 3)];
+    if (blur !== undefined) {
+      const f = `blur(${blur}px)${sat !== undefined ? ` saturate(${sat})` : ""}`;
+      d.push(`-webkit-backdrop-filter:${f}`, `backdrop-filter:${f}`);
+    }
+  }
   push("color", color(s.color));
   push("border-radius", num(s.radius, 0, 999), "px");
   if (s.border && typeof s.border === "object") {
@@ -121,14 +197,44 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   }
   push("opacity", num(s.opacity, 0, 1));
   const font = pick(s.font, Object.keys(FONTS));
-  if (font) d.push(`font-family:${FONTS[font]}`);
-  push("font-size", num(s.size, 8, 200), "px");
+  const family = fontStack(s.family);
+  if (family) d.push(`font-family:${family}`);
+  else if (font) d.push(`font-family:${FONTS[font]}`);
+  if (typeof s.italic === "boolean") d.push(`font-style:${s.italic ? "italic" : "normal"}`);
+  const size = num(s.size, 8, 200);
+  const sizeMin = num(s.sizeMin, 8, 200);
+  if (size !== undefined && sizeMin !== undefined && sizeMin < size) d.push(`font-size:${fluidSize(sizeMin, size)}`);
+  else push("font-size", size, "px");
   const w = num(s.weight, 100, 900);
   if (w !== undefined && w % 100 === 0) d.push(`font-weight:${w}`);
   push("line-height", num(s.lineHeight, 0.8, 3));
   push("letter-spacing", num(s.letterSpacing, -5, 20), "px");
+  push("word-spacing", num(s.wordSpacing, -10, 40), "px");
   const ta = pick(s.textAlign, ["start", "center", "end"] as const);
   if (ta) d.push(`text-align:${ta}`);
+  const caps = pick(s.caps, Object.keys(CAPS));
+  if (caps) d.push(CAPS[caps]);
+  const deco = obj(s.decoration);
+  const line = pick(deco?.line, Object.keys(LINES));
+  if (deco && line) {
+    const st = pick(deco.style, ["solid", "wavy", "dotted", "dashed", "double"] as const);
+    const [dc, dw, off] = [deco.color === undefined ? undefined : color(deco.color), num(deco.width, 1, 12), num(deco.offset, -10, 30)];
+    d.push(`text-decoration:${[LINES[line], st, dc, dw !== undefined ? `${dw}px` : undefined].filter(Boolean).join(" ")}`);
+    if (off !== undefined) d.push(`text-underline-offset:${off}px`);
+  }
+  const stroke = obj(s.stroke);
+  if (stroke) {
+    const [sw, sc] = [num(stroke.width, 0, 10), color(stroke.color)];
+    if (sw !== undefined && sc) d.push(`-webkit-text-stroke:${sw}px ${sc}`, "paint-order:stroke fill");
+  }
+  const paint = gradientOf(s.fill);
+  if (paint) d.push(`background-image:${paint}`, "-webkit-background-clip:text", "background-clip:text", "-webkit-text-fill-color:transparent");
+  const lines = num(s.lines, 1, 12);
+  if (lines !== undefined && Number.isInteger(lines) && WORDS.has(type)) d.push("display:-webkit-box", "-webkit-box-orient:vertical", `-webkit-line-clamp:${lines}`, `line-clamp:${lines}`, "overflow:hidden");
+  const balance = pick(s.balance, ["balance", "pretty"] as const);
+  if (balance) d.push(`text-wrap:${balance}`);
+  const tcols = num(s.textColumns, 1, 4);
+  if (tcols !== undefined && Number.isInteger(tcols) && WORDS.has(type)) d.push(`columns:${tcols}`, "column-gap:32px");
   const fit = pick(s.fit, ["cover", "contain"] as const);
   if (fit) d.push(...(type === "image" || type === "video" ? [`object-fit:${fit}`, `--pt-fit:${fit}`] : [`--pt-fit:${fit}`]));
   if (s.focus && typeof s.focus === "object") {
@@ -173,10 +279,34 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
     const [c, size] = [color(gl.color), num(gl.size, 0, 120)];
     if (c && size !== undefined) (TEXTISH.has(type) ? glows : boxes).push(`0 0 ${size}px ${c}`);
   }
+  const words: string[] = [];
+  if (Array.isArray(s.shadows)) {
+    for (const t of s.shadows.slice(0, 4)) {
+      const o = obj(t);
+      const [x, y, b, c] = [num(o?.x, -100, 100), num(o?.y, -100, 100), num(o?.blur, 0, 200), color(o?.color)];
+      if (x !== undefined && y !== undefined && b !== undefined && c) words.push(`${x}px ${y}px ${b}px ${c}`);
+    }
+  }
+  // Picture filters (black and white, brighter…), then the shadow around its shape.
+  const filters: string[] = [];
+  const fl = obj(s.filters);
+  if (fl) {
+    const f = (name: string, v: number | undefined, unit = "") => {
+      if (v !== undefined) filters.push(`${name}(${v}${unit})`);
+    };
+    f("blur", num(fl.blur, 0, 40), "px");
+    f("brightness", num(fl.bright, 0, 3));
+    f("contrast", num(fl.contrast, 0, 3));
+    f("saturate", num(fl.saturate, 0, 3));
+    f("grayscale", num(fl.gray, 0, 1));
+    const hue = num(fl.hue, -180, 180);
+    f("hue-rotate", hue === undefined ? undefined : Math.round(hue), "deg");
+  }
+  filters.push(...drops.map((x) => `drop-shadow(${x})`));
   if (boxes.length) d.push(`box-shadow:${boxes.join(",")}`);
   else if (sh === "none") d.push("box-shadow:none");
-  if (drops.length) d.push(`filter:${drops.map((x) => `drop-shadow(${x})`).join(" ")}`);
-  if (glows.length) d.push(`text-shadow:${glows.join(",")}`);
+  if (filters.length) d.push(`filter:${filters.join(" ")}`);
+  if (words.length || glows.length) d.push(`text-shadow:${[...words, ...glows].join(",")}`);
   // Placed freely over its container, or back in the flow on this screen.
   if (s.layer === false) d.push("position:relative", "inset:auto", "--pt-ax:0%", "--pt-ay:0%");
   else if (s.layer && typeof s.layer === "object") {
@@ -188,6 +318,61 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   if (zi !== undefined && Number.isInteger(zi)) d.push(`z-index:${zi}`);
   return d;
 }
+
+/**
+ * A screen's looks for the mouse over it (devices with a mouse only, so a tap doesn't
+ * leave it stuck), the keyboard's focus on it or inside it, and pressed, as rules for
+ * `sel` (an element's class or a part's selectors). Only what a state may change is used.
+ * Each also answers [data-pt-state], which only the editor's frame sets (StudioBridge).
+ */
+export function stateRules(sel: string, s: ScreenStyle | undefined, type: string): string[] {
+  if (!s || typeof s !== "object") return [];
+  const out: string[] = [];
+  for (const st of STATES) {
+    const raw = obj(s[st]);
+    if (!raw) continue;
+    const d = declarations(Object.fromEntries(Object.entries(raw).filter(([k]) => STATE_KEYS.has(k))) as ScreenStyle, type);
+    if (!d.length) continue;
+    const body = `{${d.join(";")}}`;
+    if (st === "hover") out.push(`@media (hover:hover){:is(${sel}):hover${body}}`);
+    else if (st === "focused") out.push(`:is(${sel}):is(:focus-visible,:has(:focus-visible))${body}`);
+    else out.push(`:is(${sel}):active${body}`);
+    // The editor shows a state on the element being edited (its mouse never reaches the page).
+    out.push(`:is(${sel})[data-pt-state="${st}"]${body}`);
+  }
+  return out;
+}
+
+/** The keys an element's states change on any screen. */
+const stateKeysOf = (style: Partial<Record<Screen, ScreenStyle>> | undefined) =>
+  new Set([style?.base, style?.tablet, style?.mobile].flatMap((sc) => STATES.flatMap((st) => Object.keys(obj(sc?.[st]) ?? {}).filter((k) => STATE_KEYS.has(k)))));
+
+/**
+ * How fast an element changes to its states and back (0.3 s, smooth, unless it says),
+ * for the properties its states change only. A tablet or phone may have its own pace.
+ */
+function transitionDecls(style: Partial<Record<Screen, ScreenStyle>> | undefined, screen: Screen, keys: Set<string>): string[] {
+  const props = [...new Set([...keys].flatMap((k) => STATE_PROPS[k] ?? []))];
+  if (!props.length) return [];
+  const t = obj(style?.[screen]?.transition);
+  if (screen !== "base" && !t) return [];
+  const dur = num(t?.duration, 0, 3) ?? 0.3;
+  const ease = EASE_CSS[pick(t?.ease, Object.keys(EASE_CSS)) ?? "smooth"];
+  const delay = num(t?.delay, 0, 3);
+  return [
+    ...(screen === "base" ? [`transition-property:${props.join(",")}`] : []),
+    `transition-duration:${dur}s`,
+    `transition-timing-function:${ease}`,
+    ...(delay ? [`transition-delay:${delay}s`] : []),
+  ];
+}
+
+/** Whether a screen's look or one of its states turns or moves the element. */
+const turnsOn = (sc: ScreenStyle | undefined) =>
+  Boolean(sc && (TURNS.some((k) => sc[k] !== undefined) || (sc.layer && typeof sc.layer === "object") || STATES.some((st) => TURNS.some((k) => obj(sc[st])?.[k] !== undefined))));
+/** Whether a state of it turns or moves (then the turn's values are typed, so it glides). */
+const glidesOn = (sc: ScreenStyle | undefined) => Boolean(sc && STATES.some((st) => TURNS.some((k) => obj(sc[st])?.[k] !== undefined)));
+const coveredOn = (sc: ScreenStyle | undefined) => Boolean(sc && (sc.overlay || STATES.some((st) => obj(sc[st])?.overlay)));
 
 /**
  * Hidden on each screen size: a screen's own choice, else the bigger screen's (so "hidden"
@@ -267,6 +452,9 @@ export function treeCss(tree: PageTree): string {
   const fx: string[] = [];
   const staggered = new Set<string>();
   const hidden: string[] = [];
+  // Font families used (their @font-face), and whether a state glides a turn (typed turn values).
+  const families = new Set<string>();
+  let glides = false;
   let drawn = 0;
   const walk = (n: TreeNode, parent: TreeNode | null) => {
     if (n.type !== "page" && n.type !== "legacy") drawn++;
@@ -275,9 +463,11 @@ export function treeCss(tree: PageTree): string {
       const screens = [n.style?.base, n.style?.tablet, n.style?.mobile];
       const motion = motionOf(n);
       if (motion?.enter?.stagger) staggered.add(n.id);
-      const turns = screens.some((s) => s && (TURNS.some((k) => s[k] !== undefined) || (s.layer && typeof s.layer === "object")));
+      for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
+      if (screens.some(glidesOn)) glides = true;
+      const turns = screens.some(turnsOn);
       if (motion || turns || (parent && staggered.has(parent.id))) turned.push(sel);
-      const layered = screens.some((s) => s?.overlay);
+      const layered = screens.some(coveredOn);
       if (layered) ((MEDIA.has(n.type) && (n.type === "slider" || framed(n, motion))) ? over : under).push(sel);
       if (layered || motion?.fx) holders.push(sel);
       if (motion?.fx) {
@@ -295,11 +485,16 @@ export function treeCss(tree: PageTree): string {
         if (size !== undefined) b.push(`height:${size}px`);
       }
       const extra = screenFallbacks(n, parent);
-      const t = [...extra.tablet, ...declarations(n.style?.tablet, n.type)];
-      const p = [...extra.phone, ...declarations(n.style?.mobile, n.type)];
+      const keys = stateKeysOf(n.style);
+      b.push(...transitionDecls(n.style, "base", keys));
+      const t = [...extra.tablet, ...declarations(n.style?.tablet, n.type), ...transitionDecls(n.style, "tablet", keys)];
+      const p = [...extra.phone, ...declarations(n.style?.mobile, n.type), ...transitionDecls(n.style, "mobile", keys)];
       if (b.length) base.push(`${sel}{${b.join(";")}}`);
       if (t.length) tablet.push(`${sel}{${t.join(";")}}`);
       if (p.length) phone.push(`${sel}{${p.join(";")}}`);
+      base.push(...stateRules(sel, n.style?.base, n.type));
+      tablet.push(...stateRules(sel, n.style?.tablet, n.type));
+      phone.push(...stateRules(sel, n.style?.mobile, n.type));
       hidden.push(...hiddenRules(sel, n.style));
       tablet.push(...extra.rules.tablet);
       phone.push(...extra.rules.phone);
@@ -314,25 +509,31 @@ export function treeCss(tree: PageTree): string {
     drawn++;
     const node = lookNode(target, look);
     const screens = [look.style?.base, look.style?.tablet, look.style?.mobile];
-    if (motionOf(node) || screens.some((s) => s && TURNS.some((k) => s[k] !== undefined))) turned.push(sel);
+    if (motionOf(node) || screens.some(turnsOn)) turned.push(sel);
+    if (screens.some(glidesOn)) glides = true;
+    for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
     const media = look.kind === "image" || look.kind === "video";
+    const keys = stateKeysOf(look.style);
     // A picture's fit and focus go on the picture itself (the field is often its frame).
     const inner = `:is(${sel}) :is(img,video),:is(${sel}):is(img,video)`;
-    const put = (list: string[], s: ScreenStyle | undefined) => {
-      const d = declarations(s, type);
+    const put = (list: string[], s: ScreenStyle | undefined, screen: Screen) => {
+      const d = [...declarations(s, type), ...transitionDecls(look.style, screen, keys)];
       if (media && typeof s?.radius === "number") d.push("overflow:hidden");
       if (d.length) list.push(`${sel}{${d.join(";")}}`);
       const pic = media ? d.filter((x) => x.startsWith("object-")) : [];
       if (pic.length) list.push(`${inner}{${pic.join(";")}}`);
+      list.push(...stateRules(sel, s, type));
     };
-    put(base, look.style?.base);
-    put(tablet, look.style?.tablet);
-    put(phone, look.style?.mobile);
+    put(base, look.style?.base, "base");
+    put(tablet, look.style?.tablet, "tablet");
+    put(phone, look.style?.mobile, "mobile");
     hidden.push(...hiddenRules(sel, look.style));
   }
   if (!drawn) return "";
   const layer = "content:\"\";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--pt-ov);opacity:var(--pt-ovo);mix-blend-mode:var(--pt-ovb)";
   return [
+    fontFaceCss(families),
+    glides ? TURN_PROPERTIES : "",
     BASE_CSS,
     // Before each element's own rule, so its own values win.
     turned.length ? `${turned.join(",")}{${TREE_TRANSFORM_REST};transform:${TREE_TRANSFORM}}` : "",
@@ -350,7 +551,8 @@ export function treeCss(tree: PageTree): string {
 
 /** What every tree element starts from (theme colours, the direction-aware sides). */
 export const BASE_CSS = [
-  ":root{--pt-font-heading:\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif;--pt-flip:1}",
+  // Headings take the store theme's display font when there is one.
+  ":root{--pt-font-heading:var(--st-font-display,\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif);--pt-flip:1}",
   "[dir=rtl]{--pt-flip:-1}",
   // Until the motion engine is ready (at most 2.5 s), what comes in waits unseen.
   "html.pt-pending [data-pt-enter]{opacity:0}",

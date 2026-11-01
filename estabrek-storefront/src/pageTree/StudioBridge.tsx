@@ -366,6 +366,16 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
         }
         return now();
       }
+      // A state shown on the element being edited (the editor's mouse never reaches the page): its look for the mouse, focus or a press.
+      if (d.type === "previewState") {
+        document.querySelectorAll("[data-pt-state]").forEach((el) => el.removeAttribute("data-pt-state"));
+        const state = (e.data as { state?: unknown }).state;
+        if (state !== "hover" && state !== "focused" && state !== "pressed") return now();
+        const sel = typeof target === "string" ? lookSelector(target) : null;
+        const els = d.nodeId ? [document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(d.nodeId)}"]`)] : sel ? Array.from(document.querySelectorAll<HTMLElement>(sel)) : [];
+        for (const el of els) el?.setAttribute("data-pt-state", state);
+        return now();
+      }
       if (d.type === "editText" && d.sectionId && d.path) return startEdit(d.sectionId, d.path, typeof d.value === "string" ? d.value : null);
       if (d.type === "stopEdit") return finish(true);
       if (d.type === "scrollBy") {

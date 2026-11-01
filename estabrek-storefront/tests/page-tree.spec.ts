@@ -122,6 +122,85 @@ test.describe("styles become safe CSS", () => {
     expect(motionOf({ id: "x", type: "text", props: {}, motion: "nope" })).toBeNull();
   });
 
+  test("words: a family from the library, fluid size, caps, lines, a line under them, an outline, gradient paint, shadows", () => {
+    expect(declarations({ family: "reem-kufi", italic: true, size: 64, sizeMin: 32, caps: "upper", wordSpacing: 4 }, "heading")).toEqual([
+      "font-family:\"th-reem-kufi\",system-ui,sans-serif",
+      "font-style:italic",
+      "font-size:clamp(32px,18.74px + 3.536vw,64px)",
+      "word-spacing:4px",
+      "text-transform:uppercase",
+    ]);
+    // A family the shop doesn't have falls back to the kind of font; a smaller phone size than none is a plain size.
+    expect(declarations({ family: "nope", font: "serif", size: 20, sizeMin: 30 }, "text")).toEqual(["font-family:\"Noto Naskh Arabic\",\"Frank Ruhl Libre\",Georgia,\"Times New Roman\",serif", "font-size:20px"]);
+    expect(declarations({ decoration: { line: "underline", style: "wavy", color: "accent", width: 2, offset: 6 }, stroke: { width: 1.5, color: "#000000" } }, "text")).toEqual([
+      "text-decoration:underline wavy var(--accent) 2px",
+      "text-underline-offset:6px",
+      "-webkit-text-stroke:1.5px #000000",
+      "paint-order:stroke fill",
+    ]);
+    expect(declarations({ fill: { color: "accent", via: "white", to: "#ffd1e3", angle: 90 } }, "heading")).toEqual([
+      "background-image:linear-gradient(90deg,var(--accent),#fff,#ffd1e3)",
+      "-webkit-background-clip:text",
+      "background-clip:text",
+      "-webkit-text-fill-color:transparent",
+    ]);
+    expect(declarations({ lines: 2, balance: "balance", textColumns: 2 }, "text")).toEqual(["display:-webkit-box", "-webkit-box-orient:vertical", "-webkit-line-clamp:2", "line-clamp:2", "overflow:hidden", "text-wrap:balance", "columns:2", "column-gap:32px"]);
+    // Only words are cut to lines or set in columns.
+    expect(declarations({ lines: 2, textColumns: 2 }, "button")).toEqual([]);
+    expect(declarations({ shadows: [{ x: 0, y: 2, blur: 0, color: "#00000033" }], glow: { color: "white", size: 12 } }, "heading")).toEqual(["text-shadow:0px 2px 0px #00000033,0 0 12px #fff"]);
+    expect(declarations({ family: "x;color:red", caps: "shout", decoration: { line: "zigzag" }, stroke: { width: 99, color: "#000" }, fill: { color: "accent" }, shadows: [{ x: 0, y: 0, blur: 0, color: "red" }] } as any, "text")).toEqual([]);
+  });
+
+  test("boxes: gradients, frosted glass and picture filters", () => {
+    expect(declarations({ bg: "surface", gradient: { color: "bg", to: "accent-soft", radial: true }, backdrop: { blur: 12, saturate: 1.4 } }, "cell")).toEqual([
+      "background:var(--surface)",
+      "background-image:radial-gradient(circle at 50% 50%,var(--bg),var(--accent-soft))",
+      "-webkit-backdrop-filter:blur(12px) saturate(1.4)",
+      "backdrop-filter:blur(12px) saturate(1.4)",
+    ]);
+    expect(declarations({ gradient: { color: "accent", to: "#000", angle: 45 } }, "section")).toEqual(["background-image:linear-gradient(45deg,var(--accent),#000)"]);
+    expect(declarations({ filters: { gray: 1, bright: 1.1, hue: -20 }, shade: { x: 0, y: 8, blur: 16, color: "black", follow: true } }, "image")).toEqual(["filter:brightness(1.1) grayscale(1) hue-rotate(-20deg) drop-shadow(0px 8px 16px #000)"]);
+    expect(declarations({ filters: { blur: 99, gray: 2 }, backdrop: { blur: 99 }, gradient: { color: "accent", to: "url(x)" } } as any, "image")).toEqual([]);
+  });
+
+  test("states: the mouse over it (devices with a mouse), the keyboard's focus, a press, and how fast it changes", () => {
+    const page = (style: unknown) => ({ version: 1 as const, root: { id: "page", type: "page", props: {}, children: [{ id: "s", type: "section", props: {}, children: [{ id: "b", type: "button", props: {}, style }] }] } });
+    const css = treeCss(page({
+      base: { bg: "accent", hover: { color: "accent", scale: 1.05, size: 90 }, focused: { glow: { color: "accent", size: 12 } }, pressed: { scale: 0.97 } },
+      mobile: { hover: { color: "text" }, transition: { duration: 0.15 } },
+    }) as any);
+    expect(css).toContain("@media (hover:hover){:is(.pt-b):hover{color:var(--accent);--pt-s:1.05}}");
+    expect(css).toContain(":is(.pt-b):is(:focus-visible,:has(:focus-visible)){box-shadow:0 0 12px var(--accent)}");
+    expect(css).toContain(":is(.pt-b):active{--pt-s:0.97}");
+    // Only what the states change glides, at the usual pace unless a screen has its own.
+    expect(css).toContain(".pt-b{background:var(--accent);transition-property:color,-webkit-text-fill-color,--pt-s,box-shadow,text-shadow;transition-duration:0.3s;transition-timing-function:cubic-bezier(.2,.7,.2,1)}");
+    expect(css).toMatch(/639\.98px\)\{[^@]*\.pt-b\{transition-duration:0\.15s;transition-timing-function:cubic-bezier\(\.2,\.7,\.2,1\)\}@media \(hover:hover\)\{:is\(\.pt-b\):hover\{color:var\(--text\)\}\}/);
+    // A state that turns or moves: the element has its transform, and the turn's values are typed so they glide.
+    expect(css).toContain("@property --pt-s{syntax:\"<number>\";inherits:false;initial-value:1}");
+    expect(css).toMatch(/\.pt-b\{--pt-ax:0%[^}]*transform:/);
+    // A state never changes the size.
+    expect(css).not.toContain("font-size:90px");
+    // Nothing turns: no typed values.
+    expect(treeCss(page({ base: { hover: { color: "accent" } } }) as any)).not.toContain("@property");
+  });
+
+  test("a page's library fonts get their faces; a part of an old section gets states too", () => {
+    const css = treeCss({
+      version: 1,
+      root: {
+        id: "page", type: "page",
+        props: { looks: { "s:abc/title": { kind: "text", style: { base: { family: "cairo", hover: { color: "accent" } } } } } },
+        children: [{ id: "s", type: "section", props: {}, children: [{ id: "h", type: "heading", props: {}, style: { base: { family: "amiri" }, mobile: { family: "nope" } } }] }],
+      },
+    } as any);
+    expect(css).toContain("@font-face{font-family:\"th-amiri\";src:url(\"/fonts/themes/amiri-arabic-400.woff2\")");
+    expect(css).toContain("@font-face{font-family:\"th-cairo\"");
+    expect(css).not.toContain("th-nope");
+    expect(css).toMatch(/@media \(hover:hover\)\{:is\(\[data-cms-section="abc"\]\[data-cms-section\] \[data-edit-box="title"\]/);
+    // Headings take the store theme's display font when there is one.
+    expect(css).toContain(":root{--pt-font-heading:var(--st-font-display,\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif);--pt-flip:1}");
+  });
+
   test("a drawing is checked again: what isn't allowed drops out", () => {
     const art = safeArt({ viewBox: "0 0 10 10", morph: "M0 0 L 1 1 <x>", nodes: [
       { t: "script", a: {} },

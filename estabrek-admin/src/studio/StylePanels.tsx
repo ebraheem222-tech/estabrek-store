@@ -10,30 +10,30 @@ import { styleOp } from "./columns";
 import { lookOf, shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
+import { FontPicker } from "./TypePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
 
-const FONTS: Array<[string, () => string]> = [
-  ["", () => tr("متل التصميم", "As designed")],
-  ["heading", () => tr("خط العناوين", "Headings' font")],
-  ["body", () => tr("خط النص", "Body font")],
-  ["serif", () => tr("بحواف (كلاسيك)", "Serif (classic)")],
-  ["sans", () => tr("بسيط", "Plain sans")],
-  ["mono", () => tr("آلة كاتبة", "Typewriter")],
-];
 const WEIGHTS: Array<[string, () => string]> = [
   ["", () => tr("متل التصميم", "As designed")],
+  ["100", () => tr("رفيع كتير", "Thin")],
+  ["200", () => tr("رفيع جداً", "Extra light")],
   ["300", () => tr("رفيع", "Light")],
   ["400", () => tr("عادي", "Regular")],
+  ["500", () => tr("وسط", "Medium")],
   ["600", () => tr("نص غامق", "Semi-bold")],
   ["700", () => tr("غامق", "Bold")],
   ["800", () => tr("غامق كتير", "Extra bold")],
+  ["900", () => tr("أغمق إشي", "Black")],
 ];
 
-/** Words: font, size, weight, colour, alignment, line height, spacing between letters. */
-export function TextStylePanel({ node, screen, busy, onOps, only }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; only?: Array<"font" | "size" | "weight" | "color" | "align" | "lines"> }) {
+/**
+ * Words: font, size, weight, colour, alignment, line height, spacing between letters.
+ * `only` shows some of them ("letters" = the spacing between letters alone, for a state).
+ */
+export function TextStylePanel({ node, screen, busy, onOps, only }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; only?: Array<"font" | "size" | "weight" | "color" | "align" | "lines" | "letters"> }) {
   const has = (k: string) => !only || (only as string[]).includes(k);
   const v = (k: string) => shownLook(node, screen, k);
   const save = (label: string, patch: Record<string, unknown>) => onOps(label, [styleOp(node, screen, patch)]);
@@ -45,14 +45,7 @@ export function TextStylePanel({ node, screen, busy, onOps, only }: { node: Page
         <div className="text-xs font-medium text-white/70">{tr("الكلام", "The words")}</div>
         <span className="text-[10px] text-white/40">{SCREEN_LABEL[screen]()}</span>
       </div>
-      {has("font") ? (
-        <label className="block text-[11px] text-white/55">
-          {tr("الخط", "Font")}
-          <select className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" disabled={busy} value={String(v("font") ?? "")} onChange={(e) => save(tr("الخط", "Font"), { font: e.target.value || null })} data-testid="studio-style-font">
-            {FONTS.map(([k, name]) => <option key={k} value={k}>{name()}</option>)}
-          </select>
-        </label>
-      ) : null}
+      {has("font") ? <FontPicker node={node} screen={screen} busy={busy} onOps={onOps} /> : null}
       {has("size") ? <NumberField label={tr("حجم الخط (فاضي = متل التصميم)", "Font size (empty = as designed)")} suffix="px" value={typeof v("size") === "number" ? (v("size") as number) : undefined} min={8} max={200} onSave={(n) => save(tr("حجم الخط", "Font size"), { size: n })} testId="studio-style-size" /> : null}
       {has("weight") ? (
         <label className="block text-[11px] text-white/55">
@@ -77,14 +70,15 @@ export function TextStylePanel({ node, screen, busy, onOps, only }: { node: Page
           {lh !== null || ls !== null ? <button type="button" className={btn} disabled={busy} onClick={() => save(tr("المسافات", "Spacing"), { lineHeight: null, letterSpacing: null })}>{tr("رجوع لمسافات التصميم", "Back to the design's spacing")}</button> : null}
         </>
       ) : null}
+      {!has("lines") && only?.includes("letters") ? <Range label={tr("المسافة بين الحروف", "Letter spacing")} min={-5} max={20} step={0.5} unit="px" busy={busy} value={ls ?? 0} onSave={(n) => save(tr("المسافة بين الحروف", "Letter spacing"), { letterSpacing: n || null })} testId="studio-style-spacing" /> : null}
     </div>
   );
 }
 
 const PADS: Record<string, [number, number, number, number]> = { s: [6, 14, 6, 14], m: [10, 22, 10, 22], l: [14, 32, 14, 32] };
 
-/** A button: its colours, shape, frame and size. */
-export function ButtonStylePanel({ node, screen, busy, onOps }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops }) {
+/** A button: its colours, shape, frame and size (`inState`: no size, a state never changes it). */
+export function ButtonStylePanel({ node, screen, busy, onOps, inState = false }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; inState?: boolean }) {
   const v = (k: string) => shownLook(node, screen, k);
   const save = (label: string, patch: Record<string, unknown>) => onOps(label, [styleOp(node, screen, patch)]);
   const radius = v("radius");
@@ -102,11 +96,13 @@ export function ButtonStylePanel({ node, screen, busy, onOps }: { node: PageTree
         options={[["", tr("متل التصميم", "As designed")], ["square", tr("مربع", "Square")], ["soft", tr("زوايا ناعمة", "Soft corners")], ["pill", tr("كبسولة", "Pill")]]}
         onPick={(s) => save(tr("شكل الزر", "The button's look"), { radius: s === "square" ? 0 : s === "soft" ? 12 : s === "pill" ? 999 : null })}
       />
-      <Choice
-        label={tr("الحجم", "Size")} value={size} busy={busy} testId="studio-button-size"
-        options={[["", tr("متل التصميم", "As designed")], ["s", tr("صغير", "Small")], ["m", tr("وسط", "Medium")], ["l", tr("كبير", "Large")]]}
-        onPick={(s) => save(tr("حجم الزر", "Button size"), { pad: s ? PADS[s] : null })}
-      />
+      {inState ? null : (
+        <Choice
+          label={tr("الحجم", "Size")} value={size} busy={busy} testId="studio-button-size"
+          options={[["", tr("متل التصميم", "As designed")], ["s", tr("صغير", "Small")], ["m", tr("وسط", "Medium")], ["l", tr("كبير", "Large")]]}
+          onPick={(s) => save(tr("حجم الزر", "Button size"), { pad: s ? PADS[s] : null })}
+        />
+      )}
       <Choice
         label={tr("الإطار", "Frame")} value={border ? "line" : "none"} busy={busy}
         options={[["none", tr("بلا", "None")], ["line", tr("خط", "Line")]]}

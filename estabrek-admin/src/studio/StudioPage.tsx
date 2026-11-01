@@ -38,6 +38,8 @@ import { AddPanel } from "./AddPanel";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import { LookPanel, MotionPanel } from "./LookPanels";
+import { BoxPanel, FiltersPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
+import { stateOps, stateView, type StateChoice } from "./states";
 import { SvgPanel } from "./SvgPanel";
 import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, withPreset, type Motion } from "./look";
@@ -68,6 +70,8 @@ const BLOCK_LABEL: Record<string, () => string> = {
 const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled" };
 /** Scenes that keep their own place (the fabric study follows the first products). */
 const FIXED_BLOCKS = new Set(["fabric"]);
+/** Elements whose words get the text panels in a state (a button and an icon get their colour there too). */
+const WORDY_TYPES = new Set(["heading", "text"]);
 const statusOf = (e: unknown) => (e as { response?: { status?: number } })?.response?.status;
 /** What a marked piece is drawn as, for its look (the rest are boxes). */
 const PART_KIND: Record<string, PagesAPI.LookKind> = {
@@ -113,6 +117,9 @@ export default function StudioPage() {
   const [canvas, setCanvas] = useState({ w: 0, h: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
+  const [styleState, setStyleState] = useState<StateChoice>("normal");
+  useEffect(() => setStyleState("normal"), [selected]);
   const [panMode, setPanMode] = useState(false);
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
   const [busy, setBusy] = useState(false);
@@ -701,6 +708,26 @@ export default function StudioPage() {
   const lookSel: PagesAPI.PageTreeNode | null = lookTarget
     ? { id: `look:${lookTarget.target}`, type: { text: "text", button: "button", image: "image", video: "video", box: "section" }[lookTarget.kind], props: {}, style: looks[lookTarget.target]?.style, motion: looks[lookTarget.target]?.motion }
     : null;
+  /**
+   * The style panels for a state of `node` (mouse over, focused, pressed): they edit the
+   * state's view and their changes go back inside each screen's look (states.ts).
+   */
+  const stateLooks = (node: PagesAPI.PageTreeNode, state: Exclude<StateChoice, "normal">, onOps: (label: string, ops: PagesAPI.PageDraftOp[]) => void, wordy: boolean) => {
+    const view = stateView(node, state);
+    const put = (label: string, ops: PagesAPI.PageDraftOp[]) => onOps(label, stateOps(node, state, ops));
+    return (
+      <div className="space-y-3" data-testid="studio-state-panels" data-state={state}>
+        <StatePresets node={node} view={view} state={state} screen={screen} busy={busy} onOps={put} onOwn={onOps} />
+        {node.type === "button" ? <ButtonStylePanel node={view} screen={screen} busy={busy} onOps={put} inState /> : null}
+        {wordy || node.type === "button" || node.type === "icon" ? <TextStylePanel node={view} screen={screen} busy={busy} onOps={put} only={node.type === "button" ? ["weight", "letters"] : node.type === "icon" ? ["color"] : ["weight", "color", "letters"]} /> : null}
+        {wordy ? <TypeMorePanel node={view} screen={screen} busy={busy} onOps={put} inState /> : null}
+        <BoxPanel node={view} screen={screen} busy={busy} onOps={put} skip={node.type === "button" ? ["bg", "border", "radius"] : undefined} />
+        <FiltersPanel node={view} screen={screen} busy={busy} onOps={put} />
+        <LookPanel node={view} screen={screen} busy={busy} onOps={put} onPreview={() => undefined} limited={node.id.startsWith("look:")} inState />
+        <TransitionPanel node={node} screen={screen} busy={busy} onOps={onOps} />
+      </div>
+    );
+  };
   const lookChange = (label: string, ops: PagesAPI.PageDraftOp[]) => {
     if (!lookTarget) return;
     const mapped = ops.map((o): PagesAPI.PageDraftOp =>
@@ -733,6 +760,14 @@ export default function StudioPage() {
   const makeIds = () => idMaker((x) => Boolean(index?.nodes.has(x)));
   const nodeOf = (sid: string | null | undefined) => (sid ? index?.nodes.get(sid)?.node : undefined);
   const selFree = selNode && isFree(selNode.node.type) ? selNode.node : undefined;
+  // The frame shows the state being edited on the element (the editor's mouse never reaches the page), again after each reload.
+  const stateTarget = styleState === "normal" ? "" : lookTarget && lookTarget.kind !== "box" ? `t:${lookTarget.target}` : selFree ? `n:${selFree.id}` : "";
+  const frameReady = Boolean(layout);
+  useEffect(() => {
+    if (!frameReady) return;
+    if (!stateTarget) send({ type: "previewState", state: null });
+    else send({ type: "previewState", state: styleState, ...(stateTarget.startsWith("t:") ? { target: stateTarget.slice(2) } : { nodeId: stateTarget.slice(2) }) });
+  }, [stateTarget, styleState, frameReady, send]);
   const selSiblings = selNode?.parentId ? index?.nodes.get(selNode.parentId)?.children ?? [] : [];
   const selPos = selected ? selSiblings.indexOf(selected) : -1;
   /** Sends changes; selects `then` once they're saved. */
@@ -995,16 +1030,25 @@ export default function StudioPage() {
         {lookSel && lookTarget ? (
           <div className="space-y-3" data-testid="studio-look-target" data-target={lookTarget.target}>
             {selExtra?.kind === "part" && selExtra.count > 1 ? <p className="text-[11px] leading-5 text-accent-200/80">{tr(`الشكل والحركة بيتغيّروا للـ ${selExtra.count} كلهم.`, "The look and motion change for all {0} of them.", [selExtra.count])}</p> : null}
-            {lookTarget.kind === "text" ? <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
-            {lookTarget.kind === "button" ? (
+            {lookTarget.kind !== "box" ? <StatesBar node={lookSel} state={styleState} onState={setStyleState} /> : null}
+            {styleState !== "normal" && lookTarget.kind !== "box" ? (
+              stateLooks(lookSel, styleState, lookChange, lookTarget.kind === "text" || lookTarget.kind === "button")
+            ) : (
               <>
-                <ButtonStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
-                <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight"]} />
+                {lookTarget.kind === "text" ? <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                {lookTarget.kind === "text" ? <TypeMorePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                {lookTarget.kind === "button" ? (
+                  <>
+                    <ButtonStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+                    <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight"]} />
+                  </>
+                ) : null}
+                {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                {lookTarget.kind === "image" || lookTarget.kind === "video" ? <FiltersPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
+                {lookTarget.kind !== "box" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
               </>
-            ) : null}
-            {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
-            <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
-            {lookTarget.kind !== "box" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
+            )}
             {!lookTarget.target.startsWith("b:") || lookTarget.target.includes("/") ? (
               <MotionPanel
                 node={lookSel}
@@ -1100,19 +1144,29 @@ export default function StudioPage() {
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["size", "color", "align"]} /> : null}
-            {selFree.type === "button" ? (
+            <StatesBar node={selFree} state={styleState} onState={setStyleState} />
+            {styleState !== "normal" ? (
+              stateLooks(selFree, styleState, (l, ops) => void change(l, ops), WORDY_TYPES.has(selFree.type))
+            ) : (
               <>
-                <ButtonStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
-                <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["font", "size", "weight"]} />
+                {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "heading" || selFree.type === "text" ? <TypeMorePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["size", "color", "align"]} /> : null}
+                {selFree.type === "button" ? (
+                  <>
+                    <ButtonStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                    <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["font", "size", "weight"]} />
+                  </>
+                ) : null}
+                {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={selFree.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
+                <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
               </>
-            ) : null}
-            {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
+            )}
             <MotionPanel
               node={selFree}
               busy={busy}

@@ -59,7 +59,36 @@ export type ScreenStyle = {
   layer?: false | { x: number; y: number; anchor?: string };
   z?: number;
   hidden?: boolean;
+  /** A family from the fonts library by name (pageTree/fonts.ts); it wins over `font`. */
+  family?: string;
+  italic?: boolean;
+  /** Fluid: the words grow from this size on a phone to `size` on a computer. */
+  sizeMin?: number;
+  caps?: "none" | "upper" | "lower" | "title" | "small";
+  /** At most this many lines, then "…". */
+  lines?: number;
+  balance?: "balance" | "pretty";
+  textColumns?: number;
+  wordSpacing?: number;
+  decoration?: { line: "none" | "underline" | "overline" | "through"; style?: "solid" | "wavy" | "dotted" | "dashed" | "double"; color?: string; width?: number; offset?: number };
+  stroke?: { width: number; color: string };
+  /** Letters painted with a gradient. */
+  fill?: { color: string; to: string; via?: string; angle?: number };
+  shadows?: Array<{ x: number; y: number; blur: number; color: string }>;
+  gradient?: { color: string; to: string; via?: string; angle?: number; radial?: boolean };
+  /** Frosted glass: what's behind it is blurred. */
+  backdrop?: { blur: number; saturate?: number };
+  filters?: { blur?: number; bright?: number; contrast?: number; saturate?: number; gray?: number; hue?: number };
+  /** Its look with the mouse over it, the keyboard's focus on it, or pressed (colours, frame, shadows, turns, paint). */
+  hover?: StateStyle;
+  focused?: StateStyle;
+  pressed?: StateStyle;
+  /** How fast it changes to and from those looks. */
+  transition?: { duration: number; ease?: string; delay?: number };
 };
+/** What a state may change: never the size or place (the shop's css.ts STATE_KEYS). */
+export type StateStyle = Omit<ScreenStyle, "hover" | "focused" | "pressed" | "transition">;
+export const STATES = ["hover", "focused", "pressed"] as const;
 export type Screen = "base" | "tablet" | "mobile";
 export type TreeNode = {
   id: string;

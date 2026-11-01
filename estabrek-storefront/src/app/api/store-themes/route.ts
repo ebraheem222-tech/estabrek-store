@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { studioOrigins } from "@/lib/studioOrigins";
 import { DEFAULT_THEME, STORE_THEMES, themePalette } from "@/storeThemes";
 import { CAMERA_DEFAULT, CAMERA_RANGE, LIGHTS_DEFAULT, LIGHTS_RANGE, MODEL_INFO, MODEL_KINDS, MODEL_KNOBS } from "@/storeThemes/three/kinds";
+import { editorFonts } from "@/pageTree/fonts";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,6 @@ const cors = (req: NextRequest): Record<string, string> => {
 };
 
 export function GET(req: NextRequest) {
-  // defaults: each kind of store's theme when none is chosen (the admin shows it as the current one).
-  return NextResponse.json({ themes: list, models, stageDefaults, defaults: DEFAULT_THEME }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
+  // defaults: each kind of store's theme when none is chosen (the admin shows it as the current one); fonts: the page editor's families.
+  return NextResponse.json({ themes: list, models, stageDefaults, defaults: DEFAULT_THEME, fonts: editorFonts() }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
 }
