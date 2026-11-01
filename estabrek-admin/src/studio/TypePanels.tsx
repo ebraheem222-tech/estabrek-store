@@ -318,6 +318,20 @@ export function BoxPanel({ node, screen, busy, onOps, skip = [] }: { node: PageT
   );
 }
 
+/** Inner space: top and bottom, and the sides (each side follows the text direction). */
+export function PadPanel({ node, screen, busy, onOps }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops }) {
+  const pad = shownLook(node, screen, "pad");
+  const [v, h] = Array.isArray(pad) && pad.length === 4 ? [Number(pad[0]) || 0, Number(pad[1]) || 0] : [0, 0];
+  const save = (nv: number, nh: number) => onOps(tr("المسافة جوّا", "Inner space"), [styleOp(node, screen, { pad: nv || nh ? [nv, nh, nv, nh] : null })]);
+  return (
+    <div className={box} data-testid="studio-pad">
+      <Head title={tr("المسافة جوّا", "Inner space")} screen={screen} />
+      <Range label={tr("فوق وتحت", "Top and bottom")} min={0} max={160} unit="px" busy={busy} value={v} onSave={(n) => save(n, h)} testId="studio-pad-v" />
+      <Range label={tr("عالجنبين", "The sides")} min={0} max={160} unit="px" busy={busy} value={h} onSave={(n) => save(v, n)} testId="studio-pad-h" />
+    </div>
+  );
+}
+
 /* ----------------------------------------------------------------- filters */
 
 const FILTERS: Array<[string, () => string, number, number, number, number, string]> = [

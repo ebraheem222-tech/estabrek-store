@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
 import { declarations, sliderAspect, treeCss } from "../src/pageTree/css";
-import { TREE_TRANSFORM, asTree, motionOf, pickText, sliderSeconds, sliderSlides } from "../src/pageTree/tree";
+import { TREE_TRANSFORM, asTree, motionOf, pickText, siteStylesOf, sliderSeconds, sliderSlides, styleClass } from "../src/pageTree/tree";
 import { artHasLines, safeArt } from "../src/pageTree/svgArt";
 
 // The new CMS's page tree (src/pageTree): a converted page draws exactly as before,
@@ -199,6 +199,38 @@ test.describe("styles become safe CSS", () => {
     expect(css).toMatch(/@media \(hover:hover\)\{:is\(\[data-cms-section="abc"\]\[data-cms-section\] \[data-edit-box="title"\]/);
     // Headings take the store theme's display font when there is one.
     expect(css).toContain(":root{--pt-font-heading:var(--st-font-display,\"Rose Arabic\",\"Rose Hebrew\",Georgia,serif);--pt-flip:1}");
+  });
+
+  test("shared styles: every heading of a level, the body text and each button kind take theirs; named ones by class; an element's own look wins", () => {
+    const site = siteStylesOf([
+      { id: "h2", kind: "text", style: { base: { size: 44, hover: { color: "accent" } }, mobile: { size: 30 } } },
+      { id: "body", kind: "text", style: { base: { lineHeight: 1.9 } } },
+      { id: "solid", kind: "button", style: { base: { radius: 6, pressed: { scale: 0.96 } } } },
+      { id: "card", kind: "box", name: "Card", style: { base: { bg: "surface", radius: 24 } } },
+      // Dropped: a bad id, an unknown kind, the same id twice.
+      { id: "Bad!", kind: "box", style: {} },
+      { id: "x", kind: "shape", style: {} },
+      { id: "card", kind: "box", style: { base: { bg: "accent" } } },
+    ]);
+    expect(site.map((s) => s.id)).toEqual(["h2", "body", "solid", "card"]);
+    const css = treeCss({
+      version: 1,
+      root: { id: "page", type: "page", props: {}, children: [{ id: "s", type: "section", props: { styleId: "card" }, children: [{ id: "h", type: "heading", props: { level: 2 }, style: { base: { size: 60 } } }] }] },
+    } as any, site);
+    const at = (s: string) => css.indexOf(s);
+    expect(css).toContain(":where(h2).pt-heading{font-size:44px;transition-property:color,-webkit-text-fill-color;");
+    expect(css).toContain(".pt-text{line-height:1.9}");
+    expect(css).toContain(".pt-btn-solid{border-radius:6px;transition-property:--pt-s");
+    expect(css).toContain(".ps-card{background:var(--surface);border-radius:24px}");
+    expect(css).toContain("@media (hover:hover){:is(:where(h2).pt-heading):hover{color:var(--accent)}}");
+    expect(css).toMatch(/@media \(max-width:639\.98px\)\{:where\(h2\)\.pt-heading\{font-size:30px\}\}/);
+    // After the base CSS (so they win over it), before the elements' own looks (so those win over them).
+    expect(at(":where(h2).pt-heading{font-size:44px;")).toBeGreaterThan(at(".pt-heading{margin:0"));
+    expect(at(":where(h2).pt-heading{font-size:44px;")).toBeLessThan(at(".pt-h{font-size:60px}"));
+    // A pressed button turns: the button kind gets the transform.
+    expect(css).toMatch(/[,}]\.pt-btn-solid[,{][^}]*--pt-ax:0%/);
+    expect(styleClass("card")).toBe("ps-card");
+    expect(styleClass("Card; x")).toBe("");
   });
 
   test("a drawing is checked again: what isn't allowed drops out", () => {

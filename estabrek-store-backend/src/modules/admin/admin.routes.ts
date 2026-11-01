@@ -42,6 +42,7 @@ import { orderDelivery, productCodes, productFiles, tickets } from "./fulfillmen
 import { orderLicences, productProtected, protectedTrace, protectedTypes } from "./protected.controller.js";
 import { vaultAdmin } from "./vault.controller.js";
 import razan from "./razan.controller.js";
+import siteStyles from "./siteStyles.controller.js";
 import { requestsInbox, requestsSettings } from "./requests.controller.js";
 import { quizAdmin } from "./quiz.controller.js";
 import { aiAskAdmin, aiCatalogAdmin, aiOrdersAdmin, aiSettingsAdmin } from "./ai.controller.js";
@@ -102,6 +103,8 @@ r.use("/razan", areaAccess({ read: "settings:read", write: "settings:write" }), 
 r.use("/setup", areaAccess({ read: "settings:read", write: "settings:write" }), setup);
 r.use("/nav", areaAccess({ read: ["nav:read", "nav:write"], write: "nav:write" }), nav);
 r.use("/pages", areaAccess({ read: "pages:read", write: "pages:write", extra: pagePublishing }), pages);
+// The page editor's shared styles (kept in the settings; publishing them takes pages:publish, inside).
+r.use("/site-styles", areaAccess({ read: "pages:read", write: "pages:write" }), siteStyles);
 r.use("/catalog/products/:productId/files", areaAccess({ read: "catalog:read", write: "catalog:write" }), productFiles);
 // Codes sold one per piece (game keys, gift cards).
 r.use("/catalog/products/:productId/codes", areaAccess({ read: "catalog:read", write: "catalog:write" }), productCodes);

@@ -36,7 +36,7 @@ import type { StorefrontPage } from "@/lib/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { langConfigOf, type Lang } from "@/lib/i18n";
 import { localizeCategories } from "@/lib/localize";
-import { asTree, treeNeeds } from "@/pageTree/tree";
+import { asTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
 import { treeCss } from "@/pageTree/css";
 import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
@@ -492,7 +492,9 @@ export async function renderCmsPageBySlug(
         .filter((url): url is string => Boolean(url))
         .slice(0, 4);
     }
-    treeStyle = treeCss(tree);
+    // The editor's preview carries the shared styles being changed; a live page takes the published ones.
+    const shared = (page as { siteStyles?: unknown }).siteStyles;
+    treeStyle = treeCss(tree, siteStylesOf(shared !== undefined ? shared : settingsHeader?.siteStyles));
     treeMoves = needs.motion;
     const moving = looksOf(tree).map(([t, l]) => [t, treeMotionOf(lookNode(t, l))] as const).filter(([, m]) => m);
     if (moving.length) lookMoves = JSON.stringify(moving).replace(/</g, "\\u003c");

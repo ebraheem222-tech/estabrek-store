@@ -329,6 +329,12 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   roseBlock: z.object({ block: z.enum(["seasons", "stories", "instagram"]) }),
   legacy: z.object({ sectionId: id }),
 };
+/** A shared style an element takes by name (lib/siteStyles.ts); its own look still wins. Not for the page or old sections. */
+export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);
+for (const t of NODE_TYPES) {
+  if (t === "page" || t === "legacy" || t === "roseBlock") continue;
+  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).extend({ styleId: STYLE_REF.optional() });
+}
 
 /* ------------------------------------------------------------------ tree */
 

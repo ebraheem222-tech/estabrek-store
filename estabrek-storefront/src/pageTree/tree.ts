@@ -86,6 +86,31 @@ export type ScreenStyle = {
   /** How fast it changes to and from those looks. */
   transition?: { duration: number; ease?: string; delay?: number };
 };
+/**
+ * The store's shared styles (the backend's lib/siteStyles.ts): every heading of a level and
+ * the body text take their text style (h1–h6, body), each button kind its button style
+ * (solid, outline, link); any element can take a named one by its props.styleId.
+ */
+export type SiteStyle = { id: string; kind: "text" | "button" | "box"; name?: string; style: Partial<Record<Screen, ScreenStyle>> };
+export const SITE_STYLE_KINDS = ["text", "button", "box"] as const;
+const STYLE_ID = /^[a-z][a-z0-9-]{0,30}$/;
+/** The class of the shared style an element names ("" for none or a bad name). */
+export const styleClass = (id: unknown) => (typeof id === "string" && STYLE_ID.test(id) ? `ps-${id}` : "");
+/** Shared styles as the shop may use them: known kinds, good ids, each once, at most 60. */
+export function siteStylesOf(raw: unknown): SiteStyle[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: SiteStyle[] = [];
+  for (const s of raw.slice(0, 60)) {
+    if (!s || typeof s !== "object") continue;
+    const { id, kind, name, style } = s as Record<string, unknown>;
+    if (typeof id !== "string" || !STYLE_ID.test(id) || seen.has(id) || !(SITE_STYLE_KINDS as readonly unknown[]).includes(kind)) continue;
+    seen.add(id);
+    out.push({ id, kind: kind as SiteStyle["kind"], ...(typeof name === "string" ? { name } : {}), style: style && typeof style === "object" && !Array.isArray(style) ? (style as SiteStyle["style"]) : {} });
+  }
+  return out;
+}
+
 /** What a state may change: never the size or place (the shop's css.ts STATE_KEYS). */
 export type StateStyle = Omit<ScreenStyle, "hover" | "focused" | "pressed" | "transition">;
 export const STATES = ["hover", "focused", "pressed"] as const;

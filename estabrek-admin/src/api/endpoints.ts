@@ -153,6 +153,10 @@ export const ENDPOINTS = {
         draft: (id: string) => `/admin/pages/${id}/draft`,
         draftOps: (id: string) => `/admin/pages/${id}/draft/ops`,
         draftPublish: (id: string) => `/admin/pages/${id}/draft/publish`,
+        // The new editor's shared styles (h1–h6, body, buttons, named ones), kept in the settings.
+        siteStyles: "/admin/site-styles",
+        siteStylesDraft: "/admin/site-styles/draft",
+        siteStylesPublish: "/admin/site-styles/publish",
         validateSection: "/admin/pages/sections/validate",
         aiSuggestSections: "/admin/pages/ai/suggest-sections",
         aiTranslate: "/admin/pages/ai/translate",

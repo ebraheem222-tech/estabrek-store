@@ -38,7 +38,10 @@ import { AddPanel } from "./AddPanel";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import { LookPanel, MotionPanel } from "./LookPanels";
-import { BoxPanel, FiltersPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
+import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
+import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
+import { styleNode, styleOf, withOps } from "./siteStyles";
+import { useAuth } from "../hooks/useAuth";
 import { stateOps, stateView, type StateChoice } from "./states";
 import { SvgPanel } from "./SvgPanel";
 import { Product360Panel } from "./Product360Panel";
@@ -119,7 +122,6 @@ export default function StudioPage() {
   const [selected, setSelected] = useState<string | null>(null);
   // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
   const [styleState, setStyleState] = useState<StateChoice>("normal");
-  useEffect(() => setStyleState("normal"), [selected]);
   const [panMode, setPanMode] = useState(false);
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
   const [busy, setBusy] = useState(false);
@@ -134,7 +136,13 @@ export default function StudioPage() {
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
   const adding = useRef<AddKind | null>(null);
   // The left column: the Add panel or the layers; where a click on the Add panel adds.
-  const [leftTab, setLeftTab] = useState<"add" | "layers">("add");
+  const [leftTab, setLeftTab] = useState<"add" | "layers" | "styles">("add");
+  // The shared style open in the styles tab (its panels show beside the page instead of an element's).
+  const [siteSel, setSiteSel] = useState<string | null>(null);
+  const canPublish = useAuth().hasPermission("pages:publish");
+  useEffect(() => setStyleState("normal"), [selected, siteSel]);
+  // Picking an element on the page leaves the style that was open.
+  useEffect(() => setSiteSel(null), [selected]);
   const [addWhere, setAddWhere] = useState<Where>("after");
   /** A picture or clip being chosen for something about to be added. */
   const [asked, setAsked] = useState<{ media: "image" | "video"; then: (url: string) => void } | null>(null);
@@ -310,6 +318,8 @@ export default function StudioPage() {
     setFrameKey((k) => k + 1);
   };
   /** Sends changes to the draft; records how to undo them unless it is an undo/redo itself. */
+  // The shared styles: each saved change reloads the frame, whose preview shows the draft.
+  const ss = useSiteStyles(() => reload());
   const run = (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; record?: boolean } = {}) => {
     const next = queue.current.then(() => runNow(label, ops, opts));
     queue.current = next.catch(() => {});
@@ -761,12 +771,16 @@ export default function StudioPage() {
   const nodeOf = (sid: string | null | undefined) => (sid ? index?.nodes.get(sid)?.node : undefined);
   const selFree = selNode && isFree(selNode.node.type) ? selNode.node : undefined;
   // The frame shows the state being edited on the element (the editor's mouse never reaches the page), again after each reload.
-  const stateTarget = styleState === "normal" ? "" : lookTarget && lookTarget.kind !== "box" ? `t:${lookTarget.target}` : selFree ? `n:${selFree.id}` : "";
+  const siteOpen = leftTab === "styles" && siteSel ? styleOf(ss.styles, siteSel) : null;
+  const stateTarget = styleState === "normal" ? "" : siteOpen ? `s:${siteOpen.kind}:${siteOpen.id}` : lookTarget && lookTarget.kind !== "box" ? `t:${lookTarget.target}` : selFree ? `n:${selFree.id}` : "";
   const frameReady = Boolean(layout);
   useEffect(() => {
     if (!frameReady) return;
     if (!stateTarget) send({ type: "previewState", state: null });
-    else send({ type: "previewState", state: styleState, ...(stateTarget.startsWith("t:") ? { target: stateTarget.slice(2) } : { nodeId: stateTarget.slice(2) }) });
+    else if (stateTarget.startsWith("s:")) {
+      const [, kind, id] = stateTarget.split(":");
+      send({ type: "previewState", state: styleState, style: { id, kind } });
+    } else send({ type: "previewState", state: styleState, ...(stateTarget.startsWith("t:") ? { target: stateTarget.slice(2) } : { nodeId: stateTarget.slice(2) }) });
   }, [stateTarget, styleState, frameReady, send]);
   const selSiblings = selNode?.parentId ? index?.nodes.get(selNode.parentId)?.children ?? [] : [];
   const selPos = selected ? selSiblings.indexOf(selected) : -1;
@@ -934,7 +948,40 @@ export default function StudioPage() {
 
   const dragged = useRef<string | null>(null);
 
+  /** A shared style's panels: like an element's, with its states and screens; each change saves the styles' draft. */
+  const siteInspector = () => {
+    const s = siteOpen;
+    if (!s) return null;
+    const vnode = styleNode(s);
+    const onOps = (_label: string, ops: PagesAPI.PageDraftOp[]) => void ss.save(withOps(ss.styles, s.id, ops));
+    const wordy = vnode.type === "heading" || vnode.type === "text";
+    return (
+      <div className="space-y-3" data-testid="studio-site-editor" data-style={s.id}>
+        <SiteStyleHead s={s} ss={ss} onGone={() => setSiteSel(null)} />
+        <StatesBar node={vnode} state={styleState} onState={setStyleState} />
+        {styleState !== "normal" ? (
+          stateLooks(vnode, styleState, onOps, wordy)
+        ) : (
+          <>
+            {wordy ? <TextStylePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} /> : null}
+            {wordy ? <TypeMorePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} /> : null}
+            {vnode.type === "button" ? (
+              <>
+                <ButtonStylePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} />
+                <TextStylePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} only={["font", "size", "weight", "letters"]} />
+              </>
+            ) : null}
+            <BoxPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} skip={vnode.type === "button" ? ["bg", "border", "radius"] : undefined} />
+            {vnode.type === "section" ? <PadPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} /> : null}
+            <FiltersPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} />
+            <LookPanel node={vnode} screen={screen} busy={ss.busy} limited onOps={onOps} onPreview={() => undefined} />
+          </>
+        )}
+      </div>
+    );
+  };
   const inspector = () => {
+    if (leftTab === "styles" && siteOpen) return siteInspector();
     if (themeOpen) {
       return <ThemePanel themes={themesQ.data ?? []} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} onPreview={(t) => { setThemePreview(t); setThemeMode(null); }} onMode={setThemeMode} saving={themeSaving} onSave={() => setAsking({ kind: "theme" })} />;
     }
@@ -1144,6 +1191,7 @@ export default function StudioPage() {
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
             <StatesBar node={selFree} state={styleState} onState={setStyleState} />
             {styleState !== "normal" ? (
               stateLooks(selFree, styleState, (l, ops) => void change(l, ops), WORDY_TYPES.has(selFree.type))
@@ -1343,9 +1391,9 @@ export default function StudioPage() {
   );
   const leftTabs = (
     <div className="mb-2 flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist" aria-label={tr("لوحة جانبية", "Side panel")}>
-      {(["add", "layers"] as const).map((t) => (
+      {(["add", "layers", "styles"] as const).map((t) => (
         <button key={t} type="button" role="tab" aria-selected={leftTab === t} onClick={() => setLeftTab(t)} className={`flex-1 rounded-lg px-2 py-1.5 text-xs ${leftTab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tab-${t}`}>
-          {t === "add" ? `+ ${tr("إضافة", "Add")}` : tr("الطبقات", "Layers")}
+          {t === "add" ? `+ ${tr("إضافة", "Add")}` : t === "layers" ? tr("الطبقات", "Layers") : tr("الستايلات", "Styles")}
         </button>
       ))}
     </div>
@@ -1426,10 +1474,12 @@ export default function StudioPage() {
       ) : null}
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : tr("الطبقات", "Layers")}>
+        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : tr("الطبقات", "Layers")}>
           {leftTabs}
           {leftTab === "add" ? (
             index ? addPanel() : null
+          ) : leftTab === "styles" ? (
+            <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
           ) : (
             <>
               {index ? layersList((sid) => select(sid, true)) : null}
@@ -1623,12 +1673,14 @@ export default function StudioPage() {
             <div className="flex justify-end">
               <button type="button" onClick={() => setSheet(false)} className="h-7 w-7 rounded-lg text-white/60 hover:bg-white/[0.06]" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
             </div>
-            {(selected || themeOpen) && leftTab !== "add" ? <div className="mb-3 border-b border-white/[0.08] px-1 pb-3 text-sm">{inspector()}</div> : null}
+            {(selected || themeOpen || siteOpen) && leftTab !== "add" ? <div className="mb-3 border-b border-white/[0.08] px-1 pb-3 text-sm">{inspector()}</div> : null}
             <div className="md:hidden">
               {leftTabs}
               {leftTab === "add"
                 ? addPanel()
-                : layersList((sid) => {
+                : leftTab === "styles"
+                  ? <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
+                  : layersList((sid) => {
                     select(sid, true);
                     setSheet(false);
                   })}

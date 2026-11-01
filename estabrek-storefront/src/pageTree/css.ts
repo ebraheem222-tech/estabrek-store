@@ -5,7 +5,7 @@
  * so a bad saved value can't become CSS. Sides follow the text direction
  * (padding-inline-start…), so the same tree is right in Arabic, Hebrew and English.
  */
-import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type TreeNode } from "./tree";
+import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
 
 export const TABLET_MAX = 1023.98;
@@ -439,8 +439,31 @@ function screenFallbacks(n: TreeNode, parent: TreeNode | null) {
   return { tablet, phone, rules };
 }
 
-/** The whole page's CSS ("" for a page that is only old sections). */
-export function treeCss(tree: PageTree): string {
+/** The elements each shared style that's taken by itself goes on (the others: .ps-<id>, named by the element). */
+const AUTO_SELECTOR: Record<string, [SiteStyle["kind"], string, string]> = {
+  h1: ["text", ":where(h1).pt-heading", "heading"],
+  h2: ["text", ":where(h2).pt-heading", "heading"],
+  h3: ["text", ":where(h3).pt-heading", "heading"],
+  h4: ["text", ":where(h4).pt-heading", "heading"],
+  h5: ["text", ":where(h5).pt-heading", "heading"],
+  h6: ["text", ":where(h6).pt-heading", "heading"],
+  body: ["text", ".pt-text", "text"],
+  solid: ["button", ".pt-btn-solid", "button"],
+  outline: ["button", ".pt-btn-outline", "button"],
+  link: ["button", ".pt-btn-link", "button"],
+};
+const KIND_TYPE: Record<SiteStyle["kind"], string> = { text: "text", button: "button", box: "section" };
+/** Where a shared style goes and what it draws as. */
+export function siteTarget(s: SiteStyle): { sel: string; type: string } {
+  const auto = AUTO_SELECTOR[s.id];
+  return auto && auto[0] === s.kind ? { sel: auto[1], type: auto[2] } : { sel: `.ps-${s.id}`, type: KIND_TYPE[s.kind] };
+}
+
+/**
+ * The whole page's CSS ("" for a page that is only old sections). `site`: the store's shared
+ * styles, drawn after the base CSS and before each element's own look, so its own look wins.
+ */
+export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   const base: string[] = [];
   const tablet: string[] = [];
   const phone: string[] = [];
@@ -530,6 +553,30 @@ export function treeCss(tree: PageTree): string {
     hidden.push(...hiddenRules(sel, look.style));
   }
   if (!drawn) return "";
+  // The shared styles, each screen's own in its own range, with their states and pace.
+  const shared: string[] = [];
+  const sharedTablet: string[] = [];
+  const sharedPhone: string[] = [];
+  for (const s of site) {
+    const { sel, type } = siteTarget(s);
+    const screens = [s.style.base, s.style.tablet, s.style.mobile];
+    for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
+    if (screens.some(turnsOn)) turned.push(sel);
+    if (screens.some(glidesOn)) glides = true;
+    if (screens.some(coveredOn)) {
+      holders.push(sel);
+      under.push(sel);
+    }
+    const keys = stateKeysOf(s.style);
+    const put = (list: string[], screen: Screen) => {
+      const d = [...declarations(s.style[screen], type), ...transitionDecls(s.style, screen, keys)];
+      if (d.length) list.push(`${sel}{${d.join(";")}}`);
+      list.push(...stateRules(sel, s.style[screen], type));
+    };
+    put(shared, "base");
+    put(sharedTablet, "tablet");
+    put(sharedPhone, "mobile");
+  }
   const layer = "content:\"\";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--pt-ov);opacity:var(--pt-ovo);mix-blend-mode:var(--pt-ovb)";
   return [
     fontFaceCss(families),
@@ -541,6 +588,9 @@ export function treeCss(tree: PageTree): string {
     over.length || under.length ? `${[...over, ...under].join(",")}{--pt-ov:none;--pt-ovo:1;--pt-ovb:normal}` : "",
     over.length ? `${over.map((s) => `${s}::after`).join(",")}{${layer};z-index:1}` : "",
     under.length ? `${under.map((s) => `${s}::before`).join(",")}{${layer};z-index:-1}` : "",
+    shared.join(""),
+    sharedTablet.length ? `@media (max-width:${TABLET_MAX}px){${sharedTablet.join("")}}` : "",
+    sharedPhone.length ? `@media (max-width:${PHONE_MAX}px){${sharedPhone.join("")}}` : "",
     base.join(""),
     fx.join(""),
     tablet.length ? `@media (max-width:${TABLET_MAX}px){${tablet.join("")}}` : "",
