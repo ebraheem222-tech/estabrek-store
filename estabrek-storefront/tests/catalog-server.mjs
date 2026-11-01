@@ -235,6 +235,16 @@ const treeDemo = {
           },
           children: [{ id: "heart-pic", type: "image", props: { src: "https://res.cloudinary.com/demo/image/upload/sample.jpg", alt: { ar: "قلب" } }, style: { base: { width: "200px", aspect: "1 / 1", shape: "heart" } } }],
         },
+        // The mouse: a short play once, a light that follows it, a ripple where it's pressed, a spring.
+        {
+          id: "hovers", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24] } },
+          children: [
+            { id: "hv-bounce", type: "heading", props: { level: 3, text: { ar: "بنط", en: "I bounce", he: "קופץ" } }, motion: { hover: { kind: "bounce", amount: 2 } } },
+            { id: "hv-spot", type: "cell", props: {}, style: { base: { bg: "#ffffff", pad: [40, 40, 40, 40] } }, motion: { hover: { kind: "spotlight", color: "#ff0000", amount: 1.5 } }, children: [{ id: "hv-spot-t", type: "text", props: { text: { ar: "ضو", en: "Light", he: "אור" } } }] },
+            { id: "hv-ripple", type: "button", props: { label: { ar: "اضغطي", en: "Press", he: "ללחוץ" }, href: "#" }, motion: { hover: { kind: "ripple", color: "#00ff00" } } },
+            { id: "hv-jelly", type: "icon", props: { name: "star" }, motion: { hover: { kind: "jelly", amount: 2 } } },
+          ],
+        },
         // Columns: a third and two thirds, each cell its own little container (shapes, alignment), three more columns inside one.
         {
           id: "split", type: "section", props: { contained: true },

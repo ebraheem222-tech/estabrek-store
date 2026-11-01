@@ -38,7 +38,7 @@ export type TreeCtx = {
   spinProducts?: Record<string, { title: string; spins?: unknown } | null>;
 };
 
-const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom" };
+const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
 const cls = (n: TreeNode, ...more: string[]) =>
   ["pt", `pt-${n.type}`, /^[A-Za-z0-9_-]{1,40}$/.test(n.id) ? `pt-${n.id}` : "", styleClass(n.props?.styleId), HOVER_CLASS[motionOf(n)?.hover?.kind ?? ""] ?? "", ...more].filter(Boolean).join(" ");
 
@@ -78,7 +78,8 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
   // How it moves goes to the motion engine (TreeMotion) as data; an animated layer is drawn inside it.
   const motion = motionOf(node);
   const mark = { "data-tree-node": node.id, ...(motion ? { "data-pt-motion": JSON.stringify(motion) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
-  const fx = motion?.fx ? <span className={`pt-fx pt-fx-${motion.fx.kind}`} aria-hidden="true" /> : null;
+  // An animated layer, or the light that follows the mouse (TreeMotion moves it).
+  const fx = motion?.fx ? <span className={`pt-fx pt-fx-${motion.fx.kind}`} aria-hidden="true" /> : motion?.hover?.kind === "spotlight" ? <span className="pt-spot" aria-hidden="true" /> : null;
   const kids = () => (
     <>
       {(node.children ?? []).map((c) => <TreeNodeView key={c.id} node={c} ctx={ctx} />)}

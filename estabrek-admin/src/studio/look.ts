@@ -14,7 +14,7 @@ export type Motion = {
   enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
   scroll?: { kind: "parallax" | "keys"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string };
   loop?: { kind: string; duration?: number; amount?: number };
-  hover?: { kind: string; amount?: number };
+  hover?: { kind: string; amount?: number; color?: string };
   fx?: { kind: string; speed?: number; color?: string; to?: string };
   phone?: "same" | "lite" | "off";
 };
@@ -116,7 +116,25 @@ export const HOVER_LABEL: Record<string, () => string> = {
   magnetic: () => tr("مغناطيس", "Magnetic"),
   glow: () => tr("يتوهج", "Glows"),
   zoom: () => tr("زوم للصورة", "Zooms the picture"),
+  bounce: () => tr("ينط مرة", "Bounces once"),
+  shake: () => tr("يهتز مرة", "Shakes once"),
+  pulse: () => tr("ينبض مرة", "Pulses once"),
+  wiggle: () => tr("يتلوّى", "Wiggles"),
+  jello: () => tr("متل الجيلي", "Like jelly"),
+  rubber: () => tr("متل المطاط", "Like rubber"),
+  heartbeat: () => tr("دقة قلب", "Heartbeat"),
+  swing: () => tr("يتمرجح مرة", "Swings once"),
+  flip: () => tr("ينقلب لفة", "Flips round"),
+  spin: () => tr("يلف لفة", "Spins round"),
+  pop: () => tr("يفقع", "Pops"),
+  spotlight: () => tr("ضو بيلحق الماوس", "A light that follows the mouse"),
+  ripple: () => tr("موجة مكان الضغط", "A ripple where it's pressed"),
+  spring: () => tr("زنبرك بيلحق الماوس", "Springs after the mouse"),
+  jelly: () => tr("بيتهز متل الزنبرك", "Wobbles on a spring"),
 };
+/** The mouse effects that have a strength, and those that take a colour. */
+export const HOVER_STRENGTH = new Set(["lift", "grow", "tilt", "magnetic", "bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "pop", "spotlight", "spring", "jelly"]);
+export const HOVER_COLOUR = new Set(["spotlight", "ripple"]);
 export const FX_LABEL: Record<string, () => string> = {
   shine: () => tr("لمعة ماشية", "Running shine"),
   gradient: () => tr("ألوان ماشية", "Moving colours"),
@@ -159,6 +177,10 @@ export const MOTION_PRESETS: MotionPreset[] = [
   { key: "pulse", label: () => tr("بينبض", "Pulses"), motion: { loop: { kind: "pulse", duration: 1.6 } } },
   { key: "tilt-hover", label: () => tr("بيميل مع الماوس", "Tilts with the mouse"), motion: { hover: { kind: "tilt" } } },
   { key: "magnetic", label: () => tr("مغناطيس", "Magnetic"), motion: { hover: { kind: "magnetic" } } },
+  { key: "ripple", label: () => tr("موجة لما ينضغط", "A ripple when pressed"), motion: { hover: { kind: "ripple" } }, only: new Set(["button", "cell", "image", "icon"]) },
+  { key: "spotlight", label: () => tr("ضو بيلحق الماوس", "A light following the mouse"), motion: { hover: { kind: "spotlight" } }, only: HOLDS },
+  { key: "jelly", label: () => tr("زنبرك", "Springy"), motion: { hover: { kind: "jelly" } } },
+  { key: "heartbeat", label: () => tr("دقة قلب", "Heartbeat"), motion: { hover: { kind: "heartbeat" } } },
   { key: "shine", label: () => tr("لمعة ماشية", "Running shine"), motion: { fx: { kind: "shine", speed: 1 } } },
   { key: "draw", label: () => tr("بترسم حالها", "Draws itself"), motion: { enter: { kind: "draw", duration: 1.4, ease: "soft" } }, only: SVG_ONLY, fits: drawingHasLines },
   { key: "morph", label: () => tr("بتتحوّل وبترجع", "Morphs and back"), motion: { loop: { kind: "morph", duration: 4 } }, only: SVG_ONLY, fits: drawingMorphs },

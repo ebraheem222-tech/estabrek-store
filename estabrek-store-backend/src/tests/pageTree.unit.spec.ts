@@ -172,6 +172,11 @@ describe("checking a page tree", () => {
     expect(moves({ enter: { kind: "explode" } })).toEqual(["root.children[0].children[0].motion.enter.kind"]);
     expect(moves({ loop: { kind: "float", duration: 99 } }).length).toBe(1);
     expect(moves({ scroll: { kind: "keys", to: { rx: 999 } } }).length).toBe(1);
+    // The mouse: a short play, a light or a ripple in a colour, springs.
+    for (const kind of ["bounce", "shake", "jello", "heartbeat", "flip", "pop", "spring", "jelly"]) expect(moves({ hover: { kind, amount: 1.5 } }), kind).toEqual([]);
+    expect(moves({ hover: { kind: "spotlight", color: "accent-soft", amount: 2 } })).toEqual([]);
+    expect(moves({ hover: { kind: "ripple", color: "red" } })).toEqual(["root.children[0].children[0].motion.hover.color"]);
+    expect(moves({ hover: { kind: "explode" } }).length).toBe(1);
     // The old sections and scenes don't take motion.
     expect(issuesOf(page([{ id: "old", type: "legacy", props: { sectionId: "a" }, motion: { enter: { kind: "fade" } } }]))[0].message).toMatch(/moves with its own settings/);
     // Empty motion is left out.

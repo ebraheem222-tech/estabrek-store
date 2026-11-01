@@ -10,7 +10,7 @@ import type { PageDraftOp, PageTreeNode, TreeScreen } from "../api/pages.api";
 import { tr } from "../lib/words";
 import { styleOp } from "./columns";
 import {
-  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_LABEL, LOOP_LABEL, WORDY,
+  ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, WORDY,
   drawingHasLines, drawingMorphs, hasPreset, lookOf, motionOp, placedOn, presetsFor, previewOf, shownLook, withPreset,
   type Motion, type MotionKeys,
 } from "./look";
@@ -300,7 +300,9 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
 
       <Part title={tr("مع الماوس", "With the mouse")} open={Boolean(hover)}>
         <Pick label={tr("لما الماوس فوقه", "With the mouse over it")} value={hover?.kind ?? ""} busy={busy} options={[none, ...Object.keys(HOVER_LABEL).filter((k) => k !== "zoom" || node.type === "image" || node.type === "video").map((k): [string, string] => [k, HOVER_LABEL[k]()])]} onPick={(v) => part("hover", v ? { ...(hover ?? {}), kind: v } : undefined)} testId="studio-hover-kind" />
-        {hover && ["lift", "grow", "tilt", "magnetic"].includes(hover.kind) ? <Range label={tr("قوّتها", "Its strength")} min={0.2} max={3} step={0.1} busy={busy} value={hover.amount ?? 1} onSave={(v) => part("hover", { ...hover, amount: v })} /> : null}
+        {hover && HOVER_STRENGTH.has(hover.kind) ? <Range label={hover.kind === "spotlight" ? tr("حجم الضو", "The light's size") : tr("قوّتها", "Its strength")} min={0.2} max={3} step={0.1} busy={busy} value={hover.amount ?? 1} onSave={(v) => part("hover", { ...hover, amount: v })} testId="studio-hover-amount" /> : null}
+        {hover && HOVER_COLOUR.has(hover.kind) ? <ColourPick label={tr("اللون", "Colour")} value={hover.color ?? ""} busy={busy} onPick={(c) => part("hover", { ...hover, color: c ?? undefined })} testId="studio-hover-color" /> : null}
+        {hover && !["glow", "zoom", "ripple"].includes(hover.kind) ? <p className="text-[10px] leading-4 text-white/35">{tr("بيشتغل مع الماوس بس (مش عالموبايل).", "Works with a mouse only (not on a phone).")}</p> : null}
       </Part>
 
       <Part title={tr("طبقة متحركة", "An animated layer")} open={Boolean(fx)}>

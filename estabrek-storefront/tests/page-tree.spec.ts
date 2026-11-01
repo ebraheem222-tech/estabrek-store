@@ -123,6 +123,8 @@ test.describe("styles become safe CSS", () => {
     expect(css).toContain(".pt-v>.pt-fx{--pt-fxc:#fff;--pt-fxs:1.50s}");
     // Unknown motion is dropped before it reaches the page.
     expect(motionOf({ id: "x", type: "text", props: {}, motion: { enter: { kind: "explode" }, loop: { kind: "float", duration: 99 }, hover: { kind: "tilt", amount: 2 } } })).toEqual({ loop: { kind: "float" }, hover: { kind: "tilt", amount: 2 } });
+    expect(motionOf({ id: "x", type: "cell", props: {}, motion: { hover: { kind: "spotlight", color: "accent", amount: 9 } } })).toEqual({ hover: { kind: "spotlight", color: "accent" } });
+    expect(TREE_TRANSFORM).toContain("var(--pt-hrz,0deg)");
     expect(motionOf({ id: "x", type: "text", props: {}, motion: "nope" })).toBeNull();
   });
 
@@ -490,6 +492,44 @@ test.describe.serial("a page of new elements", () => {
     expect(await page.locator('[data-tree-node="heart-pic"]').evaluate((el) => getComputedStyle(el).maskImage || getComputedStyle(el).webkitMaskImage)).toContain("data:image/svg+xml");
     await page.setViewportSize({ width: 390, height: 800 });
     await expect.poll(() => top.evaluate((el) => Math.round(el.getBoundingClientRect().height))).toBe(30);
+  });
+
+  test("the mouse: a short play once, a light that follows it, a ripple where it's pressed, a jelly spring", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/tree-demo");
+    const v = (id: string, prop: string) => page.locator(`[data-tree-node="${id}"]`).evaluate((el, p) => getComputedStyle(el).getPropertyValue(p).trim(), prop);
+    await page.locator('[data-tree-node="hv-bounce"]').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => !document.documentElement.classList.contains("pt-pending"));
+    // A bounce: up and back down.
+    const box = (await page.locator('[data-tree-node="hv-bounce"]').boundingBox())!;
+    await page.mouse.move(box.x - 40, box.y - 40);
+    await page.mouse.move(box.x + 10, box.y + box.height / 2, { steps: 4 });
+    await expect.poll(() => v("hv-bounce", "--pt-hy").then((y) => parseFloat(y)), { timeout: 3000 }).toBeLessThan(-2);
+    await expect.poll(() => v("hv-bounce", "--pt-hy"), { timeout: 3000 }).toBe("0px");
+    // A light that follows the mouse, in its colour.
+    const spot = page.locator('[data-tree-node="hv-spot"]');
+    await expect(spot).toHaveClass(/pt-hv-spot/);
+    expect(await v("hv-spot", "--pt-spc")).toBe("#ff0000");
+    expect(await v("hv-spot", "--pt-spr")).toBe("330px");
+    const sb = (await spot.boundingBox())!;
+    await page.mouse.move(sb.x + 30, sb.y + 20, { steps: 3 });
+    await page.mouse.move(sb.x + 60, sb.y + 25, { steps: 3 });
+    await expect.poll(() => v("hv-spot", "--pt-sx")).toBe("60px");
+    await expect.poll(() => spot.locator(".pt-spot").evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    // A ripple where it's pressed, gone once it has spread.
+    const btn = page.locator('[data-tree-node="hv-ripple"]');
+    const bb = (await btn.boundingBox())!;
+    await page.mouse.move(bb.x + 10, bb.y + 10);
+    await page.mouse.down();
+    await expect(btn.locator(".pt-rpl")).toHaveCount(1);
+    await page.mouse.up();
+    await expect(btn.locator(".pt-rpl")).toHaveCount(0, { timeout: 3000 });
+    // A jelly spring: it grows past its size and settles.
+    await page.locator('[data-tree-node="hv-jelly"]').scrollIntoViewIfNeeded();
+    const jb = (await page.locator('[data-tree-node="hv-jelly"]').boundingBox())!;
+    await page.mouse.move(jb.x - 40, jb.y - 40);
+    await page.mouse.move(jb.x + jb.width / 2, jb.y + jb.height / 2, { steps: 4 });
+    await expect.poll(() => v("hv-jelly", "--pt-hs").then(Number), { timeout: 3000 }).toBeGreaterThan(1.05);
   });
 
   test("a library font: the page asks Google once for the families it uses; the shop's own copy stays its own", async ({ page }) => {

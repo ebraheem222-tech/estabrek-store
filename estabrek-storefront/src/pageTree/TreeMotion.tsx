@@ -7,7 +7,9 @@
  * --pt-l* loops, --pt-h* the pointer, so they never fight each other or the look.
  *
  * A drawing (svg) can also be drawn line by line, morph into its second shape and back,
- * or run its lines (DrawSVG and MorphSVG, loaded only then).
+ * or run its lines (DrawSVG and MorphSVG, loaded only then). The mouse can play a short
+ * move once (bounce, shake…), carry a light, leave a ripple where it presses, or pull an
+ * element on a spring (Motion's springs, loaded only then).
  *
  * "Reduce motion" leaves everything still and shown. On a phone `lite` keeps only the
  * coming in and `off` nothing; pointer effects need a mouse. Inside the editor's frame
@@ -64,6 +66,27 @@ export function enterTo(from: Vars, opacity: number): Vars {
     else to[k] = k.endsWith("s") ? 1 : String(from[k]).endsWith("deg") ? "0deg" : "0px";
   }
   return to;
+}
+
+/** A short play as the mouse comes over (`a` = its strength): the pointer variables' steps, and how long it takes. */
+export function hoverPlay(kind: string, a: number): { steps: Vars[]; duration: number } | null {
+  const deg = (v: number) => `${+(v * a).toFixed(2)}deg`;
+  const px = (v: number) => `${+(v * a).toFixed(2)}px`;
+  const sc = (v: number) => +(1 + (v - 1) * a).toFixed(3);
+  switch (kind) {
+    case "bounce": return { steps: [{ "--pt-hy": px(-14) }, { "--pt-hy": "0px" }, { "--pt-hy": px(-6) }, { "--pt-hy": "0px" }], duration: 0.7 };
+    case "shake": return { steps: [{ "--pt-hx": px(-7) }, { "--pt-hx": px(7) }, { "--pt-hx": px(-5) }, { "--pt-hx": px(5) }, { "--pt-hx": "0px" }], duration: 0.5 };
+    case "pulse": return { steps: [{ "--pt-hs": sc(1.08) }, { "--pt-hs": 1 }], duration: 0.45 };
+    case "wiggle": return { steps: [{ "--pt-hrz": deg(-7) }, { "--pt-hrz": deg(7) }, { "--pt-hrz": deg(-4) }, { "--pt-hrz": deg(4) }, { "--pt-hrz": "0deg" }], duration: 0.6 };
+    case "jello": return { steps: [{ "--pt-hrz": deg(-4), "--pt-hs": sc(1.05) }, { "--pt-hrz": deg(3), "--pt-hs": sc(0.97) }, { "--pt-hrz": deg(-1.5), "--pt-hs": sc(1.02) }, { "--pt-hrz": "0deg", "--pt-hs": 1 }], duration: 0.8 };
+    case "rubber": return { steps: [{ "--pt-hs": sc(1.14) }, { "--pt-hs": sc(0.92) }, { "--pt-hs": sc(1.06) }, { "--pt-hs": 1 }], duration: 0.7 };
+    case "heartbeat": return { steps: [{ "--pt-hs": sc(1.1) }, { "--pt-hs": 1 }, { "--pt-hs": sc(1.1) }, { "--pt-hs": 1 }], duration: 0.8 };
+    case "swing": return { steps: [{ "--pt-hrz": deg(12) }, { "--pt-hrz": deg(-8) }, { "--pt-hrz": deg(4) }, { "--pt-hrz": deg(-2) }, { "--pt-hrz": "0deg" }], duration: 0.8 };
+    case "flip": return { steps: [{ "--pt-hry": "360deg" }], duration: 0.7 };
+    case "spin": return { steps: [{ "--pt-hrz": "360deg" }], duration: 0.7 };
+    case "pop": return { steps: [{ "--pt-hs": sc(1.15) }, { "--pt-hs": 1 }], duration: 0.4 };
+    default: return null;
+  }
 }
 
 /** A scroll moment as the scroll's variables (missing turns and moves at rest). */
@@ -153,15 +176,81 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     if (tween) ScrollTrigger.create({ trigger: el, start: "top bottom", end: "bottom top", onToggle: (self) => (self.isActive ? tween.play() : tween.pause()) });
   }
 
+  const on = (type: string, fn: (e: PointerEvent) => void) => {
+    el.addEventListener(type, fn as EventListener);
+    off.push(() => el.removeEventListener(type, fn as EventListener));
+  };
+  // A ripple where it's pressed, by a mouse or a finger.
+  if (m.hover?.kind === "ripple" && !lite) {
+    on("pointerdown", (e) => {
+      const r = el.getBoundingClientRect();
+      const size = Math.hypot(r.width, r.height) * 2;
+      const dot = document.createElement("span");
+      dot.className = "pt-rpl";
+      dot.setAttribute("aria-hidden", "true");
+      dot.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left}px;top:${e.clientY - r.top}px`;
+      el.appendChild(dot);
+      dot.addEventListener("animationend", () => dot.remove(), { once: true });
+      off.push(() => dot.remove());
+    });
+    return;
+  }
+
   if (m.hover && env.mouse && !lite && m.hover.kind !== "glow") {
     const a = m.hover.amount ?? 1;
     const k = m.hover.kind;
     const media = el.querySelector(":scope > .pt-frame-media");
     if (k === "zoom" && media) return; // drawn by CSS (.pt-hv-zoom)
-    const on = (type: string, fn: (e: PointerEvent) => void) => {
-      el.addEventListener(type, fn as EventListener);
-      off.push(() => el.removeEventListener(type, fn as EventListener));
-    };
+    if (k === "spotlight") {
+      // The light's place follows the mouse (CSS draws it: .pt-spot).
+      on("pointermove", (e) => {
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--pt-sx", `${Math.round(e.clientX - r.left)}px`);
+        el.style.setProperty("--pt-sy", `${Math.round(e.clientY - r.top)}px`);
+      });
+      return;
+    }
+    const play = hoverPlay(k, a);
+    if (play) {
+      let running: ReturnType<Gsap["to"]> | null = null;
+      on("pointerenter", () => {
+        if (running?.isActive()) return;
+        running = gsap.to(el, { keyframes: play.steps, duration: play.duration, ease: "power1.inOut", onComplete: () => void gsap.set(el, { "--pt-hry": "0deg", "--pt-hrz": "0deg" }) });
+      });
+      return;
+    }
+    if (k === "spring" || k === "jelly") {
+      // On Motion's springs: it follows the mouse a little and springs back, or wobbles as it grows.
+      const now = { x: 0, y: 0, s: 1 };
+      const stops: Array<{ stop: () => void }> = [];
+      const springTo = (key: "x" | "y" | "s", to: number, bouncy: boolean) =>
+        void import("motion").then(({ animate: spring }) => {
+          const c = spring(now[key], to, {
+            type: "spring", stiffness: bouncy ? 260 : 180, damping: bouncy ? 9 : 14,
+            onUpdate: (v: number) => {
+              now[key] = v;
+              el.style.setProperty(key === "s" ? "--pt-hs" : key === "x" ? "--pt-hx" : "--pt-hy", key === "s" ? String(v) : `${v}px`);
+            },
+          });
+          stops.push(c);
+        });
+      off.push(() => stops.forEach((c) => c.stop()));
+      if (k === "spring") {
+        on("pointermove", (e) => {
+          const r = el.getBoundingClientRect();
+          springTo("x", ((e.clientX - r.left) / r.width - 0.5) * r.width * 0.2 * a, false);
+          springTo("y", ((e.clientY - r.top) / r.height - 0.5) * r.height * 0.2 * a, false);
+        });
+        on("pointerleave", () => {
+          springTo("x", 0, true);
+          springTo("y", 0, true);
+        });
+      } else {
+        on("pointerenter", () => springTo("s", 1 + 0.06 * a, true));
+        on("pointerleave", () => springTo("s", 1, true));
+      }
+      return;
+    }
     const rest = { "--pt-hx": "0px", "--pt-hy": "0px", "--pt-hrx": "0deg", "--pt-hry": "0deg", "--pt-hs": 1, duration: 0.5, ease: "power3.out" };
     if (k === "lift") on("pointerenter", () => gsap.to(el, { "--pt-hy": `${-6 * a}px`, duration: 0.35, ease: "power2.out" }));
     if (k === "grow" || k === "zoom") on("pointerenter", () => gsap.to(el, { "--pt-hs": 1 + 0.04 * a, duration: 0.35, ease: "power2.out" }));

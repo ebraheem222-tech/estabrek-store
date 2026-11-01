@@ -185,7 +185,13 @@ export const lookNode = (target: string, look: Look): TreeNode => ({ id: target,
 // A drawing's own: "draw" draws its lines, "morph" turns its shape into its second one and back, "dash" runs its lines.
 export const ENTER_KINDS = ["fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn", "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw"] as const;
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash"] as const;
-export const HOVER_KINDS = ["lift", "grow", "tilt", "magnetic", "glow", "zoom"] as const;
+// Then one-time plays as the mouse comes over it, a light that follows the mouse, a ripple where it's
+// pressed (a finger too), and springy ones (Motion's springs): it follows the mouse, or wobbles like jelly.
+export const HOVER_KINDS = [
+  "lift", "grow", "tilt", "magnetic", "glow", "zoom",
+  "bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop",
+  "spotlight", "ripple", "spring", "jelly",
+] as const;
 export const FX_KINDS = ["shine", "gradient", "grain"] as const;
 export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear"] as const;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
@@ -193,7 +199,7 @@ export type TreeMotionSpec = {
   enter?: { kind: (typeof ENTER_KINDS)[number]; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
   scroll?: { kind: "parallax" | "keys"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string };
   loop?: { kind: (typeof LOOP_KINDS)[number]; duration?: number; amount?: number };
-  hover?: { kind: (typeof HOVER_KINDS)[number]; amount?: number };
+  hover?: { kind: (typeof HOVER_KINDS)[number]; amount?: number; color?: string };
   fx?: { kind: (typeof FX_KINDS)[number]; speed?: number; color?: string; to?: string };
   phone?: "same" | "lite" | "off";
 };
@@ -220,7 +226,7 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
   const loop = inList(m.loop?.kind, LOOP_KINDS);
   if (loop) out.loop = { kind: loop, duration: within(m.loop.duration, 0.2, 20), amount: within(m.loop.amount, 0.1, 3) };
   const hover = inList(m.hover?.kind, HOVER_KINDS);
-  if (hover) out.hover = { kind: hover, amount: within(m.hover.amount, 0.1, 3) };
+  if (hover) out.hover = { kind: hover, amount: within(m.hover.amount, 0.1, 3), color: typeof m.hover.color === "string" ? m.hover.color : undefined };
   const fx = inList(m.fx?.kind, FX_KINDS);
   if (fx) out.fx = { kind: fx, speed: within(m.fx.speed, 0.2, 5), color: typeof m.fx.color === "string" ? m.fx.color : undefined, to: typeof m.fx.to === "string" ? m.fx.to : undefined };
   const phone = inList(m.phone, ["same", "lite", "off"] as const);
@@ -238,14 +244,14 @@ export const TREE_TRANSFORM =
   "translate3d(calc(var(--pt-x,0px) + var(--pt-ex,0px) + var(--pt-mx,0px) + var(--pt-hx,0px)),calc(var(--pt-y,0px) + var(--pt-ey,0px) + var(--pt-my,0px) + var(--pt-ly,0px) + var(--pt-hy,0px)),0) " +
   "rotateX(calc(var(--pt-rx,0deg) + var(--pt-erx,0deg) + var(--pt-mrx,0deg) + var(--pt-hrx,0deg))) " +
   "rotateY(calc(var(--pt-ry,0deg) + var(--pt-ery,0deg) + var(--pt-mry,0deg) + var(--pt-hry,0deg))) " +
-  "rotate(calc(var(--pt-rz,0deg) + var(--pt-erz,0deg) + var(--pt-mrz,0deg) + var(--pt-lrz,0deg))) " +
+  "rotate(calc(var(--pt-rz,0deg) + var(--pt-erz,0deg) + var(--pt-mrz,0deg) + var(--pt-lrz,0deg) + var(--pt-hrz,0deg))) " +
   "scale(calc(var(--pt-s,1) * var(--pt-es,1) * var(--pt-ms,1) * var(--pt-ls,1) * var(--pt-hs,1)))";
 /** The variables at rest, written on each moving element so it never takes its parent's (custom properties inherit). */
 export const TREE_TRANSFORM_REST =
   "--pt-ax:0%;--pt-ay:0%;--pt-p:1200px;--pt-x:0px;--pt-y:0px;--pt-rx:0deg;--pt-ry:0deg;--pt-rz:0deg;--pt-s:1;" +
   "--pt-ex:0px;--pt-ey:0px;--pt-erx:0deg;--pt-ery:0deg;--pt-erz:0deg;--pt-es:1;" +
   "--pt-mx:0px;--pt-my:0px;--pt-mrx:0deg;--pt-mry:0deg;--pt-mrz:0deg;--pt-ms:1;" +
-  "--pt-ly:0px;--pt-lrz:0deg;--pt-ls:1;--pt-hx:0px;--pt-hy:0px;--pt-hrx:0deg;--pt-hry:0deg;--pt-hs:1";
+  "--pt-ly:0px;--pt-lrz:0deg;--pt-ls:1;--pt-hx:0px;--pt-hy:0px;--pt-hrx:0deg;--pt-hry:0deg;--pt-hrz:0deg;--pt-hs:1";
 /** The look's own variables the editor may preview live in its frame (before saving). */
 export const PREVIEW_VARS = ["--pt-rx", "--pt-ry", "--pt-rz", "--pt-p", "--pt-s", "--pt-x", "--pt-y", "--pt-ovo"] as const;
 
