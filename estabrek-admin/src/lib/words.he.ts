@@ -3872,4 +3872,8 @@ export const HE: Record<string, string> = {
   "Lock": "נעילה",
   "Lock (not picked by clicks on the page)": "נעילה (לא נבחר בלחיצות על הדף)",
   "Shift+click adds or removes one. Drag on the page to select with a box (with Shift it adds to the selection).": "Shift עם לחיצה מוסיף או מסיר רכיב. גוררים על הדף כדי לבחור עם מלבן (עם Shift זה מוסיף לבחירה).",
+  "Drag to resize, double-click for its natural size": "גוררים כדי לשנות גודל, לחיצה כפולה לגודל הטבעי",
+  "Drag to turn it (Shift: every 15°)": "גוררים כדי לסובב (Shift: כל 15°)",
+  "Nudge": "הזזה קטנה",
+  "Natural size": "גודל טבעי",
 };

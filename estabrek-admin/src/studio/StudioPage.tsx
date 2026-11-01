@@ -48,6 +48,8 @@ import { SvgPanel } from "./SvgPanel";
 import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, shownLook, withPreset, type Motion } from "./look";
 import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./MultiPanel";
+import { Guides, SelectionHandles } from "./CanvasHandles";
+import { gapsBetween, nudgeOf, snapBox, type Guide } from "./handles";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
 import { useSettings } from "../hooks/useSettings";
@@ -132,6 +134,11 @@ export default function StudioPage() {
   // Locked in the layers (kept in this browser for the page): clicks on the page go through them.
   const [locked, setLocked] = useState<Set<string>>(() => lockedOf(id));
   const [layerFind, setLayerFind] = useState("");
+  // Lines a dragged element snaps to; Alt held shows the distances to what's under the pointer.
+  const [guides, setGuides] = useState<Guide[]>([]);
+  const [altHeld, setAltHeld] = useState(false);
+  // Alt+arrow nudges add up (shown in the frame at once) and are saved together a moment after the last one.
+  const nudging = useRef({ dx: 0, dy: 0, timer: 0 });
   // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
   const [styleState, setStyleState] = useState<StateChoice>("normal");
   const [panMode, setPanMode] = useState(false);
@@ -476,8 +483,12 @@ export default function StudioPage() {
         // A freely placed element moves over its container instead of to another place.
         const held = n ? placedOn(n, screen) : null;
         if (n && held && d.box && d.holder) {
-          const box = { ...d.box, x: d.box.x + p.x - d.p.x, y: d.box.y + p.y - d.p.y };
-          setPlacing({ id: n.id, box, ...placeFor(box, d.holder, held.anchor ?? "center", layout?.dir === "rtl") });
+          const raw = { ...d.box, x: d.box.x + p.x - d.p.x, y: d.box.y + p.y - d.p.y };
+          const parent = shapeOf(n.id)?.parentId;
+          const near = shapes.filter((x) => x.id !== n.id && x.parentId === parent).map((x) => x.box);
+          const snapped = e.altKey ? { box: raw, guides: [] } : snapBox(raw, [d.holder, ...near]);
+          setGuides(snapped.guides);
+          setPlacing({ id: n.id, box: snapped.box, ...placeFor(snapped.box, d.holder, held.anchor ?? "center", layout?.dir === "rtl") });
           return;
         }
         const t = n ? dropAt(p, n) : null;
@@ -528,6 +539,7 @@ export default function StudioPage() {
       }
       return;
     }
+    setGuides([]);
     if (d?.grab && d.moved) {
       const t = drop;
       const placed = placing;
@@ -669,6 +681,18 @@ export default function StudioPage() {
         if (first) select(first, true);
         return;
       }
+      if (e.key === "Alt") {
+        e.preventDefault();
+        setAltHeld(true);
+        return;
+      }
+      if (e.altKey && e.key.startsWith("Arrow") && chosen.length) {
+        // (Alt+Left would also go back a page in the browser.)
+        e.preventDefault();
+        const d = nudgeOf(e.key, e.shiftKey);
+        if (d) nudgeBy(d);
+        return;
+      }
       if (e.key.startsWith("Arrow") && selected) {
         e.preventDefault();
         held.current.add(e.key);
@@ -682,13 +706,18 @@ export default function StudioPage() {
     };
     const onUp = (e: KeyboardEvent) => {
       if (e.key === " ") setPanMode(false);
+      if (e.key === "Alt") setAltHeld(false);
       held.current.delete(e.key);
     };
+    // Leaving the window with Alt down (Alt+Tab) never sends its key up.
+    const onBlur = () => setAltHeld(false);
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
+    window.addEventListener("blur", onBlur);
     return () => {
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
+      window.removeEventListener("blur", onBlur);
     };
   });
 
@@ -1102,6 +1131,42 @@ export default function StudioPage() {
       "line",
       { label: multi ? tr(`احذف ${loose.length}`, "Delete {0}", [loose.length]) : tr("احذف", "Delete"), keys: "Del", danger: true, onClick: () => (loose.length > 1 ? setAsking({ kind: "deleteMany", ids: loose }) : loose[0] && setAsking({ kind: "delete", nodeId: loose[0], name: label(loose[0]), tree: true })), disabled: !loose.length },
     ];
+  };
+  /** Alt+arrow: the selected elements move by a pixel (Shift: ten), freely placed ones over their container. */
+  const nudgeBy = (d: Pt) => {
+    const targets = chosen;
+    const nz = nudging.current;
+    nz.dx += d.x;
+    nz.dy += d.y;
+    for (const x of targets) {
+      const n = nodeOf(x);
+      if (!n) continue;
+      const bx = Number(shownLook(n, screen, "moveX") ?? 0);
+      const by = Number(shownLook(n, screen, "moveY") ?? 0);
+      send({ type: "previewLook", nodeId: x, vars: { "--pt-x": `${bx + nz.dx}px`, "--pt-y": `${by + nz.dy}px` } });
+    }
+    window.clearTimeout(nz.timer);
+    nz.timer = window.setTimeout(() => {
+      const { dx, dy } = nudging.current;
+      nudging.current = { dx: 0, dy: 0, timer: 0 };
+      const round = (v: number) => Math.round(Math.max(0, Math.min(100, v)) * 10) / 10;
+      const within = (v: number) => Math.max(-1000, Math.min(1000, v));
+      const ops = targets.flatMap((x): PagesAPI.PageDraftOp[] => {
+        const n = nodeOf(x);
+        if (!n) return [];
+        const place = placedOn(n, screen);
+        const holder = holderOf(x);
+        if (place && holder) {
+          const w = holder.w / zoom;
+          const h = holder.h / zoom;
+          return [styleOp(n, screen, { layer: { ...place, x: round(place.x + (dx / w) * 100 * (rtl ? -1 : 1)), y: round(place.y + (dy / h) * 100) } })];
+        }
+        const mx = within(Number(shownLook(n, screen, "moveX") ?? 0) + dx);
+        const my = within(Number(shownLook(n, screen, "moveY") ?? 0) + dy);
+        return [styleOp(n, screen, { moveX: mx || null, moveY: my || null })];
+      });
+      void change(tr("تحريك", "Nudge"), ops);
+    }, 450);
   };
   const copySelected = () => {
     if (!selFree || !selNode?.parentId) return;
@@ -1974,6 +2039,24 @@ export default function StudioPage() {
               })}
             </div>
           </div>
+          {selFree && !multi && !editing && !placing && !drop && selShape && !["section", "cell", "columns", "page"].includes(selFree.type) ? (
+            <SelectionHandles
+              box={selShape.box}
+              zoom={zoom}
+              sides={["image", "video", "slider", "svg", "product360", "stack", "grid"].includes(selFree.type) ? "all" : "width"}
+              turn={Number(shownLook(selFree, screen, "rotateZ") ?? 0)}
+              local={local}
+              onSize={(w, h) => void change(tr("الحجم", "Size"), [styleOp(selFree, screen, { ...(w !== null ? { width: `${w}px` } : {}), ...(h !== null ? { height: `${h}px` } : {}) })])}
+              onReset={() => void change(tr("الحجم الطبيعي", "Natural size"), [styleOp(selFree, screen, { width: null, height: null })])}
+              onTurnLive={(deg) => send({ type: "previewLook", nodeId: selFree.id, vars: { "--pt-rz": `${deg}deg` } })}
+              onTurn={(deg) => void change(tr("دوران", "Turn"), [styleOp(selFree, screen, { rotateZ: deg || null })])}
+            />
+          ) : null}
+          <Guides
+            guides={guides}
+            gaps={altHeld && selShape && hovered && hovered !== selected && shapeOf(hovered) ? gapsBetween(selShape.box, shapeOf(hovered)!.box) : []}
+            zoom={zoom}
+          />
           {!layout ? (
             <div className="pointer-events-none absolute inset-x-0 top-1/2 text-center text-sm text-white/55" data-testid="studio-waiting">
               {ticketError
