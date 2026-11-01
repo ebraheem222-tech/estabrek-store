@@ -4155,4 +4155,12 @@ export const HE: Record<string, string> = {
   "A link when it's clicked (turning by hand goes)": "קישור בלחיצה (הסיבוב ביד מתבטל)",
   "The model draws only near the screen and stops when it leaves. Whoever asked for less motion sees it still.": "המודל מצויר רק ליד המסך ונעצר כשהוא יוצא. מי שביקש פחות תנועה רואה אותו סטטי.",
   "3D model": "מודל תלת־ממדי",
+  "Product showcase": "תצוגת מוצר",
+  "Neon showroom": "אולם ניאון",
+  "Floating": "מרחף",
+  "Page hero": "גיבור הדף",
+  "Night glow": "זוהר לילה",
+  "Warm and close": "חמים וקרוב",
+  "Spins with the scroll": "מסתובב עם הגלילה",
+  "Bounces with the mouse": "קופץ עם העכבר",
 };

@@ -657,6 +657,20 @@ test.describe.serial("a page of new elements", () => {
     await expect(code.locator("canvas")).toHaveCount(1, { timeout: 15000 });
   });
 
+  test("3D models: at most six canvases at once; one waiting gets its turn when another leaves", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/models-demo");
+    const all = page.locator('[data-tree-node^="many-"] canvas');
+    await expect(all).toHaveCount(6, { timeout: 20000 });
+    await page.waitForTimeout(800);
+    expect(await all.count()).toBe(6);
+    // Far down the page they all give their canvas back.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(all).toHaveCount(0, { timeout: 10000 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(all).toHaveCount(6, { timeout: 20000 });
+  });
+
   test("with reduced motion: no particles and no smooth scrolling; animations stay still", async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: "reduce" });
     const page = await ctx.newPage();

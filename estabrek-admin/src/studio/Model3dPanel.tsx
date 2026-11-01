@@ -16,6 +16,7 @@ import { Range } from "./LookPanels";
 import { Field } from "./StudioPanels";
 import { Choice, ColourPick } from "./StudioTreePanels";
 import { STAGE_ANIMS, STAGE_FINISHES, STAGE_PARTS, loadStoreThemes, type StageGlb, type StageModelInfo } from "./storeThemes";
+import { MODEL3D_LOOKS, lookOf3d, withLook } from "./model3dLooks";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 // The model's settings are plain nested data the backend checks; read loosely here.
@@ -145,6 +146,14 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           set(tr("بدّل الموديل", "Swap the model"), { file: glb ?? undefined, model: p.model ?? "sneaker" });
         }}
       />
+
+      <div className="grid grid-cols-2 gap-1" role="group" aria-label={tr("أشكال جاهزة", "Ready looks")} data-testid="model3d-looks">
+        {MODEL3D_LOOKS.map((l) => (
+          <button key={l.key} type="button" disabled={busy} aria-pressed={lookOf3d(p) === l.key} onClick={() => onOps(l.name(), [{ op: "setProps", nodeId: node.id, props: withLook(p, l) }])} className={`truncate rounded-lg border px-1.5 py-1.5 text-start text-[11px] ${lookOf3d(p) === l.key ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/75 hover:bg-white/[0.05]"} disabled:opacity-40`} data-look={l.key} title={l.name()}>
+            {l.name()}
+          </button>
+        ))}
+      </div>
 
       <Fold title={tr("شكله", "Its look")} open testId="model3d-look">
         {file ? (

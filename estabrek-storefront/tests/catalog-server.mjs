@@ -154,6 +154,23 @@ const mediaDemo = {
     },
   },
 };
+// Eight 3D models at once: only a few canvases live together, the rest wait their turn.
+const modelsDemo = {
+  id: "models-demo", slug: "/models-demo", name: "Models demo", status: "PUBLISHED", format: 2, sections: [],
+  tree: {
+    version: 1,
+    root: {
+      id: "page", type: "page", props: {},
+      children: [
+        {
+          id: "many", type: "section", props: { contained: true }, style: { base: { pad: [20, 20, 20, 20] } },
+          children: ["mug", "watch", "lamp", "vase", "ring", "gem", "book", "plant"].map((model, i) => ({ id: `many-${i}`, type: "model3d", props: { model }, style: { base: { width: "110px" } } })),
+        },
+        { id: "far", type: "section", props: {}, style: { base: { minHeight: "3000px" } }, children: [{ id: "far-t", type: "text", props: { text: { ar: "بعيد", en: "Far", he: "רחוק" } } }] },
+      ],
+    },
+  },
+};
 // A page of new elements in three languages, with one old section in the middle.
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
@@ -1187,6 +1204,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));
       if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
+      if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));
       if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [

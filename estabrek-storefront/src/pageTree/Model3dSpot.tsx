@@ -6,13 +6,46 @@
  * "Reduce motion" draws it still. With a link, the whole model is the link.
  */
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { modelColours } from "@/storeThemes/three/colours";
 import type { ModelColours } from "@/storeThemes/three/parts";
 import type { Palette } from "@/storeThemes/colour";
 import type { Model3dSpec } from "./model3d";
 
 const Canvas3d = dynamic(() => import("./Model3dCanvas"), { ssr: false });
+
+/**
+ * At most this many 3D canvases at once (a browser allows only a few drawing contexts):
+ * one more near the screen waits until another leaves.
+ */
+export const LIVE_3D = 6;
+const live = new Set<symbol>();
+const waiting: Array<{ id: symbol; wake: () => void }> = [];
+function claim(id: symbol, wake: () => void): boolean {
+  if (live.has(id)) return true;
+  if (live.size < LIVE_3D) {
+    live.add(id);
+    return true;
+  }
+  if (!waiting.some((w) => w.id === id)) waiting.push({ id, wake });
+  return false;
+}
+function release(id: symbol) {
+  const at = waiting.findIndex((w) => w.id === id);
+  if (at >= 0) waiting.splice(at, 1);
+  if (live.delete(id)) waiting.shift()?.wake();
+}
+
+/** A device that can't draw 3D (no WebGL) leaves the model's place empty, never the page broken. */
+class NoWebGl extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 /** A colour as the page draws it (a theme colour through its CSS variable), as #rrggbb. */
 function readColour(probe: HTMLElement, value: string): string {
@@ -40,6 +73,9 @@ function readPage(el: HTMLElement, spec: Model3dSpec): Read {
 export function Model3dSpot({ spec, label, href }: { spec: Model3dSpec; label?: string; href?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
+  // Near and given one of the few canvases.
+  const [held, setHeld] = useState(false);
+  const me = useRef(Symbol("model3d"));
   const [seen, setSeen] = useState(false);
   const [still, setStill] = useState(false);
   const [read, setRead] = useState<Read | null>(null);
@@ -71,6 +107,7 @@ export function Model3dSpot({ spec, label, href }: { spec: Model3dSpec; label?: 
       addEventListener("scroll", scrolled, { passive: true });
     }
     return () => {
+      release(me.current);
       nearBy.disconnect();
       inView.disconnect();
       el.removeEventListener("pointerenter", enter);
@@ -80,8 +117,22 @@ export function Model3dSpot({ spec, label, href }: { spec: Model3dSpec; label?: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const canvas = near && read ? (
-    <Canvas3d spec={spec} colours={read.colours} rims={read.rims} floorTint={read.floor} active={seen} still={still} hovered={hovered} progress={progress} />
+  // A canvas while near the screen and one is free; given back as it leaves.
+  useEffect(() => {
+    const id = me.current;
+    if (!near) {
+      release(id);
+      setHeld(false);
+      return;
+    }
+    const wake = () => setHeld(claim(id, wake));
+    setHeld(claim(id, wake));
+  }, [near]);
+
+  const canvas = near && held && read ? (
+    <NoWebGl>
+      <Canvas3d spec={spec} colours={read.colours} rims={read.rims} floorTint={read.floor} active={seen} still={still} hovered={hovered} progress={progress} />
+    </NoWebGl>
   ) : null;
   return (
     <div ref={box} className="pt-model3d-stage" data-near={near ? "" : undefined} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
