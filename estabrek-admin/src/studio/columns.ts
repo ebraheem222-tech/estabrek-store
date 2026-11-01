@@ -77,7 +77,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "model3d", "icon", "lottie", "rive", "spacer", "divider", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "model3d", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -136,6 +136,8 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
       return { id: id("sp"), type: "spacer", props: { size: 32 } };
     case "divider":
       return { id: id("d"), type: "divider", props: {} };
+    case "products":
+      return { id: id("prod"), type: "products", props: { source: "new", limit: 8, layout: "grid" } };
     case "categories":
       return { id: id("cat"), type: "categories", props: { limit: 6 } };
     case "form":

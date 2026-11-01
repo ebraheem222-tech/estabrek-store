@@ -97,8 +97,8 @@ describe("the template catalog", () => {
   it("finds templates by words in any language", () => {
     const hero = templateById("s:hero-center:dark")!;
     expect(matches(hero, "")).toBe(true);
-    expect(matches(hero, "افتتاحيات غامق")).toBe(true);
-    expect(matches(hero, "openings dark")).toBe(true);
+    expect(matches(hero, "افتتاحيات معكوسة")).toBe(true);
+    expect(matches(hero, "openings inverted")).toBe(true);
     expect(matches(hero, "פתיחים")).toBe(true);
     expect(matches(hero, "footer")).toBe(false);
   });

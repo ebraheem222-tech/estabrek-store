@@ -448,7 +448,7 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
   );
 }
 
-export const EDITABLE = new Set(["heading", "text", "button", "image", "video", "slider", "icon", "spacer", "categories", "form", "lottie", "rive"]);
+export const EDITABLE = new Set(["heading", "text", "button", "image", "video", "slider", "icon", "spacer", "products", "categories", "form", "lottie", "rive"]);
 
 export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
   const [media, setMedia] = useState(false);
@@ -569,6 +569,25 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
       }
       case "spacer":
         return <NumberField label={tr("الارتفاع", "Height")} suffix="px" value={typeof p.size === "number" ? p.size : 32} min={0} max={400} onSave={(v) => setProps({ size: v ?? 0 })} />;
+      case "products":
+        return (
+          <>
+            {words("title", tr("العنوان (اختياري)", "Title (optional)"))}
+            <Choice
+              label={tr("أي منتجات", "Which products")} value={String(p.source ?? "new")} busy={busy} testId="studio-products-source"
+              options={[["new", tr("الأحدث", "Newest")], ["best", tr("الأكثر مبيعاً", "Best sellers")]]}
+              onPick={(v) => setProps({ source: v })}
+            />
+            <NumberField label={tr("كم منتج", "How many")} value={typeof p.limit === "number" ? p.limit : 8} min={1} max={48} onSave={(v) => setProps({ limit: v ?? 8 })} />
+            <Choice label={tr("الترتيب", "Layout")} value={String(p.layout ?? "grid")} busy={busy} options={[["grid", tr("شبكة", "Grid")], ["row", tr("صف بيتمرّر", "A scrolling row")]]} onPick={(v) => setProps({ layout: v })} />
+            <Choice
+              label={tr("شكل الكروت", "Card look")} value={String(p.card ?? "plain")} busy={busy} testId="studio-products-card"
+              options={[["plain", tr("عادي", "Plain")], ["bordered", tr("بإطار", "Framed")], ["shadow", tr("بظل", "Shadowed")], ["soft", tr("بلون ناعم", "Soft colour")], ["lift", tr("بيطلع مع الماوس", "Lifts under the mouse")]]}
+              onPick={(v) => setProps({ card: v === "plain" ? undefined : v })}
+            />
+            <NumberField label={tr("كم بالصف (فاضي = 4)", "How many in a row (empty = 4)")} value={typeof p.columns === "number" ? p.columns : undefined} min={1} max={6} onSave={(v) => setProps({ columns: v ?? undefined })} testId="studio-products-columns" />
+          </>
+        );
       case "categories":
         return (
           <>

@@ -90,9 +90,9 @@ const QUESTIONS: Array<[W, W]> = [
 /** Three models of each kind of store (the shop's built-in ones). */
 export const TRIOS: Record<Family, [string, string, string]> = {
   fashion: ["hanger", "handbag", "sneaker"], shoes: ["sneaker", "handbag", "hanger"], electronics: ["phone", "laptop", "headset"], gaming: ["controller", "headset", "console"],
-  beauty: ["perfume", "lipstick", "jar"], jewelry: ["ring", "gem", "watch"], books: ["book", "mug", "lamp"], art: ["palette", "easel", "frame"],
+  beauty: ["perfume", "lipstick", "jar"], jewelry: ["ring", "gem", "watch"], books: ["book", "mug", "lamp"], art: ["frame", "easel", "palette"],
   home: ["lamp", "vase", "mug"], food: ["cake", "mug", "jar"], kids: ["teddy", "blocks", "ball"], sports: ["dumbbell", "ball", "racket"],
-  pets: ["bone", "ball", "teddy"], flowers: ["plant", "vase", "mug"], music: ["guitar", "vinyl", "speaker"], general: ["handbag", "mug", "gem"],
+  pets: ["bone", "ball", "teddy"], flowers: ["vase", "plant", "mug"], music: ["guitar", "vinyl", "speaker"], general: ["handbag", "mug", "gem"],
 };
 
 /* ------------------------------------------------------------ small parts */

@@ -45,6 +45,11 @@ import { LookPanel, MotionPanel } from "./LookPanels";
 import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
 import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
+import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
+import { ROSE_COLOURS, coloursOf } from "./templates/colours";
+import { PAGE_TEMPLATES, SECTION_TEMPLATES } from "./templates/catalog";
+import { isFamily } from "./templates/words";
+import { listProducts } from "../api/catalog.api";
 import { styleNode, styleOf, withOps } from "./siteStyles";
 import { useAuth } from "../hooks/useAuth";
 import { stateOps, stateView, type StateChoice } from "./states";
@@ -175,6 +180,7 @@ export default function StudioPage() {
   // Picking an element on the page leaves the style that was open.
   useEffect(() => setSiteSel(null), [selected]);
   const [addWhere, setAddWhere] = useState<Where>("after");
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   /** A picture or clip being chosen for something about to be added. */
   const [asked, setAsked] = useState<{ media: "image" | "video"; then: (url: string) => void } | null>(null);
   const [askedUrl, setAskedUrl] = useState("");
@@ -1798,8 +1804,43 @@ export default function StudioPage() {
   })();
   // Motion from the Add panel goes on the selected element, or on the selected part of a section or scene.
   const motionNode = selFree ?? (lookTarget && lookTarget.kind !== "box" ? lookSel : null);
+
+  // Templates (studio/templates): built for the shown theme's kind of store, drawn in its colours, with the store's own photos.
+  const shownThemeInfo = themesQ.data?.find((t) => t.id === (themePreview ?? currentTheme));
+  const templateFamily = isFamily(shownThemeInfo?.family) ? shownThemeInfo.family : "fashion";
+  const templateColours = shownThemeInfo ? coloursOf(shownThemeInfo.palettes?.[themeMode ?? savedTheme?.mode ?? shownThemeInfo.mode]) : ROSE_COLOURS;
+  const productPics = useQuery({
+    queryKey: ["template-pictures"],
+    queryFn: async () => (await listProducts("active")).map((p) => p.summary?.thumbUrl).filter((u): u is string => typeof u === "string" && u.startsWith("https://")).slice(0, 12),
+    enabled: templatesOpen,
+    staleTime: 300_000,
+  });
+  const pageItemNode = (() => {
+    const c = index && selected && selected !== index.root ? insertCtx((x) => `__${x}`) : null;
+    const item = c ? pageItemOf(c, selected) : null;
+    return item ? index?.nodes.get(item)?.node ?? null : null;
+  })();
+  /** A template's sections (or popup) after the selection's page item, or at the page's end: one change. */
+  const placeTemplate = (nodes: PagesAPI.PageTreeNode[], where: UseWhere, name: string) => {
+    if (!index || !nodes.length) return;
+    const at = where === "here" ? pageSpot() : (index.nodes.get(index.root)?.children.length ?? 0);
+    void change(name, nodes.map((node, i) => ({ op: "insert", parentId: index.root, index: at + i, node })), nodes[0].id);
+  };
   const addPanel = () => (
     <>
+    <button
+      type="button"
+      disabled={busy || !index}
+      onClick={() => setTemplatesOpen(true)}
+      className="mb-3 flex w-full items-center gap-2 rounded-xl border border-accent-400/40 bg-accent-500/15 px-3 py-2.5 text-start text-xs text-white hover:bg-accent-500/25 disabled:opacity-40"
+      data-testid="studio-templates-open"
+    >
+      <span className="text-base" aria-hidden="true">▦</span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">{tr("معرض القوالب", "Templates gallery")}</span>
+        <span className="block text-[10px] text-white/55">{tr(`${SECTION_TEMPLATES.length} قسم و${PAGE_TEMPLATES.length} صفحة جاهزة`, "{0} ready sections and {1} pages", [SECTION_TEMPLATES.length, PAGE_TEMPLATES.length])}</span>
+      </span>
+    </button>
     <AddPanel
       where={addWhereNow}
       canWhere={whereOk}
@@ -2294,6 +2335,21 @@ export default function StudioPage() {
             await saveTheme();
           }
         }}
+      />
+      <TemplatesGallery
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        lang={shopLang}
+        family={templateFamily}
+        colours={templateColours}
+        pics={productPics.data ?? []}
+        busy={busy}
+        here={pageItemNode ? label(pageItemNode.id) : null}
+        pageName={pageQ.data?.name ?? ""}
+        pageSections={() => pageKids.filter((n) => n.type === "section" || n.type === "popup")}
+        selectedSection={pageItemNode?.type === "section" ? pageItemNode : null}
+        makeIds={makeIds}
+        onUse={placeTemplate}
       />
     </Shell>
   );

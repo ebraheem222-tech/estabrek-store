@@ -260,6 +260,17 @@ export async function createBlock(name: string, sections: PageTreeNode[]) {
   return (await api.post(ENDPOINTS.admin.pages.blocks, { name, sections })).data as BlockInfo;
 }
 
+/** A template the store saved (backend lib/pageBlocks.ts TEMPLATE_KIND): its sections are read with getPageTree. */
+export type MyTemplateInfo = { id: string; name: string; updatedAt: string; sections: number };
+export async function listTemplates() {
+  const data = (await api.get(ENDPOINTS.admin.pages.templates)).data;
+  // An older API answers something else: none then.
+  return (Array.isArray(data) ? data : []) as MyTemplateInfo[];
+}
+export async function createTemplate(name: string, sections: PageTreeNode[]) {
+  return (await api.post(ENDPOINTS.admin.pages.templates, { name, sections })).data as MyTemplateInfo;
+}
+
 export async function deletePage(id: string) {
   const res = await api.delete(ENDPOINTS.admin.pages.byId(id));
   return res.data as { ok: true };

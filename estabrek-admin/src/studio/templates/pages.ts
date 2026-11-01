@@ -4,7 +4,7 @@
  * pages, and a page for each campaign. A page is a list of sections from the library
  * (sections.ts), each in its skin, so the page's colours take turns.
  */
-import { B, CARD, GRID, H, P, SEC, STACK, eyebrow, mo, say, withSkin, type Ctx, type N, type Skin } from "./build";
+import { B, CARD, GRID, H, P, SEC, STACK, mo, say, withSkin, type Ctx, type N, type Skin } from "./build";
 import { RECIPES, campaignHero, campaignOffer, campaignStrip } from "./sections";
 import { BUDGETS, C, CAMPAIGNS, FAMILIES, LINKS_HELP, LINKS_MAIN, LINKS_SOCIAL, MEASURE, PACKS, SIZE_TABS, w, type Campaign, type Family, type W } from "./words";
 

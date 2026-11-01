@@ -62,6 +62,7 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["model3d", () => typeLabel("model3d"), "◆"],
       ["product360", () => typeLabel("product360"), "⟳"],
       ["columns", () => typeLabel("columns"), "▥"],
+      ["products", () => typeLabel("products"), "▦"],
       ["categories", () => typeLabel("categories"), "▤"],
       ["form", () => typeLabel("form"), "✉"],
     ],

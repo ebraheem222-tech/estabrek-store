@@ -27,7 +27,8 @@ export const SKIN_NAMES: Record<Skin, W> = {
   soft: w("ناعم", "Soft", "רך"),
   surface: w("سطح", "Surface", "משטח"),
   bold: w("بلون المتجر", "In the store's colour", "בצבע החנות"),
-  dark: w("غامق", "Dark", "כהה"),
+  // The theme's text colour as the ground: dark in a light theme, light in a dark one.
+  dark: w("ألوان معكوسة", "Inverted", "צבעים הפוכים"),
   campaign: w("بألوان المناسبة", "In the occasion's colours", "בצבעי האירוע"),
 };
 export { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, SECTION_CATS };
