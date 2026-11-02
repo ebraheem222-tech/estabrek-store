@@ -23,7 +23,7 @@ export type HeroInput = {
   categories: Array<{ id: string; name: string; slug: string }>;
 };
 
-function words(input: HeroInput) {
+export function words(input: HeroInput) {
   const { d, theme, lang } = input;
   const title: string = (typeof d.title === "string" && d.title.trim()) || say(theme.copy.title, lang);
   const image: { url: string | null; path: string } = d.backgroundImageUrl
@@ -41,7 +41,7 @@ function words(input: HeroInput) {
   };
 }
 
-function Title({ lines, className = "th-hero-title" }: { lines: string[]; className?: string }) {
+export function Title({ lines, className = "th-hero-title" }: { lines: string[]; className?: string }) {
   return (
     <h1 className={className} data-th-reveal="headline" data-edit="title" data-edit-lines="">
       {lines.map((l, i) => (
@@ -53,7 +53,7 @@ function Title({ lines, className = "th-hero-title" }: { lines: string[]; classN
   );
 }
 
-function Buttons({ w, ghost = true }: { w: ReturnType<typeof words>; ghost?: boolean }) {
+export function Buttons({ w, ghost = true }: { w: ReturnType<typeof words>; ghost?: boolean }) {
   return (
     <div className="th-hero-actions" data-th-reveal="block">
       <Link href={w.primary.href} className="th-button" data-th-magnetic="" data-edit="primaryButton.label" data-edit-link="primaryButton.href">
@@ -71,7 +71,7 @@ function Buttons({ w, ghost = true }: { w: ReturnType<typeof words>; ghost?: boo
   );
 }
 
-function Picture({ w, kit, sizes, className, fallback, priority = true }: { w: ReturnType<typeof words>; kit: StoreTheme["svg"]; sizes: string; className: string; fallback?: string | null; priority?: boolean }) {
+export function Picture({ w, kit, sizes, className, fallback, priority = true }: { w: ReturnType<typeof words>; kit: StoreTheme["svg"]; sizes: string; className: string; fallback?: string | null; priority?: boolean }) {
   const url = w.image.url || fallback || null;
   return (
     <div className={className} data-th-reveal="image" data-edit-media={w.image.path}>

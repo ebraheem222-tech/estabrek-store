@@ -127,7 +127,9 @@ for (const t of STORE_THEMES.filter((x) => x.classic || DESIGN_SAMPLE.has(x.id))
     await expect(page.locator("html")).toHaveAttribute("data-store-theme", t.id);
     const home = page.locator(`.th-home[data-th="${t.id}"]`);
     await expect(home).toBeVisible();
-    await expect(home.locator(`.th-hero-${t.hero} h1`)).toBeVisible();
+    // A design opens with its page skeleton's own opening (a 3D stage where it has one); a classic theme with its hero.
+    const opening = t.design && !(t.hero === "stage" && t.stage) ? `.th-o-${t.design.archetype}` : `.th-hero-${t.hero}`;
+    await expect(home.locator(`${opening} h1`)).toBeVisible();
     // The entrance starts and the page stops waiting for it.
     await expect(page.locator("html.th-pending")).toHaveCount(0, { timeout: 4000 });
     const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);

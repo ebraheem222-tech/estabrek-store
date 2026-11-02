@@ -13,11 +13,13 @@ import { themePalette } from "../css";
 import type { StageOptions } from "../three/kinds";
 import type { StoreTheme } from "../types";
 import { ThemeHero } from "./heroes";
+import { DesignOpening, LEADS_WITH } from "./openings";
 import { StageHero } from "./StageHero";
 import { OverlayLayer } from "@/pageTree/OverlayLayer";
 import { marqueeWords } from "../words";
 import { ThCollections, ThCta, ThDivider, ThFaq, ThMarquee, ThPanel, ThProducts, ThTestimonials, ThVideo, type ThProduct } from "./sections";
 
+const QUIET = new Set(["minimal", "story", "bento", "split", "recipe", "spec", "gallery"]);
 const PRODUCT_TYPES = ["NEW_ARRIVALS_SLIDER", "BEST_SELLERS_SLIDER", "FEATURED_PRODUCTS", "PRODUCTS_GRID", "PRODUCT_GRID", "PRODUCTS"];
 // Set before the first paint so the opening waits for its entrance (ThemeMotion), never more than 2.5 s.
 const PENDING = `(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var r=document.documentElement;r.classList.add("th-pending");setTimeout(function(){r.classList.remove("th-pending")},2500)}catch(e){}})();`;
@@ -49,6 +51,15 @@ export function ThemedHome({
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const hero = sorted.find((s) => s.type === "HERO");
+  // A design's page skeleton: its own opening, and the store's section it brings up right after it.
+  const archetype = theme.design?.archetype;
+  const lead = archetype ? LEADS_WITH[archetype] : undefined;
+  if (lead && hero) {
+    const want = lead === "products" ? PRODUCT_TYPES : ["COLLECTIONS_GRID", "FEATURED_CATEGORIES"];
+    const at = sorted.findIndex((s) => want.includes(s.type));
+    const after = sorted.indexOf(hero) + 1;
+    if (at > after) sorted.splice(after, 0, ...sorted.splice(at, 1));
+  }
   const products = Object.entries(productLookup)
     .filter(([key]) => !key.startsWith("slug:"))
     .map(([, p]) => p as ThProduct);
@@ -93,10 +104,13 @@ export function ThemedHome({
         <>
           {theme.hero === "stage" && theme.stage ? (
             <StageHero theme={theme} palette={themePalette(theme, mode).palette} lang={lang} d={d} categories={cats} options={stageOptions ?? {}} />
+          ) : archetype ? (
+            <DesignOpening archetype={archetype} theme={theme} lang={lang} d={d} categories={cats} products={products} counts={{ products: products.length, categories: cats.length }} productImage={products.find((p) => p.imageUrl)?.imageUrl ?? null} />
           ) : (
             <ThemeHero theme={theme} lang={lang} d={d} categories={cats} counts={{ products: products.length, categories: cats.length }} productImage={products.find((p) => p.imageUrl)?.imageUrl ?? null} />
           )}
-          <ThMarquee items={marqueeWords(theme, lang)} />
+          {/* Skeletons whose opening already tells the promises (as chapters, callouts, steps, a list) don't run them again. */}
+          {!archetype || !QUIET.has(archetype) ? <ThMarquee items={marqueeWords(theme, lang)} /> : null}
         </>,
         false,
       );
@@ -117,7 +131,7 @@ export function ThemedHome({
   flush();
 
   return (
-    <div className="th-home" data-th={theme.id} data-th-hero={theme.hero} data-th-card={theme.card} data-th-svg={theme.svg} data-th-shape={theme.design?.shape}>
+    <div className="th-home" data-th={theme.id} data-th-hero={theme.hero} data-th-card={theme.card} data-th-svg={theme.svg} data-th-shape={theme.design?.shape} data-th-skeleton={archetype}>
       <script dangerouslySetInnerHTML={{ __html: PENDING }} />
       {nodes}
     </div>
