@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PageTreeNode } from "../api/pages.api";
 import { styleOp } from "./columns";
-import { HOVER_PRESETS, presetsOf, stateOps, stateView, statesOf } from "./states";
+import { FOCUS_PRESETS, HOVER_PRESETS, PRESET_GROUPS, PRESS_PRESETS, STATE_KEYS, presetsOf, stateOps, stateView, statesOf } from "./states";
 
 const btn = (style?: Record<string, unknown>): PageTreeNode => ({ id: "b", type: "button", props: {}, style });
 
@@ -39,5 +39,17 @@ describe("an element's states (mouse over, focused, pressed)", () => {
     expect(presetsOf("hover", "image").map((p) => p.key)).toContain("colour");
     expect(presetsOf("hover", "section").map((p) => p.key)).not.toContain("underline");
     for (const p of HOVER_PRESETS) expect(Object.keys(p.look).length).toBeGreaterThan(0);
+  });
+
+  it("the library: over 50 hover looks in groups, focus and press ones, each only changing what a state may", () => {
+    expect(HOVER_PRESETS.length).toBeGreaterThan(50);
+    const groups = new Set(PRESET_GROUPS.map(([g]) => g));
+    for (const p of HOVER_PRESETS) expect(groups.has(p.group ?? ""), p.key).toBe(true);
+    for (const list of [HOVER_PRESETS, FOCUS_PRESETS, PRESS_PRESETS]) {
+      expect(new Set(list.map((p) => p.key)).size).toBe(list.length);
+      for (const p of list) for (const k of Object.keys(p.look)) expect(STATE_KEYS.has(k), `${p.key}: ${k}`).toBe(true);
+    }
+    expect(FOCUS_PRESETS.length).toBeGreaterThanOrEqual(8);
+    expect(PRESS_PRESETS.length).toBeGreaterThanOrEqual(6);
   });
 });

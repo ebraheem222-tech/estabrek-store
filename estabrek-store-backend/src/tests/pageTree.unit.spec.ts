@@ -172,6 +172,16 @@ describe("checking a page tree", () => {
     expect(moves({ enter: { kind: "explode" } })).toEqual(["root.children[0].children[0].motion.enter.kind"]);
     expect(moves({ loop: { kind: "float", duration: 99 } }).length).toBe(1);
     expect(moves({ scroll: { kind: "keys", to: { rx: 999 } } }).length).toBe(1);
+    // The mouse: a short play, a light or a ripple in a colour, springs.
+    for (const kind of ["bounce", "shake", "jello", "heartbeat", "flip", "pop", "spring", "jelly"]) expect(moves({ hover: { kind, amount: 1.5 } }), kind).toEqual([]);
+    expect(moves({ hover: { kind: "spotlight", color: "accent-soft", amount: 2 } })).toEqual([]);
+    expect(moves({ hover: { kind: "ripple", color: "red" } })).toEqual(["root.children[0].children[0].motion.hover.color"]);
+    expect(moves({ hover: { kind: "explode" } }).length).toBe(1);
+    // Words: letters, lines, scramble, typed, a number counting up; lit up with the scroll; a typing loop; a pinned section.
+    for (const kind of ["letters", "lines", "scramble", "typewriter", "count"]) expect(moves({ enter: { kind, duration: 1.2 } }), kind).toEqual([]);
+    expect(moves({ scroll: { kind: "words", start: 85, end: 45 }, loop: { kind: "type", duration: 3 } })).toEqual([]);
+    expect(moves({ scroll: { kind: "pin", length: 150 } })).toEqual([]);
+    expect(moves({ scroll: { kind: "pin", length: 900 } }).length).toBe(1);
     // The old sections and scenes don't take motion.
     expect(issuesOf(page([{ id: "old", type: "legacy", props: { sectionId: "a" }, motion: { enter: { kind: "fade" } } }]))[0].message).toMatch(/moves with its own settings/);
     // Empty motion is left out.
@@ -269,6 +279,21 @@ describe("checking a page tree", () => {
     expect(issuesOf(tree({ edges: { top: { art: wave, height: 900, color: "bg" } } })).length).toBeGreaterThan(0);
     expect(issuesOf(tree({}, { base: { pattern: { kind: "plaid", color: "accent", size: 24 } } })).length).toBeGreaterThan(0);
     expect(issuesOf(tree({}, { base: { shape: "octopus" } })).length).toBeGreaterThan(0);
+  });
+
+  test("Lottie and Rive animations, particles behind a section, a smoothly scrolling page", () => {
+    const one = (n: unknown, sec: Record<string, unknown> = {}) => ({ version: 1, root: { id: "page", type: "page", props: { smooth: true }, children: [{ id: "s", type: "section", props: sec, children: [n] }] } });
+    const ok = (n: unknown, sec?: Record<string, unknown>) => checkTree(one(n, sec)).ok;
+    expect(ok({ id: "l", type: "lottie", props: { src: "https://lottie.host/abc/anim.lottie", play: "scroll", loop: true, speed: 1.5, label: { ar: "قلب" } } })).toBe(true);
+    expect(ok({ id: "l", type: "lottie", props: { src: "/lottie/pulse.json?v=2", play: "view" } })).toBe(true);
+    expect(ok({ id: "l", type: "lottie", props: {} })).toBe(true); // no file yet
+    expect(ok({ id: "r", type: "rive", props: { src: "https://cdn.rive.app/animations/vehicles.riv", stateMachine: "bumpy", artboard: "Truck", play: "hover" } })).toBe(true);
+    expect(issuesOf(one({ id: "l", type: "lottie", props: { src: "https://x.test/a.gif" } }))[0].message).toMatch(/\.json or \.lottie/);
+    expect(issuesOf(one({ id: "r", type: "rive", props: { src: "javascript:alert(1).riv" } })).length).toBeGreaterThan(0);
+    expect(issuesOf(one({ id: "l", type: "lottie", props: { play: "scroll", speed: 9 } })).length).toBe(1);
+    expect(ok({ id: "t", type: "text", props: { text: { ar: "x" } } }, { particles: { kind: "snow", color: "white", amount: 1.5, speed: 0.5 } })).toBe(true);
+    expect(issuesOf(one({ id: "t", type: "text", props: { text: { ar: "x" } } }, { particles: { kind: "rain" } })).length).toBe(1);
+    expect(issuesOf({ version: 1, root: { id: "page", type: "page", props: { smooth: "yes" }, children: [] } }).length).toBe(1);
   });
 
   test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {

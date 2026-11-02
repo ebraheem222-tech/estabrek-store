@@ -64,6 +64,43 @@ export function PatternPanel({ node, screen, busy, onOps }: { node: PageTreeNode
   );
 }
 
+const PARTICLE_KINDS: Array<[string, () => string, string]> = [
+  ["snow", () => tr("ثلج", "Snow"), "❄"],
+  ["stars", () => tr("نجوم", "Stars"), "✦"],
+  ["bubbles", () => tr("فقاعات", "Bubbles"), "◌"],
+  ["links", () => tr("نقاط موصولة", "Connected dots"), "⋰"],
+  ["fireflies", () => tr("يراعات", "Fireflies"), "✺"],
+  ["confetti", () => tr("قصاصات ملونة", "Confetti"), "✱"],
+  ["hearts", () => tr("قلوب", "Hearts"), "♥"],
+  ["sparkles", () => tr("لمعات", "Sparkles"), "✧"],
+];
+/** Particles behind a section: their kind, colour, how many and how fast. */
+export function ParticlesPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boolean; onOps: Ops }) {
+  const p = isObj(node.props?.particles) ? (node.props.particles as Obj) : null;
+  const save = (next: Obj | null) => onOps(tr("جزيئات القسم", "The section's particles"), [{ op: "setProps", nodeId: node.id, props: { ...node.props, particles: next ?? undefined } }]);
+  return (
+    <div className={box} data-testid="studio-particles">
+      <div className="text-xs font-medium text-white/70">{tr("جزيئات متحركة ورا القسم", "Moving particles behind the section")}</div>
+      <div className="grid grid-cols-4 gap-1" role="group" aria-label={tr("النوع", "Kind")}>
+        {PARTICLE_KINDS.map(([k, name, mark]) => (
+          <button key={k} type="button" title={name()} aria-pressed={p?.kind === k} disabled={busy} onClick={() => save(p?.kind === k ? null : { ...(p ?? {}), kind: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${p?.kind === k ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`} data-particles={k}>
+            <span className="block text-base leading-5" aria-hidden="true">{mark}</span>
+            {name()}
+          </button>
+        ))}
+      </div>
+      {p ? (
+        <div className="space-y-2">
+          <ColourPick label={tr("لونها (فاضي = لون المتجر)", "Their colour (empty = the store's)")} value={p.color ?? ""} busy={busy} onPick={(c) => save({ ...p, color: c ?? undefined })} testId="studio-particles-color" />
+          <Range label={tr("كميتها", "How many")} min={0.2} max={3} step={0.1} busy={busy} value={typeof p.amount === "number" ? p.amount : 1} onSave={(n) => save({ ...p, amount: n })} testId="studio-particles-amount" />
+          <Range label={tr("سرعتها", "How fast")} min={0.2} max={3} step={0.1} busy={busy} value={typeof p.speed === "number" ? p.speed : 1} onSave={(n) => save({ ...p, speed: n })} testId="studio-particles-speed" />
+          <p className="text-[10px] leading-4 text-white/35">{tr("بترتاح لما القسم مش ظاهر، ومش للي طالب حركة أقل.", "They rest while the section is out of sight, and aren't shown to whoever asked for less motion.")}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 type Where = "top" | "bottom";
 /** A section's edges: a band along its top or bottom, its height (and on a phone), colour, and which way it faces. */
 export function EdgesPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boolean; onOps: Ops }) {

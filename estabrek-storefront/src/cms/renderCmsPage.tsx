@@ -42,6 +42,7 @@ import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
 import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
 import { TreeMotion } from "@/pageTree/TreeMotion";
+import { TreeMedia } from "@/pageTree/TreeMedia";
 
 /** Before the first paint: what comes in waits unseen until the motion engine is ready (2.5 s at most; never inside the editor). */
 const TREE_PENDING = `(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches||window.parent!==window)return;var r=document.documentElement;r.classList.add("pt-pending");setTimeout(function(){r.classList.remove("pt-pending")},2500)}catch(e){}})();`;
@@ -474,6 +475,8 @@ export async function renderCmsPageBySlug(
   // The library fonts the page uses, from Google Fonts (one stylesheet).
   let treeFonts: string | null = null;
   let treeMoves = false;
+  // Animated media and smooth scrolling (TreeMedia loads each player only then).
+  let treeMedia: { smooth: boolean } | null = null;
   // The editor's looks that move (parts of old sections and scenes), for the motion engine.
   let lookMoves = "";
   if (tree && treeCtx) {
@@ -503,6 +506,7 @@ export async function renderCmsPageBySlug(
     treeStyle = treeCss(tree, site);
     if (treeStyle) treeFonts = googleFontsHref(treeFamilies(tree, site));
     treeMoves = needs.motion;
+    if (needs.media || needs.smooth) treeMedia = { smooth: needs.smooth };
     const moving = looksOf(tree).map(([t, l]) => [t, treeMotionOf(lookNode(t, l))] as const).filter(([, m]) => m);
     if (moving.length) lookMoves = JSON.stringify(moving).replace(/</g, "\\u003c");
   }
@@ -522,6 +526,7 @@ export async function renderCmsPageBySlug(
       {treeMoves ? <script dangerouslySetInnerHTML={{ __html: TREE_PENDING }} /> : null}
       {lookMoves ? <script type="application/json" id="pt-looks" dangerouslySetInnerHTML={{ __html: lookMoves }} /> : null}
       {treeMoves ? <TreeMotion /> : null}
+      {treeMedia ? <TreeMedia smooth={treeMedia.smooth} /> : null}
 
       {roseHome && storeTheme ? <ThemedHome
         theme={storeTheme}

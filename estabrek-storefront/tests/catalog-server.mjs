@@ -123,6 +123,28 @@ const asTreePage = (p) =>
   pageTreeOn
     ? { ...p, format: 2, tree: { version: 1, root: { id: "page", type: "page", children: p.sections.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((s) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id } })) } } }
     : p;
+// Animated media: a Lottie playing by itself and one following the scroll, a Rive file, snow behind a
+// section, and the page scrolling smoothly.
+const mediaDemo = {
+  id: "media-demo", slug: "/media-demo", name: "Media demo", status: "PUBLISHED", format: 2, sections: [],
+  tree: {
+    version: 1,
+    root: {
+      id: "page", type: "page", props: { smooth: true },
+      children: [
+        {
+          id: "snowy", type: "section", props: { contained: true, particles: { kind: "snow", color: "#ff0000", amount: 1.5 } }, style: { base: { pad: [60, 24, 60, 24], minHeight: "420px" } },
+          children: [
+            { id: "lt-auto", type: "lottie", props: { src: "/lottie/pulse.json", label: { ar: "نبض", en: "Pulse", he: "דופק" } }, style: { base: { width: "200px" } } },
+            { id: "rv", type: "rive", props: { src: "https://cdn.rive.app/animations/vehicles.riv", stateMachine: "bumpy", play: "view" }, style: { base: { width: "300px", aspect: "4 / 3" } } },
+          ],
+        },
+        { id: "tall", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "lt-scroll", type: "lottie", props: { src: "/lottie/pulse.json", play: "scroll" }, style: { base: { width: "200px" } } }] },
+        { id: "after", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "end-t", type: "text", props: { text: { ar: "النهاية", en: "The end", he: "הסוף" } } }] },
+      ],
+    },
+  },
+};
 // A page of new elements in three languages, with one old section in the middle.
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
@@ -234,6 +256,26 @@ const treeDemo = {
             },
           },
           children: [{ id: "heart-pic", type: "image", props: { src: "https://res.cloudinary.com/demo/image/upload/sample.jpg", alt: { ar: "قلب" } }, style: { base: { width: "200px", aspect: "1 / 1", shape: "heart" } } }],
+        },
+        // Words that move: letter by letter (Arabic word by word), a number counting up, scrambled letters, lit up with the scroll.
+        {
+          id: "words-motion", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24] } },
+          children: [
+            { id: "wm-letters", type: "heading", props: { level: 3, text: { ar: "أهلاً وسهلاً", en: "Hello there", he: "שלום לכם" } }, motion: { enter: { kind: "letters", duration: 0.5 } } },
+            { id: "wm-count", type: "text", props: { text: { ar: "+1,200 زبونة سعيدة", en: "+1,200 happy customers", he: "+1,200 לקוחות" } }, motion: { enter: { kind: "count", duration: 1.5 } } },
+            { id: "wm-scramble", type: "heading", props: { level: 4, text: { ar: "عرض خاص", en: "Special offer", he: "מבצע מיוחד" } }, motion: { enter: { kind: "scramble", duration: 1 } } },
+            { id: "wm-scroll", type: "text", props: { text: { ar: "كل كلمة بتضوي لما تنزلي", en: "Each word lights up as you scroll", he: "כל מילה נדלקת בגלילה" } }, motion: { scroll: { kind: "words", start: 100, end: 0 } } },
+          ],
+        },
+        // The mouse: a short play once, a light that follows it, a ripple where it's pressed, a spring.
+        {
+          id: "hovers", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24] } },
+          children: [
+            { id: "hv-bounce", type: "heading", props: { level: 3, text: { ar: "بنط", en: "I bounce", he: "קופץ" } }, motion: { hover: { kind: "bounce", amount: 2 } } },
+            { id: "hv-spot", type: "cell", props: {}, style: { base: { bg: "#ffffff", pad: [40, 40, 40, 40] } }, motion: { hover: { kind: "spotlight", color: "#ff0000", amount: 1.5 } }, children: [{ id: "hv-spot-t", type: "text", props: { text: { ar: "ضو", en: "Light", he: "אור" } } }] },
+            { id: "hv-ripple", type: "button", props: { label: { ar: "اضغطي", en: "Press", he: "ללחוץ" }, href: "#" }, motion: { hover: { kind: "ripple", color: "#00ff00" } } },
+            { id: "hv-jelly", type: "icon", props: { name: "star" }, motion: { hover: { kind: "jelly", amount: 2 } } },
+          ],
         },
         // Columns: a third and two thirds, each cell its own little container (shapes, alignment), three more columns inside one.
         {
@@ -1135,6 +1177,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/") return res.end(JSON.stringify(asTreePage(home)));
       if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));
       if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
+      if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
       if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [

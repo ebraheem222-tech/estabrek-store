@@ -12,7 +12,7 @@ import { tr } from "../lib/words";
 import { styleOp } from "./columns";
 import { shownLook } from "./look";
 import { Range } from "./LookPanels";
-import { NEEDS_NORMAL, STATES, STATE_LABEL, presetsOf, statesOf, type StateChoice, type StateName } from "./states";
+import { NEEDS_NORMAL, PRESET_GROUPS, STATES, STATE_LABEL, presetsOf, statesOf, type StateChoice, type StateName } from "./states";
 import { loadStoreThemes, shopOrigin, type TreeFontInfo } from "./storeThemes";
 import { SAMPLE, loadPreviews, previewFamily } from "./fontPreview";
 import { PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch, effectPreview } from "./textEffects";
@@ -457,11 +457,26 @@ export function StatePresets({ node, view, state, screen, busy, onOps, onOwn }: 
   onOwn: Ops;
 }) {
   const own = ((view.style ?? {}) as Record<string, Obj | undefined>)[screen];
+  const all = presetsOf(state, node.type);
+  const groups = PRESET_GROUPS.filter(([g]) => all.some((p) => p.group === g));
+  const [picked, setGroup] = useState("");
+  // A group this state's looks don't have (picked under another state) shows them all.
+  const group = groups.some(([g]) => g === picked) ? picked : "";
+  const shown = all.filter((p) => !group || p.group === group);
   return (
     <div className={box} data-testid="studio-state-presets">
       <Head title={tr("أشكال جاهزة", "Ready looks")} screen={screen} />
-      <div className="grid grid-cols-2 gap-1">
-        {presetsOf(state, node.type).map((p) => (
+      {groups.length > 1 ? (
+        <div className="flex flex-wrap gap-1" role="group" aria-label={tr("المجموعة", "Group")}>
+          {[["", () => tr("الكل", "All")] as const, ...groups].map(([g, name]) => (
+            <button key={g || "all"} type="button" aria-pressed={group === g} onClick={() => setGroup(g)} className={`rounded-full px-2 py-0.5 text-[10px] ${group === g ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"}`} data-group={g || "all"}>
+              {name()}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="grid max-h-72 grid-cols-2 gap-1 overflow-y-auto">
+        {shown.map((p) => (
           <button
             key={p.key} type="button" disabled={busy} className="truncate rounded-lg border border-white/[0.08] px-1.5 py-1.5 text-start text-[11px] text-white/80 hover:bg-white/[0.05] disabled:opacity-40" data-preset={p.key}
             onClick={() => {

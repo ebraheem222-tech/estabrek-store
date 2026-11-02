@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageTreeNode } from "../api/pages.api";
-import { MOTION_PRESETS, hasPreset, motionOp, placeFor, placedOn, presetsFor, previewOf, shownLook, withPreset } from "./look";
+import { MOTION_PRESETS, hasNumber, hasPreset, motionOp, placeFor, placedOn, presetsFor, previewOf, shownLook, withPreset } from "./look";
 
 const node = (style: Record<string, unknown>, motion?: Record<string, unknown>): PageTreeNode => ({ id: "n", type: "video", props: {}, style, motion });
 
@@ -50,5 +50,21 @@ describe("an element's look and motion in the editor", () => {
     expect(motionOp(n, { enter: { kind: "up" }, loop: undefined })).toEqual({ op: "setMotion", nodeId: "n", motion: { enter: { kind: "up" } } });
     expect(motionOp(n, { loop: undefined })).toEqual({ op: "setMotion", nodeId: "n", motion: null });
     expect(motionOp(n, null)).toEqual({ op: "setMotion", nodeId: "n", motion: null });
+  });
+});
+
+describe("words that move", () => {
+  const words = (text: Record<string, string>, type = "text"): PageTreeNode => ({ id: "t", type, props: type === "button" ? { label: text } : { text } });
+  it("counting up is offered only for words with a number (any digits); letters and typing only for words; pinning for a section", () => {
+    expect(hasNumber(words({ ar: "+1,200 زبونة" }))).toBe(true);
+    expect(hasNumber(words({ ar: "٣٥٠٠ طلب" }))).toBe(true);
+    expect(hasNumber(words({ ar: "بلا رقم", en: "no number" }))).toBe(false);
+    expect(hasNumber(words({ en: "Save 30%" }, "button"))).toBe(true);
+    const keys = (n: PageTreeNode) => presetsFor(n.type, n).map((p) => p.key);
+    expect(keys(words({ ar: "+1,200" }))).toEqual(expect.arrayContaining(["letters", "lines", "scramble", "typewriter", "count", "scroll-words", "typing"]));
+    expect(keys(words({ ar: "بلا رقم" }))).not.toContain("count");
+    expect(keys({ id: "s", type: "section", props: {} })).toContain("pin");
+    expect(keys({ id: "s", type: "section", props: {} })).not.toContain("letters");
+    expect(keys({ id: "i", type: "image", props: {} })).not.toContain("pin");
   });
 });

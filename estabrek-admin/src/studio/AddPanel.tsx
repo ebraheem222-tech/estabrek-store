@@ -47,6 +47,8 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
     kinds: [
       ["svg", () => tr("رسمة أو شكل", "Drawing or shape"), "✿"],
       ["icon", () => typeLabel("icon"), "♥"],
+      ["lottie", () => typeLabel("lottie"), "◎"],
+      ["rive", () => typeLabel("rive"), "◈"],
       ["divider", () => typeLabel("divider"), "—"],
       ["spacer", () => typeLabel("spacer"), "↕"],
     ],

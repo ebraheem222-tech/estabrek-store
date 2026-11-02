@@ -29,6 +29,7 @@ export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 *
 export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
+  "lottie", "rive",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
@@ -46,7 +47,7 @@ export const PAGE_LEVEL_TYPES: ReadonlySet<NodeType> = new Set(["section", "rose
  * a drawing…): the shop draws them on a layer over the section, in sight through a tall scene.
  */
 export const OVERLAY_HOSTS: ReadonlySet<NodeType> = new Set(["legacy", "roseBlock"]);
-export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon"]);
+export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive"]);
 export const OVERLAY_LIMIT = 40;
 
 export const ICON_NAMES = ["heart", "star", "truck", "shield", "gift", "phone", "whatsapp", "mail", "check", "sparkle", "bag", "return"] as const;
@@ -162,6 +163,8 @@ export const SHAPES = [
   "hexagon", "octagon", "diamond", "triangle", "pentagon", "star", "heart", "blob", "blob2", "flower",
   "leaf", "drop", "shield", "squircle", "ticket", "bubble", "plus", "slant", "wave", "tilt",
 ] as const;
+/** Particles behind a section (tsParticles, the shop's pageTree/TreeMedia.tsx). */
+export const PARTICLES = ["snow", "stars", "bubbles", "links", "fireflies", "confetti", "hearts", "sparkles"] as const;
 /** A pattern over the background, drawn in one colour (the shop's pageTree/css.ts). */
 export const PATTERNS = ["dots", "polka", "grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"] as const;
 /** A band along a section's top or bottom: a drawing stretched the full width (a wave, an angle…). */
@@ -235,9 +238,22 @@ export const NodeStyle = z.object({ base: ScreenStyle.optional(), tablet: Screen
 /* ------------------------------------------------------------------ motion */
 
 // "draw" draws a drawing's lines, "morph" turns its shape into its second one and back, "dash" runs its lines.
-export const ENTER_KINDS = ["fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn", "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw"] as const;
-export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash"] as const;
-export const HOVER_KINDS = ["lift", "grow", "tilt", "magnetic", "glow", "zoom"] as const;
+// Words: "letters" one by one, "lines" from under a mask, "scramble", "typewriter", "count" (a number counting up).
+export const ENTER_KINDS = [
+  "fade", "up", "down", "start", "end", "zoom-in", "zoom-out", "blur", "flip-x", "flip-y", "turn",
+  "wipe-start", "wipe-end", "wipe-up", "wipe-down", "wipe-center", "circle", "words", "draw",
+  "letters", "lines", "scramble", "typewriter", "count",
+] as const;
+// "type" types its words, waits and takes them back, again and again.
+export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
+// "words" lights its words up one by one with the scroll; "pin" holds it in place for `length` % of a screen.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin"] as const;
+// Then plays once as the mouse comes over it, a light following the mouse, a ripple where it's pressed, springy ones.
+export const HOVER_KINDS = [
+  "lift", "grow", "tilt", "magnetic", "glow", "zoom",
+  "bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop",
+  "spotlight", "ripple", "spring", "jelly",
+] as const;
 export const FX_KINDS = ["shine", "gradient", "grain"] as const;
 /** A moment of a scroll animation, added to the element's own look (opacity as it is). */
 const MotionKeys = z.object({
@@ -257,9 +273,9 @@ const MotionKeys = z.object({
  */
 export const NodeMotion = z.object({
   enter: z.object({ kind: z.enum(ENTER_KINDS), duration: seconds(6).optional(), delay: seconds(6).optional(), ease: z.enum(EASES).optional(), distance: px(0, 400).optional(), stagger: seconds(1).optional() }).optional(),
-  scroll: z.object({ kind: z.enum(["parallax", "keys"]), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional() }).optional(),
+  scroll: z.object({ kind: z.enum(SCROLL_KINDS), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional(), length: z.number().min(10).max(400).optional() }).optional(),
   loop: z.object({ kind: z.enum(LOOP_KINDS), duration: z.number().min(0.2).max(20).optional(), amount: z.number().min(0.1).max(3).optional() }).optional(),
-  hover: z.object({ kind: z.enum(HOVER_KINDS), amount: z.number().min(0.1).max(3).optional() }).optional(),
+  hover: z.object({ kind: z.enum(HOVER_KINDS), amount: z.number().min(0.1).max(3).optional(), color: color.optional() }).optional(),
   fx: z.object({ kind: z.enum(FX_KINDS), speed: z.number().min(0.2).max(5).optional(), color: color.optional(), to: color.optional() }).optional(),
   phone: z.enum(["same", "lite", "off"]).optional(),
 });
@@ -283,12 +299,14 @@ const Looks = z
 
 const none = z.object({});
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
-  page: z.object({ looks: Looks.optional() }),
+  // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
+  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional() }),
   section: z.object({
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
     contained: z.boolean().optional(), // the content keeps to the page width
     edges: z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() }).optional(),
+    particles: z.object({ kind: z.enum(PARTICLES), color: color.optional(), amount: z.number().min(0.2).max(3).optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
   }),
   grid: none,
   stack: none,
@@ -312,6 +330,22 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // A product's 360° view (a scan linked to it, lib/productSpins.ts): that colour's, else the one for every colour.
   // Without a product yet it draws nothing in the shop (the editor shows its place).
   product360: z.object({ productId: id.optional(), itemId: id.optional(), auto: z.boolean().optional(), label: local(120).optional() }),
+  // A Lottie animation (.json or .lottie) or a Rive one (.riv, with its state machine): it plays by itself,
+  // once it's seen, with the mouse over it, or (Lottie) with the scroll. No file yet = nothing in the shop.
+  lottie: z.object({
+    src: src.refine((v) => /\.(json|lottie)([?#]|$)/i.test(v), "A Lottie file ends in .json or .lottie").optional(),
+    play: z.enum(["auto", "view", "hover", "scroll"]).optional(),
+    loop: z.boolean().optional(),
+    speed: z.number().min(0.1).max(4).optional(),
+    label: local(120).optional(),
+  }),
+  rive: z.object({
+    src: src.refine((v) => /\.riv([?#]|$)/i.test(v), "A Rive file ends in .riv").optional(),
+    stateMachine: z.string().trim().min(1).max(60).optional(),
+    artboard: z.string().trim().min(1).max(60).optional(),
+    play: z.enum(["auto", "view", "hover"]).optional(),
+    label: local(120).optional(),
+  }),
   // A drawing: a shape from the editor's library (`shape` + `knobs` let it be changed again) or one's own SVG, as data.
   svg: z.object({
     art: z.unknown().superRefine((v, ctx) => {

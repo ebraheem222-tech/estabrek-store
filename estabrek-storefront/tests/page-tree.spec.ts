@@ -6,6 +6,8 @@ import { artHasLines, safeArt } from "../src/pageTree/svgArt";
 import { Fragment, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { hasRich, parseRich, richNodes } from "../src/pageTree/rich";
+import { countUpText, scrambleChars } from "../src/pageTree/textMotion";
+import { PARTICLE_KINDS, particleOptions, particlesOf } from "../src/pageTree/particles";
 
 // The new CMS's page tree (src/pageTree): a converted page draws exactly as before,
 // and a page of new elements draws on the server in three languages.
@@ -123,6 +125,8 @@ test.describe("styles become safe CSS", () => {
     expect(css).toContain(".pt-v>.pt-fx{--pt-fxc:#fff;--pt-fxs:1.50s}");
     // Unknown motion is dropped before it reaches the page.
     expect(motionOf({ id: "x", type: "text", props: {}, motion: { enter: { kind: "explode" }, loop: { kind: "float", duration: 99 }, hover: { kind: "tilt", amount: 2 } } })).toEqual({ loop: { kind: "float" }, hover: { kind: "tilt", amount: 2 } });
+    expect(motionOf({ id: "x", type: "cell", props: {}, motion: { hover: { kind: "spotlight", color: "accent", amount: 9 } } })).toEqual({ hover: { kind: "spotlight", color: "accent" } });
+    expect(TREE_TRANSFORM).toContain("var(--pt-hrz,0deg)");
     expect(motionOf({ id: "x", type: "text", props: {}, motion: "nope" })).toBeNull();
   });
 
@@ -299,6 +303,32 @@ test.describe("styles become safe CSS", () => {
     expect(artHasLines(art!)).toBe(true);
     expect(safeArt({ viewBox: "0 0 10 10", nodes: [{ t: "script", a: {} }] })).toBeNull();
     expect(safeArt({ viewBox: "javascript:alert(1)", nodes: [{ t: "path", a: { d: "M0 0" } }] })).toBeNull();
+  });
+
+  test("particles: known kinds and numbers in range only; each kind's options in the section's colour", () => {
+    expect(particlesOf({ kind: "snow", color: "accent", amount: 9, speed: 2 })).toEqual({ kind: "snow", amount: 1, speed: 2, color: "accent" });
+    expect(particlesOf({ kind: "rain" })).toBeNull();
+    for (const kind of PARTICLE_KINDS) {
+      const o = particleOptions({ kind, amount: 2, speed: 1 }, "rgb(1, 2, 3)") as any;
+      expect(o.fullScreen.enable, kind).toBe(false);
+      expect(o.pauseOnOutsideViewport, kind).toBe(true);
+      expect(JSON.stringify(o.particles.color), kind).toContain("rgb(1, 2, 3)");
+    }
+    expect((particleOptions({ kind: "snow", amount: 2 }, "red") as any).particles.number.value).toBe(160);
+  });
+
+  test("a number counting up keeps its words, digits, separators and decimals", () => {
+    const a = countUpText("+1,200 زبونة سعيدة")!;
+    expect([a.before, a.target, a.after, a.format(600), a.format(1200)]).toEqual(["+", 1200, " زبونة سعيدة", "600", "1,200"]);
+    const b = countUpText("٣٥٠٠ طلب")!;
+    expect([b.target, b.format(1200), b.format(3500)]).toEqual([3500, "١٢٠٠", "٣٥٠٠"]);
+    const c = countUpText("Rated 4.8 of 5")!;
+    expect([c.before, c.target, c.format(2.45), c.after]).toEqual(["Rated ", 4.8, "2.5", " of 5"]);
+    expect(countUpText("99% happy.")!.after).toBe("% happy.");
+    expect(countUpText("no number")).toBeNull();
+    expect(scrambleChars("عرض")).toMatch(/^[\u0600-\u06FF]+$/);
+    expect(scrambleChars("מבצע")).toMatch(/^[\u0590-\u05FF]+$/);
+    expect(scrambleChars("Sale")).toBe("upperAndLowerCase");
   });
 
   test("words fall back to the store's main language; a broken tree reads as none", () => {
@@ -490,6 +520,113 @@ test.describe.serial("a page of new elements", () => {
     expect(await page.locator('[data-tree-node="heart-pic"]').evaluate((el) => getComputedStyle(el).maskImage || getComputedStyle(el).webkitMaskImage)).toContain("data:image/svg+xml");
     await page.setViewportSize({ width: 390, height: 800 });
     await expect.poll(() => top.evaluate((el) => Math.round(el.getBoundingClientRect().height))).toBe(30);
+  });
+
+  test("the mouse: a short play once, a light that follows it, a ripple where it's pressed, a jelly spring", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/tree-demo");
+    const v = (id: string, prop: string) => page.locator(`[data-tree-node="${id}"]`).evaluate((el, p) => getComputedStyle(el).getPropertyValue(p).trim(), prop);
+    await page.locator('[data-tree-node="hv-bounce"]').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => !document.documentElement.classList.contains("pt-pending"));
+    // A bounce: up and back down.
+    const box = (await page.locator('[data-tree-node="hv-bounce"]').boundingBox())!;
+    await page.mouse.move(box.x - 40, box.y - 40);
+    await page.mouse.move(box.x + 10, box.y + box.height / 2, { steps: 4 });
+    await expect.poll(() => v("hv-bounce", "--pt-hy").then((y) => parseFloat(y)), { timeout: 3000 }).toBeLessThan(-2);
+    await expect.poll(() => v("hv-bounce", "--pt-hy"), { timeout: 3000 }).toBe("0px");
+    // A light that follows the mouse, in its colour.
+    const spot = page.locator('[data-tree-node="hv-spot"]');
+    await expect(spot).toHaveClass(/pt-hv-spot/);
+    expect(await v("hv-spot", "--pt-spc")).toBe("#ff0000");
+    expect(await v("hv-spot", "--pt-spr")).toBe("330px");
+    const sb = (await spot.boundingBox())!;
+    await page.mouse.move(sb.x + 30, sb.y + 20, { steps: 3 });
+    await page.mouse.move(sb.x + 60, sb.y + 25, { steps: 3 });
+    await expect.poll(() => v("hv-spot", "--pt-sx")).toBe("60px");
+    await expect.poll(() => spot.locator(".pt-spot").evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+    // A ripple where it's pressed, gone once it has spread.
+    const btn = page.locator('[data-tree-node="hv-ripple"]');
+    const bb = (await btn.boundingBox())!;
+    await page.mouse.move(bb.x + 10, bb.y + 10);
+    await page.mouse.down();
+    await expect(btn.locator(".pt-rpl")).toHaveCount(1);
+    await page.mouse.up();
+    await expect(btn.locator(".pt-rpl")).toHaveCount(0, { timeout: 3000 });
+    // A jelly spring: it grows past its size and settles.
+    await page.locator('[data-tree-node="hv-jelly"]').scrollIntoViewIfNeeded();
+    const jb = (await page.locator('[data-tree-node="hv-jelly"]').boundingBox())!;
+    await page.mouse.move(jb.x - 40, jb.y - 40);
+    await page.mouse.move(jb.x + jb.width / 2, jb.y + jb.height / 2, { steps: 4 });
+    await expect.poll(() => v("hv-jelly", "--pt-hs").then(Number), { timeout: 3000 }).toBeGreaterThan(1.05);
+  });
+
+  test("words that move: Arabic word by word and English letter by letter, a number counting up, a scramble, words lit with the scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const [path, pieces, count] of [["/tree-demo", 2, "+1,200 زبونة سعيدة"], ["/en/tree-demo", 10, "+1,200 happy customers"]] as const) {
+      await page.goto(path);
+      const letters = page.locator('[data-tree-node="wm-letters"]');
+      await letters.scrollIntoViewIfNeeded();
+      // Arabic stays joined: its words move, never its letters; English moves letter by letter.
+      // The pieces that move are the innermost ones: Arabic words, English letters.
+      await expect.poll(() => letters.evaluate((el) => [...el.querySelectorAll("div")].filter((d) => !d.querySelector("div")).length)).toBe(pieces);
+      const counter = page.locator('[data-tree-node="wm-count"]');
+      await counter.scrollIntoViewIfNeeded();
+      await expect.poll(() => counter.innerText(), { timeout: 4000 }).toBe(count);
+    }
+    // Scrambled letters fall into place (the shop now remembers English).
+    await page.goto("/en/tree-demo");
+    const sc = page.locator('[data-tree-node="wm-scramble"]');
+    await sc.scrollIntoViewIfNeeded();
+    await expect.poll(() => sc.innerText(), { timeout: 4000 }).toBe("Special offer");
+    // With the scroll: low on the screen its words are dim, higher up they light.
+    const w = page.locator('[data-tree-node="wm-scroll"]');
+    await w.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight + 10));
+    await expect.poll(() => w.evaluate((el) => Number(getComputedStyle(el.querySelector("div") ?? el).opacity)), { timeout: 4000 }).toBeLessThan(0.6);
+    await w.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().bottom + window.scrollY + 20));
+    await expect.poll(() => w.evaluate((el) => Number(getComputedStyle([...el.querySelectorAll("div")].at(-1) ?? el).opacity)), { timeout: 4000 }).toBeGreaterThan(0.9);
+  });
+
+  test("animated media: Lottie plays and follows the scroll, Rive loads its player from the shop, snow falls behind a section, the page scrolls smoothly", async ({ page }) => {
+    const wasm: string[] = [];
+    page.on("request", (r) => /\.wasm(\?|$)/.test(r.url()) && wasm.push(new URL(r.url()).host + new URL(r.url()).pathname));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/media-demo");
+    // A Lottie drawing on its canvas (some of its pixels painted), its words for screen readers.
+    const auto = page.locator('[data-tree-node="lt-auto"]');
+    await expect(auto).toHaveAttribute("aria-label", "نبض");
+    const painted = (id: string) => page.locator(`[data-tree-node="${id}"] canvas`).evaluate((c: HTMLCanvasElement) => c.width > 0 && c.height > 0);
+    await expect.poll(() => painted("lt-auto"), { timeout: 10000 }).toBe(true);
+    // Snow behind the section: a canvas inside the particles' layer, under the content.
+    const dots = page.locator('[data-tree-node="snowy"] > .pt-particles');
+    await expect(dots.locator("canvas")).toHaveCount(1, { timeout: 10000 });
+    expect(await dots.evaluate((el) => [getComputedStyle(el).zIndex, getComputedStyle(el).color].join("|"))).toBe("-1|rgb(255, 0, 0)");
+    // Smooth scrolling is on (Lenis marks the page).
+    await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(true);
+    // The scroll's Lottie shows another frame as the page moves on.
+    const frame = () => page.locator('[data-tree-node="lt-scroll"] canvas').evaluate((c: HTMLCanvasElement) => c.toDataURL());
+    const at = (y: number) => page.evaluate((top) => window.scrollTo(0, top), y);
+    const top = await page.locator('[data-tree-node="lt-scroll"]').evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    await at(top - 800);
+    await expect.poll(() => page.locator('[data-tree-node="lt-scroll"] canvas').evaluate((c: HTMLCanvasElement) => c.width > 0), { timeout: 10000 }).toBe(true);
+    await page.waitForTimeout(500);
+    const early = await frame();
+    await at(top - 200);
+    await expect.poll(frame, { timeout: 5000 }).not.toBe(early);
+    // The players' WebAssembly comes from the shop itself, never a public CDN.
+    await expect.poll(() => wasm.some((u) => u.endsWith("/vendor/dotlottie-player.wasm")), { timeout: 10000 }).toBe(true);
+    await expect.poll(() => wasm.some((u) => /\/vendor\/rive(_fallback)?\.wasm$/.test(u)), { timeout: 10000 }).toBe(true);
+    expect(wasm.filter((u) => !u.startsWith("127.0.0.1:3000/vendor/"))).toEqual([]);
+  });
+
+  test("with reduced motion: no particles and no smooth scrolling; animations stay still", async ({ browser }) => {
+    const ctx = await browser.newContext({ reducedMotion: "reduce" });
+    const page = await ctx.newPage();
+    await page.goto("/media-demo");
+    await expect.poll(() => page.locator('[data-tree-node="lt-auto"] canvas').evaluate((c: HTMLCanvasElement) => c.width > 0), { timeout: 10000 }).toBe(true);
+    await page.waitForTimeout(800);
+    expect(await page.locator(".pt-particles canvas").count()).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(false);
+    await ctx.close();
   });
 
   test("a library font: the page asks Google once for the families it uses; the shop's own copy stays its own", async ({ page }) => {

@@ -41,6 +41,8 @@ export const TYPE_LABEL: Record<string, () => string> = {
   spacer: () => tr("مسافة", "Spacer"),
   divider: () => tr("فاصل", "Divider"),
   icon: () => tr("أيقونة", "Icon"),
+  lottie: () => tr("رسوم متحركة Lottie", "Lottie animation"),
+  rive: () => tr("رسوم تفاعلية Rive", "Rive animation"),
   products: () => tr("منتجات", "Products"),
   categories: () => tr("أقسام المتجر", "Store categories"),
   form: () => tr("نموذج", "Form"),

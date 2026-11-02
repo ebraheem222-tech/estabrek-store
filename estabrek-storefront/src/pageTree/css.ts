@@ -595,6 +595,13 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
       const layered = screens.some(coveredOn);
       if (layered) ((MEDIA.has(n.type) && (n.type === "slider" || framed(n, motion))) ? over : under).push(sel);
       if (layered || motion?.fx) holders.push(sel);
+      const hv = motion?.hover;
+      if (hv && (hv.kind === "spotlight" || hv.kind === "ripple")) {
+        const c = color(hv.color);
+        const r = num(hv.amount, 0.1, 3);
+        const vars = [c && `${hv.kind === "ripple" ? "--pt-rpc" : "--pt-spc"}:${c}`, hv.kind === "spotlight" && r !== undefined && `--pt-spr:${Math.round(220 * r)}px`].filter(Boolean);
+        if (vars.length) fx.push(`${sel}{${vars.join(";")}}`);
+      }
       if (motion?.fx) {
         const [c, c2, sp] = [color(motion.fx.color), color(motion.fx.to), num(motion.fx.speed, 0.2, 5)];
         fx.push(`${sel}>.pt-fx{${[c && `--pt-fxc:${c}`, c2 && `--pt-fxc2:${c2}`, `--pt-fxs:${(3 / (sp ?? 1)).toFixed(2)}s`].filter(Boolean).join(";")}}`);
@@ -740,6 +747,22 @@ export const BASE_CSS = [
   ".pt-hv-glow:hover{filter:drop-shadow(0 0 18px var(--accent))}",
   ".pt-hv-zoom>.pt-frame-media{transition:transform .7s cubic-bezier(.2,.7,.2,1)}",
   ".pt-hv-zoom:hover>.pt-frame-media{transform:scale(1.08)}",
+  // A light that follows the mouse (under the words), and a ripple where it's pressed.
+  ".pt-hv-spot,.pt-hv-ripple{position:relative;isolation:isolate}.pt-hv-ripple{overflow:hidden}",
+  ".pt-spot{position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s ease;background:radial-gradient(circle var(--pt-spr,220px) at var(--pt-sx,50%) var(--pt-sy,50%),var(--pt-spc,color-mix(in srgb,var(--accent) 30%,transparent)),transparent)}",
+  "@media (hover:hover){.pt-hv-spot:hover>.pt-spot{opacity:1}}",
+  ".pt-rpl{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;background:var(--pt-rpc,currentColor);opacity:.28;transform:translate(-50%,-50%) scale(0);animation:pt-ripple .65s ease-out forwards}",
+  "@keyframes pt-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}",
+  // Animations on a canvas (TreeMedia), square unless the element says; particles behind a section.
+  ".pt-lottie,.pt-rive{display:block;width:100%;aspect-ratio:1/1}",
+  ".pt-anim-canvas{display:block;width:100%;height:100%}",
+  ".pt-particles{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;color:var(--accent)}",
+  ".pt-particles canvas{display:block;width:100%!important;height:100%!important}",
+  // Smooth scrolling (Lenis) takes over the page's scroll.
+  "html.lenis,html.lenis body{height:auto}.lenis.lenis-smooth{scroll-behavior:auto!important}.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}.lenis.lenis-stopped{overflow:hidden}",
+  // Words being typed: a blinking caret after them.
+  ".pt-typing::after{content:\"\";display:inline-block;width:2px;height:1em;margin-inline-start:3px;background:currentColor;vertical-align:-.12em;animation:pt-caret .8s steps(1) infinite}",
+  "@keyframes pt-caret{50%{opacity:0}}",
   // Animated layers.
   ".pt-fx{position:absolute;inset:0;z-index:1;overflow:hidden;border-radius:inherit;pointer-events:none}",
   ".pt-fx-shine::before{content:\"\";position:absolute;top:-25%;bottom:-25%;left:0;width:40%;background:linear-gradient(90deg,transparent,var(--pt-fxc,rgba(255,255,255,.55)),transparent);transform:translateX(-150%) skewX(-18deg);animation:pt-shine var(--pt-fxs,3s) ease-in-out infinite}",
@@ -807,5 +830,5 @@ export const BASE_CSS = [
   ".pt-tile span{font-weight:600}",
   `@media (max-width:${TABLET_MAX}px){.pt-products-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.pt-section{padding-block:44px}}`,
   `@media (max-width:${PHONE_MAX}px){.pt-products-grid,.pt-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.pt-section{padding-block:32px}.pt-block-title{font-size:22px}}`,
-  "@media (prefers-reduced-motion:reduce){.pt-btn,.pt-slider-arrow,.pt-slider-dot::before,.pt-hv-glow,.pt-hv-zoom>.pt-frame-media{transition:none}.pt-slides{scroll-behavior:auto}.pt-fx,.pt-fx::before{animation:none}.pt-fx-shine{display:none}}",
+  "@media (prefers-reduced-motion:reduce){.pt-btn,.pt-slider-arrow,.pt-slider-dot::before,.pt-hv-glow,.pt-hv-zoom>.pt-frame-media{transition:none}.pt-slides{scroll-behavior:auto}.pt-fx,.pt-fx::before{animation:none}.pt-fx-shine,.pt-spot{display:none}}",
 ].join("");

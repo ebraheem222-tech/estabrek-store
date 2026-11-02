@@ -78,6 +78,11 @@ describe("a page's draft", () => {
     d = applyOps(d, [{ op: "setStyle", nodeId: "c2", screen: "mobile", style: null }, { op: "setProps", nodeId: "t1", props: { text: { ar: "اثنين", en: "Two" } } }], ctx);
     expect(locate(d.tree, "c2")?.node.style).toBeUndefined();
     expect(locate(d.tree, "t1")?.node.props).toEqual({ text: { ar: "اثنين", en: "Two" } });
+    // The page's own setting: smooth scrolling on and off (nothing else of the page changes this way).
+    d = applyOps(d, [{ op: "setProps", nodeId: "page", props: { smooth: true, looks: { "s:x/y": { kind: "text" } } } }], ctx);
+    expect(d.tree.root.props).toEqual({ smooth: true });
+    d = applyOps(d, [{ op: "setProps", nodeId: "page", props: {} }], ctx);
+    expect(d.tree.root.props?.smooth).toBeUndefined();
     // Out of the cell and off the page.
     d = applyOps(d, [{ op: "remove", nodeId: "t1" }], ctx);
     expect(locate(d.tree, "t1")).toBeNull();
