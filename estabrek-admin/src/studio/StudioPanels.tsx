@@ -91,6 +91,10 @@ export function SectionSettings({ type, data, words, busy, onSet }: {
           <option value="subtle">{tr("هادئة", "Subtle")}</option>
         </select>
       </label>
+      {type === "CUSTOM_HTML" ? (
+        // A custom HTML section stays an old section; its HTML is edited here (the shop cleans it before showing it).
+        <Field label={tr("الـ HTML تبع القسم", "The section's HTML")} multiline value={typeof words.html === "string" ? words.html : ""} onSave={(v) => onSet(["html"], v, true)} testId="studio-custom-html" />
+      ) : null}
       {type === "HERO" ? (
         <div className="space-y-2 border-t border-white/[0.06] pt-3">
           {toggle("roseHeroFilm", tr("فيلم الافتتاح مع السكرول", "The scroll film opening"))}

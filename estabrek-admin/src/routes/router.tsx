@@ -76,8 +76,6 @@ const ScanPage = lazy(() => import("../features/scan3d/ScanPage"));
 const PlainSpinPage = lazy(() => import("../features/scan3d/PlainSpinPage"));
 
 const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
-const PageEditorPage = lazy(() => import("../features/pages/PageEditorPage"));
-const PagePreviewPage = lazy(() => import("../features/pages/PagePreviewPage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
 const SetupWizard = lazy(() => import("../features/setup/SetupWizard"));
 const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
@@ -85,6 +83,7 @@ const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
 const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
 const CommentsPage = lazy(() => import("../features/ugc/CommentsPage"));
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { OpenInStudio } from "../features/pages/OpenInStudio";
 import { tr } from "@/lib/words";
 
 function NotFound() {
@@ -291,24 +290,10 @@ export default function AppRouter() {
               ["pages:read"]
             )}
           />
-          <Route
-            path="pages/:id"
-            element={withPermissions(
-              <ErrorBoundary title="Page editor">
-                <PageEditorPage />
-              </ErrorBoundary>,
-              ["pages:write"]
-            )}
-          />
-          <Route
-            path="pages/:id/preview"
-            element={withPermissions(
-              <ErrorBoundary title="Page preview">
-                <PagePreviewPage />
-              </ErrorBoundary>,
-              ["pages:read"]
-            )}
-          />
+          {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}
+          <Route path="pages/:id" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
+          <Route path="pages/:id/classic" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
+          <Route path="pages/:id/preview" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
         </Route>
 
         {/* Root */}

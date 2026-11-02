@@ -204,6 +204,11 @@ export async function updatePage(
   return res.data as Page;
 }
 
+/** The page's search words in another language than Arabic (Arabic is the page's own: updatePage). */
+export async function savePageTranslation(id: string, locale: "en" | "he", fields: { seoTitle?: string; seoDescription?: string; ogImageUrl?: string }) {
+  return (await api.put(ENDPOINTS.admin.pages.i18n(id, locale), { fields })).data as { ok: true };
+}
+
 /** The page's tree (an unconverted page gets the tree it would become). */
 export async function getPageTree(id: string) {
   const res = await api.get(ENDPOINTS.admin.pages.tree(id));

@@ -46,6 +46,10 @@ import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPa
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
 import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
 import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
+import { ConvertAllPanel, ConvertPanel } from "./ConvertPanel";
+import { PageSettingsPanel } from "./PageSettingsPanel";
+import { convertSection, type OldSection, type RoseRole } from "./convert";
+import { identityOf } from "../lib/storeIdentity";
 import { ROSE_COLOURS, coloursOf } from "./templates/colours";
 import { PAGE_TEMPLATES, SECTION_TEMPLATES } from "./templates/catalog";
 import { isFamily } from "./templates/words";
@@ -1521,7 +1525,7 @@ export default function StudioPage() {
               busy={busy}
               onSet={(path, value, inLanguage) => void setField(selSection.id, path, value, inLanguage ? shopLang : main)}
             />
-            <Link to={`/admin/pages/${id}`} className="block text-[11px] text-accent-300 hover:underline">{tr("كل حقول القسم بالمحرر القديم", "All the section's fields in the old editor")}</Link>
+            <ConvertPanel section={selSection as OldSection} main={main} rose={roseOf(selSection as OldSection)} busy={busy} onConvert={() => convertOld([selected!])} />
           </>
         ) : null}
 
@@ -1662,6 +1666,9 @@ export default function StudioPage() {
             </button>
           </div>
         ) : null}
+
+        {selected === index.root && pageQ.data && (pageQ.data.kind ?? "page") === "page" ? <PageSettingsPanel key={pageQ.data.id} page={pageQ.data} langs={langs.enabled} /> : null}
+        {selected === index.root ? <ConvertAllPanel sections={oldOnPage.map((x) => x.section)} main={main} roseOf={roseOf} busy={busy} onConvert={() => convertOld(oldOnPage.map((x) => x.node.id))} /> : null}
 
         {selected === index.root ? (
           <label className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] p-3 text-xs" data-testid="studio-page-smooth">
@@ -1828,6 +1835,38 @@ export default function StudioPage() {
     const item = c ? pageItemOf(c, selected) : null;
     return item ? index?.nodes.get(item)?.node ?? null : null;
   })();
+  // The rose design (no store theme, a modest fashion store) draws old sections its own way: the home's
+  // first HERO is its opening (it stays), the rest take the rose look that converting leaves behind.
+  const who = identityOf(settings.data?.header);
+  const roseDesign = !savedTheme?.id && who.industry === "fashion" && who.audience === "women";
+  const roseOf = (s: OldSection): RoseRole | undefined => (!roseDesign ? undefined : pageQ.data?.slug === "/" && s.id === heroSection?.id ? "opening" : "look");
+  /** The page's old sections (the old editor's), in order, with their data. */
+  const oldOnPage = pageKids.flatMap((n) => {
+    const section = n.type === "legacy" ? sectionOf(String(n.props.sectionId)) : undefined;
+    return section ? [{ node: n, section: section as OldSection }] : [];
+  });
+  /** Old sections turned into new ones in their places, as one change (Undo brings them back); the ones that can't stay. */
+  const convertOld = (nodeIds: string[]) => {
+    if (!index) return;
+    const ids = makeIds();
+    const ops: PagesAPI.PageDraftOp[] = [];
+    let first: string | null = null;
+    let kept = 0;
+    for (const { node, section } of oldOnPage) {
+      if (!nodeIds.includes(node.id)) continue;
+      const r = convertSection(section, main, ids, roseOf(section));
+      if (!r.ok) {
+        kept++;
+        continue;
+      }
+      // In its place: the new one goes in before it, then the old one goes to the bin.
+      ops.push({ op: "insert", parentId: index.root, index: pageKids.indexOf(node), node: r.node }, { op: "remove", nodeId: node.id });
+      first ??= r.node.id;
+    }
+    if (!ops.length) return void toast.error(tr("ولا قسم بيتحوّل هون", "No section here can be turned"));
+    void change(tr("لعناصر جديدة", "To new elements"), ops, first);
+    if (kept) toast.success(tr(`انحوّلوا، و${kept} ضلّوا أقسام قديمة`, "Turned; {0} stay old sections", [kept]));
+  };
   /** A template's sections (or popup) after the selection's page item, or at the page's end: one change. */
   const placeTemplate = (nodes: PagesAPI.PageTreeNode[], where: UseWhere, name: string) => {
     if (!index || !nodes.length) return;
