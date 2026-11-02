@@ -241,6 +241,8 @@ export const ScreenStyle = z.object({
   aspect: z.string().trim().regex(/^\d{1,2}\s*\/\s*\d{1,2}$/, "Like 16 / 9").optional(),
   shape: z.enum(SHAPES).optional(), // what clips it (a picture inside takes the shape)
   pattern: z.object({ kind: z.enum(PATTERNS), color, size: px(4, 200), opacity: z.number().min(0).max(1).optional() }).optional(),
+  // A soft mesh of two to four colours fading from the corners over the background; `move` drifts it (an aurora).
+  mesh: z.object({ colors: z.array(color).min(2).max(4), soft: z.number().min(20).max(100).optional(), move: z.boolean().optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
   perspective: px(200, 4000).optional(),
   origin: z.enum(["center", "top", "bottom"]).optional(),
   // Placed freely over its container, its anchor at x% from the line's start and y% from the top; false = back in the flow on this screen.

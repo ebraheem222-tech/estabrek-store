@@ -23,6 +23,10 @@
  * flow find their place by rows (a wrapping grid too), several at once; Shift keeps a
  * line, Ctrl lets go of snapping, Alt leaves a copy, Esc gives up.
  *
+ * Phase 10 adds the Looks tab (LooksPanel, studio/looks): about 1,300 ready looks for what's
+ * selected (buttons, cards, backgrounds with moving meshes, picture frames, type, word effects,
+ * shadows, hovers, ways of coming in, section edges), shown in the frame as the pointer rests.
+ *
  * The shop's frame (studio-frame) opens the page's draft with a 30-minute ticket
  * and its bridge reports where every element is (pageTree/StudioBridge in the shop).
  */
@@ -73,6 +77,9 @@ import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./Mul
 import { Guides, SelectionHandles } from "./CanvasHandles";
 import { gapsBetween, nudgeOf, type Gap, type Guide } from "./handles";
 import { DragSettings } from "./DragSettings";
+import { LooksPanel } from "./LooksPanel";
+import { lookOps, withLook, type Ready } from "./looks";
+import { decorArt } from "./decor";
 import { around, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
 import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
@@ -192,7 +199,9 @@ export default function StudioPage() {
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
   const adding = useRef<AddKind | null>(null);
   // The left column: the Add panel or the layers; where a click on the Add panel adds.
-  const [leftTab, setLeftTab] = useState<"add" | "layers" | "styles">("add");
+  const [leftTab, setLeftTab] = useState<"add" | "layers" | "styles" | "looks">("add");
+  // The ready look last put on the selected element from the Looks tab (marked there).
+  const [lastLook, setLastLook] = useState<{ node: string; id: string } | null>(null);
   // The shared style open in the styles tab (its panels show beside the page instead of an element's).
   const [siteSel, setSiteSel] = useState<string | null>(null);
   const canPublish = useAuth().hasPermission("pages:publish");
@@ -2133,11 +2142,34 @@ export default function StudioPage() {
     )}
     </>
   );
+  /** The ready looks for the selected element: resting on one shows it in the frame, a click puts it on. */
+  const looksPanel = () => {
+    if (!selFree || selFree.type === "page") return <p className="px-2 py-4 text-xs leading-5 text-white/45" data-testid="studio-looks-pick">{tr("اختار عنصر عالصفحة (زر، صورة، عنوان، قسم…) لتشوف الأشكال الجاهزة اللي بتناسبه.", "Pick an element on the page (a button, a picture, a heading, a section…) to see the ready looks that suit it.")}</p>;
+    const node = selFree;
+    return (
+      <LooksPanel
+        key={node.id}
+        node={node}
+        label={label(node.id)}
+        colours={templateColours}
+        busy={busy}
+        current={lastLook?.node === node.id ? lastLook.id : null}
+        onRest={(r) => send({ type: "previewStyle", node: r && r.kind !== "edge" && r.kind !== "entrance" ? withLook(node, screen, r) : null })}
+        onPick={(r: Ready) => {
+          const ops = lookOps(node, screen, r, (svg) => decorArt(svg, true));
+          send({ type: "previewStyle", node: null });
+          if (!ops.length) return;
+          setLastLook({ node: node.id, id: r.id });
+          void change(`${tr("شكل جاهز", "A ready look")}: ${r.name()}`, ops);
+        }}
+      />
+    );
+  };
   const leftTabs = (
     <div className="mb-2 flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist" aria-label={tr("لوحة جانبية", "Side panel")}>
-      {(["add", "layers", "styles"] as const).map((t) => (
-        <button key={t} type="button" role="tab" aria-selected={leftTab === t} onClick={() => setLeftTab(t)} className={`flex-1 rounded-lg px-2 py-1.5 text-xs ${leftTab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tab-${t}`}>
-          {t === "add" ? `+ ${tr("إضافة", "Add")}` : t === "layers" ? tr("الطبقات", "Layers") : tr("الستايلات", "Styles")}
+      {(["add", "layers", "looks", "styles"] as const).map((t) => (
+        <button key={t} type="button" role="tab" aria-selected={leftTab === t} onClick={() => setLeftTab(t)} className={`flex-1 rounded-lg px-1.5 py-1.5 text-xs ${leftTab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tab-${t}`}>
+          {t === "add" ? `+ ${tr("إضافة", "Add")}` : t === "layers" ? tr("الطبقات", "Layers") : t === "looks" ? tr("الأشكال", "Looks") : tr("الستايلات", "Styles")}
         </button>
       ))}
     </div>
@@ -2240,12 +2272,14 @@ export default function StudioPage() {
       ) : null}
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : tr("الطبقات", "Layers")}>
+        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : leftTab === "looks" ? tr("الأشكال", "Looks") : tr("الطبقات", "Layers")}>
           {leftTabs}
           {leftTab === "add" ? (
             index ? addPanel() : null
           ) : leftTab === "styles" ? (
             <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
+          ) : leftTab === "looks" ? (
+            looksPanel()
           ) : (
             <>
               {index ? layersList((sid, add) => (add && isFree(nodeOf(sid)?.type) ? toggleChosen(sid) : select(sid, true))) : null}

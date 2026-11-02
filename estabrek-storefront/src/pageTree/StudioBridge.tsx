@@ -10,8 +10,8 @@
  */
 import { useEffect } from "react";
 import { studioLink } from "./studioLink";
-import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle } from "./tree";
-import { siteTarget } from "./css";
+import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle, type TreeNode } from "./tree";
+import { nodeCss, siteTarget } from "./css";
 import { htmlToRich } from "./rich";
 
 export const STUDIO_SOURCE = "estabrek-studio";
@@ -477,6 +477,28 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
             if (k === "opacity" && typeof v === "number" && v >= 0 && v <= 1) el.style.opacity = String(v);
             else if ((PREVIEW_VARS as readonly string[]).includes(k) && typeof v === "string" && /^-?\d{1,4}(\.\d{1,3})?(px|deg)?$/.test(v)) el.style.setProperty(k, v);
           }
+        }
+        return now();
+      }
+      // A ready look shown on an element before it's picked: its own rules leave it while the look's are drawn (null: as it was).
+      if (d.type === "previewStyle") {
+        document.querySelectorAll<HTMLElement>("[data-pt-preview]").forEach((el) => {
+          el.classList.remove("pt-pv");
+          el.classList.add(`pt-${el.dataset.ptPreview}`);
+          el.removeAttribute("data-pt-preview");
+        });
+        document.getElementById("pt-look-preview")?.remove();
+        const node = (e.data as { node?: unknown }).node as TreeNode | null | undefined;
+        const id = node && typeof node === "object" && typeof node.id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(node.id) ? node.id : null;
+        const el = id ? document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(id)}"]`) : null;
+        if (node && el && typeof node.type === "string") {
+          const style = document.createElement("style");
+          style.id = "pt-look-preview";
+          style.textContent = nodeCss({ ...node, props: node.props && typeof node.props === "object" ? node.props : {} }, "pv");
+          document.body.appendChild(style);
+          el.classList.remove(`pt-${id}`);
+          el.classList.add("pt-pv");
+          el.dataset.ptPreview = id!;
         }
         return now();
       }

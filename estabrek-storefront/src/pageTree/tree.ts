@@ -48,6 +48,8 @@ export type ScreenStyle = {
   aspect?: string;
   shape?: string; // rect, rounded, pill, arch, circle, or one of the masks (css.ts MASKS)
   pattern?: { kind: string; color: string; size: number; opacity?: number };
+  /** A soft mesh of 2–4 colours from the corners (`soft` % of the way); `move` drifts it like an aurora. */
+  mesh?: { colors: string[]; soft?: number; move?: boolean; speed?: number };
   rotateX?: number;
   rotateY?: number;
   rotateZ?: number;

@@ -204,6 +204,18 @@ function gradientOf(g: unknown, radial = false): string | undefined {
   const stops = [a, via, b].filter(Boolean).join(",");
   return radial ? `radial-gradient(circle at 50% 50%,${stops})` : `linear-gradient(${Math.round(num(o.angle, 0, 360) ?? 180)}deg,${stops})`;
 }
+/** Where a mesh's colours sit: two in opposite corners, three around, four in the corners. */
+const MESH_AT: Record<number, string[]> = { 2: ["0% 0%", "100% 100%"], 3: ["0% 0%", "100% 0%", "50% 100%"], 4: ["0% 0%", "100% 0%", "100% 100%", "0% 100%"] };
+/** A soft mesh of two to four colours, each fading out from its own corner (`soft` % of the way), over the background. */
+function meshOf(m: unknown): { layers: string[]; move?: number } | undefined {
+  const o = obj(m);
+  if (!o || !Array.isArray(o.colors)) return undefined;
+  const cs = o.colors.slice(0, 4).map((c) => color(c));
+  if (cs.length < 2 || cs.some((c) => !c)) return undefined;
+  const soft = num(o.soft, 20, 100) ?? 60;
+  const layers = cs.map((c, i) => `radial-gradient(at ${MESH_AT[cs.length][i]},${c} 0,transparent ${soft}%)`);
+  return { layers, move: o.move === true ? Math.round(18 / (num(o.speed, 0.2, 3) ?? 1)) : undefined };
+}
 /** Words growing from `min` on a phone (375px wide) to `max` on a computer (1280px). */
 export function fluidSize(min: number, max: number): string {
   const slope = (max - min) / (1280 - 375);
@@ -258,9 +270,17 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   push("background", color(s.bg));
   const bgGrad = gradientOf(s.gradient, obj(s.gradient)?.radial === true);
   const pattern = patternOf(s.pattern);
-  if (pattern) {
-    // The pattern over its gradient, if it has one.
-    d.push(`background-image:${[pattern[0], bgGrad].filter(Boolean).join(",")}`, `background-size:${[pattern[1], bgGrad && "auto"].filter(Boolean).join(",")}`, `background-position:${[pattern[2], bgGrad && "0 0"].filter(Boolean).join(",")}`);
+  const mesh = meshOf(s.mesh);
+  if (pattern || mesh) {
+    // The pattern over the mesh over the gradient, those it has. A moving mesh is twice the box and drifts across it (an aurora).
+    const n = mesh?.layers.length ?? 0;
+    const meshSize = mesh?.move ? "200% 200%" : "auto";
+    d.push(
+      `background-image:${[pattern?.[0], ...(mesh?.layers ?? []), bgGrad].filter(Boolean).join(",")}`,
+      `background-size:${[pattern?.[1], ...Array(n).fill(meshSize), bgGrad && "auto"].filter(Boolean).join(",")}`,
+      `background-position:${[pattern?.[2], ...Array(n).fill("0% 0%"), bgGrad && "0 0"].filter(Boolean).join(",")}`,
+    );
+    if (mesh?.move) d.push(`--pt-mesh:pt-mesh ${mesh.move}s ease-in-out infinite alternate`, "animation:var(--pt-mesh)");
   } else if (bgGrad) d.push(`background-image:${bgGrad}`);
   const glass = obj(s.backdrop);
   if (glass) {
@@ -561,6 +581,16 @@ export function treeFamilies(tree: PageTree, site: SiteStyle[] = []): Set<string
   for (const [, look] of looksOf(tree)) add(look.style);
   for (const s of site) add(s.style);
   return out;
+}
+
+/**
+ * One element's own rules alone, under the class `pt-<as>` (the editor's frame shows a ready
+ * look on an element before it's picked: StudioBridge's "previewStyle").
+ */
+export function nodeCss(n: TreeNode, as: string): string {
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(as)) return "";
+  const all = treeCss({ version: 1, root: { id: "page", type: "page", props: {}, children: [{ ...n, id: as, children: [] }] } });
+  return all.split(BASE_CSS).join("");
 }
 
 /**
@@ -865,6 +895,9 @@ export const BASE_CSS = [
   // Words being typed: a blinking caret after them.
   ".pt-typing::after{content:\"\";display:inline-block;width:2px;height:1em;margin-inline-start:3px;background:currentColor;vertical-align:-.12em;animation:pt-caret .8s steps(1) infinite}",
   "@keyframes pt-caret{50%{opacity:0}}",
+  // A moving mesh drifts across (still for whoever asked for less motion).
+  "@keyframes pt-mesh{from{background-position:0% 0%}to{background-position:100% 100%}}",
+  "@media (prefers-reduced-motion:reduce){[class]{--pt-mesh:none!important}}",
   // Animated layers.
   ".pt-fx{position:absolute;inset:0;z-index:1;overflow:hidden;border-radius:inherit;pointer-events:none}",
   ".pt-fx-shine::before{content:\"\";position:absolute;top:-25%;bottom:-25%;left:0;width:40%;background:linear-gradient(90deg,transparent,var(--pt-fxc,rgba(255,255,255,.55)),transparent);transform:translateX(-150%) skewX(-18deg);animation:pt-shine var(--pt-fxs,3s) ease-in-out infinite}",
