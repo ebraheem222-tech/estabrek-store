@@ -97,7 +97,7 @@ test("every theme reads well in each of its modes", () => {
 
 test("every 3D stage's games and collections bring forward one of its own models", () => {
   const staged = STORE_THEMES.filter((t) => t.stage);
-  expect(staged.filter((t) => t.family === "gaming").length).toBe(20);
+  expect(staged.filter((t) => t.classic && t.family === "gaming").length).toBe(20);
   expect(staged.length).toBeGreaterThan(20);
   for (const t of staged) {
     expect(new Set(t.stage!.models).size, `${t.id}: no model twice`).toBe(t.stage!.models.length);
@@ -116,7 +116,10 @@ test("with no theme the shop is the rose design, untouched", async ({ page, requ
   expect(errors).toEqual([]);
 });
 
-for (const t of STORE_THEMES) {
+// Every classic theme, and a sample of the designs (400+) that has every card, opening and kind of stage among them;
+// tests/store-designs.spec.ts checks every design's parts.
+const DESIGN_SAMPLE = new Set(["mobile-phones", "sweets-soft", "gaming-bold", "home-decor-layout", "sportswear", "chocolate", "laptops-layout", "toys", "oud-perfume-soft", "flowers-bold", "deals", "wall-art", "books", "game-keys"]);
+for (const t of STORE_THEMES.filter((x) => x.classic || DESIGN_SAMPLE.has(x.id))) {
   test(`${t.id}: the whole store in the theme, its own home, on a computer and a phone`, async ({ page, request }) => {
     await setTheme(request, t.id);
     const errors = errorsOf(page);

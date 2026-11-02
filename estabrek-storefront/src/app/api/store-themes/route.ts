@@ -9,6 +9,7 @@ import { DEFAULT_THEME, STORE_THEMES, themePalette } from "@/storeThemes";
 import { KIT_OPTIONS, PLAIN_KIT, themeKit } from "@/storeThemes/packs";
 import { CAMERA_DEFAULT, CAMERA_RANGE, LIGHTS_DEFAULT, LIGHTS_RANGE, MODEL_INFO, MODEL_KINDS, MODEL_KNOBS } from "@/storeThemes/three/kinds";
 import { editorFonts } from "@/pageTree/fonts";
+import { SECTOR_NAMES } from "@/storeThemes/dna/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,9 @@ const list = STORE_THEMES.map((t) => {
     // Its pack beyond colours and fonts (storeThemes/packs.ts): the admin applies and mixes them.
     kit: themeKit(t),
     fonts: { display: t.fonts.display[0], text: t.fonts.text[0] },
+    // A design's theme: its kind, sector, variant and signature section (dna/); a classic one is listed apart.
+    ...(t.design ? { design: { ...t.design, sectorName: SECTOR_NAMES[t.design.sector] } } : {}),
+    ...(t.classic ? { classic: true } : {}),
     // Gaming themes: the 3D stage the admin can fill with its own models and games.
     stage: t.stage ? { layout: t.stage.layout, floor: t.stage.floor, finish: t.stage.finish, models: t.stage.models, games: t.stage.games.map((g) => ({ name: g.name, color: g.color, model: g.model })) } : null,
   };

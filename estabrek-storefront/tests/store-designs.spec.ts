@@ -4,6 +4,9 @@ import * as A from "../src/storeThemes/dna/axes";
 import { MIN_APART, ROSE, nearest, problems } from "../src/storeThemes/dna/distance";
 import { KINDS } from "../src/storeThemes/dna/kinds";
 import { VARIANT_KEYS, variantsOf } from "../src/storeThemes/dna/variants";
+import { DESIGN_THEMES } from "../src/storeThemes/dna/theme";
+import { KIND_WORDS } from "../src/storeThemes/dna/words";
+import { STORE_THEMES } from "../src/storeThemes/registry";
 
 // The kinds of store and their designs (phase 11): about a hundred, each its own, every
 // variant of each far from every variant of the others and from the rose design (Estabrek's).
@@ -33,6 +36,24 @@ test.describe("store designs", () => {
     for (const axis of ["archetype", "type", "shape", "surface", "imagery", "icons", "motion", "card", "header", "footer", "voice"] as const)
       expect(new Set(KINDS.map((k) => k.dna[axis])).size, axis).toBe(LISTS[axis].length);
     expect(ROSE.shape).toBe("arch");
+  });
+
+  test("every design is four themes a store can pick, with its words, none named like a classic theme", () => {
+    expect(DESIGN_THEMES.length).toBe(KINDS.length * 4);
+    for (const k of KINDS) expect(KIND_WORDS[k.id], `${k.id}: words`).toBeTruthy();
+    const classic = new Set(STORE_THEMES.filter((t) => t.classic).map((t) => t.id));
+    for (const t of DESIGN_THEMES) {
+      expect(classic.has(t.id), t.id).toBe(false);
+      expect(t.design?.kind, t.id).toBeTruthy();
+      expect(t.copy.title.ar.length, t.id).toBeGreaterThan(2);
+    }
+    // A design's variant themes share its type and drawings, and differ in colours or layout.
+    const [first, soft, bold, layout] = DESIGN_THEMES.filter((t) => t.design?.kind === "mobile-phones");
+    expect([first.id, soft.id, bold.id, layout.id]).toEqual(["mobile-phones", "mobile-phones-soft", "mobile-phones-bold", "mobile-phones-layout"]);
+    expect(new Set([first, soft, bold, layout].map((t) => t.fonts.display.join()))).toHaveProperty("size", 1);
+    expect(soft.palettes.light!.bg).not.toBe(first.palettes.light!.bg);
+    expect(layout.hero).not.toBe(first.hero);
+    expect(Object.keys(first.palettes)).toEqual(expect.arrayContaining(["light", "dark"]));
   });
 
   test("every design has its variants, each readable", () => {

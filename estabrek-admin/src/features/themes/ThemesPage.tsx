@@ -22,7 +22,7 @@ import { identityOf } from "../../lib/storeIdentity";
 import { toast } from "../../lib/toast";
 import { tr } from "../../lib/words";
 import { stylesOfKit, withPackStyles } from "../../studio/packs";
-import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, shopOrigin, stageOptionsOf, type StoreThemeInfo } from "../../studio/storeThemes";
+import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, shopOrigin, stageOptionsOf, type StoreThemeInfo, type Words } from "../../studio/storeThemes";
 import { PackPanel } from "./PackPanel";
 import { packChoice, type PackChoice, type PackFrom } from "./packChoice";
 import { StageWorkspace, type StageTab } from "./StageWorkspace";
@@ -68,7 +68,9 @@ export default function ThemesPage() {
   const [size, setSize] = useState<keyof typeof SIZES>("computer");
   const [asking, setAsking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [family, setFamily] = useState<string>("all");
+  // Which designs show: all, one sector's, or the classic themes; and words looked for.
+  const [group, setGroup] = useState<string>("all");
+  const [find, setFind] = useState("");
   const [stageTab, setStageTab] = useState<StageTab>("models");
   // The shown theme's pack: where each part comes from, whether the preview shows it, and the one being applied.
   const [packFrom, setPackFrom] = useState<PackFrom>({});
@@ -132,8 +134,26 @@ export default function ThemesPage() {
   const scene = Boolean(shown.stage) && stageTab === "scene";
   const liveFrame = view === "home" && Boolean(ticket) && Boolean(origin);
 
-  const families = useMemo(() => ["all", ...Array.from(new Set((themesQ.data?.themes ?? []).map((t) => t.family)))], [themesQ.data]);
-  const list = all.filter((t) => family === "all" || t.id === ROSE_ID || t.family === family);
+  // One card for each design (its original); the classic themes on their own; a design's variants beside the preview.
+  const themes = useMemo(() => themesQ.data?.themes ?? [], [themesQ.data]);
+  const sectors = useMemo(() => {
+    const seen = new Map<string, Words>();
+    for (const t of themes) if (t.design && !seen.has(t.design.sector)) seen.set(t.design.sector, t.design.sectorName);
+    return [...seen];
+  }, [themes]);
+  const words = find.trim().toLowerCase();
+  const matches = (t: StoreThemeInfo) => !words || [t.name, t.blurb, ...(t.design ? [t.design.sectorName, t.design.signature] : [])].some((x) => [x.ar, x.en, x.he].join(" ").toLowerCase().includes(words));
+  const list = (group === "classic" ? themes.filter((t) => t.classic) : all.filter((t) => t.id === ROSE_ID || (t.design?.variant === "first" && (group === "all" || t.design.sector === group)) || (!t.design && !t.classic))).filter((t) => t.id === ROSE_ID || matches(t));
+  const variants = shown.design ? themes.filter((t) => t.design?.kind === shown.design!.kind) : [];
+  const VARIANT_LABEL: Record<string, () => string> = { first: () => tr("الأصلي", "Original"), soft: () => tr("ناعم", "Soft"), bold: () => tr("جريء", "Bold"), layout: () => tr("ترتيب تاني", "Another layout") };
+  const pickTheme = (id: string) => {
+    if (id !== shown.id && stageDirty.current && !window.confirm(tr("في تغييرات بالمشهد ما انحفظت. بدك تتركها؟", "The stage has unsaved changes. Leave them?"))) return;
+    stageDirty.current = false;
+    setPicked(id);
+    setMode(null);
+    setPackFrom({});
+    setPackTrying(false);
+  };
 
   /** The whole pack for the store: the theme (with the mix's colours and fonts), its kit, and the editor's shared styles. */
   const applyPack = async () => {
@@ -210,10 +230,10 @@ export default function ThemesPage() {
             )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-1" role="group" aria-label={tr("نوع المتجر", "Kind of store")}>
-          {families.map((f) => (
-            <button key={f} type="button" onClick={() => setFamily(f)} aria-pressed={family === f} className={`rounded-lg px-3 py-1.5 text-xs ${family === f ? "bg-accent-500/25 text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"}`}>
-              {f === "all" ? tr("الكل", "All") : FAMILY_LABEL[f]?.() ?? f}
+        <div className="flex max-w-3xl flex-wrap gap-1" role="group" aria-label={tr("نوع المتجر", "Kind of store")}>
+          {[["all", null] as const, ...sectors, ["classic", null] as const].map(([g, name]) => (
+            <button key={g} type="button" onClick={() => setGroup(g)} aria-pressed={group === g} className={`rounded-lg px-3 py-1.5 text-xs ${group === g ? "bg-accent-500/25 text-white" : "bg-white/[0.04] text-white/60 hover:bg-white/[0.08]"}`} data-testid="themes-group" data-group={g}>
+              {g === "all" ? tr("كل التصاميم", "Every design") : g === "classic" ? tr("الثيمات الكلاسيكية", "Classic themes") : name?.[lang] || name?.en}
             </button>
           ))}
         </div>
@@ -226,21 +246,20 @@ export default function ThemesPage() {
       ) : null}
 
       <div className={`grid gap-4 ${scene ? "" : "xl:grid-cols-[minmax(300px,380px)_1fr]"}`}>
-        <ul className={`grid content-start gap-2 ${scene ? "hidden" : ""}`} data-testid="themes-list">
+        <ul className={`grid max-h-[calc(100vh-180px)] content-start gap-2 overflow-y-auto ${scene ? "hidden" : ""}`} data-testid="themes-list">
+          <li className="sticky top-0 z-10 bg-surface-950 pb-1">
+            <input
+              type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={tr(`دوّر بين ${themes.filter((t) => t.design?.variant === "first").length} تصميم`, "Search {0} designs", [themes.filter((t) => t.design?.variant === "first").length])}
+              className="w-full rounded-xl border border-white/[0.1] bg-surface-925 px-3 py-2 text-sm text-white" data-testid="themes-find"
+            />
+          </li>
           {list.map((t) => {
-            const on = t.id === shown.id;
+            const on = t.id === shown.id || (Boolean(t.design) && t.design?.kind === shown.design?.kind);
             return (
               <li key={t.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (t.id !== shown.id && stageDirty.current && !window.confirm(tr("في تغييرات بالمشهد ما انحفظت. بدك تتركها؟", "The stage has unsaved changes. Leave them?"))) return;
-                    stageDirty.current = false;
-                    setPicked(t.id);
-                    setMode(null);
-                    setPackFrom({});
-                    setPackTrying(false);
-                  }}
+                  onClick={() => pickTheme(t.id)}
                   aria-pressed={on}
                   className={`w-full rounded-2xl border p-3 text-start transition ${on ? "border-accent-400/70 bg-white/[0.07]" : "border-white/[0.08] hover:bg-white/[0.04]"}`}
                   data-testid="theme-card"
@@ -253,10 +272,11 @@ export default function ThemesPage() {
                   </span>
                   <span className="mt-2 flex items-center gap-2">
                     <span className="font-medium">{t.name[lang] || t.name.en}</span>
-                    <span className="text-[11px] text-white/40">{FAMILY_LABEL[t.family]?.() ?? t.family}</span>
+                    <span className="text-[11px] text-white/40">{t.design ? t.design.sectorName[lang] || t.design.sectorName.en : FAMILY_LABEL[t.family]?.() ?? t.family}</span>
                     {t.id === currentId ? <span className="ms-auto rounded-md bg-accent-500/20 px-1.5 py-0.5 text-[10px] text-accent-200">{tr("الحالي", "Current")}</span> : null}
                   </span>
                   <span className="mt-1 block text-xs leading-5 text-white/50">{t.blurb[lang] || t.blurb.en}</span>
+                  {t.design ? <span className="mt-1 block text-[11px] text-accent-200/80">✦ {t.design.signature[lang] || t.design.signature.en}</span> : null}
                 </button>
               </li>
             );
@@ -266,6 +286,15 @@ export default function ThemesPage() {
         <section className="min-w-0 space-y-3 rounded-2xl border border-white/[0.08] p-3" aria-label={tr("المعاينة", "Preview")}>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="me-auto text-sm font-semibold">{shown.name[lang] || shown.name.en}</h2>
+            {variants.length > 1 ? (
+              <div className="flex gap-1" role="group" aria-label={tr("نسخة التصميم", "The design's variant")} data-testid="theme-variants">
+                {variants.map((v) => (
+                  <button key={v.id} type="button" onClick={() => pickTheme(v.id)} aria-pressed={v.id === shown.id} className={`rounded-lg px-2 py-1 text-xs ${v.id === shown.id ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid="theme-variant" data-theme-id={v.id}>
+                    {VARIANT_LABEL[v.design!.variant]()}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {shown.modes.length > 1 ? (
               <div className="flex gap-1" role="group" aria-label={tr("فاتح أو غامق", "Light or dark")}>
                 {shown.modes.map((m) => (

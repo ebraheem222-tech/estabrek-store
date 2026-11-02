@@ -117,7 +117,7 @@ export function ThemedHome({
   flush();
 
   return (
-    <div className="th-home" data-th={theme.id} data-th-hero={theme.hero} data-th-card={theme.card} data-th-svg={theme.svg}>
+    <div className="th-home" data-th={theme.id} data-th-hero={theme.hero} data-th-card={theme.card} data-th-svg={theme.svg} data-th-shape={theme.design?.shape}>
       <script dangerouslySetInnerHTML={{ __html: PENDING }} />
       {nodes}
     </div>

@@ -112,6 +112,11 @@ const BY_CARD: Record<CardStyle, { box: PackKit["box"]["look"]; button: PackKit[
   frame: { box: "line", button: "underline" },
   book: { box: "soft", button: "solid" },
   minimal: { box: "flat", button: "underline" },
+  tile: { box: "soft", button: "solid" },
+  overlay: { box: "flat", button: "glow" },
+  list: { box: "line", button: "outline" },
+  polaroid: { box: "flat", button: "soft" },
+  round: { box: "soft", button: "solid" },
 };
 
 /** The finish its 3D models take, by kind of store. */

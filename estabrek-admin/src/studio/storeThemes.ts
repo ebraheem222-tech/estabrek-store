@@ -32,6 +32,10 @@ export type StoreThemeInfo = {
   fonts?: { display: string; text: string };
   /** Gaming themes: the 3D stage the store can fill with its own models and games. */
   stage?: { layout: string; floor?: string; finish?: string; models: string[]; games: Array<{ name: Words; color: string; model: string }> } | null;
+  /** A theme made from a kind of store's own design (the shop's storeThemes/dna): its kind, sector, which variant, its signature section. */
+  design?: { kind: string; sector: string; sectorName: Words; variant: "first" | "soft" | "bold" | "layout"; signature: Words };
+  /** One of the first themes (many look alike): still works, listed apart. */
+  classic?: boolean;
 };
 /** A model's own shape knob (the shop's kinds.ts MODEL_KNOBS): 1 is the model as drawn; `values` = the only choices. */
 export type KnobSpec = { id: string; label: Words; min: number; max: number; step: number; def: number; values?: number[] };

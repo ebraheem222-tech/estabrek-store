@@ -64,7 +64,7 @@ export const KINDS: StoreKind[] = [
     "light #f8f6fb #9b8ec4 #5e4f99 #2a2438", ["softness-meter", "مقياس النعومة", "A softness meter", "מד רכות"], "lookbook bleed"),
 
   /* ------------------------------------------------------------ beauty */
-  k("perfume-oud", "beauty", ["عطور وعود", "Perfume and oud", "בשמים ועוד"],
+  k("oud-perfume", "beauty", ["عطور وعود", "Perfume and oud", "בשמים ועוד"],
     "story kufi/readex royal cut grain duotone duotone luxe ember portrait split block luxury",
     "dark #0d1020 #b9a2ff #d6c8ff #f1eefc", ["scent-pyramid", "هرم الروائح", "A scent pyramid", "פירמידת ריח"], "cinema bleed"),
   k("makeup", "beauty", ["مكياج", "Makeup", "איפור"],
@@ -108,7 +108,7 @@ export const KINDS: StoreKind[] = [
   k("audio", "tech", ["سماعات وصوتيات", "Headphones and audio", "אוזניות ושמע"],
     "cinema changa/rubik royal round gradient circle duotone editorial vinyl round centered newsletter calm",
     "dark #0d0b1e #7c5cff #a78bfa #ecebff", ["sound-wave", "موجة الصوت", "A sound wave", "גל קול"], "showroom cutout"),
-  k("smart-home", "tech", ["بيت ذكي", "Smart home", "בית חכם"],
+  k("smart-living", "tech", ["بيت ذكي", "Smart home", "בית חכם"],
     "bento kufi/tajawal clinic round neumorph block duotone soft cloud tile minimal columns friendly",
     "light #f6fbf8 #10b981 #047857 #0b2018", ["room-planner", "خطط غرفتك", "A room planner", "מתכנן חדרים"], "map cutout"),
   k("gadgets-drones", "tech", ["أجهزة ذكية ودرونز", "Gadgets and drones", "גאדג׳טים ורחפנים"],

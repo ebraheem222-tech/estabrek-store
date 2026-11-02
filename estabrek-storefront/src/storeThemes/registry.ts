@@ -2,19 +2,24 @@
  * The store themes. The rose design (Estabrek) is not one of them: it is what the shop
  * is with no theme chosen. Each theme here repaints the whole shop (the rose stylesheet's
  * colours, fonts and corners) and brings its own home page, motion and drawings; gaming
- * themes also bring a 3D stage of gaming models (storeThemes/three). The themes for every
- * other kind of store are in themes/ (style, tech, life); many bring a 3D stage of their own products.
+ * themes also bring a 3D stage of gaming models (storeThemes/three).
+ *
+ * First the designs (dna/): a design of its own for each of about a hundred kinds of store,
+ * each in four themes (original, soft, bold, another layout) with night or day as its other
+ * mode. Then the classic themes (themes/ and below), which still work and are listed apart.
  */
 import { LIFE_THEMES } from "./themes/life";
 import { MORE_THEMES } from "./themes/more";
 import { STYLE_THEMES } from "./themes/style";
 import { TECH_THEMES } from "./themes/tech";
 import type { StoreTheme } from "./types";
+import { DESIGN_THEMES } from "./dna/theme";
 
 const w = (ar: string, en: string, he: string) => ({ ar, en, he });
 
 
-export const STORE_THEMES: StoreTheme[] = [
+/** The first themes: they still work for whoever chose one, and are listed apart (many look alike). */
+const CLASSIC_THEMES: StoreTheme[] = [
   {
     id: "atelier-noir",
     name: w("أتيليه نوار", "Atelier Noir", "אטלייה נואר"),
@@ -909,5 +914,8 @@ export const STORE_THEMES: StoreTheme[] = [
   ...LIFE_THEMES,
   ...MORE_THEMES,
 ];
+
+/** Every theme: a design of its own for each kind of store in its variants (dna/), then the classic ones. */
+export const STORE_THEMES: StoreTheme[] = [...DESIGN_THEMES, ...CLASSIC_THEMES.map((t) => ({ ...t, classic: true }))];
 
 export const themeById = (id?: string | null) => (id ? STORE_THEMES.find((t) => t.id === id) ?? null : null);

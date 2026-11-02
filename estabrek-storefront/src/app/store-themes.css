@@ -151,6 +151,15 @@
 /* Petal: a picture in an arch over a moving bloom. */
 .th-arch-wrap { position: relative; justify-self: center; width: min(100%, 460px); }
 .th-arch { aspect-ratio: 3 / 4; border-radius: 999px 999px var(--th-radius-lg) var(--th-radius-lg); box-shadow: var(--th-shadow-lift); }
+/* A design's opening picture takes the design's own outline (the arch is the rose design's alone). */
+[data-th-shape="sharp"] .th-arch { border-radius: 0; }
+[data-th-shape="soft"] .th-arch { border-radius: var(--th-radius-lg); }
+[data-th-shape="round"] .th-arch { border-radius: 40px; aspect-ratio: 4 / 5; }
+[data-th-shape="pill"] .th-arch { border-radius: 999px; aspect-ratio: 5 / 8; }
+[data-th-shape="circle"] .th-arch { border-radius: 50%; aspect-ratio: 1; }
+[data-th-shape="organic"] .th-arch { border-radius: 62% 38% 55% 45% / 48% 58% 42% 52%; aspect-ratio: 1; }
+[data-th-shape="cut"] .th-arch { border-radius: 0; clip-path: polygon(0 36px, 36px 0, 100% 0, 100% calc(100% - 36px), calc(100% - 36px) 100%, 0 100%); }
+[data-th-shape="ticket"] .th-arch { border-radius: 14px; aspect-ratio: 4 / 5; -webkit-mask: radial-gradient(circle 16px at 0 50%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 16px at 100% 50%, #0000 98%, #000) right / 51% 100% no-repeat; }
 .th-pills { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .th-pills li { padding: 8px 14px; border-radius: 999px; background: var(--th-surface); border: 1px solid var(--th-line); font-size: 0.85rem; color: var(--th-muted); }
 .th-hero-bloom .th-hero-title { font-weight: 500; }
@@ -226,6 +235,29 @@
 [data-th-card="arch"] .th-tile { border-radius: 999px 999px var(--th-radius) var(--th-radius); }
 [data-th-card="sticker"] .th-tile { border: 3px solid var(--th-ink); box-shadow: 5px 5px 0 var(--th-ink); }
 [data-th-card="angled"] .th-tile { clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px)); }
+/* The designs' own cards (storeThemes/dna): a tile on its colour, words over the picture, a list row, a polaroid, a round picture. */
+[data-th-card="tile"] .th-card { padding: 12px; border-radius: var(--th-radius-lg); background: var(--th-soft); transition: transform 0.3s, background 0.3s; }
+[data-th-card="tile"] .th-card:hover { transform: translateY(-4px); background: color-mix(in srgb, var(--th-accent) 18%, var(--th-soft)); }
+[data-th-card="tile"] .th-card-media { aspect-ratio: 1; background: var(--th-surface); }
+[data-th-card="tile"] .th-card-media img { object-fit: contain; padding: 10%; }
+[data-th-card="overlay"] .th-card-link { position: relative; }
+[data-th-card="overlay"] .th-card-media { aspect-ratio: 4 / 5; }
+[data-th-card="overlay"] .th-card-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, color-mix(in srgb, #000 62%, transparent), transparent 55%); pointer-events: none; }
+[data-th-card="overlay"] .th-card-info { position: absolute; inset-inline: 14px; bottom: 14px; z-index: 1; color: #fff; }
+[data-th-card="overlay"] .th-card-cat, [data-th-card="overlay"] .th-card-price { color: #fff; opacity: 0.9; }
+[data-th-card="list"] .th-card-link { grid-template-columns: 96px 1fr; align-items: center; gap: 14px; padding: 10px; border: 1px solid var(--th-line); border-radius: var(--th-radius); background: var(--th-surface); }
+[data-th-card="list"] .th-card-media { aspect-ratio: 1; }
+[data-th-card="list"] .th-card-media img { object-fit: contain; padding: 8%; }
+[data-th-card="polaroid"] .th-card { padding: 10px 10px 16px; background: var(--th-surface); box-shadow: var(--th-shadow); transform: rotate(-1.2deg); transition: transform 0.3s; }
+[data-th-card="polaroid"] .th-card:nth-child(even) { transform: rotate(1.2deg); }
+[data-th-card="polaroid"] .th-card:hover { transform: rotate(0) translateY(-4px); }
+[data-th-card="polaroid"] .th-card-media { aspect-ratio: 1; border-radius: 0; }
+[data-th-card="polaroid"] .th-card-info { text-align: center; justify-items: center; }
+[data-th-card="round"] .th-card-media { aspect-ratio: 1; border-radius: 50%; }
+[data-th-card="round"] .th-card-info { text-align: center; justify-items: center; }
+[data-th-card="round"] .th-tile, [data-th-card="polaroid"] .th-tile { border-radius: 50%; aspect-ratio: 1; }
+[data-th-card="overlay"] .th-tile, [data-th-card="list"] .th-tile, [data-th-card="tile"] .th-tile { border-radius: var(--th-radius-lg); }
+@media (prefers-reduced-motion: reduce) { [data-th-card="polaroid"] .th-card, [data-th-card="polaroid"] .th-card:nth-child(even) { transform: none; } }
 
 .th-faq-list { display: grid; gap: 10px; max-width: 860px; }
 .th-faq-item { border-radius: var(--th-radius); background: var(--th-surface); border: 1px solid var(--th-line); padding: 0 20px; }

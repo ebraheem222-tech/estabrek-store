@@ -1,6 +1,7 @@
 import type { Palette } from "./colour";
 import type { ModelKind } from "./three/kinds";
 import type { KitParts } from "./packs";
+import type { DNA, Sector } from "./dna/axes";
 
 export type Words = { ar: string; en: string; he: string };
 
@@ -57,7 +58,7 @@ export type SvgKit =
   | "cloud"
   | "mono";
 /** Product cards. */
-export type CardStyle = "portrait" | "spec" | "angled" | "arch" | "sticker" | "pixel" | "frame" | "book" | "minimal";
+export type CardStyle = "portrait" | "spec" | "angled" | "arch" | "sticker" | "pixel" | "frame" | "book" | "minimal" | "tile" | "overlay" | "list" | "polaroid" | "round";
 
 /** A theme's 3D stage (storeThemes/three): the models the store starts with and how they stand. */
 export type StageSpec = {
@@ -95,6 +96,25 @@ export type StoreTheme = {
   copy: ThemeCopy;
   /** Parts of its pack it sets itself (the rest is worked out from the theme: packs.ts themeKit). */
   kit?: KitParts;
+  /** Made from a design (dna/theme.ts): its kind, sector, variant and the parts its pages take. */
+  design?: DesignInfo;
+  /** One of the first themes, before every theme was a design of its own: still works, listed apart. */
+  classic?: boolean;
+};
+
+/** A theme made from a kind's design: which kind and variant it is, its signature section and the parts its pages take. */
+export type DesignInfo = {
+  kind: string;
+  sector: Sector;
+  variant: "first" | "soft" | "bold" | "layout";
+  signature: Words;
+  header: DNA["header"];
+  footer: DNA["footer"];
+  imagery: DNA["imagery"];
+  voice: DNA["voice"];
+  archetype: DNA["archetype"];
+  /** Its corners and outlines: the home's pictures take them (never the rose design's arch). */
+  shape: DNA["shape"];
 };
 
 export type ThemeCopy = {

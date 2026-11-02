@@ -4662,4 +4662,9 @@ export const HE: Record<string, string> = {
   "Pick an element on the page (a button, a picture, a heading, a section…) to see the ready looks that suit it.": "בחרו רכיב בדף (כפתור, תמונה, כותרת, מקטע…) כדי לראות את המראות המוכנים שמתאימים לו.",
   "A ready look": "מראה מוכן",
   "Looks": "מראות",
+  "Another layout": "פריסה אחרת",
+  "Every design": "כל העיצובים",
+  "Classic themes": "ערכות קלאסיות",
+  "Search {0} designs": "חיפוש ב־{0} עיצובים",
+  "The design's variant": "גרסת העיצוב",
 };
