@@ -12,6 +12,7 @@
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
 import { canHold, isFree, newColumns, newElement, OVER_TYPES, type NewKind } from "./columns";
+import { newFooter, newHeader } from "./blockDefaults";
 import type { Extra, TreeIndex } from "./treeIndex";
 
 export type Where = "before" | "after" | "inside";
@@ -53,7 +54,7 @@ export function sceneOf(c: InsertCtx, id: string): string | null {
 }
 
 /** What's added at the page's own level comes in a section of its own (a section goes as it is). */
-export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" || node.type === "block" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
+export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" || node.type === "block" || node.type === "popup" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
 
 const round = (v: number) => Math.round(Math.max(0, Math.min(100, v)));
 /** The node placed freely at a spot of what holds it. */
@@ -124,11 +125,11 @@ export function insertOps(c: InsertCtx, selected: string | null, node: PageTreeN
 /* ------------------------------------------------------------- ready blocks */
 
 /** Ready-made blocks: a few elements already put together. */
-export const READY = ["ready-intro", "ready-split", "ready-video", "ready-gallery"] as const;
+export const READY = ["ready-intro", "ready-split", "ready-video", "ready-gallery", "ready-header", "ready-footer"] as const;
 export type ReadyKind = (typeof READY)[number];
 export type AddKind = NewKind | ReadyKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
-export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video" };
+export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video", beforeAfter: "image", hotspots: "image" };
 
 /** A new element, ready block or empty section, in the language being edited. */
 export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): PageTreeNode {
@@ -155,6 +156,10 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
     }
     case "ready-gallery":
       return { id: ids("sec"), type: "section", props: { contained: true }, children: [el("slider", src)] };
+    case "ready-header":
+      return newHeader(lang, ids);
+    case "ready-footer":
+      return newFooter(lang, ids);
     default:
       return el(kind, src);
   }

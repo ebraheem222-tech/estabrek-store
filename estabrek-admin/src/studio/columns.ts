@@ -10,6 +10,7 @@ import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import type { TreeIndex } from "./treeIndex";
 import { SHAPES, defaultsOf } from "./svgShapes";
+import { BLOCK_KINDS, newBlock, newPopup } from "./blockDefaults";
 
 export const MAX_CELLS = 4;
 /** Columns › cell › columns, and no deeper. */
@@ -76,7 +77,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "model3d", "icon", "lottie", "rive", "spacer", "divider", "categories", "form", "columns"] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "model3d", "icon", "lottie", "rive", "spacer", "divider", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -141,6 +142,23 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
       return { id: id("f"), type: "form", props: { kind: "newsletter" } };
     case "columns":
       return newColumns([1, 1], id);
+    case "accordion":
+    case "testimonials":
+    case "pricing":
+    case "team":
+    case "logos":
+    case "alert":
+    case "marquee":
+    case "tabs":
+    case "countdown":
+    case "beforeAfter":
+    case "hotspots":
+    case "map":
+    case "search":
+    case "menu":
+      return newBlock(kind, lang, id, src);
+    case "popup":
+      return newPopup(lang, id);
   }
 }
 
@@ -181,8 +199,8 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form"]);
-const HOLDERS = new Set(["section", "grid", "stack", "cell"]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", ...BLOCK_KINDS]);
+const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);
 
@@ -191,7 +209,7 @@ export const OVER_TYPES = new Set(["heading", "text", "image", "button", "video"
 
 /** Whether a `child` may go straight inside `parent`. */
 export function accepts(parent: string, child: string): boolean {
-  if (parent === "page") return child === "section" || child === "block";
+  if (parent === "page") return child === "section" || child === "block" || child === "popup";
   if (parent === "legacy" || parent === "roseBlock") return OVER_TYPES.has(child);
   if (parent === "columns") return child === "cell";
   if (!HOLDERS.has(parent)) return false;

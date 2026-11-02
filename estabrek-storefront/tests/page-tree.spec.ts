@@ -671,6 +671,130 @@ test.describe.serial("a page of new elements", () => {
     await expect(all).toHaveCount(6, { timeout: 20000 });
   });
 
+  test("content blocks: questions (one open at a time, an FAQ for search engines), testimonials, plans, a team, logos, a notice that closes, running words", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/blocks-demo");
+    // Questions: the first open; opening the second closes it; the page's FAQ for search engines.
+    const faq = page.locator('[data-tree-node="faq"]');
+    await expect(faq.locator("details")).toHaveCount(2);
+    expect(await faq.locator("details").first().getAttribute("open")).toBe("");
+    await faq.locator("summary").nth(1).click();
+    await expect(faq.locator("details").nth(1)).toHaveAttribute("open", "");
+    await expect(faq.locator("details").first()).not.toHaveAttribute("open", "");
+    const ld = JSON.parse((await faq.locator('script[type="application/ld+json"]').textContent())!);
+    expect([ld["@type"], ld.mainEntity.length, ld.mainEntity[0].name, ld.mainEntity[0].acceptedAnswer.text]).toEqual(["FAQPage", 2, "كم بياخد التوصيل؟", "يومين."]);
+    // Testimonials: their stars said in words.
+    await expect(page.locator('[data-tree-node="says"] .pt-stars')).toHaveAttribute("aria-label", "4 من 5");
+    expect(await page.locator('[data-tree-node="says"] blockquote').innerText()).toBe("حلو كتير");
+    // Plans: one per line, the featured one stands out, a button only with words and a link.
+    const plans = page.locator('[data-tree-node="plans"] .pt-plan');
+    await expect(plans).toHaveCount(2);
+    await expect(plans.first().locator("li")).toHaveCount(2);
+    expect(await plans.first().locator("a.pt-btn").getAttribute("href")).toBe("/shop");
+    await expect(plans.nth(1)).toHaveClass(/pt-plan-featured/);
+    expect(await plans.nth(1).locator(".pt-plan-badge").innerText()).toBe("الأشهر");
+    await expect(plans.nth(1).locator("a")).toHaveCount(0);
+    // A team member: photo, name, role.
+    expect(await page.locator('[data-tree-node="crew"] .pt-member-name').innerText()).toBe("ليلى");
+    // Logos moving along a line: twice (the second hidden from screen readers); an unsafe one left out.
+    const brands = page.locator('[data-tree-node="brands"]');
+    await expect(brands).toHaveClass(/pt-logos-gray/);
+    await expect(brands.locator(".pt-mq-item")).toHaveCount(4);
+    await expect(brands.locator('.pt-mq-item[aria-hidden="true"]')).toHaveCount(2);
+    // The notice closes.
+    const note = page.locator('[data-tree-node="note"]');
+    await expect(note).toHaveAttribute("role", "status");
+    await note.locator(".pt-alert-close").click();
+    await expect(note).toBeHidden();
+    // Running words: moving, twice over.
+    const run = page.locator('[data-tree-node="run"]');
+    await expect(run.locator(".pt-mq-item")).toHaveCount(4);
+    expect(await run.locator(".pt-mq-track").evaluate((el) => [getComputedStyle(el).animationName, getComputedStyle(el).animationDuration].join("|"))).toBe("pt-mq|20s");
+  });
+
+  test("interactive elements: tabs by keyboard, countdowns, before and after, hotspots, a map, popups on arrival and from a link", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/interactive-demo");
+    // A popup on arrival (once this visit): closed with its button, not back after a reload.
+    const welcome = page.locator('[data-tree-node="pop-load"] dialog');
+    await expect(welcome).toHaveAttribute("open", "", { timeout: 5000 });
+    await expect(welcome).toHaveAttribute("aria-label", "ترحيب");
+    await welcome.locator(".pt-popup-close").click();
+    await expect(welcome).not.toHaveAttribute("open", "");
+    // Tabs: the first open; the arrow keys move (the page reads right to left).
+    const tabs = page.locator('[data-tree-node="tb"] [role="tab"]');
+    await expect(tabs).toHaveCount(3);
+    await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+    await tabs.first().focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('[data-tree-node="tb"] [role="tabpanel"]:not([hidden]) img')).toHaveCount(1);
+    await page.keyboard.press("End");
+    await expect(tabs.nth(2)).toHaveAttribute("aria-selected", "true");
+    // Countdowns: one counting (days in the thousands), one over showing its words.
+    await expect.poll(() => page.locator('[data-tree-node="cd-future"] .pt-count-n').first().innerText()).not.toBe("--");
+    expect(Number(await page.locator('[data-tree-node="cd-future"] .pt-count-n').first().innerText())).toBeGreaterThan(20000);
+    await expect(page.locator('[data-tree-node="cd-future"] .pt-count-l').first()).toHaveText("يوم");
+    await expect(page.locator('[data-tree-node="cd-past"] .pt-count-done')).toHaveText("بلّش العرض");
+    // Before and after: the handle from 30%, moved with the keyboard.
+    const range = page.locator('[data-tree-node="ba"] input[type="range"]');
+    await expect(range).toHaveAttribute("aria-label", "حرّكي للمقارنة");
+    expect(await range.inputValue()).toBe("30");
+    await range.focus();
+    await page.keyboard.press("ArrowUp");
+    expect(await page.locator('[data-tree-node="ba"] .pt-ba').evaluate((el) => (el as HTMLElement).style.getPropertyValue("--pt-ba"))).toBe("31%");
+    // Hotspots: a point opens its card (one at a time).
+    const spots = page.locator('[data-tree-node="hot"] details');
+    await expect(spots).toHaveCount(2);
+    await spots.first().locator("summary").click();
+    await expect(spots.first()).toHaveAttribute("open", "");
+    expect(await spots.first().locator("a").getAttribute("href")).toBe("/shop");
+    await spots.nth(1).locator("summary").click();
+    await expect(spots.first()).not.toHaveAttribute("open", "");
+    // A map of the place, loaded only when reached.
+    const map = page.locator('[data-tree-node="mp"] iframe');
+    expect(await map.getAttribute("src")).toBe("https://maps.google.com/maps?q=Nazareth&z=12&hl=ar&output=embed");
+    expect([await map.getAttribute("loading"), await map.getAttribute("title")]).toEqual(["lazy", "محلّنا"]);
+    // A popup opened by a link to its name, in the corner (the page stays usable).
+    await page.locator('[data-tree-node="open-offer"]').click();
+    const offer = page.locator('[data-tree-node="pop-offer"] dialog');
+    await expect(offer).toHaveAttribute("open", "");
+    expect(await offer.evaluate((d) => getComputedStyle(d).position)).toBe("fixed");
+    // Once a visit: not again after a reload.
+    await page.reload();
+    await page.waitForTimeout(1200);
+    await expect(page.locator('[data-tree-node="pop-load"] dialog')).not.toHaveAttribute("open", "");
+  });
+
+  test("store pieces: a search box sending to the search page, a menu folding on a phone, category cards in circles", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/blocks-demo");
+    // The search box: the shop's search page, the words asked for as `q`.
+    const find = page.locator('[data-tree-node="find"]');
+    await expect(find).toHaveAttribute("role", "search");
+    await expect(find).toHaveClass(/pt-search-underline/);
+    expect(await find.getAttribute("action")).toBe("/search");
+    await find.locator('input[name="q"]').fill("شال");
+    await Promise.all([page.waitForURL(/\/search\?q=/), find.locator("button").click()]);
+    expect(decodeURIComponent(new URL(page.url()).searchParams.get("q")!)).toBe("شال");
+    // The menu: its safe links in a row; an unsafe one left out.
+    await page.goto("/blocks-demo");
+    const nav = page.locator('[data-tree-node="nav"]');
+    await expect(nav).toHaveAttribute("aria-label", "القائمة");
+    await expect(nav.locator(":scope > .pt-menu-list a")).toHaveCount(2);
+    await expect(nav.locator(":scope > .pt-menu-list")).toBeVisible();
+    await expect(nav.locator(".pt-menu-fold")).toBeHidden();
+    // Category cards in circles, five in a row.
+    const cats = page.locator('[data-tree-node="cats"] .pt-tiles');
+    await expect(cats).toHaveClass(/pt-tiles-circle/);
+    expect(await cats.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(5);
+    // On a phone the menu folds under a button.
+    await page.setViewportSize({ width: 390, height: 800 });
+    await expect(nav.locator(":scope > .pt-menu-list")).toBeHidden();
+    await nav.locator(".pt-menu-fold > summary").click();
+    await expect(nav.locator(".pt-menu-fold .pt-menu-list a").first()).toBeVisible();
+  });
+
   test("with reduced motion: no particles and no smooth scrolling; animations stay still", async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: "reduce" });
     const page = await ctx.newPage();

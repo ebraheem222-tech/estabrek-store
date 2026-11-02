@@ -21,6 +21,8 @@ import { color } from "./css";
 import { particlesOf } from "./particles";
 import { model3dOf } from "./model3d";
 import { Model3dSpot } from "./Model3dSpot";
+import { BlockView, WORDS as BLOCK_WORDS } from "./blocks";
+import { PopupView } from "./Interactive";
 import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
@@ -104,6 +106,27 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
           {edges}
           {p.contained ? <div className="pt-inner">{kids()}</div> : kids()}
         </Tag>
+      );
+    }
+    case "popup": {
+      // Over the page when its moment comes (PopupView); its content like a section's.
+      const one = <T extends string>(v: unknown, list: readonly T[], def: T): T => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : def);
+      const num = (v: unknown, max: number, def: number) => (typeof v === "number" && v >= 0 && v <= max ? v : def);
+      const spec = {
+        trigger: one(p.trigger, ["load", "scroll", "exit", "click"] as const, "load"),
+        delay: num(p.delay, 120, 3),
+        scroll: num(p.scroll, 100, 50),
+        anchor: typeof p.anchor === "string" && /^[A-Za-z][\w-]{0,40}$/.test(p.anchor) ? p.anchor : undefined,
+        often: one(p.often, ["always", "visit", "day", "once"] as const, "visit"),
+        size: one(p.size, ["s", "m", "l"] as const, "m"),
+        place: one(p.place, ["center", "bottom", "corner"] as const, "center"),
+      };
+      return (
+        <div className={cls(node)} {...mark}>
+          <PopupView id={node.id} spec={spec} label={say(p.label)} close={(BLOCK_WORDS[ctx.lang] ?? BLOCK_WORDS.ar).close}>
+            {kids()}
+          </PopupView>
+        </div>
       );
     }
     case "grid":
@@ -229,6 +252,21 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
         </span>
       );
     }
+    case "accordion":
+    case "testimonials":
+    case "pricing":
+    case "team":
+    case "logos":
+    case "alert":
+    case "marquee":
+    case "tabs":
+    case "countdown":
+    case "beforeAfter":
+    case "hotspots":
+    case "map":
+    case "search":
+    case "menu":
+      return <BlockView node={node} className={cls(node)} mark={mark as Record<string, string>} say={say} link={link} lang={ctx.lang} />;
     case "model3d": {
       // A 3D model: its place is drawn here, its canvas only near the screen (Model3dSpot).
       const spec = model3dOf(p);
@@ -283,8 +321,8 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       return (
         <div className={cls(node)} {...mark}>
           {title ? <h2 className="pt-block-title">{title}</h2> : null}
-          <div className={p.layout === "row" ? "pt-products-row" : "pt-products-grid"}>
-            {shown.map((id) => <div key={id}>{ctx.renderProductCard?.(id)}</div>)}
+          <div className={p.layout === "row" ? "pt-products-row" : "pt-products-grid"} style={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 6 ? ({ "--pt-cols": String(p.columns) } as Record<string, string>) : undefined}>
+            {shown.map((id) => <div key={id} className={`pt-card pt-card-${["bordered", "shadow", "soft", "lift"].includes(p.card) ? p.card : "plain"}`}>{ctx.renderProductCard?.(id)}</div>)}
           </div>
         </div>
       );
@@ -299,7 +337,7 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       return (
         <div className={cls(node)} {...mark}>
           {title ? <h2 className="pt-block-title">{title}</h2> : null}
-          <div className="pt-tiles">
+          <div className={`pt-tiles pt-tiles-${["square", "circle", "overlay", "pill", "banner"].includes(p.look) ? p.look : "tall"}`} style={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 6 ? ({ "--pt-cols": String(p.columns) } as Record<string, string>) : undefined}>
             {shown.map((c) => {
               const img = safeSrc(c.iconUrl);
               return (

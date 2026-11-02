@@ -21,6 +21,8 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["ready-split", () => tr("صورة وكلام", "Picture and words"), "◧"],
       ["ready-video", () => tr("فيديو وكلام فوقه", "Video with words over it"), "▶"],
       ["ready-gallery", () => tr("معرض صور", "Picture gallery"), "▦"],
+      ["ready-header", () => tr("هيدر: الاسم والقائمة والبحث", "Header: name, menu, search"), "⎺"],
+      ["ready-footer", () => tr("فوتر: عنّا وروابط", "Footer: about and links"), "⎽"],
     ],
   },
   {
@@ -62,6 +64,33 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["columns", () => typeLabel("columns"), "▥"],
       ["categories", () => typeLabel("categories"), "▤"],
       ["form", () => typeLabel("form"), "✉"],
+    ],
+  },
+  {
+    key: "blocks",
+    title: () => tr("بلوكات محتوى", "Content blocks"),
+    kinds: [
+      ["accordion", () => typeLabel("accordion"), "☰"],
+      ["testimonials", () => typeLabel("testimonials"), "❝"],
+      ["pricing", () => typeLabel("pricing"), "₪"],
+      ["team", () => typeLabel("team"), "☺"],
+      ["logos", () => typeLabel("logos"), "◎"],
+      ["alert", () => typeLabel("alert"), "!"],
+      ["marquee", () => typeLabel("marquee"), "⇢"],
+    ],
+  },
+  {
+    key: "interactive",
+    title: () => tr("تفاعلية", "Interactive"),
+    kinds: [
+      ["tabs", () => typeLabel("tabs"), "▭"],
+      ["countdown", () => typeLabel("countdown"), "⏱"],
+      ["beforeAfter", () => typeLabel("beforeAfter"), "◧"],
+      ["hotspots", () => typeLabel("hotspots"), "◉"],
+      ["map", () => typeLabel("map"), "⌖"],
+      ["popup", () => typeLabel("popup"), "▣"],
+      ["search", () => typeLabel("search"), "⌕"],
+      ["menu", () => typeLabel("menu"), "≡"],
     ],
   },
 ];

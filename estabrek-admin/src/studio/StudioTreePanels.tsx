@@ -574,6 +574,12 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           <>
             {words("title", tr("العنوان (اختياري)", "Title (optional)"))}
             <NumberField label={tr("كم قسم", "How many")} value={typeof p.limit === "number" ? p.limit : 6} min={1} max={24} onSave={(v) => setProps({ limit: v ?? 6 })} />
+            <Choice
+              label={tr("شكل الكروت", "Card look")} value={String(p.look ?? "tall")} busy={busy} testId="studio-categories-look"
+              options={[["tall", tr("طولية", "Tall")], ["square", tr("مربعة", "Square")], ["circle", tr("دوائر", "Circles")], ["overlay", tr("الاسم فوق الصورة", "Name over the picture")], ["pill", tr("كبسولات", "Pills")], ["banner", tr("عريضة", "Wide")]]}
+              onPick={(v) => setProps({ look: v === "tall" ? undefined : v })}
+            />
+            <NumberField label={tr("كم بالصف (فاضي = 3)", "How many in a row (empty = 3)")} value={typeof p.columns === "number" ? p.columns : undefined} min={1} max={6} onSave={(v) => setProps({ columns: v ?? undefined })} testId="studio-categories-columns" />
           </>
         );
       case "form":
