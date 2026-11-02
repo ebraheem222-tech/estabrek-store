@@ -9,6 +9,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Spinner } from "../../components/ui/Spinner";
 import { PAGE_TEMPLATES } from "./pageTemplates";
 import { PageFormatControl } from "./PageFormatControl";
+import { shopOrigin } from "../../studio/storeThemes";
 
 function slugify(input: string) {
   const core = input
@@ -440,7 +441,8 @@ const onSave = async () => {
                   index={index}
                   onEdit={() => openEdit(p.id)}
                   onEditPage={() => (window.location.href = `/studio/${p.id}`)}
-                  onPreview={() => (window.location.href = `/admin/pages/${p.id}/preview`)}
+                  // The page as customers see it, on the shop.
+                  onPreview={() => window.open(`${shopOrigin()}${p.slug === "/" ? "/" : p.slug}`, "_blank", "noopener")}
                   onDelete={() => setConfirmId(p.id)}
                 />
               ))}

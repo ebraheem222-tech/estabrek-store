@@ -1,14 +1,14 @@
 # Retiring the old page editor (CMS track B, phase 8)
 
-The old page editor (`estabrek-admin/src/features/pages/PageEditorPage.tsx` and the section
-editors and catalogs under `src/cms`) is retiring. Every page now opens in the new editor
-(`/studio/:id`). This file is the checklist of what moved, what stays an old section, and what
-code can go once the store's live pages are confirmed not to need the old editor.
+The old page editor (`estabrek-admin/src/features/pages/PageEditorPage.tsx`, its preview page,
+and the section editors and catalogs under `src/cms`) was removed on 2026-11-02, after the live
+store's pages were checked. Every page opens in the new editor (`/studio/:id`). This file is the
+record of what moved, what stays an old section, and what was removed.
 
 ## What changed
 
-- `/admin/pages/:id` forwards to `/studio/:id`, and the pages list opens the new editor.
-- The old editor waits at `/admin/pages/:id/classic`, behind a notice that it's retiring.
+- `/admin/pages/:id` (and the old `/classic` and `/preview` addresses) open `/studio/:id`; the
+  pages list opens the new editor, and its preview opens the page on the shop.
 - The new editor has the page's own settings (name, address, status and schedule, search words
   per language, canonical address, hiding from search engines, the page's CSS and scripts).
 - An old section can be turned into the new editor's own elements (`src/studio/convert.ts`):
@@ -71,21 +71,16 @@ rose versions. So in the rose design the new editor keeps the home's opening as 
 for every other section, that turning it gives it the new elements' look instead. Keeping them
 as old sections is fine: the new editor edits their words, pictures, links and looks in place.
 
-## Removing the code
+## The code removed
 
-When nothing in the store needs the old editor (the query above returns nothing, or those
-sections are replaced):
+The two pages' routes went (their addresses open the new editor), then the files below: what
+the admin's import graph showed nothing else reaches once those pages are gone, their tests,
+the READMEs of the theme folders that went, and `src/motion/gsapPresets.ts` (the old sections'
+animation presets, imported by nothing). The admin's type check found no new errors, its tests
+and build passed. That's about 56,765 lines. The files under `src/cms` that the settings, the admin's
+own buttons, cursors, loaders and website themes still use stayed.
 
-1. Remove the `/admin/pages/:id/classic` and `/admin/pages/:id/preview` routes, and make the pages
-   list's preview open the page on the shop.
-2. Delete the files below (found from the admin's import graph: what nothing else reaches once
-   those two pages are gone), and the tests that only test them.
-3. Run the admin's type check, tests and build.
-
-That's about 56,765 lines. The files under `src/cms` that the settings, the admin's
-own buttons, cursors, loaders and website themes still use stay.
-
-### Used only by the old editor and its preview (60)
+### Removed: used only by the old editor and its preview (60)
 
 - `estabrek-admin/src/cms/animated-shapes/AnimatedShapeLayer.tsx`
 - `estabrek-admin/src/cms/animated-shapes/AnimatedShapes.tsx`
@@ -148,7 +143,7 @@ own buttons, cursors, loaders and website themes still use stay.
 - `estabrek-admin/src/lib/sanitizeHtml.ts`
 - `estabrek-admin/src/lib/scopeCss.ts`
 
-### Used by nothing today (19)
+### Removed: used by nothing (19)
 
 - `estabrek-admin/src/cms/alert-themes/AlertThemesDemo.tsx`
 - `estabrek-admin/src/cms/animated-shapes/AnimatedShapesDemo.tsx`
@@ -170,7 +165,7 @@ own buttons, cursors, loaders and website themes still use stay.
 - `estabrek-admin/src/features/pages/SectionEditorImports.ts`
 - `estabrek-admin/src/features/pages/SectionStylingPanelExtended.tsx`
 
-### Their tests (8)
+### Removed: their tests (8)
 
 - `estabrek-admin/src/cms/renderer/PageRenderer.splitHero.test.tsx`
 - `estabrek-admin/src/cms/style/containerStyles.test.ts`
@@ -181,7 +176,7 @@ own buttons, cursors, loaders and website themes still use stay.
 - `estabrek-admin/src/features/pages/RoseHeroSettings.test.tsx`
 - `estabrek-admin/src/features/pages/RosePresentationSettings.test.tsx`
 
-### Stay (other screens use them) (35)
+### Kept (other screens use them) (35)
 
 - `estabrek-admin/src/cms/alert-themes/AlertComponents.tsx`
 - `estabrek-admin/src/cms/alert-themes/AlertThemes.tsx`
@@ -214,7 +209,7 @@ own buttons, cursors, loaders and website themes still use stay.
 - `estabrek-admin/src/cms/themes/templates/modern.ts`
 - `estabrek-admin/src/cms/themes/types.ts`
 - `estabrek-admin/src/cms/themes/websiteThemes.ts`
-- `estabrek-admin/src/features/pages/OldEditorNotice.tsx`
+- `estabrek-admin/src/features/pages/OpenInStudio.tsx`
 - `estabrek-admin/src/features/pages/PageFormatControl.tsx`
 - `estabrek-admin/src/features/pages/PagesListPage.tsx`
 - `estabrek-admin/src/features/pages/pageTemplates.ts`
