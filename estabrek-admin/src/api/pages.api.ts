@@ -9,6 +9,8 @@ export type Page = {
   name: string;
   slug: string; // "/", "/about"
   status: PageStatus;
+  /** "block": a saved block of the new editor (edited like a page, never a page of the shop). */
+  kind?: "page" | "block";
   publishAt?: string | null;
   unpublishAt?: string | null;
   canonicalUrl?: string | null;
@@ -244,6 +246,15 @@ export async function publishPageDraft(id: string, force = false) {
 export async function discardPageDraft(id: string) {
   const res = await api.delete(ENDPOINTS.admin.pages.draft(id));
   return res.data as { ok: true };
+}
+
+/** A saved block of the new editor (backend lib/pageBlocks.ts): sections kept once, edited like a page. */
+export type BlockInfo = { id: string; name: string; updatedAt: string; hasDraft: boolean; sections: number; uses: number };
+export async function listBlocks() {
+  return (await api.get(ENDPOINTS.admin.pages.blocks)).data as BlockInfo[];
+}
+export async function createBlock(name: string, sections: PageTreeNode[]) {
+  return (await api.post(ENDPOINTS.admin.pages.blocks, { name, sections })).data as BlockInfo;
 }
 
 export async function deletePage(id: string) {

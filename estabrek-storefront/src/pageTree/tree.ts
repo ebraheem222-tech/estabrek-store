@@ -59,7 +59,61 @@ export type ScreenStyle = {
   layer?: false | { x: number; y: number; anchor?: string };
   z?: number;
   hidden?: boolean;
+  /** A family from the fonts library by name (pageTree/fonts.ts); it wins over `font`. */
+  family?: string;
+  italic?: boolean;
+  /** Fluid: the words grow from this size on a phone to `size` on a computer. */
+  sizeMin?: number;
+  caps?: "none" | "upper" | "lower" | "title" | "small";
+  /** At most this many lines, then "…". */
+  lines?: number;
+  balance?: "balance" | "pretty";
+  textColumns?: number;
+  wordSpacing?: number;
+  decoration?: { line: "none" | "underline" | "overline" | "through"; style?: "solid" | "wavy" | "dotted" | "dashed" | "double"; color?: string; width?: number; offset?: number };
+  stroke?: { width: number; color: string };
+  /** Letters painted with a gradient. */
+  fill?: { color: string; to: string; via?: string; angle?: number };
+  shadows?: Array<{ x: number; y: number; blur: number; color: string }>;
+  gradient?: { color: string; to: string; via?: string; angle?: number; radial?: boolean };
+  /** Frosted glass: what's behind it is blurred. */
+  backdrop?: { blur: number; saturate?: number };
+  filters?: { blur?: number; bright?: number; contrast?: number; saturate?: number; gray?: number; hue?: number };
+  /** Its look with the mouse over it, the keyboard's focus on it, or pressed (colours, frame, shadows, turns, paint). */
+  hover?: StateStyle;
+  focused?: StateStyle;
+  pressed?: StateStyle;
+  /** How fast it changes to and from those looks. */
+  transition?: { duration: number; ease?: string; delay?: number };
 };
+/**
+ * The store's shared styles (the backend's lib/siteStyles.ts): every heading of a level and
+ * the body text take their text style (h1–h6, body), each button kind its button style
+ * (solid, outline, link); any element can take a named one by its props.styleId.
+ */
+export type SiteStyle = { id: string; kind: "text" | "button" | "box"; name?: string; style: Partial<Record<Screen, ScreenStyle>> };
+export const SITE_STYLE_KINDS = ["text", "button", "box"] as const;
+const STYLE_ID = /^[a-z][a-z0-9-]{0,30}$/;
+/** The class of the shared style an element names ("" for none or a bad name). */
+export const styleClass = (id: unknown) => (typeof id === "string" && STYLE_ID.test(id) ? `ps-${id}` : "");
+/** Shared styles as the shop may use them: known kinds, good ids, each once, at most 60. */
+export function siteStylesOf(raw: unknown): SiteStyle[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: SiteStyle[] = [];
+  for (const s of raw.slice(0, 60)) {
+    if (!s || typeof s !== "object") continue;
+    const { id, kind, name, style } = s as Record<string, unknown>;
+    if (typeof id !== "string" || !STYLE_ID.test(id) || seen.has(id) || !(SITE_STYLE_KINDS as readonly unknown[]).includes(kind)) continue;
+    seen.add(id);
+    out.push({ id, kind: kind as SiteStyle["kind"], ...(typeof name === "string" ? { name } : {}), style: style && typeof style === "object" && !Array.isArray(style) ? (style as SiteStyle["style"]) : {} });
+  }
+  return out;
+}
+
+/** What a state may change: never the size or place (the shop's css.ts STATE_KEYS). */
+export type StateStyle = Omit<ScreenStyle, "hover" | "focused" | "pressed" | "transition">;
+export const STATES = ["hover", "focused", "pressed"] as const;
 export type Screen = "base" | "tablet" | "mobile";
 export type TreeNode = {
   id: string;

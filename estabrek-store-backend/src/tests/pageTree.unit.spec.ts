@@ -179,6 +179,45 @@ describe("checking a page tree", () => {
     expect(plain.ok && plain.tree.root.children![0].children![0].motion).toBeUndefined();
   });
 
+  test("words get a family, fluid size, caps, lines and paint; any element gets a look for the mouse, focus and press", () => {
+    const head = (style: unknown) => page([section("s", [{ id: "h", type: "heading", props: { text: { ar: "عنوان" } }, style }])]);
+    const look = {
+      base: {
+        family: "reem-kufi", italic: true, size: 64, sizeMin: 32, caps: "upper", lines: 2, balance: "balance", textColumns: 2, wordSpacing: 4,
+        decoration: { line: "underline", style: "wavy", color: "accent", width: 2, offset: 6 },
+        stroke: { width: 1.5, color: "#000000" },
+        fill: { color: "accent", to: "#ffd1e3", via: "white", angle: 90 },
+        shadows: [{ x: 0, y: 2, blur: 0, color: "#00000033" }, { x: 4, y: 4, blur: 12, color: "accent" }],
+        gradient: { color: "bg", to: "accent-soft", angle: 45, radial: true },
+        backdrop: { blur: 12, saturate: 1.4 },
+        filters: { gray: 1, bright: 1.1, hue: -20 },
+        transition: { duration: 0.4, ease: "back", delay: 0.05 },
+        hover: { color: "accent", scale: 1.05, moveY: -4, shadow: "lg", filters: { gray: 0 }, decoration: { line: "underline" } },
+        focused: { border: { width: 2, color: "accent" }, glow: { color: "accent", size: 12 } },
+        pressed: { scale: 0.97, opacity: 0.9 },
+      },
+      mobile: { size: 40, hover: { color: "text" } },
+    };
+    const r = checkTree(head(look));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].style).toEqual(look);
+    const bad = (base: unknown) => issuesOf(head({ base })).map((i) => i.path.replace("root.children[0].children[0].style.base.", ""));
+    expect(bad({ family: "Cairo; color:red" })).toEqual(["family"]);
+    expect(bad({ caps: "shout" })).toEqual(["caps"]);
+    expect(bad({ lines: 0 })).toEqual(["lines"]);
+    expect(bad({ shadows: Array(5).fill({ x: 0, y: 0, blur: 0, color: "#000" }) })).toEqual(["shadows"]);
+    expect(bad({ fill: { color: "accent" } })).toEqual(["fill.to"]);
+    expect(bad({ filters: { blur: 99 } })).toEqual(["filters.blur"]);
+    expect(bad({ transition: { duration: 9 } })).toEqual(["transition.duration"]);
+    // A state changes the look, never the size or place: those keys are dropped, bad values refused.
+    expect(bad({ hover: { scale: 9 } })).toEqual(["hover.scale"]);
+    const sized = checkTree(head({ base: { hover: { size: 90, pad: [1, 1, 1, 1], color: "accent" } } }));
+    expect(sized.ok && sized.tree.root.children![0].children![0].style).toEqual({ base: { hover: { color: "accent" } } });
+    // States don't nest.
+    const nested = checkTree(head({ base: { hover: { hover: { color: "accent" } } } }));
+    expect(nested.ok && nested.tree.root.children![0].children![0].style).toEqual({ base: { hover: {} } });
+  });
+
   test("a drawing is kept as checked data: shapes and safe values only", () => {
     const blob = { viewBox: "0 0 200 200", morph: "M10 10 C 50 0 150 0 190 10 Z", nodes: [
       { t: "defs", a: {}, c: [{ t: "linearGradient", a: { id: "g1", x1: "0", y1: "0", x2: "1", y2: "1" }, c: [{ t: "stop", a: { offset: "0%", "stop-color": "accent" } }, { t: "stop", a: { offset: "100%", "stop-color": "#ffd1e3" } }] }] },

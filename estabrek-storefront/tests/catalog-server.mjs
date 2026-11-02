@@ -1096,7 +1096,8 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
           return out;
         };
         const sections = d.sections.filter((x) => x.isVisible).map((x, order) => ({ id: x.id, type: x.type, order, isVisible: true, data: x.tr?.[locale] ? over(x.data, x.tr[locale]) : x.data }));
-        return res.end(JSON.stringify({ ...home, id: d.pageId ?? home.id, sections, format: 2, tree: d.tree, draft: { rev: d.rev, updatedAt: d.updatedAt } }));
+        // The shared styles the editor is changing come with its preview (the backend's page-preview).
+        return res.end(JSON.stringify({ ...home, id: d.pageId ?? home.id, sections, format: 2, tree: d.tree, draft: { rev: d.rev, updatedAt: d.updatedAt }, ...(d.siteStyles !== undefined ? { siteStyles: d.siteStyles } : {}) }));
       }
       if (token === "good-home") {
         const was = pageTreeOn;

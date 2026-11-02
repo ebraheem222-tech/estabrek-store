@@ -84,3 +84,16 @@ describe("where something new goes", () => {
     expect(video.children![1].style).toMatchObject({ base: { layer: { x: 50 } } });
   });
 });
+
+describe("saved blocks on the page", () => {
+  it("a linked block sits straight on the page, as it is; it's not an element with a look", async () => {
+    const { accepts, isFree } = await import("./columns");
+    const { forPage } = await import("./insert");
+    const link: PageTreeNode = { id: "blk-1", type: "block", props: { blockId: "b1" } };
+    expect(accepts("page", "block")).toBe(true);
+    expect(accepts("section", "block")).toBe(false);
+    expect(accepts("cell", "block")).toBe(false);
+    expect(isFree("block")).toBe(false);
+    expect(forPage(link, idMaker(() => false))).toBe(link);
+  });
+});

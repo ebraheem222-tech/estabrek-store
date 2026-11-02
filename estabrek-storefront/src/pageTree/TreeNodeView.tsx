@@ -13,7 +13,7 @@ import type { StoryChapter } from "@/lib/collectionStories";
 import { RoseSeasons } from "@/components/cinematic/RoseSeasons";
 import { RoseCollectionStory } from "@/components/cinematic/RoseCollectionStory";
 import { RoseInstagram } from "@/components/cinematic/RoseSections";
-import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, type TreeLang, type TreeNode } from "./tree";
+import { framed, motionOf, pickText, safeHref, safeSrc, sliderSeconds, sliderSlides, styleClass, type TreeLang, type TreeNode } from "./tree";
 import { TreeIcon } from "./icons";
 import { ArtView, safeArt } from "./svgArt";
 import { SpinView } from "@/components/cinematic/ProductSpin";
@@ -38,7 +38,7 @@ export type TreeCtx = {
 
 const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom" };
 const cls = (n: TreeNode, ...more: string[]) =>
-  ["pt", `pt-${n.type}`, /^[A-Za-z0-9_-]{1,40}$/.test(n.id) ? `pt-${n.id}` : "", HOVER_CLASS[motionOf(n)?.hover?.kind ?? ""] ?? "", ...more].filter(Boolean).join(" ");
+  ["pt", `pt-${n.type}`, /^[A-Za-z0-9_-]{1,40}$/.test(n.id) ? `pt-${n.id}` : "", styleClass(n.props?.styleId), HOVER_CLASS[motionOf(n)?.hover?.kind ?? ""] ?? "", ...more].filter(Boolean).join(" ");
 
 /** The slider's own words, in the page's language (screen readers hear most of them). */
 const SLIDER_WORDS: Record<TreeLang, SliderWords & { carousel: string }> = {

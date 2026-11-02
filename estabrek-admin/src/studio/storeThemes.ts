@@ -96,16 +96,20 @@ export const shopOrigin = () => {
   }
 };
 
-export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; models: StageModelInfo[]; stageDefaults: StageDefaults | null; defaults: Record<string, string> }> {
+/** A font family the page editor can give words (the shop's pageTree/fonts.ts). */
+export type TreeFontInfo = { slug: string; name: string; kind: "sans" | "serif" | "display" | "script"; scripts: Array<"arabic" | "hebrew" | "latin">; weights: [number, number]; faces?: Array<{ file: string; weight: string; range: string }> };
+
+export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; models: StageModelInfo[]; stageDefaults: StageDefaults | null; defaults: Record<string, string>; fonts: TreeFontInfo[] }> {
   const res = await fetch(`${shopOrigin()}/api/store-themes`, { credentials: "omit" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = (await res.json()) as { themes?: StoreThemeInfo[]; models?: StageModelInfo[]; stageDefaults?: StageDefaults; defaults?: Record<string, string> };
+  const data = (await res.json()) as { themes?: StoreThemeInfo[]; models?: StageModelInfo[]; stageDefaults?: StageDefaults; defaults?: Record<string, string>; fonts?: TreeFontInfo[] };
   return {
     themes: Array.isArray(data.themes) ? data.themes : [],
     models: Array.isArray(data.models) ? data.models : [],
     stageDefaults: data.stageDefaults?.camera && data.stageDefaults.lights ? data.stageDefaults : null,
     // Each kind of store's theme when none is chosen (storeThemes/index.ts DEFAULT_THEME in the shop).
     defaults: data.defaults && typeof data.defaults === "object" ? data.defaults : {},
+    fonts: Array.isArray(data.fonts) ? data.fonts.filter((f) => f && typeof f.slug === "string" && typeof f.name === "string") : [],
   };
 }
 export const listStoreThemes = async () => (await loadStoreThemes()).themes;

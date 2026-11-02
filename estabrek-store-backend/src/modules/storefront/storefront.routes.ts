@@ -24,7 +24,9 @@ import { createCheckoutSession, verifyCheckoutSession } from "./checkout.service
 import { noteSignals } from "../../lib/popularity.js";
 import { RumBodySchema, noteRum } from "../../lib/rum.js";
 import { AbBodySchema, noteAb, publicExperiments } from "../../lib/experiments.js";
-import { storedTree, treeFromSections } from "../../lib/pageTree.js";
+import { storedTree, treeFromSections, type PageTree } from "../../lib/pageTree.js";
+import { storedSiteStyles } from "../../lib/siteStyles.js";
+import { withBlocks } from "../../lib/pageBlocks.js";
 import { previewPageId } from "../../lib/previewToken.js";
 import { storedDraft } from "../../lib/pageDraft.js";
 
@@ -33,9 +35,11 @@ const r = Router();
 const PUBLISHED_PAGES_TTL_MS = 60_000;
 const PAGE_BY_SLUG_TTL_MS = 30_000;
 
+/** The shop's live pages (a saved block of the new editor is never one: lib/pageBlocks.ts). */
 function buildPublishedWindowWhere(now = new Date()) {
   return {
     status: "PUBLISHED" as const,
+    kind: "page",
     AND: [
       {
         OR: [{ publishAt: null }, { publishAt: { lte: now } }],
@@ -307,7 +311,8 @@ r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asy
 
   if (!page) return res.status(404).json({ error: "NOT_FOUND" });
 
-  res.json(pageForShop(page));
+  const out = pageForShop(page);
+  res.json({ ...out, tree: await withBlocks(out.tree as PageTree | null) });
 }));
 
 /**
@@ -330,15 +335,18 @@ r.get("/page-preview", asyncHandler(async (req, res) => {
     },
   });
   if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  // The site styles as the editor is changing them (lib/siteStyles.ts), else as published.
+  const header = ((await prisma.siteSettings.findFirst({ select: { header: true } }))?.header ?? {}) as Record<string, unknown>;
+  const siteStyles = storedSiteStyles(header.siteStylesDraft) ?? storedSiteStyles(header.siteStyles) ?? [];
   // With unpublished changes, the editor sees them.
   const draft = storedDraft(page.draft);
   if (draft) {
     const sections = draft.sections
       .filter((s) => s.isVisible)
       .map((s, order) => ({ id: s.id, type: s.type, data: s.data, isVisible: true, order, translations: s.tr[locale] ? [{ locale, data: s.tr[locale] }] : [] }));
-    return res.json({ ...pageForShop({ ...page, sections }, { tree: draft.tree }), draft: { rev: draft.rev, updatedAt: draft.updatedAt } });
+    return res.json({ ...pageForShop({ ...page, sections }, { tree: await withBlocks(draft.tree) }), draft: { rev: draft.rev, updatedAt: draft.updatedAt }, siteStyles });
   }
-  res.json(pageForShop(page, { tree: storedTree(page.tree) ?? treeFromSections(page.sections) }));
+  res.json({ ...pageForShop(page, { tree: await withBlocks(storedTree(page.tree) ?? treeFromSections(page.sections)) }), siteStyles });
 }));
 
 /**

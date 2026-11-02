@@ -38,6 +38,12 @@ import { AddPanel } from "./AddPanel";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { VideoPickerModal } from "../components/media/VideoPickerModal";
 import { LookPanel, MotionPanel } from "./LookPanels";
+import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
+import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
+import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
+import { styleNode, styleOf, withOps } from "./siteStyles";
+import { useAuth } from "../hooks/useAuth";
+import { stateOps, stateView, type StateChoice } from "./states";
 import { SvgPanel } from "./SvgPanel";
 import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, withPreset, type Motion } from "./look";
@@ -68,6 +74,8 @@ const BLOCK_LABEL: Record<string, () => string> = {
 const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled" };
 /** Scenes that keep their own place (the fabric study follows the first products). */
 const FIXED_BLOCKS = new Set(["fabric"]);
+/** Elements whose words get the text panels in a state (a button and an icon get their colour there too). */
+const WORDY_TYPES = new Set(["heading", "text"]);
 const statusOf = (e: unknown) => (e as { response?: { status?: number } })?.response?.status;
 /** What a marked piece is drawn as, for its look (the rest are boxes). */
 const PART_KIND: Record<string, PagesAPI.LookKind> = {
@@ -93,6 +101,8 @@ const shopOrigin = () => {
 
 export default function StudioPage() {
   const { id = "" } = useParams();
+  // The page a saved block was opened from (its "edit the block").
+  const fromPage = new URLSearchParams(window.location.search).get("from");
   const qc = useQueryClient();
   const treeQ = useQuery({ queryKey: ["pages", id, "tree"], queryFn: () => PagesAPI.getPageTree(id), enabled: Boolean(id) });
   const pageQ = useQuery({ queryKey: ["pages", id], queryFn: () => PagesAPI.getPage(id), enabled: Boolean(id) });
@@ -113,6 +123,8 @@ export default function StudioPage() {
   const [canvas, setCanvas] = useState({ w: 0, h: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
+  const [styleState, setStyleState] = useState<StateChoice>("normal");
   const [panMode, setPanMode] = useState(false);
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
   const [busy, setBusy] = useState(false);
@@ -122,12 +134,18 @@ export default function StudioPage() {
   const [themePreview, setThemePreview] = useState<string | null>(null);
   const [themeMode, setThemeMode] = useState<"light" | "dark" | null>(null);
   const [themeSaving, setThemeSaving] = useState(false);
-  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" }>(null);
+  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
   const [drop, setDrop] = useState<Drop | null>(null);
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
   const adding = useRef<AddKind | null>(null);
   // The left column: the Add panel or the layers; where a click on the Add panel adds.
-  const [leftTab, setLeftTab] = useState<"add" | "layers">("add");
+  const [leftTab, setLeftTab] = useState<"add" | "layers" | "styles">("add");
+  // The shared style open in the styles tab (its panels show beside the page instead of an element's).
+  const [siteSel, setSiteSel] = useState<string | null>(null);
+  const canPublish = useAuth().hasPermission("pages:publish");
+  useEffect(() => setStyleState("normal"), [selected, siteSel]);
+  // Picking an element on the page leaves the style that was open.
+  useEffect(() => setSiteSel(null), [selected]);
   const [addWhere, setAddWhere] = useState<Where>("after");
   /** A picture or clip being chosen for something about to be added. */
   const [asked, setAsked] = useState<{ media: "image" | "video"; then: (url: string) => void } | null>(null);
@@ -303,6 +321,8 @@ export default function StudioPage() {
     setFrameKey((k) => k + 1);
   };
   /** Sends changes to the draft; records how to undo them unless it is an undo/redo itself. */
+  // The shared styles: each saved change reloads the frame, whose preview shows the draft.
+  const ss = useSiteStyles(() => reload());
   const run = (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; record?: boolean } = {}) => {
     const next = queue.current.then(() => runNow(label, ops, opts));
     queue.current = next.catch(() => {});
@@ -701,6 +721,26 @@ export default function StudioPage() {
   const lookSel: PagesAPI.PageTreeNode | null = lookTarget
     ? { id: `look:${lookTarget.target}`, type: { text: "text", button: "button", image: "image", video: "video", box: "section" }[lookTarget.kind], props: {}, style: looks[lookTarget.target]?.style, motion: looks[lookTarget.target]?.motion }
     : null;
+  /**
+   * The style panels for a state of `node` (mouse over, focused, pressed): they edit the
+   * state's view and their changes go back inside each screen's look (states.ts).
+   */
+  const stateLooks = (node: PagesAPI.PageTreeNode, state: Exclude<StateChoice, "normal">, onOps: (label: string, ops: PagesAPI.PageDraftOp[]) => void, wordy: boolean) => {
+    const view = stateView(node, state);
+    const put = (label: string, ops: PagesAPI.PageDraftOp[]) => onOps(label, stateOps(node, state, ops));
+    return (
+      <div className="space-y-3" data-testid="studio-state-panels" data-state={state}>
+        <StatePresets node={node} view={view} state={state} screen={screen} busy={busy} onOps={put} onOwn={onOps} />
+        {node.type === "button" ? <ButtonStylePanel node={view} screen={screen} busy={busy} onOps={put} inState /> : null}
+        {wordy || node.type === "button" || node.type === "icon" ? <TextStylePanel node={view} screen={screen} busy={busy} onOps={put} only={node.type === "button" ? ["weight", "letters"] : node.type === "icon" ? ["color"] : ["weight", "color", "letters"]} /> : null}
+        {wordy ? <TypeMorePanel node={view} screen={screen} busy={busy} onOps={put} inState /> : null}
+        <BoxPanel node={view} screen={screen} busy={busy} onOps={put} skip={node.type === "button" ? ["bg", "border", "radius"] : undefined} />
+        <FiltersPanel node={view} screen={screen} busy={busy} onOps={put} />
+        <LookPanel node={view} screen={screen} busy={busy} onOps={put} onPreview={() => undefined} limited={node.id.startsWith("look:")} inState />
+        <TransitionPanel node={node} screen={screen} busy={busy} onOps={onOps} />
+      </div>
+    );
+  };
   const lookChange = (label: string, ops: PagesAPI.PageDraftOp[]) => {
     if (!lookTarget) return;
     const mapped = ops.map((o): PagesAPI.PageDraftOp =>
@@ -733,6 +773,18 @@ export default function StudioPage() {
   const makeIds = () => idMaker((x) => Boolean(index?.nodes.has(x)));
   const nodeOf = (sid: string | null | undefined) => (sid ? index?.nodes.get(sid)?.node : undefined);
   const selFree = selNode && isFree(selNode.node.type) ? selNode.node : undefined;
+  // The frame shows the state being edited on the element (the editor's mouse never reaches the page), again after each reload.
+  const siteOpen = leftTab === "styles" && siteSel ? styleOf(ss.styles, siteSel) : null;
+  const stateTarget = styleState === "normal" ? "" : siteOpen ? `s:${siteOpen.kind}:${siteOpen.id}` : lookTarget && lookTarget.kind !== "box" ? `t:${lookTarget.target}` : selFree ? `n:${selFree.id}` : "";
+  const frameReady = Boolean(layout);
+  useEffect(() => {
+    if (!frameReady) return;
+    if (!stateTarget) send({ type: "previewState", state: null });
+    else if (stateTarget.startsWith("s:")) {
+      const [, kind, id] = stateTarget.split(":");
+      send({ type: "previewState", state: styleState, style: { id, kind } });
+    } else send({ type: "previewState", state: styleState, ...(stateTarget.startsWith("t:") ? { target: stateTarget.slice(2) } : { nodeId: stateTarget.slice(2) }) });
+  }, [stateTarget, styleState, frameReady, send]);
   const selSiblings = selNode?.parentId ? index?.nodes.get(selNode.parentId)?.children ?? [] : [];
   const selPos = selected ? selSiblings.indexOf(selected) : -1;
   /** Sends changes; selects `then` once they're saved. */
@@ -790,6 +842,59 @@ export default function StudioPage() {
     const at = index?.nodes.get(nodeId);
     if (!at?.parentId || !index) return;
     moveTo(nodeId, { parentId: at.parentId, index: index.nodes.get(at.parentId)!.children.indexOf(nodeId) + delta });
+  };
+  /** Where a page-level item goes: after the selection's own page-level item, else at the end. */
+  const pageSpot = () => {
+    const kids = index?.nodes.get(index.root)?.children ?? [];
+    let at = selected;
+    while (at && index?.nodes.get(at)?.parentId && index.nodes.get(at)!.parentId !== index.root) at = index.nodes.get(at)!.parentId;
+    const i = at ? kids.indexOf(at) : -1;
+    return i >= 0 ? i + 1 : kids.length;
+  };
+  /** A block's published sections as copies of their own (new ids), to place on this page. */
+  const blockCopies = async (blockId: string) => {
+    const { tree } = await PagesAPI.getPageTree(blockId);
+    const ids = makeIds();
+    return (tree.root.children ?? []).filter((n) => n.type === "section").map((n) => copyOf(n, ids));
+  };
+  const saveBlock = async (section: PagesAPI.PageTreeNode, name: string, link: boolean) => {
+    try {
+      const block = await PagesAPI.createBlock(name, [section]);
+      void qc.invalidateQueries({ queryKey: ["page-blocks"] });
+      toast.success(tr("انحفظ البلوك", "The block was saved"));
+      if (!link || !index) return;
+      const at = index.nodes.get(index.root)?.children.indexOf(section.id) ?? -1;
+      const linkNode: PagesAPI.PageTreeNode = { id: makeIds()("blk"), type: "block", props: { blockId: block.id } };
+      void change(tr("ربط البلوك", "Link the block"), [{ op: "insert", parentId: index.root, index: Math.max(0, at), node: linkNode }, { op: "remove", nodeId: section.id }], linkNode.id);
+    } catch (e) {
+      toast.error(tr("ما انحفظ البلوك", "The block wasn't saved"), { description: getApiErrorMessage(e) });
+    }
+  };
+  const addBlock = async (b: PagesAPI.BlockInfo, linked: boolean) => {
+    if (!index) return;
+    const at = pageSpot();
+    if (linked) {
+      const linkNode: PagesAPI.PageTreeNode = { id: makeIds()("blk"), type: "block", props: { blockId: b.id } };
+      return void change(tr("بلوك مربوط", "Linked block"), [{ op: "insert", parentId: index.root, index: at, node: linkNode }], linkNode.id);
+    }
+    try {
+      const copies = await blockCopies(b.id);
+      if (copies.length) void change(tr("نسخة من بلوك", "A copy of a block"), copies.map((node, i) => ({ op: "insert" as const, parentId: index.root, index: at + i, node })), copies[0].id);
+    } catch (e) {
+      toast.error(tr("ما قدرنا نجيب البلوك", "Couldn't get the block"), { description: getApiErrorMessage(e) });
+    }
+  };
+  /** A linked block becomes copies of its sections here, changed on their own. */
+  const unlinkBlock = async (linkNode: PagesAPI.PageTreeNode) => {
+    if (!index) return;
+    try {
+      const copies = await blockCopies(String(linkNode.props.blockId));
+      const at = index.nodes.get(index.root)?.children.indexOf(linkNode.id) ?? -1;
+      if (at < 0) return;
+      void change(tr("فكّ ربط البلوك", "Unlink the block"), [...copies.map((node, i) => ({ op: "insert" as const, parentId: index.root, index: at + i, node })), { op: "remove", nodeId: linkNode.id }], copies[0]?.id);
+    } catch (e) {
+      toast.error(tr("ما قدرنا نجيب البلوك", "Couldn't get the block"), { description: getApiErrorMessage(e) });
+    }
   };
   const copySelected = () => {
     if (!selFree || !selNode?.parentId) return;
@@ -899,7 +1004,40 @@ export default function StudioPage() {
 
   const dragged = useRef<string | null>(null);
 
+  /** A shared style's panels: like an element's, with its states and screens; each change saves the styles' draft. */
+  const siteInspector = () => {
+    const s = siteOpen;
+    if (!s) return null;
+    const vnode = styleNode(s);
+    const onOps = (_label: string, ops: PagesAPI.PageDraftOp[]) => void ss.save(withOps(ss.styles, s.id, ops));
+    const wordy = vnode.type === "heading" || vnode.type === "text";
+    return (
+      <div className="space-y-3" data-testid="studio-site-editor" data-style={s.id}>
+        <SiteStyleHead s={s} ss={ss} onGone={() => setSiteSel(null)} />
+        <StatesBar node={vnode} state={styleState} onState={setStyleState} />
+        {styleState !== "normal" ? (
+          stateLooks(vnode, styleState, onOps, wordy)
+        ) : (
+          <>
+            {wordy ? <TextStylePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} /> : null}
+            {wordy ? <TypeMorePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} /> : null}
+            {vnode.type === "button" ? (
+              <>
+                <ButtonStylePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} />
+                <TextStylePanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} only={["font", "size", "weight", "letters"]} />
+              </>
+            ) : null}
+            <BoxPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} skip={vnode.type === "button" ? ["bg", "border", "radius"] : undefined} />
+            {vnode.type === "section" ? <PadPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} /> : null}
+            <FiltersPanel node={vnode} screen={screen} busy={ss.busy} onOps={onOps} />
+            <LookPanel node={vnode} screen={screen} busy={ss.busy} limited onOps={onOps} onPreview={() => undefined} />
+          </>
+        )}
+      </div>
+    );
+  };
   const inspector = () => {
+    if (leftTab === "styles" && siteOpen) return siteInspector();
     if (themeOpen) {
       return <ThemePanel themes={themesQ.data ?? []} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} onPreview={(t) => { setThemePreview(t); setThemeMode(null); }} onMode={setThemeMode} saving={themeSaving} onSave={() => setAsking({ kind: "theme" })} />;
     }
@@ -995,16 +1133,25 @@ export default function StudioPage() {
         {lookSel && lookTarget ? (
           <div className="space-y-3" data-testid="studio-look-target" data-target={lookTarget.target}>
             {selExtra?.kind === "part" && selExtra.count > 1 ? <p className="text-[11px] leading-5 text-accent-200/80">{tr(`الشكل والحركة بيتغيّروا للـ ${selExtra.count} كلهم.`, "The look and motion change for all {0} of them.", [selExtra.count])}</p> : null}
-            {lookTarget.kind === "text" ? <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
-            {lookTarget.kind === "button" ? (
+            {lookTarget.kind !== "box" ? <StatesBar node={lookSel} state={styleState} onState={setStyleState} /> : null}
+            {styleState !== "normal" && lookTarget.kind !== "box" ? (
+              stateLooks(lookSel, styleState, lookChange, lookTarget.kind === "text" || lookTarget.kind === "button")
+            ) : (
               <>
-                <ButtonStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
-                <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight"]} />
+                {lookTarget.kind === "text" ? <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                {lookTarget.kind === "text" ? <TypeMorePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                {lookTarget.kind === "button" ? (
+                  <>
+                    <ButtonStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+                    <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight"]} />
+                  </>
+                ) : null}
+                {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                {lookTarget.kind === "image" || lookTarget.kind === "video" ? <FiltersPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
+                {lookTarget.kind !== "box" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
               </>
-            ) : null}
-            {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
-            <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
-            {lookTarget.kind !== "box" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
+            )}
             {!lookTarget.target.startsWith("b:") || lookTarget.target.includes("/") ? (
               <MotionPanel
                 node={lookSel}
@@ -1083,6 +1230,20 @@ export default function StudioPage() {
           </div>
         ) : null}
 
+        {selNode?.node.type === "block" ? (
+          <div className="space-y-3">
+            <NodeActions
+              canUp={selPos > 0}
+              canDown={selPos >= 0 && selPos < selSiblings.length - 1}
+              busy={busy}
+              onUp={() => nudge(selected, -1)}
+              onDown={() => nudge(selected, 1)}
+              onDelete={() => setAsking({ kind: "delete", nodeId: selected, name: label(selected), tree: true })}
+            />
+            <BlockLinkPanel node={selNode.node} busy={busy} onEdit={(blockId) => window.location.assign(`/studio/${encodeURIComponent(blockId)}?from=${encodeURIComponent(id)}`)} onUnlink={() => void unlinkBlock(selNode.node)} />
+          </div>
+        ) : null}
+
         {selFree ? (
           <div className="space-y-3">
             <NodeActions
@@ -1099,20 +1260,32 @@ export default function StudioPage() {
               <CellPanel node={selFree} cols={nodeOf(selNode?.parentId) ?? null} busy={busy} onOps={(l, ops) => void change(l, ops, ops.some((o) => o.op === "remove" && o.nodeId === selected) ? selNode?.parentId ?? null : undefined)} />
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["size", "color", "align"]} /> : null}
-            {selFree.type === "button" ? (
+            <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
+            <StatesBar node={selFree} state={styleState} onState={setStyleState} />
+            {styleState !== "normal" ? (
+              stateLooks(selFree, styleState, (l, ops) => void change(l, ops), WORDY_TYPES.has(selFree.type))
+            ) : (
               <>
-                <ButtonStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
-                <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["font", "size", "weight"]} />
+                {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "heading" || selFree.type === "text" ? <TypeMorePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["size", "color", "align"]} /> : null}
+                {selFree.type === "button" ? (
+                  <>
+                    <ButtonStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                    <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["font", "size", "weight"]} />
+                  </>
+                ) : null}
+                {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={selFree.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
+                <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
               </>
-            ) : null}
-            {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
+            )}
             <MotionPanel
               node={selFree}
               busy={busy}
@@ -1262,6 +1435,7 @@ export default function StudioPage() {
   // Motion from the Add panel goes on the selected element, or on the selected part of a section or scene.
   const motionNode = selFree ?? (lookTarget && lookTarget.kind !== "box" ? lookSel : null);
   const addPanel = () => (
+    <>
     <AddPanel
       where={addWhereNow}
       canWhere={whereOk}
@@ -1286,12 +1460,18 @@ export default function StudioPage() {
         }
       }}
     />
+    {pageQ.data?.kind === "block" ? null : (
+      <div className="mt-4">
+        <MyBlocks busy={busy} onLink={(b) => void addBlock(b, true)} onCopy={(b) => void addBlock(b, false)} onDelete={(b) => setAsking({ kind: "deleteBlock", block: b })} />
+      </div>
+    )}
+    </>
   );
   const leftTabs = (
     <div className="mb-2 flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist" aria-label={tr("لوحة جانبية", "Side panel")}>
-      {(["add", "layers"] as const).map((t) => (
+      {(["add", "layers", "styles"] as const).map((t) => (
         <button key={t} type="button" role="tab" aria-selected={leftTab === t} onClick={() => setLeftTab(t)} className={`flex-1 rounded-lg px-2 py-1.5 text-xs ${leftTab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tab-${t}`}>
-          {t === "add" ? `+ ${tr("إضافة", "Add")}` : tr("الطبقات", "Layers")}
+          {t === "add" ? `+ ${tr("إضافة", "Add")}` : t === "layers" ? tr("الطبقات", "Layers") : tr("الستايلات", "Styles")}
         </button>
       ))}
     </div>
@@ -1324,6 +1504,13 @@ export default function StudioPage() {
           + {tr("إضافة", "Add")}
         </button>
         <span className="rounded-md bg-accent-500/15 px-2 py-0.5 text-[11px] text-accent-200">{tr("المحرر الجديد", "New editor")}</span>
+        {pageQ.data?.kind === "block" ? (
+          // A saved block: what it changes reaches every page that links it once it's published.
+          <span className="flex items-center gap-2 rounded-md bg-amber-300/10 px-2 py-0.5 text-[11px] text-amber-100" data-testid="studio-block-banner">
+            ⧉ {tr("عم تعدّل بلوك محفوظ: نشره بيغيّر كل صفحة مربوط فيها.", "Editing a saved block: publishing it changes every page that links it.")}
+            {fromPage ? <a href={`/studio/${encodeURIComponent(fromPage)}`} className="text-accent-300 hover:underline">{tr("رجوع للصفحة", "Back to the page")}</a> : null}
+          </span>
+        ) : null}
         <div className="ms-auto flex flex-wrap items-center gap-1" role="group" aria-label={tr("حجم الشاشة", "Screen size")}>
           {(Object.keys(DEVICES) as Device[]).map((k) => (
             <button key={k} type="button" onClick={() => setDevice(k)} aria-pressed={device === k} className={`rounded-lg px-2 py-1 text-xs ${device === k ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/[0.06]"}`}>
@@ -1372,10 +1559,12 @@ export default function StudioPage() {
       ) : null}
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : tr("الطبقات", "Layers")}>
+        <aside className="hidden w-64 shrink-0 overflow-y-auto border-e border-white/[0.08] p-2 md:block" aria-label={leftTab === "add" ? tr("إضافة", "Add") : leftTab === "styles" ? tr("الستايلات", "Styles") : tr("الطبقات", "Layers")}>
           {leftTabs}
           {leftTab === "add" ? (
             index ? addPanel() : null
+          ) : leftTab === "styles" ? (
+            <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
           ) : (
             <>
               {index ? layersList((sid) => select(sid, true)) : null}
@@ -1569,12 +1758,14 @@ export default function StudioPage() {
             <div className="flex justify-end">
               <button type="button" onClick={() => setSheet(false)} className="h-7 w-7 rounded-lg text-white/60 hover:bg-white/[0.06]" aria-label={tr("إغلاق", "Close")} data-testid="studio-sheet-close">×</button>
             </div>
-            {(selected || themeOpen) && leftTab !== "add" ? <div className="mb-3 border-b border-white/[0.08] px-1 pb-3 text-sm">{inspector()}</div> : null}
+            {(selected || themeOpen || siteOpen) && leftTab !== "add" ? <div className="mb-3 border-b border-white/[0.08] px-1 pb-3 text-sm">{inspector()}</div> : null}
             <div className="md:hidden">
               {leftTabs}
               {leftTab === "add"
                 ? addPanel()
-                : layersList((sid) => {
+                : leftTab === "styles"
+                  ? <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
+                  : layersList((sid) => {
                     select(sid, true);
                     setSheet(false);
                   })}
@@ -1646,12 +1837,13 @@ export default function StudioPage() {
 
       <ConfirmDialog
         open={asking !== null}
-        variant={asking?.kind === "delete" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}
+        variant={asking?.kind === "delete" || asking?.kind === "deleteBlock" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}
         isLoading={busy || themeSaving}
         title={
           asking?.kind === "delete" ? (asking.tree ? tr("حذف العنصر؟", "Delete the element?") : tr("حذف القسم؟", "Delete the section?"))
           : asking?.kind === "publish" ? (asking.force ? tr("الصفحة تغيّرت من مكان تاني", "The page changed elsewhere") : tr("نشر التغييرات؟", "Publish the changes?"))
           : asking?.kind === "discard" ? tr("إلغاء المسودة؟", "Discard the draft?")
+          : asking?.kind === "deleteBlock" ? tr("حذف البلوك؟", "Delete the block?")
           : tr("حفظ الثيم لكل المتجر؟", "Save the theme for the whole store?")
         }
         message={
@@ -1662,9 +1854,10 @@ export default function StudioPage() {
             ? tr("انحفظت تغييرات على الصفحة بعد ما بلشت المسودة. النشر هلّق بيكتب المسودة فوقها. نسخة من الحالية بتنحفظ بالسجل.", "The page was changed after the draft began. Publishing now writes the draft over it. A copy of the current one is kept in the history.")
             : tr("الزبائن رح يشوفوا الصفحة متل ما هي هون. نسخة من المنشورة هلّق بتنحفظ بالسجل.", "Customers will see the page as it is here. A copy of what's live now is kept in the history."))
           : asking?.kind === "discard" ? tr("كل التغييرات اللي مش منشورة بتروح، والصفحة بترجع متل المنشورة.", "Every unpublished change goes, and the page goes back to what's live.")
+          : asking?.kind === "deleteBlock" ? `${asking.block.name}. ${asking.block.uses ? tr(`مربوط بـ ${asking.block.uses} صفحات: هالأماكن ما رح يبيّن فيها إشي.`, "Linked on {0} pages: nothing will show in those places.", [asking.block.uses]) : tr("مش مربوط بأي صفحة.", "It isn't linked on any page.")} ${tr("النسخ اللي انحطت كنسخة بتضل.", "Copies placed as copies stay.")}`
           : tr("الثيم بيتغيّر لكل صفحات المتجر فوراً، مش بس هالصفحة.", "The theme changes for every page of the store right away, not only this one.")
         }
-        confirmText={asking?.kind === "delete" ? tr("حذف", "Delete") : asking?.kind === "publish" ? tr("نشر", "Publish") : asking?.kind === "discard" ? tr("إلغاء المسودة", "Discard draft") : tr("حفظ", "Save")}
+        confirmText={asking?.kind === "delete" || asking?.kind === "deleteBlock" ? tr("حذف", "Delete") : asking?.kind === "publish" ? tr("نشر", "Publish") : asking?.kind === "discard" ? tr("إلغاء المسودة", "Discard draft") : tr("حفظ", "Save")}
         onClose={() => setAsking(null)}
         onConfirm={async () => {
           const a = asking;
@@ -1672,6 +1865,15 @@ export default function StudioPage() {
           if (a.kind === "delete") {
             setAsking(null);
             if (await run(tr("حذف", "Delete"), [{ op: "remove", nodeId: a.nodeId }])) setSelected(null);
+          } else if (a.kind === "deleteBlock") {
+            setAsking(null);
+            try {
+              await PagesAPI.deletePage(a.block.id);
+              void qc.invalidateQueries({ queryKey: ["page-blocks"] });
+              reload();
+            } catch (e) {
+              toast.error(tr("ما انحذف البلوك", "The block wasn't deleted"), { description: getApiErrorMessage(e) });
+            }
           } else if (a.kind === "publish") await publish(a.force);
           else if (a.kind === "discard") await discard();
           else {

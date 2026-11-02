@@ -72,7 +72,7 @@ r.get(
   "/options",
   asyncHandler(async (_req, res) => {
     const [pages, theme, maintenance, announcement, perf] = await Promise.all([
-      prisma.page.findMany({ orderBy: { slug: "asc" }, select: { id: true, name: true, slug: true, sections: { orderBy: { order: "asc" }, select: { id: true, type: true, isVisible: true, data: true } } } }),
+      prisma.page.findMany({ where: { kind: "page" }, orderBy: { slug: "asc" }, select: { id: true, name: true, slug: true, sections: { orderBy: { order: "asc" }, select: { id: true, type: true, isVisible: true, data: true } } } }),
       themePresetNow(),
       maintenanceNow(),
       announcementNow(),

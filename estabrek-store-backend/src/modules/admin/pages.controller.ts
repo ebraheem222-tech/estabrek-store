@@ -23,7 +23,8 @@ import {
 import { previewToken } from "../../lib/previewToken.js";
 import { DraftError, applyOps, draftFromPage, needsTree, publishOrder, sectionsHash, storedDraft } from "../../lib/pageDraft.js";
 import { mainLanguage } from "../../lib/translations.js";
-import { PAGE_FORMAT, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../../lib/pageTree.js";
+import { PAGE_FORMAT, TREE_VERSION, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../../lib/pageTree.js";
+import { BLOCK_KIND, blockSlug, blockUses } from "../../lib/pageBlocks.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
@@ -59,6 +60,8 @@ function toNullableJsonInput(value: unknown): Prisma.InputJsonValue | Prisma.Nul
 }
 
 export function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []) {
+  // A saved block shows on every page that links it: all the pages' copies go.
+  if (slugs.some((s) => s?.startsWith("/__block/"))) slugs = [];
   const paths = Array.from(new Set(slugs.filter(Boolean))) as string[];
   void (async () => {
     await cacheDel("storefront:pages:published");
@@ -310,7 +313,8 @@ export async function restorePageRevision(pageId: string, revisionId: string, re
 
 // pages
 r.get("/", asyncHandler(async (_req, res) => {
-  const pages = await prisma.page.findMany({ orderBy: { createdAt: "desc" } });
+  // Saved blocks have their own list (GET /blocks).
+  const pages = await prisma.page.findMany({ where: { kind: "page" }, orderBy: { createdAt: "desc" } });
   // The list doesn't need the trees (GET /:id/tree has them).
   res.json(pages.map(({ tree: _tree, draft, ...p }) => ({ ...p, hasDraft: Boolean(draft) })));
 }));
@@ -330,6 +334,37 @@ r.post("/", validate({ body: CreatePageBody }), asyncHandler(async (req, res) =>
   });
   triggerCmsRevalidate([page.slug]);
   res.status(201).json(page);
+}));
+
+/* ------------------------------------------------ saved blocks (new CMS) */
+
+/** GET /admin/pages/blocks — the saved blocks, newest first, with how many pages link each. */
+r.get("/blocks", asyncHandler(async (_req, res) => {
+  const [rows, uses] = await Promise.all([
+    prisma.page.findMany({ where: { kind: BLOCK_KIND }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, updatedAt: true, draft: true, tree: true } }),
+    blockUses(),
+  ]);
+  res.json(rows.map(({ draft, tree, ...b }) => ({ ...b, hasDraft: Boolean(draft), sections: storedTree(tree)?.root.children?.length ?? 0, uses: uses.get(b.id) ?? 0 })));
+}));
+
+/**
+ * POST /admin/pages/blocks { name, sections } — saves sections of the new editor as a block
+ * (checked like a page's tree; sections only), edited afterwards like a page.
+ */
+r.post("/blocks", asyncHandler(async (req, res) => {
+  const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 80) : "";
+  const sections = req.body?.sections;
+  if (!name) return res.status(400).json({ error: "VALIDATION_ERROR", field: "name", message: "A block needs a name" });
+  if (!Array.isArray(sections) || !sections.length || sections.length > 20 || sections.some((n: any) => n?.type !== "section")) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", field: "sections", message: "A block is 1–20 sections" });
+  }
+  const checked = checkTree({ version: TREE_VERSION, root: { id: "page", type: "page", props: {}, children: sections } });
+  if (!checked.ok) return res.status(400).json({ error: "TREE_INVALID", issues: checked.issues });
+  const block = await prisma.page.create({
+    data: { name, slug: blockSlug(), status: "PUBLISHED", kind: BLOCK_KIND, format: PAGE_FORMAT.tree, tree: checked.tree as any },
+    select: { id: true, name: true, updatedAt: true },
+  });
+  res.status(201).json({ ...block, hasDraft: false, sections: sections.length, uses: 0 });
 }));
 
 r.get("/:id", asyncHandler(async (req, res) => {

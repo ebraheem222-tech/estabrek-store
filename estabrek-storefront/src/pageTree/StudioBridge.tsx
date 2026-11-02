@@ -10,7 +10,8 @@
  */
 import { useEffect } from "react";
 import { studioLink } from "./studioLink";
-import { PREVIEW_VARS, TREE_TRANSFORM, lookSelector } from "./tree";
+import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle } from "./tree";
+import { siteTarget } from "./css";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -364,6 +365,19 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
             else if ((PREVIEW_VARS as readonly string[]).includes(k) && typeof v === "string" && /^-?\d{1,4}(\.\d{1,3})?(px|deg)?$/.test(v)) el.style.setProperty(k, v);
           }
         }
+        return now();
+      }
+      // A state shown on the element being edited (the editor's mouse never reaches the page): its look for the mouse, focus or a press.
+      if (d.type === "previewState") {
+        document.querySelectorAll("[data-pt-state]").forEach((el) => el.removeAttribute("data-pt-state"));
+        const state = (e.data as { state?: unknown }).state;
+        if (state !== "hover" && state !== "focused" && state !== "pressed") return now();
+        // A shared style's: every element that takes it.
+        const shared = (e.data as { style?: { id?: unknown; kind?: unknown } }).style;
+        const styleSel = shared && typeof shared.id === "string" && /^[a-z][a-z0-9-]{0,30}$/.test(shared.id) && (SITE_STYLE_KINDS as readonly unknown[]).includes(shared.kind) ? siteTarget({ id: shared.id, kind: shared.kind as SiteStyle["kind"], style: {} }).sel : null;
+        const sel = styleSel ?? (typeof target === "string" ? lookSelector(target) : null);
+        const els = d.nodeId ? [document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(d.nodeId)}"]`)] : sel ? Array.from(document.querySelectorAll<HTMLElement>(sel)) : [];
+        for (const el of els) el?.setAttribute("data-pt-state", state);
         return now();
       }
       if (d.type === "editText" && d.sectionId && d.path) return startEdit(d.sectionId, d.path, typeof d.value === "string" ? d.value : null);

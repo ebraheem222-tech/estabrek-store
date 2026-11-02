@@ -53,7 +53,7 @@ export function sceneOf(c: InsertCtx, id: string): string | null {
 }
 
 /** What's added at the page's own level comes in a section of its own (a section goes as it is). */
-export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
+export const forPage = (node: PageTreeNode, ids: Ids): PageTreeNode => (node.type === "section" || node.type === "block" ? node : { id: ids("sec"), type: "section", props: { contained: true }, children: [node] });
 
 const round = (v: number) => Math.round(Math.max(0, Math.min(100, v)));
 /** The node placed freely at a spot of what holds it. */

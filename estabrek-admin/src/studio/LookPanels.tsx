@@ -84,8 +84,11 @@ const toggleRow = (label: string, on: boolean, busy: boolean, flip: (on: boolean
 
 /* -------------------------------------------------------------------- look */
 
-/** `limited`: a part of an old section or scene (no colour layer over it, no free place: it stays where its section has it). */
-export function LookPanel({ node, screen, busy, onOps, onPreview, limited = false }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; onPreview: Preview; limited?: boolean }) {
+/**
+ * `limited`: a part of an old section or scene (no colour layer over it, no free place: it stays where its section has it).
+ * `inState`: a state's look (mouse over, focus, pressed): turns, size, see-through, layer, shadow and glow only, saved on release.
+ */
+export function LookPanel({ node, screen, busy, onOps, onPreview, limited = false, inState = false }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; onPreview: Preview; limited?: boolean; inState?: boolean }) {
   const n = (k: string, def: number) => (typeof shownLook(node, screen, k) === "number" ? (shownLook(node, screen, k) as number) : def);
   const obj = <T,>(k: string) => (shownLook(node, screen, k) && typeof shownLook(node, screen, k) === "object" ? (shownLook(node, screen, k) as T) : null);
   const save = (label: string, patch: Record<string, unknown>) => onOps(label, [styleOp(node, screen, patch)]);
@@ -94,7 +97,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview, limited = fals
     return (
       <Range
         label={label} min={min} max={max} step={opts.step} unit={opts.unit} busy={busy} value={Math.round(n(key, def) * k * 100) / 100}
-        onLive={(v) => onPreview(previewOf(key, v / k))}
+        onLive={inState ? undefined : (v) => onPreview(previewOf(key, v / k))}
         onSave={(v) => save(tr("الشكل", "Look"), { [key]: v / k === def ? null : v / k })}
         testId={`studio-look-${key}`}
       />
@@ -116,16 +119,18 @@ export function LookPanel({ node, screen, busy, onOps, onPreview, limited = fals
         {turn("rotateX", tr("دوران X (لقدّام ولورا)", "Turn X (tip forward and back)"), -180, 180, 0, { unit: "°" })}
         {turn("rotateY", tr("دوران Y (يمين وشمال)", "Turn Y (left and right)"), -180, 180, 0, { unit: "°" })}
         {turn("rotateZ", tr("دوران Z (مكانه)", "Turn Z (in place)"), -180, 180, 0, { unit: "°" })}
-        {turn("perspective", tr("عمق المنظور (أصغر = أقوى)", "Perspective (smaller = stronger)"), 200, 4000, 1200, { step: 50, unit: "px" })}
+        {inState ? null : turn("perspective", tr("عمق المنظور (أصغر = أقوى)", "Perspective (smaller = stronger)"), 200, 4000, 1200, { step: 50, unit: "px" })}
         {turn("scale", tr("الحجم", "Size"), 10, 300, 1, { scale: 100, step: 1, unit: "%" })}
         {turn("moveX", tr("تحريك يمين وشمال", "Move sideways"), -400, 400, 0, { unit: "px" })}
         {turn("moveY", tr("تحريك فوق وتحت", "Move up and down"), -400, 400, 0, { unit: "px" })}
         {turn("opacity", tr("الشفافية (100 = واضح كله)", "See-through (100 = fully seen)"), 0, 100, 1, { scale: 100, unit: "%" })}
-        <Choice
-          label={tr("بيدور حوالين", "Turns around")} value={String(shownLook(node, screen, "origin") ?? "center")} busy={busy}
-          options={[["center", tr("النص", "Its middle")], ["top", tr("فوق", "Its top")], ["bottom", tr("تحت", "Its bottom")]]}
-          onPick={(v) => save(tr("الشكل", "Look"), { origin: v === "center" ? null : v })}
-        />
+        {inState ? null : (
+          <Choice
+            label={tr("بيدور حوالين", "Turns around")} value={String(shownLook(node, screen, "origin") ?? "center")} busy={busy}
+            options={[["center", tr("النص", "Its middle")], ["top", tr("فوق", "Its top")], ["bottom", tr("تحت", "Its bottom")]]}
+            onPick={(v) => save(tr("الشكل", "Look"), { origin: v === "center" ? null : v })}
+          />
+        )}
         {turned ? (
           <button type="button" className={btn} disabled={busy} onClick={() => save(tr("الشكل", "Look"), { rotateX: null, rotateY: null, rotateZ: null, perspective: null, scale: null, moveX: null, moveY: null, origin: null, opacity: null })} data-testid="studio-look-reset">
             {tr("رجوع لشكله العادي", "Back to its plain look")}
@@ -170,7 +175,7 @@ export function LookPanel({ node, screen, busy, onOps, onPreview, limited = fals
         ) : null}
       </Part>
 
-      {limited ? null : <Part title={tr("مكان حر فوق الحاوية", "A free place over its container")} open={Boolean(place)} testId="studio-look-place">
+      {limited || inState ? null : <Part title={tr("مكان حر فوق الحاوية", "A free place over its container")} open={Boolean(place)} testId="studio-look-place">
         <p className="text-[11px] leading-5 text-white/40">{tr("متل نص وزر فوق فيديو. بتقدر تسحبه بالصفحة كمان.", "Like words and a button over a clip. It can also be dragged on the page.")}</p>
         {toggleRow(tr("فوق اللي جنبه، بمكان حر", "Over what's beside it, placed freely"), Boolean(place), busy, (on) => save(tr("المكان", "Place"), { layer: on ? { x: 50, y: 50, anchor: "center" } : screen === "base" ? null : false }), "studio-place-on")}
         {place ? (
