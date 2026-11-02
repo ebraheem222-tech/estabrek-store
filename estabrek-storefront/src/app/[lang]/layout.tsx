@@ -29,6 +29,7 @@ import { StoreLookProvider } from "@/store/storeLook";
 import { themePalette } from "@/storeThemes/css";
 import { setArabicTone, tr } from "@/lib/words";
 import { storeThemeOf, themeCss } from "@/storeThemes";
+import { kitCss, kitOfHeader } from "@/storeThemes/packs";
 import { ThemeMotion } from "@/storeThemes/motion/ThemeMotion";
 import { StoreThemePreview } from "@/storeThemes/StoreThemePreview";
 
@@ -115,6 +116,8 @@ export default async function RootLayout({
   const theme = header?.theme ?? null;
   // Admin → ثيمات المتجر (header.storeTheme): none = the rose design.
   const storeTheme = storeThemeOf(header);
+  // The pack the store applied (header.storeKit): its focus ring, cursor and loading indicator here.
+  const kit = kitOfHeader(header, storeTheme?.theme ?? null);
   const identity = identityOf({ siteName: bootstrap.site.siteName, header, currencyCode: (bootstrap.site as any).currencyCode });
   setArabicTone(identity.audience);
   // Admin → Settings → أكواد متقدمة → "إيقاف الأكواد المخصصة مؤقتاً": custom CSS,
@@ -145,11 +148,14 @@ export default async function RootLayout({
   // Admin → تجارب A/B: this visit's sides are picked before the page shows.
   const abTestsNow = abTests((settings.site as any)?.experiments);
   const rawLoading = header?.ui?.loading ?? null;
-  const enabled = rawLoading?.enabled === true;
+  // The store's own loading choice wins; else the pack's.
+  const kitLoader = !rawLoading?.enabled && kit && kit.loader !== "none" ? kit.loader : null;
+  const enabled = rawLoading?.enabled === true || Boolean(kitLoader);
   const rawId =
-    typeof rawLoading?.animationId === "string"
+    kitLoader ??
+    (typeof rawLoading?.animationId === "string"
       ? rawLoading.animationId
-      : "spinner-simple";
+      : "spinner-simple");
   const preset =
     getLoadingById(rawId) ?? getLoadingById("spinner-simple") ?? null;
   const loading = preset
@@ -163,11 +169,13 @@ export default async function RootLayout({
       dir={dirOf(lang)}
       data-theme={defaultTheme}
       data-store-theme={storeTheme?.theme.id}
+      data-store-kit={kit ? "" : undefined}
       className={defaultTheme}
       suppressHydrationWarning
     >
       <head>
         {storeTheme ? <style id="store-theme" dangerouslySetInnerHTML={{ __html: themeCss(storeTheme.theme, storeTheme.mode) }} /> : null}
+        {kit ? <style id="store-kit" dangerouslySetInnerHTML={{ __html: kitCss(kit) }} /> : null}
         <script dangerouslySetInnerHTML={{ __html: motionScript }} />
         {abTestsNow.length ? <script dangerouslySetInnerHTML={{ __html: abHeadScript(abTestsNow) }} /> : null}
         <link rel="preconnect" href="https://res.cloudinary.com" />
@@ -206,7 +214,7 @@ export default async function RootLayout({
           >
           <ThemeWrap
             theme={theme}
-            cursorThemeId={cinematic ? null : header?.ui?.cursorThemeId}
+            cursorThemeId={kit ? (kit.cursor === "none" ? null : kit.cursor) : cinematic ? null : header?.ui?.cursorThemeId}
             storefrontSettings={initialStorefrontSettings}
             disableGalleryBackdrop={cinematic}
           >

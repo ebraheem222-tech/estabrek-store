@@ -49,6 +49,8 @@ import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
 import { ROSE_COLOURS, coloursOf } from "./templates/colours";
 import { PAGE_TEMPLATES, SECTION_TEMPLATES } from "./templates/catalog";
 import { isFamily } from "./templates/words";
+import { storeKitOf, templateKitOf } from "./packs";
+import { StoreKitContext } from "./storeKit";
 import { listProducts } from "../api/catalog.api";
 import { styleNode, styleOf, withOps } from "./siteStyles";
 import { useAuth } from "../hooks/useAuth";
@@ -957,7 +959,10 @@ export default function StudioPage() {
     const need = NEEDS[kind];
     if (need && !src) return setAsked({ media: need, then: (url) => addKind(kind, url, where, anchor, spot) });
     const ids = makeIds();
-    addNode(makeNode(kind, shopLang, ids, src), where, anchor, spot, tr("إضافة", "Add"), ids);
+    const made = makeNode(kind, shopLang, ids, src);
+    // A new 3D model takes the store pack's finish, lights and floor.
+    const node = made.type === "model3d" && storeKit ? { ...made, props: { ...made.props, finish: storeKit.model.finish, lights: { preset: storeKit.model.lights }, floor: storeKit.model.floor } } : made;
+    addNode(node, where, anchor, spot, tr("إضافة", "Add"), ids);
   };
   /** A new section with columns, after the selection's page item (or at the page's end). */
   const addSection = (widths: number[], where: Where = "after") => {
@@ -1809,6 +1814,9 @@ export default function StudioPage() {
   const shownThemeInfo = themesQ.data?.find((t) => t.id === (themePreview ?? currentTheme));
   const templateFamily = isFamily(shownThemeInfo?.family) ? shownThemeInfo.family : "fashion";
   const templateColours = shownThemeInfo ? coloursOf(shownThemeInfo.palettes?.[themeMode ?? savedTheme?.mode ?? shownThemeInfo.mode]) : ROSE_COLOURS;
+  // The store's pack (the applied kit over its theme's): templates, new 3D models and the icon picker follow it.
+  const storeKit = useMemo(() => storeKitOf(settings.data?.header, shownThemeInfo?.kit, null), [settings.data?.header, shownThemeInfo?.kit]);
+  const templateKit = useMemo(() => templateKitOf(storeKit), [storeKit]);
   const productPics = useQuery({
     queryKey: ["template-pictures"],
     queryFn: async () => (await listProducts("active")).map((p) => p.summary?.thumbUrl).filter((u): u is string => typeof u === "string" && u.startsWith("https://")).slice(0, 12),
@@ -1887,6 +1895,7 @@ export default function StudioPage() {
   }
 
   return (
+    <StoreKitContext.Provider value={storeKit}>
     <Shell>
       <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-3 py-2">
         <Link to="/admin/pages" className="rounded-lg px-2 py-1 text-xs text-white/60 hover:bg-white/[0.06] hover:text-white">
@@ -2350,8 +2359,10 @@ export default function StudioPage() {
         selectedSection={pageItemNode?.type === "section" ? pageItemNode : null}
         makeIds={makeIds}
         onUse={placeTemplate}
+        kit={templateKit}
       />
     </Shell>
+    </StoreKitContext.Provider>
   );
 }
 

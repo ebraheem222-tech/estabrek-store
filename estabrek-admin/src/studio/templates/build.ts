@@ -6,6 +6,7 @@
  */
 import type { PageTreeNode } from "../../api/pages.api";
 import type { Lang } from "../../lib/lang";
+import type { TemplateKit } from "../packs";
 import { PACKS, type Family, type IconName, type Pack, type W } from "./words";
 
 export type N = PageTreeNode;
@@ -32,11 +33,13 @@ export type Ctx = {
   used: { pic: number };
   /** A campaign's colours (skin "campaign"). */
   paint?: Paint;
+  /** The store's pack (studio/packs.ts): the edges, patterns, picture shapes, cards, 3D and hovers it builds with. */
+  kit?: TemplateKit;
 };
 
-export type BuildOptions = { lang: Lang; fam: Family; motion?: MotionLevel; all?: boolean; ids: Ids; pics?: string[]; skin?: Skin; paint?: Paint };
+export type BuildOptions = { lang: Lang; fam: Family; motion?: MotionLevel; all?: boolean; ids: Ids; pics?: string[]; skin?: Skin; paint?: Paint; kit?: TemplateKit };
 export const ctxOf = (o: BuildOptions): Ctx => ({
-  lang: o.lang, all: Boolean(o.all), fam: o.fam, pack: PACKS[o.fam], skin: o.skin ?? "plain", motion: o.motion ?? "calm", ids: o.ids, pics: o.pics ?? [], used: { pic: 0 }, ...(o.paint ? { paint: o.paint } : {}),
+  lang: o.lang, all: Boolean(o.all), fam: o.fam, pack: PACKS[o.fam], skin: o.skin ?? "plain", motion: o.motion ?? "calm", ids: o.ids, pics: o.pics ?? [], used: { pic: 0 }, ...(o.paint ? { paint: o.paint } : {}), ...(o.kit ? { kit: o.kit } : {}),
 });
 /** The same build with another skin (a page's sections take turns). */
 export const withSkin = (c: Ctx, skin: Skin): Ctx => ({ ...c, skin });
@@ -78,11 +81,13 @@ const quiet = (c: Ctx): S => (c.skin === "plain" || c.skin === "soft" || c.skin 
 /* ------------------------------------------------------------------ motion */
 
 const rich = (c: Ctx) => c.motion === "rich";
+/** A hover: the pack's (none = none), else the template's own. */
+const hoverOf = (kit: string | undefined, own: string): S => (kit === "none" ? {} : { hover: { kind: kit ?? own } });
 export const mo = {
   head: (c: Ctx, at = 0): S => (rich(c) ? { enter: { kind: at === 0 ? "letters" : "lines", duration: 0.9, stagger: 0.04 } } : { enter: { kind: "up", duration: 0.7, distance: 24 } }),
   text: (c: Ctx, delay = 0.1): S => (rich(c) ? { enter: { kind: "up", delay: delay + 0.1, duration: 0.8, distance: 32 } } : { enter: { kind: "fade", delay, duration: 0.7 } }),
-  btn: (c: Ctx, delay = 0.2): S => (rich(c) ? { enter: { kind: "zoom-in", delay: delay + 0.15, ease: "back" }, hover: { kind: "magnetic" } } : { enter: { kind: "fade", delay } }),
-  pic: (c: Ctx): S => (rich(c) ? { enter: { kind: "wipe-up", duration: 1.1 }, hover: { kind: "zoom" } } : { enter: { kind: "fade", duration: 0.9 } }),
+  btn: (c: Ctx, delay = 0.2): S => (rich(c) ? { enter: { kind: "zoom-in", delay: delay + 0.15, ease: "back" }, ...hoverOf(c.kit?.buttonHover, "magnetic") } : { enter: { kind: "fade", delay } }),
+  pic: (c: Ctx): S => (rich(c) ? { enter: { kind: "wipe-up", duration: 1.1 }, ...hoverOf(c.kit?.imageHover, "zoom") } : { enter: { kind: "fade", duration: 0.9 } }),
   /** What a container holds comes one after another. */
   group: (c: Ctx): S => (rich(c) ? { enter: { kind: "up", stagger: 0.12, ease: "back", distance: 40 } } : { enter: { kind: "up", stagger: 0.08, distance: 20 } }),
   card: (c: Ctx): S => (rich(c) ? { hover: { kind: "lift" } } : {}),
@@ -125,8 +130,10 @@ export function B(c: Ctx, t: W, href: string, variant: "solid" | "outline" | "li
       : {};
   return node(c, "b", "button", { label: say(c, t), href, variant }, styled({ ...look, ...o?.style }, o?.phone), motionOr(o, mo.btn(c, o?.delay)));
 }
-export function IMG(c: Ctx, alt?: W, o?: Opts & { aspect?: string; radius?: number }): N {
-  return node(c, "img", "image", { src: pic(c), ...(alt ? { alt: say(c, alt) } : {}) }, styled({ width: "100%", fit: "cover", aspect: o?.aspect ?? "4 / 5", radius: o?.radius ?? 20, ...o?.style }, o?.phone), motionOr(o, mo.pic(c)));
+/** A picture; `shaped` = cut to the pack's shape when it has one. */
+export function IMG(c: Ctx, alt?: W, o?: Opts & { aspect?: string; radius?: number; shaped?: boolean }): N {
+  const cut = o?.shaped && c.kit && c.kit.shape !== "rounded" && c.kit.shape !== "rect" ? { shape: c.kit.shape, radius: 0 } : {};
+  return node(c, "img", "image", { src: pic(c), ...(alt ? { alt: say(c, alt) } : {}) }, styled({ width: "100%", fit: "cover", aspect: o?.aspect ?? "4 / 5", radius: o?.radius ?? 20, ...cut, ...o?.style }, o?.phone), motionOr(o, mo.pic(c)));
 }
 export function ICON(c: Ctx, name: IconName, o?: Opts & { size?: number }): N {
   return node(c, "ic", "icon", { name }, styled({ iconSize: o?.size ?? 40, color: pop(c), ...o?.style }, o?.phone), motionOr(o, mo.icon(c)));
@@ -135,7 +142,8 @@ export const SPACER = (c: Ctx, size = 24): N => node(c, "sp", "spacer", { size }
 export const DIVIDER = (c: Ctx, o?: Opts): N => node(c, "dv", "divider", {}, styled(o?.style, o?.phone));
 /** A built-in 3D model of the store's kind, in the theme's colours. */
 export function MODEL(c: Ctx, o?: Opts & { model?: string; props?: S }): N {
-  const props: S = { model: o?.model ?? c.pack.model, finish: "matte", lights: { preset: c.skin === "dark" || c.skin === "campaign" ? "night" : "studio" }, floor: "shadow", anim: { type: "float", speed: 1 }, drag: true, auto: 0.4, label: say(c, c.pack.product), ...o?.props };
+  const lights = c.kit?.lights ?? (c.skin === "dark" || c.skin === "campaign" ? "night" : "studio");
+  const props: S = { model: o?.model ?? c.pack.model, finish: c.kit?.finish ?? "matte", lights: { preset: lights }, floor: c.kit?.floor ?? "shadow", anim: { type: "float", speed: 1 }, drag: true, auto: 0.4, label: say(c, c.pack.product), ...o?.props };
   return node(c, "m3d", "model3d", props, styled({ width: "100%", aspect: "1 / 1", ...o?.style }, o?.phone), motionOr(o, mo.model(c)));
 }
 /** An element of any type, with its own props (blocks, forms, products…). */
@@ -156,8 +164,18 @@ export function STACK(c: Ctx, children: N[], style?: S, motion?: S): N {
   return node(c, "stk", "stack", {}, { base: { direction: "column", gap: 16, ...style } }, motion, children);
 }
 /** A card: a stack with its frame, lifting under the mouse with rich motion. */
+/** A card's frame on a plain section, as the pack's boxes look. */
+const BOXES: Record<string, S> = {
+  flat: { bg: "surface" },
+  line: { border: { width: 1, color: "border" } },
+  shadow: { bg: "surface", shadow: "md" },
+  soft: { bg: "accent-soft" },
+  glass: { bg: "surface", backdrop: { blur: 12 }, border: { width: 1, color: "border" } },
+  pop: { bg: "surface", border: { width: 2, color: "text" }, shade: { x: 6, y: 6, blur: 0, color: "text" } },
+};
 export function CARD(c: Ctx, children: N[], style?: S): N {
-  const frame: S = c.skin === "plain" ? { bg: "surface", border: { width: 1, color: "border" } } : c.skin === "surface" ? { bg: "bg" } : c.skin === "soft" ? { bg: "bg" } : { bg: "transparent", border: { width: 1, color: c.skin === "campaign" && c.paint ? c.paint.pop : c.skin === "dark" ? "muted" : "accent-contrast" } };
+  const plain = (c.kit && BOXES[c.kit.box]) ?? { bg: "surface", border: { width: 1, color: "border" } };
+  const frame: S = c.skin === "plain" ? plain : c.skin === "surface" ? { bg: "bg" } : c.skin === "soft" ? { bg: "bg" } : { bg: "transparent", border: { width: 1, color: c.skin === "campaign" && c.paint ? c.paint.pop : c.skin === "dark" ? "muted" : "accent-contrast" } };
   return STACK(c, children, { gap: 12, pad: [28, 24, 28, 24], radius: 20, ...frame, ...style }, mo.card(c));
 }
 
@@ -186,4 +204,13 @@ export const EDGES = {
   arc: band("M0 120 Q600 -20 1200 120 Z"),
   zigzag: band(zigzag()),
 };
-export const edge = (art: keyof typeof EDGES, color = "bg", height = 80) => ({ bottom: { art: EDGES[art], height, phone: Math.round(height / 2), color } });
+/** A section's bottom edge: the pack's when it has one ("none": none), else the template's own. */
+export function edge(c: Ctx, own: keyof typeof EDGES, color = "bg", height = 80) {
+  const kind = c.kit?.edge === "none" ? null : ((c.kit?.edge as keyof typeof EDGES | undefined) ?? own);
+  return kind && EDGES[kind] ? { bottom: { art: EDGES[kind], height, phone: Math.round(height / 2), color } } : undefined;
+}
+/** A pattern over a section: the pack's ("none": none), else the template's own. */
+export function patternOf(c: Ctx, own: string, color: string, size: number, opacity: number) {
+  const kind = c.kit?.pattern === "none" ? null : c.kit?.pattern ?? own;
+  return kind ? { pattern: { kind, color, size, opacity } } : {};
+}

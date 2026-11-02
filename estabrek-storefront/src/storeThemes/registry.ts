@@ -6,6 +6,7 @@
  * other kind of store are in themes/ (style, tech, life); many bring a 3D stage of their own products.
  */
 import { LIFE_THEMES } from "./themes/life";
+import { MORE_THEMES } from "./themes/more";
 import { STYLE_THEMES } from "./themes/style";
 import { TECH_THEMES } from "./themes/tech";
 import type { StoreTheme } from "./types";
@@ -906,6 +907,7 @@ export const STORE_THEMES: StoreTheme[] = [
   ...STYLE_THEMES,
   ...TECH_THEMES,
   ...LIFE_THEMES,
+  ...MORE_THEMES,
 ];
 
 export const themeById = (id?: string | null) => (id ? STORE_THEMES.find((t) => t.id === id) ?? null : null);

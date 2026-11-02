@@ -24,6 +24,7 @@ import { QuickAddButton } from "@/components/QuickAddButton";
 import FallbackHome from "@/components/FallbackHome";
 import { RoseCmsHome } from "@/components/cinematic/RoseCmsHome";
 import { storeThemeOf, themeById } from "@/storeThemes";
+import { kitFromParam, kitOfHeader, withKit } from "@/storeThemes/packs";
 import { ThemedHome } from "@/storeThemes/home/ThemedHome";
 import { stageOptionsOf } from "@/storeThemes/three/kinds";
 import { RoseCmsInterior } from "@/components/cinematic/RoseCmsInterior";
@@ -78,6 +79,8 @@ export async function renderCmsPageBySlug(
     /** The admin's theme gallery: a theme id to show instead of the saved one ("rose" = none). */
     storeTheme?: string | null;
     storeThemeMode?: "light" | "dark" | null;
+    /** The admin's pack being tried (?kit=, its JSON) instead of the saved one. */
+    kit?: string | null;
   }
 ) {
   // The page's language: its CMS words and the store's content in it.
@@ -143,7 +146,10 @@ export async function renderCmsPageBySlug(
   // The new CMS: a page saved as a tree (format 2). Its old sections keep their place
   // through `legacy` nodes and draw exactly as before; every other page-level node
   // becomes a section of kind TREE_NODE that the renderers hand to pageTree/TreeNodeView.
-  const tree = (page as any).format === 2 ? asTree(structuredClone((page as any).tree ?? null)) : null;
+  // The store's pack (header.storeKit, or one being tried): things with no motion of their own take its way of moving.
+  const kit = (options?.kit ? kitFromParam(options.kit, storeTheme) : null) ?? kitOfHeader(settingsHeader, storeTheme);
+  const bare = (page as any).format === 2 ? asTree(structuredClone((page as any).tree ?? null)) : null;
+  const tree = bare && kit ? { ...bare, root: withKit(bare.root, kit) } : bare;
   const langCfg = langConfigOf((bootstrap.site as any)?.header);
   const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg } : null;
   if (tree) {

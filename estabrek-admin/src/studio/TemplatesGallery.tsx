@@ -15,6 +15,7 @@ import { adminLang, type Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { TemplateThumb } from "./TemplateThumb";
 import type { ThumbColours } from "./templates/colours";
+import type { TemplateKit } from "./packs";
 import type { Ids, MotionLevel } from "./templates/build";
 import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_CATS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, toFile, type Template } from "./templates/catalog";
 import { FAMILIES, PACKS, type Family, type W } from "./templates/words";
@@ -44,7 +45,7 @@ function download(name: string, nodes: PageTreeNode[]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function TemplatesGallery({ open, onClose, lang, family, colours, pics, busy, here, pageName, pageSections, selectedSection, makeIds, onUse }: {
+export function TemplatesGallery({ open, onClose, lang, family, colours, pics, kit, busy, here, pageName, pageSections, selectedSection, makeIds, onUse }: {
   open: boolean;
   onClose: () => void;
   /** The shop language being edited (the templates' words). */
@@ -54,6 +55,8 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, b
   colours: ThumbColours;
   /** The store's own pictures (its products'). */
   pics: string[];
+  /** The store's pack: the templates take its edges, patterns, shapes, cards, 3D and hovers. */
+  kit?: TemplateKit;
   busy: boolean;
   /** What "here" adds after (null: nothing selected, so only at the end). */
   here: string | null;
@@ -79,7 +82,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, b
   const fileRef = useRef<HTMLInputElement>(null);
   const mine = useQuery({ queryKey: ["page-templates"], queryFn: listTemplates, enabled: open, staleTime: 30_000 });
 
-  const opts = useMemo(() => ({ lang, fam, motion, all, pics }), [lang, fam, motion, all, pics]);
+  const opts = useMemo(() => ({ lang, fam, motion, all, pics, kit }), [lang, fam, motion, all, pics, kit]);
   const list = useMemo(() => {
     const source = tab === "sections" ? SECTION_TEMPLATES : tab === "pages" ? PAGE_TEMPLATES : [];
     // A kind's homes show for that kind only.

@@ -8,6 +8,7 @@ import { Modal } from "../components/ui/Modal";
 import { tr } from "../lib/words";
 import { BASIC_ICONS, ICON_SETS, PH_WEIGHTS, PH_WEIGHT_NAME, basicArt, groupName, iconArt, iconRef, loadIconSet, searchIcons, setOfRef, type IconSet, type IconSetKey } from "./iconLibrary";
 import type { Art, ArtNode } from "./svgArt";
+import { useStoreKit } from "./storeKit";
 
 const CAMEL = (k: string) => k.replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
 /** An icon drawn in the words' colour (no ids or theme colours in the library's icons). */
@@ -36,7 +37,9 @@ export function IconPicker({ open, current, line, onPick, onClose }: {
   onPick: (name: string, art: Art | null) => void;
   onClose: () => void;
 }) {
-  const start = setOfRef(current);
+  // The icon's own set; a built-in icon (or none yet) opens on the store pack's set.
+  const kitSet = useStoreKit()?.icons;
+  const start = setOfRef(current) ?? (kitSet && /^(lucide|tabler|tabler-filled|ph-(regular|thin|light|bold|fill|duotone))$/.test(kitSet) ? kitSet : null);
   const [family, setFamily] = useState<Family>(!start ? "basic" : start.startsWith("ph-") ? "phosphor" : (start as Family));
   const [weight, setWeight] = useState<(typeof PH_WEIGHTS)[number]>(start?.startsWith("ph-") ? (start.slice(3) as (typeof PH_WEIGHTS)[number]) : "regular");
   const [query, setQuery] = useState("");

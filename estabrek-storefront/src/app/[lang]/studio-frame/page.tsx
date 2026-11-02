@@ -26,7 +26,9 @@ export default async function StudioFrame({ params, searchParams }: { params?: {
   // The theme gallery's preview (?storeTheme=<id>, "rose" for none): the home's layout follows it here.
   const storeTheme = typeof searchParams?.storeTheme === "string" ? searchParams.storeTheme : undefined;
   const storeThemeMode = searchParams?.themeMode === "light" || searchParams?.themeMode === "dark" ? searchParams.themeMode : null;
-  const body = await renderCmsPageBySlug(page.slug || "/", searchParams, { lang, page: Promise.resolve(page), allowFallback: false, allowNotFound: true, storeTheme, storeThemeMode });
+  // A pack being tried in the gallery (?kit=, packs.ts): its motion and hovers on the page.
+  const kit = typeof searchParams?.kit === "string" ? searchParams.kit : null;
+  const body = await renderCmsPageBySlug(page.slug || "/", searchParams, { lang, page: Promise.resolve(page), allowFallback: false, allowNotFound: true, storeTheme, storeThemeMode, kit });
   return (
     <>
       {/* The editor only: an empty cell or section keeps a place to drop things into (the shop draws it empty). */}

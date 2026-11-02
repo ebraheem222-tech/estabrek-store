@@ -6,19 +6,25 @@
  * Applying asks first; the settings keep a revision to go back to. A gaming theme's stage
  * (its models, games and the 3D scene editor) is worked on under the preview, drawn live
  * in the frame (StageWorkspace); with the scene editor open it sits beside the frame.
+ * Each theme is a whole pack (PackPanel): tried on the preview, mixed with other packs' parts,
+ * and applied as one with the editor's shared styles.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../../api/pages.api";
 import { listCategories, listProducts } from "../../api/catalog.api";
 import { getApiErrorMessage } from "../../api/http";
+import { getSiteStyles, publishSiteStyles, saveSiteStylesDraft } from "../../api/siteStyles.api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useSettings } from "../../hooks/useSettings";
 import { adminLang } from "../../lib/lang";
 import { identityOf } from "../../lib/storeIdentity";
 import { toast } from "../../lib/toast";
 import { tr } from "../../lib/words";
-import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStoreTheme, shopOrigin, stageOptionsOf, type StoreThemeInfo } from "../../studio/storeThemes";
+import { stylesOfKit, withPackStyles } from "../../studio/packs";
+import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, shopOrigin, stageOptionsOf, type StoreThemeInfo } from "../../studio/storeThemes";
+import { PackPanel } from "./PackPanel";
+import { packChoice, type PackChoice, type PackFrom } from "./packChoice";
 import { StageWorkspace, type StageTab } from "./StageWorkspace";
 import { ThemeCustomizer } from "./ThemeCustomizer";
 import { customParam, type ThemeCustom } from "./customize";
@@ -64,6 +70,10 @@ export default function ThemesPage() {
   const [saving, setSaving] = useState(false);
   const [family, setFamily] = useState<string>("all");
   const [stageTab, setStageTab] = useState<StageTab>("models");
+  // The shown theme's pack: where each part comes from, whether the preview shows it, and the one being applied.
+  const [packFrom, setPackFrom] = useState<PackFrom>({});
+  const [packTrying, setPackTrying] = useState(false);
+  const [packAsking, setPackAsking] = useState<PackChoice | null>(null);
   const stageDirty = useRef(false);
   const onStageDirty = useCallback((d: boolean) => (stageDirty.current = d), []);
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -91,7 +101,12 @@ export default function ThemesPage() {
   const [customDraft, setCustomDraft] = useState<ThemeCustom | null | undefined>(undefined);
   const isCurrent = shown.id === currentId && shown.id !== ROSE_ID;
   const custom = isCurrent ? (customDraft === undefined ? savedCustom : customDraft) : null;
-  const q = `storeTheme=${encodeURIComponent(shown.id)}${shown.id === ROSE_ID ? "" : `&themeMode=${shownMode}`}${customParam(custom)}`;
+  const pack = shown.id === ROSE_ID ? null : packChoice(shown, packFrom, isCurrent ? savedCustom : null, themesQ.data?.themes ?? []);
+  const packShown = packTrying && pack;
+  // The pack being tried: its colours and fonts as the store's changes, its kit for the motion, focus and cursor (?kit=).
+  const kitParam = packShown ? `&kit=${encodeURIComponent(JSON.stringify(pack.kit))}` : "";
+  const q = `storeTheme=${encodeURIComponent(shown.id)}${shown.id === ROSE_ID ? "" : `&themeMode=${shownMode}`}${customParam(packShown ? pack.custom : custom)}${kitParam}`;
+  const packApplied = isCurrent && Boolean((settings.data?.header as { storeKit?: unknown } | null | undefined)?.storeKit);
   const src =
     view === "home"
       ? ticket
@@ -119,6 +134,54 @@ export default function ThemesPage() {
 
   const families = useMemo(() => ["all", ...Array.from(new Set((themesQ.data?.themes ?? []).map((t) => t.family)))], [themesQ.data]);
   const list = all.filter((t) => family === "all" || t.id === ROSE_ID || t.family === family);
+
+  /** The whole pack for the store: the theme (with the mix's colours and fonts), its kit, and the editor's shared styles. */
+  const applyPack = async () => {
+    if (!packAsking) return;
+    setSaving(true);
+    try {
+      await saveStorePack({ id: shown.id, mode: shownMode === shown.mode ? null : shownMode, custom: packAsking.custom ?? undefined }, packAsking.kit);
+      // The editor's shared styles take the pack's (the store's own named ones stay); published unless other changes wait.
+      const ss = await getSiteStyles();
+      await saveSiteStylesDraft(withPackStyles(ss.draft ?? ss.styles, stylesOfKit(packAsking.kit, shown)));
+      let published = false;
+      if (!ss.draft) {
+        try {
+          await publishSiteStyles();
+          published = true;
+        } catch {
+          /* no right to publish: the styles wait in the editor */
+        }
+      }
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      void qc.invalidateQueries({ queryKey: ["site-styles"] });
+      setPackAsking(null);
+      setPackTrying(false);
+      setPackFrom({});
+      setPicked(null);
+      toast.success(
+        published ? tr("انطبقت الحزمة على كل المتجر", "The pack is on for the whole store") : tr("انطبقت الحزمة. ستايلات النصوص والأزرار بتستنى النشر بتبويب «الستايلات» بالمحرر.", "The pack is on. Its text and button styles wait to be published in the editor's Styles tab."),
+      );
+    } catch (e) {
+      toast.error(tr("ما انطبقت الحزمة", "The pack wasn't applied"), { description: getApiErrorMessage(e) });
+    } finally {
+      setSaving(false);
+    }
+  };
+  /** Takes the store's kit off; the theme and its changes stay. */
+  const removePack = async () => {
+    if (!current) return;
+    setSaving(true);
+    try {
+      await saveStorePack({ id: current.id, mode: current.mode ?? null, custom: current.custom }, null);
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      toast.success(tr("انشالت الحزمة، والثيم ضل", "The pack is off; the theme stays"));
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const apply = async () => {
     setSaving(true);
@@ -175,6 +238,8 @@ export default function ThemesPage() {
                     stageDirty.current = false;
                     setPicked(t.id);
                     setMode(null);
+                    setPackFrom({});
+                    setPackTrying(false);
                   }}
                   aria-pressed={on}
                   className={`w-full rounded-2xl border p-3 text-start transition ${on ? "border-accent-400/70 bg-white/[0.07]" : "border-white/[0.08] hover:bg-white/[0.04]"}`}
@@ -269,6 +334,21 @@ export default function ThemesPage() {
           ) : shown.id !== ROSE_ID ? (
             <p className="text-[11px] text-white/40">{tr("بعد ما تطبّق الثيم، بتقدر تخصّص ألوانه وخطوطه وزواياه من هون.", "Once the theme is applied, its colours, fonts and corners can be customised here.")}</p>
           ) : null}
+          {pack ? (
+            <PackPanel
+              theme={shown}
+              themes={themesQ.data?.themes ?? []}
+              choice={pack}
+              from={packFrom}
+              onFrom={setPackFrom}
+              applied={packApplied}
+              busy={saving}
+              trying={packTrying}
+              onTrying={setPackTrying}
+              onApply={setPackAsking}
+              onRemove={() => void removePack()}
+            />
+          ) : null}
           </div>
           {shown.stage ? (
             <div className={scene ? "min-w-0 xl:overflow-y-auto" : ""} style={scene ? { maxHeight: Math.max(480, dev.h * scale + 40) } : undefined}>
@@ -310,6 +390,19 @@ export default function ThemesPage() {
         confirmText={tr("تطبيق", "Apply")}
         onClose={() => setAsking(false)}
         onConfirm={apply}
+      />
+      <ConfirmDialog
+        open={Boolean(packAsking)}
+        variant="warning"
+        isLoading={saving}
+        title={tr("تطبيق الحزمة كاملة على المتجر؟", "Apply the whole pack to the store?")}
+        message={tr(
+          "الثيم وألوانه وخطوطه، مرور الماوس والحركة بصفحات المحرر الجديد، إطار التركيز والمؤشر وعلامة التحميل، وستايلات العناوين والأزرار والكروت، كلها بتتغيّر لكل الزبائن. الإعدادات الحالية بتنحفظ بالسجل.",
+          "The theme with its colours and fonts, the hovers and motion on the new editor's pages, the focus ring, cursor and loading indicator, and the heading, button and card styles all change for every customer. The current settings are kept in the history.",
+        )}
+        confirmText={tr("تطبيق", "Apply")}
+        onClose={() => setPackAsking(null)}
+        onConfirm={applyPack}
       />
     </div>
   );

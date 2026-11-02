@@ -5,7 +5,7 @@
  * when it's used (build.ts), so every theme and every kind of store gets its own words.
  */
 import { inAWeek } from "../blockDefaults";
-import { B, CARD, COLS, EL, GRID, H, ICON, IMG, MODEL, P, SEC, STACK, edge, eyebrow, mo, pic, pop, say, type Ctx, type N, type SecOpts, type Skin } from "./build";
+import { B, CARD, COLS, EL, GRID, H, ICON, IMG, MODEL, P, SEC, STACK, edge, eyebrow, mo, patternOf, pic, pop, say, type Ctx, type N, type SecOpts, type Skin } from "./build";
 import { C, CAMPAIGNS, LINKS_HELP, LINKS_MAIN, LINKS_SOCIAL, PERKS, RUNNING, SHIPPING_QA, STATS, STEPS, VALUES, w, type Campaign, type Family, type W } from "./words";
 
 export const SECTION_CATS = [
@@ -141,7 +141,7 @@ export const RECIPES: SectionRecipe[] = [
   r("hero-center", "hero", w("في النص", "Centred", "במרכז"), ["plain", "soft", "bold", "dark"], (c) =>
     sec(c, [head(c, [eyebrow(c, c.pack.eyebrow), H(c, c.pack.title, 1), P(c, c.pack.sub, { style: { size: 19, maxWidth: "620px" } }), ctas(c, true)], true, 0)], C.welcome, { pad: [120, 24, 120, 24] })),
   r("hero-split", "hero", w("كلام وصورة", "Words and a picture", "מילים ותמונה"), ["plain", "soft", "surface", "dark"], (c) =>
-    sec(c, [COLS(c, [1, 1], [[eyebrow(c, c.pack.eyebrow), H(c, c.pack.title, 1), P(c, c.pack.sub, { style: { size: 19 } }), ctas(c)], [IMG(c, c.pack.product)]], { gap: 56, align: "center" })], C.welcome)),
+    sec(c, [COLS(c, [1, 1], [[eyebrow(c, c.pack.eyebrow), H(c, c.pack.title, 1), P(c, c.pack.sub, { style: { size: 19 } }), ctas(c)], [IMG(c, c.pack.product, { shaped: true })]], { gap: 56, align: "center" })], C.welcome)),
   r("hero-split-pic", "hero", w("صورة وكلام", "A picture and words", "תמונה ומילים"), ["plain", "soft", "bold"], (c) =>
     sec(c, [COLS(c, [1, 1], [[IMG(c, c.pack.product, { aspect: "1 / 1", radius: 999 })], [eyebrow(c, c.pack.eyebrow), H(c, c.pack.title, 1), P(c, c.pack.sub, { style: { size: 19 } }), ctas(c)]], { gap: 56, align: "center" })], C.welcome)),
   r("hero-model", "hero", w("كلام وموديل 3D", "Words and a 3D model", "מילים ומודל תלת־ממד"), ["plain", "soft", "dark", "bold"], (c) =>
@@ -162,7 +162,7 @@ export const RECIPES: SectionRecipe[] = [
     })),
   r("hero-pattern", "hero", w("نقشة وموجة", "A pattern and a wave", "דוגמה וגל"), ["soft", "plain", "bold"], (c) =>
     sec(c, [head(c, [eyebrow(c, c.pack.eyebrow), H(c, c.pack.title, 1), P(c, c.pack.sub, { style: { size: 19, maxWidth: "620px" } }), ctas(c, true)], true, 0)], C.welcome, {
-      pad: [120, 24, 150, 24], style: { pattern: { kind: "dots", color: c.skin === "bold" ? "accent-contrast" : "accent", size: 22, opacity: 0.18 } }, props: { edges: edge("wave") },
+      pad: [120, 24, 150, 24], style: patternOf(c, "dots", c.skin === "bold" ? "accent-contrast" : "accent", 22, 0.18), props: { edges: edge(c, "wave") },
     })),
   r("hero-pictures", "hero", w("كلام وصورتين", "Words and two pictures", "מילים ושתי תמונות"), ["plain", "surface", "soft"], (c) =>
     sec(c, [COLS(c, [3, 2], [
@@ -242,7 +242,7 @@ export const RECIPES: SectionRecipe[] = [
 
   /* our story */
   r("story-split", "story", w("صورة وقصة", "A picture and a story", "תמונה וסיפור"), ["plain", "soft", "surface"], (c) =>
-    sec(c, [COLS(c, [1, 1], [[IMG(c, C.ourStory, { aspect: "4 / 5" })], [eyebrow(c, C.ourStory), H(c, c.pack.title, 2), P(c, c.pack.story, { style: { size: 18 } }), B(c, C.more, "/about", "outline")]], { gap: 56, align: "center" })], C.ourStory)),
+    sec(c, [COLS(c, [1, 1], [[IMG(c, C.ourStory, { aspect: "4 / 5", shaped: true })], [eyebrow(c, C.ourStory), H(c, c.pack.title, 2), P(c, c.pack.story, { style: { size: 18 } }), B(c, C.more, "/about", "outline")]], { gap: 56, align: "center" })], C.ourStory)),
   r("story-center", "story", w("قصة بالنص", "A centred story", "סיפור במרכז"), ["plain", "soft", "dark"], (c) =>
     sec(c, [head(c, [eyebrow(c, C.ourStory), H(c, c.pack.story, 2, { style: { size: 34, maxWidth: "860px", lineHeight: 1.4, weight: 500 } }), P(c, C.storeName, { style: { weight: 700 } })], true, 0)], C.ourStory, { pad: [110, 24, 110, 24] })),
   r("story-values", "story", w("قيمنا", "Our values", "הערכים שלנו"), ["plain", "surface"], (c) => sec(c, [head(c, [eyebrow(c, C.ourStory), H(c, C.values, 2)]), GRID(c, 3, VALUES.map((v) => perk(c, { icon: v.icon, title: v.title, text: v.text }, { center: true })), { gap: 32 })], C.values)),
@@ -255,15 +255,15 @@ export const RECIPES: SectionRecipe[] = [
 
   /* picture and words */
   r("split-start", "split", w("الصورة بالبداية", "Picture first", "התמונה קודם"), ["plain", "soft", "surface", "dark"], (c) =>
-    sec(c, [COLS(c, [1, 1], [[IMG(c, c.pack.collection)], [eyebrow(c, c.pack.label), H(c, c.pack.collection, 2), P(c, c.pack.sub), B(c, c.pack.cta, "/shop")]], { gap: 56, align: "center" })], c.pack.collection)),
+    sec(c, [COLS(c, [1, 1], [[IMG(c, c.pack.collection, { shaped: true })], [eyebrow(c, c.pack.label), H(c, c.pack.collection, 2), P(c, c.pack.sub), B(c, c.pack.cta, "/shop")]], { gap: 56, align: "center" })], c.pack.collection)),
   r("split-end", "split", w("الصورة بالآخر", "Picture last", "התמונה אחרי"), ["plain", "soft", "bold"], (c) =>
-    sec(c, [COLS(c, [1, 1], [[eyebrow(c, c.pack.label), H(c, c.pack.collection, 2), P(c, c.pack.sub), B(c, c.pack.cta, "/shop")], [IMG(c, c.pack.collection)]], { gap: 56, align: "center", phone: "reverse" })], c.pack.collection)),
+    sec(c, [COLS(c, [1, 1], [[eyebrow(c, c.pack.label), H(c, c.pack.collection, 2), P(c, c.pack.sub), B(c, c.pack.cta, "/shop")], [IMG(c, c.pack.collection, { shaped: true })]], { gap: 56, align: "center", phone: "reverse" })], c.pack.collection)),
   r("split-wide", "split", w("صورة عريضة", "A wide picture", "תמונה רחבה"), ["plain", "surface"], (c) =>
     sec(c, [COLS(c, [2, 1], [[IMG(c, c.pack.collection, { aspect: "16 / 10" })], [H(c, c.pack.collection, 2), P(c, c.pack.sub), B(c, C.more, "/shop", "link")]], { gap: 40, align: "center" })], c.pack.collection)),
   r("split-arch", "split", w("صورة بقوس", "An arched picture", "תמונה בקשת"), ["plain", "soft"], (c) =>
     sec(c, [COLS(c, [1, 1], [[IMG(c, c.pack.collection, { aspect: "3 / 4", radius: 0, style: { shape: "arch" } })], [eyebrow(c, c.pack.eyebrow), H(c, c.pack.collection, 2), P(c, c.pack.story), B(c, c.pack.cta, "/shop")]], { gap: 56, align: "center" })], c.pack.collection)),
   r("split-blob", "split", w("صورة ناعمة الشكل", "A soft-shaped picture", "תמונה בצורה רכה"), ["soft", "plain"], (c) =>
-    sec(c, [COLS(c, [1, 1], [[eyebrow(c, c.pack.eyebrow), H(c, c.pack.collection, 2), P(c, c.pack.sub), ctas(c)], [IMG(c, c.pack.collection, { aspect: "1 / 1", radius: 0, style: { shape: "blob" } })]], { gap: 56, align: "center" })], c.pack.collection, { style: { pattern: { kind: "rings", color: "accent", size: 60, opacity: 0.08 } } })),
+    sec(c, [COLS(c, [1, 1], [[eyebrow(c, c.pack.eyebrow), H(c, c.pack.collection, 2), P(c, c.pack.sub), ctas(c)], [IMG(c, c.pack.collection, { aspect: "1 / 1", radius: 0, style: { shape: "blob" } })]], { gap: 56, align: "center" })], c.pack.collection, { style: patternOf(c, "rings", "accent", 60, 0.08) })),
 
   /* galleries */
   r("gal-grid", "gallery", w("تلات مربعات", "Three squares", "שלושה ריבועים"), ["plain", "surface"], (c) => sec(c, [head(c, [H(c, c.pack.collection, 2)]), GRID(c, 3, [0, 1, 2].map(() => IMG(c, c.pack.collection, { aspect: "1 / 1", motion: mo.pic(c) })), { phone: 1 })], c.pack.collection)),
@@ -314,7 +314,7 @@ export const RECIPES: SectionRecipe[] = [
   r("cta-picture", "cta", w("صورة ودعوة", "A picture and a call", "תמונה וקריאה"), ["soft", "plain"], (c) =>
     sec(c, [COLS(c, [1, 1], [[eyebrow(c, c.pack.eyebrow), H(c, c.pack.title, 2), B(c, c.pack.cta, "/shop")], [IMG(c, c.pack.product, { aspect: "16 / 10" })]], { gap: 48, align: "center" })], C.shop)),
   r("cta-pattern", "cta", w("نقشة وزاوية", "A pattern and an angle", "דוגמה וזווית"), ["bold", "soft"], (c) =>
-    sec(c, [head(c, [H(c, c.pack.title, 2), P(c, c.pack.sub), B(c, c.pack.cta, "/shop")], true, 0)], C.shop, { pad: [96, 24, 140, 24], style: { pattern: { kind: "diagonal", color: c.skin === "bold" ? "accent-contrast" : "accent", size: 18, opacity: 0.12 } }, props: { edges: edge("slant") } })),
+    sec(c, [head(c, [H(c, c.pack.title, 2), P(c, c.pack.sub), B(c, c.pack.cta, "/shop")], true, 0)], C.shop, { pad: [96, 24, 140, 24], style: patternOf(c, "diagonal", c.skin === "bold" ? "accent-contrast" : "accent", 18, 0.12), props: { edges: edge(c, "slant") } })),
   r("cta-particles", "cta", w("بنجوم", "With stars", "עם כוכבים"), ["dark", "bold"], (c) =>
     sec(c, [head(c, [H(c, c.pack.title, 2), B(c, c.pack.cta, "/shop")], true, 0)], C.shop, { pad: [110, 24, 110, 24], props: { particles: { kind: "stars", color: pop(c) } } })),
   r("cta-big", "cta", w("كلمة كبيرة", "One big line", "שורה אחת גדולה"), ["plain", "dark"], (c) =>
