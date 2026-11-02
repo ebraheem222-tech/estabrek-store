@@ -37,7 +37,8 @@ import type { CatalogCategory } from "@/lib/catalog";
 import { langConfigOf, type Lang } from "@/lib/i18n";
 import { localizeCategories } from "@/lib/localize";
 import { asTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
-import { treeCss } from "@/pageTree/css";
+import { treeCss, treeFamilies } from "@/pageTree/css";
+import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
 import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
 import { TreeMotion } from "@/pageTree/TreeMotion";
@@ -470,6 +471,8 @@ export async function renderCmsPageBySlug(
 
   // What the tree's category tiles and rose blocks draw from, and its CSS.
   let treeStyle = "";
+  // The library fonts the page uses, from Google Fonts (one stylesheet).
+  let treeFonts: string | null = null;
   let treeMoves = false;
   // The editor's looks that move (parts of old sections and scenes), for the motion engine.
   let lookMoves = "";
@@ -496,7 +499,9 @@ export async function renderCmsPageBySlug(
     }
     // The editor's preview carries the shared styles being changed; a live page takes the published ones.
     const shared = (page as { siteStyles?: unknown }).siteStyles;
-    treeStyle = treeCss(tree, siteStylesOf(shared !== undefined ? shared : settingsHeader?.siteStyles));
+    const site = siteStylesOf(shared !== undefined ? shared : settingsHeader?.siteStyles);
+    treeStyle = treeCss(tree, site);
+    if (treeStyle) treeFonts = googleFontsHref(treeFamilies(tree, site));
     treeMoves = needs.motion;
     const moving = looksOf(tree).map(([t, l]) => [t, treeMotionOf(lookNode(t, l))] as const).filter(([, m]) => m);
     if (moving.length) lookMoves = JSON.stringify(moving).replace(/</g, "\\u003c");
@@ -506,6 +511,13 @@ export async function renderCmsPageBySlug(
     <>
       {/* Page-level head scripts are injected in head.tsx */}
       <ScriptTags scripts={(page as any).headScripts} />
+      {treeFonts ? (
+        <>
+          <link rel="preconnect" href={GOOGLE_FONTS} />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+          <link rel="stylesheet" href={treeFonts} data-page-tree-fonts="" />
+        </>
+      ) : null}
       {treeStyle ? <style data-page-tree="" dangerouslySetInnerHTML={{ __html: treeStyle }} /> : null}
       {treeMoves ? <script dangerouslySetInnerHTML={{ __html: TREE_PENDING }} /> : null}
       {lookMoves ? <script type="application/json" id="pt-looks" dangerouslySetInnerHTML={{ __html: lookMoves }} /> : null}

@@ -10,7 +10,8 @@ import { styleOp } from "./columns";
 import { lookOf, shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
-import { FontPicker } from "./TypePanels";
+import { FontPicker, useTreeFonts } from "./TypePanels";
+import { ShapePicker } from "./ShapePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
@@ -33,11 +34,14 @@ const WEIGHTS: Array<[string, () => string]> = [
  * Words: font, size, weight, colour, alignment, line height, spacing between letters.
  * `only` shows some of them ("letters" = the spacing between letters alone, for a state).
  */
-export function TextStylePanel({ node, screen, busy, onOps, only }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; only?: Array<"font" | "size" | "weight" | "color" | "align" | "lines" | "letters"> }) {
+export function TextStylePanel({ node, screen, busy, onOps, only }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; only?: Array<"iconSize" | "font" | "size" | "weight" | "color" | "align" | "lines" | "letters"> }) {
   const has = (k: string) => !only || (only as string[]).includes(k);
   const v = (k: string) => shownLook(node, screen, k);
   const save = (label: string, patch: Record<string, unknown>) => onOps(label, [styleOp(node, screen, patch)]);
   const lh = typeof v("lineHeight") === "number" ? (v("lineHeight") as number) : null;
+  // A family from the library has its own weights: the others are drawn as the nearest one.
+  const fam = useTreeFonts().find((f) => f.slug === v("family"));
+  const hasWeight = (w: string) => !w || !fam || (Number(w) >= fam.weights[0] && Number(w) <= fam.weights[1]);
   const ls = typeof v("letterSpacing") === "number" ? (v("letterSpacing") as number) : null;
   return (
     <div className={box} data-testid="studio-text-style">
@@ -45,13 +49,14 @@ export function TextStylePanel({ node, screen, busy, onOps, only }: { node: Page
         <div className="text-xs font-medium text-white/70">{tr("الكلام", "The words")}</div>
         <span className="text-[10px] text-white/40">{SCREEN_LABEL[screen]()}</span>
       </div>
+      {only?.includes("iconSize") ? <Range label={tr("حجم الأيقونة", "Icon size")} min={12} max={200} unit="px" busy={busy} value={typeof v("iconSize") === "number" ? (v("iconSize") as number) : 24} onSave={(n) => save(tr("حجم الأيقونة", "Icon size"), { iconSize: n === 24 ? null : n })} testId="studio-icon-size" /> : null}
       {has("font") ? <FontPicker node={node} screen={screen} busy={busy} onOps={onOps} /> : null}
       {has("size") ? <NumberField label={tr("حجم الخط (فاضي = متل التصميم)", "Font size (empty = as designed)")} suffix="px" value={typeof v("size") === "number" ? (v("size") as number) : undefined} min={8} max={200} onSave={(n) => save(tr("حجم الخط", "Font size"), { size: n })} testId="studio-style-size" /> : null}
       {has("weight") ? (
         <label className="block text-[11px] text-white/55">
           {tr("سماكة الخط", "Weight")}
           <select className="mt-1 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white" disabled={busy} value={String(v("weight") ?? "")} onChange={(e) => save(tr("سماكة الخط", "Weight"), { weight: e.target.value ? Number(e.target.value) : null })} data-testid="studio-style-weight">
-            {WEIGHTS.map(([k, name]) => <option key={k} value={k}>{name()}</option>)}
+            {WEIGHTS.map(([k, name]) => <option key={k} value={k} disabled={!hasWeight(k)}>{name()}{hasWeight(k) ? "" : ` (${tr("مش بهالخط", "not in this font")})`}</option>)}
           </select>
         </label>
       ) : null}
@@ -130,6 +135,7 @@ export function MediaStylePanel({ node, screen, busy, onOps }: { node: PageTreeN
         options={[["cover", tr("بتعبّيه كله (بتنقص من الأطراف)", "Fills it (edges may be cut)")], ["contain", tr("كلها بتبيّن", "Shows whole")]]}
         onPick={(f) => save(tr("تعبئة الإطار", "Fill"), { fit: f === "cover" ? null : f })}
       />
+      <ShapePicker value={v("shape")} busy={busy} onPick={(k) => save(tr("الشكل", "Shape"), { shape: k, radius: null })} testId="studio-media-shape" />
       <div className="text-[11px] text-white/55">
         {tr("النقطة اللي بتضل ظاهرة", "The point that stays in sight")}
         <div className="mt-1 flex items-start gap-3">

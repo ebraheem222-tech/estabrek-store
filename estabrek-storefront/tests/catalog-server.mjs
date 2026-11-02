@@ -214,7 +214,26 @@ const treeDemo = {
             // A product's 360° view in the page: rose-dress in Berry (its own view), turning by itself.
             { id: "spin-berry", type: "product360", props: { productId: "coat", itemId: "berry", label: { ar: "الفستان بيلف", en: "The dress turning", he: "השמלה מסתובבת" } }, style: { base: { width: "240px" } } },
             { id: "art-bad", type: "svg", props: { art: { viewBox: "0 0 10 10", nodes: [{ t: "script", a: {} }, { t: "circle", a: { r: "4", cx: "5", cy: "5", onclick: "alert(1)", fill: "white", href: "https://x.test" } }] } } },
+            // Words in a font from the library (Google Fonts), and one in the shop's own copy.
+            { id: "lib-font", type: "heading", props: { text: { ar: "خط من المكتبة", en: "A library font", he: "גופן מהספרייה" }, level: 3 }, style: { base: { family: "noto-kufi-arabic" } } },
+            { id: "own-font", type: "text", props: { text: { ar: "خط المتجر", en: "The shop's font", he: "גופן החנות" } }, style: { base: { family: "heebo" } } },
+            // An icon from the library: its own drawing, its own size, the words' colour.
+            {
+              id: "lib-icon", type: "icon", style: { base: { iconSize: 48, color: "#123456" }, mobile: { iconSize: 32 } },
+              props: { name: "lucide:shopping-cart", art: { viewBox: "0 0 24 24", nodes: [{ t: "g", a: { fill: "none", stroke: "currentColor", "stroke-width": "1.5", "stroke-linecap": "round" }, c: [{ t: "circle", a: { cx: "8", cy: "21", r: "1" } }, { t: "path", a: { d: "M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78" } }, { t: "script", a: {} }] }] } },
+            },
           ],
+        },
+        // A section with a wave along its top and an angle at its bottom, a pattern, and a picture cut to a heart.
+        {
+          id: "edged", type: "section", style: { base: { bg: "#fff0f6", pad: [80, 24, 80, 24], pattern: { kind: "dots", color: "accent", size: 22, opacity: 0.3 } } },
+          props: {
+            edges: {
+              top: { art: { viewBox: "0 0 1440 120", nodes: [{ t: "path", a: { d: "M0 60C480 0 960 120 1440 60V120H0Z", fill: "currentColor" } }, { t: "script", a: {} }] }, height: 60, phone: 30, color: "#ff0000" },
+              bottom: { art: { viewBox: "0 0 1440 120", nodes: [{ t: "path", a: { d: "M0 120L1440 0V120Z", fill: "currentColor" } }] }, height: 50, color: "bg", flip: true, front: true },
+            },
+          },
+          children: [{ id: "heart-pic", type: "image", props: { src: "https://res.cloudinary.com/demo/image/upload/sample.jpg", alt: { ar: "قلب" } }, style: { base: { width: "200px", aspect: "1 / 1", shape: "heart" } } }],
         },
         // Columns: a third and two thirds, each cell its own little container (shapes, alignment), three more columns inside one.
         {

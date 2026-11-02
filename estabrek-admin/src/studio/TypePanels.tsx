@@ -14,6 +14,8 @@ import { shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { NEEDS_NORMAL, STATES, STATE_LABEL, presetsOf, statesOf, type StateChoice, type StateName } from "./states";
 import { loadStoreThemes, shopOrigin, type TreeFontInfo } from "./storeThemes";
+import { SAMPLE, loadPreviews, previewFamily } from "./fontPreview";
+import { PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch, effectPreview } from "./textEffects";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -77,6 +79,7 @@ const KIND_LABEL: Record<TreeFontInfo["kind"], () => string> = {
   serif: () => tr("كلاسيك (بزوائد)", "Classic (serif)"),
   display: () => tr("للعناوين", "For headings"),
   script: () => tr("خط يد", "Handwriting"),
+  mono: () => tr("آلة كاتبة", "Typewriter"),
 };
 const SCRIPT_LABEL: Record<string, () => string> = { arabic: () => tr("عربي", "Arabic"), hebrew: () => tr("عبري", "Hebrew"), latin: () => tr("إنجليزي", "English") };
 const GENERIC: Array<[string, () => string]> = [
@@ -86,52 +89,96 @@ const GENERIC: Array<[string, () => string]> = [
   ["sans", () => tr("بسيط", "Plain sans")],
   ["mono", () => tr("آلة كاتبة", "Typewriter")],
 ];
-const SAMPLE: Record<string, string> = { arabic: "أبجد هوز", hebrew: "אבגד", latin: "Aa Bb" };
+type Script = "" | "arabic" | "hebrew" | "latin";
+const PAGE_FONTS = 60;
 
-/** Picks the words' family: as designed, the theme's two, a plain kind, or one from the library (drawn in itself). */
+/**
+ * Picks the words' family: as designed, the theme's two, a plain kind, or one from the
+ * library (the shop's own and Google Fonts', over 240), found by its letters (Arabic,
+ * Hebrew, English), its kind or its name, each drawn in itself.
+ */
 export function FontPicker({ node, screen, busy, onOps }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops }) {
   const fonts = useTreeFonts();
   useFontFaces(fonts);
   const [open, setOpen] = useState(false);
   const [find, setFind] = useState("");
+  const [script, setScript] = useState<Script>("");
+  const [kind, setKind] = useState<"" | TreeFontInfo["kind"]>("");
+  useEffect(() => {
+    if (open) void loadPreviews(fonts);
+  }, [open, fonts]);
   const family = shownLook(node, screen, "family");
   const font = shownLook(node, screen, "font");
-  const current = typeof family === "string" ? fonts.find((f) => f.slug === family)?.name ?? family : GENERIC.find(([k]) => k === font)?.[1]() ?? tr("متل التصميم", "As designed");
+  const chosen = typeof family === "string" ? fonts.find((f) => f.slug === family) : undefined;
+  const current = typeof family === "string" ? chosen?.name ?? family : GENERIC.find(([k]) => k === font)?.[1]() ?? tr("متل التصميم", "As designed");
   const save = (patch: Obj) => {
     onOps(tr("الخط", "Font"), [styleOp(node, screen, patch)]);
     setOpen(false);
   };
+  // Opening starts a new search (the letters chosen stay).
+  const toggleOpen = () => {
+    if (!open) {
+      setFind("");
+      setKind("");
+    }
+    setOpen(!open);
+  };
   const shown = useMemo(() => {
     const q = find.trim().toLowerCase();
-    return q ? fonts.filter((f) => f.name.toLowerCase().includes(q) || f.slug.includes(q)) : fonts;
-  }, [fonts, find]);
-  const groups = (Object.keys(KIND_LABEL) as Array<TreeFontInfo["kind"]>).map((k) => [k, shown.filter((f) => f.kind === k)] as const).filter(([, list]) => list.length);
+    return fonts.filter((f) => (!q || f.name.toLowerCase().includes(q) || f.slug.includes(q)) && (!script || f.scripts.includes(script)) && (!kind || f.kind === kind));
+  }, [fonts, find, script, kind]);
+  // A few dozen at a time (each one's preview loads as it shows); a new search starts again.
+  const view = `${find}|${script}|${kind}`;
+  const [more, setMore] = useState({ view, n: PAGE_FONTS });
+  const count = more.view === view ? more.n : PAGE_FONTS;
+  const groups = (Object.keys(KIND_LABEL) as Array<TreeFontInfo["kind"]>).map((k) => [k, shown.slice(0, count).filter((f) => f.kind === k)] as const).filter(([, list]) => list.length);
   const item = (on: boolean) => `flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-start text-xs ${on ? "bg-accent-500/20 text-white" : "text-white/80 hover:bg-white/[0.06]"}`;
+  const chip = (on: boolean) => `rounded-full px-2 py-0.5 text-[10px] ${on ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1]"}`;
   return (
     <div className="text-[11px] text-white/55">
       {tr("الخط", "Font")}
-      <button type="button" className={`${control} flex items-center justify-between text-start`} disabled={busy} onClick={() => setOpen((o) => !o)} aria-expanded={open} data-testid="studio-font-picker">
-        <span style={typeof family === "string" ? { fontFamily: `"th-${family}"` } : undefined}>{current}</span>
+      <button type="button" className={`${control} flex items-center justify-between text-start`} disabled={busy} onClick={toggleOpen} aria-expanded={open} data-testid="studio-font-picker">
+        <span style={chosen ? { fontFamily: previewFamily(chosen) } : undefined}>{current}</span>
         <span aria-hidden="true">▾</span>
       </button>
       {open ? (
-        <div className="mt-1 max-h-72 space-y-2 overflow-y-auto rounded-lg border border-white/[0.1] bg-surface-950 p-2" data-testid="studio-font-list">
-          <input className={control} placeholder={tr("دوّر على خط", "Find a font")} value={find} onChange={(e) => setFind(e.target.value)} />
+        <div className="mt-1 max-h-96 space-y-2 overflow-y-auto rounded-lg border border-white/[0.1] bg-surface-950 p-2" data-testid="studio-font-list">
+          <input className={control} placeholder={tr("دوّر على خط", "Find a font")} value={find} onChange={(e) => setFind(e.target.value)} data-testid="studio-font-find" />
+          <div className="flex flex-wrap gap-1" role="group" aria-label={tr("الحروف", "Letters")}>
+            {(["", "arabic", "hebrew", "latin"] as Script[]).map((sc) => (
+              <button key={sc || "all"} type="button" aria-pressed={script === sc} className={chip(script === sc)} onClick={() => setScript(sc)} data-script={sc || "all"}>
+                {sc ? SCRIPT_LABEL[sc]() : tr("كل الحروف", "Every script")}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1" role="group" aria-label={tr("النوع", "Kind")}>
+            {(["", ...Object.keys(KIND_LABEL)] as Array<"" | TreeFontInfo["kind"]>).map((k) => (
+              <button key={k || "all"} type="button" aria-pressed={kind === k} className={chip(kind === k)} onClick={() => setKind(k)} data-kind={k || "all"}>
+                {k ? KIND_LABEL[k]() : tr("كل الأنواع", "Every kind")}
+              </button>
+            ))}
+          </div>
           <button type="button" className={item(family === undefined && font === undefined)} onClick={() => save({ family: null, font: null })}>{tr("متل التصميم", "As designed")}</button>
           {GENERIC.map(([k, name]) => (
             <button key={k} type="button" className={item(family === undefined && font === k)} onClick={() => save({ family: null, font: k })} data-font={k}>{name()}</button>
           ))}
-          {groups.map(([kind, list]) => (
-            <div key={kind}>
-              <div className="px-1 pb-1 pt-2 text-[10px] uppercase tracking-wide text-white/40">{KIND_LABEL[kind]()}</div>
+          <div className="px-1 text-[10px] text-white/40" data-testid="studio-font-count">{tr(`${shown.length} خط`, "{0} fonts", [shown.length])}</div>
+          {groups.map(([k, list]) => (
+            <div key={k}>
+              <div className="px-1 pb-1 pt-2 text-[10px] uppercase tracking-wide text-white/40">{KIND_LABEL[k]()}</div>
               {list.map((f) => (
-                <button key={f.slug} type="button" className={item(family === f.slug)} onClick={() => save({ family: f.slug, font: null })} data-font={f.slug} title={f.scripts.map((s) => SCRIPT_LABEL[s]?.() ?? s).join(" · ")}>
-                  <span style={{ fontFamily: `"th-${f.slug}"`, fontSize: 15 }}>{f.name}</span>
-                  <span className="shrink-0 text-[13px] text-white/45" style={{ fontFamily: `"th-${f.slug}"` }}>{SAMPLE[f.scripts.includes("arabic") ? "arabic" : f.scripts.includes("hebrew") ? "hebrew" : "latin"]}</span>
+                <button key={f.slug} type="button" className={item(family === f.slug)} onClick={() => save({ family: f.slug, font: null })} data-font={f.slug} title={[...f.scripts.map((s) => SCRIPT_LABEL[s]?.() ?? s), f.source === "google" ? "Google Fonts" : tr("من المتجر", "The shop's own")].join(" · ")}>
+                  <span style={{ fontFamily: previewFamily(f), fontSize: 15 }}>{f.name}</span>
+                  <span className="shrink-0 text-[13px] text-white/45" style={{ fontFamily: previewFamily(f) }}>{SAMPLE[script || (f.scripts.includes("arabic") ? "arabic" : f.scripts.includes("hebrew") ? "hebrew" : "latin")]}</span>
                 </button>
               ))}
             </div>
           ))}
+          {shown.length > count ? (
+            <button type="button" className={`${btn} w-full`} onClick={() => setMore({ view, n: count + PAGE_FONTS })} data-testid="studio-font-more">
+              {tr(`اعرض أكتر (${shown.length - count} باقي)`, "Show more ({0} left)", [shown.length - count])}
+            </button>
+          ) : null}
           {!fonts.length ? <p className="px-1 text-[11px] text-white/40">{tr("ما قدرنا نجيب قائمة الخطوط من المتجر.", "Couldn't get the font list from the shop.")}</p> : null}
         </div>
       ) : null}
@@ -166,6 +213,17 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
   return (
     <div className={box} data-testid="studio-type-more">
       <Head title={inState ? tr("طلاء الكلام", "The words' paint") : tr("الكلام بالتفصيل", "The words in detail")} screen={screen} />
+      <Fold title={tr("تأثيرات جاهزة للكلام", "Ready word effects")} open={Boolean(effectOf(v))} testId="studio-type-effects">
+        <div className="grid grid-cols-3 gap-1">
+          {TEXT_EFFECTS.filter((e) => !inState || Object.keys(e.paint).length).map((e) => (
+            <button key={e.key} type="button" disabled={busy} aria-pressed={effectOf(v) === e.key} title={e.name()} onClick={() => save(e.name(), effectPatch(e, inState))} className={`rounded-lg border bg-[#fffaf7] px-1 py-1.5 text-center hover:bg-[#fff3ee] ${effectOf(v) === e.key ? "border-[#c86b98] ring-2 ring-[#c86b98]/60" : "border-[#ead7df]"} disabled:opacity-40`} data-effect={e.key}>
+              <span className="block truncate text-base font-bold leading-6 text-[#3b2530]" style={effectPreview(e)}>أب Aa</span>
+              <span className="block truncate text-[9px] text-[#8d7380]">{e.name()}</span>
+            </button>
+          ))}
+        </div>
+        {PAINT_KEYS.some((k) => v(k) !== undefined) ? <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(tr("بلا تأثير", "No effect"), Object.fromEntries(PAINT_KEYS.map((k) => [k, null])))} data-testid="studio-type-effect-none">{tr("بلا تأثير", "No effect")}</button> : null}
+      </Fold>
       {!inState ? (
         <>
           {toggle(tr("مايل", "Italic"), v("italic") === true, busy, (on) => save(tr("مايل", "Italic"), { italic: on || null }), "studio-type-italic")}

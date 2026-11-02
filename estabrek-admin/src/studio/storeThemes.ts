@@ -97,7 +97,18 @@ export const shopOrigin = () => {
 };
 
 /** A font family the page editor can give words (the shop's pageTree/fonts.ts). */
-export type TreeFontInfo = { slug: string; name: string; kind: "sans" | "serif" | "display" | "script"; scripts: Array<"arabic" | "hebrew" | "latin">; weights: [number, number]; faces?: Array<{ file: string; weight: string; range: string }> };
+export type TreeFontInfo = {
+  slug: string;
+  name: string;
+  kind: "sans" | "serif" | "display" | "script" | "mono";
+  scripts: Array<"arabic" | "hebrew" | "latin">;
+  weights: [number, number];
+  /** "theme" = the shop's own files (`faces`); "google" = Google Fonts (`q` is its ask). */
+  source?: "theme" | "google";
+  italic?: boolean;
+  q?: string;
+  faces?: Array<{ file: string; weight: string; range: string }>;
+};
 
 export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; models: StageModelInfo[]; stageDefaults: StageDefaults | null; defaults: Record<string, string>; fonts: TreeFontInfo[] }> {
   const res = await fetch(`${shopOrigin()}/api/store-themes`, { credentials: "omit" });

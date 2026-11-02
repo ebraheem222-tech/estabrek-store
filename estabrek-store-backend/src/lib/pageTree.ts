@@ -50,6 +50,8 @@ export const OVERLAY_TYPES: ReadonlySet<NodeType> = new Set(["heading", "text", 
 export const OVERLAY_LIMIT = 40;
 
 export const ICON_NAMES = ["heart", "star", "truck", "shield", "gift", "phone", "whatsapp", "mail", "check", "sparkle", "bag", "return"] as const;
+/** An icon from the editor's library ("lucide:heart", "ph-duotone:gift"): it carries its own drawing. */
+export const ICON_REF = /^(lucide|tabler|tabler-filled|ph-(regular|thin|light|bold|fill|duotone)):[a-z0-9][a-z0-9-]{0,60}$/;
 /** Theme colours (the shop maps them to its CSS variables); anything else must be a hex colour. */
 export const COLOR_TOKENS = ["text", "muted", "accent", "accent-soft", "accent-contrast", "bg", "surface", "border", "white", "black", "transparent"] as const;
 
@@ -154,6 +156,27 @@ const VISUAL = {
 export const StateStyle = z.object(VISUAL);
 export const STATES = ["hover", "focused", "pressed"] as const;
 
+/** What can cut an element to a shape (the shop's pageTree/css.ts draws each). */
+export const SHAPES = [
+  "rect", "rounded", "pill", "arch", "circle",
+  "hexagon", "octagon", "diamond", "triangle", "pentagon", "star", "heart", "blob", "blob2", "flower",
+  "leaf", "drop", "shield", "squircle", "ticket", "bubble", "plus", "slant", "wave", "tilt",
+] as const;
+/** A pattern over the background, drawn in one colour (the shop's pageTree/css.ts). */
+export const PATTERNS = ["dots", "polka", "grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"] as const;
+/** A band along a section's top or bottom: a drawing stretched the full width (a wave, an angle…). */
+const SectionEdge = z.object({
+  art: z.unknown().superRefine((v, ctx) => {
+    const problem = checkArt(v);
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+  }).transform((v) => v as Art),
+  height: px(4, 400),
+  phone: px(4, 400).optional(), // its height on a phone
+  color,
+  flip: z.boolean().optional(), // mirrored, end to start
+  front: z.boolean().optional(), // over the section's content instead of under it
+});
+
 /** How a node looks on one screen size. Every key is optional; the shop turns it into CSS. */
 export const ScreenStyle = z.object({
   ...VISUAL,
@@ -180,6 +203,7 @@ export const ScreenStyle = z.object({
   family: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/).optional(),
   italic: z.boolean().optional(),
   size: px(8, 200).optional(),
+  iconSize: px(8, 400).optional(), // an icon's drawing (its words keep `size`)
   // Fluid: the words grow from this size on a phone to `size` on a computer.
   sizeMin: px(8, 200).optional(),
   lineHeight: z.number().min(0.8).max(3).optional(),
@@ -192,7 +216,8 @@ export const ScreenStyle = z.object({
   // A picture's or clip's point that stays in sight when it's cut to its frame (% across, % down).
   focus: z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) }).optional(),
   aspect: z.string().trim().regex(/^\d{1,2}\s*\/\s*\d{1,2}$/, "Like 16 / 9").optional(),
-  shape: z.enum(["rect", "rounded", "pill", "arch", "circle"]).optional(), // what clips it (a picture inside takes the shape)
+  shape: z.enum(SHAPES).optional(), // what clips it (a picture inside takes the shape)
+  pattern: z.object({ kind: z.enum(PATTERNS), color, size: px(4, 200), opacity: z.number().min(0).max(1).optional() }).optional(),
   perspective: px(200, 4000).optional(),
   origin: z.enum(["center", "top", "bottom"]).optional(),
   // Placed freely over its container, its anchor at x% from the line's start and y% from the top; false = back in the flow on this screen.
@@ -263,6 +288,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
     contained: z.boolean().optional(), // the content keeps to the page width
+    edges: z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() }).optional(),
   }),
   grid: none,
   stack: none,
@@ -317,7 +343,17 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   }),
   spacer: z.object({ size: px(0, 400).default(32) }),
   divider: none,
-  icon: z.object({ name: z.enum(ICON_NAMES), label: local(80).optional() }),
+  // One of the few built in by name, or one from the library with its drawing (checked like any drawing).
+  icon: z
+    .object({
+      name: z.union([z.enum(ICON_NAMES), z.string().regex(ICON_REF)]),
+      art: z.unknown().superRefine((v, ctx) => {
+        const problem = checkArt(v);
+        if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+      }).transform((v) => v as Art).optional(),
+      label: local(80).optional(),
+    })
+    .refine((p) => (ICON_NAMES as readonly string[]).includes(p.name) || p.art, "An icon from the library carries its drawing"),
   products: z.object({
     source: z.enum(["new", "best", "category", "picked"]),
     categoryId: id.optional(),
@@ -337,7 +373,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
 export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);
 for (const t of NODE_TYPES) {
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
-  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).extend({ styleId: STYLE_REF.optional() });
+  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional() });
 }
 
 /* ------------------------------------------------------------------ tree */

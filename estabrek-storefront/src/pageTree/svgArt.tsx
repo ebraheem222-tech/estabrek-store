@@ -88,7 +88,7 @@ export function artHasLines(art: Art): boolean {
 }
 
 /** The drawing as SVG elements; `prefix` (the element's id) goes in front of every id. */
-export function ArtView({ art, prefix, className }: { art: Art; prefix: string; className?: string }): ReactNode {
+export function ArtView({ art, prefix, className, stretch }: { art: Art; prefix: string; className?: string; stretch?: boolean }): ReactNode {
   let morphed = false;
   const draw = (n: ArtNode, i: number): ReactNode => {
     const props: Record<string, unknown> = { key: i };
@@ -109,7 +109,7 @@ export function ArtView({ art, prefix, className }: { art: Art; prefix: string; 
     return createElement(n.t, props, ...(n.c ?? []).map(draw));
   };
   return (
-    <svg className={className} viewBox={art.viewBox} xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
+    <svg className={className} viewBox={art.viewBox} xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true" {...(stretch ? { preserveAspectRatio: "none" } : {})}>
       {art.nodes.map(draw)}
     </svg>
   );

@@ -40,6 +40,83 @@ const SHAPES: Record<string, string[]> = {
   arch: ["border-radius:999px 999px 0 0", "overflow:hidden"],
   circle: ["border-radius:50%", "aspect-ratio:1/1", "overflow:hidden"],
 };
+/**
+ * The other shapes cut it with a mask: an outline on a 100×100 square stretched to the
+ * element's box (the editor's studio/cutShapes.ts draws the same outlines for its buttons).
+ */
+export const MASKS: Record<string, string> = {
+  hexagon: "M25 3L75 3L100 50L75 97L25 97L0 50Z",
+  octagon: "M30 0H70L100 30V70L70 100H30L0 70V30Z",
+  diamond: "M50 0L100 50L50 100L0 50Z",
+  triangle: "M50 0L100 100H0Z",
+  pentagon: "M50 0L100 38L81 100H19L0 38Z",
+  star: "M50 0L61.8 35.4H98.1L68.7 57.3L79.9 92.7L50 70.8L20.1 92.7L31.3 57.3L1.9 35.4H38.2Z",
+  heart: "M50 92C20 70 0 52 0 30C0 13 13 2 27 2C38 2 46 8 50 17C54 8 62 2 73 2C87 2 100 13 100 30C100 52 80 70 50 92Z",
+  blob: "M50 4C62.4 3.5 82.3 9.6 89.1 18.8C95.9 28 94 46.9 90.9 59.3C87.9 71.8 81 88.6 71 93.7C61 98.7 42.5 95.1 30.9 89.6C19.3 84.2 3.9 72.4 1.3 61.1C-1.4 49.8 6.7 31.5 14.8 21.9C22.9 12.4 37.6 4.5 50 4Z",
+  blob2: "M50 0C61.4 -0.1 77.8 17.7 84.6 30C91.5 42.3 96.9 63.3 91.1 73.8C85.4 84.3 64.1 92.8 50 93C35.9 93.2 12.3 85.4 6.7 75C1.1 64.6 9 43 16.2 30.5C23.4 18 38.6 0.1 50 0Z",
+  flower: "M50 0C55.1 0 59.4 10.6 65.3 13C71.2 15.5 81.7 11 85.4 14.6C89 18.3 84.5 28.8 87 34.7C89.4 40.6 100 44.9 100 50C100 55.1 89.4 59.4 87 65.3C84.5 71.2 89 81.7 85.4 85.4C81.7 89 71.2 84.5 65.3 87C59.4 89.4 55.1 100 50 100C44.9 100 40.6 89.4 34.7 87C28.8 84.5 18.3 89 14.6 85.4C11 81.7 15.5 71.2 13 65.3C10.6 59.4 0 55.1 0 50C0 44.9 10.6 40.6 13 34.7C15.5 28.8 11 18.3 14.6 14.6C18.3 11 28.8 15.5 34.7 13C40.6 10.6 44.9 0 50 0Z",
+  leaf: "M0 100C0 40 40 0 100 0C100 60 60 100 0 100Z",
+  drop: "M50 0C70 30 95 48 95 66A45 34 0 0 1 5 66C5 48 30 30 50 0Z",
+  shield: "M50 0L95 14V50C95 75 75 92 50 100C25 92 5 75 5 50V14Z",
+  squircle: "M50 0C90 0 100 10 100 50C100 90 90 100 50 100C10 100 0 90 0 50C0 10 10 0 50 0Z",
+  ticket: "M0 0H100V40A10 10 0 0 0 100 60V100H0V60A10 10 0 0 0 0 40Z",
+  bubble: "M10 0H90A10 10 0 0 1 100 10V70A10 10 0 0 1 90 80H35L15 100V80H10A10 10 0 0 1 0 70V10A10 10 0 0 1 10 0Z",
+  plus: "M35 0H65V35H100V65H65V100H35V65H0V35H35Z",
+  slant: "M20 0H100L80 100H0Z",
+  wave: "M0 0H100V86C83 100 67 72 50 86C33 100 17 72 0 86Z",
+  tilt: "M0 0H100V84L0 100Z",
+};
+const SHAPE_NAMES = [...Object.keys(SHAPES), ...Object.keys(MASKS)];
+const maskUrl = (d: string) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${d}'/></svg>`)}")`;
+
+/**
+ * A pattern over the background in one colour (its strength from `opacity`), drawn with
+ * gradients so a theme colour works: [layers, their sizes, their places].
+ */
+export const PATTERNS = ["dots", "polka", "grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"] as const;
+function patternOf(p: unknown): [string, string, string] | undefined {
+  const o = obj(p);
+  const kind = pick(o?.kind, PATTERNS);
+  const c0 = color(o?.color);
+  const s = num(o?.size, 4, 200);
+  if (!o || !kind || !c0 || s === undefined) return undefined;
+  const op = num(o.opacity, 0, 1);
+  const c = op === undefined || op === 1 ? c0 : `color-mix(in srgb,${c0} ${Math.round(op * 100)}%,transparent)`;
+  const t = "transparent";
+  const r = +(s * 0.12).toFixed(1);
+  const w = Math.max(1, +(s * 0.06).toFixed(1));
+  const at = (x: string, n: number) => Array(n).fill(x).join(",");
+  switch (kind) {
+    case "dots":
+      return [`radial-gradient(${c} ${r}px,${t} ${r + 0.6}px)`, `${s}px ${s}px`, "0 0"];
+    case "polka":
+      return [at(`radial-gradient(${c} ${r}px,${t} ${r + 0.6}px)`, 2), at(`${s}px ${s}px`, 2), `0 0,${s / 2}px ${s / 2}px`];
+    case "grid":
+      return [`linear-gradient(${c} ${w}px,${t} ${w}px),linear-gradient(90deg,${c} ${w}px,${t} ${w}px)`, at(`${s}px ${s}px`, 2), "0 0,0 0"];
+    case "lines":
+      return [`linear-gradient(${c} ${w}px,${t} ${w}px)`, `100% ${s}px`, "0 0"];
+    case "columns":
+      return [`linear-gradient(90deg,${c} ${w}px,${t} ${w}px)`, `${s}px 100%`, "0 0"];
+    case "diagonal":
+      return [`repeating-linear-gradient(45deg,${c} 0 ${w}px,${t} ${w}px ${s}px)`, "auto", "0 0"];
+    case "stripes":
+      return [`repeating-linear-gradient(-45deg,${c} 0 ${s / 2}px,${t} ${s / 2}px ${s}px)`, "auto", "0 0"];
+    case "checks":
+      return [`conic-gradient(${c} 25%,${t} 0 50%,${c} 0 75%,${t} 0)`, `${s}px ${s}px`, "0 0"];
+    case "hatch":
+      return [`repeating-linear-gradient(45deg,${c} 0 ${w}px,${t} ${w}px ${s}px),repeating-linear-gradient(-45deg,${c} 0 ${w}px,${t} ${w}px ${s}px)`, "auto,auto", "0 0,0 0"];
+    case "zigzag":
+      return [
+        `linear-gradient(135deg,${c} 25%,${t} 25%),linear-gradient(225deg,${c} 25%,${t} 25%),linear-gradient(315deg,${c} 25%,${t} 25%),linear-gradient(45deg,${c} 25%,${t} 25%)`,
+        at(`${s}px ${s}px`, 4),
+        `${-s / 2}px 0,${-s / 2}px 0,0 0,0 0`,
+      ];
+    case "rings":
+      return [`radial-gradient(${t} ${(s * 0.28).toFixed(1)}px,${c} ${(s * 0.28).toFixed(1)}px ${(s * 0.28 + w).toFixed(1)}px,${t} ${(s * 0.28 + w + 0.6).toFixed(1)}px)`, `${s}px ${s}px`, "0 0"];
+    case "triangles":
+      return [`linear-gradient(45deg,${c} 50%,${t} 50%)`, `${s}px ${s}px`, "0 0"];
+  }
+}
 
 const BLENDS = ["normal", "multiply", "screen", "overlay", "soft-light", "color", "luminosity"] as const;
 const ANCHORS: Record<string, [number, number]> = {
@@ -180,7 +257,11 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   if (order !== undefined && Number.isInteger(order)) d.push(`order:${order}`);
   push("background", color(s.bg));
   const bgGrad = gradientOf(s.gradient, obj(s.gradient)?.radial === true);
-  if (bgGrad) d.push(`background-image:${bgGrad}`);
+  const pattern = patternOf(s.pattern);
+  if (pattern) {
+    // The pattern over its gradient, if it has one.
+    d.push(`background-image:${[pattern[0], bgGrad].filter(Boolean).join(",")}`, `background-size:${[pattern[1], bgGrad && "auto"].filter(Boolean).join(",")}`, `background-position:${[pattern[2], bgGrad && "0 0"].filter(Boolean).join(",")}`);
+  } else if (bgGrad) d.push(`background-image:${bgGrad}`);
   const glass = obj(s.backdrop);
   if (glass) {
     const [blur, sat] = [num(glass.blur, 0, 40), num(glass.saturate, 0, 3)];
@@ -207,6 +288,7 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   const sizeMin = num(s.sizeMin, 8, 200);
   if (size !== undefined && sizeMin !== undefined && sizeMin < size) d.push(`font-size:${fluidSize(sizeMin, size)}`);
   else push("font-size", size, "px");
+  push("--pt-isz", num(s.iconSize, 8, 400), "px");
   const w = num(s.weight, 100, 900);
   if (w !== undefined && w % 100 === 0) d.push(`font-weight:${w}`);
   push("line-height", num(s.lineHeight, 0.8, 3));
@@ -244,8 +326,12 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
     if (fx !== undefined && fy !== undefined) d.push(...(type === "image" || type === "video" ? [`object-position:${fx}% ${fy}%`] : []), `--pt-focus:${fx}% ${fy}%`);
   }
   if (typeof s.aspect === "string" && /^\d{1,2}\s*\/\s*\d{1,2}$/.test(s.aspect)) d.push(`aspect-ratio:${s.aspect.replace(/\s+/g, "")}`);
-  const shape = pick(s.shape, ["rect", "rounded", "pill", "arch", "circle"] as const);
-  if (shape) d.push(...SHAPES[shape]);
+  const shape = pick(s.shape, SHAPE_NAMES);
+  if (shape && SHAPES[shape]) d.push(...SHAPES[shape]);
+  else if (shape) {
+    const m = maskUrl(MASKS[shape]);
+    d.push(`-webkit-mask:${m} center/100% 100% no-repeat`, `mask:${m} center/100% 100% no-repeat`);
+  }
   // Turned and moved: variables that the element's transform (TREE_TRANSFORM) reads.
   const turn = (k: string, v: unknown, lim: number) => push(`--pt-${k}`, num(v, -lim, lim), "deg");
   turn("rx", s.rotateX, 180);
@@ -461,6 +547,22 @@ export function siteTarget(s: SiteStyle): { sel: string; type: string } {
   return auto && auto[0] === s.kind ? { sel: auto[1], type: auto[2] } : { sel: `.ps-${s.id}`, type: KIND_TYPE[s.kind] };
 }
 
+/** The font families a page's elements, its old sections' parts and the shared styles use. */
+export function treeFamilies(tree: PageTree, site: SiteStyle[] = []): Set<string> {
+  const out = new Set<string>();
+  const add = (style: Partial<Record<Screen, ScreenStyle>> | undefined) => {
+    for (const sc of [style?.base, style?.tablet, style?.mobile]) if (typeof sc?.family === "string") out.add(sc.family);
+  };
+  const walk = (n: TreeNode) => {
+    if (SAFE_ID.test(n.id ?? "")) add(n.style);
+    n.children?.forEach(walk);
+  };
+  walk(tree.root);
+  for (const [, look] of looksOf(tree)) add(look.style);
+  for (const s of site) add(s.style);
+  return out;
+}
+
 /**
  * The whole page's CSS ("" for a page that is only old sections). `site`: the store's shared
  * styles, drawn after the base CSS and before each element's own look, so its own look wins.
@@ -477,8 +579,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   const fx: string[] = [];
   const staggered = new Set<string>();
   const hidden: string[] = [];
-  // Font families used (their @font-face), and whether a state glides a turn (typed turn values).
-  const families = new Set<string>();
+  // Whether a state glides a turn (typed turn values).
   let glides = false;
   let drawn = 0;
   const walk = (n: TreeNode, parent: TreeNode | null) => {
@@ -488,7 +589,6 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
       const screens = [n.style?.base, n.style?.tablet, n.style?.mobile];
       const motion = motionOf(n);
       if (motion?.enter?.stagger) staggered.add(n.id);
-      for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
       if (screens.some(glidesOn)) glides = true;
       const turns = screens.some(turnsOn);
       if (motion || turns || (parent && staggered.has(parent.id))) turned.push(sel);
@@ -536,7 +636,6 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
     const screens = [look.style?.base, look.style?.tablet, look.style?.mobile];
     if (motionOf(node) || screens.some(turnsOn)) turned.push(sel);
     if (screens.some(glidesOn)) glides = true;
-    for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
     const media = look.kind === "image" || look.kind === "video";
     const keys = stateKeysOf(look.style);
     // A picture's fit and focus go on the picture itself (the field is often its frame).
@@ -562,7 +661,6 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   for (const s of site) {
     const { sel, type } = siteTarget(s);
     const screens = [s.style.base, s.style.tablet, s.style.mobile];
-    for (const sc of screens) if (typeof sc?.family === "string") families.add(sc.family);
     if (screens.some(turnsOn)) turned.push(sel);
     if (screens.some(glidesOn)) glides = true;
     if (screens.some(coveredOn)) {
@@ -581,7 +679,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   }
   const layer = "content:\"\";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--pt-ov);opacity:var(--pt-ovo);mix-blend-mode:var(--pt-ovb)";
   return [
-    fontFaceCss(families),
+    fontFaceCss(treeFamilies(tree, site)),
     glides ? TURN_PROPERTIES : "",
     BASE_CSS,
     // Before each element's own rule, so its own values win.
@@ -684,7 +782,15 @@ export const BASE_CSS = [
   ".pt-svg>svg{display:block;width:100%;height:auto;overflow:visible}",
   ".pt-divider{border:0;border-top:1px solid var(--border);margin:0;width:100%}",
   ".pt-icon{display:inline-flex;align-items:center;gap:8px;color:var(--accent)}",
-  ".pt-icon svg{width:24px;height:24px;flex:none}",
+  // A section's edges: a band along its top or bottom, under its content (or over it, `front`).
+  ".pt-has-edges{position:relative;isolation:isolate}",
+  ".pt-edge{position:absolute;inset-inline:0;height:var(--pt-eh);line-height:0;pointer-events:none;z-index:-1}",
+  ".pt-edge svg{display:block;width:100%;height:100%}",
+  ".pt-edge-top{top:-1px;transform:scaleY(-1)}.pt-edge-bottom{bottom:-1px}",
+  ".pt-edge-top.pt-edge-flip{transform:scale(-1,-1)}.pt-edge-bottom.pt-edge-flip{transform:scaleX(-1)}",
+  ".pt-edge-front{z-index:2}",
+  `@media (max-width:${PHONE_MAX}px){.pt-edge{height:var(--pt-ehp,var(--pt-eh))}}`,
+  ".pt-icon svg{width:var(--pt-isz,24px);height:var(--pt-isz,24px);flex:none}",
   ".pt-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 22px;border-radius:999px;font-weight:600;text-decoration:none;cursor:pointer;transition:filter .2s ease,background-color .2s ease}",
   ".pt-btn-solid{background:var(--accent);color:var(--accent-contrast,#fff)}",
   ".pt-btn-outline{border:1px solid currentColor;color:var(--accent)}",

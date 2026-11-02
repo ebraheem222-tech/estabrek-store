@@ -31,6 +31,7 @@ import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
 import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
+import { EdgesPanel, PatternPanel } from "./ShapePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
@@ -78,6 +79,8 @@ const BLOCK_LABEL: Record<string, () => string> = {
 const BLOCK_FLAG: Record<string, string> = { seasons: "roseSeasonsEnabled", stories: "roseStoriesEnabled", instagram: "roseInstagramEnabled", fabric: "rose3dEnabled" };
 /** Scenes that keep their own place (the fabric study follows the first products). */
 const FIXED_BLOCKS = new Set(["fabric"]);
+/** Boxes that can carry a pattern over their background. */
+const PATTERNED = new Set(["section", "cell", "columns", "grid", "stack"]);
 /** Tree elements whose words are written on the page itself (with a formatting bar). */
 const WRITABLE = new Set(["heading", "text", "button"]);
 /** Formatted words: a known tag that closes (the shop's pageTree/rich.ts). */
@@ -1578,6 +1581,7 @@ export default function StudioPage() {
               <CellPanel node={selFree} cols={nodeOf(selNode?.parentId) ?? null} busy={busy} onOps={(l, ops) => void change(l, ops, ops.some((o) => o.op === "remove" && o.nodeId === selected) ? selNode?.parentId ?? null : undefined)} />
             ) : null}
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "section" ? <EdgesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {WRITABLE.has(selFree.type) ? (
               <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(selected)} data-testid="studio-edit-node">
@@ -1593,7 +1597,7 @@ export default function StudioPage() {
               <>
                 {selFree.type === "heading" || selFree.type === "text" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "heading" || selFree.type === "text" ? <TypeMorePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["size", "color", "align"]} /> : null}
+                {selFree.type === "icon" ? <TextStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} only={["iconSize", "size", "color", "align"]} /> : null}
                 {selFree.type === "button" ? (
                   <>
                     <ButtonStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
@@ -1602,6 +1606,7 @@ export default function StudioPage() {
                 ) : null}
                 {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={selFree.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
+                {PATTERNED.has(selFree.type) ? <PatternPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}

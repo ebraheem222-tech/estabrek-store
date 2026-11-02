@@ -37,6 +37,7 @@ export type ScreenStyle = {
   opacity?: number;
   font?: "heading" | "body" | "serif" | "sans" | "mono";
   size?: number;
+  iconSize?: number; // an icon's drawing (its words keep `size`)
   weight?: number;
   lineHeight?: number;
   letterSpacing?: number;
@@ -45,7 +46,8 @@ export type ScreenStyle = {
   /** A picture's or clip's point that stays in sight when it's cut to its frame (% across, % down). */
   focus?: { x: number; y: number };
   aspect?: string;
-  shape?: "rect" | "rounded" | "pill" | "arch" | "circle";
+  shape?: string; // rect, rounded, pill, arch, circle, or one of the masks (css.ts MASKS)
+  pattern?: { kind: string; color: string; size: number; opacity?: number };
   rotateX?: number;
   rotateY?: number;
   rotateZ?: number;
