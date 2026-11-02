@@ -48,7 +48,8 @@ import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
 import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
 import { ConvertAllPanel, ConvertPanel } from "./ConvertPanel";
 import { PageSettingsPanel } from "./PageSettingsPanel";
-import { convertSection, type OldSection } from "./convert";
+import { convertSection, type OldSection, type RoseRole } from "./convert";
+import { identityOf } from "../lib/storeIdentity";
 import { ROSE_COLOURS, coloursOf } from "./templates/colours";
 import { PAGE_TEMPLATES, SECTION_TEMPLATES } from "./templates/catalog";
 import { isFamily } from "./templates/words";
@@ -1524,7 +1525,7 @@ export default function StudioPage() {
               busy={busy}
               onSet={(path, value, inLanguage) => void setField(selSection.id, path, value, inLanguage ? shopLang : main)}
             />
-            <ConvertPanel section={selSection as OldSection} main={main} busy={busy} onConvert={() => convertOld([selected!])} />
+            <ConvertPanel section={selSection as OldSection} main={main} rose={roseOf(selSection as OldSection)} busy={busy} onConvert={() => convertOld([selected!])} />
           </>
         ) : null}
 
@@ -1667,7 +1668,7 @@ export default function StudioPage() {
         ) : null}
 
         {selected === index.root && pageQ.data && (pageQ.data.kind ?? "page") === "page" ? <PageSettingsPanel key={pageQ.data.id} page={pageQ.data} langs={langs.enabled} /> : null}
-        {selected === index.root ? <ConvertAllPanel sections={oldOnPage.map((x) => x.section)} main={main} busy={busy} onConvert={() => convertOld(oldOnPage.map((x) => x.node.id))} /> : null}
+        {selected === index.root ? <ConvertAllPanel sections={oldOnPage.map((x) => x.section)} main={main} roseOf={roseOf} busy={busy} onConvert={() => convertOld(oldOnPage.map((x) => x.node.id))} /> : null}
 
         {selected === index.root ? (
           <label className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] p-3 text-xs" data-testid="studio-page-smooth">
@@ -1834,6 +1835,11 @@ export default function StudioPage() {
     const item = c ? pageItemOf(c, selected) : null;
     return item ? index?.nodes.get(item)?.node ?? null : null;
   })();
+  // The rose design (no store theme, a modest fashion store) draws old sections its own way: the home's
+  // first HERO is its opening (it stays), the rest take the rose look that converting leaves behind.
+  const who = identityOf(settings.data?.header);
+  const roseDesign = !savedTheme?.id && who.industry === "fashion" && who.audience === "women";
+  const roseOf = (s: OldSection): RoseRole | undefined => (!roseDesign ? undefined : pageQ.data?.slug === "/" && s.id === heroSection?.id ? "opening" : "look");
   /** The page's old sections (the old editor's), in order, with their data. */
   const oldOnPage = pageKids.flatMap((n) => {
     const section = n.type === "legacy" ? sectionOf(String(n.props.sectionId)) : undefined;
@@ -1848,7 +1854,7 @@ export default function StudioPage() {
     let kept = 0;
     for (const { node, section } of oldOnPage) {
       if (!nodeIds.includes(node.id)) continue;
-      const r = convertSection(section, main, ids);
+      const r = convertSection(section, main, ids, roseOf(section));
       if (!r.ok) {
         kept++;
         continue;

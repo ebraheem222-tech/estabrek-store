@@ -4438,4 +4438,6 @@ export const HE: Record<string, string> = {
   "To new elements": "לרכיבים חדשים",
   "Turned; {0} stay old sections": "הפכנו; {0} נשארים מקטעים ישנים",
   "The section's HTML": "ה-HTML של המקטע",
+  "The rose design's own look for this section (it takes the new elements' look)": "המראה של עיצוב הוורד למקטע הזה (הוא יקבל את המראה של הרכיבים החדשים)",
+  "The store wears the rose design: turned sections take the new elements' look instead of the rose one.": "החנות בעיצוב הוורד: מקטעים שהופכים מקבלים את המראה של הרכיבים החדשים במקום מראה הוורד.",
 };

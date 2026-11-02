@@ -9,7 +9,7 @@ import { checkTree } from "../lib/pageTree.js";
 
 type N = { id: string; type: string; props: any; style?: any; children?: N[] };
 type Converted = { ok: true; node: N; dropped: string[] } | { ok: false; why: string };
-let convertSection: (s: unknown, main: string, ids: (p: string) => string) => Converted;
+let convertSection: (s: unknown, main: string, ids: (p: string) => string, rose?: "opening" | "look") => Converted;
 let htmlToRich: (html: string) => string;
 
 beforeAll(async () => {
@@ -90,6 +90,15 @@ describe("old sections as the new editor's elements", () => {
     expect(JSON.stringify(hero)).not.toContain("javascript");
     const gallery = convertSection({ id: "g", type: "IMAGE_GALLERY", data: EXAMPLES.IMAGE_GALLERY, isVisible: true }, "ar", ids());
     expect(gallery.ok && gallery.dropped).toEqual(["pictures"]);
+  });
+
+  test("in the rose design the home's opening stays, and turning the rest says their rose look stays behind", () => {
+    const plainHero = { id: "h", type: "HERO", data: { title: "أهلاً" }, isVisible: true };
+    expect(convertSection(plainHero, "ar", ids(), "opening")).toEqual({ ok: false, why: "rose" });
+    const faq = convertSection({ id: "f", type: "FAQ", data: EXAMPLES.FAQ, isVisible: true }, "ar", ids(), "look");
+    expect(faq.ok && faq.dropped).toEqual(["roseLook"]);
+    // Outside the rose design a plain opening turns.
+    expect(convertSection(plainHero, "ar", ids()).ok).toBe(true);
   });
 
   test("old HTML words become the new rich words", () => {

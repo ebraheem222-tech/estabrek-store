@@ -50,6 +50,27 @@ WHERE (s.type = 'VIDEO' AND coalesce(s.data->>'provider', '') IN ('YOUTUBE', 'VI
    OR (s.type = 'GRID' AND jsonb_array_length(coalesce(s.data->'blocks', '[]'::jsonb)) > 0);
 ```
 
+## The live store, checked on 2026-11-02
+
+Read from the store's public API (published pages only; the Neon account connected to the
+editor here holds no projects, so drafts couldn't be read):
+
+| Page | Format | Old sections |
+| --- | --- | --- |
+| `/` (البيت) | old (1) | HERO, HERO, NEW_ARRIVALS_SLIDER, COLLECTIONS_GRID, FAQ, CTA |
+| `/contact` (تواصل) | old (1) | RICH_TEXT, CONTACT |
+| `/demo` (home2) | old (1) | HERO, GRID (empty, no inner sections), BEST_SELLERS_SLIDER, FAQ, CTA |
+
+No YouTube/Vimeo clip, no grid holding other sections, no custom HTML and no global section:
+nothing published needs the old editor. Unpublished pages weren't visible from there.
+
+The store wears the rose design (a modest fashion store with no store theme). There the shop
+draws old sections its own way: the home's first HERO is the rose opening (its film and
+scenes), other HEROs become rose panels, and contact, calls to action and product rows take
+rose versions. So in the rose design the new editor keeps the home's opening as it is and says,
+for every other section, that turning it gives it the new elements' look instead. Keeping them
+as old sections is fine: the new editor edits their words, pictures, links and looks in place.
+
 ## Removing the code
 
 When nothing in the store needs the old editor (the query above returns nothing, or those

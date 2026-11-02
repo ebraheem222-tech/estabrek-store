@@ -5,6 +5,9 @@
  * is said (`dropped`); what can't be turned at all stays an old section (`why`): the rose
  * opening (the new editor sets it already), custom HTML (edited as HTML there), a YouTube or
  * Vimeo clip, a grid holding other sections, and the global header, footer and announcement.
+ * In the rose design the shop draws old sections in its own look (the home's first HERO is
+ * its opening, others become rose panels, contact and calls to action rose ones): the caller
+ * says so (`rose`), and that look is said not to come along.
  * Pure (tested; the backend's test checks every result like a saved page).
  */
 import type { PageTreeNode } from "../api/pages.api";
@@ -17,7 +20,9 @@ type Words = Partial<Record<Lang, string>>;
 
 export type OldSection = { id: string; type: string; data: unknown; isVisible: boolean; tr?: Partial<Record<Lang, unknown>> };
 /** What can't come along into the new elements, by name (the admin says it in words). */
-export type Dropped = "look" | "layout" | "description" | "bio" | "socials" | "formFields" | "map" | "icons" | "pictures" | "links" | "extra";
+export type Dropped = "roseLook" | "look" | "layout" | "description" | "bio" | "socials" | "formFields" | "map" | "icons" | "pictures" | "links" | "extra";
+/** How the rose design draws this section: as the home's opening, or in its own look. */
+export type RoseRole = "opening" | "look";
 export type Converted = { ok: true; node: N; dropped: Dropped[] } | { ok: false; why: "rose" | "html" | "video" | "nested" | "global" | "unknown" };
 
 const LANGS: Lang[] = ["ar", "en", "he"];
@@ -359,9 +364,10 @@ const KIND_NAMES: Record<string, [string, string, string]> = {
 };
 
 /** An old section as a new section of its own, or why it stays as it is. */
-export function convertSection(s: OldSection, main: Lang, ids: Ids): Converted {
+export function convertSection(s: OldSection, main: Lang, ids: Ids, rose?: RoseRole): Converted {
+  if (rose === "opening") return { ok: false, why: "rose" };
   const r = reader(s, main);
-  const dropped = new Set<Dropped>();
+  const dropped = new Set<Dropped>(rose === "look" ? ["roseLook"] : []);
   const out = convertData(s, r, ids, dropped, main);
   if (!Array.isArray(out)) return out;
   const ui = isObj(r.data.ui) ? r.data.ui : {};
@@ -380,7 +386,7 @@ export function convertSection(s: OldSection, main: Lang, ids: Ids): Converted {
 }
 
 /** Whether an old section can come along, and what it leaves behind (built with throwaway ids). */
-export function convertPreview(s: OldSection, main: Lang): Converted {
+export function convertPreview(s: OldSection, main: Lang, rose?: RoseRole): Converted {
   let n = 0;
-  return convertSection(s, main, (p) => `${p}-${n++}`);
+  return convertSection(s, main, (p) => `${p}-${n++}`, rose);
 }
