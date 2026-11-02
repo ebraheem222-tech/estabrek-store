@@ -33,7 +33,7 @@ export default async function DesignFrame({ params, searchParams }: { params?: {
     status: "PUBLISHED",
     sections: [],
     format: 2,
-    tree: { version: 1, root: { id: "root", type: "page", props: {}, children: sections } },
+    tree: { version: 1, root: { id: "root", type: "page", props: { smooth: true }, children: sections } },
   };
   return renderCmsPageBySlug("/design-frame", searchParams, {
     lang,

@@ -9,7 +9,7 @@ import { t } from "../tree";
 
 export const SHOES: Sample[] = [
   { pic: "shoe-1", name: t("أير ستريت 1|Air Street 1|אייר סטריט 1"), price: "429", note: t("جلد ناعم، نعل مرن|Soft leather, flexible sole|עור רך, סוליה גמישה"), tag: t("جديد|New|חדש") },
-  { pic: "shoe-2", name: t("رانر برو|Runner Pro|ראנר פרו"), price: "559", note: t("للجري اليومي|For the daily run|לריצה היומית") },
+  { pic: "shoe-2", name: t("رانر برو|Runner Pro|ראנר פרו"), price: "559", note: t("أسود بكل إشي|Black with everything|שחור שהולך עם הכל") },
   { pic: "shoe-3", name: t("كلاسيك لو|Classic Low|קלאסיק לואו"), price: "319", note: t("أبيض بكل إشي|White with everything|לבן שהולך עם הכל") },
   { pic: "shoe-4", name: t("تريل X|Trail X|טרייל X"), price: "619", note: t("قبضة على الصخر|Grip on rock|אחיזה על סלע"), tag: t("الأكثر مبيعاً|Best seller|רב מכר") },
   { pic: "shoe-5", name: t("كورت 85|Court 85|קורט 85"), price: "379", note: t("ريترو من الملعب|Retro from the court|רטרו מהמגרש") },
@@ -21,7 +21,7 @@ export const KIDS_SHOES: Sample[] = [
   { pic: "kid-1", name: t("قفّاز النجوم|Star Hopper|קופץ הכוכבים"), price: "169", note: t("بتضوي مع كل خطوة|Lights up with every step|נדלקת בכל צעד"), tag: t("بتضوي|Lights up|מאירה") },
   { pic: "kid-2", name: t("لزقة سريعة|Quick Strap|סקוץ' מהיר"), price: "149", note: t("بيلبسها لحاله|They put it on alone|נועלים לבד") },
   { pic: "kid-3", name: t("أول خطوة|First Steps|צעדים ראשונים"), price: "129", note: t("نعل طري للصغار|Soft sole for little ones|סוליה רכה לקטנטנים") },
-  { pic: "kid-4", name: t("بوت المطر|Puddle Boot|מגף שלוליות"), price: "139", note: t("ما بيدخلها مي|Keeps water out|לא נכנסים מים") },
+  { pic: "cat-kids", name: t("سنيكر ملوّن|Colour Sneaker|סניקר צבעוני"), price: "139", note: t("نعل ما بيزحلق|A sole that doesn't slip|סוליה שלא מחליקה") },
 ];
 
 export const SHOE_CATS: Record<string, SampleCat> = {

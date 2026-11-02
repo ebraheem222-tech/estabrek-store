@@ -5,6 +5,7 @@
  */
 import { KIDS_SHOES, SHOES, SHOE_FAQ, SHOE_PROMISES, SHOE_REVIEWS, cats, soon } from "../content/shoes";
 import type { TK } from "../lib";
+import { MODERN as Mo } from "../modern";
 import { OPENINGS as O, PARTS as P } from "../sections";
 import { STYLES } from "../styles";
 import { t } from "../tree";
@@ -24,6 +25,13 @@ export const SHOE_TEMPLATES: Template[] = [
       P.marquee(k, [t("إصدار جديد|New drop|השקה חדשה"), t("تبديل مقاس ببلاش|Free size swaps|החלפת מידה חינם"), t("توصيل خلال يومين|Two-day delivery|משלוח תוך יומיים"), t("كميات محدودة|Limited pairs|זוגות מוגבלים")]),
       P.splitPair(k, { ...cats("men")[0], cta: t("رجالي|Shop men|לגברים") }, { ...cats("women")[0], cta: t("نسائي|Shop women|לנשים") }),
       P.shelf(k, t("طازة من العلبة|Fresh out of the box|טרי מהקופסה"), S, "overlay", 4, { link: t("شوف الكل|See all|לכל המוצרים"), aspect: "1 / 1" }),
+      Mo.bento(k, t("لوحة الإصدار|The drop board|לוח ההשקה"), [
+        { kind: "photo", pic: "life-5", title: t("صُنعت للمدينة|Made for the city|עשויות לעיר"), text: t("نعل بيتحمّل الإسفلت كل يوم|A sole for asphalt, every day|סוליה לאספלט, כל יום"), wide: true, tall: true },
+        { kind: "stat", value: t("300"), label: t("زوج بكل إصدار|pairs a drop|זוגות בהשקה") },
+        { kind: "product", item: S[7] },
+        { kind: "quote", text: t("أحلى سنيكرز لبستها هالسنة.|The best sneakers I wore this year.|הסניקרס הכי טובות שנעלתי השנה."), by: t("— سامر|— Samer|— סאמר") },
+        { kind: "cta", title: t("بدك تعرف أول؟|Want to hear first?|רוצים לשמוע ראשונים?"), cta: t("سجّل|Sign up|להרשמה") },
+      ]),
       P.lookbook(k, t("الشارع لابسها|Worn on the street|נעולים ברחוב"), ["life-1", "life-2", "life-3", "life-4", "life-5"], t("صور من زباينا ومن مدينتنا.|Shots from our customers and our city.|צילומים מהלקוחות ומהעיר שלנו.")),
       P.countdown(k, t("الإصدار الجاي|The next drop|ההשקה הבאה"), t("سجّل لتعرف أول واحد، الكمية ما بتكفي الكل.|Sign up to hear first; there won't be enough for everyone.|הירשמו לשמוע ראשונים; לא יהיה מספיק לכולם."), soon(9), t("ذكّرني|Remind me|תזכירו לי"), "ink"),
       P.ugc(k, "#WALKLOUD", t("صوّر حذاك وتاغنا|Shoot your pair and tag us|צלמו את הזוג ותייגו אותנו"), ["ugc-1", "ugc-2", "ugc-3", "ugc-4", "ugc-5", "ugc-6"]),
@@ -44,6 +52,7 @@ export const SHOE_TEMPLATES: Template[] = [
         { x: 64, y: 70, title: t("صفيحة كربون|Carbon plate|לוחית קרבון"), text: t("دفعة لقدّام|A push forward|דחיפה קדימה") },
         { x: 52, y: 30, title: t("شبك بيتنفّس|Breathing mesh|רשת נושמת"), text: t("أخف من 230 غرام|Under 230 g|פחות מ־230 גרם") },
       ]),
+      Mo.statement(k, t("كل ثانية بتفرق.|Every second counts.|כל שנייה קובעת."), { eyebrow: t("مبنية للسباق|Built to race|בנויה למרוץ") }),
       P.shelf(k, t("الأسرع عنّا|Our fastest|המהירות ביותר"), S.slice(0, 4), "boxed", 4),
       P.tabs(k, t("لاقي مقاسك|Find your size|מצאו את המידה"), t("اختار طريقة ركضك وبنقلّك شو بيناسبك.|Pick how you run and we'll tell you what suits.|בחרו איך אתם רצים ונגיד מה מתאים."), [
         { label: t("مسطّح|Neutral|ניטרלי"), text: t("خطوتك مستقيمة: خود رانر برو بمقاسك العادي.|Your stride is straight: take the Runner Pro in your usual size.|הצעד ישר: Runner Pro במידה הרגילה."), pic: "detail-2" },
@@ -66,7 +75,7 @@ export const SHOE_TEMPLATES: Template[] = [
         { pic: "craft-2", title: t("القالب|The last|האימום"), text: t("كل موديل إله قالب خشب منحوت، ليمسك الحذاء شكل الرجل.|Every model has a carved wooden last so the shoe holds the foot's shape.|לכל דגם אימום עץ מגולף, כדי שהנעל תחזיק את צורת הרגל.") },
         { pic: "craft-3", title: t("الخياطة|The stitch|התפר"), text: t("خياطة غوديير باليد: 200 غرزة بكل فردة.|Goodyear welting by hand: 200 stitches in each shoe.|תפירת גודייר ביד: 200 תפרים בכל נעל.") },
       ]),
-      P.shelf(k, t("المجموعة|The collection|הקולקציה"), [S[5], S[2], S[4]], "plain", 3, { aspect: "3 / 4", eyebrow: t("خريف وشتا|Autumn, winter|סתיו, חורף") }),
+      Mo.carousel(k, t("المجموعة|The collection|הקולקציה"), [S[5], S[2], S[4], S[0]], "surface"),
       P.quote(k, t("«الحذاء المنيح ما بيتلبس، بيتعوّد عليك.»|“A good shoe isn't worn in. It gets used to you.”|„נעל טובה לא נשחקת. היא מתרגלת אליך.”"), t("معلّم الأتيليه|The atelier's master|מאסטר האטליה"), "surface"),
       P.materials(k, t("ثلاث جلود|Three leathers|שלושה עורות"), [
         { pic: "craft-4", title: t("جلد عجل|Calfskin|עור עגל"), text: t("ناعم ولمّيع، للمناسبات.|Smooth and bright, for occasions.|חלק ומבריק, לאירועים.") },
@@ -85,9 +94,16 @@ export const SHOE_TEMPLATES: Template[] = [
     home: (k: TK) => [
       O.bubbles(k, { eyebrow: t("للصغار من أول خطوة|For little ones from the first step|לקטנטנים מהצעד הראשון"), title: t("خطوات صغيرة، مغامرات كبيرة|Small steps, big adventures|צעדים קטנים, הרפתקאות גדולות"), sub: t("أحذية خفيفة بتلبس لحالها وبتتحمّل كل نطّة.|Light shoes they put on alone, made for every jump.|נעליים קלות שנועלים לבד ומחזיקות כל קפיצה."), cta: t("تسوّق الأطفال|Shop kids|לילדים"), cta2: t("دليل المقاسات|Size guide|מדריך מידות"), pic: "hero-kids" }),
       P.categories(k, t("قديش عمره؟|How old?|בן כמה?"), [
-        { pic: "kid-1", name: t("أول خطوة|First steps|צעדים ראשונים") }, { pic: "kid-2", name: t("2–4 سنين|2–4 years|2–4 שנים") }, { pic: "kid-3", name: t("5–8 سنين|5–8 years|5–8 שנים") }, { pic: "kid-4", name: t("9–12 سنة|9–12 years|9–12 שנים") },
-      ], "circle", 4),
+        { pic: "kid-3", name: t("أول خطوة|First steps|צעדים ראשונים") }, { pic: "kid-2", name: t("2–4 سنين|2–4 years|2–4 שנים") }, { pic: "cat-kids", name: t("5–8 سنين|5–8 years|5–8 שנים") }, { pic: "kid-1", name: t("9–12 سنة|9–12 years|9–12 שנים") },
+      ], "pill", 4),
       P.shelf(k, t("المفضّلة عند الصغار|Little ones' favourites|האהובות על הקטנים"), KIDS_SHOES, "round", 4),
+      Mo.bento(k, t("عالم الصغار|Their little world|העולם הקטן שלהם"), [
+        { kind: "photo", pic: "ugc-2", title: t("جاهزين بثواني|Ready in seconds|מוכנים בשניות"), text: t("لزقة بدل الربّاط|A strap, not laces|סקוץ' במקום שרוכים"), tall: true },
+        { kind: "stat", value: t("60"), label: t("يوم لتبديل المقاس|days to swap a size|ימים להחלפת מידה") },
+        { kind: "stat", value: t("4.9"), label: t("تقييم الأهل|parents' rating|דירוג ההורים") },
+        { kind: "quote", text: t("أخيراً حذاء بيلبسه لحاله!|Finally a shoe he puts on himself!|סוף סוף נעל שהוא נועל לבד!"), by: t("— رنا|— Rana|— רנא") },
+        { kind: "cta", title: t("هدية لأول طلب|A gift on the first order|מתנה בהזמנה הראשונה"), cta: t("تسوّق|Shop|לקנייה"), wide: true },
+      ], "soft"),
       P.promises(k, [
         { icon: "sparkle", title: t("بتضوي|They light up|נדלקות"), text: t("أضواء بالنعل مع كل خطوة|Lights in the sole with every step|אורות בסוליה בכל צעד") },
         { icon: "check", title: t("بيلبسها لحاله|On by themselves|נועלים לבד"), text: t("لزقة بدل الربّاط|A strap instead of laces|סקוץ' במקום שרוכים") },
@@ -115,7 +131,11 @@ export const SHOE_TEMPLATES: Template[] = [
       P.shelfFeatured(k, t("مختارات الموسم|The season's picks|הבחירות של העונה"), [S[2], S[0], S[4], S[6], S[7]], t("شوف التفاصيل|See the details|לפרטים")),
       P.statement(k, t("بنصنع موديلات قليلة، وبنهتم بكل واحد. ما في موضة كل أسبوع، في حذاء بتحبه سنين.|We make few models and care for each one. No fashion every week; a shoe you'll love for years.|אנחנו מייצרים מעט דגמים ומקפידים על כל אחד. בלי אופנה כל שבוע; נעל שתאהבו שנים.")),
       P.categoryList(k, t("التصنيفات|Categories|קטגוריות"), cats("sneakers", "formal", "sandals", "boots", "kids")),
-      P.pair(k, { pic: "life-6", caption: t("أبيض كلاسيك، بيمشي مع الجينز والبدلة.|Classic white, with jeans or a suit.|לבן קלאסי, עם ג'ינס או חליפה.") }, { pic: "life-7", caption: t("شمواه رمادي للخريف.|Grey suede for autumn.|זמש אפור לסתיו.") }),
+      Mo.pinned(k, { eyebrow: t("صُنع ليدوم|Made to last|עשוי להחזיק"), title: t("حذاء واحد، كل الأيام|One shoe, every day|נעל אחת, כל הימים"), text: t("جلد ناعم بيتعتّق منيح، نعل بيتبدّل، ولون بيمشي مع كل إشي.|Soft leather that ages well, a sole that can be replaced, a colour that goes with everything.|עור רך שמזדקן יפה, סוליה שאפשר להחליף, וצבע שהולך עם הכל."), cta: t("تسوّق الأساسيات|Shop the essentials|לקולקציית הבסיס"), pics: [
+        { pic: "life-6", caption: t("أبيض ناعم، مع الجينز أو البدلة.|Soft white, with jeans or a suit.|לבן רך, עם ג'ינס או חליפה.") },
+        { pic: "life-7", caption: t("شمواه بنعل عسلي للخريف.|Suede on a gum sole for autumn.|זמש על סוליית גומי לסתיו.") },
+        { pic: "shoe-3", caption: t("نعل مطاطي طبيعي.|A natural rubber sole.|סוליית גומי טבעי.") },
+      ] }),
       P.letterLine(k, t("رسالة بالشهر، مش أكتر.|One letter a month. No more.|מכתב אחד בחודש. לא יותר.")),
     ],
   },
@@ -126,7 +146,7 @@ export const SHOE_TEMPLATES: Template[] = [
     blurb: t("بوستر سبعيني، إطارات سميكة وظلال قاسية|A seventies poster, thick frames and hard shadows|פוסטר משנות השבעים, מסגרות עבות וצללים חדים"),
     home: (k: TK) => [
       O.poster(k, { eyebrow: t("رجعت من الثمانينات|Back from the eighties|חזרה משנות השמונים"), title: t("كورت 85|Court 85|קורט 85"), sub: t("نفس الشكل اللي حبّيتوه بالملاعب، بجلد أنعم ونعل أريح.|The look you loved on the courts, with softer leather and a comfier sole.|המראה שאהבתם במגרשים, עם עור רך יותר וסוליה נוחה יותר."), cta: t("خدها هلق|Get them now|לקנות עכשיו"), cta2: t("كل الريترو|All retro|כל הרטרו"), pic: "hero-retro", badge: t("ريترو!|Retro!|רטרו!") }),
-      P.marquee(k, [t("كلاسيك|Classic|קלאסי"), t("ريترو|Retro|רטרו"), t("صُنع ليدوم|Made to last|עשוי להחזיק"), t("85|85|85")], "pop"),
+      Mo.outline(k, [t("كلاسيك|Classic|קלאסי"), t("ريترو|Retro|רטרו"), t("كورت 85|Court 85|קורט 85")], "pop"),
       P.shelfRanked(k, t("التوب 3|The top 3|הטופ 3"), [S[4], S[2], S[7]]),
       P.categories(k, t("اختار الستايل|Pick a style|בחרו סגנון"), cats("sneakers", "women", "men", "kids"), "tall", 4),
       P.coupon(k, t("كوبون الملعب|The court coupon|קופון המגרש"), t("10٪ على أول طلب، لأنك رجعت للكلاسيك.|10% off your first order, for going back to classic.|10% על ההזמנה הראשונה, כי חזרתם לקלאסיקה."), "RETRO10", t("تسوّق|Shop|לקנייה")),
@@ -143,6 +163,7 @@ export const SHOE_TEMPLATES: Template[] = [
     home: (k: TK) => [
       O.drop(k, { label: t("إصدار رقم 07|Drop 07|השקה 07"), title: t("ميدنايت رانر|Midnight Runner|מידנייט ראנר"), sub: t("300 زوج بس. بتنزل نص الليل بالضبط.|Only 300 pairs. Out at midnight sharp.|רק 300 זוגות. יוצא בחצות בדיוק."), cta: t("ادخل السحب|Enter the raffle|להשתתף בהגרלה"), cta2: t("ذكّرني|Remind me|תזכירו לי"), pic: "hero-night", until: soon(4) }),
       P.shelf(k, t("إصدارات سابقة|Past drops|השקות קודמות"), S.slice(0, 4), "overlay", 4, { aspect: "1 / 1", link: t("الأرشيف|The archive|הארכיון") }),
+      Mo.statement(k, t("بعد نص الليل، الشارع إلنا.|After midnight, the street is ours.|אחרי חצות, הרחוב שלנו."), { from: "accent", to: STYLES.night.pop }),
       P.wide(k, "life-8", t("بعد نص الليل|After midnight|אחרי חצות"), t("صوّرناها بشوارع المدينة الفاضية.|We shot it in the city's empty streets.|צילמנו אותה ברחובות הריקים של העיר."), t("شوف اللوك بوك|See the lookbook|ללוקבוק")),
       P.steps(k, t("كيف بيشتغل الإصدار|How a drop works|איך עובדת השקה"), [
         { title: t("سجّل|Sign up|נרשמים"), text: t("حساب واحد لكل شخص.|One account per person.|חשבון אחד לאדם.") },
@@ -165,6 +186,11 @@ export const SHOE_TEMPLATES: Template[] = [
     home: (k: TK) => [
       O.cover(k, { issue: t("العدد 12 · خريف|No. 12 · Autumn|גיליון 12 · סתיו"), title: t("كعب أوطى، ستايل أعلى|Lower heels, higher style|עקב נמוך, סטייל גבוה"), body: t("هالموسم الأحذية بتنزل لتحت والقصّات بتصير أنضف. جمعنا القطع اللي رح تلبسها كل يوم من أيلول لآذار، مع حكايات اللي صنعوها.|This season shoes come down and cuts get cleaner. We gathered the pieces you'll wear every day from September to March, with the stories of those who made them.|העונה הנעליים יורדות והגזרות נקיות יותר. אספנו את הפריטים שתנעלו כל יום מספטמבר עד מרץ, עם הסיפורים של מי שיצר אותם."), sub: t("الصورة: لوفر جلد بني|Pictured: brown leather loafer|בתמונה: מוקסין עור חום"), cta: t("اقرأ العدد|Read the issue|לקרוא את הגיליון"), pic: "hero-edit" }),
       P.essay(k, t("رسالة المحررة|The editor's letter|מכתב העורכת"), t("كل موسم بنسأل نفس السؤال: شو اللي بيخلّي الحذاء يعيش؟ الجواب دايماً بسيط، جلد منيح وقصّة ما بتتعب منها. بهالعدد بنحكي مع ثلاث صنّاع، وبنمشي معهم من الورشة للشارع، وبنختار عشر قطع بتستاهل مكان بخزانتك.|Every season we ask the same question: what makes a shoe last? The answer is always simple: good leather and a cut you won't tire of. In this issue we talk to three makers, walk with them from the workshop to the street, and pick ten pieces worth a place in your wardrobe.|בכל עונה אנחנו שואלים אותה שאלה: מה גורם לנעל להחזיק? התשובה תמיד פשוטה: עור טוב וגזרה שלא נמאסת. בגיליון הזה דיברנו עם שלושה יוצרים, הלכנו איתם מהסדנה לרחוב, ובחרנו עשרה פריטים ששווים מקום בארון."), t("«الحذاء أول شي بيلاحظه الناس، وآخر شي بينسوه.»|“Shoes are the first thing people notice and the last they forget.”|„נעליים הן הדבר הראשון שאנשים שמים לב אליו והאחרון שהם שוכחים.”")),
+      Mo.pinned(k, { eyebrow: t("الموضوع الرئيسي|The cover story|כתבת השער"), title: t("ثلاث صنّاع، ورشة وحدة|Three makers, one workshop|שלושה יוצרים, סדנה אחת"), text: t("أسبوع مع اللي بيقصّوا الجلد وبيخيّطوا النعل بإيديهم، من أول غرزة لآخر لمعة.|A week with those who cut the leather and stitch the soles by hand, from the first stitch to the last shine.|שבוע עם מי שחותכים את העור ותופרים את הסוליות ביד, מהתפר הראשון ועד הברק האחרון."), cta: t("اقرأ القصة|Read the story|לקריאת הכתבה"), pics: [
+        { pic: "craft-1", caption: t("قصّ الجلد على الطاولة.|Cutting leather on the bench.|חיתוך העור על השולחן.") },
+        { pic: "craft-3", caption: t("تفاصيل البروغ.|The brogue's detail.|פרטי הברוג.") },
+        { pic: "craft-2", caption: t("عدّة الصنعة.|The tools of the trade.|כלי המלאכה.") },
+      ] }),
       P.shelf(k, t("عشر قطع للموسم|Ten for the season|עשרה לעונה"), S, "spec", 4, { aspect: "3 / 4" }),
       P.journal(k, t("من العدد|From the issue|מהגיליון"), [
         { pic: "craft-1", kind: t("بورتريه|Portrait|דיוקן"), title: t("صانع الأحذية الأخير بالحارة|The last shoemaker on the street|הסנדלר האחרון ברחוב") },
@@ -194,7 +220,11 @@ export const SHOE_TEMPLATES: Template[] = [
         { title: t("شو الحمل؟|What's the load?|מה המשקל?"), text: t("شنطة تقيلة؟ خود بوت بعنق عالي.|A heavy pack? Take a high-collar boot.|תיק כבד? מגף עם צוואר גבוה.") },
         { title: t("جرّبها عشيّة|Try them in the evening|מודדים בערב"), text: t("الرجل بتكبر آخر النهار، قيس وقتها.|Feet swell late in the day; fit them then.|הרגליים מתנפחות בסוף היום; מודדים אז.") },
       ]),
-      P.promises(k, promises, "ink"),
+      Mo.glass(k, "trail-1", t("جاهزة لكل أرض|Ready for any ground|מוכנה לכל קרקע"), [
+        { title: t("نعل بيمسك|A sole that grips|סוליה שאוחזת"), text: t("أسنان 5 ملم على الصخر والتراب|5 mm lugs for rock and dirt|זיזים של 5 מ\"מ לסלע ולעפר") },
+        { title: t("ما بتدخلها مي|Keeps water out|לא נכנסים מים"), text: t("غشاء بيتنفّس وبيصد المطر|A breathable, rain-proof membrane|ממברנה נושמת שעוצרת גשם") },
+        { title: t("كاحل محمي|A protected ankle|קרסול מוגן"), text: t("عنق مبطّن للنزلات|A padded collar for descents|צווארון מרופד לירידות") },
+      ], t("أحذية الجبال|Hiking shoes|נעלי טיולים")),
       P.reviews(k, t("من الدروب|From the trails|מהשבילים"), [SHOE_REVIEWS[0], SHOE_REVIEWS[2]], "row"),
       P.letterBand(k, t("خرائط ودروب كل شهر|Maps and trails every month|מפות ושבילים כל חודש"), t("درب جديد مع نصايح التجهيز.|A new trail with gear tips.|שביל חדש עם טיפים לציוד."), "pop"),
     ],
@@ -224,7 +254,13 @@ export const SHOE_TEMPLATES: Template[] = [
         { title: t("النعل|The outsole|הסוליה"), text: t("مطاط بيدوم 600 كيلو.|Rubber good for 600 km.|גומי שמחזיק 600 ק\"מ.") },
       ]),
       P.shelf(k, t("كل الموديلات|Every model|כל הדגמים"), S.slice(0, 8), "spec", 4, { aspect: "1 / 1" }),
-      P.numbers(k, [["41", t("اختبار لكل موديل|tests per model|בדיקות לכל דגם")], ["1.2M", t("خطوة بالمختبر|steps in the lab|צעדים במעבדה")], ["0", t("مواد حيوانية|animal materials|חומרים מן החי")]], "surface"),
+      Mo.bento(k, t("المختبر بالأرقام|The lab in numbers|המעבדה במספרים"), [
+        { kind: "photo", pic: "detail-1", title: t("41 اختبار لكل موديل|41 tests per model|41 בדיקות לכל דגם"), text: t("ثني، احتكاك، مي، حرارة|Flex, wear, water, heat|כיפוף, שחיקה, מים, חום"), wide: true, tall: true },
+        { kind: "stat", value: t("1.2M"), label: t("خطوة بالمختبر|steps in the lab|צעדים במעבדה") },
+        { kind: "stat", value: t("0"), label: t("مواد حيوانية|animal materials|חומרים מן החי") },
+        { kind: "product", item: S[1] },
+        { kind: "quote", text: t("كل رقم بالمواصفات مقاس، مش مكتوب.|Every number in the spec is measured, not written.|כל מספר במפרט נמדד, לא נכתב."), by: t("— فريق المختبر|— The lab team|— צוות המעבדה") },
+      ], "surface"),
       P.faq(k, t("أسئلة تقنية|Technical questions|שאלות טכניות"), [
         { q: t("شو يعني الانحدار؟|What does drop mean?|מה זה ירידה?"), a: t("الفرق بين ارتفاع الكعب والمقدمة. أقل يعني خطوة أطبع.|The difference between heel and forefoot height. Lower means a more natural stride.|ההפרש בין גובה העקב לקדמה. נמוך יותר — צעד טבעי יותר.") },
         { q: t("قديش بتعيش الرغوة؟|How long does the foam last?|כמה זמן מחזיק הקצף?"), a: t("حوالي 600 كيلومتر جري.|About 600 km of running.|כ־600 ק\"מ של ריצה.") },

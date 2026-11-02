@@ -45,7 +45,8 @@ const TONES = (k: TK): Record<Tone, Css> => ({
 export const quietOn = (tone: Tone): Css => (tone === "bg" || tone === "surface" || tone === "soft" ? { color: "muted" } : { opacity: 0.8 });
 
 /** A part of the page in the style: its space and its ground. */
-export function part(k: TK, name: Words, children: Node[], o?: { tone?: Tone; full?: boolean; pad?: [number, number, number, number]; phonePad?: [number, number, number, number]; style?: Css; anchor?: string }): Node {
+/** `grain`: a fine moving film grain over it (photographs feel printed). */
+export function part(k: TK, name: Words, children: Node[], o?: { tone?: Tone; full?: boolean; pad?: [number, number, number, number]; phonePad?: [number, number, number, number]; style?: Css; anchor?: string; grain?: boolean }): Node {
   const tone = TONES(k)[o?.tone ?? "bg"];
   return {
     id: k.ids("sec"),
@@ -53,6 +54,7 @@ export function part(k: TK, name: Words, children: Node[], o?: { tone?: Tone; fu
     name: name.en,
     props: { contained: !o?.full, ...(o?.anchor ? { anchor: o.anchor } : {}) },
     style: { base: { pad: o?.pad ?? PAD[k.s.density], ...tone, ...o?.style }, mobile: { pad: o?.phonePad ?? PAD_PHONE[k.s.density] } },
+    ...(o?.grain ? { motion: { fx: { kind: "grain" } } } : {}),
     children,
   };
 }
@@ -82,11 +84,11 @@ export const RULE = (k: TK): Node[] => (k.s.rules ? [{ id: k.ids("dv"), type: "d
 export const BTNS = (k: TK, buttons: Node[], o?: { center?: boolean }): Node => row(k, buttons, { style: { gap: 12, margin: [10, 0, 0, 0], ...(o?.center ? { justify: "center" } : {}) } });
 
 /** A picture in the style's frame and look. */
-export function PIC(k: TK, name: string, alt: Words, o?: { aspect?: string; height?: string; phoneHeight?: string; radius?: number; href?: string; style?: Css; motion?: Motion | false; plain?: boolean }): Node {
+export function PIC(k: TK, name: string, alt: Words, o?: { aspect?: string; height?: string; phoneHeight?: string; phone?: Css; radius?: number; href?: string; style?: Css; motion?: Motion | false; plain?: boolean }): Node {
   const f = k.s.img.frame;
   const frame: Css = o?.plain ? {} : f === "line" ? { border: { width: 1, color: "border" } } : f === "offset" ? { border: { width: 3, color: "text" }, shade: { x: 8, y: 8, blur: 0, color: "text" } } : f === "glow" ? { glow: { color: "accent", size: 28 } } : {};
   const style: Css = { width: "100%", fit: "cover", radius: o?.radius ?? k.s.img.radius, ...(o?.height ? { height: o.height } : { aspect: o?.aspect ?? "4 / 5" }), ...frame, ...(k.s.img.filters ? { filters: k.s.img.filters } : {}), ...o?.style };
-  return { id: k.ids("img"), type: "image", props: { src: k.pic(name), alt, ...(o?.href ? { href: o.href } : {}) }, style: { base: style, ...(o?.phoneHeight ? { mobile: { height: o.phoneHeight } } : {}) }, ...(o?.motion === false ? {} : { motion: o?.motion ?? mv.pic(k) }) };
+  return { id: k.ids("img"), type: "image", props: { src: k.pic(name), alt, ...(o?.href ? { href: o.href } : {}) }, style: { base: style, ...(o?.phoneHeight || o?.phone ? { mobile: { ...(o.phoneHeight ? { height: o.phoneHeight } : {}), ...o.phone } } : {}) }, ...(o?.motion === false ? {} : { motion: o?.motion ?? mv.pic(k) }) };
 }
 
 /* ---------------------------------------------------- products and categories */

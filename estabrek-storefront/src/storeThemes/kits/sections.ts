@@ -19,8 +19,10 @@ export const OPENINGS = {
   /** A word as big as the screen allows, the product over it at an angle, the rest along the bottom. */
   giantWord: (k: TK, c: Hero & { word: Words }): Node =>
     part(k, name("الافتتاحية|Opening|פתיחה"), [
-      PIC(k, c.pic, c.title, { aspect: "4 / 3", plain: true, radius: k.s.img.radius, style: { layer: { x: 50, y: 40, anchor: "center" }, z: 0, width: "40%", rotateZ: -8 }, motion: { enter: { kind: "zoom-in", duration: 0.9, ease: "back", delay: 0.3 }, loop: { kind: "float", duration: 5 } } }),
-      H(k, c.word, 1, { size: 200, style: { sizeMin: 84, lineHeight: 0.82, textAlign: "center", color: "text", self: "stretch", z: 1, shadows: [{ x: 0, y: 0, blur: 0, color: "bg" }] }, motion: { enter: { kind: "up", duration: 0.8, distance: 120, ease: "strong" } } }),
+      // The picture as a sticker on the poster's corner, over the end of the word.
+      PIC(k, c.pic, c.title, { aspect: "4 / 5", plain: true, radius: k.s.img.radius, style: { layer: { x: 84, y: 30, anchor: "center" }, z: 2, width: "24%", rotateZ: 7, border: { width: 6, color: "bg" }, shadow: "lg" }, phone: { width: "30%", layer: { x: 84, y: 8, anchor: "center" } }, motion: { enter: { kind: "zoom-in", duration: 0.9, ease: "back", delay: 0.3 }, loop: { kind: "float", duration: 5 } } }),
+      // As big as the page allows: the largest size, drawn half again larger on a computer.
+      H(k, c.word, 1, { size: 200, style: { sizeMin: 84, lineHeight: 0.82, textAlign: "center", color: "text", self: "stretch", z: 1, scale: 1.45, margin: [70, 0, 90, 0] }, phone: { scale: 1, margin: [24, 0, 24, 0] }, motion: { enter: { kind: "up", duration: 0.8, distance: 120, ease: "strong" } } }),
       cols(k, [6, 5], [[H(k, c.title, 3, { size: 28 }), ...(c.sub ? [T(k, c.sub, { style: quietOn("bg") })] : [])], [BTNS(k, [BTN(k, c.cta, go), ...(c.cta2 ? [BTN(k, c.cta2, go, "alt")] : [])])]], { style: { gap: 24, align: "end", margin: [48, 0, 0, 0], z: 2 }, cellStyle: { gap: 8 } }),
     ], { pad: [64, 24, 56, 24], style: { minHeight: "88vh", justify: "center" } }),
 
@@ -46,13 +48,13 @@ export const OPENINGS = {
         ...(c.sub ? [T(k, c.sub, { style: { color: "#ffffff", opacity: 0.85, maxWidth: "460px" } })] : []),
         BTN(k, c.cta, go, "main", { style: { color: "#ffffff", border: { width: 1, color: "#ffffff" }, self: "start" } }),
       ], { style: { layer: { x: 6, y: 90, anchor: "bottom-start" }, z: 2, gap: 14, width: "88%", maxWidth: "620px" } }),
-    ], { full: true, pad: [0, 0, 0, 0], phonePad: [0, 0, 0, 0] }),
+    ], { full: true, pad: [0, 0, 0, 0], phonePad: [0, 0, 0, 0], grain: true }),
 
   /** Round blobs of colour floating, the product in a soft shape, a big round title in the middle. */
   bubbles: (k: TK, c: Hero): Node => {
-    const blob = (x: number, y: number, size: string, color: string, d: number): Node => stack(k, [], { style: { layer: { x, y, anchor: "center" }, z: 0, width: size, height: size, radius: 999, bg: color, opacity: 0.85 }, motion: { loop: { kind: "float", duration: d } } });
+    const blob = (x: number, y: number, size: string, color: string, d: number, phone = true): Node => stack(k, [], { style: { layer: { x, y, anchor: "center" }, z: 0, width: size, height: size, radius: 999, bg: color, opacity: 0.85 }, ...(phone ? {} : { phone: { hidden: true } }), motion: { loop: { kind: "float", duration: d } } });
     return part(k, name("الافتتاحية|Opening|פתיחה"), [
-      blob(8, 18, "120px", k.s.pop, 5), blob(92, 26, "80px", "accent", 6), blob(14, 86, "64px", "accent-soft", 4), blob(86, 84, "140px", k.s.pop, 7),
+      blob(6, 52, "110px", k.s.pop, 5, false), blob(94, 58, "80px", "accent", 6, false), blob(12, 90, "64px", "accent-soft", 4), blob(88, 88, "130px", k.s.pop, 7),
       stack(k, [
         ...(c.eyebrow ? [EB(k, c.eyebrow, { style: { textAlign: "center" } })] : []),
         H(k, c.title, 1, { style: { textAlign: "center" } }),
@@ -96,7 +98,7 @@ export const OPENINGS = {
           BTNS(k, [BTN(k, c.cta, go), ...(c.cta2 ? [BTN(k, c.cta2, go, "alt")] : [])])],
         [PIC(k, c.pic, c.title, { aspect: "1 / 1", motion: { enter: { kind: "blur", duration: 1.4 }, loop: { kind: "float", duration: 6 } } })],
       ], { style: { gap: 56, align: "center" }, cellStyle: { gap: 18 } }),
-    ], { pad: [96, 24, 96, 24], style: { mesh: { colors: ["bg", "accent", "bg"], soft: 90, move: true, speed: 0.4 } } }),
+    ], { pad: [96, 24, 96, 24], style: { mesh: { colors: ["bg", "accent", "bg"], soft: 90, move: true, speed: 0.4 } }, grain: true }),
 
   /** A magazine cover: the issue line, a huge serif title, two columns of words, a tall picture. */
   cover: (k: TK, c: Hero & { issue: Words; body: Words }): Node =>
@@ -119,7 +121,7 @@ export const OPENINGS = {
         BTNS(k, [BTN(k, c.cta, go), ...(c.cta2 ? [BTN(k, c.cta2, go, "alt", { style: { color: "#ffffff", border: { width: 1, color: "#ffffff" } } })] : [])]),
         row(k, c.stats.map(([n, label]) => stack(k, [H(k, n, 3, { size: 34, style: { color: "#ffffff" }, motion: false }), T(k, label, { size: 13, style: { color: "#ffffff", opacity: 0.8 }, motion: false })], { style: { gap: 2, pad: [0, 24, 0, 0] } })), { style: { gap: 28, margin: [28, 0, 0, 0] } }),
       ], { style: { layer: { x: 6, y: 88, anchor: "bottom-start" }, z: 2, gap: 14, width: "88%", maxWidth: "760px" } }),
-    ], { full: true, pad: [0, 0, 0, 0], phonePad: [0, 0, 0, 0] }),
+    ], { full: true, pad: [0, 0, 0, 0], phonePad: [0, 0, 0, 0], grain: true }),
 
   /** The product in the middle with its parts pointed out, its numbers in a row under it. */
   specs: (k: TK, c: Hero & { points: Array<{ x: number; y: number; title: Words; text: Words }>; numbers: Array<[string, Words]> }): Node =>
