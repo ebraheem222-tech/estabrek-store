@@ -84,6 +84,10 @@ export function inverseOf(op: PageDraftOp, d: PageDraft, main: Lang): PageDraftO
       const at = locate(d.tree, op.nodeId);
       return at ? [{ op: "setProps", nodeId: op.nodeId, props: structuredClone(at.node.props ?? {}) }] : [];
     }
+    case "setName": {
+      const at = locate(d.tree, op.nodeId);
+      return at ? [{ op: "setName", nodeId: op.nodeId, name: at.node.name ?? null }] : [];
+    }
     case "setStyle": {
       const old = locate(d.tree, op.nodeId)?.node.style?.[op.screen];
       return [{ op: "setStyle", nodeId: op.nodeId, screen: op.screen, style: old && typeof old === "object" ? structuredClone(old as Record<string, unknown>) : null }];
@@ -121,7 +125,7 @@ export function inverseOf(op: PageDraftOp, d: PageDraft, main: Lang): PageDraftO
  * the old sections' words and visibility leave the tree as it is.
  */
 export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
-  if (!["move", "remove", "insert", "setProps", "setStyle", "setMotion", "placeBlock", "setLookStyle", "setLookMotion"].includes(op.op)) return d;
+  if (!["move", "remove", "insert", "setProps", "setName", "setStyle", "setMotion", "placeBlock", "setLookStyle", "setLookMotion"].includes(op.op)) return d;
   const tree = structuredClone(d.tree);
   tree.root.children ??= [];
   switch (op.op) {
@@ -176,6 +180,13 @@ export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
       const at = locate(tree, op.nodeId);
       if (!at) return d;
       at.node.props = structuredClone(op.props);
+      break;
+    }
+    case "setName": {
+      const at = locate(tree, op.nodeId);
+      if (!at) return d;
+      if (op.name?.trim()) at.node.name = op.name.trim().slice(0, 60);
+      else delete at.node.name;
       break;
     }
     case "setStyle": {

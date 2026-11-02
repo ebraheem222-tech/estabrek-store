@@ -171,6 +171,7 @@ export const ScreenStyle = z.object({
   wrap: z.boolean().optional(),
   justify: z.enum(["start", "center", "end", "between", "around"]).optional(),
   align: z.enum(["start", "center", "end", "stretch"]).optional(),
+  self: z.enum(["start", "center", "end", "stretch"]).optional(), // where it sits across its row or column, whatever its container says
   col: place.optional(), // its cell in the parent grid
   row: place.optional(),
   order: z.number().int().min(-50).max(50).optional(),
@@ -268,10 +269,11 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // On a phone the cells go one under the other (stack), the last first (reverse), or stay side by side (keep).
   columns: z.object({ phone: z.enum(["stack", "reverse", "keep"]).optional() }),
   cell: none,
-  heading: z.object({ text: local(300), level: z.number().int().min(1).max(6).default(2) }),
-  text: z.object({ text: local(5000) }),
+  // `rich`: the words carry a little formatting ([b]…[/b], [link=/shop]…[/link]: the shop's pageTree/rich.ts).
+  heading: z.object({ text: local(300), level: z.number().int().min(1).max(6).default(2), rich: z.boolean().optional() }),
+  text: z.object({ text: local(5000), rich: z.boolean().optional() }),
   image: z.object({ src, alt: local(200).optional(), href: href.optional() }),
-  button: z.object({ label: local(80), href, variant: z.enum(["solid", "outline", "link"]).default("solid"), newTab: z.boolean().optional() }),
+  button: z.object({ label: local(120), href, variant: z.enum(["solid", "outline", "link"]).default("solid"), newTab: z.boolean().optional(), rich: z.boolean().optional() }),
   video: z.object({
     src,
     poster: src.optional(),

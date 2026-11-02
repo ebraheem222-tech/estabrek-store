@@ -86,6 +86,18 @@ describe("a page's draft", () => {
     expect(d.trash).toEqual([]);
   });
 
+  test("an element gets a name of its own for the layers, and loses it again; it can sit apart from its row", () => {
+    let d = applyOps(fresh(), [{ op: "insert", parentId: "page", index: 0, node: { id: "box", type: "section", props: {}, children: [{ id: "t", type: "text", props: { text: { ar: "x" } } }] } as any }], ctx);
+    d = applyOps(d, [{ op: "setName", nodeId: "t", name: "  Offer line  " }], ctx);
+    expect(locate(d.tree, "t")?.node.name).toBe("Offer line");
+    d = applyOps(d, [{ op: "setName", nodeId: "t", name: null }], ctx);
+    expect(locate(d.tree, "t")?.node.name).toBeUndefined();
+    expect(() => applyOps(d, [{ op: "setName", nodeId: "page", name: "x" }], ctx)).toThrow(/to name/);
+    d = applyOps(d, [{ op: "setStyle", nodeId: "t", screen: "base", style: { self: "center" } }], ctx);
+    expect(locate(d.tree, "t")?.node.style?.base).toEqual({ self: "center" });
+    expect(() => applyOps(d, [{ op: "setStyle", nodeId: "t", screen: "base", style: { self: "middle" } }], ctx)).toThrow(DraftError);
+  });
+
   test("an element's motion is set, changed and stopped; the old sections don't take it", () => {
     let d = applyOps(fresh(), [{ op: "insert", parentId: "page", index: 0, node: { id: "box", type: "section", props: {}, children: [{ id: "v", type: "video", props: { src: "/clips/a.mp4" } }] } as any }], ctx);
     d = applyOps(d, [{ op: "setMotion", nodeId: "v", motion: { scroll: { kind: "keys", from: { rx: 25 }, to: { rx: 0 } } } }], ctx);

@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { studioLink } from "./studioLink";
 import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle } from "./tree";
 import { siteTarget } from "./css";
+import { htmlToRich } from "./rich";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -330,6 +331,113 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       });
     };
 
+    // Writing a tree element's words in place (a heading, text or button), with a small bar for
+    // bold, italic, underline, highlight, the theme's colour, a link, and plain again. What's
+    // written goes back as formatted words (pageTree/rich.ts); Esc puts the old ones back.
+    let nodeEdit: { el: HTMLElement; before: string; nodeId: string; done: boolean; bar: HTMLElement; asking: boolean } | null = null;
+    const finishNode = (keep: boolean) => {
+      const e = nodeEdit;
+      if (!e || e.done) return;
+      e.done = true;
+      nodeEdit = null;
+      e.bar.remove();
+      const value = htmlToRich(e.el);
+      e.el.removeAttribute("contenteditable");
+      e.el.style.outline = "";
+      e.el.style.outlineOffset = "";
+      if (!keep) e.el.innerHTML = e.before;
+      send(keep ? { type: "nodeEdited", nodeId: e.nodeId, value } : { type: "nodeCancelled", nodeId: e.nodeId });
+      soon();
+    };
+    const BAR_WORDS: Record<string, Record<string, string>> = {
+      ar: { bold: "عريض", italic: "مائل", underline: "خط تحته", mark: "تظليل", color: "لون المتجر", link: "رابط", plain: "بدون تنسيق", ask: "الرابط (صفحة بالمتجر مثل /shop، أو https://…)" },
+      en: { bold: "Bold", italic: "Italic", underline: "Underline", mark: "Highlight", color: "Store colour", link: "Link", plain: "Plain", ask: "The link (a shop page like /shop, or https://…)" },
+      he: { bold: "מודגש", italic: "נטוי", underline: "קו תחתון", mark: "הדגשה", color: "צבע החנות", link: "קישור", plain: "ללא עיצוב", ask: "הקישור (דף בחנות כמו /shop, או https://…)" },
+    };
+    const startNodeEdit = (nodeId: string, lines: boolean, linkable: boolean) => {
+      finish(true);
+      finishNode(true);
+      const el = document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(nodeId)}"]`);
+      if (!el) return send({ type: "nodeCancelled", nodeId });
+      const w = BAR_WORDS[document.documentElement.lang] ?? BAR_WORDS.ar;
+      const bar = document.createElement("div");
+      bar.setAttribute("data-studio-bar", "");
+      bar.setAttribute("role", "toolbar");
+      bar.style.cssText = "position:fixed;z-index:2147483000;display:flex;gap:2px;padding:4px;border-radius:10px;background:#1f1a22;box-shadow:0 8px 24px rgba(0,0,0,.3);direction:ltr";
+      const e = { el, before: el.innerHTML, nodeId, done: false, bar, asking: false };
+      nodeEdit = e;
+      const tool = (key: string, face: string, run: () => void, css = "") => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = face;
+        b.title = w[key];
+        b.setAttribute("aria-label", w[key]);
+        b.setAttribute("data-tool", key);
+        b.style.cssText = `min-width:28px;height:28px;border:0;border-radius:7px;background:#2c2530;color:#fff;font:600 13px system-ui;cursor:pointer;${css}`;
+        // Pressing doesn't take the focus (or the selection) away from the words.
+        b.addEventListener("mousedown", (m) => m.preventDefault());
+        b.addEventListener("click", () => {
+          run();
+          el.focus();
+        });
+        bar.appendChild(b);
+      };
+      document.execCommand("styleWithCSS", false, "false");
+      tool("bold", "B", () => document.execCommand("bold"));
+      tool("italic", "I", () => document.execCommand("italic"), "font-style:italic");
+      tool("underline", "U", () => document.execCommand("underline"), "text-decoration:underline");
+      tool("mark", "▮", () => document.execCommand("hiliteColor", false, "#fff0a8"), "color:#ffe066");
+      tool("color", "A", () => document.execCommand("foreColor", false, "#a10001"), "color:var(--accent,#c86b98)");
+      if (linkable) {
+        tool("link", "🔗", () => {
+          const sel = window.getSelection();
+          const range = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+          e.asking = true;
+          const url = window.prompt(w.ask, "/");
+          e.asking = false;
+          if (range) {
+            sel!.removeAllRanges();
+            sel!.addRange(range);
+          }
+          if (url && /^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)/i.test(url.trim())) document.execCommand("createLink", false, url.trim());
+        });
+      }
+      tool("plain", "⌫", () => {
+        document.execCommand("removeFormat");
+        document.execCommand("unlink");
+      });
+      document.body.appendChild(bar);
+      const place = () => {
+        const r = el.getBoundingClientRect();
+        bar.style.left = `${Math.max(4, Math.min(window.innerWidth - bar.offsetWidth - 4, r.left))}px`;
+        bar.style.top = `${r.top > 48 ? r.top - 42 : r.bottom + 8}px`;
+      };
+      place();
+      el.style.outline = "2px solid #a43b64";
+      el.style.outlineOffset = "4px";
+      el.setAttribute("contenteditable", "true");
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      window.addEventListener("scroll", place, { passive: true });
+      el.addEventListener("blur", () => window.setTimeout(() => !e.asking && !el.contains(document.activeElement) && finishNode(true), 0));
+      el.addEventListener("keydown", (k: KeyboardEvent) => {
+        if (k.key === "Escape") {
+          k.preventDefault();
+          finishNode(false);
+        } else if (k.key === "Enter" && (!lines || k.ctrlKey || k.metaKey)) {
+          k.preventDefault();
+          finishNode(true);
+        } else if (k.key === "Enter") {
+          k.preventDefault();
+          document.execCommand("insertLineBreak");
+        }
+      });
+    };
+
     // A place the editor asked to see (after the frame reloads with a change, or a new element):
     // the page still grows while pictures and scenes load, so it's taken again a few times.
     let held: (() => void) | null = null;
@@ -381,7 +489,11 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
         return now();
       }
       if (d.type === "editText" && d.sectionId && d.path) return startEdit(d.sectionId, d.path, typeof d.value === "string" ? d.value : null);
-      if (d.type === "stopEdit") return finish(true);
+      if (d.type === "editNode" && d.nodeId) return startNodeEdit(d.nodeId, (e.data as { lines?: unknown }).lines === true, (e.data as { linkable?: unknown }).linkable === true);
+      if (d.type === "stopEdit") {
+        finishNode(true);
+        return finish(true);
+      }
       if (d.type === "scrollBy") {
         letGo();
         window.scrollBy({ left: Number(d.dx) || 0, top: Number(d.dy) || 0, behavior: "instant" as ScrollBehavior });
@@ -411,7 +523,7 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
     const stopForms = (e: Event) => e.preventDefault();
     // Undo and redo belong to the editor, also while the keyboard is in here.
     const keys = (e: KeyboardEvent) => {
-      if (editing || !(e.ctrlKey || e.metaKey)) return;
+      if (editing || nodeEdit || !(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
       if (k !== "z" && k !== "y") return;
       e.preventDefault();

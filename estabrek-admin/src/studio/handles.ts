@@ -1,0 +1,115 @@
+/**
+ * The geometry of changing an element directly on the page: resizing by its handles
+ * (Shift keeps its proportions), turning by the handle above it (Shift snaps to 15°),
+ * snapping a freely placed element to its container and the things beside it, the
+ * distances shown with Alt, and Alt+arrow nudges. Screen pixels in, screen pixels out.
+ */
+import type { Box, Pt } from "./geometry";
+
+export type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+export const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+/** Where a handle sits on a box. */
+export function handleAt(b: Box, h: Handle): Pt {
+  const x = h.includes("w") ? b.x : h.includes("e") ? b.x + b.w : b.x + b.w / 2;
+  const y = h.includes("n") ? b.y : h.includes("s") ? b.y + b.h : b.y + b.h / 2;
+  return { x, y };
+}
+export const CURSOR: Record<Handle, string> = { n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize", ne: "nesw-resize", sw: "nesw-resize", nw: "nwse-resize", se: "nwse-resize" };
+
+/** The box after dragging a handle by (dx, dy); `keep` keeps its proportions (from the corner opposite). */
+export function resizeBox(start: Box, h: Handle, dx: number, dy: number, keep = false, min = 8): Box {
+  let { x, y, w, h: ht } = start;
+  if (h.includes("e")) w = start.w + dx;
+  if (h.includes("w")) w = start.w - dx;
+  if (h.includes("s")) ht = start.h + dy;
+  if (h.includes("n")) ht = start.h - dy;
+  w = Math.max(min, w);
+  ht = Math.max(min, ht);
+  if (keep && start.w > 0 && start.h > 0) {
+    const ratio = start.w / start.h;
+    // The side dragged further leads; an edge handle leads by its own side.
+    const byWidth = h === "e" || h === "w" || (h.length === 2 && Math.abs(w - start.w) / start.w >= Math.abs(ht - start.h) / start.h);
+    if (byWidth) ht = Math.max(min, w / ratio);
+    else w = Math.max(min, ht * ratio);
+  }
+  if (h.includes("w")) x = start.x + start.w - w;
+  if (h.includes("n")) y = start.y + start.h - ht;
+  return { x, y, w, h: ht };
+}
+
+/** The angle from a centre to a point, in degrees clockwise from straight up. */
+export const angleAt = (c: Pt, p: Pt) => (Math.atan2(p.x - c.x, -(p.y - c.y)) * 180) / Math.PI;
+/** A turn kept within ±180°, snapped to `step` degrees when asked. */
+export function turnTo(deg: number, step = 0): number {
+  let d = ((deg + 180) % 360 + 360) % 360 - 180;
+  if (step) d = Math.round(d / step) * step;
+  return Math.round(d * 10) / 10 === -180 ? 180 : Math.round(d * 10) / 10;
+}
+
+export type Guide = { x1: number; y1: number; x2: number; y2: number };
+/**
+ * A dragged box pulled onto the nearest edge or middle of the targets (its container and
+ * the things beside it) when within `tol` pixels, across and down separately; the guide
+ * lines show what it lines up with.
+ */
+export function snapBox(box: Box, targets: Box[], tol = 6): { box: Box; guides: Guide[] } {
+  const xs = (b: Box) => [b.x, b.x + b.w / 2, b.x + b.w];
+  const ys = (b: Box) => [b.y, b.y + b.h / 2, b.y + b.h];
+  let best: { d: number; shift: number; at: number } | null = null;
+  let bestY: { d: number; shift: number; at: number } | null = null;
+  for (const t of targets) {
+    for (const tx of xs(t)) for (const bx of xs(box)) {
+      const d = Math.abs(tx - bx);
+      if (d <= tol && (!best || d < best.d)) best = { d, shift: tx - bx, at: tx };
+    }
+    for (const ty of ys(t)) for (const by of ys(box)) {
+      const d = Math.abs(ty - by);
+      if (d <= tol && (!bestY || d < bestY.d)) bestY = { d, shift: ty - by, at: ty };
+    }
+  }
+  const out = { ...box, x: box.x + (best?.shift ?? 0), y: box.y + (bestY?.shift ?? 0) };
+  const guides: Guide[] = [];
+  const all = [out, ...targets];
+  if (best) guides.push({ x1: best.at, y1: Math.min(...all.map((b) => b.y)), x2: best.at, y2: Math.max(...all.map((b) => b.y + b.h)) });
+  if (bestY) guides.push({ x1: Math.min(...all.map((b) => b.x)), y1: bestY.at, x2: Math.max(...all.map((b) => b.x + b.w)), y2: bestY.at });
+  return { box: out, guides };
+}
+
+export type Gap = Guide & { length: number };
+/**
+ * The distances between two boxes (Alt over another element): the gaps across and down
+ * when they're apart; from each edge inside when one holds the other.
+ */
+export function gapsBetween(a: Box, b: Box): Gap[] {
+  const out: Gap[] = [];
+  const midY = (Math.max(a.y, b.y) + Math.min(a.y + a.h, b.y + b.h)) / 2;
+  const midX = (Math.max(a.x, b.x) + Math.min(a.x + a.w, b.x + b.w)) / 2;
+  const yAcross = Number.isFinite(midY) && Math.max(a.y, b.y) < Math.min(a.y + a.h, b.y + b.h) ? midY : a.y + a.h / 2;
+  const xDown = Number.isFinite(midX) && Math.max(a.x, b.x) < Math.min(a.x + a.w, b.x + b.w) ? midX : a.x + a.w / 2;
+  const holds = (o: Box, i: Box) => i.x >= o.x && i.y >= o.y && i.x + i.w <= o.x + o.w && i.y + i.h <= o.y + o.h;
+  if (holds(b, a) || holds(a, b)) {
+    const [o, i] = holds(b, a) ? [b, a] : [a, b];
+    const cx = i.x + i.w / 2;
+    const cy = i.y + i.h / 2;
+    out.push({ x1: o.x, y1: cy, x2: i.x, y2: cy, length: i.x - o.x });
+    out.push({ x1: i.x + i.w, y1: cy, x2: o.x + o.w, y2: cy, length: o.x + o.w - i.x - i.w });
+    out.push({ x1: cx, y1: o.y, x2: cx, y2: i.y, length: i.y - o.y });
+    out.push({ x1: cx, y1: i.y + i.h, x2: cx, y2: o.y + o.h, length: o.y + o.h - i.y - i.h });
+    return out.filter((g) => g.length > 0.5);
+  }
+  if (b.x >= a.x + a.w) out.push({ x1: a.x + a.w, y1: yAcross, x2: b.x, y2: yAcross, length: b.x - a.x - a.w });
+  else if (a.x >= b.x + b.w) out.push({ x1: b.x + b.w, y1: yAcross, x2: a.x, y2: yAcross, length: a.x - b.x - b.w });
+  if (b.y >= a.y + a.h) out.push({ x1: xDown, y1: a.y + a.h, x2: xDown, y2: b.y, length: b.y - a.y - a.h });
+  else if (a.y >= b.y + b.h) out.push({ x1: xDown, y1: b.y + b.h, x2: xDown, y2: a.y, length: a.y - b.y - b.h });
+  return out;
+}
+
+/** Alt+arrow: the nudge in screen directions (1 step; Shift = 10). */
+export function nudgeOf(key: string, big: boolean): Pt | null {
+  const n = big ? 10 : 1;
+  if (key === "ArrowLeft") return { x: -n, y: 0 };
+  if (key === "ArrowRight") return { x: n, y: 0 };
+  if (key === "ArrowUp") return { x: 0, y: -n };
+  if (key === "ArrowDown") return { x: 0, y: n };
+  return null;
+}

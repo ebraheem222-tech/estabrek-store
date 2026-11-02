@@ -48,6 +48,7 @@ export type PageDraftOp =
   | { op: "placeBlock"; block: "seasons" | "stories" | "instagram"; index: number | null }
   | { op: "insert"; parentId: string; index: number; node: PageTreeNode }
   | { op: "setProps"; nodeId: string; props: Record<string, unknown> }
+  | { op: "setName"; nodeId: string; name: string | null }
   | { op: "setStyle"; nodeId: string; screen: TreeScreen; style: Record<string, unknown> | null }
   | { op: "setMotion"; nodeId: string; motion: Record<string, unknown> | null }
   /** A part of an old section or scene ("s:<id>" or "b:<scene>", then "/<field>" or "/@<piece>"): its look on one screen. */
@@ -251,7 +252,9 @@ export async function discardPageDraft(id: string) {
 /** A saved block of the new editor (backend lib/pageBlocks.ts): sections kept once, edited like a page. */
 export type BlockInfo = { id: string; name: string; updatedAt: string; hasDraft: boolean; sections: number; uses: number };
 export async function listBlocks() {
-  return (await api.get(ENDPOINTS.admin.pages.blocks)).data as BlockInfo[];
+  const data = (await api.get(ENDPOINTS.admin.pages.blocks)).data;
+  // An older API without blocks answers something else: no blocks then.
+  return (Array.isArray(data) ? data : []) as BlockInfo[];
 }
 export async function createBlock(name: string, sections: PageTreeNode[]) {
   return (await api.post(ENDPOINTS.admin.pages.blocks, { name, sections })).data as BlockInfo;
