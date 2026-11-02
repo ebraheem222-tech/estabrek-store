@@ -57,6 +57,7 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
     key: "more",
     title: () => tr("3D والمتجر", "3D and the store"),
     kinds: [
+      ["model3d", () => typeLabel("model3d"), "◆"],
       ["product360", () => typeLabel("product360"), "⟳"],
       ["columns", () => typeLabel("columns"), "▥"],
       ["categories", () => typeLabel("categories"), "▤"],

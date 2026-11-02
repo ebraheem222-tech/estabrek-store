@@ -32,6 +32,7 @@ import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } fr
 import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
+import { Model3dPanel } from "./Model3dPanel";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
@@ -1611,6 +1612,7 @@ export default function StudioPage() {
                 <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "model3d" ? <Model3dPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
               </>
@@ -2125,7 +2127,7 @@ export default function StudioPage() {
             <SelectionHandles
               box={selShape.box}
               zoom={zoom}
-              sides={["image", "video", "slider", "svg", "product360", "lottie", "rive", "stack", "grid"].includes(selFree.type) ? "all" : "width"}
+              sides={["image", "video", "slider", "svg", "product360", "lottie", "rive", "model3d", "stack", "grid"].includes(selFree.type) ? "all" : "width"}
               turn={Number(shownLook(selFree, screen, "rotateZ") ?? 0)}
               local={local}
               onSize={(w, h) => void change(tr("الحجم", "Size"), [styleOp(selFree, screen, { ...(w !== null ? { width: `${w}px` } : {}), ...(h !== null ? { height: `${h}px` } : {}) })])}

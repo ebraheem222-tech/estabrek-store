@@ -19,6 +19,8 @@ import { TreeIcon } from "./icons";
 import { ArtView, safeArt } from "./svgArt";
 import { color } from "./css";
 import { particlesOf } from "./particles";
+import { model3dOf } from "./model3d";
+import { Model3dSpot } from "./Model3dSpot";
 import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
@@ -225,6 +227,18 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
           <ArtView art={art} prefix={node.id} />
           {fx}
         </span>
+      );
+    }
+    case "model3d": {
+      // A 3D model: its place is drawn here, its canvas only near the screen (Model3dSpot).
+      const spec = model3dOf(p);
+      if (!spec) return null;
+      const to = link(p.href);
+      return (
+        <div className={cls(node)} {...mark}>
+          <Model3dSpot spec={spec} label={say(p.label) || undefined} href={to ?? undefined} />
+          {fx}
+        </div>
       );
     }
     case "lottie":

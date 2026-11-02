@@ -139,8 +139,34 @@ const mediaDemo = {
             { id: "rv", type: "rive", props: { src: "https://cdn.rive.app/animations/vehicles.riv", stateMachine: "bumpy", play: "view" }, style: { base: { width: "300px", aspect: "4 / 3" } } },
           ],
         },
+        // 3D models: a built-in one turning, the shopper may turn it; the store's own file as a link.
+        {
+          id: "models", type: "section", props: { contained: true }, style: { base: { pad: [40, 24, 40, 24] } },
+          children: [
+            { id: "m3d-code", type: "model3d", props: { model: "sneaker", finish: "toy", knobs: { nope: 3 }, anim: { type: "spin", speed: 1 }, floor: "shadow", drag: true, label: { ar: "حذاء", en: "Sneaker", he: "נעל" } }, style: { base: { width: "320px" } } },
+            { id: "m3d-file", type: "model3d", props: { file: { url: "http://127.0.0.1:4100/uploads/models/stage-box.glb", name: "Box" }, floor: "disc", href: "/shop", drag: true, label: { ar: "صندوق", en: "Box", he: "קופסה" } }, style: { base: { width: "320px" } } },
+            { id: "m3d-none", type: "model3d", props: { model: "robot-x" } },
+          ],
+        },
         { id: "tall", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "lt-scroll", type: "lottie", props: { src: "/lottie/pulse.json", play: "scroll" }, style: { base: { width: "200px" } } }] },
         { id: "after", type: "section", props: {}, style: { base: { minHeight: "1200px" } }, children: [{ id: "end-t", type: "text", props: { text: { ar: "النهاية", en: "The end", he: "הסוף" } } }] },
+      ],
+    },
+  },
+};
+// Eight 3D models at once: only a few canvases live together, the rest wait their turn.
+const modelsDemo = {
+  id: "models-demo", slug: "/models-demo", name: "Models demo", status: "PUBLISHED", format: 2, sections: [],
+  tree: {
+    version: 1,
+    root: {
+      id: "page", type: "page", props: {},
+      children: [
+        {
+          id: "many", type: "section", props: { contained: true }, style: { base: { pad: [20, 20, 20, 20] } },
+          children: ["mug", "watch", "lamp", "vase", "ring", "gem", "book", "plant"].map((model, i) => ({ id: `many-${i}`, type: "model3d", props: { model }, style: { base: { width: "110px" } } })),
+        },
+        { id: "far", type: "section", props: {}, style: { base: { minHeight: "3000px" } }, children: [{ id: "far-t", type: "text", props: { text: { ar: "بعيد", en: "Far", he: "רחוק" } } }] },
       ],
     },
   },
@@ -1178,6 +1204,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));
       if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
+      if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));
       if (slug === "/native-templates") return res.end(JSON.stringify(asTreePage({
         id: "native-templates", slug, name: "CMS templates", status: "PUBLISHED",
         sections: [

@@ -296,6 +296,26 @@ describe("checking a page tree", () => {
     expect(issuesOf({ version: 1, root: { id: "page", type: "page", props: { smooth: "yes" }, children: [] } }).length).toBe(1);
   });
 
+  test("a 3D model: a built-in one or the store's own .glb, its look, light, camera, motion and how shoppers move it", () => {
+    const one = (props: unknown) => page([section("s", [{ id: "m", type: "model3d", props }])]);
+    const full = {
+      model: "sneaker", finish: "glass", colours: { body: "accent", glow: "#22d3ee" }, knobs: { laces: 1.2, sole: 0.8 },
+      turn: { x: 10, y: -30, z: 0 }, size: 1.4, lift: -0.3, anim: { type: "float", speed: 1.5, amount: 1, trigger: "hover" },
+      camera: { fov: 34, distance: 6, height: 0.5 }, lights: { preset: "neon", ambient: 0.4, key: 2, env: 1, rim: 60, colours: ["accent", "#a855f7"] },
+      floor: "shadow", bg: "#101014", drag: true, zoom: false, auto: 0.6, tilt: true, label: { ar: "حذاء" },
+    };
+    const r = checkTree(one(full));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.tree.root.children![0].children![0].props).toEqual(full);
+    expect(checkTree(one({ file: { url: "https://res.cloudinary.com/x/raw/upload/m/chair.glb", name: "Chair", clip: "*" }, href: "/shop", floor: "disc" })).ok).toBe(true);
+    expect(checkTree(one({})).ok).toBe(true);
+    expect(issuesOf(one({ file: { url: "https://x.test/a.obj" } }))[0].message).toMatch(/\.glb/);
+    expect(issuesOf(one({ model: "Robot!" })).length).toBe(1);
+    expect(issuesOf(one({ turn: { x: 0, y: 400, z: 0 } })).length).toBe(1);
+    expect(issuesOf(one({ lights: { preset: "disco" } })).length).toBe(1);
+    expect(issuesOf(one({ anim: { type: "spin", speed: 9 } })).length).toBe(1);
+  });
+
   test("an icon is one of the few by name, or one from the library with its checked drawing and its own size", () => {
     const art = { viewBox: "0 0 24 24", nodes: [{ t: "g", a: { fill: "none", stroke: "currentColor", "stroke-width": "1.5" }, c: [{ t: "path", a: { d: "M3 12h18" } }] }] };
     const icon = (props: unknown, style?: unknown) => page([section("s", [{ id: "i", type: "icon", props, ...(style ? { style } : {}) }])]);
