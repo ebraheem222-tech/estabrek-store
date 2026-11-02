@@ -4,16 +4,18 @@
  * them. Sections it has no design for are drawn by the CMS as before. The rose design's
  * own scenes (the film, the fabric study, seasons, collection worlds) stay with the rose design.
  */
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { CmsPageRenderer } from "@/cms";
 import type { CmsSection, ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import type { Lang } from "@/lib/i18n";
-import { themePalette } from "../css";
+import { fontFaces, themePalette } from "../css";
+import { SIGNATURES } from "../dna/signatures";
 import type { StageOptions } from "../three/kinds";
 import type { StoreTheme } from "../types";
 import { ThemeHero } from "./heroes";
 import { DesignOpening, LEADS_WITH } from "./openings";
+import { DesignSignature } from "./signatures";
 import { StageHero } from "./StageHero";
 import { OverlayLayer } from "@/pageTree/OverlayLayer";
 import { marqueeWords } from "../words";
@@ -54,11 +56,13 @@ export function ThemedHome({
   // A design's page skeleton: its own opening, and the store's section it brings up right after it.
   const archetype = theme.design?.archetype;
   const lead = archetype ? LEADS_WITH[archetype] : undefined;
+  let leadId: string | undefined;
   if (lead && hero) {
     const want = lead === "products" ? PRODUCT_TYPES : ["COLLECTIONS_GRID", "FEATURED_CATEGORIES"];
     const at = sorted.findIndex((s) => want.includes(s.type));
     const after = sorted.indexOf(hero) + 1;
     if (at > after) sorted.splice(after, 0, ...sorted.splice(at, 1));
+    if (sorted[after] && want.includes(sorted[after].type)) leadId = sorted[after].id;
   }
   const products = Object.entries(productLookup)
     .filter(([key]) => !key.startsWith("slug:"))
@@ -129,6 +133,30 @@ export function ThemedHome({
     else native.push(section);
   }
   flush();
+
+  // The design's signature section, right after its opening (and the section it brings up with it).
+  const sig = theme.design ? SIGNATURES[theme.design.kind] : undefined;
+  if (sig && theme.design) {
+    const anchor = leadId ?? hero?.id;
+    const at = anchor ? nodes.findIndex((n) => isValidElement(n) && (n.key === anchor || n.key === `native-${anchor}`)) : -1;
+    const adds = Object.fromEntries(products.slice(0, 12).map((p) => [p.id || p.slug || p.title, renderQuickAdd({ productId: p.id, slug: p.slug })]));
+    const signature = (
+      <DesignSignature
+        key="th-signature"
+        sig={sig}
+        title={theme.design.signature}
+        theme={theme}
+        lang={lang}
+        products={products}
+        categories={cats}
+        picture={(hero?.data as Record<string, any> | undefined)?.backgroundImageUrl || products.find((p) => p.imageUrl)?.imageUrl || null}
+        adds={adds}
+        faces={sig.m === "script" && !sig.as ? fontFaces(["th-aref-ruqaa", "th-reem-kufi", "th-amiri"]) : undefined}
+      />
+    );
+    if (at >= 0) nodes.splice(at + 1, 0, <ThDivider key="div-th-signature" theme={theme} />, signature);
+    else nodes.unshift(signature);
+  }
 
   return (
     <div className="th-home" data-th={theme.id} data-th-hero={theme.hero} data-th-card={theme.card} data-th-svg={theme.svg} data-th-shape={theme.design?.shape} data-th-skeleton={archetype}>

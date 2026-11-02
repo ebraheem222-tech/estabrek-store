@@ -21,7 +21,7 @@ const SHADOW: Record<StoreTheme["shadow"], (p: Palette) => [string, string]> = {
   glow: (p) => [`0 0 0 1px ${mix(p.strong, p.bg, 0.6)}, 0 0 24px -6px ${p.accent}`, `0 0 0 1px ${p.strong}, 0 0 48px -4px ${p.accent}`],
 };
 
-const fontFaces = (families: string[]) => {
+export const fontFaces = (families: string[]) => {
   const slugs = new Set(families.filter((f) => f.startsWith("th-")).map((f) => f.slice(3)));
   return THEME_FONT_FILES.filter((f) => slugs.has(f.slug))
     .map((f) => `@font-face{font-family:"th-${f.slug}";src:url("${f.file}") format("woff2");font-weight:${f.weight};font-display:swap;unicode-range:${f.unicodeRange}}`)

@@ -5,6 +5,7 @@ import { MIN_APART, ROSE, nearest, problems } from "../src/storeThemes/dna/dista
 import { KINDS } from "../src/storeThemes/dna/kinds";
 import { VARIANT_KEYS, variantsOf } from "../src/storeThemes/dna/variants";
 import { DESIGN_THEMES } from "../src/storeThemes/dna/theme";
+import { MECHANICS, SIGNATURES } from "../src/storeThemes/dna/signatures";
 import { KIND_WORDS } from "../src/storeThemes/dna/words";
 import { STORE_THEMES } from "../src/storeThemes/registry";
 
@@ -73,5 +74,29 @@ test.describe("store designs", () => {
       expect([vs[4].dna.archetype, vs[4].dna.imagery]).toEqual([k.alt.archetype, k.alt.imagery]);
     }
     expect(ids.size).toBe(KINDS.length * VARIANT_KEYS.length);
+  });
+
+  test("every design has its signature section, set up the way its mechanic needs", () => {
+    const known = new Set<string>(MECHANICS);
+    expect(Object.keys(SIGNATURES).sort()).toEqual(KINDS.map((k) => k.id).sort());
+    const seen = new Set<string>();
+    for (const k of KINDS) {
+      const s = SIGNATURES[k.id];
+      expect(known.has(s.m), `${k.id} mechanic`).toBe(true);
+      for (const w of [...(s.items ?? []), ...(s.tips ?? [])]) expect(Boolean(w.ar && w.en && w.he), `${k.id} words`).toBe(true);
+      if (["meter", "steps", "checklist", "timeline"].includes(s.m)) expect(s.items?.length ?? 0, `${k.id} items`).toBeGreaterThanOrEqual(3);
+      if (s.m === "timeline") expect(s.tips?.length, `${k.id} tips`).toBe(s.items?.length);
+      // Two designs never ask the same thing in the same way.
+      if (s.items?.length) {
+        const key = `${s.m} ${s.items.map((w) => w.en).join("/")}`;
+        expect(seen.has(key), `${k.id} same as another`).toBe(false);
+        seen.add(key);
+      }
+    }
+    // Every mechanic is used, and none draws more than a fifth of the designs.
+    const uses = new Map<string, number>();
+    for (const s of Object.values(SIGNATURES)) uses.set(s.m, (uses.get(s.m) ?? 0) + 1);
+    expect(uses.size).toBe(MECHANICS.length);
+    for (const [m, n] of uses) expect(n, m).toBeLessThanOrEqual(Math.ceil(KINDS.length / 5));
   });
 });
