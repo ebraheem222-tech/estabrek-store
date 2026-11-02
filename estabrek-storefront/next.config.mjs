@@ -30,6 +30,9 @@ const nextConfig = {
       },
       { source: "/studio-frame", headers: studioHeaders },
       { source: "/:lang(ar|en|he)/studio-frame", headers: studioHeaders },
+      // The admin's design gallery: a design kit's page (app/[lang]/design-frame).
+      { source: "/design-frame", headers: studioHeaders },
+      { source: "/:lang(ar|en|he)/design-frame", headers: studioHeaders },
       // The page editor's font picker (on the admin's address) draws each family in itself. Free fonts (OFL).
       { source: "/fonts/themes/:path*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
     ];

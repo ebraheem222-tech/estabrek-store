@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { LiveChat } from "@/components/LiveChat";
@@ -133,6 +134,7 @@ export function StorefrontFeaturesProvider({
     settings.glassEffectsEnabled,
   ]);
 
+  const bare = /(^|\/)design-frame$/.test(usePathname() ?? "");
   return (
     <StorefrontSettingsContext.Provider value={settings}>
       {/* Seasonal Theme Provider */}
@@ -150,8 +152,8 @@ export function StorefrontFeaturesProvider({
         )}
       </SeasonalThemeProvider>
 
-      {/* Conditional Global Components */}
-      {mounted && (
+      {/* Conditional Global Components (none in the template gallery's frame, which shows a template alone) */}
+      {mounted && !bare && (
         <>
           {settings.liveChatEnabled && (
             <LiveChat

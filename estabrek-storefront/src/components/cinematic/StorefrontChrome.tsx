@@ -396,6 +396,8 @@ export function StorefrontChrome({
   // The admin's editor shows a page at /studio-frame: the home there looks as the home does
   // (the frame marks it), and the shopper's picked colour stays out of it.
   const studio = /(^|\/)studio-frame$/.test(pathname);
+  // The template gallery (app/[lang]/design-frame) shows a template on its own, with its own header and footer.
+  const bare = /(^|\/)design-frame$/.test(pathname);
   const [studioHome, setStudioHome] = useState(false);
   useEffect(() => setStudioHome(studio && Boolean(document.querySelector("[data-studio-home]"))), [studio, pathname]);
   const home = pathname === "/" || studioHome;
@@ -424,10 +426,10 @@ export function StorefrontChrome({
           restoreSelection={!pathname.startsWith("/about") && !studio}
           className={`cinematic-shell ${home ? "cinematic-home-shell" : "cinematic-interior-shell"}`}
         >
-          <Header />
+          {bare ? null : <Header />}
           {children}
-          <Footer />
-          <PerfOverlay />
+          {bare ? null : <Footer />}
+          {bare ? null : <PerfOverlay />}
         </RoseThemeProvider>
       </StoreContext.Provider>
   );

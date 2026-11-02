@@ -80,7 +80,7 @@ const palette = (x: Seed) => {
   const far = x.mode === "dark" ? "#ffffff" : "#000000";
   return tones(x.mode, x.bg, reach(x.accent, x.bg, 3, far), reach(x.strong, x.bg, 4.6, far), x.ink);
 };
-const palettesOf = (a: Seed, b: Seed | null): StoreTheme["palettes"] => {
+export const palettesOf = (a: Seed, b: Seed | null): StoreTheme["palettes"] => {
   const out: StoreTheme["palettes"] = { [a.mode]: palette(a) };
   if (b && b.mode !== a.mode) out[b.mode] = palette(b);
   return out;

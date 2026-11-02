@@ -135,7 +135,8 @@ export function ThemedHome({
   flush();
 
   // The design's signature section, right after its opening (and the section it brings up with it).
-  const sig = theme.design ? SIGNATURES[theme.design.kind] : undefined;
+  // A home made in the editor from a design kit has none: it opens and goes on as its own page does.
+  const sig = theme.design && hero ? SIGNATURES[theme.design.kind] : undefined;
   if (sig && theme.design) {
     const anchor = leadId ?? hero?.id;
     const at = anchor ? nodes.findIndex((n) => isValidElement(n) && (n.key === anchor || n.key === `native-${anchor}`)) : -1;

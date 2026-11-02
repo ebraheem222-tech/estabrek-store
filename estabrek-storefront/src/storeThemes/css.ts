@@ -5,6 +5,7 @@
  */
 import { mix, remapRose, type Palette } from "./colour";
 import { THEME_FONT_FILES } from "./fonts.gen";
+import { TREE_FONTS, googleFontsHref } from "../pageTree/fonts";
 import { ROSE_COLOURS } from "./roseColours.gen";
 import type { StoreTheme } from "./types";
 
@@ -26,6 +27,12 @@ export const fontFaces = (families: string[]) => {
   return THEME_FONT_FILES.filter((f) => slugs.has(f.slug))
     .map((f) => `@font-face{font-family:"th-${f.slug}";src:url("${f.file}") format("woff2");font-weight:${f.weight};font-display:swap;unicode-range:${f.unicodeRange}}`)
     .join("\n");
+};
+// A template's families from the editor's library (kits/themes.ts) load from Google, as a page's do.
+const GOOGLE_BY_NAME = new Map(TREE_FONTS.filter((f) => f.source === "google").map((f) => [f.name, f.slug]));
+const googleImport = (families: string[]) => {
+  const href = googleFontsHref(families.map((f) => GOOGLE_BY_NAME.get(f)).filter((f): f is string => Boolean(f)));
+  return href ? `@import url("${href}");\n` : "";
 };
 const stack = (fonts: string[]) => fonts.map((f) => (/^(serif|sans-serif|monospace)$/.test(f) ? f : `"${f}"`)).join(",");
 
@@ -60,7 +67,7 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
   const body = Object.entries(vars)
     .map(([k, v]) => `${k}:${v}`)
     .join(";");
-  return `${fontFaces([...theme.fonts.display, ...theme.fonts.text])}
+  return `${googleImport([...theme.fonts.display, ...theme.fonts.text])}${fontFaces([...theme.fonts.display, ...theme.fonts.text])}
 :root[data-store-theme="${theme.id}"]{${body};color-scheme:${m}}
 :root[data-store-theme="${theme.id}"] body{background:${p.bg};color:${p.ink}}`;
 }

@@ -14,6 +14,7 @@ import { STYLE_THEMES } from "./themes/style";
 import { TECH_THEMES } from "./themes/tech";
 import type { StoreTheme } from "./types";
 import { DESIGN_THEMES } from "./dna/theme";
+import { TEMPLATE_THEMES } from "./kits/themes";
 
 const w = (ar: string, en: string, he: string) => ({ ar, en, he });
 
@@ -918,4 +919,5 @@ const CLASSIC_THEMES: StoreTheme[] = [
 /** Every theme: a design of its own for each kind of store in its variants (dna/), then the classic ones. */
 export const STORE_THEMES: StoreTheme[] = [...DESIGN_THEMES, ...CLASSIC_THEMES.map((t) => ({ ...t, classic: true }))];
 
-export const themeById = (id?: string | null) => (id ? STORE_THEMES.find((t) => t.id === id) ?? null : null);
+// A ready template's theme (kits/themes.ts) is found too: a store that used a template wears it.
+export const themeById = (id?: string | null) => (id ? STORE_THEMES.find((t) => t.id === id) ?? TEMPLATE_THEMES.find((t) => t.id === id) ?? null : null);
