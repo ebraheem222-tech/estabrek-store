@@ -24,7 +24,7 @@ import { previewToken } from "../../lib/previewToken.js";
 import { DraftError, applyOps, draftFromPage, needsTree, publishOrder, sectionsHash, storedDraft } from "../../lib/pageDraft.js";
 import { mainLanguage } from "../../lib/translations.js";
 import { PAGE_FORMAT, TREE_VERSION, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../../lib/pageTree.js";
-import { BLOCK_KIND, blockSlug, blockUses } from "../../lib/pageBlocks.js";
+import { BLOCK_KIND, TEMPLATE_KIND, blockSlug, blockUses, templateSlug } from "../../lib/pageBlocks.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
@@ -365,6 +365,35 @@ r.post("/blocks", asyncHandler(async (req, res) => {
     select: { id: true, name: true, updatedAt: true },
   });
   res.status(201).json({ ...block, hasDraft: false, sections: sections.length, uses: 0 });
+}));
+
+/* ------------------------------------------- the store's own templates (new CMS) */
+
+/** GET /admin/pages/templates — the templates the store saved (a section or a whole page), newest first. */
+r.get("/templates", asyncHandler(async (_req, res) => {
+  const rows = await prisma.page.findMany({ where: { kind: TEMPLATE_KIND }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, updatedAt: true, tree: true } });
+  res.json(rows.map(({ tree, ...t }) => ({ ...t, sections: storedTree(tree)?.root.children?.length ?? 0 })));
+}));
+
+/**
+ * POST /admin/pages/templates { name, sections } — keeps sections (and popups) as a template of
+ * the store's own, checked like a page's tree. Its sections are read with GET /:id/tree and
+ * copied onto pages; it's deleted like a page.
+ */
+r.post("/templates", asyncHandler(async (req, res) => {
+  const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 80) : "";
+  const sections = req.body?.sections;
+  if (!name) return res.status(400).json({ error: "VALIDATION_ERROR", field: "name", message: "A template needs a name" });
+  if (!Array.isArray(sections) || !sections.length || sections.length > 20 || sections.some((n: any) => n?.type !== "section" && n?.type !== "popup")) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", field: "sections", message: "A template is 1–20 sections or popups" });
+  }
+  const checked = checkTree({ version: TREE_VERSION, root: { id: "page", type: "page", props: {}, children: sections } });
+  if (!checked.ok) return res.status(400).json({ error: "TREE_INVALID", issues: checked.issues });
+  const saved = await prisma.page.create({
+    data: { name, slug: templateSlug(), status: "DRAFT", kind: TEMPLATE_KIND, format: PAGE_FORMAT.tree, tree: checked.tree as any },
+    select: { id: true, name: true, updatedAt: true },
+  });
+  res.status(201).json({ ...saved, sections: sections.length });
 }));
 
 r.get("/:id", asyncHandler(async (req, res) => {

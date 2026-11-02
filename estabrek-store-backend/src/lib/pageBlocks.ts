@@ -11,6 +11,9 @@ import { TREE_VERSION, storedTree, type PageTree, type TreeNode } from "./pageTr
 
 export const BLOCK_KIND = "block";
 export const blockSlug = () => `/__block/${randomBytes(6).toString("hex")}`;
+/** The store's own templates: sections (and popups) kept to be copied onto pages, never served or linked. */
+export const TEMPLATE_KIND = "template";
+export const templateSlug = () => `/__template/${randomBytes(6).toString("hex")}`;
 
 /** The blocks a tree links (straight on the page only). */
 export function blockIdsOf(tree: PageTree | null | undefined): string[] {

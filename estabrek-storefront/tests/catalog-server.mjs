@@ -193,6 +193,8 @@ const blocksDemo = {
             { id: "find", type: "search", props: { look: "underline", button: W("ابحثي", "Search", "חיפוש") } },
             { id: "nav", type: "menu", props: { phone: "fold", look: "pills", items: [{ label: W("الكل", "All", "הכול"), href: "/shop" }, { label: W("تواصل", "Contact", "צור קשר"), href: "/contact" }, { label: W("خطر", "Bad", "רע"), href: "javascript:alert(1)" }] } },
             { id: "cats", type: "categories", props: { look: "circle", columns: 5 } },
+            // A picture in a frame (a colour over it) that's given the whole width.
+            { id: "wide-pic", type: "image", props: { src: "/templates/photo-1.svg" }, style: { base: { width: "100%", aspect: "16 / 9", overlay: { color: "#000000", opacity: 0.3 } } } },
           ],
         },
       ],

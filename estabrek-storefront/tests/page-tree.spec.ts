@@ -788,6 +788,14 @@ test.describe.serial("a page of new elements", () => {
     const cats = page.locator('[data-tree-node="cats"] .pt-tiles');
     await expect(cats).toHaveClass(/pt-tiles-circle/);
     expect(await cats.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)).toBe(5);
+    // A framed picture (a colour over it) keeps the width it was given: the whole of its place.
+    const wide = page.locator('[data-tree-node="wide-pic"]');
+    await expect(wide).toHaveClass(/pt-frame/);
+    const [w, room] = await wide.evaluate((el) => {
+      const box = getComputedStyle(el.parentElement!);
+      return [el.getBoundingClientRect().width, el.parentElement!.getBoundingClientRect().width - parseFloat(box.paddingLeft) - parseFloat(box.paddingRight)];
+    });
+    expect(Math.abs(w - room)).toBeLessThan(2);
     // On a phone the menu folds under a button.
     await page.setViewportSize({ width: 390, height: 800 });
     await expect(nav.locator(":scope > .pt-menu-list")).toBeHidden();

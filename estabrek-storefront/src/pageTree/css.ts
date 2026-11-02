@@ -741,7 +741,8 @@ export const BASE_CSS = [
   ".pt-video{display:block;width:100%;height:auto}",
   // A picture or clip in a frame: the frame carries the look, the layers and the zoom.
   ".pt-frame{position:relative;display:block;max-width:100%;overflow:hidden}",
-  ".pt-frame.pt-image{width:fit-content}",
+  // A framed picture keeps its own size by default; a width it was given wins.
+  ":where(.pt-frame.pt-image){width:fit-content}",
   ".pt-frame-media{display:block;width:100%;height:100%;max-width:100%;object-fit:var(--pt-fit,cover);object-position:var(--pt-focus,50% 50%)}",
   ".pt-hv-glow{transition:filter .35s ease}",
   ".pt-hv-glow:hover{filter:drop-shadow(0 0 18px var(--accent))}",
@@ -801,7 +802,7 @@ export const BASE_CSS = [
   ".pt-tabs-boxed .pt-tabs-list{gap:0;margin-bottom:0}.pt-tabs-boxed .pt-tab{border:1px solid var(--border);border-bottom:0;border-radius:12px 12px 0 0;background:var(--bg)}.pt-tabs-boxed .pt-tab[aria-selected=true]{background:var(--surface);font-weight:600}.pt-tabs-boxed .pt-tab-panel{border:1px solid var(--border);border-radius:0 12px 12px 12px;padding:18px;background:var(--surface)}",
   ".pt-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.pt-tab-panel{display:flex;gap:20px;align-items:flex-start}.pt-tab-panel[hidden]{display:none}.pt-tab-panel img{width:40%;max-width:320px;border-radius:14px;object-fit:cover}.pt-tab-text{white-space:pre-line;line-height:1.7}",
   ".pt-count{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}.pt-count-part{display:flex;flex-direction:column;align-items:center;min-width:64px}",
-  ".pt-count-boxes .pt-count-part{padding:12px 10px;border-radius:14px;background:var(--surface);border:1px solid var(--border)}.pt-count-n{font-size:2em;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}.pt-count-l{color:var(--muted);font-size:.8em}",
+  ".pt-count-boxes .pt-count-part{padding:12px 10px;border-radius:14px;background:var(--surface);color:var(--text);border:1px solid var(--border)}.pt-count-n{font-size:2em;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}.pt-count-l{color:var(--muted);font-size:.8em}",
   ".pt-count-plain .pt-count-n{font-size:1.6em}.pt-count-done{text-align:center;font-weight:700}",
   ".pt-ba{position:relative;overflow:hidden;border-radius:inherit;--pt-ba:50%;touch-action:pan-y;user-select:none}.pt-ba img{display:block;width:100%;height:100%;object-fit:cover}",
   ".pt-ba-before{position:absolute;inset:0;clip-path:inset(0 calc(100% - var(--pt-ba)) 0 0)}[dir=rtl] .pt-ba-before{clip-path:inset(0 0 0 calc(100% - var(--pt-ba)))}",
