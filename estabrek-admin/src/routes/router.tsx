@@ -85,6 +85,7 @@ const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
 const ReviewsPage = lazy(() => import("../features/ugc/ReviewsPage"));
 const CommentsPage = lazy(() => import("../features/ugc/CommentsPage"));
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { OldEditorNotice, OpenInStudio } from "../features/pages/OldEditorNotice";
 import { tr } from "@/lib/words";
 
 function NotFound() {
@@ -291,10 +292,13 @@ export default function AppRouter() {
               ["pages:read"]
             )}
           />
+          {/* Every page opens in the new editor; the old one waits at /classic until it's removed (phase 8). */}
+          <Route path="pages/:id" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
           <Route
-            path="pages/:id"
+            path="pages/:id/classic"
             element={withPermissions(
               <ErrorBoundary title="Page editor">
+                <OldEditorNotice />
                 <PageEditorPage />
               </ErrorBoundary>,
               ["pages:write"]

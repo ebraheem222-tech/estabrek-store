@@ -439,7 +439,7 @@ const onSave = async () => {
                   page={p}
                   index={index}
                   onEdit={() => openEdit(p.id)}
-                  onEditPage={() => (window.location.href = `/admin/pages/${p.id}`)}
+                  onEditPage={() => (window.location.href = `/studio/${p.id}`)}
                   onPreview={() => (window.location.href = `/admin/pages/${p.id}/preview`)}
                   onDelete={() => setConfirmId(p.id)}
                 />
