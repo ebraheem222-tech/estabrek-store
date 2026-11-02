@@ -16,6 +16,13 @@
  * container — dragged on the page too) and its motion (GSAP in the shop: coming in,
  * scroll, loops, pointer, animated layers), previewed in the frame as sliders move.
  *
+ * Phase 9 drags as plane geometry (space.ts, dragPlan.ts): a freely placed element moves
+ * live in the frame, snaps (edges, middles, equal gaps, a grid), stops at, pushes or is
+ * pulled flush to what it meets (turned and cut shapes too), stays inside its holder, or
+ * goes into another place with its coordinates turned into that place's; elements in the
+ * flow find their place by rows (a wrapping grid too), several at once; Shift keeps a
+ * line, Ctrl lets go of snapping, Alt leaves a copy, Esc gives up.
+ *
  * The shop's frame (studio-frame) opens the page's draft with a 30-minute ticket
  * and its bridge reports where every element is (pageTree/StudioBridge in the shop).
  */
@@ -64,14 +71,17 @@ import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, shownLook, withPreset, type Motion } from "./look";
 import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./MultiPanel";
 import { Guides, SelectionHandles } from "./CanvasHandles";
-import { gapsBetween, nudgeOf, snapBox, type Guide } from "./handles";
+import { gapsBetween, nudgeOf, type Gap, type Guide } from "./handles";
+import { DragSettings } from "./DragSettings";
+import { around, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
+import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
 import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
 import { languagesOf } from "../lib/storeLanguages";
 import { tr } from "../lib/words";
-import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
+import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, inside as insideBox, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
 import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, partLabel, pathTo, shapesOf, tagLabel, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
 
 const SOURCE = "estabrek-studio";
@@ -114,6 +124,10 @@ const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
  * Where a dragged element would land: the place, its index there, and the line to draw;
  * or (from the Add panel) beside a page item, or over a section or scene at a spot of it.
  */
+/** A press on the canvas: what it grabbed (and the others selected with it), where they started, a free drag's state. */
+type Down = { p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null };
+/** What a freely placed element can be dragged into. */
+const INTO = new Set(["section", "cell", "stack", "grid", "popup", "legacy"]);
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
 const shopOrigin = () => {
@@ -196,6 +210,15 @@ export default function StudioPage() {
   liveRef.current = motionLive;
   const playNext = useRef<string | null>(null);
   const [placing, setPlacing] = useState<{ id: string; box: Box; x: number; y: number } | null>(null);
+  // A free drag (phase 9): how it behaves (kept in this browser), what it pushes, touches and lines up with, the place it'd go into.
+  const [dragPrefs, setDragPrefs] = useState<DragPrefs>(readDragPrefs);
+  const changeDragPrefs = (p: Partial<DragPrefs>) =>
+    setDragPrefs((was) => {
+      const next = { ...was, ...p };
+      saveDragPrefs(next);
+      return next;
+    });
+  const [dragView, setDragView] = useState<{ pushed: Array<{ id: string; box: Box }>; touching: string[]; marks: Gap[]; into: { id: string; box: Box } | null } | null>(null);
   const [, setTick] = useState(0);
   const history = useRef(new History());
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -207,7 +230,7 @@ export default function StudioPage() {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const filter = useRef(new HoverFilter());
   const last = useRef<{ p: Pt; t: number } | null>(null);
-  const down = useRef<{ p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; box?: Box; holder?: Box | null } | null>(null);
+  const down = useRef<Down | null>(null);
   const lastClick = useRef<Pt | null>(null);
   const held = useRef(new Set<string>());
 
@@ -542,19 +565,10 @@ export default function StudioPage() {
     if (d) {
       if (Math.hypot(p.x - d.p.x, p.y - d.p.y) > 4) d.moved = true;
       if (d.grab && d.moved) {
+        // Placed freely: it moves over its holder, meets what's beside it, or goes into another place.
+        if (d.free) return moveFree(d, p, e);
         const n = nodeOf(d.grab);
-        // A freely placed element moves over its container instead of to another place.
-        const held = n ? placedOn(n, screen) : null;
-        if (n && held && d.box && d.holder) {
-          const raw = { ...d.box, x: d.box.x + p.x - d.p.x, y: d.box.y + p.y - d.p.y };
-          const parent = shapeOf(n.id)?.parentId;
-          const near = shapes.filter((x) => x.id !== n.id && x.parentId === parent).map((x) => x.box);
-          const snapped = e.altKey ? { box: raw, guides: [] } : snapBox(raw, [d.holder, ...near]);
-          setGuides(snapped.guides);
-          setPlacing({ id: n.id, box: snapped.box, ...placeFor(snapped.box, d.holder, held.anchor ?? "center", layout?.dir === "rtl") });
-          return;
-        }
-        const t = n ? dropAt(p, n) : null;
+        const t = n ? dropAt(p, n, d.group) : null;
         setDrop((was) => (was && t && was.parentId === t.parentId && was.index === t.index ? was : t));
         return;
       }
@@ -583,11 +597,16 @@ export default function StudioPage() {
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const panning = e.button === 1 || panMode || !inFrame(p);
     const touch = e.pointerType === "touch";
-    // Dragging the selected element (or from inside it) moves it; sections move in the layers. With Shift a box is drawn instead.
+    // Dragging a selected element (or from inside it) moves it, and the others selected with it; sections move in the layers. With Shift a box is drawn instead.
     const sel = nodeOf(selected);
-    const hit = !panning && !touch && !e.shiftKey && e.button === 0 && sel && isFree(sel.type) && sel.type !== "section" ? pickAt(grid.near(p), p) : null;
-    const grab = hit && index && selected && pathTo(index, hit.id, up).includes(selected) ? selected : null;
-    down.current = { p, pan, panning, touch, moved: false, y: p.y, grab, box: grab ? shapeOf(grab)?.box : undefined, holder: grab ? holderOf(grab) : null };
+    const movable = (x: string | null) => Boolean(x && isFree(nodeOf(x)?.type) && nodeOf(x)?.type !== "section");
+    const hit = !panning && !touch && !e.shiftKey && e.button === 0 && (movable(selected) || chosen.length > 1) && sel ? pickAt(grid.near(p), p) : null;
+    const path = hit && index ? pathTo(index, hit.id, up) : [];
+    const grab = movable(selected) && path.includes(selected!) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && path.includes(c)) ?? null : null;
+    // What's inside another selected element goes with it.
+    const group = grab && chosen.length > 1 && chosen.includes(grab) && index ? loose.filter((x) => movable(x) && !loose.some((y) => y !== x && pathTo(index, x, up).includes(y))) : grab ? [grab] : [];
+    const starts = new Map(group.map((x) => [x, shapeOf(x)?.box] as const).filter((v): v is [string, Box] => Boolean(v[1])));
+    down.current = { p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free: grab ? freeDragOf(grab, group) : undefined };
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
@@ -604,14 +623,14 @@ export default function StudioPage() {
     }
     setGuides([]);
     if (d?.grab && d.moved) {
-      const t = drop;
-      const placed = placing;
+      const n = nodeOf(d.grab);
+      const t = d.free ? null : (n ? dropAt(local(e), n, d.group) : null) ?? drop;
       setDrop(null);
       setPlacing(null);
-      const n = nodeOf(d.grab);
-      const held = n ? placedOn(n, screen) : null;
-      if (n && held && placed?.id === n.id) void change(tr("المكان", "Place"), [styleOp(n, screen, { layer: { ...held, x: placed.x, y: placed.y } })]);
-      else if (t) moveTo(d.grab, t);
+      setDragView(null);
+      // Alt as it's let go leaves the original where it was and puts a copy there.
+      if (d.free) dropFree(d, e.altKey);
+      else if (t) dropFlow(d, t, e.altKey);
       return;
     }
     if (!d || d.moved || !index) return;
@@ -733,6 +752,7 @@ export default function StudioPage() {
         return;
       }
       if (e.key === "Escape") {
+        if (down.current?.grab && down.current.moved) return cancelDrag();
         if (themeOpen) return setThemeOpen(false);
         if (more.length) return setMore([]);
         setSelected((s) => parentOf(s));
@@ -1240,33 +1260,27 @@ export default function StudioPage() {
     void change(tr("نسخة", "Copy"), [{ op: "insert", parentId: selNode.parentId, index: selPos + 1, node: copy }], copy.id);
   };
 
-  /** The place under the pointer that takes `node`, and where among what it holds. */
-  const dropAt = (p: Pt, node: PagesAPI.PageTreeNode): Drop | null => {
+  /**
+   * The place under the pointer that takes `node` (and the others dragged with it, `group`), and
+   * where among what it holds: the pointer projected onto its rows (space.ts slotAt), so a wrapping
+   * grid works by row and then along it. The index is counted without what's dragged.
+   */
+  const dropAt = (p: Pt, node: PagesAPI.PageTreeNode, group: string[] = [node.id]): Drop | null => {
     if (!index || !inFrame(p)) return null;
-    const hit = pickAt(grid.near(p), p);
+    const dragged = new Set([node.id, ...group]);
+    const nodes = [...dragged].map((x) => index.nodes.get(x)?.node).filter((x): x is PagesAPI.PageTreeNode => Boolean(x));
+    const hit = pickAt(grid.near(p).filter((x) => !dragged.has(x.id)), p);
     for (let at: string | null = hit?.inside ? hit.id : null; at && at !== index.root; at = index.nodes.get(at)?.parentId ?? up.get(at) ?? null) {
       const box = shapeOf(at)?.box;
       // Over an old section or a scene, things are placed freely (dropFor), not in a row.
       const kind = index.nodes.get(at)?.node.type;
-      if (!box || kind === "legacy" || kind === "roseBlock" || !index.nodes.has(at) || !canHold(index, at, node)) continue;
-      const here = index.nodes.get(at)!;
-      const kids = here.children.filter((c) => c !== node.id);
-      const across = here.node.type === "columns";
-      const rtl = layout?.dir === "rtl";
-      let i = kids.length;
-      for (let k = 0; k < kids.length; k++) {
-        const b = shapeOf(kids[k])?.box;
-        if (b && (across ? (rtl ? p.x > b.x + b.w / 2 : p.x < b.x + b.w / 2) : p.y < b.y + b.h / 2)) {
-          i = k;
-          break;
-        }
-      }
-      const end = i >= kids.length;
-      const ref = kids.length ? shapeOf(kids[end ? kids.length - 1 : i])?.box : undefined;
-      const line = across
-        ? { x: (ref ? (rtl !== end ? ref.x + ref.w : ref.x) : box.x + box.w / 2) - 1, y: box.y, w: 3, h: box.h }
-        : { x: box.x, y: (ref ? (end ? ref.y + ref.h : ref.y) : box.y + box.h / 2) - 1, w: box.w, h: 3 };
-      return { parentId: at, index: i, line, box };
+      if (!box || kind === "legacy" || kind === "roseBlock" || !index.nodes.has(at) || !nodes.every((n) => canHold(index, at!, n))) continue;
+      const kids = index.nodes.get(at)!.children.filter((c) => !dragged.has(c));
+      // What's placed freely isn't in the rows.
+      const inRows = kids.map((c) => ({ c, b: shapeOf(c)?.box, n: index.nodes.get(c)?.node })).filter((x): x is { c: string; b: Box; n: PagesAPI.PageTreeNode } => Boolean(x.b && x.b.w > 0 && x.b.h > 0 && x.n && !placedOn(x.n, screen)));
+      const slot = slotAt(p, inRows.map((x) => x.b), holdsOf(at) ?? box, rtl);
+      const i = slot.index >= inRows.length ? kids.length : kids.indexOf(inRows[slot.index].c);
+      return { parentId: at, index: i, line: slot.line, box };
     }
     return null;
   };
@@ -1333,6 +1347,206 @@ export default function StudioPage() {
   const holderOf = (sid: string): Box | null => {
     const it = layout?.items.find((i) => i.kind === "node" && i.id === sid);
     return it && it.kind === "node" && it.holder && layout ? toScreen(it.holder, layout.scroll, pan, zoom) : null;
+  };
+
+  /* ------------------------------------------------- dragging (phase 9) */
+
+  const itemOf = (sid: string) => {
+    const it = layout?.items.find((i) => i.kind === "node" && i.id === sid);
+    return it && it.kind === "node" ? it : null;
+  };
+  /** Where what a place holds sits, on the canvas: a section's inner box, else its own. */
+  const holdsOf = (sid: string): Box | null => {
+    const it = itemOf(sid);
+    return it?.inner && layout ? toScreen(it.inner, layout.scroll, pan, zoom) : shapeOf(sid)?.box ?? null;
+  };
+  /** An element's own size before its turn and scale, on the screen (a shop that measures it). */
+  const sizeOf = (sid: string) => {
+    const it = itemOf(sid);
+    return it?.size ? { w: it.size.w * zoom, h: it.size.h * zoom } : null;
+  };
+  const lookNum = (n: PagesAPI.PageTreeNode, key: string, or: number) => {
+    const v = Number(shownLook(n, screen, key));
+    return Number.isFinite(v) ? v : or;
+  };
+  /** An element as what collides: its box turned by its own turn, cut to its shape. */
+  const bodyFor = (sid: string): Body | null => {
+    const s = shapeOf(sid);
+    const n = nodeOf(sid);
+    if (!s || !n) return null;
+    const k = lookNum(n, "scale", 1);
+    const size = sizeOf(sid);
+    const shape = shownLook(n, screen, "shape");
+    return bodyOf(turnedOf(s.box, lookNum(n, "rotateZ", 0), size ? { w: size.w * k, h: size.h * k } : null), typeof shape === "string" ? shape : null);
+  };
+  /** The box the shop places a freely placed element by, from where it's seen (less its own move, at its own size). */
+  const placeBoxOf = (sid: string, seen: Box) => {
+    const n = nodeOf(sid);
+    return placedBox(seen, n ? { x: lookNum(n, "moveX", 0) * zoom, y: lookNum(n, "moveY", 0) * zoom } : { x: 0, y: 0 }, sizeOf(sid));
+  };
+  /** The frame shows an element moved by `by` (screen pixels) on top of its own move, before anything is saved. */
+  const previewMove = (sid: string, by: Pt) => {
+    const n = nodeOf(sid);
+    if (!n) return;
+    const r = (v: number) => Math.round(Math.max(-9999, Math.min(9999, v)) * 10) / 10;
+    send({ type: "previewLook", nodeId: sid, vars: { "--pt-x": `${r(lookNum(n, "moveX", 0) + by.x / zoom)}px`, "--pt-y": `${r(lookNum(n, "moveY", 0) + by.y / zoom)}px` } });
+  };
+  /** A drag of what's placed freely: the grabbed one and those selected with it in the same holder, and what's beside them. */
+  const freeDragOf = (grab: string, group: string[]): FreeDrag | undefined => {
+    const n = nodeOf(grab);
+    const holder = holderOf(grab);
+    const own = shapeOf(grab);
+    if (!n || !holder || !placedOn(n, screen) || !own) return undefined;
+    const ids = group.filter((x) => {
+      const m = nodeOf(x);
+      return Boolean(m && placedOn(m, screen) && shapeOf(x)?.parentId === own.parentId);
+    });
+    const start = ids.length > 1 ? around(ids.map((x) => shapeOf(x)!.box)) : own.box;
+    const body = ids.length > 1 ? boxBody(start) : bodyFor(grab) ?? boxBody(start);
+    const beside = shapes
+      .filter((x) => x.parentId === own.parentId && !ids.includes(x.id) && x.box.w > 0 && x.box.h > 0 && index?.nodes.has(x.id))
+      .map((x) => {
+        const m = nodeOf(x.id);
+        return { id: x.id, box: x.box, body: bodyFor(x.id) ?? boxBody(x.box), push: Boolean(m && isFree(m.type) && placedOn(m, screen) && !lockedIn.has(x.id)) };
+      });
+    return startFreeDrag(ids.length ? ids : [grab], start, body, holder, beside);
+  };
+  /** Out of its holder, over another place that takes what's dragged: that place, and the box it'd be placed in. */
+  const intoAt = (p: Pt, f: FreeDrag): { id: string; box: Box } | null => {
+    if (!index || insideBox(f.holder, p) || !inFrame(p)) return null;
+    const dragged = (x: string) => pathTo(index, x, up).some((y) => f.ids.includes(y));
+    const nodes = f.ids.map((x) => nodeOf(x)).filter((x): x is PagesAPI.PageTreeNode => Boolean(x));
+    const from = index.nodes.get(f.ids[0])?.parentId;
+    const hit = pickAt(grid.near(p).filter((x) => !dragged(x.id)), p);
+    for (let at: string | null = hit?.inside ? hit.id : null; at && at !== index.root; at = index.nodes.get(at)?.parentId ?? null) {
+      const type = index.nodes.get(at)?.node.type;
+      if (!type || !INTO.has(type) || !nodes.every((n) => canHold(index, at!, n))) continue;
+      if (at === from) return null;
+      // Where what's placed freely in it already sits, else where it holds things.
+      const kid = index.nodes.get(at)!.children.find((c) => nodeOf(c) && placedOn(nodeOf(c)!, screen) && holderOf(c));
+      const box = (kid ? holderOf(kid) : null) ?? holdsOf(at);
+      return box ? { id: at, box } : null;
+    }
+    return null;
+  };
+  /** One step of a free drag: snapped, stopped or pushing, kept inside, or over another place it'd go into. */
+  const moveFree = (d: Down, p: Pt, e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => {
+    const f = d.free!;
+    const n = nodeOf(d.grab);
+    const start = d.grab ? d.starts.get(d.grab) : undefined;
+    if (!n || !start) return;
+    const into = intoAt(p, f);
+    let by: Pt;
+    if (into) {
+      // Going into another place: it follows the pointer, and what it pushed goes back.
+      const raw = { x: p.x - d.p.x, y: p.y - d.p.y };
+      by = e.shiftKey ? lockAxis(raw) : raw;
+      setGuides([]);
+      setDragView({ pushed: [], touching: [], marks: [], into });
+      for (const x of f.pushed.keys()) previewMove(x, { x: 0, y: 0 });
+    } else {
+      const step = stepFreeDrag(f, { x: p.x - d.p.x, y: p.y - d.p.y }, { straight: e.shiftKey, loose: e.ctrlKey || e.metaKey }, dragPrefs);
+      by = step.d;
+      setGuides(step.guides);
+      setDragView({
+        pushed: [...step.pushed]
+          .filter(([, v]) => Math.hypot(v.x, v.y) > 0.5)
+          .map(([id, v]) => {
+            const b = f.beside.find((x) => x.id === id)!.box;
+            return { id, box: { ...b, x: b.x + v.x, y: b.y + v.y } };
+          }),
+        touching: step.touching,
+        marks: step.marks,
+        into: null,
+      });
+      for (const [x, v] of step.pushed) previewMove(x, v);
+    }
+    d.shown = by;
+    d.into = into;
+    const lead = { ...start, x: start.x + by.x, y: start.y + by.y };
+    const box = f.ids.length > 1 ? { ...f.start, x: f.start.x + by.x, y: f.start.y + by.y } : lead;
+    setPlacing({ id: n.id, box, ...placeFor(placeBoxOf(n.id, lead), into?.box ?? f.holder, placedOn(n, screen)?.anchor ?? "center", rtl) });
+    for (const x of f.ids) previewMove(x, by);
+  };
+  /** A drag let go of or given up: the frame shows things where they are again. */
+  const unpreview = (d: Down) => {
+    for (const x of [...(d.free?.ids ?? []), ...(d.free?.pushed.keys() ?? [])]) previewMove(x, { x: 0, y: 0 });
+  };
+  const cancelDrag = () => {
+    const d = down.current;
+    down.current = null;
+    if (d) unpreview(d);
+    setDrop(null);
+    setPlacing(null);
+    setDragView(null);
+    setGuides([]);
+  };
+  /**
+   * Lets go of a free drag: each one's place saved for this screen (in its new place when it went
+   * into one, its coordinates turned into that place's), and where what it pushed went. With
+   * `copy` the originals stay and copies go there. One step to undo.
+   */
+  const dropFree = (d: Down, copy: boolean) => {
+    const f = d.free!;
+    const by = d.shown ?? { x: 0, y: 0 };
+    const into = d.into ?? null;
+    if (!index || (!into && Math.hypot(by.x, by.y) < 0.5)) return unpreview(d);
+    const ids = makeIds();
+    const ops: PagesAPI.PageDraftOp[] = [];
+    const holder = into?.box ?? f.holder;
+    const order = inTreeOrder(index, f.ids);
+    let first: string | null = null;
+    let added = 0;
+    // Copies beside their originals go in from the last, so the places counted stay right.
+    for (const x of copy && !into ? [...order].reverse() : order) {
+      const n = nodeOf(x);
+      const s = d.starts.get(x);
+      const was = n ? placedOn(n, screen) : null;
+      const parentId = index.nodes.get(x)?.parentId;
+      if (!n || !s || !was || !parentId) continue;
+      const layer = { ...was, ...placeFor(placeBoxOf(x, { ...s, x: s.x + by.x, y: s.y + by.y }), holder, was.anchor ?? "center", rtl) };
+      if (copy) {
+        const c = copyOf(n, ids);
+        const style = (c.style ?? {}) as Record<string, Record<string, unknown> | undefined>;
+        const node = { ...c, style: { ...style, [screen]: { ...(style[screen] ?? {}), layer } } } as PagesAPI.PageTreeNode;
+        const at = into ? index.nodes.get(into.id)!.children.length + added++ : index.nodes.get(parentId)!.children.indexOf(x) + 1;
+        ops.push({ op: "insert", parentId: into?.id ?? parentId, index: at, node });
+        first ??= c.id;
+      } else {
+        if (into) ops.push({ op: "move", nodeId: x, parentId: into.id, index: index.nodes.get(into.id)!.children.length + added++ });
+        ops.push(styleOp(n, screen, { layer }));
+      }
+    }
+    // What it pushed stays where it went (not when it went into another place).
+    if (!into)
+      for (const [x, v] of f.pushed) {
+        const n = nodeOf(x);
+        const was = n ? placedOn(n, screen) : null;
+        const b = f.beside.find((y) => y.id === x)?.box;
+        if (!n || !was || !b || Math.hypot(v.x, v.y) < 0.5) continue;
+        ops.push(styleOp(n, screen, { layer: { ...was, ...placeFor(placeBoxOf(x, { ...b, x: b.x + v.x, y: b.y + v.y }), f.holder, was.anchor ?? "center", rtl) } }));
+      }
+    if (!ops.length) return unpreview(d);
+    void change(copy ? tr("نسخة", "Copy") : into ? tr("نقل لجوّا", "Move into") : tr("المكان", "Place"), ops, first ?? undefined);
+  };
+  /** Lets go in the flow: what's dragged (with what's selected with it) goes to the place shown, or a copy of it with `copy`. */
+  const dropFlow = (d: Down, t: Drop, copy: boolean) => {
+    if (!index) return;
+    const moving = inTreeOrder(index, d.group.filter((x) => index.nodes.has(x) && canHold(index, t.parentId, nodeOf(x)!)));
+    if (!moving.length) return;
+    if (copy) {
+      // t.index is counted without what's dragged; the originals stay, so it's counted with them here.
+      const kids = index.nodes.get(t.parentId)?.children ?? [];
+      const without = kids.filter((c) => !moving.includes(c));
+      const before = t.index > 0 ? without[Math.min(t.index, without.length) - 1] : null;
+      const at = before ? kids.indexOf(before) + 1 : 0;
+      const ids = makeIds();
+      const copies = moving.map((x) => copyOf(nodeOf(x)!, ids));
+      return void change(tr("نسخة", "Copy"), copies.map((node, i) => ({ op: "insert" as const, parentId: t.parentId, index: at + i, node })), copies[0].id);
+    }
+    if (moving.length === 1) return moveTo(moving[0], t);
+    const ops = moveAllOps((x) => index.nodes.get(x)?.children ?? [], (x) => index.nodes.get(x)?.parentId ?? null, moving, t);
+    if (ops.length) void change(tr("نقل", "Move"), ops, d.grab);
   };
   const toggleLive = () => {
     const on = !motionLive;
@@ -1980,6 +2194,7 @@ export default function StudioPage() {
             ))}
           </div>
         ) : null}
+        <DragSettings prefs={dragPrefs} onChange={changeDragPrefs} />
         <div className="flex items-center gap-1" dir="ltr">
           <button type="button" onClick={() => zoomBy(1 / 1.25)} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/[0.06]" aria-label={tr("تصغير", "Zoom out")}>−</button>
           <button type="button" onClick={fit} className="min-w-[3.5rem] rounded-lg px-1 text-xs text-white/80 hover:bg-white/[0.06]" title={tr("ملاءمة (Ctrl+0)", "Fit (Ctrl+0)")} data-testid="studio-zoom">
@@ -2120,6 +2335,20 @@ export default function StudioPage() {
                   <span className="absolute start-0 -top-6 whitespace-nowrap rounded-md bg-sky-500 px-1.5 py-0.5 text-[11px] text-white" dir="ltr">{placing.x}% · {placing.y}%</span>
                 </div>
               ) : null}
+              {dragView?.pushed.map((x) => (
+                <div key={`push-${x.id}`} className="pointer-events-none absolute rounded-md border-2 border-dashed border-amber-400 bg-amber-400/10" style={rel(x.box)} data-testid="studio-pushed" data-node={x.id} />
+              ))}
+              {dragView?.touching.map((x) => {
+                const b = dragView.pushed.find((y) => y.id === x)?.box ?? shapeOf(x)?.box;
+                return b ? <div key={`touch-${x}`} className="pointer-events-none absolute rounded-md ring-2 ring-amber-300" style={rel(b)} data-testid="studio-touching" data-node={x} /> : null;
+              })}
+              {dragView?.into ? (
+                <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-emerald-400/80 bg-emerald-400/5" style={rel(dragView.into.box)} data-testid="studio-into" data-node={dragView.into.id}>
+                  <span className="absolute start-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-emerald-500 px-1.5 py-0.5 text-[11px] text-white">
+                    {tr("لجوّا", "Into")} {label(dragView.into.id)}
+                  </span>
+                </div>
+              ) : null}
               {drop ? (
                 <>
                   <div className="pointer-events-none absolute rounded-md border-2 border-dashed border-emerald-400/80 bg-emerald-400/5" style={rel(drop.box)} data-testid="studio-drop" data-drop={drop.over ? "over" : drop.page ? "page" : "inside"}>
@@ -2231,7 +2460,7 @@ export default function StudioPage() {
           ) : null}
           <Guides
             guides={guides}
-            gaps={altHeld && selShape && hovered && hovered !== selected && shapeOf(hovered) ? gapsBetween(selShape.box, shapeOf(hovered)!.box) : []}
+            gaps={dragView?.marks.length ? dragView.marks : altHeld && selShape && hovered && hovered !== selected && shapeOf(hovered) ? gapsBetween(selShape.box, shapeOf(hovered)!.box) : []}
             zoom={zoom}
           />
           {!layout ? (

@@ -23,8 +23,12 @@ export type StudioRect = { x: number; y: number; w: number; h: number };
  * for anything else seen. `within` is the key of the field or piece around it, if any.
  */
 export type StudioItem =
-  /** `holder`: for an element placed freely over its container, that container's box. */
-  | { kind: "node"; id: string; rect: StudioRect; holder?: StudioRect }
+  /**
+   * `holder`: for an element placed freely over its container, that container's box. `size`: its
+   * own size before it's turned or scaled. `inner`: a section's inner box, where what it holds
+   * (and what's placed freely in it) sits.
+   */
+  | { kind: "node"; id: string; rect: StudioRect; holder?: StudioRect; size?: { w: number; h: number }; inner?: StudioRect }
   | { kind: "legacy"; sectionId: string; rect: StudioRect }
   /**
    * A text, picture, video or button the editor can change ([data-edit], [data-edit-media]):
@@ -108,7 +112,8 @@ export function measureStudio(): StudioItem[] {
     if (!id || seen.has(`n:${id}`)) return;
     seen.add(`n:${id}`);
     const holder = el.offsetParent && getComputedStyle(el).position === "absolute" ? rectOf(el.offsetParent) : undefined;
-    items.push(holder ? { kind: "node", id, rect: rectOf(el), holder } : { kind: "node", id, rect: rectOf(el) });
+    const inner = el.querySelector(":scope > .pt-inner");
+    items.push({ kind: "node", id, rect: rectOf(el), size: { w: el.offsetWidth, h: el.offsetHeight }, ...(holder ? { holder } : {}), ...(inner ? { inner: rectOf(inner) } : {}) });
   });
   const owners: Owner[] = [];
   document.querySelectorAll<HTMLElement>("[data-cms-section]").forEach((el) => {

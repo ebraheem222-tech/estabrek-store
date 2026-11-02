@@ -721,6 +721,9 @@ export const BASE_CSS = [
   ".pt-over-in{position:sticky;top:0;height:min(100%,100vh);pointer-events:none}",
   ".pt-over-in>*{pointer-events:auto}",
   ".pt-inner{max-width:1200px;margin-inline:auto;padding-inline:16px}",
+  // A section's inner box fills it down to its padding (a taller section than its words), so what's placed
+  // freely in it is placed by the section that's seen. Weightless, so a section's own layout still wins.
+  ":where(.pt-section:has(>.pt-inner)){display:flex;flex-direction:column}:where(.pt-section)>.pt-inner{flex:1 1 auto;width:100%}",
   ".pt-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}",
   ".pt-stack{display:flex;flex-direction:column;gap:16px}",
   ".pt-columns{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}",
