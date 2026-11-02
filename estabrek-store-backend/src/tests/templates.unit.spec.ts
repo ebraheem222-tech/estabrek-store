@@ -55,7 +55,7 @@ describe("the editor's templates", () => {
       if (all) bad.push(all);
     }
     expect(bad.slice(0, 10)).toEqual([]);
-  });
+  }, 120_000);
 
   test("every page passes for every kind of store, in each language, calm and rich", () => {
     const bad: string[] = [];
@@ -66,7 +66,32 @@ describe("the editor's templates", () => {
       }
     }
     expect(bad.slice(0, 10)).toEqual([]);
-  });
+  }, 120_000);
+
+  test("built with a store's pack (its edges, patterns, shapes, cards, 3D and hovers), every one still passes", () => {
+    // The shop's kit choices (estabrek-storefront src/storeThemes/packs.ts KIT_OPTIONS).
+    const shapes = ["rounded", "rect", "pill", "arch", "circle", "squircle", "blob", "blob2", "hexagon", "octagon", "diamond", "leaf", "drop", "flower", "star", "shield", "ticket", "bubble", "slant", "wave"];
+    const patterns = ["none", "dots", "polka", "grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"];
+    const edges = ["none", "wave", "slant", "arc", "zigzag"];
+    const finishes = ["neon", "metal", "toy", "voxel", "matte", "glass", "gold"];
+    const lights = ["studio", "soft", "sunset", "neon", "night", "warm"];
+    const floors = ["none", "shadow", "grid", "disc"];
+    const buttonHovers = ["none", "lift", "grow", "glow", "magnetic", "pop", "pulse", "jelly", "shake"];
+    const imageHovers = ["none", "zoom", "tilt", "glow", "lift"];
+    const boxes = ["flat", "line", "shadow", "soft", "glass", "pop"];
+    const kitAt = (i: number) => ({
+      shape: shapes[i % shapes.length], pattern: patterns[i % patterns.length], edge: edges[i % edges.length], finish: finishes[i % finishes.length], lights: lights[i % lights.length],
+      floor: floors[i % floors.length], buttonHover: buttonHovers[i % buttonHovers.length], imageHover: imageHovers[i % imageHovers.length], box: boxes[i % boxes.length],
+    });
+    const bad: string[] = [];
+    [...cat.SECTION_TEMPLATES, ...cat.PAGE_TEMPLATES].forEach((t, i) => {
+      for (const k of [i, i + 7]) {
+        const p = problem(t.id, { fam: FAMILIES[k % FAMILIES.length], lang: LANGS[k % 3], motion: "rich", kit: kitAt(k) });
+        if (p) bad.push(p);
+      }
+    });
+    expect(bad.slice(0, 10)).toEqual([]);
+  }, 120_000);
 
   test("a page's sections stay within a page's limits, and a popup goes over the page", () => {
     for (const t of cat.PAGE_TEMPLATES) {

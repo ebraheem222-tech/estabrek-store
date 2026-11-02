@@ -7,6 +7,7 @@ import { getSettings, updateSettings } from "../api/settings.api";
 import { env } from "../config/env";
 import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
+import type { KitOptions, PackKit } from "./packs";
 
 export type Words = Record<Lang, string>;
 export type StoreThemeInfo = {
@@ -23,7 +24,12 @@ export type StoreThemeInfo = {
   /** Every colour of each mode, its corners and shadows (for the customizer). */
   palettes?: { light?: Record<string, string>; dark?: Record<string, string> };
   round?: number;
+  /** Its buttons' corners ("999px", "4px"…). */
+  pill?: string;
   shadow?: "flat" | "soft" | "deep" | "glow";
+  /** Its pack beyond colours and fonts (the shop's storeThemes/packs.ts), and its two fonts' first families. */
+  kit?: PackKit;
+  fonts?: { display: string; text: string };
   /** Gaming themes: the 3D stage the store can fill with its own models and games. */
   stage?: { layout: string; floor?: string; finish?: string; models: string[]; games: Array<{ name: Words; color: string; model: string }> } | null;
 };
@@ -110,10 +116,10 @@ export type TreeFontInfo = {
   faces?: Array<{ file: string; weight: string; range: string }>;
 };
 
-export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; models: StageModelInfo[]; stageDefaults: StageDefaults | null; defaults: Record<string, string>; fonts: TreeFontInfo[] }> {
+export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; models: StageModelInfo[]; stageDefaults: StageDefaults | null; defaults: Record<string, string>; fonts: TreeFontInfo[]; kitOptions: KitOptions | null; plainKit: PackKit | null }> {
   const res = await fetch(`${shopOrigin()}/api/store-themes`, { credentials: "omit" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = (await res.json()) as { themes?: StoreThemeInfo[]; models?: StageModelInfo[]; stageDefaults?: StageDefaults; defaults?: Record<string, string>; fonts?: TreeFontInfo[] };
+  const data = (await res.json()) as { themes?: StoreThemeInfo[]; models?: StageModelInfo[]; stageDefaults?: StageDefaults; defaults?: Record<string, string>; fonts?: TreeFontInfo[]; kitOptions?: KitOptions; plainKit?: PackKit };
   return {
     themes: Array.isArray(data.themes) ? data.themes : [],
     models: Array.isArray(data.models) ? data.models : [],
@@ -121,6 +127,9 @@ export async function loadStoreThemes(): Promise<{ themes: StoreThemeInfo[]; mod
     // Each kind of store's theme when none is chosen (storeThemes/index.ts DEFAULT_THEME in the shop).
     defaults: data.defaults && typeof data.defaults === "object" ? data.defaults : {},
     fonts: Array.isArray(data.fonts) ? data.fonts.filter((f) => f && typeof f.slug === "string" && typeof f.name === "string") : [],
+    // Theme packs (an older shop sends none: the packs panel stays away).
+    kitOptions: data.kitOptions && typeof data.kitOptions === "object" ? data.kitOptions : null,
+    plainKit: data.plainKit && typeof data.plainKit === "object" ? data.plainKit : null,
   };
 }
 export const listStoreThemes = async () => (await loadStoreThemes()).themes;
@@ -151,6 +160,20 @@ export async function saveStoreTheme(choice: StoreThemeChoice | null) {
   const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
   if (choice && choice.id !== ROSE_ID) header.storeTheme = { id: choice.id, mode: choice.mode ?? null };
   else delete header.storeTheme;
+  return updateSettings({ header } as never);
+}
+
+/**
+ * Applies a whole pack from the latest settings (other header fields kept): the theme with its
+ * mode and any colours or fonts taken from other packs, and the kit (header.storeKit, which the
+ * shop checks again). kit null = the pack taken off, the theme kept.
+ */
+export async function saveStorePack(choice: StoreThemeChoice, kit: PackKit | null) {
+  const latest = await getSettings();
+  const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
+  header.storeTheme = { id: choice.id, mode: choice.mode ?? null, ...(choice.custom ? { custom: choice.custom } : {}) };
+  if (kit) header.storeKit = kit;
+  else delete header.storeKit;
   return updateSettings({ header } as never);
 }
 

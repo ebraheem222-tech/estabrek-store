@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { studioOrigins } from "@/lib/studioOrigins";
 import { DEFAULT_THEME, STORE_THEMES, themePalette } from "@/storeThemes";
+import { KIT_OPTIONS, PLAIN_KIT, themeKit } from "@/storeThemes/packs";
 import { CAMERA_DEFAULT, CAMERA_RANGE, LIGHTS_DEFAULT, LIGHTS_RANGE, MODEL_INFO, MODEL_KINDS, MODEL_KNOBS } from "@/storeThemes/three/kinds";
 import { editorFonts } from "@/pageTree/fonts";
 
@@ -24,9 +25,13 @@ const list = STORE_THEMES.map((t) => {
     // Every colour of each mode, for the admin's customizer (storeThemes/custom.ts).
     palettes: t.palettes,
     round: t.round,
+    pill: t.pill,
     shadow: t.shadow,
     hero: t.hero,
     motion: t.motion,
+    // Its pack beyond colours and fonts (storeThemes/packs.ts): the admin applies and mixes them.
+    kit: themeKit(t),
+    fonts: { display: t.fonts.display[0], text: t.fonts.text[0] },
     // Gaming themes: the 3D stage the admin can fill with its own models and games.
     stage: t.stage ? { layout: t.stage.layout, floor: t.stage.floor, finish: t.stage.finish, models: t.stage.models, games: t.stage.games.map((g) => ({ name: g.name, color: g.color, model: g.model })) } : null,
   };
@@ -43,5 +48,5 @@ const cors = (req: NextRequest): Record<string, string> => {
 
 export function GET(req: NextRequest) {
   // defaults: each kind of store's theme when none is chosen (the admin shows it as the current one); fonts: the page editor's families.
-  return NextResponse.json({ themes: list, models, stageDefaults, defaults: DEFAULT_THEME, fonts: editorFonts() }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
+  return NextResponse.json({ themes: list, models, stageDefaults, defaults: DEFAULT_THEME, fonts: editorFonts(), kitOptions: KIT_OPTIONS, plainKit: PLAIN_KIT }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
 }

@@ -4,7 +4,11 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { contrast, remapRose } from "../src/storeThemes/colour";
 import { ROSE_COLOURS } from "../src/storeThemes/roseColours.gen";
-import { STORE_THEMES } from "../src/storeThemes/registry";
+import { STORE_THEMES, themeById } from "../src/storeThemes/registry";
+import { KIT_OPTIONS, cleanKit, themeKit, withKit } from "../src/storeThemes/packs";
+import { CURSOR_THEMES } from "../src/cms/style/cursorStyles";
+import { getLoadingById } from "../src/cms/effects/loadingAnimations";
+import { ENTER_KINDS, HOVER_KINDS } from "../src/pageTree/tree";
 import { CAMERA_DEFAULT, MODEL_KINDS, MODEL_KNOBS, cleanGlb, cleanLive, cleanLook, cleanScene, glbUrl, hrefFor, knobsOf, stageOptionsOf } from "../src/storeThemes/three/kinds";
 
 // Store themes (src/storeThemes): each repaints the whole shop and brings its own home,
@@ -13,8 +17,8 @@ const API = "http://127.0.0.1:4100";
 const require = createRequire(import.meta.url);
 test.describe.configure({ mode: "serial" });
 
-const setTheme = async (request: APIRequestContext, id: string | null, mode?: "light" | "dark", options?: unknown) => {
-  await request.post(`${API}/__test/store-theme`, { data: id ? { id, mode, options } : {} });
+const setTheme = async (request: APIRequestContext, id: string | null, mode?: "light" | "dark", options?: unknown, kit?: unknown) => {
+  await request.post(`${API}/__test/store-theme`, { data: id ? { id, mode, options, kit } : {} });
   await request.post("/api/revalidate", { data: { tags: ["settings", "cms"] } });
 };
 const errorsOf = (page: Page) => {
@@ -199,6 +203,71 @@ test("the admin reads the theme list from the shop", async ({ request }) => {
   expect(themes[0]).toMatchObject({ name: { ar: expect.any(String), en: expect.any(String), he: expect.any(String) }, swatch: expect.any(Array) });
   const other = await request.get("/api/store-themes", { headers: { Origin: "https://elsewhere.example" } });
   expect(other.headers()["access-control-allow-origin"]).toBeUndefined();
+});
+
+test("every theme is a whole pack, and its kit names only what the shop has", () => {
+  expect(STORE_THEMES.length).toBeGreaterThanOrEqual(118);
+  expect(new Set(STORE_THEMES.map((t) => t.id)).size).toBe(STORE_THEMES.length);
+  // The kit's choices are the shop's own hovers, entrances, cursors and loading indicators.
+  for (const h of [...KIT_OPTIONS.buttonHover, ...KIT_OPTIONS.imageHover].filter((x) => x !== "none")) expect(HOVER_KINDS).toContain(h);
+  for (const e of [...KIT_OPTIONS.enter, ...KIT_OPTIONS.heading].filter((x) => x !== "none" && x !== "same")) expect(ENTER_KINDS).toContain(e);
+  for (const c of KIT_OPTIONS.cursor.filter((x) => x !== "none")) expect(CURSOR_THEMES.map((t) => t.id)).toContain(c);
+  for (const l of KIT_OPTIONS.loader.filter((x) => x !== "none")) expect(getLoadingById(l), l).toBeTruthy();
+  for (const t of STORE_THEMES) {
+    const k = themeKit(t);
+    const is = <K extends keyof typeof KIT_OPTIONS>(key: K, v: unknown) => expect(KIT_OPTIONS[key] as readonly unknown[], `${t.id}: ${key}`).toContain(v);
+    is("button", k.button.look); is("box", k.box.look); is("buttonHover", k.hover.button); is("imageHover", k.hover.image); is("focus", k.focus); is("icons", k.icons);
+    is("shape", k.decor.shape); is("pattern", k.decor.pattern); is("edge", k.decor.edge); is("enter", k.motion.enter); is("heading", k.motion.heading); is("ease", k.motion.ease);
+    is("cursor", k.cursor); is("loader", k.loader); is("finish", k.model.finish); is("lights", k.model.lights); is("floor", k.model.floor);
+  }
+  // A theme's own parts win over what's worked out.
+  expect(themeKit(themeById("tool-yard")!)).toMatchObject({ icons: "tabler", decor: { shape: "rect" }, model: { finish: "metal" } });
+});
+
+test("a store's kit is checked, and a page's elements take its motion only where they have none", () => {
+  const base = themeKit(themeById("circuit")!);
+  expect(cleanKit(null, base)).toBeNull();
+  expect(cleanKit({ cursor: "bogus", focus: "laser", hover: { button: "explode" } }, base)).toBeNull();
+  const k = cleanKit({ focus: "glow", hover: { button: "pop", image: "nope" }, motion: { enter: "blur", duration: 99 } }, base)!;
+  expect(k.focus).toBe("glow");
+  expect(k.hover).toEqual({ button: "pop", image: base.hover.image });
+  expect([k.motion.enter, k.motion.duration, k.motion.heading]).toEqual(["blur", 3, base.motion.heading]);
+  expect(k.icons).toBe(base.icons);
+  type N = { type: string; motion?: any; children?: N[] };
+  const tree: N = { type: "page", children: [{ type: "section", children: [{ type: "heading" }, { type: "button", motion: { enter: { kind: "fade" } } }, { type: "image" }] }, { type: "legacy", children: [{ type: "heading" }] }] };
+  const out = withKit(tree, { ...k, motion: { ...k.motion, heading: "lines", stagger: 0.1 } });
+  const [h, b, img] = out.children![0].children!;
+  expect(h.motion.enter.kind).toBe("lines");
+  expect([b.motion.enter.kind, b.motion.hover.kind]).toEqual(["fade", "pop"]);
+  expect(img.motion.enter).toMatchObject({ kind: "blur", delay: 0.2 });
+  expect(img.motion.hover.kind).toBe(base.hover.image);
+  expect(out.children![1].children![0].motion).toBeUndefined();
+  expect(withKit(tree, { ...k, motion: { ...k.motion, enter: "none" }, hover: { button: "none", image: "none" } }).children![0].children![0].motion).toBeUndefined();
+});
+
+test("a store's pack in the shop: the focus ring, the cursor, the loading indicator, and motion on the new editor's pages", async ({ page, request }) => {
+  await setTheme(request, "circuit", undefined, undefined, { focus: "thick", cursor: "theme-neon", loader: "dots-wave", hover: { button: "grow" }, motion: { enter: "blur", heading: "words" } });
+  const errors = errorsOf(page);
+  await page.goto("/tree-demo");
+  await expect(page.locator("html")).toHaveAttribute("data-store-kit", "");
+  expect(await page.locator("style#store-kit").textContent()).toContain("outline:4px solid");
+  await expect(page.locator("html")).toHaveAttribute("data-cursor-theme", "theme-neon");
+  // Its loading indicator, as the store hasn't picked one of its own.
+  await expect(page.locator("style[data-estabrek-ui-loading]")).toHaveCount(1);
+  // A heading and a button with no motion of their own take the pack's.
+  const motion = async (id: string) => JSON.parse((await page.locator(`[data-tree-node="${id}"]`).first().getAttribute("data-pt-motion")) ?? "null");
+  expect((await motion("title")).enter.kind).toBe("words");
+  expect(await motion("go")).toMatchObject({ enter: { kind: "blur" }, hover: { kind: "grow" } });
+  // The keyboard's focus shows the pack's ring.
+  await page.locator('[data-tree-node="go"]').first().focus();
+  expect(await page.locator('[data-tree-node="go"]').first().evaluate((el) => getComputedStyle(el).outlineWidth)).toBe("4px");
+  expect(errors).toEqual([]);
+  // Without a pack applied, nothing of it.
+  await setTheme(request, "circuit");
+  await page.goto("/tree-demo");
+  await expect(page.locator("html")).not.toHaveAttribute("data-store-kit", /.*/);
+  await expect(page.locator("style#store-kit")).toHaveCount(0);
+  expect(await motion("title")).toBeNull();
 });
 
 test.describe("gaming themes: the 3D stage", () => {

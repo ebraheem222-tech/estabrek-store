@@ -1,5 +1,5 @@
 /** Shorthands for writing themes (themes/*.ts). */
-import type { Palette } from "../colour";
+import { contrast, mix, type Palette } from "../colour";
 import type { ModelKind } from "../three/kinds";
 import type { StageSpec, ThemeCopy, Words } from "../types";
 
@@ -48,3 +48,35 @@ export const FONTS = {
   rubik: ["th-rubik", "sans-serif"],
 } as const;
 export const font = (display: keyof typeof FONTS, text: keyof typeof FONTS) => ({ display: [...FONTS[display]], text: [...FONTS[text]] });
+
+/** A colour pushed toward `toward` until it reads at `target` against `on`. */
+function reach(c: string, on: string, target: number, toward: string): string {
+  for (let t = 0; t <= 1.001 && contrast(c, on) < target; t += 0.04) c = mix(c, toward, 0.04 / Math.max(0.04, 1 - t));
+  return c;
+}
+
+/**
+ * One mode's colours from four: the page, the brand colour, what must stand out (buttons,
+ * links) and the text. The rest follows them; the text, the quiet text and the buttons' words
+ * are pushed until they read (7, 4.5 and 4.5, as tests/store-themes.spec.ts checks).
+ */
+export function tones(mode: "light" | "dark", bg: string, accent: string, strong: string, ink: string): Palette {
+  const dark = mode === "dark";
+  const far = dark ? "#ffffff" : "#000000";
+  const text = reach(ink, bg, 7.4, far);
+  const quiet = reach(mix(text, bg, 0.38), bg, 4.8, far);
+  const words = [bg, text, "#ffffff", "#111111"].find((c) => contrast(c, strong) >= 4.7);
+  const stand = words ? strong : reach(strong, "#ffffff", 4.8, "#000000");
+  return {
+    bg,
+    surface: dark ? mix(bg, "#ffffff", 0.05) : mix(bg, "#ffffff", 0.75),
+    soft: mix(bg, accent, dark ? 0.2 : 0.14),
+    line: mix(bg, text, dark ? 0.18 : 0.13),
+    glow: mix(accent, bg, dark ? 0.45 : 0.4),
+    muted: quiet,
+    accent,
+    strong: stand,
+    ink: text,
+    onStrong: words ?? "#ffffff",
+  };
+}

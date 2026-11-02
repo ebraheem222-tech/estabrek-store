@@ -723,8 +723,9 @@ http
       req.on("data", (c) => (body += c));
       req.on("end", () => {
         const data = JSON.parse(body || "{}");
-        // {"options": {...}} also sets the store's own models and games for that theme.
-        const { options, ...choice } = data;
+        // {"options": {...}} also sets the store's own models and games for that theme; {"kit": {...}} its pack (storeThemes/packs.ts).
+        const { options, kit, ...choice } = data;
+        if (kit) site.header.storeKit = kit; else delete site.header.storeKit;
         if (choice.id) site.header.storeTheme = choice; else delete site.header.storeTheme;
         if (options && choice.id) site.header.storeThemeOptions = { [choice.id]: options }; else delete site.header.storeThemeOptions;
         res.end(JSON.stringify({ ok: true }));

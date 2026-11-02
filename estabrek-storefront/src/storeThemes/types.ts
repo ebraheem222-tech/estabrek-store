@@ -1,5 +1,6 @@
 import type { Palette } from "./colour";
 import type { ModelKind } from "./three/kinds";
+import type { KitParts } from "./packs";
 
 export type Words = { ar: string; en: string; he: string };
 
@@ -92,6 +93,8 @@ export type StoreTheme = {
   stage?: StageSpec;
   /** Words the home uses where the store hasn't written its own. */
   copy: ThemeCopy;
+  /** Parts of its pack it sets itself (the rest is worked out from the theme: packs.ts themeKit). */
+  kit?: KitParts;
 };
 
 export type ThemeCopy = {
