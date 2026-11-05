@@ -9,6 +9,8 @@ import { useMemo, type ReactNode } from "react";
 import * as THREE from "three";
 import type { ModelKind } from "./kinds";
 import { Block, seg, shown, type Draw, type Mats } from "./parts";
+import { Lantern } from "./lantern";
+export { buildLantern } from "./lantern";
 
 /* ------------------------------------------------------------- devices */
 
@@ -1190,4 +1192,5 @@ export const PRODUCT_MODELS = {
   cake: Cake,
   teddy: Teddy,
   bone: Bone,
+  lantern: Lantern,
 } satisfies Partial<Record<ModelKind, (p: Draw) => ReactNode>>;

@@ -228,6 +228,59 @@ const interactiveDemo = {
   },
 };
 // A page of new elements in three languages, with one old section in the middle.
+const mediaOverlaySection = (id, color, opacity) => ({
+  id, type: "section", props: { contained: false }, style: { base: { pad: [0, 0, 0, 0] } }, children: [
+    { id: `${id}-video`, type: "video", props: { src: "https://media.example.test/merchant-demo.webm", poster: "/templates/electronics/hero.svg", autoplay: true, muted: true, loop: true, controls: false, label: { en: "Merchant showcase video" } }, style: { base: { width: "100%", height: "400px", fit: "cover", overlay: { color, opacity } } } },
+    { id: `${id}-title`, type: "heading", props: { level: 2, text: { en: "Your video, your story" } }, style: { base: { layer: { x: 50, y: 42, anchor: "center" }, width: "80%", textAlign: "center", color: "white", z: 2 } } },
+    { id: `${id}-button`, type: "button", props: { href: "/shop", label: { en: "Explore" }, variant: "solid" }, style: { base: { layer: { x: 50, y: 65, anchor: "center" }, z: 2 } } },
+  ],
+});
+const demoPage = (id, sections) => ({ id, slug: `/${id}`, name: id, status: "PUBLISHED", format: 2, sections: [], tree: { version: 1, root: { id: "page", type: "page", props: {}, children: sections } } });
+const demoSection = (id, children, props = {}, style = {}) => ({ id, type: "section", props: { contained: true, ...props }, style: { base: { pad: [40, 24, 40, 24], ...style } }, children });
+const expandedGalleryItems = ["Alpha", "Beta", "Gamma"].map((title, index) => ({ title: { en: title, ar: title, he: title }, category: { en: index === 1 ? "Design" : "Art", ar: index === 1 ? "تصميم" : "فن", he: index === 1 ? "עיצוב" : "אמנות" }, image: `/templates/experimental/kinetic-${index + 1}.svg`, text: { en: ["One", "Two", "Three"][index] }, href: "/shop", cta: { en: "Explore" } }));
+const expandedDemo = demoPage("expanded-demo", [
+  ...["grid", "split", "masonry"].map(layout => demoSection(`section-gallery-${layout}`, [{ id: `gallery-${layout}`, type: "filterGallery", props: { label: { en: "Editable gallery" }, items: expandedGalleryItems, layout, columns: 3, gap: 20, hoverEffect: "zoom", lightbox: true, searchable: true, activation: "hover" } }])),
+  demoSection("section-billing", [{ id: "pricing-billing", type: "pricing", props: { billing: true, initialBilling: "monthly", items: [
+    { name: { en: "Studio" }, price: { en: "Monthly quote" }, period: { en: "/month" }, yearlyPrice: { en: "Annual quote" }, yearlyPeriod: { en: "/year" }, cta: { en: "Explore" }, href: "/shop" },
+    { name: { en: "Custom" }, price: { en: "Contact us" }, period: { en: "/month" } },
+  ] } }]),
+  ...["controls", "single"].map(mode => demoSection(`section-faq-${mode}`, [{ id: `faq-${mode}`, type: "accordion", props: { single: mode === "single", controls: true, items: [{ q: { en: "First question" }, a: { en: "First answer" } }, { q: { en: "Second question" }, a: { en: "Second answer" } }] } }])),
+  ...["piano", "guitar"].map(kind => demoSection(`section-${kind}`, [{ id: `instrument-${kind}`, type: "instrument", props: { kind, sound: false, volume: .2, octave: 4, octaves: 1, frets: 8, sustain: .6, waveform: "triangle", tempo: 200, melody: kind === "piano" ? "scale" : "chords", label: { en: kind === "piano" ? "Playable piano" : "Playable guitar" } } }])),
+  demoSection("section-chart-clock", [
+    ...["bar", "line", "donut"].map(kind => ({ id: `chart-${kind}`, type: "chart", props: { kind, label: { en: "Your chart" }, items: [{ label: { en: "Alpha" }, value: 25 }, { label: { en: "Beta" }, value: 75, color: "#8a55bc" }], showValues: true } })),
+    { id: "live-clock", type: "clock", props: { timezone: "UTC", format: "24", seconds: true, date: true, label: { en: "World clock" } } },
+  ]),
+  demoSection("section-sticky", [{ id: "sticky-stack", type: "stack", props: {}, style: { base: { gap: 32 } }, children: [1, 2, 3].map((n, index) => ({ id: `sticky-card-${n}`, type: "stack", props: {}, style: { base: { sticky: { top: 24 + index * 24 }, minHeight: "400px", pad: [32, 24, 32, 24], bg: ["#cedbc5", "#b5c5aa", "#a0b395"][index], z: n }, mobile: { sticky: false } }, children: [{ id: `sticky-title-${n}`, type: "heading", props: { level: 2, text: { en: `Process ${n}` } } }] })) }]),
+]);
+const sectionSceneDemo = demoPage("scene-demo", ["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks"].map((kind, index) => demoSection(`scene-${kind}`, [
+  { id: `scene-title-${index}`, type: "heading", props: { level: 2, text: { en: kind } } },
+  { id: index === 7 ? "scene-content-link" : `scene-link-${index}`, type: "button", props: { label: { en: "Explore collection" }, href: "/shop", variant: "solid" } },
+], { scene: { kind, color: "#96b9e8", secondary: "#d2a877", amount: 32, speed: .6, intensity: 1, interactive: index === 0 } }, { minHeight: "440px", bg: "#12202a", color: "#edf3f8" })));
+const sliderEffectsDemo = demoPage("slider-effects-demo", ["slices", "coverflow", "vertical", "fade", "zoom", "wipe"].map((kind) => demoSection(`section-slider-${kind}`, [{ id: `expanded-slider-${kind}`, type: "slider", props: { effect: kind === "vertical" ? "flip" : kind, axis: kind === "vertical" ? "y" : "x", duration: kind === "slices" ? 1.4 : .4, zoom: kind === "coverflow" ? 1.1 : 1, captionPosition: kind === "vertical" ? "split" : "bottom", loop: kind !== "coverflow", arrows: true, dots: true, thumbnails: true, progress: true, ...(kind === "slices" ? { autoplay: 2 } : {}), aspect: "16 / 9", slides: [1, 2, 3].map(n => ({ src: `/templates/experimental/foundry-${n}.svg`, kind: "image", alt: { en: `Image ${n}` }, title: { en: `Slide ${n}` }, text: { en: `Description ${n}` }, cta: { en: "Explore" }, href: "/shop" })) } }])));
+
+sliderEffectsDemo.tree.root.children.push(demoSection("section-slider-video", [{ id: "expanded-slider-video", type: "slider", props: { effect: "slices", duration: 1.4, loop: false, arrows: true, dots: true, slides: [
+  { src: "/templates/experimental/foundry-1.svg", kind: "image", title: { en: "Slide 1" } },
+  { src: "https://media.example.test/merchant-demo.webm", kind: "video", title: { en: "Merchant video" } },
+  { src: "/templates/experimental/foundry-3.svg", kind: "image", title: { en: "Slide 3" } },
+] } }]));
+
+const showcaseDemo = { id: "showcase-demo", slug: "/showcase-demo", name: "Editable showcase", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [
+    ...["click", "hover", "vertical", "eight"].map((mode) => ({ id: `section-${mode}`, type: "section", props: { contained: true }, style: { base: { pad: [24, 16, 24, 16] } }, children: [
+      { id: `showcase-${mode}`, type: "showcase", props: { label: { en: "Editable showcase" }, layout: mode === "vertical" || mode === "eight" ? "vertical" : "horizontal", activation: mode === "hover" ? "hover" : "click", initial: mode === "click" ? 7 : 0, height: mode === "eight" ? 240 : 480, ratio: 4, duration: .55, overlay: .5,
+        items: (mode === "eight" ? Array.from({length:8}, (_,i) => `Panel ${i + 1}: a very long collection title with plenty of details to fit in one collapsed row`) : ["First panel", "Second panel"]).map((title) => ({ title: { en: title }, text: { en: `${title} description` }, image: "/templates/electronics/hero.svg", href: "/shop", cta: { en: "Explore" } })) } },
+    ] })),
+  ] },
+} };
+
+const motionMediaDemo = { id: "motion-media-demo", slug: "/motion-media-demo", name: "Motion and media", status: "PUBLISHED", format: 2, sections: [], tree: {
+  version: 1, root: { id: "page", type: "page", props: {}, children: [
+    mediaOverlaySection("black-film", "#000000", 0.5), mediaOverlaySection("colour-film", "#8b1538", 0.35),
+    { id: "model-fallback-section", type: "section", props: { contained: true }, children: [
+      { id: "model-fallback", type: "model3d", props: { file: { url: "http://127.0.0.1:4100/__test/missing-model.glb" }, poster: "/templates/electronics/hero.svg", label: { en: "Merchant model fallback" } }, style: { base: { height: "320px" } } },
+    ] },
+  ] },
+} };
 const treeDemo = {
   id: "tree-demo", slug: "/tree-demo", name: "Tree demo", status: "PUBLISHED", format: 2,
   sections: [{ id: "demo-faq", type: "FAQ", order: 0, isVisible: true, data: { title: "أسئلة القسم القديم", items: [{ question: "سؤال قديم؟", answer: "جواب قديم." }] } }],
@@ -600,6 +653,7 @@ http
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     res.setHeader("Content-Type", "application/json");
     const pathname = new URL(req.url, "http://localhost").pathname;
+    if (pathname === "/__test/missing-model.glb") { res.statusCode = 404; return res.end(); }
     // Delivery prices from the admin (header.delivery), switched on by the delivery test.
     if (pathname === "/__test/delivery") {
       const on = new URL(req.url, "http://localhost").searchParams.get("on") === "1";
@@ -729,6 +783,31 @@ http
         if (choice.id) site.header.storeTheme = choice; else delete site.header.storeTheme;
         if (options && choice.id) site.header.storeThemeOptions = { [choice.id]: options }; else delete site.header.storeThemeOptions;
         res.end(JSON.stringify({ ok: true }));
+      });
+      return;
+    }
+    if (pathname === "/__test/owned-design" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        if (data.removeHome && globalThis.ownedDesign) {
+          globalThis.ownedDesign.page = null;
+        } else if (data.page) {
+          globalThis.beforeOwnedDesign ??= { header: structuredClone(site.header), name: site.siteName, logo: site.logoUrl };
+          globalThis.ownedDesign = data;
+          site.siteName = data.name;
+          site.logoUrl = null;
+          site.header = { ...site.header, storeDesign: { version: 1, mode: "cms", homeId: "owned-home", headerId: "owned-header", footerId: "owned-footer" }, storeTheme: { id: data.theme.id, mode: data.mode ?? "light", snapshot: data.theme }, identity: { name: { ar: data.name, en: data.name, he: data.name }, industry: "fashion", audience: "women" } };
+          site.header.storefront = { ...(site.header.storefront ?? {}), cmsOverrideHome: false };
+        } else if (globalThis.beforeOwnedDesign) {
+          site.header = globalThis.beforeOwnedDesign.header;
+          site.siteName = globalThis.beforeOwnedDesign.name;
+          site.logoUrl = globalThis.beforeOwnedDesign.logo;
+          delete globalThis.beforeOwnedDesign;
+          delete globalThis.ownedDesign;
+        }
+        res.end("{}");
       });
       return;
     }
@@ -1175,6 +1254,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       );
     if (pathname.endsWith("/settings"))
       return res.end(JSON.stringify({ site }));
+    if (pathname.endsWith("/storefront/design")) return res.end(JSON.stringify(globalThis.ownedDesign?.regions ?? { header: null, footer: null }));
     if (pathname.includes("/storefront/products/"))
       return res.end(JSON.stringify({ productIds: products.map((p) => p.id) }));
     if (
@@ -1257,9 +1337,20 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       const slug = new URL(req.url, "http://localhost").searchParams.get(
         "slug",
       );
-      if (slug === "/") return res.end(JSON.stringify(asTreePage(home)));
+      if (slug === "/" && globalThis.ownedDesign && !globalThis.ownedDesign.page) { res.statusCode = 404; return res.end("{}"); }
+      if (slug === "/") return res.end(JSON.stringify(globalThis.ownedDesign?.page ?? asTreePage(home)));
       if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));
       if (slug === "/tree-demo") return res.end(JSON.stringify(treeDemo));
+      if (slug === "/expanded-demo") return res.end(JSON.stringify(expandedDemo));
+      if (slug === "/scene-demo") return res.end(JSON.stringify(sectionSceneDemo));
+      if (slug === "/slider-effects-demo") return res.end(JSON.stringify(sliderEffectsDemo));
+      if (slug === "/reference-lab") {
+        const file = new URL("../../.tmp/reference-ready-sections.json", import.meta.url);
+        const sections = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
+        return res.end(JSON.stringify(demoPage("reference-lab", sections)));
+      }
+      if (slug === "/showcase-demo") return res.end(JSON.stringify(showcaseDemo));
+      if (slug === "/motion-media-demo") return res.end(JSON.stringify(motionMediaDemo));
       if (slug === "/media-demo") return res.end(JSON.stringify(mediaDemo));
       if (slug === "/models-demo") return res.end(JSON.stringify(modelsDemo));
       if (slug === "/blocks-demo") return res.end(JSON.stringify(blocksDemo));

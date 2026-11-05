@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<!--
+  Kinetic Template
+  https://templatemo.com/tm-631-kinetic
+-->
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>The Kinetic // Experimental Interactive Studio</title>
+        <meta name="description"
+              content="The Kinetic - an experimental, mechanically advanced creative agency interface built with pure vanilla HTML, CSS and JS.">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap"
+              rel="stylesheet">
+        <link rel="stylesheet" href="templatemo-631-kinetic-style.css">
+    </head>
+    <body>
+        <!-- ====================== TOP BAR ====================== -->
+        <nav class="topbar">
+            <a class="brand" href="#hero">KIN<span>E</span>TIC</a>
+            <div class="nav-index">
+                <a href="#hero">01 / String</a>
+                <a href="#projects">02 / Matrix</a>
+                <a href="#reveal">03 / Lenticular</a>
+                <a href="#initiate">04 / Initiate</a>
+            </div>
+        </nav>
+        <!-- ====================== 01 HERO ====================== -->
+        <section class="hero" id="hero">
+            <h1 class="hero-title">KIN<b>E</b>TIC</h1>
+            <svg class="string-svg"
+                 id="stringSvg"
+                 preserveAspectRatio="none"
+                 aria-hidden="true">
+                <path class="string-path" id="stringPath"></path>
+                <circle class="string-anchor" id="anchorL" r="5"></circle>
+                <circle class="string-anchor" id="anchorR" r="5"></circle>
+                <circle class="string-grip"   id="grip"    r="7"></circle>
+            </svg>
+            <div class="hero-foot">
+                <span class="mono-label">Vanguard Interactive Studio</span>
+                <p>Pull the string. Drag the matrix. Sweep the print. Every surface on this page is a machine you operate with motion.</p>
+            </div>
+            <div class="hero-hint">[ move cursor to bend ]</div>
+        </section>
+        <!-- ====================== 02 MATRIX ====================== -->
+        <section class="matrix-wrap" id="projects">
+            <div class="section-head">
+                <h2>THE <i>MATRIX</i> ACCORDION</h2>
+                <p>Nine works on a flat grid. Select any cell to force it open. The other eight collapse into strips.</p>
+            </div>
+            <div class="matrix" id="matrix">
+                <!-- swap images/project-01.jpg ... project-09.jpg with your own -->
+                <div class="cell" tabindex="0" role="button" aria-label="Project Helix">
+                    <div class="cell-media" style="background-image:url('images/project-01.jpg')"></div>
+                    <div class="cell-num">01</div>
+                    <div class="cell-name">Helix</div>
+                    <div class="cell-detail">A generative identity system that rewrites its own logotype on every page load.</div>
+                    <div class="cell-cat">Brand / Code</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Drift">
+                    <div class="cell-media" style="background-image:url('images/project-02.jpg')"></div>
+                    <div class="cell-num">02</div>
+                    <div class="cell-name">Drift</div>
+                    <div class="cell-detail">Scroll-driven editorial for a kinetic typeface foundry, set entirely in motion type.</div>
+                    <div class="cell-cat">Web / Type</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Onyx">
+                    <div class="cell-media" style="background-image:url('images/project-03.jpg')"></div>
+                    <div class="cell-num">03</div>
+                    <div class="cell-name">Onyx</div>
+                    <div class="cell-detail">Dark-mode commerce flow with physics-based add-to-cart and elastic transitions.</div>
+                    <div class="cell-cat">Product / UX</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Pulse">
+                    <div class="cell-media" style="background-image:url('images/project-04.jpg')"></div>
+                    <div class="cell-num">04</div>
+                    <div class="cell-name">Pulse</div>
+                    <div class="cell-detail">A real-time audio-reactive visual built on the Web Audio API and raw canvas.</div>
+                    <div class="cell-cat">Sound / Visual</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Vellum">
+                    <div class="cell-media" style="background-image:url('images/project-05.jpg')"></div>
+                    <div class="cell-num">05</div>
+                    <div class="cell-name">Vellum</div>
+                    <div class="cell-detail">Tactile portfolio with page-turn mechanics and a paper-grain shader fallback.</div>
+                    <div class="cell-cat">Editorial</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Signal">
+                    <div class="cell-media" style="background-image:url('images/project-06.jpg')"></div>
+                    <div class="cell-num">06</div>
+                    <div class="cell-name">Signal</div>
+                    <div class="cell-detail">Broadcast microsite where every UI control doubles as a working oscilloscope.</div>
+                    <div class="cell-cat">Campaign</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Forge">
+                    <div class="cell-media" style="background-image:url('images/project-07.jpg')"></div>
+                    <div class="cell-num">07</div>
+                    <div class="cell-name">Forge</div>
+                    <div class="cell-detail">Configurator for a hardware studio with a live exploded-view 3D assembly.</div>
+                    <div class="cell-cat">Industrial</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Lumen">
+                    <div class="cell-media" style="background-image:url('images/project-08.jpg')"></div>
+                    <div class="cell-num">08</div>
+                    <div class="cell-name">Lumen</div>
+                    <div class="cell-detail">Light-installation control panel mapped to a single sweeping gesture surface.</div>
+                    <div class="cell-cat">Spatial</div>
+                </div>
+                <div class="cell" tabindex="0" role="button" aria-label="Project Apex">
+                    <div class="cell-media" style="background-image:url('images/project-09.jpg')"></div>
+                    <div class="cell-num">09</div>
+                    <div class="cell-name">Apex</div>
+                    <div class="cell-detail">Awards-shortlisted launch site for an EV brand, driven entirely by scroll velocity.</div>
+                    <div class="cell-cat">Launch</div>
+                </div>
+            </div>
+        </section>
+        <!-- ====================== 03 LENTICULAR ====================== -->
+        <section class="reveal" id="reveal">
+            <div class="reveal-cap">
+                <span class="mono-label">Lenticular Print // Live</span>
+                <h2>SWEEP TO <i>FLIP</i> THE FRAME</h2>
+                <p style="font-size:.64rem;
+                          letter-spacing:.22em;
+                          text-transform:uppercase;
+                          color:var(--accent-1);
+                          margin-top:10px">[ run the cursor past both edges for a full flip ]</p>
+            </div>
+            <div class="lenti-stage" id="lentiStage">
+                <div class="lenti" id="lenti" aria-hidden="true"
+                     data-front="images/kinetic-10.jpg"
+                     data-back="images/kinetic-11.jpg"></div>
+            </div>
+        </section>
+        <!-- ====================== 04 INITIATE ====================== -->
+        <footer class="initiate" id="initiate">
+            <div class="initiate-inner">
+                <h2 class="scatter" id="scatter">TEMPLATE.MO // INITIATE</h2>
+                <div class="sub-wrap" id="subWrap">
+                    <form class="subscribe" id="subscribe" novalidate>
+                        <input type="email"
+                               class="sub-input"
+                               id="subEmail"
+                               placeholder="you@studio.com"
+                               aria-label="Email address"
+                               required>
+                        <button type="submit" class="sub-btn">Initiate</button>
+                    </form>
+                    <div class="sub-note" id="subNote">Join the drop list. No noise.</div>
+                </div>
+            </div>
+            <div class="sig-foot">
+                <span>The Kinetic // Experimental Build 1.0</span>
+                <span>Click the type to scatter or reassemble</span>
+                <span>Free HTML Template by <a href="https://templatemo.com" rel="nofollow" target="_blank">TemplateMo</a></span>
+            </div>
+        </footer>
+        <script src="templatemo-631-kinetic-script.js"></script>
+    </body>
+</html>

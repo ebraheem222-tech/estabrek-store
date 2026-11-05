@@ -27,17 +27,17 @@ export const PAGE_FORMAT = { sections: 1, tree: 2 } as const;
 export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 * 1024 } as const;
 
 export const NODE_TYPES = [
-  "page", "section", "grid", "stack", "columns", "cell",
+  "page", "section", "grid", "stack", "columns", "cell", "deck",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
-  "lottie", "rive", "model3d",
+  "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
   "accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee",
-  "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu",
+  "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
 /** Nodes that hold other nodes. */
-export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell", "popup"]);
+export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell", "popup", "deck"]);
 /** Columns hold this many cells, and columns sit inside a cell at most this deep (columns › cell › columns). */
 export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 /** A slider holds at most this many slides, and turns by itself every 2–30 seconds (or not at all). */
@@ -209,6 +209,7 @@ export const ScreenStyle = z.object({
   maxWidth: length.optional(),
   height: length.optional(),
   minHeight: length.optional(),
+  sticky: z.union([z.literal(false), z.object({ top: z.number().finite().min(0).max(240) })]).optional(),
   columns: z.number().int().min(1).max(12).optional(), // grids
   widths: z.array(z.number().int().min(1).max(12)).min(1).max(COLUMNS_LIMITS.cells).optional(), // columns: each cell's share ([1, 2] = a third and two thirds)
   gap: px(0, 200).optional(),
@@ -294,6 +295,7 @@ const MotionKeys = z.object({
  * pointer, or carries an animated layer. `phone` "lite" keeps only the coming in.
  */
 export const NodeMotion = z.object({
+  engine: z.enum(["gsap", "anime"]).optional(),
   enter: z.object({ kind: z.enum(ENTER_KINDS), duration: seconds(6).optional(), delay: seconds(6).optional(), ease: z.enum(EASES).optional(), distance: px(0, 400).optional(), stagger: seconds(1).optional() }).optional(),
   scroll: z.object({ kind: z.enum(SCROLL_KINDS), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional(), length: z.number().min(10).max(400).optional() }).optional(),
   loop: z.object({ kind: z.enum(LOOP_KINDS), duration: z.number().min(0.2).max(20).optional(), amount: z.number().min(0.1).max(3).optional() }).optional(),
@@ -329,9 +331,18 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     contained: z.boolean().optional(), // the content keeps to the page width
     edges: z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() }).optional(),
     particles: z.object({ kind: z.enum(PARTICLES), color: color.optional(), amount: z.number().min(0.2).max(3).optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
+    scene: z.object({
+      kind: z.enum(["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks"]),
+      color: color.optional(), secondary: color.optional(),
+      amount: z.number().int().min(8).max(100).default(32),
+      speed: z.number().finite().min(0).max(3).default(1),
+      intensity: z.number().finite().min(0).max(2).default(1),
+      interactive: z.boolean().default(false),
+    }).optional(),
   }),
   grid: none,
   stack: none,
+  deck: z.object({ presentation: z.enum(["deck", "tabs", "vertical-tabs"]).optional(), transition: z.enum(["slide", "fade", "wipe"]).optional(), duration: z.number().finite().min(0).max(2).optional(), initial: z.number().int().min(0).max(11).optional(), arrows: z.boolean().optional(), dots: z.boolean().optional(), menu: z.boolean().optional(), labels: z.record(z.string().regex(/^[A-Za-z0-9_-]{1,40}$/), local(80)).refine(labels => Object.keys(labels).length <= 12, "At most 12 panel labels").optional() }),
   // On a phone the cells go one under the other (stack), the last first (reverse), or stay side by side (keep).
   columns: z.object({ phone: z.enum(["stack", "reverse", "keep"]).optional() }),
   cell: none,
@@ -342,6 +353,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   button: z.object({ label: local(120), href, variant: z.enum(["solid", "outline", "link"]).default("solid"), newTab: z.boolean().optional(), rich: z.boolean().optional() }),
   video: z.object({
     src,
+    label: local(120).optional(),
     poster: src.optional(),
     autoplay: z.boolean().optional(),
     loop: z.boolean().optional(),
@@ -369,6 +381,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     label: local(120).optional(),
   }),
   model3d: z.object({
+    poster: src.optional(),
     model: z.string().trim().regex(/^[a-z][a-z0-9-]{1,30}$/).optional(),
     file: z.object({ url: glbSrc, name: z.string().trim().max(200).optional(), clip: z.string().trim().max(100).optional() }).optional(),
     finish: z.enum(FINISHES_3D).optional(),
@@ -414,6 +427,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
           kind: z.enum(["image", "video"]).default("image"),
           alt: local(200).optional(),
           caption: local(200).optional(),
+          title: local(160).optional(),
+          text: local(1200).optional(),
+          cta: local(60).optional(),
           href: href.optional(),
         }),
       )
@@ -423,8 +439,18 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     loop: z.boolean().default(true),
     arrows: z.boolean().default(true),
     dots: z.boolean().default(true),
+    effect: z.enum(["slide", "fade", "zoom", "wipe", "flip", "coverflow", "slices"]).optional(),
+    axis: z.enum(["x", "y"]).optional(),
+    duration: z.number().finite().min(0).max(2).optional(),
+    zoom: z.number().finite().min(0.7).max(1.5).optional(),
+    thumbnails: z.boolean().optional(),
+    progress: z.boolean().optional(),
+    captionPosition: z.enum(["bottom", "center", "split"]).optional(),
     aspect: z.string().trim().regex(/^[1-9]\d?\s*\/\s*[1-9]\d?$/, "Like 16 / 9").optional(),
   }),
+  instrument: z.object({ kind: z.enum(["piano", "guitar"]).default("piano"), label: local(160).optional(), sound: z.boolean().optional(), volume: z.number().finite().min(0).max(1).optional(), octave: z.number().int().min(2).max(6).optional(), octaves: z.number().int().min(1).max(2).optional(), frets: z.number().int().min(4).max(12).optional(), sustain: z.number().finite().min(.1).max(3).optional(), waveform: z.enum(["sine", "triangle", "sawtooth"]).optional(), theme: z.enum(["dark", "light"]).optional(), showNotes: z.boolean().optional(), melody: z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"]).optional(), playlist: z.array(z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"])).min(1).max(6).optional(), showPlayer: z.boolean().optional(), tempo: z.number().int().min(40).max(200).optional(), repeat: z.boolean().optional() }),
+  chart: z.object({ kind: z.enum(["bar", "line", "donut"]).default("bar"), label: local(160).optional(), items: z.array(z.object({ label: local(80), value: z.number().finite().min(0).max(1000000), color: color.optional() })).min(1).max(24), showValues: z.boolean().optional() }),
+  clock: z.object({ label: local(160).optional(), timezone: z.string().trim().max(80).refine(value => { try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; } }).default("UTC"), format: z.enum(["12", "24"]).optional(), seconds: z.boolean().optional(), date: z.boolean().optional() }),
   spacer: z.object({ size: px(0, 400).default(32) }),
   divider: none,
   // One of the few built in by name, or one from the library with its drawing (checked like any drawing).
@@ -462,6 +488,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   accordion: z.object({
     items: z.array(z.object({ q: local(200), a: local(3000), open: z.boolean().optional() })).max(30),
     single: z.boolean().optional(),
+    controls: z.boolean().optional(),
     look: z.enum(["lines", "cards", "plus"]).optional(),
   }),
   testimonials: z.object({
@@ -471,7 +498,9 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   }),
   // Plans side by side: their features one per line; one can stand out.
   pricing: z.object({
-    items: z.array(z.object({ name: local(60), price: local(40), period: local(40).optional(), features: local(1500).optional(), badge: local(40).optional(), featured: z.boolean().optional(), cta: local(40).optional(), href: href.optional() })).max(6),
+    items: z.array(z.object({ name: local(60), price: local(40), period: local(40).optional(), yearlyPrice: local(40).optional(), yearlyPeriod: local(40).optional(), features: local(1500).optional(), badge: local(40).optional(), featured: z.boolean().optional(), cta: local(40).optional(), href: href.optional() })).max(6),
+    billing: z.boolean().optional(),
+    initialBilling: z.enum(["monthly", "yearly"]).optional(),
   }),
   team: z.object({
     items: z.array(z.object({ name: local(80), role: local(80).optional(), photo: src.optional(), href: href.optional() })).max(24),
@@ -485,6 +514,33 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   }),
   alert: z.object({ text: local(600), title: local(120).optional(), kind: z.enum(["info", "success", "warning", "danger", "promo"]).optional(), close: z.boolean().optional() }),
   // Tabs: each a label and its words (and a picture); the keyboard moves between them.
+  filterGallery: z.object({
+    items: z.array(z.object({ title: local(160), image: src, text: local(1200).optional(), category: local(80).optional(), href: href.optional(), cta: local(60).optional() })).min(1).max(40),
+    label: local(160).optional(),
+    layout: z.enum(["grid", "masonry", "split", "bento"]).default("grid"),
+    presentation: z.enum(["cards", "index"]).optional(),
+    initial: z.number().int().min(-1).max(39).optional(),
+    filters: z.boolean().optional(),
+    showCount: z.boolean().optional(),
+    columns: z.number().int().min(1).max(6).default(3),
+    gap: z.number().finite().min(0).max(48).default(20),
+    hoverEffect: z.enum(["none", "zoom", "tilt", "reveal"]).default("none"),
+    lightbox: z.boolean().default(false),
+    searchable: z.boolean().default(false),
+    activation: z.enum(["click", "hover"]).default("click"),
+  }),
+  showcase: z.object({
+    look: z.enum(["default", "clay"]).optional(),
+    items: z.array(z.object({ title: local(160), text: local(1200).optional(), image: src.optional(), href: href.optional(), cta: local(60).optional() })).min(1).max(8),
+    label: local(160).optional(),
+    layout: z.enum(["horizontal", "vertical"]).default("horizontal"),
+    activation: z.enum(["click", "hover"]).default("click"),
+    initial: z.number().int().min(0).max(7).default(0),
+    ratio: z.number().finite().min(2).max(6).default(4),
+    height: z.number().int().min(240).max(800).default(480),
+    duration: z.number().finite().min(0).max(1.5).default(0.55),
+    overlay: z.number().finite().min(0).max(0.9).default(0.5),
+  }),
   tabs: z.object({
     items: z.array(z.object({ label: local(60), text: local(3000), image: src.optional() })).min(1).max(12),
     look: z.enum(["pills", "underline", "boxed"]).optional(),
@@ -616,6 +672,7 @@ export function checkTree(input: unknown): TreeCheck {
     if (parent === "page" && !PAGE_LEVEL_TYPES.has(type)) add(`${path}.type`, `“${type}” goes inside a section, not straight on the page`);
     if (parent !== null && parent !== "page" && PAGE_LEVEL_TYPES.has(type)) add(`${path}.type`, `“${type}” goes straight on the page`);
     if (parent === "columns" && type !== "cell") add(`${path}.type`, `“${type}” goes inside a cell of the columns`);
+    if (parent === "deck" && type !== "stack") add(`${path}.type`, "A presentation holds stack panels");
     if (type === "cell" && parent !== "columns") add(`${path}.type`, "A cell goes inside columns");
     if (type === "columns" && columnsAbove >= COLUMNS_LIMITS.nested) add(`${path}.type`, `Columns go at most ${COLUMNS_LIMITS.nested} deep`);
     if (parent !== null && OVERLAY_HOSTS.has(parent) && !OVERLAY_TYPES.has(type)) add(`${path}.type`, `“${type}” can't be placed over a section`);
@@ -640,9 +697,12 @@ export function checkTree(input: unknown): TreeCheck {
         if (raw.children.length) add(`${path}.children`, `“${type}” can't hold other elements`);
       } else if (raw.children.length > TREE_LIMITS.children) add(`${path}.children`, `More than ${TREE_LIMITS.children} elements in one place`);
       else if (type === "columns" && raw.children.length > COLUMNS_LIMITS.cells) add(`${path}.children`, `Columns hold 1–${COLUMNS_LIMITS.cells} cells`);
+      else if (type === "deck" && raw.children.length > 12) add(`${path}.children`, "At most 12 presentation panels");
       else children = raw.children.map((c, i) => walk(c, `${path}.children[${i}]`, depth + 1, type, columnsAbove + (type === "columns" ? 1 : 0))).filter((c): c is TreeNode => Boolean(c));
     }
     const node: TreeNode = { id: nodeId, type, props: props.success ? (props.data as Record<string, unknown>) : {} };
+    if (type === "showcase" && props.success) node.props.initial = Math.min(Number(node.props.initial), (node.props.items as unknown[]).length - 1);
+    if (type === "deck" && props.success) node.props.initial = Math.min(Number(node.props.initial) || 0, Math.max(0, (children?.length ?? 0) - 1));
     if (typeof raw.name === "string" && raw.name.trim()) node.name = raw.name.trim().slice(0, 60);
     if (style?.success && Object.keys(style.data).length) node.style = style.data;
     if (motion?.success && Object.keys(motion.data).length) node.motion = motion.data;

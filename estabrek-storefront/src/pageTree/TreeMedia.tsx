@@ -132,7 +132,7 @@ async function particles(els: HTMLElement[], stops: Stop[], live: Live) {
   }
 }
 
-export function TreeMedia({ smooth }: { smooth?: boolean }) {
+export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision?: number }) {
   const pathname = usePathname();
   useEffect(() => {
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -149,7 +149,8 @@ export function TreeMedia({ smooth }: { smooth?: boolean }) {
     if (lottieEls.length) keep(lotties(lottieEls, still, stops, live));
     if (riveEls.length) keep(rives(riveEls, still, stops, live));
     if (particleEls.length) keep(particles(particleEls, stops, live));
-    if (smooth && !still && !studio) {
+    const smoothOn = smooth ?? Boolean(document.querySelector("[data-pt-smooth]"));
+    if (smoothOn && !still && !studio) {
       keep(
         import("lenis").then(({ default: Lenis }) => {
           if (!live()) return;
@@ -162,6 +163,6 @@ export function TreeMedia({ smooth }: { smooth?: boolean }) {
       dead = true;
       stops.splice(0).forEach((f) => f());
     };
-  }, [pathname, smooth]);
+  }, [pathname, smooth, revision]);
   return null;
 }

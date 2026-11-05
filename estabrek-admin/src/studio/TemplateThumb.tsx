@@ -101,6 +101,7 @@ function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }):
     case "grid":
       return <div style={{ display: "grid", gridTemplateColumns: `repeat(${num(obj(obj(n.style).base).columns) ?? 1}, minmax(0, 1fr))`, gap: 24, ...s }}>{kids()}</div>;
     case "stack":
+    case "deck":
       return <div style={{ display: "flex", flexDirection: "column", gap: 16, position: s.position ?? "relative", ...s }}>{kids()}</div>;
     case "heading":
       return <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.2, ...s }}>{say(p.text, lang)}</div>;
@@ -128,8 +129,21 @@ function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }):
       const aspect = p.look === "banner" ? "16/9" : p.look === "tall" || !p.look ? "3/4" : "1/1";
       return boxes(cols, c, () => <><Pic c={c} style={{ aspectRatio: aspect, borderRadius: round }} />{line(c, "50%")}</>);
     }
+    case "instrument":
+      return <div style={{ padding: 24, borderRadius: 16, background: "#14212a", color: "#f1f3ec", minHeight: 160 }}><div style={{ marginBottom: 12 }}>{p.kind === "guitar" ? "E A D G B E" : "♫"}</div><div style={{ display: "flex", gap: 2 }}>{Array.from({ length: p.kind === "guitar" ? 6 : 13 }, (_, index) => <div key={index} style={{ flex: 1, height: p.kind === "guitar" ? 4 : 90, background: index % 3 === 1 ? "#344450" : "#ecebe2" }} />)}</div></div>;
+    case "clock":
+      return <div style={{ padding: 24, fontSize: 36 }}>{String(p.timezone ?? "UTC")} · 00:00</div>;
+    case "chart":
+      return <div style={{ padding: 24 }}>{(Array.isArray(p.items) ? p.items : []).map((row: any, index: number) => <div key={index} style={{ marginBottom: 10, height: 14, width: `${Math.max(5, Math.min(100, Number(row.value) || 5))}%`, background: "currentColor", opacity: .6 }} />)}</div>;
+    case "filterGallery":
+      return <div style={{ display: "grid", gridTemplateColumns: `repeat(${Number(p.columns) || 3},minmax(0,1fr))`, gap: 12 }}>{(Array.isArray(p.items) ? p.items : []).slice(0, 6).map((row: any, index: number) => <div key={index} style={{ minHeight: 140, padding: 16, border: "1px solid currentColor", opacity: .65 }}>{say(row.title, lang)}</div>)}</div>;
     case "accordion":
       return <div style={{ width: "100%", maxWidth: 820, ...s }}>{list(p.items).map((it, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "16px 0", borderBottom: `1px solid ${c.border}`, fontWeight: 600 }}><span>{say(it.q, lang)}</span><span>+</span></div>)}</div>;
+    case "showcase": {
+      const items = list(p.items).slice(0, 8);
+      const initial = Math.max(0, Math.min(items.length - 1, Math.trunc(num(p.initial) ?? 0)));
+      return <div style={{ display: "flex", flexDirection: p.layout === "vertical" ? "column" : "row", gap: 8, height: num(p.height) ?? 480, width: "100%", ...s }}>{items.map((item, i) => <div key={i} style={{ flex: i === initial ? num(p.ratio) ?? 4 : 1, minWidth: 0, minHeight: 0, overflow: "hidden", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column", justifyContent: "end", background: `linear-gradient(${110 + i * 25}deg, ${c.surface}, ${c["accent-soft"]})`, color: c.text }}><b style={{ overflowWrap: "anywhere" }}>{say(item.title, lang)}</b>{i === initial ? <span style={{ fontSize: 14 }}>{say(item.text, lang)}</span> : null}</div>)}</div>;
+    }
     case "testimonials": {
       const items = list(p.items);
       const single = p.layout === "single";

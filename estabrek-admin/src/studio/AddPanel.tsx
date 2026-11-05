@@ -10,8 +10,10 @@ import { hasPreset, presetsFor, type Motion, type MotionPreset } from "./look";
 import { SplitPicker } from "./StudioTreePanels";
 import { typeLabel } from "./treeIndex";
 import type { AddKind, Where } from "./insert";
+import { REFERENCE_SECTIONS } from "./referenceSections";
 
 const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, () => string, string]> }> = [
+  { key: "references", title: () => tr("إلهام القوالب", "Template inspiration"), kinds: REFERENCE_SECTIONS.map(reference => [reference.kind, () => tr(reference.name.ar, reference.name.en), "✦"]) },
   {
     key: "ready",
     title: () => tr("أقسام جاهزة", "Ready sections"),
@@ -19,7 +21,9 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["section", () => tr("قسم فاضي", "Empty section"), "▭"],
       ["ready-intro", () => tr("عنوان ونص وزر", "Heading, text and button"), "☰"],
       ["ready-split", () => tr("صورة وكلام", "Picture and words"), "◧"],
-      ["ready-video", () => tr("فيديو وكلام فوقه", "Video with words over it"), "▶"],
+      ["ready-video", () => tr("فيديو افتتاحي بطبقة وعنوان", "Video hero with overlay"), "▶"],
+      ["ready-model3d", () => tr("عرض منتج ثلاثي الأبعاد", "3D product showcase"), "◇"],
+      ["ready-lantern", () => tr("فانوس ثلاثي الأبعاد ويراعات", "3D lantern and fireflies"), "✺"],
       ["ready-gallery", () => tr("معرض صور", "Picture gallery"), "▦"],
       ["ready-header", () => tr("هيدر: الاسم والقائمة والبحث", "Header: name, menu, search"), "⎺"],
       ["ready-footer", () => tr("فوتر: عنّا وروابط", "Footer: about and links"), "⎽"],
@@ -41,6 +45,12 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["image", () => typeLabel("image"), "▣"],
       ["video", () => typeLabel("video"), "▶"],
       ["slider", () => typeLabel("slider"), "⇆"],
+      ["showcase", () => typeLabel("showcase"), "▥"],
+      ["filterGallery", () => typeLabel("filterGallery"), "▦"],
+      ["deck", () => typeLabel("deck"), "▣"],
+      ["instrument", () => typeLabel("instrument"), "♫"],
+      ["chart", () => typeLabel("chart"), "▤"],
+      ["clock", () => typeLabel("clock"), "◷"],
     ],
   },
   {

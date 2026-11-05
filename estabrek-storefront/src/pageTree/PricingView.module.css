@@ -1,0 +1,7 @@
+.pricing { min-width: 0; }
+.pricing :global(.pt-billing) { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; margin: 0 auto 24px; gap: 4px; padding: 4px; border: 1px solid var(--border, #bbb); border-radius: 28px; }
+.pricing :global(.pt-billing) button { min-height: 44px; padding: 10px 22px; border: 0; border-radius: 24px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.pricing :global(.pt-billing) button[aria-pressed="true"] { background: var(--accent, #243e38); color: var(--accent-contrast, #fff); }
+.pricing :global(.pt-billing) button:focus-visible { outline: 3px solid var(--accent, #243e38); outline-offset: 4px; }
+.pricing :global(.pt-plan-unspecified) { font-size: 1em; font-weight: 500; }
+@media (max-width: 479.98px) { .pricing :global(.pt-plans) { grid-template-columns: minmax(0, 1fr); } }

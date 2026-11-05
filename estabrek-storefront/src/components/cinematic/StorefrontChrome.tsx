@@ -412,6 +412,7 @@ export function StorefrontChrome({
       delete document.documentElement.dataset.cinematicStorefront;
     };
   }, [enabled, home]);
+  if (bare || (!enabled && studio)) return <>{children}</>;
   if (!enabled)
     return (
       <>

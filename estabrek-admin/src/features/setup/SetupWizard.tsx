@@ -2,7 +2,7 @@
 // starter content that fits it, then the store itself with the next steps. Opens on its own
 // for an empty store's owner (AdminLayout), and from Settings any time later. Everything it
 // makes is ordinary content: the pages open in the new editor, the theme in its customizer.
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { adminLang } from "../../lib/lang";
@@ -11,27 +11,32 @@ import { getApiErrorMessage } from "../../api/http";
 import { listPages } from "../../api/pages.api";
 import { getSettings } from "../../api/settings.api";
 import { SETUP_LATER_KEY, applySetup, getSetupStatus, type SetupResult, type SetupStatus } from "../../api/setup.api";
-import { listStoreThemes, shopOrigin, type StoreThemeInfo } from "../../studio/storeThemes";
+import { shopOrigin } from "../../studio/storeThemes";
 import { PACKS, type Pack, type W } from "./packs";
 import { buildSetup } from "./buildSetup";
+import { MediaUrlInput } from "../../components/media/MediaUrlInput";
+import { getStoreTemplateImport, type StoreTemplate } from "../../api/storeTemplates.api";
+import { StoreTemplatePicker } from "./StoreTemplatePicker";
+import type { MotionProfile } from "../../studio/motionProfiles";
+import { useQueryClient } from "@tanstack/react-query";
 
-const STEPS = ["name", "industry", "theme", "content", "done"] as const;
+const STEPS = ["industry", "theme", "name", "content", "done"] as const;
 type Step = (typeof STEPS)[number];
-/** The rose design (no theme), offered to modest fashion stores. */
-const ROSE = "__rose__";
 
 
 export default function SetupWizard() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const lang = adminLang();
   const say = (x: W) => x[lang] || x.ar;
-  const [step, setStep] = useState<Step>("name");
+  const [step, setStep] = useState<Step>("industry");
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [name, setName] = useState<W>({ ar: "", en: "", he: "" });
+  const [logoUrl, setLogoUrl] = useState<string | undefined>();
+  const [template, setTemplate] = useState<StoreTemplate | null>(null);
+  const [motionOptions, setMotionOptions] = useState<MotionProfile>({});
+  const [blank, setBlank] = useState(false);
   const [pack, setPack] = useState<Pack | null>(null);
-  const [themes, setThemes] = useState<StoreThemeInfo[] | null>(null);
-  const [themesFailed, setThemesFailed] = useState(false);
-  const [themeId, setThemeId] = useState<string>(ROSE);
   const [mode, setMode] = useState<"light" | "dark" | null>(null);
   const [include, setInclude] = useState({ categories: true, types: true, home: true, menu: true });
   const [replaceHome, setReplaceHome] = useState(false);
@@ -44,42 +49,37 @@ export default function SetupWizard() {
     void getSetupStatus().then(setStatus).catch(() => setStatus(null));
     void getSettings()
       .then((s) => {
+        setLogoUrl(s.logoUrl ?? "");
         const id = (s.header as { identity?: { name?: Partial<W> } } | null | undefined)?.identity?.name;
         if (id && typeof id === "object") setName({ ar: id.ar ?? "", en: id.en ?? "", he: id.he ?? "" });
         else if (s.siteName && s.siteName !== "My Store") setName((n) => ({ ...n, ar: s.siteName ?? "" }));
       })
       .catch(() => undefined);
-    void listStoreThemes()
-      .then(setThemes)
-      .catch(() => setThemesFailed(true));
   }, []);
 
-  // The themes that fit the store, the recommended one first, then the others of its families.
-  const offered = useMemo(() => {
-    if (!pack || !themes) return [];
-    const fits = themes.filter((t) => pack.families.includes(t.family));
-    const rank = (t: StoreThemeInfo) => (t.id === pack.theme ? -1 : pack.families.indexOf(t.family));
-    return [...fits].sort((a, b) => rank(a) - rank(b));
-  }, [pack, themes]);
-  const chosen = themes?.find((t) => t.id === themeId) ?? null;
+  const chosen = template ? { mode: template.mode, modes: ["light", "dark"] as const } : blank ? { mode: "light" as const, modes: ["light", "dark"] as const } : null;
 
   const pickPack = (p: Pack) => {
     setPack(p);
-    setThemeId(p.theme ?? ROSE);
+    setTemplate(null);
+    setBlank(false);
     setMode(null);
   };
 
   const next = () => setStep(STEPS[Math.min(STEPS.length - 1, STEPS.indexOf(step) + 1)]);
   const back = () => setStep(STEPS[Math.max(0, STEPS.indexOf(step) - 1)]);
-  const canNext = step === "name" ? Boolean((name[lang] || name.ar || name.en).trim()) : step === "industry" ? Boolean(pack) : true;
+  const logoError = logoUrl?.trim() && !/^https?:\/\/[^\s]+$/i.test(logoUrl.trim()) ? tr("استخدم رابط صورة يبدأ بـ http أو https.", "Use an image URL starting with http or https.") : undefined;
+  const canNext = step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true;
 
   async function apply() {
     if (!pack) return;
     setBusy(true);
     setError(null);
     try {
-      const body = buildSetup({ pack, name, themeId: themeId === ROSE ? null : themeId, mode, include, replaceHome });
+      const imported = (template || blank) && include.home ? await getStoreTemplateImport(template?.id ?? "blank", motionOptions) : undefined;
+      const body = buildSetup({ pack, name, logoUrl, templateTree: imported?.tree, design: imported?.design, themeId: template?.theme ?? pack.theme, mode, include, replaceHome });
       const res = await applySetup(body);
+      await Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), qc.invalidateQueries({ queryKey: ["pages"] }), qc.invalidateQueries({ queryKey: ["page-blocks"] })]);
       setResult(res);
       try {
         sessionStorage.removeItem(SETUP_LATER_KEY);
@@ -87,7 +87,9 @@ export default function SetupWizard() {
         /* storage off */
       }
       const pages = await listPages().catch(() => []);
-      setHomeId(pages.find((p) => p.slug === "/")?.id ?? null);
+      const readyHomeId = pages.find((p) => p.slug === "/")?.id ?? null;
+      setHomeId(readyHomeId);
+      if (body.design && readyHomeId) { navigate(`/studio/${readyHomeId}`, { replace: true }); return; }
       setStep("done");
     } catch (e) {
       setError(getApiErrorMessage(e));
@@ -157,6 +159,7 @@ export default function SetupWizard() {
                 />
               </label>
             ))}
+            <MediaUrlInput label={tr("لوجو المتجر (اختياري)", "Store logo (optional)")} value={logoUrl ?? ""} onChange={setLogoUrl} error={logoError} placeholder="https://…/logo.png" showPreview />
           </section>
         ) : null}
 
@@ -188,40 +191,19 @@ export default function SetupWizard() {
 
         {step === "theme" && pack ? (
           <section className="space-y-5">
-            <h1 className="text-2xl font-bold">{tr("اختر ثيم متجرك", "Pick your store's theme")}</h1>
+            <h1 className="text-2xl font-bold">{tr("اختر قالبك وابدأ التصميم", "Choose a template and start designing")}</h1>
             <p className="text-sm text-white/60">
-              {tr("الثيم بيغيّر شكل المتجر كله: الألوان، الخطوط، الحركة والصفحة الرئيسية. بتقدر تخصّصه أو تغيّره بأي وقت.", "A theme changes the whole store: colours, fonts, motion and the home page. You can customise or change it any time.")}
+              {tr("أي قالب بتختاره بصير نسخة إلك: بتغيّر عناصره وتوزيعه وصوره وألوانه بالمحرّر، وبتقدر تختار قالب ثاني بأي وقت.", "Any template becomes your own copy: change its elements, layout, images and colours in the editor, and choose another template any time.")}
             </p>
-            {themesFailed ? <p className="rounded-xl bg-amber-500/10 p-3 text-xs text-amber-200">{tr("ما قدرنا نجيب الثيمات من المتجر. بتقدر تكمّل وتختار الثيم بعدين.", "We couldn't load the themes from the store. You can carry on and pick one later.")}</p> : null}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label={tr("الثيم", "Theme")}>
-              {pack.id === "modest" ? (
-                <ThemeCard
-                  name={tr("تصميم الورد", "The rose design")}
-                  blurb={tr("تصميم الأزياء المحتشمة الأصلي: فيلم الافتتاح والمشاهد والمرشدة.", "The original modest fashion design: the opening film, the scenes and the guide.")}
-                  swatch={["#fff8f4", "#ffffff", "#e9b5c9", "#7d2448", "#462c3b"]}
-                  picked={themeId === ROSE}
-                  recommended
-                  onPick={() => setThemeId(ROSE)}
-                  testId="setup-theme-rose"
-                />
-              ) : null}
-              {offered.map((t) => (
-                <ThemeCard
-                  key={t.id}
-                  name={t.name[lang] || t.name.ar}
-                  blurb={t.blurb[lang] || t.blurb.ar}
-                  swatch={t.swatch}
-                  three={Boolean(t.stage)}
-                  picked={themeId === t.id}
-                  recommended={t.id === pack.theme}
-                  onPick={() => {
-                    setThemeId(t.id);
-                    setMode(null);
-                  }}
-                  testId={`setup-theme-${t.id}`}
-                />
-              ))}
-            </div>
+            <StoreTemplatePicker key={pack.id} families={pack.families} categoryHint={pack.id} selected={template} mode={mode} motionOptions={motionOptions} onMotionOptions={setMotionOptions} onPick={(value) => {
+              setTemplate(value);
+              setBlank(false);
+              setMode(value?.mode ?? null);
+            }} />
+            <button type="button" onClick={() => { setBlank(true); setTemplate(null); setMode("light"); }} aria-pressed={blank} className={`w-full rounded-2xl border p-5 text-start ${blank ? "border-accent-400 bg-accent-500/15" : "border-white/10 hover:bg-white/5"}`} data-testid="setup-blank">
+              <span className="block font-semibold">{tr("ابدأ بصفحة فارغة", "Start with a blank canvas")}</span>
+              <span className="mt-1 block text-xs text-white/50">{tr("ابنِ تصميمك من الصفر بعناصر المحرّر.", "Build your own design from the editor's elements.")}</span>
+            </button>
             {chosen && chosen.modes.length > 1 ? (
               <div className="flex items-center gap-2 text-xs" role="radiogroup" aria-label={tr("فاتح أو غامق", "Light or dark")}>
                 <span className="text-white/55">{tr("الألوان:", "Colours:")}</span>
@@ -245,14 +227,14 @@ export default function SetupWizard() {
             <Check id="types" on={include.types} onChange={(v) => setInclude({ ...include, types: v })} title={tr("أنواع المنتجات وحقولها", "Product types and their fields")}>
               <p className="text-[11px] text-white/45">{tr("مثل القماش والمقاس للملابس، أو الذاكرة والمعالج للموبايلات.", "Like fabric and size for clothing, or storage and processor for phones.")}</p>
             </Check>
-            <Check id="home" on={include.home} onChange={(v) => setInclude({ ...include, home: v })} title={tr("الصفحة الرئيسية", "The home page")}>
+            <Check id="home" on={include.home} locked={Boolean(template || blank)} onChange={(v) => setInclude({ ...include, home: v })} title={tr("الصفحة الرئيسية", "The home page")}>
               <p className="text-[11px] text-white/45">
-                {tr("افتتاح بكلام متجرك، وصل حديثاً، الأقسام، الأكثر طلباً، أسئلة متكررة وتواصل.", "An opening in your store's words, new arrivals, categories, best sellers, questions and contact.")}
+                {template ? `${tr("القالب المختار:", "Selected template:")} ${template.name[lang]}` : tr("افتتاح بكلام متجرك، وصل حديثاً، الأقسام، الأكثر طلباً، أسئلة متكررة وتواصل.", "An opening in your store's words, new arrivals, categories, best sellers, questions and contact.")}
               </p>
-              {status?.hasHome && include.home ? (
+              {(status?.hasHome || status?.hasDesign) && include.home ? (
                 <label className="mt-2 flex items-center gap-2 text-xs text-amber-200">
                   <input type="checkbox" checked={replaceHome} onChange={(e) => setReplaceHome(e.target.checked)} data-testid="setup-replace-home" />
-                  {tr("عندك صفحة رئيسية: بدّلها بالجديدة (القديمة بتنحفظ بالسجل)", "You have a home page: replace it with the new one (the old one is kept in its history)")}
+                  {tr("استبدل التصميم الحالي بالقالب المختار (الصفحة والهيدر والفوتر بتنحفظ بالسجل)", "Replace the current design with this template (home, header and footer are kept in history)")}
                 </label>
               ) : null}
             </Check>
@@ -299,11 +281,11 @@ export default function SetupWizard() {
 
       {step !== "done" ? (
         <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-white/[0.08] bg-surface-950/90 px-4 py-3 backdrop-blur">
-          <Button variant="ghost" size="sm" onClick={back} disabled={step === "name" || busy}>
+          <Button variant="ghost" size="sm" onClick={back} disabled={step === STEPS[0] || busy}>
             {tr("رجوع", "Back")}
           </Button>
           {step === "content" ? (
-            <Button variant="accent" size="sm" onClick={() => void apply()} isLoading={busy} disabled={busy || (status ? !status.owner : false)} data-testid="setup-apply">
+            <Button variant="accent" size="sm" onClick={() => void apply()} isLoading={busy} disabled={busy || (status ? !status.owner : false) || Boolean(include.home && (template || blank) && (status?.hasHome || status?.hasDesign) && !replaceHome)} data-testid="setup-apply">
               {tr("جهّز المتجر", "Set up the store")}
             </Button>
           ) : (
@@ -344,11 +326,11 @@ function ThemeCard(p: { name: string; blurb: string; swatch: string[]; three?: b
   );
 }
 
-function Check(p: { id: string; on: boolean; onChange: (v: boolean) => void; title: string; children?: ReactNode }) {
+function Check(p: { id: string; on: boolean; locked?: boolean; onChange: (v: boolean) => void; title: string; children?: ReactNode }) {
   return (
     <label className={`block rounded-2xl border p-4 ${p.on ? "border-accent-400/50 bg-accent-500/[0.06]" : "border-white/[0.08]"}`}>
       <span className="flex items-center gap-2 text-sm font-semibold">
-        <input type="checkbox" checked={p.on} onChange={(e) => p.onChange(e.target.checked)} data-testid={`setup-include-${p.id}`} />
+        <input type="checkbox" checked={p.on} disabled={p.locked} onChange={(e) => p.onChange(e.target.checked)} data-testid={`setup-include-${p.id}`} />
         {p.title}
       </span>
       <span className="mt-2 block">{p.children}</span>

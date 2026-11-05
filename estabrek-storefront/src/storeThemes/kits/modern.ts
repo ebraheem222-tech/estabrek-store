@@ -24,6 +24,9 @@ export const MODERN = {
   /** A bento board: tiles of different sizes, each its own kind (a picture, a number, a quote, a product, a call). */
   bento: (k: TK, title: Words, tiles: Tile[], tone: Tone = "bg"): Node => {
     const r = Math.max(14, k.s.img.radius + 8);
+    const productCount = tiles.filter((x) => x.kind === "product").length;
+    const firstProduct = tiles.findIndex((x) => x.kind === "product");
+    const visibleTiles = k.demo ? tiles : tiles.filter((x, i) => x.kind !== "product" || i === firstProduct);
     const tile = (x: Tile): Node => {
       if (x.kind === "photo")
         return stack(k, [
@@ -35,12 +38,12 @@ export const MODERN = {
       if (x.kind === "quote")
         return stack(k, [T(k, t("“"), { size: 64, style: { lineHeight: 0.8, color: "accent", weight: 700 }, motion: false }), H(k, x.text, 3, { size: 22, style: { lineHeight: 1.35, caps: "none" }, motion: false }), ...(x.by ? [T(k, x.by, { size: 13, style: { color: "muted", weight: 700 }, motion: false })] : [])], { style: { bg: "surface", radius: r, pad: [28, 28, 28, 28], gap: 10, justify: "between", minHeight: "250px", border: { width: 1, color: "border" } } });
       if (x.kind === "product")
-        return stack(k, [PIC(k, x.item.pic, x.item.name, { aspect: "1 / 1", radius: r - 6, href: go, motion: { hover: { kind: "zoom" } } }), row(k, [T(k, x.item.name, { size: 15, style: { weight: 600 }, motion: false }), T(k, t(x.item.price), { size: 15, style: { weight: 700, color: "accent" }, motion: false })], { style: { justify: "between", wrap: false } })], { style: { bg: "surface", radius: r, pad: [12, 12, 16, 12], gap: 10 }, motion: { hover: { kind: "lift" } } });
+        return stack(k, k.demo ? [PIC(k, x.item.pic, x.item.name, { aspect: "1 / 1", radius: r - 6, href: go, motion: { hover: { kind: "zoom" } } }), row(k, [T(k, x.item.name, { size: 15, style: { weight: 600 }, motion: false }), T(k, t(x.item.price), { size: 15, style: { weight: 700, color: "accent" }, motion: false })], { style: { justify: "between", wrap: false } })] : [el(k, "products", { source: "new", limit: productCount, layout: "grid", columns: Math.min(2, productCount), card: "plain" })], { style: { bg: "surface", radius: r, pad: [12, 12, 16, 12], gap: 10, ...span(!k.demo && productCount > 1) }, motion: { hover: { kind: "lift" } } });
       return stack(k, [H(k, x.title, 3, { size: 30, style: { color: "bg" }, motion: false }), BTN(k, x.cta, go, "main", { style: { bg: "bg", color: "text", self: "start" } })], { style: { bg: "text", radius: r, pad: [32, 32, 32, 32], gap: 18, justify: "between", minHeight: "250px", ...span(x.wide) }, motion: { hover: { kind: "spotlight" } } });
     };
     return part(k, name("بنتو|Bento|בנטו"), [
       H(k, title, 2, { style: { margin: [0, 0, 32, 0] } }),
-      grid(k, 4, tiles.map(tile), { phoneColumns: 2, style: { gap: 14, align: "stretch" }, motion: mv.group(k) }),
+      grid(k, 4, visibleTiles.map(tile), { phoneColumns: 2, style: { gap: 14, align: "stretch" }, motion: mv.group(k) }),
     ], { tone });
   },
 

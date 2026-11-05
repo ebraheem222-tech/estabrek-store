@@ -93,7 +93,7 @@ export type StageOptions = {
   games?: Array<{ name: string; color: string; href?: string; imageUrl?: string; model?: string }>;
   scene?: StageScene;
 };
-export type StoreThemeChoice = { id: string; mode?: "light" | "dark" | null; /** The store's changes (features/themes/customize.ts). */ custom?: unknown };
+export type StoreThemeChoice = { id: string; mode?: "light" | "dark" | null; snapshot?: unknown; /** The store's changes (features/themes/customize.ts). */ custom?: unknown };
 
 /** The rose design (no theme), shown first in the gallery. */
 export const ROSE_ID = "rose";
@@ -158,11 +158,31 @@ export const currentStoreTheme = (header: unknown): StoreThemeChoice | null => {
   return t && typeof t.id === "string" && t.id ? t : null;
 };
 
+/** The customer's copied palette/fonts remain available even when the source template changes. */
+export function withOwnedTheme(themes: StoreThemeInfo[], header: unknown): StoreThemeInfo[] {
+  const choice = currentStoreTheme(header);
+  const s = choice?.snapshot as Record<string, any> | undefined;
+  const p = s?.palettes?.[choice?.mode ?? s?.mode];
+  if (!s?.id || !p || !s.fonts?.display?.length || !s.fonts?.text?.length) return themes;
+  const own: StoreThemeInfo = { id: s.id, name: s.name, blurb: s.blurb, family: s.family, mode: s.mode, modes: (["light", "dark"] as const).filter((mode) => s.palettes[mode]), palettes: s.palettes, swatch: [p.bg, p.surface, p.accent, p.strong, p.ink], fonts: { display: s.fonts.display[0], text: s.fonts.text[0] }, round: s.round, pill: s.pill, shadow: s.shadow, hero: s.hero, motion: s.motion };
+  return [own, ...themes.filter((t) => t.id !== own.id)];
+}
+
+async function copiedChoice(choice: StoreThemeChoice, header: Record<string, any>): Promise<StoreThemeChoice> {
+  if (header.storeDesign?.mode !== "cms") return choice;
+  const current = currentStoreTheme(header);
+  if (current?.id === choice.id && current.snapshot) return { ...choice, snapshot: current.snapshot };
+  const res = await fetch(`${shopOrigin()}/api/store-themes?theme=${encodeURIComponent(choice.id)}`, { credentials: "omit" });
+  if (!res.ok) throw new Error("Theme couldn't be copied");
+  const data = await res.json() as { theme: unknown };
+  return { ...choice, snapshot: data.theme };
+}
+
 /** Saves the theme for the whole store from the latest settings (other header fields kept); null = the rose design. */
 export async function saveStoreTheme(choice: StoreThemeChoice | null) {
   const latest = await getSettings();
   const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
-  if (choice && choice.id !== ROSE_ID) header.storeTheme = { id: choice.id, mode: choice.mode ?? null };
+  if (choice && choice.id !== ROSE_ID) header.storeTheme = await copiedChoice({ ...choice, mode: choice.mode ?? null }, header);
   else delete header.storeTheme;
   return updateSettings({ header } as never);
 }
@@ -175,7 +195,7 @@ export async function saveStoreTheme(choice: StoreThemeChoice | null) {
 export async function saveStorePack(choice: StoreThemeChoice, kit: PackKit | null) {
   const latest = await getSettings();
   const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
-  header.storeTheme = { id: choice.id, mode: choice.mode ?? null, ...(choice.custom ? { custom: choice.custom } : {}) };
+  header.storeTheme = await copiedChoice({ ...choice, mode: choice.mode ?? null }, header);
   if (kit) header.storeKit = kit;
   else delete header.storeKit;
   return updateSettings({ header } as never);
@@ -187,7 +207,7 @@ export async function saveThemeCustom(themeId: string, custom: unknown | null) {
   const header = { ...((latest.header ?? {}) as Record<string, unknown>) };
   const now = (header.storeTheme ?? {}) as StoreThemeChoice;
   if (now.id !== themeId) throw new Error("THEME_CHANGED");
-  const next: StoreThemeChoice = { id: now.id, mode: now.mode ?? null };
+  const next: StoreThemeChoice = { id: now.id, mode: now.mode ?? null, ...(now.snapshot ? { snapshot: now.snapshot } : {}) };
   if (custom) next.custom = custom;
   header.storeTheme = next;
   return updateSettings({ header } as never);

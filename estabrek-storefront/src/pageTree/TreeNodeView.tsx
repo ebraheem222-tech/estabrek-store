@@ -19,6 +19,8 @@ import { TreeIcon } from "./icons";
 import { ArtView, safeArt } from "./svgArt";
 import { color } from "./css";
 import { particlesOf } from "./particles";
+import { sceneOf } from "./scene";
+import { SceneView } from "./SceneView";
 import { model3dOf } from "./model3d";
 import { Model3dSpot } from "./Model3dSpot";
 import { BlockView, WORDS as BLOCK_WORDS } from "./blocks";
@@ -26,6 +28,15 @@ import { PopupView } from "./Interactive";
 import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
+import { sliderSettings } from "./sliderEffects";
+import { InstrumentView } from "./InstrumentView";
+import { instrumentOf } from "./instrument";
+import { ChartView } from "./ChartView";
+import { ClockView } from "./ClockView";
+import { FilterGalleryBlock } from "./FilterGalleryBlock";
+import { DeckView } from "./DeckView";
+import { showcaseOf } from "./showcase";
+import { ShowcaseView } from "./ShowcaseView";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -99,9 +110,11 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       const edges = (["top", "bottom"] as const).map((where) => sectionEdge(node.id, where, p.edges?.[where])).filter(Boolean);
       // Particles behind its content (TreeMedia draws them), in its colour.
       const dots = particlesOf(p.particles);
+      const scene = sceneOf(p.scene);
       const tint = dots?.color ? color(dots.color) : undefined;
       return (
-        <Tag className={`${cls(node)}${edges.length || dots ? " pt-has-edges" : ""}`} id={anchor} {...mark}>
+        <Tag className={`${cls(node)}${edges.length || dots || scene ? " pt-has-edges" : ""}`} id={anchor} {...mark}>
+          {scene ? <SceneView spec={scene} primary={color(scene.color ?? "accent")!} secondary={color(scene.secondary ?? "text")!} /> : null}
           {dots ? <div className="pt-particles" data-pt-particles={JSON.stringify({ kind: dots.kind, amount: dots.amount, speed: dots.speed })} style={tint ? { color: tint } : undefined} aria-hidden="true" /> : null}
           {edges}
           {p.contained ? <div className="pt-inner">{kids()}</div> : kids()}
@@ -128,6 +141,12 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
           </PopupView>
         </div>
       );
+    }
+    case "deck": {
+      const panels = (node.children ?? []).filter(child => child.type === "stack").slice(0, 12).map((child, index) => ({ id: child.id, label: say(p.labels?.[child.id]) || child.name || `${index + 1}`, content: <TreeNodeView node={child} ctx={ctx} /> }));
+      const duration = typeof p.duration === "number" && Number.isFinite(p.duration) && p.duration >= 0 && p.duration <= 2 ? p.duration : .5;
+      const initial = typeof p.initial === "number" && Number.isInteger(p.initial) ? Math.max(0, Math.min(panels.length - 1, p.initial)) : 0;
+      return <div className={cls(node)} {...mark}><DeckView panels={panels} lang={ctx.lang} settings={{ presentation: p.presentation === "tabs" || p.presentation === "vertical-tabs" ? p.presentation : "deck", transition: p.transition === "fade" || p.transition === "wipe" ? p.transition : "slide", duration, initial, arrows: p.arrows !== false, dots: p.dots !== false, menu: p.menu !== false }} /></div>;
     }
     case "grid":
     case "stack":
@@ -176,6 +195,7 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
           {...(inFrame ? {} : mark)}
           src={src}
           poster={poster}
+          aria-label={say(p.label) || undefined}
           autoPlay={p.autoplay === true}
           muted={p.muted === true || p.autoplay === true}
           loop={p.loop === true}
@@ -197,24 +217,26 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       // A row that snaps: it swipes and scrolls without scripts; SliderControls adds the buttons.
       const slides = sliderSlides(p);
       if (!slides.length) return null;
+      const settings = sliderSettings(p);
       const w = SLIDER_WORDS[ctx.lang] ?? SLIDER_WORDS.ar;
       const { carousel, ...words } = w;
       return (
-        <div className={cls(node)} {...mark} role="region" aria-roledescription={carousel} aria-label={carousel}>
+        <div className={cls(node)} {...mark} data-effect={settings.effect} data-axis={settings.axis} data-caption={settings.captionPosition} data-thumbnails={settings.thumbnails ? "true" : undefined} style={{ "--pt-slider-zoom": settings.zoom } as CSSProperties} role="region" aria-roledescription={carousel} aria-label={carousel}>
           <div className="pt-slides" tabIndex={0}>
             {slides.map((s, i) => {
               const caption = say(s.caption);
+              const title = say(s.title), text = say(s.text), cta = say(s.cta);
               const to = link(s.href);
               const media =
                 s.kind === "video" ? (
-                  <video className="pt-slide-media" src={s.src} aria-label={say(s.alt) || caption || undefined} autoPlay muted loop playsInline preload="metadata" />
+                  <video className="pt-slide-media" src={s.src} aria-label={say(s.alt) || title || caption || undefined} controls={!to} muted loop playsInline preload="metadata" />
                 ) : (
                   <img className="pt-slide-media" src={s.src} alt={say(s.alt)} loading="lazy" decoding="async" draggable={false} />
                 );
               const inner = (
                 <>
                   {media}
-                  {caption ? <span className="pt-slide-caption">{caption}</span> : null}
+                  {title || text || (cta && to) ? <span className="pt-slide-caption pt-slide-rich">{caption ? <span>{caption}</span> : null}{title ? <strong className="pt-slide-title">{title}</strong> : null}{text ? <span className="pt-slide-text">{text}</span> : null}{cta && to ? <span className="pt-slide-cta">{cta}</span> : null}</span> : caption ? <span className="pt-slide-caption">{caption}</span> : null}
                 </>
               );
               return (
@@ -225,10 +247,18 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
             })}
           </div>
           {fx}
-          <SliderControls count={slides.length} seconds={sliderSeconds(p.autoplay)} loop={p.loop !== false} arrows={p.arrows !== false} dots={p.dots !== false} words={words} />
+          <SliderControls count={slides.length} seconds={sliderSeconds(p.autoplay)} loop={p.loop !== false} arrows={p.arrows !== false} dots={p.dots !== false} words={words} settings={settings} slides={slides.map((s) => ({ src: s.src, kind: s.kind, label: say(s.title) || say(s.alt) || say(s.caption) }))} />
         </div>
       );
     }
+    case "instrument":
+      return <div className={cls(node)} {...mark}><InstrumentView spec={instrumentOf(p)} lang={ctx.lang} label={say(p.label)} /></div>;
+    case "chart":
+      return <div className={cls(node)} {...mark}><ChartView props={p} say={say} label={say(p.label) || ({ ar: "الرسم البياني", en: "Chart", he: "תרשים" }[ctx.lang])} /></div>;
+    case "clock":
+      return <div className={cls(node)} {...mark}><ClockView timezone={typeof p.timezone === "string" ? p.timezone.slice(0, 80) : "UTC"} format={p.format === "12" ? "12" : "24"} seconds={p.seconds !== false} date={p.date === true} lang={ctx.lang} label={say(p.label)} /></div>;
+    case "filterGallery":
+      return <FilterGalleryBlock props={p} className={cls(node)} mark={mark} say={say} link={link} lang={ctx.lang} />;
     case "product360": {
       // A product's 360° view: that colour's own, else the one for every colour. Nothing to show = an empty place.
       const product = typeof p.productId === "string" ? ctx.spinProducts?.[p.productId] : null;
@@ -252,6 +282,13 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
         </span>
       );
     }
+    case "showcase": {
+      const spec = showcaseOf(p);
+      if (!spec) return null;
+      const fallback = ctx.lang === "en" ? { label: "Image showcase", panel: "Panel", cta: "Explore" } : ctx.lang === "he" ? { label: "גלריית תמונות", panel: "לוח", cta: "לגילוי" } : { label: "معرض صور", panel: "لوحة", cta: "اكتشفي" };
+      const items = spec.items.map((item, index) => ({ title: say(item.title) || `${fallback.panel} ${index + 1}`, text: say(item.text), image: item.image, href: link(item.href) ?? undefined, cta: say(item.cta) || fallback.cta }));
+      return <div className={cls(node)} {...mark}><ShowcaseView {...spec} label={say(spec.label) || fallback.label} items={items} />{fx}</div>;
+    }
     case "accordion":
     case "testimonials":
     case "pricing":
@@ -274,7 +311,7 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
       const to = link(p.href);
       return (
         <div className={cls(node)} {...mark}>
-          <Model3dSpot spec={spec} label={say(p.label) || undefined} href={to ?? undefined} />
+          <Model3dSpot spec={spec} label={say(p.label) || undefined} href={to ?? undefined} poster={safeSrc(p.poster) ?? undefined} />
           {fx}
         </div>
       );

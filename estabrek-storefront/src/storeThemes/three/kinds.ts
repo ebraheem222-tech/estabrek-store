@@ -8,7 +8,7 @@ import type { Words } from "../types";
 export const MODEL_KINDS = ["controller", "headset", "console", "handheld", "keyboard", "mouse", "arcade", "vr", "wheel", "dice", "trophy", "coin", "sword", "shield", "potion", "rocket", "helmet", "tv", "chair", "cartridge",
   // Products of every other kind of store.
   "phone", "laptop", "tablet", "watch", "camera", "speaker", "book", "perfume", "lipstick", "jar", "sneaker", "handbag", "hanger", "ring", "gem", "mug", "plant", "lamp", "dumbbell", "ball", "guitar", "vinyl", "vase", "blocks", "palette",
-  "easel", "frame", "racket", "cake", "teddy", "bone"] as const;
+  "easel", "frame", "racket", "cake", "teddy", "bone", "lantern"] as const;
 export type ModelKind = (typeof MODEL_KINDS)[number];
 
 const w = (ar: string, en: string, he: string): Words => ({ ar, en, he });
@@ -65,6 +65,7 @@ export const MODEL_INFO: Record<ModelKind, { label: Words; find: string[] }> = {
   cake: { label: w("كيك وحلويات", "Cakes & sweets", "עוגות ומתוקים"), find: ["cake", "bakery", "dessert", "sweet", "pastry", "كيك", "كعك", "حلويات", "مخبوزات", "مخبز", "עוגה", "מאפה", "קינוח"] },
   teddy: { label: w("دمى وألعاب ناعمة", "Plush toys", "בובות רכות"), find: ["teddy", "plush", "doll", "soft toy", "baby", "دب", "دمى", "دمية", "مواليد", "דובי", "בובה", "תינוק"] },
   bone: { label: w("للكلاب", "For dogs", "לכלבים"), find: ["dog", "puppy", "bone", "chew", "كلب", "كلاب", "جرو", "عظمة", "כלב", "גור", "עצם"] },
+  lantern: { label: w("فوانيس", "Lanterns", "עששיות"), find: ["lantern", "lanterns", "paper light", "فانوس", "فوانيس", "עששית", "עששיות"] },
 };
 
 export const ANIMS = ["none", "spin", "float", "bounce", "pulse", "swing", "orbit"] as const;
@@ -135,6 +136,7 @@ export const MODEL_KNOBS: Record<ModelKind, KnobSpec[]> = {
   cake: [count("tiers", w("عدد الطوابق", "Tiers", "קומות"), 1, 3, 2), count("candles", w("عدد الشموع", "Candles", "נרות"), 0, 7, 3)],
   teddy: [knob("ears", w("حجم الأذنين", "Ear size", "גודל האוזניים"), 0.6, 1.6), knob("bow", w("الفيونكة", "Bow", "פפיון"), 0, 1.4)],
   bone: [knob("length", w("الطول", "Length", "אורך"), 0.7, 1.4), knob("ends", w("حجم الأطراف", "End size", "גודל הקצוות"), 0.7, 1.4)],
+  lantern: [knob("width", w("عرض الفانوس", "Lantern width", "רוחב העששית"), 0.65, 1.4), knob("height", w("ارتفاع الفانوس", "Lantern height", "גובה העששית"), 0.65, 1.4), count("ribs", w("عدد الأضلاع", "Frame ribs", "צלעות המסגרת"), 6, 16, 10), knob("handle", w("حجم المقبض (0 = بلا)", "Handle size (0 = none)", "גודל הידית (0 = ללא)"), 0, 1.5)],
 };
 
 /** A model's knobs with the store's values (else each knob's own), each kept in range. */

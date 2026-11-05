@@ -45,7 +45,7 @@ export async function getMenuTreeByLocation(location: "HEADER" | "FOOTER" | "SEC
 /** Get the single SiteSettings (if missing, create an empty one) */
 export async function getOrCreateSiteSettings() {
   let s = await prisma.siteSettings.findFirst();
-  if (!s) s = await prisma.siteSettings.create({ data: {} });
+  if (!s) s = await prisma.siteSettings.create({ data: { header: { storeDesign: { version: 1, mode: "cms" } } } });
   return s;
 }
 

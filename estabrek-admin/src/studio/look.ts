@@ -11,6 +11,7 @@ import { tr } from "../lib/words";
 export type Look = Record<string, unknown>;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
 export type Motion = {
+  engine?: "gsap" | "anime";
   enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
   scroll?: { kind: "parallax" | "keys" | "words" | "pin"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
   loop?: { kind: string; duration?: number; amount?: number };

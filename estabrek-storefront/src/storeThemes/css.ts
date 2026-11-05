@@ -8,6 +8,7 @@ import { THEME_FONT_FILES } from "./fonts.gen";
 import { TREE_FONTS, googleFontsHref } from "../pageTree/fonts";
 import { ROSE_COLOURS } from "./roseColours.gen";
 import type { StoreTheme } from "./types";
+import type { CSSProperties } from "react";
 
 export function themePalette(theme: StoreTheme, mode?: "light" | "dark" | null): { palette: Palette; mode: "light" | "dark" } {
   const want = mode ?? theme.mode;
@@ -36,6 +37,24 @@ const googleImport = (families: string[]) => {
 };
 const stack = (fonts: string[]) => fonts.map((f) => (/^(serif|sans-serif|monospace)$/.test(f) ? f : `"${f}"`)).join(",");
 
+/** Page-tree tokens are scoped inside ThemeWrap, whose inline variables otherwise win over the theme. */
+export function treeThemeVars(theme: StoreTheme, mode?: "light" | "dark" | null): CSSProperties {
+  const { palette: p, mode: resolved } = themePalette(theme, mode);
+  return {
+    "--bg": p.bg, "--surface": p.surface, "--text": p.ink, "--muted": p.muted,
+    "--accent": p.strong, "--accent-soft": p.soft, "--accent-contrast": p.onStrong, "--border": p.line,
+    "--pt-font-heading": stack(theme.fonts.display), fontFamily: stack(theme.fonts.text),
+    backgroundColor: p.bg, color: p.ink, colorScheme: resolved,
+  } as CSSProperties;
+}
+
+/** Global regions follow the same live preview variables as the customer page. */
+export const liveTreeThemeVars = {
+  "--bg": "var(--th-bg)", "--surface": "var(--th-surface)", "--text": "var(--th-ink)", "--muted": "var(--th-muted)",
+  "--accent": "var(--th-strong)", "--accent-soft": "var(--th-soft)", "--accent-contrast": "var(--th-on-strong)", "--border": "var(--th-line)",
+  "--pt-font-heading": "var(--th-display)", fontFamily: "var(--th-text)", backgroundColor: "var(--th-bg)", color: "var(--th-ink)", colorScheme: "var(--th-mode)",
+} as CSSProperties;
+
 export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): string {
   const { palette: p, mode: m } = themePalette(theme, mode);
   const rose = remapRose(ROSE_COLOURS, p);
@@ -47,6 +66,7 @@ export function themeCss(theme: StoreTheme, mode?: "light" | "dark" | null): str
     "--st-round": String(theme.round),
     "--st-pill": theme.pill,
     "--th-bg": p.bg,
+    "--th-mode": m,
     "--th-surface": p.surface,
     "--th-soft": p.soft,
     "--th-line": p.line,

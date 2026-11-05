@@ -7,6 +7,7 @@
  */
 import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
+import { SLIDER_EFFECT_CSS } from "./sliderEffectCss";
 
 export const TABLET_MAX = 1023.98;
 export const PHONE_MAX = 639.98;
@@ -248,6 +249,11 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   push("max-width", length(s.maxWidth));
   push("height", length(s.height));
   push("min-height", length(s.minHeight));
+  if (s.sticky === false && !s.layer) { d.push("position:relative", "top:auto", "align-self:auto"); }
+  else if (s.sticky && typeof s.sticky === "object" && !s.layer) {
+    const top = num(s.sticky.top, 0, 240);
+    if (top !== undefined) d.push("position:sticky", `top:${top}px`, "align-self:start");
+  }
   const cols = num(s.columns, 1, 12);
   if (cols !== undefined && Number.isInteger(cols)) d.push(`grid-template-columns:repeat(${cols},minmax(0,1fr))`);
   const widths = widthsTemplate(s.widths);
@@ -762,7 +768,7 @@ export const BASE_CSS = [
   // A cell is a small container: its things one under the other, at the start; text and wide things take the whole width.
   ".pt-cell{display:flex;flex-direction:column;align-items:flex-start;gap:16px;min-width:0}",
   // (:where, so an element's own "where it sits" wins.)
-  ".pt-cell>:where(.pt-heading,.pt-text,.pt-video,.pt-slider,.pt-product360,.pt-products,.pt-categories,.pt-form,.pt-columns,.pt-grid,.pt-stack,.pt-divider,.pt-spacer){align-self:stretch}",
+  ".pt-cell>:where(.pt-heading,.pt-text,.pt-video,.pt-slider,.pt-showcase,.pt-product360,.pt-products,.pt-categories,.pt-form,.pt-columns,.pt-grid,.pt-stack,.pt-divider,.pt-spacer){align-self:stretch}",
   ".pt-cell>.pt-image,.pt-cell>.pt-image-link{max-width:100%}",
   ".pt-heading{margin:0;font-family:var(--pt-font-heading);line-height:1.2;white-space:pre-line}",
   ".pt-text{margin:0;line-height:1.75;white-space:pre-line}",
@@ -886,6 +892,7 @@ export const BASE_CSS = [
   // A 3D model: square unless the element says; its link covers it.
   ".pt-model3d{display:block;width:100%;aspect-ratio:1/1;position:relative}",
   ".pt-model3d-stage{position:absolute;inset:0;border-radius:inherit;overflow:hidden}.pt-model3d-stage canvas{display:block;touch-action:pan-y}",
+  ".pt-model3d-poster{position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;pointer-events:none}.pt-model3d-fallback{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;color:var(--muted);pointer-events:none}",
   ".pt-model3d-link{position:absolute;inset:0;z-index:1}",
   ".pt-anim-canvas{display:block;width:100%;height:100%}",
   ".pt-particles{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;color:var(--accent)}",
@@ -934,6 +941,7 @@ export const BASE_CSS = [
   ".pt-slider-dot[aria-current=true]{width:30px}",
   ".pt-slider-dot[aria-current=true]::before{width:22px;background:#fff}",
   ".pt-slider-arrow:focus-visible,.pt-slider-pause:focus-visible,.pt-slider-dot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}",
+  SLIDER_EFFECT_CSS,
   // A drawing: as wide as its place (a width of its own makes it smaller); its own colour is the theme's.
   ".pt-svg{display:block;width:100%;max-width:100%;color:var(--accent)}",
   ".pt-product360{display:block;width:100%;max-width:100%}",

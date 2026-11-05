@@ -8,13 +8,131 @@ import type { TK } from "../lib";
 import { MODERN as Mo } from "../modern";
 import { OPENINGS as O, PARTS as P } from "../sections";
 import { STYLES } from "../styles";
-import { t } from "../tree";
+import { t, type Node } from "../tree";
 import type { Template } from "./types";
 
 const S = SHOES;
 const promises = SHOE_PROMISES;
 
-export const SHOE_TEMPLATES: Template[] = [
+// Live pages keep the compositions but start with shopping guidance. Gallery stories,
+// policies, reviews and product specifications belong only to the illustrative preview.
+const LIVE = {
+  shop: t("تصفّح الأحذية|Browse shoes|עיינו בנעליים"),
+  intro: t("اكتشف القصّات والألوان، واقرأ تفاصيل كل زوج على صفحة المنتج.|Explore shapes and colours, and read the details of each pair on its product page.|גלו גזרות וצבעים וקראו את פרטי כל זוג בדף המוצר."),
+  title: t("خطوتك، بطريقتك|Your step, your way|הצעד שלך, בדרך שלך"),
+  fresh: t("اكتشف المجموعة|Explore the collection|גלו את הקולקציה"),
+  collections: t("تصفّح الأقسام|Browse collections|עיינו בקטגוריות"),
+  guide: t("قبل ما تختار|Before you choose|לפני שבוחרים"),
+  story: t("مساحة لأسلوبك|Make room for your style|מקום לסגנון שלכם"),
+  storyText: t("اختَر حسب يومك وطريقتك باللبس. قارن المعلومات المعروضة لكل زوج قبل الطلب.|Choose for your day and the way you dress. Compare the information shown for each pair before ordering.|בחרו לפי היום וסגנון הלבוש שלכם. השוו את המידע המוצג לכל זוג לפני ההזמנה."),
+  fit: t("المقاس والقصّة|Sizing and fit|מידה וגזרה"),
+  fitText: t("راجع جدول المقاسات وملاحظات القصّة على صفحة المنتج، واسألنا إذا احتجت توضيح.|Check the size chart and fit notes on the product page, and ask us if you need clarification.|בדקו את טבלת המידות והערות הגזרה בדף המוצר ושאלו אם דרושה הבהרה."),
+  materials: t("الخامات والتفاصيل|Materials and details|חומרים ופרטים"),
+  materialsText: t("اقرأ وصف الخامات والتفاصيل المذكورة لكل زوج على صفحة المنتج.|Read the materials and construction details listed for each pair on the product page.|קראו את החומרים ופרטי המבנה המופיעים לכל זוג בדף המוצר."),
+  care: t("العناية والاستخدام|Care and use|טיפול ושימוש"),
+  careText: t("اتبع تعليمات العناية والاستخدام الخاصة بالمنتج اللي اخترته.|Follow the care and usage instructions for the product you choose.|פעלו לפי הוראות הטיפול והשימוש של המוצר שתבחרו."),
+  help: t("عندك سؤال؟|Have a question?|יש שאלה?"),
+  contactText: t("تواصل معنا عن تفاصيل المنتج أو الطلب من صفحة التواصل.|Use the contact page to ask about product or order details.|פנו דרך דף יצירת הקשר לשאלות על פרטי מוצר או הזמנה."),
+  letter: t("خلّيك قريب|Stay in the loop|נשארים בעניינים"),
+  email: t("سجّل بريدك لتتابع أخبار المتجر والمجموعة.|Sign up for news about the store and collection.|הירשמו לעדכונים על החנות והקולקציה."),
+};
+const liveDetails = () => [
+  { title: LIVE.fit, text: LIVE.fitText, pic: "detail-1" },
+  { title: LIVE.materials, text: LIVE.materialsText, pic: "detail-2" },
+  { title: LIVE.care, text: LIVE.careText, pic: "detail-3" },
+];
+const liveFaq = () => [
+  { q: t("كيف أختار المقاس؟|How do I choose a size?|איך בוחרים מידה?"), a: LIVE.fitText },
+  { q: t("وين بلاقي تفاصيل المنتج؟|Where can I find product details?|איפה מוצאים פרטי מוצר?"), a: LIVE.materialsText },
+  { q: t("كيف أسأل عن التوصيل والإرجاع؟|How do I ask about delivery and returns?|איך שואלים על משלוח והחזרות?"), a: LIVE.contactText },
+];
+
+function merchantHome(k: TK, id: string): Node[] {
+  const details = liveDetails();
+  const pics = ["shoe-1", "shoe-2", "shoe-3", "shoe-4", "shoe-5"];
+  const hero = (pic: string) => ({ eyebrow: LIVE.fresh, title: LIVE.title, sub: LIVE.intro, cta: LIVE.shop, pic });
+  const shelf = (look: "plain" | "boxed" | "round" | "overlay" | "spec", columns: number, aspect = "1 / 1") => P.shelf(k, LIVE.fresh, S, look, columns, { aspect });
+  const promises = details.map((x) => ({ ...x, icon: "check" }));
+  const points = details.map((x, i) => ({ x: 22 + i * 28, y: 30 + i * 17, title: x.title, text: x.text }));
+  const tabs = (look: "pills" | "underline" | "boxed") => P.tabs(k, LIVE.guide, LIVE.intro, details.map((x) => ({ label: x.title, text: x.text, pic: x.pic })), look);
+  const board = (pic: string, tall = false) => Mo.bento(k, LIVE.story, [
+    { kind: "photo", pic, title: LIVE.story, text: LIVE.storyText, wide: true, tall },
+    { kind: "product", item: S[0] },
+    { kind: "cta", title: LIVE.guide, cta: LIVE.shop, wide: true },
+  ]);
+  const journal = details.map((x) => ({ pic: x.pic, kind: LIVE.guide, title: x.title }));
+  const newsletter = () => P.letterCentered(k, LIVE.letter, LIVE.email);
+  switch (id) {
+    case "shoes-street": return [
+      O.giantWord(k, { ...hero("hero-street"), word: t("{{store.name}}") }),
+      P.marquee(k, [LIVE.fit, LIVE.materials, LIVE.care]),
+      P.splitPair(k, { ...cats("men")[0], cta: LIVE.shop }, { ...cats("women")[0], cta: LIVE.shop }),
+      shelf("overlay", 4), board("life-5", true),
+      P.lookbook(k, LIVE.story, pics, LIVE.storyText), P.wide(k, "life-8", LIVE.guide, LIVE.intro, LIVE.shop),
+      P.faq(k, LIVE.help, liveFaq(), "cards"), P.letterBand(k, LIVE.letter, LIVE.email, "pop"),
+    ];
+    case "shoes-race": return [
+      O.splitTilt(k, { ...hero("hero-run"), badge: LIVE.shop }), P.promises(k, promises, "surface"),
+      P.categories(k, LIVE.collections, cats("running", "trail", "sneakers", "sandals"), "pill", 4),
+      P.pointed(k, LIVE.guide, LIVE.intro, "detail-1", points),
+      Mo.statement(k, LIVE.story, { eyebrow: LIVE.guide }), shelf("boxed", 4), tabs("pills"),
+      P.faq(k, LIVE.help, liveFaq(), "lines"), P.letterBand(k, LIVE.letter, LIVE.email, "accent"),
+    ];
+    case "shoes-atelier": return [
+      O.cinematic(k, hero("hero-atelier")), P.chapters(k, LIVE.story, details),
+      Mo.carousel(k, LIVE.fresh, S.slice(0, 4), "surface"), P.statement(k, LIVE.storyText),
+      P.materials(k, LIVE.guide, details, "bg"), P.faq(k, LIVE.help, liveFaq(), "lines"), newsletter(),
+    ];
+    case "shoes-kids": return [
+      O.bubbles(k, { ...hero("hero-kids"), title: t("للّعب ولليوم العادي|For play and everyday life|למשחק וליום יום") }),
+      P.categories(k, LIVE.collections, cats("kids", "sneakers", "sandals", "boots"), "pill", 4),
+      shelf("round", 4), board("ugc-2"), P.promises(k, promises, "pop"), tabs("boxed"),
+      P.faq(k, LIVE.help, liveFaq(), "cards"), P.steps(k, LIVE.guide, details), newsletter(),
+    ];
+    case "shoes-quiet": return [
+      O.quiet(k, hero("hero-quiet")), P.promiseLine(k, details),
+      P.shelfFeatured(k, LIVE.fresh, S.slice(0, 5), LIVE.shop), P.statement(k, LIVE.storyText),
+      P.categoryList(k, LIVE.collections, cats("sneakers", "formal", "sandals", "boots", "kids")),
+      Mo.pinned(k, { eyebrow: LIVE.guide, title: LIVE.story, text: LIVE.intro, cta: LIVE.shop, pics: details.map((x) => ({ pic: x.pic, caption: x.title })) }),
+      P.letterLine(k, LIVE.letter),
+    ];
+    case "shoes-retro": return [
+      O.poster(k, { ...hero("hero-retro"), badge: t("على ذوقك|Your style|בסגנון שלך") }),
+      Mo.outline(k, [LIVE.fit, LIVE.materials, LIVE.care], "pop"), P.shelfRanked(k, LIVE.fresh, S.slice(0, 3)),
+      P.categories(k, LIVE.collections, cats("sneakers", "women", "men", "kids"), "tall", 4),
+      P.steps(k, LIVE.guide, details, "pop"), P.lookbook(k, LIVE.story, pics),
+      P.faq(k, LIVE.help, liveFaq(), "plus"), newsletter(),
+    ];
+    case "shoes-night": return [
+      O.drop(k, { ...hero("hero-night"), label: t("بعد الغروب|After dark|אחרי השקיעה") }),
+      shelf("overlay", 4), Mo.statement(k, LIVE.story, { from: "accent", to: STYLES.night.pop }),
+      P.wide(k, "life-8", LIVE.guide, LIVE.intro, LIVE.shop), P.steps(k, LIVE.guide, details, "surface"),
+      P.numbers(k, [["Fit", LIVE.fit], ["Details", LIVE.materials], ["Care", LIVE.care]]),
+      P.faq(k, LIVE.help, liveFaq(), "cards"), P.letterBand(k, LIVE.letter, LIVE.email, "accent"),
+    ];
+    case "shoes-edit": return [
+      O.cover(k, { ...hero("hero-edit"), issue: t("{{store.name}}"), body: LIVE.storyText }),
+      P.essay(k, LIVE.story, LIVE.storyText, LIVE.guide),
+      Mo.pinned(k, { eyebrow: LIVE.guide, title: LIVE.story, text: LIVE.intro, cta: LIVE.shop, pics: details.map((x) => ({ pic: x.pic, caption: x.title })) }),
+      shelf("spec", 4, "3 / 4"), P.journal(k, LIVE.guide, journal), P.statement(k, LIVE.intro), newsletter(),
+    ];
+    case "shoes-trail": return [
+      O.landscape(k, { ...hero("hero-trail"), stats: details.map((x) => [x.title, LIVE.guide]) }),
+      P.categories(k, LIVE.collections, cats("trail", "boots", "running", "sandals"), "overlay", 4),
+      tabs("pills"), shelf("boxed", 3, "4 / 3"), P.steps(k, LIVE.guide, details),
+      Mo.glass(k, "trail-1", LIVE.guide, details, LIVE.shop), P.faq(k, LIVE.help, liveFaq(), "plus"),
+      P.letterBand(k, LIVE.letter, LIVE.email, "pop"),
+    ];
+    default: return [
+      O.specs(k, { ...hero("hero-lab"), points, numbers: [["Fit", LIVE.fit], ["Details", LIVE.materials], ["Care", LIVE.care], ["Choice", LIVE.guide]] }),
+      P.compare(k, LIVE.fresh, S.slice(0, 3).map((x) => ({ pic: x.pic, name: LIVE.fresh, specs: [] }))),
+      P.layers(k, LIVE.guide, "detail-1", details), shelf("spec", 4), board("detail-1", true),
+      P.faq(k, LIVE.help, liveFaq(), "plus"), P.letterLine(k, LIVE.letter),
+    ];
+  }
+}
+
+const GALLERY_SHOE_TEMPLATES: Template[] = [
   {
     id: "shoes-street", category: "shoes",
     brand: t("فولت|VOLT|וולט"), header: { kind: "ticker" }, footer: { kind: "giant", tone: "ink", line: t("سنيكرز للي بيمشي بصوت عالي.|Sneakers for walking loud.|סניקרס למי שהולך בקול.") }, style: STYLES.street, tags: ["bold", "street"],
@@ -270,3 +388,8 @@ export const SHOE_TEMPLATES: Template[] = [
     ],
   },
 ];
+
+export const SHOE_TEMPLATES: Template[] = GALLERY_SHOE_TEMPLATES.map((template) => ({
+  ...template,
+  home: (k: TK) => k.demo ? template.home(k) : merchantHome(k, template.id),
+}));

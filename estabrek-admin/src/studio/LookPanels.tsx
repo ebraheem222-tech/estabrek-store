@@ -201,6 +201,21 @@ export function LookPanel({ node, screen, busy, onOps, onPreview, limited = fals
 
 /* ------------------------------------------------------------------ motion */
 
+/** Quick video controls beside its media fields; advanced gradients stay in Look and place. */
+export function VideoOverlayPanel({ node, screen, busy, onOps, onPreview }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; onPreview: Preview }) {
+  const overlay = shownLook(node, screen, "overlay") as { color: string; opacity: number; to?: string; angle?: number; blend?: string } | undefined;
+  const save = (next: typeof overlay | null) => onOps(tr("طبقة الفيديو", "Video overlay"), [styleOp(node, screen, { overlay: next })]);
+  return <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-video-overlay">
+    <div className="flex items-center justify-between gap-2 text-xs text-white/70"><span>{tr("طبقة الفيديو", "Video overlay")}</span><span className="text-[10px] text-white/40">{SCREEN_LABEL[screen]()}</span></div>
+    {toggleRow(tr("طبقة لون", "Colour layer"), Boolean(overlay && overlay.opacity > 0), busy, (on) => save(on ? { ...overlay, color: overlay?.color ?? "#000000", opacity: overlay?.opacity || 0.5 } : screen === "base" ? null : { ...overlay, color: overlay?.color ?? "#000000", opacity: 0 }), "studio-video-overlay-on")}
+    {overlay ? <>
+      <ColourPick label={tr("لون الطبقة", "Overlay colour")} value={overlay.color} busy={busy} onPick={(color) => save(color ? { ...overlay, color } : null)} testId="studio-video-overlay-colour" />
+      <Range label={tr("عتامة الطبقة", "Overlay opacity")} value={Math.round(overlay.opacity * 100)} min={0} max={100} unit="%" busy={busy} onLive={(value) => onPreview(previewOf("overlayOpacity", value / 100))} onSave={(value) => save({ ...overlay, opacity: value / 100 })} testId="studio-video-overlay-opacity" />
+    </> : null}
+    <p className="text-[10px] leading-5 text-white/40">{tr("الطبقة فوق الفيديو. أضف عنوان وزر بمكان حر فوقه؛ التدرّج والدمج متاحين بلوحة الشكل والمكان.", "The layer covers the video. Place a heading and button freely above it; gradients and blending are in Look and place.")}</p>
+  </div>;
+}
+
 const KEY_FIELDS: Array<[keyof MotionKeys, () => string, number, number, number]> = [
   ["rx", () => tr("دوران X", "Turn X"), -180, 180, 1],
   ["ry", () => tr("دوران Y", "Turn Y"), -180, 180, 1],
@@ -239,13 +254,14 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
   // Kinds that suit the element, and whatever it already has (so the list always shows it).
   const enterKinds = Object.keys(ENTER_LABEL).filter((k) => k === m.enter?.kind || ((!WORDS_ONLY.has(k) || WORDY.has(node.type)) && (k !== "count" || hasNumber(node)) && (k !== "draw" || drawingHasLines(node))));
   const loopKinds = Object.keys(LOOP_LABEL).filter((k) => k === m.loop?.kind || ((k !== "morph" || drawingMorphs(node)) && (k !== "dash" || drawingHasLines(node)) && (k !== "type" || WORDY.has(node.type))));
-  const moves = Object.keys(m).some((k) => k !== "phone");
+  const moves = Object.keys(m).some((k) => k !== "phone" && k !== "engine");
   return (
     <div className="space-y-2 rounded-xl border border-white/[0.08] p-3" data-testid="studio-motion">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-white/70">{tr("الحركة", "Motion")}</div>
         <button type="button" className={btn} disabled={busy || !moves} onClick={onPlay} data-testid="studio-motion-play">▶ {tr("جرّب بالصفحة", "Try it on the page")}</button>
       </div>
+      <Pick label={tr("محرّك الحركة", "Animation engine")} value={m.engine ?? "gsap"} options={[["gsap", "GSAP"], ["anime", "Anime.js"]]} busy={busy} onPick={(engine) => part("engine", engine as Motion["engine"])} testId="studio-motion-engine" />
       <div className="grid grid-cols-2 gap-1" role="group" aria-label={tr("حركات جاهزة", "Ready motions")} data-testid="studio-motion-presets">
         {presetsFor(node.type, node).map((p) => {
           const on = hasPreset(m, p);

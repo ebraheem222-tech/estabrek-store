@@ -77,7 +77,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "svg", "product360", "model3d", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -101,6 +101,16 @@ export const newSection = (widths: number[], id: Ids): PageTreeNode => ({ id: id
 /** `src` is the picture or clip for those two, and a slider's first picture. */
 export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTreeNode {
   switch (kind) {
+    case "deck": {
+      const children = [1, 2, 3].map(i => ({ id: id("panel"), type: "stack", props: {}, style: { base: { pad: [40, 24, 40, 24], gap: 20 } }, children: [{ id: id("h"), type: "heading", props: { level: 2, text: { [lang]: `${FIRST_WORDS.heading[lang]} ${i}` } } }] }));
+      return { id: id("deck"), type: "deck", props: { presentation: "deck", transition: "fade", duration: .5, initial: 0, arrows: true, dots: true, menu: true, labels: Object.fromEntries(children.map((panel, i) => [panel.id, { [lang]: `${i + 1}` }])) }, style: { base: { minHeight: "480px" } }, children };
+    }
+    case "instrument":
+      return { id: id("music"), type: "instrument", props: { kind: "piano", sound: false, volume: .25, octave: 4, waveform: "triangle", label: { [lang]: { ar: "آلة موسيقية", en: "Instrument", he: "כלי נגינה" }[lang] } } };
+    case "chart":
+      return { id: id("chart"), type: "chart", props: { kind: "bar", showValues: true, label: { [lang]: { ar: "بياناتك", en: "Your data", he: "הנתונים שלכם" }[lang] }, items: [1, 2, 3].map(n => ({ label: { [lang]: `${n}` }, value: 0 })) } };
+    case "clock":
+      return { id: id("clock"), type: "clock", props: { timezone: "UTC", format: "24", seconds: true, date: true } };
     case "heading":
       return { id: id("h"), type: "heading", props: { level: 3, text: { [lang]: FIRST_WORDS.heading[lang] } } };
     case "text":
@@ -145,6 +155,8 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
     case "columns":
       return newColumns([1, 1], id);
     case "accordion":
+    case "filterGallery":
+    case "showcase":
     case "testimonials":
     case "pricing":
     case "team":
@@ -166,14 +178,19 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
 
 /** A copy with new ids all the way down. */
 export function copyOf(node: PageTreeNode, id: Ids): PageTreeNode {
-  return { ...structuredClone(node), id: id(node.type.slice(0, 4)), children: node.children?.map((c) => copyOf(c, id)) };
+  const copy = { ...structuredClone(node), id: id(node.type.slice(0, 4)), children: node.children?.map((c) => copyOf(c, id)) };
+  if (node.type === "deck") {
+    const labels = (node.props.labels ?? {}) as Record<string, unknown>;
+    copy.props.labels = Object.fromEntries((copy.children ?? []).flatMap((child, i) => labels[node.children![i].id] ? [[child.id, structuredClone(labels[node.children![i].id])]] : []));
+  }
+  return copy;
 }
 
 /* ------------------------------------------------------------------ slider */
 
 /** A slider's slides (the backend keeps 12 at most); words are in the three languages. */
 export const MAX_SLIDES = 12;
-export type Slide = { src: string; kind: "image" | "video"; alt?: Record<string, string>; caption?: Record<string, string>; href?: string };
+export type Slide = { src: string; kind: "image" | "video"; alt?: Record<string, string>; caption?: Record<string, string>; title?: Record<string, string>; text?: Record<string, string>; cta?: Record<string, string>; href?: string };
 export const slidesOf = (n: PageTreeNode): Slide[] => (Array.isArray(n.props?.slides) ? (n.props.slides as Slide[]) : []);
 
 /** Pictures or clips added at the end, as many as still fit. */
@@ -201,7 +218,7 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", ...BLOCK_KINDS]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", ...BLOCK_KINDS]);
 const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);
@@ -214,6 +231,7 @@ export function accepts(parent: string, child: string): boolean {
   if (parent === "page") return child === "section" || child === "block" || child === "popup";
   if (parent === "legacy" || parent === "roseBlock") return OVER_TYPES.has(child);
   if (parent === "columns") return child === "cell";
+  if (parent === "deck") return child === "stack";
   if (!HOLDERS.has(parent)) return false;
   return CONTENT.has(child) || child === "columns" || child === "grid" || child === "stack";
 }

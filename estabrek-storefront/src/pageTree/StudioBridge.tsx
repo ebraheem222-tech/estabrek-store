@@ -528,6 +528,7 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
         const y = Number(d.y) || 0;
         hold(() => window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior }));
       } else if (d.type === "reveal") {
+        if (d.nodeId) window.dispatchEvent(new CustomEvent("pt:reveal", { detail: { nodeId: d.nodeId } }));
         const el = d.nodeId
           ? document.querySelector(`[data-tree-node="${CSS.escape(d.nodeId)}"]`)
           : typeof d.owner === "string"

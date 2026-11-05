@@ -10,6 +10,7 @@ import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import { routeLang } from "@/lib/seoLang";
 import type { StorefrontPage } from "@/lib/types";
 import { KIT_PAGES, kitPage, templatePage, templateThemeId, type KitPage } from "@/storeThemes/kits";
+import { motionProfileFromQuery, withMotionProfile } from "@/pageTree/motionProfiles";
 
 export const dynamic = "force-dynamic";
 export const metadata = { robots: { index: false, follow: false } };
@@ -25,6 +26,7 @@ export default async function DesignFrame({ params, searchParams }: { params?: {
   const known = (KIT_PAGES as readonly string[]).includes(which);
   const sections = !known ? null : template ? templatePage(template, which, true) : kitPage(kind, which, true);
   if (!sections) notFound();
+  const motion = motionProfileFromQuery({ get: (key: string) => one(searchParams?.[key]) ?? null });
   const mode = one(searchParams?.themeMode);
   const page: StorefrontPage = {
     id: `kit-${kind}-${which}`,
@@ -33,7 +35,7 @@ export default async function DesignFrame({ params, searchParams }: { params?: {
     status: "PUBLISHED",
     sections: [],
     format: 2,
-    tree: { version: 1, root: { id: "root", type: "page", props: { smooth: true }, children: sections } },
+    tree: { version: 1, root: { id: "root", type: "page", props: { smooth: motion.preset !== "none" }, children: withMotionProfile(sections, motion) } },
   };
   return renderCmsPageBySlug("/design-frame", searchParams, {
     lang,

@@ -16,15 +16,17 @@ import { applyCursorTheme } from "@/theme/cursorTheme";
 import { applyCustom, customFromParam } from "./custom";
 import { kitCss, kitFromParam } from "./packs";
 import { themeById } from "./registry";
+import type { StoreTheme } from "./types";
 
 const KEY = "store-theme-preview";
 
-export function StoreThemePreview({ saved }: { saved: string | null }) {
+export function StoreThemePreview({ saved, owned }: { saved: string | null; owned?: StoreTheme | null }) {
   const pathname = usePathname();
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const framed = window.self !== window.top;
-    let want = sp.get("storeTheme");
+    const template = /(^|\/)design-frame$/.test(pathname ?? "") ? sp.get("template") : null;
+    let want = sp.get("storeTheme") ?? (template ? `tpl-${template}` : null);
     let mode = sp.get("themeMode");
     let custom = sp.get("themeCustom");
     let kitParam = sp.get("kit");
@@ -42,7 +44,7 @@ export function StoreThemePreview({ saved }: { saved: string | null }) {
     }
     if (!want) return;
     const root = document.documentElement;
-    const found = themeById(want);
+    const found = want === owned?.id ? owned : themeById(want);
     const theme = found ? applyCustom(found, customFromParam(custom)) : null;
     let tag = document.getElementById(KEY) as HTMLStyleElement | null;
     if (!theme) {
@@ -72,6 +74,6 @@ export function StoreThemePreview({ saved }: { saved: string | null }) {
       root.dataset.storeKit = "";
       applyCursorTheme(kit.cursor === "none" ? null : kit.cursor);
     }
-  }, [pathname, saved]);
+  }, [pathname, saved, owned]);
   return null;
 }

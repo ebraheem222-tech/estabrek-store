@@ -49,12 +49,16 @@ const HELP: Array<[Words, string]> = [
 ];
 const RUNNING: Words[] = [w("شحن مجاني فوق ₪200", "Free delivery over ₪200", "משלוח חינם מעל ₪200"), w("خصم 20٪ على الجديد", "20% off what's new", "20% הנחה על החדש"), w("إرجاع خلال 14 يوم", "Returns within 14 days", "החזרה תוך 14 יום")];
 
-export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu"] as const;
+export const BLOCK_KINDS = ["accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee", "tabs", "countdown", "beforeAfter", "hotspots", "map", "search", "menu", "showcase", "filterGallery"] as const;
 export type BlockKind = (typeof BLOCK_KINDS)[number];
 
 /** One more item of a block's list, ready to edit. */
 export function newItem(kind: BlockKind, lang: Lang, n = 0): Record<string, unknown> | Record<string, string> {
   switch (kind) {
+    case "filterGallery":
+      return { title: one(lang, w("عنوان الصورة", "Picture title", "כותרת התמונה")), image: `/templates/experimental/kinetic-${n % 3 + 1}.svg`, category: one(lang, w("المجموعة", "Collection", "קולקציה")), text: one(lang, w("أضف وصفك هنا.", "Add your description here.", "הוסיפו כאן תיאור.")), href: "/shop", cta: one(lang, w("اكتشف", "Explore", "לגלות")) };
+    case "showcase":
+      return { title: one(lang, w(`مجموعة ${n + 1}`, `Collection ${n + 1}`, `קולקציה ${n + 1}`)), text: one(lang, w("اكتشفي التفاصيل والقطع المختارة.", "Explore the details and selected pieces.", "גלו את הפרטים והפריטים הנבחרים.")), href: "/shop", cta: one(lang, w("اكتشفي", "Explore", "לגילוי")) };
     case "accordion": {
       const [q, a] = QA[n % QA.length];
       return { q: one(lang, q), a: one(lang, a) };
@@ -146,8 +150,12 @@ export function newPopup(lang: Lang, id: Ids): PageTreeNode {
 export function newBlock(kind: BlockKind, lang: Lang, id: Ids, src?: string): PageTreeNode {
   const items = (count: number) => Array.from({ length: count }, (_, n) => newItem(kind, lang, n));
   switch (kind) {
+    case "showcase":
+      return { id: id("show"), type: "showcase", props: { items: items(3).map((item) => ({ ...item, ...(src ? { image: src } : {}) })), layout: "horizontal", activation: "click", initial: 0, ratio: 4, height: 480, duration: 0.55, overlay: 0.5 } };
     case "accordion":
       return { id: id("acc"), type: "accordion", props: { items: items(3), look: "lines" } };
+    case "filterGallery":
+      return { id: id("gal"), type: "filterGallery", props: { items: items(3), layout: "grid", columns: 3, gap: 20, lightbox: true, searchable: true, hoverEffect: "zoom" } };
     case "testimonials":
       return { id: id("tst"), type: "testimonials", props: { items: items(3), layout: "grid" } };
     case "pricing":

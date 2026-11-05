@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { Modal } from "../components/ui/Modal";
 import { ModelFile } from "../features/themes/ModelFile";
+import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { adminLang, type Lang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { Range } from "./LookPanels";
@@ -107,6 +108,7 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
   const p = (node.props ?? {}) as Obj;
   const models = useModels();
   const [swap, setSwap] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
   const set = (label: string, patch: Obj) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
   const part = (key: string, patch: Obj | null, label = tr("الموديل ثلاثي الأبعاد", "The 3D model")) => set(label, { [key]: patch ? { ...(isObj(p[key]) ? p[key] : {}), ...patch } : undefined });
   const file = isObj(p.file) ? (p.file as StageGlb) : undefined;
@@ -146,6 +148,20 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           set(tr("بدّل الموديل", "Swap the model"), { file: glb ?? undefined, model: p.model ?? "sneaker" });
         }}
       />
+
+      <Fold title={tr("صورة بديلة للموديل", "Model fallback picture")} open={Boolean(p.poster)} testId="model3d-poster">
+        <p className="text-[11px] leading-5 text-white/45">{tr("صورة من مكتبتك بتظهر أثناء التحميل أو إذا تعذّر عرض الموديل. اختيارية، وما بتغيّر ملفك أو حركته.", "A picture from your library shown while loading or when the model cannot be displayed. Optional; keeps your file and its motion.")}</p>
+        {typeof p.poster === "string" ? <img src={p.poster} alt="" className="h-28 w-full rounded-lg object-contain" /> : null}
+        <Field label={tr("رابط الصورة البديلة (اختياري)", "Fallback picture URL (optional)")} value={typeof p.poster === "string" ? p.poster : ""} onSave={(value) => {
+          const url = value.trim();
+          if (!busy && (!url || /^(\/(?!\/)|https:\/\/)[^\s<>"'`\\]+$/i.test(url))) set(tr("صورة بديلة للموديل", "Model fallback picture"), { poster: url || undefined });
+        }} testId="model3d-poster-url" />
+        <div className="flex gap-2">
+          <button type="button" disabled={busy} onClick={() => setPosterOpen(true)} className="rounded-lg bg-white/[0.06] px-2 py-1.5 text-xs disabled:opacity-40" data-testid="model3d-poster-choose">{tr("اختيار صورة", "Choose a picture")}</button>
+          {p.poster ? <button type="button" disabled={busy} onClick={() => set(tr("صورة بديلة للموديل", "Model fallback picture"), { poster: undefined })} className="rounded-lg bg-white/[0.06] px-2 py-1.5 text-xs disabled:opacity-40" data-testid="model3d-poster-clear">{tr("إزالة الصورة البديلة", "Remove fallback picture")}</button> : null}
+        </div>
+        <MediaLibraryModal open={posterOpen} onClose={() => setPosterOpen(false)} title={tr("صورة بديلة للموديل", "Model fallback picture")} onSelect={(poster) => { setPosterOpen(false); set(tr("صورة بديلة للموديل", "Model fallback picture"), { poster }); }} />
+      </Fold>
 
       <div className="grid grid-cols-2 gap-1" role="group" aria-label={tr("أشكال جاهزة", "Ready looks")} data-testid="model3d-looks">
         {MODEL3D_LOOKS.map((l) => (

@@ -22,7 +22,7 @@ import { identityOf } from "../../lib/storeIdentity";
 import { toast } from "../../lib/toast";
 import { tr } from "../../lib/words";
 import { stylesOfKit, withPackStyles } from "../../studio/packs";
-import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, shopOrigin, stageOptionsOf, type StoreThemeInfo, type Words } from "../../studio/storeThemes";
+import { FAMILY_LABEL, ROSE_ID, currentStoreTheme, loadStoreThemes, saveStorePack, saveStoreTheme, shopOrigin, stageOptionsOf, withOwnedTheme, type StoreThemeInfo, type Words } from "../../studio/storeThemes";
 import { PackPanel } from "./PackPanel";
 import { packChoice, type PackChoice, type PackFrom } from "./packChoice";
 import { StageWorkspace, type StageTab } from "./StageWorkspace";
@@ -57,11 +57,12 @@ export default function ThemesPage() {
   // The rose design is for modest fashion stores alone; any other store with no theme chosen
   // shows its kind's theme (the shop's DEFAULT_THEME), so that one is its current theme here.
   const identity = identityOf(settings.data?.header);
-  const modest = identity.industry === "fashion" && identity.audience === "women";
+  const ownedDesign = (settings.data?.header as { storeDesign?: { mode?: string } } | null)?.storeDesign?.mode === "cms";
+  const modest = !ownedDesign && identity.industry === "fashion" && identity.audience === "women";
   const defaults = themesQ.data?.defaults;
   const currentId = current?.id ?? (modest ? ROSE_ID : defaults?.[identity.industry] ?? defaults?.general ?? ROSE_ID);
 
-  const all = useMemo(() => [...(modest ? [ROSE] : []), ...(themesQ.data?.themes ?? [])], [themesQ.data, modest]);
+  const all = useMemo(() => [...(modest ? [ROSE] : []), ...withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header)], [themesQ.data, modest, settings.data?.header]);
   const [picked, setPicked] = useState<string | null>(null);
   const [mode, setMode] = useState<"light" | "dark" | null>(null);
   const [view, setView] = useState<View>("home");

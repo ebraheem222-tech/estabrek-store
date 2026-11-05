@@ -9,6 +9,11 @@ import { footer, header } from "./chrome";
 import { withStyle } from "./lib";
 import { photosOf } from "./photos";
 import { SHOE_TEMPLATES } from "./templates/shoes";
+import { BUSINESS_TEMPLATES } from "./templates/business";
+import { EXPERIMENTAL_TEMPLATES } from "./templates/experimental";
+import { REFERENCE_TEMPLATES_A } from "./templates/referenceTemplatesA";
+import { REFERENCE_TEMPLATES_B } from "./templates/referenceTemplatesB";
+import { REFERENCE_TEMPLATES_C } from "./templates/referenceTemplatesC";
 import type { Template } from "./templates/types";
 import { kitCtx, type K, type Node } from "./tree";
 
@@ -35,7 +40,7 @@ export const kitOfTheme = (theme: StoreTheme | null | undefined): string | null 
 /* ------------------------------------------------------------- templates */
 
 /** Every ready template, by category (the gallery's order). */
-export const TEMPLATES: Template[] = [...SHOE_TEMPLATES];
+export const TEMPLATES: Template[] = [...REFERENCE_TEMPLATES_A, ...REFERENCE_TEMPLATES_B, ...REFERENCE_TEMPLATES_C, ...EXPERIMENTAL_TEMPLATES, ...SHOE_TEMPLATES, ...BUSINESS_TEMPLATES];
 const BY_ID = new Map(TEMPLATES.map((x) => [x.id, x]));
 export const templateById = (id: string): Template | null => BY_ID.get(id) ?? null;
 /** The theme a template wears (kits/themes.ts makes it from its style). */
@@ -50,5 +55,5 @@ export function templatePage(id: string, page: KitPage = "home", demo = false): 
   if (!tpl || page !== "home") return null;
   const k = withStyle(kitCtx(photosOf(tpl.category), demo), tpl.style);
   const main = tpl.home(k);
-  return demo ? [header(k, tpl.header.kind, tpl.brand, tpl.header.tone), ...main, footer(k, tpl.footer.kind, tpl.brand, tpl.footer.line, tpl.footer.tone)] : main;
+  return demo ? [tpl.regions ? tpl.regions.header(k, tpl.brand) : header(k, tpl.header.kind, tpl.brand, tpl.header.tone, tpl.navigation), ...main, tpl.regions ? tpl.regions.footer(k, tpl.brand) : footer(k, tpl.footer.kind, tpl.brand, tpl.footer.line, tpl.footer.tone)] : main;
 }

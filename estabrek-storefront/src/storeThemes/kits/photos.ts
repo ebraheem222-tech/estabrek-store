@@ -67,4 +67,9 @@ export const KIT_PHOTOS: Record<string, Record<string, KitPhoto>> = {
   },
 };
 
-export const photosOf = (kind: string): Record<string, string> => Object.fromEntries(Object.entries(KIT_PHOTOS[kind] ?? {}).map(([name, ph]) => [name, ph.url]));
+const ILLUSTRATED = new Set(["fashion", "beauty", "perfume", "jewelry", "electronics", "gaming", "home", "coffee", "food", "kids", "books", "art", "sports", "pets", "flowers", "music", "stationery", "kitchen", "outdoor"]);
+export const photosOf = (kind: string): Record<string, string> => {
+  if (ILLUSTRATED.has(kind)) return Object.fromEntries(["hero", "story", ...Array.from({ length: 6 }, (_, i) => `product-${i + 1}`)].map((name) => [name, `/templates/${kind}/${name}.svg`]));
+  if (kind === "shoes") return { ...Object.fromEntries(Object.entries(KIT_PHOTOS.shoes).map(([name, ph]) => [name, ph.url])), ...Object.fromEntries(["hero", "story", ...Array.from({ length: 6 }, (_, i) => `product-${i + 1}`)].map((name) => [name, `/templates/shoes/${name}.svg`])) };
+  return Object.fromEntries(Object.entries(KIT_PHOTOS[kind] ?? {}).map(([name, ph]) => [name, ph.url]));
+};

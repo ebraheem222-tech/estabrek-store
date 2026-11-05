@@ -90,11 +90,11 @@ export const OPENINGS = {
     ], { pad: [80, 24, 96, 24] }),
 
   /** A dark drop: a countdown to the release, the shoe glowing and floating. */
-  drop: (k: TK, c: Hero & { until: string; label: Words }): Node =>
+  drop: (k: TK, c: Hero & { until?: string; label: Words }): Node =>
     part(k, name("الافتتاحية|Opening|פתיחה"), [
       cols(k, [5, 6], [
         [EB(k, c.label, { style: { color: k.s.pop } }), H(k, c.title, 1), ...(c.sub ? [T(k, c.sub, { style: quietOn("bg") })] : []),
-          el(k, "countdown", { until: c.until, look: "boxes", done: t("نزل الإصدار!|It's out!|זה בחוץ!") }, { style: { margin: [8, 0, 8, 0] } }),
+          ...(c.until ? [el(k, "countdown", { until: c.until, look: "boxes", done: t("نزل الإصدار!|It's out!|זה בחוץ!") }, { style: { margin: [8, 0, 8, 0] } })] : []),
           BTNS(k, [BTN(k, c.cta, go), ...(c.cta2 ? [BTN(k, c.cta2, go, "alt")] : [])])],
         [PIC(k, c.pic, c.title, { aspect: "1 / 1", motion: { enter: { kind: "blur", duration: 1.4 }, loop: { kind: "float", duration: 6 } } })],
       ], { style: { gap: 56, align: "center" }, cellStyle: { gap: 18 } }),
@@ -156,6 +156,7 @@ export const PARTS = {
   /** Categories as a big typographic list, numbered, each a link. */
   categoryList: (k: TK, title: Words, list: SampleCat[]): Node =>
     part(k, name("التصنيفات|Categories|קטגוריות"), [
+      ...(!k.demo ? [H(k, title, 2), el(k, "categories", { limit: list.length, look: "pill", columns: 1 })] : [
       cols(k, [4, 8], [
         [EB(k, t("تسوّق حسب|Shop by|קנו לפי")), H(k, title, 2)],
         [stack(k, list.map((c, i) => row(k, [
@@ -163,6 +164,7 @@ export const PARTS = {
           { id: k.ids("b"), type: "button", props: { label: c.name, href: go, variant: "link" }, style: { base: { size: 44, weight: 500, color: "text", decoration: { line: "none" } }, mobile: { size: 30 } }, motion: { hover: { kind: "magnetic" } } } as Node,
         ], { style: { gap: 24, align: "center", wrap: false, pad: [14, 0, 14, 0] } })), { style: { gap: 0 }, motion: mv.group(k) })],
       ], { style: { gap: 48, align: "start" }, cellStyle: { gap: 12, justify: "start" } }),
+      ]),
     ]),
 
   /** The store's products: a heading and a shelf in a card look. */
@@ -354,12 +356,14 @@ export const PARTS = {
   compare: (k: TK, title: Words, models: Array<{ pic: string; name: Words; specs: Array<[Words, string]> }>, tone: Tone = "bg"): Node =>
     part(k, name("مقارنة|Compare|השוואה"), [
       H(k, title, 2, { style: { margin: [0, 0, 32, 0] } }),
+      ...(!k.demo ? [el(k, "products", { source: "new", limit: models.length, layout: "grid", columns: Math.min(4, models.length), card: "bordered" })] : [
       grid(k, models.length, models.map((m) => stack(k, [
         PIC(k, m.pic, m.name, { aspect: "4 / 3" }),
         H(k, m.name, 3, { motion: false }),
         ...m.specs.map(([label, v]) => row(k, [T(k, label, { size: 14, style: { color: "muted" }, motion: false }), T(k, t(v), { size: 14, style: { weight: 700, family: "space-mono" }, motion: false })], { style: { justify: "between", wrap: false, pad: [8, 0, 8, 0] } })),
         BTN(k, t("التفاصيل|Details|פרטים"), go, "alt", { style: { self: "start" } }),
       ], { style: { gap: 6, pad: [18, 18, 22, 18], bg: "surface", radius: k.s.img.radius } })), { phoneColumns: 1, style: { gap: 20 } }),
+      ]),
     ], { tone }),
 
   /** The layers of a thing, numbered, beside its picture. */

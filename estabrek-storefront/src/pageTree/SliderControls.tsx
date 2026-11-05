@@ -10,18 +10,20 @@
  * to the left.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { animateSlider, bindSliderInput, scrollSlider, sliderSettings, type SliderSettings } from "./sliderEffects";
+const DEFAULT_SETTINGS = sliderSettings();
 
 export type SliderWords = { prev: string; next: string; slide: string; pause: string; play: string };
 
 /** The slide whose start is nearest the row's start. */
-function shownSlide(track: HTMLElement): number {
+function shownSlide(track: HTMLElement, vertical = false): number {
   const dir = getComputedStyle(track).direction === "rtl";
   const t = track.getBoundingClientRect();
   let best = 0;
   let gap = Infinity;
   Array.from(track.children).forEach((el, i) => {
     const r = el.getBoundingClientRect();
-    const d = Math.abs(dir ? r.right - t.right : r.left - t.left);
+    const d = Math.abs(vertical ? r.top - t.top : dir ? r.right - t.right : r.left - t.left);
     if (d < gap) {
       gap = d;
       best = i;
@@ -36,7 +38,7 @@ const Arrow = () => (
   </svg>
 );
 
-export function SliderControls({ count, seconds, loop, arrows, dots, words }: { count: number; seconds: number; loop: boolean; arrows: boolean; dots: boolean; words: SliderWords }) {
+export function SliderControls({ count, seconds, loop, arrows, dots, words, settings = DEFAULT_SETTINGS, slides = [] }: { count: number; seconds: number; loop: boolean; arrows: boolean; dots: boolean; words: SliderWords; settings?: SliderSettings; slides?: Array<{ src: string; kind: "image" | "video"; label: string }> }) {
   const ref = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLElement | null>(null);
   const [ready, setReady] = useState(false);
@@ -45,6 +47,11 @@ export function SliderControls({ count, seconds, loop, arrows, dots, words }: { 
   const [paused, setPaused] = useState(false); // the pause button
   const [held, setHeld] = useState({ hover: false, focus: false, away: false, hidden: false });
   const hasClip = useRef(false);
+  const current = useRef(0);
+  const previous = useRef(0);
+  const scrollCleanup = useRef<() => void>(() => {});
+  const enhanced = settings.effect !== "slide";
+  const vertical = settings.axis === "y";
 
   useEffect(() => {
     const root = ref.current?.closest<HTMLElement>(".pt-slider");
@@ -54,17 +61,20 @@ export function SliderControls({ count, seconds, loop, arrows, dots, words }: { 
     hasClip.current = Boolean(row.querySelector("video"));
     root.setAttribute("data-ready", "");
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onMotion = () => setStill(motion.matches);
+    const onMotion = () => { if (motion.matches) scrollCleanup.current(); setStill(motion.matches); };
     onMotion();
     motion.addEventListener("change", onMotion);
-    setAt(shownSlide(row));
+    current.current = shownSlide(row, vertical);
+    setAt(current.current);
     setReady(true);
 
     let frame = 0;
     const onScroll = () => {
+      if (enhanced || row.hasAttribute("data-scrolling")) return;
       if (!frame) frame = requestAnimationFrame(() => {
         frame = 0;
-        setAt(shownSlide(row));
+        current.current = shownSlide(row, vertical);
+        setAt(current.current);
       });
     };
     row.addEventListener("scroll", onScroll, { passive: true });
@@ -79,6 +89,7 @@ export function SliderControls({ count, seconds, loop, arrows, dots, words }: { 
     root.addEventListener("focusin", focusIn);
     root.addEventListener("focusout", focusOut);
     document.addEventListener("visibilitychange", seen);
+    seen();
     const io = typeof IntersectionObserver === "function" ? new IntersectionObserver(([e]) => hold("away", !e.isIntersecting), { threshold: 0.25 }) : null;
     io?.observe(root);
     return () => {
@@ -91,9 +102,18 @@ export function SliderControls({ count, seconds, loop, arrows, dots, words }: { 
       root.removeEventListener("focusout", focusOut);
       document.removeEventListener("visibilitychange", seen);
       io?.disconnect();
+      scrollCleanup.current();
       root.removeAttribute("data-ready");
+      root.removeAttribute("data-enhanced");
+      root.removeAttribute("data-at");
+      Array.from(row.children).forEach((child) => {
+        const slide = child as HTMLElement;
+        slide.inert = false; slide.removeAttribute("aria-hidden"); delete slide.dataset.sliderActive;
+        ["transform", "opacity", "z-index", "visibility", "transition"].forEach((key) => slide.style.removeProperty(key));
+        slide.querySelectorAll("video").forEach((v) => v.pause());
+      });
     };
-  }, []);
+  }, [count, vertical, enhanced]);
 
   const go = useCallback(
     (i: number) => {
@@ -101,15 +121,38 @@ export function SliderControls({ count, seconds, loop, arrows, dots, words }: { 
       const n = row?.children.length ?? 0;
       if (!row || !n) return;
       const to = loop ? (i + n) % n : Math.max(0, Math.min(n - 1, i));
+      if (enhanced && to !== current.current && row.children[current.current]?.contains(document.activeElement)) row.focus({ preventScroll: true });
+      current.current = to;
+      setAt(to);
+      if (enhanced) return;
       const slide = row.children[to] as HTMLElement;
       const rtl = getComputedStyle(row).direction === "rtl";
       const [s, t] = [slide.getBoundingClientRect(), row.getBoundingClientRect()];
       // To a place, not by a step: a step stops at every slide on the way (scroll-snap-stop), so a jump of several or round to the first would end early.
-      row.scrollTo({ left: row.scrollLeft + (rtl ? s.right - t.right : s.left - t.left), behavior: (still ? "instant" : "smooth") as ScrollBehavior });
-      setAt(to);
+      scrollCleanup.current();
+      scrollCleanup.current = scrollSlider(row, vertical ? row.scrollTop + s.top - t.top : row.scrollLeft + (rtl ? s.right - t.right : s.left - t.left), settings, still);
     },
-    [loop, still],
+    [loop, still, enhanced, vertical, settings],
   );
+
+  useEffect(() => {
+    const row = track.current;
+    if (!ready || !row) return;
+    const root = row.closest<HTMLElement>(".pt-slider");
+    if (root) root.dataset.at = String(at);
+    if (!enhanced) return;
+    const cleanup = animateSlider(row, previous.current, at, settings, loop, still);
+    root?.setAttribute("data-enhanced", "");
+    previous.current = at;
+    return cleanup;
+  }, [ready, at, settings, loop, still, enhanced]);
+
+  useEffect(() => {
+    const row = track.current;
+    const root = row?.closest<HTMLElement>(".pt-slider");
+    if (!ready || !root || !row) return;
+    return bindSliderInput(root, row, settings, () => current.current, go, loop);
+  }, [ready, settings, go, loop]);
 
   // Turning by itself: a whole wait after every change, and only while nobody is looking closer.
   const turning = ready && seconds > 0 && count > 1 && !still && !paused;
@@ -129,7 +172,7 @@ export function SliderControls({ count, seconds, loop, arrows, dots, words }: { 
       if (!v) return;
       const play = i === at && !still && !paused && !held.away && !held.hidden;
       v.muted = true;
-      if (still && !v.closest("a")) v.controls = true;
+      v.controls = still && !v.closest("a");
       if (play) void v.play().catch(() => undefined);
       else v.pause();
     });
@@ -150,6 +193,9 @@ export function SliderControls({ count, seconds, loop, arrows, dots, words }: { 
           </button>
         </>
       ) : null}
+      {ready && settings.thumbnails && count > 1 ? <div className="pt-slider-thumbs" role="group" aria-label={words.slide}>{slides.map((s, i) => <button key={i} type="button" className="pt-slider-thumb" aria-label={`${words.slide} ${i + 1}${s.label ? `: ${s.label}` : ""}`} aria-current={i === at ? "true" : undefined} onClick={() => go(i)}>{s.kind === "image" ? <img src={s.src} alt="" loading="lazy" draggable={false} /> : <span aria-hidden="true">▶</span>}</button>)}</div> : null}
+      {ready && settings.progress ? <div className="pt-slider-progress" role="progressbar" aria-label={words.slide} aria-valuemin={1} aria-valuemax={count} aria-valuenow={at + 1}><span key={`${at}-${waiting}-${paused}-${still}`} className={turning && (loop || at < count - 1) ? "pt-slider-timer" : undefined} style={turning && (loop || at < count - 1) ? { animationDuration: `${seconds}s`, animationPlayState: waiting ? "paused" : "running" } : { width: `${(at + 1) / count * 100}%` }} /></div> : null}
+      {ready ? <span className="pt-slider-status" aria-live={turning && !waiting ? "off" : "polite"} aria-atomic="true">{words.slide} {at + 1} / {count}</span> : null}
       {ready && dots && count > 1 ? (
         <div className="pt-slider-dots">
           {Array.from({ length: count }, (_, i) => (

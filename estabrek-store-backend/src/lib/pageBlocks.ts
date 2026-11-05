@@ -44,7 +44,7 @@ export function expandBlocks(tree: PageTree, blocks: Map<string, TreeNode[]>): P
 export async function loadBlocks(ids: string[]): Promise<Map<string, TreeNode[]>> {
   const out = new Map<string, TreeNode[]>();
   if (!ids.length) return out;
-  const rows = await prisma.page.findMany({ where: { id: { in: ids }, kind: BLOCK_KIND }, select: { id: true, tree: true } });
+  const rows = await prisma.page.findMany({ where: { id: { in: ids }, kind: BLOCK_KIND, status: "PUBLISHED" }, select: { id: true, tree: true } });
   for (const r of rows) out.set(r.id, (storedTree(r.tree)?.root.children ?? []).filter((n) => n.type === "section"));
   return out;
 }

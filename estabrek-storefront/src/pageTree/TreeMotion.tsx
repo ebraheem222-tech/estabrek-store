@@ -1,6 +1,6 @@
 "use client";
 /**
- * The page tree's motion (GSAP 3.13 with ScrollTrigger and SplitText), loaded only on a
+ * The page tree's motion (GSAP, or lazy Anime.js with ScrollTrigger and SplitText), loaded only on a
  * page whose elements move: TreeNodeView writes each one's cleaned `motion` into
  * data-pt-motion. Turns and moves go through CSS variables that pageTree/css.ts adds to
  * the element's own look (TREE_TRANSFORM): --pt-e* coming in, --pt-m* the scroll,
@@ -280,9 +280,12 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     if (k === "spring" || k === "jelly") {
       // On Motion's springs: it follows the mouse a little and springs back, or wobbles as it grows.
       const now = { x: 0, y: 0, s: 1 };
-      const stops: Array<{ stop: () => void }> = [];
+      let cancelled = false;
+      const stops = new Map<string, { stop: () => void }>();
       const springTo = (key: "x" | "y" | "s", to: number, bouncy: boolean) =>
         void import("motion").then(({ animate: spring }) => {
+          if (cancelled) return;
+          stops.get(key)?.stop();
           const c = spring(now[key], to, {
             type: "spring", stiffness: bouncy ? 260 : 180, damping: bouncy ? 9 : 14,
             onUpdate: (v: number) => {
@@ -290,9 +293,9 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
               el.style.setProperty(key === "s" ? "--pt-hs" : key === "x" ? "--pt-hx" : "--pt-hy", key === "s" ? String(v) : `${v}px`);
             },
           });
-          stops.push(c);
+          stops.set(key, c);
         });
-      off.push(() => stops.forEach((c) => c.stop()));
+      off.push(() => { cancelled = true; stops.forEach((c) => c.stop()); });
       if (k === "spring") {
         on("pointermove", (e) => {
           const r = el.getBoundingClientRect();
@@ -326,7 +329,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
   }
 }
 
-export function TreeMotion() {
+export function TreeMotion({ revision = 0 }: { revision?: number }) {
   const pathname = usePathname();
   useEffect(() => {
     const root = document.documentElement;
@@ -347,7 +350,10 @@ export function TreeMotion() {
       /* no looks, or broken ones: nothing more moves */
     }
     const els = Array.from(document.querySelectorAll<HTMLElement>("[data-pt-motion]"));
-    if (!els.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const phone = window.matchMedia("(max-width: 639.98px)");
+    const mouse = window.matchMedia("(hover: hover) and (pointer: fine)");
+    if (!els.length || reduced.matches) return done();
     const studio = window.parent !== window && /\/studio-frame/.test(window.location.pathname);
     let dead = false;
     let revert: () => void = () => {};
@@ -369,26 +375,36 @@ export function TreeMotion() {
     void (async () => {
       const drawn = els.some((el) => /"kind":"(draw|morph|dash)"/.test(el.dataset.ptMotion ?? ""));
       const scrambles = els.some((el) => /"kind":"scramble"/.test(el.dataset.ptMotion ?? ""));
-      const [{ gsap }, { ScrollTrigger }, { SplitText }, svg, scramble] = await Promise.all([
+      const hasAnime = els.some(el => { try { return JSON.parse(el.dataset.ptMotion ?? "null")?.engine === "anime"; } catch { return false; } });
+      const [{ gsap }, { ScrollTrigger }, { SplitText }, svg, scramble, anime] = await Promise.all([
         import("gsap"),
         import("gsap/ScrollTrigger"),
         import("gsap/SplitText"),
         drawn ? Promise.all([import("gsap/DrawSVGPlugin"), import("gsap/MorphSVGPlugin")]) : Promise.resolve(null),
         scrambles ? import("gsap/ScrambleTextPlugin") : Promise.resolve(null),
+        hasAnime ? import("./animeMotion") : Promise.resolve(null),
       ]);
       if (dead) return;
       gsap.registerPlugin(ScrollTrigger, SplitText, ...(svg ? [svg[0].DrawSVGPlugin, svg[1].MorphSVGPlugin] : []), ...(scramble ? [scramble.ScrambleTextPlugin] : []));
       build = () => {
         revert();
+        if (reduced.matches) { done(); return; }
         const off: Array<() => void> = [];
+        const adapter = anime?.createAnimeMotionEngine(gsap, ScrollTrigger);
+        if (adapter) off.push(adapter.dispose);
         const env: Env = {
-          phone: window.matchMedia("(max-width: 639.98px)").matches,
-          mouse: window.matchMedia("(hover: hover) and (pointer: fine)").matches,
+          phone: phone.matches,
+          mouse: mouse.matches,
           rtl: root.dir === "rtl",
           live: mode.live,
           only: mode.only,
         };
-        const ctx = gsap.context(() => {
+        const ctx = gsap.context(() => {});
+        revert = () => {
+          off.forEach((f) => f());
+          ctx.revert();
+        };
+        ctx.add(() => {
           for (const el of els) {
             let spec: TreeMotionSpec | null = null;
             try {
@@ -396,22 +412,26 @@ export function TreeMotion() {
             } catch {
               spec = null;
             }
-            if (spec) animate(gsap, ScrollTrigger, SplitText, el, spec, env, off);
+            if (spec) {
+              const previousEngine = el.dataset.ptEngine;
+              el.dataset.ptEngine = spec.engine === "anime" && adapter ? "anime" : "gsap";
+              off.push(() => { if (previousEngine === undefined) delete el.dataset.ptEngine; else el.dataset.ptEngine = previousEngine; });
+              animate(spec.engine === "anime" && adapter ? adapter.engine : gsap, ScrollTrigger, SplitText, el, spec, env, off);
+            }
           }
         });
         done();
-        revert = () => {
-          off.forEach((f) => f());
-          ctx.revert();
-        };
       };
       build();
-    })().catch(done);
+    })().catch(() => { revert(); done(); });
+    const mediaChanged = () => build?.();
+    for (const media of [reduced, phone, mouse]) media.addEventListener("change", mediaChanged);
     return () => {
       dead = true;
       unlisten();
+      for (const media of [reduced, phone, mouse]) media.removeEventListener("change", mediaChanged);
       revert();
     };
-  }, [pathname]);
+  }, [pathname, revision]);
   return null;
 }

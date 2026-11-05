@@ -13,7 +13,7 @@ const r = Router();
 
 export async function getOrCreateSettings() {
   let s = await prisma.siteSettings.findFirst();
-  if (!s) s = await prisma.siteSettings.create({ data: {} });
+  if (!s) s = await prisma.siteSettings.create({ data: { header: { storeDesign: { version: 1, mode: "cms" } } } });
   return s;
 }
 

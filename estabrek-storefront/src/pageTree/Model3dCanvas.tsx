@@ -6,7 +6,7 @@
  * leaning toward the mouse, lit by one of the light setups (light shapes, no downloaded
  * images), on a soft shadow, a grid or a disc, turned by hand when the store lets shoppers.
  */
-import { Suspense, useRef, type MutableRefObject } from "react";
+import { Suspense, useEffect, useRef, type MutableRefObject } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import type * as THREE from "three";
@@ -17,9 +17,10 @@ import { model3dMoves, type Model3dSpec } from "./model3d";
 
 const FLOOR_Y = -1.45;
 
-function Rig({ spec, colours, still, hovered, progress }: { spec: Model3dSpec; colours: ModelColours; still: boolean; hovered: MutableRefObject<boolean>; progress: MutableRefObject<number> }) {
+function Rig({ spec, colours, still, hovered, progress, onReady, onError }: { spec: Model3dSpec; colours: ModelColours; still: boolean; hovered: MutableRefObject<boolean>; progress: MutableRefObject<number>; onReady?: () => void; onError?: () => void }) {
   const outer = useRef<THREE.Group>(null);
   const inner = useRef<THREE.Group>(null);
+  useEffect(() => { if (!spec.file) onReady?.(); }, [spec.file, onReady]);
   // How far the motion has gone: it runs while it should and settles back otherwise.
   const play = useRef({ t: 0, weight: spec.anim.trigger === "always" ? 1 : 0 });
   useFrame(({ pointer }, dt) => {
@@ -52,7 +53,7 @@ function Rig({ spec, colours, still, hovered, progress }: { spec: Model3dSpec; c
     <group ref={outer} position={[0, spec.lift, 0]} rotation={spec.turn} scale={spec.size}>
       <group ref={inner}>
         {spec.file ? (
-          <GlbModel url={spec.file.url} clip={spec.file.clip} fallback={null} />
+          <GlbModel url={spec.file.url} clip={still ? undefined : spec.file.clip} fallback={null} onInfo={(info) => info.error ? onError?.() : onReady?.()} />
         ) : spec.model ? (
           <GameModel kind={spec.model} knobs={spec.knobs} c={colours} style={spec.finish} />
         ) : null}
@@ -75,7 +76,7 @@ function Floor({ spec, tint }: { spec: Model3dSpec; tint: string }) {
   return null;
 }
 
-export default function Model3dCanvas({ spec, colours, rims, floorTint, active, still, hovered, progress, onReady }: {
+export default function Model3dCanvas({ spec, colours, rims, floorTint, active, still, hovered, progress, onReady, onError }: {
   spec: Model3dSpec;
   colours: ModelColours;
   /** The two rim lights' colours (theme colours already read from the page). */
@@ -86,6 +87,7 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
   hovered: MutableRefObject<boolean>;
   progress: MutableRefObject<number>;
   onReady?: () => void;
+  onError?: () => void;
 }) {
   const l = spec.lights;
   const moves = model3dMoves(spec) && !still;
@@ -95,7 +97,6 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
       frameloop={active && moves ? "always" : "demand"}
       camera={{ position: [0, spec.camera.height, spec.camera.distance], fov: spec.camera.fov }}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
-      onCreated={() => onReady?.()}
     >
       {spec.bg ? <color attach="background" args={[spec.bg]} /> : null}
       <ambientLight intensity={l.ambient} />
@@ -108,7 +109,7 @@ export default function Model3dCanvas({ spec, colours, rims, floorTint, active, 
         <Lightformer form="ring" intensity={1.5 * l.env} color={rims[1]} position={[0, -2, 4]} scale={2.5} />
       </Environment>
       <Suspense fallback={null}>
-        <Rig spec={spec} colours={colours} still={still} hovered={hovered} progress={progress} />
+        <Rig spec={spec} colours={colours} still={still} hovered={hovered} progress={progress} onReady={onReady} onError={onError} />
       </Suspense>
       <Floor spec={spec} tint={floorTint} />
       {spec.drag || (spec.auto !== 0 && !still) ? (

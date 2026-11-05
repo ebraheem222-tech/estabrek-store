@@ -16,7 +16,7 @@ import { newItem, type BlockKind } from "./blockDefaults";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Item = Record<string, unknown>;
-type FieldSpec = { key: string; label: () => string; kind: "words" | "long" | "link" | "image" | "stars" | "toggle" | "percent" };
+type FieldSpec = { key: string; label: () => string; kind: "words" | "long" | "link" | "image" | "stars" | "toggle" | "percent"; max?: number; required?: boolean };
 const box = "space-y-2.5 rounded-xl border border-white/[0.08] p-3";
 const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] disabled:opacity-40";
 const SAFE_LINK = /^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i;
@@ -31,6 +31,27 @@ const withWords = (t: unknown, lang: Lang, v: string) => {
 
 /** Each block's item fields, its most items, and the field naming an item in the list. */
 const ITEMS: Partial<Record<BlockKind, { fields: FieldSpec[]; max: number; title: string }>> = {
+  filterGallery: {
+    max: 40, title: "title",
+    fields: [
+      { key: "title", label: () => tr("العنوان", "Title"), kind: "words", max: 160 },
+      { key: "image", label: () => tr("الصورة", "Picture"), kind: "image", required: true },
+      { key: "text", label: () => tr("الكلام (اختياري)", "Words (optional)"), kind: "long", max: 1200 },
+      { key: "category", label: () => tr("الفئة (اختياري)", "Category (optional)"), kind: "words", max: 80 },
+      { key: "href", label: () => tr("الرابط (اختياري)", "Link (optional)"), kind: "link" },
+      { key: "cta", label: () => tr("كلام الرابط", "Link words"), kind: "words", max: 60 },
+    ],
+  },
+  showcase: {
+    max: 8, title: "title",
+    fields: [
+      { key: "title", label: () => tr("العنوان", "Title"), kind: "words", max: 160 },
+      { key: "text", label: () => tr("الكلام (اختياري)", "Words (optional)"), kind: "long", max: 1200 },
+      { key: "image", label: () => tr("الصورة", "Picture"), kind: "image" },
+      { key: "href", label: () => tr("الرابط (اختياري)", "Link (optional)"), kind: "link" },
+      { key: "cta", label: () => tr("كلام الرابط", "Link words"), kind: "words", max: 60 },
+    ],
+  },
   accordion: {
     max: 30, title: "q",
     fields: [
@@ -55,6 +76,8 @@ const ITEMS: Partial<Record<BlockKind, { fields: FieldSpec[]; max: number; title
       { key: "name", label: () => tr("اسم الخطة", "Plan name"), kind: "words" },
       { key: "price", label: () => tr("السعر", "Price"), kind: "words" },
       { key: "period", label: () => tr("كل قديش (اختياري)", "Per (optional)"), kind: "words" },
+      { key: "yearlyPrice", label: () => tr("السعر السنوي (اختياري)", "Yearly price (optional)"), kind: "words", max: 40 },
+      { key: "yearlyPeriod", label: () => tr("الفترة السنوية (اختياري)", "Yearly period (optional)"), kind: "words", max: 40 },
       { key: "features", label: () => tr("المزايا (كل وحدة بسطر)", "Features (one per line)"), kind: "long" },
       { key: "badge", label: () => tr("شارة (اختياري)", "Badge (optional)"), kind: "words" },
       { key: "featured", label: () => tr("بارزة", "Stands out"), kind: "toggle" },
@@ -116,13 +139,13 @@ function ItemFields({ item, fields, lang, busy, onSave }: { item: Item; fields: 
         switch (f.kind) {
           case "words":
           case "long":
-            return <Field key={f.key} label={f.label()} multiline={f.kind === "long"} value={wordsOf(v, lang)} onSave={(t) => put(f.key, withWords(v, lang, t))} testId={`block-item-${f.key}`} />;
+            return <Field key={f.key} label={f.label()} multiline={f.kind === "long"} value={wordsOf(v, lang)} onSave={(t) => put(f.key, withWords(v, lang, f.max ? t.slice(0, f.max) : t))} testId={`block-item-${f.key}`} />;
           case "link":
             return (
               <Field key={f.key} label={f.label()} value={typeof v === "string" ? v : ""} testId={`block-item-${f.key}`} onSave={(t) => {
                 const s = t.trim();
                 if (!s) put(f.key, undefined);
-                else if (SAFE_LINK.test(s)) put(f.key, s);
+                else if (s.length <= 500 && SAFE_LINK.test(s)) put(f.key, s);
               }} />
             );
           case "image":
@@ -131,7 +154,7 @@ function ItemFields({ item, fields, lang, busy, onSave }: { item: Item; fields: 
                 {typeof v === "string" && v ? <img src={v} alt="" className="h-10 w-10 rounded-md object-cover" /> : <span className="grid h-10 w-10 place-items-center rounded-md bg-white/[0.06]">—</span>}
                 <span className="min-w-0 flex-1">{f.label()}</span>
                 <button type="button" className={btn} disabled={busy} onClick={() => setPicking(f.key)} data-testid={`block-item-pick-${f.key}`}>{tr("اختاري", "Choose")}</button>
-                {typeof v === "string" && v && f.key !== "src" ? <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => put(f.key, undefined)}>{tr("شيل", "Remove")}</button> : null}
+                {typeof v === "string" && v && f.key !== "src" && !f.required ? <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => put(f.key, undefined)}>{tr("شيل", "Remove")}</button> : null}
               </div>
             );
           case "stars":
@@ -159,15 +182,17 @@ function ItemsEditor({ node, kind, lang, busy, onOps }: { node: PageTreeNode; ki
   const items = (Array.isArray(p.items) ? p.items : []) as Item[];
   const [open, setOpen] = useState(0);
   const [adding, setAdding] = useState(false);
-  const save = (label: string, next: Item[], openAt?: number) => {
-    onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, items: next } }]);
+  const save = (label: string, next: Item[], openAt?: number, initial?: number) => {
+    const active = kind === "showcase" ? { initial: Math.max(0, Math.min(next.length - 1, initial ?? (Number(p.initial) || 0))) } : {};
+    onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, items: next, ...active } }]);
     if (openAt !== undefined) setOpen(openAt);
   };
   const move = (i: number, by: number) => {
     const next = [...items];
     const [it] = next.splice(i, 1);
     next.splice(i + by, 0, it);
-    save(tr("ترتيب", "Order"), next, i + by);
+    const initial = Number(p.initial) || 0;
+    save(tr("ترتيب", "Order"), next, i + by, initial === i ? i + by : initial === i + by ? i : initial);
   };
   return (
     <div className="space-y-1.5" data-testid="block-items">
@@ -177,7 +202,7 @@ function ItemsEditor({ node, kind, lang, busy, onOps }: { node: PageTreeNode; ki
             <span className="min-w-0 flex-1 truncate">{i + 1}. {wordsOf(it[spec.title], lang) || tr("بلا اسم", "Unnamed")}</span>
             <button type="button" className={btn} disabled={busy || i === 0} onClick={(e) => { e.stopPropagation(); move(i, -1); }} aria-label={tr("لفوق", "Up")}>↑</button>
             <button type="button" className={btn} disabled={busy || i === items.length - 1} onClick={(e) => { e.stopPropagation(); move(i, 1); }} aria-label={tr("لتحت", "Down")}>↓</button>
-            <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={(e) => { e.stopPropagation(); save(tr("شيل", "Remove"), items.filter((_, j) => j !== i)); }} aria-label={tr("شيل", "Remove")} data-testid="block-item-remove">✕</button>
+            <button type="button" className={`${btn} text-red-300`} disabled={busy || ((kind === "showcase" || kind === "filterGallery") && items.length <= 1)} onClick={(e) => { e.stopPropagation(); const initial = Number(p.initial) || 0; save(tr("شيل", "Remove"), items.filter((_, j) => j !== i), Math.max(0, Math.min(open, items.length - 2)), initial > i ? initial - 1 : initial); }} aria-label={tr("شيل", "Remove")} data-testid="block-item-remove">✕</button>
           </summary>
           {open === i ? <div className="mt-2"><ItemFields item={it} fields={spec.fields} lang={lang} busy={busy} onSave={(next) => save(tr("تعديل", "Edit"), items.map((x, j) => (j === i ? next : x)))} /></div> : null}
         </details>
@@ -237,20 +262,57 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
   const p = (node.props ?? {}) as Item;
   const set = (label: string, patch: Item) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
   const kind = node.type as BlockKind;
-  const toggle = (key: string, label: string) => (
+  const toggle = (key: string, label: string, defaultValue = false) => (
     <label className="flex items-center justify-between gap-2 text-xs">
       <span className="text-white/75">{label}</span>
-      <input type="checkbox" disabled={busy} checked={p[key] === true} onChange={(e) => set(label, { [key]: e.target.checked || undefined })} data-testid={`block-${key}`} />
+      <input type="checkbox" disabled={busy} checked={p[key] === undefined ? defaultValue : p[key] === true} onChange={(e) => set(label, { [key]: e.target.checked })} data-testid={`block-${key}`} />
     </label>
   );
   const words = (key: string, label: string, multiline = false) => <Field label={label} multiline={multiline} value={wordsOf(p[key], lang)} onSave={(v) => set(tr("تعديل", "Edit"), { [key]: withWords(p[key], lang, v) })} testId={`block-${key}`} />;
   return (
     <div className={box} data-testid="studio-block">
+      {kind === "filterGallery" ? (
+        <>
+          <Choice label={tr("شكل المعرض", "Gallery presentation")} value={String(p.presentation ?? "cards")} busy={busy} options={[["cards", tr("بطاقات", "Cards")], ["index", tr("فهرس أعمال", "Work index")]]} onPick={presentation => set(tr("شكل المعرض", "Gallery presentation"), { presentation })} />
+          <Choice label={tr("توزيع صور مميز", "Bento image layout")} value={p.layout === "bento" ? "bento" : "standard"} busy={busy} options={[["standard", tr("التوزيع الحالي", "Current layout")], ["bento", "Bento"]]} onPick={layout => set(tr("الترتيب", "Layout"), { layout: layout === "bento" ? layout : "grid" })} />
+          {toggle("filters", tr("إظهار فلاتر المعرض", "Show gallery filters"), true)}
+          {toggle("showCount", tr("إظهار عدد النتائج", "Show result count"), true)}
+          <Choice label={tr("صورة المعاينة الأولى", "Initial preview image")} value={String(p.initial ?? 0)} busy={busy} options={[["-1", tr("مساحة فارغة حتى التفاعل", "Blank until interaction")], ...(Array.isArray(p.items) ? p.items : []).map((_: unknown, i: number) => [String(i), String(i + 1)] as [string, string])]} onPick={value => set(tr("صورة المعاينة الأولى", "Initial preview image"), { initial: Number(value) })} />
+          <Field label={tr("اسم المعرض", "Gallery label")} value={wordsOf(p.label, lang)} onSave={(value) => set(tr("اسم المعرض", "Gallery label"), { label: withWords(p.label, lang, value.slice(0, 160)) })} testId="filterGallery-label" />
+          <Choice label={tr("الترتيب", "Layout")} value={String(p.layout ?? "grid")} busy={busy} options={[["grid", tr("شبكة", "Grid")], ["masonry", tr("صور متراصة", "Masonry")], ["split", tr("معاينة مقسومة", "Split preview")]]} onPick={(value) => set(tr("الترتيب", "Layout"), { layout: value })} testId="filterGallery-layout" />
+          <Range label={tr("الأعمدة", "Columns")} min={1} max={6} value={typeof p.columns === "number" ? p.columns : 3} busy={busy} onSave={(value) => set(tr("الأعمدة", "Columns"), { columns: value })} testId="filterGallery-columns" />
+          <Range label={tr("المسافة", "Gap")} min={0} max={48} unit="px" value={typeof p.gap === "number" ? p.gap : 20} busy={busy} onSave={(value) => set(tr("المسافة", "Gap"), { gap: value })} testId="filterGallery-gap" />
+          <Choice label={tr("تأثير مرور الماوس", "Hover effect")} value={String(p.hoverEffect ?? "none")} busy={busy} options={[["none", tr("بلا", "None")], ["zoom", tr("تقريب", "Zoom")], ["tilt", tr("ميلان", "Tilt")], ["reveal", tr("ظهور", "Reveal")]]} onPick={(value) => set(tr("تأثير مرور الماوس", "Hover effect"), { hoverEffect: value })} testId="filterGallery-hoverEffect" />
+          <Choice label={tr("تفعيل المعاينة", "Preview activation")} value={String(p.activation ?? "click")} busy={busy} options={[["click", tr("بالضغط", "Click")], ["hover", tr("بمرور الماوس", "Hover")]]} onPick={(value) => set(tr("تفعيل المعاينة", "Preview activation"), { activation: value })} testId="filterGallery-activation" />
+          {toggle("lightbox", tr("عرض الصورة المكبرة", "Lightbox"))}
+          {toggle("searchable", tr("بحث في المعرض", "Search gallery"))}
+        </>
+      ) : null}
+      {kind === "showcase" ? (
+        <>
+          <Choice label={tr("المظهر", "Appearance")} value={String(p.look ?? "default")} busy={busy} options={[["default", tr("افتراضي", "Default")], ["clay", tr("بطاقات طينية ناعمة", "Soft clay cards")]]} onPick={look => set(tr("المظهر", "Appearance"), { look })} />
+          <Field label={tr("اسم المعرض", "Gallery label")} value={wordsOf(p.label, lang)} onSave={(value) => set(tr("اسم المعرض", "Gallery label"), { label: withWords(p.label, lang, value.slice(0, 160)) })} testId="showcase-label" />
+          <Choice label={tr("الترتيب", "Layout")} value={String(p.layout ?? "horizontal")} busy={busy} options={[["horizontal", tr("أفقي", "Horizontal")], ["vertical", tr("عمودي", "Vertical")]]} onPick={(value) => set(tr("الترتيب", "Layout"), { layout: value })} testId="showcase-layout" />
+          <Choice label={tr("التوسيع", "Expansion")} value={String(p.activation ?? "click")} busy={busy} options={[["click", tr("بالضغط", "Click")], ["hover", tr("بمرور الماوس", "Hover")]]} onPick={(value) => set(tr("التوسيع", "Expansion"), { activation: value })} testId="showcase-activation" />
+          <Choice label={tr("المفتوحة أولاً", "Initially expanded")} value={String(p.initial ?? 0)} busy={busy} options={(Array.isArray(p.items) ? p.items : []).map((item, i) => [String(i), `${i + 1}. ${wordsOf((item as Item).title, lang)}`])} onPick={(value) => set(tr("المفتوحة أولاً", "Initially expanded"), { initial: Number(value) })} testId="showcase-initial" />
+          <Range label={tr("نسبة التوسيع", "Expansion ratio")} min={2} max={6} step={0.1} value={typeof p.ratio === "number" ? p.ratio : 4} busy={busy} onSave={(value) => set(tr("نسبة التوسيع", "Expansion ratio"), { ratio: value })} testId="showcase-ratio" />
+          <Range label={tr("الارتفاع", "Height")} min={240} max={800} unit="px" value={typeof p.height === "number" ? p.height : 480} busy={busy} onSave={(value) => set(tr("الارتفاع", "Height"), { height: value })} testId="showcase-height" />
+          <Range label={tr("مدة الانتقال", "Transition duration")} min={0} max={1.5} step={0.05} unit="s" value={typeof p.duration === "number" ? p.duration : 0.55} busy={busy} onSave={(value) => set(tr("مدة الانتقال", "Transition duration"), { duration: value })} testId="showcase-duration" />
+          <Range label={tr("تعتيم الصورة", "Image overlay")} min={0} max={0.9} step={0.05} value={typeof p.overlay === "number" ? p.overlay : 0.5} busy={busy} onSave={(value) => set(tr("تعتيم الصورة", "Image overlay"), { overlay: value })} testId="showcase-overlay" />
+        </>
+      ) : null}
       {kind === "accordion" ? (
         <>
           <Choice label={tr("الشكل", "Look")} value={String(p.look ?? "lines")} busy={busy} options={[["lines", tr("خطوط", "Lines")], ["cards", tr("كروت", "Cards")], ["plus", tr("زائد وناقص", "Plus and minus")]]} onPick={(v) => set(tr("الشكل", "Look"), { look: v })} testId="block-look" />
           {toggle("single", tr("واحد مفتوح بس بنفس الوقت", "Only one open at a time"))}
+          {p.single !== true ? toggle("controls", tr("أزرار فتح وإغلاق الكل", "Expand and collapse all controls")) : null}
           <p className="text-[10px] leading-4 text-white/35">{tr("الأسئلة بتنعرض لمحركات البحث كأسئلة شائعة.", "The questions show to search engines as an FAQ.")}</p>
+        </>
+      ) : null}
+      {kind === "pricing" ? (
+        <>
+          {toggle("billing", tr("التبديل بين فترات الدفع", "Billing switch"))}
+          <Choice label={tr("فترة الدفع الأولى", "Initial billing")} value={p.initialBilling === "yearly" ? "yearly" : "monthly"} busy={busy} options={[["monthly", tr("شهري", "Monthly")], ["yearly", tr("سنوي", "Yearly")]]} onPick={(value) => set(tr("فترة الدفع الأولى", "Initial billing"), { initialBilling: value })} testId="pricing-initialBilling" />
         </>
       ) : null}
       {kind === "testimonials" ? (

@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { contrast, remapRose } from "../src/storeThemes/colour";
 import { ROSE_COLOURS } from "../src/storeThemes/roseColours.gen";
 import { STORE_THEMES, themeById } from "../src/storeThemes/registry";
+import { TEMPLATE_THEMES } from "../src/storeThemes/kits/themes";
 import { KIT_OPTIONS, cleanKit, themeKit, withKit } from "../src/storeThemes/packs";
 import { CURSOR_THEMES } from "../src/cms/style/cursorStyles";
 import { getLoadingById } from "../src/cms/effects/loadingAnimations";
@@ -204,7 +205,7 @@ test("the admin reads the theme list from the shop", async ({ request }) => {
   const res = await request.get("/api/store-themes", { headers: { Origin: "http://127.0.0.1:4100" } });
   expect(res.headers()["access-control-allow-origin"]).toBe("http://127.0.0.1:4100");
   const { themes } = await res.json();
-  expect(themes.map((t: { id: string }) => t.id)).toEqual(STORE_THEMES.map((t) => t.id));
+  expect(themes.map((t: { id: string }) => t.id)).toEqual([...STORE_THEMES, ...TEMPLATE_THEMES].map((t) => t.id));
   expect(themes[0]).toMatchObject({ name: { ar: expect.any(String), en: expect.any(String), he: expect.any(String) }, swatch: expect.any(Array) });
   const other = await request.get("/api/store-themes", { headers: { Origin: "https://elsewhere.example" } });
   expect(other.headers()["access-control-allow-origin"]).toBeUndefined();

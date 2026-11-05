@@ -36,23 +36,29 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../api/pages.api";
 import { getApiErrorMessage } from "../api/http";
-import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme } from "./storeThemes";
+import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme, withOwnedTheme } from "./storeThemes";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
+import { sendDraftBatches, travelDraftHistory, type HistoryDirection } from "./draftBatches";
+import { MotionProfileFields } from "./MotionProfileFields";
+import { pageMotionOps, type MotionProfile } from "./motionProfiles";
 import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSettings, ThemePanel, WordsPanel } from "./StudioPanels";
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
+import { ScenePanel } from "./ScenePanel";
+import { DeckPanel } from "./DeckPanel";
 import { Model3dPanel } from "./Model3dPanel";
 import { ContentBlocksPanel, PopupPanel } from "./ContentBlocksPanel";
 import { BLOCK_KINDS } from "./blockDefaults";
+import { ChartPanel, ClockPanel, InstrumentPanel, StickyPanel } from "./CreativePanels";
 import { AddMenu, CellPanel, ColumnsPanel, EDITABLE, ElementPanel, NodeActions, SectionPanel, SplitPicker } from "./StudioTreePanels";
 import { ADDABLE, canHold, copyOf, dragLine, idMaker, isFree, newSection, reduceWidths, styleOp, twelfths } from "./columns";
 import { NEEDS, insertOps, makeNode, pageItemOf, type AddKind, type InsertCtx, type Spot, type Where } from "./insert";
 import { AddPanel } from "./AddPanel";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import { VideoPickerModal } from "../components/media/VideoPickerModal";
-import { LookPanel, MotionPanel } from "./LookPanels";
+import { LookPanel, MotionPanel, VideoOverlayPanel } from "./LookPanels";
 import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
 import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
@@ -215,6 +221,7 @@ export default function StudioPage() {
   const [askedUrl, setAskedUrl] = useState("");
   // Motion in the frame: everything plays while "live"; after a motion change that element plays once.
   const [motionLive, setMotionLive] = useState(false);
+  const [pageMotion, setPageMotion] = useState<MotionProfile>({});
   const liveRef = useRef(false);
   liveRef.current = motionLive;
   const playNext = useRef<string | null>(null);
@@ -402,24 +409,37 @@ export default function StudioPage() {
   /** Sends changes to the draft; records how to undo them unless it is an undo/redo itself. */
   // The shared styles: each saved change reloads the frame, whose preview shows the draft.
   const ss = useSiteStyles(() => reload());
-  const run = (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; record?: boolean } = {}) => {
+  const run = (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; travel?: HistoryDirection } = {}) => {
     const next = queue.current.then(() => runNow(label, ops, opts));
     queue.current = next.catch(() => {});
     return next;
   };
-  const runNow = async (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; record?: boolean }) => {
+  const runNow = async (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; travel?: HistoryDirection }) => {
     const at = latest.current;
     if (!at) return false;
-    const undo = undoOf(ops, at, main);
+    const applied: PagesAPI.PageDraftOp[] = [];
     setBusy(true);
     try {
-      const r = await PagesAPI.changePageDraft(id, ops, at.rev || undefined);
-      latest.current = r.draft;
-      qc.setQueryData(["pages", id, "draft"], { draft: r.draft, main });
-      if (opts.record !== false) history.current.push({ label, ops, undo });
+      const sendBatch = async (chunk: PagesAPI.PageDraftOp[], rev?: number) => (await PagesAPI.changePageDraft(id, chunk, rev)).draft;
+      const onApplied = (draft: PagesAPI.PageDraft, chunk: PagesAPI.PageDraftOp[]) => {
+        applied.push(...chunk);
+        latest.current = draft;
+        qc.setQueryData(["pages", id, "draft"], { draft, main });
+      };
+      if (opts.travel) {
+        if (!(await travelDraftHistory(history.current, opts.travel, at, main, sendBatch, onApplied))) return false;
+      } else {
+        await sendDraftBatches(ops, at, sendBatch, onApplied);
+        history.current.push({ label, ops, undo: undoOf(ops, at, main) });
+      }
       if (opts.reload !== false) reload();
       return true;
     } catch (e) {
+      // A later batch may fail after earlier ones were saved: those still have an undo.
+      if (applied.length) {
+        if (!opts.travel) history.current.push({ label, ops: applied, undo: undoOf(applied, at, main) });
+        reload();
+      }
       if (statusOf(e) === 409) {
         await draftQ.refetch();
         reload();
@@ -431,24 +451,13 @@ export default function StudioPage() {
       setTick((t) => t + 1);
     }
   };
-  const undoLast = async () => {
-    const e = history.current.takeUndo();
-    if (e && !(await run(e.label, e.undo, { record: false }))) history.current.drop(e);
-  };
-  const redoLast = async () => {
-    const e = history.current.takeRedo();
-    if (e && !(await run(e.label, e.ops, { record: false }))) history.current.drop(e);
-  };
+  const undoLast = () => run("", [], { travel: "undo" });
+  const redoLast = () => run("", [], { travel: "redo" });
   /** Back (negative) or forward through the history, one change at a time; stops at one that fails. */
   const stepHistory = async (n: number) => {
     setHistoryOpen(false);
     for (let i = 0; i < Math.abs(n); i++) {
-      const e = n < 0 ? history.current.takeUndo() : history.current.takeRedo();
-      if (!e) break;
-      if (!(await run(e.label, n < 0 ? e.undo : e.ops, { record: false }))) {
-        history.current.drop(e);
-        break;
-      }
+      if (!(await run("", [], { travel: n < 0 ? "undo" : "redo" }))) break;
     }
   };
   const onFrameKey = useRef<(action?: string) => void>(() => {});
@@ -1600,7 +1609,7 @@ export default function StudioPage() {
   const inspector = () => {
     if (leftTab === "styles" && siteOpen) return siteInspector();
     if (themeOpen) {
-      return <ThemePanel themes={themesQ.data ?? []} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} onPreview={(t) => { setThemePreview(t); setThemeMode(null); }} onMode={setThemeMode} saving={themeSaving} onSave={() => setAsking({ kind: "theme" })} />;
+      return <ThemePanel themes={withOwnedTheme(themesQ.data ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} onPreview={(t) => { setThemePreview(t); setThemeMode(null); }} onMode={setThemeMode} saving={themeSaving} onSave={() => setAsking({ kind: "theme" })} />;
     }
     if (!selected || !index) {
       return (
@@ -1824,6 +1833,8 @@ export default function StudioPage() {
             {selFree.type === "section" ? <SectionPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <EdgesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {WRITABLE.has(selFree.type) ? (
               <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(selected)} data-testid="studio-edit-node">
@@ -1831,6 +1842,7 @@ export default function StudioPage() {
               </button>
             ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
             <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
             <StatesBar node={selFree} state={styleState} onState={setStyleState} />
             {styleState !== "normal" ? (
@@ -1848,12 +1860,16 @@ export default function StudioPage() {
                 ) : null}
                 {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={selFree.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
+                <StickyPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {PATTERNED.has(selFree.type) ? <PatternPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "popup" ? <PopupPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {(BLOCK_KINDS as readonly string[]).includes(selFree.type) ? <ContentBlocksPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "instrument" ? <InstrumentPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "chart" ? <ChartPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+                {selFree.type === "clock" ? <ClockPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "model3d" ? <Model3dPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
@@ -1890,6 +1906,15 @@ export default function StudioPage() {
           </div>
         ) : null}
 
+        {selected === index.root ? <div className="space-y-3 rounded-xl border border-white/[0.08] p-3" data-testid="studio-page-motion">
+          <div className="text-xs font-medium text-white/70">{tr("حركة عناصر الصفحة", "Page element motion")}</div>
+          <p className="text-[11px] leading-5 text-white/45">{tr("بتتطبق على عناصر هالصفحة وبتقدر تتراجع عنها. تشغيل الفيديو وحركة الموديل ثلاثي الأبعاد إلهم إعداداتهم الخاصة.", "Applies to this page's elements and can be undone. Video playback and 3D model movement have their own settings.")}</p>
+          <MotionProfileFields value={pageMotion} onChange={setPageMotion} busy={busy} />
+          <button type="button" className="w-full rounded-lg bg-accent-500/20 px-2 py-2 text-xs text-accent-100 disabled:opacity-40" disabled={busy || (!pageMotion.engine && (!pageMotion.preset || pageMotion.preset === "original"))} onClick={() => {
+            const root = latest.current?.tree.root;
+            if (root) void change(tr("حركة عناصر الصفحة", "Page element motion"), pageMotionOps(root, pageMotion));
+          }} data-testid="studio-page-motion-apply">{tr("تطبيق على الصفحة", "Apply to page")}</button>
+        </div> : null}
         {selected === index.root && pageQ.data && (pageQ.data.kind ?? "page") === "page" ? <PageSettingsPanel key={pageQ.data.id} page={pageQ.data} langs={langs.enabled} /> : null}
         {selected === index.root ? <ConvertAllPanel sections={oldOnPage.map((x) => x.section)} main={main} roseOf={roseOf} busy={busy} onConvert={() => convertOld(oldOnPage.map((x) => x.node.id))} /> : null}
 
@@ -2041,7 +2066,8 @@ export default function StudioPage() {
   const motionNode = selFree ?? (lookTarget && lookTarget.kind !== "box" ? lookSel : null);
 
   // Templates (studio/templates): built for the shown theme's kind of store, drawn in its colours, with the store's own photos.
-  const shownThemeInfo = themesQ.data?.find((t) => t.id === (themePreview ?? currentTheme));
+  const shownThemeInfo = withOwnedTheme(themesQ.data ?? [], settings.data?.header).find((t) => t.id === (themePreview ?? currentTheme));
+  const ownedDesign = (settings.data?.header as { storeDesign?: { mode?: string; homeId?: string; headerId?: string; footerId?: string } } | null)?.storeDesign;
   const templateFamily = isFamily(shownThemeInfo?.family) ? shownThemeInfo.family : "fashion";
   const templateColours = shownThemeInfo ? coloursOf(shownThemeInfo.palettes?.[themeMode ?? savedTheme?.mode ?? shownThemeInfo.mode]) : ROSE_COLOURS;
   // The store's pack (the applied kit over its theme's): templates, new 3D models and the icon picker follow it.
@@ -2187,6 +2213,10 @@ export default function StudioPage() {
           <span className="inline-block ltr:-scale-x-100">→</span> {tr("الصفحات", "Pages")}
         </Link>
         <h1 className="me-2 truncate text-sm font-semibold">{pageQ.data?.name ?? "…"}</h1>
+        {ownedDesign?.mode === "cms" ? <nav className="flex flex-wrap gap-1" aria-label={tr("أجزاء التصميم", "Design documents")}>
+          {([["homeId", tr("الصفحة الرئيسية", "Home page")], ["headerId", tr("الهيدر", "Header")], ["footerId", tr("الفوتر", "Footer")]] as const).map(([key, label]) => ownedDesign[key] ? <Link key={key} to={`/studio/${ownedDesign[key]}`} aria-current={id === ownedDesign[key] ? "page" : undefined} className={`rounded-lg px-2 py-1 text-xs ${id === ownedDesign[key] ? "bg-accent-500/20 text-accent-100" : "bg-white/5 text-white/60"}`}>{label}</Link> : null)}
+          <Link to="/setup" className="rounded-lg bg-white/5 px-2 py-1 text-xs text-white/70">{tr("اختيار قالب آخر", "Choose another template")}</Link>
+        </nav> : null}
         <button type="button" onClick={() => setSheet((v) => !v)} aria-expanded={sheet} className="rounded-lg bg-white/[0.06] px-2 py-1 text-xs md:hidden" data-testid="studio-layers-toggle">
           {tr("الطبقات", "Layers")}
         </button>
@@ -2254,6 +2284,7 @@ export default function StudioPage() {
             ) : null}
           </div>
           <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
+          <button type="button" disabled={!index} onClick={() => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); }} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
           {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
           <button type="button" onClick={() => setAsking({ kind: "publish", force: false })} disabled={!draft || busy} className="h-7 rounded-lg bg-accent-500 px-3 text-xs font-medium text-white disabled:opacity-30" data-testid="studio-publish">{tr("نشر", "Publish")}</button>

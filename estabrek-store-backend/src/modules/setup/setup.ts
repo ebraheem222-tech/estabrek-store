@@ -10,6 +10,8 @@ import { AUDIENCES, INDUSTRIES } from "../identity/identity.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "../admin/pageSectionData.schemas.js";
 import { TypeBody } from "../productTypes/productTypes.js";
 import { CONTENT_LANGS, type ContentLang } from "../../lib/translations.js";
+import { checkTree, type TreeNode } from "../../lib/pageTree.js";
+import { ThemeSnapshotSchema } from "../../lib/designTheme.js";
 
 const words = (max: number) =>
   z.object({ ar: z.string().trim().max(max).optional(), en: z.string().trim().max(max).optional(), he: z.string().trim().max(max).optional() });
@@ -35,13 +37,28 @@ const SectionSpec = z.object({
 });
 export type SectionSpec = z.infer<typeof SectionSpec>;
 
+const setupTree = z.unknown().transform((input, ctx) => {
+  const result = checkTree(input);
+  if (!result.ok) {
+    ctx.addIssue({ code: "custom", message: result.issues.slice(0, 3).map((i) => `${i.path}: ${i.message}`).join("; ") });
+    return z.NEVER;
+  }
+  const references = (node: TreeNode): boolean => node.type === "legacy" || Boolean(node.children?.some(references));
+  if (!result.tree.root.children?.length || references(result.tree.root)) {
+    ctx.addIssue({ code: "custom", message: "A setup tree needs its own sections, without legacy references" });
+    return z.NEVER;
+  }
+  return result.tree;
+});
+
 const PageSpec = z.object({
   slug: pageSlug,
   name: words(120),
   seoTitle: words(120).optional(),
   seoDescription: words(320).optional(),
-  sections: z.array(SectionSpec).min(1).max(20),
-});
+  sections: z.array(SectionSpec).max(20).default([]),
+  tree: setupTree.optional(),
+}).refine((p) => p.tree ? p.sections.length === 0 : p.sections.length > 0, "Supply an editable tree or legacy sections, not both");
 export type PageSpec = z.infer<typeof PageSpec>;
 
 const MenuItem = z.object({ label: words(60), href });
@@ -52,14 +69,18 @@ export const SetupBody = z.object({
   /** The store's name and line, when the wizard asked for them. */
   name: words(60).optional(),
   tagline: words(80).optional(),
+  logoUrl: z.string().trim().max(2048).url().refine((url) => /^https?:\/\//i.test(url), "Logo must use HTTP or HTTPS").nullable().optional(),
   /** null = the rose design. */
   theme: z.object({ id: z.string().trim().max(60).nullable(), mode: z.enum(["light", "dark"]).nullable().default(null) }),
+  design: z.object({ templateId: z.string().trim().max(60).nullable(), theme: ThemeSnapshotSchema, header: setupTree, footer: setupTree }).optional(),
   categories: z.array(CategorySpec).max(30).default([]),
   types: z.array(TypeSpec).max(20).default([]),
   pages: z.array(PageSpec).max(12).default([]),
   menu: z.array(MenuItem).max(16).default([]),
   /** Put the new home page in place of an existing one (kept as a revision first). */
   replaceHome: z.boolean().default(false),
+}).refine((body) => !body.design || body.pages.some((page) => page.slug === "/" && page.tree), {
+  path: ["pages"], message: "A complete design requires its own editable home page",
 });
 export type SetupBody = z.infer<typeof SetupBody>;
 

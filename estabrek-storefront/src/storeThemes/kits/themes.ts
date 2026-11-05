@@ -9,13 +9,14 @@ import { turned } from "../dna/variants";
 import type { StoreTheme, ThemeFamily } from "../types";
 import { TEMPLATES, templateThemeId, type Template } from ".";
 import { t } from "./tree";
+import { CATEGORIES } from "./categories";
 
 // A family's name in a font stack: a theme family by its own files' name, a library one by Google's.
 const named = (slug: string) => {
   const f = TREE_FONTS.find((x) => x.slug === slug);
   return !f ? slug : f.source === "theme" ? `th-${slug}` : f.name;
 };
-const FAMILY: Record<string, ThemeFamily> = { shoes: "shoes" };
+const FAMILY: Record<string, ThemeFamily> = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.family]));
 
 const themeOf = (tpl: Template): StoreTheme => {
   const s = tpl.style;

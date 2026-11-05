@@ -1,5 +1,11 @@
 node_modules/
 .next/
+# Keep local credentials out of uploads; sample configuration stays shareable.
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
 .env.local
 .env.*.local
 .superpowers/

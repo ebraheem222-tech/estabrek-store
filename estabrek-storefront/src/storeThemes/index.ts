@@ -1,6 +1,7 @@
 import { applyCustom, cleanCustom } from "./custom";
 import { themeById } from "./registry";
 import type { StoreTheme, StoreThemeChoice } from "./types";
+import { independentDesign, readThemeSnapshot } from "./snapshot";
 
 export { STORE_THEMES, themeById } from "./registry";
 export { themeCss, themePalette } from "./css";
@@ -41,10 +42,10 @@ export const DEFAULT_THEME: Record<string, string> = {
 export function storeThemeOf(header: unknown): { theme: StoreTheme; mode: "light" | "dark" | null } | null {
   const h = header as { storeTheme?: StoreThemeChoice; identity?: { industry?: unknown; audience?: unknown } } | null | undefined;
   const choice = h?.storeTheme;
-  const theme = themeById(choice?.id ?? null);
+  const theme = readThemeSnapshot(choice?.snapshot) ?? themeById(choice?.id ?? null);
   if (!theme) {
     const industry = typeof h?.identity?.industry === "string" ? h.identity.industry : "general";
-    const modest = industry === "fashion" && (h?.identity?.audience ?? "everyone") === "women";
+    const modest = !independentDesign(header) && industry === "fashion" && (h?.identity?.audience ?? "everyone") === "women";
     const fallback = modest ? null : themeById(DEFAULT_THEME[industry] ?? DEFAULT_THEME.general);
     return fallback ? { theme: fallback, mode: null } : null;
   }

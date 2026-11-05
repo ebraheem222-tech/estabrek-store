@@ -5,15 +5,17 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { studioOrigins } from "@/lib/studioOrigins";
-import { DEFAULT_THEME, STORE_THEMES, themePalette } from "@/storeThemes";
+import { DEFAULT_THEME, STORE_THEMES, themePalette, themeById } from "@/storeThemes";
 import { KIT_OPTIONS, PLAIN_KIT, themeKit } from "@/storeThemes/packs";
 import { CAMERA_DEFAULT, CAMERA_RANGE, LIGHTS_DEFAULT, LIGHTS_RANGE, MODEL_INFO, MODEL_KINDS, MODEL_KNOBS } from "@/storeThemes/three/kinds";
 import { editorFonts } from "@/pageTree/fonts";
 import { SECTOR_NAMES } from "@/storeThemes/dna/labels";
+import { TEMPLATE_THEMES } from "@/storeThemes/kits/themes";
+import { copyTheme } from "@/storeThemes/snapshot";
 
 export const dynamic = "force-dynamic";
 
-const list = STORE_THEMES.map((t) => {
+const list = [...STORE_THEMES, ...TEMPLATE_THEMES].map((t) => {
   const { palette } = themePalette(t);
   return {
     id: t.id,
@@ -51,6 +53,11 @@ const cors = (req: NextRequest): Record<string, string> => {
 };
 
 export function GET(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get("theme");
+  if (id) {
+    const theme = themeById(id);
+    return NextResponse.json(theme ? { theme: copyTheme(theme) } : { error: "Unknown theme" }, { status: theme ? 200 : 404, headers: cors(req) });
+  }
   // defaults: each kind of store's theme when none is chosen (the admin shows it as the current one); fonts: the page editor's families.
   return NextResponse.json({ themes: list, models, stageDefaults, defaults: DEFAULT_THEME, fonts: editorFonts(), kitOptions: KIT_OPTIONS, plainKit: PLAIN_KIT }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
 }

@@ -15,6 +15,7 @@ export type ScreenStyle = {
   maxWidth?: string;
   height?: string;
   minHeight?: string;
+  sticky?: false | { top: number };
   columns?: number;
   /** Columns: each cell's share of the width ([1, 2] = a third and two thirds). */
   widths?: number[];
@@ -207,6 +208,7 @@ export const FX_KINDS = ["shine", "gradient", "grain"] as const;
 export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "linear"] as const;
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
 export type TreeMotionSpec = {
+  engine?: "gsap" | "anime";
   enter?: { kind: (typeof ENTER_KINDS)[number]; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
   scroll?: { kind: (typeof SCROLL_KINDS)[number]; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
   loop?: { kind: (typeof LOOP_KINDS)[number]; duration?: number; amount?: number };
@@ -230,6 +232,8 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
   const m = n.motion as Record<string, any> | null | undefined;
   if (!m || typeof m !== "object") return null;
   const out: TreeMotionSpec = {};
+  const engine = inList(m.engine, ["gsap", "anime"] as const);
+  if (engine) out.engine = engine;
   const enter = inList(m.enter?.kind, ENTER_KINDS);
   if (enter) out.enter = { kind: enter, duration: within(m.enter.duration, 0, 6), delay: within(m.enter.delay, 0, 6), ease: inList(m.enter.ease, EASES), distance: within(m.enter.distance, 0, 400), stagger: within(m.enter.stagger, 0, 1) };
   const scroll = inList(m.scroll?.kind, SCROLL_KINDS);
@@ -280,7 +284,7 @@ export const safeHref = (v: unknown) => (typeof v === "string" && NO_ODD.test(v)
 export const safeSrc = (v: unknown) => (typeof v === "string" && NO_ODD.test(v) && /^(\/(?!\/)|https:\/\/)/i.test(v) ? v : null);
 
 export const SLIDER_MAX = 12;
-export type TreeSlide = { src: string; kind: "image" | "video"; alt?: TreeText; caption?: TreeText; href?: string };
+export type TreeSlide = { src: string; kind: "image" | "video"; alt?: TreeText; caption?: TreeText; title?: TreeText; text?: TreeText; cta?: TreeText; href?: string };
 /** A slider's slides the shop may draw: safe addresses only (a bad one drops out), at most 12. */
 export function sliderSlides(props: Record<string, any> | undefined): TreeSlide[] {
   const list: unknown[] = Array.isArray(props?.slides) ? props!.slides : [];
@@ -290,7 +294,7 @@ export function sliderSlides(props: Record<string, any> | undefined): TreeSlide[
     const r = raw as Record<string, unknown>;
     const src = safeSrc(r.src);
     if (!src) continue;
-    out.push({ src, kind: r.kind === "video" ? "video" : "image", alt: r.alt as TreeText, caption: r.caption as TreeText, href: safeHref(r.href) ?? undefined });
+    out.push({ src, kind: r.kind === "video" ? "video" : "image", alt: r.alt as TreeText, caption: r.caption as TreeText, title: r.title as TreeText, text: r.text as TreeText, cta: r.cta as TreeText, href: safeHref(r.href) ?? undefined });
   }
   return out;
 }

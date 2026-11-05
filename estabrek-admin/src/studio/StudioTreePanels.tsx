@@ -354,10 +354,10 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
   };
   const change = (patch: Partial<Slide>) => save(changeSlide(slides, at, patch));
   const seconds = typeof p.autoplay === "number" ? p.autoplay : null;
-  const toggle = (key: string, label: string) => (
+  const toggle = (key: string, label: string, def = true) => (
     <label key={key} className="flex items-center justify-between gap-2 text-xs">
       <span className="text-white/75">{label}</span>
-      <input type="checkbox" disabled={busy} checked={p[key] !== false} onChange={(e) => setProps({ [key]: e.target.checked })} data-testid={`studio-slider-${key}`} />
+      <input type="checkbox" disabled={busy} checked={p[key] === undefined ? def : p[key] === true} onChange={(e) => setProps({ [key]: e.target.checked })} data-testid={`studio-slider-${key}`} />
     </label>
   );
   return (
@@ -409,6 +409,9 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
             <button type="button" className={btn} disabled={busy} onClick={() => setPick(at)} data-testid="studio-slide-change">{tr("تغيير الصورة", "Change the picture")}</button>
           )}
           <Field label={tr("الكلام على الشريحة (اختياري)", "Words on the slide (optional)")} value={wordsOf(s.caption, lang)} onSave={(v) => change({ caption: withWords(s.caption, lang, v) })} testId="studio-slide-caption" />
+          <Field label={tr("عنوان الشريحة", "Slide title")} value={wordsOf(s.title, lang)} onSave={(v) => change({ title: withWords(s.title, lang, v.slice(0, 160)) })} testId="studio-slide-title" />
+          <Field label={tr("نص الشريحة", "Slide text")} multiline value={wordsOf(s.text, lang)} onSave={(v) => change({ text: withWords(s.text, lang, v.slice(0, 1200)) })} testId="studio-slide-text" />
+          <Field label={tr("كلام زر الشريحة", "Slide button text")} value={wordsOf(s.cta, lang)} onSave={(v) => change({ cta: withWords(s.cta, lang, v.slice(0, 60)) })} testId="studio-slide-cta" />
           {s.kind === "image" ? <Field label={tr("وصف الصورة (لقارئ الشاشة)", "Picture description (for screen readers)")} value={wordsOf(s.alt, lang)} onSave={(v) => change({ alt: withWords(s.alt, lang, v) })} testId="studio-slide-alt" /> : null}
           <Field label={tr("رابط عند الكبس (اختياري)", "Link when tapped (optional)")} value={s.href ?? ""} testId="studio-slide-href" onSave={(v) => {
             const t = v.trim();
@@ -425,6 +428,21 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
       {toggle("loop", tr("بعد الأخيرة بترجع للأولى", "After the last, back to the first"))}
       {toggle("arrows", tr("أسهم", "Arrows"))}
       {toggle("dots", tr("نقاط", "Dots"))}
+      <label className="block text-[11px] text-white/55">{tr("حركة الشرائح", "Slide effect")}
+        <select className={control} disabled={busy} value={String(p.effect ?? "slide")} onChange={(e) => setProps({ effect: e.target.value })} data-testid="studio-slider-effect">
+          {[["slide", tr("سحب", "Slide")], ["fade", tr("تلاشي", "Fade")], ["zoom", tr("تكبير", "Zoom")], ["wipe", tr("كشف", "Wipe")], ["flip", tr("قلب ثلاثي الأبعاد", "Flip")], ["coverflow", tr("بطاقات مجسّمة", "Coverflow")], ["slices", tr("شرائح ثلاثية الأبعاد", "3D slices")]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>
+      <label className="block text-[11px] text-white/55">{tr("اتجاه الشرائح", "Slide axis")}
+        <select className={control} disabled={busy} value={String(p.axis ?? "x")} onChange={(e) => setProps({ axis: e.target.value })} data-testid="studio-slider-axis"><option value="x">{tr("أفقي", "Horizontal")}</option><option value="y">{tr("عمودي", "Vertical")}</option></select>
+      </label>
+      <Field label={tr("مدة الحركة بالثواني (٠–٢)", "Transition duration in seconds (0–2)")} value={String(p.duration ?? 0.7)} testId="studio-slider-duration" onSave={(v) => { const n = Number(v); if (v.trim() && Number.isFinite(n)) setProps({ duration: Math.max(0, Math.min(2, n)) }); }} />
+      {p.effect === "coverflow" ? <label className="block text-[11px] text-white/55">{tr("حجم بطاقات العرض", "Coverflow card size")} <input type="range" min={0.7} max={1.5} step={0.1} disabled={busy} value={typeof p.zoom === "number" ? p.zoom : 1} onChange={(e) => setProps({ zoom: Number(e.target.value) })} data-testid="studio-slider-zoom" className="mt-1 w-full" /></label> : null}
+      {toggle("thumbnails", tr("صور مصغّرة", "Thumbnails"), false)}
+      {toggle("progress", tr("مؤشر التقدّم", "Progress indicator"), false)}
+      <label className="block text-[11px] text-white/55">{tr("مكان كلام الشريحة", "Caption position")}
+        <select className={control} disabled={busy} value={String(p.captionPosition ?? "bottom")} onChange={(e) => setProps({ captionPosition: e.target.value })} data-testid="studio-slider-captionPosition"><option value="bottom">{tr("تحت", "Bottom")}</option><option value="center">{tr("بالنص", "Center")}</option><option value="split">{tr("بجانب الصورة", "Split")}</option></select>
+      </label>
       <Choice label={tr("شكل الإطار", "The frame's shape")} value={typeof p.aspect === "string" ? p.aspect : "16 / 9"} busy={busy} testId="studio-slider-aspect" options={ASPECTS.map(([k, name]) => [k, name()] as [string, string])} onPick={(v) => setProps({ aspect: v === "16 / 9" ? undefined : v })} />
       <p className="text-[11px] leading-5 text-white/40">{tr("بالمتجر بتنسحب بالإصبع، وما بتقلب لحالها عند اللي طالب حركة أقل.", "In the store it swipes by finger, and it doesn't turn by itself for anyone who asked for less motion.")}</p>
       <MediaLibraryModal
@@ -505,6 +523,7 @@ export function ElementPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           <>
             <Field label={tr("رابط الفيديو (MP4، من مكتبة الفيديوهات أو أي رابط https)", "Video link (MP4, from the video library or any https link)")} value={typeof p.src === "string" ? p.src : ""} testId="studio-prop-src" onSave={(v) => SAFE_FILE.test(v.trim()) && setProps({ src: v.trim() })} />
             <button type="button" className={btn} disabled={busy} onClick={() => setMedia(true)} data-testid="studio-pick-video">{tr("من مكتبة الفيديوهات", "From the video library")}</button>
+            {words("label", tr("وصف الفيديو لقارئ الشاشة", "Video description for screen readers"))}
             <VideoPickerModal open={media} onClose={() => setMedia(false)} onPick={({ url, posterUrl }) => { setMedia(false); setProps({ src: url, ...(posterUrl ? { poster: posterUrl } : {}) }); }} />
             {toggle("autoplay", tr("بيشتغل لحاله (بلا صوت)", "Plays by itself (muted)"))}
             {toggle("loop", tr("بيعيد من الأول", "Loops"))}

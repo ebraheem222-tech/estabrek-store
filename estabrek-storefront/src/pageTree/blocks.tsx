@@ -6,6 +6,8 @@
  */
 import type { ReactNode } from "react";
 import { BlockClose } from "./BlockClose";
+import { AccordionControls } from "./AccordionControls";
+import { PricingView } from "./PricingView";
 import { BeforeAfterView, CountdownView, TabsView } from "./Interactive";
 import { safeSrc, type TreeLang, type TreeNode } from "./tree";
 
@@ -48,6 +50,11 @@ function Running({ items, separator, className, style, mark }: { items: ReactNod
 }
 
 const ALERT_ICON: Record<string, string> = { info: "ℹ", success: "✓", warning: "!", danger: "✕", promo: "✦" };
+const BILLING_WORDS: Record<TreeLang, { monthly: string; yearly: string; unavailable: string; expand: string; collapse: string }> = {
+  ar: { monthly: "شهري", yearly: "سنوي", unavailable: "السعر غير محدد", expand: "فتح الكل", collapse: "إغلاق الكل" },
+  en: { monthly: "Monthly", yearly: "Yearly", unavailable: "Price not specified", expand: "Expand all", collapse: "Collapse all" },
+  he: { monthly: "חודשי", yearly: "שנתי", unavailable: "המחיר לא צוין", expand: "פתיחת הכול", collapse: "סגירת הכול" },
+};
 
 export function BlockView({ node, className, mark, say, link, lang }: Helpers): ReactNode {
   const p = node.props ?? {};
@@ -61,6 +68,7 @@ export function BlockView({ node, className, mark, say, link, lang }: Helpers): 
       const faq = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: items.map((i) => ({ "@type": "Question", name: say(i.q), acceptedAnswer: { "@type": "Answer", text: say(i.a) } })) };
       return (
         <div className={`${className} pt-acc pt-acc-${look}`} {...mark}>
+          {p.controls === true && p.single !== true ? <AccordionControls expand={BILLING_WORDS[lang].expand} collapse={BILLING_WORDS[lang].collapse} /> : null}
           {items.map((i, n) => (
             <details key={n} className="pt-acc-item" open={i.open === true} {...(p.single === true ? { name: `acc-${node.id}` } : {})}>
               <summary className="pt-acc-q">{say(i.q)}</summary>
@@ -100,6 +108,7 @@ export function BlockView({ node, className, mark, say, link, lang }: Helpers): 
     case "pricing": {
       const items = itemsOf(p.items, 6).filter((i) => say(i.name));
       if (!items.length) return null;
+      if (p.billing === true) return <PricingView className={className} mark={mark} initialBilling={p.initialBilling === "yearly" ? "yearly" : "monthly"} monthly={BILLING_WORDS[lang].monthly} yearly={BILLING_WORDS[lang].yearly} unavailable={BILLING_WORDS[lang].unavailable} items={items.map((item) => ({ name: say(item.name), price: say(item.price), period: say(item.period), yearlyPrice: say(item.yearlyPrice), yearlyPeriod: say(item.yearlyPeriod), badge: say(item.badge), featured: item.featured === true, features: say(item.features).split("\n").map((feature) => feature.trim()).filter(Boolean), cta: say(item.cta), href: link(item.href) }))} />;
       return (
         <div className={`${className} pt-plans`} {...mark}>
           {items.map((i, n) => {

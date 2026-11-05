@@ -11,6 +11,7 @@ export type SetupStatus = {
   setup: { done?: boolean; industry?: string; at?: string } | null;
   counts: { products: number; categories: number; pages: number };
   hasHome: boolean;
+  hasDesign?: boolean;
   owner: boolean;
   mainLanguage: "ar" | "en" | "he";
 };

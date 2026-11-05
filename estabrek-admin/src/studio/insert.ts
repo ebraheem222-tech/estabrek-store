@@ -13,6 +13,7 @@ import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
 import { canHold, isFree, newColumns, newElement, OVER_TYPES, type NewKind } from "./columns";
 import { newFooter, newHeader } from "./blockDefaults";
+import { makeReferenceSection, type ReferenceKind } from "./referenceSections";
 import type { Extra, TreeIndex } from "./treeIndex";
 
 export type Where = "before" | "after" | "inside";
@@ -125,14 +126,16 @@ export function insertOps(c: InsertCtx, selected: string | null, node: PageTreeN
 /* ------------------------------------------------------------- ready blocks */
 
 /** Ready-made blocks: a few elements already put together. */
-export const READY = ["ready-intro", "ready-split", "ready-video", "ready-gallery", "ready-header", "ready-footer"] as const;
+export const READY = ["ready-intro", "ready-split", "ready-video", "ready-model3d", "ready-lantern", "ready-gallery", "ready-header", "ready-footer"] as const;
 export type ReadyKind = (typeof READY)[number];
-export type AddKind = NewKind | ReadyKind | "section";
+export type AddKind = NewKind | ReadyKind | ReferenceKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
 export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video", beforeAfter: "image", hotspots: "image" };
 
 /** A new element, ready block or empty section, in the language being edited. */
 export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): PageTreeNode {
+  const reference = makeReferenceSection(kind, lang, ids, src);
+  if (reference) return reference;
   const el = (k: NewKind, s?: string) => newElement(k, lang, ids, s);
   const centred = { base: { textAlign: "center", align: "center" } };
   switch (kind) {
@@ -149,10 +152,30 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
     }
     case "ready-video": {
       // A clip across the section with words and a button over it.
-      const video = { ...el("video", src), props: { src, autoplay: true, loop: true, controls: false }, style: { base: { width: "100%", height: "70vh", fit: "cover" } } };
-      const words = placedAt({ ...el("heading"), props: { ...el("heading").props, level: 2 }, style: { base: { color: "white" } } }, { x: 50, y: 42 });
-      const go = placedAt(el("button"), { x: 50, y: 62 });
-      return { id: ids("sec"), type: "section", props: {}, style: { base: { pad: [0, 0, 0, 0] } }, children: [video, words, go] };
+      const video = { ...el("video", src), props: { src, label: { [lang]: { ar: "فيديو المتجر", en: "Store video", he: "סרטון החנות" }[lang] }, autoplay: true, loop: true, controls: false }, style: { base: { width: "100%", height: "70vh", fit: "cover", overlay: { color: "#000000", opacity: 0.5 } } } };
+      const heading = el("heading");
+      const words = placedAt({ ...heading, props: { ...heading.props, level: 2 }, style: { base: { color: "white", textAlign: "center", width: "85%", z: 1 } } }, { x: 50, y: 42 });
+      const go = placedAt({ ...el("button"), style: { base: { z: 1 } } }, { x: 50, y: 62 });
+      return { id: ids("sec"), type: "section", props: { contained: false }, style: { base: { pad: [0, 0, 0, 0] } }, children: [video, words, go] };
+    }
+    case "ready-model3d": {
+      const cols = newColumns([1, 1], ids);
+      const model = el("model3d");
+      cols.children![0].children = [{ ...model, props: { ...model.props, label: { [lang]: { ar: "عرض المنتج ثلاثي الأبعاد", en: "3D product showcase", he: "תצוגת מוצר בתלת ממד" }[lang] }, lights: { preset: "studio" }, floor: "shadow" }, style: { base: { width: "100%", height: "480px" }, mobile: { height: "320px" } } }];
+      const heading = el("heading");
+      cols.children![1].children = [{ ...heading, props: { ...heading.props, level: 2 } }, el("text"), el("button")];
+      cols.children![1].style = { base: { justify: "center" } };
+      return { id: ids("sec"), type: "section", props: { contained: true }, style: { base: { bg: "surface" } }, children: [cols] };
+    }
+    case "ready-lantern": {
+      const section = makeNode("ready-model3d", lang, ids);
+      const columns = section.children![0];
+      const model = columns.children![0].children![0];
+      model.props = { ...model.props, model: "lantern", finish: "matte", label: { [lang]: { ar: "فانوس ثلاثي الأبعاد", en: "3D lantern", he: "פנס תלת ממדי" }[lang] }, colours: { screen: "#ffe6b2", body: "#815b3d", trim: "#815b3d", accent: "#b26d4d", glow: "#fff1bf", metal: "#7b6848" }, lights: { preset: "warm" }, floor: "none", anim: { type: "float", speed: .5, amount: .35 } };
+      const heading = columns.children![1].children![0];
+      heading.props = { ...heading.props, text: { [lang]: { ar: "ضوء صغير، شعور مختلف", en: "A little light, a different feeling", he: "אור קטן, תחושה אחרת" }[lang] } };
+      section.props = { ...section.props, particles: { kind: "fireflies", color: "#efc384", amount: .4, speed: .4 } };
+      return section;
     }
     case "ready-gallery":
       return { id: ids("sec"), type: "section", props: { contained: true }, children: [el("slider", src)] };
@@ -161,6 +184,6 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
     case "ready-footer":
       return newFooter(lang, ids);
     default:
-      return el(kind, src);
+      return el(kind as NewKind, src);
   }
 }

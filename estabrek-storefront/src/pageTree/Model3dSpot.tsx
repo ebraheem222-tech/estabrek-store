@@ -6,7 +6,7 @@
  * "Reduce motion" draws it still. With a link, the whole model is the link.
  */
 import dynamic from "next/dynamic";
-import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { modelColours } from "@/storeThemes/three/colours";
 import type { ModelColours } from "@/storeThemes/three/parts";
 import type { Palette } from "@/storeThemes/colour";
@@ -37,11 +37,12 @@ function release(id: symbol) {
 }
 
 /** A device that can't draw 3D (no WebGL) leaves the model's place empty, never the page broken. */
-class NoWebGl extends Component<{ children: ReactNode }, { failed: boolean }> {
+class NoWebGl extends Component<{ children: ReactNode; onError: () => void }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
+  componentDidCatch() { this.props.onError(); }
   render() {
     return this.state.failed ? null : this.props.children;
   }
@@ -70,7 +71,14 @@ function readPage(el: HTMLElement, spec: Model3dSpec): Read {
   return read;
 }
 
-export function Model3dSpot({ spec, label, href }: { spec: Model3dSpec; label?: string; href?: string }) {
+type SpotProps = { spec: Model3dSpec; label?: string; href?: string; poster?: string };
+
+/** A changed scene gets a fresh loading/error lifecycle, even when returning to a previous file. */
+export function Model3dSpot(props: SpotProps) {
+  return <Model3dInstance key={JSON.stringify(props.spec)} {...props} />;
+}
+
+function Model3dInstance({ spec, label, href, poster }: SpotProps) {
   const box = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
   // Near and given one of the few canvases.
@@ -82,6 +90,10 @@ export function Model3dSpot({ spec, label, href }: { spec: Model3dSpec; label?: 
   const hovered = useRef(false);
   const progress = useRef(0);
   const key = JSON.stringify(spec);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const onReady = useCallback(() => setReady(true), []);
+  const onError = useCallback(() => setFailed(true), []);
 
   useEffect(() => {
     const el = box.current;
@@ -120,23 +132,25 @@ export function Model3dSpot({ spec, label, href }: { spec: Model3dSpec; label?: 
   // A canvas while near the screen and one is free; given back as it leaves.
   useEffect(() => {
     const id = me.current;
-    if (!near) {
+    if (!near || failed) {
       release(id);
       setHeld(false);
+      setReady(false);
       return;
     }
     const wake = () => setHeld(claim(id, wake));
     setHeld(claim(id, wake));
-  }, [near]);
+  }, [near, failed]);
 
-  const canvas = near && held && read ? (
-    <NoWebGl>
-      <Canvas3d spec={spec} colours={read.colours} rims={read.rims} floorTint={read.floor} active={seen} still={still} hovered={hovered} progress={progress} />
+  const canvas = near && held && read && !failed ? (
+    <NoWebGl key={key} onError={onError}>
+      <Canvas3d spec={spec} colours={read.colours} rims={read.rims} floorTint={read.floor} active={seen} still={still} hovered={hovered} progress={progress} onReady={onReady} onError={onError} />
     </NoWebGl>
   ) : null;
   return (
-    <div ref={box} className="pt-model3d-stage" data-near={near ? "" : undefined} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
+    <div ref={box} className="pt-model3d-stage" data-near={near ? "" : undefined} data-model-state={failed ? "fallback" : ready ? "ready" : "loading"} aria-busy={!ready && !failed} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
       {canvas}
+      {!ready || failed ? poster ? <img className="pt-model3d-poster" src={poster} alt="" loading="lazy" /> : <span className="pt-model3d-fallback" aria-hidden="true">{label || "3D"}</span> : null}
       {href ? <a className="pt-model3d-link" href={href} aria-label={label || undefined} /> : null}
     </div>
   );

@@ -8,6 +8,7 @@ import type { Lang } from "./i18n";
 import { localizeCategories, localizeList, localizeProduct, localizeProducts } from "./localize";
 import { identityOf } from "./storeIdentity";
 import { setArabicTone } from "./words";
+import type { PageTree } from "@/pageTree/tree";
 
 /** The store's way of speaking Arabic comes with its settings (admin → هوية المتجر). */
 const toneFrom = (site: unknown) => setArabicTone(identityOf(site as Parameters<typeof identityOf>[0]).audience);
@@ -94,6 +95,12 @@ export const getBootstrap = cache(async (): Promise<StorefrontBootstrap> => {
     warnApiFallback("getBootstrap", error);
     return { ...DEFAULT_BOOTSTRAP };
   }
+});
+
+export const getStoreDesignRegions = cache(async (): Promise<{ header: PageTree | null; footer: PageTree | null }> => {
+  const response = await fetch(`${baseUrl()}/storefront/design`, { next: { revalidate: 30, tags: ["cms", "cms:pages", "cms:settings"] } });
+  if (!response.ok) return { header: null, footer: null };
+  return response.json();
 });
 
 /**

@@ -35,6 +35,8 @@ const remember = (res: NextResponse, lang: string, had: string | undefined) => {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const first = pathname.split("/")[1];
+  // Public sample pages let a merchant inspect every template language before enabling it in the shop.
+  if (isLang(first) && stripLang(pathname) === "/design-frame") return NextResponse.next();
   const had = req.cookies.get(LANG_COOKIE)?.value;
   const cfg = await languages();
 

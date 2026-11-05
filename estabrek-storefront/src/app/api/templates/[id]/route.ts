@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { studioOrigins } from "@/lib/studioOrigins";
 import { KIT_PAGES, templatePage, templateThemeId, type KitPage } from "@/storeThemes/kits";
+import { importDesign } from "@/storeThemes/kits/importDesign";
+import { motionProfileFromQuery } from "@/pageTree/motionProfiles";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +16,13 @@ const cors = (req: NextRequest): Record<string, string> => {
 };
 
 export function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  if (req.nextUrl.searchParams.get("view") === "thumbnail") {
+    const sections = templatePage(params.id, "home", true);
+    return NextResponse.json(sections ? { sections } : { error: "Unknown template" }, { status: sections ? 200 : 404, headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
+  }
   const page = (req.nextUrl.searchParams.get("page") ?? "home") as KitPage;
-  const sections = (KIT_PAGES as readonly string[]).includes(page) ? templatePage(params.id, page) : null;
+  const imported = (KIT_PAGES as readonly string[]).includes(page) ? importDesign(params.id, motionProfileFromQuery(req.nextUrl.searchParams)) : null;
+  const sections = imported?.sections ?? null;
   if (!sections) return NextResponse.json({ error: "No such template page" }, { status: 404, headers: cors(req) });
-  return NextResponse.json({ id: params.id, page, theme: templateThemeId(params.id), sections }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
+  return NextResponse.json({ id: params.id, page, theme: templateThemeId(params.id), sections, design: imported!.design }, { headers: { ...cors(req), "Cache-Control": "public, max-age=300" } });
 }

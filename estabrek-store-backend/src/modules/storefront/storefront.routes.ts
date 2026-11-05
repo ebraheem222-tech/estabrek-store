@@ -29,6 +29,7 @@ import { storedSiteStyles } from "../../lib/siteStyles.js";
 import { withBlocks } from "../../lib/pageBlocks.js";
 import { previewPageId } from "../../lib/previewToken.js";
 import { storedDraft } from "../../lib/pageDraft.js";
+import { publishedDesignRegions } from "../../lib/storeDesign.js";
 
 const r = Router();
 
@@ -248,6 +249,11 @@ r.get("/bootstrap", cacheResponse("settings"), asyncHandler(async (_req, res) =>
   ]);
 
   res.json({ ...settings, pages });
+}));
+
+r.get("/design", cacheResponse("settings"), asyncHandler(async (_req, res) => {
+  const settings = await getPublicSettings();
+  res.json(await publishedDesignRegions(settings.site.header));
 }));
 
 r.get("/pages", cacheResponse("pages"), asyncHandler(async (_req, res) => {

@@ -8,6 +8,7 @@ import { IdentitySchema } from "../identity/identity.js";
 import { SetupBody, SetupError, otherLangs, sectionRows, wordIn, type CategorySpec } from "../setup/setup.js";
 import { adminIdOf, getOrCreateSettings, keepRevision, triggerSettingsRevalidate } from "./settings.controller.js";
 import { capturePageRevision, triggerCmsRevalidate } from "./pages.controller.js";
+import { blockSlug } from "../../lib/pageBlocks.js";
 
 /**
  * /v1/admin/setup — setting up a new store (settings:read to look; the owner applies).
@@ -36,6 +37,7 @@ r.get(
       setup,
       counts: { products, categories, pages },
       hasHome: Boolean(home),
+      hasDesign: Boolean(header.storeDesign && typeof header.storeDesign === "object" && ((header.storeDesign as { headerId?: string; footerId?: string }).headerId || (header.storeDesign as { footerId?: string }).footerId)),
       owner: Boolean((req as any).access?.owner),
       mainLanguage: mainLanguage(header),
     });
@@ -63,12 +65,16 @@ r.post(
 
     const actor = { email: (req as any).user?.email ?? null, sub: (req as any).user?.sub ?? null };
     const homeBefore = await prisma.page.findUnique({ where: { slug: "/" }, select: { id: true } });
+    const previousDesign = header.storeDesign as { headerId?: string; footerId?: string } | undefined;
+    if (body.design && (homeBefore || previousDesign?.headerId || previousDesign?.footerId) && !body.replaceHome) return res.status(409).json({ error: "DESIGN_REQUIRES_REPLACEMENT", message: "Choose design replacement to apply a different complete design; the existing design is kept in history" });
     if (homeBefore && body.replaceHome && pages.some((p) => p.slug === "/")) await capturePageRevision(homeBefore.id, "Before store setup", actor);
+    if (body.design && body.replaceHome) for (const region of [previousDesign?.headerId, previousDesign?.footerId]) if (region) await capturePageRevision(region, "Before store design replacement", actor);
 
     const summary = await prisma.$transaction(
       async (tx) => {
         const made = { categories: 0, types: 0, pages: 0, menuItems: 0 };
         const kept = { categories: 0, types: 0, pages: 0 };
+        let homeId = homeBefore?.id ?? null;
 
         /* ---- categories (a parent and its children) */
         const addCategory = async (c: Pick<CategorySpec, "slug" | "name">, parentId: string | null) => {
@@ -130,10 +136,10 @@ r.post(
           let pageId: string;
           if (existing) {
             await tx.pageSection.deleteMany({ where: { pageId: existing.id } });
-            await tx.page.update({ where: { id: existing.id }, data: { name: wordIn(p.name, main, main), status: "PUBLISHED", format: 1, tree: null as any, draft: null as any, ...seo } });
+            await tx.page.update({ where: { id: existing.id }, data: { name: wordIn(p.name, main, main), status: "PUBLISHED", format: p.tree ? 2 : 1, tree: (p.tree ?? null) as any, draft: null as any, ...seo } });
             pageId = existing.id;
           } else {
-            const row = await tx.page.create({ data: { slug: p.slug, name: wordIn(p.name, main, main) || p.slug, status: "PUBLISHED", ...seo }, select: { id: true } });
+            const row = await tx.page.create({ data: { slug: p.slug, name: wordIn(p.name, main, main) || p.slug, status: "PUBLISHED", ...(p.tree ? { format: 2, tree: p.tree as any } : {}), ...seo }, select: { id: true } });
             pageId = row.id;
           }
           for (const [order, sec] of p.rows.entries()) {
@@ -157,6 +163,23 @@ r.post(
             });
           }
           made.pages++;
+          if (p.slug === "/") homeId = pageId;
+        }
+
+        let ownedDesign: Record<string, unknown> | null = null;
+        if (body.design) {
+          const saveRegion = async (region: "header" | "footer", previousId?: string) => {
+            const existing = previousId ? await tx.page.findUnique({ where: { id: previousId }, select: { id: true, kind: true } }) : null;
+            const data = { name: region === "header" ? "Store header" : "Store footer", kind: "block", status: "PUBLISHED" as const, format: 2, tree: body.design![region] as any, draft: null as any };
+            if (existing?.kind === "block") {
+              await tx.page.update({ where: { id: existing.id }, data });
+              return existing.id;
+            }
+            return (await tx.page.create({ data: { ...data, slug: blockSlug() }, select: { id: true } })).id;
+          };
+          const headerId = await saveRegion("header", previousDesign?.headerId);
+          const footerId = await saveRegion("footer", previousDesign?.footerId);
+          ownedDesign = { version: 1, mode: "cms", templateId: body.design.templateId, homeId, headerId, footerId };
         }
 
         /* ---- the main menu (a new one, put in place; the old stays in Admin → القوائم) */
@@ -184,15 +207,19 @@ r.post(
           ...(body.tagline ? { tagline: { ar: body.tagline.ar ?? "", en: body.tagline.en ?? "", he: body.tagline.he ?? "" } } : {}),
         });
         const next: Header = { ...before, identity: id, setup: { done: true, industry: body.industry, at: new Date().toISOString(), version: 1 } };
-        if (body.theme.id) next.storeTheme = { id: body.theme.id, mode: body.theme.mode };
+        if (body.design) {
+          next.storeDesign = ownedDesign;
+          next.storeTheme = { id: body.design.theme.id, mode: body.theme.mode ?? body.design.theme.mode, snapshot: body.design.theme };
+          delete next.storeKit;
+        } else if (body.theme.id) next.storeTheme = { id: body.theme.id, mode: body.theme.mode };
         else delete next.storeTheme;
         // A menu in the CMS settings would win over the new one: the new menu is the store's now.
         if (body.menu.length && next.cmsNav && typeof next.cmsNav === "object") next.cmsNav = { ...(next.cmsNav as Header), enabled: false };
         const siteName = wordIn(body.name, main, main);
-        await keepRevision(s as unknown as Record<string, unknown>, ["header", ...(siteName ? ["siteName"] : []), ...(primaryNavId !== s.primaryNavId ? ["primaryNavId"] : [])], await adminIdOf(req), "Store setup");
+        await keepRevision(s as unknown as Record<string, unknown>, ["header", ...(siteName ? ["siteName"] : []), ...(body.logoUrl !== undefined ? ["logoUrl"] : []), ...(primaryNavId !== s.primaryNavId ? ["primaryNavId"] : [])], await adminIdOf(req), "Store setup");
         await tx.siteSettings.update({
           where: { id: s.id },
-          data: { header: next as any, primaryNavId, ...(siteName ? { siteName } : {}) },
+          data: { header: next as any, primaryNavId, ...(siteName ? { siteName } : {}), ...(body.logoUrl !== undefined ? { logoUrl: body.logoUrl } : {}) },
         });
         return { made, kept };
       },

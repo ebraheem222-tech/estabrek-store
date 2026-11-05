@@ -23,7 +23,7 @@ import ProductCard from "@/components/ProductCard";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import FallbackHome from "@/components/FallbackHome";
 import { RoseCmsHome } from "@/components/cinematic/RoseCmsHome";
-import { storeThemeOf, themeById } from "@/storeThemes";
+import { storeThemeOf, themeById, applyCustom, customFromParam } from "@/storeThemes";
 import { kitFromParam, kitOfHeader, withKit } from "@/storeThemes/packs";
 import { ThemedHome } from "@/storeThemes/home/ThemedHome";
 import { stageOptionsOf } from "@/storeThemes/three/kinds";
@@ -44,6 +44,8 @@ import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
 import { TreeMotion } from "@/pageTree/TreeMotion";
 import { TreeMedia } from "@/pageTree/TreeMedia";
+import { treeThemeVars, liveTreeThemeVars } from "@/storeThemes/css";
+import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
 
 /** Before the first paint: what comes in waits unseen until the motion engine is ready (2.5 s at most; never inside the editor). */
 const TREE_PENDING = `(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches||window.parent!==window)return;var r=document.documentElement;r.classList.add("pt-pending");setTimeout(function(){r.classList.remove("pt-pending")},2500)}catch(e){}})();`;
@@ -81,6 +83,7 @@ export async function renderCmsPageBySlug(
     storeThemeMode?: "light" | "dark" | null;
     /** The admin's pack being tried (?kit=, its JSON) instead of the saved one. */
     kit?: string | null;
+    liveTheme?: boolean;
   }
 ) {
   // The page's language: its CMS words and the store's content in it.
@@ -97,7 +100,10 @@ export async function renderCmsPageBySlug(
   const settingsPromise = getPublicSettings().catch(() => null);
   // The rose homepage's scenes only need the categories: start them now instead of
   // after every other product request (the catalog API answers in about a second each).
-  const roseHome = slug === "/" && process.env.ESTABREK_HOME_MODE !== "cms";
+  const settings = await settingsPromise;
+  const earlyHeader = (settings?.site as any)?.header ?? (await bootstrapPromise).site.header;
+  const cinematic = cinematicEnabled(earlyHeader, process.env.ESTABREK_HOME_MODE);
+  let roseHome = slug === "/" && cinematic;
   const homeDataPromise = roseHome
     ? Promise.all([listCategories(), bootstrapPromise])
         .then(async ([cats, boot]) => {
@@ -112,6 +118,10 @@ export async function renderCmsPageBySlug(
 
   // ✅ Fallback pages if CMS page isn't published yet
   if (!page) {
+    if (slug === "/" && independentDesign(earlyHeader)) {
+      if (allowNotFound) notFound();
+      return null;
+    }
     if (allowFallback) {
       if (slug === "/") return <FallbackHome />;
       if (slug === "/shop") return <FallbackShop />;
@@ -140,16 +150,23 @@ export async function renderCmsPageBySlug(
   const currencyCode = (bootstrap.site as any)?.currencyCode || "ILS";
   // Admin → ثيمات المتجر: a theme draws its own home; none = the rose design.
   const settingsHeader = ((await settingsPromise)?.site as any)?.header ?? (bootstrap.site as any)?.header;
-  const storeTheme = options?.storeTheme !== undefined ? (options.storeTheme === "rose" ? null : themeById(options.storeTheme)) : storeThemeOf(settingsHeader)?.theme ?? null;
-  const storeThemeMode = options?.storeThemeMode ?? (options?.storeTheme === undefined ? storeThemeOf(settingsHeader)?.mode ?? null : null);
+  const savedTheme = storeThemeOf(settingsHeader);
+  const previewId = options?.storeTheme !== undefined ? options.storeTheme : typeof searchParams?.storeTheme === "string" ? searchParams.storeTheme : undefined;
+  const ownedTheme = readThemeSnapshot(settingsHeader?.storeTheme?.snapshot);
+  const baseTheme = previewId !== undefined ? (previewId === "rose" ? null : previewId === ownedTheme?.id ? ownedTheme : themeById(previewId)) : savedTheme?.theme ?? null;
+  const previewCustom = typeof searchParams?.themeCustom === "string" ? customFromParam(searchParams.themeCustom) : null;
+  const storeTheme = baseTheme ? applyCustom(baseTheme, previewCustom) : null;
+  const previewMode = searchParams?.themeMode === "light" || searchParams?.themeMode === "dark" ? searchParams.themeMode : null;
+  const storeThemeMode = options?.storeThemeMode ?? previewMode ?? (previewId === undefined ? savedTheme?.mode ?? null : null);
 
   // The new CMS: a page saved as a tree (format 2). Its old sections keep their place
   // through `legacy` nodes and draw exactly as before; every other page-level node
   // becomes a section of kind TREE_NODE that the renderers hand to pageTree/TreeNodeView.
   // The store's pack (header.storeKit, or one being tried): things with no motion of their own take its way of moving.
-  const kit = (options?.kit ? kitFromParam(options.kit, storeTheme) : null) ?? kitOfHeader(settingsHeader, storeTheme);
+  const kit = (options?.kit ? kitFromParam(options.kit, storeTheme) : null) ?? (independentDesign(settingsHeader) && !settingsHeader?.storeKit ? null : kitOfHeader(settingsHeader, storeTheme));
   const bare = (page as any).format === 2 ? asTree(structuredClone((page as any).tree ?? null)) : null;
   const tree = bare && kit ? { ...bare, root: withKit(bare.root, kit) } : bare;
+  if (tree && independentDesign(settingsHeader)) roseHome = false;
   const langCfg = langConfigOf((bootstrap.site as any)?.header);
   const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg } : null;
   if (tree) {
@@ -517,7 +534,7 @@ export async function renderCmsPageBySlug(
     if (moving.length) lookMoves = JSON.stringify(moving).replace(/</g, "\\u003c");
   }
 
-  return (
+  const body = (
     <>
       {/* Page-level head scripts are injected in head.tsx */}
       <ScriptTags scripts={(page as any).headScripts} />
@@ -531,8 +548,8 @@ export async function renderCmsPageBySlug(
       {treeStyle ? <style data-page-tree="" dangerouslySetInnerHTML={{ __html: treeStyle }} /> : null}
       {treeMoves ? <script dangerouslySetInnerHTML={{ __html: TREE_PENDING }} /> : null}
       {lookMoves ? <script type="application/json" id="pt-looks" dangerouslySetInnerHTML={{ __html: lookMoves }} /> : null}
-      {treeMoves ? <TreeMotion /> : null}
-      {treeMedia ? <TreeMedia smooth={treeMedia.smooth} /> : null}
+      {treeMoves && !independentDesign(settingsHeader) ? <TreeMotion /> : null}
+      {treeMedia && !independentDesign(settingsHeader) ? <TreeMedia smooth={treeMedia.smooth} /> : null}
 
       {roseHome && storeTheme ? <ThemedHome
         theme={storeTheme}
@@ -554,7 +571,7 @@ export async function renderCmsPageBySlug(
         siteName={bootstrap.site.siteName}
         renderProductCard={(id) => <ProductCard productId={id} />}
         renderQuickAdd={(ref) => <QuickAddButton productId={ref.productId} slug={ref.slug} buttonLabel="أضيفي للحقيبة" />}
-      /> : ["/contact", "/about", "/shop"].includes(slug) && process.env.ESTABREK_HOME_MODE !== "cms" ? <RoseCmsInterior
+      /> : ["/contact", "/about", "/shop"].includes(slug) && cinematic ? <RoseCmsInterior
         kind={slug.slice(1) as "contact" | "about" | "shop"}
         sections={page.sections as any}
         productLookup={productLookup}
@@ -577,4 +594,5 @@ export async function renderCmsPageBySlug(
       <ScriptTags scripts={(page as any).bodyScripts} />
     </>
   );
+  return tree && storeTheme ? <div data-page-tree-root="" data-page-store-theme={storeTheme.id} data-pt-smooth={treeMedia?.smooth ? "" : undefined} style={options?.liveTheme ? liveTreeThemeVars : treeThemeVars(storeTheme, storeThemeMode)}>{body}</div> : body;
 }

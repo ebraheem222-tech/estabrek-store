@@ -6,7 +6,7 @@ import "../store-themes.css";
 import Providers from "../providers";
 import { notFound } from "next/navigation";
 import { LANGS, LANG_LOCALE, dirOf, isLang, langConfigOf, type Lang } from "@/lib/i18n";
-import { getBootstrap, getPublicSettings } from "@/lib/api";
+import { getBootstrap, getPublicSettings, getStoreDesignRegions } from "@/lib/api";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { Topbar } from "@/components/Topbar";
 import { Navbar } from "@/components/Navbar";
@@ -32,6 +32,9 @@ import { storeThemeOf, themeCss } from "@/storeThemes";
 import { kitCss, kitOfHeader } from "@/storeThemes/packs";
 import { ThemeMotion } from "@/storeThemes/motion/ThemeMotion";
 import { StoreThemePreview } from "@/storeThemes/StoreThemePreview";
+import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
+import { StoreDesignRegion } from "@/components/StoreDesignRegion";
+import { TreeRuntime } from "@/pageTree/TreeRuntime";
 
 /** Every language is its own static page: /ar…, /en…, /he… (see src/middleware.ts). */
 export function generateStaticParams() {
@@ -65,7 +68,7 @@ export async function generateMetadata({ params }: { params: { lang: string } })
   // The store's own name and words (admin → هوية المتجر).
   const id = identityOf(site as any);
   const name = nameOf(id, lang);
-  const modest = modestShop(id);
+  const modest = !independentDesign(site?.header) && modestShop(id);
   const main = langConfigOf((site as any)?.header).default === lang;
   // A title in one language holds only that language's line.
   const tagline = modest ? MODEST_COPY[lang].tagline : id.tagline[lang];
@@ -117,7 +120,9 @@ export default async function RootLayout({
   // Admin → ثيمات المتجر (header.storeTheme): none = the rose design.
   const storeTheme = storeThemeOf(header);
   // The pack the store applied (header.storeKit): its focus ring, cursor and loading indicator here.
-  const kit = kitOfHeader(header, storeTheme?.theme ?? null);
+  const ownedDesign = independentDesign(header);
+  const kit = ownedDesign && !header?.storeKit ? null : kitOfHeader(header, storeTheme?.theme ?? null);
+  const regions = ownedDesign ? await getStoreDesignRegions().catch(() => ({ header: null, footer: null })) : null;
   const identity = identityOf({ siteName: bootstrap.site.siteName, header, currencyCode: (bootstrap.site as any).currencyCode });
   setArabicTone(identity.audience);
   // Admin → Settings → أكواد متقدمة → "إيقاف الأكواد المخصصة مؤقتاً": custom CSS,
@@ -136,7 +141,7 @@ export default async function RootLayout({
       ? "light"
       : "dark";
 
-  const cinematic = process.env.ESTABREK_HOME_MODE !== "cms";
+  const cinematic = cinematicEnabled(header, process.env.ESTABREK_HOME_MODE);
   // Admin → Settings → حسابات الزبائن (off by default: visitors only).
   const accountsEnabled = settings.site?.customerAccountsEnabled === true;
   // Admin → المخزون → بانتظار التوفّر (off by default).
@@ -183,8 +188,9 @@ export default async function RootLayout({
       </head>
       <body>
         <MotionSettingsBridge />
-        <StoreThemePreview saved={storeTheme?.theme.id ?? null} />
+        <StoreThemePreview saved={storeTheme?.theme.id ?? null} owned={readThemeSnapshot(header?.storeTheme?.snapshot)} />
         <ThemeMotion />
+        {ownedDesign ? <TreeRuntime /> : null}
         <a href="#main-content" className="skip-link">
           {tr(lang, "تخطي إلى المحتوى", "Skip to content")}
         </a>
@@ -209,7 +215,7 @@ export default async function RootLayout({
               theme: storeTheme?.theme ?? null,
               mode: storeTheme ? themePalette(storeTheme.theme, storeTheme.mode).mode : "light",
               industry: identity.industry,
-              modest: modestShop(identity),
+              modest: !ownedDesign && modestShop(identity),
             }}
           >
           <ThemeWrap
@@ -251,7 +257,7 @@ export default async function RootLayout({
                     : "",
                   announcementHref: bootstrap.site.announcement?.linkUrl || "",
                 }}
-                legacyHeader={
+                legacyHeader={regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
                   <>
                     <div id="site-header" className="site-header">
                       <AnnouncementBar site={settings.site} />
@@ -266,7 +272,7 @@ export default async function RootLayout({
                     <HeaderOffset />
                   </>
                 }
-                legacyFooter={
+                legacyFooter={regions?.footer ? <StoreDesignRegion tree={regions.footer} region="footer" lang={lang} /> :
                   <Footer
                     site={bootstrap.site}
                     footerMenu={bootstrap.footerMenu}
