@@ -3,7 +3,7 @@
 // for an empty store's owner (AdminLayout), and from Settings any time later. Everything it
 // makes is ordinary content: the pages open in the new editor, the theme in its customizer.
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { adminLang } from "../../lib/lang";
 import { tr } from "../../lib/words";
@@ -15,7 +15,8 @@ import { shopOrigin } from "../../studio/storeThemes";
 import { PACKS, type Pack, type W } from "./packs";
 import { buildSetup } from "./buildSetup";
 import { MediaUrlInput } from "../../components/media/MediaUrlInput";
-import { getStoreTemplateImport, type StoreTemplate } from "../../api/storeTemplates.api";
+import { getStoreTemplateImport, getStoreTemplates, type StoreTemplate } from "../../api/storeTemplates.api";
+import { identityOf, type StoreIdentity } from "../../lib/storeIdentity";
 import { StoreTemplatePicker } from "./StoreTemplatePicker";
 import type { MotionProfile } from "../../studio/motionProfiles";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,18 +28,23 @@ type Step = (typeof STEPS)[number];
 export default function SetupWizard() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [params] = useSearchParams();
+  const designEntry = params.get("view") === "templates";
+  const requestedTemplate = designEntry ? params.get("template") : null;
   const lang = adminLang();
   const say = (x: W) => x[lang] || x.ar;
-  const [step, setStep] = useState<Step>("industry");
+  const [step, setStep] = useState<Step>(designEntry ? "theme" : "industry");
   const [status, setStatus] = useState<SetupStatus | null>(null);
+  const [previousIdentity, setPreviousIdentity] = useState<StoreIdentity | null>(null);
+  const [identityChanged, setIdentityChanged] = useState(false);
   const [name, setName] = useState<W>({ ar: "", en: "", he: "" });
   const [logoUrl, setLogoUrl] = useState<string | undefined>();
   const [template, setTemplate] = useState<StoreTemplate | null>(null);
   const [motionOptions, setMotionOptions] = useState<MotionProfile>({});
   const [blank, setBlank] = useState(false);
-  const [pack, setPack] = useState<Pack | null>(null);
+  const [pack, setPack] = useState<Pack | null>(designEntry ? PACKS.find(pack => pack.id === "general") ?? PACKS[0] : null);
   const [mode, setMode] = useState<"light" | "dark" | null>(null);
-  const [include, setInclude] = useState({ categories: true, types: true, home: true, menu: true });
+  const [include, setInclude] = useState({ categories: !designEntry, types: !designEntry, home: true, menu: !designEntry });
   const [replaceHome, setReplaceHome] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,17 +55,32 @@ export default function SetupWizard() {
     void getSetupStatus().then(setStatus).catch(() => setStatus(null));
     void getSettings()
       .then((s) => {
+        setPreviousIdentity(identityOf(s.header));
+        if (designEntry) {
+          const industry = identityOf(s.header).industry;
+          setPack(PACKS.find(pack => pack.id === industry) ?? PACKS.find(pack => pack.families.includes(industry)) ?? PACKS.find(pack => pack.id === "general") ?? PACKS[0]);
+        }
         setLogoUrl(s.logoUrl ?? "");
         const id = (s.header as { identity?: { name?: Partial<W> } } | null | undefined)?.identity?.name;
         if (id && typeof id === "object") setName({ ar: id.ar ?? "", en: id.en ?? "", he: id.he ?? "" });
         else if (s.siteName && s.siteName !== "My Store") setName((n) => ({ ...n, ar: s.siteName ?? "" }));
       })
-      .catch(() => undefined);
+      .catch(() => { if (designEntry) setError(tr("تعذّر تحميل معلومات متجرك. أعد فتح القوالب للمحاولة.", "Your store details could not be loaded. Reopen templates to retry.")); });
   }, []);
+  useEffect(() => {
+    if (!requestedTemplate) return;
+    let active = true;
+    void qc.fetchQuery({ queryKey: ["store-templates"], queryFn: getStoreTemplates, staleTime: 60_000 }).then(catalog => {
+      const picked = catalog.templates.find(template => template.id === requestedTemplate);
+      if (active && picked) { setTemplate(current => current ?? picked); setMode(current => current ?? picked.mode); }
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [requestedTemplate, qc]);
 
   const chosen = template ? { mode: template.mode, modes: ["light", "dark"] as const } : blank ? { mode: "light" as const, modes: ["light", "dark"] as const } : null;
 
   const pickPack = (p: Pack) => {
+    setIdentityChanged(true);
     setPack(p);
     setTemplate(null);
     setBlank(false);
@@ -69,15 +90,16 @@ export default function SetupWizard() {
   const next = () => setStep(STEPS[Math.min(STEPS.length - 1, STEPS.indexOf(step) + 1)]);
   const back = () => setStep(STEPS[Math.max(0, STEPS.indexOf(step) - 1)]);
   const logoError = logoUrl?.trim() && !/^https?:\/\/[^\s]+$/i.test(logoUrl.trim()) ? tr("استخدم رابط صورة يبدأ بـ http أو https.", "Use an image URL starting with http or https.") : undefined;
-  const canNext = step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true;
+  const canNext = (!designEntry || previousIdentity !== null) && (step === "name" ? Boolean((name[lang] || name.ar || name.en || name.he).trim()) && !logoError : step === "industry" ? Boolean(pack) : step === "theme" ? Boolean(template || blank) : true);
 
   async function apply() {
-    if (!pack) return;
+    if (!pack || designEntry && !previousIdentity) return;
     setBusy(true);
     setError(null);
     try {
       const imported = (template || blank) && include.home ? await getStoreTemplateImport(template?.id ?? "blank", motionOptions) : undefined;
       const body = buildSetup({ pack, name, logoUrl, templateTree: imported?.tree, design: imported?.design, themeId: template?.theme ?? pack.theme, mode, include, replaceHome });
+      if (designEntry && previousIdentity && !identityChanged) { body.industry = previousIdentity.industry; body.audience = previousIdentity.audience; }
       const res = await applySetup(body);
       await Promise.all([qc.invalidateQueries({ queryKey: ["settings"] }), qc.invalidateQueries({ queryKey: ["pages"] }), qc.invalidateQueries({ queryKey: ["page-blocks"] })]);
       setResult(res);
@@ -195,6 +217,7 @@ export default function SetupWizard() {
             <p className="text-sm text-white/60">
               {tr("أي قالب بتختاره بصير نسخة إلك: بتغيّر عناصره وتوزيعه وصوره وألوانه بالمحرّر، وبتقدر تختار قالب ثاني بأي وقت.", "Any template becomes your own copy: change its elements, layout, images and colours in the editor, and choose another template any time.")}
             </p>
+            {designEntry && !previousIdentity ? <p role="status" className="text-sm text-white/60">{error || tr("عم نحمّل معلومات متجرك…", "Loading your store details…")}</p> : null}
             <StoreTemplatePicker key={pack.id} families={pack.families} categoryHint={pack.id} selected={template} mode={mode} motionOptions={motionOptions} onMotionOptions={setMotionOptions} onPick={(value) => {
               setTemplate(value);
               setBlank(false);

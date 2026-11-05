@@ -5,7 +5,8 @@
  * back). The store's own templates live here too: a page or a section saved to use again,
  * and any of them as a file to take to another store (export / import).
  */
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../lib/toast";
 import { createTemplate, deletePage, getPageTree, listTemplates, type MyTemplateInfo, type PageTreeNode } from "../api/pages.api";
@@ -19,8 +20,13 @@ import type { TemplateKit } from "./packs";
 import type { Ids, MotionLevel } from "./templates/build";
 import { CAT_NAMES, PAGE_KINDS, PAGE_KIND_NAMES, PAGE_TEMPLATES, SECTION_CATS, SECTION_TEMPLATES, SKIN_NAMES, buildTemplate, freshIds, matches, readFile, toFile, type Template } from "./templates/catalog";
 import { FAMILIES, PACKS, type Family, type W } from "./templates/words";
+import { StoreTemplatePicker } from "../features/setup/StoreTemplatePicker";
+import { getStoreTemplateImport, type StoreTemplate } from "../api/storeTemplates.api";
+import { copyOf } from "./columns";
+import type { MotionProfile } from "./motionProfiles";
+import { personaliseStoreWords } from "../lib/templateWords";
 
-type Tab = "sections" | "pages" | "mine";
+type Tab = "designs" | "sections" | "pages" | "mine";
 export type UseWhere = "here" | "end";
 /** What's shown big on the side: a template from the library, one of the store's own, or a file read in. */
 type Shown = { kind: "library"; t: Template } | { kind: "mine"; t: MyTemplateInfo; nodes: PageTreeNode[] } | { kind: "file"; name: string; nodes: PageTreeNode[] };
@@ -45,7 +51,7 @@ function download(name: string, nodes: PageTreeNode[]) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function TemplatesGallery({ open, onClose, lang, family, colours, pics, kit, busy, here, pageName, pageSections, selectedSection, makeIds, onUse }: {
+export function TemplatesGallery({ open, onClose, lang, family, colours, pics, kit, busy, here, pageName, storeName, pageSections, selectedSection, makeIds, onUse }: {
   open: boolean;
   onClose: () => void;
   /** The shop language being edited (the templates' words). */
@@ -61,6 +67,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   /** What "here" adds after (null: nothing selected, so only at the end). */
   here: string | null;
   pageName: string;
+  storeName: Record<Lang, string>;
   /** The page's own sections and popups (old sections and linked blocks aren't kept in a template). */
   pageSections: () => PageTreeNode[];
   selectedSection: PageTreeNode | null;
@@ -68,7 +75,15 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   onUse: (nodes: PageTreeNode[], where: UseWhere, label: string) => void;
 }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>("sections");
+  const [tab, setTab] = useState<Tab>("designs");
+  const [design, setDesign] = useState<StoreTemplate | null>(null);
+  const [designMotion, setDesignMotion] = useState<MotionProfile>({});
+  const [importing, setImporting] = useState(false);
+  const importEpoch = useRef(0);
+  useEffect(() => {
+    if (!open) setImporting(false);
+    return () => { importEpoch.current++; };
+  }, [open]);
   const [group, setGroup] = useState<string>("all");
   const [q, setQ] = useState("");
   const [fam, setFam] = useState<Family>(family);
@@ -142,18 +157,32 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
   const thumbOf = (t: Template) => () => buildTemplate(t.id, { ...opts, ids: drawIds() });
 
   const pageOwn = open ? pageSections() : [];
+  const insertDesignContent = async () => {
+    if (!design || busy || importing) return;
+    const request = ++importEpoch.current;
+    setImporting(true);
+    try {
+      const imported = await getStoreTemplateImport(design.id, designMotion);
+      if (request !== importEpoch.current) return;
+      const ids = makeIds();
+      const nodes = personaliseStoreWords(imported.tree.root.children ?? [], storeName).map(node => copyOf(node, ids));
+      onUse(nodes, "end", tr(`قالب: ${design.name[lang]}`, "Template: {0}", [design.name[lang]]));
+      onClose();
+    } catch (error) { toast.error(getApiErrorMessage(error)); }
+    finally { if (request === importEpoch.current) setImporting(false); }
+  };
   return (
     <Modal open={open} onClose={onClose} title={tr("القوالب", "Templates")} widthClassName="max-w-6xl">
       <div className="flex min-h-0 flex-col gap-3" data-testid="studio-templates">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-xl bg-white/[0.04] p-1" role="tablist">
-            {([["sections", tr("أقسام", "Sections")], ["pages", tr("صفحات كاملة", "Whole pages")], ["mine", tr("قوالبي", "My templates")]] as const).map(([t, label]) => (
+            {([["designs", tr("تصاميم المتجر الكاملة", "Complete store designs")], ["sections", tr("أقسام", "Sections")], ["pages", tr("صفحات كاملة", "Whole pages")], ["mine", tr("قوالبي", "My templates")]] as const).map(([t, label]) => (
               <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => switchTab(t)} className={`rounded-lg px-3 py-1.5 text-xs ${tab === t ? "bg-accent-500/30 text-white" : "text-white/60 hover:bg-white/[0.06]"}`} data-testid={`studio-tpl-tab-${t}`}>
                 {label}
               </button>
             ))}
           </div>
-          {tab !== "mine" ? (
+          {tab !== "mine" && tab !== "designs" ? (
             <>
               <input type="search" className={`${control} min-w-0 flex-1`} placeholder={tr("دوّر (هيدر، عرض، رمضان…)", "Search (header, offer, Ramadan…)")} value={q} onChange={(e) => {
                 // Looking for something looks through every category.
@@ -180,7 +209,16 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
           ) : null}
         </div>
 
-        <div className="grid min-h-0 gap-3 md:grid-cols-[170px_minmax(0,1fr)_320px]" style={{ height: "min(60vh, 680px)" }}>
+        {tab === "designs" ? <div className="min-h-0 max-h-[52vh] overflow-y-auto sm:max-h-[62vh]" data-testid="studio-store-designs">
+          {open ? <fieldset disabled={importing}><StoreTemplatePicker families={[family]} selected={design} mode={design?.mode ?? null} onPick={setDesign} motionOptions={designMotion} onMotionOptions={setDesignMotion} /></fieldset> : null}
+          {design ? <div className="sticky bottom-0 space-y-2 rounded-xl border border-white/10 bg-surface-950 p-3">
+            <div className="flex flex-wrap gap-2">
+              <Link to={`/setup?view=templates&template=${encodeURIComponent(design.id)}`} className={main} data-testid="studio-tpl-use-design">{tr("استخدم التصميم الكامل للمتجر", "Use the complete store design")}</Link>
+              <button type="button" className={btn} disabled={busy || importing} onClick={() => void insertDesignContent()} data-testid="studio-tpl-insert-content">{importing ? tr("جارٍ التحميل…", "Loading…") : tr("أضف محتوى القالب بآخر الصفحة", "Add the template content at the page's end")}</button>
+            </div>
+            <p className="text-[11px] leading-5 text-white/55">{tr("التصميم الكامل يفتح إعداد نسختك الخاصة مع الهيدر والفوتر والثيم. إضافة المحتوى تضيف أقسامه للصفحة الحالية وبتقدر تتراجع عنها.", "The complete design opens setup for your own copy, including header, footer and theme. Adding content inserts its sections into this page and can be undone.")}</p>
+          </div> : null}
+        </div> : <div className="grid min-h-0 gap-3 md:grid-cols-[170px_minmax(0,1fr)_320px]" style={{ height: "min(60vh, 680px)" }}>
           {/* Groups (or, in "mine", saving and files). */}
           <nav className="min-h-0 overflow-y-auto pe-1" aria-label={tr("الأنواع", "Kinds")}>
             {tab === "mine" ? (
@@ -297,7 +335,7 @@ export function TemplatesGallery({ open, onClose, lang, family, colours, pics, k
               <p className="p-2 text-xs leading-5 text-white/45">{tr("اختار قالب لتشوفه هون بكبير.", "Pick a template to see it here, bigger.")}</p>
             )}
           </aside>
-        </div>
+        </div>}
       </div>
     </Modal>
   );

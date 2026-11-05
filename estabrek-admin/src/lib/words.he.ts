@@ -4858,4 +4858,12 @@ export const HE: Record<string, string> = {
   "Initial preview image": "תמונת תצוגה התחלתית",
   "Blank until interaction": "ריק עד לאינטראקציה",
   "Soft clay cards": "כרטיסי חימר רכים",
+  "Complete store designs": "עיצובים מלאים לחנות",
+  "Use the complete store design": "שימוש בעיצוב המלא לחנות",
+  "Add the template content at the page's end": "הוספת תוכן התבנית בסוף העמוד",
+  "The complete design opens setup for your own copy, including header, footer and theme. Adding content inserts its sections into this page and can be undone.": "העיצוב המלא פותח הגדרת עותק משלכם, כולל כותרת, תחתית וערכת נושא. הוספת תוכן מכניסה את המקטעים לעמוד הזה וניתנת לביטול.",
+  "Browse the new designs with pictures and previews, including your reference designs. Choose one and edit your copy in the editor.": "עיינו בעיצובים החדשים עם תמונות ותצוגה מקדימה, כולל עיצובי המקור שלכם. בחרו עיצוב וערכו את העותק בעורך.",
+  "New store designs, ready sections and pages": "עיצובים חדשים לחנות, מקטעים ועמודים מוכנים",
+  "Loading your store details…": "טוענים את פרטי החנות שלכם…",
+  "Your store details could not be loaded. Reopen templates to retry.": "לא ניתן לטעון את פרטי החנות. פתחו שוב את התבניות כדי לנסות מחדש.",
 };

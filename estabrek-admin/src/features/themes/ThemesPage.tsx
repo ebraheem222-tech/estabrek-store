@@ -10,6 +10,7 @@
  * and applied as one with the editor's shared styles.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../../api/pages.api";
 import { listCategories, listProducts } from "../../api/catalog.api";
@@ -221,6 +222,10 @@ export default function ThemesPage() {
 
   return (
     <div className="space-y-4" data-testid="themes-page">
+      <Link to="/setup?view=templates" className="flex items-center justify-between gap-3 rounded-2xl border border-accent-400/30 bg-accent-500/10 p-4" data-testid="themes-complete-designs">
+        <span><span className="block font-semibold">{tr("تصاميم المتجر الكاملة", "Complete store designs")}</span><span className="mt-1 block text-xs text-white/60">{tr("القوالب الجديدة بصورها ومعاينتها، ومنها قوالبك المرجعية. اختَر التصميم وعدّل نسختك بالمحرّر.", "Browse the new designs with pictures and previews, including your reference designs. Choose one and edit your copy in the editor.")}</span></span>
+        <span aria-hidden="true">↗</span>
+      </Link>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{tr("ثيمات المتجر", "Store themes")}</h1>

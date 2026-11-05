@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   WEBSITE_THEME_GALLERY,
   WEBSITE_THEME_GALLERY_CATEGORIES,
@@ -217,6 +218,7 @@ export function WebsiteThemeGalleryPicker({
 
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <Link to="/setup?view=templates" className="mb-4 block rounded-xl border border-accent-400/30 bg-accent-500/10 p-3 text-sm text-accent-200" data-testid="settings-complete-designs">تصاميم المتجر الكاملة والقوالب الجديدة ↗</Link>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-white/95">معرض ثيمات الموقع</div>

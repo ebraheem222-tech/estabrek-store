@@ -3,6 +3,7 @@ import { TYPE_TEMPLATES } from "../catalog/types/typeTemplates";
 import { HOME_NAME, homeSections, packMenu, type Pack, type W } from "./packs";
 import type { PageTree } from "../../api/pages.api";
 import type { ImportedDesign } from "../../api/storeTemplates.api";
+import { personaliseStoreWords } from "../../lib/templateWords";
 
 const w = (ar: string, en: string, he: string): W => ({ ar, en, he });
 
@@ -47,7 +48,7 @@ export type SetupChoices = {
 
 export type SetupRequest = {
   industry: string;
-  audience: "women" | "everyone";
+  audience: "women" | "men" | "everyone";
   name?: Partial<W>;
   logoUrl?: string | null;
   theme: { id: string | null; mode: "light" | "dark" | null };
@@ -68,7 +69,7 @@ export function buildSetup(c: SetupChoices): SetupRequest {
   const { pack, include } = c;
   const name = filled(c.name);
   const personalise = (value: unknown, lang?: keyof W): unknown => {
-    if (typeof value === "string") return value.replaceAll("{{store.name}}", (lang && c.name[lang]) || c.name.ar || c.name.en || c.name.he);
+    if (typeof value === "string") return personaliseStoreWords(value, c.name, lang);
     if (Array.isArray(value)) return value.map((v) => personalise(v, lang));
     if (value && typeof value === "object") {
       const node = value as Record<string, any>;

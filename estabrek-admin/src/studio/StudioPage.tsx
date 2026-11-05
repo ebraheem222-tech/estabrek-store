@@ -66,9 +66,8 @@ import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
 import { ConvertAllPanel, ConvertPanel } from "./ConvertPanel";
 import { PageSettingsPanel } from "./PageSettingsPanel";
 import { convertSection, type OldSection, type RoseRole } from "./convert";
-import { identityOf } from "../lib/storeIdentity";
+import { identityOf, storeNameOf } from "../lib/storeIdentity";
 import { ROSE_COLOURS, coloursOf } from "./templates/colours";
-import { PAGE_TEMPLATES, SECTION_TEMPLATES } from "./templates/catalog";
 import { isFamily } from "./templates/words";
 import { storeKitOf, templateKitOf } from "./packs";
 import { StoreKitContext } from "./storeKit";
@@ -2134,7 +2133,7 @@ export default function StudioPage() {
       <span className="text-base" aria-hidden="true">▦</span>
       <span className="min-w-0 flex-1">
         <span className="block font-medium">{tr("معرض القوالب", "Templates gallery")}</span>
-        <span className="block text-[10px] text-white/55">{tr(`${SECTION_TEMPLATES.length} قسم و${PAGE_TEMPLATES.length} صفحة جاهزة`, "{0} ready sections and {1} pages", [SECTION_TEMPLATES.length, PAGE_TEMPLATES.length])}</span>
+        <span className="block text-[10px] text-white/55">{tr("تصاميم المتجر الجديدة، أقسام وصفحات جاهزة", "New store designs, ready sections and pages")}</span>
       </span>
     </button>
     <AddPanel
@@ -2688,6 +2687,7 @@ export default function StudioPage() {
         busy={busy}
         here={pageItemNode ? label(pageItemNode.id) : null}
         pageName={pageQ.data?.name ?? ""}
+        storeName={{ ar: storeNameOf(settings.data, "ar"), en: storeNameOf(settings.data, "en"), he: storeNameOf(settings.data, "he") }}
         pageSections={() => pageKids.filter((n) => n.type === "section" || n.type === "popup")}
         selectedSection={pageItemNode?.type === "section" ? pageItemNode : null}
         makeIds={makeIds}
