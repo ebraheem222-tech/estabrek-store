@@ -19,6 +19,7 @@ export async function deleteModel(id: string) {
 /** Sends one file to Cloudinary with its progress (a raw file, signed by the server). */
 function sendToCloudinary(file: File, sig: ModelSignature, onProgress?: (f: number) => void, signal?: AbortSignal) {
   return new Promise<{ public_id: string }>((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException("Aborted", "AbortError"));
     const form = new FormData();
     form.append("file", file);
     form.append("api_key", sig.apiKey);
@@ -26,9 +27,12 @@ function sendToCloudinary(file: File, sig: ModelSignature, onProgress?: (f: numb
     form.append("signature", sig.signature);
     form.append("folder", sig.folder);
     const xhr = new XMLHttpRequest();
+    const abort = () => xhr.abort();
+    const cleanup = () => signal?.removeEventListener("abort", abort);
     xhr.open("POST", sig.uploadUrl);
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
     xhr.onload = () => {
+      cleanup();
       try {
         const body = JSON.parse(xhr.responseText || "{}");
         if (xhr.status >= 200 && xhr.status < 300 && body.public_id) resolve(body);
@@ -37,9 +41,9 @@ function sendToCloudinary(file: File, sig: ModelSignature, onProgress?: (f: numb
         reject(new Error(`Cloudinary ${xhr.status}`));
       }
     };
-    xhr.onerror = () => reject(new Error("NETWORK"));
-    signal?.addEventListener("abort", () => xhr.abort());
-    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+    xhr.onerror = () => { cleanup(); reject(new Error("NETWORK")); };
+    signal?.addEventListener("abort", abort, { once: true });
+    xhr.onabort = () => { cleanup(); reject(new DOMException("Aborted", "AbortError")); };
     xhr.send(form);
   });
 }
@@ -53,7 +57,7 @@ export async function uploadModel(file: File, opts: { onProgress?: (fraction: nu
   const displayName = file.name.replace(/\.glb$/i, "").slice(0, 200);
   let sig: ModelSignature | null = null;
   try {
-    sig = (await api.post(M.sign, {})).data as ModelSignature;
+    sig = (await api.post(M.sign, {}, { signal: opts.signal })).data as ModelSignature;
   } catch (e) {
     // 409: the store has no Cloudinary, the file goes to the server instead.
     if ((e as { response?: { status?: number } })?.response?.status !== 409) throw e;
@@ -61,7 +65,7 @@ export async function uploadModel(file: File, opts: { onProgress?: (fraction: nu
   if (sig) {
     if (file.size > sig.maxBytes) throw new Error("FILE_TOO_LARGE");
     const sent = await sendToCloudinary(file, sig, opts.onProgress, opts.signal);
-    return (await api.post(M.base, { publicId: sent.public_id, displayName })).data as Model3d;
+    return (await api.post(M.base, { publicId: sent.public_id, displayName }, { signal: opts.signal })).data as Model3d;
   }
   const form = new FormData();
   form.append("file", file);

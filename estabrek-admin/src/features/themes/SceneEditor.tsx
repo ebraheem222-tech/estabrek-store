@@ -360,7 +360,7 @@ export function SceneEditor({
       </Group>
 
       <Group title={tr("ملف 3D خاص (GLB)", "Your own 3D file (GLB)")} testId="scene-file">
-        <ModelFile glb={glb} info={glbInfo[index]} onChange={setGlb} />
+        <ModelFile key={`${theme.id}:${index}:${model.kind}`} glb={glb} info={glbInfo[index]} onChange={setGlb} />
       </Group>
 
       <Group title={tr("الشكل", "Shape")} onReset={look.shape || look.knobs ? () => without("shape", "knobs") : undefined} testId="scene-shape">

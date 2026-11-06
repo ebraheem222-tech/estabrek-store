@@ -209,9 +209,19 @@ export const MOTION_PRESETS: MotionPreset[] = [
 export const presetsFor = (type: string, node?: PageTreeNode) => MOTION_PRESETS.filter((p) => (!p.only || p.only.has(type)) && (!p.fits || !node || p.fits(node)));
 /** A preset sets its own part (coming in, scroll, loop, pointer or layer) and keeps the rest. */
 export const withPreset = (m: Motion | undefined, p: MotionPreset): Motion => ({ ...(m ?? {}), ...p.motion });
+/** Clicking a selected preset removes its part while leaving other motion alone. */
+export function togglePreset(m: Motion | undefined, p: MotionPreset): Motion {
+  if (!hasPreset(m, p)) return withPreset(m, p);
+  const next = { ...m };
+  for (const key of Object.keys(p.motion) as Array<keyof Motion>) delete next[key];
+  return next;
+}
+const orderedMotion = (value: unknown): unknown => value && typeof value === "object"
+  ? Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, orderedMotion(v)]))
+  : value;
 /** Whether the element already moves the way a preset does. */
 export const hasPreset = (m: Motion | undefined, p: MotionPreset) =>
-  Object.entries(p.motion).every(([k, v]) => JSON.stringify((m as Record<string, unknown> | undefined)?.[k]) === JSON.stringify(v));
+  Object.entries(p.motion).every(([k, v]) => JSON.stringify(orderedMotion((m as Record<string, unknown> | undefined)?.[k])) === JSON.stringify(orderedMotion(v)));
 
 /** The change that sets an element's motion; a part set to undefined comes out, nothing left = no motion. */
 export function motionOp(n: PageTreeNode, m: Motion | null): PageDraftOp {

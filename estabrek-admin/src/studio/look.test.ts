@@ -51,6 +51,11 @@ describe("an element's look and motion in the editor", () => {
     expect(motionOp(n, { loop: undefined })).toEqual({ op: "setMotion", nodeId: "n", motion: null });
     expect(motionOp(n, null)).toEqual({ op: "setMotion", nodeId: "n", motion: null });
   });
+
+  it("a stored preset remains selected when the server reorders its object fields", () => {
+    const tilt = MOTION_PRESETS.find((p) => p.key === "tilt-scroll")!;
+    expect(hasPreset({ scroll: { end: 35, start: 100, to: { y: 0, scale: 1, rx: 0 }, from: { y: 60, scale: 0.88, rx: 28 }, kind: "keys" } }, tilt)).toBe(true);
+  });
 });
 
 describe("words that move", () => {

@@ -5,7 +5,7 @@
  * the file holds (its animations, or why it couldn't be opened), so its animation can be
  * picked here.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getApiErrorMessage } from "../../api/http";
 import { listModels, uploadModel } from "../../api/models3d.api";
@@ -19,26 +19,37 @@ const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] d
 const field = "w-full rounded-md border border-white/[0.1] bg-surface-925 px-1.5 py-1 text-xs text-white";
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
-export function ModelFile({ glb, info, onChange }: { glb?: StageGlb; info?: GlbInfo; onChange: (glb: StageGlb | undefined) => void }) {
+export function ModelFile({ glb, info, busy = false, onChange }: { glb?: StageGlb; info?: GlbInfo; busy?: boolean; onChange: (glb: StageGlb | undefined) => void }) {
   const qc = useQueryClient();
   const library = useQuery({ queryKey: ["models3d"], queryFn: listModels, staleTime: 60_000 });
   const items = Array.isArray(library.data?.items) ? library.data!.items : [];
   const input = useRef<HTMLInputElement>(null);
+  const pending = useRef<AbortController | null>(null);
   const [upload, setUpload] = useState<{ progress: number; error?: string } | null>(null);
+  const disabled = busy || Boolean(upload && !upload.error);
   const known = info && glb && info.url === glb.url ? info : undefined;
+  const latest = useRef({ busy, onChange });
+  useEffect(() => { latest.current = { busy, onChange }; }, [busy, onChange]);
+  useEffect(() => () => pending.current?.abort(), []);
 
   const send = async (file: File) => {
+    if (disabled || pending.current) return;
     if (!/\.glb$/i.test(file.name)) return setUpload({ progress: 0, error: tr("الملف لازم يكون ‎.glb", "The file must be a .glb") });
     const max = library.data?.maxBytes;
     if (max && file.size > max) return setUpload({ progress: 0, error: tr(`الملف أكبر من ${mb(max)}`, "The file is bigger than {0}", [mb(max)]) });
+    const controller = new AbortController();
+    pending.current = controller;
     setUpload({ progress: 0 });
     try {
-      const m = await uploadModel(file, { onProgress: (progress) => setUpload({ progress }) });
-      onChange({ url: m.url, name: m.displayName || file.name });
+      const m = await uploadModel(file, { signal: controller.signal, onProgress: (progress) => { if (!controller.signal.aborted) setUpload({ progress }); } });
+      if (controller.signal.aborted) return;
+      if (!latest.current.busy) latest.current.onChange({ url: m.url, name: m.displayName || file.name });
       void qc.invalidateQueries({ queryKey: ["models3d"] });
       setUpload(null);
     } catch (e) {
-      setUpload({ progress: 0, error: getApiErrorMessage(e) });
+      if (!controller.signal.aborted) setUpload({ progress: 0, error: getApiErrorMessage(e) });
+    } finally {
+      if (pending.current === controller) pending.current = null;
     }
   };
 
@@ -54,11 +65,11 @@ export function ModelFile({ glb, info, onChange }: { glb?: StageGlb; info?: GlbI
         )}
       </p>
       <div className="flex flex-wrap gap-1">
-        <button type="button" className={btn} disabled={Boolean(upload && !upload.error)} onClick={() => input.current?.click()} data-testid="scene-glb-upload">
+        <button type="button" className={btn} disabled={disabled} onClick={() => input.current?.click()} data-testid="scene-glb-upload">
           {tr("ارفع ملف GLB", "Upload a GLB file")}
         </button>
         {glb ? (
-          <button type="button" className={btn} onClick={() => onChange(undefined)} data-testid="scene-glb-remove">
+          <button type="button" className={btn} disabled={disabled} onClick={() => { if (!disabled) onChange(undefined); }} data-testid="scene-glb-remove">
             {tr("رجوع للموديل المبني", "Back to the built-in model")}
           </button>
         ) : null}
@@ -67,6 +78,7 @@ export function ModelFile({ glb, info, onChange }: { glb?: StageGlb; info?: GlbI
           type="file"
           accept=".glb,model/gltf-binary"
           className="hidden"
+          disabled={disabled}
           onChange={(e) => {
             const f = e.target.files?.[0];
             e.target.value = "";
@@ -89,8 +101,10 @@ export function ModelFile({ glb, info, onChange }: { glb?: StageGlb; info?: GlbI
       {items.length ? (
         <select
           className={field}
+          disabled={disabled}
           value={items.some((m) => m.url === glb?.url) ? glb!.url : ""}
           onChange={(e) => {
+            if (disabled) return;
             const m = items.find((x) => x.url === e.target.value);
             if (m) onChange({ url: m.url, name: m.displayName || undefined });
           }}
@@ -114,7 +128,7 @@ export function ModelFile({ glb, info, onChange }: { glb?: StageGlb; info?: GlbI
           known.clips.length ? (
             <label className="grid gap-1 text-[11px] text-white/60">
               {tr("حركة الملف", "The file's animation")}
-              <select className={field} value={glb.clip ?? ""} onChange={(e) => onChange({ ...glb, clip: e.target.value || undefined })} data-testid="scene-glb-clip">
+              <select className={field} disabled={disabled} value={glb.clip ?? ""} onChange={(e) => { if (!disabled) onChange({ ...glb, clip: e.target.value || undefined }); }} data-testid="scene-glb-clip">
                 <option value="">{tr("بدون", "None")}</option>
                 {known.clips.map((c) => (
                   <option key={c} value={c}>

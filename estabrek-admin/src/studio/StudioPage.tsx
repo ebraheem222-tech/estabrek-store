@@ -36,7 +36,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as PagesAPI from "../api/pages.api";
 import { getApiErrorMessage } from "../api/http";
-import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme, withOwnedTheme } from "./storeThemes";
+import { ROSE_ID, currentStoreTheme, currentStoreThemeId, loadStoreThemes, saveStoreTheme, withOwnedTheme } from "./storeThemes";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
@@ -77,8 +77,9 @@ import { styleNode, styleOf, withOps } from "./siteStyles";
 import { useAuth } from "../hooks/useAuth";
 import { stateOps, stateView, type StateChoice } from "./states";
 import { SvgPanel } from "./SvgPanel";
+import { SectionObjectsPanel } from "./SectionObjectsPanel";
 import { Product360Panel } from "./Product360Panel";
-import { motionOp, placeFor, placedOn, shownLook, withPreset, type Motion } from "./look";
+import { motionOp, placeFor, placedOn, shownLook, togglePreset, type Motion } from "./look";
 import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./MultiPanel";
 import { Guides, SelectionHandles } from "./CanvasHandles";
 import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange } from "./handles";
@@ -207,7 +208,7 @@ export default function StudioPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [themePreview, setThemePreview] = useState<string | null>(null);
-  const [themeMode, setThemeMode] = useState<"light" | "dark" | null>(null);
+  const [themeMode, setThemeMode] = useState<"light" | "dark" | null | undefined>(undefined);
   const [themeSaving, setThemeSaving] = useState(false);
   const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "deleteMany"; ids: string[] } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
   const [drop, setDrop] = useState<Drop | null>(null);
@@ -302,11 +303,14 @@ export default function StudioPage() {
   }, [id, shopLang, ticket]);
 
   // Store themes (header.storeTheme): the frame shows one before it is saved (?storeTheme=, its layout too).
-  const themesQ = useQuery({ queryKey: ["store-themes"], queryFn: listStoreThemes, staleTime: 300_000 });
+  const themesQ = useQuery({ queryKey: ["store-themes", "full"], queryFn: loadStoreThemes, staleTime: 300_000 });
   const savedTheme = currentStoreTheme(settings.data?.header);
-  const currentTheme = savedTheme?.id ?? ROSE_ID;
-  const shownTheme = themePreview ?? (themeMode ? currentTheme : null);
-  const theme = shownTheme ? `&storeTheme=${encodeURIComponent(shownTheme)}${themeMode ? `&themeMode=${themeMode}` : ""}` : "";
+  const currentTheme = currentStoreThemeId(settings.data?.header, themesQ.data?.defaults);
+  const shownTheme = themePreview ?? currentTheme;
+  const shownThemeMode = themeMode === undefined ? (themePreview ? null : savedTheme?.mode ?? null) : themeMode;
+  const currentCustom = !themePreview && savedTheme?.custom && typeof savedTheme.custom === "object" ? `&themeCustom=${encodeURIComponent(JSON.stringify(savedTheme.custom))}` : "";
+  // Name the current design too: a framed visit may retain an earlier trial theme.
+  const theme = `&storeTheme=${encodeURIComponent(shownTheme)}${shownThemeMode ? `&themeMode=${shownThemeMode}` : ""}${currentCustom}`;
   const src = ticket && origin ? `${origin}${shopLang === langs.default ? "" : `/${shopLang}`}/studio-frame?token=${encodeURIComponent(ticket.token)}${theme}` : "";
   const viewRefresh = useMemo(() => new PreviewRefresh(requestId => {
     const target = frameRef.current?.contentWindow;
@@ -569,14 +573,14 @@ export default function StudioPage() {
   };
 
   const saveTheme = async () => {
-    if (!themePreview && !themeMode) return;
+    if (!themePreview && themeMode === undefined) return;
     setThemeSaving(true);
     try {
       const id = themePreview ?? currentTheme;
-      await saveStoreTheme(id === ROSE_ID ? null : { id, mode: themeMode });
+      await saveStoreTheme(id === ROSE_ID ? null : { ...(id === currentTheme ? savedTheme : {}), id, mode: shownThemeMode });
       await qc.invalidateQueries({ queryKey: ["settings"] });
       setThemePreview(null);
-      setThemeMode(null);
+      setThemeMode(undefined);
       reload();
       toast.success(tr("انحفظ الثيم لكل المتجر", "The theme was saved for the whole store"));
     } catch (e) {
@@ -1831,7 +1835,7 @@ export default function StudioPage() {
   const inspector = () => {
     if (leftTab === "styles" && siteOpen) return siteInspector();
     if (themeOpen) {
-      return <ThemePanel themes={withOwnedTheme(themesQ.data ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} onPreview={(t) => { if (busy) return; setThemePreview(t); setThemeMode(null); }} onMode={(mode) => { if (!busy) setThemeMode(mode); }} saving={themeSaving || busy} onSave={() => setAsking({ kind: "theme" })} />;
+      return <ThemePanel themes={withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} currentMode={savedTheme?.mode ?? null} original={settings.data?.header?.storeDesign?.mode !== "cms" && who.industry === "fashion" && who.audience === "women"} onPreview={(t) => { if (busy) return; setThemePreview(t); setThemeMode(undefined); }} onMode={(mode) => { if (!busy) setThemeMode(mode); }} saving={themeSaving || busy} onSave={() => setAsking({ kind: "theme" })} />;
     }
     if (!selected || !index) {
       return (
@@ -1867,6 +1871,13 @@ export default function StudioPage() {
           <dt className="text-white/45">{tr("الحجم", "Size")}</dt>
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
         </dl>
+
+        {pageItemNode && ["section", "legacy", "roseBlock"].includes(pageItemNode.type) ? <SectionObjectsPanel
+          node={pageItemNode} selected={selected} busy={busy}
+          canAdd={kind => { const c = insertCtx((x) => `__${x}`); return Boolean(c && insertOps(c, pageItemNode.id, probe(kind), "inside")); }}
+          onAdd={kind => addKind(kind, undefined, "inside", pageItemNode.id)}
+          onSelect={nodeId => select(nodeId, true)}
+        /> : null}
 
         {selFree&&!['page','section','cell','columns'].includes(selFree.type)?<>
           <div className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-movement">
@@ -2082,6 +2093,15 @@ export default function StudioPage() {
             ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
+            {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "svg" ? <SvgPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "popup" ? <PopupPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {(BLOCK_KINDS as readonly string[]).includes(selFree.type) ? <ContentBlocksPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "instrument" ? <InstrumentPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "chart" ? <ChartPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "clock" ? <ClockPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "model3d" ? <Model3dPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             <StylePickPanel node={selFree} ss={ss} busy={busy} onOps={(l, ops) => void change(l, ops)} onEdit={(sid) => { setLeftTab("styles"); setSiteSel(sid); }} />
             <StatesBar node={selFree} state={styleState} onState={setStyleState} />
             {styleState !== "normal" ? (
@@ -2102,15 +2122,6 @@ export default function StudioPage() {
                 <StickyPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {PATTERNED.has(selFree.type) ? <PatternPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
-                {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "svg" ? <SvgPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "popup" ? <PopupPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {(BLOCK_KINDS as readonly string[]).includes(selFree.type) ? <ContentBlocksPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "instrument" ? <InstrumentPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "chart" ? <ChartPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "clock" ? <ClockPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "model3d" ? <Model3dPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-                {selFree.type === "product360" ? <Product360Panel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
               </>
             )}
@@ -2305,10 +2316,10 @@ export default function StudioPage() {
   const motionNode = selFree ?? (lookTarget && lookTarget.kind !== "box" ? lookSel : null);
 
   // Templates (studio/templates): built for the shown theme's kind of store, drawn in its colours, with the store's own photos.
-  const shownThemeInfo = withOwnedTheme(themesQ.data ?? [], settings.data?.header).find((t) => t.id === (themePreview ?? currentTheme));
+  const shownThemeInfo = withOwnedTheme(themesQ.data?.themes ?? [], settings.data?.header).find((t) => t.id === (themePreview ?? currentTheme));
   const ownedDesign = (settings.data?.header as { storeDesign?: { mode?: string; homeId?: string; headerId?: string; footerId?: string } } | null)?.storeDesign;
   const templateFamily = isFamily(shownThemeInfo?.family) ? shownThemeInfo.family : "fashion";
-  const templateColours = shownThemeInfo ? coloursOf(shownThemeInfo.palettes?.[themeMode ?? savedTheme?.mode ?? shownThemeInfo.mode]) : ROSE_COLOURS;
+  const templateColours = shownThemeInfo ? coloursOf(shownThemeInfo.palettes?.[shownThemeMode ?? shownThemeInfo.mode]) : ROSE_COLOURS;
   // The store's pack (the applied kit over its theme's): templates, new 3D models and the icon picker follow it.
   const storeKit = useMemo(() => storeKitOf(settings.data?.header, shownThemeInfo?.kit, null), [settings.data?.header, shownThemeInfo?.kit]);
   const templateKit = useMemo(() => templateKitOf(storeKit), [storeKit]);
@@ -2390,7 +2401,7 @@ export default function StudioPage() {
       motion={motionNode?.motion as Motion | undefined}
       onMotion={(p) => {
         if (!motionNode) return;
-        const op = motionOp(motionNode, withPreset(motionNode.motion as Motion | undefined, p));
+        const op = motionOp(motionNode, togglePreset(motionNode.motion as Motion | undefined, p));
         if (motionNode === selFree) {
           playNext.current = motionNode.id;
           void change(p.label(), [op]);

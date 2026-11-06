@@ -7,11 +7,13 @@ import { tr } from "../../lib/words";
 import { StoreTemplateThumb } from "./StoreTemplateThumb";
 import { MotionProfileFields } from "../../studio/MotionProfileFields";
 import { motionProfileQuery, type MotionProfile } from "../../studio/motionProfiles";
+import { CurrentStoreDesign } from "../themes/CurrentStoreDesign";
 
-export function StoreTemplatePicker({ families, categoryHint, selected, mode, onPick, motionOptions, onMotionOptions }: {
+export function StoreTemplatePicker({ families, categoryHint, selected, mode, onPick, motionOptions, onMotionOptions, currentActive }: {
   families: string[]; categoryHint?: string; selected: StoreTemplate | null; mode: "light" | "dark" | null;
   onPick: (template: StoreTemplate | null) => void;
   motionOptions?: MotionProfile; onMotionOptions?: (options: MotionProfile) => void;
+  currentActive?: boolean;
 }) {
   const lang = adminLang();
   const catalog = useQuery({ queryKey: ["store-templates"], queryFn: getStoreTemplates, staleTime: 60_000, retry: 1, throwOnError: false });
@@ -28,12 +30,13 @@ export function StoreTemplatePicker({ families, categoryHint, selected, mode, on
     const query = search.trim().toLowerCase();
     return (catalog.data?.templates ?? []).filter((x) => (activeCategory === "all" || activeCategory === "references" && Boolean(x.source) || activeCategory === "editions" && Boolean(x.edition) || x.category === activeCategory) && (!query || [...Object.values(x.name), ...Object.values(x.blurb), ...x.tags, x.source?.title ?? "", x.edition?.sourceTitle ?? ""].join(" ").toLowerCase().includes(query)));
   }, [catalog.data, activeCategory, search]);
-  if (catalog.isPending) return <p role="status" className="text-sm text-white/55">{tr("عم نحمّل القوالب الجاهزة…", "Loading ready templates…")}</p>;
-  if (catalog.isError) return <div className="rounded-xl bg-amber-500/10 p-3 text-xs text-amber-200" role="status">
+  const currentDesign = <CurrentStoreDesign active={currentActive ?? !selected} onSelect={() => onPick(null)} />;
+  if (catalog.isPending) return <>{currentDesign}<p role="status" className="text-sm text-white/55">{tr("عم نحمّل القوالب الجاهزة…", "Loading ready templates…")}</p></>;
+  if (catalog.isError) return <>{currentDesign}<div className="rounded-xl bg-amber-500/10 p-3 text-xs text-amber-200" role="status">
     {tr("تعذّر تحميل القوالب. أعد المحاولة لما يتصل المتجر.", "Templates couldn't be loaded. Retry when the storefront is connected.")}
     <button type="button" onClick={() => void catalog.refetch()} className="ms-2 underline">{tr("إعادة المحاولة", "Retry")}</button>
-  </div>;
-  return <section className="space-y-4 rounded-2xl border border-white/10 p-4" data-testid="store-template-picker">
+  </div></>;
+  return <>{currentDesign}<section className="space-y-4 rounded-2xl border border-white/10 p-4" data-testid="store-template-picker">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div><h2 className="font-semibold">{tr("قوالب متجر كاملة", "Complete store templates")} <span className="text-accent-300">{catalog.data.templates.length}</span></h2>
         <p className="mt-1 text-xs leading-6 text-white/50">{tr("اختَر الشكل وشوف الصفحة قبل تطبيقها. المحتوى والصور قابلين للتعديل، والمنتجات التجريبية للمعاينة فقط.", "Preview a complete page before applying it. Edit its content and illustrations later; sample products are for previews only.")}</p></div>
@@ -63,5 +66,5 @@ export function StoreTemplatePicker({ families, categoryHint, selected, mode, on
       <div className="flex items-center justify-between gap-2 bg-white/5 px-3 py-2 text-xs"><span>{selected.name[lang]}</span><a href={previewUrl} target="_blank" rel="noreferrer" className="text-accent-200 underline">{tr("فتح المعاينة", "Open preview")}</a></div>
       <iframe title={tr("معاينة القالب", "Template preview")} src={previewUrl} className="h-[560px] w-full bg-white" />
     </div> : null}
-  </section>;
+  </section></>;
 }

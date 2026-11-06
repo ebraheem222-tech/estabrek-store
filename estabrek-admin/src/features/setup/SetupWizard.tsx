@@ -218,7 +218,7 @@ export default function SetupWizard() {
               {tr("أي قالب بتختاره بصير نسخة إلك: بتغيّر عناصره وتوزيعه وصوره وألوانه بالمحرّر، وبتقدر تختار قالب ثاني بأي وقت.", "Any template becomes your own copy: change its elements, layout, images and colours in the editor, and choose another template any time.")}
             </p>
             {designEntry && !previousIdentity ? <p role="status" className="text-sm text-white/60">{error || tr("عم نحمّل معلومات متجرك…", "Loading your store details…")}</p> : null}
-            <StoreTemplatePicker key={pack.id} families={pack.families} categoryHint={pack.id} selected={template} mode={mode} motionOptions={motionOptions} onMotionOptions={setMotionOptions} onPick={(value) => {
+            <StoreTemplatePicker key={pack.id} families={pack.families} categoryHint={pack.id} selected={template} mode={mode} currentActive={!template && !blank} motionOptions={motionOptions} onMotionOptions={setMotionOptions} onPick={(value) => {
               setTemplate(value);
               setBlank(false);
               setMode(value?.mode ?? null);

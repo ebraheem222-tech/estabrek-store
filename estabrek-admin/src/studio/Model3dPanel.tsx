@@ -65,20 +65,20 @@ function Fold({ title, open, children, testId }: { title: string; open?: boolean
 }
 
 /** Picking a model: one of the shop's built-in ones, or the store's own .glb. */
-function ModelSwap({ open, model, file, onModel, onFile, onClose }: { open: boolean; model?: string; file?: StageGlb; onModel: (kind: string) => void; onFile: (glb: StageGlb | undefined) => void; onClose: () => void }) {
+function ModelSwap({ initialTab, busy, model, file, onModel, onFile, onClose }: { initialTab: "built" | "file"; busy: boolean; model?: string; file?: StageGlb; onModel: (kind: string) => void; onFile: (glb: StageGlb | undefined) => void; onClose: () => void }) {
   const models = useModels();
   const lang = adminLang();
-  const [tab, setTab] = useState<"built" | "file">(file ? "file" : "built");
+  const [tab, setTab] = useState(initialTab);
   const [find, setFind] = useState("");
   const shown = useMemo(() => {
     const q = find.trim().toLowerCase();
     return models.filter((m) => !q || m.kind.includes(q) || Object.values(m.label).some((w) => w.toLowerCase().includes(q)));
   }, [models, find]);
   const tabBtn = (t: "built" | "file", label: string) => (
-    <button type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-2.5 py-1 text-xs ${tab === t ? "bg-accent-500 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"}`} data-tab={t}>{label}</button>
+    <button type="button" role="tab" disabled={busy} aria-selected={tab === t} onClick={() => setTab(t)} className={`rounded-lg px-2.5 py-1 text-xs disabled:opacity-40 ${tab === t ? "bg-accent-500 text-white" : "bg-white/[0.06] text-white/70 hover:bg-white/[0.1]"}`} data-tab={t}>{label}</button>
   );
   return (
-    <Modal open={open} title={tr("بدّل الموديل (كل الإعدادات التانية بتضل)", "Swap the model (everything else stays)")} onClose={onClose} widthClassName="max-w-3xl">
+    <Modal open title={tr("بدّل الموديل (كل الإعدادات التانية بتضل)", "Swap the model (everything else stays)")} onClose={onClose} widthClassName="max-w-3xl">
       <div className="space-y-3" data-testid="model3d-swap">
         <div className="flex gap-1.5" role="tablist">
           {tabBtn("built", tr("موديلات جاهزة", "Built-in models"))}
@@ -89,7 +89,7 @@ function ModelSwap({ open, model, file, onModel, onFile, onClose }: { open: bool
             <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={tr("دوّر: حذاء، ساعة، عطر…", "Find: sneaker, watch, perfume…")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-3 py-2 text-sm text-white" data-testid="model3d-find" />
             <div className="grid max-h-[50vh] grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] gap-1 overflow-y-auto">
               {shown.map((m) => (
-                <button key={m.kind} type="button" onClick={() => onModel(m.kind)} className={`rounded-lg border px-2 py-2 text-start text-xs ${model === m.kind && !file ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/[0.08] text-white/80 hover:bg-white/[0.06]"}`} data-model={m.kind}>
+                <button key={m.kind} type="button" disabled={busy} onClick={() => onModel(m.kind)} className={`rounded-lg border px-2 py-2 text-start text-xs disabled:opacity-40 ${model === m.kind && !file ? "border-accent-400 bg-accent-500/20 text-white" : "border-white/[0.08] text-white/80 hover:bg-white/[0.06]"}`} data-model={m.kind}>
                   {nameOf(m, lang)}
                   <span className="block text-[10px] text-white/35" dir="ltr">{m.kind}</span>
                 </button>
@@ -97,7 +97,7 @@ function ModelSwap({ open, model, file, onModel, onFile, onClose }: { open: bool
             </div>
           </>
         ) : (
-          <ModelFile glb={file} onChange={onFile} />
+          <ModelFile glb={file} busy={busy} onChange={onFile} />
         )}
       </div>
     </Modal>
@@ -107,7 +107,7 @@ function ModelSwap({ open, model, file, onModel, onFile, onClose }: { open: bool
 export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
   const p = (node.props ?? {}) as Obj;
   const models = useModels();
-  const [swap, setSwap] = useState(false);
+  const [swap, setSwap] = useState<"built" | "file" | null>(null);
   const [posterOpen, setPosterOpen] = useState(false);
   const set = (label: string, patch: Obj) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
   const part = (key: string, patch: Obj | null, label = tr("الموديل ثلاثي الأبعاد", "The 3D model")) => set(label, { [key]: patch ? { ...(isObj(p[key]) ? p[key] : {}), ...patch } : undefined });
@@ -134,20 +134,23 @@ export function Model3dPanel({ node, lang, busy, onOps }: { node: PageTreeNode; 
           <div className="truncate text-white/85" data-testid="model3d-now">{file ? file.name || tr("ملفك", "Your file") : nameOf(info, lang) || String(p.model ?? "")}</div>
           <div className="text-[10px] text-white/40">{file ? tr("ملف ‎.glb من مكتبتك", "A .glb from your library") : tr("موديل جاهز", "A built-in model")}</div>
         </div>
-        <button type="button" className="shrink-0 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40" disabled={busy} onClick={() => setSwap(true)} data-testid="model3d-swap-open">{tr("بدّل الموديل", "Swap the model")}</button>
+        <button type="button" className="shrink-0 rounded-lg bg-accent-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40" disabled={busy} onClick={() => setSwap(file ? "file" : "built")} data-testid="model3d-swap-open">{tr("بدّل الموديل", "Swap the model")}</button>
       </div>
-      <ModelSwap
-        open={swap} model={typeof p.model === "string" ? p.model : undefined} file={file} onClose={() => setSwap(false)}
+      <button type="button" disabled={busy} onClick={() => setSwap("file")} className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs text-white/80 hover:bg-white/[0.08] disabled:opacity-40" data-testid="model3d-file-open">{tr("ارفع أو اختار ملف GLB", "Upload or choose a GLB file")}</button>
+      {swap ? <ModelSwap
+        key={node.id} initialTab={swap} busy={busy} model={typeof p.model === "string" ? p.model : undefined} file={file} onClose={() => setSwap(null)}
         // A built-in model in place of a file, or a file over the built-in one: only the model changes.
         onModel={(kind) => {
-          setSwap(false);
+          if (busy) return;
+          setSwap(null);
           set(tr("بدّل الموديل", "Swap the model"), { model: kind, file: undefined });
         }}
         onFile={(glb) => {
-          setSwap(false);
+          if (busy) return;
+          setSwap(null);
           set(tr("بدّل الموديل", "Swap the model"), { file: glb ?? undefined, model: p.model ?? "sneaker" });
         }}
-      />
+      /> : null}
 
       <Fold title={tr("صورة بديلة للموديل", "Model fallback picture")} open={Boolean(p.poster)} testId="model3d-poster">
         <p className="text-[11px] leading-5 text-white/45">{tr("صورة من مكتبتك بتظهر أثناء التحميل أو إذا تعذّر عرض الموديل. اختيارية، وما بتغيّر ملفك أو حركته.", "A picture from your library shown while loading or when the model cannot be displayed. Optional; keeps your file and its motion.")}</p>

@@ -11,7 +11,7 @@ import { tr } from "../lib/words";
 import { styleOp } from "./columns";
 import {
   ANCHOR_AT, EASE_LABEL, ENTER_LABEL, FX_LABEL, HOLDS, HOVER_COLOUR, HOVER_LABEL, HOVER_STRENGTH, LOOP_LABEL, WORDS_ONLY, WORDY, hasNumber,
-  drawingHasLines, drawingMorphs, hasPreset, lookOf, motionOp, placedOn, presetsFor, previewOf, shownLook, withPreset,
+  drawingHasLines, drawingMorphs, hasPreset, lookOf, motionOp, placedOn, presetsFor, previewOf, shownLook, togglePreset,
   type Motion, type MotionKeys,
 } from "./look";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
@@ -64,6 +64,15 @@ function Pick({ label, value, options, busy, onPick, testId }: { label: string; 
       </select>
     </label>
   );
+}
+
+function MotionChoice({ label, value, options, busy, onPick, testId }: { label: string; value: string; options: Array<[string, string]>; busy: boolean; onPick: (v: string) => void; testId?: string }) {
+  return <div className="text-[11px] text-white/55">
+    {label}
+    <div className="mt-1 flex flex-wrap gap-1" role="group" aria-label={label} data-testid={testId}>
+      {options.map(([key, name]) => <button key={key} type="button" disabled={busy} aria-pressed={value === key} data-value={key} className={`rounded-lg px-2 py-1 text-xs ${value === key ? "bg-accent-500/30 text-white" : "bg-white/[0.06] text-white/75 hover:bg-white/[0.1]"} disabled:opacity-40`} onClick={() => { if (key || value) onPick(value === key ? "" : key); }}>{name}</button>)}
+    </div>
+  </div>;
 }
 
 function Part({ title, open, children, testId }: { title: string; open?: boolean; children: React.ReactNode; testId?: string }) {
@@ -266,7 +275,7 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
         {presetsFor(node.type, node).map((p) => {
           const on = hasPreset(m, p);
           return (
-            <button key={p.key} type="button" disabled={busy} aria-pressed={on} onClick={() => set(p.label(), withPreset(m, p))} className={`truncate rounded-lg border px-1.5 py-1.5 text-start text-[11px] ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/75 hover:bg-white/[0.05]"} disabled:opacity-40`} data-preset={p.key} title={p.label()}>
+            <button key={p.key} type="button" disabled={busy} aria-pressed={on} onClick={() => set(p.label(), togglePreset(m, p))} className={`truncate rounded-lg border px-1.5 py-1.5 text-start text-[11px] ${on ? "border-accent-400/70 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/75 hover:bg-white/[0.05]"} disabled:opacity-40`} data-preset={p.key} title={p.label()}>
               {p.label()}
             </button>
           );
@@ -287,7 +296,7 @@ export function MotionPanel({ node, busy, onOps, onPlay }: { node: PageTreeNode;
       </Part>
 
       <Part title={tr("مع السكرول", "With the scroll")} open={Boolean(scroll)}>
-        <Choice
+        <MotionChoice
           label={tr("السكرول", "Scroll")} value={scroll?.kind ?? ""} busy={busy} testId="studio-scroll-kind"
           options={[
             ["", tr("بلا", "None")], ["parallax", tr("أبطأ أو أسرع منه", "Slower or faster than it")], ["keys", tr("من شكل لشكل", "From one look to another")],

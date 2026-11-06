@@ -303,11 +303,13 @@ export function MediaSlot({ kind, value, busy, onSet }: { kind: "image" | "video
   );
 }
 
-export function ThemePanel({ themes, failed, current, preview, mode, onPreview, onMode, onSave, saving }: { themes: StoreThemeInfo[]; failed?: boolean; current: string; preview: string | null; mode: "light" | "dark" | null; onPreview: (id: string | null) => void; onMode: (m: "light" | "dark" | null) => void; onSave: () => void; saving: boolean }) {
+export function ThemePanel({ themes, failed, current, preview, mode, currentMode = null, original = current === ROSE_ID, onPreview, onMode, onSave, saving }: { themes: StoreThemeInfo[]; failed?: boolean; current: string; preview: string | null; mode: "light" | "dark" | null | undefined; original?: boolean; currentMode?: "light" | "dark" | null; onPreview: (id: string | null) => void; onMode: (m: "light" | "dark" | null) => void; onSave: () => void; saving: boolean }) {
   const shown = preview ?? current;
   const lang = adminLang();
-  const options = [{ id: ROSE_ID, name: tr("تصميم الورد", "The rose design"), swatch: ["#fff8f4", "#e8b4ce", "#7d2448"], modes: [] as string[] }, ...themes.map((t) => ({ id: t.id, name: t.name[lang] || t.name.en, swatch: [t.swatch[0], t.swatch[2], t.swatch[3]], modes: t.modes as string[] }))];
+  const options = [...(original ? [{ id: ROSE_ID, name: tr("تصميم الورد", "The rose design"), swatch: ["#fff8f4", "#e8b4ce", "#7d2448"], modes: [] as string[] }] : []), ...themes.map((t) => ({ id: t.id, name: t.name[lang] || t.name.en, swatch: [t.swatch[0], t.swatch[2], t.swatch[3]], modes: t.modes as string[] }))];
+  if (!options.some(option => option.id === current)) options.unshift({ id: current, name: tr("تصميم المتجر الحالي", "Current store design"), swatch: [], modes: [] });
   const modes = options.find((t) => t.id === shown)?.modes ?? [];
+  const shownMode = mode === undefined ? (preview ? null : currentMode) : mode;
   return (
     <div className="space-y-3" data-testid="studio-theme">
       <div className="text-sm font-semibold">{tr("ثيم المتجر", "Store theme")}</div>
@@ -326,12 +328,12 @@ export function ThemePanel({ themes, failed, current, preview, mode, onPreview, 
       </div>
       <div className="flex gap-1">
         {([null, "light", "dark"] as const).filter((m) => m === null || modes.includes(m)).map((m) => (
-          <button key={String(m)} type="button" className={`${btn} ${mode === m ? "bg-white/[0.16]" : ""}`} onClick={() => onMode(m)}>
+          <button key={String(m)} type="button" aria-pressed={shownMode === m} className={`${btn} ${shownMode === m ? "bg-white/[0.16]" : ""}`} onClick={() => onMode(m)}>
             {m === null ? tr("حسب المتجر", "As the store") : m === "light" ? tr("فاتح", "Light") : tr("غامق", "Dark")}
           </button>
         ))}
       </div>
-      <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={(!preview && !mode) || saving} onClick={onSave} data-testid="studio-theme-save">
+      <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={(!preview && mode === undefined) || saving} onClick={onSave} data-testid="studio-theme-save">
         {tr("حفظ الثيم لكل المتجر", "Save the theme for the whole store")}
       </button>
     </div>

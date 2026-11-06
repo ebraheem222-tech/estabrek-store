@@ -7,6 +7,7 @@ import {
   type WebsiteThemeGalleryItem,
 } from "../../cms/themes/galleryThemes";
 import { getWebsiteThemeById } from "../../cms/themes/websiteThemes";
+import { CurrentStoreDesign } from "../themes/CurrentStoreDesign";
 // @ts-expect-error - JS visual gallery module without TS declarations.
 import { CMS_THEME_GALLERY_THEMES } from "../../cms/themes/cms-themes-gallery.jsx";
 
@@ -218,6 +219,7 @@ export function WebsiteThemeGalleryPicker({
 
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="mb-4"><CurrentStoreDesign /></div>
       <Link to="/setup?view=templates" className="mb-4 block rounded-xl border border-accent-400/30 bg-accent-500/10 p-3 text-sm text-accent-200" data-testid="settings-complete-designs">تصاميم المتجر الكاملة والقوالب الجديدة ↗</Link>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>

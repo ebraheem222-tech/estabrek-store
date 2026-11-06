@@ -4,7 +4,7 @@
  * colours one by one, its line width and the words screen readers hear. ArtView draws
  * a drawing here the way the shop does (theme colours shown as the rose design's).
  */
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
 import { tr } from "../lib/words";
@@ -12,7 +12,7 @@ import { styleOp } from "./columns";
 import { Range } from "./LookPanels";
 import { ColourPick, NumberField } from "./StudioTreePanels";
 import { Field } from "./StudioPanels";
-import { hasLines, importSvg, lineWidthOf, paletteOf, recolor, setLineWidth, type Art, type ArtNode } from "./svgArt";
+import { ART_LIMITS, hasLines, importSvg, lineWidthOf, paletteOf, recolor, setLineWidth, type Art, type ArtNode } from "./svgArt";
 import { SHAPES, defaultsOf, shapeByKey } from "./svgShapes";
 import { DecorPicker } from "./DecorPicker";
 import { IconPicker } from "./IconPicker";
@@ -30,14 +30,14 @@ const CAMEL = (k: string) => k.replace(/-([a-z])/g, (_m, c: string) => c.toUpper
 export function ArtView({ art, className }: { art: Art; className?: string }) {
   const prefix = useId().replace(/[^\w-]/g, "");
   const draw = (n: ArtNode, i: number): ReactNode => {
-    const props: Record<string, unknown> = { key: i };
+    const props: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(n.a)) {
       if (k === "id") props.id = `${prefix}-${v}`;
       else if (v.startsWith("url(#")) props[CAMEL(k)] = v.replace("url(#", `url(#${prefix}-`);
       else props[CAMEL(k)] = SHOWN[v] ?? (v === "currentColor" ? SHOWN.accent : v);
     }
     const Tag = n.t as "path";
-    return <Tag {...(props as object)}>{(n.c ?? []).map(draw)}</Tag>;
+    return <Tag key={i} {...(props as object)}>{(n.c ?? []).map(draw)}</Tag>;
   };
   return (
     <svg viewBox={art.viewBox} className={className} aria-hidden="true">
@@ -61,13 +61,43 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
   const [note, setNote] = useState<string | null>(null);
   const [icons, setIcons] = useState(false);
   const [decor, setDecor] = useState(false);
-  const setProps = (label: string, patch: Record<string, unknown>) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
+  const latest = useRef({ id: node.id, props: p, busy, onOps });
+  const mounted = useRef(false);
+  const imports = useRef(0);
+  useEffect(() => { latest.current = { id: node.id, props: node.props ?? {}, busy, onOps }; }, [node, busy, onOps]);
+  useEffect(() => {
+    mounted.current = true;
+    imports.current++;
+    return () => { mounted.current = false; };
+  }, [node.id]);
+  const setProps = (label: string, patch: Record<string, unknown>) => {
+    const current = latest.current;
+    if (!mounted.current || current.busy) return;
+    imports.current++;
+    current.onOps(label, [{ op: "setProps", nodeId: current.id, props: { ...current.props, ...patch } }]);
+  };
   const take = (text: string) => {
+    if (!mounted.current || latest.current.busy) return;
+    imports.current++;
     const r = importSvg(text);
     if (!r.art) return setNote(PROBLEM[r.problem ?? "empty"]());
     setNote(r.dropped.length ? `${tr("انشالت أشياء مش مسموحة", "Left out, not allowed")}: ${r.dropped.join("، ")}` : tr("انضافت كاملة.", "Taken in whole."));
     setPaste("");
     setProps(tr("رسمة خاصة", "Own drawing"), { art: r.art, shape: undefined, knobs: undefined });
+  };
+  const read = async (file: File) => {
+    if (busy) return;
+    const request = ++imports.current;
+    const id = node.id;
+    setNote(null);
+    if (file.size > ART_LIMITS.file) return setNote(PROBLEM.big());
+    const active = () => mounted.current && imports.current === request && latest.current.id === id && !latest.current.busy;
+    try {
+      const text = await file.text();
+      if (active()) take(text);
+    } catch {
+      if (active()) setNote(tr("تعذّرت قراءة ملف SVG. جرّب اختياره من جديد.", "Couldn't read the SVG file. Try choosing it again."));
+    }
   };
   const width = art ? lineWidthOf(art) : null;
   const baseWidth = (((node.style ?? {}) as Record<string, Record<string, unknown>>).base ?? {}).width;
@@ -131,7 +161,7 @@ export function SvgPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang
             <button type="button" className={btn} disabled={busy || !paste.trim()} onClick={() => take(paste)} data-testid="studio-svg-take">{tr("استعمال الكود", "Use the code")}</button>
             <label className={`${btn} cursor-pointer`}>
               {tr("أو اختيار ملف", "Or choose a file")}
-              <input type="file" accept=".svg,image/svg+xml" className="sr-only" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) void f.text().then(take); e.target.value = ""; }} data-testid="studio-svg-file" />
+              <input type="file" accept=".svg,image/svg+xml" className="sr-only" disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void read(f); }} data-testid="studio-svg-file" />
             </label>
           </div>
           <p className="text-[10px] leading-4 text-white/35">{tr("بنحتفظ بالأشكال والألوان بس: السكربتات والروابط والصور والخطوط بتنشال، وأي نص لازم يتحوّل لأشكال قبل.", "Only shapes and colours are kept: scripts, links, pictures and fonts are left out, and any text has to be turned into shapes first.")}</p>

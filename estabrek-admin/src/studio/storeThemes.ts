@@ -158,11 +158,21 @@ export const currentStoreTheme = (header: unknown): StoreThemeChoice | null => {
   return t && typeof t.id === "string" && t.id ? t : null;
 };
 
+/** The saved choice, or the same industry default the storefront uses without one. */
+export function currentStoreThemeId(header: unknown, defaults: Record<string, string> = {}): string {
+  const choice = currentStoreTheme(header);
+  if (choice) return choice.id;
+  const h = header as { identity?: { industry?: unknown; audience?: unknown }; storeDesign?: { mode?: unknown } } | null | undefined;
+  const industry = typeof h?.identity?.industry === "string" ? h.identity.industry : "general";
+  const modest = h?.storeDesign?.mode !== "cms" && industry === "fashion" && h?.identity?.audience === "women";
+  return modest ? ROSE_ID : defaults[industry] ?? defaults.general ?? ROSE_ID;
+}
+
 /** The customer's copied palette/fonts remain available even when the source template changes. */
 export function withOwnedTheme(themes: StoreThemeInfo[], header: unknown): StoreThemeInfo[] {
   const choice = currentStoreTheme(header);
   const s = choice?.snapshot as Record<string, any> | undefined;
-  const p = s?.palettes?.[choice?.mode ?? s?.mode];
+  const p = s?.palettes?.[choice?.mode ?? s?.mode] ?? s?.palettes?.[s?.mode];
   if (!s?.id || !p || !s.fonts?.display?.length || !s.fonts?.text?.length) return themes;
   const own: StoreThemeInfo = { id: s.id, name: s.name, blurb: s.blurb, family: s.family, mode: s.mode, modes: (["light", "dark"] as const).filter((mode) => s.palettes[mode]), palettes: s.palettes, swatch: [p.bg, p.surface, p.accent, p.strong, p.ink], fonts: { display: s.fonts.display[0], text: s.fonts.text[0] }, round: s.round, pill: s.pill, shadow: s.shadow, hero: s.hero, motion: s.motion };
   return [own, ...themes.filter((t) => t.id !== own.id)];

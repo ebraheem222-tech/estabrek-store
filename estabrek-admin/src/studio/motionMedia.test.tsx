@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { PageDraft, PageTreeNode } from "../api/pages.api";
@@ -11,6 +12,58 @@ afterEach(cleanup);
 const draft = (children: PageTreeNode[]): PageDraft => ({ version: 1, rev: 1, baseHash: "x", sections: [], trash: [], startedAt: "", updatedAt: "", tree: { version: 1, root: { id: "page", type: "page", props: {}, children } } });
 
 describe("merchant motion and media controls", () => {
+  it.each([
+    ["rise", "enter"], ["parallax", "scroll"], ["float", "loop"], ["tilt-hover", "hover"], ["shine", "fx"],
+  ])("clicking active %s again removes its channel and preserves the other motion", (preset, channel) => {
+    const initial = { engine: "anime", phone: "lite", ...(channel === "loop" ? { hover: { kind: "lift" } } : { loop: { kind: "spin" } }) };
+    let saved: PageTreeNode["motion"];
+    function Editor() {
+      const [motion, setMotion] = useState<PageTreeNode["motion"]>(initial);
+      return <MotionPanel node={{ id: "h", type: "heading", props: { text: { en: "Hello" } }, motion }} busy={false} onPlay={() => {}} onOps={(_label, ops) => {
+        const op = ops[0];
+        if (op.op === "setMotion") { saved = op.motion ?? undefined; setMotion(saved); }
+      }} />;
+    }
+    render(<Editor />);
+    const button = screen.getByTestId("studio-motion-presets").querySelector(`[data-preset="${preset}"]`)!;
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(saved).toHaveProperty(channel);
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-pressed", "false");
+    expect(saved).toEqual(initial);
+  });
+
+  it("removing the only preset persists null motion and disables play", () => {
+    let saved: unknown = "unsaved";
+    function Editor() {
+      const [motion, setMotion] = useState<PageTreeNode["motion"]>({ loop: { kind: "float", duration: 4 } });
+      return <MotionPanel node={{ id: "h", type: "heading", props: {}, motion }} busy={false} onPlay={() => {}} onOps={(_label, ops) => {
+        const op = ops[0];
+        if (op.op === "setMotion") { saved = op.motion; setMotion(op.motion ?? undefined); }
+      }} />;
+    }
+    render(<Editor />);
+    fireEvent.click(screen.getByTestId("studio-motion-presets").querySelector('[data-preset="float"]')!);
+    expect(saved).toBeNull();
+    expect(screen.getByTestId("studio-motion-play")).toBeDisabled();
+    expect(screen.queryByTestId("studio-motion-clear")).not.toBeInTheDocument();
+  });
+
+  it("clicking the selected scroll choice clears it without resetting other channels", () => {
+    const onOps = vi.fn();
+    render(<MotionPanel node={{ id: "h", type: "heading", props: {}, motion: { engine: "anime", scroll: { kind: "parallax", speed: 0.7 }, hover: { kind: "lift" } } }} busy={false} onOps={onOps} onPlay={() => {}} />);
+    fireEvent.click(screen.getByTestId("studio-scroll-kind").querySelector('[data-value="parallax"]')!);
+    expect(onOps).toHaveBeenCalledWith(expect.any(String), [{ op: "setMotion", nodeId: "h", motion: { engine: "anime", hover: { kind: "lift" } } }]);
+  });
+
+  it.each(["enter", "loop", "hover", "fx"])("selecting None removes just %s", (channel) => {
+    const onOps = vi.fn();
+    render(<MotionPanel node={{ id: "h", type: "heading", props: {}, motion: { engine: "anime", phone: "lite", [channel]: { kind: channel === "enter" ? "fade" : channel === "loop" ? "float" : channel === "hover" ? "lift" : "shine" } } }} busy={false} onOps={onOps} onPlay={() => {}} />);
+    fireEvent.change(screen.getByTestId(`studio-${channel}-kind`), { target: { value: "" } });
+    expect(onOps).toHaveBeenCalledWith(expect.any(String), [{ op: "setMotion", nodeId: "h", motion: { engine: "anime", phone: "lite" } }]);
+  });
+
   it("switches engines while preserving every effect, and keeps the engine when choosing a preset", () => {
     const onOps = vi.fn();
     const node: PageTreeNode = { id: "h", type: "heading", props: { text: { en: "Hello" } }, motion: { enter: { kind: "words" }, scroll: { kind: "parallax", speed: 0.3 }, hover: { kind: "spring" }, phone: "lite" } };

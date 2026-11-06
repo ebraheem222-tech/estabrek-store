@@ -98,7 +98,14 @@ const six = (h: string) => (h.length === 4 ? `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3
 /** A theme colour, or a colour of one's own. */
 export function ColourPick({ label, value, busy, onPick, testId }: { label: string; value: unknown; busy: boolean; onPick: (v: string | null) => void; testId?: string }) {
   const own = typeof value === "string" && HEX.test(value) ? value : null;
-  const [hex, setHex] = useState(own ?? "#ffffff");
+  const [hex, setHex] = useState(six(own ?? "#ffffff"));
+  const [was, setWas] = useState(value);
+  const [dirty, setDirty] = useState(false);
+  if (was !== value) {
+    setWas(value);
+    setHex(six(own ?? "#ffffff"));
+    setDirty(false);
+  }
   return (
     <label className="block text-[11px] text-white/55">
       {label}
@@ -107,7 +114,11 @@ export function ColourPick({ label, value, busy, onPick, testId }: { label: stri
           {COLOURS.map(([k, name]) => <option key={k} value={k}>{name()}</option>)}
           <option value="own">{tr("لون خاص", "A colour of its own")}</option>
         </select>
-        <input type="color" aria-label={tr("لون خاص", "A colour of its own")} className="mt-1 h-8 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={six(own ?? hex)} onChange={(e) => setHex(e.target.value)} onBlur={() => hex !== own && onPick(hex)} />
+        <input type="color" aria-label={tr("لون خاص", "A colour of its own")} className="mt-1 h-8 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={six(hex)} onChange={(e) => { setHex(e.target.value); setDirty(true); }} onBlur={() => {
+          if (!dirty || busy) return;
+          setDirty(false);
+          if (!own || hex.toLowerCase() !== six(own).toLowerCase()) onPick(hex);
+        }} />
       </span>
     </label>
   );

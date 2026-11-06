@@ -117,7 +117,7 @@ function typing(gsap: Gsap, SplitText: Split, el: HTMLElement, seconds: number, 
   return gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 1.4, delay }).fromTo(parts, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01, ease: "none", stagger: seconds / Math.max(1, parts.length) });
 }
 
-function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElement, m: TreeMotionSpec, env: Env, off: Array<() => void>) {
+function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElement, m: TreeMotionSpec, env: Env, off: Array<() => void>, context: ReturnType<Gsap["context"]>) {
   if (env.phone && m.phone === "off") return;
   const lite = env.phone && m.phone === "lite";
   const id = el.dataset.treeNode ?? el.dataset.ptLook ?? "";
@@ -236,8 +236,10 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
   }
 
   const on = (type: string, fn: (e: PointerEvent) => void) => {
-    el.addEventListener(type, fn as EventListener);
-    off.push(() => el.removeEventListener(type, fn as EventListener));
+    // Pointer tweens start after setup; keep them in the same cleanup context.
+    const listener = (event: Event) => { context.add(() => fn(event as PointerEvent)); };
+    el.addEventListener(type, listener);
+    off.push(() => el.removeEventListener(type, listener));
   };
   // A ripple where it's pressed, by a mouse or a finger.
   if (m.hover?.kind === "ripple" && !lite) {
@@ -283,6 +285,8 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
       const now = { x: 0, y: 0, s: 1 };
       let cancelled = false;
       const stops = new Map<string, { stop: () => void }>();
+      // Motion writes these variables directly, outside the GSAP/Anime cleanup.
+      const before = ["--pt-hx", "--pt-hy", "--pt-hs"].map(key => ({ key, value: el.style.getPropertyValue(key), priority: el.style.getPropertyPriority(key) }));
       const springTo = (key: "x" | "y" | "s", to: number, bouncy: boolean) =>
         void import("motion").then(({ animate: spring }) => {
           if (cancelled) return;
@@ -296,7 +300,14 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
           });
           stops.set(key, c);
         });
-      off.push(() => { cancelled = true; stops.forEach((c) => c.stop()); });
+      off.push(() => {
+        cancelled = true;
+        stops.forEach((c) => c.stop());
+        before.forEach(({ key, value, priority }) => {
+          if (value) el.style.setProperty(key, value, priority);
+          else el.style.removeProperty(key);
+        });
+      });
       if (k === "spring") {
         on("pointermove", (e) => {
           const r = el.getBoundingClientRect();
@@ -429,7 +440,7 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
               const previousEngine = el.dataset.ptEngine;
               el.dataset.ptEngine = spec.engine === "anime" && adapter ? "anime" : "gsap";
               off.push(() => { if (previousEngine === undefined) delete el.dataset.ptEngine; else el.dataset.ptEngine = previousEngine; });
-              animate(spec.engine === "anime" && adapter ? adapter.engine : gsap, ScrollTrigger, SplitText, el, spec, env, off);
+              animate(spec.engine === "anime" && adapter ? adapter.engine : gsap, ScrollTrigger, SplitText, el, spec, env, off, ctx);
             }
           }
         });
