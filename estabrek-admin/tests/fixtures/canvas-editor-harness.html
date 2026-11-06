@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Local direct canvas editor regression</title>
+    <script>localStorage.setItem("admin-lang", new URLSearchParams(location.search).get("lang") || "en");</script>
+  </head>
+  <body>
+    <div id="root">Preparing the isolated editor fixture…</div>
+    <script type="module" src="/tests/fixtures/canvas-editor-harness.tsx"></script>
+  </body>
+</html>

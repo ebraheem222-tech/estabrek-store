@@ -4866,4 +4866,9 @@ export const HE: Record<string, string> = {
   "New store designs, ready sections and pages": "עיצובים חדשים לחנות, מקטעים ועמודים מוכנים",
   "Loading your store details…": "טוענים את פרטי החנות שלכם…",
   "Your store details could not be loaded. Reopen templates to retry.": "לא ניתן לטעון את פרטי החנות. פתחו שוב את התבניות כדי לנסות מחדש.",
+  "Container for objects": "מכל לפריטים",
+  "Positioning mode": "מצב מיקום",
+  "Free move": "תנועה חופשית",
+  "Flow layout": "סידור בפריסה",
+  "Use the layout controls for 3D objects or objects inside rotated containers.": "השתמשו בהגדרות הפריסה עבור פריטי תלת־ממד או פריטים בתוך מכלים מסובבים.",
 };

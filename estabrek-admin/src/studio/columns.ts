@@ -77,7 +77,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -101,6 +101,7 @@ export const newSection = (widths: number[], id: Ids): PageTreeNode => ({ id: id
 /** `src` is the picture or clip for those two, and a slider's first picture. */
 export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTreeNode {
   switch (kind) {
+    case "stack": return { id: id("box"), type: "stack", name: {ar:"حاوية",en:"Container",he:"מכל"}[lang], props: {}, style: { base: { minHeight: "240px", width: "100%", pad: [24, 24, 24, 24], bg: "surface", border: { width: 1, color: "border" }, radius: 12 } }, children: [] };
     case "deck": {
       const children = [1, 2, 3].map(i => ({ id: id("panel"), type: "stack", props: {}, style: { base: { pad: [40, 24, 40, 24], gap: 20 } }, children: [{ id: id("h"), type: "heading", props: { level: 2, text: { [lang]: `${FIRST_WORDS.heading[lang]} ${i}` } } }] }));
       return { id: id("deck"), type: "deck", props: { presentation: "deck", transition: "fade", duration: .5, initial: 0, arrows: true, dots: true, menu: true, labels: Object.fromEntries(children.map((panel, i) => [panel.id, { [lang]: `${i + 1}` }])) }, style: { base: { minHeight: "480px" } }, children };
@@ -243,11 +244,14 @@ export function columnsAround(index: TreeIndex, id: string | null): number {
   return n;
 }
 const columnsInside = (n: PageTreeNode): number => (n.type === "columns" ? 1 : 0) + Math.max(0, ...(n.children ?? []).map(columnsInside));
+const subtreeDepth = (node: PageTreeNode): number => Math.max(0, ...(node.children ?? []).map(child => 1 + subtreeDepth(child)));
 
 /** Can `node` go inside `parentId`? Not into itself, and columns nest two deep at most. */
 export function canHold(index: TreeIndex, parentId: string, node: PageTreeNode): boolean {
   const parent = index.nodes.get(parentId)?.node;
   if (!parent || !accepts(parent.type, node.type)) return false;
+  if (index.nodes.get(parentId)!.depth + 1 + subtreeDepth(node) > 12) return false;
+  if (parent.type === "deck" && (parent.children?.length ?? 0) >= 12 && !parent.children?.some(child => child.id === node.id)) return false;
   for (let at: string | null = parentId; at; at = index.nodes.get(at)?.parentId ?? null) if (at === node.id) return false;
   return columnsAround(index, parentId) + columnsInside(node) <= MAX_COLUMNS_DEPTH;
 }

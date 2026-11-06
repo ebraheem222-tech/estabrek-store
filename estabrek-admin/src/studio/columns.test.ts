@@ -5,6 +5,14 @@ import { locate, simulate, undoOf } from "./draft";
 import { indexTree } from "./treeIndex";
 
 const text = (id: string): PageTreeNode => ({ id, type: "text", props: { text: { ar: id } } });
+it("creates an empty visible native container and rejects trees deeper than the page schema", () => {
+  let n=0;const container=newElement("stack","en",prefix=>`${prefix}-${n++}`);
+  expect(container.type).toBe("stack");expect(container.children).toEqual([]);expect(container.style?.base).toMatchObject({minHeight:"240px"});
+  let deep:PageTreeNode={id:"deepest",type:"stack",props:{},children:[]};
+  for(let i=0;i<11;i++)deep={id:`depth-${i}`,type:"stack",props:{},children:[deep]};
+  const indexed=indexTree({version:1,root:{id:"page",type:"page",props:{},children:[{id:"section",type:"section",props:{},children:[deep]}]}});
+  expect(canHold(indexed,"deepest",text("new"))).toBe(false);
+});
 const cell = (id: string, children: PageTreeNode[] = []): PageTreeNode => ({ id, type: "cell", props: {}, children });
 const page = (cols: PageTreeNode): PageDraft => ({
   version: 1, rev: 1, baseHash: "", startedAt: "", updatedAt: "", trash: [], sections: [],

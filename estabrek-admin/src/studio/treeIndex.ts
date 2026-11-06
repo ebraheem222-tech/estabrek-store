@@ -194,7 +194,7 @@ export const isRelated = (index: TreeIndex, up?: ReadonlyMap<string, string | nu
 /** Inside an old section or rose scene ("owner": "s:<section id>" or "b:<scene>"), see the shop's pageTree/StudioBridge. */
 export type BridgeItem =
   /** `holder`: the box a freely placed element is placed in; `size`: its own before a turn or scale; `inner`: a section's inner box. */
-  | { kind: "node"; id: string; rect: Box; holder?: Box; size?: { w: number; h: number }; inner?: Box }
+  | { kind: "node"; id: string; rect: Box; holder?: Box; size?: { w: number; h: number }; inner?: Box; parentScale?: number | null; innerScale?: number | null }
   | { kind: "legacy"; sectionId: string; rect: Box }
   /** `owner` is missing from a shop that hasn't learnt it yet (then it's the field's section). */
   | { kind: "slot"; owner?: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string; within?: string; rect: Box }

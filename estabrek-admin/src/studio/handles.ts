@@ -7,9 +7,26 @@
 import type { Box, Pt } from "./geometry";
 
 export type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+/** Explicit local size in canvas pixels; only the element's own 2D rotation. */
+export type ResizeFrame = { w: number; h: number; rotation: number };
+export type ResizeChange = {
+  handle: Handle;
+  /** Original and final rendered AABBs in canvas pixels. */
+  start: Box;
+  box: Box;
+  zoom: number;
+  keepProportions: boolean;
+  /** For an explicit rotated frame, offset is the CSS layout top-left shift in canvas pixels. */
+  frame?: { start: ResizeFrame; current: ResizeFrame; offset: Pt };
+};
 export const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 /** Where a handle sits on a box. */
-export function handleAt(b: Box, h: Handle): Pt {
+export function handleAt(b: Box, h: Handle, frame?: ResizeFrame): Pt {
+  if (frame) {
+    const at = handleAt({ x: -frame.w / 2, y: -frame.h / 2, w: frame.w, h: frame.h }, h);
+    const rotated = rotate(at, frame.rotation);
+    return { x: b.x + b.w / 2 + rotated.x, y: b.y + b.h / 2 + rotated.y };
+  }
   const x = h.includes("w") ? b.x : h.includes("e") ? b.x + b.w : b.x + b.w / 2;
   const y = h.includes("n") ? b.y : h.includes("s") ? b.y + b.h : b.y + b.h / 2;
   return { x, y };
@@ -29,12 +46,45 @@ export function resizeBox(start: Box, h: Handle, dx: number, dy: number, keep = 
     const ratio = start.w / start.h;
     // The side dragged further leads; an edge handle leads by its own side.
     const byWidth = h === "e" || h === "w" || (h.length === 2 && Math.abs(w - start.w) / start.w >= Math.abs(ht - start.h) / start.h);
-    if (byWidth) ht = Math.max(min, w / ratio);
-    else w = Math.max(min, ht * ratio);
+    if (byWidth) {
+      w = Math.max(w, min, min * ratio);
+      ht = w / ratio;
+    } else {
+      ht = Math.max(ht, min, min / ratio);
+      w = ht * ratio;
+    }
   }
   if (h.includes("w")) x = start.x + start.w - w;
   if (h.includes("n")) y = start.y + start.h - ht;
   return { x, y, w, h: ht };
+}
+
+function rotate(p: Pt, deg: number): Pt {
+  const radians = deg * Math.PI / 180;
+  const clean = (n: number) => Math.abs(n) < 1e-12 ? 0 : n;
+  const cos = clean(Math.cos(radians));
+  const sin = clean(Math.sin(radians));
+  return { x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos };
+}
+
+/**
+ * Resize an explicitly measured local frame about its opposite corner/edge.
+ * `box` is its rendered AABB, not a source for inferring the local dimensions.
+ * Parent rotation, skew and perspective require a full affine frame from the caller.
+ */
+export function resizeFrame(box: Box, frame: ResizeFrame, h: Handle, dx: number, dy: number, keep = false, min = 8): { box: Box; current: ResizeFrame; offset: Pt } {
+  const delta = rotate({ x: dx, y: dy }, -frame.rotation);
+  const next = resizeBox({ x: -frame.w / 2, y: -frame.h / 2, w: frame.w, h: frame.h }, h, delta.x, delta.y, keep, min);
+  const centerShift = rotate({ x: next.x + next.w / 2, y: next.y + next.h / 2 }, frame.rotation);
+  const across = rotate({ x: next.w, y: 0 }, frame.rotation);
+  const down = rotate({ x: 0, y: next.h }, frame.rotation);
+  const w = Math.abs(across.x) + Math.abs(down.x);
+  const ht = Math.abs(across.y) + Math.abs(down.y);
+  return {
+    box: { x: box.x + box.w / 2 + centerShift.x - w / 2, y: box.y + box.h / 2 + centerShift.y - ht / 2, w, h: ht },
+    current: { w: next.w, h: next.h, rotation: frame.rotation },
+    offset: { x: centerShift.x + (frame.w - next.w) / 2, y: centerShift.y + (frame.h - next.h) / 2 },
+  };
 }
 
 /** The angle from a centre to a point, in degrees clockwise from straight up. */

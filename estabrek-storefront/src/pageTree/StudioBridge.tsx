@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { studioLink } from "./studioLink";
 import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle, type TreeNode } from "./tree";
 import { nodeCss, siteTarget } from "./css";
+import { geometryPreviewCss, geometryPreviewNodes } from "./geometryPreview";
 import { htmlToRich } from "./rich";
 
 export const STUDIO_SOURCE = "estabrek-studio";
@@ -25,10 +26,10 @@ export type StudioRect = { x: number; y: number; w: number; h: number };
 export type StudioItem =
   /**
    * `holder`: for an element placed freely over its container, that container's box. `size`: its
-   * own size before it's turned or scaled. `inner`: a section's inner box, where what it holds
+   * own size before it's turned or scaled. `inner`: a native container's padding box, where what it holds
    * (and what's placed freely in it) sits.
    */
-  | { kind: "node"; id: string; rect: StudioRect; holder?: StudioRect; size?: { w: number; h: number }; inner?: StudioRect }
+  | { kind: "node"; id: string; rect: StudioRect; holder?: StudioRect; size?: { w: number; h: number }; inner?: StudioRect; parentScale?: number | null; innerScale?: number | null }
   | { kind: "legacy"; sectionId: string; rect: StudioRect }
   /**
    * A text, picture, video or button the editor can change ([data-edit], [data-edit-media]):
@@ -58,6 +59,19 @@ export type StudioLayout = {
 const rectOf = (el: Element): StudioRect => {
   const r = el.getBoundingClientRect();
   return { x: Math.round((r.left + window.scrollX) * 10) / 10, y: Math.round((r.top + window.scrollY) * 10) / 10, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10 };
+};
+
+/**
+ * CSS absolute placement uses the padding box. Rect/offset ratios account for
+ * axis-aligned 2D scaling; rotated or perspective ancestors still expose an AABB.
+ */
+const paddingRect = (el: Element): StudioRect => {
+  const rect = rectOf(el);
+  const html = el as HTMLElement;
+  const sx = html.offsetWidth > 0 ? rect.w / html.offsetWidth : 1;
+  const sy = html.offsetHeight > 0 ? rect.h / html.offsetHeight : 1;
+  const round = (value: number) => Math.round(value * 10) / 10;
+  return { x: round(rect.x + el.clientLeft * sx), y: round(rect.y + el.clientTop * sy), w: round(el.clientWidth * sx), h: round(el.clientHeight * sy) };
 };
 
 const PATH = /^[A-Za-z0-9_.]{1,120}$/;
@@ -92,6 +106,33 @@ const inTreeNode = (el: Element, owner: Owner) => {
 export function measureStudio(): StudioItem[] {
   const items: StudioItem[] = [];
   const seen = new Set<string>();
+  // Native transforms use a positive uniform scale. Measure it through the actual
+  // DOM ancestry, including wrappers between tree nodes. A rotated/3D ancestor
+  // needs an affine/projective holder, so mark it explicitly rather than guessing
+  // its scale from an axis-aligned bounding box.
+  const scales = new Map<Element, number | null>();
+  const axisScale = (el: Element | null): number | null => {
+    if (!el) return 1;
+    if (scales.has(el)) return scales.get(el)!;
+    const parent = axisScale(el.parentElement);
+    const transform = getComputedStyle(el).transform;
+    let own = 1;
+    if (transform && transform !== "none") {
+      const match = /^matrix(3d)?\(([^)]+)\)$/.exec(transform);
+      const m = match?.[2].split(",").map(Number);
+      const zero = (n: number) => Math.abs(n) < 0.00001;
+      if (!m || !m.every(Number.isFinite) || (match?.[1] ? m.length !== 16 : m.length !== 6)) own = NaN;
+      else if (match?.[1]) {
+        // Perspective along Z is inert on an unrotated, flattened XY plane.
+        if (![1, 2, 3, 4, 6, 7, 8, 9, 14].every(i => zero(m[i])) || !zero(m[0] - m[5]) || !zero(m[15] - 1)) own = NaN;
+        else own = m[0];
+      } else if (!zero(m[1]) || !zero(m[2]) || !zero(m[0] - m[3])) own = NaN;
+      else own = m[0];
+    }
+    const total = parent !== null && Number.isFinite(own) && own > 0 ? parent * own : null;
+    scales.set(el, total);
+    return total;
+  };
   // Seen on screen: not see-through, not hidden, not a scene's resting season or chapter.
   const shownCache = new Map<Element, boolean>();
   const shown = (el: Element, upTo: Element): boolean => {
@@ -111,9 +152,11 @@ export function measureStudio(): StudioItem[] {
     const id = el.dataset.treeNode ?? "";
     if (!id || seen.has(`n:${id}`)) return;
     seen.add(`n:${id}`);
-    const holder = el.offsetParent && getComputedStyle(el).position === "absolute" ? rectOf(el.offsetParent) : undefined;
-    const inner = el.querySelector(":scope > .pt-inner");
-    items.push({ kind: "node", id, rect: rectOf(el), size: { w: el.offsetWidth, h: el.offsetHeight }, ...(holder ? { holder } : {}), ...(inner ? { inner: rectOf(inner) } : {}) });
+    const holder = el.offsetParent && getComputedStyle(el).position === "absolute" ? paddingRect(el.offsetParent) : undefined;
+    const inner = el.matches(".pt-section,.pt-stack,.pt-grid,.pt-cell,.pt-popup")
+      ? (el.matches(".pt-section") ? el.querySelector(":scope > .pt-inner") ?? el : el)
+      : null;
+    items.push({ kind: "node", id, rect: rectOf(el), size: { w: el.offsetWidth, h: el.offsetHeight }, parentScale: axisScale(el.parentElement), ...(holder ? { holder } : {}), ...(inner ? { inner: paddingRect(inner), innerScale: axisScale(inner) } : {}) });
   });
   const owners: Owner[] = [];
   document.querySelectorAll<HTMLElement>("[data-cms-section]").forEach((el) => {
@@ -463,6 +506,19 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       const d = e.data as { source?: string; type?: string; dx?: number; dy?: number; y?: number; nodeId?: string; sectionId?: string; path?: string; value?: string; block?: string; owner?: string; part?: string; n?: number } | null;
       if (!d || d.source !== STUDIO_SOURCE) return;
       if (typeof d.type === "string" && (d.type.startsWith("stage") || d.type.startsWith("motion"))) return studioLink.emit(d as Record<string, unknown>);
+      // A drag/resize draws only safe geometry over the element's existing rules.
+      if (d.type === "previewGeometry") {
+        document.getElementById("pt-geometry-preview")?.remove();
+        const nodes = geometryPreviewNodes((e.data as { nodes?: unknown }).nodes).filter((node) => document.querySelector(`[data-tree-node="${node.id}"]`));
+        const css = geometryPreviewCss(nodes);
+        if (css) {
+          const style = document.createElement("style");
+          style.id = "pt-geometry-preview";
+          style.textContent = css;
+          document.body.appendChild(style);
+        }
+        return now();
+      }
       // A look tried before it's saved (a slider being dragged): only its own variables, numbers only.
       // A look tried on a part of an old section or scene: every element it names.
       const target = (e.data as { target?: unknown }).target;
@@ -579,6 +635,7 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
     now();
     return () => {
       studioLink.open(null);
+      document.getElementById("pt-geometry-preview")?.remove();
       window.removeEventListener("message", onMessage);
       window.removeEventListener("keydown", keys);
       window.removeEventListener("scroll", now);

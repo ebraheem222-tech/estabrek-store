@@ -80,12 +80,14 @@ import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, shownLook, withPreset, type Motion } from "./look";
 import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./MultiPanel";
 import { Guides, SelectionHandles } from "./CanvasHandles";
-import { gapsBetween, nudgeOf, type Gap, type Guide } from "./handles";
+import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange } from "./handles";
+import { pickCanvasContainer } from "./canvasContainers";
+import { effectiveLook, placementBox, placementPatch, readCanvasMode, resizePatch, saveCanvasMode, transferPatch, type CanvasMode } from "./canvasManipulation";
 import { DragSettings } from "./DragSettings";
 import { LooksPanel } from "./LooksPanel";
 import { lookOps, withLook, type Ready } from "./looks";
 import { decorArt } from "./decor";
-import { around, moveAllOps, placedBox, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
+import { around, moveAllOps, readDragPrefs, saveDragPrefs, startFreeDrag, stepFreeDrag, type DragPrefs, type FreeDrag } from "./dragPlan";
 import { bodyOf, boxBody, lockAxis, slotAt, turnedOf, type Body } from "./space";
 import { alignOps, boxOf, clipboardLook, clipboardNodes, copyLook, copyNodes, distributeOps, groupOps, inBox, inTreeOrder, lockedOf, pasteLookOps, pasteOps, saveLocked, ungroupOps, withInside } from "./selection";
 import { env } from "../config/env";
@@ -93,7 +95,7 @@ import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
 import { languagesOf } from "../lib/storeLanguages";
 import { tr } from "../lib/words";
-import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, inside as insideBox, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
+import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
 import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, partLabel, pathTo, shapesOf, tagLabel, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
 
 const SOURCE = "estabrek-studio";
@@ -137,9 +139,8 @@ const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
  * or (from the Add panel) beside a page item, or over a section or scene at a spot of it.
  */
 /** A press on the canvas: what it grabbed (and the others selected with it), where they started, a free drag's state. */
-type Down = { p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null };
+type Down = { pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null };
 /** What a freely placed element can be dragged into. */
-const INTO = new Set(["section", "cell", "stack", "grid", "popup", "legacy"]);
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
 const shopOrigin = () => {
@@ -227,6 +228,7 @@ export default function StudioPage() {
   const [placing, setPlacing] = useState<{ id: string; box: Box; x: number; y: number } | null>(null);
   // A free drag (phase 9): how it behaves (kept in this browser), what it pushes, touches and lines up with, the place it'd go into.
   const [dragPrefs, setDragPrefs] = useState<DragPrefs>(readDragPrefs);
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>(readCanvasMode);
   const changeDragPrefs = (p: Partial<DragPrefs>) =>
     setDragPrefs((was) => {
       const next = { ...was, ...p };
@@ -579,6 +581,7 @@ export default function StudioPage() {
   const onPointerMove = (e: ReactPointerEvent) => {
     const p = local(e);
     const d = down.current;
+    if (d && d.pointerId !== e.pointerId) return;
     if (d) {
       if (Math.hypot(p.x - d.p.x, p.y - d.p.y) > 4) d.moved = true;
       if (d.grab && d.moved) {
@@ -610,24 +613,27 @@ export default function StudioPage() {
   };
 
   const onPointerDown = (e: ReactPointerEvent) => {
+    if (busy || editing || e.button > 1 || down.current && down.current.pointerId !== e.pointerId) return;
     const p = local(e);
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const panning = e.button === 1 || panMode || !inFrame(p);
     const touch = e.pointerType === "touch";
     // Dragging a selected element (or from inside it) moves it, and the others selected with it; sections move in the layers. With Shift a box is drawn instead.
-    const sel = nodeOf(selected);
-    const movable = (x: string | null) => Boolean(x && isFree(nodeOf(x)?.type) && nodeOf(x)?.type !== "section");
-    const hit = !panning && !touch && !e.shiftKey && e.button === 0 && (movable(selected) || chosen.length > 1) && sel ? pickAt(grid.near(p), p) : null;
+    const movable = (x: string | null) => Boolean(x && isFree(nodeOf(x)?.type) && !["section", "cell", "columns", "page"].includes(nodeOf(x)?.type ?? "") && !lockedIn.has(x) && (directGeometrySafe(x) || canvasMode === "flow" && !placedOn(nodeOf(x)!, screen)));
+    const hit = !panning && !e.shiftKey && e.button === 0 ? pickAt(grid.near(p), p) : null;
     const path = hit && index ? pathTo(index, hit.id, up) : [];
-    const grab = movable(selected) && path.includes(selected!) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && path.includes(c)) ?? null : null;
+    const grab = movable(selected) && path.includes(selected!) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && path.includes(c)) ?? null : !touch && hit && movable(hit.id) ? hit.id : null;
     // What's inside another selected element goes with it.
     const group = grab && chosen.length > 1 && chosen.includes(grab) && index ? loose.filter((x) => movable(x) && !loose.some((y) => y !== x && pathTo(index, x, up).includes(y))) : grab ? [grab] : [];
     const starts = new Map(group.map((x) => [x, shapeOf(x)?.box] as const).filter((v): v is [string, Box] => Boolean(v[1])));
-    down.current = { p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free: grab ? freeDragOf(grab, group) : undefined };
+    if (grab && !chosen.includes(grab)) select(grab);
+    if (grab && motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
+    down.current = { pointerId: e.pointerId, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free: grab ? freeDragOf(grab, group) : undefined };
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
     const d = down.current;
+    if (d && d.pointerId !== e.pointerId) return;
     down.current = null;
     if (marquee) {
       const picked = index ? inBox(boxOf(marquee.a, marquee.b), shapes, index, (x) => lockedIn.has(x)) : [];
@@ -640,6 +646,16 @@ export default function StudioPage() {
     }
     setGuides([]);
     if (d?.grab && d.moved) {
+      // Returning to the original pointer position cancels the gesture. Taking a
+      // flow child out can shift siblings under that point; don't reparent into
+      // one of those siblings on a zero-distance release.
+      if (d.free && Math.hypot(local(e).x - d.p.x, local(e).y - d.p.y) < 0.5) {
+        unpreview(d);
+        clearGeometry();
+        setDrop(null); setPlacing(null); setDragView(null);
+        return;
+      }
+      if (d.free) moveFree(d, local(e), e);
       const n = nodeOf(d.grab);
       const t = d.free ? null : (n ? dropAt(local(e), n, d.group) : null) ?? drop;
       setDrop(null);
@@ -1382,6 +1398,37 @@ export default function StudioPage() {
     const it = itemOf(sid);
     return it?.size ? { w: it.size.w * zoom, h: it.size.h * zoom } : null;
   };
+  const parentScaleOf = (sid: string) => itemOf(sid)?.parentScale ?? 1;
+  const holderScaleOf = (sid: string) => {
+    const it = itemOf(sid);
+    if (it?.innerScale === null || it?.parentScale === null) return null;
+    return it?.innerScale ?? parentScaleOf(sid) * Number(shownLook(nodeOf(sid)!, screen, "scale") ?? 1);
+  };
+  const directGeometrySafe = (sid: string) => {
+    const n = nodeOf(sid);
+    return Boolean(n && itemOf(sid)?.parentScale !== null && !Number(shownLook(n, screen, "rotateX") ?? 0) && !Number(shownLook(n, screen, "rotateY") ?? 0));
+  };
+  const clearGeometry = () => send({ type: "previewGeometry", nodes: null });
+  const pinHolder = (parentId: string): PagesAPI.PageDraftOp[] => {
+    const parent = nodeOf(parentId), size = sizeOf(parentId);
+    return parent && size && isFree(parent.type) ? [styleOp(parent, screen, { minHeight: `${Math.min(9999, Math.ceil(size.h / zoom))}px` })] : [];
+  };
+  const previewGeometry = (ops: PagesAPI.PageDraftOp[]) => {
+    const nodes = ops.flatMap(op => {
+      if (op.op !== "setStyle" || !op.style) return [];
+      const node = nodeOf(op.nodeId);
+      return node ? [{ id: node.id, type: node.type, props: {}, style: { base: { ...effectiveLook(node, screen), ...op.style } } }] : [];
+    });
+    send({ type: "previewGeometry", nodes });
+  };
+  const resizeOps = (node: PagesAPI.PageTreeNode, w: number | null, h: number | null, change: ResizeChange) => {
+    const parentId = index?.nodes.get(node.id)?.parentId;
+    const holder = holderOf(node.id) ?? (parentId ? holdsOf(parentId) : null);
+    const size = sizeOf(node.id) ?? { w: change.start.w, h: change.start.h };
+    const free = canvasMode === "free" || Boolean(placedOn(node, screen));
+    const patch = resizePatch(node, screen, change.start, change.box, size, w, h, holder, zoom, rtl, free, parentScaleOf(node.id));
+    return patch ? [...(free && !placedOn(node, screen) && parentId ? pinHolder(parentId) : []), styleOp(node, screen, patch)] : [];
+  };
   const lookNum = (n: PagesAPI.PageTreeNode, key: string, or: number) => {
     const v = Number(shownLook(n, screen, key));
     return Number.isFinite(v) ? v : or;
@@ -1391,7 +1438,7 @@ export default function StudioPage() {
     const s = shapeOf(sid);
     const n = nodeOf(sid);
     if (!s || !n) return null;
-    const k = lookNum(n, "scale", 1);
+    const k = lookNum(n, "scale", 1) * parentScaleOf(sid);
     const size = sizeOf(sid);
     const shape = shownLook(n, screen, "shape");
     return bodyOf(turnedOf(s.box, lookNum(n, "rotateZ", 0), size ? { w: size.w * k, h: size.h * k } : null), typeof shape === "string" ? shape : null);
@@ -1399,24 +1446,27 @@ export default function StudioPage() {
   /** The box the shop places a freely placed element by, from where it's seen (less its own move, at its own size). */
   const placeBoxOf = (sid: string, seen: Box) => {
     const n = nodeOf(sid);
-    return placedBox(seen, n ? { x: lookNum(n, "moveX", 0) * zoom, y: lookNum(n, "moveY", 0) * zoom } : { x: 0, y: 0 }, sizeOf(sid));
+    const size = sizeOf(sid);
+    return n && size ? placementBox(n, screen, seen, size, zoom, parentScaleOf(sid)) ?? seen : seen;
   };
   /** The frame shows an element moved by `by` (screen pixels) on top of its own move, before anything is saved. */
   const previewMove = (sid: string, by: Pt) => {
     const n = nodeOf(sid);
     if (!n) return;
     const r = (v: number) => Math.round(Math.max(-9999, Math.min(9999, v)) * 10) / 10;
-    send({ type: "previewLook", nodeId: sid, vars: { "--pt-x": `${r(lookNum(n, "moveX", 0) + by.x / zoom)}px`, "--pt-y": `${r(lookNum(n, "moveY", 0) + by.y / zoom)}px` } });
+    const unit = zoom * parentScaleOf(sid);
+    send({ type: "previewLook", nodeId: sid, vars: { "--pt-x": `${r(lookNum(n, "moveX", 0) + by.x / unit)}px`, "--pt-y": `${r(lookNum(n, "moveY", 0) + by.y / unit)}px` } });
   };
   /** A drag of what's placed freely: the grabbed one and those selected with it in the same holder, and what's beside them. */
   const freeDragOf = (grab: string, group: string[]): FreeDrag | undefined => {
     const n = nodeOf(grab);
-    const holder = holderOf(grab);
+    const parentId = index?.nodes.get(grab)?.parentId;
+    const holder = holderOf(grab) ?? (canvasMode === "free" && parentId ? holdsOf(parentId) : null);
     const own = shapeOf(grab);
-    if (!n || !holder || !placedOn(n, screen) || !own) return undefined;
+    if (!n || !holder || !own || !directGeometrySafe(grab) || !placedOn(n, screen) && canvasMode !== "free") return undefined;
     const ids = group.filter((x) => {
       const m = nodeOf(x);
-      return Boolean(m && placedOn(m, screen) && shapeOf(x)?.parentId === own.parentId);
+      return Boolean(m && directGeometrySafe(x) && (canvasMode === "free" || placedOn(m, screen)) && shapeOf(x)?.parentId === own.parentId);
     });
     const start = ids.length > 1 ? around(ids.map((x) => shapeOf(x)!.box)) : own.box;
     const body = ids.length > 1 ? boxBody(start) : bodyFor(grab) ?? boxBody(start);
@@ -1424,27 +1474,23 @@ export default function StudioPage() {
       .filter((x) => x.parentId === own.parentId && !ids.includes(x.id) && x.box.w > 0 && x.box.h > 0 && index?.nodes.has(x.id))
       .map((x) => {
         const m = nodeOf(x.id);
-        return { id: x.id, box: x.box, body: bodyFor(x.id) ?? boxBody(x.box), push: Boolean(m && isFree(m.type) && placedOn(m, screen) && !lockedIn.has(x.id)) };
+        return { id: x.id, box: x.box, body: bodyFor(x.id) ?? boxBody(x.box), push: Boolean(m && directGeometrySafe(x.id) && isFree(m.type) && placedOn(m, screen) && !lockedIn.has(x.id)) };
       });
     return startFreeDrag(ids.length ? ids : [grab], start, body, holder, beside);
   };
   /** Out of its holder, over another place that takes what's dragged: that place, and the box it'd be placed in. */
   const intoAt = (p: Pt, f: FreeDrag): { id: string; box: Box } | null => {
-    if (!index || insideBox(f.holder, p) || !inFrame(p)) return null;
-    const dragged = (x: string) => pathTo(index, x, up).some((y) => f.ids.includes(y));
-    const nodes = f.ids.map((x) => nodeOf(x)).filter((x): x is PagesAPI.PageTreeNode => Boolean(x));
-    const from = index.nodes.get(f.ids[0])?.parentId;
-    const hit = pickAt(grid.near(p).filter((x) => !dragged(x.id)), p);
-    for (let at: string | null = hit?.inside ? hit.id : null; at && at !== index.root; at = index.nodes.get(at)?.parentId ?? null) {
-      const type = index.nodes.get(at)?.node.type;
-      if (!type || !INTO.has(type) || !nodes.every((n) => canHold(index, at!, n))) continue;
-      if (at === from) return null;
-      // Where what's placed freely in it already sits, else where it holds things.
-      const kid = index.nodes.get(at)!.children.find((c) => nodeOf(c) && placedOn(nodeOf(c)!, screen) && holderOf(c));
-      const box = (kid ? holderOf(kid) : null) ?? holdsOf(at);
-      return box ? { id: at, box } : null;
-    }
-    return null;
+    if (!index || !inFrame(p)) return null;
+    const target = pickCanvasContainer(index, grid.near(p), p, f.ids, index.nodes.get(f.ids[0])?.parentId ?? null, lockedIn);
+    if (!target || holderScaleOf(target) === null) return null;
+    const kid = index.nodes.get(target)!.children.find(c => nodeOf(c) && placedOn(nodeOf(c)!, screen) && holderOf(c));
+    const box = (kid ? holderOf(kid) : null) ?? holdsOf(target);
+    const scale = holderScaleOf(target)!;
+    const fits = box && f.ids.every(id => {
+      const node = nodeOf(id), size = sizeOf(id), shape = shapeOf(id);
+      return node && size && shape && transferPatch(node, screen, shape.box, box, size, zoom, rtl, parentScaleOf(id), scale);
+    });
+    return box && fits ? { id: target, box } : null;
   };
   /** One step of a free drag: snapped, stopped or pushing, kept inside, or over another place it'd go into. */
   const moveFree = (d: Down, p: Pt, e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => {
@@ -1483,7 +1529,18 @@ export default function StudioPage() {
     const lead = { ...start, x: start.x + by.x, y: start.y + by.y };
     const box = f.ids.length > 1 ? { ...f.start, x: f.start.x + by.x, y: f.start.y + by.y } : lead;
     setPlacing({ id: n.id, box, ...placeFor(placeBoxOf(n.id, lead), into?.box ?? f.holder, placedOn(n, screen)?.anchor ?? "center", rtl) });
-    for (const x of f.ids) previewMove(x, by);
+    const preview: PagesAPI.PageDraftOp[] = [];
+    for (const x of f.ids) {
+      const moving = nodeOf(x), startBox = d.starts.get(x), measured = sizeOf(x);
+      if (!moving || !startBox || !measured) continue;
+      const parentId = index?.nodes.get(x)?.parentId;
+      if (!placedOn(moving, screen) && parentId) preview.push(...pinHolder(parentId));
+      const seen = into ? startBox : { ...startBox, x: startBox.x + by.x, y: startBox.y + by.y };
+      const patch = placementPatch(moving, screen, seen, f.holder, measured, zoom, rtl, !placedOn(moving, screen), parentScaleOf(x));
+      if (patch) preview.push(styleOp(moving, screen, patch));
+      previewMove(x, into ? by : { x: 0, y: 0 });
+    }
+    previewGeometry(preview);
   };
   /** A drag let go of or given up: the frame shows things where they are again. */
   const unpreview = (d: Down) => {
@@ -1493,6 +1550,7 @@ export default function StudioPage() {
     const d = down.current;
     down.current = null;
     if (d) unpreview(d);
+    clearGeometry();
     setDrop(null);
     setPlacing(null);
     setDragView(null);
@@ -1507,7 +1565,7 @@ export default function StudioPage() {
     const f = d.free!;
     const by = d.shown ?? { x: 0, y: 0 };
     const into = d.into ?? null;
-    if (!index || (!into && Math.hypot(by.x, by.y) < 0.5)) return unpreview(d);
+    if (!index || (!into && Math.hypot(by.x, by.y) < 0.5)) { clearGeometry(); return unpreview(d); }
     const ids = makeIds();
     const ops: PagesAPI.PageDraftOp[] = [];
     const holder = into?.box ?? f.holder;
@@ -1520,18 +1578,23 @@ export default function StudioPage() {
       const s = d.starts.get(x);
       const was = n ? placedOn(n, screen) : null;
       const parentId = index.nodes.get(x)?.parentId;
-      if (!n || !s || !was || !parentId) continue;
-      const layer = { ...was, ...placeFor(placeBoxOf(x, { ...s, x: s.x + by.x, y: s.y + by.y }), holder, was.anchor ?? "center", rtl) };
+      if (!n || !s || !parentId) continue;
+      const measured = sizeOf(x) ?? { w: s.w, h: s.h };
+      const sourceScale = parentScaleOf(x), targetScale = into ? holderScaleOf(into.id) ?? sourceScale : sourceScale;
+      const seen = { ...s, x: s.x + by.x, y: s.y + by.y };
+      const patch = into ? transferPatch(n, screen, seen, holder, measured, zoom, rtl, sourceScale, targetScale) : placementPatch(n, screen, seen, holder, measured, zoom, rtl, !was, sourceScale);
+      if (!patch) continue;
+      if (!was) ops.push(...pinHolder(parentId));
       if (copy) {
         const c = copyOf(n, ids);
         const style = (c.style ?? {}) as Record<string, Record<string, unknown> | undefined>;
-        const node = { ...c, style: { ...style, [screen]: { ...(style[screen] ?? {}), layer } } } as PagesAPI.PageTreeNode;
+        const node = { ...c, style: { ...style, [screen]: { ...(style[screen] ?? {}), ...patch } } } as PagesAPI.PageTreeNode;
         const at = into ? index.nodes.get(into.id)!.children.length + added++ : index.nodes.get(parentId)!.children.indexOf(x) + 1;
         ops.push({ op: "insert", parentId: into?.id ?? parentId, index: at, node });
         first ??= c.id;
       } else {
         if (into) ops.push({ op: "move", nodeId: x, parentId: into.id, index: index.nodes.get(into.id)!.children.length + added++ });
-        ops.push(styleOp(n, screen, { layer }));
+        ops.push(styleOp(n, screen, patch));
       }
     }
     // What it pushed stays where it went (not when it went into another place).
@@ -1543,8 +1606,8 @@ export default function StudioPage() {
         if (!n || !was || !b || Math.hypot(v.x, v.y) < 0.5) continue;
         ops.push(styleOp(n, screen, { layer: { ...was, ...placeFor(placeBoxOf(x, { ...b, x: b.x + v.x, y: b.y + v.y }), f.holder, was.anchor ?? "center", rtl) } }));
       }
-    if (!ops.length) return unpreview(d);
-    void change(copy ? tr("نسخة", "Copy") : into ? tr("نقل لجوّا", "Move into") : tr("المكان", "Place"), ops, first ?? undefined);
+    if (!ops.length) { clearGeometry(); return unpreview(d); }
+    void change(copy ? tr("نسخة", "Copy") : into ? tr("نقل لجوّا", "Move into") : tr("المكان", "Place"), ops, first ?? undefined).finally(() => { unpreview(d); clearGeometry(); });
   };
   /** Lets go in the flow: what's dragged (with what's selected with it) goes to the place shown, or a copy of it with `copy`. */
   const dropFlow = (d: Down, t: Drop, copy: boolean) => {
@@ -2256,6 +2319,9 @@ export default function StudioPage() {
           </div>
         ) : null}
         <DragSettings prefs={dragPrefs} onChange={changeDragPrefs} />
+        <div className="flex shrink-0 gap-1 rounded-lg bg-white/5 p-0.5" role="group" aria-label={tr("طريقة التحريك", "Positioning mode")}>
+          {([["free", tr("تحريك حر", "Free move")], ["flow", tr("ترتيب", "Flow layout")]] as const).map(([mode, label]) => <button key={mode} type="button" disabled={busy} aria-pressed={canvasMode === mode} className={`h-7 rounded px-2 text-xs ${canvasMode === mode ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid={`studio-canvas-mode-${mode}`} onClick={() => { cancelDrag(); setCanvasMode(mode); saveCanvasMode(mode); }}>{label}</button>)}
+        </div>
         <div className="flex items-center gap-1" dir="ltr">
           <button type="button" onClick={() => zoomBy(1 / 1.25)} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/[0.06]" aria-label={tr("تصغير", "Zoom out")}>−</button>
           <button type="button" onClick={fit} className="min-w-[3.5rem] rounded-lg px-1 text-xs text-white/80 hover:bg-white/[0.06]" title={tr("ملاءمة (Ctrl+0)", "Fit (Ctrl+0)")} data-testid="studio-zoom">
@@ -2343,6 +2409,8 @@ export default function StudioPage() {
             onPointerMove={onPointerMove}
             onPointerDown={onPointerDown}
             onPointerUp={onPointerUp}
+            onPointerCancel={(event) => { if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
+            onLostPointerCapture={(event) => { if (down.current?.pointerId === event.pointerId) cancelDrag(); }}
             onPointerLeave={() => setHovered(filter.current.push(performance.now() + 1000, null))}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -2509,15 +2577,23 @@ export default function StudioPage() {
               })}
             </div>
           </div>
-          {selFree && !multi && !editing && !placing && !drop && selShape && !["section", "cell", "columns", "page"].includes(selFree.type) ? (
+          {selFree && selShape && !editing && !directGeometrySafe(selFree.id) ? <div role="status" className="pointer-events-none absolute bottom-3 start-3 max-w-sm rounded bg-black/80 px-3 py-2 text-xs text-white/80">{tr("للعناصر المائلة ثلاثيّاً أو داخل حاوية مدوّرة، استخدم إعدادات المكان والحجم من اللوحة.", "Use the layout controls for 3D objects or objects inside rotated containers.")}</div> : null}
+          {selFree && !multi && !editing && !placing && !drop && selShape && directGeometrySafe(selFree.id) && !["section", "cell", "columns", "page"].includes(selFree.type) ? (
             <SelectionHandles
+              key={`${selFree.id}:${screen}`}
               box={selShape.box}
-              zoom={zoom}
-              sides={["image", "video", "slider", "svg", "product360", "lottie", "rive", "model3d", "stack", "grid"].includes(selFree.type) ? "all" : "width"}
+              zoom={zoom * parentScaleOf(selFree.id) * Math.max(.1, Number(shownLook(selFree, screen, "scale") ?? 1))}
+              frame={sizeOf(selFree.id) ? { w: sizeOf(selFree.id)!.w * parentScaleOf(selFree.id) * Number(shownLook(selFree, screen, "scale") ?? 1), h: sizeOf(selFree.id)!.h * parentScaleOf(selFree.id) * Number(shownLook(selFree, screen, "scale") ?? 1), rotation: Number(shownLook(selFree, screen, "rotateZ") ?? 0) } : undefined}
+              sides={["heading", "text"].includes(selFree.type) ? "width" : "all"}
               turn={Number(shownLook(selFree, screen, "rotateZ") ?? 0)}
               local={local}
-              onSize={(w, h) => void change(tr("الحجم", "Size"), [styleOp(selFree, screen, { ...(w !== null ? { width: `${w}px` } : {}), ...(h !== null ? { height: `${h}px` } : {}) })])}
-              onReset={() => void change(tr("الحجم الطبيعي", "Natural size"), [styleOp(selFree, screen, { width: null, height: null })])}
+              onSizeLive={(w, h, gesture) => {
+                if (motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
+                previewGeometry(resizeOps(selFree, w, h, gesture));
+              }}
+              onSize={(w, h, gesture) => void change(tr("الحجم", "Size"), resizeOps(selFree, w, h, gesture)).finally(clearGeometry)}
+              onCancel={() => { clearGeometry(); send({ type: "previewLook", nodeId: selFree.id, vars: { "--pt-rz": `${Number(shownLook(selFree, screen, "rotateZ") ?? 0)}deg` } }); }}
+              onReset={() => void change(tr("الحجم الطبيعي", "Natural size"), [styleOp(selFree, screen, { width: null, height: null, maxWidth: null, minHeight: null })])}
               onTurnLive={(deg) => send({ type: "previewLook", nodeId: selFree.id, vars: { "--pt-rz": `${deg}deg` } })}
               onTurn={(deg) => void change(tr("دوران", "Turn"), [styleOp(selFree, screen, { rotateZ: deg || null })])}
             />

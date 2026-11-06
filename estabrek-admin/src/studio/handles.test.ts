@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { angleAt, gapsBetween, handleAt, nudgeOf, resizeBox, snapBox, turnTo } from "./handles";
+import { angleAt, gapsBetween, handleAt, nudgeOf, resizeBox, resizeFrame, snapBox, turnTo } from "./handles";
 
 const b = { x: 100, y: 100, w: 200, h: 100 };
 
@@ -25,6 +25,39 @@ describe("changing an element on the page", () => {
     expect(turnTo(-200)).toBe(160);
     expect(turnTo(22, 15)).toBe(15);
     expect(turnTo(23, 15)).toBe(30);
+  });
+
+  it("keeps both minimum dimensions and the aspect ratio when shrinking", () => {
+    expect(resizeBox(b, "nw", 999, 999, true)).toEqual({ x: 284, y: 192, w: 16, h: 8 });
+    expect(resizeBox({ x: 0, y: 0, w: 50, h: 200 }, "se", -999, -999, true)).toEqual({ x: 0, y: 0, w: 8, h: 32 });
+  });
+
+  it("inverse-rotates a 90 degree frame resize and retains its opposite edge", () => {
+    const result = resizeFrame({ x: 150, y: 50, w: 100, h: 200 }, { w: 200, h: 100, rotation: 90 }, "w", 0, 20);
+    expect(result.current.w).toBeCloseTo(180);
+    expect(result.current.h).toBeCloseTo(100);
+    expect(result.box.x).toBeCloseTo(150);
+    expect(result.box.y).toBeCloseTo(70);
+    expect(result.box.w).toBeCloseTo(100);
+    expect(result.box.h).toBeCloseTo(180);
+    // CSS rotates about the changing centre: its unrotated top-left also changes.
+    expect(result.offset.x).toBeCloseTo(10);
+    expect(result.offset.y).toBeCloseTo(10);
+  });
+
+  it("keeps the opposite rotated corner anchored at 30 degrees", () => {
+    const result = resizeFrame(
+      { x: 88.3974596216, y: 56.6987298108, w: 223.2050807569, h: 186.6025403784 },
+      { w: 200, h: 100, rotation: 30 }, "nw", 12.3205080757, 18.6602540378,
+    );
+    expect(result.current.w).toBeCloseTo(180);
+    expect(result.current.h).toBeCloseTo(90);
+    expect(result.box.x).toBeCloseTo(105.7179676972);
+    expect(result.box.y).toBeCloseTo(75.3589838486);
+    expect(result.box.w).toBeCloseTo(200.8845726812);
+    expect(result.box.h).toBeCloseTo(167.9422863406);
+    expect(result.offset.x).toBeCloseTo(16.1602540378);
+    expect(result.offset.y).toBeCloseTo(14.3301270189);
   });
 
   it("a dragged box snaps to the nearest edge or middle within reach, with a guide", () => {
