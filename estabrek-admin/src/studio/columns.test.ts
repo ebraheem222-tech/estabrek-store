@@ -5,6 +5,14 @@ import { locate, simulate, undoOf } from "./draft";
 import { indexTree } from "./treeIndex";
 
 const text = (id: string): PageTreeNode => ({ id, type: "text", props: { text: { ar: id } } });
+it("starts drawings and models at bounded widths while allowing their natural aspect and a narrow container", () => {
+  const svg = newElement("svg", "en", prefix => prefix);
+  const model = newElement("model3d", "en", prefix => prefix);
+  expect(svg.style?.base).toMatchObject({ width: "200px", maxWidth: "100%" });
+  expect(model.style?.base).toMatchObject({ width: "320px", maxWidth: "100%" });
+  expect(svg.style?.base).not.toHaveProperty("height");
+  expect(model.style?.base).not.toHaveProperty("height");
+});
 it("creates an empty visible native container and rejects trees deeper than the page schema", () => {
   let n=0;const container=newElement("stack","en",prefix=>`${prefix}-${n++}`);
   expect(container.type).toBe("stack");expect(container.children).toEqual([]);expect(container.style?.base).toMatchObject({minHeight:"240px"});

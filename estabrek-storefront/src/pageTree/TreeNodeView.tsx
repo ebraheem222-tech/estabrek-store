@@ -298,9 +298,11 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const art = safeArt(p.art);
       if (!art) return null;
       const label = say(p.label);
+      const [, , width, height] = art.viewBox.trim().split(/[\s,]+/).map(Number);
+      const aspect = Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 ? `${width}/${height}` : "1/1";
       return (
-        <span className={cls(node)} {...mark} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
-          <ArtView art={art} prefix={node.id} />
+        <span className={cls(node)} style={{ "--pt-svg-aspect": aspect } as CSSProperties} {...mark} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}>
+          <ArtView art={art} prefix={node.id} stretch />
           {fx}
         </span>
       );

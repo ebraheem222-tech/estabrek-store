@@ -979,10 +979,10 @@ export const BASE_CSS = [
   ".pt-slider-dot[aria-current=true]::before{width:22px;background:#fff}",
   ".pt-slider-arrow:focus-visible,.pt-slider-pause:focus-visible,.pt-slider-dot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}",
   SLIDER_EFFECT_CSS,
-  // A drawing: as wide as its place (a width of its own makes it smaller); its own colour is the theme's.
+  // Natural content-box ratio until the editor supplies a height; authored padding and borders stay outside it.
   ".pt-svg{display:block;width:100%;max-width:100%;color:var(--accent)}",
   ".pt-product360{display:block;width:100%;max-width:100%}",
-  ".pt-svg>svg{display:block;width:100%;height:auto;overflow:visible}",
+  ".pt-svg>svg{display:block;width:100%;height:100%;aspect-ratio:var(--pt-svg-aspect,1/1);overflow:visible}",
   ".pt-divider{border:0;border-top:1px solid var(--border);margin:0;width:100%}",
   ".pt-icon{display:inline-flex;align-items:center;gap:8px;color:var(--accent)}",
   // A section's edges: a band along its top or bottom, under its content (or over it, `front`).

@@ -41,6 +41,14 @@ const initial: PageDraft = {
     ] },
   ] } },
 };
+if (new URLSearchParams(location.search).has("narrow")) {
+  initial.tree!.root.children![0].style = { base: { width: "160px", minHeight: "900px", pad: [0, 0, 0, 0] } };
+}
+if (new URLSearchParams(location.search).has("padded")) {
+  const drawing = initial.tree!.root.children![0].children![0];
+  drawing.props.art = { viewBox: "0 0 200 100", nodes: [{ t: "rect", a: { width: "200", height: "100", fill: "#3366ff" } }] };
+  drawing.style = { base: { width: "200px", pad: [20, 20, 20, 20], border: { width: 5, color: "#ff0000" } } };
+}
 let draft = structuredClone(initial);
 const writes: Array<{ ops: PageDraftOp[]; rev: number }> = [];
 const requests: Array<{ method: string; path: string }> = [];

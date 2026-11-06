@@ -128,7 +128,7 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
     case "svg": {
       // A drawing starts as a blob from the library.
       const blob = SHAPES[0];
-      return { id: id("svg"), type: "svg", props: { shape: blob.key, knobs: defaultsOf(blob), art: blob.make(defaultsOf(blob)) } };
+      return { id: id("svg"), type: "svg", props: { shape: blob.key, knobs: defaultsOf(blob), art: blob.make(defaultsOf(blob)) }, style: { base: { width: "200px", maxWidth: "100%" } } };
     }
     case "slider":
       return { id: id("sl"), type: "slider", props: { slides: src ? [{ src, kind: "image" }] : [], loop: true, arrows: true, dots: true } };
@@ -136,7 +136,7 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
       return { id: id("i"), type: "icon", props: { name: "heart" } };
     case "model3d":
       // A built-in model turning slowly on a soft shadow; shoppers can turn it by hand.
-      return { id: id("m3d"), type: "model3d", props: { model: "sneaker", anim: { type: "float", speed: 1, amount: 1, trigger: "always" }, auto: 0.6, drag: true } };
+      return { id: id("m3d"), type: "model3d", props: { model: "sneaker", anim: { type: "float", speed: 1, amount: 1, trigger: "always" }, auto: 0.6, drag: true }, style: { base: { width: "320px", maxWidth: "100%" } } };
     case "lottie":
       // A small pulse the shop keeps, until its own file is chosen.
       return { id: id("lt"), type: "lottie", props: { src: "/lottie/pulse.json" } };
