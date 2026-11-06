@@ -25,7 +25,7 @@
 - [x] Integrate free/flow modes, flow-to-free conversion, nested reparenting and an addable container; preserve displayed dimensions and parent extent.
 - [x] Integrate real safe live resize previews and atomic size/position commits, including undo/redo.
 - [x] Verify real editor/frame gestures, pointer cancellation, zoom/RTL and schema validity; review and build affected packages.
-- [ ] Commit/push the verified fix through main and confirm the live admin bundle.
+- [x] Commit/push the verified fix through main and confirm the live admin bundle.
 
 ## Verification evidence
 
@@ -35,3 +35,4 @@
 - Admin repository-wide TypeScript still reports the same 50 pre-existing errors as the catalog-visibility baseline, with no changed-file errors.
 - Review findings addressed: zero-distance temporary-CSS cleanup; ancestor scale and authored transform origin; unsafe free gestures on layered objects in flow mode.
 - No dependencies, migrations or merchant data changes.
+- Release `8d1eb969cd65c98d663067c785a87b2899e67084` was pushed to `main`. Live admin `https://estabrek-store.pages.dev/` serves `index-DwCHZ-cs.js` and `StudioPage-Cqo0XhUK.js` with the free-mode, geometry-preview and scaled-holder integration. The live storefront frame chunk `page-6c2f69519c118ed8.js` contains the geometry-preview and scale-measurement handlers. Both Vercel projects and Railway reported successful deployment for this release. Verification used public static assets; no merchant preview ticket or store data was needed.
