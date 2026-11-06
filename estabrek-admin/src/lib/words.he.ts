@@ -4871,4 +4871,6 @@ export const HE: Record<string, string> = {
   "Free move": "תנועה חופשית",
   "Flow layout": "סידור בפריסה",
   "Use the layout controls for 3D objects or objects inside rotated containers.": "השתמשו בהגדרות הפריסה עבור פריטי תלת־ממד או פריטים בתוך מכלים מסובבים.",
+  "Scale contents with the container": "שינוי גודל התוכן יחד עם המכל",
+  "All nested objects and text grow and shrink in proportion. Turn off to resize only the container frame.": "כל הפריטים והטקסט המקוננים גדלים וקטנים באותו יחס. כבו כדי לשנות רק את מסגרת המכל.",
 };

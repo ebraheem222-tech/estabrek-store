@@ -9,6 +9,7 @@ import type { Box, Pt } from "./geometry";
 export type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 /** Explicit local size in canvas pixels; only the element's own 2D rotation. */
 export type ResizeFrame = { w: number; h: number; rotation: number };
+export type RatioLimits = { min: number; max: number };
 export type ResizeChange = {
   handle: Handle;
   /** Original and final rendered AABBs in canvas pixels. */
@@ -72,9 +73,19 @@ function rotate(p: Pt, deg: number): Pt {
  * `box` is its rendered AABB, not a source for inferring the local dimensions.
  * Parent rotation, skew and perspective require a full affine frame from the caller.
  */
-export function resizeFrame(box: Box, frame: ResizeFrame, h: Handle, dx: number, dy: number, keep = false, min = 8): { box: Box; current: ResizeFrame; offset: Pt } {
+export function resizeFrame(box: Box, frame: ResizeFrame, h: Handle, dx: number, dy: number, keep = false, min = 8, limits?: RatioLimits): { box: Box; current: ResizeFrame; offset: Pt } {
   const delta = rotate({ x: dx, y: dy }, -frame.rotation);
   const next = resizeBox({ x: -frame.w / 2, y: -frame.h / 2, w: frame.w, h: frame.h }, h, delta.x, delta.y, keep, min);
+  if (keep && limits && frame.w > 0 && frame.h > 0) {
+    const wanted = next.w / frame.w;
+    const ratio = Math.max(limits.min, Math.min(limits.max, wanted));
+    if (ratio !== wanted) {
+      next.w = frame.w * ratio;
+      next.h = frame.h * ratio;
+      next.x = -frame.w / 2 + (h.includes("w") ? frame.w - next.w : 0);
+      next.y = -frame.h / 2 + (h.includes("n") ? frame.h - next.h : 0);
+    }
+  }
   const centerShift = rotate({ x: next.x + next.w / 2, y: next.y + next.h / 2 }, frame.rotation);
   const across = rotate({ x: next.w, y: 0 }, frame.rotation);
   const down = rotate({ x: 0, y: next.h }, frame.rotation);

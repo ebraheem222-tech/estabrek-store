@@ -31,6 +31,29 @@ function pointer(el: Element, type: string, x: number, y: number, options: { poi
 }
 
 describe("canvas resize gestures", () => {
+  it("keeps a group's contents proportional without Shift, including keyboard resizing", () => {
+    const { props, handle } = setup({ frame: { w: 200, h: 100, rotation: 0 }, proportional: true, ratioLimits: { min: .1, max: 4 } });
+    const east = handle();
+    pointer(east, "pointerdown", 300, 150);
+    pointer(east, "pointerup", 350, 150);
+    expect(props.onSize).toHaveBeenCalledWith(250, 125, expect.objectContaining({ keepProportions: true }));
+    fireEvent.keyDown(east, { key: "ArrowRight" });
+    expect(props.onSize).toHaveBeenLastCalledWith(201, 101, expect.objectContaining({ keepProportions: true }));
+  });
+  it("clamps a group ratio and preserves its opposite edge using the gesture's original limits", () => {
+    const { props, handle, rerender } = setup({ frame: { w: 200, h: 100, rotation: 0 }, proportional: true, ratioLimits: { min: .25, max: 2 } });
+    const west = handle("w");
+    pointer(west, "pointerdown", 100, 150);
+    pointer(west, "pointermove", 50, 150);
+    rerender(<SelectionHandles {...props} proportional={false} ratioLimits={{ min: .5, max: 1 }} />);
+    pointer(west, "pointerup", -900, 150);
+    expect(props.onSize).toHaveBeenCalledWith(400, 200, expect.objectContaining({ box: { x: -100, y: 100, w: 400, h: 200 }, keepProportions: true }));
+  });
+  it("does not save a keyboard group resize already at its authored scale limit", () => {
+    const { props, handle } = setup({ frame: { w: 200, h: 100, rotation: 0 }, proportional: true, ratioLimits: { min: .025, max: 1 } });
+    fireEvent.keyDown(handle(), { key: "ArrowRight" });
+    expect(props.onSize).not.toHaveBeenCalled();
+  });
   it("commits pointer release coordinates even after an earlier move", () => {
     const { props, handle } = setup();
     const east = handle();

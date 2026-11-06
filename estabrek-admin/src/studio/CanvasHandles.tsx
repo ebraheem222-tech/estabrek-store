@@ -8,9 +8,9 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { tr } from "../lib/words";
 import type { Box, Pt } from "./geometry";
-import { CURSOR, HANDLES, angleAt, handleAt, nudgeOf, resizeBox, resizeFrame, turnTo, type Gap, type Guide, type Handle, type ResizeChange, type ResizeFrame } from "./handles";
+import { CURSOR, HANDLES, angleAt, handleAt, nudgeOf, resizeBox, resizeFrame, turnTo, type Gap, type Guide, type Handle, type RatioLimits, type ResizeChange, type ResizeFrame } from "./handles";
 
-type SizeDrag = { kind: "size"; h: Handle; start: Box; p0: Pt; zoom: number; frame?: ResizeFrame };
+type SizeDrag = { kind: "size"; h: Handle; start: Box; p0: Pt; zoom: number; frame?: ResizeFrame; proportional?: boolean; ratioLimits?: RatioLimits };
 type Drag = (SizeDrag | { kind: "turn"; c: Pt; a0: number; base: number }) & {
   pointerId: number;
   target: HTMLElement;
@@ -24,6 +24,9 @@ type SelectionHandlesProps = {
   zoom: number;
   /** Optional unrotated canvas-pixel dimensions and own 2D rotation about the box centre. */
   frame?: ResizeFrame;
+  /** Groups scale all descendants together, independently of the Shift key. */
+  proportional?: boolean;
+  ratioLimits?: RatioLimits | ((handle: Handle) => RatioLimits);
   /** "all": every side; "width": the sides only (words keep their own height). */
   sides: "all" | "width";
   /** Its turn now (degrees), or null when it can't be turned here. */
@@ -40,10 +43,11 @@ type SelectionHandlesProps = {
 };
 
 function changeAt(d: SizeDrag, p: Pt, keepProportions: boolean): ResizeChange {
+  keepProportions = Boolean(d.proportional || keepProportions);
   const dx = p.x - d.p0.x;
   const dy = p.y - d.p0.y;
   if (d.frame) {
-    const resized = resizeFrame(d.start, d.frame, d.h, dx, dy, keepProportions, 8 * d.zoom);
+    const resized = resizeFrame(d.start, d.frame, d.h, dx, dy, keepProportions, 8 * d.zoom, d.ratioLimits);
     return { handle: d.h, start: d.start, box: resized.box, zoom: d.zoom, keepProportions, frame: { start: d.frame, current: resized.current, offset: resized.offset } };
   }
   return { handle: d.h, start: d.start, box: resizeBox(d.start, d.h, dx, dy, keepProportions, 8 * d.zoom), zoom: d.zoom, keepProportions };
@@ -66,13 +70,14 @@ function restore(d: Drag) {
   else if (d.kind === "turn") d.callbacks.onTurnLive(d.base);
 }
 
-export function SelectionHandles({ box, zoom, frame, sides, turn, local, onSize, onSizeLive, onCancel, onReset, onTurnLive, onTurn }: SelectionHandlesProps) {
+export function SelectionHandles({ box, zoom, frame, proportional, ratioLimits, sides, turn, local, onSize, onSizeLive, onCancel, onReset, onTurnLive, onTurn }: SelectionHandlesProps) {
   const drag = useRef<Drag | null>(null);
   const [live, setLive] = useState<{ change?: ResizeChange; deg?: number } | null>(null);
   const shown = live?.change?.box ?? box;
   const shownFrame = live?.change?.frame?.current ?? frame;
   const handles = sides === "all" ? HANDLES : (["e", "w"] as Handle[]);
   const scale = zoom > 0 && Number.isFinite(zoom) ? zoom : 1;
+  const limitsFor = (handle: Handle) => typeof ratioLimits === "function" ? ratioLimits(handle) : ratioLimits;
   // Keep this listener independent of changing live-preview props. Each gesture owns
   // its original callbacks, coordinate mapping, frame, and zoom until it ends.
   useEffect(() => {
@@ -161,7 +166,8 @@ export function SelectionHandles({ box, zoom, frame, sides, turn, local, onSize,
       const radians = frame.rotation * Math.PI / 180;
       [p.x, p.y] = [p.x * Math.cos(radians) - p.y * Math.sin(radians), p.x * Math.sin(radians) + p.y * Math.cos(radians)];
     }
-    const change = changeAt({ kind: "size", h, start: box, p0: { x: 0, y: 0 }, zoom: scale, frame }, p, false);
+    const change = changeAt({ kind: "size", h, start: box, p0: { x: 0, y: 0 }, zoom: scale, frame, proportional, ratioLimits: limitsFor(h) }, p, false);
+    if (["x", "y", "w", "h"].every(key => Math.abs(change.box[key as keyof Box] - change.start[key as keyof Box]) < 1e-7)) return;
     onSize(...dimensions(change), change);
   };
   const knob = { x: box.x + box.w / 2, y: box.y - 28 };
@@ -187,7 +193,7 @@ export function SelectionHandles({ box, zoom, frame, sides, turn, local, onSize,
             aria-label={tr("اسحب لتغيير الحجم، كبستين للحجم الطبيعي", "Drag to resize, double-click for its natural size")}
             className="pointer-events-auto absolute z-20 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 touch-none rounded-sm border border-accent-500 bg-white shadow"
             style={{ left: at.x, top: at.y, cursor: CURSOR[h] }}
-            onPointerDown={(e) => start(e, { kind: "size", h, start: { ...box }, p0: local(e), zoom: scale, frame: frame ? { ...frame } : undefined })}
+            onPointerDown={(e) => start(e, { kind: "size", h, start: { ...box }, p0: local(e), zoom: scale, frame: frame ? { ...frame } : undefined, proportional, ratioLimits: limitsFor(h) ? { ...limitsFor(h)! } : undefined })}
             onPointerMove={move}
             onPointerUp={end}
             onPointerCancel={cancel}

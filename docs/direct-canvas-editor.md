@@ -4,6 +4,7 @@ The editor starts in **Free move** mode. Drag a picture, button, widget or conta
 
 - Add **Container for objects** from the Add panel. Drop an object over a container to put it inside, including a container inside its current parent. Dragging a container carries its children. The highlighted target shows where the object will go.
 - Select an object and drag a side or corner to resize it. The actual preview changes while dragging. West/north handles preserve the opposite edge. Hold **Shift** to keep proportions. Text and headings use width handles so their content determines height.
+- **Scale contents with the container** starts enabled for containers with children. Growing a group by 25% also grows its pictures, text, spacing and every nested object by 25%; shrinking works the same way. Group handles keep proportions automatically. Turn the option off to resize only the frame. Children remain independently editable. Intrinsic/percentage layouts keep their original dimensions and insets, and scale/position limits stop the handle before an edge would drift.
 - Use **Ctrl/Cmd** while dragging to bypass snapping. Existing alignment, collision and grid settings remain available. **Alt** on release makes a copy.
 - On a touch screen, tap an object to select it, then drag it or its handles. An unselected touch gesture can still scroll the page.
 - **Escape**, pointer cancellation or a drag returned to its exact starting point restores the preview without saving. A completed move, reparent or resize is one undo/redo action. Double-click a resize handle to restore natural dimensions.
@@ -22,7 +23,7 @@ npm.cmd test -- src/studio/CanvasHandles.test.tsx src/studio/handles.test.ts src
 The browser regression uses the real editor and storefront frame with an isolated local draft. Start `node tests/catalog-server.mjs` in `estabrek-storefront` on port 4100. Start the storefront on port 3000 with `API_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL` set to `http://127.0.0.1:4100/v1`, and `ADMIN_ORIGIN` containing `http://127.0.0.1:4100 http://127.0.0.1:5178`. Start the admin Vite server on port 5178. Then, from the repository root:
 
 ```powershell
-$env:CANVAS_SCENARIOS='flow-return,desktop,rtl-touch,scaled,transfer,safety'
+$env:CANVAS_SCENARIOS='flow-return,desktop,rtl-touch,scaled,transfer,safety,group,intrinsic,autowidth'
 node estabrek-admin/tests/direct-canvas.browser.cjs
 ```
 

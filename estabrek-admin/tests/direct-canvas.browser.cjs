@@ -108,8 +108,8 @@ async function travel(page, direction) {
 function sameBox(actual, wanted, label) {
   for (const key of ["x", "y", "w", "h"]) close(actual[key], wanted[key], 1.8, `${label}.${key}`);
 }
-async function resize(page, frame, id, handle, dx, dy) {
-  await select(page, frame, id);
+async function resize(page, frame, id, handle, dx, dy, alreadySelected = false, onPreview = null) {
+  if (!alreadySelected) await select(page, frame, id);
   const before = await writes(page), initial = await box(frame, id);
   const h = page.locator(`[data-testid="studio-handle"][data-handle="${handle}"]`);
   const rect = await h.boundingBox();
@@ -124,6 +124,7 @@ async function resize(page, frame, id, handle, dx, dy) {
   if (handle.includes("n")) close(preview.y + preview.h, initial.y + initial.h, 1.8, "live north opposite edge");
   assert.ok(Math.abs(preview.w - initial.w) > 10 || Math.abs(preview.h - initial.h) > 10, "the real iframe object resizes before release");
   assert.equal(await writes(page), before, "resize preview does not persist");
+  if (onPreview) await onPreview(preview, initial);
   await page.mouse.up();
   await mutation(page, before, `${handle} resize commits once`);
   const final = await box(frame, id);
@@ -296,6 +297,115 @@ async function safety(browser) {
     out.checks.push("placed objects under rotated holders cannot save guessed free coordinates in either canvas mode");
     out.status = "passed";
     out.writes = await writes(page);
+  } finally { await context.close(); }
+}
+
+async function groupScale(browser, lang) {
+  const { page, context, frame } = await open(browser, lang, lang === "ar" ? { ancestorScale: 1.25, ancestorOrigin: "top" } : {});
+  const out = { name: `group-scale-${lang}`, checks: [] };
+  results.scenarios.push(out);
+  const ids = ["canvas-parent", "canvas-image", "canvas-button", "canvas-inner", "canvas-inner-label"];
+  const boxes = async () => Object.fromEntries(await Promise.all(ids.map(async id => { const b = await box(frame, id); return [id, { ...b, y: b.y + b.scroll }]; })));
+  const compare = (actual, wanted, label) => { for (const id of ids) sameBox(actual[id], wanted[id], `${label}/${id}`); };
+  const proportional = (actual, original, label) => {
+    const parent = actual[ids[0]], before = original[ids[0]], ratio = parent.w / before.w;
+    close(parent.h / before.h, ratio, .01, `${label}/parent aspect ratio`);
+    for (const id of ids.slice(1)) {
+      close(actual[id].w, original[id].w * ratio, 2, `${label}/${id}/width`);
+      close(actual[id].h, original[id].h * ratio, 2, `${label}/${id}/height`);
+      close(actual[id].x - parent.x, (original[id].x - before.x) * ratio, 2, `${label}/${id}/local x`);
+      close(actual[id].y - parent.y, (original[id].y - before.y) * ratio, 2, `${label}/${id}/local y`);
+    }
+  };
+  try {
+    await page.getByTestId("studio-tab-layers").click();
+    await page.locator('[data-testid="studio-layer"][data-node="canvas-parent"]').click();
+    await page.waitForTimeout(350);
+    const option = page.getByTestId("studio-scale-contents");
+    await expect(option).toBeChecked();
+    const original = await boxes(), childStyles = {};
+    for (const id of ids.slice(1)) childStyles[id] = (await model(page, id)).node.style;
+    await resize(page, frame, "canvas-parent", "e", 100, 0, true, async () => proportional(await boxes(), original, "live growth"));
+    const grown = await boxes();
+    proportional(grown, original, "committed growth");
+    for (const id of ids.slice(1)) assert.deepEqual((await model(page, id)).node.style, childStyles[id], `${id} authored style stays intact`);
+    out.checks.push("container resize scales pictures, buttons, nested containers and grandchild text live and after one commit without rewriting child styles");
+    await resize(page, frame, "canvas-parent", "w", 80, 0, true, async () => proportional(await boxes(), grown, "live shrink"));
+    const shrunk = await boxes();
+    proportional(shrunk, grown, "committed shrink");
+    assert.ok(shrunk[ids[0]].w < grown[ids[0]].w, "shrinking the container shrinks the subtree");
+    await travel(page, "undo"); compare(await boxes(), grown, "undo shrink");
+    await travel(page, "redo"); compare(await boxes(), shrunk, "redo shrink");
+    await travel(page, "undo"); await travel(page, "undo"); compare(await boxes(), original, "undo group conversion");
+    out.checks.push("shrink, undo and redo preserve the whole group's proportions and positions");
+    const count = await writes(page), h = await page.locator('[data-testid="studio-handle"][data-handle="e"]').boundingBox();
+    await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2); await page.mouse.down();
+    await page.mouse.move(h.x + 65, h.y + h.height / 2, { steps: 8 });
+    await page.keyboard.press("Escape"); await page.mouse.up(); await page.waitForTimeout(150);
+    assert.equal(await writes(page), count, "cancelled group resize saves nothing"); compare(await boxes(), original, "cancelled group preview");
+    await option.uncheck(); assert.equal(await writes(page), count, "the frame-only option is a browser preference");
+    await resize(page, frame, "canvas-parent", "e", 100, 0, true);
+    const frameOnly = await boxes();
+    close(frameOnly[ids[0]].w, original[ids[0]].w + 100, 2, "frame-only width");
+    for (const id of ids.slice(1)) { close(frameOnly[id].w, original[id].w, 2, `${id} keeps width in frame-only mode`); close(frameOnly[id].h, original[id].h, 2, `${id} keeps height in frame-only mode`); }
+    await travel(page, "undo"); await option.check();
+    out.checks.push("Escape cancels without writes, and frame-only resizing keeps descendant sizes unchanged");
+    await page.locator('[data-testid="studio-layer"][data-node="canvas-image"]').click(); await page.waitForTimeout(350);
+    const parentBefore = await box(frame, "canvas-parent");
+    await resize(page, frame, "canvas-image", "e", 36, 0, true);
+    const parentAfter = await box(frame, "canvas-parent");
+    close(parentAfter.w, parentBefore.w, 1, "independent child resizing leaves parent width intact");
+    close(parentAfter.h, parentBefore.h, 1, "independent child resizing leaves parent height intact");
+    out.checks.push("a child remains independently resizable while the parent keeps its dimensions");
+    out.status = "passed"; out.writes = await writes(page);
+    await page.screenshot({ path: path.join(OUTPUT_DIR, `direct-canvas-group-${lang}.png`), fullPage: true });
+  } catch (error) {
+    out.draft = await page.evaluate(() => window.__canvasHarness.getDraft());
+    await page.screenshot({ path: path.join(OUTPUT_DIR, `direct-canvas-group-${lang}-failure.png`), fullPage: true });
+    throw error;
+  } finally { await context.close(); }
+}
+
+async function intrinsicGroup(browser, placed) {
+  const { page, context, frame } = await open(browser, "en", { percentageGroup: 1, groupPlaced: placed ? 1 : 0 });
+  const out = { name: `intrinsic-group-${placed ? "free" : "flow"}`, checks: [] };
+  results.scenarios.push(out);
+  try {
+    await page.getByTestId("studio-tab-layers").click();
+    await page.locator('[data-testid="studio-layer"][data-node="canvas-inner"]').click();
+    await page.waitForTimeout(350);
+    const before = await box(frame, "canvas-inner"), child = await box(frame, "canvas-inner-label"), spacer = await box(frame, "percentage-spacer");
+    close(before.h, 184, .1, "intrinsic fixture height"); close(child.h, 60, .1, "percentage-height child begins intrinsic"); close(spacer.h, 60, .1, "spacer begins at authored height");
+    const check = async () => {
+      close((await box(frame, "canvas-inner-label")).h, child.h * 1.25, 1, "percentage child scales without flex redistribution");
+      close((await box(frame, "percentage-spacer")).h, spacer.h * 1.25, 1, "spacer scales without flex shrink");
+    };
+    await resize(page, frame, "canvas-inner", "e", 100, 0, true, check); await check();
+    const saved = (await model(page, "canvas-inner")).node.style.base;
+    assert.equal(saved.height, undefined, "auto height is not frozen to pixels"); assert.equal(saved.width, "400px", "raw layout width is retained");
+    assert.equal(Boolean(saved.layer), placed, "group scaling preserves its original positioning context");
+    await travel(page, "undo");
+    close((await box(frame, "canvas-inner-label")).h, child.h, 1, "intrinsic child undo");
+    close((await box(frame, "percentage-spacer")).h, spacer.h, 1, "spacer undo");
+    out.checks.push("auto-height and percentage-height layouts scale as a whole without redistributing child heights, in preview, commit and undo");
+    out.status = "passed"; out.writes = await writes(page);
+  } finally { await context.close(); }
+}
+
+async function autoWidthGroup(browser) {
+  const { page, context, frame } = await open(browser, "en", { autoWidthGroup: 1 });
+  const out = { name: "auto-width-free-group", checks: [] }; results.scenarios.push(out);
+  try {
+    await page.getByTestId("studio-tab-layers").click(); await page.locator('[data-testid="studio-layer"][data-node="canvas-inner"]').click(); await page.waitForTimeout(350);
+    const original = await box(frame, "canvas-inner"), child = await box(frame, "canvas-inner-label");
+    const layer = (await model(page, "canvas-inner")).node.style.base.layer;
+    close(original.w, 400, 1, "auto-width fixture fills the available inset width");
+    const check = async () => { close((await box(frame, "canvas-inner")).w, original.w * 1.25, 1, "auto-width group rendered width"); close((await box(frame, "canvas-inner-label")).w, child.w * 1.25, 1, "auto-width child's width scales faithfully"); };
+    await resize(page, frame, "canvas-inner", "e", 100, 0, true, check); await check();
+    const saved = (await model(page, "canvas-inner")).node.style.base;
+    assert.deepEqual(saved.layer, layer, "automatic-width group keeps its original insets"); assert.equal(saved.width, undefined); assert.equal(saved.height, undefined);
+    await travel(page, "undo"); close((await box(frame, "canvas-inner")).w, original.w, 1, "auto-width group undo");
+    out.checks.push("an absolute auto-width group keeps its raw shrink-to-fit layout and insets while its full content scales"); out.status = "passed"; out.writes = await writes(page);
   } finally { await context.close(); }
 }
 
@@ -475,13 +585,16 @@ async function rtlTouch(browser) {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   const browser = await chromium.launch({ channel: process.env.CANVAS_BROWSER_CHANNEL || "chrome", headless: true });
   try {
-    const selected = (process.env.CANVAS_SCENARIOS || "flow-return,desktop,rtl-touch,scaled,transfer,safety").split(",");
+    const selected = (process.env.CANVAS_SCENARIOS || "flow-return,desktop,rtl-touch,scaled,transfer,safety,group,intrinsic,autowidth").split(",");
     if (selected.includes("flow-return")) await flowReturn(browser);
     if (selected.includes("desktop")) await desktop(browser);
     if (selected.includes("rtl-touch")) await rtlTouch(browser);
     if (selected.includes("scaled")) { await scaled(browser, "top"); await scaled(browser, "bottom"); }
     if (selected.includes("transfer")) await transfer(browser);
     if (selected.includes("safety")) await safety(browser);
+    if (selected.includes("group")) { await groupScale(browser, "en"); await groupScale(browser, "ar"); }
+    if (selected.includes("intrinsic")) { await intrinsicGroup(browser, false); await intrinsicGroup(browser, true); }
+    if (selected.includes("autowidth")) await autoWidthGroup(browser);
     assert.deepEqual(results.errors, [], "no runtime errors or external writes");
     results.status = "passed";
   } catch (error) {

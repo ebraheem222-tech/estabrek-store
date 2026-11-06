@@ -35,6 +35,9 @@ const variant = {
   objectScale: variantScale("objectScale"), objectOrigin: variantOrigin("objectOrigin"),
   ancestorRotation: Math.max(-180, Math.min(180, Number(query.get("ancestorRotation")) || 0)),
   objectPlaced: query.get("objectPlaced") === "1",
+  percentageGroup: query.get("percentageGroup") === "1",
+  groupPlaced: query.get("groupPlaced") === "1",
+  autoWidthGroup: query.get("autoWidthGroup") === "1",
 };
 env.VITE_API_BASE_URL = `${FIXTURE}/v1`;
 env.VITE_STOREFRONT_BASE_URL = SHOP;
@@ -70,6 +73,20 @@ if (variant.objectScale !== 1 || variant.objectOrigin !== "center") {
   objectFixture.style!.base = { ...objectFixture.style!.base as Record<string, unknown>, scale: variant.objectScale, origin: variant.objectOrigin };
 }
 if (variant.objectPlaced) objectFixture.style!.base = { ...objectFixture.style!.base as Record<string, unknown>, layer: { x: 30, y: 20, anchor: "top-start" } };
+if (variant.percentageGroup) {
+  const inner = parentFixture.children![2];
+  inner.style = { base: { width: "400px", pad: [24,24,24,24], gap: 16, align: "start", bg: "#bfdbfe", ...(variant.groupPlaced ? { layer: { x: 20, y: 20, anchor: "top-start" } } : {}) } };
+  inner.children = [
+    { id: "canvas-inner-label", type: "stack", props: {}, style: { base: { width: "100%", height: "100%", gap: 0 } }, children: [1,2].map(i => ({ id: `percentage-line-${i}`, type: "text", props: { text: text(`Line ${i}`) }, style: { base: { height: "30px", size: 20, lineHeight: 1.5 } } })) },
+    { id: "percentage-spacer", type: "spacer", props: {}, style: { base: { height: "60px" } } },
+  ];
+}
+if (variant.autoWidthGroup) {
+  parentFixture.style!.base = { ...parentFixture.style!.base as Record<string, unknown>, width: "500px", minHeight: "600px" };
+  const inner = parentFixture.children![2];
+  inner.style = { base: { pad: [24,24,24,24], bg: "#bfdbfe", layer: { x: 20, y: 20, anchor: "top-start" } } };
+  inner.children = [{ id: "canvas-inner-label", type: "text", props: { text: text("A long editable sentence that wraps inside this automatically sized container. ".repeat(5)) }, style: { base: { size: 20, lineHeight: 1.5 } } }];
+}
 let draft = structuredClone(initial);
 const writes: Array<{ ops: PageDraftOp[]; rev: number }> = [];
 const requests: Array<{ method: string; path: string }> = [];

@@ -1,9 +1,19 @@
 import type { PageTreeNode, TreeScreen } from "../api/pages.api";
 import type { Box, Pt } from "./geometry";
 import { placedOn, placeFor, shownLook } from "./look";
+import type { Handle, RatioLimits } from "./handles";
 
 export type CanvasMode = "free" | "flow";
 const KEY = "studio-canvas-placement";
+const CONTENTS_KEY = "studio-scale-contents";
+
+export function readScaleContents(): boolean {
+  try { return localStorage.getItem(CONTENTS_KEY) !== "0"; } catch { return true; }
+}
+
+export function saveScaleContents(on: boolean) {
+  try { localStorage.setItem(CONTENTS_KEY, on ? "1" : "0"); } catch { /* In-memory preference remains available. */ }
+}
 
 export function readCanvasMode(): CanvasMode {
   try {
@@ -124,6 +134,56 @@ export function transferPatch(
   const target = { ...node, style: { ...styles, [screen]: { ...styles?.[screen], scale } } };
   const patch = placementPatch(target, screen, rendered, holder, size, zoom, rtl, true, targetScale);
   return patch ? { ...patch, ...(Math.abs(sourceScale - targetScale) > 1e-6 ? { scale } : {}) } : null;
+}
+
+/** Ratios that preserve the fixed edge within the existing scale/translation ranges. Raw CSS size in. */
+export function scaleContentsLimits(node: PageTreeNode, screen: TreeScreen, size: Size, handle: Handle): RatioLimits {
+  if (!finiteSize(size)) return { min: 1, max: 1 };
+  const scale = lookNumber(node, screen, "scale", 1);
+  let min = .1 / scale, max = 4 / scale;
+  const origin = shownLook(node, screen, "origin");
+  const oy = origin === "top" ? 0 : origin === "bottom" ? size.h : size.h / 2;
+  const x = (handle.includes("w") ? -1 : 1) * size.w / 2 * scale;
+  const y = ((handle.includes("n") ? -1 : 1) * size.h / 2 - (size.h / 2 - oy)) * scale;
+  const radians = lookNumber(node, screen, "rotateZ", 0) * Math.PI / 180;
+  const dx = x * Math.cos(radians) - y * Math.sin(radians);
+  const dy = x * Math.sin(radians) + y * Math.cos(radians);
+  for (const [key, coefficient] of [["moveX", dx], ["moveY", dy]] as const) {
+    if (Math.abs(coefficient) < 1e-9) continue;
+    const move = lookNumber(node, screen, key, 0);
+    const a = 1 + (-1000 - move) / coefficient, b = 1 + (1000 - move) / coefficient;
+    min = Math.max(min, Math.min(a, b)); max = Math.min(max, Math.max(a, b));
+  }
+  return { min: Math.min(1, min), max: Math.max(1, max) };
+}
+
+/** Scale + translate only: keep raw dimensions and insets so auto/% layouts never reflow. */
+export function scaleContentsPatch(
+  node: PageTreeNode,
+  screen: TreeScreen,
+  start: Box,
+  next: Box,
+  size: Size,
+  ratio: number,
+  zoom: number,
+  parentScale = 1,
+): Record<string, unknown> | null {
+  if (!finiteBox(start) || !finiteBox(next) || !finiteSize(size) || !positive(ratio) || !positive(zoom) || !positive(parentScale)) return null;
+  const requested = lookNumber(node, screen, "scale", 1) * ratio;
+  if (requested < .1 - 1e-9 || requested > 4 + 1e-9) return null;
+  // Keep the planner's full ratio precision at the movement boundary.
+  const scale = Math.max(.1, Math.min(4, requested));
+  const styles = node.style as Record<string, Record<string, unknown>> | undefined;
+  const target = { ...node, style: { ...styles, [screen]: { ...styles?.[screen], scale } } };
+  const before = centerOffset(node, screen, size), after = centerOffset(target, screen, size);
+  const move = (key: string, delta: number) => Math.round((lookNumber(node, screen, key, 0) + delta) * 1e6) / 1e6;
+  const patch = {
+    scale,
+    moveX: move("moveX", (next.x + next.w / 2 - start.x - start.w / 2) / (zoom * parentScale) - (after.x - before.x) / zoom),
+    moveY: move("moveY", (next.y + next.h / 2 - start.y - start.h / 2) / (zoom * parentScale) - (after.y - before.y) / zoom),
+  };
+  if (Math.abs(patch.moveX) > 1000 + 1e-6 || Math.abs(patch.moveY) > 1000 + 1e-6) return null;
+  return { ...patch, moveX: Math.max(-1000, Math.min(1000, patch.moveX)), moveY: Math.max(-1000, Math.min(1000, patch.moveY)) };
 }
 
 /**

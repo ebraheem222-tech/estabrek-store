@@ -82,7 +82,7 @@ import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./Mul
 import { Guides, SelectionHandles } from "./CanvasHandles";
 import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange } from "./handles";
 import { pickCanvasContainer } from "./canvasContainers";
-import { effectiveLook, placementBox, placementPatch, readCanvasMode, resizePatch, saveCanvasMode, transferPatch, type CanvasMode } from "./canvasManipulation";
+import { effectiveLook, placementBox, placementPatch, readCanvasMode, readScaleContents, resizePatch, saveCanvasMode, saveScaleContents, scaleContentsLimits, scaleContentsPatch, transferPatch, type CanvasMode } from "./canvasManipulation";
 import { DragSettings } from "./DragSettings";
 import { LooksPanel } from "./LooksPanel";
 import { lookOps, withLook, type Ready } from "./looks";
@@ -229,6 +229,7 @@ export default function StudioPage() {
   // A free drag (phase 9): how it behaves (kept in this browser), what it pushes, touches and lines up with, the place it'd go into.
   const [dragPrefs, setDragPrefs] = useState<DragPrefs>(readDragPrefs);
   const [canvasMode, setCanvasMode] = useState<CanvasMode>(readCanvasMode);
+  const [scaleContents, setScaleContents] = useState(readScaleContents);
   const changeDragPrefs = (p: Partial<DragPrefs>) =>
     setDragPrefs((was) => {
       const next = { ...was, ...p };
@@ -1425,8 +1426,13 @@ export default function StudioPage() {
     const parentId = index?.nodes.get(node.id)?.parentId;
     const holder = holderOf(node.id) ?? (parentId ? holdsOf(parentId) : null);
     const size = sizeOf(node.id) ?? { w: change.start.w, h: change.start.h };
-    const free = canvasMode === "free" || Boolean(placedOn(node, screen));
-    const patch = resizePatch(node, screen, change.start, change.box, size, w, h, holder, zoom, rtl, free, parentScaleOf(node.id));
+    const group = scaleContents && Boolean(node.children?.length) && change.frame;
+    // Group scaling preserves its original layout context, including auto and %
+    // dimensions. Only ordinary frame resizing converts flow to free placement.
+    const free = Boolean(placedOn(node, screen)) || !group && canvasMode === "free";
+    const patch = group
+      ? scaleContentsPatch(node, screen, change.start, change.box, size, group.current.w / group.start.w, zoom, parentScaleOf(node.id))
+      : resizePatch(node, screen, change.start, change.box, size, w, h, holder, zoom, rtl, free, parentScaleOf(node.id));
     return patch ? [...(free && !placedOn(node, screen) && parentId ? pinHolder(parentId) : []), styleOp(node, screen, patch)] : [];
   };
   const lookNum = (n: PagesAPI.PageTreeNode, key: string, or: number) => {
@@ -1704,6 +1710,11 @@ export default function StudioPage() {
           <dt className="text-white/45">{tr("الحجم", "Size")}</dt>
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
         </dl>
+
+        {selFree?.children?.length && !["page", "section", "cell", "columns"].includes(selFree.type) ? <label className="flex items-start gap-2 rounded-lg border border-white/10 p-2 text-xs">
+          <input type="checkbox" checked={scaleContents} disabled={busy} data-testid="studio-scale-contents" onChange={event => { const on = event.target.checked; setScaleContents(on); saveScaleContents(on); }} />
+          <span>{tr("تحجيم المحتوى مع الحاوية", "Scale contents with the container")}<span className="mt-1 block text-[11px] text-white/45">{tr("كل العناصر والنصوص بداخلها تكبر وتصغر بنفس النسبة. أطفئه لتغيير حدود الحاوية وحدها.", "All nested objects and text grow and shrink in proportion. Turn off to resize only the container frame.")}</span></span>
+        </label> : null}
 
         {selExtra?.kind === "slot" && selExtra.edit === "list" ? (
           <Field
@@ -2582,6 +2593,8 @@ export default function StudioPage() {
             <SelectionHandles
               key={`${selFree.id}:${screen}`}
               box={selShape.box}
+              proportional={scaleContents && Boolean(selFree.children?.length)}
+              ratioLimits={scaleContents && selFree.children?.length && itemOf(selFree.id)?.size ? handle => scaleContentsLimits(selFree, screen, itemOf(selFree.id)!.size!, handle) : undefined}
               zoom={zoom * parentScaleOf(selFree.id) * Math.max(.1, Number(shownLook(selFree, screen, "scale") ?? 1))}
               frame={sizeOf(selFree.id) ? { w: sizeOf(selFree.id)!.w * parentScaleOf(selFree.id) * Number(shownLook(selFree, screen, "scale") ?? 1), h: sizeOf(selFree.id)!.h * parentScaleOf(selFree.id) * Number(shownLook(selFree, screen, "scale") ?? 1), rotation: Number(shownLook(selFree, screen, "rotateZ") ?? 0) } : undefined}
               sides={["heading", "text"].includes(selFree.type) ? "width" : "all"}
@@ -2593,7 +2606,7 @@ export default function StudioPage() {
               }}
               onSize={(w, h, gesture) => void change(tr("الحجم", "Size"), resizeOps(selFree, w, h, gesture)).finally(clearGeometry)}
               onCancel={() => { clearGeometry(); send({ type: "previewLook", nodeId: selFree.id, vars: { "--pt-rz": `${Number(shownLook(selFree, screen, "rotateZ") ?? 0)}deg` } }); }}
-              onReset={() => void change(tr("الحجم الطبيعي", "Natural size"), [styleOp(selFree, screen, { width: null, height: null, maxWidth: null, minHeight: null })])}
+              onReset={() => void change(tr("الحجم الطبيعي", "Natural size"), [styleOp(selFree, screen, { width: null, height: null, maxWidth: null, minHeight: null, ...(scaleContents && selFree.children?.length ? { scale: null } : {}) })])}
               onTurnLive={(deg) => send({ type: "previewLook", nodeId: selFree.id, vars: { "--pt-rz": `${deg}deg` } })}
               onTurn={(deg) => void change(tr("دوران", "Turn"), [styleOp(selFree, screen, { rotateZ: deg || null })])}
             />

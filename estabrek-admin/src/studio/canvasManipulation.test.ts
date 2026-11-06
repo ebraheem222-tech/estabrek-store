@@ -1,7 +1,71 @@
 import { expect, test } from "vitest";
-import { placementBox, placementPatch, resizePatch, readCanvasMode, saveCanvasMode, effectiveLook, transferPatch } from "./canvasManipulation";
+import { resizeFrame } from "./handles";
+import { placementBox, placementPatch, resizePatch, readCanvasMode, saveCanvasMode, effectiveLook, transferPatch, scaleContentsPatch, scaleContentsLimits, readScaleContents, saveScaleContents } from "./canvasManipulation";
 const node = { id: "image", type: "image", props: {}, style: { base: { width: "100%" } } };
 const holder = { x: 100, y: 200, w: 600, h: 400 };
+test("free group scaling preserves an auto-width group's original insets", () => {
+ const group={...node,type:"stack",style:{base:{layer:{x:20,y:20,anchor:"top-start"}}}};
+ const patch=scaleContentsPatch(group,"base",{x:100,y:120,w:400,h:184},{x:100,y:120,w:500,h:230},{w:400,h:184},1.25,1)!;
+ expect(patch).not.toHaveProperty("layer"); expect(patch).toMatchObject({scale:1.25,moveX:50,moveY:23});
+});
+test("group limits account for translation room, scale, own rotation and resize handle", () => {
+ const group={...node,type:"stack",style:{base:{moveX:900}}};
+ expect(scaleContentsLimits(group,"base",{w:800,h:400},"e")).toEqual({min:.1,max:1.25});
+ expect(scaleContentsLimits(group,"base",{w:800,h:400},"w")).toEqual({min:.75,max:4});
+ const rotated={...group,style:{base:{rotateZ:90,moveY:900}}};
+ expect(scaleContentsLimits(rotated,"base",{w:800,h:400},"e").max).toBeCloseTo(1.25);
+});
+test("group scaling never silently clamps movement and shifts the opposite edge", () => {
+ expect(scaleContentsPatch(node,"base",{x:100,y:100,w:800,h:400},{x:100,y:100,w:3200,h:1600},{w:800,h:400},4,1)).toBeNull();
+});
+test("full scale precision at the analytic movement boundary still commits the bounded resize", () => {
+ const group={...node,type:"stack",style:{base:{scale:1,origin:"top",moveY:-900}}};
+ const start={x:100,y:100,w:800,h:428};
+ const limits=scaleContentsLimits(group,"base",{w:800,h:428},"n");
+ const drag=resizeFrame(start,{w:800,h:428,rotation:0},"n",0,-500,true,8,limits);
+ const patch=scaleContentsPatch(group,"base",start,drag.box,{w:800,h:428},drag.current.w/800,1)!;
+ expect(patch).not.toBeNull(); expect(patch).toMatchObject({moveY:-1000}); expect(patch.scale).toBeCloseTo(limits.max,12);
+});
+test("content scaling defaults on and its frame-only preference survives reopening", () => {
+ localStorage.removeItem("studio-scale-contents"); expect(readScaleContents()).toBe(true);
+ saveScaleContents(false); expect(readScaleContents()).toBe(false);
+ saveScaleContents(true); expect(readScaleContents()).toBe(true);
+});
+test("scaling a group changes its parent scale and placement while leaving its entire subtree untouched", () => {
+ const group={...node,type:"stack",style:{base:{scale:1}},children:[{...node,id:"child",children:[{...node,id:"grandchild"}]}]};
+ const before=JSON.stringify(group);
+ const patch=scaleContentsPatch(group,"base",{x:100,y:200,w:200,h:100},{x:50,y:200,w:250,h:125},{w:200,h:100},1.25,1)!;
+ expect(patch).toMatchObject({scale:1.25,moveX:-25,moveY:12.5});
+ expect(JSON.stringify(group)).toBe(before);
+});
+test("shrinking a group respects ancestor scale, preview zoom and its authored top origin", () => {
+ const group={...node,type:"stack",style:{base:{scale:2,origin:"top"}}};
+ expect(scaleContentsPatch(group,"base",{x:200,y:200,w:200,h:100},{x:200,y:200,w:100,h:50},{w:50,h:25},.5,.5,2)).toMatchObject({scale:1,moveX:-50,moveY:0});
+});
+test("flow-mode group scaling compensates a bottom origin without rewriting descendant layout", () => {
+ const group={...node,type:"stack",style:{base:{origin:"bottom"}}};
+ expect(scaleContentsPatch(group,"base",{x:100,y:200,w:200,h:100},{x:100,y:200,w:400,h:200},{w:200,h:100},2,1)).toMatchObject({scale:2,moveX:100,moveY:100});
+});
+test("group scaling keeps the opposite edge when an RTL anchor reaches its holder boundary", () => {
+ const group={...node,type:"stack",style:{base:{scale:1.375,origin:"top",layer:{x:0,y:2.7,anchor:"top-start"}}}};
+ const patch=scaleContentsPatch(group,"base",{x:246.8,y:179.3,w:1100,h:588.5},{x:326.8,y:179.3,w:1020,h:545.7},{w:800,h:428},1020/1100,1)!;
+ expect(patch).toMatchObject({scale:1.275,moveX:40,moveY:0}); expect(patch).not.toHaveProperty("layer");
+});
+test("scaling preserves intrinsic and percentage dimension semantics in both flow and free containers", () => {
+ const group={...node,type:"stack",style:{base:{width:"100%",height:"auto"}},children:[{...node,id:"percentage-child",style:{base:{height:"100%"}}}]};
+ for(const free of [false,true]) {
+  const subject=free?{...group,style:{base:{...group.style.base,layer:{x:20,y:20,anchor:"top-start"}}}}:group;
+  const patch=scaleContentsPatch(subject,"base",{x:100,y:200,w:400,h:184},{x:100,y:200,w:500,h:230},{w:400,h:184},1.25,1)!;
+  expect(patch).not.toHaveProperty("width"); expect(patch).not.toHaveProperty("height"); expect(patch).not.toHaveProperty("maxWidth");
+  expect(patch.scale).toBe(1.25);
+ }
+});
+test("group scaling uses the active responsive scale and rejects out-of-range or invalid ratios", () => {
+ const group={...node,type:"stack",style:{base:{scale:1},tablet:{scale:2},mobile:{scale:4}}};
+ const b={x:100,y:200,w:200,h:100};
+  expect(scaleContentsPatch(group,"tablet",b,{...b,w:300,h:150},{w:100,h:50},1.5,1)).toMatchObject({scale:3});
+ for(const ratio of [0,NaN,Infinity,3]) expect(scaleContentsPatch(group,"tablet",b,b,{w:100,h:50},ratio,1)).toBeNull();
+});
 test("cross-scale reparenting keeps raw dimensions and compensates the entire subtree's scale", () => {
  const container={...node,type:"stack",style:{base:{scale:1.1,origin:"top"}},children:[{...node,id:"child"}]};
  const patch=transferPatch(container,"base",{x:220,y:260,w:247.5,h:165},holder,{w:180,h:120},1,false,1.25,1)!;
