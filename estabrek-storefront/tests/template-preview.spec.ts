@@ -8,7 +8,7 @@ test("ready template APIs provide editable pages and local artwork for every ind
   const response = await request.get("/api/templates");
   expect(response.ok()).toBe(true);
   const catalog = await response.json();
-  expect(catalog.templates).toHaveLength(1022);
+  expect(catalog.templates).toHaveLength(2000);
   expect(catalog.categories).toHaveLength(20);
   for (const category of catalog.categories) {
     const item = catalog.templates.find((t: { category: string; source?: unknown }) => !t.source && t.category === category.id);

@@ -7,7 +7,7 @@ const IDS = ["electronics-foundry", "art-kinetic", "home-lantern"];
 const flatten = (nodes: KitNode[]): KitNode[] => nodes.flatMap((node) => [node, ...flatten(node.children ?? [])]);
 
 test("three new designs extend the established catalog without replacing its IDs", () => {
-  expect(TEMPLATES).toHaveLength(1022);
+  expect(TEMPLATES).toHaveLength(2000);
   for (const id of IDS) {
     expect(templateById(id), id).toBeTruthy();
     expect(TEMPLATES.filter((x) => x.id === id)).toHaveLength(1);

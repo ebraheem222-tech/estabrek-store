@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test("the nineteen references have unique real preview files and editable owned API imports", async ({ request }) => {
+test("the thirty-four references have unique real preview files and editable owned API imports", async ({ request }) => {
  const catalog=await (await request.get("/api/templates")).json();
- const refs=catalog.templates.filter((t:any)=>t.source);expect(refs).toHaveLength(19);
- expect(new Set(refs.map((t:any)=>t.preview)).size).toBe(19);
+ const refs=catalog.templates.filter((t:any)=>t.source);expect(refs).toHaveLength(34);
+ expect(new Set(refs.map((t:any)=>t.preview)).size).toBe(34);
  for(const template of refs){
   const image=await request.get(template.preview);expect(image.ok(),template.id).toBe(true);expect(image.headers()["content-type"]).toContain("image/png");
   const imported=await(await request.get(`/api/templates/${template.id}`)).json();

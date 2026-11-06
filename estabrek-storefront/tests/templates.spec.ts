@@ -43,9 +43,9 @@ test.describe("ready templates", () => {
   test("independent stores can choose fifty full templates for each of twenty industries", () => {
     const categories = ["shoes", "fashion", "beauty", "perfume", "jewelry", "electronics", "gaming", "home", "coffee", "food", "kids", "books", "art", "sports", "pets", "flowers", "music", "stationery", "kitchen", "outdoor"];
     expect(CATEGORIES.map((c) => c.id).sort()).toEqual([...categories].sort());
-    expect(TEMPLATES).toHaveLength(1022);
+    expect(TEMPLATES).toHaveLength(2000);
     const extras = ["electronics-foundry", "art-kinetic", "home-lantern"];
-    for (const id of categories) expect(TEMPLATES.filter((x) => !x.source && x.category === id && !extras.includes(x.id)), id).toHaveLength(50);
+    for (const id of categories) expect(TEMPLATES.filter((x) => !x.source && !x.edition && x.category === id && !extras.includes(x.id)), id).toHaveLength(50);
     for (const tpl of TEMPLATES) {
       const family = CATEGORIES.find((c) => c.id === tpl.category)!.family;
       expect(TEMPLATE_THEMES.find((th) => th.id === templateThemeId(tpl.id))?.family, tpl.id).toBe(family);

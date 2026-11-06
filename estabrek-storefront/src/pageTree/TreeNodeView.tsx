@@ -34,6 +34,8 @@ import { instrumentOf } from "./instrument";
 import { ChartView } from "./ChartView";
 import { ClockView } from "./ClockView";
 import { FilterGalleryBlock } from "./FilterGalleryBlock";
+import { ScheduleView, ComparisonView } from "./ReferenceDataViews";
+import { scheduleOf, comparisonOf } from "./referenceData";
 import { DeckView } from "./DeckView";
 import { showcaseOf } from "./showcase";
 import { ShowcaseView } from "./ShowcaseView";
@@ -270,6 +272,16 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       return <div className={cls(node)} {...mark}><ClockView timezone={typeof p.timezone === "string" ? p.timezone.slice(0, 80) : "UTC"} format={p.format === "12" ? "12" : "24"} seconds={p.seconds !== false} date={p.date === true} lang={ctx.lang} label={say(p.label)} /></div>;
     case "filterGallery":
       return <FilterGalleryBlock props={p} className={cls(node)} mark={mark} say={say} link={link} lang={ctx.lang} />;
+    case "schedule": {
+      const spec = scheduleOf(p);
+      spec.items = spec.items.map(item => ({...item, href: link(item.href) ?? undefined}));
+      return <div className={cls(node)} {...mark}><ScheduleView spec={spec} lang={ctx.lang} main={ctx.main} /></div>;
+    }
+    case "comparison": {
+      const spec = comparisonOf(p);
+      spec.columns = spec.columns.map(column => ({...column, href: link(column.href) ?? undefined}));
+      return <div className={cls(node)} {...mark}><ComparisonView spec={spec} lang={ctx.lang} main={ctx.main} /></div>;
+    }
     case "product360": {
       // A product's 360° view: that colour's own, else the one for every colour. Nothing to show = an empty place.
       const product = typeof p.productId === "string" ? ctx.spinProducts?.[p.productId] : null;

@@ -21,6 +21,22 @@ beforeEach(() => { vi.mocked(getStoreTemplates).mockResolvedValue(catalog); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe("complete template selection", () => {
+  it("separates generated compositions from originals and searches their source provenance", async () => {
+    const original = { ...tech, id: "reference-festava-live", source: { number: 583, title: "Festava Live", folder: "templatemo_583_festava_live" } };
+    const generated = { ...tech, id: "edition-583-01", name: words("Evening stage"), tags: ["generated"], edition: { sourceId: original.id, sourceNumber: 583, sourceTitle: "Festava Live", recipeId: "edition-583-01" } };
+    vi.mocked(getStoreTemplates).mockResolvedValue({ ...catalog, templates: [original, generated, fashion] });
+    const onPick = mount();
+    await screen.findByTestId("store-template-reference-festava-live");
+    expect(screen.queryByTestId("store-template-edition-583-01")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "توليفات المراجع · 1" }));
+    fireEvent.click(await screen.findByTestId("store-template-edition-583-01"));
+    expect(onPick).toHaveBeenCalledWith(generated);
+    expect(screen.queryByTestId("store-template-reference-festava-live")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Festava Live" } });
+    expect(await screen.findByTestId("store-template-edition-583-01")).toBeInTheDocument();
+    expect(screen.getByTestId("store-template-reference-festava-live")).toBeInTheDocument();
+    expect(screen.queryByTestId("store-template-fashion-quiet")).not.toBeInTheDocument();
+  });
   it("opens the owner's distinct reference collection with its actual separate preview pictures", async () => {
     const references = [597, 615].map(number => ({ ...tech, id: `reference-${number}`, name: words(`Reference ${number}`), source: { number, title: `Reference ${number}`, folder: `source-${number}` }, preview: `/templates/references/previews/${number}.png` }));
     vi.mocked(getStoreTemplates).mockResolvedValue({ ...catalog, templates: [...references, fashion, tech] });

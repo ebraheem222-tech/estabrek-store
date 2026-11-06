@@ -4,7 +4,7 @@ const TAU = Math.PI * 2;
 const seed = (n: number) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
 const wrap = (n: number, max: number) => ((n % max) + max) % max;
 
-/** Eight distinct drawings, each deterministic at a given time (including the still frame). */
+/** Distinct drawings, each deterministic at a given time (including the still frame). */
 export function drawScene(ctx: CanvasRenderingContext2D, spec: SceneSpec, width: number, height: number, time: number, pointer: Pointer, primary: string, secondary: string): void {
   ctx.clearRect(0, 0, width, height);
   if (!width || !height || spec.intensity === 0) return;
@@ -94,6 +94,29 @@ export function drawScene(ctx: CanvasRenderingContext2D, spec: SceneSpec, width:
         const age = wrap(t * .22 + seed(burst + 13), 1), radius = age * size * .4, x = width * (.15 + seed(burst + 20) * .7) + dx * .1, y = height * (.15 + seed(burst + 45) * .6) + dy * .1 + age * age * size * .12;
         ctx.strokeStyle = burst % 2 ? primary : secondary; ctx.lineWidth = 1.4; ctx.globalAlpha = alpha * (1 - age);
         for (let spark = 0; spark < 20; spark++) { const angle = spark / 20 * TAU + burst, reach = radius * (.6 + seed(spark + burst * 20) * .4); line(x + Math.cos(angle) * reach * .83, y + Math.sin(angle) * reach * .83, x + Math.cos(angle) * reach, y + Math.sin(angle) * reach); }
+      }
+      break;
+    }
+    case "matrix": {
+      const glyphs = "01アイウエオカキクケコサシスセソタチツテト";
+      const fontSize = Math.max(12, Math.min(20, size * .04)), step = fontSize * 1.35;
+      // At most 100 columns × 18 glyphs, regardless of the section's dimensions.
+      const columns = Math.max(1, Math.min(100, n, Math.floor(width / (fontSize * 1.4))));
+      const trail = Math.max(3, Math.min(18, Math.ceil(height / step * .45)));
+      const span = height + trail * step;
+      ctx.font = `${fontSize}px monospace`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      for (let column = 0; column < columns; column++) {
+        const x = (column + .5) / columns * width + dx * .035;
+        const head = wrap(seed(column + 31) * span + t * (24 + seed(column + 17) * 42) + dy * .025, span);
+        const change = Math.floor(t * (2 + seed(column + 70) * 4));
+        for (let index = 0; index < trail; index++) {
+          const y = head - index * step;
+          if (y < -fontSize || y >= height) continue;
+          const glyph = glyphs[Math.floor(seed(column * 43 + index * 7 + change + 500) * glyphs.length)];
+          ctx.fillStyle = index === 0 ? secondary : primary;
+          ctx.globalAlpha = alpha * (index === 0 ? .95 : .6 * (1 - index / trail));
+          ctx.fillText(glyph, x, y);
+        }
       }
       break;
     }

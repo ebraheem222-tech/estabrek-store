@@ -31,10 +31,14 @@ const ids = (n: N, seen: string[]) => {
 };
 
 describe("the shop's ready templates", () => {
+ for (const batch of [0, 1, 2, 3]) describe(`catalog batch ${batch + 1} of 4`, () => {
+  // Keep complete coverage as the catalog doubles, without retaining thousands
+  // of built trees or making one synchronous test exceed its time budget.
+  const templates = () => (kits.TEMPLATES ?? []).slice(batch * 500, (batch + 1) * 500);
   test("every imported template has a valid independent snapshot and editable global regions", async () => {
-    expect(kits.TEMPLATES).toHaveLength(1022);
+    expect(kits.TEMPLATES).toHaveLength(2000);
     const { importDesign } = await import(pathToFileURL(path.join(SHOP, "src/storeThemes/kits/importDesign.ts")).href);
-    for (const { id } of [...(kits.TEMPLATES ?? []), { id: "blank" }]) {
+    for (const { id } of [...templates(), ...(batch === 0 ? [{ id: "blank" }] : [])]) {
       const imported = importDesign(id);
       expect(imported, id).toBeTruthy();
       expect(ThemeSnapshotSchema.safeParse(imported.design.theme).success, id).toBe(true);
@@ -44,7 +48,7 @@ describe("the shop's ready templates", () => {
   test("all templates can import rich Anime or still profiles as valid merchant trees", async () => {
     const { importDesign } = await import(pathToFileURL(path.join(SHOP, "src/storeThemes/kits/importDesign.ts")).href);
     const bad: string[] = [];
-    for (const { id } of kits.TEMPLATES ?? []) for (const preset of ["rich", "none"]) {
+    for (const { id } of templates()) for (const preset of ["rich", "none"]) {
       const imported = importDesign(id, { engine: "anime", preset });
       for (const [name, tree] of [["home", treeOf(imported.sections)], ["header", imported.design.header], ["footer", imported.design.footer]] as const) {
         const result = checkTree(tree);
@@ -55,19 +59,18 @@ describe("the shop's ready templates", () => {
   }, 60_000);
   test("every page passes the page's check, in the gallery and in a store", () => {
     const bad: string[] = [];
-    const pages: Array<[string, N[] | null]> = [];
-    for (const kind of kits.KIT_KINDS) for (const page of kits.KIT_PAGES) for (const demo of [true, false]) pages.push([`${kind}/${page}${demo ? " (gallery)" : ""}`, kits.kitPage(kind, page, demo)]);
-    for (const t of kits.TEMPLATES ?? []) for (const page of kits.KIT_PAGES) for (const demo of [true, false]) pages.push([`${t.id}/${page}${demo ? " (gallery)" : ""}`, kits.templatePage!(t.id, page, demo)]);
-    expect(kits.TEMPLATES?.length ?? 0).toBeGreaterThanOrEqual(10);
-    expect(pages.length).toBeGreaterThan(20);
-    for (const [name, sections] of pages) {
-      if (!sections) continue;
+    const check = (name: string, sections: N[] | null) => {
+      if (!sections) { bad.push(`${name}: no sections`); return; }
       const res = checkTree(treeOf(sections));
       if (!res.ok) bad.push(`${name}: ${res.issues.slice(0, 3).map((i) => `${i.path} ${i.message}`).join("; ")}`);
-      // Ids are the editor's handles: one of each on a page.
       const all = sections.flatMap((s) => ids(s, []));
       if (new Set(all).size !== all.length) bad.push(`${name}: the same id twice`);
-    }
+    };
+    if (batch === 0) for (const kind of kits.KIT_KINDS) for (const page of kits.KIT_PAGES) for (const demo of [true, false]) check(`${kind}/${page}${demo ? " (gallery)" : ""}`, kits.kitPage(kind, page, demo));
+    for (const t of templates()) for (const page of kits.KIT_PAGES) for (const demo of [true, false]) check(`${t.id}/${page}${demo ? " (gallery)" : ""}`, kits.templatePage!(t.id, page, demo));
+    expect(kits.TEMPLATES?.length ?? 0).toBeGreaterThanOrEqual(10);
+    expect(templates()).toHaveLength(500);
     expect(bad).toEqual([]);
-  }, 30_000); // Validates both modes of all 1000 homes, rather than the original 300.
+  }, 30_000);
+ });
 });

@@ -4,6 +4,7 @@ import { motionProfileQuery, type MotionProfile } from "../studio/motionProfiles
 
 export type StoreTemplate = {
   source?: { number: number; title: string; folder: string }; preview?: string;
+  edition?: { sourceId: string; sourceNumber: number; sourceTitle: string; recipeId: string };
   id: string; category: string; name: Words; blurb: Words; tags: string[];
   theme: string; mode: "light" | "dark"; swatch: string[];
 };

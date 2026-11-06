@@ -7,6 +7,13 @@ import type { Template } from "./types";
 import { REFERENCE_ASSETS } from "./referenceAssets";
 
 const META: Record<number, [string, string]> = {
+  576: ["snapx-photography", "SnapX Photography"], 577: ["liberty-market", "Liberty Market"],
+  578: ["first-portfolio", "First Portfolio"], 579: ["cyborg-gaming", "Cyborg Gaming"],
+  582: ["tale-seo-agency", "Tale SEO Agency"], 583: ["festava-live", "Festava Live"],
+  584: ["pod-talk", "Pod Talk"], 586: ["scholar", "Scholar"], 587: ["tiya-golf-club", "Tiya Golf Club"],
+  588: ["ebook-landing", "Ebook Landing"], 589: ["lugx-gaming", "Lugx Gaming"],
+  590: ["topic-listing", "Topic Listing"], 591: ["villa-agency", "Villa Agency"],
+  592: ["glossy-touch", "Glossy Touch"], 594: ["nexus-flow", "Nexus Flow"],
   597: ["neural-glass", "Neural Glass"], 598: ["sleeky-pro", "Sleeky Pro"], 599: ["noir-fashion", "Noir Fashion"],
   601: ["chain-summit", "Chain Summit"], 602: ["graph-page", "Graph Page"], 604: ["christmas-piano", "Christmas Piano"],
   605: ["xmas-countdown", "Xmas Countdown"], 606: ["string-master", "String Master"], 614: ["quantix-saas", "Quantix SaaS"],

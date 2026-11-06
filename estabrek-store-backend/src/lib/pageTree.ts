@@ -30,7 +30,7 @@ export const NODE_TYPES = [
   "page", "section", "grid", "stack", "columns", "cell", "deck",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
-  "accordion", "testimonials", "pricing", "team", "logos", "alert", "marquee",
+  "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
   "products", "categories", "form", "roseBlock", "legacy", "block",
 ] as const;
@@ -343,7 +343,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     edges: z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() }).optional(),
     particles: z.object({ kind: z.enum(PARTICLES), color: color.optional(), amount: z.number().min(0.2).max(3).optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
     scene: z.object({
-      kind: z.enum(["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks"]),
+      kind: z.enum(["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix"]),
       color: color.optional(), secondary: color.optional(),
       amount: z.number().int().min(8).max(100).default(32),
       speed: z.number().finite().min(0).max(3).default(1),
@@ -512,6 +512,24 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     items: z.array(z.object({ name: local(60), price: local(40), period: local(40).optional(), yearlyPrice: local(40).optional(), yearlyPeriod: local(40).optional(), features: local(1500).optional(), badge: local(40).optional(), featured: z.boolean().optional(), cta: local(40).optional(), href: href.optional() })).max(6),
     billing: z.boolean().optional(),
     initialBilling: z.enum(["monthly", "yearly"]).optional(),
+  }),
+  schedule: z.object({
+    label: local(160).optional(),
+    items: z.array(z.object({ day: local(80), time: z.string().trim().max(80), title: local(160), text: local(1200).optional(), speaker: local(160).optional(), location: local(160).optional(), href: href.optional() }).strict()).max(40),
+    layout: z.enum(["cards", "table", "timeline"]).default("cards"),
+    filterDays: z.boolean().optional(),
+    showLocation: z.boolean().optional(),
+  }).strict(),
+  comparison: z.object({
+    label: local(160).optional(),
+    columns: z.array(z.object({ title: local(160), subtitle: local(300).optional(), highlight: z.boolean().optional(), href: href.optional(), cta: local(60).optional() }).strict()).max(6),
+    rows: z.array(z.object({ label: local(160), values: z.array(z.object({ text: local(600).optional(), state: z.enum(["yes", "no", "text"]).optional() }).strict()).max(6) }).strict()).max(20),
+    caption: local(1200).optional(),
+    stickyHeader: z.boolean().optional(),
+  }).strict().superRefine((value, ctx) => {
+    value.rows.forEach((row, index) => {
+      if (row.values.length !== value.columns.length) ctx.addIssue({ code: "custom", path: ["rows", index, "values"], message: "One value per comparison column" });
+    });
   }),
   team: z.object({
     items: z.array(z.object({ name: local(80), role: local(80).optional(), photo: src.optional(), href: href.optional() })).max(24),

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const shop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const supplied = path.resolve(shop, "../addons_themes");
 const target = path.resolve(shop, "public/templates/references");
-const numbers = [597, 598, 599, 601, 602, 604, 605, 606, 614, 615, 616, 617, 618, 619, 621, 622, 623, 625, 633];
+const numbers = [576, 577, 578, 579, 582, 583, 584, 586, 587, 588, 589, 590, 591, 592, 594, 597, 598, 599, 601, 602, 604, 605, 606, 614, 615, 616, 617, 618, 619, 621, 622, 623, 625, 633];
 const manifest = {};
 const provenance = [];
 const folders = readdirSync(supplied, { withFileTypes: true }).filter(entry => entry.isDirectory());
@@ -19,7 +19,7 @@ for (const number of numbers) {
       if (entry.isSymbolicLink()) continue;
       const from = path.join(directory, entry.name);
       if (entry.isDirectory()) { walk(from); continue; }
-      if (!/\.(avif|gif|jpe?g|png|svg|webp)$/i.test(entry.name)) continue;
+      if (!/\.(avif|gif|jpe?g|png|svg|webp|mp4|webm)$/i.test(entry.name)) continue;
       const relative = path.relative(root, from).split(path.sep).join("/");
       if (/\.svg$/i.test(entry.name) && /<script\b|\bonload\s*=|<foreignObject\b/i.test(readFileSync(from, "utf8"))) throw new Error(`Active SVG is not a starter picture: ${folder.name}/${relative}`);
       const into = path.resolve(target, String(number), relative);

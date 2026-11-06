@@ -13,11 +13,11 @@ import { flattenCatalog, pageStructure, sharedStructure, structuralShape } from 
 
 test("the commercial catalog preserves twenty categories of fifty homes and adds three bespoke designs", () => {
   expect(CATEGORIES).toHaveLength(20);
-  expect(TEMPLATES).toHaveLength(1022);
+  expect(TEMPLATES).toHaveLength(2000);
   expect(Object.keys(CATALOG_RECIPES)).toHaveLength(990);
-  expect(new Set(TEMPLATES.map((x) => x.id)).size).toBe(1022);
+  expect(new Set(TEMPLATES.map((x) => x.id)).size).toBe(2000);
   const extra = ["electronics-foundry", "art-kinetic", "home-lantern"];
-  for (const category of CATEGORIES) expect(TEMPLATES.filter((x) => !x.source && x.category === category.id && !extra.includes(x.id)), category.id).toHaveLength(50);
+  for (const category of CATEGORIES) expect(TEMPLATES.filter((x) => !x.source && !x.edition && x.category === category.id && !extra.includes(x.id)), category.id).toHaveLength(50);
   const supportedKinds = new Set(KINDS.map((x) => x.id));
   for (const category of CATEGORIES) for (const kind of category.kinds) expect(supportedKinds.has(kind), `${category.id}: ${kind}`).toBe(true);
   const originalShoeIds = ["street", "race", "atelier", "kids", "quiet", "retro", "night", "edit", "trail", "lab"];
@@ -66,7 +66,7 @@ for (const demo of [true, false]) {
     const coarseSeen = new Map<string, string>();
     const duplicates: string[] = [];
     const nearDuplicates: string[] = [];
-    const pages = TEMPLATES.filter(template => !template.source).map((tpl) => {
+    const pages = TEMPLATES.filter(template => !template.source && !template.edition).map((tpl) => {
       const sections = templatePage(tpl.id, "home", demo)!;
       const home = demo ? sections.slice(1, -1) : sections;
       expect(home.length, tpl.id).toBeGreaterThanOrEqual(6);
@@ -138,7 +138,7 @@ test("every design carries multilingual copy, legible palettes and valid local a
     else {
       const data = readFileSync(file);
       const valid = data.subarray(0, 3).equals(Buffer.from([255, 216, 255])) || data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || data.toString("ascii", 0, 4) === "RIFF" && data.toString("ascii", 8, 12) === "WEBP" || data.toString("ascii", 4, 8) === "ftyp" && data.toString("ascii", 8, 40).includes("avif");
-      if (!valid) issues.push(`${src}: invalid image signature`);
+      if (!valid && !(src.endsWith(".mp4") && data.toString("ascii", 4, 8) === "ftyp")) issues.push(`${src}: invalid image or video signature`);
     }
   }
   expect(artwork.size).toBeGreaterThanOrEqual(160);

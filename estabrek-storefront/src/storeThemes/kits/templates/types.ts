@@ -9,6 +9,8 @@ export type Template = {
   id: string;
   /** Provenance of a complete design rebuilt from the owner's supplied reference. */
   source?: { number: number; title: string; folder: string };
+  /** Generated structural edition; its own preview/tree, never the source's screenshot. */
+  edition?: { sourceId: string; sourceNumber: number; sourceTitle: string; recipeId: string };
   /** Actual screenshot of this full design, used by the template library card. */
   preview?: string;
   /** Source-specific native regions, copied as owned customer trees on import. */

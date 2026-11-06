@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { sceneOf } from "../../../estabrek-storefront/src/pageTree/scene";
 
 describe("untrusted section scene data", () => {
+  it("accepts matrix rain without allowing unbounded values or unsafe colors", () => {
+    expect(sceneOf({ kind: "matrix", color: "#00ffff", secondary: "accent", amount: 100, speed: 3, intensity: 2, interactive: true })).toEqual({ kind: "matrix", color: "#00ffff", secondary: "accent", amount: 100, speed: 3, intensity: 2, interactive: true });
+    expect(sceneOf({ kind: "matrix", color: "url(evil)", secondary: "red;display:none", amount: 100000, speed: Infinity, intensity: NaN, interactive: "true" })).toEqual({ kind: "matrix", amount: 32, speed: 1, intensity: 1, interactive: false });
+  });
+
   it("drops unknown backgrounds and unsafe colors while defaulting invalid settings", () => {
     expect(sceneOf(null)).toBeNull();
     expect(sceneOf({ kind: "scripts" })).toBeNull();

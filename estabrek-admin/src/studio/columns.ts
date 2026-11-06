@@ -156,6 +156,8 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
     case "columns":
       return newColumns([1, 1], id);
     case "accordion":
+    case "schedule":
+    case "comparison":
     case "filterGallery":
     case "showcase":
     case "testimonials":

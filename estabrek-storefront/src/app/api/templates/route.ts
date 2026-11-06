@@ -21,6 +21,7 @@ const list = TEMPLATES.map((tpl) => {
     blurb: tpl.blurb,
     tags: tpl.tags,
     ...(tpl.source ? { source: tpl.source, preview: tpl.preview } : {}),
+    ...(tpl.edition ? { edition: tpl.edition } : {}),
     style: { id: tpl.style.id, name: tpl.style.name },
     theme: theme.id,
     mode: theme.mode,

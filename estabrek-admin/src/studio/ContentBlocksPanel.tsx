@@ -13,6 +13,7 @@ import { Range } from "./LookPanels";
 import { Field } from "./StudioPanels";
 import { Choice } from "./StudioTreePanels";
 import { newItem, type BlockKind } from "./blockDefaults";
+import { ReferenceDataPanel } from "./ReferenceDataPanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Item = Record<string, unknown>;
@@ -259,6 +260,7 @@ function RunningWords({ node, lang, busy, onOps }: { node: PageTreeNode; lang: L
 }
 
 export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTreeNode; lang: Lang; busy: boolean; onOps: Ops }) {
+  if (node.type === "schedule" || node.type === "comparison") return <ReferenceDataPanel node={node} lang={lang} busy={busy} onOps={onOps} />;
   const p = (node.props ?? {}) as Item;
   const set = (label: string, patch: Item) => onOps(label, [{ op: "setProps", nodeId: node.id, props: { ...p, ...patch } }]);
   const kind = node.type as BlockKind;

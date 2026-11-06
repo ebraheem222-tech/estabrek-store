@@ -12,6 +12,7 @@ const KINDS: Array<[string, () => string, string]> = [
   ["ribbons", () => tr("شرائط", "Ribbons"), "〰"],
   ["snow", () => tr("ثلج", "Snow"), "❄"],
   ["fireworks", () => tr("ألعاب نارية", "Fireworks"), "✺"],
+  ["matrix", () => tr("مطر الرموز", "Matrix rain"), "01"],
 ];
 type Obj = Record<string, unknown>;
 export function ScenePanel({ node, busy, onOps }: { node: PageTreeNode; busy: boolean; onOps: (label: string, ops: PageDraftOp[]) => void }) {

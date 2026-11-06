@@ -1,5 +1,5 @@
 /** Safe, bounded data for a section's original procedural Canvas2D decoration. */
-export const SCENE_KINDS = ["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks"] as const;
+export const SCENE_KINDS = ["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix"] as const;
 export type SceneKind = typeof SCENE_KINDS[number];
 export type SceneSpec = { kind: SceneKind; color?: string; secondary?: string; amount: number; speed: number; intensity: number; interactive: boolean };
 const TOKENS = ["text", "muted", "accent", "accent-soft", "accent-contrast", "bg", "surface", "border", "white", "black", "transparent"];

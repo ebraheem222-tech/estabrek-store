@@ -5,8 +5,8 @@ import { importDesign } from "../src/storeThemes/kits/importDesign";
 const SOURCES = [597,598,599,601,602,604,605,606,614,615,616,617,618,619,621,622,623,625,633];
 const all = (nodes: KitNode[]): KitNode[] => nodes.flatMap(node => [node, ...all(node.children ?? [])]);
 test("nineteen supplied references are complete separate templates in the store library", () => {
-  const references = TEMPLATES.filter(template => template.source);
-  expect(TEMPLATES).toHaveLength(1022);
+  const references = TEMPLATES.filter(template => template.source && SOURCES.includes(template.source.number));
+  expect(TEMPLATES).toHaveLength(2000);
   expect(references).toHaveLength(19);
   expect(references.map(template => template.source!.number).sort((a,b)=>a-b)).toEqual(SOURCES);
   for (const template of references) {
@@ -27,7 +27,7 @@ test("nineteen supplied references are complete separate templates in the store 
 });
 
 test("the original thousand and three templates keep their IDs", () => {
-  expect(TEMPLATES.filter(template => !template.source)).toHaveLength(1003);
+  expect(TEMPLATES.filter(template => !template.source && !template.edition)).toHaveLength(1003);
   for (const id of ["shoes-street", "fashion-boutique", "home-lantern", "art-kinetic", "electronics-foundry"]) expect(templateById(id)).toBeTruthy();
 });
 test("source imports keep region and body style identities separate, and local navigation exists",()=>{

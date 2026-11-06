@@ -30,6 +30,9 @@ export type Page = {
 };
 
 export type PageFormat = 1 | 2;
+export type TreeWords = Partial<Record<"ar" | "en" | "he", string>>;
+export type ScheduleProps = { label?: TreeWords; items: Array<{ day: TreeWords; time: string; title: TreeWords; text?: TreeWords; speaker?: TreeWords; location?: TreeWords; href?: string }>; layout?: "cards" | "table" | "timeline"; filterDays?: boolean; showLocation?: boolean };
+export type ComparisonProps = { label?: TreeWords; columns: Array<{ title: TreeWords; subtitle?: TreeWords; highlight?: boolean; href?: string; cta?: TreeWords }>; rows: Array<{ label: TreeWords; values: Array<{ text?: TreeWords; state?: "yes" | "no" | "text" }> }>; caption?: TreeWords; stickyHeader?: boolean };
 /** A page as a tree of elements (the backend checks it: src/lib/pageTree.ts). */
 export type PageTreeNode = { id: string; type: string; name?: string; props: Record<string, unknown>; style?: Record<string, unknown>; motion?: Record<string, unknown>; children?: PageTreeNode[] };
 export type PageTree = { version: 1; root: PageTreeNode };

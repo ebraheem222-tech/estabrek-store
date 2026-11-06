@@ -56,6 +56,8 @@ export const TYPE_LABEL: Record<string, () => string> = {
   accordion: () => tr("أسئلة وأجوبة", "Questions and answers"),
   testimonials: () => tr("آراء الزباين", "Testimonials"),
   pricing: () => tr("جدول أسعار", "Price plans"),
+  schedule: () => tr("برنامج فعاليات", "Schedule"),
+  comparison: () => tr("جدول مقارنة", "Comparison table"),
   team: () => tr("الفريق", "Team"),
   logos: () => tr("شعارات", "Logos"),
   alert: () => tr("تنبيه", "Notice"),

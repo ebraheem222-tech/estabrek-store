@@ -2,9 +2,11 @@
 import type { PageTreeNode as N } from "../api/pages.api";
 import type { Lang } from "../lib/lang";
 import { newElement, type Ids, type NewKind } from "./columns";
+import { NEW_REFERENCE_SECTIONS, makeNewReferenceSection } from "./referenceSectionsNew";
 
 const w = (ar: string, en: string, he: string) => ({ ar, en, he });
 export const REFERENCE_SECTIONS = [
+  ...NEW_REFERENCE_SECTIONS,
   { kind: "reference-neural", source: "597", name: w("زجاج وشبكة تفاعلية", "Neural glass", "זכוכית ורשת") },
   { kind: "reference-sleeky", source: "598", name: w("سلايدر شرائح ثلاثية الأبعاد", "Sliced cube slider", "סליידר קובייה מחולקת") },
   { kind: "reference-noir", source: "599", name: w("معرض أزياء سينمائي", "Noir fashion gallery", "גלריית אופנה קולנועית") },
@@ -28,6 +30,8 @@ export const REFERENCE_SECTIONS = [
 export type ReferenceKind = typeof REFERENCE_SECTIONS[number]["kind"];
 
 export function makeReferenceSection(kind: string, lang: Lang, ids: Ids, src?: string): N | null {
+  const latest = makeNewReferenceSection(kind, lang, ids, src);
+  if (latest) return latest;
   const reference = REFERENCE_SECTIONS.find(item => item.kind === kind);
   if (!reference) return null;
   const one = (ar: string, en: string, he: string) => ({ [lang]: w(ar, en, he)[lang] });

@@ -34,4 +34,14 @@ describe("section scene editor", () => {
     const view = render(<ScenePanel node={{ id: "hero", type: "section", props: { scene: { kind: "waves" } } }} busy onOps={() => { throw new Error("busy edit"); }} />);
     for (const field of view.container.querySelectorAll("button,input,select")) expect(field).toBeDisabled();
   });
+
+  it("selects matrix rain while retaining the section and configured scene settings", () => {
+    setLangForTests("en");
+    const edits: PageDraftOp[] = [];
+    const view = render(<ScenePanel node={{ id: "hero", type: "section", props: { anchor: "features", scene: { kind: "waves", color: "#00ffff", amount: 56, speed: .7, intensity: .8, interactive: true } } }} busy={false} onOps={(_label, ops) => edits.push(...ops)} />);
+    const button = screen.getByRole("button", { name: "Matrix rain" });
+    fireEvent.click(button);
+    expect(edits).toEqual([{ op: "setProps", nodeId: "hero", props: { anchor: "features", scene: { kind: "matrix", color: "#00ffff", amount: 56, speed: .7, intensity: .8, interactive: true } } }]);
+    expect(view.container.querySelectorAll('[data-scene-kind="matrix"]')).toHaveLength(1);
+  });
 });

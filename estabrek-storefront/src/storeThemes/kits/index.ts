@@ -14,6 +14,9 @@ import { EXPERIMENTAL_TEMPLATES } from "./templates/experimental";
 import { REFERENCE_TEMPLATES_A } from "./templates/referenceTemplatesA";
 import { REFERENCE_TEMPLATES_B } from "./templates/referenceTemplatesB";
 import { REFERENCE_TEMPLATES_C } from "./templates/referenceTemplatesC";
+import { REFERENCE_TEMPLATES_D } from "./templates/referenceTemplatesD";
+import { REFERENCE_EDITION_RECIPES } from "./templates/referenceEditionRecipes";
+import { referenceEdition } from "./templates/referenceEditionLayouts";
 import type { Template } from "./templates/types";
 import { kitCtx, type K, type Node } from "./tree";
 
@@ -40,7 +43,15 @@ export const kitOfTheme = (theme: StoreTheme | null | undefined): string | null 
 /* ------------------------------------------------------------- templates */
 
 /** Every ready template, by category (the gallery's order). */
-export const TEMPLATES: Template[] = [...REFERENCE_TEMPLATES_A, ...REFERENCE_TEMPLATES_B, ...REFERENCE_TEMPLATES_C, ...EXPERIMENTAL_TEMPLATES, ...SHOE_TEMPLATES, ...BUSINESS_TEMPLATES];
+const references = [...REFERENCE_TEMPLATES_D, ...REFERENCE_TEMPLATES_A, ...REFERENCE_TEMPLATES_B, ...REFERENCE_TEMPLATES_C];
+const sourceById = new Map(references.map(source => [source.id, source]));
+export const TEMPLATES: Template[] = [...references, ...EXPERIMENTAL_TEMPLATES, ...SHOE_TEMPLATES, ...BUSINESS_TEMPLATES,
+  ...REFERENCE_EDITION_RECIPES.map(recipe => {
+    const source = sourceById.get(recipe.source);
+    if (!source) throw new Error(`Missing reference for composition ${recipe.id}`);
+    return referenceEdition(source, recipe);
+  }),
+];
 const BY_ID = new Map(TEMPLATES.map((x) => [x.id, x]));
 export const templateById = (id: string): Template | null => BY_ID.get(id) ?? null;
 /** The theme a template wears (kits/themes.ts makes it from its style). */
