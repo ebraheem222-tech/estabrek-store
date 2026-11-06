@@ -11,6 +11,41 @@ const issuesOf = (input: unknown) => {
 };
 
 describe("checking a page tree", () => {
+  test("dimension and movement settings preserve partial responsive overrides", () => {
+    const style = {
+      base: { constraints: { minWidth: 80, maxWidth: 600, minHeight: 40, maxHeight: 800, aspectRatio: 2 }, movement: "vertical" },
+      tablet: { constraints: { maxWidth: 400 }, movement: "horizontal" },
+      mobile: { constraints: {}, movement: "free" },
+    };
+    const result = checkTree(page([section("s", [], { style })]));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.tree.root.children![0].style).toEqual(style);
+    expect(issuesOf(page([section("s", [], { style: { base: { movement: "both" } } })]))).toEqual([]);
+    expect(issuesOf(page([section("s", [], { style: { base: { constraints: { minWidth: 400, maxWidth: 200 } } } })])).length).toBeGreaterThan(0);
+  });
+
+  test("analytic dimensions retain six decimals and inherited constraints cannot become infeasible",()=>{
+    const valid=page([section("s",[],{style:{base:{width:"259.123455px",height:"124.181898px",constraints:{maxWidth:400}},mobile:{constraints:{minWidth:300}}}})]);
+    expect(issuesOf(valid)).toEqual([]);
+    expect(issuesOf(page([section("s",[],{style:{base:{constraints:{maxWidth:200}},mobile:{constraints:{minWidth:300}}}})])).some(issue=>issue.path.endsWith("mobile.constraints"))).toBe(true);
+    expect(issuesOf(page([section("s",[],{style:{base:{width:"1.1234567px"}}})])).length).toBeGreaterThan(0);
+  });
+
+  test("dimension settings reject unsafe fields without a database", () => {
+    const input = (base: unknown) => page([section("s", [], { style: { base } })]);
+    for (const key of ["minWidth", "maxWidth", "minHeight", "maxHeight"]) {
+      for (const bad of [7.99, 10000, NaN, Infinity, "100", null]) {
+        expect(issuesOf(input({ constraints: { [key]: bad } })).length, `${key}:${bad}`).toBeGreaterThan(0);
+      }
+    }
+    for (const bad of [0, .009, 100.01, NaN, Infinity, "2", null]) {
+      expect(issuesOf(input({ constraints: { aspectRatio: bad } })).length, String(bad)).toBeGreaterThan(0);
+    }
+    expect(issuesOf(input({ constraints: { minWidth: 8, maxWidth: 9999, aspectRatio: .01 } }))).toEqual([]);
+    expect(issuesOf(input({ constraints: { aspectRatio: 100 } }))).toEqual([]);
+    expect(issuesOf(input({ movement: "diagonal" })).length).toBeGreaterThan(0);
+  });
+
   test("a page with sections, a grid and content comes back clean", () => {
     const r = checkTree(
       page([

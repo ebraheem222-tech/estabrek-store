@@ -5,6 +5,7 @@
  * distances shown with Alt, and Alt+arrow nudges. Screen pixels in, screen pixels out.
  */
 import type { Box, Pt } from "./geometry";
+import type { Mat3 } from "../../../shared/geometry/plane";
 
 export type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 /** Explicit local size in canvas pixels; only the element's own 2D rotation. */
@@ -19,6 +20,8 @@ export type ResizeChange = {
   keepProportions: boolean;
   /** For an explicit rotated frame, offset is the CSS layout top-left shift in canvas pixels. */
   frame?: { start: ResizeFrame; current: ResizeFrame; offset: Pt };
+  /** A measured planar result: dimensions are local CSS px, matrix/quad use canvas px. */
+  plane?: { matrix: Mat3; w: number; h: number; quad: Pt[]; patch: Record<string, unknown> };
 };
 export const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 /** Where a handle sits on a box. */

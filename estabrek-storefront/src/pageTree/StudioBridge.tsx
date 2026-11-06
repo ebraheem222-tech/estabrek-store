@@ -9,6 +9,7 @@
  * messages (type "stage…") pass on to the stage through studioLink.
  */
 import { useEffect, useRef } from "react";
+import { nodeGeometry,type NodeGeometry,type MeasuredPlane } from "./studioGeometry";
 import { studioLink } from "./studioLink";
 import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle, type TreeNode } from "./tree";
 import { nodeCss, siteTarget } from "./css";
@@ -29,7 +30,7 @@ export type StudioItem =
    * own size before it's turned or scaled. `inner`: a native container's padding box, where what it holds
    * (and what's placed freely in it) sits.
    */
-  | { kind: "node"; id: string; rect: StudioRect; holder?: StudioRect; size?: { w: number; h: number }; inner?: StudioRect; parentScale?: number | null; innerScale?: number | null }
+  | { kind: "node"; id: string; rect: StudioRect; holder?: StudioRect; size?: { w: number; h: number }; inner?: StudioRect; parentScale?: number | null; innerScale?: number | null; geometry?: NodeGeometry }
   | { kind: "legacy"; sectionId: string; rect: StudioRect }
   /**
    * A text, picture, video or button the editor can change ([data-edit], [data-edit-media]):
@@ -106,6 +107,7 @@ const inTreeNode = (el: Element, owner: Owner) => {
 /** Where every tree element, old section, rose scene and what's inside them is, in page coordinates. */
 export function measureStudio(): StudioItem[] {
   const items: StudioItem[] = [];
+  const planes=new Map<Element,MeasuredPlane|null>();
   const seen = new Set<string>();
   // Native transforms use a positive uniform scale. Measure it through the actual
   // DOM ancestry, including wrappers between tree nodes. A rotated/3D ancestor
@@ -157,7 +159,7 @@ export function measureStudio(): StudioItem[] {
     const inner = el.matches(".pt-section,.pt-stack,.pt-grid,.pt-cell,.pt-popup")
       ? (el.matches(".pt-section") ? el.querySelector(":scope > .pt-inner") ?? el : el)
       : null;
-    items.push({ kind: "node", id, rect: rectOf(el), size: { w: el.offsetWidth, h: el.offsetHeight }, parentScale: axisScale(el.parentElement), ...(holder ? { holder } : {}), ...(inner ? { inner: paddingRect(inner), innerScale: axisScale(inner) } : {}) });
+    items.push({ kind: "node", id, rect: rectOf(el), size: { w: el.offsetWidth, h: el.offsetHeight }, parentScale: axisScale(el.parentElement), geometry:nodeGeometry(el,planes), ...(holder ? { holder } : {}), ...(inner ? { inner: paddingRect(inner), innerScale: axisScale(inner) } : {}) });
   });
   const owners: Owner[] = [];
   document.querySelectorAll<HTMLElement>("[data-cms-section]").forEach((el) => {

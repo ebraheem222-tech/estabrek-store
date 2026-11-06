@@ -6,8 +6,9 @@
  * put several elements in a row at one place. Pure (tested).
  */
 import type { Box, Pt } from "./geometry";
-import { snapBox, type Gap, type Guide } from "./handles";
+import type { Gap, Guide } from "./handles";
 import { clearOf, equalGaps, lockAxis, settle, type Body, type CollideMode, type Obstacle } from "./space";
+import { stableSnapBox, type SnapMemory } from "./stableSnap";
 
 /* ---------------------------------------------------------------- settings */
 
@@ -56,11 +57,12 @@ export type FreeDrag = {
   obstacles: Obstacle[];
   last: Pt;
   pushed: Map<string, Pt>;
+  snapMemory?: SnapMemory;
 };
 
 export function startFreeDrag(ids: string[], start: Box, body: Body, holder: Box, beside: Beside[]): FreeDrag {
   const obstacles = clearOf(body, beside.map((b) => ({ id: b.id, body: b.body, push: b.push })));
-  return { ids, start, body, holder, beside, obstacles, last: { x: 0, y: 0 }, pushed: new Map() };
+  return { ids, start, body, holder, beside, obstacles, last: { x: 0, y: 0 }, pushed: new Map(), snapMemory: {} };
 }
 
 export type FreeStep = { d: Pt; box: Box; guides: Guide[]; marks: Gap[]; pushed: Map<string, Pt>; touching: string[] };
@@ -76,11 +78,16 @@ export function stepFreeDrag(drag: FreeDrag, want: Pt, keys: { straight: boolean
   let box: Box = { ...drag.start, x: drag.start.x + d0.x, y: drag.start.y + d0.y };
   let guides: Guide[] = [];
   let marks: Gap[] = [];
+  const memory = drag.snapMemory ?? (drag.snapMemory = {});
+  const peers = drag.beside.map((b) => {
+    const pushed = drag.pushed.get(b.id) ?? { x: 0, y: 0 };
+    return { id: b.id, box: { ...b.box, x: b.box.x + pushed.x, y: b.box.y + pushed.y } };
+  });
+  const snap = stableSnapBox(box, [{ id: "holder:", box: drag.holder }, ...peers.map((b) => ({ id: `node:${b.id}`, box: b.box }))], memory, { bypass: keys.loose });
   if (!keys.loose) {
-    const others = drag.beside.map((b) => b.box);
-    const s = snapBox(box, [drag.holder, ...others]);
-    box = s.box;
-    guides = s.guides;
+    const others = [...peers].sort((a, b) => a.id.localeCompare(b.id)).map((b) => b.box);
+    box = snap.box;
+    guides = snap.guides;
     const across = guides.some((g) => g.x1 === g.x2);
     const down = guides.some((g) => g.y1 === g.y2);
     if (prefs.gaps) {
@@ -96,12 +103,37 @@ export function stepFreeDrag(drag: FreeDrag, want: Pt, keys: { straight: boolean
       if (snapY) box = { ...box, y: drag.holder.y + Math.round((box.y - drag.holder.y) / prefs.grid) * prefs.grid };
     }
     // Snapping doesn't leave Shift's line.
-    if (keys.straight && d0.x === 0) box = { ...box, x: drag.start.x };
-    if (keys.straight && d0.y === 0) box = { ...box, y: drag.start.y };
+    if (keys.straight && d0.x === 0 && Math.abs(box.x - drag.start.x) > 1e-6) {
+      box = { ...box, x: drag.start.x };
+      guides = guides.filter((g) => g.x1 !== g.x2);
+      marks = marks.filter((m) => m.y1 !== m.y2);
+      delete memory.x;
+    }
+    if (keys.straight && d0.y === 0 && Math.abs(box.y - drag.start.y) > 1e-6) {
+      box = { ...box, y: drag.start.y };
+      guides = guides.filter((g) => g.y1 !== g.y2);
+      marks = marks.filter((m) => m.x1 !== m.x2);
+      delete memory.y;
+    }
   }
   const target = { x: box.x - drag.start.x, y: box.y - drag.start.y };
   const r = settle(drag.body, drag.last, target, prefs.mode === "overlap" ? [] : drag.obstacles, { mode: prefs.mode, bounds: prefs.inside ? drag.holder : null, magnet: 10 }, drag.pushed);
-  const moved = Math.abs(r.d.x - target.x) > 0.5 || Math.abs(r.d.y - target.y) > 0.5;
+  const displacedX = Math.abs(r.d.x - target.x) > 1e-6;
+  const displacedY = Math.abs(r.d.y - target.y) > 1e-6;
+  const moved = displacedX || displacedY;
+  const movedAnchor = (axis: "x" | "y") => {
+    const id = memory[axis]?.targetId;
+    return id?.startsWith("node:") ? Math.abs((r.pushed.get(id.slice(5))?.[axis] ?? 0) - (drag.pushed.get(id.slice(5))?.[axis] ?? 0)) > 1e-6 : false;
+  };
+  if (displacedX || movedAnchor("x")) {
+    guides = guides.filter((g) => g.x1 !== g.x2);
+    delete memory.x;
+  }
+  if (displacedY || movedAnchor("y")) {
+    guides = guides.filter((g) => g.y1 !== g.y2);
+    delete memory.y;
+  }
+  if (peers.some((p) => Math.hypot((r.pushed.get(p.id)?.x ?? 0) - (drag.pushed.get(p.id)?.x ?? 0), (r.pushed.get(p.id)?.y ?? 0) - (drag.pushed.get(p.id)?.y ?? 0)) > 1e-6)) marks = [];
   drag.last = r.d;
   drag.pushed = r.pushed;
   return {

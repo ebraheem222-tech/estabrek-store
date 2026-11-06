@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { SelectionHandles } from "./CanvasHandles";
+import { SelectionHandles,Guides } from "./CanvasHandles";
+import type { Plane } from "../../../shared/geometry/plane";
 
 afterEach(cleanup);
 
 const box = { x: 100, y: 100, w: 200, h: 100 };
+it("draws diagonal and reversed projected alignment lines and gap labels at their true endpoints",()=>{
+ render(<Guides zoom={1} guides={[{x1:100,y1:20,x2:20,y2:100}]} gaps={[{x1:50,y1:60,x2:10,y2:20,length:56.57}]} />);
+ const line=screen.getByTestId("studio-guide");expect(line.getAttribute("x1")).toBe("100");expect(line.getAttribute("y2")).toBe("100");
+ const gap=screen.getByTestId("studio-gap");expect(gap.getAttribute("x2")).toBe("10");expect(screen.getByText("57")).toHaveStyle({left:"30px",top:"40px"});
+});
 function setup(extra = {}) {
   const props = {
     box, zoom: 1, sides: "all" as const, turn: 0,
@@ -31,6 +37,82 @@ function pointer(el: Element, type: string, x: number, y: number, options: { poi
 }
 
 describe("canvas resize gestures", () => {
+  it("places every planar handle using its projected local point and draws the actual quadrilateral", () => {
+    const plane: Plane = { w: 100, h: 50, matrix: [2, .5, 10, 0, 1, 20, .005, 0, 1] };
+    const { handle } = setup({ geometry: { plane, resize: () => null }, turn: null });
+    expect(Number.parseFloat(handle("n").style.left)).toBeCloseTo(88, 10);
+    expect(Number.parseFloat(handle("n").style.top)).toBeCloseTo(16, 10);
+    expect(Number.parseFloat(handle("e").style.left)).toBeCloseTo(148.333333333333, 10);
+    expect(Number.parseFloat(handle("e").style.top)).toBeCloseTo(30, 10);
+    expect(handle("nw").style.left).toBe("10px");
+    expect(handle("sw").style.top).toBe("70px");
+    const points = screen.getByTestId("studio-plane-outline").querySelector("polygon")!.getAttribute("points")!.split(" ").map(point => point.split(",").map(Number));
+    expect(points[0]).toEqual([10, 20]);
+    expect(points[1][0]).toBeCloseTo(140, 10);
+    expect(points[2][0]).toBeCloseTo(156.666666666667, 10);
+    expect(points[3]).toEqual([35, 70]);
+  });
+
+  it("uses the pointerdown planar planner and callbacks after a live rerender and commits the release patch", () => {
+    const plane: Plane = { w: 100, h: 50, matrix: [2, 0, 10, 0, 2, 20, 0, 0, 1] };
+    const resize = vi.fn((_h, delta: { x: number; y: number }, keep: boolean) => {
+      const w = 100 + delta.x / 2, h = keep ? w / 2 : 50;
+      return { matrix: plane.matrix, w, h, quad: [{ x: 10, y: 20 }, { x: 10 + 2 * w, y: 20 }, { x: 10 + 2 * w, y: 20 + 2 * h }, { x: 10, y: 20 + 2 * h }], patch: { width: `${w}px`, height: `${h}px` }, box: { x: 10, y: 20, w: 2 * w, h: 2 * h } };
+    });
+    const { props, handle, rerender } = setup({ geometry: { plane, resize }, box: { x: 10, y: 20, w: 200, h: 100 }, zoom: 2, turn: null });
+    const east = handle("e"), replacement = vi.fn(), replacementSize = vi.fn();
+    pointer(east, "pointerdown", 210, 70);
+    pointer(east, "pointermove", 230, 70);
+    expect(props.onSizeLive).toHaveBeenCalledWith(110, 50, expect.objectContaining({ plane: expect.objectContaining({ patch: { width: "110px", height: "50px" } }) }));
+    rerender(<SelectionHandles {...props} geometry={{ plane: { ...plane, w: 110 }, resize: replacement }} zoom={.5} local={() => ({ x: -999, y: -999 })} onSize={replacementSize} />);
+    pointer(east, "pointerup", 250, 70, { shiftKey: true });
+    expect(resize).toHaveBeenLastCalledWith("e", { x: 40, y: 0 }, true);
+    expect(props.onSize).toHaveBeenCalledExactlyOnceWith(120, 60, expect.objectContaining({ zoom: 2, keepProportions: true, plane: expect.objectContaining({ w: 120, h: 60, patch: { width: "120px", height: "60px" } }) }));
+    expect(replacement).not.toHaveBeenCalled();
+    expect(replacementSize).not.toHaveBeenCalled();
+  });
+
+  it("projects keyboard steps from the start plane in local CSS pixels even under perspective and zoom", () => {
+    const plane: Plane = { w: 100, h: 50, matrix: [2, .5, 10, 0, 1, 20, .005, 0, 1] };
+    const resize = vi.fn(() => null);
+    const { handle, props } = setup({ geometry: { plane, resize }, zoom: .25, turn: null });
+    fireEvent.keyDown(handle("e"), { key: "ArrowRight" });
+    expect(resize).toHaveBeenCalledWith("e", { x: 224.5 / 1.505 - 222.5 / 1.5, y: 45 / 1.505 - 45 / 1.5 }, false);
+    resize.mockClear();
+    fireEvent.keyDown(handle("n"), { key: "ArrowUp", shiftKey: true });
+    expect(resize).toHaveBeenCalledWith("n", { x: -5 / 1.25, y: -10 / 1.25 }, false);
+    expect(props.onSize).not.toHaveBeenCalled();
+  });
+
+  it.each([null, { w: NaN }, { matrix: [0, 0, 0, 0, 0, 0, 0, 0, 1] }, { patch: { width: Infinity } }, { quad: [{ x: 0, y: NaN }] }, { box: { x: 0, y: 0, w: 99, h: 50 } }])("cancels an invalid planar result without saving a patch: %s", invalid => {
+    const plane: Plane = { w: 100, h: 50, matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] };
+    const result = { ...plane, w: 110, quad: [{ x: 0, y: 0 }, { x: 110, y: 0 }, { x: 110, y: 50 }, { x: 0, y: 50 }], patch: { width: "110px" }, box: { x: 0, y: 0, w: 110, h: 50 } };
+    const resize = () => invalid === null ? null : { ...result, ...invalid };
+    const { props, handle } = setup({ geometry: { plane, resize }, turn: null });
+    const east = handle("e");
+    pointer(east, "pointerdown", 100, 25);
+    pointer(east, "pointermove", 110, 25);
+    pointer(east, "pointerup", 120, 25);
+    expect(props.onCancel).toHaveBeenCalledTimes(1);
+    expect(props.onSize).not.toHaveBeenCalled();
+    expect(props.onSizeLive).not.toHaveBeenCalled();
+  });
+
+  it("restores a valid planar preview on cancellation without saving", () => {
+    const plane: Plane = { w: 100, h: 50, matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1] };
+    const resize = () => ({ ...plane, w: 110, quad: [{ x: 0, y: 0 }, { x: 110, y: 0 }, { x: 110, y: 50 }, { x: 0, y: 50 }], patch: { width: "110px" }, box: { x: 0, y: 0, w: 110, h: 50 } });
+    const { props, handle } = setup({ geometry: { plane, resize }, turn: null });
+    const east = handle("e");
+    pointer(east, "pointerdown", 100, 25);
+    pointer(east, "pointermove", 110, 25);
+    expect(props.onSizeLive).toHaveBeenCalledWith(110, 50, expect.any(Object));
+    pointer(east, "pointercancel", 110, 25);
+    pointer(east, "pointerup", 110, 25);
+    expect(props.onCancel).toHaveBeenCalledTimes(1);
+    expect(props.onSize).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("studio-sizing")).not.toBeInTheDocument();
+  });
+
   it("keeps a group's contents proportional without Shift, including keyboard resizing", () => {
     const { props, handle } = setup({ frame: { w: 200, h: 100, rotation: 0 }, proportional: true, ratioLimits: { min: .1, max: 4 } });
     const east = handle();

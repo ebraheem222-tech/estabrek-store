@@ -7,6 +7,9 @@ import type { PageTree, PageTreeNode } from "../api/pages.api";
 import { adminLang } from "../lib/lang";
 import { tr } from "../lib/words";
 import { toScreen, type Box, type Pt, type Shape } from "./geometry";
+import type { Plane } from "../../../shared/geometry/plane";
+
+export type BridgeGeometry = { plane?:Plane&{quad:Pt[];kind?:string};holderPlane?:Plane;innerPlane?:Plane;holderScroll?:Pt;clips?:Pt[][];unsupported?:boolean };
 
 export type IndexedNode = { node: PageTreeNode; parentId: string | null; depth: number; children: string[] };
 export type TreeIndex = { root: string; nodes: Map<string, IndexedNode>; bySection: Map<string, string> };
@@ -194,7 +197,7 @@ export const isRelated = (index: TreeIndex, up?: ReadonlyMap<string, string | nu
 /** Inside an old section or rose scene ("owner": "s:<section id>" or "b:<scene>"), see the shop's pageTree/StudioBridge. */
 export type BridgeItem =
   /** `holder`: the box a freely placed element is placed in; `size`: its own before a turn or scale; `inner`: a section's inner box. */
-  | { kind: "node"; id: string; rect: Box; holder?: Box; size?: { w: number; h: number }; inner?: Box; parentScale?: number | null; innerScale?: number | null }
+  | { kind: "node"; id: string; rect: Box; holder?: Box; size?: { w: number; h: number }; inner?: Box; parentScale?: number | null; innerScale?: number | null; geometry?:BridgeGeometry }
   | { kind: "legacy"; sectionId: string; rect: Box }
   /** `owner` is missing from a shop that hasn't learnt it yet (then it's the field's section). */
   | { kind: "slot"; owner?: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string; within?: string; rect: Box }
@@ -263,7 +266,9 @@ export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: 
     const id = item.kind === "node" ? item.id : index.bySection.get(item.sectionId);
     const at = id ? index.nodes.get(id) : undefined;
     if (!id || !at || id === index.root) continue;
-    shapes.push({ id, depth: at.depth, parentId: at.parentId, box });
+    const geometry=item.kind==="node"?item.geometry:undefined;
+    const point=(p:Pt)=>({x:pan.x+(p.x-layout.scroll.x)*zoom,y:pan.y+(p.y-layout.scroll.y)*zoom});
+    shapes.push({ id, depth: at.depth, parentId: at.parentId, box,...(geometry?.plane?.quad?{outline:geometry.plane.quad.map(point)}:{}),...(geometry?.clips?{clips:geometry.clips.map(poly=>poly.map(point))}:{}) });
   }
   // Each one under the field or piece around it (when that one is measured too), else its owner.
   for (const it of inner) up.set(it.id, (it.within && keyed.get(`${it.owner}|${it.within}`)) || ownerId(it.owner)!);

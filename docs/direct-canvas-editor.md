@@ -11,7 +11,7 @@ The editor starts in **Free move** mode. Drag a picture, button, widget or conta
 - Saving and undo/redo update the view inside the existing preview document. Scroll, unchanged DOM and unrelated widget state stay in place. Editing a widget's configuration rebuilds that view only. The **Refresh preview** button retries a view update without reloading the document; a preview failure does not undo an already saved change.
 - Starting a direct move/resize releases any earlier reveal request, so delayed selection centering cannot move the viewport during the gesture. Animated media reconcile per target; unchanged players keep running.
 
-Positions account for preview zoom, scroll, RTL, scaled containers and an object's own 2D rotation/scale with center, top or bottom transform origin. Moving between differently scaled containers preserves displayed dimensions. Direct handles require a planar object inside unrotated containers; for authored 3D tilts or rotated ancestors, the editor explains that the position/size settings remain available. Tree depth, column nesting, locked objects and cycle restrictions still apply.
+Positions account for preview zoom, scroll, RTL, rotated/nonuniform holders and supported flattened perspective planes. Local movement constraints and size limits are saved per responsive screen. Moving between supported scalar containers preserves displayed dimensions. Advanced rotated/projective editing currently stays in its holder; unsafe/nonflattened contexts retain the position/size controls. See the [Arabic analytic engine guide](analytic-canvas-engine.ar.md) for the coordinate contract and supported scope. Tree depth, column nesting, locked objects and cycle restrictions still apply.
 
 ## Verification
 

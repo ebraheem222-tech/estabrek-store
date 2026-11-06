@@ -84,6 +84,11 @@ import { Guides, SelectionHandles } from "./CanvasHandles";
 import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange } from "./handles";
 import { pickCanvasContainer } from "./canvasContainers";
 import { effectiveLook, placementBox, placementPatch, readCanvasMode, readScaleContents, resizePatch, saveCanvasMode, saveScaleContents, scaleContentsLimits, scaleContentsPatch, transferPatch, type CanvasMode } from "./canvasManipulation";
+import { canvasPlane,effectiveConstraints,movementOf,validResponsiveConstraints,planeMoveLocalPatch,planeNudgePatch,planeResizePatch } from "./engineGeometry";
+import { constrainSize,spaceBoxes,type SizeConstraints } from "./layoutConstraints";
+import { LayoutConstraintsPanel } from "./LayoutConstraintsPanel";
+import { startPlaneDrag,stepPlaneDrag,type PlaneDrag } from "./planeDrag";
+import { boundsOfQuad,inverse3,multiply3,planeQuad,project3,resizePlane,type Plane } from "../../../shared/geometry/plane";
 import { DragSettings } from "./DragSettings";
 import { LooksPanel } from "./LooksPanel";
 import { lookOps, withLook, type Ready } from "./looks";
@@ -140,7 +145,8 @@ const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
  * or (from the Add panel) beside a page item, or over a section or scene at a spot of it.
  */
 /** A press on the canvas: what it grabbed (and the others selected with it), where they started, a free drag's state. */
-type Down = { pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null };
+type PlaneItem={id:string;frame:Plane;look:Record<string,unknown>;parentId:string;free:boolean};
+type Down = { pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
 /** What a freely placed element can be dragged into. */
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
@@ -186,8 +192,9 @@ export default function StudioPage() {
   // Lines a dragged element snaps to; Alt held shows the distances to what's under the pointer.
   const [guides, setGuides] = useState<Guide[]>([]);
   const [altHeld, setAltHeld] = useState(false);
+  const [fixedGap,setFixedGap]=useState(24);
   // Alt+arrow nudges add up (shown in the frame at once) and are saved together a moment after the last one.
-  const nudging = useRef({ dx: 0, dy: 0, timer: 0 });
+  const nudging = useRef<{dx:number;dy:number;timer:number;planes?:Array<PlaneItem&{holder:Plane;movement:"horizontal"|"vertical"|"both"|"free"}>}>({ dx: 0, dy: 0, timer: 0 });
   // Which look the style panels change: the element's own, or its look with the mouse over it, focused or pressed.
   const [styleState, setStyleState] = useState<StateChoice>("normal");
   const [panMode, setPanMode] = useState(false);
@@ -659,7 +666,10 @@ export default function StudioPage() {
     const starts = new Map(group.map((x) => [x, shapeOf(x)?.box] as const).filter((v): v is [string, Box] => Boolean(v[1])));
     if (grab && !chosen.includes(grab)) select(grab);
     if (grab && motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
-    down.current = { pointerId: e.pointerId, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free: grab ? freeDragOf(grab, group) : undefined };
+    const free=grab?freeDragOf(grab,group):undefined;
+    const analytic=grab&&free?analyticDragOf(grab,free.ids,p):undefined;
+    if(free&&free.ids.some(needsPlaneMove)&&!analytic)return;
+    down.current = { pointerId: e.pointerId, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic };
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
@@ -1287,6 +1297,21 @@ export default function StudioPage() {
   const nudgeBy = (d: Pt) => {
     const targets = chosen;
     const nz = nudging.current;
+    if(targets.some(needsPlaneMove)){
+      if(busy)return;
+      if(!nz.planes){
+        const snapshots=targets.map(id=>{const n=nodeOf(id),frame=planeOf(id),holder=parentPlaneOf(id),parentId=index?.nodes.get(id)?.parentId;return n&&frame&&holder&&parentId?{id,frame,holder,parentId,look:effectiveLook(n,screen),movement:movementOf(n,screen),free:Boolean(placedOn(n,screen))}:null;});
+        if(snapshots.some(item=>!item))return;
+        nz.planes=snapshots as NonNullable<typeof nz.planes>;
+      }
+      nz.dx+=d.x;nz.dy+=d.y;
+      const planned=nz.planes.map(item=>({item,change:planeNudgePatch(item.frame,item.holder,item.look,{x:nz.dx,y:nz.dy},item.movement,dragPrefs.inside,rtl)}));
+      const ops=planned.filter(item=>item.change).map(({item,change})=>styleOp(nodeOf(item.id)!,screen,change!.patch));
+      previewGeometry(ops);
+      window.clearTimeout(nz.timer);
+      nz.timer=window.setTimeout(()=>{nudging.current={dx:0,dy:0,timer:0};if(ops.length)void change(tr("تحريك","Nudge"),[...new Set(nz.planes!.filter(item=>!item.free).map(item=>item.parentId))].flatMap(pinHolder).concat(ops)).finally(clearGeometry);else clearGeometry();},450);
+      return;
+    }
     nz.dx += d.x;
     nz.dy += d.y;
     for (const x of targets) {
@@ -1431,6 +1456,10 @@ export default function StudioPage() {
     return it?.size ? { w: it.size.w * zoom, h: it.size.h * zoom } : null;
   };
   const parentScaleOf = (sid: string) => itemOf(sid)?.parentScale ?? 1;
+  const planeOf=(sid:string)=>{const p=itemOf(sid)?.geometry?.plane;return p&&layout?canvasPlane(p,layout.scroll,pan,zoom):null;};
+  const parentPlaneOf=(sid:string)=>{const p=itemOf(sid)?.geometry?.holderPlane;return p&&layout?canvasPlane(p,layout.scroll,pan,zoom):null;};
+  const needsPlaneMove=(sid:string)=>{const n=nodeOf(sid),scroll=itemOf(sid)?.geometry?.holderScroll;return Boolean(n&&(itemOf(sid)?.parentScale===null||Number(shownLook(n,screen,"rotateX")??0)||Number(shownLook(n,screen,"rotateY")??0)||movementOf(n,screen)!=="free"||scroll?.x||scroll?.y));};
+  const needsPlane=(sid:string)=>needsPlaneMove(sid)||Boolean(nodeOf(sid)&&Object.keys(effectiveConstraints(nodeOf(sid)!,screen)).length);
   const holderScaleOf = (sid: string) => {
     const it = itemOf(sid);
     if (it?.innerScale === null || it?.parentScale === null) return null;
@@ -1438,7 +1467,39 @@ export default function StudioPage() {
   };
   const directGeometrySafe = (sid: string) => {
     const n = nodeOf(sid);
+    const geometry=itemOf(sid)?.geometry;
+    if(geometry){
+      const frame=planeOf(sid),holder=parentPlaneOf(sid);
+      return Boolean(n&&!geometry.unsupported&&frame&&holder&&inverse3(frame.matrix)&&inverse3(holder.matrix));
+    }
     return Boolean(n && itemOf(sid)?.parentScale !== null && !Number(shownLook(n, screen, "rotateX") ?? 0) && !Number(shownLook(n, screen, "rotateY") ?? 0));
+  };
+  const handleGeometry=(node:PagesAPI.PageTreeNode)=>{
+    if(!needsPlane(node.id))return undefined;
+    const frame=planeOf(node.id),holder=parentPlaneOf(node.id);if(!frame||!holder)return undefined;
+    const look={...effectiveLook(node,screen),constraints:effectiveConstraints(node,screen)};
+    return {plane:frame,resize:(handle:import("./handles").Handle,delta:Pt,keep:boolean)=>planeResizePatch(frame,holder,look,handle,delta,{rtl,keep,scaleContents:scaleContents&&Boolean(node.children?.length)})};
+  };
+  const setSizeConstraints=(node:PagesAPI.PageTreeNode,value:SizeConstraints)=>{
+    const styles=node.style as Record<string,Record<string,unknown>>|undefined;
+    const next={...node,style:{...styles,[screen]:{...styles?.[screen],constraints:value}}};
+    const effective=effectiveConstraints(next,screen),size=itemOf(node.id)?.geometry?.plane??itemOf(node.id)?.size;
+    const solved=constrainSize(size?.w??100,size?.h??100,effective);
+    if(!solved||!validResponsiveConstraints(next)){toast.error(tr("حدود الحجم والنسبة متعارضة. عدّل الحدود لتسمح بحجم صالح.","The size limits and ratio conflict. Adjust them to allow a valid size."));return;}
+    const patch:Record<string,unknown>={constraints:Object.keys(value).length?value:null};
+    if(effective.aspectRatio!==undefined&&size&&(Math.abs(size.w-solved.w)>1e-5||Math.abs(size.h-solved.h)>1e-5))Object.assign(patch,{width:`${Number(solved.w.toFixed(6))}px`,height:`${Number(solved.h.toFixed(6))}px`,maxWidth:`${Number(solved.w.toFixed(6))}px`,minHeight:"0px"});
+    void change(tr("حدود الحجم","Size limits"),[styleOp(node,screen,patch)]);
+  };
+  const applyFixedGap=(axis:"x"|"y")=>{
+    const first=chosen[0],parentId=index?.nodes.get(first)?.parentId,holder=first?parentPlaneOf(first):null,inv=holder&&inverse3(holder.matrix);
+    if(!holder||!inv||chosen.some(id=>index?.nodes.get(id)?.parentId!==parentId)){toast.error(tr("اختار عناصر من نفس الحاوية لتوزيع المسافات.","Select objects in the same container to set their spacing."));return;}
+    const items=chosen.map(id=>{const node=nodeOf(id),frame=planeOf(id);const points=frame&&planeQuad(multiply3(inv,frame.matrix),frame);return node&&frame&&points?{node,frame,box:boundsOfQuad(points)}:null;});
+    if(items.some(item=>!item?.box))return;
+    const boxes=items.map(item=>item!.box!),solved=spaceBoxes(boxes,axis,fixedGap,{x:0,y:0,w:holder.w,h:holder.h});
+    if(!solved){toast.error(tr("المسافة المطلوبة لا تتسع داخل الحاوية.","The requested spacing does not fit inside the container."));return;}
+    const changes=items.map((item,i)=>planeMoveLocalPatch(item!.frame,holder,effectiveLook(item!.node,screen),{x:solved[i].x-boxes[i].x,y:solved[i].y-boxes[i].y},rtl,!placedOn(item!.node,screen)));
+    if(changes.some(item=>!item))return;
+    void change(tr("مسافة ثابتة","Fixed spacing"),[...(parentId?pinHolder(parentId):[]),...items.map((item,i)=>styleOp(item!.node,screen,changes[i]!.patch))]);
   };
   const clearGeometry = () => send({ type: "previewGeometry", nodes: null });
   const pinHolder = (parentId: string): PagesAPI.PageDraftOp[] => {
@@ -1455,6 +1516,7 @@ export default function StudioPage() {
   };
   const resizeOps = (node: PagesAPI.PageTreeNode, w: number | null, h: number | null, change: ResizeChange) => {
     const parentId = index?.nodes.get(node.id)?.parentId;
+    if(change.plane)return [...(!placedOn(node,screen)&&parentId&&!(scaleContents&&node.children?.length)?pinHolder(parentId):[]),styleOp(node,screen,change.plane.patch)];
     const holder = holderOf(node.id) ?? (parentId ? holdsOf(parentId) : null);
     const size = sizeOf(node.id) ?? { w: change.start.w, h: change.start.h };
     const group = scaleContents && Boolean(node.children?.length) && change.frame;
@@ -1475,6 +1537,7 @@ export default function StudioPage() {
     const s = shapeOf(sid);
     const n = nodeOf(sid);
     if (!s || !n) return null;
+    if(needsPlane(sid)&&s.outline)return {kind:"poly",pts:s.outline};
     const k = lookNum(n, "scale", 1) * parentScaleOf(sid);
     const size = sizeOf(sid);
     const shape = shownLook(n, screen, "shape");
@@ -1515,6 +1578,25 @@ export default function StudioPage() {
       });
     return startFreeDrag(ids.length ? ids : [grab], start, body, holder, beside);
   };
+  const analyticDragOf=(grab:string,ids:string[],point:Pt):Down["analytic"]=>{
+    if(!ids.some(needsPlaneMove))return undefined;
+    const holder=parentPlaneOf(grab),inv=holder&&inverse3(holder.matrix);if(!holder||!inv)return undefined;
+    const parentId=index?.nodes.get(grab)?.parentId;
+    const snapshot=(id:string):PlaneItem|null=>{const n=nodeOf(id),frame=planeOf(id),parent=index?.nodes.get(id)?.parentId;return n&&frame&&parent?{id,frame,look:effectiveLook(n,screen),parentId:parent,free:Boolean(placedOn(n,screen))}:null;};
+    const items=ids.map(snapshot);if(items.some(item=>!item))return undefined;
+    const selectedItems=items as PlaneItem[];
+    const modes=selectedItems.map(item=>movementOf(nodeOf(item.id)!,screen));
+    if(modes.includes("horizontal")&&modes.includes("vertical"))return undefined;
+    const movement=modes.includes("horizontal")?"horizontal":modes.includes("vertical")?"vertical":modes.includes("both")?"both":"free";
+    const peers=(index?.nodes.get(parentId??"")?.children??[]).filter(id=>!ids.includes(id)).map(snapshot).filter((item):item is PlaneItem=>Boolean(item));
+    let frame=selectedItems[0].frame,look=selectedItems[0].look;
+    if(items.length>1){
+      const points=selectedItems.flatMap(item=>planeQuad(multiply3(inv,item.frame.matrix),item.frame)??[]),bounds=boundsOfQuad(points);if(!bounds)return undefined;
+      frame={w:bounds.w,h:bounds.h,matrix:multiply3(holder.matrix,[1,0,bounds.x,0,1,bounds.y,0,0,1])};look={};
+    }
+    const drag=startPlaneDrag(frame,holder,look,rtl,point,peers.map(item=>({id:item.id,frame:item.frame,push:item.free&&!lockedIn.has(item.id)&&movementOf(nodeOf(item.id)!,screen)==="free"})));
+    return drag?{drag,holder,items:selectedItems,peers,movement}:undefined;
+  };
   /** Out of its holder, over another place that takes what's dragged: that place, and the box it'd be placed in. */
   const intoAt = (p: Pt, f: FreeDrag): { id: string; box: Box } | null => {
     if (!index || !inFrame(p)) return null;
@@ -1531,6 +1613,22 @@ export default function StudioPage() {
   };
   /** One step of a free drag: snapped, stopped or pushing, kept inside, or over another place it'd go into. */
   const moveFree = (d: Down, p: Pt, e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) => {
+    if(d.analytic){
+      const context=d.analytic,drag=context.drag;
+      const before={last:{...drag.last},pushed:new Map(drag.pushed),snapMemory:structuredClone(drag.snapMemory)};
+      const step=stepPlaneDrag(drag,{x:p.x-d.p.x,y:p.y-d.p.y},{straight:e.shiftKey,loose:e.ctrlKey||e.metaKey},dragPrefs,context.movement);
+      if(!step)return;
+      const changed=context.items.map(item=>({item,change:planeMoveLocalPatch(item.frame,context.holder,item.look,step.delta,rtl,!item.free)}));
+      const pushed=context.peers.filter(item=>step.pushed.has(item.id)).map(item=>({item,change:planeMoveLocalPatch(item.frame,context.holder,item.look,step.pushed.get(item.id)!,rtl,false)}));
+      if([...changed,...pushed].some(item=>!item.change)){Object.assign(drag,before);return;}
+      const pins=[...new Set(context.items.filter(item=>!item.free).map(item=>item.parentId))].flatMap(pinHolder);
+      context.ops=[...pins,...[...changed,...pushed].map(({item,change})=>styleOp(nodeOf(item.id)!,screen,change!.patch))];
+      d.shown=step.delta;d.into=null;
+      setGuides(step.guides);setDragView({pushed:[],touching:step.touching,marks:step.marks,into:null});
+      const box=boundsOfQuad(changed.flatMap(item=>item.change!.quad));
+      if(box)setPlacing({id:d.grab!,box,...placeFor(box,d.free!.holder,"top-start",rtl)});
+      previewGeometry(context.ops);return;
+    }
     const f = d.free!;
     const n = nodeOf(d.grab);
     const start = d.grab ? d.starts.get(d.grab) : undefined;
@@ -1581,9 +1679,11 @@ export default function StudioPage() {
   };
   /** A drag let go of or given up: the frame shows things where they are again. */
   const unpreview = (d: Down) => {
+    if(d.analytic)return;
     for (const x of [...(d.free?.ids ?? []), ...(d.free?.pushed.keys() ?? [])]) previewMove(x, { x: 0, y: 0 });
   };
   const cancelDrag = () => {
+    if(nudging.current.planes){window.clearTimeout(nudging.current.timer);nudging.current={dx:0,dy:0,timer:0};}
     const d = down.current;
     down.current = null;
     if (d) unpreview(d);
@@ -1593,12 +1693,35 @@ export default function StudioPage() {
     setDragView(null);
     setGuides([]);
   };
+  useEffect(()=>()=>{
+    window.dispatchEvent(new Event("studio-cancel-geometry"));
+    if(!down.current?.panning)cancelDrag();
+  },[device,src,zoom]);
+  useEffect(()=>()=>{
+    const queued=nudging.current;
+    if(queued.planes){window.clearTimeout(queued.timer);nudging.current={dx:0,dy:0,timer:0};clearGeometry();}
+  },[selected,more,draftQ.data?.draft?.rev,layout?.viewVersion]);
   /**
    * Lets go of a free drag: each one's place saved for this screen (in its new place when it went
    * into one, its coordinates turned into that place's), and where what it pushed went. With
    * `copy` the originals stay and copies go there. One step to undo.
    */
   const dropFree = (d: Down, copy: boolean) => {
+    if(d.analytic){
+      const context=d.analytic,ops=context.ops??[];
+      if(!ops.length||!d.shown||Math.hypot(d.shown.x,d.shown.y)<1e-6){clearGeometry();return;}
+      if(copy){
+        const ids=makeIds();let first:string|undefined;
+        const copies=context.items.flatMap(item=>{
+          const op=ops.find(op=>op.op==="setStyle"&&op.nodeId===item.id),node=nodeOf(item.id);if(!op||op.op!=="setStyle"||!node||!index)return [];
+          const c=copyOf(node,ids),styles=c.style as Record<string,Record<string,unknown>>|undefined;
+          c.style={...styles,[screen]:{...styles?.[screen],...op.style}};first??=c.id;
+          return [{op:"insert" as const,parentId:item.parentId,index:index.nodes.get(item.parentId)!.children.indexOf(item.id)+1,node:c}];
+        });
+        void change(tr("نسخة","Copy"),copies,first).finally(clearGeometry);
+      }else void change(tr("المكان","Place"),ops).finally(clearGeometry);
+      return;
+    }
     const f = d.free!;
     const by = d.shown ?? { x: 0, y: 0 };
     const into = d.into ?? null;
@@ -1720,7 +1843,10 @@ export default function StudioPage() {
         </p>
       );
     }
-    if (multi) return <MultiPanel names={chosen.map(label)} busy={busy} actions={multiActions} />;
+    if (multi) return <><MultiPanel names={chosen.map(label)} busy={busy} actions={multiActions} /><div className="mt-3 space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-fixed-spacing">
+      <label className="block text-xs text-white/60">{tr("مسافة ثابتة (بكسل)","Fixed gap (px)")}<input type="number" min={0} max={2000} value={fixedGap} disabled={busy} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value)&&value>=0&&value<=2000)setFixedGap(value);}} className="mt-1 w-full rounded bg-surface-925 px-2 py-1" /></label>
+      <div className="flex gap-2">{(["x","y"] as const).map(axis=><button type="button" key={axis} disabled={busy} onClick={()=>applyFixedGap(axis)} className="rounded bg-white/[0.06] px-2 py-1 text-xs" data-testid={`studio-spacing-${axis}`}>{axis==="x"?tr("أفقي","Horizontal"):tr("رأسي","Vertical")}</button>)}</div>
+    </div></>;
     return (
       <div className="space-y-3">
         <nav className="flex flex-wrap items-center gap-1 text-[11px] text-white/50" aria-label={tr("المسار", "Path")} data-testid="studio-path">
@@ -1741,6 +1867,15 @@ export default function StudioPage() {
           <dt className="text-white/45">{tr("الحجم", "Size")}</dt>
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
         </dl>
+
+        {selFree&&!['page','section','cell','columns'].includes(selFree.type)?<>
+          <div className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-movement">
+            <div className="text-xs text-white/70">{tr("اتجاه التحريك داخل الحاوية","Movement within the container")}</div>
+            <div className="grid grid-cols-2 gap-1">{([['vertical',tr("رأسي فقط","Vertical only")],['horizontal',tr("أفقي فقط","Horizontal only")],['both',tr("المحوران داخل الحاوية","Both axes inside")],['free',tr("حر","Free")]] as const).map(([mode,label])=><button type="button" key={mode} disabled={busy} aria-pressed={movementOf(selFree,screen)===mode} className={`rounded px-2 py-1.5 text-xs ${movementOf(selFree,screen)===mode?'bg-accent-500/30':'bg-white/[0.06]'}`} data-testid={`studio-movement-${mode}`} onClick={()=>{setCanvasMode("free");saveCanvasMode("free");void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:mode})]);}}>{label}</button>)}</div>
+            {screen!=="base"?<button type="button" disabled={busy} className="text-[10px] text-white/50" data-testid="studio-movement-inherit" onClick={()=>void change(tr("اتجاه التحريك","Movement direction"),[styleOp(selFree,screen,{movement:null})])}>{tr("اتبع الشاشة الأكبر","Follow the larger screen")}</button>:null}
+          </div>
+          <LayoutConstraintsPanel key={`${selFree.id}:${screen}`} value={((selFree.style as Record<string,{constraints?:SizeConstraints}>|undefined)?.[screen]?.constraints)??{}} busy={busy} onChange={value=>setSizeConstraints(selFree,value)} />
+        </>:null}
 
         {selFree?.children?.length && !["page", "section", "cell", "columns"].includes(selFree.type) ? <label className="flex items-start gap-2 rounded-lg border border-white/10 p-2 text-xs">
           <input type="checkbox" checked={scaleContents} disabled={busy} data-testid="studio-scale-contents" onChange={event => { const on = event.target.checked; setScaleContents(on); saveScaleContents(on); }} />
@@ -2620,17 +2755,18 @@ export default function StudioPage() {
               })}
             </div>
           </div>
-          {selFree && selShape && !editing && !directGeometrySafe(selFree.id) ? <div role="status" className="pointer-events-none absolute bottom-3 start-3 max-w-sm rounded bg-black/80 px-3 py-2 text-xs text-white/80">{tr("للعناصر المائلة ثلاثيّاً أو داخل حاوية مدوّرة، استخدم إعدادات المكان والحجم من اللوحة.", "Use the layout controls for 3D objects or objects inside rotated containers.")}</div> : null}
+          {selFree && selShape && !editing && !directGeometrySafe(selFree.id) ? <div role="status" className="pointer-events-none absolute bottom-3 start-3 max-w-sm rounded bg-black/80 px-3 py-2 text-xs text-white/80">{tr("هذا التحويل غير قابل للتحرير المباشر حاليًا. استخدم إعدادات المكان والحجم من اللوحة.", "This transform currently needs the layout controls for position and size.")}</div> : null}
           {selFree && !multi && !editing && !placing && !drop && selShape && directGeometrySafe(selFree.id) && !["section", "cell", "columns", "page"].includes(selFree.type) ? (
             <SelectionHandles
               key={`${selFree.id}:${screen}`}
               box={selShape.box}
+              geometry={handleGeometry(selFree)}
               proportional={scaleContents && Boolean(selFree.children?.length)}
               ratioLimits={scaleContents && selFree.children?.length && itemOf(selFree.id)?.size ? handle => scaleContentsLimits(selFree, screen, itemOf(selFree.id)!.size!, handle) : undefined}
               zoom={zoom * parentScaleOf(selFree.id) * Math.max(.1, Number(shownLook(selFree, screen, "scale") ?? 1))}
               frame={sizeOf(selFree.id) ? { w: sizeOf(selFree.id)!.w * parentScaleOf(selFree.id) * Number(shownLook(selFree, screen, "scale") ?? 1), h: sizeOf(selFree.id)!.h * parentScaleOf(selFree.id) * Number(shownLook(selFree, screen, "scale") ?? 1), rotation: Number(shownLook(selFree, screen, "rotateZ") ?? 0) } : undefined}
               sides={["heading", "text"].includes(selFree.type) ? "width" : "all"}
-              turn={Number(shownLook(selFree, screen, "rotateZ") ?? 0)}
+              turn={itemOf(selFree.id)?.parentScale===null||Number(shownLook(selFree,screen,"rotateX")??0)||Number(shownLook(selFree,screen,"rotateY")??0)?null:Number(shownLook(selFree, screen, "rotateZ") ?? 0)}
               local={local}
               onSizeLive={(w, h, gesture) => {
                 if (motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }

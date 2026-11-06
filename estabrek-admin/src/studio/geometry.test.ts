@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, distToBox, insidePolygon, pickAt, queenStep, rayHitsBox, toScreen, visiblePart, zoomAround,
-  type Shape,
+  shapeContains, shapeDistance, type Shape,
 } from "./geometry";
 
 const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h });
@@ -83,6 +83,44 @@ describe("picking the element under the pointer", () => {
     expect(now).toMatchObject({ id: "button", nearEdge: true });
     expect(clickTarget(now, "card")).toBe("card");
     expect(clickTarget(pickAt(all, { x: 80, y: 165 }), "card")).toBe("button");
+  });
+});
+
+describe("polygon picking and clipping", () => {
+  const diamond: Shape = { ...shape("diamond", box(0, 0, 100, 100)), outline: [{ x: 50, y: 0 }, { x: 100, y: 50 }, { x: 50, y: 100 }, { x: 0, y: 50 }] };
+
+  it("rejects a rotated AABB's empty corner, and measures a near miss to the polygon", () => {
+    expect(pickAt([diamond], { x: 5, y: 5 })).toBeNull();
+    const near = pickAt([diamond], { x: 22, y: 22 });
+    expect(near?.inside).toBe(false);
+    expect(near?.distance).toBeCloseTo(Math.sqrt(18));
+    expect(shapeContains(diamond, { x: 25, y: 25 })).toBe(true);
+    expect(pickAt([diamond], { x: 26, y: 26 })).toMatchObject({ inside: true, nearEdge: true });
+  });
+
+  it("uses the intersection of every clip, including its boundary", () => {
+    const clipped: Shape = { ...diamond, clips: [
+      [{ x: 0, y: 0 }, { x: 60, y: 0 }, { x: 60, y: 100 }, { x: 0, y: 100 }],
+      [{ x: 0, y: 40 }, { x: 100, y: 40 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+    ] };
+    expect(shapeContains(clipped, { x: 60, y: 40 })).toBe(true);
+    expect(shapeContains(clipped, { x: 65, y: 50 })).toBe(false);
+    expect(shapeDistance(clipped, { x: 70, y: 30 })).toBeCloseTo(Math.sqrt(200));
+    expect(pickAt([clipped], { x: 70, y: 30 })).toBeNull();
+    expect(pickAt([clipped], { x: 62, y: 42 })).toMatchObject({ inside: false, distance: 2 });
+  });
+
+  it("does not near-pick a completely clipped-away outline", () => {
+    const hidden: Shape = { ...diamond, clips: [[{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 5 }, { x: 0, y: 5 }]] };
+    expect(shapeDistance(hidden, { x: 5, y: 5 })).toBe(Infinity);
+    expect(pickAt([hidden], { x: 5, y: 5 })).toBeNull();
+  });
+
+  it("breaks otherwise equal inside and near ties by id, independent of input order", () => {
+    const a = shape("a", box(10, 0, 10, 10));
+    const b = shape("b", box(10, 0, 10, 10));
+    expect(pickAt([b, a], { x: 15, y: 5 })?.id).toBe("a");
+    expect(pickAt([b, a], { x: 5, y: 5 }, { heading: { x: 1, y: 0 } })?.id).toBe("a");
   });
 });
 

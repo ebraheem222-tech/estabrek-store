@@ -28,6 +28,12 @@ function nested() {
 }
 
 describe("canvas drop containers", () => {
+  it("checks a reached ancestor's actual polygon rather than its AABB", () => {
+    const index = tree(node("source", "section", [node("moving", "text")]), node("target", "stack", [node("label", "text")]));
+    const target: Shape = { ...shape(index, "target", box(0, 0, 100, 100)), outline: [{ x: 50, y: 0 }, { x: 100, y: 50 }, { x: 50, y: 100 }, { x: 0, y: 50 }] };
+    const label = shape(index, "label", box(0, 0, 10, 10));
+    expect(pickCanvasContainer(index, [target, label], { x: 5, y: 5 }, ["moving"], "source")).toBeNull();
+  });
   it("nests inside the deepest eligible container while still inside the original holder", () => {
     const { index, shapes } = nested();
     const point = { x: 150, y: 140 };

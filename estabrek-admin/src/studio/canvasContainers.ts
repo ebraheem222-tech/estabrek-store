@@ -1,6 +1,6 @@
 import type { PageTreeNode } from "../api/pages.api";
 import { canHold } from "./columns";
-import { inside, pickAt, type Pt, type Shape } from "./geometry";
+import { pickAt, shapeContains, type Pt, type Shape } from "./geometry";
 import type { TreeIndex } from "./treeIndex";
 
 const CONTAINERS = new Set(["section", "cell", "stack", "grid", "popup", "legacy"]);
@@ -42,7 +42,7 @@ export function pickCanvasContainer(
     seen.add(at);
     const own = index.nodes.get(at);
     const shape = measured.get(at);
-    if (!own || !shape || !(shape.box.w > 0 && shape.box.h > 0) || !inside(shape.box, point)) continue;
+    if (!own || !shape || !shapeContains(shape, point)) continue;
     if (at === fromParent) return null;
     if (CONTAINERS.has(own.node.type) && own.depth + 1 + deepest <= MAX_TREE_DEPTH && nodes.every((node) => canHold(index, at!, node))) return at;
   }

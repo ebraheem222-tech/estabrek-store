@@ -5,7 +5,7 @@
  * so a bad saved value can't become CSS. Sides follow the text direction
  * (padding-inline-start…), so the same tree is right in Arabic, Hebrew and English.
  */
-import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type TreeNode } from "./tree";
+import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type SizeConstraints, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
 import { SLIDER_EFFECT_CSS } from "./sliderEffectCss";
 
@@ -192,10 +192,32 @@ const num = (v: unknown, min: number, max: number) => (typeof v === "number" && 
 /** A theme colour or a hex one, as CSS (anything else: undefined). */
 export const color = (v: unknown) =>
   typeof v === "string" ? (TOKENS[v] ?? (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? v : undefined)) : undefined;
-const length = (v: unknown) => (typeof v === "string" && /^(auto|\d{1,4}(\.\d{1,2})?(px|%|rem|vw|vh))$/.test(v) ? v : undefined);
+const length = (v: unknown) => (typeof v === "string" && /^(auto|\d{1,4}(\.\d{1,6})?(px|%|rem|vw|vh))$/.test(v) ? v : undefined);
 const place = (v: unknown) => (typeof v === "string" && /^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/.test(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, list: readonly T[]) => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : undefined);
 const obj = (v: unknown): Record<string, any> | undefined => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, any>) : undefined);
+
+/** Validate each field before merging, so malformed overrides cannot erase a valid bound. */
+function checkedConstraints(raw: unknown): SizeConstraints {
+  const source = obj(raw), clean: SizeConstraints = {};
+  if (!source) return clean;
+  for (const key of ["minWidth", "maxWidth", "minHeight", "maxHeight", "aspectRatio"] as const) {
+    const value = num(source[key], key === "aspectRatio" ? .01 : 8, key === "aspectRatio" ? 100 : 9999);
+    if (value !== undefined) clean[key] = value;
+  }
+  return clean;
+}
+
+/** Reassert inherited hard dimensions after a screen's ordinary size controls. */
+function screenDeclarations(style: Partial<Record<Screen, ScreenStyle>> | undefined, screen: Screen, type: string): string[] {
+  const constraints: SizeConstraints = {};
+  for (const current of ["base", "tablet", "mobile"] as const) {
+    Object.assign(constraints, checkedConstraints(style?.[current]?.constraints));
+    if (current === screen) break;
+  }
+  const own = style?.[screen];
+  return declarations(Object.keys(constraints).length ? { ...own, constraints } : own, type);
+}
 /** Two or three colours along an angle ("linear-gradient(90deg,a,b,c)"), or from the middle out. */
 function gradientOf(g: unknown, radial = false): string | undefined {
   const o = obj(g);
@@ -430,6 +452,21 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   }
   const zi = num(s.z, -10, 50);
   if (zi !== undefined && Number.isInteger(zi)) d.push(`z-index:${zi}`);
+  // Required dimension settings win only for their own properties; other size,
+  // shape and appearance declarations retain their existing behavior.
+  const constraints = checkedConstraints(s.constraints);
+  for (const [key, property] of [["minWidth", "min-width"], ["maxWidth", "max-width"], ["minHeight", "min-height"], ["maxHeight", "max-height"], ["aspectRatio", "aspect-ratio"]] as const) {
+    push(property, constraints[key], key === "aspectRatio" ? "" : "px");
+  }
+  if(constraints.aspectRatio!==undefined){
+    const r=constraints.aspectRatio,minW=Math.max(constraints.minWidth??0,(constraints.minHeight??0)*r),maxW=Math.min(constraints.maxWidth??Infinity,(constraints.maxHeight??Infinity)*r);
+    // A required ratio takes precedence over a definite height or cross-axis
+    // stretching. Height bounds also bound width, so the ratio stays feasible.
+    d.push("height:auto","align-self:start");
+    if(constraints.minHeight===undefined)d.push("min-height:0");
+    if(minW>0)push("min-width",minW,"px");
+    if(Number.isFinite(maxW))push("max-width",maxW,"px");
+  }
   return d;
 }
 
@@ -642,7 +679,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
         const [c, c2, sp] = [color(motion.fx.color), color(motion.fx.to), num(motion.fx.speed, 0.2, 5)];
         fx.push(`${sel}>.pt-fx{${[c && `--pt-fxc:${c}`, c2 && `--pt-fxc2:${c2}`, `--pt-fxs:${(3 / (sp ?? 1)).toFixed(2)}s`].filter(Boolean).join(";")}}`);
       }
-      const b = declarations(n.style?.base, n.type);
+      const b = screenDeclarations(n.style, "base", n.type);
       // Columns always say how many tracks they have (their cells' count when no shares are set).
       if (n.type === "columns" && !widthsTemplate(n.style?.base?.widths)) b.unshift(`grid-template-columns:repeat(${Math.max(1, Math.min(4, n.children?.length ?? 1))},minmax(0,1fr))`);
       // A slider's frame from its settings; a screen's own `aspect` still wins.
@@ -655,8 +692,8 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
       const extra = screenFallbacks(n, parent);
       const keys = stateKeysOf(n.style);
       b.push(...transitionDecls(n.style, "base", keys));
-      const t = [...extra.tablet, ...declarations(n.style?.tablet, n.type), ...transitionDecls(n.style, "tablet", keys)];
-      const p = [...extra.phone, ...declarations(n.style?.mobile, n.type), ...transitionDecls(n.style, "mobile", keys)];
+      const t = [...extra.tablet, ...screenDeclarations(n.style, "tablet", n.type), ...transitionDecls(n.style, "tablet", keys)];
+      const p = [...extra.phone, ...screenDeclarations(n.style, "mobile", n.type), ...transitionDecls(n.style, "mobile", keys)];
       if (b.length) base.push(`${sel}{${b.join(";")}}`);
       if (t.length) tablet.push(`${sel}{${t.join(";")}}`);
       if (p.length) phone.push(`${sel}{${p.join(";")}}`);
@@ -684,7 +721,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
     // A picture's fit and focus go on the picture itself (the field is often its frame).
     const inner = `:is(${sel}) :is(img,video),:is(${sel}):is(img,video)`;
     const put = (list: string[], s: ScreenStyle | undefined, screen: Screen) => {
-      const d = [...declarations(s, type), ...transitionDecls(look.style, screen, keys)];
+      const d = [...screenDeclarations(look.style, screen, type), ...transitionDecls(look.style, screen, keys)];
       if (media && typeof s?.radius === "number") d.push("overflow:hidden");
       if (d.length) list.push(`${sel}{${d.join(";")}}`);
       const pic = media ? d.filter((x) => x.startsWith("object-")) : [];
@@ -712,7 +749,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
     }
     const keys = stateKeysOf(s.style);
     const put = (list: string[], screen: Screen) => {
-      const d = [...declarations(s.style[screen], type), ...transitionDecls(s.style, screen, keys)];
+      const d = [...screenDeclarations(s.style, screen, type), ...transitionDecls(s.style, screen, keys)];
       if (d.length) list.push(`${sel}{${d.join(";")}}`);
       list.push(...stateRules(sel, s.style[screen], type));
     };
@@ -769,7 +806,7 @@ export const BASE_CSS = [
   ".pt-cell{display:flex;flex-direction:column;align-items:flex-start;gap:16px;min-width:0}",
   // (:where, so an element's own "where it sits" wins.)
   ".pt-cell>:where(.pt-heading,.pt-text,.pt-video,.pt-slider,.pt-showcase,.pt-product360,.pt-products,.pt-categories,.pt-form,.pt-columns,.pt-grid,.pt-stack,.pt-divider,.pt-spacer){align-self:stretch}",
-  ".pt-cell>.pt-image,.pt-cell>.pt-image-link{max-width:100%}",
+  ":where(.pt-cell>.pt-image,.pt-cell>.pt-image-link){max-width:100%}",
   ".pt-heading{margin:0;font-family:var(--pt-font-heading);line-height:1.2;white-space:pre-line}",
   ".pt-text{margin:0;line-height:1.75;white-space:pre-line}",
   // Formatted words (pageTree/rich.ts).

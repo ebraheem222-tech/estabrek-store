@@ -14,7 +14,7 @@
 
 export type Pt = { x: number; y: number };
 export type Box = { x: number; y: number; w: number; h: number };
-export type Shape = { id: string; box: Box; depth: number; parentId: string | null };
+export type Shape = { id: string; box: Box; depth: number; parentId: string | null; outline?: Pt[]; clips?: Pt[][] };
 
 export const PICK_THRESHOLD = 8;
 export const EDGE_BAND = 4;
@@ -59,15 +59,111 @@ export function rayHitsBox(o: Pt, d: Pt, b: Box): number | null {
   return tMin;
 }
 
-/** Odd-even rule: a ray from the point crosses the outline an odd number of times when it's inside (any polygon). */
+const GEOMETRY_EPS = 1e-8;
+const cross2 = (a: Pt, b: Pt) => a.x * b.y - a.y * b.x;
+const difference = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
+const segmentPoint = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+const segmentDistance = (p: Pt, a: Pt, b: Pt) => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2)) : 0;
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+};
+
+/** Odd-even rule for a simple polygon, including points on its boundary. */
 export function insidePolygon(p: Pt, poly: Pt[]) {
+  if (poly.length < 3 || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
   let inSide = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const a = poly[i];
     const b = poly[j];
+    if (segmentDistance(p, a, b) <= GEOMETRY_EPS) return true;
     if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inSide = !inSide;
   }
   return inSide;
+}
+
+const boxPolygon = (b: Box): Pt[] => [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y }, { x: b.x + b.w, y: b.y + b.h }, { x: b.x, y: b.y + b.h }];
+const validPolygon = (poly: Pt[]) => poly.length >= 3 && poly.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)) && Math.abs(poly.reduce((a, p, i) => a + cross2(p, poly[(i + 1) % poly.length]), 0)) > GEOMETRY_EPS;
+const shapePolygons = (shape: Shape) => [shape.outline ?? boxPolygon(shape.box), ...(shape.clips ?? [])];
+
+/** Actual visible geometry; the box remains a broad phase and the old-frame fallback. */
+export function shapeContains(shape: Shape, p: Pt): boolean {
+  if (!(shape.box.w > 0 && shape.box.h > 0) || !inside(shape.box, p)) return false;
+  if (!shape.outline && !shape.clips?.length) return true;
+  return shapePolygons(shape).every((poly) => validPolygon(poly) && insidePolygon(p, poly));
+}
+
+/** Parameters at which AB crosses CD; collinear endpoints split overlapping edges too. */
+function segmentCuts(a: Pt, b: Pt, c: Pt, d: Pt): number[] {
+  const r = difference(b, a);
+  const s = difference(d, c);
+  const ca = difference(c, a);
+  const den = cross2(r, s);
+  if (Math.abs(den) > GEOMETRY_EPS) {
+    const t = cross2(ca, s) / den;
+    const u = cross2(ca, r) / den;
+    return t >= 0 && t <= 1 && u >= -GEOMETRY_EPS && u <= 1 + GEOMETRY_EPS ? [t] : [];
+  }
+  if (Math.abs(cross2(ca, r)) > GEOMETRY_EPS) return [];
+  const l2 = r.x * r.x + r.y * r.y;
+  if (!l2) return [];
+  return [c, d].map((p) => ((p.x - a.x) * r.x + (p.y - a.y) * r.y) / l2).filter((t) => t >= 0 && t <= 1);
+}
+
+/** The boundary of the polygon intersection, including concave/disconnected results. */
+function shapeSegments(shape: Shape): Array<[Pt, Pt]> {
+  const polys = shapePolygons(shape);
+  if (!(shape.box.w > 0 && shape.box.h > 0) || !polys.every(validPolygon)) return [];
+  const segments: Array<[Pt, Pt]> = [];
+  for (const poly of polys) for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const cuts = [0, 1];
+    for (const other of polys) if (other !== poly) for (let j = 0; j < other.length; j++) cuts.push(...segmentCuts(a, b, other[j], other[(j + 1) % other.length]));
+    cuts.sort((x, y) => x - y);
+    for (let j = 1; j < cuts.length; j++) {
+      if (cuts[j] - cuts[j - 1] <= GEOMETRY_EPS) continue;
+      const mid = segmentPoint(a, b, (cuts[j] + cuts[j - 1]) / 2);
+      if (polys.every((p) => insidePolygon(mid, p))) segments.push([segmentPoint(a, b, cuts[j - 1]), segmentPoint(a, b, cuts[j])]);
+    }
+  }
+  return segments;
+}
+
+/** Distance to the visible boundary, including the cuts introduced by clipping. */
+export function shapeEdgeDistance(shape: Shape, p: Pt): number {
+  if (!shape.outline && !shape.clips?.length) return inside(shape.box, p) ? distToEdge(p, shape.box) : distToBox(p, shape.box);
+  return shapeSegments(shape).reduce((best, [a, b]) => Math.min(best, segmentDistance(p, a, b)), Infinity);
+}
+
+/** Distance to visible geometry; fully clipped-away shapes have infinite distance. */
+export function shapeDistance(shape: Shape, p: Pt): number {
+  return shapeContains(shape, p) ? 0 : shapeEdgeDistance(shape, p);
+}
+
+function rayHitsShape(o: Pt, d: Pt, shape: Shape): number | null {
+  if (!shape.outline && !shape.clips?.length) return rayHitsBox(o, d, shape.box);
+  if (shapeContains(shape, o)) return 0;
+  let best = Infinity;
+  for (const [a, b] of shapeSegments(shape)) {
+    const e = difference(b, a);
+    const ao = difference(a, o);
+    const den = cross2(d, e);
+    if (Math.abs(den) > GEOMETRY_EPS) {
+      const t = cross2(ao, e) / den;
+      const u = cross2(ao, d) / den;
+      if (t >= 0 && u >= -GEOMETRY_EPS && u <= 1 + GEOMETRY_EPS) best = Math.min(best, t);
+    } else if (Math.abs(cross2(ao, d)) <= GEOMETRY_EPS) {
+      const l2 = d.x * d.x + d.y * d.y;
+      for (const p of [a, b]) {
+        const t = ((p.x - o.x) * d.x + (p.y - o.y) * d.y) / l2;
+        if (t >= 0) best = Math.min(best, t);
+      }
+    }
+  }
+  return Number.isFinite(best) ? best : null;
 }
 
 /* -------------------------------------------------------------- the grid */
@@ -132,26 +228,26 @@ export type Pick = { id: string; inside: boolean; distance: number; nearEdge: bo
 export function pickAt(candidates: Shape[], p: Pt, opts: { threshold?: number; edge?: number; heading?: Pt | null } = {}): Pick | null {
   const threshold = opts.threshold ?? PICK_THRESHOLD;
   const edge = opts.edge ?? EDGE_BAND;
-  const hits = candidates.filter((s) => s.box.w > 0 && s.box.h > 0 && inside(s.box, p));
+  const hits = candidates.filter((s) => shapeContains(s, p));
   if (hits.length) {
-    hits.sort((a, b) => b.depth - a.depth || area(a.box) - area(b.box));
+    hits.sort((a, b) => b.depth - a.depth || area(a.box) - area(b.box) || a.id.localeCompare(b.id));
     const best = hits[0];
-    return { id: best.id, inside: true, distance: 0, nearEdge: distToEdge(p, best.box) <= edge };
+    return { id: best.id, inside: true, distance: 0, nearEdge: shapeEdgeDistance(best, p) <= edge };
   }
   const near = candidates
     .filter((s) => s.box.w > 0 && s.box.h > 0)
-    .map((s) => ({ s, d: distToBox(p, s.box) }))
+    .map((s) => ({ s, d: shapeDistance(s, p) }))
     .filter((x) => x.d <= threshold)
-    .sort((a, b) => a.d - b.d || b.s.depth - a.s.depth);
+    .sort((a, b) => a.d - b.d || b.s.depth - a.s.depth || a.s.id.localeCompare(b.s.id));
   if (!near.length) return null;
   let best = near[0];
   const h = opts.heading;
   if (near.length > 1 && h && Math.hypot(h.x, h.y) > 0.5 && near[1].d - best.d <= 1) {
     const tied = near.filter((x) => x.d - best.d <= 1);
     const ahead = tied
-      .map((x) => ({ x, t: rayHitsBox(p, h, x.s.box) }))
+      .map((x) => ({ x, t: rayHitsShape(p, h, x.s) }))
       .filter((y): y is { x: (typeof tied)[number]; t: number } => y.t !== null)
-      .sort((a, b) => a.t - b.t)[0];
+      .sort((a, b) => a.t - b.t || b.x.s.depth - a.x.s.depth || a.x.s.id.localeCompare(b.x.s.id))[0];
     if (ahead) best = ahead.x;
   }
   return { id: best.s.id, inside: false, distance: best.d, nearEdge: true };

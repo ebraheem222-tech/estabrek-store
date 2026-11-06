@@ -9,7 +9,7 @@
  *   theorem (SAT), circles by distance; each hit gives the shortest way out.
  * - What a drag does with what it meets: passes over it, stops and slides along its edge,
  *   pushes it, or is pulled flush against it (a magnet), kept inside its holder. Long
- *   moves go in small steps so nothing is jumped through.
+ *   convex polygon block moves use swept SAT; circles, push and magnet use small steps.
  * - Snapping beyond edges and middles (handles.ts snapBox): equal gaps, a grid, Shift's
  *   straight lines; where in a row or a wrapping grid a dragged element goes.
  */
@@ -346,17 +346,103 @@ const inside = (b: Body, d: Pt, bounds: Box | null | undefined) => (bounds ? add
 /** The obstacles a body doesn't already overlap (those it starts over don't stop it until they're apart). */
 export const clearOf = (body: Body, obstacles: Obstacle[]) => obstacles.filter((o) => !collide(body, o.body));
 
+type PolygonBody = Extract<Body, { kind: "poly" }>;
+type SweepHit = { t: number; normals: Pt[] };
+
+/** Continuous SAT for translation only: intersect each axis's time-of-overlap interval. */
+function sweepPolygons(a: PolygonBody, b: PolygonBody, way: Pt): SweepHit | null {
+  let enter = -Infinity;
+  let exit = Infinity;
+  let normals: Pt[] = [];
+  for (const axis of [...edgeAxes(a.pts), ...edgeAxes(b.pts)]) {
+    const [a0, a1] = project(a, axis);
+    const [b0, b1] = project(b, axis);
+    const speed = dot(way, axis);
+    if (Math.abs(speed) < 1e-10) {
+      // Tangency along an unchanging axis never becomes an overlap.
+      if (a1 <= b0 + 1e-9 || b1 <= a0 + 1e-9) return null;
+      continue;
+    }
+    const first = speed > 0 ? (b0 - a1) / speed : (b1 - a0) / speed;
+    const last = speed > 0 ? (b1 - a0) / speed : (b0 - a1) / speed;
+    const normal = speed > 0 ? mulBy(axis, -1) : axis;
+    if (first > enter + 1e-10) {
+      enter = first;
+      normals = [normal];
+    } else if (Math.abs(first - enter) <= 1e-10) normals.push(normal);
+    exit = Math.min(exit, last);
+    if (enter > exit) return null;
+  }
+  // A zero-length interval is a grazing touch, not a blocking collision.
+  if (enter < -1e-10 || enter > 1 || exit <= Math.max(0, enter) + 1e-12 || !normals.length) return null;
+  return { t: Math.max(0, enter), normals };
+}
+
+/** Nearest remaining movement inside all the contact half-planes (a 2D cone). */
+function slideAlong(way: Pt, normals: Pt[]): Pt {
+  const allowed = (p: Pt) => normals.every((n) => dot(p, n) >= -1e-8);
+  if (allowed(way)) return way;
+  let best = ZERO;
+  let distance = dot(way, way);
+  for (const n of normals) {
+    const candidate = sub(way, mulBy(n, dot(way, n)));
+    if (!allowed(candidate)) continue;
+    const change = sub(candidate, way);
+    const d = dot(change, change);
+    if (d < distance) [best, distance] = [candidate, d];
+  }
+  return best;
+}
+
+function nearPolygons(a: PolygonBody, b: PolygonBody, reach: number): boolean {
+  return [...edgeAxes(a.pts), ...edgeAxes(b.pts)].every((axis) => {
+    const [a0, a1] = project(a, axis);
+    const [b0, b1] = project(b, axis);
+    return Math.max(b0 - a1, a0 - b1) <= reach;
+  });
+}
+
+/** Exact first contact for supported convex polygons, with a bounded number of slides. */
+function settlePolygonBlock(body: PolygonBody, from: Pt, to: Pt, obstacles: Array<Obstacle & { body: PolygonBody }>, opts: SettleOpts, pushed: Map<string, Pt>): Settled {
+  let d = inside(body, from, opts.bounds);
+  let remaining = sub(inside(body, to, opts.bounds), d);
+  const fixed = [...obstacles].sort((a, b) => a.id.localeCompare(b.id)).map((o) => ({ id: o.id, body: moveBody(o.body, pushed.get(o.id) ?? ZERO) as PolygonBody }));
+  // On exhaustion retain the last safe point rather than applying an unchecked remainder.
+  for (let iter = 0; iter < 32 && len(remaining) > 1e-9; iter++) {
+    remaining = sub(inside(body, add(d, remaining), opts.bounds), d);
+    const me = moveBody(body, d) as PolygonBody;
+    let first: SweepHit | null = null;
+    for (const obstacle of fixed) {
+      const hit = sweepPolygons(me, obstacle.body, remaining);
+      if (!hit) continue;
+      if (!first || hit.t < first.t - 1e-10) first = hit;
+      else if (Math.abs(hit.t - first.t) <= 1e-10) first.normals.push(...hit.normals);
+    }
+    if (!first) {
+      d = add(d, remaining);
+      break;
+    }
+    d = add(d, mulBy(remaining, first.t));
+    remaining = slideAlong(mulBy(remaining, 1 - first.t), first.normals);
+  }
+  const final = moveBody(body, d) as PolygonBody;
+  return { d, pushed, touching: fixed.filter((o) => nearPolygons(final, o.body, (opts.gap ?? 0) + 1)).map((o) => o.id) };
+}
+
 /**
  * Where a dragged body ends up when the pointer asks to move it from `from` to `to` (moves
  * from where the drag started), and how far the things it pushed went (`pushed`, carried over
- * from the last call). The move goes in steps no longer than half the body's smaller side, so
- * it can't pass through something thin; each step is pushed out of what it overlaps along the
- * shortest way, which leaves the part along the edge (it slides). A magnet pulls it flush
- * (`gap` apart) when it comes within `magnet` pixels.
+ * from the last call). Block mode sweeps convex polygon translations to first contact and
+ * slides the remaining move along contact edges, without a step-length tunnelling limit.
+ * Circles, push and magnet retain the bounded discrete solver; continuous collision is not
+ * promised for those cases. A magnet pulls it flush (`gap` apart) within `magnet` pixels.
  */
 export function settle(body: Body, from: Pt, to: Pt, obstacles: Obstacle[], opts: SettleOpts, pushedBefore?: ReadonlyMap<string, Pt>): Settled {
   const pushed = new Map(pushedBefore ?? []);
   if (opts.mode === "overlap") return { d: inside(body, to, opts.bounds), pushed, touching: [] };
+  if (opts.mode === "block" && body.kind === "poly" && obstacles.every((o): o is Obstacle & { body: PolygonBody } => o.body.kind === "poly") && obstacles.every((o) => !collide(moveBody(body, from), moveBody(o.body, pushed.get(o.id) ?? ZERO)))) {
+    return settlePolygonBlock(body, from, to, obstacles, opts, pushed);
+  }
   const box = boxOfBody(body);
   const stepLen = Math.max(4, Math.min(box.w, box.h) / 2);
   const way = sub(to, from);

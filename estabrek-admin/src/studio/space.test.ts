@@ -107,6 +107,41 @@ describe("dragging as plane geometry", () => {
     expect(clearOf(me, [{ id: "under", body: boxBody(box(10, 10, 10, 10)) }, ...wall]).map((o) => o.id)).toEqual(["wall"]);
   });
 
+  it("blocks a tiny convex body at first contact even across a huge pointer jump", () => {
+    const me = boxBody(box(0, 0, 2, 2));
+    const wall: Obstacle[] = [{ id: "thin", body: boxBody(box(50, -100, 0.1, 200)) }];
+    const stop = settle(me, { x: 0, y: 0 }, { x: 10000, y: 0 }, wall, { mode: "block" });
+    near(stop.d.x, 48, 1e-6);
+    expect(stop.touching).toEqual(["thin"]);
+    expect(collide(moveBody(me, stop.d), wall[0].body)).toBeNull();
+  });
+
+  it("sweeps rotated polygons and slides only the remaining movement after contact", () => {
+    const me = bodyOf({ c: { x: 0, y: 0 }, w: 4, h: 4, deg: 45 });
+    const wall: Obstacle[] = [{ id: "thin", body: boxBody(box(50, -100000, 0.1, 200000)) }];
+    const stop = settle(me, { x: 0, y: 0 }, { x: 10000, y: 70 }, wall, { mode: "block" });
+    near(stop.d.x, 50 - Math.sqrt(8), 1e-6);
+    near(stop.d.y, 70, 1e-6);
+    const retreat = settle(me, stop.d, { x: 10, y: 80 }, wall, { mode: "block" });
+    near(retreat.d.x, 10, 1e-6);
+    near(retreat.d.y, 80, 1e-6);
+  });
+
+  it("treats polygon AABBs as a broad phase and stops at simultaneous corner contacts", () => {
+    const me = boxBody(box(0, 0, 2, 2));
+    const diamond: Obstacle = { id: "diamond", body: bodyOf({ c: { x: 50, y: 50 }, w: 20, h: 20, deg: 45 }) };
+    expect(settle(me, { x: 0, y: 36 }, { x: 38, y: 36 }, [diamond], { mode: "block" }).d).toEqual({ x: 38, y: 36 });
+    const walls: Obstacle[] = [
+      { id: "vertical", body: boxBody(box(50, -100, 0.1, 200)) },
+      { id: "horizontal", body: boxBody(box(-100, 50, 200, 0.1)) },
+    ];
+    const a = settle(me, { x: 0, y: 0 }, { x: 10000, y: 10000 }, walls, { mode: "block" });
+    const b = settle(me, { x: 0, y: 0 }, { x: 10000, y: 10000 }, [...walls].reverse(), { mode: "block" });
+    near(a.d.x, 48, 1e-6);
+    near(a.d.y, 48, 1e-6);
+    expect(b.d).toEqual(a.d);
+  });
+
   it("pushes what can move, through a chain, up to the holder's edge", () => {
     const me = boxBody(box(0, 0, 40, 40));
     const obstacles: Obstacle[] = [

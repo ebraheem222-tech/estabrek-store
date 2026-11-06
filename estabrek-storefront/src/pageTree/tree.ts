@@ -7,8 +7,12 @@
  */
 export type TreeLang = "ar" | "en" | "he";
 export type TreeText = Partial<Record<TreeLang, string>>;
+export type SizeConstraints = { minWidth?: number; maxWidth?: number; minHeight?: number; maxHeight?: number; aspectRatio?: number };
 
 export type ScreenStyle = {
+  /** Required local dimensions, inherited field-by-field from larger screens. */
+  constraints?: SizeConstraints;
+  movement?: "vertical" | "horizontal" | "both" | "free";
   pad?: [number, number, number, number];
   margin?: [number, number, number, number];
   width?: string;

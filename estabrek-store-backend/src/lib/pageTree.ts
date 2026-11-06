@@ -100,7 +100,7 @@ const color = z
   .refine((v) => (COLOR_TOKENS as readonly string[]).includes(v) || /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v), "Not a theme colour or #hex");
 const px = (min: number, max: number) => z.number().finite().min(min).max(max);
 const box = (min: number) => z.tuple([px(min, 400), px(min, 400), px(min, 400), px(min, 400)]);
-const length = z.string().trim().regex(/^(auto|\d{1,4}(\.\d{1,2})?(px|%|rem|vw|vh))$/, "A length like 320px, 50% or auto");
+const length = z.string().trim().regex(/^(auto|\d{1,4}(\.\d{1,6})?(px|%|rem|vw|vh))$/, "A length like 320px, 50% or auto");
 const place = z.string().trim().regex(/^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/, "Like “1 / 3” or “span 2”");
 
 /** How a motion speeds up and slows down (also a state change's). */
@@ -201,8 +201,19 @@ const SectionEdge = z.object({
 });
 
 /** How a node looks on one screen size. Every key is optional; the shop turns it into CSS. */
+export const SizeConstraints = z.object({
+  minWidth: z.number().finite().min(8).max(9999).optional(),
+  maxWidth: z.number().finite().min(8).max(9999).optional(),
+  minHeight: z.number().finite().min(8).max(9999).optional(),
+  maxHeight: z.number().finite().min(8).max(9999).optional(),
+  aspectRatio: z.number().finite().min(.01).max(100).optional(),
+});
+
 export const ScreenStyle = z.object({
   ...VISUAL,
+  // Partial screen overrides inherit field-by-field; effective conflicts are solved by the editor.
+  constraints: SizeConstraints.optional(),
+  movement: z.enum(["vertical", "horizontal", "both", "free"]).optional(),
   pad: box(0).optional(), // top, end, bottom, start (follows the text direction)
   margin: box(-400).optional(),
   width: length.optional(),
@@ -680,6 +691,14 @@ export function checkTree(input: unknown): TreeCheck {
     const props = NODE_PROPS[type].safeParse(raw.props ?? {});
     if (!props.success) for (const i of props.error.issues) add(`${path}.props${i.path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("")}`, i.message);
     const style = raw.style === undefined ? undefined : NodeStyle.safeParse(raw.style);
+    if(style?.success){
+      let limits:{minWidth?:number;maxWidth?:number;minHeight?:number;maxHeight?:number;aspectRatio?:number}={};
+      for(const screen of ["base","tablet","mobile"] as const){
+        limits={...limits,...style.data[screen]?.constraints};
+        const minW=limits.minWidth??8,maxW=limits.maxWidth??9999,minH=limits.minHeight??8,maxH=limits.maxHeight??9999,r=limits.aspectRatio;
+        if(minW>maxW||minH>maxH||r!==undefined&&Math.max(minH,minW/r)>Math.min(maxH,maxW/r))add(`${path}.style.${screen}.constraints`,"The effective size constraints conflict");
+      }
+    }
     if (style && !style.success) for (const i of style.error.issues) add(`${path}.style.${i.path.map(String).join(".")}`, i.message);
     if (raw.name !== undefined && (typeof raw.name !== "string" || raw.name.length > 60)) add(`${path}.name`, "A name is up to 60 characters");
     const motion = raw.motion === undefined || raw.motion === null ? undefined : NodeMotion.safeParse(raw.motion);

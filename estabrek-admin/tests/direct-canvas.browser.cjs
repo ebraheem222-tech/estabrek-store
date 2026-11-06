@@ -268,6 +268,10 @@ async function safety(browser) {
   const out = { name: "rotated-holder-safety", checks: [] };
   results.scenarios.push(out);
   try {
+    // A rotated flat holder is supported now; an explicit nonflattened 3D
+    // context remains outside the plane-editing contract.
+    await frame.locator('[data-tree-node="canvas-parent"]').evaluate(el=>el.style.transformStyle="preserve-3d");
+    await expect.poll(()=>page.evaluate(()=>window.__canvasHarness.getLayout()?.items.find(item=>item.id==="canvas-image")?.geometry?.unsupported)).toBe(true);
     await page.getByTestId("studio-tab-layers").click();
     await page.locator('[data-testid="studio-layer"][data-node="canvas-image"]').click();
     await expect(page.getByTestId("studio-info")).toContainText("canvas-image");
@@ -295,10 +299,73 @@ async function safety(browser) {
       assert.equal(await writes(page), 0, `unsupported ${mode} gesture does not save guessed coordinates`);
       sameBox(await box(frame, "canvas-image"), current, `unsupported ${mode} gesture`);
     }
-    out.checks.push("placed objects under rotated holders cannot save guessed free coordinates in either canvas mode");
+    out.checks.push("unsupported nonflattened 3D contexts cannot save guessed coordinates in either canvas mode");
     out.status = "passed";
     out.writes = await writes(page);
   } finally { await context.close(); }
+}
+
+async function analyticEngine(browser,kind="rotated") {
+  const {page,context,frame}=await open(browser,"en",{objectPlaced:1,ancestorRotation:kind==="nonuniform"?0:24,...(kind==="perspective"?{objectTilt:35}:{})});
+  const out={name:`analytic-${kind}`,checks:[]};results.scenarios.push(out);
+  const geometry=()=>page.evaluate(()=>window.__canvasHarness.getLayout()?.items.find(item=>item.id==="canvas-image")?.geometry);
+  const point=async(u,v)=>{const data=await geometry(),m=data.plane.matrix,w=data.plane.w,h=data.plane.h;const x=u*w,y=v*h,q=m[6]*x+m[7]*y+m[8];return {x:(m[0]*x+m[1]*y+m[2])/q,y:(m[3]*x+m[4]*y+m[5])/q};};
+  const resized=async()=>{
+    const fixed=await point(0,0),h=await page.locator('[data-testid="studio-handle"][data-handle="se"]').boundingBox();assert.ok(h,"projected SE handle exists");
+    const before=await writes(page);await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(h.x+h.width/2+44,h.y+h.height/2+32,{steps:12});await page.mouse.up();await mutation(page,before,"analytic resize commits once");
+    const after=await point(0,0);close(after.x,fixed.x,.7,"fixed projected corner x");close(after.y,fixed.y,.7,"fixed projected corner y");
+    return before;
+  };
+  try {
+    if(kind==="nonuniform"){
+      await frame.locator('[data-tree-node="canvas-parent"]').evaluate(el=>el.style.transform="matrix(1.1,0.25,0.3,0.85,0,0)");
+      await expect.poll(()=>page.evaluate(()=>window.__canvasHarness.getLayout()?.items.find(item=>item.id==="canvas-image")?.parentScale)).toBeNull();
+    }
+    await page.getByTestId("studio-tab-layers").click();await page.locator('[data-testid="studio-layer"][data-node="canvas-image"]').click();
+    await expect(page.getByTestId("studio-plane-outline")).toBeVisible();await page.waitForTimeout(350);
+    await frame.locator("html").evaluate(()=>{window.__analyticNonce="kept";});
+    await resized();out.checks.push("projected local handles resize inside the real transformed holder with a fixed opposite corner");
+    await travel(page,"undo");close((await geometry()).plane.w,180,.2,"undo restores local width");
+    out.checks.push("undo restores local geometry while keeping the iframe document");
+    if(kind==="rotated"){
+      let before=await writes(page);await page.getByTestId("studio-movement-horizontal").click();await mutation(page,before,"persistent horizontal mode saves");
+      const oldLayer=(await model(page,"canvas-image")).node.style.base.layer;
+      const startDoc=await point(.95,.5),scroll=await frame.locator("html").evaluate(()=>window.scrollY),from=await screen(page,{x:startDoc.x,y:startDoc.y-scroll});
+      before=await writes(page);await page.keyboard.down("Control");await page.mouse.move(from.x,from.y);await page.mouse.down();await page.mouse.move(from.x+68,from.y+54,{steps:12});await page.mouse.up();await page.keyboard.up("Control");await mutation(page,before,"holder-local horizontal movement");
+      const layer=(await model(page,"canvas-image")).node.style.base.layer;close(layer.y,oldLayer.y,.00001,"horizontal lock keeps local y");assert.ok(Math.abs(layer.x-oldLayer.x)>1,"horizontal motion changes local x");
+      before=await writes(page);await page.keyboard.press("Alt+ArrowDown");await page.waitForTimeout(650);assert.equal(await writes(page),before,"keyboard cannot bypass horizontal lock");
+      out.checks.push("horizontal motion follows the holder's rotated axis and keyboard cannot move the locked axis");
+      before=await writes(page);await page.getByTestId("constraint-maxWidth").fill("200");await page.getByTestId("constraint-maxWidth").press("Enter");await mutation(page,before,"size constraint saves");
+      await resized();assert.ok((await geometry()).plane.w<=200.1,"required max width caps direct resize");
+      out.checks.push("required size limits persist and constrain the real resize");
+      await page.locator('[data-testid="studio-layer"][data-node="canvas-button"]').click();before=await writes(page);await page.getByTestId("studio-movement-horizontal").click();await mutation(page,before,"second constrained keyboard target saves");
+      await page.locator('[data-testid="studio-layer"][data-node="canvas-image"]').click();const originalX=(await model(page,"canvas-image")).node.style.base.layer.x;
+      before=await writes(page);await page.keyboard.press("Alt+ArrowRight");await page.locator('[data-testid="studio-layer"][data-node="canvas-button"]').click();await page.keyboard.press("Alt+ArrowRight");await mutation(page,before,"switching nudge target saves only the current selection");
+      close((await model(page,"canvas-image")).node.style.base.layer.x,originalX,.000001,"cancelled nudge never changes the earlier selection");
+      out.checks.push("changing selection cancels a pending keyboard gesture instead of moving the previous object");
+    }
+    assert.equal(await frame.locator("html").evaluate(()=>window.__analyticNonce),"kept","analytic edits keep preview document identity");
+    out.status="passed";out.writes=await writes(page);
+  }catch(error){out.geometry=await geometry();out.model=await model(page,"canvas-image");await page.screenshot({path:path.join(OUTPUT_DIR,`analytic-${kind}-failure.png`),fullPage:true});throw error;}
+  finally{await context.close();}
+}
+
+async function constrainedTransfer(browser){
+ const {page,context,frame}=await open(browser,"en",{constrained:1});const out={name:"constrained-free-transfer",checks:[]};results.scenarios.push(out);
+ try{const outside=await box(frame,"canvas-outside");await drag(page,frame,"canvas-image",{x:outside.x+outside.w*.65,y:outside.y+outside.h*.55},"a constrained free object can still change containers");assert.equal((await model(page,"canvas-image")).parentId,"canvas-outside");assert.equal((await model(page,"canvas-image")).node.style.base.constraints.minWidth,100);out.checks.push("size constraints preserve representable free reparenting");out.status="passed";}finally{await context.close();}
+}
+
+async function analyticGroup(browser,tilted=false){
+ const {page,context,frame}=await open(browser,"en",{ancestorRotation:24,percentageGroup:1,...(tilted?{groupTilt:30}:{})});const out={name:tilted?"analytic-group-perspective":"analytic-group-intrinsic",checks:[]};results.scenarios.push(out);
+ const geometry=()=>page.evaluate(()=>window.__canvasHarness.getLayout()?.items.find(item=>item.id==="canvas-inner")?.geometry?.plane);
+ const fixed=async()=>{const g=await geometry(),m=g.matrix,x=0,y=g.h/2,w=m[6]*x+m[7]*y+m[8];return{x:(m[0]*x+m[1]*y+m[2])/w,y:(m[3]*x+m[4]*y+m[5])/w};};
+ try{
+  await page.getByTestId("studio-tab-layers").click();await page.locator('[data-testid="studio-layer"][data-node="canvas-inner"]').click();await page.getByTestId("studio-scale-contents").check();await page.waitForTimeout(350);
+  const before=await geometry(),beforeStyle=(await model(page,"canvas-inner")).node.style.base,child=await box(frame,"canvas-inner-label"),anchor=await fixed(),h=await page.locator('[data-testid="studio-handle"][data-handle="e"]').boundingBox();assert.ok(h);
+  const count=await writes(page);await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(h.x+h.width/2+58,h.y+h.height/2+26,{steps:12});await page.mouse.up();await mutation(page,count,"transformed intrinsic content scaling");
+  const after=await geometry(),afterStyle=(await model(page,"canvas-inner")).node.style.base,afterAnchor=await fixed();close(after.w,before.w,.1,"group raw width stays intrinsic");close(after.h,before.h,.1,"group raw height stays intrinsic");assert.equal(afterStyle.layer,beforeStyle.layer);assert.equal(afterStyle.width,beforeStyle.width);assert.equal(afterStyle.height,beforeStyle.height);assert.ok(afterStyle.scale>1.05);close(afterAnchor.x,anchor.x,.7,"group fixed edge x");close(afterAnchor.y,anchor.y,.7,"group fixed edge y");assert.ok((await box(frame,"canvas-inner-label")).w>child.w*1.05,"nested content grows with the group");
+  await travel(page,"undo");close((await box(frame,"canvas-inner-label")).w,child.w,.7,"undo restores descendant size");out.checks.push("content scaling preserves transformed group's intrinsic context, descendants and fixed edge and undoes once");out.status="passed";
+ }finally{await context.close();}
 }
 
 async function groupScale(browser, lang) {
@@ -645,7 +712,7 @@ async function rtlTouch(browser) {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   const browser = await chromium.launch({ channel: process.env.CANVAS_BROWSER_CHANNEL || "chrome", headless: true });
   try {
-    const selected = (process.env.CANVAS_SCENARIOS || "flow-return,desktop,rtl-touch,scaled,transfer,safety,group,intrinsic,autowidth,live-preview").split(",");
+    const selected = (process.env.CANVAS_SCENARIOS || "flow-return,desktop,rtl-touch,scaled,transfer,safety,group,intrinsic,autowidth,live-preview,analytic").split(",");
     if (selected.includes("flow-return")) await flowReturn(browser);
     if (selected.includes("desktop")) await desktop(browser);
     if (selected.includes("rtl-touch")) await rtlTouch(browser);
@@ -656,6 +723,8 @@ async function rtlTouch(browser) {
     if (selected.includes("intrinsic")) { await intrinsicGroup(browser, false); await intrinsicGroup(browser, true); }
     if (selected.includes("autowidth")) await autoWidthGroup(browser);
     if (selected.includes("live-preview")) await livePreview(browser);
+    if(selected.includes("analytic")){await analyticEngine(browser);await analyticEngine(browser,"nonuniform");await analyticEngine(browser,"perspective");await constrainedTransfer(browser);await analyticGroup(browser);await analyticGroup(browser,true);}
+    if(selected.includes("analytic-group")){await analyticGroup(browser);await analyticGroup(browser,true);}
     assert.deepEqual(results.errors, [], "no runtime errors or external writes");
     results.status = "passed";
   } catch (error) {

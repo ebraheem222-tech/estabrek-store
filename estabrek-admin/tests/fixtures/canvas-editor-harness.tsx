@@ -34,7 +34,10 @@ const variant = {
   ancestorScale: variantScale("ancestorScale"), ancestorOrigin: variantOrigin("ancestorOrigin"),
   objectScale: variantScale("objectScale"), objectOrigin: variantOrigin("objectOrigin"),
   ancestorRotation: Math.max(-180, Math.min(180, Number(query.get("ancestorRotation")) || 0)),
+  objectTilt: Math.max(-75,Math.min(75,Number(query.get("objectTilt"))||0)),
   objectPlaced: query.get("objectPlaced") === "1",
+  constrained: query.get("constrained")==="1",
+  groupTilt:Math.max(-75,Math.min(75,Number(query.get("groupTilt"))||0)),
   percentageGroup: query.get("percentageGroup") === "1",
   groupPlaced: query.get("groupPlaced") === "1",
   autoWidthGroup: query.get("autoWidthGroup") === "1",
@@ -74,6 +77,8 @@ if (variant.objectScale !== 1 || variant.objectOrigin !== "center") {
   objectFixture.style!.base = { ...objectFixture.style!.base as Record<string, unknown>, scale: variant.objectScale, origin: variant.objectOrigin };
 }
 if (variant.objectPlaced) objectFixture.style!.base = { ...objectFixture.style!.base as Record<string, unknown>, layer: { x: 30, y: 20, anchor: "top-start" } };
+if(variant.objectTilt)objectFixture.style!.base={...objectFixture.style!.base as Record<string,unknown>,rotateY:variant.objectTilt,rotateX:12,perspective:900};
+if(variant.constrained)objectFixture.style!.base={...objectFixture.style!.base as Record<string,unknown>,constraints:{minWidth:100}};
 if (variant.percentageGroup) {
   const inner = parentFixture.children![2];
   inner.style = { base: { width: "400px", pad: [24,24,24,24], gap: 16, align: "start", bg: "#bfdbfe", ...(variant.groupPlaced ? { layer: { x: 20, y: 20, anchor: "top-start" } } : {}) } };
@@ -81,6 +86,7 @@ if (variant.percentageGroup) {
     { id: "canvas-inner-label", type: "stack", props: {}, style: { base: { width: "100%", height: "100%", gap: 0 } }, children: [1,2].map(i => ({ id: `percentage-line-${i}`, type: "text", props: { text: text(`Line ${i}`) }, style: { base: { height: "30px", size: 20, lineHeight: 1.5 } } })) },
     { id: "percentage-spacer", type: "spacer", props: {}, style: { base: { height: "60px" } } },
   ];
+  if(variant.groupTilt)inner.style.base={...inner.style.base as Record<string,unknown>,rotateY:variant.groupTilt,rotateX:12,perspective:900};
 }
 if (variant.autoWidthGroup) {
   parentFixture.style!.base = { ...parentFixture.style!.base as Record<string, unknown>, width: "500px", minHeight: "600px" };
