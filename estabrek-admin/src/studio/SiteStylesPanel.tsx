@@ -16,7 +16,7 @@ const btn = "rounded-lg bg-white/[0.06] px-2 py-1 text-xs hover:bg-white/[0.1] d
 const control = "w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2 py-1.5 text-xs text-white";
 
 /** The shared styles as the editor changes them: the draft (or the published ones), with undo for this visit. */
-export function useSiteStyles(onSaved: () => void) {
+export function useSiteStyles(onSaved: () => void | Promise<void>) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["site-styles"], queryFn: getSiteStyles, staleTime: 30_000 });
   const [past, setPast] = useState<SiteStyle[][]>([]);
@@ -26,7 +26,7 @@ export function useSiteStyles(onSaved: () => void) {
     setBusy(true);
     try {
       qc.setQueryData(["site-styles"], await fn());
-      onSaved();
+      await onSaved();
       return true;
     } catch (e) {
       toast.error(failed, { description: getApiErrorMessage(e) });

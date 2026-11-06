@@ -8,7 +8,7 @@
  * Messages go to, and come from, the admin addresses it is given only. The 3D stage's
  * messages (type "stage…") pass on to the stage through studioLink.
  */
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { studioLink } from "./studioLink";
 import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle, type TreeNode } from "./tree";
 import { nodeCss, siteTarget } from "./css";
@@ -48,6 +48,7 @@ export type StudioLayout = {
   source: typeof STUDIO_SOURCE;
   type: "layout";
   pageId: string;
+  viewVersion?: string;
   lang: string;
   dir: string;
   viewport: { w: number; h: number };
@@ -285,7 +286,9 @@ function ownedElement(owner: string, path?: string, part?: string, n?: number): 
   return host;
 }
 
-export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pageId: string; lang: string }) {
+export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: string[]; pageId: string; lang: string; onRefresh?: (requestId: string, origin: string) => void }) {
+  const refresh = useRef(onRefresh);
+  refresh.current = onRefresh;
   useEffect(() => {
     if (window.parent === window || !origins.length) return;
     const send = (msg: Record<string, unknown>) => {
@@ -304,6 +307,7 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       const msg: Omit<StudioLayout, "source"> = {
         type: "layout",
         pageId,
+        viewVersion: document.querySelector<HTMLElement>("[data-studio-view-version]")?.dataset.studioViewVersion,
         lang,
         dir: document.documentElement.dir || "rtl",
         viewport: { w: window.innerWidth, h: window.innerHeight },
@@ -317,6 +321,27 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
     const now = () => {
       if (!frame) frame = requestAnimationFrame(measure);
     };
+    const previewProperties = new Map<HTMLElement, Map<string, { value: string; priority: string }>>();
+    const previewProperty = (el: HTMLElement, name: string, value: string) => {
+      let properties = previewProperties.get(el);
+      if (!properties) { properties = new Map(); previewProperties.set(el, properties); }
+      if (!properties.has(name)) properties.set(name, { value: el.style.getPropertyValue(name), priority: el.style.getPropertyPriority(name) });
+      el.style.setProperty(name, value);
+    };
+    const restoreLookPreviews = () => {
+      for (const [el, properties] of previewProperties) for (const [name, before] of properties) {
+        if (before.value) el.style.setProperty(name, before.value, before.priority);
+        else el.style.removeProperty(name);
+      }
+      previewProperties.clear();
+    };
+    const restoreStylePreview = () => {
+      document.querySelectorAll<HTMLElement>("[data-pt-preview]").forEach(el => {
+        el.classList.remove("pt-pv"); el.classList.add(`pt-${el.dataset.ptPreview}`); el.removeAttribute("data-pt-preview");
+      });
+      document.getElementById("pt-look-preview")?.remove();
+    };
+    const viewCommitted = () => { restoreLookPreviews(); restoreStylePreview(); studioLink.emit({type:"motionLayout"}); now(); };
     const soon = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(now, 120);
@@ -503,11 +528,17 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
     };
     const onMessage = (e: MessageEvent) => {
       if (!origins.includes(e.origin)) return;
-      const d = e.data as { source?: string; type?: string; dx?: number; dy?: number; y?: number; nodeId?: string; sectionId?: string; path?: string; value?: string; block?: string; owner?: string; part?: string; n?: number } | null;
+      const d = e.data as { source?: string; type?: string; requestId?: string; dx?: number; dy?: number; y?: number; nodeId?: string; sectionId?: string; path?: string; value?: string; block?: string; owner?: string; part?: string; n?: number } | null;
       if (!d || d.source !== STUDIO_SOURCE) return;
+      if (d.type === "refreshView") {
+        if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
+        refresh.current?.(d.requestId, e.origin);
+        return;
+      }
       if (typeof d.type === "string" && (d.type.startsWith("stage") || d.type.startsWith("motion"))) return studioLink.emit(d as Record<string, unknown>);
       // A drag/resize draws only safe geometry over the element's existing rules.
       if (d.type === "previewGeometry") {
+        letGo();
         document.getElementById("pt-geometry-preview")?.remove();
         const nodes = geometryPreviewNodes((e.data as { nodes?: unknown }).nodes).filter((node) => document.querySelector(`[data-tree-node="${node.id}"]`));
         const css = geometryPreviewCss(nodes);
@@ -523,27 +554,23 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
       // A look tried on a part of an old section or scene: every element it names.
       const target = (e.data as { target?: unknown }).target;
       if (d.type === "previewLook" && (d.nodeId || typeof target === "string")) {
+        letGo();
         const sel = typeof target === "string" ? lookSelector(target) : null;
         const els = d.nodeId ? [document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(d.nodeId)}"]`)] : sel ? Array.from(document.querySelectorAll<HTMLElement>(sel)) : [];
         const vars = (e.data as { vars?: Record<string, unknown> }).vars ?? {};
         for (const el of els) {
           if (!el) continue;
-          el.style.transform = TREE_TRANSFORM;
+          previewProperty(el, "transform", TREE_TRANSFORM);
           for (const [k, v] of Object.entries(vars)) {
-            if (k === "opacity" && typeof v === "number" && v >= 0 && v <= 1) el.style.opacity = String(v);
-            else if ((PREVIEW_VARS as readonly string[]).includes(k) && typeof v === "string" && /^-?\d{1,4}(\.\d{1,3})?(px|deg)?$/.test(v)) el.style.setProperty(k, v);
+            if (k === "opacity" && typeof v === "number" && v >= 0 && v <= 1) previewProperty(el, k, String(v));
+            else if ((PREVIEW_VARS as readonly string[]).includes(k) && typeof v === "string" && /^-?\d{1,4}(\.\d{1,3})?(px|deg)?$/.test(v)) previewProperty(el, k, v);
           }
         }
         return now();
       }
       // A ready look shown on an element before it's picked: its own rules leave it while the look's are drawn (null: as it was).
       if (d.type === "previewStyle") {
-        document.querySelectorAll<HTMLElement>("[data-pt-preview]").forEach((el) => {
-          el.classList.remove("pt-pv");
-          el.classList.add(`pt-${el.dataset.ptPreview}`);
-          el.removeAttribute("data-pt-preview");
-        });
-        document.getElementById("pt-look-preview")?.remove();
+        restoreStylePreview();
         const node = (e.data as { node?: unknown }).node as TreeNode | null | undefined;
         const id = node && typeof node === "object" && typeof node.id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(node.id) ? node.id : null;
         const el = id ? document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(id)}"]`) : null;
@@ -615,6 +642,7 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
     };
 
     window.addEventListener("message", onMessage);
+    window.addEventListener("studio-view-commit", viewCommitted);
     window.addEventListener("scroll", now, { passive: true });
     window.addEventListener("resize", now);
     window.addEventListener("load", now);
@@ -631,12 +659,14 @@ export function StudioBridge({ origins, pageId, lang }: { origins: string[]; pag
     // Fonts and pictures can move things without a change the observers see: look again a few times.
     const settle = [300, 1000, 2500, 5000].map((ms) => window.setTimeout(now, ms));
     studioLink.open(send);
-    send({ type: "ready", pageId, lang });
+    send({ type: "ready", pageId, lang, liveView: Boolean(refresh.current) });
     now();
     return () => {
       studioLink.open(null);
       document.getElementById("pt-geometry-preview")?.remove();
       window.removeEventListener("message", onMessage);
+      window.removeEventListener("studio-view-commit", viewCommitted);
+      restoreLookPreviews(); restoreStylePreview();
       window.removeEventListener("keydown", keys);
       window.removeEventListener("scroll", now);
       window.removeEventListener("resize", now);

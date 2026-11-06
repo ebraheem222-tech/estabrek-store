@@ -218,7 +218,7 @@ export const slotId = (sectionId: string, path: string) => `slot:${sectionId}:${
 export const blockId = (index: TreeIndex, block: string) => (index.nodes.has(`rb-${block}`) ? `rb-${block}` : `block:${block}`);
 /** A field's id: its section's, or its scene's. */
 const fieldId = (owner: string, path: string) => (owner.startsWith("b:") ? `bslot:${owner.slice(2)}:${path}` : slotId(owner.slice(2), path));
-export type BridgeLayout = { pageId: string; lang: string; dir: string; viewport: { w: number; h: number }; scroll: Pt; doc: { w: number; h: number }; items: BridgeItem[] };
+export type BridgeLayout = { pageId: string; viewVersion?: string; lang: string; dir: string; viewport: { w: number; h: number }; scroll: Pt; doc: { w: number; h: number }; items: BridgeItem[] };
 
 /**
  * Every measured thing as a screen shape: tree nodes, old sections, the rose scenes, and

@@ -40,6 +40,7 @@ import { ROSE_ID, currentStoreTheme, listStoreThemes, saveStoreTheme, withOwnedT
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
+import { PreviewRefresh, PreviewRefreshCancelled } from "./previewRefresh";
 import { sendDraftBatches, travelDraftHistory, type HistoryDirection } from "./draftBatches";
 import { MotionProfileFields } from "./MotionProfileFields";
 import { pageMotionOps, type MotionProfile } from "./motionProfiles";
@@ -193,6 +194,7 @@ export default function StudioPage() {
   const [sheet, setSheet] = useState(false); // phones: the layers list as a sheet
   const [busy, setBusy] = useState(false);
   const [frameKey, setFrameKey] = useState(0);
+  const liveView = useRef(false);
   // Words being written in the frame: a field of an old section or scene, or a tree element's words.
   const [editing, setEditing] = useState<{ sectionId: string; path: string } | { nodeId: string } | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -299,9 +301,16 @@ export default function StudioPage() {
   const shownTheme = themePreview ?? (themeMode ? currentTheme : null);
   const theme = shownTheme ? `&storeTheme=${encodeURIComponent(shownTheme)}${themeMode ? `&themeMode=${themeMode}` : ""}` : "";
   const src = ticket && origin ? `${origin}${shopLang === langs.default ? "" : `/${shopLang}`}/studio-frame?token=${encodeURIComponent(ticket.token)}${theme}` : "";
+  const viewRefresh = useMemo(() => new PreviewRefresh(requestId => {
+    const target = frameRef.current?.contentWindow;
+    if (!target) throw new Error("Preview unavailable");
+    target.postMessage({ source: SOURCE, type: "refreshView", requestId }, origin);
+  }), [origin, src, frameKey]);
+  useEffect(() => { viewRefresh.activate(); return () => viewRefresh.dispose(); }, [viewRefresh]);
 
   // What the shop's bridge says.
   useEffect(() => {
+    liveView.current = false;
     setLayout(null);
     setSilent(false);
     const quiet = window.setTimeout(() => setSilent(true), 20_000);
@@ -310,7 +319,14 @@ export default function StudioPage() {
       if (e.origin !== origin || e.source !== frameRef.current?.contentWindow) return;
       const d = e.data as (BridgeLayout & { source?: string; type?: string }) | null;
       if (!d || d.source !== SOURCE) return;
-      if (d.type === "layout") {
+      if (d.type === "ready") {
+        liveView.current = (d as unknown as { liveView?: boolean }).liveView === true;
+      } else if (d.type === "viewUpdated") {
+        const requestId = (d as unknown as { requestId?: unknown }).requestId;
+        if (typeof requestId === "string") viewRefresh.acknowledge(requestId);
+      } else if (d.type === "motionStateRequest") {
+        frameRef.current?.contentWindow?.postMessage({source:SOURCE,type:"motionLive",on:liveRef.current},origin);
+      } else if (d.type === "layout") {
         window.clearTimeout(quiet);
         setLayout(d);
         // Back where it was after the frame reloaded with a change; then a new or moved element comes into view.
@@ -349,7 +365,7 @@ export default function StudioPage() {
       window.removeEventListener("message", onMessage);
       window.clearTimeout(quiet);
     };
-  }, [src, origin, frameKey]);
+  }, [src, origin, frameKey, viewRefresh]);
 
   const send = useCallback(
     (msg: Record<string, unknown>) => frameRef.current?.contentWindow?.postMessage({ source: SOURCE, ...msg }, origin),
@@ -404,13 +420,27 @@ export default function StudioPage() {
 
   /* ------------------------------------------------------------ changes */
 
-  const reload = () => {
-    keepScroll.current = layout?.scroll.y ?? 0;
-    setFrameKey((k) => k + 1);
+  const reload = async () => {
+    // Compatibility with a frame opened before the live-view protocol was deployed.
+    if (!liveView.current) {
+      keepScroll.current = layout?.scroll.y ?? 0;
+      setFrameKey(k => k + 1);
+      return;
+    }
+    try {
+      await viewRefresh.refresh();
+      if (playNext.current) {
+        send({ type: "motionPlay", nodeId: playNext.current });
+        playNext.current = null;
+      }
+    } catch (error) {
+      if (error instanceof PreviewRefreshCancelled) return;
+      toast.error(tr("التغيير محفوظ، لكن تحديث المعاينة تعذّر. جرّب زر تحديث المعاينة.", "The change is saved, but the preview could not update. Try Refresh preview."), { description: getApiErrorMessage(error), durationMs: 7000 });
+    }
   };
   /** Sends changes to the draft; records how to undo them unless it is an undo/redo itself. */
-  // The shared styles: each saved change reloads the frame, whose preview shows the draft.
-  const ss = useSiteStyles(() => reload());
+  // The shared-style draft also reconciles inside the existing preview document.
+  const ss = useSiteStyles(reload);
   const run = (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; travel?: HistoryDirection } = {}) => {
     const next = queue.current.then(() => runNow(label, ops, opts));
     queue.current = next.catch(() => {});
@@ -434,17 +464,17 @@ export default function StudioPage() {
         await sendDraftBatches(ops, at, sendBatch, onApplied);
         history.current.push({ label, ops, undo: undoOf(ops, at, main) });
       }
-      if (opts.reload !== false) reload();
+      if (opts.reload !== false) await reload();
       return true;
     } catch (e) {
       // A later batch may fail after earlier ones were saved: those still have an undo.
       if (applied.length) {
         if (!opts.travel) history.current.push({ label, ops: applied, undo: undoOf(applied, at, main) });
-        reload();
+        await reload();
       }
       if (statusOf(e) === 409) {
         await draftQ.refetch();
-        reload();
+        await reload();
         toast.error(tr("المسودة تغيّرت من شاشة ثانية: رجعنا حمّلناها", "The draft changed in another window: it was loaded again"));
       } else toast.error(tr("ما انحفظ التغيير", "The change wasn't saved"), { description: getApiErrorMessage(e) });
       return false;
@@ -988,7 +1018,7 @@ export default function StudioPage() {
       const [, kind, id] = stateTarget.split(":");
       send({ type: "previewState", state: styleState, style: { id, kind } });
     } else send({ type: "previewState", state: styleState, ...(stateTarget.startsWith("t:") ? { target: stateTarget.slice(2) } : { nodeId: stateTarget.slice(2) }) });
-  }, [stateTarget, styleState, frameReady, send]);
+  }, [stateTarget, styleState, frameReady, layout?.viewVersion, send]);
   const selSiblings = selNode?.parentId ? index?.nodes.get(selNode.parentId)?.children ?? [] : [];
   const selPos = selected ? selSiblings.indexOf(selected) : -1;
   /** Sends changes; selects `then` once they're saved. */
@@ -998,6 +1028,7 @@ export default function StudioPage() {
     setSelected(then);
     setMore([]);
     revealNext.current = then;
+    if (then) send({ type: "reveal", nodeId: then });
   };
   const probe = (kind: AddKind): PagesAPI.PageTreeNode => {
     const n = makeNode(kind, shopLang, (p) => `__${p}`);
@@ -1677,7 +1708,7 @@ export default function StudioPage() {
   const inspector = () => {
     if (leftTab === "styles" && siteOpen) return siteInspector();
     if (themeOpen) {
-      return <ThemePanel themes={withOwnedTheme(themesQ.data ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} onPreview={(t) => { setThemePreview(t); setThemeMode(null); }} onMode={setThemeMode} saving={themeSaving} onSave={() => setAsking({ kind: "theme" })} />;
+      return <ThemePanel themes={withOwnedTheme(themesQ.data ?? [], settings.data?.header)} failed={themesQ.isError} current={currentTheme} preview={themePreview} mode={themeMode} onPreview={(t) => { if (busy) return; setThemePreview(t); setThemeMode(null); }} onMode={(mode) => { if (!busy) setThemeMode(mode); }} saving={themeSaving || busy} onSave={() => setAsking({ kind: "theme" })} />;
     }
     if (!selected || !index) {
       return (
@@ -2280,7 +2311,7 @@ export default function StudioPage() {
 
   return (
     <StoreKitContext.Provider value={storeKit}>
-    <Shell>
+    <Shell busy={busy}>
       <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-3 py-2">
         <Link to="/admin/pages" className="rounded-lg px-2 py-1 text-xs text-white/60 hover:bg-white/[0.06] hover:text-white">
           <span className="inline-block ltr:-scale-x-100">→</span> {tr("الصفحات", "Pages")}
@@ -2315,7 +2346,7 @@ export default function StudioPage() {
         ) : null}
         <div className="ms-auto flex flex-wrap items-center gap-1" role="group" aria-label={tr("حجم الشاشة", "Screen size")}>
           {(Object.keys(DEVICES) as Device[]).map((k) => (
-            <button key={k} type="button" onClick={() => setDevice(k)} aria-pressed={device === k} className={`rounded-lg px-2 py-1 text-xs ${device === k ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/[0.06]"}`}>
+            <button key={k} type="button" disabled={busy} onClick={() => setDevice(k)} aria-pressed={device === k} className={`rounded-lg px-2 py-1 text-xs ${device === k ? "bg-accent-500/25 text-white" : "text-white/60 hover:bg-white/[0.06]"}`}>
               {DEVICES[k].label()}
             </button>
           ))}
@@ -2323,7 +2354,7 @@ export default function StudioPage() {
         {langs.enabled.length > 1 ? (
           <div className="flex items-center gap-1" role="group" aria-label={tr("لغة الصفحة", "Page language")}>
             {langs.enabled.map((l) => (
-              <button key={l} type="button" onClick={() => setLang(l)} aria-pressed={shopLang === l} className={`rounded-lg px-2 py-1 text-xs ${shopLang === l ? "bg-white/[0.12] text-white" : "text-white/55 hover:bg-white/[0.06]"}`}>
+              <button key={l} type="button" disabled={busy} onClick={() => setLang(l)} aria-pressed={shopLang === l} className={`rounded-lg px-2 py-1 text-xs ${shopLang === l ? "bg-white/[0.12] text-white" : "text-white/55 hover:bg-white/[0.06]"}`}>
                 {LANG_NAME[l]}
               </button>
             ))}
@@ -2334,6 +2365,7 @@ export default function StudioPage() {
           {([["free", tr("تحريك حر", "Free move")], ["flow", tr("ترتيب", "Flow layout")]] as const).map(([mode, label]) => <button key={mode} type="button" disabled={busy} aria-pressed={canvasMode === mode} className={`h-7 rounded px-2 text-xs ${canvasMode === mode ? "bg-accent-500/30 text-white" : "text-white/60"}`} data-testid={`studio-canvas-mode-${mode}`} onClick={() => { cancelDrag(); setCanvasMode(mode); saveCanvasMode(mode); }}>{label}</button>)}
         </div>
         <div className="flex items-center gap-1" dir="ltr">
+          <button type="button" disabled={busy || !layout} onClick={() => void reload()} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/[0.06] disabled:opacity-30" aria-label={tr("تحديث المعاينة", "Refresh preview")} data-testid="studio-refresh-view">↻</button>
           <button type="button" onClick={() => zoomBy(1 / 1.25)} className="h-7 w-7 rounded-lg text-white/70 hover:bg-white/[0.06]" aria-label={tr("تصغير", "Zoom out")}>−</button>
           <button type="button" onClick={fit} className="min-w-[3.5rem] rounded-lg px-1 text-xs text-white/80 hover:bg-white/[0.06]" title={tr("ملاءمة (Ctrl+0)", "Fit (Ctrl+0)")} data-testid="studio-zoom">
             {Math.round(zoom * 100)}%
@@ -2788,9 +2820,9 @@ export default function StudioPage() {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, busy = false }: { children: React.ReactNode; busy?: boolean }) {
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-surface-950 text-white" dir={isRtl(adminLang()) ? "rtl" : "ltr"} data-testid="studio">
+    <div className="fixed inset-0 z-40 flex flex-col bg-surface-950 text-white" dir={isRtl(adminLang()) ? "rtl" : "ltr"} data-testid="studio" data-busy={busy ? "1" : "0"}>
       {children}
     </div>
   );

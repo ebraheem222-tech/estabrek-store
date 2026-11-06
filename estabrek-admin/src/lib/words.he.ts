@@ -4873,4 +4873,6 @@ export const HE: Record<string, string> = {
   "Use the layout controls for 3D objects or objects inside rotated containers.": "השתמשו בהגדרות הפריסה עבור פריטי תלת־ממד או פריטים בתוך מכלים מסובבים.",
   "Scale contents with the container": "שינוי גודל התוכן יחד עם המכל",
   "All nested objects and text grow and shrink in proportion. Turn off to resize only the container frame.": "כל הפריטים והטקסט המקוננים גדלים וקטנים באותו יחס. כבו כדי לשנות רק את מסגרת המכל.",
+  "Refresh preview": "רענון תצוגה מקדימה",
+  "The change is saved, but the preview could not update. Try Refresh preview.": "השינוי נשמר, אך התצוגה המקדימה לא התעדכנה. נסו לרענן את התצוגה המקדימה.",
 };

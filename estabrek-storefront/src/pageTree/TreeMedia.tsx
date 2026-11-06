@@ -13,6 +13,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { particleOptions, type ParticleSpec } from "./particles";
+import { ViewRuntimeRegistry, viewTargets } from "./viewRuntime";
 
 type Stop = () => void;
 /** Whether this page's run is still on (a player loaded after it ended is never started). */
@@ -139,16 +140,25 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
     const studio = window.parent !== window && /\/studio-frame/.test(window.location.pathname);
     const stops: Stop[] = [];
     let dead = false;
-    const all = <T extends HTMLElement>(sel: string) => Array.from(document.querySelectorAll<T>(sel));
-    const lottieEls = all<HTMLCanvasElement>("canvas[data-pt-lottie]");
-    const riveEls = all<HTMLCanvasElement>("canvas[data-pt-rive]");
-    const particleEls = still ? [] : all<HTMLElement>("[data-pt-particles]");
     const live = () => !dead;
     // A player that fails to load leaves its element as the page drew it.
     const keep = (p: Promise<void>) => void p.catch(() => undefined);
-    if (lottieEls.length) keep(lotties(lottieEls, still, stops, live));
-    if (riveEls.length) keep(rives(riveEls, still, stops, live));
-    if (particleEls.length) keep(particles(particleEls, stops, live));
+    const players = new ViewRuntimeRegistry(({ node }) => {
+      const playerStops: Stop[] = [];
+      let active = true;
+      const playerLive = () => !dead && active && node.isConnected;
+      if (node.matches("canvas[data-pt-lottie]")) keep(lotties([node as HTMLCanvasElement], still, playerStops, playerLive));
+      else if (node.matches("canvas[data-pt-rive]")) keep(rives([node as HTMLCanvasElement], still, playerStops, playerLive));
+      else keep(particles([node as HTMLElement], playerStops, playerLive));
+      return () => { active = false; playerStops.splice(0).forEach(stop => stop()); };
+    });
+    const reconcile = () => players.reconcile([
+      ...viewTargets(document, "canvas[data-pt-lottie]", ["data-pt-lottie"]),
+      ...viewTargets(document, "canvas[data-pt-rive]", ["data-pt-rive"]),
+      ...(still ? [] : viewTargets(document, "[data-pt-particles]", ["data-pt-particles", "$color"])),
+    ]);
+    reconcile();
+    if (studio) window.addEventListener("studio-view-updated", reconcile);
     const smoothOn = smooth ?? Boolean(document.querySelector("[data-pt-smooth]"));
     if (smoothOn && !still && !studio) {
       keep(
@@ -161,6 +171,8 @@ export function TreeMedia({ smooth, revision = 0 }: { smooth?: boolean; revision
     }
     return () => {
       dead = true;
+      window.removeEventListener("studio-view-updated", reconcile);
+      players.clear();
       stops.splice(0).forEach((f) => f());
     };
   }, [pathname, smooth, revision]);

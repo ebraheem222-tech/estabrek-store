@@ -38,6 +38,7 @@ const variant = {
   percentageGroup: query.get("percentageGroup") === "1",
   groupPlaced: query.get("groupPlaced") === "1",
   autoWidthGroup: query.get("autoWidthGroup") === "1",
+  liveState: query.get("liveState") === "1",
 };
 env.VITE_API_BASE_URL = `${FIXTURE}/v1`;
 env.VITE_STOREFRONT_BASE_URL = SHOP;
@@ -87,6 +88,9 @@ if (variant.autoWidthGroup) {
   inner.style = { base: { pad: [24,24,24,24], bg: "#bfdbfe", layer: { x: 20, y: 20, anchor: "top-start" } } };
   inner.children = [{ id: "canvas-inner-label", type: "text", props: { text: text("A long editable sentence that wraps inside this automatically sized container. ".repeat(5)) }, style: { base: { size: 20, lineHeight: 1.5 } } }];
 }
+if (variant.liveState) initial.tree.root.children![0].children!.push({ id: "preview-deck", type: "deck", name: "Persistent tabs", props: { presentation: "tabs" }, style: { base: { width: "400px", margin: [24,0,0,0] } }, children: [1,2].map(i => ({ id: `preview-panel-${i}`, type: "stack", name: `Panel ${i}`, props: {}, style: { base: { minHeight: "100px" } }, children: [{ id: `preview-panel-text-${i}`, type: "text", props: { text: text(`Persistent panel ${i}`) } }] })) });
+if (variant.liveState) initial.tree.root.children![0].children!.push({ id: "preview-instrument", type: "instrument", props: { kind:"piano",sound:false,volume:.4,tempo:90,melody:"scale",playlist:["scale","jingle"],showPlayer:true },style:{base:{width:"600px"}} });
+if (variant.liveState) parentFixture.children![1].motion = {engine:"gsap",loop:{kind:"float"}};
 let draft = structuredClone(initial);
 const writes: Array<{ ops: PageDraftOp[]; rev: number }> = [];
 const requests: Array<{ method: string; path: string }> = [];

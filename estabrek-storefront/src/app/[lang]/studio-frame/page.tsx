@@ -4,11 +4,12 @@
  * Never indexed, never cached, and framed only by the admin (next.config.mjs).
  */
 import { notFound } from "next/navigation";
+import { randomUUID } from "node:crypto";
 import { getPagePreview } from "@/lib/api";
 import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
 import { routeLang } from "@/lib/seoLang";
 import { studioOrigins } from "@/lib/studioOrigins";
-import { StudioBridge } from "@/pageTree/StudioBridge";
+import { StudioViewBridge } from "@/pageTree/StudioViewBridge";
 
 export const dynamic = "force-dynamic";
 export const metadata = { robots: { index: false, follow: false } };
@@ -28,6 +29,7 @@ export default async function StudioFrame({ params, searchParams }: { params?: {
   const storeThemeMode = searchParams?.themeMode === "light" || searchParams?.themeMode === "dark" ? searchParams.themeMode : null;
   // A pack being tried in the gallery (?kit=, packs.ts): its motion and hovers on the page.
   const kit = typeof searchParams?.kit === "string" ? searchParams.kit : null;
+  const viewRequest = typeof searchParams?.__studioView === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(searchParams.__studioView) ? searchParams.__studioView : null;
   const body = await renderCmsPageBySlug(page.slug || "/", searchParams, { lang, page: Promise.resolve(page), allowFallback: false, allowNotFound: true, storeTheme, storeThemeMode, kit });
   return (
     <>
@@ -36,7 +38,7 @@ export default async function StudioFrame({ params, searchParams }: { params?: {
       {/* The home looks as the home does in the editor (StorefrontChrome reads this). */}
       {(page.slug || "/") === "/" ? <div hidden data-studio-home="" /> : null}
       {body}
-      <StudioBridge origins={studioOrigins()} pageId={page.id} lang={lang} />
+      <StudioViewBridge origins={studioOrigins()} pageId={page.id} lang={lang} viewVersion={randomUUID()} viewRequest={viewRequest} />
     </>
   );
 }

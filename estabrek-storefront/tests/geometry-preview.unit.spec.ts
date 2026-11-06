@@ -1,13 +1,62 @@
 import { expect, test } from "@playwright/test";
-import { act, createElement } from "react";
+import { act, createElement, useEffect, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createRequire } from "node:module";
 import { geometryPreviewCss } from "../src/pageTree/geometryPreview";
 import { measureStudio, STUDIO_SOURCE, StudioBridge } from "../src/pageTree/StudioBridge";
+import { viewTargets, sameViewTargets, ViewRuntimeRegistry } from "../src/pageTree/viewRuntime";
+import { StableWidgetView } from "../src/pageTree/StableWidgetView";
 
 const require = createRequire(import.meta.url);
 
 const preview = (base: Record<string, unknown>, id = "card", type = "stack") => ({ id, type, style: { base } });
+
+test("an unchanged widget does not receive new renderer prop identities on an unrelated view update", async () => {
+  let effects=0;
+  function Renderer({config}:{config:{value:number}}) { useEffect(()=>{effects++;},[config]); return createElement("span",null,config.value); }
+  await frame(async (_dom,render) => {
+    await render(createElement(StableWidgetView,{version:"same",children:createElement(Renderer,{config:{value:1}})})); expect(effects).toBe(1);
+    await render(createElement(StableWidgetView,{version:"same",children:createElement(Renderer,{config:{value:1}})})); expect(effects).toBe(1);
+    await render(createElement(StableWidgetView,{version:"changed",children:createElement(Renderer,{config:{value:2}})})); expect(effects).toBe(2);
+  });
+});
+
+test("runtime reconciliation ignores unrelated styles but detects changed config and replaced targets", async () => {
+  await frame(dom => {
+    const card = dom.window.document.querySelector('[data-tree-node="card"]');
+    card.setAttribute("data-pt-motion", '{"engine":"gsap"}');
+    const first = viewTargets(dom.window.document,"[data-pt-motion]",["data-pt-motion"]);
+    card.style.width = "200px"; expect(sameViewTargets(first,viewTargets(dom.window.document,"[data-pt-motion]",["data-pt-motion"]))).toBe(true);
+    card.setAttribute("data-pt-motion", '{"engine":"anime"}'); expect(sameViewTargets(first,viewTargets(dom.window.document,"[data-pt-motion]",["data-pt-motion"]))).toBe(false);
+    const changed = viewTargets(dom.window.document,"[data-pt-motion]",["data-pt-motion"]);
+    card.replaceWith(card.cloneNode(true)); expect(sameViewTargets(changed,viewTargets(dom.window.document,"[data-pt-motion]",["data-pt-motion"]))).toBe(false);
+  });
+});
+test("legacy look JSON and media specs participate in their runtime snapshots", async () => {
+  await frame(dom => {
+    const script = dom.window.document.createElement("script"); script.id="pt-looks"; script.textContent="[]"; dom.window.document.body.append(script);
+    const first=viewTargets(dom.window.document,"#pt-looks",[]); script.textContent='[["s:hero",{}]]'; expect(sameViewTargets(first,viewTargets(dom.window.document,"#pt-looks",[]))).toBe(false);
+    const card=dom.window.document.querySelector('[data-tree-node="card"]'); card.setAttribute("data-pt-rive",'{"src":"a.riv"}');
+    const media=viewTargets(dom.window.document,"[data-pt-rive]",["data-pt-rive"]); card.setAttribute("data-pt-rive",'{"src":"b.riv"}'); expect(sameViewTargets(media,viewTargets(dom.window.document,"[data-pt-rive]",["data-pt-rive"]))).toBe(false);
+  });
+});
+test("particle tint changes invalidate its own runtime even when its spec and node stay unchanged", async () => {
+  await frame(dom=>{
+    const card=dom.window.document.querySelector('[data-tree-node="card"]'); card.setAttribute("data-pt-particles","{}"); card.style.color="red";
+    const first=viewTargets(dom.window.document,"[data-pt-particles]",["data-pt-particles","$color"]); card.style.color="blue";
+    expect(sameViewTargets(first,viewTargets(dom.window.document,"[data-pt-particles]",["data-pt-particles","$color"]))).toBe(false);
+  });
+});
+test("media reconciliation keeps unchanged players and disposes only changed or removed targets", async () => {
+  await frame(dom=>{
+    const a=dom.window.document.querySelector('[data-tree-node="card"]'), b=dom.window.document.createElement("canvas");
+    a.id="a"; b.id="b"; dom.window.document.body.append(b); const started:string[]=[],stopped:string[]=[];
+    const registry=new ViewRuntimeRegistry(target=>{const key=`${target.node.id}:${target.config}`;started.push(key);return()=>stopped.push(key);});
+    registry.reconcile([{node:a,config:"first"},{node:b,config:"same"}]); registry.reconcile([{node:a,config:"first"},{node:b,config:"same"}]); expect(started).toHaveLength(2); expect(stopped).toHaveLength(0);
+    registry.reconcile([{node:a,config:"changed"},{node:b,config:"same"}]); expect(started).toEqual(["a:first","b:same","a:changed"]); expect(stopped).toEqual(["a:first"]);
+    registry.reconcile([{node:b,config:"same"}]); expect(stopped).toEqual(["a:first","a:changed"]); registry.clear(); expect(stopped).toEqual(["a:first","a:changed","b:same"]);
+  });
+});
 
 test("geometry previews keep dimensions, layer placement and the complete transform", () => {
   const css = geometryPreviewCss([preview({
@@ -48,12 +97,12 @@ test("previewing columns geometry preserves its original structural layout rules
   expect(css).toBe(".pt-cols{width:300px}");
 });
 
-async function frame(run: (dom: any) => Promise<void> | void) {
+async function frame(run: (dom: any, render: (view: ReactNode) => Promise<void>) => Promise<void> | void, onRefresh?: (requestId: string) => void) {
   const { JSDOM } = require("../../estabrek-admin/node_modules/jsdom");
   const dom = new JSDOM('<!doctype html><style id="original">.pt-card{width:100px;color:red}</style><div id="mount"></div><div data-tree-node="card" class="pt pt-stack pt-card"></div>');
   Object.defineProperty(dom.window, "parent", { configurable: true, value: { postMessage() {} } });
   const globals: Record<string, unknown> = {
-    window: dom.window, document: dom.window.document,
+    window: dom.window, document: dom.window.document, CustomEvent: dom.window.CustomEvent,
     getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
     CSS: { escape: (id: string) => id },
     requestAnimationFrame: () => 1, cancelAnimationFrame() {},
@@ -66,8 +115,8 @@ async function frame(run: (dom: any) => Promise<void> | void) {
   const root = createRoot(dom.window.document.querySelector("#mount"));
   let previewRemoved = false;
   try {
-    await act(async () => root.render(createElement(StudioBridge, { origins: ["https://admin.test"], pageId: "home", lang: "en" })));
-    await run(dom);
+    await act(async () => root.render(createElement(StudioBridge, { origins: ["https://admin.test"], pageId: "home", lang: "en", onRefresh })));
+    await run(dom, async view => { await act(async()=>root.render(view)); });
   } finally {
     await act(async () => root.unmount());
     previewRemoved = dom.window.document.getElementById("pt-geometry-preview") === null;
@@ -81,6 +130,46 @@ async function frame(run: (dom: any) => Promise<void> | void) {
 }
 
 const postGeometry = (dom: any, nodes: unknown, origin = "https://admin.test", source = STUDIO_SOURCE) => dom.window.dispatchEvent(new dom.window.MessageEvent("message", { origin, data: { source, type: "previewGeometry", nodes } }));
+
+test("view refresh accepts only a bounded request from the trusted parent window", async () => {
+  const requests: string[] = [];
+  await frame(dom => {
+    const post = (requestId: unknown, origin = "https://admin.test", source: unknown = dom.window.parent, tag = STUDIO_SOURCE) => dom.window.dispatchEvent(new dom.window.MessageEvent("message", { origin, source, data: { source: tag, type: "refreshView", requestId } }));
+    post("view-1", "https://untrusted.test"); post("view-1", "https://admin.test", null); post("view-1", "https://admin.test", dom.window.parent, "other");
+    post("<bad>"); post("x".repeat(81)); post(null); expect(requests).toEqual([]);
+    post("view-0-1"); expect(requests).toEqual(["view-0-1"]);
+  }, id => requests.push(id));
+});
+test("direct geometry and look gestures release an earlier reveal so it cannot move the viewport mid-drag", async () => {
+  await frame(dom => {
+    const timers=new Map<number,()=>void>(); let serial=100_000, reveals=0;
+    dom.window.setTimeout=(fn:()=>void)=>{const id=++serial;timers.set(id,fn);return id;};
+    dom.window.clearTimeout=(id:number)=>{timers.delete(id);};
+    const card=dom.window.document.querySelector('[data-tree-node="card"]'); card.scrollIntoView=()=>{reveals++;};
+    const post=(data:object)=>dom.window.dispatchEvent(new dom.window.MessageEvent("message",{origin:"https://admin.test",data:{source:STUDIO_SOURCE,...data}}));
+    for (const gesture of [{type:"previewGeometry",nodes:[preview({width:"240px"})]},{type:"previewLook",nodeId:"card",vars:{opacity:.5}}]) {
+      post({type:"reveal",nodeId:"card"}); const before=reveals; post(gesture);
+      for (const fn of [...timers.values()]) fn(); timers.clear();
+      expect(reveals).toBe(before);
+    }
+  });
+});
+
+test("a committed view releases only temporary look properties and preview classes", async () => {
+  await frame(dom => {
+    const card = dom.window.document.querySelector('[data-tree-node="card"]');
+    card.style.color = "red"; card.style.setProperty("--pt-rz","10deg");
+    const post = (data: unknown) => dom.window.dispatchEvent(new dom.window.MessageEvent("message", { origin:"https://admin.test",data:{source:STUDIO_SOURCE,...data as object} }));
+    post({type:"previewLook",nodeId:"card",vars:{opacity:.35,"--pt-rz":"30deg"}});
+    expect(card.style.opacity).toBe("0.35");
+    post({type:"previewStyle",node:{...preview({width:"240px"}),props:{}}});
+    expect(card.classList.contains("pt-pv")).toBe(true);
+    dom.window.dispatchEvent(new dom.window.Event("studio-view-commit"));
+    expect(card.style.opacity).toBe(""); expect(card.style.getPropertyValue("--pt-rz")).toBe("10deg"); expect(card.style.color).toBe("red");
+    expect(card.classList.contains("pt-card")).toBe(true); expect(card.classList.contains("pt-pv")).toBe(false);
+    expect(dom.window.document.getElementById("pt-look-preview")).toBeNull();
+  });
+});
 
 test("trusted geometry messages style existing nodes without replacing their classes and null clears", async () => {
   await frame((dom) => {

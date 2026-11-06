@@ -78,6 +78,7 @@ async function select(page, frame, id) {
 }
 async function mutation(page, before, label) {
   await expect.poll(() => writes(page), { timeout: 30_000, message: label }).toBe(before + 1);
+  await expect(page.getByTestId("studio"), `${label}: the updated view commits before editing resumes`).toHaveAttribute("data-busy", "0", { timeout: 45_000 });
   // A frame can display its new DOM before hydration reports the layout. StudioPage
   // deliberately clears shapes during that gap, so DOM visibility alone is insufficient.
   await expect.poll(() => page.evaluate(() => {
@@ -322,7 +323,7 @@ async function groupScale(browser, lang) {
     await page.locator('[data-testid="studio-layer"][data-node="canvas-parent"]').click();
     await page.waitForTimeout(350);
     const option = page.getByTestId("studio-scale-contents");
-    await expect(option).toBeChecked();
+    await expect(option).not.toBeChecked(); await option.check();
     const original = await boxes(), childStyles = {};
     for (const id of ids.slice(1)) childStyles[id] = (await model(page, id)).node.style;
     await resize(page, frame, "canvas-parent", "e", 100, 0, true, async () => proportional(await boxes(), original, "live growth"));
@@ -374,6 +375,7 @@ async function intrinsicGroup(browser, placed) {
     await page.getByTestId("studio-tab-layers").click();
     await page.locator('[data-testid="studio-layer"][data-node="canvas-inner"]').click();
     await page.waitForTimeout(350);
+    await page.getByTestId("studio-scale-contents").check();
     const before = await box(frame, "canvas-inner"), child = await box(frame, "canvas-inner-label"), spacer = await box(frame, "percentage-spacer");
     close(before.h, 184, .1, "intrinsic fixture height"); close(child.h, 60, .1, "percentage-height child begins intrinsic"); close(spacer.h, 60, .1, "spacer begins at authored height");
     const check = async () => {
@@ -397,6 +399,7 @@ async function autoWidthGroup(browser) {
   const out = { name: "auto-width-free-group", checks: [] }; results.scenarios.push(out);
   try {
     await page.getByTestId("studio-tab-layers").click(); await page.locator('[data-testid="studio-layer"][data-node="canvas-inner"]').click(); await page.waitForTimeout(350);
+    await page.getByTestId("studio-scale-contents").check();
     const original = await box(frame, "canvas-inner"), child = await box(frame, "canvas-inner-label");
     const layer = (await model(page, "canvas-inner")).node.style.base.layer;
     close(original.w, 400, 1, "auto-width fixture fills the available inset width");
@@ -406,6 +409,63 @@ async function autoWidthGroup(browser) {
     assert.deepEqual(saved.layer, layer, "automatic-width group keeps its original insets"); assert.equal(saved.width, undefined); assert.equal(saved.height, undefined);
     await travel(page, "undo"); close((await box(frame, "canvas-inner")).w, original.w, 1, "auto-width group undo");
     out.checks.push("an absolute auto-width group keeps its raw shrink-to-fit layout and insets while its full content scales"); out.status = "passed"; out.writes = await writes(page);
+  } finally { await context.close(); }
+}
+
+async function livePreview(browser) {
+  const { page, context, frame } = await open(browser, "en", { liveState: 1 });
+  const out = { name: "live-preview-document", checks: [] }; results.scenarios.push(out);
+  try {
+    const documents = [];
+    page.on("request", request => { if (request.isNavigationRequest() && request.resourceType() === "document") documents.push(request.url()); });
+    await frame.locator('[data-tree-node="preview-deck"] [role="tab"]').nth(1).evaluate(el => el.click());
+    await expect(frame.locator('[data-tree-node="preview-deck"] [data-deck-at]')).toHaveAttribute("data-deck-at", "1");
+    const volume = frame.locator('[data-tree-node="preview-instrument"] input[aria-label="Volume"]');
+    await volume.press("ArrowRight"); await expect(volume).toHaveValue("0.45");
+    await expect(frame.locator('[data-tree-node="canvas-button"]')).toHaveAttribute("data-pt-engine","gsap",{timeout:30000});
+    await frame.locator("html").evaluate(() => { window.__previewDocumentNonce = "same-preview-document"; window.__unaffectedNode = document.querySelector('[data-tree-node="canvas-outside-label"]'); window.scrollTo(0,100); });
+    await page.waitForTimeout(250);
+    await page.evaluate(() => document.querySelector('[data-testid="studio-frame"]').contentWindow.postMessage({source:"estabrek-studio",type:"previewLook",nodeId:"canvas-image",vars:{opacity:.35}},"http://127.0.0.1:3000"));
+    const stable = async (scroll = false) => {
+      assert.equal(await frame.locator("html").evaluate(() => window.__previewDocumentNonce), "same-preview-document", "saving keeps the preview document alive");
+      assert.equal(await frame.locator("html").evaluate(() => window.__unaffectedNode === document.querySelector('[data-tree-node="canvas-outside-label"]')), true, "an unaffected view keeps its DOM node");
+      await expect(frame.locator('[data-tree-node="preview-deck"] [data-deck-at]')).toHaveAttribute("data-deck-at", "1");
+      await expect(volume).toHaveValue("0.45");
+      assert.deepEqual(documents, [], "edits do not navigate or reload the preview document");
+      if (scroll) close(await frame.locator("html").evaluate(() => window.scrollY), 100, 1, "preview scroll stays in place");
+    };
+    await resize(page, frame, "canvas-image", "e", 40, 0);
+    close(Number(await frame.locator('[data-tree-node="canvas-image"]').evaluate(el=>getComputedStyle(el).opacity)),1,.001,"committing a view releases temporary opacity overrides");
+    await stable(true); await travel(page,"undo"); await stable(true); await travel(page,"redo"); await stable(true);
+    out.checks.push("resize, undo and redo preserve document identity, unaffected DOM, scroll and a client widget's selected tab");
+    await page.getByTestId("studio-tab-add").click();
+    const beforeAdd = await writes(page);
+    await page.locator('[data-testid="studio-add-item"][data-kind="text"]').click(); await mutation(page,beforeAdd,"insert updates the current view");
+    const inserted = await page.evaluate(() => window.__canvasHarness.getWrites().at(-1).ops.find(op => op.op === "insert")?.node.id);
+    assert.ok(inserted); await expect(frame.locator(`[data-tree-node="${inserted}"]`)).toHaveCount(1); await stable();
+    await travel(page,"undo"); await expect(frame.locator(`[data-tree-node="${inserted}"]`)).toHaveCount(0); await stable();
+    out.checks.push("inserting/removing a view reconciles only its tree branch and keeps an unrelated client widget alive");
+    await page.getByTestId("studio-tab-layers").click();
+    for (const [html, text] of [["<strong>New bold label</strong>","New bold label"],["<em>New italic label</em>","New italic label"]]) {
+      await page.locator('[data-testid="studio-layer"][data-node="canvas-button"]').click(); await page.getByTestId("studio-edit-node").click();
+      const edit = frame.locator('[data-tree-node="canvas-button"][contenteditable="true"]'); await expect(edit).toHaveCount(1);
+      await edit.evaluate((el,value) => { el.innerHTML = value; },html);
+      const beforeText = await writes(page); await edit.press("Enter"); await mutation(page,beforeText,"formatted text updates its view");
+      await expect(frame.locator('[data-tree-node="canvas-button"]')).toContainText(text); await stable();
+    }
+    out.checks.push("successive formatted inline edits update their text view without resetting the document or unrelated client state");
+    await page.locator('[data-testid="studio-layer"][data-node="preview-instrument"]').click();
+    const beforeConfig = await writes(page); await page.getByTestId("instrument-melody").getByRole("button",{name:"Jingle Bells",exact:true}).click(); await mutation(page,beforeConfig,"changed widget configuration updates its own view");
+    await expect(frame.locator('[data-tree-node="preview-instrument"] [data-instrument-song]')).toHaveValue("jingle");
+    assert.equal(await frame.locator("html").evaluate(() => window.__previewDocumentNonce), "same-preview-document");
+    await expect(frame.locator('[data-tree-node="preview-deck"] [data-deck-at]')).toHaveAttribute("data-deck-at", "1");
+    out.checks.push("a widget's edited configuration updates that widget while preserving unrelated client state");
+    const version = await frame.locator("[data-studio-view-version]").getAttribute("data-studio-view-version");
+    await page.getByTestId("studio-refresh-view").click(); await expect.poll(() => frame.locator("[data-studio-view-version]").getAttribute("data-studio-view-version")).not.toBe(version);
+    await frame.locator('[data-tree-node="canvas-button"]').evaluate(el => { el.setAttribute("data-pt-motion",JSON.stringify({engine:"anime",loop:{kind:"pulse"}})); window.dispatchEvent(new Event("studio-view-updated")); });
+    await expect(frame.locator('[data-tree-node="canvas-button"]')).toHaveAttribute("data-pt-engine","anime",{timeout:30000});
+    out.checks.push("motion runtime reconciles changed targets/config while the document stays alive");
+    out.status = "passed"; out.writes = await writes(page);
   } finally { await context.close(); }
 }
 
@@ -585,7 +645,7 @@ async function rtlTouch(browser) {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   const browser = await chromium.launch({ channel: process.env.CANVAS_BROWSER_CHANNEL || "chrome", headless: true });
   try {
-    const selected = (process.env.CANVAS_SCENARIOS || "flow-return,desktop,rtl-touch,scaled,transfer,safety,group,intrinsic,autowidth").split(",");
+    const selected = (process.env.CANVAS_SCENARIOS || "flow-return,desktop,rtl-touch,scaled,transfer,safety,group,intrinsic,autowidth,live-preview").split(",");
     if (selected.includes("flow-return")) await flowReturn(browser);
     if (selected.includes("desktop")) await desktop(browser);
     if (selected.includes("rtl-touch")) await rtlTouch(browser);
@@ -595,6 +655,7 @@ async function rtlTouch(browser) {
     if (selected.includes("group")) { await groupScale(browser, "en"); await groupScale(browser, "ar"); }
     if (selected.includes("intrinsic")) { await intrinsicGroup(browser, false); await intrinsicGroup(browser, true); }
     if (selected.includes("autowidth")) await autoWidthGroup(browser);
+    if (selected.includes("live-preview")) await livePreview(browser);
     assert.deepEqual(results.errors, [], "no runtime errors or external writes");
     results.status = "passed";
   } catch (error) {

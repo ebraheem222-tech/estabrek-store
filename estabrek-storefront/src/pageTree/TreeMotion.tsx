@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation";
 import { studioLink } from "./studioLink";
 import { ARABIC, countUpText, scrambleChars } from "./textMotion";
 import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
+import { useStudioViewRevision } from "./useStudioViewRevision";
 
 type Gsap = typeof import("gsap").gsap;
 type ST = typeof import("gsap/ScrollTrigger").ScrollTrigger;
@@ -331,9 +332,15 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
 
 export function TreeMotion({ revision = 0 }: { revision?: number }) {
   const pathname = usePathname();
+  const viewRevision = useStudioViewRevision("[data-pt-motion],#pt-looks", ["data-pt-motion","data-pt-look-version"], `${pathname}:${revision}`);
   useEffect(() => {
     const root = document.documentElement;
     const done = () => root.classList.remove("pt-pending");
+    const lookAttributes: Array<{ el: HTMLElement; look?: string; motion?: string }> = [];
+    const restoreLooks = () => lookAttributes.forEach(({el,look,motion}) => {
+      if (look === undefined) delete el.dataset.ptLook; else el.dataset.ptLook = look;
+      if (motion === undefined) delete el.dataset.ptMotion; else el.dataset.ptMotion = motion;
+    });
     // Parts of old sections and scenes that move (the editor's looks, #pt-looks): they get their motion too.
     try {
       const looks = JSON.parse(document.getElementById("pt-looks")?.textContent || "[]") as Array<[string, unknown]>;
@@ -342,6 +349,7 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
         if (!sel) continue;
         document.querySelectorAll<HTMLElement>(sel).forEach((el) => {
           if (el.dataset.treeNode) return;
+          lookAttributes.push({el,look:el.dataset.ptLook,motion:el.dataset.ptMotion});
           el.dataset.ptLook = target;
           el.dataset.ptMotion = JSON.stringify(motion);
         });
@@ -353,7 +361,7 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     const phone = window.matchMedia("(max-width: 639.98px)");
     const mouse = window.matchMedia("(hover: hover) and (pointer: fine)");
-    if (!els.length || reduced.matches) return done();
+    if (!els.length || reduced.matches) { done(); return restoreLooks; }
     const studio = window.parent !== window && /\/studio-frame/.test(window.location.pathname);
     let dead = false;
     let revert: () => void = () => {};
@@ -362,8 +370,11 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
     // latest one is played once the engine is ready.
     const mode = { live: !studio, only: null as string | null };
     let build: (() => void) | null = null;
+    let refreshLayout = () => {};
     const unlisten = studio
       ? studioLink.listen((msg) => {
+          if (msg.type === "linkOpen") { studioLink.send({type:"motionStateRequest"}); return; }
+          if (msg.type === "motionLayout") { refreshLayout(); return; }
           if (msg.type === "motionLive") {
             mode.live = msg.on === true;
             mode.only = null;
@@ -372,6 +383,7 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
           build?.();
         })
       : () => {};
+    if (studio) studioLink.send({type:"motionStateRequest"});
     void (async () => {
       const drawn = els.some((el) => /"kind":"(draw|morph|dash)"/.test(el.dataset.ptMotion ?? ""));
       const scrambles = els.some((el) => /"kind":"scramble"/.test(el.dataset.ptMotion ?? ""));
@@ -386,6 +398,7 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
       ]);
       if (dead) return;
       gsap.registerPlugin(ScrollTrigger, SplitText, ...(svg ? [svg[0].DrawSVGPlugin, svg[1].MorphSVGPlugin] : []), ...(scramble ? [scramble.ScrambleTextPlugin] : []));
+      refreshLayout = () => { if (!dead) ScrollTrigger.refresh(); };
       build = () => {
         revert();
         if (reduced.matches) { done(); return; }
@@ -431,7 +444,8 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
       unlisten();
       for (const media of [reduced, phone, mouse]) media.removeEventListener("change", mediaChanged);
       revert();
+      restoreLooks();
     };
-  }, [pathname, revision]);
+  }, [pathname, revision, viewRevision]);
   return null;
 }

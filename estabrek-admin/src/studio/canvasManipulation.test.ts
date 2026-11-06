@@ -26,8 +26,8 @@ test("full scale precision at the analytic movement boundary still commits the b
  const patch=scaleContentsPatch(group,"base",start,drag.box,{w:800,h:428},drag.current.w/800,1)!;
  expect(patch).not.toBeNull(); expect(patch).toMatchObject({moveY:-1000}); expect(patch.scale).toBeCloseTo(limits.max,12);
 });
-test("content scaling defaults on and its frame-only preference survives reopening", () => {
- localStorage.removeItem("studio-scale-contents"); expect(readScaleContents()).toBe(true);
+test("content scaling is opt-in and an explicit preference survives reopening", () => {
+ localStorage.removeItem("studio-scale-contents"); expect(readScaleContents()).toBe(false);
  saveScaleContents(false); expect(readScaleContents()).toBe(false);
  saveScaleContents(true); expect(readScaleContents()).toBe(true);
 });

@@ -4,7 +4,7 @@
  * file only builds the markup. Links to the shop's own pages get the language
  * prefix; links and file addresses are checked again before they're used.
  */
-import type { CSSProperties, ReactNode } from "react";
+import { cloneElement, isValidElement, type CSSProperties, type ReactNode } from "react";
 import type { ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
 import { withLang, type LangConfig } from "@/lib/i18n";
@@ -37,6 +37,7 @@ import { FilterGalleryBlock } from "./FilterGalleryBlock";
 import { DeckView } from "./DeckView";
 import { showcaseOf } from "./showcase";
 import { ShowcaseView } from "./ShowcaseView";
+import { StableWidgetView } from "./StableWidgetView";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -81,7 +82,17 @@ function sectionEdge(id: string, where: "top" | "bottom", raw: unknown): ReactNo
   );
 }
 
+const STRUCTURAL_VIEWS = new Set(["page", "section", "grid", "stack", "columns", "cell"]);
+const PROP_WIDGETS = new Set(["instrument","product360","model3d","lottie","rive","svg"]);
 export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode {
+  // A changed widget configuration owns a new view; styles and unrelated edits
+  // retain its client state. Containers keep stable identity for their children.
+  const view = renderNode({ node, ctx });
+  const keyed = STRUCTURAL_VIEWS.has(node.type) || !isValidElement(view) ? view : cloneElement(view, { key: `${node.id}:${JSON.stringify(node.props ?? {})}` });
+  return PROP_WIDGETS.has(node.type) ? <StableWidgetView version={JSON.stringify([node,ctx.lang,ctx.main,ctx.cfg,node.type === "product360" ? ctx.spinProducts : null])}>{keyed}</StableWidgetView> : keyed;
+}
+
+function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode {
   const p = node.props ?? {};
   const say = (t: unknown) => pickText(t, ctx.lang, ctx.main);
   const link = (h: unknown) => {
@@ -93,7 +104,7 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
   const words = (t: unknown) => (p.rich === true ? richNodes(say(t), link) : say(t));
   // How it moves goes to the motion engine (TreeMotion) as data; an animated layer is drawn inside it.
   const motion = motionOf(node);
-  const mark = { "data-tree-node": node.id, ...(motion ? { "data-pt-motion": JSON.stringify(motion) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
+  const mark = { "data-tree-node": node.id, ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
   // An animated layer, or the light that follows the mouse (TreeMotion moves it).
   const fx = motion?.fx ? <span className={`pt-fx pt-fx-${motion.fx.kind}`} aria-hidden="true" /> : motion?.hover?.kind === "spotlight" ? <span className="pt-spot" aria-hidden="true" /> : null;
   const kids = () => (

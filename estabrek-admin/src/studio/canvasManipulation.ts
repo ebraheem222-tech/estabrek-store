@@ -8,7 +8,7 @@ const KEY = "studio-canvas-placement";
 const CONTENTS_KEY = "studio-scale-contents";
 
 export function readScaleContents(): boolean {
-  try { return localStorage.getItem(CONTENTS_KEY) !== "0"; } catch { return true; }
+  try { return localStorage.getItem(CONTENTS_KEY) === "1"; } catch { return false; }
 }
 
 export function saveScaleContents(on: boolean) {
