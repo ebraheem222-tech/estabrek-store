@@ -199,6 +199,7 @@ const SectionEdge = z.object({
   flip: z.boolean().optional(), // mirrored, end to start
   front: z.boolean().optional(), // over the section's content instead of under it
 });
+const NodeEdges = z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() });
 
 /** How a node looks on one screen size. Every key is optional; the shop turns it into CSS. */
 export const SizeConstraints = z.object({
@@ -340,7 +341,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),
     contained: z.boolean().optional(), // the content keeps to the page width
-    edges: z.object({ top: SectionEdge.optional(), bottom: SectionEdge.optional() }).optional(),
+    edges: NodeEdges.optional(),
     particles: z.object({ kind: z.enum(PARTICLES), color: color.optional(), amount: z.number().min(0.2).max(3).optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
     scene: z.object({
       kind: z.enum(["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix"]),
@@ -628,7 +629,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
 export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);
 for (const t of NODE_TYPES) {
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
-  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional() });
+  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional(), edges: NodeEdges.optional() });
 }
 
 /* ------------------------------------------------------------------ tree */
