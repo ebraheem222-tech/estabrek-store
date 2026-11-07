@@ -1,12 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { planBilling, type Billing, type PlanAmounts } from "./billing";
 import styles from "./PricingView.module.css";
 
 export type PricingPlan = PlanAmounts & { name: string; badge: string; featured: boolean; features: string[]; cta: string; href: string | null };
-export function PricingView({ items, initialBilling, monthly, yearly, unavailable, className, mark }: { items: PricingPlan[]; initialBilling: Billing; monthly: string; yearly: string; unavailable: string; className: string; mark: Record<string, string> }) {
+export function PricingView({ items, initialBilling, monthly, yearly, unavailable, className, mark, decoration }: { decoration?: ReactNode; items: PricingPlan[]; initialBilling: Billing; monthly: string; yearly: string; unavailable: string; className: string; mark: Record<string, string> }) {
   const [billing, setBilling] = useState<Billing>(initialBilling);
   return <div className={`${className} ${styles.pricing}`} {...mark}>
+    {decoration}
     <div className="pt-billing" role="group" aria-label={`${monthly} / ${yearly}`}>
       <button type="button" aria-pressed={billing === "monthly"} onClick={() => setBilling("monthly")}>{monthly}</button>
       <button type="button" aria-pressed={billing === "yearly"} onClick={() => setBilling("yearly")}>{yearly}</button>

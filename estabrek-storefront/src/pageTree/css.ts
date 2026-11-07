@@ -993,7 +993,7 @@ export const BASE_CSS = [
   ".pt-edge-top.pt-edge-flip{transform:scale(-1,-1)}.pt-edge-bottom.pt-edge-flip{transform:scaleX(-1)}",
   ".pt-edge-front{z-index:2}",
   `@media (max-width:${PHONE_MAX}px){.pt-edge{height:var(--pt-ehp,var(--pt-eh))}}`,
-  ".pt-icon svg{width:var(--pt-isz,24px);height:var(--pt-isz,24px);flex:none}",
+  ".pt-icon>svg{width:var(--pt-isz,24px);height:var(--pt-isz,24px);flex:none}",
   ".pt-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 22px;border-radius:999px;font-weight:600;text-decoration:none;cursor:pointer;transition:filter .2s ease,background-color .2s ease}",
   ".pt-btn-solid{background:var(--accent);color:var(--accent-contrast,#fff)}",
   ".pt-btn-outline{border:1px solid currentColor;color:var(--accent)}",

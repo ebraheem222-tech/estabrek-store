@@ -4937,4 +4937,8 @@ export const HE: Record<string, string> = {
   "Add a 3D model": "הוספת מודל תלת ממדי",
   "Couldn't read the SVG file. Try choosing it again.": "לא ניתן לקרוא את קובץ ה-SVG. נסו לבחור אותו שוב.",
   "Upload or choose a GLB file": "העלאה או בחירה של קובץ GLB",
+  "SVG edges": "קצוות SVG",
+  "SVG above and below": "SVG מעל ומתחת",
+  "SVG top": "SVG עליון",
+  "SVG bottom": "SVG תחתון",
 };

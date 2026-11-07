@@ -9,6 +9,7 @@ import { BlockClose } from "./BlockClose";
 import { AccordionControls } from "./AccordionControls";
 import { PricingView } from "./PricingView";
 import { BeforeAfterView, CountdownView, TabsView } from "./Interactive";
+import { withDecoration } from "./NodeDecorations";
 import { safeSrc, type TreeLang, type TreeNode } from "./tree";
 
 type Helpers = {
@@ -31,7 +32,7 @@ export const WORDS: Record<TreeLang, Said> = {
 };
 
 /** Words that run along a line: the list twice, so the loop never shows a gap (the second copy is hidden from screen readers). */
-function Running({ items, separator, className, style, mark }: { items: ReactNode[]; separator?: string; className: string; style?: Record<string, string>; mark: Record<string, string> }) {
+function Running({ items, separator, className, style, mark, decoration }: { decoration?: ReactNode; items: ReactNode[]; separator?: string; className: string; style?: Record<string, string>; mark: Record<string, string> }) {
   const one = (copy: number) =>
     items.map((it, i) => (
       <span key={`${copy}-${i}`} className="pt-mq-item" {...(copy ? { "aria-hidden": true } : {})}>
@@ -41,6 +42,7 @@ function Running({ items, separator, className, style, mark }: { items: ReactNod
     ));
   return (
     <div className={className} style={style} {...mark}>
+      {decoration}
       <div className="pt-mq-track">
         {one(0)}
         {one(1)}
@@ -56,7 +58,11 @@ const BILLING_WORDS: Record<TreeLang, { monthly: string; yearly: string; unavail
   he: { monthly: "חודשי", yearly: "שנתי", unavailable: "המחיר לא צוין", expand: "פתיחת הכול", collapse: "סגירת הכול" },
 };
 
-export function BlockView({ node, className, mark, say, link, lang }: Helpers): ReactNode {
+export function BlockView({ decoration, ...props }: Helpers & { decoration?: ReactNode }): ReactNode {
+  return withDecoration(renderBlock(props), decoration);
+}
+
+function renderBlock({ node, className, mark, say, link, lang }: Helpers): ReactNode {
   const p = node.props ?? {};
   const w = WORDS[lang] ?? WORDS.ar;
   switch (node.type) {

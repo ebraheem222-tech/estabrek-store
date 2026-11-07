@@ -3,7 +3,7 @@ import base from "./playwright.config";
 
 export default defineConfig({
   ...base,
-  testMatch: ["editor-controls.spec.ts", "motion-toggle.spec.ts", "object-sizing.spec.ts"],
+  testMatch: ["editor-controls.spec.ts", "motion-toggle.spec.ts", "object-sizing.spec.ts", "object-edges.spec.ts"],
   outputDir: "../.tmp/editor-controls-browser-results",
   webServer: [
     { command: "node tests/catalog-server.mjs", url: "http://127.0.0.1:4100/v1/storefront/bootstrap", reuseExistingServer: !process.env.CI },

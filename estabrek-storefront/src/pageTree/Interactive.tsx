@@ -117,7 +117,8 @@ function markShown(key: string, often: string) {
   }
 }
 
-export function PopupView({ id, spec, label, close, children }: { id: string; spec: PopupSpec; label: string; close: string; children: ReactNode }) {
+export function PopupView({ id, spec, label, close, children, decoration }: { id: string; spec: PopupSpec; label: string; close: string; children: ReactNode; decoration?: ReactNode }) {
+  const decorated = Array.isArray(decoration) ? decoration.length > 0 : Boolean(decoration);
   const box = useRef<HTMLDialogElement>(null);
   // In the editor's frame the popup stays open in its place on the page, to be edited.
   const [studio, setStudio] = useState(false);
@@ -167,13 +168,14 @@ export function PopupView({ id, spec, label, close, children }: { id: string; sp
     }
     return () => offs.forEach((f) => f());
   }, [id, spec.trigger, spec.delay, spec.scroll, spec.anchor, spec.often, spec.place]);
-  if (studio) return <div className="pt-popup-studio">{children}</div>;
+  if (studio) return <div className={`pt-popup-studio${decorated ? " pt-has-edges" : ""}`}>{children}{decoration}</div>;
   return (
-    <dialog ref={box} className={`pt-popup pt-popup-${spec.size} pt-popup-${spec.place}`} aria-label={label || undefined}>
+    <dialog ref={box} className={`pt-popup pt-popup-${spec.size} pt-popup-${spec.place}`} style={decorated ? { isolation: "isolate" } : undefined} aria-label={label || undefined}>
       <form method="dialog">
         <button className="pt-popup-close" aria-label={close}>×</button>
       </form>
       {children}
+      {decoration}
     </dialog>
   );
 }

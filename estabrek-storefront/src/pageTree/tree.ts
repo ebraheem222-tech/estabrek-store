@@ -278,7 +278,7 @@ export const PREVIEW_VARS = ["--pt-rx", "--pt-ry", "--pt-rz", "--pt-p", "--pt-s"
 export function framed(n: TreeNode, motion = motionOf(n)): boolean {
   if (n.type !== "image" && n.type !== "video") return false;
   const s = n.style ?? {};
-  return Boolean(s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom");
+  return Boolean(n.props?.edges?.top || n.props?.edges?.bottom || s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom");
 }
 
 const NO_ODD = /^[^\s<>"'`\\]+$/;

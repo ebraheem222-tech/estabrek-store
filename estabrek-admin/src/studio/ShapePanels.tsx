@@ -109,7 +109,7 @@ export function EdgesPanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
   const put = (where: Where, edge: Obj | null) => {
     const next = { ...edges, [where]: edge ?? undefined };
     const keep = Object.values(next).some(Boolean);
-    onOps(tr("حافة القسم", "The section's edge"), [{ op: "setProps", nodeId: node.id, props: { ...node.props, edges: keep ? next : undefined } }]);
+    onOps(tr("حواف SVG", "SVG edges"), [{ op: "setProps", nodeId: node.id, props: { ...node.props, edges: keep ? next : undefined } }]);
   };
   const toggle = (label: string, on: boolean, flip: (on: boolean) => void, testId?: string) => (
     <label className="flex items-center justify-between gap-2 text-xs">
@@ -119,14 +119,14 @@ export function EdgesPanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
   );
   return (
     <div className={box} data-testid="studio-edges">
-      <div className="text-xs font-medium text-white/70">{tr("حواف القسم (موجة، زاوية، قوس…)", "The section's edges (a wave, an angle, an arc…)")}</div>
+      <div className="text-xs font-medium text-white/70">{tr("SVG فوق وتحت", "SVG above and below")}</div>
       {(["top", "bottom"] as Where[]).map((where) => {
         const e = edges[where];
         const art = e?.art as Parameters<typeof ArtView>[0]["art"] | undefined;
         return (
           <div key={where} className="space-y-2 rounded-lg bg-white/[0.03] p-2" data-edge={where}>
             <div className="flex items-center justify-between gap-2 text-[11px] text-white/60">
-              <span>{where === "top" ? tr("فوق", "Top") : tr("تحت", "Bottom")}</span>
+              <span>{where === "top" ? tr("SVG فوق", "SVG top") : tr("SVG تحت", "SVG bottom")}</span>
               <button type="button" className={btn} disabled={busy} onClick={() => setPicking(where)} data-testid={`studio-edge-pick-${where}`}>{e ? tr("غيّر الشكل", "Change the shape") : tr("+ حافة", "+ Edge")}</button>
             </div>
             {e && art ? (
@@ -137,10 +137,10 @@ export function EdgesPanel({ node, busy, onOps }: { node: PageTreeNode; busy: bo
                 <Range label={tr("ارتفاعها", "Its height")} min={4} max={400} unit="px" busy={busy} value={Number(e.height) || 80} onSave={(n) => put(where, { ...e, height: n })} testId={`studio-edge-height-${where}`} />
                 {toggle(tr("ارتفاع تاني عالموبايل", "Another height on a phone"), typeof e.phone === "number", (on) => put(where, { ...e, phone: on ? Math.max(4, Math.round((Number(e.height) || 80) / 2)) : undefined }))}
                 {typeof e.phone === "number" ? <Range label={tr("ارتفاعها عالموبايل", "Its height on a phone")} min={4} max={400} unit="px" busy={busy} value={e.phone} onSave={(n) => put(where, { ...e, phone: n })} /> : null}
-                <ColourPick label={tr("لونها (غالباً لون القسم اللي جنبه)", "Its colour (usually the next section's)")} value={e.color} busy={busy} onPick={(c) => c && put(where, { ...e, color: c })} testId={`studio-edge-color-${where}`} />
+                <ColourPick label={tr("لونها", "Its colour")} value={e.color} busy={busy} onPick={(c) => c && put(where, { ...e, color: c })} testId={`studio-edge-color-${where}`} />
                 {toggle(tr("بالمقلوب (من الجهة التانية)", "Mirrored (from the other side)"), e.flip === true, (on) => put(where, { ...e, flip: on || undefined }), `studio-edge-flip-${where}`)}
-                {toggle(tr("فوق المحتوى", "Over the content"), e.front === true, (on) => put(where, { ...e, front: on || undefined }))}
-                <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => put(where, null)}>{tr("شيل الحافة", "Remove the edge")}</button>
+                {toggle(tr("فوق المحتوى", "Over the content"), e.front === true, (on) => put(where, { ...e, front: on || undefined }), `studio-edge-front-${where}`)}
+                <button type="button" className={`${btn} text-red-300`} disabled={busy} data-testid={`studio-edge-remove-${where}`} onClick={() => put(where, null)}>{tr("شيل الحافة", "Remove the edge")}</button>
               </>
             ) : null}
           </div>

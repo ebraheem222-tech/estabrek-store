@@ -122,6 +122,22 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
   const lite = env.phone && m.phone === "lite";
   const id = el.dataset.treeNode ?? el.dataset.ptLook ?? "";
   const plays = env.live || env.only === id;
+  let textScope: HTMLElement | null = null;
+  // SplitText and ScrambleText own their target's children. Keep decorations on
+  // the original host, outside word/line masks, and unwrap after plugin reversion.
+  const textTarget = () => {
+    if (textScope) return textScope;
+    if (!el.querySelector(":scope > .pt-edge")) return el;
+    const scope = document.createElement("span");
+    scope.style.display = "block";
+    scope.style.minWidth = "0";
+    const content = Array.from(el.childNodes).filter(node => !(node instanceof Element && node.matches(".pt-edge,.pt-fx,.pt-spot")));
+    scope.append(...content);
+    el.prepend(scope);
+    textScope = scope;
+    context.add(() => () => { if (scope.parentNode === el) scope.replaceWith(...Array.from(scope.childNodes)); });
+    return scope;
+  };
   let enterEnds = 0;
 
   if (m.enter && plays) {
@@ -141,30 +157,33 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
       if (lines.length) tl.fromTo(lines, { drawSVG: "0%" }, { drawSVG: "100%", duration, ease: vars.ease, stagger: e.stagger ?? 0.08 });
       if (fills.length) tl.fromTo(fills, { fillOpacity: 0 }, { fillOpacity: (i: number) => ends[i], duration: duration * 0.6, ease: "power1.out" }, lines.length ? `-=${duration * 0.4}` : 0);
     } else if (e.kind === "words") {
-      const split = SplitText.create(el, { type: "words", aria: "auto" });
+      const split = SplitText.create(textTarget(), { type: "words", aria: "auto" });
       gsap.fromTo(split.words, { y: (e.distance ?? 24), autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: e.stagger || 0.06, ...vars, scrollTrigger: sight });
     } else if (e.kind === "letters" || e.kind === "typewriter") {
       const joined = ARABIC.test(el.textContent ?? "");
-      const split = SplitText.create(el, { type: joined ? "words" : "words,chars", aria: "auto" });
+      const target = textTarget();
+      const split = SplitText.create(target, { type: joined ? "words" : "words,chars", aria: "auto" });
       const parts = joined ? split.words : split.chars;
       if (e.kind === "letters") gsap.fromTo(parts, { y: e.distance ?? 18, autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: e.stagger || (joined ? 0.06 : 0.025), ...vars, scrollTrigger: sight });
       else {
         // Typed one by one over its duration, a caret after it until the last one.
+        let caretTimer: ReturnType<typeof setTimeout> | undefined;
         gsap.set(parts, { autoAlpha: 0 });
         gsap.to(parts, {
           autoAlpha: 1, duration: 0.01, delay, ease: "none", stagger: duration / Math.max(1, parts.length), scrollTrigger: sight,
-          onStart: () => el.classList.add("pt-typing"),
-          onComplete: () => void setTimeout(() => el.classList.remove("pt-typing"), 900),
+          onStart: () => target.classList.add("pt-typing"),
+          onComplete: () => { caretTimer = setTimeout(() => target.classList.remove("pt-typing"), 900); },
         });
-        off.push(() => el.classList.remove("pt-typing"));
+        off.push(() => { clearTimeout(caretTimer); target.classList.remove("pt-typing"); });
       }
     } else if (e.kind === "lines") {
-      const split = SplitText.create(el, { type: "lines", mask: "lines", aria: "auto" });
+      const split = SplitText.create(textTarget(), { type: "lines", mask: "lines", aria: "auto" });
       gsap.fromTo(split.lines, { yPercent: 110 }, { yPercent: 0, stagger: e.stagger || 0.12, ...vars, scrollTrigger: sight });
     } else if (e.kind === "scramble") {
       // Only words alone (no formatting inside) can be scrambled; others just fade in.
-      const text = el.textContent ?? "";
-      if (el.children.length === 0 && text.trim()) gsap.to(el, { scrambleText: { text, chars: scrambleChars(text), revealDelay: duration * 0.3, speed: 0.6 }, ...vars, ease: "none", scrollTrigger: sight });
+      const target = textTarget();
+      const text = target.textContent ?? "";
+      if (target.children.length === 0 && text.trim()) gsap.to(target, { scrambleText: { text, chars: scrambleChars(text), revealDelay: duration * 0.3, speed: 0.6 }, ...vars, ease: "none", scrollTrigger: sight });
       else gsap.fromTo(el, { opacity: 0 }, { opacity: Number(getComputedStyle(el).opacity) || 1, ...vars, scrollTrigger: sight });
     } else if (e.kind === "count") {
       // The first number in its words counts up to itself.
@@ -195,7 +214,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     const s = m.scroll;
     if (s.kind === "words") {
       // Its words light up one by one as it comes up the screen.
-      const split = SplitText.create(el, { type: "words", aria: "auto" });
+      const split = SplitText.create(textTarget(), { type: "words", aria: "auto" });
       gsap.fromTo(split.words, { opacity: 0.15 }, { opacity: 1, stagger: 0.1, ease: "none", scrollTrigger: { trigger: el, start: `top ${s.start ?? 85}%`, end: `bottom ${s.end ?? 45}%`, scrub: 0.5 } });
     } else if (s.kind === "pin") {
       // Held in place while the page scrolls on for `length` % of a screen.
@@ -223,7 +242,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     const tween =
       l.kind === "morph" ? (morphTo ? gsap.to(morphTo, { morphSVG: morphTo.dataset.ptMorph ?? "", ...base }) : null)
       : l.kind === "dash" ? (lines.length ? gsap.to(lines, { strokeDashoffset: "-=220", duration: l.duration ?? 4, repeat: -1, ease: "none", delay: enterEnds }) : null)
-      : l.kind === "type" ? typing(gsap, SplitText, el, l.duration ?? 3, enterEnds, off)
+      : l.kind === "type" ? typing(gsap, SplitText, textTarget(), l.duration ?? 3, enterEnds, off)
       : l.kind === "spin" ? gsap.fromTo(el, { "--pt-lrz": "0deg" }, { "--pt-lrz": "360deg", duration: l.duration ?? 8, repeat: -1, ease: "none", delay: enterEnds })
       : l.kind === "pulse" ? gsap.fromTo(el, { "--pt-ls": 1 }, { "--pt-ls": 1 + 0.05 * a, ...base })
       : l.kind === "wobble" ? gsap.fromTo(el, { "--pt-lrz": `${-4 * a}deg` }, { "--pt-lrz": `${4 * a}deg`, ...base })

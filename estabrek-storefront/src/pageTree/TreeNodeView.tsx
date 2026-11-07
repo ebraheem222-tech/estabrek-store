@@ -40,6 +40,7 @@ import { DeckView } from "./DeckView";
 import { showcaseOf } from "./showcase";
 import { ShowcaseView } from "./ShowcaseView";
 import { StableWidgetView } from "./StableWidgetView";
+import { nodeEdges, withDecoration } from "./NodeDecorations";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -59,7 +60,7 @@ export type TreeCtx = {
 
 const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
 const cls = (n: TreeNode, ...more: string[]) =>
-  ["pt", `pt-${n.type}`, /^[A-Za-z0-9_-]{1,40}$/.test(n.id) ? `pt-${n.id}` : "", styleClass(n.props?.styleId), HOVER_CLASS[motionOf(n)?.hover?.kind ?? ""] ?? "", ...more].filter(Boolean).join(" ");
+  ["pt", `pt-${n.type}`, /^[A-Za-z0-9_-]{1,40}$/.test(n.id) ? `pt-${n.id}` : "", styleClass(n.props?.styleId), HOVER_CLASS[motionOf(n)?.hover?.kind ?? ""] ?? "", n.type !== "popup" && (n.props?.edges?.top || n.props?.edges?.bottom) ? "pt-has-edges" : "", ...more].filter(Boolean).join(" ");
 
 /** The slider's own words, in the page's language (screen readers hear most of them). */
 const SLIDER_WORDS: Record<TreeLang, SliderWords & { carousel: string }> = {
@@ -68,28 +69,13 @@ const SLIDER_WORDS: Record<TreeLang, SliderWords & { carousel: string }> = {
   he: { carousel: "מצגת", slide: "שקופית", prev: "השקופית הקודמת", next: "השקופית הבאה", pause: "השהיה", play: "הפעלה" },
 };
 
-/** A section's band along its top or bottom (a checked drawing stretched the full width), or null. */
-function sectionEdge(id: string, where: "top" | "bottom", raw: unknown): ReactNode {
-  const e = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
-  const art = e ? safeArt(e.art) : null;
-  const h = Number(e?.height);
-  const tint = color(e?.color);
-  if (!e || !art || !(h >= 4 && h <= 400) || !tint) return null;
-  const phone = Number(e.phone);
-  const style = { "--pt-eh": `${h}px`, ...(phone >= 4 && phone <= 400 ? { "--pt-ehp": `${phone}px` } : {}), color: tint } as CSSProperties;
-  return (
-    <div key={where} className={`pt-edge pt-edge-${where}${e.flip === true ? " pt-edge-flip" : ""}${e.front === true ? " pt-edge-front" : ""}`} style={style} aria-hidden="true">
-      <ArtView art={art} prefix={`${id}-${where}`} stretch />
-    </div>
-  );
-}
-
 const STRUCTURAL_VIEWS = new Set(["page", "section", "grid", "stack", "columns", "cell"]);
 const PROP_WIDGETS = new Set(["instrument","product360","model3d","lottie","rive","svg"]);
 export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode {
   // A changed widget configuration owns a new view; styles and unrelated edits
   // retain its client state. Containers keep stable identity for their children.
-  const view = renderNode({ node, ctx });
+  const rendered = renderNode({ node, ctx });
+  const view = node.type === "section" || node.type === "popup" ? rendered : withDecoration(rendered, nodeEdges(node.id, node.props?.edges));
   const keyed = STRUCTURAL_VIEWS.has(node.type) || !isValidElement(view) ? view : cloneElement(view, { key: `${node.id}:${JSON.stringify(node.props ?? {})}` });
   return PROP_WIDGETS.has(node.type) ? <StableWidgetView version={JSON.stringify([node,ctx.lang,ctx.main,ctx.cfg,node.type === "product360" ? ctx.spinProducts : null])}>{keyed}</StableWidgetView> : keyed;
 }
@@ -120,7 +106,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "section": {
       const Tag = (["header", "footer", "aside"].includes(p.tag) ? p.tag : "section") as "section";
       const anchor = typeof p.anchor === "string" && /^[A-Za-z][\w-]{0,40}$/.test(p.anchor) ? p.anchor : undefined;
-      const edges = (["top", "bottom"] as const).map((where) => sectionEdge(node.id, where, p.edges?.[where])).filter(Boolean);
+      const edges = nodeEdges(node.id, p.edges);
       // Particles behind its content (TreeMedia draws them), in its colour.
       const dots = particlesOf(p.particles);
       const scene = sceneOf(p.scene);
@@ -149,7 +135,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       };
       return (
         <div className={cls(node)} {...mark}>
-          <PopupView id={node.id} spec={spec} label={say(p.label)} close={(BLOCK_WORDS[ctx.lang] ?? BLOCK_WORDS.ar).close}>
+          <PopupView id={node.id} spec={spec} label={say(p.label)} close={(BLOCK_WORDS[ctx.lang] ?? BLOCK_WORDS.ar).close} decoration={nodeEdges(node.id, p.edges)}>
             {kids()}
           </PopupView>
         </div>

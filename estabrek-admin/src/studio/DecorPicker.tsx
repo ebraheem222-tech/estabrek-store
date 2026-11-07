@@ -1,6 +1,6 @@
 /**
  * Picking a ready decoration (waves, angles, curves, blobs, ornaments, frames…), group by
- * group; `edges` = only the bands that can run along a section's top or bottom.
+ * group; `edges` = only the bands that can run along an object's top or bottom.
  */
 import { useMemo, useState } from "react";
 import { Modal } from "../components/ui/Modal";
@@ -14,7 +14,7 @@ export function DecorPicker({ open, edges, onPick, onClose }: { open: boolean; e
   const [group, setGroup] = useState<string>("");
   const shown = list.filter((d) => !group || d.group === group);
   return (
-    <Modal open={open} title={edges ? tr("حافة القسم", "The section's edge") : tr("زخارف جاهزة", "Ready decorations")} onClose={onClose} widthClassName="max-w-3xl">
+    <Modal open={open} title={edges ? tr("حواف SVG", "SVG edges") : tr("زخارف جاهزة", "Ready decorations")} onClose={onClose} widthClassName="max-w-3xl">
       <div className="space-y-3" data-testid="decor-picker">
         <div className="flex flex-wrap gap-1.5" role="tablist">
           {[["", () => tr("الكل", "All")] as const, ...groups].map(([g, name]) => (

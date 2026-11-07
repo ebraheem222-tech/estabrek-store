@@ -41,6 +41,24 @@ const initial: PageDraft = {
     ] },
   ] } },
 };
+if (new URLSearchParams(location.search).has("objectEdges")) {
+  const art = { viewBox: "0 0 200 40", nodes: [{ t: "path", a: { d: "M0 20L100 0L200 20V40H0Z", fill: "currentColor" } }] };
+  const edges = { top: { art, height: 24, color: "accent", front: true }, bottom: { art, height: 32, phone: 16, color: "accent-soft", flip: true, front: true } };
+  const seeds: Array<[string, Record<string, unknown>]> = [
+    ["heading", { text: text("Heading") }], ["text", { text: text("Copy") }],
+    ["button", { label: text("Shop"), href: "/shop" }],
+    ["image", { src: "/templates/photo-1.svg", href: "/shop", alt: text("Photo") }],
+    ["video", { src: "/templates/fixture.mp4", controls: true }],
+    ["svg", { art }], ["model3d", { model: "sneaker" }],
+    ["accordion", { items: [{ q: text("Question"), a: text("Answer") }] }],
+    ["pricing", { billing: true, items: [{ name: text("Plan"), price: text("10"), features: text("Feature") }] }],
+    ["filterGallery", { items: [{ title: text("Gallery"), image: "/templates/photo-1.svg" }] }],
+    ["marquee", { items: [text("Words")] }], ["icon", { name: "heart" }],
+    ["divider", {}], ["spacer", { size: 40 }], ["stack", {}],
+    ["chart", { kind: "bar", items: [] }], ["clock", {}], ["instrument", { kind: "piano" }],
+  ];
+  initial.tree!.root.children![0].children = seeds.map(([type, props]) => ({ id: `edge-${type}`, type, props: { ...props, edges }, style: { base: { width: "240px", height: "140px" } } }));
+}
 if (new URLSearchParams(location.search).has("narrow")) {
   initial.tree!.root.children![0].style = { base: { width: "160px", minHeight: "900px", pad: [0, 0, 0, 0] } };
 }

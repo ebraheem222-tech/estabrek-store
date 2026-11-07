@@ -18,7 +18,7 @@ let savedHeaders:Record<string,unknown>[]=[];
 const pageId="editor-controls-test";
 const drawing={...newElement("svg","en",()=>"drawing"),name:"Test drawing"};
 const model={...newElement("model3d","en",()=>"model"),name:"Test model"};
-const nodes:PageTreeNode[]=[drawing,model,{id:"questions",type:"accordion",name:"Test questions",props:{items:[{q:{en:"Question"},a:{en:"Answer"}}]}}];
+const nodes:PageTreeNode[]=[drawing,model,{id:"copy",type:"text",props:{text:{en:"Copy"}}},{id:"photo",type:"image",props:{src:"/uploads/test.webp"}},{id:"questions",type:"accordion",name:"Test questions",props:{items:[{q:{en:"Question"},a:{en:"Answer"}}]}}];
 const tree={version:1,root:{id:"page",type:"page",props:{},children:[{id:"section",type:"section",name:"Test section",props:{},children:nodes}]}};
 beforeEach(()=>{
   choice=null;savedHeaders=[];
@@ -71,6 +71,13 @@ test("SVG import and editing stay available while editing hover appearance",asyn
 test("3D content settings stay available in focused appearance",async()=>{
   await open();pick("model");expect(await screen.findByTestId("studio-model3d")).toBeVisible();
   state("focused");expect(screen.getByTestId("studio-model3d")).toBeVisible();
+});
+
+test.each(["copy","photo","drawing","model","questions"])("%s exposes independent SVG top/bottom controls across appearance states",async id=>{
+  await open();pick(id);
+  expect(screen.getByTestId("studio-edge-pick-top")).toBeVisible();
+  expect(screen.getByTestId("studio-edge-pick-bottom")).toBeVisible();
+  state("hover");expect(screen.getByTestId("studio-edges")).toBeVisible();
 });
 test("every section exposes its drawings and models without searching the Add menu",async()=>{
   await open();

@@ -1,13 +1,13 @@
 "use client";
-import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type CSSProperties, type KeyboardEvent } from "react";
 import { filterGalleryItems, type GallerySpec } from "./gallery";
 import styles from "./FilterGalleryView.module.css";
 
 export type GalleryWords = { gallery: string; all: string; search: string; empty: string; open: string; preview: string; close: string; previous: string; next: string; view: string; results: string };
 export type GalleryPanel = { title: string; text: string; category: string; image: string; href?: string; cta: string };
-type Props = Omit<GallerySpec, "items" | "label"> & { items: GalleryPanel[]; label: string; lang: string; words: GalleryWords; className: string; mark: Record<string, string> };
+type Props = { decoration?: ReactNode } & Omit<GallerySpec, "items" | "label"> & { items: GalleryPanel[]; label: string; lang: string; words: GalleryWords; className: string; mark: Record<string, string> };
 
-export function FilterGalleryView({ items, label, lang, words, layout, columns, gap, hoverEffect, lightbox, searchable, activation, className, mark, presentation = "cards", initial = 0, filters = true, showCount = true }: Props) {
+export function FilterGalleryView({ items, label, lang, words, layout, columns, gap, hoverEffect, lightbox, searchable, activation, className, mark, decoration, presentation = "cards", initial = 0, filters = true, showCount = true }: Props) {
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(initial);
@@ -83,6 +83,7 @@ export function FilterGalleryView({ items, label, lang, words, layout, columns, 
   };
 
   return <div ref={root} className={`${className} ${styles.gallery} pt-filter-gallery`} {...mark} data-layout={layout} data-presentation={presentation} data-hover-effect={hoverEffect} style={{ "--fg-columns": columns, "--fg-gap": `${gap}px` } as CSSProperties} role="group" aria-label={label}>
+    {decoration}
     <div className="pt-fg-tools">
       {filters && categories.length ? <div className="pt-fg-filters" role="group" aria-label={label}>
         {["", ...categories].map((value) => <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory(value)}>{value || words.all}</button>)}
