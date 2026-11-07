@@ -67,6 +67,58 @@ test("a database transaction abort rolls back the pre-publish revision too", asy
   expect(await prisma.pageRevision.count({ where: { pageId: page.id, reason: "Publish from the new editor" } })).toBe(0);
 });
 
+test.each(["section", "translation"] as const)("a concurrent legacy %s edit waits for the publication snapshot and is not lost", async target => {
+  const page = (await request(app).post("/v1/admin/pages").send({ name: "Concurrent fixture", slug: "/t" }).expect(201)).body;
+  const section = await prisma.pageSection.create({ data: { pageId: page.id, type: "HERO", order: 0, data: { title: "Original" }, translations: { create: { locale: "en", data: { title: "Original" } } } }, include: { translations: true } });
+  await request(app).post(`/v1/admin/pages/${page.id}/draft/ops`).send({ ops: [{ op: "insert", parentId: "page", index: 0, node: { id: "native", type: "section", props: {}, children: [] } }] }).expect(200);
+  let reached!: () => void, release!: () => void;
+  const paused = new Promise<void>(resolve => { reached = resolve; });
+  const resume = new Promise<void>(resolve => { release = resolve; });
+  const original = prisma.$transaction;
+  const transaction = original.bind(prisma);
+  // Pause after the publisher's authoritative read, retaining real PostgreSQL locks.
+  prisma.$transaction = ((run: any) => transaction(async tx => {
+    let first = true;
+    const wrapped = new Proxy(tx, { get(db, key) {
+      if (key !== "page") return Reflect.get(db, key);
+      return new Proxy(db.page, { get(model, method) {
+        if (method !== "findUnique") return Reflect.get(model, method);
+        return async (args: any) => { const row = await model.findUnique(args); if (first) { first = false; reached(); await resume; } return row; };
+      } });
+    } });
+    return run(wrapped);
+  }, { timeout: 10000 })) as any;
+  const publishing = request(app).post(`/v1/admin/pages/${page.id}/draft/publish`).send({}).then(response => response);
+  let writing: Promise<unknown> | undefined;
+  let finished = false, blocked = false;
+  try {
+    await paused;
+    let identify!: (pid: number) => void;
+    const identified = new Promise<number>(resolve => { identify = resolve; });
+    writing = transaction(async tx => {
+      const [connection] = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`;
+      identify(connection.pid);
+      if (target === "section") await tx.pageSection.update({ where: { id: section.id }, data: { data: { title: "Concurrent edit" } } });
+      else await tx.pageSectionTranslation.update({ where: { id: section.translations[0].id }, data: { data: { title: "Concurrent edit" } } });
+    }).finally(() => { finished = true; });
+    const pid = await identified;
+    const deadline = Date.now() + 2000;
+    while (!finished && !blocked && Date.now() < deadline) {
+      const [activity] = await prisma.$queryRaw<Array<{ wait_event_type: string | null }>>`SELECT wait_event_type FROM pg_stat_activity WHERE pid = ${pid}`;
+      blocked = activity?.wait_event_type === "Lock";
+      if (!blocked && !finished) await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  } finally {
+    release(); prisma.$transaction = original;
+    const published = await publishing;
+    await writing;
+    expect(published.status).toBe(200);
+  }
+  expect(blocked, "legacy child writes must wait rather than change content after the publish conflict check").toBe(true);
+  const saved = target === "section" ? await prisma.pageSection.findUniqueOrThrow({ where: { id: section.id } }) : await prisma.pageSectionTranslation.findUniqueOrThrow({ where: { id: section.translations[0].id } });
+  expect(saved.data).toEqual({ title: "Concurrent edit" });
+});
+
 test("the real PostgreSQL JSON query picks a due publication boundary and invalidates it once", async () => {
   const { retryPublicationDeliveries } = await import("../lib/pagePublicationDelivery.js");
   const { page, publish } = await create();
