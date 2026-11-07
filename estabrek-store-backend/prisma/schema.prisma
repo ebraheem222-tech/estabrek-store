@@ -866,6 +866,8 @@ model Page {
   tree   Json?
   /// The new editor's unpublished changes (src/lib/pageDraft.ts); null = none.
   draft  Json?
+  /// Cache delivery of the latest publication; retained for retry after restarts.
+  publicationDelivery Json?
   /// "page", or "block": a saved block of the new editor (src/lib/pageBlocks.ts), edited like a
   /// page and drawn wherever a page links it, never served as a page of its own.
   kind   String @default("page")

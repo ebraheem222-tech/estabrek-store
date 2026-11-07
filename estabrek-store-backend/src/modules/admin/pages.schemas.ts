@@ -47,6 +47,14 @@ export const PageTreeBody = z.object({ tree: z.unknown() });
 /** 1 = shown from its sections, 2 = from its tree. */
 export const PageFormatBody = z.object({ format: z.union([z.literal(1), z.literal(2)]) });
 
+export const PublishPageDraftBody = z.object({
+  force: z.boolean().optional(),
+  rev: z.number().int().nonnegative().optional(),
+  mode: z.enum(["keep_schedule", "now"]).default("keep_schedule"),
+  republishArchived: z.boolean().optional(),
+  expectedPublication: z.object({ status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]), slug: z.string().min(1), publishAt: z.string().datetime({ offset: true }).nullable(), unpublishAt: z.string().datetime({ offset: true }).nullable() }).strict().optional(),
+}).strict();
+
 export const ValidateSectionBody = z.object({
   type: z.string().trim().min(1).max(80),
   data: z.any().optional(),

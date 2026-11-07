@@ -536,6 +536,7 @@ export async function renderCmsPageBySlug(
 
   const body = (
     <>
+      <span hidden aria-hidden="true" data-cms-page-id={page.id} />
       {/* Page-level head scripts are injected in head.tsx */}
       <ScriptTags scripts={(page as any).headScripts} />
       {treeFonts ? (

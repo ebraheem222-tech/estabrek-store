@@ -19,6 +19,7 @@ import { flushAb } from "./lib/experiments.js";
 import { runScheduled } from "./modules/admin/schedule.service.js";
 import { runAutomations, setVideoChecker } from "./modules/admin/automations.service.js";
 import { checkProcessingVideos } from "./modules/admin/videos.controller.js";
+import { retryPublicationDeliveries } from "./lib/pagePublicationDelivery.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -32,6 +33,7 @@ function envMs(name: string, fallback: number): number | null {
 }
 
 export function registerBackgroundJobs() {
+  registerJob({ name: "cmsPublish", group: "cache", everyMs: 30_000, limits: { min: 15_000, max: 5 * MIN }, firstMs: 5_000, run: () => retryPublicationDeliveries() });
   const outboxEvery = envMs("OUTBOX_INTERVAL_MS", 15_000) ?? 15_000;
   registerJob({
     name: "outbox",

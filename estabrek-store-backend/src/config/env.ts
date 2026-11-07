@@ -98,6 +98,7 @@ const EnvSchema = z.object({
 
   // Optional: trigger storefront revalidation after CMS/admin updates
   STOREFRONT_REVALIDATE_URL: OptionalUrl,
+  STOREFRONT_REVALIDATE_URLS: z.string().default("").transform((v) => v.split(",").map((s) => s.trim()).filter(Boolean)).pipe(z.array(z.string().url()).max(8)),
   STOREFRONT_REVALIDATE_SECRET: z.string().optional(),
 
   // Email (Resend). Without RESEND_API_KEY + EMAIL_FROM emails are only logged.

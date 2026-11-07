@@ -1,0 +1,60 @@
+name: CMS publishing tests
+on:
+  push:
+    paths:
+      - 'estabrek-store-backend/**'
+      - '.github/workflows/cms-publishing-tests.yml'
+  pull_request:
+    paths:
+      - 'estabrek-store-backend/**'
+      - '.github/workflows/cms-publishing-tests.yml'
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cms_fixture
+          POSTGRES_PASSWORD: cms_fixture
+          POSTGRES_DB: estabrek_cms_publish_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cms_fixture -d estabrek_cms_publish_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: estabrek-store-backend
+    env:
+      NODE_ENV: test
+      TEST_DATABASE_ISOLATED: 'true'
+      DATABASE_URL: postgresql://cms_fixture:cms_fixture@127.0.0.1:5432/estabrek_cms_publish_test?schema=public
+      JWT_SECRET: isolated-ci-fixture-key-not-for-production
+      DOTENV_CONFIG_PATH: /dev/null
+      RATE_LIMIT_MAX: '100000'
+      RATE_LIMIT_IP_MAX: '100000'
+      RATE_LIMIT_AUTH_MAX: '100000'
+      OUTBOX_WORKER: 'false'
+      REDIS_URL: ''
+      STOREFRONT_REVALIDATE_URL: ''
+      STOREFRONT_REVALIDATE_URLS: ''
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: estabrek-store-backend/package-lock.json
+      - run: npm ci
+      - name: Migrate the disposable PostgreSQL database
+        run: npx prisma migrate deploy
+      - run: npx prisma generate
+      - run: npm run build
+      - name: Run the backend suite against isolated PostgreSQL
+        run: npm test -- --no-file-parallelism --maxWorkers=1

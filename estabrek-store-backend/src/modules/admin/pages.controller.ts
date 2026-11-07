@@ -19,6 +19,7 @@ import {
   ValidateSectionBody,
   PageTreeBody,
   PageFormatBody,
+  PublishPageDraftBody,
 } from "./pages.schemas.js";
 import { previewToken } from "../../lib/previewToken.js";
 import { DraftError, applyOps, draftFromPage, needsTree, publishOrder, sectionsHash, storedDraft } from "../../lib/pageDraft.js";
@@ -28,7 +29,11 @@ import { BLOCK_KIND, TEMPLATE_KIND, blockSlug, blockUses, templateSlug } from ".
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
-import { cacheDel, cacheDelPrefix } from "../../lib/cache.js";
+import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
+import { PublicationError, publicationChange, publicationState, samePublication } from "../../lib/pagePublication.js";
+import { attemptPublicationDelivery, newPublicationDelivery, storedPublicationDelivery } from "../../lib/pagePublicationDelivery.js";
+import { requirePermission } from "../../middleware/access.js";
+import { probePublicPage } from "../../lib/publicPageProbe.js";
 import { BadRequest } from "../../utils/httpError.js";
 import { INDUSTRY_WORD, identityOf, pick, storeName } from "../identity/identity.js";
 
@@ -59,27 +64,7 @@ function toNullableJsonInput(value: unknown): Prisma.InputJsonValue | Prisma.Nul
   return value as Prisma.InputJsonValue;
 }
 
-export function triggerCmsRevalidate(slugs: Array<string | null | undefined> = []) {
-  // A saved block shows on every page that links it: all the pages' copies go.
-  if (slugs.some((s) => s?.startsWith("/__block/"))) slugs = [];
-  const paths = Array.from(new Set(slugs.filter(Boolean))) as string[];
-  void (async () => {
-    await cacheDel("storefront:pages:published");
-    if (paths.length) {
-      for (const slug of paths) {
-        for (const locale of ["ar", "he", "en"] as const) {
-          await cacheDel(`storefront:page:${locale}:${slug}`);
-        }
-      }
-    } else {
-      await cacheDelPrefix("storefront:page:");
-    }
-    await revalidateStorefront({
-      tags: ["cms", "cms:pages", "cms:bootstrap"],
-      paths,
-    });
-  })();
-}
+export { triggerCmsRevalidate };
 
 function normalizeDateInput(value: unknown): Date | null | undefined {
   if (value === undefined) return undefined;
@@ -166,10 +151,10 @@ function validateSuggestedSections(sections: SuggestedSection[]) {
 
 type RevisionActor = { email?: string | null; sub?: string | null } | null | undefined;
 
-export async function capturePageRevision(pageId: string, reason: string, actor?: RevisionActor) {
+export async function capturePageRevision(pageId: string, reason: string, actor?: RevisionActor, db: Prisma.TransactionClient = prisma, coalesce = true) {
   const normalizedReason = String(reason || "Update page").trim();
   const recentCutoff = new Date(Date.now() - 45_000);
-  const recent = await prisma.pageRevision.findFirst({
+  const recent = await db.pageRevision.findFirst({
     where: {
       pageId,
       reason: normalizedReason,
@@ -177,9 +162,9 @@ export async function capturePageRevision(pageId: string, reason: string, actor?
     },
     select: { id: true },
   });
-  if (recent) return;
+  if (recent && coalesce) return;
 
-  const page = await prisma.page.findUnique({
+  const page = await db.page.findUnique({
     where: { id: pageId },
     include: {
       sections: {
@@ -196,7 +181,7 @@ export async function capturePageRevision(pageId: string, reason: string, actor?
   });
   if (!page) return;
 
-  await prisma.pageRevision.create({
+  await db.pageRevision.create({
     data: {
       pageId: page.id,
       name: page.name,
@@ -529,18 +514,26 @@ r.delete("/:id/draft", asyncHandler(async (req, res) => {
  * and the tree. Refused when the page changed elsewhere since the draft began,
  * unless forced. A revision is saved first.
  */
-r.post("/:id/draft/publish", asyncHandler(async (req, res) => {
-  const page = await prisma.page.findUnique({ where: { id: req.params.id }, include: DRAFT_PAGE });
-  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
-  const draft = storedDraft(page.draft);
-  if (!draft) return res.status(400).json({ error: "NO_DRAFT" });
-  if ((req.body as any)?.force !== true && sectionsHash(page.sections as any, page.tree) !== draft.baseHash) {
-    return res.status(409).json({ error: "PAGE_CHANGED" });
-  }
-  await capturePageRevision(page.id, "Publish from the new editor", req.user as any);
-  const order = publishOrder(draft);
-  const keep = new Set(draft.sections.map((s) => s.id));
-  await prisma.$transaction(async (tx) => {
+r.post("/:id/draft/publish", requirePermission("pages:publish"), validate({ body: PublishPageDraftBody }), asyncHandler(async (req, res) => {
+  const body = req.body as import("zod").infer<typeof PublishPageDraftBody>;
+  const queued = newPublicationDelivery();
+  let result: { format: number; publication: ReturnType<typeof publicationState> };
+  try {
+    result = await prisma.$transaction(async (tx) => {
+    // Serializes page publication/lifecycle writes; checks and revision belong to this transaction.
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Page" WHERE "id" = ${req.params.id} FOR UPDATE`);
+    const page = await tx.page.findUnique({ where: { id: req.params.id }, include: DRAFT_PAGE });
+    if (!page) throw new PublicationError("NOT_FOUND", 404);
+    const draft = storedDraft(page.draft);
+    if (!draft) throw new PublicationError("NO_DRAFT", 400);
+    if (body.rev !== undefined && body.rev !== draft.rev) throw new PublicationError("DRAFT_CHANGED", 409);
+    const expected = body.expectedPublication ?? draft.basePublication;
+    if (expected && !samePublication(expected, page)) throw new PublicationError("PUBLICATION_CHANGED", 409);
+    if (body.force !== true && sectionsHash(page.sections as any, page.tree) !== draft.baseHash) throw new PublicationError("PAGE_CHANGED", 409);
+    const change = publicationChange(page, body);
+    await capturePageRevision(page.id, "Publish from the new editor", req.user as any, tx, false);
+    const order = publishOrder(draft);
+    const keep = new Set(draft.sections.map((s) => s.id));
     for (const s of draft.sections) {
       if (!page.sections.some((x) => x.id === s.id)) continue;
       await tx.pageSection.update({ where: { id: s.id }, data: { data: (s.data ?? {}) as any, isVisible: s.isVisible, order: order.get(s.id) ?? 0 } });
@@ -556,14 +549,45 @@ r.post("/:id/draft/publish", asyncHandler(async (req, res) => {
     await tx.pageSection.deleteMany({ where: { pageId: page.id, id: { notIn: [...keep] } } });
     await tx.page.update({
       where: { id: page.id },
-      data: { tree: draft.tree as any, format: needsTree(draft.tree) ? PAGE_FORMAT.tree : page.format, draft: Prisma.DbNull },
+      data: { ...change, tree: draft.tree as any, format: needsTree(draft.tree) ? PAGE_FORMAT.tree : page.format, draft: Prisma.DbNull, publicationDelivery: queued },
     });
-  });
-  triggerCmsRevalidate([page.slug]);
-  res.json({ ok: true, format: needsTree(draft.tree) ? PAGE_FORMAT.tree : page.format });
+    return { format: needsTree(draft.tree) ? PAGE_FORMAT.tree : page.format, publication: publicationState({ ...page, ...change }) };
+    });
+  } catch (error) {
+    if (error instanceof PublicationError) return res.status(error.status).json({ error: error.code });
+    throw error;
+  }
+  // Content has committed. A delivery/storage outage must not turn success into a misleading500.
+  const delivery = await attemptPublicationDelivery(req.params.id, queued).catch(() => queued);
+  res.json({ ok: true, ...result, delivery: delivery ?? queued });
 }));
 
 /** POST /admin/pages/:id/preview-token — a 30-minute ticket for the shop to show this page's draft in the new editor. */
+r.get("/:id/publication", asyncHandler(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const page = await prisma.page.findUnique({ where: { id: req.params.id } });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  res.json({ publication: publicationState(page), delivery: storedPublicationDelivery(page.publicationDelivery), hasDraft: Boolean(storedDraft(page.draft)) });
+}));
+
+r.get("/:id/publication/check", asyncHandler(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const page = await prisma.page.findUnique({ where: { id: req.params.id } });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  const locale = ["ar", "en", "he"].includes(String(req.query.locale)) ? String(req.query.locale) as "ar" | "en" | "he" : "ar";
+  res.json(await probePublicPage(page, locale));
+}));
+
+r.post("/:id/publication/retry", requirePermission("pages:publish"), asyncHandler(async (req, res) => {
+  const page = await prisma.page.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  const queued = newPublicationDelivery();
+  await prisma.page.update({ where: { id: page.id }, data: { publicationDelivery: queued } });
+  const delivery = await attemptPublicationDelivery(page.id, queued).catch(() => queued);
+  res.json({ delivery: delivery ?? queued });
+}));
+
+/** POST /admin/pages/:id/preview-token — the editor's short-lived draft ticket. */
 r.post("/:id/preview-token", asyncHandler(async (req, res) => {
   const page = await prisma.page.findUnique({ where: { id: req.params.id }, select: { id: true } });
   if (!page) return res.status(404).json({ error: "NOT_FOUND" });
