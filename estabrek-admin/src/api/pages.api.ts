@@ -3,6 +3,13 @@ import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
 
 export type PageStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+export type PublicationSnapshot = { status: PageStatus; slug: string; publishAt: string | null; unpublishAt: string | null };
+export type PublicationState = PublicationSnapshot & { state: "draft" | "archived" | "scheduled" | "expired" | "live"; public: boolean };
+export type PublicationDelivery = { version: 1; id: string; state: "pending" | "delivered" | "failed" | "not_configured"; attempts: number; createdAt: string; checkedAt: string | null; retryAt: string | null; targets: Array<{ origin: string; ok: boolean; status?: number }> };
+export type PublishChoices = { mode: "keep_schedule" | "now"; republishArchived: boolean };
+export type PublishPageOptions = Partial<PublishChoices> & { rev?: number; expectedPublication?: PublicationSnapshot };
+export type PagePublication = { publication: PublicationState; delivery: PublicationDelivery | null; hasDraft: boolean };
+export type PublicPageProbe = { state: "shown" | "pending" | "not_public" | "not_configured"; checkedAt: string; targets: Array<{ origin: string; url: string; state: "shown" | "not_found" | "different_page" | "unavailable"; status?: number }> };
 
 export type Page = {
   id: string;
@@ -247,10 +254,14 @@ export async function changePageDraft(id: string, ops: PageDraftOp[], rev?: numb
   return res.data as { draft: PageDraft };
 }
 
-export async function publishPageDraft(id: string, force = false) {
-  const res = await api.post(ENDPOINTS.admin.pages.draftPublish(id), { force });
-  return res.data as { ok: true; format: PageFormat };
+export async function publishPageDraft(id: string, force = false, options: PublishPageOptions = {}) {
+  const res = await api.post(ENDPOINTS.admin.pages.draftPublish(id), { force, ...options });
+  return res.data as { ok: true; format: PageFormat; publication?: PublicationState; delivery?: PublicationDelivery };
 }
+
+export async function getPagePublication(id: string): Promise<PagePublication> { return (await api.get(ENDPOINTS.admin.pages.publication(id))).data; }
+export async function checkPagePublication(id: string, locale: string): Promise<PublicPageProbe> { return (await api.get(ENDPOINTS.admin.pages.publicationCheck(id), { params: { locale } })).data; }
+export async function retryPagePublication(id: string): Promise<{ delivery: PublicationDelivery | null; superseded?: boolean }> { return (await api.post(ENDPOINTS.admin.pages.publicationRetry(id))).data; }
 
 export async function discardPageDraft(id: string) {
   const res = await api.delete(ENDPOINTS.admin.pages.draft(id));

@@ -31,6 +31,12 @@ authStore.setAdmin({ id: "local-canvas-owner", email: "owner@example.test", role
 const text = (en: string, ar: string = en) => ({ en, ar, he: en });
 const savedTheme = new URLSearchParams(location.search).has("theme") ? { id: "circuit", mode: "dark", custom: { palette: { dark: { accent: "#22cc88" } } } } : undefined;
 const at = "2026-11-06T00:00:00.000Z";
+const publishingFixture = new URLSearchParams(location.search).has("publishing");
+const publicationSlug = publishingFixture ? `/publication-fixture-${new URLSearchParams(location.search).get("lang") === "ar" ? "ar" : "en"}` : "/editor-controls";
+let publicationStatus = publishingFixture ? "DRAFT" : "PUBLISHED";
+let hasDraft = true;
+let publicationDelivery: Record<string, unknown> | null = null;
+const publication = () => ({ status: publicationStatus, slug: publicationSlug, publishAt: null, unpublishAt: null, state: publicationStatus === "PUBLISHED" ? "live" : "draft", public: publicationStatus === "PUBLISHED" });
 const initial: PageDraft = {
   version: 1, rev: 0, baseHash: "isolated-editor-fixture", sections: [], trash: [], startedAt: at, updatedAt: at,
   tree: { version: 1, root: { id: "page", type: "page", props: {}, children: [
@@ -127,17 +133,28 @@ api.defaults.adapter = async (config) => {
     return response(config, { id: "uploaded", url: "/templates/fixture.glb", displayName: "Uploaded model", size: 100, provider: "LOCAL", createdAt: at });
   }
   if (path === `/admin/pages/${PAGE_ID}/preview-token` && method === "POST") return response(config, { token: "good-draft", expiresAt: new Date(Date.now() + 1_800_000).toISOString() });
+  if (method === "GET" && path === `/admin/pages/${PAGE_ID}/publication`) return response(config, { publication: publication(), delivery: publicationDelivery, hasDraft });
+  if (method === "GET" && path === `/admin/pages/${PAGE_ID}/publication/check`) return response(config, { state: publicationStatus === "PUBLISHED" ? "shown" : "not_public", checkedAt: new Date().toISOString(), targets: [] });
+  if (method === "POST" && path === `/admin/pages/${PAGE_ID}/draft/publish` && publishingFixture) {
+    if (body.rev !== draft.rev || body.expectedPublication?.status !== publicationStatus) throw new Error("Stale publishing fixture confirmation");
+    const id = `publication-${Date.now()}`;
+    const result = await fetch(`${FIXTURE}/__test/published-page`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: publicationSlug, page: { id: PAGE_ID, name: "Published fixture", slug: publicationSlug, status: "PUBLISHED", format: 2, tree: draft.tree, sections: [], publicationRevision: id } }) });
+    if (!result.ok) throw new Error("Local publication failed");
+    publicationStatus = "PUBLISHED"; hasDraft = false;
+    publicationDelivery = { version: 1, id, state: "delivered", attempts: 1, createdAt: at, checkedAt: at, retryAt: null, targets: [{ origin: SHOP, ok: true }] };
+    return response(config, { ok: true, format: 2, publication: publication(), delivery: publicationDelivery });
+  }
   if (path === `/admin/pages/${PAGE_ID}/draft/ops` && method === "POST") {
     if (body.rev !== undefined && body.rev !== draft.rev) throw new AxiosError("Fixture revision conflict", "409", config, undefined, { ...response(config, {}), status: 409 });
     const previous = clone(draft);
-    try { applyOps(body.ops); await syncPreview(); }
+    try { applyOps(body.ops); hasDraft = true; await syncPreview(); }
     catch (error) { draft = previous; throw error; }
     writes.push({ ops: clone(body.ops), rev: draft.rev });
     return response(config, { draft });
   }
-  if (method === "GET" && path === `/admin/pages/${PAGE_ID}/draft`) return response(config, { draft, main: "ar" });
+  if (method === "GET" && path === `/admin/pages/${PAGE_ID}/draft`) return response(config, { draft: hasDraft ? draft : null, main: "ar" });
   if (method === "GET" && path === `/admin/pages/${PAGE_ID}/tree`) return response(config, { format: 2, tree: draft.tree, saved: true });
-  if (method === "GET" && path === `/admin/pages/${PAGE_ID}`) return response(config, { id: PAGE_ID, name: "Direct canvas local fixture", slug: "/editor-controls", format: 2, status: "PUBLISHED", sections: [] });
+  if (method === "GET" && path === `/admin/pages/${PAGE_ID}`) return response(config, { id: PAGE_ID, name: "Direct canvas local fixture", slug: publicationSlug, format: 2, status: publicationStatus, sections: [] });
   if (method === "GET" && path === "/admin/settings") return response(config, { id: "fixture", siteName: "Local canvas regression", header: { storeTheme: savedTheme, languages: { enabled: ["en", "ar"], default: "ar" }, identity: { name: text("Canvas fixture"), industry: "fashion", audience: "all" }, storefront: { mobileBottomNavEnabled: false, liveChatEnabled: false } } });
   if (method === "GET" && path === "/admin/site-styles") return response(config, { styles: [], draft: null });
   if (method === "GET" && ["/admin/pages/blocks", "/admin/pages/templates", "/admin/catalog/products", "/admin/catalog/categories"].includes(path)) return response(config, []);
@@ -159,6 +176,10 @@ Object.assign(window, { __canvasHarness: {
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } });
 client.setQueryData(["store-themes", "full"], { themes: ["circuit", "ink-library"].map(id => ({ id, name: text(id), blurb: text(id), family: "general", mode: "dark", modes: ["light", "dark"], swatch: ["#111111", "#222222", "#3344ff", "#4455ff"], hero: "split", motion: "soft" })), models: [], fonts: [], defaults: {} });
 try {
+  if (publishingFixture) {
+    const cleared = await fetch(`${FIXTURE}/__test/published-page`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: publicationSlug, page: null }) });
+    if (!cleared.ok) throw new Error("Local publication reset failed");
+  }
   await syncPreview();
   createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={client}>

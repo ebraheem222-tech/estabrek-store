@@ -2,6 +2,11 @@
 // settings history (cacheText.describeField) can name them too.
 
 export const JOB_TEXT: Record<string, { label: string; what: string; link?: { to: string; label: string } }> = {
+  cmsPublish: {
+    label: "تحديث الصفحات المنشورة",
+    what: "بيعيد محاولة تحديث كاش الموقع بعد النشر، وبحدّثه عند بداية موعد النشر ونهايته. بتضل المحاولات محفوظة بعد إعادة تشغيل السيرفر.",
+    link: { to: "/admin/pages", label: "الصفحات" },
+  },
   outbox: {
     label: "إرسال الرسايل",
     what: "بيبعت الرسايل اللي بالدور (إيميل، واتساب، SMS).",

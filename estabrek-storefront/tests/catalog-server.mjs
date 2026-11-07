@@ -811,6 +811,22 @@ http
       });
       return;
     }
+    if (pathname === "/__test/published-page" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", async () => {
+        try {
+          const data = JSON.parse(body || "{}");
+          if (!/^\/publication-fixture-(en|ar)$/.test(data.slug)) throw new Error("Only the local publishing fixture slug is allowed");
+          globalThis.publishedCmsPages ??= Object.create(null);
+          globalThis.publishedCmsPages[data.slug] = data.page ?? null;
+          const refresh = await fetch("http://127.0.0.1:3000/api/revalidate", { method: "POST", headers: { "content-type": "application/json", "x-revalidate-secret": "fixture-publishing-only" }, body: JSON.stringify({ tags: ["cms", "cms:pages"], paths: [data.slug] }) });
+          if (!refresh.ok) throw new Error(`Local refresh failed: ${refresh.status}`);
+          res.end("{}");
+        } catch (error) { res.statusCode = 500; res.end(JSON.stringify({ error: String(error) })); }
+      });
+      return;
+    }
     if (pathname === "/__test/preview-draft" && req.method === "POST") {
       let body = "";
       req.on("data", (c) => (body += c));
@@ -1337,6 +1353,11 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       const slug = new URL(req.url, "http://localhost").searchParams.get(
         "slug",
       );
+      if (slug?.startsWith("/publication-fixture-")) {
+        const page = globalThis.publishedCmsPages?.[slug];
+        if (page) return res.end(JSON.stringify(page));
+        res.statusCode = 404; return res.end("null");
+      }
       if (slug === "/" && globalThis.ownedDesign && !globalThis.ownedDesign.page) { res.statusCode = 404; return res.end("{}"); }
       if (slug === "/") return res.end(JSON.stringify(globalThis.ownedDesign?.page ?? asTreePage(home)));
       if (slug === "/contact") return res.end(JSON.stringify(asTreePage(contact)));

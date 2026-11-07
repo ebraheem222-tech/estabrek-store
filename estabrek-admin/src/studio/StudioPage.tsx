@@ -38,6 +38,8 @@ import * as PagesAPI from "../api/pages.api";
 import { getApiErrorMessage } from "../api/http";
 import { ROSE_ID, currentStoreTheme, currentStoreThemeId, loadStoreThemes, saveStoreTheme, withOwnedTheme } from "./storeThemes";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { PagePublishDialog } from "./PagePublishDialog";
+import { PagePublicationStatus } from "./PagePublicationStatus";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
 import { PreviewRefresh, PreviewRefreshCancelled } from "./previewRefresh";
@@ -210,7 +212,7 @@ export default function StudioPage() {
   const [themePreview, setThemePreview] = useState<string | null>(null);
   const [themeMode, setThemeMode] = useState<"light" | "dark" | null | undefined>(undefined);
   const [themeSaving, setThemeSaving] = useState(false);
-  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "deleteMany"; ids: string[] } | { kind: "publish"; force: boolean } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
+  const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "deleteMany"; ids: string[] } | { kind: "publish"; force: boolean; options?: PagesAPI.PublishPageOptions } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
   const [drop, setDrop] = useState<Drop | null>(null);
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
   const adding = useRef<AddKind | null>(null);
@@ -589,17 +591,29 @@ export default function StudioPage() {
       setThemeSaving(false);
     }
   };
-  const publish = async (force: boolean) => {
+  const publish = async (force: boolean, options: PagesAPI.PublishPageOptions = {}) => {
     setBusy(true);
     try {
-      await PagesAPI.publishPageDraft(id, force);
+      const page = pageQ.data;
+      if (!page) return;
+      const result = await PagesAPI.publishPageDraft(id, force, { ...options, rev: draft?.rev, expectedPublication: { status: page.status, slug: page.slug, publishAt: page.publishAt ?? null, unpublishAt: page.unpublishAt ?? null } });
       history.current = new History();
       await Promise.all([qc.invalidateQueries({ queryKey: ["pages", id] }), qc.invalidateQueries({ queryKey: ["pages"] })]);
       setAsking(null);
-      toast.success(tr("انتشرت التغييرات بالمتجر", "The changes are live in the store"));
+      if (result.publication?.state === "scheduled") toast.success(tr("انحفظ المحتوى حسب موعد النشر", "Content saved for the scheduled publication"));
+      else if (result.publication?.state === "expired") toast.success(tr("انحفظ المحتوى؛ موعد إتاحة الصفحة منتهي", "Content saved; the publication window has ended"));
+      else if (result.delivery?.state === "delivered") toast.success(tr("انحفظ النشر وتحدّث الموقع", "Publication saved and storefront refreshed"));
+      else toast.success(tr("انحفظ النشر؛ تحديث الموقع لسه بحاجة تحقق", "Publication saved; storefront refresh still needs verification"));
       reload();
     } catch (e) {
-      if (statusOf(e) === 409) setAsking({ kind: "publish", force: true });
+      const code = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      if (statusOf(e) === 409 && code === "PAGE_CHANGED") setAsking({ kind: "publish", force: true, options });
+      else if (code === "PUBLICATION_CHANGED" || code === "DRAFT_CHANGED") {
+        setAsking(null);
+        await qc.invalidateQueries({ queryKey: ["pages", id] });
+        toast.error(tr("حالة الصفحة أو المسودة تغيّرت؛ راجعها قبل النشر", "The page status or draft changed; review it before publishing"));
+        reload();
+      }
       else toast.error(tr("ما انتشرت التغييرات", "The changes weren't published"), { description: getApiErrorMessage(e) });
     } finally {
       setBusy(false);
@@ -2541,7 +2555,7 @@ export default function StudioPage() {
           <button type="button" disabled={!index} onClick={() => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); }} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
           {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
-          <button type="button" onClick={() => setAsking({ kind: "publish", force: false })} disabled={!draft || busy} className="h-7 rounded-lg bg-accent-500 px-3 text-xs font-medium text-white disabled:opacity-30" data-testid="studio-publish">{tr("نشر", "Publish")}</button>
+          <button type="button" onClick={() => setAsking({ kind: "publish", force: false })} disabled={!canPublish || !draft || busy} className="h-7 rounded-lg bg-accent-500 px-3 text-xs font-medium text-white disabled:opacity-30" data-testid="studio-publish">{tr("نشر", "Publish")}</button>
         </div>
         {origin && pageQ.data ? (
           <a href={`${origin}${shopLang === langs.default ? "" : `/${shopLang}`}${pageQ.data.slug === "/" && shopLang !== langs.default ? "" : pageQ.data.slug}`} target="_blank" rel="noreferrer" className="rounded-lg px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/10">
@@ -2549,6 +2563,8 @@ export default function StudioPage() {
           </a>
         ) : null}
       </header>
+
+      {pageQ.data ? <PagePublicationStatus key={id} page={pageQ.data} lang={shopLang} hasDraft={Boolean(draft)} canPublish={canPublish} /> : null}
 
       {treeQ.data && treeQ.data.format !== 2 ? (
         <p className="border-b border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-200" data-testid="studio-sections-note">
@@ -2890,8 +2906,9 @@ export default function StudioPage() {
       ) : null}
 
       {menu ? <ContextMenu at={menu} items={menuItems()} onClose={() => setMenu(null)} /> : null}
+      {asking?.kind === "publish" && pageQ.data ? <PagePublishDialog key={`${id}:${asking.force}`} page={pageQ.data} force={asking.force} busy={busy} initialOptions={asking.options} onClose={() => setAsking(null)} onConfirm={(options) => publish(asking.force, options)} /> : null}
       <ConfirmDialog
-        open={asking !== null}
+        open={asking !== null && asking.kind !== "publish"}
         variant={asking?.kind === "delete" || asking?.kind === "deleteMany" || asking?.kind === "deleteBlock" || (asking?.kind === "publish" && asking.force) ? "danger" : "warning"}
         isLoading={busy || themeSaving}
         title={

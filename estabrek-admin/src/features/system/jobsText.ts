@@ -37,6 +37,7 @@ export const OFF_TEXT: Record<string, string> = {
 
 /** What pausing costs, for the confirm box (jobs not listed pause without asking). */
 export const PAUSE_WARNING: Record<string, string> = {
+  cmsPublish: "إعادة محاولات تحديث الموقع وتحديث الكاش عند مواعيد نشر الصفحات رح تتوقف لحتى تكمّل.",
   outbox: "الرسايل (طلبات، كلمات مرور، تتبّع) ما رح تنبعت لحتى تكمّل.",
   stockAlerts: "الزباين اللي طالبين «رجع للمخزون» ما رح يوصلهم إيميل لحتى تكمّل.",
   backup: "ما رح تنعمل نسخة احتياطية يومية لحتى تكمّل.",
@@ -46,6 +47,8 @@ export const PAUSE_WARNING: Record<string, string> = {
 };
 
 const COUNT_TEXT: Record<string, string> = {
+  delivered: "موقع تحدّث",
+  pending: "بانتظار إعادة المحاولة",
   checked: "انفحص",
   sent: "انبعت",
   failed: "فشل",

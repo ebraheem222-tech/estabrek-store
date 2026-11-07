@@ -1,5 +1,5 @@
 import {afterEach,beforeEach,expect,test,vi} from "vitest";
-import {cleanup,fireEvent,render,screen,waitFor} from "@testing-library/react";
+import {cleanup,fireEvent,render,screen,waitFor,within} from "@testing-library/react";
 import {QueryClient,QueryClientProvider} from "@tanstack/react-query";
 import {MemoryRouter,Route,Routes} from "react-router-dom";
 import StudioPage from "./StudioPage";
@@ -15,13 +15,16 @@ const originalScroll=Object.getOwnPropertyDescriptor(HTMLElement.prototype,"scro
 let client:QueryClient;
 let choice:StoreThemeChoice|null=null;
 let savedHeaders:Record<string,unknown>[]=[];
+let publishedBodies:Record<string,unknown>[]=[];
+let publishFailure:string|null=null;
+let pageReads=0;
 const pageId="editor-controls-test";
 const drawing={...newElement("svg","en",()=>"drawing"),name:"Test drawing"};
 const model={...newElement("model3d","en",()=>"model"),name:"Test model"};
 const nodes:PageTreeNode[]=[drawing,model,{id:"copy",type:"text",props:{text:{en:"Copy"}}},{id:"photo",type:"image",props:{src:"/uploads/test.webp"}},{id:"questions",type:"accordion",name:"Test questions",props:{items:[{q:{en:"Question"},a:{en:"Answer"}}]}}];
 const tree={version:1,root:{id:"page",type:"page",props:{},children:[{id:"section",type:"section",name:"Test section",props:{},children:nodes}]}};
 beforeEach(()=>{
-  choice=null;savedHeaders=[];
+  choice=null;savedHeaders=[];publishedBodies=[];publishFailure=null;pageReads=0;
   vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});
   Object.defineProperty(HTMLElement.prototype,"scrollIntoView",{configurable:true,value:vi.fn()});
   localStorage.setItem("admin-lang","en");
@@ -32,12 +35,18 @@ beforeEach(()=>{
   authStore.setAdmin({id:"fixture-owner",email:"owner@example.test",role:"SUPERADMIN",owner:true} as never);
   api.defaults.adapter=async config=>{
     const path=String(config.url).split("?")[0];
+    if(path.endsWith(`/pages/${pageId}`)) pageReads++;
+    if(path.endsWith("/draft/publish")) {
+      publishedBodies.push(JSON.parse(config.data));
+      if(publishFailure) throw {response:{status:409,data:{error:publishFailure}},config};
+    }
     if(path.endsWith("/settings") && config.method!=="get"){
       const body=JSON.parse(config.data);
       savedHeaders.push(body.header);
       choice=body.header.storeTheme;
     }
-    const data=path.endsWith("/preview-token")?{token:"fixture-only",expiresAt:new Date(Date.now()+1800000).toISOString()}:
+    const data=path.endsWith("/draft/publish")?{ok:true,format:2,publication:{status:"PUBLISHED",slug:"/",publishAt:null,unpublishAt:null,state:"live",public:true},delivery:{state:"delivered",targets:[]}}:
+      path.endsWith("/preview-token")?{token:"fixture-only",expiresAt:new Date(Date.now()+1800000).toISOString()}:
       path.endsWith("/draft")?{draft:{version:1,rev:1,baseHash:"local",sections:[],trash:[],startedAt:"",updatedAt:"",tree},main:"en"}:
       path.endsWith("/tree")?{format:2,tree,saved:true}:
       path.endsWith("/site-styles")?{styles:[],draft:null}:
@@ -62,6 +71,25 @@ async function open(){
 }
 function pick(id:string){const row=document.querySelector(`[data-testid="studio-layer"][data-node="${id}"]`);expect(row).toBeTruthy();fireEvent.click(row!);}
 function state(value:string){fireEvent.click(screen.getByTestId("studio-states").querySelector(`[data-state="${value}"]`)!);}
+
+test("publishing sends the reviewed page lifecycle and draft revision along with the explicit choice",async()=>{
+  await open(); fireEvent.click(screen.getByTestId("studio-publish"));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:"Publish"}));
+  await waitFor(()=>expect(publishedBodies).toHaveLength(1));
+  expect(publishedBodies[0]).toMatchObject({force:false,rev:1,mode:"keep_schedule",republishArchived:false,expectedPublication:{status:"DRAFT",slug:"/",publishAt:null,unpublishAt:null}});
+});
+
+test.each(["PUBLICATION_CHANGED","DRAFT_CHANGED"])("%s requires a new review instead of offering to force publication",async code=>{
+  publishFailure=code;
+  await open();
+  const readsBefore=pageReads;
+  fireEvent.click(screen.getByTestId("studio-publish"));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:"Publish"}));
+  await waitFor(()=>expect(screen.queryByTestId("page-publish-dialog")).not.toBeInTheDocument());
+  expect(pageReads).toBeGreaterThan(readsBefore);
+  expect(publishedBodies).toHaveLength(1);
+  expect(publishedBodies[0].force).toBe(false);
+});
 
 test("SVG import and editing stay available while editing hover appearance",async()=>{
   await open();pick("drawing");expect(await screen.findByTestId("studio-svg")).toBeVisible();
