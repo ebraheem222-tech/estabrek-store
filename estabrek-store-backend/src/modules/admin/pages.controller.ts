@@ -30,7 +30,7 @@ import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js"
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
 import { triggerCmsRevalidate } from "../../lib/cmsRevalidate.js";
-import { PublicationError, publicationChange, publicationState, samePublication } from "../../lib/pagePublication.js";
+import { PublicationError, nextPublicationBoundary, publicationChange, publicationState, samePublication } from "../../lib/pagePublication.js";
 import { attemptPublicationDelivery, newPublicationDelivery, storedPublicationDelivery } from "../../lib/pagePublicationDelivery.js";
 import { requirePermission } from "../../middleware/access.js";
 import { probePublicPage } from "../../lib/publicPageProbe.js";
@@ -579,9 +579,11 @@ r.get("/:id/publication/check", asyncHandler(async (req, res) => {
 }));
 
 r.post("/:id/publication/retry", requirePermission("pages:publish"), asyncHandler(async (req, res) => {
-  const page = await prisma.page.findUnique({ where: { id: req.params.id }, select: { id: true } });
+  const page = await prisma.page.findUnique({ where: { id: req.params.id }, select: { id: true, publicationDelivery: true } });
   if (!page) return res.status(404).json({ error: "NOT_FOUND" });
   const queued = newPublicationDelivery();
+  const previous = storedPublicationDelivery(page.publicationDelivery);
+  if (previous?.paths?.length) queued.paths = previous.paths;
   await prisma.page.update({ where: { id: page.id }, data: { publicationDelivery: queued } });
   const delivery = await attemptPublicationDelivery(page.id, queued).catch(() => queued);
   res.json({ delivery: delivery ?? queued });
@@ -637,7 +639,7 @@ r.post(
 r.patch("/:id", validate({ body: UpdatePageBody }), asyncHandler(async (req, res) => {
   const prev = await prisma.page.findUnique({
     where: { id: req.params.id },
-    select: { slug: true, publishAt: true, unpublishAt: true },
+    select: { slug: true, status: true, kind: true, publishAt: true, unpublishAt: true },
   });
   const body = req.body as any;
   const parsedPublishAt = normalizeDateInput(body.publishAt);
@@ -646,6 +648,11 @@ r.patch("/:id", validate({ body: UpdatePageBody }), asyncHandler(async (req, res
   const nextUnpublishAt = parsedUnpublishAt === undefined ? prev?.unpublishAt ?? undefined : parsedUnpublishAt;
   validateScheduleWindow(nextPublishAt, nextUnpublishAt);
   await capturePageRevision(req.params.id, "Update page", req.user as any);
+  const queued = prev && ["status", "publishAt", "unpublishAt", "slug"].some((key) => key in body) ? newPublicationDelivery() : null;
+  if (queued && prev) {
+    queued.paths = [...new Set([prev.slug, body.slug ?? prev.slug])];
+    queued.nextBoundaryAt = nextPublicationBoundary({ ...prev, status: body.status ?? prev.status, publishAt: nextPublishAt, unpublishAt: nextUnpublishAt });
+  }
 
   const page = await prisma.page.update({
     where: { id: req.params.id },
@@ -653,6 +660,7 @@ r.patch("/:id", validate({ body: UpdatePageBody }), asyncHandler(async (req, res
       ...body,
       ...(parsedPublishAt !== undefined ? { publishAt: parsedPublishAt } : {}),
       ...(parsedUnpublishAt !== undefined ? { unpublishAt: parsedUnpublishAt } : {}),
+      ...(queued ? { publicationDelivery: queued } : {}),
     },
   });
   // shape translations for editor
@@ -667,7 +675,8 @@ r.patch("/:id", validate({ body: UpdatePageBody }), asyncHandler(async (req, res
         i18n[loc] = { fields: pt ?? null, sections: sections ?? [] };
       }
     }
-    triggerCmsRevalidate([prev?.slug, page.slug]);
+    if (queued) await attemptPublicationDelivery(page.id, queued).catch(() => queued);
+    else triggerCmsRevalidate([prev?.slug, page.slug]);
     res.json({ ...page, i18n });
 }));
 

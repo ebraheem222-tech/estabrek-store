@@ -64,3 +64,18 @@ test("a database transaction abort rolls back the pre-publish revision too", asy
   expect((await prisma.page.findUniqueOrThrow({ where: { id: page.id } })).status).toBe("DRAFT");
   expect(await prisma.pageRevision.count({ where: { pageId: page.id, reason: "Publish from the new editor" } })).toBe(0);
 });
+
+test("the real PostgreSQL JSON query picks a due publication boundary and invalidates it once", async () => {
+  const { retryPublicationDeliveries } = await import("../lib/pagePublicationDelivery.js");
+  const { page, publish } = await create();
+  await publish().expect(200);
+  const row = await prisma.page.findUniqueOrThrow({ where: { id: page.id } });
+  const prior = row.publicationDelivery as any;
+  await prisma.page.update({ where: { id: page.id }, data: { unpublishAt: new Date(Date.now() - 60_000), publicationDelivery: { ...prior, state: "delivered", nextBoundaryAt: new Date(Date.now() - 60_000).toISOString() } } });
+  expect(await retryPublicationDeliveries()).toMatchObject({ checked: 1 });
+  const after = await prisma.page.findUniqueOrThrow({ where: { id: page.id } });
+  expect((after.publicationDelivery as any).id).not.toBe(prior.id);
+  expect((after.publicationDelivery as any).nextBoundaryAt).toBeNull();
+  expect(await retryPublicationDeliveries()).toMatchObject({ checked: 0 });
+  await request(app).get("/v1/storefront/page?slug=/t").expect(404);
+});

@@ -60,3 +60,13 @@ test("automatic retries are bounded and a future retry does not run early", asyn
   m.revalidate.mockResolvedValue({ state: "failed", targets: [{ origin: "https://one.example.test", ok: false }] });
   expect(await attemptPublicationDelivery("page", m.row.publicationDelivery, now)).toMatchObject({ state: "failed", attempts: 6, retryAt: null });
 });
+
+test("a delivered scheduled page is invalidated again when its publication window starts and ends", async () => {
+  m.row.status = "PUBLISHED"; m.row.kind = "page";
+  m.row.publishAt = new Date("2026-11-07T10:05:00Z"); m.row.unpublishAt = new Date("2026-11-07T10:10:00Z");
+  m.row.publicationDelivery = { ...newPublicationDelivery(now), state: "delivered", retryAt: null, nextBoundaryAt: "2026-11-07T10:05:00.000Z" };
+  expect(await retryPublicationDeliveries(new Date("2026-11-07T10:05:00Z"))).toMatchObject({ checked: 1, delivered: 1 });
+  expect(m.row.publicationDelivery.nextBoundaryAt).toBe("2026-11-07T10:10:00.000Z");
+  expect(await retryPublicationDeliveries(new Date("2026-11-07T10:10:00Z"))).toMatchObject({ checked: 1, delivered: 1 });
+  expect(m.row.publicationDelivery.nextBoundaryAt).toBeNull();
+});

@@ -32,6 +32,11 @@ export function publicationState(page: PublicationPage, now = new Date()): Publi
   return { ...snapshot, state, public: state === "live" && (!page.kind || page.kind === "page") };
 }
 
+export function nextPublicationBoundary(page: PublicationPage, now = new Date()): string | null {
+  if (page.status !== "PUBLISHED" || (page.kind && page.kind !== "page")) return null;
+  return [date(page.publishAt), date(page.unpublishAt)].filter((v): v is Date => Boolean(v && v > now)).sort((a, b) => a.getTime() - b.getTime())[0]?.toISOString() ?? null;
+}
+
 export function publicationChange(page: PublicationPage, options: PublicationOptions = {}, _now = new Date()): { status: "PUBLISHED"; publishAt: Date | null; unpublishAt: Date | null } {
   if (page.status === "ARCHIVED" && options.republishArchived !== true) throw new PublicationError("ARCHIVED_CONFIRMATION_REQUIRED", 409);
   const publishAt = options.mode === "now" ? null : date(page.publishAt);

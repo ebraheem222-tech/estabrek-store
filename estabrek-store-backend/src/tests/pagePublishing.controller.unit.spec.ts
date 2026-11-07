@@ -94,6 +94,15 @@ test("a user who can edit content but cannot publish gets no write or cache side
   expect(m.row.status).toBe("DRAFT"); expect(m.revisions).toHaveLength(0); expect(m.revalidate).not.toHaveBeenCalled();
 });
 
+test("publication diagnostics separate saved content from delivery and retry requires publish permission", async () => {
+  expect((await request(app).get("/pages/page/publication").expect(200)).body).toMatchObject({ publication: { state: "draft", public: false }, hasDraft: true });
+  await publish().expect(200);
+  expect((await request(app).get("/pages/page/publication").expect(200)).body).toMatchObject({ publication: { state: "live", public: true }, delivery: { state: "delivered" }, hasDraft: false });
+  const id = m.row.publicationDelivery.id; m.owner = false;
+  await request(app).post("/pages/page/publication/retry").expect(403);
+  expect(m.row.publicationDelivery.id).toBe(id);
+});
+
 test("cache propagation failure is a committed publication with separately reported pending delivery", async () => {
   m.revalidate.mockResolvedValue({ state: "failed", targets: [{ origin: "https://shop.example.test", ok: false }] });
   const response = await publish().expect(200);
@@ -105,6 +114,13 @@ test("cache propagation failure is a committed publication with separately repor
 test("malformed options cannot change content or schedule", async () => {
   await publish({ mode: "unexpected", republishArchived: "yes" }).expect(400);
   expect(m.row.status).toBe("DRAFT"); expect(m.row.draft).not.toBeNull();
+});
+
+test("rescheduling through page settings also registers the next cache invalidation boundary", async () => {
+  await publish().expect(200);
+  await request(app).patch("/pages/page").send({ status: "PUBLISHED", publishAt: "2099-01-01T00:00:00Z" }).expect(200);
+  expect(m.row.publicationDelivery.nextBoundaryAt).toBe("2099-01-01T00:00:00.000Z");
+  expect((await request(app).get("/pages/page/publication").expect(200)).body.publication).toMatchObject({ state: "scheduled", public: false });
 });
 
 test("a section write failure rolls back content, publication and the revision together", async () => {
