@@ -39,15 +39,15 @@ function writeLS(items: CartItem[]) {
   } catch {}
 }
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+export function CartProvider({ children, isolated = false }: { children: React.ReactNode; isolated?: boolean }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
   useEffect(() => {
-    setItems(readLS());
-  }, []);
+    if (!isolated) setItems(readLS());
+  }, [isolated]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (isolated || typeof window === "undefined") return;
     const onStorage = (e: StorageEvent) => {
       if (e.key === KEY) setItems(readLS());
     };
@@ -60,7 +60,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [isolated]);
 
   const api: CartCtx = useMemo(() => {
     return {
@@ -68,19 +68,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       count: items.reduce((a, b) => a + (b.quantity || 0), 0),
       addItem: (variantId, qty = 1) => {
         const addQty = Math.max(1, Number(qty || 1));
-        roseReact("cart-add");
-        signal("bag", { variantId });
-        abConvert("bag");
+        if (!isolated) { roseReact("cart-add"); signal("bag", { variantId }); abConvert("bag"); }
         setItems((prev) => {
           const i = prev.findIndex((x) => x.variantId === variantId);
           if (i >= 0) {
             const next = [...prev];
             next[i] = { ...next[i], quantity: next[i].quantity + addQty };
-            writeLS(next);
+            if (!isolated) writeLS(next);
             return next;
           }
           const next = [...prev, { variantId, quantity: addQty }];
-          writeLS(next);
+          if (!isolated) writeLS(next);
           return next;
         });
       },
@@ -88,23 +86,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const q = Math.max(1, Number(qty || 1));
         setItems((prev) => {
           const next = prev.map((x) => (x.variantId === variantId ? { ...x, quantity: q } : x));
-          writeLS(next);
+          if (!isolated) writeLS(next);
           return next;
         });
       },
       removeItem: (variantId) =>
         setItems((prev) => {
           const next = prev.filter((x) => x.variantId !== variantId);
-          writeLS(next);
+          if (!isolated) writeLS(next);
           return next;
         }),
       clear: () =>
         setItems(() => {
-          writeLS([]);
+          if (!isolated) writeLS([]);
           return [];
         }),
     };
-  }, [items]);
+  }, [items, isolated]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

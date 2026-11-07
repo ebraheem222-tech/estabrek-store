@@ -26,9 +26,10 @@ type Props = {
   defaultCategoryId?: string;
   /** Category pages: the pills shown above the grid (the category's children). */
   navCategories?: { id: string; name: string; parentId?: string | null }[];
+  commerce?: { columns: number; mobileColumns: number; showFilters: boolean; showSearch: boolean };
 };
 
-export default function ShopBrowseClient({ initial, initialFilters, categories, basePath = "/shop", appearance = "default", defaultCategoryId, navCategories }: Props) {
+export default function ShopBrowseClient({ initial, initialFilters, categories, basePath = "/shop", appearance = "default", defaultCategoryId, navCategories, commerce }: Props) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const [filters, setFiltersState] = useState<CatalogFilters>(() => ({
@@ -47,6 +48,12 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
       return { ...value, categoryId: value.categoryId ?? defaultCategoryId };
     });
   }, [defaultCategoryId]);
+  const applyCommerceFilters = React.useCallback((next: CatalogFilters) => {
+    setFilters(next);
+    const inUrl = defaultCategoryId && next.categoryId === defaultCategoryId ? { ...next, categoryId: undefined } : next;
+    const qs = buildCanonicalQuery(inUrl);
+    window.history.pushState({}, "", qs ? `${basePath}?${qs}` : basePath);
+  }, [setFilters, defaultCategoryId, basePath]);
   const urlFilters = useMemo<CatalogFilters>(
     () => (defaultCategoryId && filters.categoryId === defaultCategoryId ? { ...filters, categoryId: undefined } : filters),
     [filters, defaultCategoryId],
@@ -101,7 +108,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
       sizeIds: filters.sizeIds ?? [],
     };
     setFilters(next);
-    if (appearance === "rose") {
+    if (appearance === "rose" || commerce) {
       const inUrl = defaultCategoryId && next.categoryId === defaultCategoryId ? { ...next, categoryId: undefined } : next;
       const qs = buildCanonicalQuery(inUrl);
       window.history.pushState({}, "", qs ? `${basePath}?${qs}` : basePath);
@@ -109,10 +116,10 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
   };
 
   return (
-    <div className={`shop-browse-candy-layout lg:grid lg:grid-cols-[300px,1fr] lg:gap-8 ${appearance === "rose" ? "rose-shop-browse" : ""}`}>
+    <div className={`shop-browse-candy-layout lg:grid lg:grid-cols-[300px,1fr] lg:gap-8 ${appearance === "rose" ? "rose-shop-browse" : ""} ${commerce ? "cms-shop-browse" : ""}`} data-cms-filters={commerce?.showFilters === false ? "off" : undefined}>
       {appearance === "rose" && (navCategories ? navCategories.length > 0 : true) && <nav className="rose-shop-categories" aria-label={tr(lang, "أقسام المتجر", "Shop categories")}><button onClick={() => handleCategorySelect(defaultCategoryId)} aria-pressed={!selectedCategoryId || selectedCategoryId === defaultCategoryId}>{tr(lang, "كل المجموعة", "All pieces")}</button>{(navCategories ?? categories.filter(c => !c.parentId)).map(c => <button key={c.id} onClick={() => handleCategorySelect(c.id)} aria-pressed={selectedCategoryId === c.id}>{c.name}</button>)}</nav>}
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block filters-sidebar shop-right-filters-candy">
+      {commerce?.showFilters !== false ? <aside className="hidden lg:block filters-sidebar shop-right-filters-candy">
         <div className="sticky top-24 space-y-6 right-filter-stack-candy">
           {appearance !== "rose" && <div className="sidebar-filters-card sidebar-filters-candy-card sidebar-filters-candy-card--category">
             <CategorySidebar
@@ -128,34 +135,42 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
               sizes={facets?.sizes ?? []}
               categories={categories ?? []}
               filters={urlFilters}
-              onFiltersChange={setFilters}
+              onFiltersChange={commerce ? applyCommerceFilters : setFilters}
+              syncUrl={!commerce}
               hideCategory
+              hideSearch={Boolean(commerce)}
               mobileCategoryTree
               categoryTree={appearance === "rose" && categories.some(category => category.parentId)}
               mobileAutoApply
             />
           </div>
         </div>
-      </aside>
+      </aside> : null}
 
       {/* Products Section */}
       <section className="space-y-6">
+        {commerce?.showSearch ? <label className="cms-shop-search">{tr(lang, "البحث عن منتجات", "Search products")}<input type="search" value={filters.q ?? ""} onChange={event => {
+          const next = { ...filters, q: event.target.value || undefined, page: undefined };
+          setFilters(next); const qs = buildCanonicalQuery(next); window.history.replaceState({}, "", qs ? `${basePath}?${qs}` : basePath);
+        }} /></label> : null}
         {/* Mobile Filters */}
-        <div className="lg:hidden">
+        {commerce?.showFilters !== false ? <div className="lg:hidden">
           <ProductFiltersBar
             appearance={appearance}
             colors={facets?.colors ?? []}
             sizes={facets?.sizes ?? []}
             categories={categories ?? []}
             filters={urlFilters}
-            onFiltersChange={setFilters}
+            onFiltersChange={commerce ? applyCommerceFilters : setFilters}
+            syncUrl={!commerce}
             hideCategory
+            hideSearch={Boolean(commerce)}
             mobileCategoryTree
             mobileAutoApply
           />
-        </div>
+        </div> : null}
 
-        <AttributeFilters
+        {commerce?.showFilters !== false ? <AttributeFilters
           appearance={appearance}
           filters={filters}
           onChange={(next) => {
@@ -164,11 +179,11 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
             const qs = buildCanonicalQuery(inUrl);
             window.history.pushState({}, "", qs ? `${basePath}?${qs}` : basePath);
           }}
-        />
+        /> : null}
 
-        <ShopToolbar total={total} filters={urlFilters} onFiltersChange={setFilters} hideModeToggle appearance={appearance} />
+        <ShopToolbar total={total} filters={urlFilters} onFiltersChange={commerce ? applyCommerceFilters : setFilters} syncUrl={!commerce} hideModeToggle appearance={appearance} />
 
-        <FiltersChips categories={categories ?? []} filters={urlFilters} onFiltersChange={setFilters} />
+        <FiltersChips categories={categories ?? []} filters={urlFilters} onFiltersChange={commerce ? applyCommerceFilters : setFilters} syncUrl={!commerce} />
 
         <ShopResultsClient
           initial={initial}
@@ -177,6 +192,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
           onData={setData}
           appearance={appearance}
           showHeader={appearance !== "rose"}
+          columns={commerce ? { desktop: commerce.columns, mobile: commerce.mobileColumns } : undefined}
         />
       </section>
 

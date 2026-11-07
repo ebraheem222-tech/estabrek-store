@@ -141,6 +141,7 @@ export const ENDPOINTS = {
       },
       pages: {
         base: "/admin/pages",
+        system: (kind: "shop" | "cart") => `/admin/pages/system/${kind}`,
         byId: (id: string) => `/admin/pages/${id}`,
         revisions: (id: string) => `/admin/pages/${id}/revisions`,
         restoreRevision: (id: string, revisionId: string) => `/admin/pages/${id}/revisions/${revisionId}/restore`,

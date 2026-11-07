@@ -10,6 +10,8 @@ import { Spinner } from "../../components/ui/Spinner";
 import { PAGE_TEMPLATES } from "./pageTemplates";
 import { PageFormatControl } from "./PageFormatControl";
 import { shopOrigin } from "../../studio/storeThemes";
+import { useAuth } from "../../hooks/useAuth";
+import { StorePagesPanel } from "./StorePagesPanel";
 
 function slugify(input: string) {
   const core = input
@@ -244,6 +246,7 @@ const LoadingState = () => (
 );
 
 export default function PagesListPage() {
+  const auth = useAuth();
   const q = usePages();
   const actions = usePagesActions();
 
@@ -411,6 +414,8 @@ const onSave = async () => {
           </Button>
         </div>
       </div>
+
+      <StorePagesPanel pages={pages} canWrite={auth.hasPermission("pages:write")} canReadSettings={auth.hasPermission("settings:read")} onOpen={id => { window.location.href = `/studio/${id}`; }} />
 
       {/* Content Area */}
       <div className="relative rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.02] to-transparent overflow-hidden min-h-[300px]">

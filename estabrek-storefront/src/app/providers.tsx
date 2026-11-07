@@ -111,6 +111,7 @@ export default function Providers({
     ? "light"
     : "dark";
   const pathname = usePathname();
+  const studio = pathname === "/studio-frame";
   const features = React.useMemo(
     () => ({
       stockAlerts: stockAlertsEnabled,
@@ -138,8 +139,8 @@ export default function Providers({
       <SiteFeaturesProvider value={features}>
       <RazanProvider value={razan}>
       <NamesBridge />
-      <CartProvider>
-        <MaybeAccounts enabled={accountsEnabled}>
+      <CartProvider key={studio ? "studio-cart" : "shop-cart"} isolated={studio}>
+        <MaybeAccounts enabled={accountsEnabled && !studio}>
         <WishlistProvider>
           <RecentlyViewedProvider>
             {/* Storefront Features (reads settings from API) */}

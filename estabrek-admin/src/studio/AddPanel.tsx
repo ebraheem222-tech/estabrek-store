@@ -13,6 +13,7 @@ import type { AddKind, Where } from "./insert";
 import { REFERENCE_SECTIONS } from "./referenceSections";
 
 const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, () => string, string]> }> = [
+  { key: "commerce", title: () => tr("المتجر والسلة", "Shop and cart"), kinds: [["shop", () => typeLabel("shop"), "▦"], ["cartItems", () => typeLabel("cartItems"), "▤"], ["cartSummary", () => typeLabel("cartSummary"), "Σ"], ["cartCheckout", () => typeLabel("cartCheckout"), "✓"]] },
   { key: "references", title: () => tr("إلهام القوالب", "Template inspiration"), kinds: REFERENCE_SECTIONS.map(reference => [reference.kind, () => tr(reference.name.ar, reference.name.en), "✦"]) },
   {
     key: "ready",

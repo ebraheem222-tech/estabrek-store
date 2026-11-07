@@ -41,11 +41,14 @@ import { showcaseOf } from "./showcase";
 import { ShowcaseView } from "./ShowcaseView";
 import { StableWidgetView } from "./StableWidgetView";
 import { nodeEdges, withDecoration } from "./NodeDecorations";
+import { CommerceCartPart } from "./CommerceCart";
+import { CommerceShop, type CommerceShopData } from "./CommerceShop";
 
 export type TreeCtx = {
   lang: TreeLang;
   main: TreeLang;
   cfg: LangConfig;
+  commerce?: { preview: boolean; shop?: CommerceShopData };
   productLookup?: Record<string, ProductMini>;
   renderProductCard?: (productId: string) => ReactNode;
   /** Draws an old-style section (the form element uses the newsletter/contact ones). */
@@ -103,6 +106,12 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   );
 
   switch (node.type) {
+    case "shop":
+      return <div className={cls(node)} {...mark}>{fx}<CommerceShop data={ctx.commerce?.shop} preview={ctx.commerce?.preview === true} options={p} lang={ctx.lang} /></div>;
+    case "cartItems":
+    case "cartSummary":
+    case "cartCheckout":
+      return <div className={cls(node)} {...mark}>{fx}<CommerceCartPart part={node.type === "cartItems" ? "items" : node.type === "cartSummary" ? "summary" : "checkout"} /></div>;
     case "section": {
       const Tag = (["header", "footer", "aside"].includes(p.tag) ? p.tag : "section") as "section";
       const anchor = typeof p.anchor === "string" && /^[A-Za-z][\w-]{0,40}$/.test(p.anchor) ? p.anchor : undefined;

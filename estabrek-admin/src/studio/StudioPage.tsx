@@ -40,6 +40,7 @@ import { ROSE_ID, currentStoreTheme, currentStoreThemeId, loadStoreThemes, saveS
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PagePublishDialog } from "./PagePublishDialog";
 import { PagePublicationStatus } from "./PagePublicationStatus";
+import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
 import { PreviewRefresh, PreviewRefreshCancelled } from "./previewRefresh";
@@ -212,6 +213,7 @@ export default function StudioPage() {
   const [themePreview, setThemePreview] = useState<string | null>(null);
   const [themeMode, setThemeMode] = useState<"light" | "dark" | null | undefined>(undefined);
   const [themeSaving, setThemeSaving] = useState(false);
+  const [commerceIssues, setCommerceIssues] = useState<Array<{ code: string; nodeType: string }>>([]);
   const [asking, setAsking] = useState<null | { kind: "delete"; nodeId: string; name: string; tree?: boolean } | { kind: "deleteMany"; ids: string[] } | { kind: "publish"; force: boolean; options?: PagesAPI.PublishPageOptions } | { kind: "discard" } | { kind: "theme" } | { kind: "deleteBlock"; block: PagesAPI.BlockInfo }>(null);
   const [drop, setDrop] = useState<Drop | null>(null);
   const [resize, setResize] = useState<{ colsId: string; i: number; start: number[]; w12: number[] } | null>(null);
@@ -597,6 +599,7 @@ export default function StudioPage() {
       const page = pageQ.data;
       if (!page) return;
       const result = await PagesAPI.publishPageDraft(id, force, { ...options, rev: draft?.rev, expectedPublication: { status: page.status, slug: page.slug, publishAt: page.publishAt ?? null, unpublishAt: page.unpublishAt ?? null } });
+      setCommerceIssues([]);
       history.current = new History();
       await Promise.all([qc.invalidateQueries({ queryKey: ["pages", id] }), qc.invalidateQueries({ queryKey: ["pages"] })]);
       setAsking(null);
@@ -608,6 +611,12 @@ export default function StudioPage() {
     } catch (e) {
       const code = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
       if (statusOf(e) === 409 && code === "PAGE_CHANGED") setAsking({ kind: "publish", force: true, options });
+      else if (code === "COMMERCE_PAGE_INVALID") {
+        const issues = (e as { response?: { data?: { issues?: Array<{ code: string; nodeType: string }> } } }).response?.data?.issues;
+        setCommerceIssues(Array.isArray(issues) ? issues : []);
+        setAsking(null);
+        toast.error(tr("راجع عناصر التجارة قبل النشر", "Review the commerce objects before publishing"));
+      }
       else if (code === "PUBLICATION_CHANGED" || code === "DRAFT_CHANGED") {
         setAsking(null);
         await qc.invalidateQueries({ queryKey: ["pages", id] });
@@ -2106,6 +2115,7 @@ export default function StudioPage() {
               </button>
             ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {COMMERCE_TYPES.has(selFree.type) ? <CommercePanel node={selFree} busy={busy} onOps={(label, ops) => void change(label, ops)} /> : null}
             {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
             {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "svg" ? <SvgPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
@@ -2565,6 +2575,11 @@ export default function StudioPage() {
       </header>
 
       {pageQ.data ? <PagePublicationStatus key={id} page={pageQ.data} lang={shopLang} hasDraft={Boolean(draft)} canPublish={canPublish} /> : null}
+      {commerceIssues.length ? <div role="alert" className="shrink-0 border-b border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100" data-testid="studio-commerce-issues">
+        <p>{tr("الصفحة بتحتاج العناصر الأساسية ظاهرة على كل أحجام الشاشات، ومرة واحدة لكل عنصر.", "Required commerce objects must be visible at every screen size, once each.")}</p>
+        <ul>{commerceIssues.map((issue, index) => <li key={index}>{typeLabel(issue.nodeType)}: {issue.code === "DUPLICATE_COMMERCE_OBJECT" ? tr("مكرر؛ احذف النسخة الإضافية", "Duplicated; remove the extra copy") : tr("أضفه أو أظهره من قائمة الإضافة وإعدادات الظهور", "Add it from Add, or make it visible in display settings")}</li>)}</ul>
+        <button type="button" className="mt-1 underline" onClick={() => setCommerceIssues([])}>{tr("إخفاء التنبيه", "Dismiss notice")}</button>
+      </div> : null}
 
       {treeQ.data && treeQ.data.format !== 2 ? (
         <p className="border-b border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-200" data-testid="studio-sections-note">

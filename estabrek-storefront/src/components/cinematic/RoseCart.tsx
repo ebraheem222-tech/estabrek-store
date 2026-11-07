@@ -1,7 +1,7 @@
 "use client";
 import { bagItems, rememberPurchase, trackBeginCheckout, trackLead } from "@/lib/analytics";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { gsap } from "gsap";
 import { useCart } from "@/store/cart";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
@@ -78,7 +78,8 @@ function money(value: string | number | null | undefined, currency?: string | nu
   }
 }
 
-type Props = {
+export type CartLayoutParts = { items: ReactNode; summary: ReactNode; checkout: ReactNode };
+export type RoseCartProps = {
   checkoutMode?: "WHATSAPP" | "STRIPE" | "PAYPAL" | "PAYMENTS" | null;
   whatsappNumber?: string | null;
   ordersEmail?: string | null;
@@ -87,6 +88,8 @@ type Props = {
   countryCode?: string | null;
   /** header.delivery from the admin: zones, fees, free-delivery threshold. */
   delivery?: unknown;
+  /** Native CMS layout: one controller supplies independently placed view fragments. */
+  renderLayout?: (parts: CartLayoutParts) => ReactNode;
 };
 
 /**
@@ -94,7 +97,7 @@ type Props = {
  * from the store's own price quote, and one clear way to order. Orders are
  * recorded in the store first, then the WhatsApp message opens ready to send.
  */
-export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmail, stripeEnabled, paypalEnabled, countryCode, delivery: deliveryRaw }: Props) {
+export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmail, stripeEnabled, paypalEnabled, countryCode, delivery: deliveryRaw, renderLayout }: RoseCartProps) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const n = useNames();
@@ -360,7 +363,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   }
 
   if (done) {
-    return (
+    const view = (
       <section className="rose-cart rose-cart-done" aria-live="polite">
         <span className="rose-cart-done-mark"><Icon name="spark" /></span>
         <span className="atelier-eyebrow">{tr(lang, "وصل طلبكِ", "ORDER RECEIVED")}</span>
@@ -379,10 +382,11 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
         <Link href="/shop" className="atelier-button button-dark">{tr(lang, "متابعة التسوق", "Keep shopping")}<Icon name="arrow" /></Link>
       </section>
     );
+    return renderLayout ? renderLayout({ items: view, summary: null, checkout: null }) : view;
   }
 
   if (!items.length) {
-    return (
+    const view = (
       <section className="rose-cart rose-cart-empty">
         <span className="rose-cart-empty-icon"><Icon name="bag" /></span>
         <span className="atelier-eyebrow">{tr(lang, "حقيبة التسوق", "YOUR BAG")}</span>
@@ -394,21 +398,10 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
         </div>
       </section>
     );
+    return renderLayout ? renderLayout({ items: view, summary: null, checkout: null }) : view;
   }
 
-  return (
-    <section className="rose-cart">
-      <header className="rose-cart-head">
-        <span className="atelier-eyebrow">{tr(lang, "حقيبة التسوق", "YOUR BAG")}</span>
-        <h1>{tr(lang, "حقيبتكِ.", "Your bag.")}<span>{ar ? (count === 1 ? "قطعة واحدة" : count === 2 ? "قطعتان" : `${count} قطع`) : lang === "he" ? (count === 1 ? "פריט אחד" : `${count} פריטים`) : `${count} piece${count === 1 ? "" : "s"}`}</span></h1>
-        <ol className="rose-cart-steps" aria-label={tr(lang, "خطوات الطلب", "Order steps")}>
-          <li data-on="">{tr(lang, "الحقيبة", "Bag")}</li>
-          <li data-on={nameOk && phoneOk ? "" : undefined}>{tr(lang, "بياناتكِ", "Your details")}</li>
-          <li>{tr(lang, "التأكيد", "Confirm")}</li>
-        </ol>
-      </header>
-
-      <div className="rose-cart-grid">
+  const itemsPart = (
         <div>
           <ul ref={list} className="rose-cart-lines">
             {items.map((it) => {
@@ -455,8 +448,9 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             <button type="button" className="rose-cart-clear" onClick={() => clear()}>{tr(lang, "إفراغ الحقيبة", "Empty the bag")}</button>
           </div>
         </div>
+  );
 
-        <aside className="rose-cart-summary" aria-label={tr(lang, "ملخص الطلب", "Order summary")}>
+  const summaryPart = <>
           <h2>{tr(lang, "ملخص الطلب", "Order summary")}</h2>
           <dl>
             <div><dt>{tr(lang, "المجموع الفرعي", "Subtotal")}</dt><dd>{loading && !quote ? "…" : money(quote?.subtotal, currency)}</dd></div>
@@ -491,7 +485,9 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
             <button type="button" className="rose-cart-coupon-toggle" onClick={() => setCouponOpen(true)}>{tr(lang, "عندكِ كوبون خصم؟", "Have a coupon?")}</button>
           )}
           {couponMsg && <p className="rose-cart-note" role="status">{couponMsg}</p>}
+  </>;
 
+  const checkoutPart = <>
           <div className="rose-cart-form">
             <h3>{noShipping ? (tr(lang, "بياناتكِ", "Your details")) : tr(lang, "بياناتكِ للتوصيل", "Your delivery details")}</h3>
             {signedIn ? (
@@ -589,7 +585,22 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
               <li><Icon name="swap" />{tr(lang, "استبدال سهل", "Easy exchange")}</li>
             </ul>
           )}
-        </aside>
+  </>;
+  if (renderLayout) return renderLayout({ items: itemsPart, summary: summaryPart, checkout: checkoutPart });
+  return (
+    <section className="rose-cart">
+      <header className="rose-cart-head">
+        <span className="atelier-eyebrow">{tr(lang, "حقيبة التسوق", "YOUR BAG")}</span>
+        <h1>{tr(lang, "حقيبتكِ.", "Your bag.")}<span>{ar ? (count === 1 ? "قطعة واحدة" : count === 2 ? "قطعتان" : `${count} قطع`) : lang === "he" ? (count === 1 ? "פריט אחד" : `${count} פריטים`) : `${count} piece${count === 1 ? "" : "s"}`}</span></h1>
+        <ol className="rose-cart-steps" aria-label={tr(lang, "خطوات الطلب", "Order steps")}>
+          <li data-on="">{tr(lang, "الحقيبة", "Bag")}</li>
+          <li data-on={nameOk && phoneOk ? "" : undefined}>{tr(lang, "بياناتكِ", "Your details")}</li>
+          <li>{tr(lang, "التأكيد", "Confirm")}</li>
+        </ol>
+      </header>
+      <div className="rose-cart-grid">
+        {itemsPart}
+        <aside className="rose-cart-summary" aria-label={tr(lang, "ملخص الطلب", "Order summary")}>{summaryPart}{checkoutPart}</aside>
       </div>
     </section>
   );

@@ -108,6 +108,7 @@ export function ProductFiltersBar({
   onFiltersChange,
   syncUrl = true,
   hideCategory = false,
+  hideSearch = false,
   mobileCategoryTree = false,
   categoryTree = false,
   mobileAutoApply = false,
@@ -121,6 +122,7 @@ export function ProductFiltersBar({
   onFiltersChange?: (next: CatalogFilters) => void;
   syncUrl?: boolean;
   hideCategory?: boolean;
+  hideSearch?: boolean;
   mobileCategoryTree?: boolean;
   categoryTree?: boolean;
   mobileAutoApply?: boolean;
@@ -500,7 +502,7 @@ export function ProductFiltersBar({
       )}
 
       {/* Search Input */}
-      <div className="filter-section">
+      {!hideSearch ? <div className="filter-section">
         <label className="filter-label">
           <SearchIcon />
           {tr(lang, "بحث", "Search")}
@@ -516,7 +518,7 @@ export function ProductFiltersBar({
             <SearchIcon />
           </div>
         </div>
-      </div>
+      </div> : null}
 
       {/* Category Tree */}
       {categoryTree ? (

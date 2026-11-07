@@ -32,7 +32,8 @@ const text = (en: string, ar: string = en) => ({ en, ar, he: en });
 const savedTheme = new URLSearchParams(location.search).has("theme") ? { id: "circuit", mode: "dark", custom: { palette: { dark: { accent: "#22cc88" } } } } : undefined;
 const at = "2026-11-06T00:00:00.000Z";
 const publishingFixture = new URLSearchParams(location.search).has("publishing");
-const publicationSlug = publishingFixture ? `/publication-fixture-${new URLSearchParams(location.search).get("lang") === "ar" ? "ar" : "en"}` : "/editor-controls";
+const commerceFixture = new URLSearchParams(location.search).get("commerce");
+const publicationSlug = commerceFixture === "cart" || commerceFixture === "shop" ? `/${commerceFixture}` : publishingFixture ? `/publication-fixture-${new URLSearchParams(location.search).get("lang") === "ar" ? "ar" : "en"}` : "/editor-controls";
 let publicationStatus = publishingFixture ? "DRAFT" : "PUBLISHED";
 let hasDraft = true;
 let publicationDelivery: Record<string, unknown> | null = null;
@@ -47,6 +48,12 @@ const initial: PageDraft = {
     ] },
   ] } },
 };
+if (commerceFixture === "cart" || commerceFixture === "shop") {
+  initial.tree.root.children = [{ id: "objects", type: "section", name: "Commerce section", props: { contained: true }, style: { base: { pad: [24, 24, 24, 24] } }, children: commerceFixture === "shop"
+    ? [{ id: "commerce-shop", type: "shop", props: { columns: 3, mobileColumns: 2, showFilters: true, showSearch: true } }]
+    : [{ id: "commerce-cartItems", type: "cartItems", props: {} }, { id: "commerce-cartSummary", type: "cartSummary", props: {} }, { id: "commerce-cartCheckout", type: "cartCheckout", props: {} }],
+  }];
+}
 if (new URLSearchParams(location.search).has("objectEdges")) {
   const art = { viewBox: "0 0 200 40", nodes: [{ t: "path", a: { d: "M0 20L100 0L200 20V40H0Z", fill: "currentColor" } }] };
   const edges = { top: { art, height: 24, color: "accent", front: true }, bottom: { art, height: 32, phone: 16, color: "accent-soft", flip: true, front: true } };
@@ -116,7 +123,7 @@ function applyOps(ops: PageDraftOp[]) {
 async function syncPreview() {
   const response = await fetch(`${FIXTURE}/__test/preview-draft`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...draft, pageId: PAGE_ID, siteStyles: [] }), credentials: "omit",
+      body: JSON.stringify({ ...draft, pageId: PAGE_ID, ...(commerceFixture ? { slug: publicationSlug } : {}), siteStyles: [] }), credentials: "omit",
   });
   if (!response.ok) throw new Error(`Local fixture update failed: ${response.status}`);
 }

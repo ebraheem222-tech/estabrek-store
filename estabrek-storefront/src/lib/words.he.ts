@@ -782,4 +782,10 @@ export const HE: Record<string, string> = {
   "Your key arrives as soon as you pay.": "הקוד מגיע מיד אחרי התשלום.",
   "Read on": "להמשך קריאה",
   "Only here": "רק אצלנו",
+  "Sample product": "מוצר לדוגמה",
+  "Quick preview": "תצוגה מהירה",
+  "Sample search": "חיפוש לדוגמה",
+  "Checkout preview": "תצוגה מקדימה של התשלום",
+  "Sample data; purchases are disabled in the editor.": "נתונים לדוגמה; אי אפשר לבצע רכישות בעורך.",
+  "Place order": "שליחת הזמנה",
 };

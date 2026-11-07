@@ -2,6 +2,10 @@
 import { api } from "./http";
 import { ENDPOINTS } from "./endpoints";
 
+export async function openStorePage(kind: "shop" | "cart"): Promise<Page> {
+  return (await api.post(ENDPOINTS.admin.pages.system(kind))).data;
+}
+
 export type PageStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 export type PublicationSnapshot = { status: PageStatus; slug: string; publishAt: string | null; unpublishAt: string | null };
 export type PublicationState = PublicationSnapshot & { state: "draft" | "archived" | "scheduled" | "expired" | "live"; public: boolean };

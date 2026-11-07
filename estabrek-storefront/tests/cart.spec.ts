@@ -62,7 +62,8 @@ test("wishlist and search use the rose pages", async ({ page }) => {
 test.describe.serial("delivery prices", () => {
   const setDelivery = async (page: import("@playwright/test").Page, on: boolean) => {
     await page.request.get(`http://127.0.0.1:4100/__test/delivery?on=${on ? 1 : 0}`);
-    await page.request.post("/api/revalidate", { data: { tags: ["settings"] } });
+    const refreshed = await page.request.post("/api/revalidate", { headers: { "x-revalidate-secret": "fixture-publishing-only" }, data: { tags: ["settings", "cms:bootstrap"] } });
+    expect(refreshed.ok()).toBe(true);
   };
   test.afterEach(async ({ page }) => { await setDelivery(page, false); });
 

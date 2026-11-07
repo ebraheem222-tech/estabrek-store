@@ -28,6 +28,10 @@ export function indexTree(tree: PageTree): TreeIndex {
 
 export const TYPE_LABEL: Record<string, () => string> = {
   page: () => tr("الصفحة", "Page"),
+  shop: () => tr("عرض المتجر", "Shop catalog"),
+  cartItems: () => tr("منتجات السلة", "Cart items"),
+  cartSummary: () => tr("ملخص الطلب", "Order summary"),
+  cartCheckout: () => tr("إتمام الطلب", "Checkout"),
   section: () => tr("قسم", "Section"),
   grid: () => tr("شبكة", "Grid"),
   stack: () => tr("صف أو عمود", "Stack"),

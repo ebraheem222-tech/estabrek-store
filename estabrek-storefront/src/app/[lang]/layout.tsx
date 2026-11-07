@@ -3,6 +3,7 @@ import { selectStorefrontNav } from "@/lib/storefrontNav";
 import "../globals.css";
 import "../cinematic.css";
 import "../store-themes.css";
+import "@/pageTree/commerce.css";
 import Providers from "../providers";
 import { notFound } from "next/navigation";
 import { LANGS, LANG_LOCALE, dirOf, isLang, langConfigOf, type Lang } from "@/lib/i18n";

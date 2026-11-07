@@ -38,7 +38,7 @@ beforeEach(()=>{
     if(path.endsWith(`/pages/${pageId}`)) pageReads++;
     if(path.endsWith("/draft/publish")) {
       publishedBodies.push(JSON.parse(config.data));
-      if(publishFailure) throw {response:{status:409,data:{error:publishFailure}},config};
+      if(publishFailure) throw {response:{status:publishFailure === "COMMERCE_PAGE_INVALID" ? 422 : 409,data:{error:publishFailure,...(publishFailure === "COMMERCE_PAGE_INVALID" ? {issues:[{code:"REQUIRED_COMMERCE_OBJECT",nodeType:"cartCheckout",count:0}]} : {})}},config};
     }
     if(path.endsWith("/settings") && config.method!=="get"){
       const body=JSON.parse(config.data);
@@ -89,6 +89,15 @@ test.each(["PUBLICATION_CHANGED","DRAFT_CHANGED"])("%s requires a new review ins
   expect(pageReads).toBeGreaterThan(readsBefore);
   expect(publishedBodies).toHaveLength(1);
   expect(publishedBodies[0].force).toBe(false);
+});
+test("a missing commerce object is explained in the editor instead of offering to force publish",async()=>{
+  publishFailure="COMMERCE_PAGE_INVALID";
+  await open();fireEvent.click(screen.getByTestId("studio-publish"));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button",{name:"Publish"}));
+  const issue=await screen.findByTestId("studio-commerce-issues");
+  expect(issue).toHaveTextContent("Checkout");
+  expect(issue).toHaveTextContent("visible");
+  expect(screen.queryByTestId("page-publish-dialog")).not.toBeInTheDocument();
 });
 
 test("SVG import and editing stay available while editing hover appearance",async()=>{

@@ -23,9 +23,10 @@ type Props = {
   onLoading?: (loading: boolean) => void;
   extraParams?: Record<string, any>;
   appearance?: "rose" | "default";
+  columns?: { desktop: number; mobile: number };
 };
 
-export default function ShopResultsClient({ initial, filters, basePath, showHeader = true, onData, onLoading, extraParams, appearance = "default" }: Props) {
+export default function ShopResultsClient({ initial, filters, basePath, showHeader = true, onData, onLoading, extraParams, appearance = "default", columns }: Props) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const resultsRoot = useRef<HTMLElement>(null);
@@ -216,7 +217,7 @@ export default function ShopResultsClient({ initial, filters, basePath, showHead
         </div>
       ) : null}
 
-      <ShopGrid className={appearance === "rose" ? "rose-shop-grid" : undefined}>
+      <ShopGrid className={appearance === "rose" ? "rose-shop-grid" : undefined} columns={columns}>
         {items.map((p: any) => (
           <ProductTile key={p.id} product={p} appearance={appearance} />
         ))}

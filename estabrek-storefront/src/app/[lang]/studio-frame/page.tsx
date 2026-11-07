@@ -30,7 +30,7 @@ export default async function StudioFrame({ params, searchParams }: { params?: {
   // A pack being tried in the gallery (?kit=, packs.ts): its motion and hovers on the page.
   const kit = typeof searchParams?.kit === "string" ? searchParams.kit : null;
   const viewRequest = typeof searchParams?.__studioView === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(searchParams.__studioView) ? searchParams.__studioView : null;
-  const body = await renderCmsPageBySlug(page.slug || "/", searchParams, { lang, page: Promise.resolve(page), allowFallback: false, allowNotFound: true, storeTheme, storeThemeMode, kit });
+  const body = await renderCmsPageBySlug(page.slug || "/", searchParams, { lang, page: Promise.resolve(page), allowFallback: false, allowNotFound: true, storeTheme, storeThemeMode, kit, preview: true });
   return (
     <>
       {/* The editor only: an empty cell or section keeps a place to drop things into (the shop draws it empty). */}

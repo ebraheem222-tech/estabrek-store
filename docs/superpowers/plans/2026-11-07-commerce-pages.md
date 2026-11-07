@@ -44,31 +44,40 @@
 
 **Consumes:** Existing tree/draft API and publication transaction. **Produces:** four validated node kinds, issue payload and idempotent page-opening API.
 
-- [ ] Write RED tests for required objects, duplicates, hidden/conditional ancestors, non-system pages, valid default drafts and unsupported commerce props.
-- [ ] Run focused Vitest; implement pure policy/scaffolds and node schemas; rerun GREEN.
-- [ ] Add isolated HTTP regressions: missing cart pieces reject even force before writes; opening same page preserves existing draft; non-writer cannot create system pages.
-- [ ] Implement atomic opening route and draft-publish guard; focused tests/build pass; commit server support and run full backend CI with disposable PostgreSQL.
+- [x] Write RED tests for required objects, duplicates, hidden/conditional ancestors, non-system pages, valid default drafts and unsupported commerce props.
+- [x] Run focused Vitest; implement pure policy/scaffolds and node schemas; rerun GREEN.
+- [x] Add isolated HTTP regressions: missing cart pieces reject even force before writes; opening same page preserves existing draft; non-writer cannot create system pages.
+- [x] Implement atomic opening route and draft-publish guard; focused tests/build pass; commit server support and run full backend CI with disposable PostgreSQL.
 
 ### Task 2: Functional storefront objects and isolated preview
 
 **Consumes:** Task1 validated kinds and defaults. **Produces:** real Shop browsing and three Cart parts with one shared checkout state.
 
-- [ ] Add local browser RED cases using fixture-only commerce CMS pages: filter products; add product; cart quantity updates total; a fixture checkout succeeds; layout objects are independently identified.
-- [ ] Expose RoseCart's existing view fragments to an optional layout callback; preserve its default route output and controller behavior.
-- [ ] Implement Shop data/context, Cart provider/parts and scoped neutral appearance. Keep URL filter semantics and existing enabled commerce providers.
-- [ ] Add synthetic preview branches that never invoke live cart/account/order/payment operations; test with a pre-existing live bag and intercepted purchase requests.
-- [ ] Add composition fallback to Shop/Cart routes; invalid or disabled CMS uses the existing route. Run affected browser tests, build and commit.
+- [x] Add local browser RED cases using fixture-only commerce CMS pages: filter products; add product; cart quantity updates total; a fixture checkout succeeds; layout objects are independently identified.
+- [x] Expose RoseCart's existing view fragments to an optional layout callback; preserve its default route output and controller behavior.
+- [x] Implement Shop data/context, Cart provider/parts and scoped neutral appearance. Keep URL filter semantics and existing enabled commerce providers.
+- [x] Add synthetic preview branches that never invoke live cart/account/order/payment operations; test with a pre-existing live bag and intercepted purchase requests.
+- [x] Add composition fallback to Shop/Cart routes; invalid or disabled CMS uses the existing route. Run affected browser tests, build and commit.
 
 ### Task 3: Editor navigation and commerce controls
 
 **Consumes:** Task1 API and Task2 renderers. **Produces:** accessible Shop/Cart entry points, independent editable commerce objects and clear publication feedback.
 
-- [ ] Add RED admin cases for opening existing pages without writes, creating missing drafts, permission denial, and controls on the four new types.
-- [ ] Implement StorePagesPanel shortcuts, commerce Add group/defaults, labels/settings, override-state indication and actionable missing-object publish errors.
-- [ ] Confirm object style/SVG/motion edits update the same preview document and leave preview bag state isolated.
-- [ ] Run admin full suite, focused commerce and existing editor/cart browsers, backend CI, production builds and normalized TypeScript baseline comparison.
+- [x] Add RED admin cases for opening existing pages without writes, creating missing drafts, permission denial, and controls on the four new types.
+- [x] Implement StorePagesPanel shortcuts, commerce Add group/defaults, labels/settings, override-state indication and actionable missing-object publish errors.
+- [x] Confirm object style/SVG/motion edits update the same preview document and leave preview bag state isolated.
+- [x] Run admin full suite, focused commerce and existing editor/cart browsers, backend CI, production builds and normalized TypeScript baseline comparison.
 - [ ] Document actual controls/limits, obtain one whole-branch review, fix substantive findings with regressions, commit and fast-forward/push main under existing authorization. Verify actual deployed services read-only.
 
 ## Self-review
 
 This plan implements Shop/Cart first as required by the approved roadmap. Native Cart parts are separate tree objects, not copies of checkout logic. A narrow view-fragment interface avoids moving the whole legacy cart controller. No new schema or vendor integration is necessary. Public fallback covers older write paths; publish-time guard applies to the native draft publisher. Existing legacy-format pages are preserved. Override settings remain explicit and existing pages are not rewritten on open.
+
+## Verification and review
+
+- Backend isolated PostgreSQL CI [42378711710](https://github.com/ebraheem222-tech/estabrek-store/actions/runs/42378711710):776 passed,17 skipped;99 files passed,1 skipped. Includes9 real publication/database cases and the actual migration fixture inherited from phaseA.
+- Admin full suite:682 passed,116 files. Production build passed; TypeScript retains exactly50 baseline diagnostics, no added/removed normalized messages.
+- Full combined editor/cart/commerce browser run:34 passed. Final focused commerce run:10 passed after review fixes, including the2 added category/add-to-cart scenarios;36 distinct scenarios covered overall.
+- Backend/admin/storefront production builds passed. A duplicate existing Hebrew translation key found by the storefront build was removed; localization-only followup uses the existing key.
+- Whole-branch review and closure found no remaining material issues. Required-object validation now resolves published linked blocks through the transaction client with shared row locks. Root providers isolate cart/account state in Studio. Old native designs stay intact until explicit adoption via `commerceVersion:1`.
+- Real concurrent creation exposed Prisma's emulated empty-update upsert race. A forced unique-conflict regression plus PostgreSQL checks verify returning the winning draft without resetting it.

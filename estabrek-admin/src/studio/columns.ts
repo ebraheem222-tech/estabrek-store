@@ -77,7 +77,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "columns", "popup", ...BLOCK_KINDS] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "columns", "popup", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -149,6 +149,12 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
       return { id: id("d"), type: "divider", props: {} };
     case "products":
       return { id: id("prod"), type: "products", props: { source: "new", limit: 8, layout: "grid" } };
+    case "shop":
+      return { id: id("shop"), type: "shop", props: { columns: 3, mobileColumns: 2, showFilters: true, showSearch: true } };
+    case "cartItems":
+    case "cartSummary":
+    case "cartCheckout":
+      return { id: id(kind), type: kind, props: {} };
     case "categories":
       return { id: id("cat"), type: "categories", props: { limit: 6 } };
     case "form":

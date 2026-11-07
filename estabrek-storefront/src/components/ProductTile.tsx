@@ -392,7 +392,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
               }}
               className="quick-view-trigger-candy absolute left-3 bottom-3 z-30 rounded-full px-3 py-1 text-xs font-semibold"
             >
-              معاينة سريعة
+              {tr(lang, "معاينة سريعة", "Quick preview")}
             </button>
           ) : null}
 
@@ -474,7 +474,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
               <QuickAddButton
                 product={product}
                 className="w-full backdrop-blur-sm bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] hover:shadow-glow-medium transition-all duration-300"
-                buttonLabel="إضافة سريعة"
+                buttonLabel={tr(lang, "إضافة سريعة", "Quick add")}
               />
             </div>
           </div>

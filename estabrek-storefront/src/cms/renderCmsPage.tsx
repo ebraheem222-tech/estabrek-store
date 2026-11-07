@@ -46,6 +46,8 @@ import { TreeMotion } from "@/pageTree/TreeMotion";
 import { TreeMedia } from "@/pageTree/TreeMedia";
 import { treeThemeVars, liveTreeThemeVars } from "@/storeThemes/css";
 import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
+import { commerceNeeds, commercePageValid } from "@/pageTree/commerce";
+import { CommerceCartProvider } from "@/pageTree/CommerceCart";
 
 /** Before the first paint: what comes in waits unseen until the motion engine is ready (2.5 s at most; never inside the editor). */
 const TREE_PENDING = `(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches||window.parent!==window)return;var r=document.documentElement;r.classList.add("pt-pending");setTimeout(function(){r.classList.remove("pt-pending")},2500)}catch(e){}})();`;
@@ -84,6 +86,8 @@ export async function renderCmsPageBySlug(
     /** The admin's pack being tried (?kit=, its JSON) instead of the saved one. */
     kit?: string | null;
     liveTheme?: boolean;
+    /** Studio only: synthetic commerce state, never the shopper's live cart/account. */
+    preview?: boolean;
   }
 ) {
   // The page's language: its CMS words and the store's content in it.
@@ -115,6 +119,9 @@ export async function renderCmsPageBySlug(
         .catch(() => ({ categories: [] as Awaited<ReturnType<typeof listCategories>>, seasons: [] as Awaited<ReturnType<typeof loadSeasonalEdits>>, stories: [] as Awaited<ReturnType<typeof loadCollectionStories>> }))
     : null;
   const page = await pagePromise;
+  // Grandfather existing native designs until their owner explicitly republishes
+  // under the commerce contract. New drafts/publishes carry this marker.
+  if (page?.format === 2 && !options?.preview && asTree(page.tree)?.root.props?.commerceVersion === 1 && !commercePageValid(slug, page.tree)) return null;
 
   // ✅ Fallback pages if CMS page isn't published yet
   if (!page) {
@@ -168,7 +175,13 @@ export async function renderCmsPageBySlug(
   const tree = bare && kit ? { ...bare, root: withKit(bare.root, kit) } : bare;
   if (tree && independentDesign(settingsHeader)) roseHome = false;
   const langCfg = langConfigOf((bootstrap.site as any)?.header);
-  const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg } : null;
+  const commerce = tree ? commerceNeeds(tree) : null;
+  const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg, commerce: { preview: options?.preview === true } } : null;
+  if (commerce?.shop && treeCtx?.commerce && !options?.preview) {
+    const [initial, categories] = await Promise.all([listProducts({ lang, page: f.page ?? 1, pageSize: 24, sort: f.sort as any, q: f.q, inStock: f.inStock, categoryId: f.categoryId, colors: f.colors.length ? f.colors.join(",") : undefined, sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined, minPrice: f.minPrice, maxPrice: f.maxPrice, attrs: f.attrs, includeFacets: true, lite: true }), listCategories(lang)]);
+    const basePath = lang === langCfg.default ? slug : `/${lang}${slug === "/" ? "" : slug}`;
+    treeCtx.commerce.shop = { initial, initialFilters: f, categories: categories ?? [], basePath };
+  }
   if (tree) {
     const byId = new Map<string, any>((((page as any).sections ?? []) as any[]).map((s) => [s.id, s]));
     (page as any).sections = (tree.root.children ?? []).flatMap((n, i) => {
@@ -595,5 +608,7 @@ export async function renderCmsPageBySlug(
       <ScriptTags scripts={(page as any).bodyScripts} />
     </>
   );
-  return tree && storeTheme ? <div data-page-tree-root="" data-page-store-theme={storeTheme.id} data-pt-smooth={treeMedia?.smooth ? "" : undefined} style={options?.liveTheme ? liveTreeThemeVars : treeThemeVars(storeTheme, storeThemeMode)}>{body}</div> : body;
+  const themed = tree && storeTheme ? <div data-page-tree-root="" data-page-store-theme={storeTheme.id} data-pt-smooth={treeMedia?.smooth ? "" : undefined} style={options?.liveTheme ? liveTreeThemeVars : treeThemeVars(storeTheme, storeThemeMode)}>{body}</div> : body;
+  const site = bootstrap.site as any;
+  return commerce?.cart ? <CommerceCartProvider preview={options?.preview === true} lang={lang ?? langCfg.default} settings={{ checkoutMode: site.checkoutMode ?? "WHATSAPP", whatsappNumber: site.whatsappNumber ?? site.contactPhone, ordersEmail: site.ordersEmail ?? site.contactEmail, stripeEnabled: site.stripeEnabled, paypalEnabled: site.paypalEnabled, countryCode: site.storeCountryCode, delivery: site.header?.delivery }}>{themed}</CommerceCartProvider> : themed;
 }

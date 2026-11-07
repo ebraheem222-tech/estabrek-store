@@ -119,6 +119,21 @@ let scenesOn = false;
 // The new CMS (page-tree.spec.ts): POST /__test/page-tree {"on":true} serves the pages
 // converted to a tree (each old section a `legacy` node), as admin's convert does.
 let pageTreeOn = false;
+let commerceCms = false;
+let invalidCommerceCart = false;
+let legacyCommerceCart = false;
+function commercePage(kind) {
+  const part = type => ({ id: `fixture-${type}`, type, props: {} });
+  const children = kind === "shop" ? [{ ...part("shop"), props: { columns: 3, mobileColumns: 1, showFilters: true, showSearch: true } }]
+    : [{ id: "fixture-columns", type: "columns", props: {}, style: { base: { widths: [2, 1], gap: 24 } }, children: [
+      { id: "fixture-left", type: "cell", props: {}, children: [part("cartItems")] },
+      { id: "fixture-right", type: "cell", props: {}, children: [part("cartSummary"), ...(invalidCommerceCart ? [] : [part("cartCheckout")])] },
+    ] }];
+  const page = { id: `commerce-${kind}`, slug: `/${kind}`, name: `CMS ${kind}`, status: "PUBLISHED", format: 2, sections: [], tree: { version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "fixture-section", type: "section", props: { contained: true }, children: [{ id: "fixture-heading", type: "heading", props: { level: 1, text: { en: `My CMS ${kind}`, ar: `تصميم ${kind}` } } }, ...children] }] } } };
+  if (kind === "cart" && legacyCommerceCart) page.tree.root.children[0].children = [{ id: "old-heading", type: "heading", props: { level: 1, text: { en: "Legacy cart design" } } }];
+  else page.tree.root.props.commerceVersion = 1;
+  return page;
+}
 const asTreePage = (p) =>
   pageTreeOn
     ? { ...p, format: 2, tree: { version: 1, root: { id: "page", type: "page", children: p.sections.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((s) => ({ id: `s-${s.id}`, type: "legacy", props: { sectionId: s.id } })) } } }
@@ -653,6 +668,20 @@ http
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     res.setHeader("Content-Type", "application/json");
     const pathname = new URL(req.url, "http://localhost").pathname;
+    if (pathname === "/__test/commerce" && req.method === "POST") {
+      let body = "";
+      req.on("data", c => { body += c; });
+      req.on("end", () => {
+        const data = JSON.parse(body || "{}");
+        commerceCms = data.on === true; invalidCommerceCart = data.invalidCart === true;
+        legacyCommerceCart = data.legacyCart === true;
+        site.customerAccountsEnabled = data.accounts === true;
+        if (data.disabled === true) { site.header.storefront.cmsOverrideShop = false; site.header.storefront.cmsOverrideCart = false; }
+        else { delete site.header.storefront.cmsOverrideShop; delete site.header.storefront.cmsOverrideCart; }
+        res.end("{}");
+      });
+      return;
+    }
     if (pathname === "/__test/missing-model.glb") { res.statusCode = 404; return res.end(); }
     // Delivery prices from the admin (header.delivery), switched on by the delivery test.
     if (pathname === "/__test/delivery") {
@@ -1324,6 +1353,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
     // The editor's draft: "good" opens the tree demo, "good-home" the home page as a tree.
     if (pathname.endsWith("/storefront/page-preview")) {
       const token = new URL(req.url, "http://localhost").searchParams.get("token");
+      if (token === "commerce-preview") return res.end(JSON.stringify(commercePage("cart")));
       if (token === "good") return res.end(JSON.stringify(treeDemo));
       // The admin's draft as the editor's end-to-end check posts it (/__test/preview-draft).
       if (token === "good-draft" && globalThis.previewDraft) {
@@ -1337,7 +1367,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
         };
         const sections = d.sections.filter((x) => x.isVisible).map((x, order) => ({ id: x.id, type: x.type, order, isVisible: true, data: x.tr?.[locale] ? over(x.data, x.tr[locale]) : x.data }));
         // The shared styles the editor is changing come with its preview (the backend's page-preview).
-        return res.end(JSON.stringify({ ...home, id: d.pageId ?? home.id, sections, format: 2, tree: d.tree, draft: { rev: d.rev, updatedAt: d.updatedAt }, ...(d.siteStyles !== undefined ? { siteStyles: d.siteStyles } : {}) }));
+        return res.end(JSON.stringify({ ...home, id: d.pageId ?? home.id, slug: d.slug ?? home.slug, sections, format: 2, tree: d.tree, draft: { rev: d.rev, updatedAt: d.updatedAt }, ...(d.siteStyles !== undefined ? { siteStyles: d.siteStyles } : {}) }));
       }
       if (token === "good-home") {
         const was = pageTreeOn;
@@ -1353,6 +1383,7 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       const slug = new URL(req.url, "http://localhost").searchParams.get(
         "slug",
       );
+      if (commerceCms && (slug === "/shop" || slug === "/cart")) return res.end(JSON.stringify(commercePage(slug.slice(1))));
       if (slug?.startsWith("/publication-fixture-")) {
         const page = globalThis.publishedCmsPages?.[slug];
         if (page) return res.end(JSON.stringify(page));
