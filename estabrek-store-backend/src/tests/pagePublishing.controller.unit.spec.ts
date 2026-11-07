@@ -137,6 +137,15 @@ test("system page creation rejects unsupported kinds and read-only staff", async
   await request(app).post("/pages/system/shop").expect(403);
   expect(m.row.slug).toBe("/t");
 });
+test("a concurrent create collision opens the winning page without resetting its draft", async () => {
+  m.db.page.upsert.mockImplementationOnce(async () => {
+    m.row = { ...m.row, id: "winning-cart", slug: "/cart", name: "Concurrent design", draft: { ...storePageDraft("cart"), rev: 18 } };
+    throw new Prisma.PrismaClientKnownRequestError("Concurrent slug insertion", { code: "P2002", clientVersion: "fixture", meta: { target: ["slug"] } });
+  });
+  const response = await request(app).post("/pages/system/cart").expect(200);
+  expect(response.body).toMatchObject({ id: "winning-cart", name: "Concurrent design", draft: { rev: 18 } });
+  expect(m.row.draft.rev).toBe(18);
+});
 test("a cart draft without checkout is rejected before any publication writes, including force", async () => {
   m.row.slug = "/cart";
   m.row.draft = applyOps(storePageDraft("cart"), [{ op: "remove", nodeId: "commerce-cartCheckout" }], { main: "ar" });

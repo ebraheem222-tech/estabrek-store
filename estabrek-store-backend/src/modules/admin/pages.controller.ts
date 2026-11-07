@@ -329,7 +329,15 @@ r.post("/system/:kind", requirePermission("pages:write"), asyncHandler(async (re
   if (kind !== "shop" && kind !== "cart") return res.status(400).json({ error: "INVALID_SYSTEM_PAGE" });
   const page = await prisma.page.upsert({ where: { slug: `/${kind}` }, update: {}, create: {
     name: kind === "shop" ? "Shop" : "Cart", slug: `/${kind}`, kind: "page", status: "DRAFT", draft: storePageDraft(kind) as any,
-  } });
+  } }).catch(async error => {
+    // Prisma can emulate an upsert with an empty update. A concurrent creator
+    // may win its unique insert; return that committed page without rewriting it.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && Array.isArray(error.meta?.target) && error.meta.target.includes("slug")) {
+      const existing = await prisma.page.findUnique({ where: { slug: `/${kind}` } });
+      if (existing) return existing;
+    }
+    throw error;
+  });
   res.json(page);
 }));
 
