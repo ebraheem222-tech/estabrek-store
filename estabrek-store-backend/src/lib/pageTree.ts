@@ -336,7 +336,7 @@ const Looks = z
 const none = z.object({});
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
-  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional() }),
+  page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional(), commerceVersion: z.literal(1).optional() }),
   section: z.object({
     tag: z.enum(["section", "header", "footer", "aside"]).optional(),
     anchor: z.string().trim().regex(/^[A-Za-z][\w-]{0,40}$/).optional(),

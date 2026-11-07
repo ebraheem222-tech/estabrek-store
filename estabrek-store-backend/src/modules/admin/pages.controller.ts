@@ -547,6 +547,7 @@ r.post("/:id/draft/publish", requirePermission("pages:publish"), validate({ body
     if (body.force !== true && sectionsHash(page.sections as any, page.tree) !== draft.baseHash) throw new PublicationError("PAGE_CHANGED", 409);
     const commerceIssues = commercePageIssues(page.slug, draft.tree);
     if (commerceIssues.length) throw new CommercePageError(commerceIssues);
+    if (page.slug === "/shop" || page.slug === "/cart") draft.tree.root.props = { ...draft.tree.root.props, commerceVersion: 1 };
     const change = publicationChange(page, body);
     await capturePageRevision(page.id, "Publish from the new editor", req.user as any, tx, false);
     const order = publishOrder(draft);

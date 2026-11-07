@@ -11,5 +11,7 @@ export function storePageDraft(kind: "shop" | "cart") {
       { id: "commerce-checkout-cell", type: "cell", props: {}, children: [{ id: "commerce-order", type: "stack", props: {}, style: { base: { gap: 24 } }, children: [part("cartSummary"), part("cartCheckout")] }] },
     ] }];
   const draft = draftFromPage({ tree: null, sections: [], status: "DRAFT", slug: `/${kind}` });
-  return applyOps(draft, [{ op: "insert", parentId: "page", index: 0, node: { id: "commerce-section", type: "section", props: { contained: true }, style: { base: { pad: [32, 16, 32, 16] } }, children: [heading, ...children] } }], { main: "ar" });
+  const ready = applyOps(draft, [{ op: "insert", parentId: "page", index: 0, node: { id: "commerce-section", type: "section", props: { contained: true }, style: { base: { pad: [32, 16, 32, 16] } }, children: [heading, ...children] } }], { main: "ar" });
+  ready.tree.root.props.commerceVersion = 1;
+  return ready;
 }

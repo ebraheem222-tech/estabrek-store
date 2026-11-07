@@ -30,6 +30,7 @@ test.each(["shop", "cart"] as const)("a new %s draft is ready to customize and m
   expect(checked.ok).toBe(true);
   expect(commercePageIssues(`/${kind}`, draft.tree)).toEqual([]);
   expect(draft.basePublication).toMatchObject({ status: "DRAFT", slug: `/${kind}` });
+  expect(draft.tree.root.props.commerceVersion).toBe(1);
   expect(draft.rev).toBeGreaterThan(0);
   expect(draft.sections).toEqual([]);
 });

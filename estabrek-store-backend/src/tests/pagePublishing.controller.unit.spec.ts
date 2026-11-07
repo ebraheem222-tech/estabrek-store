@@ -147,6 +147,7 @@ test("a complete cart draft publishes its independent commerce objects", async (
   m.row.slug = "/cart"; m.row.draft = storePageDraft("cart");
   await publish().expect(200);
   expect(m.row.format).toBe(2); expect(m.row.status).toBe("PUBLISHED");
+  expect(m.row.tree.root.props.commerceVersion).toBe(1);
   expect(JSON.stringify(m.row.tree)).toContain('"cartCheckout"');
 });
 
