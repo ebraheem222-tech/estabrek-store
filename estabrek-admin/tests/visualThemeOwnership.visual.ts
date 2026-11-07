@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "vitest";
-import { claimTheme, releaseTheme } from "../../../estabrek-storefront/src/lib/themeBase";
-import { themeFollower, suspendThemeFollowers, stopThemeTween } from "../../../estabrek-storefront/src/lib/themeTween";
-import { mountVisualInteractions, emitVisualInteraction } from "../../../estabrek-storefront/src/lib/visualInteractions";
+import { claimTheme, releaseTheme } from "../../estabrek-storefront/src/lib/themeBase";
+import { themeFollower, suspendThemeFollowers, stopThemeTween } from "../../estabrek-storefront/src/lib/themeTween";
+import { mountVisualInteractions, emitVisualInteraction } from "../../estabrek-storefront/src/lib/visualInteractions";
 let dispose: (() => void) | undefined; let stop: (() => void) | undefined;
 afterEach(() => { dispose?.(); stop?.(); document.body.innerHTML = ""; document.documentElement.removeAttribute("data-visual-theme"); });
 test("active scene followers and hand-back cannot overwrite a CMS action; reset restores exact original shell/header values", () => {

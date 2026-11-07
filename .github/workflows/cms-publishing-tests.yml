@@ -59,6 +59,8 @@ jobs:
       - run: npm ci
       - name: Install admin dependencies used by shared SVG geometry tests
         run: npm ci --prefix ../estabrek-admin --ignore-scripts
+      - name: Install storefront dependencies used by real theme runtime tests
+        run: npm ci --prefix ../estabrek-storefront --ignore-scripts
       - name: Bootstrap pre-feature fixture and apply additive CMS migrations
         run: node scripts/test-cms-publishing-db.mjs
       - run: npx prisma generate

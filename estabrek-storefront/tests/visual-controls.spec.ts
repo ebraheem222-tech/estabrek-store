@@ -10,6 +10,7 @@ test("a theme action clears a real hover preview before taking its reset snapsho
   const shell = page.locator(".cinematic-shell"), header = page.locator(".atelier-header");
   const button = page.locator(".rose-quick-add button").first();
   await button.scrollIntoViewIfNeeded(); await page.mouse.move(5, 180);
+  await page.waitForTimeout(1200); // let the scroll scene's hand-back finish before recording its resting colour
   const before = await header.evaluate(el => (el as HTMLElement).style.getPropertyValue("--selection-seed"));
   await button.hover(); await expect(shell).toHaveAttribute("data-theme-preview", "true");
   await button.click();
@@ -92,6 +93,8 @@ test("studio changes card controls and simulates rules without reloading its doc
   await page.getByRole("tab", { name: "Layers", exact: true }).click();
   await page.locator('[data-testid="studio-layer"][data-node="commerce-shop"]').click();
   await page.getByTestId("card-design-mode").selectOption("custom");
+  await expect(page.getByTestId("card-swatchSize")).toBeEnabled();
+  await page.getByTestId("card-swatchSize").click();
   await page.getByTestId("card-swatchSize").press("ControlOrMeta+A");
   await page.getByTestId("card-swatchSize").pressSequentially("34");
   await page.getByTestId("card-swatchSize").press("Tab");
