@@ -16,6 +16,10 @@ test("HTTP200 without the requested page marker is not reported as a published p
   m.fetch.mockResolvedValue(new Response('<h1>Home fallback</h1>', { headers: { "content-type": "text/html" } }));
   expect(await probePublicPage(page, "ar")).toMatchObject({ state: "pending", targets: [{ state: "different_page" }] });
 });
+test("an older cached publication of the same page is not reported as the latest published revision", async () => {
+  m.fetch.mockResolvedValue(new Response('<span data-cms-page-id="fixture" data-cms-publication="old"></span>', { headers: { "content-type": "text/html" } }));
+  expect(await probePublicPage({ ...page, publicationDelivery: { id: "new" } }, "en")).toMatchObject({ state: "pending", targets: [{ state: "different_page" }] });
+});
 test("404 and redirect failures are distinct from database publication and cannot escape the configured origin", async () => {
   m.env.STOREFRONT_REVALIDATE_URLS = ["https://other.example.test/api/revalidate?secret=private"];
   m.fetch.mockResolvedValueOnce(new Response("missing", { status: 404 })).mockRejectedValueOnce(new Error("redirect blocked"));

@@ -59,6 +59,7 @@ export type StorefrontBootstrap = {
 
 export type StorefrontPage = {
   id: string;
+  publicationRevision?: string | null;
   name: string;
   slug: string;
   status: string;

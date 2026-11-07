@@ -52,8 +52,8 @@ jobs:
           cache: npm
           cache-dependency-path: estabrek-store-backend/package-lock.json
       - run: npm ci
-      - name: Migrate the disposable PostgreSQL database
-        run: npx prisma migrate deploy
+      - name: Bootstrap pre-feature fixture and apply the additive publication migration
+        run: node scripts/test-cms-publishing-db.mjs
       - run: npx prisma generate
       - run: npm run build
       - name: Run the backend suite against isolated PostgreSQL

@@ -289,6 +289,7 @@ return {
     id: outPage.id,
     name: outPage.name,
     slug: outPage.slug,
+    publicationRevision: typeof (outPage.publicationDelivery as any)?.id === "string" ? (outPage.publicationDelivery as any).id : null,
     status: outPage.status,
     publishAt: outPage.publishAt,
     unpublishAt: outPage.unpublishAt,
