@@ -71,6 +71,9 @@ test("the real PostgreSQL JSON query picks a due publication boundary and invali
   await publish().expect(200);
   const row = await prisma.page.findUniqueOrThrow({ where: { id: page.id } });
   const prior = row.publicationDelivery as any;
+  // Completed records without a future boundary must not fill the bounded batch
+  // and starve a genuinely due page behind them.
+  await prisma.page.createMany({ data: Array.from({ length: 51 }, (_, i) => ({ id: `idle-cache-${i}`, name: "Idle fixture", slug: `/idle-cache-${i}`, status: "PUBLISHED" as const, updatedAt: new Date("2020-01-01T00:00:00Z"), publicationDelivery: { ...prior, state: "delivered", retryAt: null, nextBoundaryAt: null } })) });
   await prisma.page.update({ where: { id: page.id }, data: { unpublishAt: new Date(Date.now() - 60_000), publicationDelivery: { ...prior, state: "delivered", nextBoundaryAt: new Date(Date.now() - 60_000).toISOString() } } });
   expect(await retryPublicationDeliveries()).toMatchObject({ checked: 1 });
   const after = await prisma.page.findUniqueOrThrow({ where: { id: page.id } });
