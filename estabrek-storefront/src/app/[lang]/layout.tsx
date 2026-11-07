@@ -197,6 +197,7 @@ export default async function RootLayout({
         </a>
         <Providers
           initialStorefrontSettings={initialStorefrontSettings}
+          visualControls={bootstrap.site.visualControls}
           cinematic={cinematic}
           accountsEnabled={accountsEnabled}
           stockAlertsEnabled={stockAlertsEnabled}

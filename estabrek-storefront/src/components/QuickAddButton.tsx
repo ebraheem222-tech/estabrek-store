@@ -2,6 +2,7 @@
 import { productItem, trackAddToCart } from "@/lib/analytics";
 import { useLanguage } from "./cinematic/Language";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { emitVisualInteraction, markVisualOrigin } from "@/lib/visualInteractions";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -25,6 +26,7 @@ type Props = {
   product?: CatalogProduct;
   className?: string;
   buttonLabel?: string;
+  selectedColorKey?: string;
 };
 
 type Selection = {
@@ -64,7 +66,7 @@ function isInStock(v: CatalogVariant) {
   return v.stock == null || v.stock > 0;
 }
 
-export function QuickAddButton({ productId, slug, product, className, buttonLabel }: Props) {
+export function QuickAddButton({ productId, slug, product, className, buttonLabel, selectedColorKey }: Props) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const settings = useStorefrontSettings();
@@ -106,10 +108,13 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
   }
 
   async function onQuickAdd(e?: React.MouseEvent<HTMLButtonElement>) {
+    const source = rootRef.current;
+    emitVisualInteraction("cartClick", { source });
     const full = await ensureProduct();
-    if (!full) return;
+    if (!full || !source?.isConnected) return;
 
-    const variants = flattenVariants(full);
+    const selectedItem = selectedColorKey ? full.items?.find((item, i) => catalogItemKey(item, i) === selectedColorKey) : null;
+    const variants = selectedItem?.variants ?? flattenVariants(full);
 
     // إذا في Variant واحد فقط (أو واحد متوفر فقط): أضف مباشرة بدون Drawer
     const available = variants.filter(isInStock);
@@ -127,6 +132,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
         return;
       }
       addItem(auto.id, 1);
+      emitVisualInteraction("cartAdded", { source });
       trackAddToCart(productItem(full, { color: colorOf(full, auto), size: auto.size?.name, price: Number(auto.price) }), (full as any).currencyCode ?? undefined);
       fireConfetti(e?.clientX, e?.clientY);
       toast.cartAdded(full.title);
@@ -186,12 +192,12 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
 
       {open && p && rootRef.current?.closest(".cinematic-shell") ? (
         // Rose storefront: the quick-add sheet with the product photo, in the campaign design.
-        <RoseProductSheet key={p.id} product={p} mode="quickadd" onClose={() => { setOpen(false); setClosing(false); }} />
+        <RoseProductSheet key={p.id} product={p} mode="quickadd" origin={rootRef.current} selectedColorKey={selectedColorKey} onClose={() => { setOpen(false); setClosing(false); }} />
       ) : open ? (
         // Portal out of the card: an animated (transformed) card would otherwise
         // become the fixed drawer's containing block and squeeze it into the tile.
         createPortal(
-          <QuickAddDrawer product={p} loading={loading} onClose={close} closing={closing} />,
+          <QuickAddDrawer product={p} loading={loading} onClose={close} closing={closing} origin={rootRef.current} selectedColorKey={selectedColorKey} />,
           rootRef.current?.closest<HTMLElement>(".cinematic-shell, [data-theme]") ?? document.body,
         )
       ) : null}
@@ -204,11 +210,14 @@ function QuickAddDrawer({
   loading,
   onClose,
   closing,
+  origin, selectedColorKey,
 }: {
   product: CatalogProduct | null;
   loading: boolean;
   onClose: () => void;
   closing: boolean;
+  origin?: Element | null;
+  selectedColorKey?: string;
 }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
@@ -227,14 +236,14 @@ function QuickAddDrawer({
   const colorKeys = useMemo(() => Array.from(byColor.keys()), [byColor]);
 
   const initialSel: Selection = useMemo(() => {
-    const firstColor = colorKeys[0] ?? "";
+    const firstColor = selectedColorKey && colorKeys.includes(selectedColorKey) ? selectedColorKey : colorKeys[0] ?? "";
     const it = firstColor ? byColor.get(firstColor) : undefined;
     const firstVar = it?.variants?.[0];
     return {
       colorKey: firstColor,
       sizeKey: firstVar ? variantSizeKey(firstVar) : "default",
     };
-  }, [colorKeys, byColor]);
+  }, [colorKeys, byColor, selectedColorKey]);
 
   const [sel, setSel] = useState<Selection>(initialSel);
   const [qty, setQty] = useState(1);
@@ -262,7 +271,7 @@ function QuickAddDrawer({
   const selectedPrice = selectedVariant ? Number(selectedVariant.price) : null;
 
   function pickColor(nextColorKey: string) {
-    selectStorefrontColor(colorSwatchHex(nextColorKey));
+    selectStorefrontColor(colorSwatchHex(nextColorKey), { source: origin });
     const it = byColor.get(nextColorKey);
     const firstVar = it?.variants?.[0];
     setSel({
@@ -278,8 +287,10 @@ function QuickAddDrawer({
   }
 
   function onAdd() {
-    if (!selectedVariant) return;
+    emitVisualInteraction("cartClick", { source: origin });
+    if (!selectedVariant || !canAdd || (origin && !origin.isConnected)) return;
     addItem(selectedVariant.id, Math.max(1, qty));
+    emitVisualInteraction("cartAdded", { source: origin });
     if (product) trackAddToCart(productItem(product, { color: colorOf(product, selectedVariant), size: selectedVariant.size?.name, price: selectedPrice, quantity: Math.max(1, qty) }), (product as any).currencyCode ?? undefined);
     if (product) {
       fireConfetti();
@@ -316,7 +327,7 @@ const colorHasAvailable = (key: string): boolean => {
   return vars.some((v) => (v.stock ?? 0) > 0);
 };
   return (
-    <div className="quick-add-layer fixed inset-0 z-50">
+    <div ref={el => markVisualOrigin(el, origin)} className="quick-add-layer fixed inset-0 z-50">
       <div
         className={
           "absolute inset-0 bg-black/60 transition-opacity duration-200 " +

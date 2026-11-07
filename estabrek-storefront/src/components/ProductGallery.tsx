@@ -230,11 +230,11 @@ export function ProductGallery({ product, selectedColorKey, onSelectColorKey }: 
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => {
+                  onClick={event => {
                     setItemId(s.id);
                     setActiveIdx(0);
                     onSelectColorKey?.(s.id);
-                    selectStorefrontColor(s.hex);
+                    selectStorefrontColor(s.hex, { source: event.currentTarget });
                   }}
                   className={[
                     "color-swatch h-7 w-7 shrink-0 rounded-full border-2 transition-all sm:h-8 sm:w-8",

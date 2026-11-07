@@ -3,14 +3,14 @@ on:
   push:
     paths:
       - 'estabrek-store-backend/**'
-      - 'estabrek-admin/src/studio/**'
-      - 'estabrek-storefront/src/pageTree/**'
+      - 'estabrek-admin/**'
+      - 'estabrek-storefront/**'
       - '.github/workflows/cms-publishing-tests.yml'
   pull_request:
     paths:
       - 'estabrek-store-backend/**'
-      - 'estabrek-admin/src/studio/**'
-      - 'estabrek-storefront/src/pageTree/**'
+      - 'estabrek-admin/**'
+      - 'estabrek-storefront/**'
       - '.github/workflows/cms-publishing-tests.yml'
 permissions:
   contents: read
@@ -59,9 +59,14 @@ jobs:
       - run: npm ci
       - name: Install admin dependencies used by shared SVG geometry tests
         run: npm ci --prefix ../estabrek-admin --ignore-scripts
-      - name: Bootstrap pre-feature fixture and apply the additive publication migration
+      - name: Bootstrap pre-feature fixture and apply additive CMS migrations
         run: node scripts/test-cms-publishing-db.mjs
       - run: npx prisma generate
       - run: npm run build
       - name: Run the backend suite against isolated PostgreSQL
         run: npm test -- --no-file-parallelism --maxWorkers=1
+      - name: Verify CMS interaction controls and legacy theme ownership
+        working-directory: estabrek-admin
+        run: |
+          npx vitest run src/test/visualControlsForm.test.tsx src/test/visualInteractions.test.ts src/studio/draft.test.ts
+          npx vitest run --config vitest.visual-theme.config.ts

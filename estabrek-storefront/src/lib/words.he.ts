@@ -4,6 +4,9 @@
  * allows. {0}, {1}… are the numbers and names the English has.
  */
 export const HE: Record<string, string> = {
+  "Sample category": "קטגוריה לדוגמה",
+  "Simulated add ✓": "הוספה בהדמיה ✓",
+  "Test add": "בדיקת הוספה",
   " (we'll check)": " (נבדוק)",
   " ({0} left)": " (נשארו {0})",
   " + delivery (we'll confirm)": " + משלוח (נאשר איתך)",

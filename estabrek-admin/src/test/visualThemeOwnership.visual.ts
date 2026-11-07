@@ -1,0 +1,31 @@
+import { afterEach, expect, test } from "vitest";
+import { claimTheme, releaseTheme } from "../../../estabrek-storefront/src/lib/themeBase";
+import { themeFollower, suspendThemeFollowers, stopThemeTween } from "../../../estabrek-storefront/src/lib/themeTween";
+import { mountVisualInteractions, emitVisualInteraction } from "../../../estabrek-storefront/src/lib/visualInteractions";
+let dispose: (() => void) | undefined; let stop: (() => void) | undefined;
+afterEach(() => { dispose?.(); stop?.(); document.body.innerHTML = ""; document.documentElement.removeAttribute("data-visual-theme"); });
+test("active scene followers and hand-back cannot overwrite a CMS action; reset restores exact original shell/header values", () => {
+  document.body.innerHTML = '<div class="cinematic-shell" style="--accent:#111111!important"><header class="atelier-header" style="--accent:#222222"></header><div data-cms-interaction-page><button>Theme</button></div></div>';
+  const shell = document.querySelector<HTMLElement>(".cinematic-shell")!, header = document.querySelector<HTMLElement>("header")!, source = document.querySelector("button")!;
+  const follower = themeFollower(shell, { local: () => [header] }); stop = () => follower.stop();
+  claimTheme(shell, "stories", ["--accent"]);
+  follower.to({ "--accent": "#555555" });
+  const originalHeader = header.style.getPropertyValue("--accent");
+  dispose = mountVisualInteractions(document, { version: 1, bindings: { cartClick: [{ type: "theme", color: "#123456" }], cartAdded: [{ type: "themeReset" }] } }, color => ({ "--accent": color }), { stopWriters: roots => { suspendThemeFollowers(document); roots.forEach(stopThemeTween); } });
+  emitVisualInteraction("cartClick", { source });
+  follower.to({ "--accent": "#999999" }); follower.unpin();
+  follower.release(0, () => releaseTheme(shell, "stories", { duration: 0 }));
+  expect(shell.style.getPropertyValue("--accent")).toBe("#123456");
+  expect(getComputedStyle(header).getPropertyValue("--accent")).not.toBe("#555555");
+  emitVisualInteraction("cartAdded", { source });
+  expect(shell.style.getPropertyValue("--accent")).toBe("#111111");
+  expect(shell.style.getPropertyPriority("--accent")).toBe("important");
+  expect(header.style.getPropertyValue("--accent")).toBe(originalHeader);
+});
+test("hover cleanup precedes snapshots, so reset returns to the resting palette", () => {
+  document.body.innerHTML = '<div class="cinematic-shell" style="--accent:#555555"><button>Theme</button></div>';
+  const shell = document.querySelector<HTMLElement>(".cinematic-shell")!, source = document.querySelector("button")!;
+  dispose = mountVisualInteractions(document, { version: 1, bindings: { cartClick: [{ type: "theme", color: "#123456" }], cartAdded: [{ type: "themeReset" }] } }, color => ({ "--accent": color }), { prepareBaseline: () => shell.style.setProperty("--accent", "#111111") });
+  emitVisualInteraction("cartClick", { source }); emitVisualInteraction("cartAdded", { source });
+  expect(shell.style.getPropertyValue("--accent")).toBe("#111111");
+});

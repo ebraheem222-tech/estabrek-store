@@ -43,6 +43,7 @@ import { StableWidgetView } from "./StableWidgetView";
 import { nodeEdges, withDecoration } from "./NodeDecorations";
 import { CommerceCartPart } from "./CommerceCart";
 import { CommerceShop, type CommerceShopData } from "./CommerceShop";
+import { CardDesignScope } from "@/components/VisualControlsProvider";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -95,7 +96,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const words = (t: unknown) => (p.rich === true ? richNodes(say(t), link) : say(t));
   // How it moves goes to the motion engine (TreeMotion) as data; an animated layer is drawn inside it.
   const motion = motionOf(node);
-  const mark = { "data-tree-node": node.id, ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
+  const mark = { "data-tree-node": node.id, ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
   // An animated layer, or the light that follows the mouse (TreeMotion moves it).
   const fx = motion?.fx ? <span className={`pt-fx pt-fx-${motion.fx.kind}`} aria-hidden="true" /> : motion?.hover?.kind === "spotlight" ? <span className="pt-spot" aria-hidden="true" /> : null;
   const kids = () => (
@@ -107,7 +108,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
 
   switch (node.type) {
     case "shop":
-      return <div className={cls(node)} {...mark}>{fx}<CommerceShop data={ctx.commerce?.shop} preview={ctx.commerce?.preview === true} options={p} lang={ctx.lang} /></div>;
+      return <div className={cls(node)} {...mark}>{fx}<CardDesignScope value={p.cardDesign}><CommerceShop data={ctx.commerce?.shop} preview={ctx.commerce?.preview === true} options={p} lang={ctx.lang} /></CardDesignScope></div>;
     case "cartItems":
     case "cartSummary":
     case "cartCheckout":
@@ -379,7 +380,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
         <div className={cls(node)} {...mark}>
           {title ? <h2 className="pt-block-title">{title}</h2> : null}
           <div className={p.layout === "row" ? "pt-products-row" : "pt-products-grid"} style={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 6 ? ({ "--pt-cols": String(p.columns) } as Record<string, string>) : undefined}>
-            {shown.map((id) => <div key={id} className={`pt-card pt-card-${["bordered", "shadow", "soft", "lift"].includes(p.card) ? p.card : "plain"}`}>{ctx.renderProductCard?.(id)}</div>)}
+            <CardDesignScope value={p.cardDesign}>{shown.map((id) => <div key={id} className={`pt-card pt-card-${["bordered", "shadow", "soft", "lift"].includes(p.card) ? p.card : "plain"}`}>{ctx.renderProductCard?.(id)}</div>)}</CardDesignScope>
           </div>
         </div>
       );

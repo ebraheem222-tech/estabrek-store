@@ -19,6 +19,7 @@ import { piecesLeftText, showsLeft } from "@/lib/scarcity";
 import { imagesFor, itemHex, sizeKeyOf, startColorIndex } from "@/lib/roseProductMedia";
 import { cldUrl } from "@/lib/cloudinary";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { emitVisualInteraction } from "@/lib/visualInteractions";
 import { notePick, setRazanProduct, setRazanSelection } from "@/lib/razanProduct";
 import { startThemeCycle, stopThemeCycle } from "@/lib/themePreview";
 import { useCart } from "@/store/cart";
@@ -167,13 +168,13 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
     if (el) gsap.fromTo(el, { opacity: 0, scale: 1.03 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out", clearProps: "transform,opacity" });
   }, [active, colorKey]);
 
-  const pickColor = (key: string, it: CatalogItem) => {
+  const pickColor = (key: string, it: CatalogItem, source: Element) => {
     setColorKey(key);
     setStatus(null);
     if (it.colorName && it.colorName.toLowerCase() !== "default") updateRecentlyViewed(product.id, { color: it.colorName, size: "" });
     notePick();
     const hex = itemHex(it);
-    if (hex) selectStorefrontColor(hex);
+    if (hex) selectStorefrontColor(hex, { source });
   };
 
   const onZoom = (event: MouseEvent<HTMLDivElement>) => {
@@ -183,8 +184,10 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
   };
 
   const add = (event: MouseEvent<HTMLButtonElement>) => {
+    emitVisualInteraction("cartClick", { source: event.currentTarget });
     if (!variant || !inStock) return;
     addItem(variant.id, Math.max(1, qty));
+    emitVisualInteraction("cartAdded", { source: event.currentTarget });
     trackAddToCart(productItem(product, { color: item?.colorName, size: (variant as any).size?.name, price, quantity: Math.max(1, qty) }), currency ?? undefined);
     fireConfetti(event.clientX, event.clientY);
     toast.cartAdded(product.title);
@@ -306,7 +309,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
                       aria-label={catalogItemLabel(it, i)}
                       className={`color-swatch rose-pdp-swatch${key === colorKey ? " active" : ""}`}
                       style={{ "--swatch-color": hex } as CSSProperties}
-                      onClick={() => pickColor(key, it)}
+                      onClick={event => pickColor(key, it, event.currentTarget)}
                     >
                       <span />
                     </button>

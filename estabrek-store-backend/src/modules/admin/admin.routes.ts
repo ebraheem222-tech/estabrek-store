@@ -7,6 +7,7 @@ import { auditLog } from "../../middleware/auditLog.js";
 
 import core from "./admin.controller.js";
 import settings from "./settings.controller.js";
+import visualControls from "./visualControls.controller.js";
 import nav from "./nav.controller.js";
 import pages from "./pages.controller.js";
 import setup from "./setup.controller.js";
@@ -97,6 +98,7 @@ r.use("/orders", (req, res, next) => {
 
 // groups
 r.use("/settings", areaAccess({ read: "settings:read", write: "settings:write" }), settings);
+r.use("/visual-controls", areaAccess({ read: "settings:read", write: "settings:write" }), visualControls);
 r.use("/features", areaAccess({ read: "settings:read", write: "settings:write" }), features);
 r.use("/razan", areaAccess({ read: "settings:read", write: "settings:write" }), razan);
 // Setting up a new store: anyone with the settings may look; the owner applies (inside).

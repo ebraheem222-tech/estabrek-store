@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import StudioPage from "../../src/studio/StudioPage";
+import VisualControlsPage from "../../src/features/settings/VisualControlsPage";
 import type { PageDraft, PageDraftOp, PageTreeNode } from "../../src/api/pages.api";
 import { api } from "../../src/api/http";
 import { env } from "../../src/config/env";
@@ -83,6 +84,7 @@ if (new URLSearchParams(location.search).has("padded")) {
 let draft = structuredClone(initial);
 const writes: Array<{ ops: PageDraftOp[]; rev: number }> = [];
 const requests: Array<{ method: string; path: string }> = [];
+let globalVisualControls: any = { version: 1, revision: 0 };
 let lastLayout: unknown = null;
 let layoutSource: MessageEventSource | null = null;
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -133,6 +135,11 @@ api.defaults.adapter = async (config) => {
   const path = new URL(config.url ?? "", `${FIXTURE}/v1/`).pathname.replace(/^\/v1/, "");
   requests.push({ method, path });
   const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
+  if (path === "/admin/visual-controls" && method === "GET") return response(config, globalVisualControls);
+  if (path === "/admin/visual-controls" && method === "PUT") {
+    if (body.revision !== globalVisualControls.revision) throw new AxiosError("Conflict", "409", config, undefined, { ...response(config, {}), status: 409 });
+    globalVisualControls = { ...clone(body), revision: body.revision + 1 }; return response(config, globalVisualControls);
+  }
   if (path === "/admin/media/models/sign") throw new AxiosError("Local fixture upload", "409", config, undefined, { ...response(config, {}), status: 409 });
   if (method === "GET" && path === "/admin/media/models") return response(config, { items: [], maxBytes: 25_000_000, cloudinary: false });
   if (method === "POST" && path === "/admin/media/models/local") {
@@ -191,7 +198,7 @@ try {
   createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/studio/${PAGE_ID}`]}>
-        <Routes><Route path="/studio/:id" element={<StudioPage />} /></Routes>
+        <Routes><Route path="/studio/:id" element={new URLSearchParams(location.search).has("visualControls") ? <VisualControlsPage /> : <StudioPage />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );

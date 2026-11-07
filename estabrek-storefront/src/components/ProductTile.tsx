@@ -138,7 +138,13 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
-export function ProductTile({ product, appearance = "default" }: { product: CatalogProduct; appearance?: "rose" | "default" }) {
+import { useCardDesign } from "./VisualControlsProvider";
+import { ConfiguredProductCard } from "./ConfiguredProductCard";
+export function ProductTile(props: { product: CatalogProduct; appearance?: "rose" | "default" }) {
+  const design = useCardDesign();
+  return design ? <ConfiguredProductCard product={props.product} design={design} /> : <DefaultProductTile {...props} />;
+}
+function DefaultProductTile({ product, appearance = "default" }: { product: CatalogProduct; appearance?: "rose" | "default" }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const settings = useStorefrontSettings();
@@ -292,8 +298,8 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
       <span className="rose-product-category">{product.category?.name}</span>
       <Link href={`/p/${product.slug}`}><h3>{product.title}</h3></Link>
       <span className="rose-product-price">{product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "—"}</span>
-      {!!swatches.length && <div className="rose-product-swatches">{swatches.map(s => <button key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={() => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}
-      <div className="rose-product-actions"><QuickAddButton product={product} className="rose-product-add" buttonLabel={tr(lang, "إضافة للحقيبة", "Add to bag")} />{quickViewEnabled && <button className="rose-product-preview" onClick={() => openQuickView(product)} aria-label={`${tr(lang, "معاينة", "Preview")} ${product.title}`}>{tr(lang, "معاينة", "Preview")}</button>}</div>
+      {!!swatches.length && <div className="rose-product-swatches">{swatches.map(s => <button key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={event => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex, { source: event.currentTarget }); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}
+      <div className="rose-product-actions"><QuickAddButton product={product} selectedColorKey={selectedSwatch ?? undefined} className="rose-product-add" buttonLabel={tr(lang, "إضافة للحقيبة", "Add to bag")} />{quickViewEnabled && <button className="rose-product-preview" onClick={event => openQuickView(product, event.currentTarget)} aria-label={`${tr(lang, "معاينة", "Preview")} ${product.title}`}>{tr(lang, "معاينة", "Preview")}</button>}</div>
     </div>
   </article>;
   return (
@@ -388,7 +394,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                openQuickView(product);
+                openQuickView(product, e.currentTarget);
               }}
               className="quick-view-trigger-candy absolute left-3 bottom-3 z-30 rounded-full px-3 py-1 text-xs font-semibold"
             >
@@ -441,7 +447,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
                       e.preventDefault();
                       e.stopPropagation();
                       setSelectedSwatch(swatch.key);
-                      selectStorefrontColor(swatch.hex);
+                      selectStorefrontColor(swatch.hex, { source: e.currentTarget });
                     }}
                     onMouseEnter={(e) => {
                       e.preventDefault();
@@ -473,6 +479,7 @@ export function ProductTile({ product, appearance = "default" }: { product: Cata
             <div className="quick-add-slide">
               <QuickAddButton
                 product={product}
+                selectedColorKey={selectedSwatch ?? undefined}
                 className="w-full backdrop-blur-sm bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] hover:shadow-glow-medium transition-all duration-300"
                 buttonLabel={tr(lang, "إضافة سريعة", "Quick add")}
               />

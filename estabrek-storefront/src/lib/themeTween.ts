@@ -96,6 +96,11 @@ export type FollowerOptions = {
   local?: () => Array<HTMLElement | null | undefined>;
 };
 
+const followers = new Map<HTMLElement, Set<() => void>>();
+/** Suspend local scene overlays before explicit CMS theme actions take ownership. */
+export function suspendThemeFollowers(doc: Document) {
+  for (const [el, stops] of followers) if (el.ownerDocument === doc) for (const stop of stops) stop();
+}
 export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
   const now = new Map<string, Rgb>();
   const target = new Map<string, Rgb>();
@@ -156,7 +161,12 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
     settle();
     done?.();
   };
+  let registered = followers.get(el);
+  if (!registered) followers.set(el, registered = new Set());
+  registered.add(letGo);
+  const visuallyOwned = () => el.ownerDocument.documentElement.hasAttribute("data-visual-theme");
   const step = (t: number) => {
+    if (visuallyOwned()) return letGo();
     const parts = locals();
     // At most 60 writes a second (30 in the light mode), also on 120 Hz screens. While a
     // scene is on stage each write restyles the whole scene (Rose's outfit follows the
@@ -187,6 +197,7 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
   return {
     /** Glide towards `values`; `seconds` is roughly how long most of the change takes. */
     to(values: Record<string, string>, seconds = 0.35) {
+      if (visuallyOwned()) return;
       smooth = Math.max(0.02, seconds / 3);
       releasing = null; // taken again while handing back: carry on from where the colours are
       const fresh: string[] = [];
@@ -221,6 +232,7 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
     },
     /** The scene left the stage: the page catches up with the colours shown in its parts. */
     unpin() {
+      if (visuallyOwned()) { behind.clear(); dropLocal(); settle(); return; }
       if (localWritten.size) { flush(); dropLocal(); }
       if (!raf) settle();
     },
@@ -233,6 +245,7 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
      */
     release(seconds = 0.8, done?: () => void) {
       releasing = done ?? (() => {});
+      if (visuallyOwned()) return letGo();
       if (!localWritten.size || seconds <= 0 || reduced()) return letGo();
       const computed = getComputedStyle(el);
       const read = (name: string) => parseColor(el.style.getPropertyValue(name).trim() || computed.getPropertyValue(name).trim());
@@ -248,12 +261,13 @@ export function themeFollower(el: HTMLElement, opts: FollowerOptions = {}) {
     },
     /** Stop following (the scene hands the colours back). */
     stop() {
+      registered!.delete(letGo); if (!registered!.size) followers.delete(el);
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
       last = 0;
       // The shell takes what is on screen before the local parts let go, so nothing jumps;
       // the colours then glide back from there.
-      flush();
+      if (!visuallyOwned()) flush();
       dropLocal();
       settle();
       now.clear();

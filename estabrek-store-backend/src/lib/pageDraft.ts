@@ -43,7 +43,7 @@ export type DraftOp =
   /** A new element (with what's inside it) at `index` in `parentId`. */
   | { op: "insert"; parentId: string; index: number; node: TreeNode }
   /** An element's settings, all of them (words in every language included). */
-  | { op: "setProps"; nodeId: string; props: Record<string, unknown> }
+  | { op: "setProps"; nodeId: string; props: Record<string, unknown>; controls?: true }
   /** An element's name in the editor's layers (null = its kind again). */
   | { op: "setName"; nodeId: string; name: string | null }
   /** An element's look on one screen size; null clears it. */
@@ -280,6 +280,13 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
         // The page's own settings: only its smooth scrolling (its looks change through their own ops).
         if (at?.node.type === "page" && isPlain(raw.props)) {
           const props = { ...(at.node.props ?? {}) };
+          if (raw.controls === true) {
+            for (const key of ["interactions", "cardDesign"]) {
+              if (Object.hasOwn(raw.props, key)) props[key] = clone(raw.props[key]); else delete props[key];
+            }
+            at.node.props = props;
+            break;
+          }
           if (raw.props.smooth === true) props.smooth = true;
           else delete props.smooth;
           at.node.props = props;

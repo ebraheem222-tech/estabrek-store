@@ -15,6 +15,8 @@ import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type Site
 import { nodeCss, siteTarget } from "./css";
 import { geometryPreviewCss, geometryPreviewNodes } from "./geometryPreview";
 import { htmlToRich } from "./rich";
+import { INTERACTION_EVENTS } from "@/lib/visualControls";
+import { emitVisualInteraction } from "@/lib/visualInteractions";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -535,6 +537,14 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);
+        return;
+      }
+      if (d.type === "testInteraction" && e.source === window.parent) {
+        const data = e.data as { event?: string; nodeId?: string };
+        if (INTERACTION_EVENTS.includes(data.event as any)) {
+          const source = data.nodeId && /^[A-Za-z0-9_-]{1,40}$/.test(data.nodeId) ? document.querySelector(`[data-tree-node="${data.nodeId}"]`) : document.querySelector("[data-cms-interaction-page]");
+          if (source) emitVisualInteraction(data.event as typeof INTERACTION_EVENTS[number], { source, color: "#3366bb" });
+        }
         return;
       }
       if (typeof d.type === "string" && (d.type.startsWith("stage") || d.type.startsWith("motion"))) return studioLink.emit(d as Record<string, unknown>);

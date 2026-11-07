@@ -82,7 +82,7 @@ export function inverseOf(op: PageDraftOp, d: PageDraft, main: Lang): PageDraftO
       return [{ op: "remove", nodeId: op.node.id }];
     case "setProps": {
       const at = locate(d.tree, op.nodeId);
-      return at ? [{ op: "setProps", nodeId: op.nodeId, props: structuredClone(at.node.props ?? {}) }] : [];
+      return at ? [{ op: "setProps", nodeId: op.nodeId, props: structuredClone(at.node.props ?? {}), ...(op.controls ? { controls: true } : {}) }] : [];
     }
     case "setName": {
       const at = locate(d.tree, op.nodeId);
@@ -179,6 +179,13 @@ export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
     case "setProps": {
       const at = locate(tree, op.nodeId);
       if (!at) return d;
+      if (at.node.type === "page" && op.controls) {
+        const props = { ...at.node.props };
+        for (const key of ["interactions", "cardDesign"]) {
+          if (Object.hasOwn(op.props, key)) props[key] = structuredClone(op.props[key]); else delete props[key];
+        }
+        at.node.props = props; break;
+      }
       at.node.props = structuredClone(op.props);
       break;
     }

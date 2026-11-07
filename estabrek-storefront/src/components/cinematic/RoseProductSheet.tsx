@@ -10,6 +10,7 @@ import { getProductBySlugClient, getProductByIdClient } from "@/lib/apiClient";
 import { imagesFor, inStock, itemHex, sizeKeyOf, startColorIndex } from "@/lib/roseProductMedia";
 import { cldUrl } from "@/lib/cloudinary";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { emitVisualInteraction, markVisualOrigin } from "@/lib/visualInteractions";
 import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
@@ -36,7 +37,7 @@ function shellHost() {
  * drawer / bottom sheet, with the photo of the chosen colour). Both show the
  * product photo, follow the chosen colour, and add to the bag.
  */
-export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: { product: CatalogProduct; mode: Mode; onClose: () => void; onAdded?: () => void }) {
+export function RoseProductSheet({ product: initial, mode, onClose, onAdded, origin, selectedColorKey }: { product: CatalogProduct; mode: Mode; onClose: () => void; onAdded?: () => void; origin?: Element | null; selectedColorKey?: string }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
   const [product, setProduct] = useState(initial);
@@ -84,10 +85,11 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
   useEffect(() => {
     if (!items.length) return;
     const current = document.documentElement.dataset.storefrontColor;
-    const i = startColorIndex(items, current);
+    const requested = selectedColorKey ? items.findIndex((it, i) => catalogItemKey(it, i) === selectedColorKey) : -1;
+    const i = requested >= 0 ? requested : startColorIndex(items, current);
     setColorKey(catalogItemKey(items[i], i));
     const hex = itemHex(items[i]);
-    if (hex && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true });
+    if (hex && hex.toLowerCase() !== current?.toLowerCase()) selectStorefrontColor(hex, { auto: true, source: origin });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product.id]);
 
@@ -119,12 +121,15 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
   const pickColor = (key: string, hex: string | null) => {
     setColorKey(key);
     setStatus(null);
-    if (hex) selectStorefrontColor(hex);
+    if (hex) selectStorefrontColor(hex, { source: origin ?? panel.current });
   };
 
   const add = (event: MouseEvent<HTMLButtonElement>) => {
-    if (!variant || !available) return;
+    const source = origin ?? event.currentTarget;
+    emitVisualInteraction("cartClick", { source });
+    if (!variant || !available || (origin && !origin.isConnected)) return;
     addItem(variant.id, Math.max(1, qty));
+    emitVisualInteraction("cartAdded", { source });
     trackAddToCart(productItem(product, { color: item?.colorName, size: (variant as any).size?.name, price, quantity: Math.max(1, qty) }), (product as any).currencyCode ?? undefined);
     fireConfetti(event.clientX, event.clientY);
     toast.cartAdded(product.title);
@@ -138,7 +143,7 @@ export function RoseProductSheet({ product: initial, mode, onClose, onAdded }: {
 
   const current = images[Math.min(photo, Math.max(0, images.length - 1))];
   const sheet = (
-    <div className={`rose-sheet-layer rose-sheet-${mode}${closing ? " closing" : ""}`} dir={dirOf(lang)} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+    <div ref={el => markVisualOrigin(el, origin)} className={`rose-sheet-layer rose-sheet-${mode}${closing ? " closing" : ""}`} dir={dirOf(lang)} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
       <div
         ref={panel}
         className="rose-sheet"

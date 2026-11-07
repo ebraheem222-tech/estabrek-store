@@ -738,6 +738,8 @@ model SiteSettings {
   announcementLinkUrl  String?
 
   header Json?
+  /// Public card design and visual interactions. Saved independently with optimistic revision.
+  visualControls Json?
   footer Json?
 
   // Shopper accounts on the storefront (sign in, orders, favourites, addresses). Off = visitors only.

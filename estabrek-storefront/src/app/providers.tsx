@@ -24,6 +24,7 @@ import { StorefrontFeaturesProvider, type StorefrontSettings, useStorefrontSetti
 import { AnimationEffectsProvider } from "@/components/AnimationEffectsProvider";
 import { clearBodyScrollLocks } from "@/lib/bodyScrollLock";
 import { RouteProgress } from "@/components/RouteProgress";
+import { VisualControlsProvider } from "@/components/VisualControlsProvider";
 
 const QuickViewLayer = dynamic(
   () => import("@/components/QuickViewModal").then((m) => m.QuickViewLayer),
@@ -78,6 +79,7 @@ export default function Providers({
   identity,
   lang = "ar",
   languages,
+  visualControls,
 }: {
   children: React.ReactNode;
   initialStorefrontSettings?: Partial<StorefrontSettings>;
@@ -103,6 +105,7 @@ export default function Providers({
   /** The page's language (its address) and the store's languages (admin → اللغات). */
   lang?: Lang;
   languages?: LangConfig;
+  visualControls?: unknown;
 }) {
   const darkModeDisabled = initialStorefrontSettings?.darkModeEnabled === false;
   const defaultTheme = darkModeDisabled
@@ -151,8 +154,7 @@ export default function Providers({
                   <StorefrontMotionProvider>
                     {/* Animation Effects (controlled by settings) */}
                     <AnimationEffectsProvider>
-                      {children}
-                      <QuickViewLayer />
+                      <VisualControlsProvider value={visualControls}>{children}<QuickViewLayer /></VisualControlsProvider>
                     </AnimationEffectsProvider>
                   </StorefrontMotionProvider>
                 </QuickViewProvider>

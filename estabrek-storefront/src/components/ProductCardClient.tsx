@@ -108,7 +108,13 @@ function buildAutoVariantImages(p: CatalogProduct, primary?: string | null): str
   return out;
 }
 
+import { useCardDesign } from "./VisualControlsProvider";
+import { ConfiguredProductCard } from "./ConfiguredProductCard";
 export default function ProductCardClient({ product }: { product: CatalogProduct }) {
+  const design = useCardDesign();
+  return design ? <ConfiguredProductCard product={product} design={design} /> : <DefaultProductCardClient product={product} />;
+}
+function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
   const router = useRouter();
   const settings = useStorefrontSettings();
   const { openQuickView } = useQuickView();
@@ -339,7 +345,7 @@ export default function ProductCardClient({ product }: { product: CatalogProduct
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  openQuickView(product);
+                  openQuickView(product, e.currentTarget);
                 }}
                 className="quick-view-trigger-candy absolute left-3 bottom-3 z-30 rounded-full px-3 py-1 text-xs font-semibold"
               >

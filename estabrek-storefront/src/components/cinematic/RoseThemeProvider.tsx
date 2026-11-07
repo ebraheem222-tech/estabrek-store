@@ -130,7 +130,7 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
       const shell = root.current;
       if (!selected || !shell) return;
       // A scene (seasons, collection worlds) or a preview is borrowing the colours: wait for it to give them back.
-      if (themeHeld(shell)) { idleTimer = window.setTimeout(goIdle, 5000); return; }
+      if (themeHeld(shell) || document.documentElement.hasAttribute("data-visual-theme")) { idleTimer = window.setTimeout(goIdle, 5000); return; }
       const own = ownColours ?? new Map<string, string>();
       const global = new Map(globalProperties);
       const restore = () => {

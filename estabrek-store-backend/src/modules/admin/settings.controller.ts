@@ -72,7 +72,7 @@ r.get("/", asyncHandler(async (req, res) => {
 /** Never copied into the history (and never restored from it). */
 const SECRET_KEYS = ["stripeSecretKey", "stripeWebhookSecret", "paypalClientSecret"] as const;
 /** Not part of a snapshot: identity and timestamps. */
-const META_KEYS = ["id", "createdAt", "updatedAt"] as const;
+const META_KEYS = ["id", "createdAt", "updatedAt", "visualControls"] as const;
 const KEEP_REVISIONS = 60;
 
 function snapshotOf(s: Record<string, unknown>) {

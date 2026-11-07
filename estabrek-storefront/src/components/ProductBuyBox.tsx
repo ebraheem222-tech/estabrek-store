@@ -1,5 +1,6 @@
 "use client";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { emitVisualInteraction } from "@/lib/visualInteractions";
 
 import React, { useEffect, useMemo, useState } from "react";
 import type { CatalogProduct, CatalogItem, CatalogVariant } from "@/lib/catalog";
@@ -153,8 +154,8 @@ export default function ProductBuyBox({
     });
   }, [colorKeys, colorSearch]);
 
-  function pickColor(nextColorKey: string) {
-    selectStorefrontColor(colorSwatchHex(nextColorKey));
+  function pickColor(nextColorKey: string, source: Element) {
+    selectStorefrontColor(colorSwatchHex(nextColorKey), { source });
     const it = byColor.get(nextColorKey);
     const firstVar = it?.variants?.[0];
     setSel({
@@ -171,8 +172,11 @@ export default function ProductBuyBox({
   }
 
   function onAdd(event?: React.MouseEvent) {
-    if (!selectedVariant) return;
+    const source = event?.currentTarget;
+    emitVisualInteraction("cartClick", { source });
+    if (!selectedVariant || (selectedVariant.stock != null && selectedVariant.stock <= 0)) return;
     addItem(selectedVariant.id, Math.max(1, qty));
+    emitVisualInteraction("cartAdded", { source });
     fireConfetti(event?.clientX, event?.clientY);
     toast.cartAdded(product.title);
     setStatus("تمت الإضافة للسلة ✅");
@@ -264,7 +268,7 @@ export default function ProductBuyBox({
                   key={k}
                   type="button"
                   disabled={disabled}
-                  onClick={() => (!disabled ? pickColor(k) : null)}
+                  onClick={event => (!disabled ? pickColor(k, event.currentTarget) : null)}
                   className={
                     "color-swatch h-7 w-7 shrink-0 rounded-full border-2 transition-all sm:h-9 sm:w-9 " +
                     (disabled
@@ -351,9 +355,9 @@ export default function ProductBuyBox({
                           key={k}
                           type="button"
                           disabled={disabled}
-                          onClick={() => {
+                          onClick={event => {
                             if (disabled) return;
-                            pickColor(k);
+                            pickColor(k, event.currentTarget);
                             setColorsOpen(false);
                           }}
                           className={

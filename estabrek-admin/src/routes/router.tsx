@@ -54,6 +54,7 @@ const SmartSellingPage = lazy(() => import("../features/discounts/SmartSellingPa
 const ExperimentsPage = lazy(() => import("../features/discounts/ExperimentsPage"));
 
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
+const VisualControlsPage = lazy(() => import("../features/settings/VisualControlsPage"));
 const FeaturesPage = lazy(() => import("../features/features/FeaturesPage"));
 const RazanPage = lazy(() => import("../features/razan/RazanPage"));
 const RequestsPage = lazy(() => import("../features/requests/RequestsPage"));
@@ -249,6 +250,7 @@ export default function AppRouter() {
           
               <Route path="discounts/coupons/test" element={withPermissions(<CouponTesterPage />, ["discounts:write"])} />{/* settings */}
           <Route path="settings" element={withPermissions(<SettingsPage />, ["settings:read"])} />
+          <Route path="visual-controls" element={withPermissions(<VisualControlsPage />, ["settings:read"])} />
           <Route path="themes" element={withPermissions(<ThemesPage />, ["settings:read"])} />
           <Route path="features" element={withPermissions(<FeaturesPage />, ["settings:read"])} />
           <Route path="razan" element={withPermissions(<RazanPage />, ["settings:read"])} />

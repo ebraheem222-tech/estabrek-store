@@ -172,7 +172,7 @@ export function RoseSeasons({ seasons, words }: { seasons: SeasonEdit[]; words?:
       const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
       const follow = shell ? themeFollower(shell, { local: () => [header] }) : null;
       const takeOver = (seed: string) => {
-        if (!shell || !follow) return;
+        if (!shell || !follow || document.documentElement.hasAttribute("data-visual-theme")) return;
         // Most scroll frames do not change the colour (it only moves while the
         // seasons hand over): nothing to write, so the page is not restyled.
         if (saved && seed === lastSeed) return;

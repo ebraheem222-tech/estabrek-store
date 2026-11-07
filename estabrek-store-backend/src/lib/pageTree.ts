@@ -21,6 +21,7 @@
  */
 import { z } from "zod";
 import { checkArt, type Art } from "./svgArt.js";
+import { InteractionPolicy, CardDesign } from "./visualControls.js";
 
 export const TREE_VERSION = 1;
 export const PAGE_FORMAT = { sections: 1, tree: 2 } as const;
@@ -636,9 +637,10 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
 };
 /** A shared style an element takes by name (lib/siteStyles.ts); its own look still wins. Not for the page or old sections. */
 export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);
+NODE_PROPS.page = (NODE_PROPS.page as z.ZodObject).safeExtend({ interactions: InteractionPolicy.optional(), cardDesign: CardDesign.nullable().optional() });
 for (const t of NODE_TYPES) {
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
-  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional(), edges: NodeEdges.optional() });
+  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
 
 /* ------------------------------------------------------------------ tree */

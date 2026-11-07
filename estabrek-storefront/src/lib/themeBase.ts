@@ -57,6 +57,7 @@ export function releaseTheme(
   const state = states.get(shell);
   if (!state || !state.owners.delete(owner)) return;
   if (state.owners.size) return; // another scene still has the stage; it will give the colours back
+  if (shell.ownerDocument.documentElement.hasAttribute("data-visual-theme")) { state.restoring = false; onComplete?.(); return; }
   state.restoring = true;
   tweenThemeBack(shell, restingColours(shell, state.base), {
     duration,

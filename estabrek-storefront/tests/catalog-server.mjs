@@ -122,6 +122,7 @@ let pageTreeOn = false;
 let commerceCms = false;
 let invalidCommerceCart = false;
 let legacyCommerceCart = false;
+let visualPageProps = {}, visualShopProps = {};
 function commercePage(kind) {
   const part = type => ({ id: `fixture-${type}`, type, props: {} });
   const children = kind === "shop" ? [{ ...part("shop"), props: { columns: 3, mobileColumns: 1, showFilters: true, showSearch: true } }]
@@ -132,6 +133,8 @@ function commercePage(kind) {
   const page = { id: `commerce-${kind}`, slug: `/${kind}`, name: `CMS ${kind}`, status: "PUBLISHED", format: 2, sections: [], tree: { version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "fixture-section", type: "section", props: { contained: true }, children: [{ id: "fixture-heading", type: "heading", props: { level: 1, text: { en: `My CMS ${kind}`, ar: `تصميم ${kind}` } } }, ...children] }] } } };
   if (kind === "cart" && legacyCommerceCart) page.tree.root.children[0].children = [{ id: "old-heading", type: "heading", props: { level: 1, text: { en: "Legacy cart design" } } }];
   else page.tree.root.props.commerceVersion = 1;
+  Object.assign(page.tree.root.props, visualPageProps);
+  if (kind === "shop") Object.assign(children[0].props, visualShopProps);
   return page;
 }
 const asTreePage = (p) =>
@@ -674,6 +677,8 @@ http
       req.on("end", () => {
         const data = JSON.parse(body || "{}");
         commerceCms = data.on === true; invalidCommerceCart = data.invalidCart === true;
+        site.visualControls = data.visualControls ?? null;
+        visualPageProps = data.pageProps ?? {}; visualShopProps = data.shopProps ?? {};
         legacyCommerceCart = data.legacyCart === true;
         site.customerAccountsEnabled = data.accounts === true;
         if (data.disabled === true) { site.header.storefront.cmsOverrideShop = false; site.header.storefront.cmsOverrideCart = false; }

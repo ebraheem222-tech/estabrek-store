@@ -191,7 +191,7 @@ export function RoseCollectionStory({ chapters, words }: { chapters: StoryChapte
       const header = shell?.querySelector<HTMLElement>(".atelier-header") ?? null;
       const follow = shell ? themeFollower(shell, { local: () => [header] }) : null;
       const takeOver = (seed: string) => {
-        if (!shell || !follow) return;
+        if (!shell || !follow || document.documentElement.hasAttribute("data-visual-theme")) return;
         // The colour only moves during a hand-over between chapters: skip the other frames.
         if (saved && seed === lastSeed) return;
         lastSeed = seed;

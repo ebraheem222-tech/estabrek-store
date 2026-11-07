@@ -41,6 +41,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { PagePublishDialog } from "./PagePublishDialog";
 import { PagePublicationStatus } from "./PagePublicationStatus";
 import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
+import { VisualControlsPanel } from "./VisualControlsPanel";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
 import { PreviewRefresh, PreviewRefreshCancelled } from "./previewRefresh";
@@ -2116,6 +2117,7 @@ export default function StudioPage() {
             ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {COMMERCE_TYPES.has(selFree.type) ? <CommercePanel node={selFree} busy={busy} onOps={(label, ops) => void change(label, ops)} /> : null}
+            <VisualControlsPanel key={`visual:${selFree.id}`} node={selFree} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", nodeId: selFree.id, event })} />
             {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
             {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "svg" ? <SvgPanel key={selFree.id} node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
@@ -2190,6 +2192,7 @@ export default function StudioPage() {
           }} data-testid="studio-page-motion-apply">{tr("تطبيق على الصفحة", "Apply to page")}</button>
         </div> : null}
         {selected === index.root && pageQ.data && (pageQ.data.kind ?? "page") === "page" ? <PageSettingsPanel key={pageQ.data.id} page={pageQ.data} langs={langs.enabled} /> : null}
+        {selected === index.root && draft?.tree.root ? <VisualControlsPanel key={`visual:${index.root}`} node={draft.tree.root} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", event })} /> : null}
         {selected === index.root ? <ConvertAllPanel sections={oldOnPage.map((x) => x.section)} main={main} roseOf={roseOf} busy={busy} onConvert={() => convertOld(oldOnPage.map((x) => x.node.id))} /> : null}
 
         {selected === index.root ? (

@@ -42,6 +42,7 @@ import { treeCss, treeFamilies } from "@/pageTree/css";
 import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
 import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
 import type { TreeCtx } from "@/pageTree/TreeNodeView";
+import { PageVisualScope } from "@/components/VisualControlsProvider";
 import { TreeMotion } from "@/pageTree/TreeMotion";
 import { TreeMedia } from "@/pageTree/TreeMedia";
 import { treeThemeVars, liveTreeThemeVars } from "@/storeThemes/css";
@@ -610,5 +611,6 @@ export async function renderCmsPageBySlug(
   );
   const themed = tree && storeTheme ? <div data-page-tree-root="" data-page-store-theme={storeTheme.id} data-pt-smooth={treeMedia?.smooth ? "" : undefined} style={options?.liveTheme ? liveTreeThemeVars : treeThemeVars(storeTheme, storeThemeMode)}>{body}</div> : body;
   const site = bootstrap.site as any;
-  return commerce?.cart ? <CommerceCartProvider preview={options?.preview === true} lang={lang ?? langCfg.default} settings={{ checkoutMode: site.checkoutMode ?? "WHATSAPP", whatsappNumber: site.whatsappNumber ?? site.contactPhone, ordersEmail: site.ordersEmail ?? site.contactEmail, stripeEnabled: site.stripeEnabled, paypalEnabled: site.paypalEnabled, countryCode: site.storeCountryCode, delivery: site.header?.delivery }}>{themed}</CommerceCartProvider> : themed;
+  const scoped = <PageVisualScope policy={tree?.root.props?.interactions} cardDesign={tree?.root.props?.cardDesign}>{themed}</PageVisualScope>;
+  return commerce?.cart ? <CommerceCartProvider preview={options?.preview === true} lang={lang ?? langCfg.default} settings={{ checkoutMode: site.checkoutMode ?? "WHATSAPP", whatsappNumber: site.whatsappNumber ?? site.contactPhone, ordersEmail: site.ordersEmail ?? site.contactEmail, stripeEnabled: site.stripeEnabled, paypalEnabled: site.paypalEnabled, countryCode: site.storeCountryCode, delivery: site.header?.delivery }}>{scoped}</CommerceCartProvider> : scoped;
 }

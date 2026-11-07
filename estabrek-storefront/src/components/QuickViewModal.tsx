@@ -1,5 +1,6 @@
 "use client";
 import { selectStorefrontColor } from "@/lib/storefrontColor";
+import { emitVisualInteraction, markVisualOrigin } from "@/lib/visualInteractions";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -54,6 +55,7 @@ const ArrowIcon = () => (
 );
 
 interface QuickViewModalProps {
+  origin?: Element | null;
   product: CatalogProduct | null;
   isOpen: boolean;
   onClose: () => void;
@@ -71,6 +73,7 @@ export function QuickViewModal({
   onToggleWishlist,
   isInWishlist,
   compareEnabled = true,
+  origin,
 }: QuickViewModalProps) {
   const CLOSE_ANIM_MS = 260;
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
@@ -140,14 +143,17 @@ export function QuickViewModal({
     setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  const handleAddToCart = () => {
-    if (selectedVariant && onAddToCart) {
+  const handleAddToCart = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const source = origin ?? event.currentTarget;
+    emitVisualInteraction("cartClick", { source });
+    if (selectedVariant && !isOutOfStock && onAddToCart && source.isConnected) {
       onAddToCart(product, selectedVariant.id, quantity);
+      emitVisualInteraction("cartAdded", { source });
     }
   };
 
   return (
-    <div className={`quick-view-overlay ${isClosing ? "closing" : ""}`} onClick={handleClose} dir="rtl">
+    <div ref={el => markVisualOrigin(el, origin)} className={`quick-view-overlay ${isClosing ? "closing" : ""}`} onClick={handleClose} dir="rtl">
       <button
         type="button"
         className="quick-view-close-fallback"
@@ -279,9 +285,9 @@ export function QuickViewModal({
                       key={item.id}
                       className={`quick-view-color ${idx === selectedItemIndex ? "active" : ""}`}
                       style={{ backgroundColor: item.colorHex || "#ccc" }}
-                      onClick={() => {
+                      onClick={event => {
                         setSelectedItemIndex(idx);
-                        selectStorefrontColor(item.colorHex ?? item.suggestedColors?.[0]);
+                        selectStorefrontColor(item.colorHex ?? item.suggestedColors?.[0], { source: origin ?? event.currentTarget });
                         setSelectedVariantIndex(0);
                         setSelectedImageIndex(0);
                       }}
@@ -366,7 +372,8 @@ export function QuickViewModal({
 
 // Quick View Context for global state
 interface QuickViewContextValue {
-  openQuickView: (product: CatalogProduct) => void;
+  openQuickView: (product: CatalogProduct, origin?: Element | null) => void;
+  origin: Element | null;
   closeQuickView: () => void;
   currentProduct: CatalogProduct | null;
   isOpen: boolean;
@@ -377,11 +384,13 @@ const QuickViewContext = React.createContext<QuickViewContextValue | undefined>(
 export function QuickViewProvider({ children }: { children: React.ReactNode }) {
   const [currentProduct, setCurrentProduct] = useState<CatalogProduct | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [origin, setOrigin] = useState<Element | null>(null);
   const pathname = usePathname();
 
   useBodyScrollLock(isOpen);
 
-  const openQuickView = (product: CatalogProduct) => {
+  const openQuickView = (product: CatalogProduct, source?: Element | null) => {
+    setOrigin(source ?? (document.activeElement instanceof Element ? document.activeElement : null));
     setCurrentProduct(product);
     setIsOpen(true);
   };
@@ -398,7 +407,7 @@ export function QuickViewProvider({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <QuickViewContext.Provider value={{ openQuickView, closeQuickView, currentProduct, isOpen }}>
+    <QuickViewContext.Provider value={{ openQuickView, closeQuickView, currentProduct, isOpen, origin }}>
       {children}
     </QuickViewContext.Provider>
   );
@@ -414,7 +423,7 @@ export function useQuickView() {
 
 export function QuickViewLayer() {
   const settings = useStorefrontSettings();
-  const { currentProduct, isOpen, closeQuickView } = useQuickView();
+  const { currentProduct, isOpen, closeQuickView, origin } = useQuickView();
   const { addItem } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { fireConfetti, fireHeartBurst } = useAnimationEffects();
@@ -424,7 +433,7 @@ export function QuickViewLayer() {
 
   // The rose storefront has its own quick view in the campaign design.
   if (typeof document !== "undefined" && document.documentElement.dataset.cinematicStorefront === "true") {
-    return isOpen && currentProduct ? <RoseProductSheet key={currentProduct.id} product={currentProduct} mode="quickview" onClose={closeQuickView} /> : null;
+    return isOpen && currentProduct ? <RoseProductSheet key={currentProduct.id} product={currentProduct} mode="quickview" origin={origin} onClose={closeQuickView} /> : null;
   }
 
   const inWishlist = currentProduct ? isInWishlist(currentProduct.id) : false;
@@ -463,6 +472,7 @@ export function QuickViewLayer() {
   return (
     <QuickViewModal
       product={currentProduct}
+      origin={origin}
       isOpen={isOpen}
       onClose={closeQuickView}
       onAddToCart={handleAddToCart}

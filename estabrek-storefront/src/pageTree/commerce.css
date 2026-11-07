@@ -26,7 +26,6 @@
 .cms-shop-preview-layout { display: grid; grid-template-columns: minmax(150px,200px) minmax(0,1fr); gap: 24px; }
 .cms-shop-preview-layout[data-filters="off"] { grid-template-columns: minmax(0,1fr); }
 .cms-shop-preview-layout aside { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
-.cms-shop-preview-grid article { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
 .cms-product-placeholder { aspect-ratio: 4/5; border-radius: 8px; background: color-mix(in srgb,var(--accent) 12%,var(--surface)); }
 @media(min-width:768px) { .cms-product-grid { grid-template-columns: repeat(var(--cms-grid-columns,3),minmax(0,1fr)); } }
 @media(max-width:767px) { .cms-shop .cms-shop-browse,.cms-shop-preview-layout { display: block; } .cms-shop-preview-layout aside { margin-bottom: 16px; } }

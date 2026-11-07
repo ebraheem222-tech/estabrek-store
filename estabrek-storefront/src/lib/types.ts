@@ -15,6 +15,7 @@ export type MenuTree = {
 } | null;
 
 export type SitePublicSettings = {
+  visualControls?: unknown;
   id: string;
   siteName?: string | null;
   logoUrl?: string | null;

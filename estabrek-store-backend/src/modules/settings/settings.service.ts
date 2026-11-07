@@ -49,6 +49,7 @@ export async function getOrCreateSiteSettings() {
   return s;
 }
 
+import { publicVisualControls } from "../../lib/visualControls.js";
 /** Public settings payload: site + header/footer menu trees */
 export async function getPublicSettings() {
   const cached = await cacheGet<any>("settings:public");
@@ -93,6 +94,7 @@ export async function getPublicSettings() {
         success: (s as any).newsletterSuccess,
       },
       header: s.header,
+      visualControls: publicVisualControls(s.visualControls),
       footer: s.footer,
       scriptsHead: s.scriptsHead,
       scriptsBody: s.scriptsBody,

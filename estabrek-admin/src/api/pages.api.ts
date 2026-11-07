@@ -61,7 +61,7 @@ export type PageDraftOp =
   | { op: "setVisible"; sectionId: string; visible: boolean }
   | { op: "placeBlock"; block: "seasons" | "stories" | "instagram"; index: number | null }
   | { op: "insert"; parentId: string; index: number; node: PageTreeNode }
-  | { op: "setProps"; nodeId: string; props: Record<string, unknown> }
+  | { op: "setProps"; nodeId: string; props: Record<string, unknown>; controls?: true }
   | { op: "setName"; nodeId: string; name: string | null }
   | { op: "setStyle"; nodeId: string; screen: TreeScreen; style: Record<string, unknown> | null }
   | { op: "setMotion"; nodeId: string; motion: Record<string, unknown> | null }
