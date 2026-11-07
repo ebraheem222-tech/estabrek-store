@@ -71,7 +71,7 @@
 - [x] Add a local browser regression for a new native page with SVG:404 before publish, content and decoration after publish, same editor document during ordinary edits.
 - [x] Run admin suite and appropriate browser regressions, production builds, and compare existing admin TypeScript baseline rather than claiming it is green.
 - [x] Update docs, obtain one fresh whole-branch review, address substantive findings with regressions, and rerun affected checks.
-- [ ] Commit, fast-forward main and push under existing authorization; verify actual deployed admin/backend/storefronts. Keep production diagnostics read-only; do not automatically publish `/t`.
+- [x] Commit, fast-forward main and push under existing authorization; verify actual deployed admin/backend/storefronts. Keep production diagnostics read-only; do not automatically publish `/t`.
 
 ## Self-review
 
@@ -84,3 +84,4 @@ This plan implements phaseA only. Commerce templates, custom tables and vectoriz
 - Local browser editor/publishing suite:20 passed, including Arabic/English404→publish→200 with SVG edges.
 - Backend, admin and storefront production builds passed. Admin TypeScript remains at the50 pre-existing diagnostics; compare normalized diagnostic contents, not just counts.
 - Fresh review and focused closure found no remaining Critical/Important issues. Public probe reports route visibility; it does not checksum legacy edits or shared dependencies. Historical fresh-install migration replay still needs separate repair; see `docs/cms-page-publishing.ar.md`.
+- Release `556ead4` fast-forwarded to main. Main CI [42373320252](https://github.com/ebraheem222-tech/estabrek-store/actions/runs/42373320252) passed; Railway, both Vercel storefronts and Cloudflare builds succeeded. Read-only production checks confirmed the actual admin publication controls, backend public DTO field, page marker on both storefronts, and fresh missing-route HTTP404. Existing warm cache responses were distinguished from current code using fresh request URLs. No merchant page was published for verification.
