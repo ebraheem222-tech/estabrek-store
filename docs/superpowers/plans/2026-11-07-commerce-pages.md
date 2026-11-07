@@ -67,7 +67,7 @@
 - [x] Implement StorePagesPanel shortcuts, commerce Add group/defaults, labels/settings, override-state indication and actionable missing-object publish errors.
 - [x] Confirm object style/SVG/motion edits update the same preview document and leave preview bag state isolated.
 - [x] Run admin full suite, focused commerce and existing editor/cart browsers, backend CI, production builds and normalized TypeScript baseline comparison.
-- [ ] Document actual controls/limits, obtain one whole-branch review, fix substantive findings with regressions, commit and fast-forward/push main under existing authorization. Verify actual deployed services read-only.
+- [x] Document actual controls/limits, obtain one whole-branch review, fix substantive findings with regressions, commit and fast-forward/push main under existing authorization. Verify actual deployed services read-only.
 
 ## Self-review
 
@@ -81,3 +81,5 @@ This plan implements Shop/Cart first as required by the approved roadmap. Native
 - Backend/admin/storefront production builds passed. A duplicate existing Hebrew translation key found by the storefront build was removed; localization-only followup uses the existing key.
 - Whole-branch review and closure found no remaining material issues. Required-object validation now resolves published linked blocks through the transaction client with shared row locks. Root providers isolate cart/account state in Studio. Old native designs stay intact until explicit adoption via `commerceVersion:1`.
 - Real concurrent creation exposed Prisma's emulated empty-update upsert race. A forced unique-conflict regression plus PostgreSQL checks verify returning the winning draft without resetting it.
+- Exact combined tree `b86b439` passed [branch CI42401863296](https://github.com/ebraheem222-tech/estabrek-store/actions/runs/42401863296), then fast-forwarded main without changing its tree. [Main CI42402194185](https://github.com/ebraheem222-tech/estabrek-store/actions/runs/42402194185) passed too.
+- Actual production checks confirmed new Pages/Studio admin chunks, commerce CSS on both Vercel storefronts, Shop/Cart HTTP200 and backend health200. The primary Railway service, both Vercel deployments and Cloudflare builds succeeded. Both storefront bundles use the verified primary API host. Merchant pages and orders were not created for these checks.
