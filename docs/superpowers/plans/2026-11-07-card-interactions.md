@@ -49,7 +49,7 @@ Files: admin VisualControlsForm/page, Studio integration, routes/nav, fixture te
 - [x] Implement global settings page and page/element forms with preview simulation; rerun GREEN.
 - [x] Run relevant complete suites, all three builds and compare known admin TypeScript baseline.
 - [x] Obtain one fresh read-only whole-branch review and repair findings with regression tests.
-- [ ] Document final deployment results; integrate/push using existing authorization and verify deployments read-only.
+- [x] Document final deployment results; integrate/push using existing authorization and verify deployments read-only.
 
 ## Verification and review
 
@@ -57,4 +57,5 @@ Files: admin VisualControlsForm/page, Studio integration, routes/nav, fixture te
 - Admin: 690 tests passed; two additional real legacy-theme ownership tests passed with their dedicated frontend alias configuration. Admin production build passed. Its TypeScript diagnostics remain exactly the 50 normalized baseline messages.
 - Storefront production build and type check passed. All 36 prior commerce/editor browser cases passed in the combined run; all six new feature/interaction cases subsequently passed, including keyboard number entry and same-document preview. Three legacy colour-preview cases passed: 45 distinct browser cases verified.
 - One whole-change reviewer found three inheritance/scene-ownership issues and numeric keyboard input friction. Repairs have regression coverage. The same reviewer confirmed all four repairs resolved without residual Important findings.
-- Pending: fast-forward main and read-only deployment verification. Deferred roadmap phases remain deferred.
+- Released by fast-forward to main at `657846a`. [Main CI 42409284753](https://github.com/ebraheem222-tech/estabrek-store/actions/runs/42409284753) passed. Public read-only verification: admin `/admin/visual-controls` returns HTTP 200 and loads `VisualControlsPage-zWf7VXaq.js`; both Vercel storefronts serve the new interaction runtime and use the primary Railway API; its public settings return `visualControls.version: 1, revision: 0`. No global configuration or merchant data was changed to perform this check.
+- Vercel deployments and primary `earnest-possibility` Railway deployment succeeded. The unrelated `amusing-reflection` Railway deployment still has its pre-existing failure and is not the API used by either storefront. C1 is delivered; remaining roadmap phases stay deferred.
