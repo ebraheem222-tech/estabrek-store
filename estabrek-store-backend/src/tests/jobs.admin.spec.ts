@@ -29,6 +29,7 @@ describe("Background jobs", () => {
   test("every job is listed with its timer", async () => {
     const out = await request(app).get("/v1/admin/system/jobs").expect(200);
     expect(out.body.jobs.map((j: any) => j.name)).toEqual([
+      "cmsPublish",
       "outbox",
       "stockAlerts",
       "backup",
@@ -47,6 +48,7 @@ describe("Background jobs", () => {
     ]);
     const stock = out.body.jobs.find((j: any) => j.name === "stockAlerts");
     expect(stock).toMatchObject({ group: "messages", everyMs: 120_000, defaultEveryMs: 120_000, paused: false });
+    expect(out.body.jobs.find((j: any) => j.name === "cmsPublish")).toMatchObject({ group: "cache", everyMs: 30_000, paused: false });
   });
 
   test("pause and timer: in force at once, saved minimal, in the shared history", async () => {

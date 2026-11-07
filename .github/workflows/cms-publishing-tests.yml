@@ -34,6 +34,7 @@ jobs:
       TEST_DATABASE_ISOLATED: 'true'
       DATABASE_URL: postgresql://cms_fixture:cms_fixture@127.0.0.1:5432/estabrek_cms_publish_test?schema=public
       JWT_SECRET: isolated-ci-fixture-key-not-for-production
+      WEBHOOK_TOKEN: isolated-ci-webhook-fixture-not-for-production
       DOTENV_CONFIG_PATH: /dev/null
       RATE_LIMIT_MAX: '100000'
       RATE_LIMIT_IP_MAX: '100000'
@@ -52,6 +53,8 @@ jobs:
           cache: npm
           cache-dependency-path: estabrek-store-backend/package-lock.json
       - run: npm ci
+      - name: Install admin dependencies used by shared SVG geometry tests
+        run: npm ci --prefix ../estabrek-admin --ignore-scripts
       - name: Bootstrap pre-feature fixture and apply the additive publication migration
         run: node scripts/test-cms-publishing-db.mjs
       - run: npx prisma generate
