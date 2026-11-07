@@ -520,8 +520,11 @@ r.post("/:id/draft/publish", requirePermission("pages:publish"), validate({ body
   let result: { format: number; publication: ReturnType<typeof publicationState> };
   try {
     result = await prisma.$transaction(async (tx) => {
-    // Serializes page publication/lifecycle writes; checks and revision belong to this transaction.
+    // Legacy section/translation updates do not acquire the parent row lock.
+    // Lock them before reading the authoritative snapshot to prevent lost edits.
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Page" WHERE "id" = ${req.params.id} FOR UPDATE`);
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "PageSection" WHERE "pageId" = ${req.params.id} ORDER BY "id" FOR UPDATE`);
+    await tx.$queryRaw(Prisma.sql`SELECT t."id" FROM "PageSectionTranslation" t JOIN "PageSection" s ON s."id" = t."sectionId" WHERE s."pageId" = ${req.params.id} ORDER BY t."id" FOR UPDATE OF t`);
     const page = await tx.page.findUnique({ where: { id: req.params.id }, include: DRAFT_PAGE });
     if (!page) throw new PublicationError("NOT_FOUND", 404);
     const draft = storedDraft(page.draft);
@@ -584,7 +587,12 @@ r.post("/:id/publication/retry", requirePermission("pages:publish"), asyncHandle
   const queued = newPublicationDelivery();
   const previous = storedPublicationDelivery(page.publicationDelivery);
   if (previous?.paths?.length) queued.paths = previous.paths;
-  await prisma.page.update({ where: { id: page.id }, data: { publicationDelivery: queued } });
+  const changed = await prisma.page.updateMany({ where: { id: page.id, publicationDelivery: { equals: page.publicationDelivery ?? Prisma.AnyNull } }, data: { publicationDelivery: queued } });
+  if (!changed.count) {
+    const latest = await prisma.page.findUnique({ where: { id: page.id }, select: { publicationDelivery: true } });
+    if (!latest) return res.status(404).json({ error: "NOT_FOUND" });
+    return res.json({ delivery: storedPublicationDelivery(latest.publicationDelivery), superseded: true });
+  }
   const delivery = await attemptPublicationDelivery(page.id, queued).catch(() => queued);
   res.json({ delivery: delivery ?? queued });
 }));

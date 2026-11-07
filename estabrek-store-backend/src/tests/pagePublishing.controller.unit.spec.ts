@@ -33,7 +33,13 @@ beforeEach(() => {
     sections: [], tree: null, format: 1, draft: null, publicationDelivery: null, updatedAt: new Date("2026-11-07T10:00:00Z"), createdAt: new Date("2026-11-01T10:00:00Z") };
   m.db.page.findUnique.mockImplementation(async () => structuredClone(m.row));
   m.db.page.update.mockImplementation(async ({ data }) => { Object.assign(m.row, data, { ...(data.draft === Prisma.DbNull ? { draft: null } : {}) }); return structuredClone(m.row); });
-  m.db.page.updateMany.mockImplementation(async ({ data }) => { Object.assign(m.row, data); return { count: 1 }; });
+  m.db.page.updateMany.mockImplementation(async ({ where, data }) => {
+    if (where?.publicationDelivery && "equals" in where.publicationDelivery) {
+      const expected = where.publicationDelivery.equals === Prisma.DbNull || where.publicationDelivery.equals === Prisma.AnyNull ? null : where.publicationDelivery.equals;
+      if (JSON.stringify(expected) !== JSON.stringify(m.row.publicationDelivery ?? null)) return { count: 0 };
+    }
+    Object.assign(m.row, data); return { count: 1 };
+  });
   m.db.pageRevision.findFirst.mockResolvedValue(null);
   m.db.pageRevision.create.mockImplementation(async ({ data }) => { m.revisions.push(structuredClone(data)); return { id: "revision" }; });
   m.db.pageSection.update.mockImplementation(async () => { if (m.failSection) throw new Error("fixture write failure"); return {}; });
@@ -101,6 +107,16 @@ test("publication diagnostics separate saved content from delivery and retry req
   const id = m.row.publicationDelivery.id; m.owner = false;
   await request(app).post("/pages/page/publication/retry").expect(403);
   expect(m.row.publicationDelivery.id).toBe(id);
+});
+
+test("a retry started from an older read never replaces a newer publication delivery", async () => {
+  await publish().expect(200);
+  const observed = structuredClone(m.row);
+  const newer = { ...observed.publicationDelivery, id: "newer-publication", state: "pending", paths: ["/previous", "/latest"] };
+  m.db.page.findUnique.mockImplementationOnce(async () => { m.row.publicationDelivery = newer; return observed; });
+  const response = await request(app).post("/pages/page/publication/retry").expect(200);
+  expect(m.row.publicationDelivery).toEqual(newer);
+  expect(response.body.delivery.id).toBe("newer-publication");
 });
 
 test("cache propagation failure is a committed publication with separately reported pending delivery", async () => {

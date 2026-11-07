@@ -9,7 +9,8 @@ function safeSlug(slug: string) {
   try { return slug.split("/").every((part) => { const plain = decodeURIComponent(part); return plain !== "." && plain !== ".." && !/[\/\\?#]/.test(plain); }); } catch { return false; }
 }
 
-/** Read-only verification against server-configured origins, never a user-supplied destination. */
+/** Route visibility against configured origins. A tracked publish marker does not
+ * checksum every legacy edit or shared-block dependency; never claim global content freshness. */
 export async function probePublicPage(page: PublicationPage & { id: string; publicationDelivery?: unknown }, locale: "ar" | "en" | "he"): Promise<PublicPageProbe> {
   const checkedAt = new Date().toISOString();
   if (!publicationState(page).public) return { state: "not_public", checkedAt, targets: [] };
