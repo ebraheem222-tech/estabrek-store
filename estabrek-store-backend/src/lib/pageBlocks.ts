@@ -6,6 +6,7 @@
  * (the first section takes the link's own id, so the editor can select it as one).
  */
 import { randomBytes } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { TREE_VERSION, storedTree, type PageTree, type TreeNode } from "./pageTree.js";
 
@@ -41,19 +42,19 @@ export function expandBlocks(tree: PageTree, blocks: Map<string, TreeNode[]>): P
 }
 
 /** Each block's published sections (its saved tree's sections; not its draft). */
-export async function loadBlocks(ids: string[]): Promise<Map<string, TreeNode[]>> {
+export async function loadBlocks(ids: string[], db: Pick<Prisma.TransactionClient, "page"> = prisma): Promise<Map<string, TreeNode[]>> {
   const out = new Map<string, TreeNode[]>();
   if (!ids.length) return out;
-  const rows = await prisma.page.findMany({ where: { id: { in: ids }, kind: BLOCK_KIND, status: "PUBLISHED" }, select: { id: true, tree: true } });
+  const rows = await db.page.findMany({ where: { id: { in: ids }, kind: BLOCK_KIND, status: "PUBLISHED" }, select: { id: true, tree: true } });
   for (const r of rows) out.set(r.id, (storedTree(r.tree)?.root.children ?? []).filter((n) => n.type === "section"));
   return out;
 }
 
 /** A tree for the shop: its linked blocks drawn in place. */
-export async function withBlocks<T extends PageTree | null | undefined>(tree: T): Promise<T> {
+export async function withBlocks<T extends PageTree | null | undefined>(tree: T, db: Pick<Prisma.TransactionClient, "page"> = prisma): Promise<T> {
   const ids = blockIdsOf(tree);
   if (!tree || !ids.length) return tree;
-  return expandBlocks(tree, await loadBlocks(ids)) as T;
+  return expandBlocks(tree, await loadBlocks(ids, db)) as T;
 }
 
 /** How many pages link each block (their saved tree or their draft). */

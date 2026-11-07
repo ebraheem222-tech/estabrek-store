@@ -51,6 +51,21 @@ test("concurrent system-page opening creates one draft and never resets subseque
   await request(app).get("/v1/storefront/page?slug=/cart").expect(404);
 });
 
+test("publication validates the actual published contents of linked commerce blocks", async () => {
+  const { storePageDraft } = await import("../lib/storePageTemplates.js");
+  const block = await prisma.page.create({ data: { name: "Shared cart fixture", slug: "/__block/shared-cart-fixture", kind: "block", status: "PUBLISHED", format: 2, tree: storePageDraft("cart").tree as any } });
+  const page = (await request(app).post("/v1/admin/pages/system/cart").expect(200)).body;
+  await request(app).post(`/v1/admin/pages/${page.id}/draft/ops`).send({ ops: [{ op: "remove", nodeId: "commerce-section" }, { op: "insert", parentId: "page", index: 0, node: { id: "shared-cart", type: "block", props: { blockId: block.id } } }] }).expect(200);
+  await request(app).post(`/v1/admin/pages/${page.id}/draft/publish`).send({}).expect(200);
+  const publicPage = (await request(app).get("/v1/storefront/page?slug=/cart").expect(200)).body;
+  expect(publicPage.tree.root.children[0].type).toBe("section");
+  expect(JSON.stringify(publicPage.tree)).toContain('"cartCheckout"');
+  await request(app).post(`/v1/admin/pages/${page.id}/draft/ops`).send({ ops: [{ op: "insert", parentId: "page", index: 1, node: storePageDraft("cart").tree.root.children![0] }] }).expect(200);
+  const rejected = await request(app).post(`/v1/admin/pages/${page.id}/draft/publish`).send({ force: true }).expect(422);
+  expect(rejected.body.issues).toHaveLength(3);
+  expect(rejected.body.issues.every((issue: any) => issue.code === "DUPLICATE_COMMERCE_OBJECT")).toBe(true);
+});
+
 test("a future schedule remains private until explicitly overridden by publish-now", async () => {
   const page = (await request(app).post("/v1/admin/pages").send({ name: "Scheduled", slug: "/t", publishAt: "2099-01-01T00:00:00Z" }).expect(201)).body;
   const edit = () => request(app).post(`/v1/admin/pages/${page.id}/draft/ops`).send({ ops: [{ op: "insert", parentId: "page", index: 0, node: { id: "s", type: "section", props: {}, children: [] } }] });

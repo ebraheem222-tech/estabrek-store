@@ -27,7 +27,7 @@ import { storePageDraft } from "../../lib/storePageTemplates.js";
 import { DraftError, applyOps, draftFromPage, needsTree, publishOrder, sectionsHash, storedDraft } from "../../lib/pageDraft.js";
 import { mainLanguage } from "../../lib/translations.js";
 import { PAGE_FORMAT, TREE_VERSION, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../../lib/pageTree.js";
-import { BLOCK_KIND, TEMPLATE_KIND, blockSlug, blockUses, templateSlug } from "../../lib/pageBlocks.js";
+import { BLOCK_KIND, TEMPLATE_KIND, blockIdsOf, blockSlug, blockUses, templateSlug, withBlocks } from "../../lib/pageBlocks.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
@@ -545,7 +545,13 @@ r.post("/:id/draft/publish", requirePermission("pages:publish"), validate({ body
     const expected = body.expectedPublication ?? draft.basePublication;
     if (expected && !samePublication(expected, page)) throw new PublicationError("PUBLICATION_CHANGED", 409);
     if (body.force !== true && sectionsHash(page.sections as any, page.tree) !== draft.baseHash) throw new PublicationError("PAGE_CHANGED", 409);
-    const commerceIssues = commercePageIssues(page.slug, draft.tree);
+    let effectiveTree = draft.tree;
+    if (page.slug === "/shop" || page.slug === "/cart") {
+      const ids = blockIdsOf(draft.tree);
+      if (ids.length) await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Page" WHERE "id" IN (${Prisma.join(ids)}) AND "kind" = 'block' ORDER BY "id" FOR SHARE`);
+      effectiveTree = await withBlocks(draft.tree, tx);
+    }
+    const commerceIssues = commercePageIssues(page.slug, effectiveTree);
     if (commerceIssues.length) throw new CommercePageError(commerceIssues);
     if (page.slug === "/shop" || page.slug === "/cart") draft.tree.root.props = { ...draft.tree.root.props, commerceVersion: 1 };
     const change = publicationChange(page, body);

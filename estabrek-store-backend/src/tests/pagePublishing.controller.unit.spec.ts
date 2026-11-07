@@ -6,7 +6,7 @@ import { applyOps, draftFromPage } from "../lib/pageDraft.js";
 import { storePageDraft } from "../lib/storePageTemplates.js";
 
 // Storage and external cache are isolated; real router, policy, snapshots and validation run.
-const m = vi.hoisted(() => ({ row: null as any, revisions: [] as any[], owner: true, write: true, failSection: false,
+const m = vi.hoisted(() => ({ row: null as any, blocks: [] as any[], revisions: [] as any[], owner: true, write: true, failSection: false,
   db: { page: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() }, pageRevision: { findFirst: vi.fn(), create: vi.fn() },
     pageSection: { update: vi.fn(), deleteMany: vi.fn() }, pageSectionTranslation: { upsert: vi.fn(), deleteMany: vi.fn() },
     siteSettings: { findFirst: vi.fn() }, $transaction: vi.fn(), $queryRaw: vi.fn() },
@@ -29,10 +29,11 @@ const started = () => {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks(); m.owner = true; m.write = true; m.failSection = false; m.revisions = [];
+  vi.clearAllMocks(); m.owner = true; m.write = true; m.failSection = false; m.revisions = []; m.blocks = [];
   m.row = { id: "page", name: "Test page", slug: "/t", kind: "page", status: "DRAFT", publishAt: null, unpublishAt: null,
     sections: [], tree: null, format: 1, draft: null, publicationDelivery: null, updatedAt: new Date("2026-11-07T10:00:00Z"), createdAt: new Date("2026-11-01T10:00:00Z") };
   m.db.page.findUnique.mockImplementation(async () => structuredClone(m.row));
+  m.db.page.findMany.mockImplementation(async ({ where }) => m.blocks.filter(block => where.id.in.includes(block.id) && block.kind === "block" && block.status === "PUBLISHED"));
   m.db.page.upsert.mockImplementation(async ({ where, create }) => { if (m.row?.slug !== where.slug) m.row = { id: "system-page", ...structuredClone(create) }; return structuredClone(m.row); });
   m.db.page.update.mockImplementation(async ({ data }) => { Object.assign(m.row, data, { ...(data.draft === Prisma.DbNull ? { draft: null } : {}) }); return structuredClone(m.row); });
   m.db.page.updateMany.mockImplementation(async ({ where, data }) => {
@@ -149,6 +150,22 @@ test("a complete cart draft publishes its independent commerce objects", async (
   expect(m.row.format).toBe(2); expect(m.row.status).toBe("PUBLISHED");
   expect(m.row.tree.root.props.commerceVersion).toBe(1);
   expect(JSON.stringify(m.row.tree)).toContain('"cartCheckout"');
+});
+
+test("a cart held inside a published linked block can publish without copying its contents", async () => {
+  m.row.slug = "/cart"; m.row.draft = storePageDraft("cart");
+  m.blocks = [{ id: "shared-cart", kind: "block", status: "PUBLISHED", tree: structuredClone(m.row.draft.tree) }];
+  m.row.draft.tree.root.children = [{ id: "cart-link", type: "block", props: { blockId: "shared-cart" } }];
+  await publish().expect(200);
+  expect(m.row.tree.root.children).toEqual([{ id: "cart-link", type: "block", props: { blockId: "shared-cart" } }]);
+});
+test("duplicated commerce hidden inside a linked block is rejected before content writes", async () => {
+  m.row.slug = "/cart"; m.row.draft = storePageDraft("cart");
+  m.blocks = [{ id: "shared-cart", kind: "block", status: "PUBLISHED", tree: structuredClone(m.row.draft.tree) }];
+  m.row.draft.tree.root.children.push({ id: "cart-link", type: "block", props: { blockId: "shared-cart" } });
+  const response = await publish({ force: true }).expect(422);
+  expect(response.body.issues).toEqual(["cartItems", "cartSummary", "cartCheckout"].map(nodeType => ({ code: "DUPLICATE_COMMERCE_OBJECT", nodeType, count: 2 })));
+  expect(m.row.status).toBe("DRAFT"); expect(m.revisions).toEqual([]);
 });
 
 test("cache propagation failure is a committed publication with separately reported pending delivery", async () => {
