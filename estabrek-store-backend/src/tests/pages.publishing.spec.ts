@@ -37,6 +37,20 @@ test("a fresh page is404 before publish, then publicly readable in every enabled
   expect(await prisma.pageRevision.count({ where: { pageId: page.id, reason: "Publish from the new editor", status: "DRAFT" } })).toBe(1);
 });
 
+test("concurrent system-page opening creates one draft and never resets subsequent merchant changes", async () => {
+  const opened = await Promise.all([request(app).post("/v1/admin/pages/system/cart"), request(app).post("/v1/admin/pages/system/cart")]);
+  expect(opened.map(response => response.status)).toEqual([200, 200]);
+  expect(opened[0].body.id).toBe(opened[1].body.id);
+  expect(await prisma.page.count({ where: { slug: "/cart" } })).toBe(1);
+  const id = opened[0].body.id;
+  await request(app).post(`/v1/admin/pages/${id}/draft/ops`).send({ ops: [{ op: "setName", nodeId: "commerce-cartItems", name: "Our bag" }] }).expect(200);
+  const before = await prisma.page.findUniqueOrThrow({ where: { id } });
+  const reopened = (await request(app).post("/v1/admin/pages/system/cart").expect(200)).body;
+  expect(reopened.draft).toEqual(before.draft);
+  expect(reopened.status).toBe("DRAFT");
+  await request(app).get("/v1/storefront/page?slug=/cart").expect(404);
+});
+
 test("a future schedule remains private until explicitly overridden by publish-now", async () => {
   const page = (await request(app).post("/v1/admin/pages").send({ name: "Scheduled", slug: "/t", publishAt: "2099-01-01T00:00:00Z" }).expect(201)).body;
   const edit = () => request(app).post(`/v1/admin/pages/${page.id}/draft/ops`).send({ ops: [{ op: "insert", parentId: "page", index: 0, node: { id: "s", type: "section", props: {}, children: [] } }] });

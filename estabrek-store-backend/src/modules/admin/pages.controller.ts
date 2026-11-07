@@ -22,6 +22,8 @@ import {
   PublishPageDraftBody,
 } from "./pages.schemas.js";
 import { previewToken } from "../../lib/previewToken.js";
+import { commercePageIssues, CommercePageError } from "../../lib/commercePage.js";
+import { storePageDraft } from "../../lib/storePageTemplates.js";
 import { DraftError, applyOps, draftFromPage, needsTree, publishOrder, sectionsHash, storedDraft } from "../../lib/pageDraft.js";
 import { mainLanguage } from "../../lib/translations.js";
 import { PAGE_FORMAT, TREE_VERSION, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../../lib/pageTree.js";
@@ -321,6 +323,16 @@ r.post("/", validate({ body: CreatePageBody }), asyncHandler(async (req, res) =>
   res.status(201).json(page);
 }));
 
+/** Create only when absent: concurrent opens cannot reset a merchant's design. */
+r.post("/system/:kind", requirePermission("pages:write"), asyncHandler(async (req, res) => {
+  const kind = req.params.kind;
+  if (kind !== "shop" && kind !== "cart") return res.status(400).json({ error: "INVALID_SYSTEM_PAGE" });
+  const page = await prisma.page.upsert({ where: { slug: `/${kind}` }, update: {}, create: {
+    name: kind === "shop" ? "Shop" : "Cart", slug: `/${kind}`, kind: "page", status: "DRAFT", draft: storePageDraft(kind) as any,
+  } });
+  res.json(page);
+}));
+
 /* ------------------------------------------------ saved blocks (new CMS) */
 
 /** GET /admin/pages/blocks — the saved blocks, newest first, with how many pages link each. */
@@ -533,6 +545,8 @@ r.post("/:id/draft/publish", requirePermission("pages:publish"), validate({ body
     const expected = body.expectedPublication ?? draft.basePublication;
     if (expected && !samePublication(expected, page)) throw new PublicationError("PUBLICATION_CHANGED", 409);
     if (body.force !== true && sectionsHash(page.sections as any, page.tree) !== draft.baseHash) throw new PublicationError("PAGE_CHANGED", 409);
+    const commerceIssues = commercePageIssues(page.slug, draft.tree);
+    if (commerceIssues.length) throw new CommercePageError(commerceIssues);
     const change = publicationChange(page, body);
     await capturePageRevision(page.id, "Publish from the new editor", req.user as any, tx, false);
     const order = publishOrder(draft);
@@ -557,7 +571,7 @@ r.post("/:id/draft/publish", requirePermission("pages:publish"), validate({ body
     return { format: needsTree(draft.tree) ? PAGE_FORMAT.tree : page.format, publication: publicationState({ ...page, ...change }) };
     });
   } catch (error) {
-    if (error instanceof PublicationError) return res.status(error.status).json({ error: error.code });
+    if (error instanceof PublicationError) return res.status(error.status).json({ error: error.code, ...(error instanceof CommercePageError ? { issues: error.issues } : {}) });
     throw error;
   }
   // Content has committed. A delivery/storage outage must not turn success into a misleading500.

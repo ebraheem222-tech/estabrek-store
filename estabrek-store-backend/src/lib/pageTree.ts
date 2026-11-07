@@ -32,7 +32,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "products", "categories", "form", "roseBlock", "legacy", "block",
+  "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -476,6 +476,15 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       label: local(80).optional(),
     })
     .refine((p) => (ICON_NAMES as readonly string[]).includes(p.name) || p.art, "An icon from the library carries its drawing"),
+  shop: z.object({
+    columns: z.number().int().min(2).max(6).optional(),
+    mobileColumns: z.number().int().min(1).max(2).optional(),
+    showFilters: z.boolean().optional(),
+    showSearch: z.boolean().optional(),
+  }).strict(),
+  cartItems: z.object({}).strict(),
+  cartSummary: z.object({}).strict(),
+  cartCheckout: z.object({}).strict(),
   products: z.object({
     source: z.enum(["new", "best", "category", "picked"]),
     categoryId: id.optional(),

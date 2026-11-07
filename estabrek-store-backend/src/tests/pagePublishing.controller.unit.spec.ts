@@ -3,10 +3,11 @@ import express from "express";
 import request from "supertest";
 import { Prisma } from "@prisma/client";
 import { applyOps, draftFromPage } from "../lib/pageDraft.js";
+import { storePageDraft } from "../lib/storePageTemplates.js";
 
 // Storage and external cache are isolated; real router, policy, snapshots and validation run.
-const m = vi.hoisted(() => ({ row: null as any, revisions: [] as any[], owner: true, failSection: false,
-  db: { page: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() }, pageRevision: { findFirst: vi.fn(), create: vi.fn() },
+const m = vi.hoisted(() => ({ row: null as any, revisions: [] as any[], owner: true, write: true, failSection: false,
+  db: { page: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() }, pageRevision: { findFirst: vi.fn(), create: vi.fn() },
     pageSection: { update: vi.fn(), deleteMany: vi.fn() }, pageSectionTranslation: { upsert: vi.fn(), deleteMany: vi.fn() },
     siteSettings: { findFirst: vi.fn() }, $transaction: vi.fn(), $queryRaw: vi.fn() },
   revalidate: vi.fn(), clear: vi.fn(),
@@ -19,7 +20,7 @@ import pages from "../modules/admin/pages.controller.js";
 
 const app = express();
 app.use(express.json());
-app.use((req, _res, next) => { (req as any).access = { owner: m.owner, permissions: new Set(["pages:read", "pages:write"]) }; (req as any).user = { sub: "fixture-owner" }; next(); });
+app.use((req, _res, next) => { (req as any).access = { owner: m.owner, permissions: new Set(["pages:read", ...(m.write ? ["pages:write"] : [])]) }; (req as any).user = { sub: "fixture-owner" }; next(); });
 app.use("/pages", pages);
 app.use((err: any, _req: any, res: any, _next: any) => res.status(err.statusCode ?? err.status ?? (err.name === "ZodError" ? 400 : 500)).json({ error: err.code ?? err.name }));
 const publish = (body = {}) => request(app).post("/pages/page/draft/publish").send(body);
@@ -28,10 +29,11 @@ const started = () => {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks(); m.owner = true; m.failSection = false; m.revisions = [];
+  vi.clearAllMocks(); m.owner = true; m.write = true; m.failSection = false; m.revisions = [];
   m.row = { id: "page", name: "Test page", slug: "/t", kind: "page", status: "DRAFT", publishAt: null, unpublishAt: null,
     sections: [], tree: null, format: 1, draft: null, publicationDelivery: null, updatedAt: new Date("2026-11-07T10:00:00Z"), createdAt: new Date("2026-11-01T10:00:00Z") };
   m.db.page.findUnique.mockImplementation(async () => structuredClone(m.row));
+  m.db.page.upsert.mockImplementation(async ({ where, create }) => { if (m.row?.slug !== where.slug) m.row = { id: "system-page", ...structuredClone(create) }; return structuredClone(m.row); });
   m.db.page.update.mockImplementation(async ({ data }) => { Object.assign(m.row, data, { ...(data.draft === Prisma.DbNull ? { draft: null } : {}) }); return structuredClone(m.row); });
   m.db.page.updateMany.mockImplementation(async ({ where, data }) => {
     if (where?.publicationDelivery && "equals" in where.publicationDelivery) {
@@ -117,6 +119,35 @@ test("a retry started from an older read never replaces a newer publication deli
   const response = await request(app).post("/pages/page/publication/retry").expect(200);
   expect(m.row.publicationDelivery).toEqual(newer);
   expect(response.body.delivery.id).toBe("newer-publication");
+});
+
+test("opening a missing system page creates an unpublished editable draft, and reopening preserves edits", async () => {
+  const first = (await request(app).post("/pages/system/cart").expect(200)).body;
+  expect(first).toMatchObject({ id: "system-page", slug: "/cart", status: "DRAFT" });
+  expect(first.draft.tree.root.children[0].children).toHaveLength(2);
+  m.row.draft.rev = 77; m.row.name = "Merchant's own cart";
+  const again = (await request(app).post("/pages/system/cart").expect(200)).body;
+  expect(again).toMatchObject({ id: "system-page", name: "Merchant's own cart", draft: { rev: 77 } });
+  expect(m.revisions).toEqual([]);
+});
+test("system page creation rejects unsupported kinds and read-only staff", async () => {
+  await request(app).post("/pages/system/checkout").expect(400);
+  m.owner = false; m.write = false;
+  await request(app).post("/pages/system/shop").expect(403);
+  expect(m.row.slug).toBe("/t");
+});
+test("a cart draft without checkout is rejected before any publication writes, including force", async () => {
+  m.row.slug = "/cart";
+  m.row.draft = applyOps(storePageDraft("cart"), [{ op: "remove", nodeId: "commerce-cartCheckout" }], { main: "ar" });
+  const response = await publish({ force: true }).expect(422);
+  expect(response.body).toMatchObject({ error: "COMMERCE_PAGE_INVALID", issues: [{ code: "REQUIRED_COMMERCE_OBJECT", nodeType: "cartCheckout", count: 0 }] });
+  expect(m.row.status).toBe("DRAFT"); expect(m.row.draft).not.toBeNull(); expect(m.revisions).toEqual([]);
+});
+test("a complete cart draft publishes its independent commerce objects", async () => {
+  m.row.slug = "/cart"; m.row.draft = storePageDraft("cart");
+  await publish().expect(200);
+  expect(m.row.format).toBe(2); expect(m.row.status).toBe("PUBLISHED");
+  expect(JSON.stringify(m.row.tree)).toContain('"cartCheckout"');
 });
 
 test("cache propagation failure is a committed publication with separately reported pending delivery", async () => {
