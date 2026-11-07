@@ -12,6 +12,13 @@ const ctx = { main: "ar" as const };
 const order = (d: ReturnType<typeof fresh>) => (d.tree.root.children ?? []).map((n) => (n.type === "legacy" ? n.props.sectionId : n.id));
 
 describe("a page's draft", () => {
+  test("keeps the publication snapshot so another session cannot silently archive or reschedule it", () => {
+    const d = draftFromPage({ tree: null, sections: rows, status: "DRAFT", slug: "/t", publishAt: new Date("2026-11-10T12:00:00Z"), unpublishAt: null } as any);
+    expect((d as any).basePublication).toEqual({ status: "DRAFT", slug: "/t", publishAt: "2026-11-10T12:00:00.000Z", unpublishAt: null });
+    const changed = applyOps(d, [{ op: "setVisible", sectionId: "hero", visible: false }], ctx);
+    expect((storedDraft(JSON.parse(JSON.stringify(changed))) as any).basePublication).toEqual({ status: "DRAFT", slug: "/t", publishAt: "2026-11-10T12:00:00.000Z", unpublishAt: null });
+  });
+
   test("starts as a copy of the page, words in every language included", () => {
     const d = fresh();
     expect(order(d)).toEqual(["hero", "faq", "cta"]);

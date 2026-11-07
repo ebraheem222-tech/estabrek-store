@@ -12,6 +12,7 @@
  */
 import { createHash } from "node:crypto";
 import { type PageTree, type TreeNode, LOOK_KINDS, LOOK_TARGET, OVERLAY_HOSTS, TREE_VERSION, checkTree, storedTree, syncWithSections, treeFromSections } from "./pageTree.js";
+import { publicationSnapshot, type PublicationPage, type PublicationSnapshot } from "./pagePublication.js";
 
 export const DRAFT_LANGS = ["ar", "en", "he"] as const;
 export type DraftLang = (typeof DRAFT_LANGS)[number];
@@ -24,6 +25,8 @@ export type PageDraft = {
   rev: number;
   /** What the page looked like when the draft began (publish refuses if it changed since, unless forced). */
   baseHash: string;
+  /** Existing drafts predate this optional lifecycle snapshot. */
+  basePublication?: PublicationSnapshot;
   sections: DraftSection[];
   tree: PageTree;
   trash: Array<{ section: DraftSection; node: TreeNode; index: number }>;
@@ -71,7 +74,7 @@ export function sectionsHash(rows: RowSection[], tree: unknown): string {
 }
 
 /** A fresh draft of the page as it is now. */
-export function draftFromPage(page: { tree: unknown; sections: RowSection[] }, now = new Date()): PageDraft {
+export function draftFromPage(page: { tree: unknown; sections: RowSection[] } & Partial<PublicationPage>, now = new Date()): PageDraft {
   const ordered = page.sections.slice().sort((a, b) => a.order - b.order);
   const saved = storedTree(page.tree);
   const tree = saved ? syncWithSections(saved, ordered).tree : treeFromSections(ordered);
@@ -79,6 +82,7 @@ export function draftFromPage(page: { tree: unknown; sections: RowSection[] }, n
     version: 1,
     rev: 0,
     baseHash: sectionsHash(page.sections, page.tree),
+    ...(typeof page.status === "string" && typeof page.slug === "string" ? { basePublication: publicationSnapshot(page as PublicationPage) } : {}),
     sections: ordered.map((s) => ({
       id: s.id,
       type: s.type,
