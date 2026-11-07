@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import request from "supertest";
 import type { PrismaClient } from "@prisma/client";
 import type { Express } from "express";
@@ -58,9 +58,11 @@ test("a concurrent archive is not overwritten by an older editor even with force
 
 test("a database transaction abort rolls back the pre-publish revision too", async () => {
   const { page, publish } = await create();
-  const transaction = prisma.$transaction.bind(prisma);
-  const fault = vi.spyOn(prisma, "$transaction").mockImplementationOnce(((run: any) => transaction(async tx => { await run(tx); throw new Error("Isolated transaction abort"); })) as any);
-  try { await publish().expect(500); } finally { fault.mockRestore(); }
+  const original = prisma.$transaction;
+  const transaction = original.bind(prisma);
+  // Prisma exposes this method through a Proxy; restoring a spy can delete it.
+  prisma.$transaction = ((run: any) => transaction(async tx => { await run(tx); throw new Error("Isolated transaction abort"); })) as any;
+  try { await publish().expect(500); } finally { prisma.$transaction = original; }
   expect((await prisma.page.findUniqueOrThrow({ where: { id: page.id } })).status).toBe("DRAFT");
   expect(await prisma.pageRevision.count({ where: { pageId: page.id, reason: "Publish from the new editor" } })).toBe(0);
 });
