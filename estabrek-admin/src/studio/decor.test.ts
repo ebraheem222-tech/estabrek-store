@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DECOR } from "./decorLibrary";
 import { decorArt, decorations, isEdge } from "./decor";
 import { artIsSafe } from "./svgArt";
-import { PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch } from "./textEffects";
+import { EFFECT_GROUPS, PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch } from "./textEffects";
 
 describe("ready decorations", () => {
   it("each one becomes a safe drawing in the theme's colour; the wide ones can be a section's edge", () => {
@@ -39,7 +39,9 @@ describe("ready word effects", () => {
   const colour = (v: unknown) => TOKENS.includes(String(v)) || /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(String(v));
 
   it("only use what the page's words already take, within its limits", () => {
-    expect(TEXT_EFFECTS.length).toBeGreaterThanOrEqual(18);
+    expect(TEXT_EFFECTS).toHaveLength(100);
+    expect(new Set(TEXT_EFFECTS.map((e) => e.key)).size).toBe(100);
+    for (const e of TEXT_EFFECTS) expect(EFFECT_GROUPS.map(([g]) => g), e.key).toContain(e.group);
     for (const e of TEXT_EFFECTS) {
       const p = e.paint as Paint;
       for (const k of Object.keys(p)) expect(PAINT_KEYS as readonly string[], e.key).toContain(k);

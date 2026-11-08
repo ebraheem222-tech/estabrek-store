@@ -185,7 +185,19 @@ const glbSrc = z
   .refine((v) => NO_ODD_CHARS.test(v) && (/^(\/(?!\/)|https:\/\/)/i.test(v) || (process.env.NODE_ENV !== "production" && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(v))), "Not a safe file address")
   .refine((v) => /\.glb([?#]|$)/i.test(v), "A 3D file ends in .glb");
 /** Particles behind a section (tsParticles, the shop's pageTree/TreeMedia.tsx). */
-export const PARTICLES = ["snow", "stars", "bubbles", "links", "fireflies", "confetti", "hearts", "sparkles"] as const;
+/** A section's moving particles (the shop's pageTree/particles.ts PARTICLE_DEFS, same order). */
+export const PARTICLES = [
+  "snow", "snow-heavy", "snowflakes", "blizzard", "raindrops", "drizzle", "clouds", "sunshine", "bolts", "stars",
+  "twinkle-stars", "star-dust", "shooting", "moons", "night-mix", "constellation", "galaxy-dust", "orbs", "fireflies", "fireflies-warm",
+  "leaves", "leaves-wind", "petals", "sakura", "feathers", "butterflies", "birds", "pollen", "dandelion", "nature-mix",
+  "bubbles", "bubbles-big", "foam", "bubble-pop", "ocean-mix", "confetti", "confetti-fall", "ribbons", "balloons", "gifts",
+  "hearts", "hearts-fall", "hearts-pulse", "sparkles", "glitter", "stars-gold", "diamonds", "rings", "party-mix", "wedding",
+  "lanterns", "ramadan", "eid", "star8", "winter-mix", "spring-mix", "autumn-mix", "summer", "kids", "valentine",
+  "coins", "percent", "tags", "sale-mix", "bags", "coffee", "notes", "notes-fall", "music-mix", "links",
+  "network", "network-wide", "molecules", "bouncing", "triangles", "squares", "hexagons", "shapes-mix", "circles-outline", "squares-outline",
+  "triangles-outline", "hexagons-outline", "stars-outline", "plus", "dots-drift", "pulse-dots", "lines", "pixels", "data-up", "sparks",
+  "embers", "glow-dots", "neon-lines", "comets", "magic-dust", "bokeh", "fairy-lights", "aurora-dust", "snow-globe", "rose-rain",
+] as const;
 /** A pattern over the background, drawn in one colour (the shop's pageTree/css.ts). */
 export const PATTERNS = ["dots", "polka", "grid", "lines", "columns", "diagonal", "stripes", "checks", "hatch", "zigzag", "rings", "triangles"] as const;
 /** A band along a section's top or bottom: a drawing stretched the full width (a wave, an angle…). */
@@ -346,6 +358,11 @@ export const SCENE_KINDS = [
   "circuit", "lava", "galaxy", "tunnel", "sunburst", "ripples", "flow", "silk", "mountains", "clouds",
   "sparkles", "hearts", "leaves", "lanterns", "crescent", "arabesque", "lowpoly", "synthwave", "equalizer", "heartbeat",
   "helix", "orbits", "radar", "smoke", "weave", "shapes", "memphis", "beams", "dunes", "gems",
+  "lightning", "meteors", "nebula", "blossom", "balloons", "butterflies", "birds", "fish", "jellyfish", "seaweed",
+  "sunrays", "droplets", "sea", "grass", "forest", "skyline", "mosque", "garland", "stringlights", "ornaments",
+  "coins", "percent", "bags", "beans", "notes", "vinyl", "oscilloscope", "code", "globe", "spiral",
+  "kaleidoscope", "mandala", "moire", "checker", "stripes", "zigzag", "halftone", "grain", "scanlines", "glitch",
+  "pixels", "blocks", "planes", "dandelion", "feathers", "linewaves", "blobs", "embers", "gears", "wavefield", "terrain",
 ] as const;
 
 const none = z.object({});

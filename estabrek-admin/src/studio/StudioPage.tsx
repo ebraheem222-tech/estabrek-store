@@ -57,6 +57,7 @@ import { Field, MediaSlot, PartInfo, SceneSettings, SectionActions, SectionSetti
 import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "./StylePanels";
 import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
 import { ScenePanel } from "./ScenePanel";
+import { ScrollEffectsPanel } from "./ScrollEffectsPanel";
 import { DeckPanel } from "./DeckPanel";
 import { Model3dPanel } from "./Model3dPanel";
 import { ContentBlocksPanel, PopupPanel } from "./ContentBlocksPanel";
@@ -2254,6 +2255,7 @@ function StudioDocument() {
             <EdgesPanel key={`edges:${selFree.id}`} node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} />
             {selFree.type === "section" ? <ParticlesPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type !== "page" ? <ScrollEffectsPanel key={`scroll:${selFree.id}`} node={selFree} sections={pageKids.filter((n) => n.type === "section")} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {WRITABLE.has(selFree.type) ? (
@@ -2547,8 +2549,17 @@ function StudioDocument() {
   /** A template's sections (or popup) after the selection's page item, or at the page's end: one change. */
   const placeTemplate = (nodes: PagesAPI.PageTreeNode[], where: UseWhere, name: string) => {
     if (!index || !nodes.length) return;
-    const at = where === "here" ? pageSpot() : (index.nodes.get(index.root)?.children.length ?? 0);
-    void change(name, nodes.map((node, i) => ({ op: "insert", parentId: index.root, index: at + i, node })), nodes[0].id);
+    // A shop or cart template brings its own catalogue or cart parts: the page items that hold the ones already
+    // here make way for it (a page keeps each of them once), and the template goes where the first of them was.
+    const typesIn = (n: PagesAPI.PageTreeNode): string[] => [n.type, ...(n.children ?? []).flatMap(typesIn)];
+    const incoming = new Set(nodes.flatMap(typesIn).filter((t) => COMMERCE_TYPES.has(t)));
+    const replaced = incoming.size ? pageKids.filter((k) => typesIn(k).some((t) => incoming.has(t))) : [];
+    const firstGone = replaced.length ? pageKids.findIndex((k) => k.id === replaced[0].id) : -1;
+    const at = firstGone >= 0 ? firstGone : where === "here" ? pageSpot() : (index.nodes.get(index.root)?.children.length ?? 0);
+    void change(name, [
+      ...replaced.map((k): PagesAPI.PageDraftOp => ({ op: "remove", nodeId: k.id })),
+      ...nodes.map((node, i): PagesAPI.PageDraftOp => ({ op: "insert", parentId: index.root, index: at + i, node })),
+    ], nodes[0].id);
   };
   const addPanel = () => (
     <>

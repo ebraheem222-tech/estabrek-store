@@ -85,7 +85,9 @@ export function makeLiveSection(kind: string, lang: Lang, ids: Ids): N | null {
   let p: Paint = { bg: "#ffffff", ink: "#111111", accent: "accent", c1: "accent", c2: "text" };
 
   /* ----- pieces */
-  const eyebrow = (s: string, color?: string) => node("text", { text: say(s) }, { size: 13, weight: 700, letterSpacing: 3, caps: "upper", color: color ?? p.accent }, { motion: { enter: { kind: "fade", duration: .6 } } });
+  // No letter spacing in Arabic: it pulls joined letters apart.
+  const spaced = (n: number) => (lang === "ar" ? {} : { letterSpacing: n });
+  const eyebrow = (s: string, color?: string) => node("text", { text: say(s) }, { size: 13, weight: 700, ...spaced(3), caps: "upper", color: color ?? p.accent }, { motion: { enter: { kind: "fade", duration: .6 } } });
   const title = (s: string, size = 56, extra: Style = {}) => node("heading", { text: say(s), level: 2 }, { size, sizeMin: Math.max(28, Math.round(size * .55)), lineHeight: 1.08, weight: 800, balance: "balance", ...extra }, { mobile: { size: Math.min(size, 40) }, motion: { enter: { kind: "words", duration: .8, stagger: .06 } } });
   const sub = (s: string, size = 24) => node("heading", { text: say(s), level: 3 }, { size, lineHeight: 1.2, weight: 700 });
   const lead = (s: string, extra: Style = {}) => node("text", { text: say(s) }, { size: 18, lineHeight: 1.7, maxWidth: "620px", opacity: .86, ...extra }, { motion: { enter: { kind: "up", duration: .7, delay: .15, distance: 24 } } });
@@ -410,7 +412,7 @@ export function makeLiveSection(kind: string, lang: Lang, ids: Ids): N | null {
       style = { minHeight: "70vh", justify: "center", ...centred };
       children = [stack([
         eyebrow("Maison|Maison|Maison", "#d6b98c"),
-        title("الفخامة في البساطة|Luxury lies in simplicity|היוקרה שבפשטות", 66, { font: "serif", weight: 400, letterSpacing: 1 }),
+        title("الفخامة في البساطة|Luxury lies in simplicity|היוקרה שבפשטות", 66, { font: "serif", weight: 400, ...spaced(1) }),
         lead("قطع قليلة، مصنوعة لتعيش معك سنين.|Few pieces, made to stay with you for years.|מעט פריטים, שנעשו להישאר אתכם שנים."),
         button("اكتشف المجموعة|Discover the collection|לגלות את הקולקציה", "/shop", "outline"),
         node("divider", {}, { width: "120px", opacity: .4 }),

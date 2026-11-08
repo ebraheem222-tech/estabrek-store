@@ -15,7 +15,7 @@ import { Range } from "./LookPanels";
 import { NEEDS_NORMAL, PRESET_GROUPS, STATES, STATE_LABEL, presetsOf, statesOf, type StateChoice, type StateName } from "./states";
 import { loadStoreThemes, shopOrigin, type TreeFontInfo } from "./storeThemes";
 import { SAMPLE, loadPreviews, previewFamily } from "./fontPreview";
-import { PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch, effectPreview } from "./textEffects";
+import { EFFECT_GROUPS, PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch, effectPreview } from "./textEffects";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -210,18 +210,30 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
   const size = typeof v("size") === "number" ? (v("size") as number) : null;
   const sizeMin = typeof v("sizeMin") === "number" ? (v("sizeMin") as number) : null;
   const wordy = node.type === "heading" || node.type === "text";
+  const [fxFind, setFxFind] = useState("");
   return (
     <div className={box} data-testid="studio-type-more">
       <Head title={inState ? tr("طلاء الكلام", "The words' paint") : tr("الكلام بالتفصيل", "The words in detail")} screen={screen} />
-      <Fold title={tr("تأثيرات جاهزة للكلام", "Ready word effects")} open={Boolean(effectOf(v))} testId="studio-type-effects">
-        <div className="grid grid-cols-3 gap-1">
-          {TEXT_EFFECTS.filter((e) => !inState || Object.keys(e.paint).length).map((e) => (
-            <button key={e.key} type="button" disabled={busy} aria-pressed={effectOf(v) === e.key} title={e.name()} onClick={() => save(e.name(), effectPatch(e, inState))} className={`rounded-lg border bg-[#fffaf7] px-1 py-1.5 text-center hover:bg-[#fff3ee] ${effectOf(v) === e.key ? "border-[#c86b98] ring-2 ring-[#c86b98]/60" : "border-[#ead7df]"} disabled:opacity-40`} data-effect={e.key}>
-              <span className="block truncate text-base font-bold leading-6 text-[#3b2530]" style={effectPreview(e)}>أب Aa</span>
-              <span className="block truncate text-[9px] text-[#8d7380]">{e.name()}</span>
-            </button>
-          ))}
-        </div>
+      <Fold title={`${tr("تأثيرات جاهزة للكلام", "Ready word effects")} · ${TEXT_EFFECTS.length}`} open={Boolean(effectOf(v))} testId="studio-type-effects">
+        <input type="search" value={fxFind} disabled={busy} onChange={(e) => setFxFind(e.target.value)} placeholder={tr("دوّر على تأثير…", "Find an effect…")} aria-label={tr("دوّر على تأثير", "Find an effect")} className="mb-2 w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-type-effects-search" />
+        {[...EFFECT_GROUPS, ["", () => tr("أخرى", "Others")] as const].map(([group, title]) => {
+          const q = fxFind.trim().toLowerCase();
+          const list = TEXT_EFFECTS.filter((e) => (e.group ?? "") === group && (!inState || Object.keys(e.paint).length) && (!q || e.name().toLowerCase().includes(q) || e.key.includes(q) || title().toLowerCase().includes(q)));
+          if (!list.length) return null;
+          return (
+            <div key={group || "other"} className="mb-2" data-effect-group={group || "other"}>
+              <div className="mb-1 text-[10px] font-medium text-white/50">{title()} <span className="text-white/30">· {list.length}</span></div>
+              <div className="grid grid-cols-3 gap-1">
+                {list.map((e) => (
+                  <button key={e.key} type="button" disabled={busy} aria-pressed={effectOf(v) === e.key} title={e.name()} onClick={() => save(e.name(), effectPatch(e, inState))} className={`rounded-lg border bg-[#fffaf7] px-1 py-1.5 text-center hover:bg-[#fff3ee] ${effectOf(v) === e.key ? "border-[#c86b98] ring-2 ring-[#c86b98]/60" : "border-[#ead7df]"} disabled:opacity-40`} data-effect={e.key}>
+                    <span className="block truncate text-base font-bold leading-6 text-[#3b2530]" style={effectPreview(e)}>أب Aa</span>
+                    <span className="block truncate text-[9px] text-[#8d7380]">{e.name()}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
         {PAINT_KEYS.some((k) => v(k) !== undefined) ? <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(tr("بلا تأثير", "No effect"), Object.fromEntries(PAINT_KEYS.map((k) => [k, null])))} data-testid="studio-type-effect-none">{tr("بلا تأثير", "No effect")}</button> : null}
       </Fold>
       {!inState ? (

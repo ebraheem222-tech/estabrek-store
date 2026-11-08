@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ScenePanel } from "./ScenePanel";
+import { SCENE_KINDS } from "../../../estabrek-storefront/src/pageTree/scene";
 import { setLangForTests } from "../lib/lang";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 
@@ -39,23 +40,23 @@ describe("section scene editor", () => {
     setLangForTests("en");
     const edits: PageDraftOp[] = [];
     const view = render(<ScenePanel node={{ id: "hero", type: "section", props: { anchor: "features", scene: { kind: "waves", color: "#00ffff", amount: 56, speed: .7, intensity: .8, interactive: true } } }} busy={false} onOps={(_label, ops) => edits.push(...ops)} />);
-    fireEvent.click(view.container.querySelector('[data-scene-group="tech"]')!);
     const button = screen.getByRole("button", { name: "Matrix rain" });
     fireEvent.click(button);
     expect(edits).toEqual([{ op: "setProps", nodeId: "hero", props: { anchor: "features", scene: { kind: "matrix", color: "#00ffff", amount: 56, speed: .7, intensity: .8, interactive: true } } }]);
     expect(view.container.querySelectorAll('[data-scene-kind="matrix"]')).toHaveLength(1);
   });
 
-  it("offers all 49 drawn backgrounds in groups, each saved by its own kind", () => {
+  it("shows all 100 drawn backgrounds at once, in groups, with search, each saved by its own kind", () => {
     setLangForTests("en");
     const edits: PageDraftOp[] = [];
     const view = render(<ScenePanel node={{ id: "hero", type: "section", props: {} }} busy={false} onOps={(_label, ops) => edits.push(...ops)} />);
     const kinds = [...view.container.querySelectorAll("[data-scene-kind]")].map(b => b.getAttribute("data-scene-kind"));
-    expect(new Set(kinds).size).toBe(49);
-    expect(kinds).toEqual(expect.arrayContaining(["aurora", "lanterns", "crescent", "arabesque", "synthwave", "gems", "dunes", "honeycomb"]));
-    fireEvent.click(view.container.querySelector('[data-scene-group="party"]')!);
+    expect(kinds).toHaveLength(100);
+    expect(new Set(kinds)).toEqual(new Set(SCENE_KINDS));
+    for (const button of view.container.querySelectorAll("[data-scene-kind]")) expect(button).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Lanterns" }));
     expect(edits.at(-1)).toEqual({ op: "setProps", nodeId: "hero", props: { scene: { kind: "lanterns", amount: 32, speed: 1, intensity: 1, interactive: false } } });
-    expect(screen.queryByRole("button", { name: "Matrix rain" })).toBeNull();
+    fireEvent.change(screen.getByTestId("studio-scene-search"), { target: { value: "mosque" } });
+    expect([...view.container.querySelectorAll("[data-scene-kind]")].map(b => b.getAttribute("data-scene-kind"))).toEqual(["mosque"]);
   });
 });

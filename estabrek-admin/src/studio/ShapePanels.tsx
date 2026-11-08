@@ -13,6 +13,7 @@ import { shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { ArtView } from "./SvgPanel";
 import { ColourPick, SCREEN_LABEL } from "./StudioTreePanels";
+import { PARTICLE_GROUPS } from "./particleKinds";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Obj = Record<string, unknown>;
@@ -64,39 +65,49 @@ export function PatternPanel({ node, screen, busy, onOps }: { node: PageTreeNode
   );
 }
 
-const PARTICLE_KINDS: Array<[string, () => string, string]> = [
-  ["snow", () => tr("ثلج", "Snow"), "❄"],
-  ["stars", () => tr("نجوم", "Stars"), "✦"],
-  ["bubbles", () => tr("فقاعات", "Bubbles"), "◌"],
-  ["links", () => tr("نقاط موصولة", "Connected dots"), "⋰"],
-  ["fireflies", () => tr("يراعات", "Fireflies"), "✺"],
-  ["confetti", () => tr("قصاصات ملونة", "Confetti"), "✱"],
-  ["hearts", () => tr("قلوب", "Hearts"), "♥"],
-  ["sparkles", () => tr("لمعات", "Sparkles"), "✧"],
-];
-/** Particles behind a section: their kind, colour, how many and how fast. */
+/** Particles behind a section: all 100 kinds at once (in groups, with search), then their colour, how many and how fast. */
 export function ParticlesPanel({ node, busy, onOps }: { node: PageTreeNode; busy: boolean; onOps: Ops }) {
   const p = isObj(node.props?.particles) ? (node.props.particles as Obj) : null;
   const save = (next: Obj | null) => onOps(tr("جزيئات القسم", "The section's particles"), [{ op: "setProps", nodeId: node.id, props: { ...node.props, particles: next ?? undefined } }]);
+  const [q, setQ] = useState("");
+  const find = q.trim().toLowerCase();
+  const current = PARTICLE_GROUPS.flatMap((g) => g.kinds).find(([k]) => k === p?.kind);
   return (
     <div className={box} data-testid="studio-particles">
-      <div className="text-xs font-medium text-white/70">{tr("جزيئات متحركة ورا القسم", "Moving particles behind the section")}</div>
-      <div className="grid grid-cols-4 gap-1" role="group" aria-label={tr("النوع", "Kind")}>
-        {PARTICLE_KINDS.map(([k, name, mark]) => (
-          <button key={k} type="button" title={name()} aria-pressed={p?.kind === k} disabled={busy} onClick={() => save(p?.kind === k ? null : { ...(p ?? {}), kind: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${p?.kind === k ? "bg-accent-500/30 text-white" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`} data-particles={k}>
-            <span className="block text-base leading-5" aria-hidden="true">{mark}</span>
-            {name()}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium text-white/70">{tr("جزيئات متحركة ورا القسم", "Moving particles behind the section")}</div>
+        <span className="text-[10px] text-white/40">{tr("100 نوع", "100 kinds")}</span>
       </div>
       {p ? (
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-lg bg-white/[0.04] p-2" data-testid="studio-particles-settings">
+          <div className="text-[11px] text-white/70">{tr("المختار:", "Chosen:")} <span className="text-white">{current ? `${current[1]} ${current[2]()}` : String(p.kind)}</span></div>
           <ColourPick label={tr("لونها (فاضي = لون المتجر)", "Their colour (empty = the store's)")} value={p.color ?? ""} busy={busy} onPick={(c) => save({ ...p, color: c ?? undefined })} testId="studio-particles-color" />
           <Range label={tr("كميتها", "How many")} min={0.2} max={3} step={0.1} busy={busy} value={typeof p.amount === "number" ? p.amount : 1} onSave={(n) => save({ ...p, amount: n })} testId="studio-particles-amount" />
           <Range label={tr("سرعتها", "How fast")} min={0.2} max={3} step={0.1} busy={busy} value={typeof p.speed === "number" ? p.speed : 1} onSave={(n) => save({ ...p, speed: n })} testId="studio-particles-speed" />
           <p className="text-[10px] leading-4 text-white/35">{tr("بترتاح لما القسم مش ظاهر، ومش للي طالب حركة أقل.", "They rest while the section is out of sight, and aren't shown to whoever asked for less motion.")}</p>
+          <button type="button" className={`${btn} text-red-300`} disabled={busy} onClick={() => save(null)}>{tr("بلا جزيئات", "No particles")}</button>
         </div>
       ) : null}
+      <input type="search" value={q} disabled={busy} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على نوع…", "Find a kind…")} aria-label={tr("دوّر على نوع جزيئات", "Find a particle kind")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-particles-search" />
+      <div role="group" aria-label={tr("النوع", "Kind")} className="space-y-3">
+        {PARTICLE_GROUPS.map((g) => {
+          const kinds = find ? g.kinds.filter(([k, , name]) => name().toLowerCase().includes(find) || k.includes(find) || g.title().toLowerCase().includes(find)) : g.kinds;
+          if (!kinds.length) return null;
+          return (
+            <section key={g.key} data-particle-group={g.key} aria-label={g.title()}>
+              <h4 className="mb-1 text-[10px] font-medium text-white/50">{g.title()} <span className="text-white/30">· {kinds.length}</span></h4>
+              <div className="grid grid-cols-4 gap-1">
+                {kinds.map(([k, mark, name]) => (
+                  <button key={k} type="button" title={name()} aria-pressed={p?.kind === k} disabled={busy} data-particle-kind={k} onClick={() => save(p?.kind === k ? null : { ...(p ?? {}), kind: k })} className={`rounded-lg px-1 py-1.5 text-center text-[10px] ${p?.kind === k ? "bg-accent-500/30 text-white ring-1 ring-accent-400" : "bg-white/[0.05] text-white/70 hover:bg-white/[0.1]"} disabled:opacity-40`}>
+                    <span className="block text-base leading-5" aria-hidden="true">{mark}</span>
+                    <span className="block truncate">{name()}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
