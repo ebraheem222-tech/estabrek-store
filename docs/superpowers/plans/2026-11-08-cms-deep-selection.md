@@ -46,6 +46,14 @@ Files: product cards/Shop semantic marks, local editor fixture, browser regressi
 
 - [x] Write browser regressions for Shop card title/image/price/swatch/button selection, generic nested widgets, overlaps, locks, undo and same-frame persistence.
 - [x] Add stable semantic marks to shared catalog/Shop controls and fix integration failures; verify public styles preserve commerce actions.
-- [ ] Run appropriate complete suites and all builds; compare the known 50 admin TypeScript diagnostics.
-- [ ] Obtain independent review, repair findings, push and pass isolated CI.
-- [ ] Merge/publish using existing authorization and verify deployed artifacts read-only; document exact delivered scope.
+- [x] Run appropriate complete suites and all builds; compare the known 50 admin TypeScript diagnostics.
+- [x] Obtain independent review, repair findings, push and pass isolated CI.
+- [x] Merge/publish using existing authorization and verify deployed artifacts read-only; document exact delivered scope.
+
+## Delivery
+
+- Main release `5a7b54221890d8fabfd26f8f4f1c7feca488fd8a`; both feature and main isolated CI passed (runs42433113955 and42433421712): backend788passed/17skipped, admin focused32passed, theme2passed.
+- Local full admin704passed; 53distinct browser scenarios passed; all3builds passed. Storefront TypeScript passed; admin normalized diagnostics match the50baseline exactly.
+- Independent review's6Important findings and reported minors repaired and rechecked. Post-merge targeted24tests passed.
+- Primary Railway, both Vercels, Cloudflare Pages and Workers builds reported successful production deployment. Read-only checks confirmed live Studio deep-selection/chooser/picker code, real card-part markers on both storefronts and primary health200. Private iframe behavior was tested against isolated local fixtures; no merchant ticket or data writes used.
+- Separate pre-existing unused secondary Railway failure remains outside this release. See docs/cms-deep-selection.ar.md for delivered scope and limitations.
