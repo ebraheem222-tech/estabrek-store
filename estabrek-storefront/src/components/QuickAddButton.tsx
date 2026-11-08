@@ -158,6 +158,7 @@ export function QuickAddButton({ productId, slug, product, className, buttonLabe
     <div ref={rootRef} className={className}>
       <button
         type="button"
+        data-cms-part="card-add"
         onClick={(e) => void onQuickAdd(e)}
         onMouseLeave={(e) => stopThemeCycle(e.currentTarget)}
         onFocus={(e) => { if (e.currentTarget.matches(":focus-visible")) startThemeCycle(e.currentTarget); }}

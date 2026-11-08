@@ -61,3 +61,16 @@ describe("names in the editor", () => {
     expect(nodeName({ id: "s-1", type: "legacy", props: { sectionId: "1" } }, "FAQ")).toBe("أسئلة شائعة");
   });
 });
+it("keeps native detail hierarchy and transforms its geometry into canvas coordinates", () => {
+  const index = indexTree({ version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "shop", type: "shop", props: {} }] } });
+  const layout: BridgeLayout = { pageId: "test", lang: "en", dir: "ltr", viewport: { w: 1280, h: 800 }, scroll: { x: 0, y: 20 }, doc: { w: 1280, h: 2000 }, items: [
+    { kind: "node", id: "shop", rect: { x: 0, y: 20, w: 1000, h: 600 } },
+    { kind: "detail", owner: "n:shop", key: "~article.1", target: "@card", lookKind: "box", count: 3, rect: { x: 10, y: 40, w: 200, h: 300 } },
+    { kind: "detail", owner: "n:shop", key: "~article.1.h3.1", target: "@card-name", lookKind: "text", count: 3, within: "d:~article.1", rect: { x: 20, y: 50, w: 180, h: 30 } },
+  ] };
+  const { shapes, extras, up } = shapesOf(index, layout, { x: 5, y: 10 }, .5);
+  const id = "detail:n:shop:~article.1.h3.1";
+  expect(pathTo(index, id, up)).toEqual(["page", "shop", "detail:n:shop:~article.1", id]);
+  expect(shapes.find(s => s.id === id)?.box).toEqual({ x: 15, y: 25, w: 90, h: 15 });
+  expect(extras.get(id)).toMatchObject({ kind: "detail", target: "@card-name", count: 3 });
+});

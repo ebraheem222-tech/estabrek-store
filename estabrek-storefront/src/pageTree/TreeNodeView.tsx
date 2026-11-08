@@ -80,8 +80,9 @@ export function TreeNodeView({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): R
   // retain its client state. Containers keep stable identity for their children.
   const rendered = renderNode({ node, ctx });
   const view = node.type === "section" || node.type === "popup" ? rendered : withDecoration(rendered, nodeEdges(node.id, node.props?.edges));
-  const keyed = STRUCTURAL_VIEWS.has(node.type) || !isValidElement(view) ? view : cloneElement(view, { key: `${node.id}:${JSON.stringify(node.props ?? {})}` });
-  return PROP_WIDGETS.has(node.type) ? <StableWidgetView version={JSON.stringify([node,ctx.lang,ctx.main,ctx.cfg,node.type === "product360" ? ctx.spinProducts : null])}>{keyed}</StableWidgetView> : keyed;
+  const { partLooks: _partLooks, ...configuration } = node.props ?? {};
+  const keyed = STRUCTURAL_VIEWS.has(node.type) || !isValidElement(view) ? view : cloneElement(view, { key: `${node.id}:${JSON.stringify(configuration)}` });
+  return PROP_WIDGETS.has(node.type) ? <StableWidgetView version={JSON.stringify([{ ...node, props: configuration },ctx.lang,ctx.main,ctx.cfg,node.type === "product360" ? ctx.spinProducts : null])}>{keyed}</StableWidgetView> : keyed;
 }
 
 function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode {
@@ -96,7 +97,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const words = (t: unknown) => (p.rich === true ? richNodes(say(t), link) : say(t));
   // How it moves goes to the motion engine (TreeMotion) as data; an animated layer is drawn inside it.
   const motion = motionOf(node);
-  const mark = { "data-tree-node": node.id, ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
+  const mark = { "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
   // An animated layer, or the light that follows the mouse (TreeMotion moves it).
   const fx = motion?.fx ? <span className={`pt-fx pt-fx-${motion.fx.kind}`} aria-hidden="true" /> : motion?.hover?.kind === "spotlight" ? <span className="pt-spot" aria-hidden="true" /> : null;
   const kids = () => (

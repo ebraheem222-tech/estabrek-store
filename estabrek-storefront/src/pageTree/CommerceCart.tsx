@@ -13,9 +13,9 @@ function PreviewCart({ children, lang }: { children: ReactNode; lang: TreeLang }
   const [quantity, setQuantity] = useState(1);
   const total = (129 * quantity).toFixed(2);
   const parts: CartLayoutParts = {
-    items: <div className="cms-cart-sample"><strong>{tr(lang, "منتج تجريبي", "Sample product")}</strong><div className="rose-cart-qty"><button type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => setQuantity(value => Math.max(1, value - 1))}>−</button><span>{quantity}</span><button type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQuantity(value => value + 1)}>+</button></div></div>,
-    summary: <><h2>{tr(lang, "ملخص الطلب", "Order summary")}</h2><dl><div><dt>{tr(lang, "الإجمالي", "Total")}</dt><dd>{total} ₪</dd></div></dl></>,
-    checkout: <><h3>{tr(lang, "معاينة إتمام الطلب", "Checkout preview")}</h3><p>{tr(lang, "بيانات تجريبية؛ إرسال الطلب متوقف في المحرّر.", "Sample data; purchases are disabled in the editor.")}</p><button type="button" disabled>{tr(lang, "إتمام الطلب", "Place order")}</button></>,
+    items: <div className="cms-cart-sample"><strong data-cms-part="cart-title">{tr(lang, "منتج تجريبي", "Sample product")}</strong><div data-cms-part="cart-quantity" className="rose-cart-qty"><button data-cms-part="cart-less" type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => setQuantity(value => Math.max(1, value - 1))}>−</button><span data-cms-part="cart-quantity-value">{quantity}</span><button data-cms-part="cart-more" type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQuantity(value => value + 1)}>+</button></div></div>,
+    summary: <><h2 data-cms-part="cart-summary-title">{tr(lang, "ملخص الطلب", "Order summary")}</h2><dl><div><dt>{tr(lang, "الإجمالي", "Total")}</dt><dd data-cms-part="cart-total">{total} ₪</dd></div></dl></>,
+    checkout: <><h3 data-cms-part="cart-checkout-title">{tr(lang, "معاينة إتمام الطلب", "Checkout preview")}</h3><p>{tr(lang, "بيانات تجريبية؛ إرسال الطلب متوقف في المحرّر.", "Sample data; purchases are disabled in the editor.")}</p><button data-cms-part="cart-submit" type="button" disabled>{tr(lang, "إتمام الطلب", "Place order")}</button></>,
   };
   return <Parts.Provider value={parts}><div className="cms-commerce" data-commerce-preview="cart">{children}</div></Parts.Provider>;
 }

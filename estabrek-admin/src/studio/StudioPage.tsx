@@ -42,6 +42,8 @@ import { PagePublishDialog } from "./PagePublishDialog";
 import { PagePublicationStatus } from "./PagePublicationStatus";
 import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
 import { VisualControlsPanel } from "./VisualControlsPanel";
+import { candidateStack, cycleCandidate, PointSelection } from "./selectionPicking";
+import { PartSizeFields } from "./PartSizeFields";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
 import { PreviewRefresh, PreviewRefreshCancelled } from "./previewRefresh";
@@ -106,7 +108,7 @@ import { useSettings } from "../hooks/useSettings";
 import { adminLang, isRtl, type Lang } from "../lib/lang";
 import { languagesOf } from "../lib/storeLanguages";
 import { tr } from "../lib/words";
-import { DIRECTIONS, HoverFilter, SpatialGrid, clickTarget, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
+import { DIRECTIONS, HoverFilter, SpatialGrid, pickAt, queenStep, toScreen, visiblePart, zoomAround, type Box, type Pt, type Shape } from "./geometry";
 import { fieldLabel, indexTree, isRelated, nodeName, nodeTitle, partLabel, pathTo, shapesOf, tagLabel, typeLabel, type BridgeLayout, type Extra } from "./treeIndex";
 
 const SOURCE = "estabrek-studio";
@@ -190,7 +192,10 @@ export default function StudioPage() {
   // Other elements selected with it (Shift+click, a box dragged on the page): the tree's own elements only.
   const [more, setMore] = useState<string[]>([]);
   const [marquee, setMarquee] = useState<{ a: Pt; b: Pt } | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; candidates?: string[] } | null>(null);
+  const [deepSelection, setDeepSelection] = useState(() => { try { return localStorage.getItem("studio.deepSelection") !== "off"; } catch { return true; } });
+  const pointSelection = useRef(new PointSelection());
+  useEffect(() => () => pointSelection.current.cancel(), [id]);
   // Locked in the layers (kept in this browser for the page): clicks on the page go through them.
   const [locked, setLocked] = useState<Set<string>>(() => lockedOf(id));
   const [layerFind, setLayerFind] = useState("");
@@ -264,7 +269,6 @@ export default function StudioPage() {
   const filter = useRef(new HoverFilter());
   const last = useRef<{ p: Pt; t: number } | null>(null);
   const down = useRef<Down | null>(null);
-  const lastClick = useRef<Pt | null>(null);
   const held = useRef(new Set<string>());
 
   const main = (draftQ.data?.main ?? langs.default) as Lang;
@@ -337,7 +341,11 @@ export default function StudioPage() {
       if (!d || d.source !== SOURCE) return;
       if (d.type === "ready") {
         liveView.current = (d as unknown as { liveView?: boolean }).liveView === true;
+      } else if (d.type === "pointPicked") {
+        const value = d as unknown as { requestId?: unknown; candidates?: unknown };
+        if (typeof value.requestId === "string" && Array.isArray(value.candidates)) pointSelection.current.resolve(value.requestId, value.candidates.filter((v): v is string => typeof v === "string").slice(0, 100));
       } else if (d.type === "viewUpdated") {
+        pointSelection.current.cancel();
         const requestId = (d as unknown as { requestId?: unknown }).requestId;
         if (typeof requestId === "string") viewRefresh.acknowledge(requestId);
       } else if (d.type === "motionStateRequest") {
@@ -379,6 +387,7 @@ export default function StudioPage() {
     window.addEventListener("message", onMessage);
     return () => {
       window.removeEventListener("message", onMessage);
+      pointSelection.current.cancel();
       window.clearTimeout(quiet);
     };
   }, [src, origin, frameKey, viewRefresh]);
@@ -397,6 +406,7 @@ export default function StudioPage() {
     return () => ro.disconnect();
   }, []);
   const fit = useCallback(() => {
+    pointSelection.current.cancel();
     if (!canvas.w) return;
     const z = Math.min(1, (canvas.w - 48) / dev.w, (canvas.h - 48) / dev.h);
     setZoom(z);
@@ -410,7 +420,8 @@ export default function StudioPage() {
   /** The parent of every measured thing that isn't a tree node (a field, a piece of a section or scene). */
   const up = measured.up;
   const lockedIn = useMemo(() => (index ? withInside(index, locked) : new Set<string>()), [index, locked]);
-  const grid = useMemo(() => new SpatialGrid(shapes.filter((x) => !lockedIn.has(x.id)), 64, { x: 0, y: 0, w: canvas.w, h: canvas.h }), [shapes, lockedIn, canvas.w, canvas.h]);
+  const pickableShapes = useMemo(() => shapes.filter(x => (deepSelection || !x.id.startsWith("detail:")) && (!index || !pathTo(index, x.id, up).some(id => lockedIn.has(id)))), [shapes, deepSelection, index, up, lockedIn]);
+  const grid = useMemo(() => new SpatialGrid(pickableShapes, 64, { x: 0, y: 0, w: canvas.w, h: canvas.h }), [pickableShapes, canvas.w, canvas.h]);
   const shapeOf = (sid: string | null) => (sid ? shapes.find((s) => s.id === sid) ?? null : null);
   const frameBox: Box = { x: pan.x, y: pan.y, w: dev.w * zoom, h: dev.h * zoom };
 
@@ -420,12 +431,14 @@ export default function StudioPage() {
   };
   const inFrame = (p: Pt) => p.x >= frameBox.x && p.x <= frameBox.x + frameBox.w && p.y >= frameBox.y && p.y <= frameBox.y + frameBox.h;
   const select = (sid: string | null, reveal = false) => {
+    pointSelection.current.cancel();
     setSelected(sid);
     setMore([]);
     if (!reveal || !sid || !index) return;
     const x = extras.get(sid);
     if (x?.kind === "slot") return send({ type: "reveal", owner: x.owner, sectionId: x.sectionId, path: x.path });
     if (x?.kind === "part") return send({ type: "reveal", owner: x.owner, part: x.name, n: x.n });
+    if (x?.kind === "detail") { const shape = shapeOf(sid); if (shape && layout) send({ type: "scrollTo", y: Math.max(0, (shape.box.y - pan.y) / zoom + layout.scroll.y - dev.h / 3) }); return; }
     if (x?.kind === "auto") return send({ type: "reveal", owner: x.owner });
     if (x?.kind === "block") return send({ type: "reveal", block: x.block });
     const n = index.nodes.get(sid)?.node;
@@ -435,6 +448,12 @@ export default function StudioPage() {
   };
 
   /* ------------------------------------------------------------ changes */
+  const pickPoint = (point: Pt, done: (ids: string[]) => void) => {
+    if (!index) return;
+    const fallback = candidateStack(pickableShapes, point, [], index, up, lockedIn, deepSelection);
+    const requestId = pointSelection.current.request(fallback, painted => done(candidateStack(pickableShapes, point, painted, index, up, lockedIn, deepSelection)));
+    send({ type: "pickPoint", requestId, x: (point.x - pan.x) / zoom, y: (point.y - pan.y) / zoom });
+  };
 
   const reload = async () => {
     // Compatibility with a frame opened before the live-view protocol was deployed.
@@ -679,6 +698,7 @@ export default function StudioPage() {
   };
 
   const onPointerDown = (e: ReactPointerEvent) => {
+    pointSelection.current.cancel();
     if (busy || editing || e.button > 1 || down.current && down.current.pointerId !== e.pointerId) return;
     const p = local(e);
     (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -687,8 +707,7 @@ export default function StudioPage() {
     // Dragging a selected element (or from inside it) moves it, and the others selected with it; sections move in the layers. With Shift a box is drawn instead.
     const movable = (x: string | null) => Boolean(x && isFree(nodeOf(x)?.type) && !["section", "cell", "columns", "page"].includes(nodeOf(x)?.type ?? "") && !lockedIn.has(x) && (directGeometrySafe(x) || canvasMode === "flow" && !placedOn(nodeOf(x)!, screen)));
     const hit = !panning && !e.shiftKey && e.button === 0 ? pickAt(grid.near(p), p) : null;
-    const path = hit && index ? pathTo(index, hit.id, up) : [];
-    const grab = movable(selected) && path.includes(selected!) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && path.includes(c)) ?? null : !touch && hit && movable(hit.id) ? hit.id : null;
+    const grab = movable(selected) && hit?.id === selected ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && hit?.id === c) ?? null : !touch && hit && movable(hit.id) ? hit.id : null;
     // What's inside another selected element goes with it.
     const group = grab && chosen.length > 1 && chosen.includes(grab) && index ? loose.filter((x) => movable(x) && !loose.some((y) => y !== x && pathTo(index, x, up).includes(y))) : grab ? [grab] : [];
     const starts = new Map(group.map((x) => [x, shapeOf(x)?.box] as const).filter((v): v is [string, Box] => Boolean(v[1])));
@@ -738,14 +757,12 @@ export default function StudioPage() {
     if (!d || d.moved || !index) return;
     const p = local(e);
     if (!inFrame(p)) return;
-    const now = pickAt(grid.near(p), p);
-    let target = e.ctrlKey || e.metaKey ? now?.id ?? null : clickTarget(now, filter.current.current);
-    // A second click at the same spot climbs to the parent.
-    const again = lastClick.current && Math.hypot(p.x - lastClick.current.x, p.y - lastClick.current.y) < 4;
-    if (again && !(e.ctrlKey || e.metaKey) && selected && target && pathTo(index, target, up).includes(selected)) target = parentOf(selected) ?? selected;
-    lastClick.current = p;
-    if (e.shiftKey && target && isFree(index.nodes.get(target)?.node.type)) return toggleChosen(target);
-    select(target);
+    const alt = e.altKey, shift = e.shiftKey;
+    pickPoint(p, ids => {
+      const target = (alt ? cycleCandidate(ids, selected) : ids[0]) ?? index.root;
+      if (shift && target && isFree(index.nodes.get(target)?.node.type)) return toggleChosen(target);
+      select(target);
+    });
   };
 
   // Ctrl/⌘ + wheel zooms around the cursor; the wheel alone scrolls the shop (or moves the canvas outside the frame).
@@ -753,6 +770,7 @@ export default function StudioPage() {
     const el = canvasRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      pointSelection.current.cancel();
       e.preventDefault();
       const r = el.getBoundingClientRect();
       const p = { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -772,6 +790,7 @@ export default function StudioPage() {
 
   const zoomBy = useCallback(
     (k: number) => {
+      pointSelection.current.cancel();
       const next = zoomAround(pan, zoom, { x: canvas.w / 2, y: canvas.h / 2 }, zoom * k);
       setZoom(next.zoom);
       setPan(next.pan);
@@ -779,6 +798,7 @@ export default function StudioPage() {
     [pan, zoom, canvas.w, canvas.h],
   );
   const zoomToSelected = () => {
+    pointSelection.current.cancel();
     const s = shapeOf(selected);
     if (!s || !canvas.w) return;
     const z = Math.min(4, Math.max(0.1, zoom * Math.min((canvas.w * 0.6) / s.box.w, (canvas.h * 0.6) / s.box.h)));
@@ -854,6 +874,7 @@ export default function StudioPage() {
         return;
       }
       if (e.key === "Escape") {
+        pointSelection.current.cancel();
         if (down.current?.grab && down.current.moved) return cancelDrag();
         if (themeOpen) return setThemeOpen(false);
         if (more.length) return setMore([]);
@@ -862,7 +883,7 @@ export default function StudioPage() {
       }
       if (e.key === "Enter" && selected) {
         if (startText(selected)) return e.preventDefault();
-        const first = index.nodes.get(selected)?.children[0];
+        const first = index.nodes.get(selected)?.children[0] ?? shapes.find(s => s.parentId === selected)?.id;
         if (first) select(first, true);
         return;
       }
@@ -918,6 +939,7 @@ export default function StudioPage() {
     const x = extras.get(sid);
     if (x?.kind === "block" || sid.startsWith("block:")) return `${tr("مشهد", "Scene")} · ${BLOCK_LABEL[x?.kind === "block" ? x.block : sid.slice(6)]?.() ?? sid}`;
     if (x?.kind === "part") return x.count > 1 ? `${partLabel(x.name)} ${x.n + 1}` : partLabel(x.name);
+    if (x?.kind === "detail") return x.name ? partLabel(x.name) : x.label ? `${typeLabel(x.lookKind)} · ${x.label}` : typeLabel(x.lookKind === "box" ? "section" : x.lookKind);
     if (x?.kind === "auto") return x.label ? `${tagLabel(x.tag)} · ${x.label.length > 30 ? `${x.label.slice(0, 30)}…` : x.label}` : tagLabel(x.tag);
     if (x?.kind === "slot" || sid.startsWith("slot:")) {
       const path = x?.kind === "slot" ? x.path : sid.split(":").slice(2).join(":");
@@ -965,6 +987,7 @@ export default function StudioPage() {
     if (n) return n.type === "roseBlock" ? tr("مشهد", "Scene") : typeLabel(n.type);
     const x = extras.get(pid);
     if (x?.kind === "part") return partLabel(x.name);
+    if (x?.kind === "detail") return x.name ? partLabel(x.name) : typeLabel(x.lookKind === "box" ? "section" : x.lookKind);
     if (x?.kind === "auto") return tagLabel(x.tag);
     if (x?.kind === "slot") return x.edit === "media" ? (x.media === "video" ? typeLabel("video") : typeLabel("image")) : x.link ? typeLabel("button") : typeLabel("text");
     return pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text");
@@ -981,6 +1004,8 @@ export default function StudioPage() {
   /** What's selected as a look's target (a field or marked piece of an old section or scene, or the whole of one). */
   const lookTarget: { target: string; kind: PagesAPI.LookKind } | null = (() => {
     const x = selExtra;
+    if (x?.kind === "detail") return { target: `${x.owner}/${x.target}`, kind: x.lookKind };
+    if (x?.kind === "auto" && x.target) return { target: `${x.owner}/${x.target}`, kind: /^(img|picture)$/.test(x.tag) ? "image" : x.tag === "video" ? "video" : /^(button|a)$/.test(x.tag) ? "button" : /^(h[1-6]|p|blockquote|li)$/.test(x.tag) ? "text" : "box" };
     // A scene's words are one look for every language (…title, not …title.en).
     if (x?.kind === "slot") return { target: `${x.owner}/${x.path.replace(/\.(ar|en|he)$/, "")}`, kind: x.edit === "media" ? (x.media === "video" ? "video" : "image") : x.link ? "button" : "text" };
     if (x?.kind === "part") return { target: `${x.owner}/@${x.name}`, kind: PART_KIND[x.name] ?? "box" };
@@ -1252,6 +1277,7 @@ export default function StudioPage() {
     if (ops) void change(tr("فك التجميع", "Ungroup"), ops, index!.nodes.get(selected!)?.children[0] ?? null);
   };
   const toggleLock = (x: string) => {
+    pointSelection.current.cancel();
     const next = new Set(locked);
     if (next.has(x)) next.delete(x);
     else next.add(x);
@@ -1301,6 +1327,7 @@ export default function StudioPage() {
     const one = selected && isFree(nodeOf(selected)?.type) ? selected : null;
     const kind = nodeOf(selected)?.type;
     return [
+      ...(menu?.candidates?.length ? [{ label: tr("العناصر تحت المؤشر", "Objects under the pointer"), onClick: () => {}, disabled: true }, ...menu.candidates.slice(0, 30).map(sid => ({ label: label(sid), onClick: () => select(sid, true) })), "line" as const] : []),
       { label: tr("نسخ", "Copy"), keys: "Ctrl+C", onClick: copyChosen, disabled: !loose.length },
       { label: tr("قص", "Cut"), keys: "Ctrl+X", onClick: cutChosen, disabled: !loose.length },
       { label: tr("لصق", "Paste"), keys: "Ctrl+V", onClick: pasteHere, disabled: !clipboardNodes().length },
@@ -1865,8 +1892,8 @@ export default function StudioPage() {
       return (
         <p className="text-xs leading-6 text-white/45">
           {tr(
-            "كبسة على أي عنصر بتختاره، وكبسة تانية بنفس المكان بتطلع للأب. كبستين على نص بتكتب مكانه. Ctrl مع الكبسة للأعمق. الأسهم بتنقل بين العناصر، وEsc للأب، وEnter لأول ابن أو لكتابة النص. Ctrl+Z للتراجع. Ctrl مع عجلة الماوس للتكبير، والمسطرة مع السحب للتحريك.",
-            "Click an element to select it; a second click at the same spot selects its parent. Double-click a text to write in place. Ctrl+click picks the deepest. Arrows move between elements, Esc goes to the parent, Enter to the first child or to write the text. Ctrl+Z undoes. Ctrl+wheel zooms, Space+drag moves the canvas.",
+            "كبسة بتختار أعمق عنصر ظاهر. Alt مع الكبسة بتتنقل بين العناصر المتراكبة، و«اختيار عنصر» بعرضها بقائمة. كبستين على نص بتكتب مكانه. الأسهم بتنقل بين العناصر، وEsc للأب، وEnter لأول ابن أو لكتابة النص. Ctrl+Z للتراجع. Ctrl مع عجلة الماوس للتكبير، والمسطرة مع السحب للتحريك.",
+            "Click to select the deepest visible object. Alt+click cycles overlapping objects; Choose object lists them. Double-click text to write in place. Arrows move between elements, Esc goes to the parent, Enter to the first child or to write the text. Ctrl+Z undoes. Ctrl+wheel zooms, Space+drag moves the canvas.",
           )}
         </p>
       );
@@ -1977,6 +2004,13 @@ export default function StudioPage() {
         {/* A part of an old section or scene: its look and motion (all of its kind, for a marked piece). */}
         {lookSel && lookTarget ? (
           <div className="space-y-3" data-testid="studio-look-target" data-target={lookTarget.target}>
+            {selExtra?.kind === "detail" || selExtra?.kind === "auto" ? <>
+              <p className="text-[11px] text-white/60">{selExtra.kind === "detail" && selExtra.count > 1 ? tr(`هذا الجزء من تصميم متكرر. التعديل يطبّق على ${selExtra.count} عناصر مشابهة داخل هذا العنصر.`, "This template part changes all {0} matching objects inside this element.", [selExtra.count]) : tr("جزء داخلي من العنصر. تنسيقه محفوظ معه.", "An internal object. Its appearance is saved with its owner.")}</p>
+              <button type="button" className="text-xs underline" data-testid="studio-part-owner" onClick={() => select(selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? index!.root, true)}>{tr("إعدادات العنصر الأصلي", "Owner settings")}</button>
+              <PartSizeFields node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+              <BoxPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+              <PadPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+            </> : null}
             {selExtra?.kind === "part" && selExtra.count > 1 ? <p className="text-[11px] leading-5 text-accent-200/80">{tr(`الشكل والحركة بيتغيّروا للـ ${selExtra.count} كلهم.`, "The look and motion change for all {0} of them.", [selExtra.count])}</p> : null}
             {lookTarget.kind !== "box" ? <StatesBar node={lookSel} state={styleState} onState={setStyleState} /> : null}
             {styleState !== "normal" && lookTarget.kind !== "box" ? (
@@ -1994,7 +2028,7 @@ export default function StudioPage() {
                 {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
                 {lookTarget.kind === "image" || lookTarget.kind === "video" ? <FiltersPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
                 <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
-                {lookTarget.kind !== "box" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
+                {lookTarget.kind !== "box" || selExtra?.kind === "detail" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
               </>
             )}
             {!lookTarget.target.startsWith("b:") || lookTarget.target.includes("/") ? (
@@ -2230,7 +2264,7 @@ export default function StudioPage() {
   const piecesOf = (sid: string) => shapes.filter((s) => s.parentId === sid && extras.has(s.id) && extras.get(s.id)!.kind !== "block").map((s) => s.id);
   // The rows under an item that's open: its fields and pieces, and theirs while one of them is open.
   const pieceRows = (sid: string, depth: number, pick: (sid: string) => void): React.ReactNode[] => {
-    const kids = piecesOf(sid);
+    const kids = piecesOf(sid).filter(k => !layerMatch || layerMatch.has(k));
     const shown = kids.length > 40 && !kids.some((k) => selPath.includes(k)) ? kids.slice(0, 40) : kids;
     const rows = shown.flatMap((f) => [
       <button
@@ -2286,6 +2320,7 @@ export default function StudioPage() {
       if (!label(nid).toLowerCase().includes(q)) continue;
       for (let at: string | null = nid; at; at = index.nodes.get(at)?.parentId ?? null) hit.add(at);
     }
+    for (const [nid] of extras) if (label(nid).toLowerCase().includes(q)) pathTo(index, nid, up).forEach(pid => hit.add(pid));
     return hit;
   })();
   const rowTools = { locked, chosen, match: layerMatch, hidden: hiddenHere, onLock: toggleLock, onHide: toggleHidden, onRename: rename };
@@ -2320,7 +2355,7 @@ export default function StudioPage() {
               {sec && !sec.isVisible ? <span className="ms-auto shrink-0 text-[10px]">{tr("مخفي", "Hidden")}</span> : null}
             </button>
             {n && n.type !== "legacy" ? (
-              <Layers index={index!} id={sid} selected={selected} hovered={hovered} sectionTypes={sectionTypes} onPick={pick} onHover={setHovered} onDragStart={(x) => (dragged.current = x)} onDropOn={dropAny} depth={2} childrenOnly tools={rowTools} />
+              <Layers index={index!} id={sid} selected={selected} hovered={hovered} sectionTypes={sectionTypes} onPick={pick} onHover={setHovered} onDragStart={(x) => (dragged.current = x)} onDropOn={dropAny} depth={2} childrenOnly tools={rowTools} parts={(owner, depth) => selPath.includes(owner) || layerMatch ? pieceRows(owner, depth, pick) : null} />
             ) : null}
             {open ? pieceRows(sid, 1, pick) : null}
           </div>
@@ -2566,6 +2601,8 @@ export default function StudioPage() {
           </div>
           <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
           <button type="button" disabled={!index} onClick={() => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); }} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
+          <button type="button" aria-pressed={deepSelection} className={`h-7 rounded-lg px-2 text-xs ${deepSelection ? "bg-accent-500/20" : ""}`} data-testid="studio-deep-selection" onClick={() => { pointSelection.current.cancel(); const next = !deepSelection; setDeepSelection(next); try { localStorage.setItem("studio.deepSelection", next ? "on" : "off"); } catch {} if (!next && selExtra?.kind === "detail") select(selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? null); }}>{tr("تحديد داخلي", "Deep selection")}</button>
+          <button type="button" disabled={!layout} className="h-7 rounded-lg px-2 text-xs" data-testid="studio-pick-objects" onClick={event => { const p = last.current?.p ?? (selShape ? { x: selShape.box.x + selShape.box.w / 2, y: selShape.box.y + selShape.box.h / 2 } : { x: frameBox.x + frameBox.w / 2, y: frameBox.y + 60 }); const r = event.currentTarget.getBoundingClientRect(); pickPoint(p, candidates => setMenu({ x: r.left, y: r.bottom + 4, candidates })); }}>{tr("اختيار عنصر", "Choose object")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
           {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
           <button type="button" onClick={() => setAsking({ kind: "publish", force: false })} disabled={!canPublish || !draft || busy} className="h-7 rounded-lg bg-accent-500 px-3 text-xs font-medium text-white disabled:opacity-30" data-testid="studio-publish">{tr("نشر", "Publish")}</button>
@@ -2638,9 +2675,9 @@ export default function StudioPage() {
             onContextMenu={(e) => {
               e.preventDefault();
               const p = local(e);
-              const hit = inFrame(p) ? pickAt(grid.near(p), p) : null;
-              if (hit && !chosen.includes(hit.id)) select(hit.id);
-              setMenu({ x: e.clientX, y: e.clientY });
+              const x = e.clientX, y = e.clientY;
+              if (inFrame(p)) pickPoint(p, candidates => { if (candidates[0] && !chosen.includes(candidates[0])) select(candidates[0]); setMenu({ x, y, candidates }); });
+              else setMenu({ x, y });
             }}
             onDragOver={(e) => {
               const k = adding.current;
@@ -3022,7 +3059,7 @@ type RowTools = {
   onRename: (id: string, name: string) => void;
 };
 
-function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn, depth = 0, childrenOnly = false, tools }: {
+function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn, depth = 0, childrenOnly = false, tools, parts }: {
   index: ReturnType<typeof indexTree>;
   id: string;
   selected: string | null;
@@ -3037,12 +3074,13 @@ function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, o
   depth?: number;
   childrenOnly?: boolean;
   tools?: RowTools;
+  parts?: (owner: string, depth: number) => React.ReactNode;
 }) {
   const [naming, setNaming] = useState(false);
   const at = index.nodes.get(id);
   if (!at) return null;
   if (tools?.match && !tools.match.has(id)) return null;
-  const pass = { index, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn, tools };
+  const pass = { index, selected, hovered, sectionTypes, onPick, onHover, onDragStart, onDropOn, tools, parts };
   if (childrenOnly) {
     return <>{at.children.map((c) => <Layers key={c} {...pass} id={c} depth={depth} />)}</>;
   }
@@ -3109,6 +3147,7 @@ function Layers({ index, id, selected, hovered, sectionTypes, onPick, onHover, o
       {at.children.map((c) => (
         <Layers key={c} {...pass} id={c} depth={depth + 1} />
       ))}
+      {parts?.(id, depth + 1)}
     </div>
   );
 }

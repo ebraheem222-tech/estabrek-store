@@ -97,7 +97,15 @@ export function ContextMenu({ at, items, onClose }: { at: { x: number; y: number
       if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
       onClose();
     };
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); return; }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) || !ref.current?.contains(document.activeElement)) return;
+      const buttons = [...ref.current.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)')];
+      if (!buttons.length) return;
+      const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : (current + (e.key === "ArrowUp" ? -1 : 1) + buttons.length) % buttons.length;
+      e.preventDefault(); e.stopPropagation(); buttons[next].focus();
+    };
     window.addEventListener("pointerdown", off, true);
     window.addEventListener("keydown", key, true);
     ref.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
@@ -110,7 +118,7 @@ export function ContextMenu({ at, items, onClose }: { at: { x: number; y: number
   const x = Math.min(at.x, window.innerWidth - 240);
   const y = Math.min(at.y, window.innerHeight - 30 * items.length - 16);
   return (
-    <div ref={ref} role="menu" className="fixed z-[60] w-56 rounded-xl border border-white/[0.1] bg-surface-950 p-1 text-xs shadow-2xl" style={{ left: x, top: Math.max(8, y) }} data-testid="studio-menu">
+    <div ref={ref} role="menu" className="fixed z-[60] max-h-[75vh] overflow-y-auto w-56 rounded-xl border border-white/[0.1] bg-surface-950 p-1 text-xs shadow-2xl" style={{ left: x, top: Math.max(8, y) }} data-testid="studio-menu">
       {items.map((it, i) =>
         it === "line" ? (
           <div key={i} className="my-1 border-t border-white/[0.08]" role="separator" />

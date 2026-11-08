@@ -11,7 +11,7 @@
  * still pass its type's check after a change, and the tree the page tree's.
  */
 import { createHash } from "node:crypto";
-import { type PageTree, type TreeNode, LOOK_KINDS, LOOK_TARGET, OVERLAY_HOSTS, TREE_VERSION, checkTree, storedTree, syncWithSections, treeFromSections } from "./pageTree.js";
+import { type PageTree, type TreeNode, LOOK_KINDS, LOOK_TARGET, PART_TARGET, OVERLAY_HOSTS, TREE_VERSION, checkTree, storedTree, syncWithSections, treeFromSections } from "./pageTree.js";
 import { publicationSnapshot, type PublicationPage, type PublicationSnapshot } from "./pagePublication.js";
 
 export const DRAFT_LANGS = ["ar", "en", "he"] as const;
@@ -371,8 +371,13 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
       case "setLookMotion": {
         if (typeof raw.target !== "string" || !LOOK_TARGET.test(raw.target)) throw new DraftError(`Not a part of a section or scene: ${String(raw.target)}`);
         if (!(LOOK_KINDS as readonly string[]).includes(raw.kind)) throw new DraftError(`Not a kind of part: ${String(raw.kind)}`);
-        const looks: Record<string, any> = { ...((d.tree.root.props.looks ?? {}) as Record<string, unknown>) };
-        const entry: Record<string, any> = { ...(looks[raw.target] ?? {}), kind: raw.kind };
+        const native = /^n:([A-Za-z0-9_-]{1,40})\/(.+)$/.exec(raw.target);
+        const owner = native ? locate(d.tree, native[1])?.node : d.tree.root;
+        if (!owner || native && (!PART_TARGET.test(native[2]) || owner.type === "page")) throw new DraftError("No native element for this part");
+        const key = native ? native[2] : raw.target;
+        const field = native ? "partLooks" : "looks";
+        const looks: Record<string, any> = { ...((owner.props[field] ?? {}) as Record<string, unknown>) };
+        const entry: Record<string, any> = { ...(looks[key] ?? {}), kind: raw.kind };
         if (raw.op === "setLookStyle") {
           if (!(SCREENS as readonly string[]).includes(raw.screen)) throw new DraftError(`Not a screen: ${String(raw.screen)}`);
           if (raw.style !== null && !isPlain(raw.style)) throw new DraftError("A look is an object");
@@ -386,12 +391,12 @@ export function applyOps(draft: PageDraft, ops: unknown, ctx: ApplyCtx, now = ne
           if (raw.motion === null || !Object.keys(raw.motion).length) delete entry.motion;
           else entry.motion = clone(raw.motion);
         }
-        if (entry.style || entry.motion) looks[raw.target] = entry;
-        else delete looks[raw.target];
-        const props = { ...d.tree.root.props };
-        if (Object.keys(looks).length) props.looks = looks;
-        else delete props.looks;
-        d.tree.root.props = props;
+        if (entry.style || entry.motion) looks[key] = entry;
+        else delete looks[key];
+        const props = { ...owner.props };
+        if (Object.keys(looks).length) props[field] = looks;
+        else delete props[field];
+        owner.props = props;
         break;
       }
       default:

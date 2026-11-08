@@ -324,13 +324,17 @@ export const NodeMotion = z.object({
  * (root props.looks): "s:<section id>" or "b:<scene>", then "/<field path>" or
  * "/@<piece>" for something inside it. The shop turns them into CSS for that part.
  */
-export const LOOK_TARGET = /^(s|b):([A-Za-z0-9_-]{1,80})(?:\/(@[a-z0-9-]{1,40}|[A-Za-z0-9_.]{1,120}))?$/;
+const DOM_PART_SOURCE = "~[a-z][a-z0-9-]{0,15}\\.[1-9][0-9]{0,2}(?:\\.[a-z][a-z0-9-]{0,15}\\.[1-9][0-9]{0,2}){0,15}";
+const PART_TARGET_SOURCE = `(?:@[a-z0-9-]{1,40}|${DOM_PART_SOURCE})`;
+export const PART_TARGET = new RegExp(`^${PART_TARGET_SOURCE}$`);
+export const LOOK_TARGET = new RegExp(`^(?!n:[^/]+(?:$|/(?![@~])))(s|b|n):([A-Za-z0-9_-]{1,80})(?:/(${PART_TARGET_SOURCE}|[A-Za-z0-9_.]{1,120}))?$`);
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_LIMIT = 300;
 export const LookEntry = z.object({ kind: z.enum(LOOK_KINDS), style: NodeStyle.optional(), motion: NodeMotion.optional() });
 const Looks = z
   .record(z.string().regex(LOOK_TARGET, "Not a part of a section or scene"), LookEntry)
   .refine((r) => Object.keys(r).length <= LOOKS_LIMIT, `At most ${LOOKS_LIMIT} looks on a page`);
+const PartLooks = z.record(z.string().regex(PART_TARGET), LookEntry).refine(r => Object.keys(r).length <= LOOKS_LIMIT, `At most ${LOOKS_LIMIT} looks on a page`);
 
 /* ------------------------------------------------------------- each type */
 
@@ -639,6 +643,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
 export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);
 NODE_PROPS.page = (NODE_PROPS.page as z.ZodObject).safeExtend({ interactions: InteractionPolicy.optional(), cardDesign: CardDesign.nullable().optional() });
 for (const t of NODE_TYPES) {
+  if (t !== "page") NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ partLooks: PartLooks.optional() });
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
   NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
@@ -762,6 +767,10 @@ export function checkTree(input: unknown): TreeCheck {
   };
 
   const root = walk(input.root, "root", 0, null);
+  let lookCount = root ? Object.keys((root.props.looks ?? {}) as object).length : 0;
+  const countLooks = (node: TreeNode) => { lookCount += Object.keys((node.props.partLooks ?? {}) as object).length; node.children?.forEach(countLooks); };
+  if (root) countLooks(root);
+  if (lookCount > LOOKS_LIMIT) add("root", `At most ${LOOKS_LIMIT} looks on a page`);
   if (issues.length || !root) return { ok: false, issues: issues.length ? issues : [{ path: "root", message: "No page" }] };
   return { ok: true, tree: { version: TREE_VERSION, root } };
 }

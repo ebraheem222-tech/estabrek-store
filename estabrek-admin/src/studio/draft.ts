@@ -9,7 +9,12 @@ import type { PageDraft, PageDraftOp, DraftSection, LookEntry, PageTree, PageTre
 export type Lang = "ar" | "en" | "he";
 
 /** The page's looks for parts of old sections and scenes (the tree root's props.looks). */
-export const looksOf = (d: { tree: PageTree } | null | undefined): Record<string, LookEntry> => ((d?.tree.root.props?.looks ?? {}) as Record<string, LookEntry>);
+export const looksOf = (d: { tree: PageTree } | null | undefined): Record<string, LookEntry> => {
+  const out = { ...((d?.tree.root.props?.looks ?? {}) as Record<string, LookEntry>) };
+  const walk = (node: PageTreeNode) => { for (const [key, value] of Object.entries((node.props?.partLooks ?? {}) as Record<string, LookEntry>)) out[`n:${node.id}/${key}`] = value; node.children?.forEach(walk); };
+  if (d) walk(d.tree.root);
+  return out;
+};
 
 /** "items.2.question" → ["items", 2, "question"]. */
 export const parsePath = (p: string): Array<string | number> => p.split(".").filter(Boolean).map((s) => (/^\d+$/.test(s) ? Number(s) : s));
@@ -131,8 +136,12 @@ export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
   switch (op.op) {
     case "setLookStyle":
     case "setLookMotion": {
-      const looks = { ...((tree.root.props.looks ?? {}) as Record<string, LookEntry>) };
-      const entry: LookEntry = { ...(looks[op.target] ?? {}), kind: op.kind };
+      const native = /^n:([A-Za-z0-9_-]{1,40})\/(.+)$/.exec(op.target);
+      const owner = native ? locate(tree, native[1])?.node : tree.root;
+      if (!owner) return d;
+      const field = native ? "partLooks" : "looks", key = native ? native[2] : op.target;
+      const looks = { ...((owner.props[field] ?? {}) as Record<string, LookEntry>) };
+      const entry: LookEntry = { ...(looks[key] ?? {}), kind: op.kind };
       if (op.op === "setLookStyle") {
         const style = { ...(entry.style ?? {}) };
         if (op.style && Object.keys(op.style).length) style[op.screen] = structuredClone(op.style);
@@ -141,10 +150,10 @@ export function simulate(d: PageDraft, op: PageDraftOp): PageDraft {
         else delete entry.style;
       } else if (op.motion && Object.keys(op.motion).length) entry.motion = structuredClone(op.motion);
       else delete entry.motion;
-      if (entry.style || entry.motion) looks[op.target] = entry;
-      else delete looks[op.target];
-      tree.root.props = { ...tree.root.props, looks };
-      if (!Object.keys(looks).length) delete tree.root.props.looks;
+      if (entry.style || entry.motion) looks[key] = entry;
+      else delete looks[key];
+      owner.props = { ...owner.props };
+      if (Object.keys(looks).length) owner.props[field] = looks; else delete owner.props[field];
       break;
     }
     case "placeBlock": {

@@ -110,7 +110,7 @@ type Env = { phone: boolean; mouse: boolean; rtl: boolean; live: boolean; only: 
 /** Its words typed over `seconds`, held, then taken back, again and again (Arabic word by word). */
 function typing(gsap: Gsap, SplitText: Split, el: HTMLElement, seconds: number, delay: number, off: Array<() => void>) {
   const joined = ARABIC.test(el.textContent ?? "");
-  const split = SplitText.create(el, { type: joined ? "words" : "words,chars", aria: "auto" });
+  const split = SplitText.create(el, { type: joined ? "words" : "words,chars", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
   const parts = joined ? split.words : split.chars;
   el.classList.add("pt-typing");
   off.push(() => el.classList.remove("pt-typing"));
@@ -157,12 +157,12 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
       if (lines.length) tl.fromTo(lines, { drawSVG: "0%" }, { drawSVG: "100%", duration, ease: vars.ease, stagger: e.stagger ?? 0.08 });
       if (fills.length) tl.fromTo(fills, { fillOpacity: 0 }, { fillOpacity: (i: number) => ends[i], duration: duration * 0.6, ease: "power1.out" }, lines.length ? `-=${duration * 0.4}` : 0);
     } else if (e.kind === "words") {
-      const split = SplitText.create(textTarget(), { type: "words", aria: "auto" });
+      const split = SplitText.create(textTarget(), { type: "words", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
       gsap.fromTo(split.words, { y: (e.distance ?? 24), autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: e.stagger || 0.06, ...vars, scrollTrigger: sight });
     } else if (e.kind === "letters" || e.kind === "typewriter") {
       const joined = ARABIC.test(el.textContent ?? "");
       const target = textTarget();
-      const split = SplitText.create(target, { type: joined ? "words" : "words,chars", aria: "auto" });
+      const split = SplitText.create(target, { type: joined ? "words" : "words,chars", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
       const parts = joined ? split.words : split.chars;
       if (e.kind === "letters") gsap.fromTo(parts, { y: e.distance ?? 18, autoAlpha: 0 }, { y: 0, autoAlpha: 1, stagger: e.stagger || (joined ? 0.06 : 0.025), ...vars, scrollTrigger: sight });
       else {
@@ -177,7 +177,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
         off.push(() => { clearTimeout(caretTimer); target.classList.remove("pt-typing"); });
       }
     } else if (e.kind === "lines") {
-      const split = SplitText.create(textTarget(), { type: "lines", mask: "lines", aria: "auto" });
+      const split = SplitText.create(textTarget(), { type: "lines", mask: "lines", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
       gsap.fromTo(split.lines, { yPercent: 110 }, { yPercent: 0, stagger: e.stagger || 0.12, ...vars, scrollTrigger: sight });
     } else if (e.kind === "scramble") {
       // Only words alone (no formatting inside) can be scrambled; others just fade in.
@@ -214,7 +214,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     const s = m.scroll;
     if (s.kind === "words") {
       // Its words light up one by one as it comes up the screen.
-      const split = SplitText.create(textTarget(), { type: "words", aria: "auto" });
+      const split = SplitText.create(textTarget(), { type: "words", aria: "auto", wordsClass: "pt-split-piece", charsClass: "pt-split-piece", linesClass: "pt-split-piece" });
       gsap.fromTo(split.words, { opacity: 0.15 }, { opacity: 1, stagger: 0.1, ease: "none", scrollTrigger: { trigger: el, start: `top ${s.start ?? 85}%`, end: `bottom ${s.end ?? 45}%`, scrub: 0.5 } });
     } else if (s.kind === "pin") {
       // Held in place while the page scrolls on for `length` % of a screen.

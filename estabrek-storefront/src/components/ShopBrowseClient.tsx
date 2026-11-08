@@ -119,7 +119,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
     <div className={`shop-browse-candy-layout lg:grid lg:grid-cols-[300px,1fr] lg:gap-8 ${appearance === "rose" ? "rose-shop-browse" : ""} ${commerce ? "cms-shop-browse" : ""}`} data-cms-filters={commerce?.showFilters === false ? "off" : undefined}>
       {appearance === "rose" && (navCategories ? navCategories.length > 0 : true) && <nav className="rose-shop-categories" aria-label={tr(lang, "أقسام المتجر", "Shop categories")}><button onClick={() => handleCategorySelect(defaultCategoryId)} aria-pressed={!selectedCategoryId || selectedCategoryId === defaultCategoryId}>{tr(lang, "كل المجموعة", "All pieces")}</button>{(navCategories ?? categories.filter(c => !c.parentId)).map(c => <button key={c.id} onClick={() => handleCategorySelect(c.id)} aria-pressed={selectedCategoryId === c.id}>{c.name}</button>)}</nav>}
       {/* Desktop Sidebar */}
-      {commerce?.showFilters !== false ? <aside className="hidden lg:block filters-sidebar shop-right-filters-candy">
+      {commerce?.showFilters !== false ? <aside data-cms-part="shop-filters" className="hidden lg:block filters-sidebar shop-right-filters-candy">
         <div className="sticky top-24 space-y-6 right-filter-stack-candy">
           {appearance !== "rose" && <div className="sidebar-filters-card sidebar-filters-candy-card sidebar-filters-candy-card--category">
             <CategorySidebar
@@ -149,7 +149,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
 
       {/* Products Section */}
       <section className="space-y-6">
-        {commerce?.showSearch ? <label className="cms-shop-search">{tr(lang, "البحث عن منتجات", "Search products")}<input type="search" value={filters.q ?? ""} onChange={event => {
+        {commerce?.showSearch ? <label data-cms-part="shop-search-box" className="cms-shop-search">{tr(lang, "البحث عن منتجات", "Search products")}<input data-cms-part="shop-search" type="search" value={filters.q ?? ""} onChange={event => {
           const next = { ...filters, q: event.target.value || undefined, page: undefined };
           setFilters(next); const qs = buildCanonicalQuery(next); window.history.replaceState({}, "", qs ? `${basePath}?${qs}` : basePath);
         }} /></label> : null}

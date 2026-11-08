@@ -619,6 +619,7 @@ export function ProductFiltersBar({
         <button
           type="button"
           onClick={() => setSimple("inStock", inStockParam ? undefined : "1")}
+          data-cms-part="shop-in-stock"
           className={`filter-toggle ${inStockParam ? "active" : ""}`}
         >
           <div className="flex items-center gap-3">

@@ -208,7 +208,8 @@ export type BridgeItem =
   /** `owner` is missing from a shop that hasn't learnt it yet (then it's the field's section). */
   | { kind: "slot"; owner?: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string; within?: string; rect: Box }
   | { kind: "part"; owner: string; name: string; n: number; count: number; within?: string; rect: Box }
-  | { kind: "auto"; owner: string; n: number; tag: string; label?: string; within?: string; rect: Box }
+  | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string; within?: string; rect: Box }
+  | { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; label?: string; name?: string; count: number; within?: string; rect: Box; geometry?: BridgeGeometry }
   | { kind: "block"; block: string; rect: Box };
 
 /** How a field is written: words in place (one line, or several), a list of lines in the panel, a picture or clip. */
@@ -222,7 +223,9 @@ export type Extra =
   | { kind: "slot"; owner: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string }
   | { kind: "block"; block: string }
   | { kind: "part"; owner: string; name: string; n: number; count: number }
-  | { kind: "auto"; owner: string; n: number; tag: string; label?: string };
+  | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string }
+  | DetailExtra;
+export type DetailExtra = { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; label?: string; name?: string; count: number };
 export const slotId = (sectionId: string, path: string) => `slot:${sectionId}:${path}`;
 export const blockId = (index: TreeIndex, block: string) => (index.nodes.has(`rb-${block}`) ? `rb-${block}` : `block:${block}`);
 /** A field's id: its section's, or its scene's. */
@@ -239,11 +242,20 @@ export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: 
   const shapes: Shape[] = [{ id: index.root, depth: 0, parentId: null, box: { x: pan.x, y: pan.y, w: layout.viewport.w * zoom, h: layout.viewport.h * zoom } }];
   const extras = new Map<string, Extra>();
   const up = new Map<string, string | null>();
-  const ownerId = (owner: string) => (owner.startsWith("b:") ? blockId(index, owner.slice(2)) : index.bySection.get(owner.slice(2)));
-  const inner: Array<{ id: string; owner: string; within?: string; box: Box }> = [];
+  const ownerId = (owner: string) => (owner.startsWith("n:") ? (index.nodes.has(owner.slice(2)) ? owner.slice(2) : undefined) : owner.startsWith("b:") ? blockId(index, owner.slice(2)) : index.bySection.get(owner.slice(2)));
+  const inner: Array<{ id: string; owner: string; within?: string; box: Box; geometry?: BridgeGeometry }> = [];
   const keyed = new Map<string, string>();
   for (const item of layout.items) {
     const box = toScreen(item.rect, layout.scroll, pan, zoom);
+    if (item.kind === "detail") {
+      if (!ownerId(item.owner)) continue;
+      const id = `detail:${item.owner}:${item.key}`;
+      const { rect: _rect, geometry, within, ...extra } = item;
+      extras.set(id, extra);
+      keyed.set(`${item.owner}|d:${item.key}`, id);
+      inner.push({ id, owner: item.owner, within, box, geometry });
+      continue;
+    }
     if (item.kind === "slot" || item.kind === "part" || item.kind === "auto") {
       const owner = item.kind === "slot" ? item.owner ?? `s:${item.sectionId}` : item.owner;
       if (!ownerId(owner) || (owner.startsWith("s:") && !index.nodes.has(ownerId(owner)!))) continue;
@@ -255,7 +267,7 @@ export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: 
           ? { kind: "slot", owner, sectionId: item.sectionId, ...(item.block ? { block: item.block } : {}), path: item.path, edit: item.edit, media: item.media, ...(item.link ? { link: item.link } : {}) }
           : item.kind === "part"
             ? { kind: "part", owner, name: item.name, n: item.n, count: item.count }
-            : { kind: "auto", owner, n: item.n, tag: item.tag, ...(item.label ? { label: item.label } : {}) },
+            : { kind: "auto", owner, n: item.n, tag: item.tag, ...(item.label ? { label: item.label } : {}), ...(item.target ? { target: item.target } : {}) },
       );
       keyed.set(`${owner}|${item.kind === "slot" ? `f:${item.path}` : item.kind === "part" ? `p:${item.name}:${item.n}` : `a:${item.n}`}`, id);
       inner.push({ id, owner, within: item.within, box });
@@ -284,12 +296,34 @@ export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: 
     const p = up.get(id);
     return p && seen < 32 ? depthOf(p, seen + 1) + 1 : 1;
   };
-  for (const it of inner) shapes.push({ id: it.id, depth: depthOf(it.id), parentId: up.get(it.id) ?? null, box: it.box });
+  for (const it of inner) {
+    const point = (p: Pt) => ({ x: pan.x + (p.x - layout.scroll.x) * zoom, y: pan.y + (p.y - layout.scroll.y) * zoom });
+    shapes.push({ id: it.id, depth: depthOf(it.id), parentId: up.get(it.id) ?? null, box: it.box, ...(it.geometry?.plane?.quad ? { outline: it.geometry.plane.quad.map(point) } : {}), ...(it.geometry?.clips ? { clips: it.geometry.clips.map(poly => poly.map(point)) } : {}) });
+  }
   return { shapes, extras, up };
 }
 
 /** What the shop calls a marked piece, as the owner knows it. */
 const PART_LABEL: Record<string, () => string> = {
+  "card-body": () => tr("محتوى البطاقة", "Card content"),
+  "card-actions": () => tr("أزرار البطاقة", "Card actions"),
+  "card-swatch": () => tr("عينة لون", "Colour swatch"),
+  "card-swatches": () => tr("عينات الألوان", "Colour swatches"),
+  "shop-search-box": () => tr("بحث المنتجات", "Search products"),
+  "shop-search": () => tr("بحث المنتجات", "Search products"),
+  "shop-filters": () => tr("الفلاتر", "Filters"),
+  "shop-category": () => tr("التصنيف", "Category"),
+  "shop-categories-title": () => tr("التصنيفات", "Categories"),
+  "shop-in-stock": () => tr("متوفر", "In stock"),
+  "cart-title": () => tr("اسم المنتج", "Product name"),
+  "cart-quantity": () => tr("الكمية", "Quantity"),
+  "cart-quantity-value": () => tr("الكمية", "Quantity"),
+  "cart-less": () => tr("إنقاص", "Less"),
+  "cart-more": () => tr("زيادة", "More"),
+  "cart-total": () => tr("الإجمالي", "Total"),
+  "cart-summary-title": () => tr("ملخص الطلب", "Order summary"),
+  "cart-checkout-title": () => tr("إتمام الطلب", "Checkout"),
+  "cart-submit": () => tr("إتمام الطلب", "Checkout"),
   card: () => tr("بطاقة منتج", "Product card"),
   "card-image": () => tr("صورة البطاقة", "Card picture"),
   "card-name": () => tr("اسم المنتج", "Product name"),

@@ -249,6 +249,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
       <div
         ref={cardRef}
         className="product-card-3d group relative overflow-hidden rounded-2xl glass-card transition-all duration-300 hover:shadow-premium"
+        data-cms-part="card"
         onMouseEnter={() => {
           if (prefetchEnabled) {
             router.prefetch(`/p/${product.slug}`);
@@ -261,7 +262,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
       >
         <Link href={`/p/${product.slug}`} className="block" prefetch={prefetchEnabled}>
           {/* Image Container */}
-          <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
+          <div data-cms-part="card-image" className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--surface-2)]">
             {discountPercent ? (
               <span className="discount-shape-badge discount-shape-badge--sm pointer-events-none absolute right-3 top-3 z-20 border border-rose-200/40 bg-rose-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow-lg">
                 -{discountPercent}%
@@ -355,7 +356,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
 
             {/* Quick Add Button - Slides up on hover with gradient */}
             <div className="absolute inset-x-0 bottom-0 p-3 z-20">
-              <div className="quick-add-slide">
+              <div data-cms-part="card-actions" className="quick-add-slide">
                 <QuickAddButton product={product} buttonLabel="إضافة سريعة" className="w-full backdrop-blur-sm bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] hover:shadow-glow-medium transition-all duration-300" />
               </div>
             </div>
@@ -376,21 +377,21 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
           </div>
 
           {/* Content */}
-          <div className="relative p-4 space-y-3">
+          <div data-cms-part="card-body" className="relative p-4 space-y-3">
             {/* Title & Price */}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                <h3 data-cms-part="card-name" className="truncate text-sm font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
                   {product.title}
                 </h3>
-                <p className="mt-0.5 text-xs text-[var(--muted)] flex items-center gap-1">
+                <p data-cms-part="card-category" className="mt-0.5 text-xs text-[var(--muted)] flex items-center gap-1">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
                   {(product as any).category?.name ?? "—"}
                 </p>
               </div>
-              <div className="price-shine shrink-0 text-sm font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
+              <div data-cms-part="card-price" className="price-shine shrink-0 text-sm font-bold bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] bg-clip-text text-transparent">
                 {minPrice != null ? formatMoney(minPrice, "ILS") : "—"}
               </div>
             </div>
@@ -402,10 +403,11 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
 
             {/* Color Swatches */}
             {swatches.length ? (
-              <div className="flex items-center gap-2">
+              <div data-cms-part="card-swatches" className="flex items-center gap-2">
                 {swatches.map((s) => (
                   <button
                     key={s.key}
+                    data-cms-part="card-swatch"
                     type="button"
                     className={`color-swatch h-5 w-5 rounded-full border-2 transition-all duration-200 ${
                       activeSwatch === s.key
@@ -441,7 +443,7 @@ function DefaultProductCardClient({ product }: { product: CatalogProduct }) {
         </Link>
 
         {/* Fallback Quick Add - visible when not hovering image */}
-        <div className="px-4 pb-4 group-hover:hidden">
+        <div data-cms-part="card-actions" className="px-4 pb-4 group-hover:hidden">
           <QuickAddButton product={product} className="w-full" />
         </div>
       </div>

@@ -23,6 +23,6 @@ export function VisualControlsProvider({ value, children }: { value: unknown; ch
   }), [config, path]);
   return <CardContext.Provider value={config.cardDesign}>{children}</CardContext.Provider>;
 }
-export function PageVisualScope({ policy, cardDesign, children }: { policy?: unknown; cardDesign?: unknown; children: ReactNode }) {
-  return <CardDesignScope value={cardDesign}><div data-cms-interaction-page="" data-interactions={policy ? JSON.stringify(policy) : undefined} style={{ display: "contents" }}>{children}</div></CardDesignScope>;
+export function PageVisualScope({ policy, cardDesign, lookTargets, children }: { policy?: unknown; cardDesign?: unknown; lookTargets?: string[]; children: ReactNode }) {
+  return <CardDesignScope value={cardDesign}><div data-cms-interaction-page="" data-pt-page-look-targets={lookTargets?.join("|")} data-interactions={policy ? JSON.stringify(policy) : undefined} style={{ display: "contents" }}>{children}</div></CardDesignScope>;
 }

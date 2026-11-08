@@ -70,5 +70,5 @@ jobs:
       - name: Verify CMS interaction controls and legacy theme ownership
         working-directory: estabrek-admin
         run: |
-          npx vitest run src/test/visualControlsForm.test.tsx src/test/visualInteractions.test.ts src/studio/draft.test.ts
+          npx vitest run src/test/visualControlsForm.test.tsx src/test/visualInteractions.test.ts src/studio/draft.test.ts src/test/selectionParts.test.ts src/studio/selectionPicking.test.ts src/studio/selectionMenu.test.tsx src/studio/treeIndex.test.ts
           npx vitest run --config vitest.visual-theme.config.ts

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PageDraft } from "../api/pages.api";
 import { History, fieldValue, inverseOf, locate, looksOf, mergeTranslated, parsePath, simulate, undoOf } from "./draft";
+import { copyOf } from "./columns";
 
 const draft = (): PageDraft => ({
   version: 1,
@@ -21,6 +22,18 @@ const draft = (): PageDraft => ({
 });
 
 describe("looks of parts of old sections and scenes", () => {
+  it("native part edits and undo stay on their owner without changing page looks", () => {
+    const d = draft();
+    d.tree.root.children!.push({ id: "shop", type: "shop", props: {} });
+    const op = { op: "setLookStyle" as const, target: "n:shop/@card-name", kind: "text" as const, screen: "base" as const, style: { size: 29 } };
+    const after = simulate(d, op);
+    expect(locate(after.tree, "shop")?.node.props.partLooks).toEqual({ "@card-name": { kind: "text", style: { base: { size: 29 } } } });
+    expect(after.tree.root.props.looks).toBeUndefined();
+    expect(looksOf(after)[op.target]?.style?.base?.size).toBe(29);
+    const copied = copyOf(locate(after.tree, "shop")!.node, () => "shop-copy");
+    expect(copied.props.partLooks).toEqual(locate(after.tree, "shop")!.node.props.partLooks);
+    expect(undoOf([op], d, "ar").reduce(simulate, after)).toEqual(d);
+  });
   it("each change comes back with undo, per screen, and the looks go when empty", () => {
     const d = draft();
     const set = { op: "setLookStyle" as const, target: "s:faq/title", kind: "text" as const, screen: "base" as const, style: { size: 40, color: "#7d2448" } };

@@ -116,6 +116,7 @@ export function CategorySidebar({
           <button
             type="button"
             onClick={() => onSelect(node.id)}
+            data-cms-part="shop-category"
             className="flex-1 text-right text-sm font-semibold"
             style={{ paddingRight: `${depth * 8}px` }}
           >
@@ -134,7 +135,7 @@ export function CategorySidebar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold">{tr(lang, "التصنيفات", "Categories")}</h3>
+        <h3 data-cms-part="shop-categories-title" className="text-sm font-bold">{tr(lang, "التصنيفات", "Categories")}</h3>
         {selectedId ? (
           <button
             type="button"

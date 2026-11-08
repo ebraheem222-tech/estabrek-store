@@ -611,6 +611,6 @@ export async function renderCmsPageBySlug(
   );
   const themed = tree && storeTheme ? <div data-page-tree-root="" data-page-store-theme={storeTheme.id} data-pt-smooth={treeMedia?.smooth ? "" : undefined} style={options?.liveTheme ? liveTreeThemeVars : treeThemeVars(storeTheme, storeThemeMode)}>{body}</div> : body;
   const site = bootstrap.site as any;
-  const scoped = <PageVisualScope policy={tree?.root.props?.interactions} cardDesign={tree?.root.props?.cardDesign}>{themed}</PageVisualScope>;
+  const scoped = <PageVisualScope lookTargets={tree ? looksOf(tree).map(([target]) => target) : undefined} policy={tree?.root.props?.interactions} cardDesign={tree?.root.props?.cardDesign}>{themed}</PageVisualScope>;
   return commerce?.cart ? <CommerceCartProvider preview={options?.preview === true} lang={lang ?? langCfg.default} settings={{ checkoutMode: site.checkoutMode ?? "WHATSAPP", whatsappNumber: site.whatsappNumber ?? site.contactPhone, ordersEmail: site.ordersEmail ?? site.contactEmail, stripeEnabled: site.stripeEnabled, paypalEnabled: site.paypalEnabled, countryCode: site.storeCountryCode, delivery: site.header?.delivery }}>{scoped}</CommerceCartProvider> : scoped;
 }

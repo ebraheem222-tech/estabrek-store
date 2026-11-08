@@ -1,0 +1,11 @@
+# Deep selection in complex CMS elements
+
+The owner cannot select the objects inside many native widgets, particularly Shop cards. The bridge currently measures native roots only, and its legacy inner-part scanner excludes native descendants. Selection must expose visible internal boxes, text, pictures, controls, SVG/canvas frames and their hierarchy across complex widgets.
+
+Use the existing style/motion editor for parts, adding native owners (`n:<node id>`) and a strictly parsed structural target for unmarked DOM elements. Known repeated parts use semantic names: selecting a product name changes that part of the card template for all products in that Shop element. The UI states this. Names/prices remain catalog data. Store native part looks on their owning node (`props.partLooks`) so copying, undo, saved blocks and renamed IDs retain their styling. Legacy part looks stay on the page. No executable selectors or arbitrary markup are accepted.
+
+Default deep selection includes widget internals; an explicit toolbar toggle returns to selecting whole widgets. DOM hit testing in the trusted preview supplies actual painted order for clicks, while geometry supplies highlights, clipped outlines and fallback. Alt-click cycles through overlapping candidates. A chooser lists the objects under a point; breadcrumbs and Escape return to parents; Enter enters a selected container. Locked ancestors protect all descendants, including parts. Selecting an internal object must not accidentally drag its owning widget.
+
+Native primitives already edited as objects (text, image, SVG, model frame etc.) retain their existing selection. A 3D canvas is selected as a canvas; mesh editing remains in its own 3D editor. Internal layout wrappers may be styled, but parts are not independently reparented across functional widgets. Structural targets are guarded by tag and sibling type; semantic names are preferred for dynamic/repeated content. Hidden/helper nodes and animation-generated word fragments are excluded; scans and messages have fixed limits.
+
+All changes use normal page drafts/publication, with responsive styles, states, motion, undo/redo and same-document refresh. Verification uses local fixtures and isolated CI only; never write merchant data to test this feature. Existing authorization to push, merge main and deploy remains in effect.

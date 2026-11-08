@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import StudioPage from "../../src/studio/StudioPage";
+import { simulate } from "../../src/studio/draft";
 import VisualControlsPage from "../../src/features/settings/VisualControlsPage";
 import type { PageDraft, PageDraftOp, PageTreeNode } from "../../src/api/pages.api";
 import { api } from "../../src/api/http";
@@ -55,6 +56,22 @@ if (commerceFixture === "cart" || commerceFixture === "shop") {
     : [{ id: "commerce-cartItems", type: "cartItems", props: {} }, { id: "commerce-cartSummary", type: "cartSummary", props: {} }, { id: "commerce-cartCheckout", type: "cartCheckout", props: {} }],
   }];
 }
+if (new URLSearchParams(location.search).has("legacyParts")) {
+  initial.sections = [{ id: "old", type: "CUSTOM_HTML", order: 0, isVisible: true, data: { html: '<p>Legacy copy</p><div><span>Nested legacy text</span></div>' } }] as any;
+  initial.tree.root.children = [{ id: "old-node", type: "legacy", props: { sectionId: "old" } }];
+}
+if (new URLSearchParams(location.search).has("deepWidgets")) {
+  initial.tree.root.children = [
+    { id: "widgets", type: "section", props: { contained: true }, style: { base: { pad: [24, 24, 24, 24], minHeight: "500px" } }, children: [
+      { id: "reviews", type: "testimonials", name: "Customer stories", props: { items: [{ quote: text("A nested customer quote"), name: text("Customer name"), role: text("Customer role"), stars: 5 }], columns: 1 }, style: { base: { rotateZ: 5 } } },
+      { id: "questions", type: "accordion", name: "Questions", props: { items: [{ q: text("Nested question"), a: text("Nested answer"), open: true }] } },
+    ] },
+    { id: "overlap-section", type: "section", props: {}, style: { base: { minHeight: "350px" } }, children: [
+      { id: "over-back", type: "alert", name: "Behind widget", props: { text: text("Behind message") }, style: { base: { width: "320px", layer: { x: 10, y: 10, anchor: "top-start" }, z: 1 } } },
+      { id: "over-front", type: "alert", name: "Front widget", props: { text: text("Front message") }, style: { base: { width: "320px", layer: { x: 10, y: 10, anchor: "top-start" }, z: 5 } } },
+    ] },
+  ];
+}
 if (new URLSearchParams(location.search).has("objectEdges")) {
   const art = { viewBox: "0 0 200 40", nodes: [{ t: "path", a: { d: "M0 20L100 0L200 20V40H0Z", fill: "currentColor" } }] };
   const edges = { top: { art, height: 24, color: "accent", front: true }, bottom: { art, height: 32, phone: 16, color: "accent-soft", flip: true, front: true } };
@@ -96,6 +113,7 @@ function locate(nodeId: string, node = draft.tree.root, parent: PageTreeNode | n
 // Matching the draft API's replacement semantics is essential for real undo/redo.
 function applyOps(ops: PageDraftOp[]) {
   for (const op of ops) {
+    if (op.op === "setLookStyle" || op.op === "setLookMotion") { draft.tree = simulate(draft, op).tree; continue; }
     const found = "nodeId" in op ? locate(op.nodeId) : null;
     if (op.op === "setStyle" && found) {
       const style = { ...found.node.style };

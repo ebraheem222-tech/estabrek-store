@@ -414,7 +414,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                     {l?.imageUrl ? <LqipImage src={cldUrl(l.imageUrl, { w: 240, h: 300, c: "fill", g: "auto" })} alt={l.productTitle ?? ""} fill sizes="110px" blurDataUrl={l.imageBlurDataUrl ?? undefined} className="object-cover" /> : <span className="rose-image-placeholder"><StoreMark /></span>}
                   </Link>
                   <div className="rose-cart-info">
-                    <Link href={href} className="rose-cart-title">{l?.productTitle ?? (loading ? "…" : tr(lang, "قطعة", "Item"))}</Link>
+                    <Link data-cms-part="cart-title" href={href} className="rose-cart-title">{l?.productTitle ?? (loading ? "…" : tr(lang, "قطعة", "Item"))}</Link>
                     <div className="rose-cart-chips">
                       {color && color.toLowerCase() !== "default" && <span>{tr(lang, "اللون", "Colour")}: {color}</span>}
                       {l?.sizeName && l.sizeName.toLowerCase() !== "default" && <span>{tr(lang, "المقاس", "Size")}: {l.sizeName}</span>}
@@ -428,10 +428,10 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                       </span>
                     ) : null}
                   </div>
-                  <div className="rose-cart-qty" aria-label={tr(lang, "الكمية", "Quantity")}>
-                    <button type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQty(it.variantId, it.quantity + 1)}>+</button>
-                    <span aria-live="polite">{it.quantity}</span>
-                    <button type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => (it.quantity <= 1 ? remove(it.variantId) : setQty(it.variantId, it.quantity - 1))}>−</button>
+                  <div data-cms-part="cart-quantity" className="rose-cart-qty" aria-label={tr(lang, "الكمية", "Quantity")}>
+                    <button data-cms-part="cart-more" type="button" aria-label={tr(lang, "زيادة", "More")} onClick={() => setQty(it.variantId, it.quantity + 1)}>+</button>
+                    <span data-cms-part="cart-quantity-value" aria-live="polite">{it.quantity}</span>
+                    <button data-cms-part="cart-less" type="button" aria-label={tr(lang, "إنقاص", "Less")} onClick={() => (it.quantity <= 1 ? remove(it.variantId) : setQty(it.variantId, it.quantity - 1))}>−</button>
                   </div>
                   <div className="rose-cart-line-end">
                     <strong>{money(l?.lineTotal ?? l?.lineSubtotal, currency)}</strong>
@@ -451,7 +451,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
   );
 
   const summaryPart = <>
-          <h2>{tr(lang, "ملخص الطلب", "Order summary")}</h2>
+          <h2 data-cms-part="cart-summary-title">{tr(lang, "ملخص الطلب", "Order summary")}</h2>
           <dl>
             <div><dt>{tr(lang, "المجموع الفرعي", "Subtotal")}</dt><dd>{loading && !quote ? "…" : money(quote?.subtotal, currency)}</dd></div>
             {discount > 0 && <div className="discount"><dt>{tr(lang, "الخصم", "Discount")}{quote?.coupon?.code ? ` (${quote.coupon.code})` : ""}</dt><dd>−{money(discount, currency)}</dd></div>}
@@ -467,7 +467,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
                   : (tr(lang, "اختاري المدينة", "Pick your city"))}
               </dd>
             </div>
-            <div className="total"><dt>{tr(lang, "الإجمالي", "Total")}</dt><dd data-testid="cart-total">{loading && !quote ? "…" : money(grandTotal ?? quote?.total, currency)}</dd></div>
+            <div className="total"><dt>{tr(lang, "الإجمالي", "Total")}</dt><dd data-cms-part="cart-total" data-testid="cart-total">{loading && !quote ? "…" : money(grandTotal ?? quote?.total, currency)}</dd></div>
           </dl>
           {priced && !noShipping && freeLeft != null && freeLeft > 0 && (
             <p className="rose-cart-free-note" data-testid="cart-free-note">
@@ -489,7 +489,7 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
 
   const checkoutPart = <>
           <div className="rose-cart-form">
-            <h3>{noShipping ? (tr(lang, "بياناتكِ", "Your details")) : tr(lang, "بياناتكِ للتوصيل", "Your delivery details")}</h3>
+            <h3 data-cms-part="cart-checkout-title">{noShipping ? (tr(lang, "بياناتكِ", "Your details")) : tr(lang, "بياناتكِ للتوصيل", "Your delivery details")}</h3>
             {signedIn ? (
               <p className="rose-cart-account" data-testid="cart-signed-in">{tr(lang, `الطلب رح ينحفظ بحسابكِ (${account?.user?.email}).`, "This order will be saved to your account ({0}).", [account?.user?.email])}</p>
             ) : account?.status === "guest" ? (
@@ -560,21 +560,21 @@ export function RoseCart({ checkoutMode = "WHATSAPP", whatsappNumber, ordersEmai
           {err && <p className="rose-cart-error" role="alert">{err}</p>}
 
           <div className="rose-cart-actions">
-            {wantsStripe && <button type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("stripe")}>{tr(lang, "الدفع بالبطاقة", "Pay by card")}<Icon name="arrow" /></button>}
-            {wantsPaypal && <button type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("paypal")}>{tr(lang, "الدفع عبر PayPal", "Pay with PayPal")}<Icon name="arrow" /></button>}
+            {wantsStripe && <button data-cms-part="cart-submit" type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("stripe")}>{tr(lang, "الدفع بالبطاقة", "Pay by card")}<Icon name="arrow" /></button>}
+            {wantsPaypal && <button data-cms-part="cart-submit" type="button" className="atelier-button button-dark" disabled={!canOrder} onClick={() => void pay("paypal")}>{tr(lang, "الدفع عبر PayPal", "Pay with PayPal")}<Icon name="arrow" /></button>}
             {allowManual && waReady && (
-              <button type="button" className="atelier-button rose-cart-wa" disabled={!canOrder} onClick={() => void placeOrder("whatsapp")}>
+              <button data-cms-part="cart-submit" type="button" className="atelier-button rose-cart-wa" disabled={!canOrder} onClick={() => void placeOrder("whatsapp")}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12.05 2a9.9 9.9 0 0 0-8.5 14.95L2 22l5.2-1.5A9.9 9.9 0 1 0 12.05 2Zm5.8 14.1c-.25.7-1.45 1.33-2 1.4-.5.08-1.15.11-1.85-.12-.43-.13-.98-.32-1.69-.62-2.98-1.29-4.93-4.29-5.08-4.49-.15-.2-1.21-1.61-1.21-3.07 0-1.46.77-2.18 1.04-2.48.27-.3.6-.37.79-.37h.57c.18 0 .43-.07.67.51.25.6.84 2.06.92 2.21.07.15.12.33.02.52-.1.2-.15.32-.3.5-.15.17-.31.39-.45.52-.15.15-.3.31-.13.6.17.3.77 1.27 1.65 2.05 1.13 1.01 2.09 1.32 2.38 1.47.3.15.47.12.65-.07.17-.2.74-.87.94-1.17.2-.3.4-.25.67-.15.27.1 1.73.82 2.03.97.3.15.5.22.57.35.08.12.08.72-.17 1.41Z" /></svg>
                 {submitting ? (tr(lang, "جارٍ الإرسال…", "Sending…")) : tr(lang, "أرسلي الطلب عبر واتساب", "Order on WhatsApp")}
               </button>
             )}
             {allowManual && (
-              <button type="button" className={waReady ? "rose-cart-direct" : "atelier-button button-dark"} disabled={!canOrder} onClick={() => void placeOrder("direct")}>
+              <button data-cms-part="cart-submit" type="button" className={waReady ? "rose-cart-direct" : "atelier-button button-dark"} disabled={!canOrder} onClick={() => void placeOrder("direct")}>
                 {waReady ? tr(lang, "أو أرسلي الطلب ونتصل بكِ", "Or send the order and we'll call you") : tr(lang, "أرسلي الطلب", "Send the order")}
               </button>
             )}
             {allowManual && ordersEmail && (
-              <button type="button" className="rose-cart-direct" disabled={!canOrder} onClick={() => void placeOrder("email")}>{tr(lang, "إرسال الطلب بالبريد", "Send by email")}</button>
+              <button data-cms-part="cart-submit" type="button" className="rose-cart-direct" disabled={!canOrder} onClick={() => void placeOrder("email")}>{tr(lang, "إرسال الطلب بالبريد", "Send by email")}</button>
             )}
           </div>
 

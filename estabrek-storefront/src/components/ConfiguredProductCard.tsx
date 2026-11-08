@@ -25,14 +25,14 @@ export function ConfiguredProductCard({ product, design: d, preview = false }: {
     "--card-button": d.buttonColor ?? "var(--accent,#222)", "--card-button-text": d.buttonTextColor ?? "var(--accent-contrast,#fff)",
   } as CSSProperties;
   const pic = image ? <img src={image} alt={product.title} loading="lazy" /> : <div className="configured-product-placeholder" style={{ background: item?.colorHex ?? "#d3bfce" }} />;
-  return <article className="configured-product-card" data-card-layout={d.layout ?? "vertical"} data-product-id={product.id} style={vars}>
-    {preview ? <div data-card-part="image">{pic}</div> : <Link href={href} data-card-part="image">{pic}</Link>}
-    <div className="configured-product-body">
-      {d.showCategory !== false && product.category ? <span data-card-part="category">{product.category.name}</span> : null}
-      {preview ? <h3 data-card-part="title">{product.title}</h3> : <Link href={href}><h3 data-card-part="title">{product.title}</h3></Link>}
-      {d.showPrice !== false ? <span data-card-part="price">{formatMoney(getProductMinPrice(product), undefined)}</span> : null}
-      {d.showSwatches !== false ? <div data-card-part="swatches">{(product.items ?? []).slice(0, 16).map((swatch, i) => <button key={swatch.id} type="button" aria-label={catalogItemLabel(swatch, i)} aria-pressed={selected === i} title={catalogItemLabel(swatch, i)} style={{ backgroundColor: /^#?[0-9a-f]{6}$/i.test(swatch.colorHex ?? "") ? `#${swatch.colorHex!.replace(/^#/, "")}` : "#ccc" }} onClick={event => { setSelected(i); selectStorefrontColor(swatch.colorHex, { source: event.currentTarget }); }} />)}</div> : null}
-      {d.showButton !== false ? <div data-card-part="button">{preview ? <button type="button" onClick={event => { emitVisualInteraction("cartClick", { source: event.currentTarget }); setAdded(true); emitVisualInteraction("cartAdded", { source: event.currentTarget }); }}>{added ? tr(lang, "محاكاة الإضافة ✓", "Simulated add ✓") : tr(lang, "تجربة الإضافة", "Test add")}</button> : <QuickAddButton product={product} selectedColorKey={item ? catalogItemKey(item, selected) : undefined} />}</div> : null}
+  return <article className="configured-product-card" data-cms-part="card" data-card-layout={d.layout ?? "vertical"} data-product-id={product.id} style={vars}>
+    {preview ? <div data-cms-part="card-image" data-card-part="image">{pic}</div> : <Link href={href} data-cms-part="card-image" data-card-part="image">{pic}</Link>}
+    <div className="configured-product-body" data-cms-part="card-body">
+      {d.showCategory !== false && product.category ? <span data-cms-part="card-category" data-card-part="category">{product.category.name}</span> : null}
+      {preview ? <h3 data-cms-part="card-name" data-card-part="title">{product.title}</h3> : <Link href={href}><h3 data-cms-part="card-name" data-card-part="title">{product.title}</h3></Link>}
+      {d.showPrice !== false ? <span data-cms-part="card-price" data-card-part="price">{formatMoney(getProductMinPrice(product), undefined)}</span> : null}
+      {d.showSwatches !== false ? <div data-cms-part="card-swatches" data-card-part="swatches">{(product.items ?? []).slice(0, 16).map((swatch, i) => <button key={swatch.id} data-cms-part="card-swatch" type="button" aria-label={catalogItemLabel(swatch, i)} aria-pressed={selected === i} title={catalogItemLabel(swatch, i)} style={{ backgroundColor: /^#?[0-9a-f]{6}$/i.test(swatch.colorHex ?? "") ? `#${swatch.colorHex!.replace(/^#/, "")}` : "#ccc" }} onClick={event => { setSelected(i); selectStorefrontColor(swatch.colorHex, { source: event.currentTarget }); }} />)}</div> : null}
+      {d.showButton !== false ? <div data-cms-part="card-actions" data-card-part="button">{preview ? <button data-cms-part="card-add" type="button" onClick={event => { emitVisualInteraction("cartClick", { source: event.currentTarget }); setAdded(true); emitVisualInteraction("cartAdded", { source: event.currentTarget }); }}>{added ? tr(lang, "محاكاة الإضافة ✓", "Simulated add ✓") : tr(lang, "تجربة الإضافة", "Test add")}</button> : <QuickAddButton product={product} selectedColorKey={item ? catalogItemKey(item, selected) : undefined} />}</div> : null}
     </div>
   </article>;
 }

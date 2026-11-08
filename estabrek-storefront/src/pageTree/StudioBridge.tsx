@@ -17,6 +17,7 @@ import { geometryPreviewCss, geometryPreviewNodes } from "./geometryPreview";
 import { htmlToRich } from "./rich";
 import { INTERACTION_EVENTS } from "@/lib/visualControls";
 import { emitVisualInteraction } from "@/lib/visualInteractions";
+import { collectSelectionParts, domPartPath, partId, SELECTION_HELPERS, type PartKind, type PartOwner } from "./selectionParts";
 
 export const STUDIO_SOURCE = "estabrek-studio";
 
@@ -44,7 +45,8 @@ export type StudioItem =
   /** A marked piece ([data-part]): a product card, its picture, a scene's mascot…; `n` of `count` in its owner. */
   | { kind: "part"; owner: string; name: string; n: number; count: number; within?: string; rect: StudioRect }
   /** Anything else seen inside an owner: a picture, words, a link, a drawing. */
-  | { kind: "auto"; owner: string; n: number; tag: string; label?: string; within?: string; rect: StudioRect }
+  | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string; within?: string; rect: StudioRect }
+  | { kind: "detail"; owner: string; key: string; target: string; lookKind: PartKind; label?: string; name?: string; count: number; within?: string; rect: StudioRect; geometry?: NodeGeometry }
   /** The rose home's scenes: seasons, collection stories, Instagram, the fabric study ([data-rose-block]). */
   | { kind: "block"; block: string; rect: StudioRect };
 export type StudioLayout = {
@@ -86,8 +88,18 @@ const ATOMS = "img, video, svg, canvas, picture, a, button, h1, h2, h3, h4, h5, 
 const ATOM_HOLDERS = "a, button, li, figure, picture, blockquote, h1, h2, h3, h4, h5, h6, p";
 const MARKED = "[data-edit], [data-edit-media], [data-edit-box], [data-part]";
 const MAX_AUTOS = 400;
+let pickElements = new WeakMap<Element, string>();
+/** Actual paint order, followed by each visual object's measured ancestors. */
+export function studioPickAt(x: number, y: number): string[] {
+  const ids = new Set<string>();
+  const painted = document.elementsFromPoint(x, y);
+  for (const el of painted) for (let at: Element | null = el; at; at = at.parentElement) { const id = pickElements.get(at); if (id) { ids.add(id); break; } }
+  for (const el of painted) for (let at = el.parentElement; at; at = at.parentElement) { const id = pickElements.get(at); if (id) ids.add(id); }
+  return [...ids].slice(0, 100);
+}
+const ATOMIC_OWNER = /^(?:page|section|stack|grid|cell|columns|heading|text|image|button|video|svg|icon|spacer|divider|model3d|product360|lottie|rive|instrument)$/;
 
-type Owner = { key: string; el: Element; section?: string; block?: string };
+type Owner = { key: string; el: Element; section?: string; block?: string; retained?: ReadonlySet<string> };
 
 /** The old section or rose scene an element shows in (a tree element's own wrapper doesn't count). */
 function ownerOf(el: Element): Owner | null {
@@ -108,7 +120,11 @@ const inTreeNode = (el: Element, owner: Owner) => {
 
 /** Where every tree element, old section, rose scene and what's inside them is, in page coordinates. */
 export function measureStudio(): StudioItem[] {
+  pickElements = new WeakMap();
   const items: StudioItem[] = [];
+  const nativeOwners: PartOwner[] = [];
+  const savedTargets = [...document.querySelectorAll("[data-pt-page-look-targets]")].flatMap(el => (el.getAttribute("data-pt-page-look-targets") ?? "").split("|"));
+  const retainedOf = (key: string) => new Set(savedTargets.filter(target => target.startsWith(`${key}/`)).map(target => target.slice(key.length + 1)));
   const planes=new Map<Element,MeasuredPlane|null>();
   const seen = new Set<string>();
   // Native transforms use a positive uniform scale. Measure it through the actual
@@ -157,6 +173,9 @@ export function measureStudio(): StudioItem[] {
     const id = el.dataset.treeNode ?? "";
     if (!id || seen.has(`n:${id}`)) return;
     seen.add(`n:${id}`);
+    pickElements.set(el, id);
+    const type = [...el.classList].find(c => c.startsWith("pt-") && ATOMIC_OWNER.test(c.slice(3)));
+    nativeOwners.push({ key: `n:${id}`, el, atomic: Boolean(type), semanticOnly: el.matches(".pt-shop,.pt-cartItems,.pt-cartSummary,.pt-cartCheckout"), retained: new Set([...retainedOf(`n:${id}`), ...(el.getAttribute("data-pt-part-targets") ?? "").split("|").slice(0, 300)]) });
     const holder = el.offsetParent && getComputedStyle(el).position === "absolute" ? paddingRect(el.offsetParent) : undefined;
     const inner = el.matches(".pt-section,.pt-stack,.pt-grid,.pt-cell,.pt-popup")
       ? (el.matches(".pt-section") ? el.querySelector(":scope > .pt-inner") ?? el : el)
@@ -169,14 +188,16 @@ export function measureStudio(): StudioItem[] {
     // A tree element's own wrapper, or the inner copy of a section already measured.
     if (!sid || sid.startsWith("tree-") || seen.has(`s:${sid}`)) return;
     seen.add(`s:${sid}`);
-    owners.push({ key: `s:${sid}`, el, section: sid });
+    owners.push({ key: `s:${sid}`, el, section: sid, retained: retainedOf(`s:${sid}`) });
+    if (!pickElements.has(el)) pickElements.set(el, `owner:s:${sid}`);
     items.push({ kind: "legacy", sectionId: sid, rect: rectOf(el) });
   });
   document.querySelectorAll<HTMLElement>("[data-rose-block]").forEach((el) => {
     const block = el.getAttribute("data-rose-block") ?? "";
     if (!PART.test(block) || seen.has(`b:${block}`)) return;
     seen.add(`b:${block}`);
-    owners.push({ key: `b:${block}`, el, block });
+    owners.push({ key: `b:${block}`, el, block, retained: retainedOf(`b:${block}`) });
+    if (!pickElements.has(el)) pickElements.set(el, `block:${block}`);
     items.push({ kind: "block", block, rect: rectOf(el) });
   });
 
@@ -186,7 +207,8 @@ export function measureStudio(): StudioItem[] {
   const parts: Array<{ el: HTMLElement; owner: Owner; name: string; n: number }> = [];
   document.querySelectorAll<HTMLElement>("[data-part]").forEach((el) => {
     const name = el.getAttribute("data-part") ?? "";
-    const owner = ownerOf(el);
+    const foundOwner = ownerOf(el);
+    const owner = foundOwner ? owners.find(o => o.key === foundOwner.key) ?? foundOwner : null;
     if (!owner || !PART.test(name) || inTreeNode(el, owner)) return;
     const k = `${owner.key}|${name}`;
     const n = partCount.get(k) ?? 0;
@@ -197,7 +219,8 @@ export function measureStudio(): StudioItem[] {
   type Field = { el: HTMLElement; box: HTMLElement; owner: Owner; sectionId: string; path: string; media: string | null };
   const fields: Field[] = [];
   document.querySelectorAll<HTMLElement>("[data-edit], [data-edit-media]").forEach((el) => {
-    const owner = ownerOf(el);
+    const foundOwner = ownerOf(el);
+    const owner = foundOwner ? owners.find(o => o.key === foundOwner.key) ?? foundOwner : null;
     if (!owner || inTreeNode(el, owner)) return;
     const media = el.getAttribute("data-edit-media");
     const path = media ?? el.getAttribute("data-edit") ?? "";
@@ -220,10 +243,12 @@ export function measureStudio(): StudioItem[] {
     return undefined;
   };
   for (const f of fields) {
-    if (seen.has(`f:${f.owner.key}:${f.path}`) || !shown(f.box, f.owner.el)) continue;
+    const retained = f.owner.retained?.has(f.path) || f.owner.retained?.has(f.path.replace(/\.(ar|en|he)$/, ""));
+    if (seen.has(`f:${f.owner.key}:${f.path}`) || !retained && !shown(f.box, f.owner.el)) continue;
     const rect = rectOf(f.box);
-    if (!(rect.w > 0 && rect.h > 0)) continue;
+    if (!(rect.w > 0 && rect.h > 0) && !retained) continue;
     seen.add(`f:${f.owner.key}:${f.path}`);
+    pickElements.set(f.box, f.owner.key.startsWith("b:") ? `bslot:${f.owner.key.slice(2)}:${f.path}` : `slot:${f.owner.key.slice(2)}:${f.path}`);
     const base = { kind: "slot" as const, owner: f.owner.key, sectionId: f.sectionId, ...(f.owner.block ? { block: f.owner.block } : {}), path: f.path, rect };
     const within = withinOf(f.box, f.owner);
     const link = f.box.getAttribute("data-edit-link");
@@ -237,10 +262,12 @@ export function measureStudio(): StudioItem[] {
     });
   }
   for (const p of parts) {
-    if (!shown(p.el, p.owner.el)) continue;
+    const retained = p.owner.retained?.has(`@${p.name}`);
+    if (!retained && !shown(p.el, p.owner.el)) continue;
     const rect = rectOf(p.el);
-    if (!(rect.w > 0 && rect.h > 0)) continue;
+    if (!(rect.w > 0 && rect.h > 0) && !retained) continue;
     const within = withinOf(p.el, p.owner);
+    pickElements.set(p.el, `part:${p.owner.key}:${p.name}:${p.n}`);
     items.push({ kind: "part", owner: p.owner.key, name: p.name, n: p.n, count: partCount.get(`${p.owner.key}|${p.name}`) ?? 1, ...(within ? { within } : {}), rect });
   }
   // Everything else that shows: the outermost picture, words or link not already marked.
@@ -249,22 +276,36 @@ export function measureStudio(): StudioItem[] {
     let n = 0;
     for (const el of owner.el.querySelectorAll<HTMLElement>(ATOMS)) {
       if (autos >= MAX_AUTOS) break;
-      if (inTreeNode(el, owner) || ownerOf(el)?.el !== owner.el) continue;
+      if (el.closest(SELECTION_HELPERS) || inTreeNode(el, owner) || ownerOf(el)?.el !== owner.el) continue;
       if (el.closest(MARKED) && owner.el.contains(el.closest(MARKED))) continue;
       const outer = el.parentElement?.closest(ATOM_HOLDERS);
       if (outer && owner.el.contains(outer)) continue;
       if (el.querySelector(MARKED)) continue;
       const i = n++;
-      if (!shown(el, owner.el)) continue;
+      const target = domPartPath(el, owner.el);
+      const retained = target && owner.retained?.has(target);
+      if (!retained && !shown(el, owner.el)) continue;
       const rect = rectOf(el);
-      if (!(rect.w >= 8 && rect.h >= 8)) continue;
+      if (!(rect.w >= 8 && rect.h >= 8) && !retained) continue;
       const tag = el.tagName.toLowerCase();
       const said = tag === "img" ? (el as HTMLImageElement).alt : /^(svg|canvas|video|picture)$/.test(tag) ? "" : el.innerText;
       const label = said.replace(/\s+/g, " ").trim().slice(0, 40);
       const within = withinOf(el, owner);
       autos++;
-      items.push({ kind: "auto", owner: owner.key, n: i, tag, ...(label ? { label } : {}), ...(within ? { within } : {}), rect });
+      keyOf.set(el, `a:${i}`);
+      pickElements.set(el, `auto:${owner.key}:${i}`);
+      items.push({ kind: "auto", owner: owner.key, n: i, tag, ...(target ? { target } : {}), ...(label ? { label } : {}), ...(within ? { within } : {}), rect });
     }
+  }
+  const deepOwners: PartOwner[] = [...nativeOwners, ...owners];
+  const ownersByKey = new Map(deepOwners.map(owner => [owner.key, owner]));
+  for (const part of collectSelectionParts(deepOwners, keyOf, shown)) {
+    const rect = rectOf(part.el);
+    const owner = ownersByKey.get(part.owner);
+    const retained = owner?.retained?.has(part.target);
+    if ((rect.w < 3 || rect.h < 3 || !shown(part.el, owner?.el ?? part.el)) && !retained) continue;
+    pickElements.set(part.el, partId(part.owner, part.key));
+    items.push({ kind: "detail", owner: part.owner, key: part.key, target: part.target, lookKind: part.kind, ...(part.label ? { label: part.label } : {}), ...(part.name ? { name: part.name } : {}), count: part.count, ...(part.within ? { within: part.within } : {}), rect, ...(part.el instanceof HTMLElement && rect.w > 0 && rect.h > 0 && rect.y < scrollY + innerHeight + 300 && rect.y + rect.h > scrollY - 300 ? { geometry: nodeGeometry(part.el, planes) } : {}) });
   }
   return items;
 }
@@ -281,9 +322,9 @@ function fieldElement(sectionId: string, path: string): HTMLElement | null {
 
 /** An owner's element, or something inside it, for bringing into view. */
 function ownedElement(owner: string, path?: string, part?: string, n?: number): Element | null {
-  const m = /^(s|b):(.{1,120})$/.exec(owner);
+  const m = /^(s|b|n):(.{1,120})$/.exec(owner);
   if (!m) return null;
-  const host = document.querySelector(m[1] === "b" ? `[data-rose-block="${CSS.escape(m[2])}"]` : `[data-cms-section="${CSS.escape(m[2])}"]`);
+  const host = document.querySelector(m[1] === "n" ? `[data-tree-node="${CSS.escape(m[2])}"]` : m[1] === "b" ? `[data-rose-block="${CSS.escape(m[2])}"]` : `[data-cms-section="${CSS.escape(m[2])}"]`);
   if (!host) return null;
   if (path && PATH.test(path)) return host.querySelector(`[data-edit-box="${CSS.escape(path)}"], [data-edit="${CSS.escape(path)}"], [data-edit-media="${CSS.escape(path)}"]`);
   if (part && PART.test(part)) return host.querySelectorAll(`[data-part="${CSS.escape(part)}"]`)[Number(n) || 0] ?? null;
@@ -534,6 +575,13 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       if (!origins.includes(e.origin)) return;
       const d = e.data as { source?: string; type?: string; requestId?: string; dx?: number; dy?: number; y?: number; nodeId?: string; sectionId?: string; path?: string; value?: string; block?: string; owner?: string; part?: string; n?: number } | null;
       if (!d || d.source !== STUDIO_SOURCE) return;
+      if (d.type === "pickPoint" && e.source === window.parent) {
+        const value = e.data as { requestId?: unknown; x?: unknown; y?: unknown };
+        if (typeof value.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.requestId) || typeof value.x !== "number" || typeof value.y !== "number" || !Number.isFinite(value.x) || !Number.isFinite(value.y) || value.x < 0 || value.y < 0 || value.x > innerWidth || value.y > innerHeight) return;
+        measureStudio();
+        send({ type: "pointPicked", requestId: value.requestId, candidates: studioPickAt(value.x, value.y) });
+        return;
+      }
       if (d.type === "refreshView") {
         if (e.source !== window.parent || typeof d.requestId !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(d.requestId)) return;
         refresh.current?.(d.requestId, e.origin);

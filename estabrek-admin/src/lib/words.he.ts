@@ -4,6 +4,18 @@
  * {0}, {1}… are the numbers and names the English has.
  */
 export const HE: Record<string, string> = {
+  "Click to select the deepest visible object. Alt+click cycles overlapping objects; Choose object lists them. Double-click text to write in place. Arrows move between elements, Esc goes to the parent, Enter to the first child or to write the text. Ctrl+Z undoes. Ctrl+wheel zooms, Space+drag moves the canvas.": "לחיצה בוחרת את הרכיב הפנימי הגלוי. Alt ולחיצה עוברים בין רכיבים חופפים; בחירת רכיב מציגה רשימה שלהם. לחיצה כפולה על טקסט עורכת אותו במקום. החצים עוברים בין רכיבים, Esc עובר להורה ו־Enter לילד הראשון או לעריכת הטקסט. Ctrl+Z מבטל. Ctrl וגלגלת משנים את התצוגה, ורווח וגרירה מזיזים את הקנבס.",
+  "Width": "רוחב",
+  "Objects under the pointer": "רכיבים מתחת לסמן",
+  "This template part changes all {0} matching objects inside this element.": "שינוי חלק זה בתבנית חל על כל {0} הרכיבים התואמים בתוך הרכיב הזה.",
+  "An internal object. Its appearance is saved with its owner.": "רכיב פנימי. העיצוב שלו נשמר עם הרכיב המכיל אותו.",
+  "Owner settings": "הגדרות הרכיב המכיל",
+  "Deep selection": "בחירה פנימית",
+  "Choose object": "בחירת רכיב",
+  "Card content": "תוכן הכרטיס",
+  "Card actions": "פעולות בכרטיס",
+  "Colour swatch": "דוגמית צבע",
+  "Colour swatches": "דוגמיות צבע",
   "Card radius": "עיגול פינות הכרטיס",
   "Padding": "ריווח פנימי",
   "Title size": "גודל הכותרת",

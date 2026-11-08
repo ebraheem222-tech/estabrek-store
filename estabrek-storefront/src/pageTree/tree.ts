@@ -148,7 +148,7 @@ export type PageTree = { version: 1; root: TreeNode };
  */
 export type LookKind = "text" | "button" | "image" | "video" | "box";
 export type Look = { kind: LookKind; style?: Partial<Record<Screen, ScreenStyle>>; motion?: unknown };
-const LOOK_TARGET = /^(s|b):([A-Za-z0-9_-]{1,80})(?:\/(@[a-z0-9-]{1,40}|[A-Za-z0-9_.]{1,120}))?$/;
+import { targetSelector } from "./selectionParts";
 export const LOOK_KINDS = ["text", "button", "image", "video", "box"] as const;
 export const LOOKS_MAX = 300;
 
@@ -157,30 +157,24 @@ export const LOOKS_MAX = 300;
  * the look wins over the section's own styles; a field's button is its whole button.
  */
 export function lookSelector(target: string): string | null {
-  const m = LOOK_TARGET.exec(target);
-  if (!m) return null;
-  const owner = m[1] === "s" ? `[data-cms-section="${m[2]}"][data-cms-section]` : `[data-rose-block="${m[2]}"][data-rose-block]`;
-  const at = m[3];
-  if (!at) return owner;
-  if (at.startsWith("@")) return `${owner} [data-part="${at.slice(1)}"][data-part]`;
-  // A scene's words name their language at the end (…title.en): one look for all of them.
-  return [at, `${at}.ar`, `${at}.en`, `${at}.he`]
-    .flatMap((p) => [`${owner} [data-edit-box="${p}"][data-edit-box]`, `${owner} [data-edit="${p}"][data-edit]:not([data-edit-boxed])`])
-    .concat(`${owner} [data-edit-media="${at}"][data-edit-media]`)
-    .join(",");
+  return targetSelector(target);
 }
 
-/** The page's looks the shop may draw (known kinds, good targets), at most LOOKS_MAX. */
+/** Each stored source is bounded by LOOKS_MAX. Expanded linked blocks keep their own looks. */
 export function looksOf(tree: PageTree): Array<[string, Look]> {
-  const raw = tree.root.props?.looks;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
   const out: Array<[string, Look]> = [];
-  for (const [target, v] of Object.entries(raw as Record<string, any>)) {
-    if (out.length >= LOOKS_MAX) break;
-    if (!lookSelector(target) || !v || typeof v !== "object") continue;
-    const kind = (LOOK_KINDS as readonly string[]).includes(v.kind) ? (v.kind as LookKind) : "box";
-    out.push([target, { kind, style: v.style && typeof v.style === "object" ? v.style : undefined, motion: v.motion }]);
-  }
+  const add = (raw: unknown, prefix = "") => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    for (const [key, v] of Object.entries(raw as Record<string, any>).slice(0, LOOKS_MAX)) {
+      const target = `${prefix}${key}`;
+      if (!lookSelector(target) || !v || typeof v !== "object") continue;
+      const kind = (LOOK_KINDS as readonly string[]).includes(v.kind) ? (v.kind as LookKind) : "box";
+      out.push([target, { kind, style: v.style && typeof v.style === "object" ? v.style : undefined, motion: v.motion }]);
+    }
+  };
+  add(tree.root.props?.looks);
+  const walk = (node: TreeNode) => { if (node !== tree.root) add(node.props?.partLooks, `n:${node.id}/`); node.children?.forEach(walk); };
+  walk(tree.root);
   return out;
 }
 

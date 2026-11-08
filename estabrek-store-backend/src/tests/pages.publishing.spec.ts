@@ -50,6 +50,19 @@ test("concurrent system-page opening creates one draft and never resets subseque
   expect(reopened.status).toBe("DRAFT");
   await request(app).get("/v1/storefront/page?slug=/cart").expect(404);
 });
+test("native inner appearances publish and a later draft stays private", async () => {
+  const page = (await request(app).post("/v1/admin/pages/system/shop").expect(200)).body;
+  const edit = (size: number) => request(app).post(`/v1/admin/pages/${page.id}/draft/ops`).send({ ops: [{ op: "setLookStyle", target: "n:commerce-shop/@card-name", kind: "text", screen: "base", style: { size } }] });
+  await edit(29).expect(200);
+  await request(app).post(`/v1/admin/pages/${page.id}/draft/publish`).send({}).expect(200);
+  const readSize = async () => {
+    const live = (await request(app).get("/v1/storefront/page?slug=/shop").expect(200)).body;
+    return live.tree.root.children[0].children[0].props.partLooks["@card-name"].style.base.size;
+  };
+  expect(await readSize()).toBe(29);
+  await edit(35).expect(200);
+  expect(await readSize()).toBe(29);
+});
 
 test("publication validates the actual published contents of linked commerce blocks", async () => {
   const { storePageDraft } = await import("../lib/storePageTemplates.js");
