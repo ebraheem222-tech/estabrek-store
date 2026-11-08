@@ -11,7 +11,7 @@
 import { useEffect, useRef } from "react";
 import { nodeGeometry,type NodeGeometry,type MeasuredPlane } from "./studioGeometry";
 import { studioLink } from "./studioLink";
-import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, lookSelector, type SiteStyle, type TreeNode } from "./tree";
+import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, TREE_TRANSFORM_REST, lookSelector, type SiteStyle, type TreeNode } from "./tree";
 import { nodeCss, siteTarget } from "./css";
 import { geometryPreviewCss, geometryPreviewNodes } from "./geometryPreview";
 import { htmlToRich } from "./rich";
@@ -34,6 +34,7 @@ export type StudioItem =
    * (and what's placed freely in it) sits.
    */
   | { kind: "node"; id: string; rect: StudioRect; holder?: StudioRect; size?: { w: number; h: number }; inner?: StudioRect; parentScale?: number | null; innerScale?: number | null; geometry?: NodeGeometry }
+  | { kind: "region"; region: "header" | "footer"; rect: StudioRect }
   | { kind: "legacy"; sectionId: string; rect: StudioRect }
   /**
    * A text, picture, video or button the editor can change ([data-edit], [data-edit-media]):
@@ -46,7 +47,7 @@ export type StudioItem =
   | { kind: "part"; owner: string; name: string; n: number; count: number; within?: string; rect: StudioRect }
   /** Anything else seen inside an owner: a picture, words, a link, a drawing. */
   | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string; within?: string; rect: StudioRect }
-  | { kind: "detail"; owner: string; key: string; target: string; lookKind: PartKind; label?: string; name?: string; count: number; within?: string; rect: StudioRect; geometry?: NodeGeometry }
+  | { kind: "detail"; owner: string; key: string; target: string; lookKind: PartKind; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number; within?: string; rect: StudioRect; geometry?: NodeGeometry }
   /** The rose home's scenes: seasons, collection stories, Instagram, the fabric study ([data-rose-block]). */
   | { kind: "block"; block: string; rect: StudioRect };
 export type StudioLayout = {
@@ -169,7 +170,20 @@ export function measureStudio(): StudioItem[] {
     shownCache.set(el, ok);
     return ok;
   };
+  const regionSelector = "[data-studio-region],[data-store-design-region]";
+  const regionOwners: PartOwner[] = [];
+  document.querySelectorAll<HTMLElement>(regionSelector).forEach(el => {
+    if (el.parentElement?.closest(regionSelector) || el.closest("[data-tree-node],[data-cms-section]")) return;
+    const region = el.getAttribute("data-studio-region") ?? el.getAttribute("data-store-design-region");
+    if (region !== "header" && region !== "footer" || seen.has(`r:${region}`)) return;
+    seen.add(`r:${region}`);
+    regionOwners.push({ key: `r:${region}`, el });
+    pickElements.set(el, `region:${region}`);
+    items.push({ kind: "region", region, rect: rectOf(el) });
+  });
+  const inRegion = (el: Element) => Boolean(el.closest(regionSelector));
   document.querySelectorAll<HTMLElement>("[data-tree-node]").forEach((el) => {
+    if (inRegion(el)) return;
     const id = el.dataset.treeNode ?? "";
     if (!id || seen.has(`n:${id}`)) return;
     seen.add(`n:${id}`);
@@ -184,6 +198,7 @@ export function measureStudio(): StudioItem[] {
   });
   const owners: Owner[] = [];
   document.querySelectorAll<HTMLElement>("[data-cms-section]").forEach((el) => {
+    if (inRegion(el)) return;
     const sid = el.getAttribute("data-cms-section") ?? "";
     // A tree element's own wrapper, or the inner copy of a section already measured.
     if (!sid || sid.startsWith("tree-") || seen.has(`s:${sid}`)) return;
@@ -193,6 +208,7 @@ export function measureStudio(): StudioItem[] {
     items.push({ kind: "legacy", sectionId: sid, rect: rectOf(el) });
   });
   document.querySelectorAll<HTMLElement>("[data-rose-block]").forEach((el) => {
+    if (inRegion(el)) return;
     const block = el.getAttribute("data-rose-block") ?? "";
     if (!PART.test(block) || seen.has(`b:${block}`)) return;
     seen.add(`b:${block}`);
@@ -206,6 +222,7 @@ export function measureStudio(): StudioItem[] {
   const partCount = new Map<string, number>();
   const parts: Array<{ el: HTMLElement; owner: Owner; name: string; n: number }> = [];
   document.querySelectorAll<HTMLElement>("[data-part]").forEach((el) => {
+    if (inRegion(el)) return;
     const name = el.getAttribute("data-part") ?? "";
     const foundOwner = ownerOf(el);
     const owner = foundOwner ? owners.find(o => o.key === foundOwner.key) ?? foundOwner : null;
@@ -219,6 +236,7 @@ export function measureStudio(): StudioItem[] {
   type Field = { el: HTMLElement; box: HTMLElement; owner: Owner; sectionId: string; path: string; media: string | null };
   const fields: Field[] = [];
   document.querySelectorAll<HTMLElement>("[data-edit], [data-edit-media]").forEach((el) => {
+    if (inRegion(el)) return;
     const foundOwner = ownerOf(el);
     const owner = foundOwner ? owners.find(o => o.key === foundOwner.key) ?? foundOwner : null;
     if (!owner || inTreeNode(el, owner)) return;
@@ -297,7 +315,7 @@ export function measureStudio(): StudioItem[] {
       items.push({ kind: "auto", owner: owner.key, n: i, tag, ...(target ? { target } : {}), ...(label ? { label } : {}), ...(within ? { within } : {}), rect });
     }
   }
-  const deepOwners: PartOwner[] = [...nativeOwners, ...owners];
+  const deepOwners: PartOwner[] = [...nativeOwners, ...owners, ...regionOwners];
   const ownersByKey = new Map(deepOwners.map(owner => [owner.key, owner]));
   for (const part of collectSelectionParts(deepOwners, keyOf, shown)) {
     const rect = rectOf(part.el);
@@ -305,7 +323,7 @@ export function measureStudio(): StudioItem[] {
     const retained = owner?.retained?.has(part.target);
     if ((rect.w < 3 || rect.h < 3 || !shown(part.el, owner?.el ?? part.el)) && !retained) continue;
     pickElements.set(part.el, partId(part.owner, part.key));
-    items.push({ kind: "detail", owner: part.owner, key: part.key, target: part.target, lookKind: part.kind, ...(part.label ? { label: part.label } : {}), ...(part.name ? { name: part.name } : {}), count: part.count, ...(part.within ? { within: part.within } : {}), rect, ...(part.el instanceof HTMLElement && rect.w > 0 && rect.h > 0 && rect.y < scrollY + innerHeight + 300 && rect.y + rect.h > scrollY - 300 ? { geometry: nodeGeometry(part.el, planes) } : {}) });
+    items.push({ kind: "detail", owner: part.owner, key: part.key, target: part.target, lookKind: part.kind, ...(part.propPath ? { propPath: part.propPath, ...(part.propLine !== undefined ? { propLine: part.propLine } : {}) } : {}), ...(part.text !== undefined ? { text: part.text } : {}), ...(part.label ? { label: part.label } : {}), ...(part.name ? { name: part.name } : {}), count: part.count, ...(part.within ? { within: part.within } : {}), rect, ...(part.el instanceof HTMLElement && rect.w > 0 && rect.h > 0 && rect.y < scrollY + innerHeight + 300 && rect.y + rect.h > scrollY - 300 ? { geometry: nodeGeometry(part.el, planes) } : {}) });
   }
   return items;
 }
@@ -400,7 +418,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
     };
     // Writing a text in place: the editor sends the current words; Enter (Ctrl+Enter for a
     // text of several lines) or leaving the field keeps them, Esc puts the old ones back.
-    let editing: { el: HTMLElement; before: string; style: string | null; sectionId: string; path: string; done: boolean } | null = null;
+    let editing: { el: HTMLElement; before: string; style: string | null; sectionId: string; path: string; part?: { nodeId: string; target: string; line?: number; lang: string }; done: boolean } | null = null;
     const finish = (keep: boolean) => {
       const e = editing;
       if (!e || e.done) return;
@@ -408,20 +426,19 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       editing = null;
       const value = e.el.innerText.replace(/\u00a0/g, " ").replace(/\s+$/, "");
       e.el.removeAttribute("contenteditable");
-      if (!keep) {
-        e.el.innerHTML = e.before;
-        if (e.style === null) e.el.removeAttribute("style");
-        else e.el.setAttribute("style", e.style);
-      }
-      send(keep ? { type: "textEdited", sectionId: e.sectionId, path: e.path, value } : { type: "textCancelled", sectionId: e.sectionId, path: e.path });
+      if (!keep) e.el.innerHTML = e.before;
+      if (e.style === null) e.el.removeAttribute("style");
+      else e.el.setAttribute("style", e.style);
+      send(e.part ? { type: keep ? "partEdited" : "partCancelled", ...e.part, path: e.path, value } : keep ? { type: "textEdited", sectionId: e.sectionId, path: e.path, value } : { type: "textCancelled", sectionId: e.sectionId, path: e.path });
       soon();
     };
     // `value` is the field as saved; null = a field still showing the shop's own words (start from what's shown).
-    const startEdit = (sectionId: string, path: string, value: string | null) => {
+    const startEdit = (sectionId: string, path: string, value: string | null, part?: { nodeId: string; target: string; line?: number; lang: string }) => {
       finish(true);
-      const el = fieldElement(sectionId, path);
-      if (!el) return send({ type: "textCancelled", sectionId, path });
-      editing = { el, before: el.innerHTML, style: el.getAttribute("style"), sectionId, path, done: false };
+      const selector = part ? lookSelector(`n:${part.nodeId}/${part.target}`) : null;
+      const el = part ? selector ? document.querySelector<HTMLElement>(selector) : null : fieldElement(sectionId, path);
+      if (!el || part && el.querySelector("a,button,input,select,textarea,img,svg,canvas,video,iframe,[data-tree-node]")) return send(part ? { type: "partCancelled", ...part, path } : { type: "textCancelled", sectionId, path });
+      editing = { el, before: el.innerHTML, style: el.getAttribute("style"), sectionId, path, ...(part ? { part } : {}), done: false };
       const lines = el.hasAttribute("data-edit-lines");
       // A title of several lines draws each line in its own span: one line each.
       const shown = lines && el.children.length > 1 ? Array.from(el.children, (c) => (c as HTMLElement).innerText.trim()).filter(Boolean).join("\n") : el.innerText;
@@ -615,11 +632,17 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       const target = (e.data as { target?: unknown }).target;
       if (d.type === "previewLook" && (d.nodeId || typeof target === "string")) {
         letGo();
+        if ((e.data as { vars?: unknown }).vars === null) { restoreLookPreviews(); return now(); }
         const sel = typeof target === "string" ? lookSelector(target) : null;
         const els = d.nodeId ? [document.querySelector<HTMLElement>(`[data-tree-node="${CSS.escape(d.nodeId)}"]`)] : sel ? Array.from(document.querySelectorAll<HTMLElement>(sel)) : [];
         const vars = (e.data as { vars?: Record<string, unknown> }).vars ?? {};
         for (const el of els) {
           if (!el) continue;
+          if ((e.data as { reset?: boolean }).reset) for (const declaration of TREE_TRANSFORM_REST.split(";")) {
+            const colon = declaration.indexOf(":");
+            if (colon > 0) previewProperty(el, declaration.slice(0, colon), declaration.slice(colon + 1));
+          }
+          if ((e.data as { inlineBox?: boolean }).inlineBox) previewProperty(el, "display", "inline-block");
           previewProperty(el, "transform", TREE_TRANSFORM);
           for (const [k, v] of Object.entries(vars)) {
             if (k === "opacity" && typeof v === "number" && v >= 0 && v <= 1) previewProperty(el, k, String(v));
@@ -659,6 +682,11 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         return now();
       }
       if (d.type === "editText" && d.sectionId && d.path) return startEdit(d.sectionId, d.path, typeof d.value === "string" ? d.value : null);
+      if (d.type === "editPart" && e.source === window.parent && d.nodeId && d.path) {
+        const part = e.data as { target?: unknown; line?: unknown; lang?: unknown };
+        if (typeof part.target !== "string" || !/^(ar|en|he)$/.test(String(part.lang)) || d.path.length > 120 || !/^[A-Za-z][A-Za-z0-9_-]*(?:\.(?:[A-Za-z][A-Za-z0-9_-]*|0|[1-9][0-9]{0,2})){0,9}$/.test(d.path)) return;
+        return startEdit("", d.path, typeof d.value === "string" ? d.value : null, { nodeId: d.nodeId, target: part.target, lang: String(part.lang), ...(Number.isInteger(part.line) ? { line: part.line as number } : {}) });
+      }
       if (d.type === "editNode" && d.nodeId) return startNodeEdit(d.nodeId, (e.data as { lines?: unknown }).lines === true, (e.data as { linkable?: unknown }).linkable === true);
       if (d.type === "stopEdit") {
         finishNode(true);

@@ -260,6 +260,7 @@ export const sliderAspect = (v: unknown) => (typeof v === "string" && /^[1-9]\d?
 export function declarations(s: ScreenStyle | undefined, type: string): string[] {
   if (!s || typeof s !== "object") return [];
   const d: string[] = [];
+  if (s.inlineBox === true) d.push("display:inline-block");
   const push = (prop: string, v: string | number | undefined, unit = "") => {
     if (v !== undefined) d.push(`${prop}:${v}${unit}`);
   };

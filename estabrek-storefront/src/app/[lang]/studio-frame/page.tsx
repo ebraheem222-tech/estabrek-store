@@ -37,6 +37,7 @@ export default async function StudioFrame({ params, searchParams }: { params?: {
       <style dangerouslySetInnerHTML={{ __html: EMPTY_PLACES }} />
       {/* The home looks as the home does in the editor (StorefrontChrome reads this). */}
       {(page.slug || "/") === "/" ? <div hidden data-studio-home="" /> : null}
+      <div hidden data-studio-document-kind={(page as { kind?: string }).kind === "block" || /^\/__(block|design)\//.test(page.slug || "") ? "block" : "page"} />
       {body}
       <StudioViewBridge origins={studioOrigins()} pageId={page.id} lang={lang} viewVersion={randomUUID()} viewRequest={viewRequest} />
     </>

@@ -379,7 +379,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       if (!shown.length && !title) return null;
       return (
         <div className={cls(node)} {...mark}>
-          {title ? <h2 className="pt-block-title">{title}</h2> : null}
+          {title ? <h2 data-pt-field="title" className="pt-block-title">{title}</h2> : null}
           <div className={p.layout === "row" ? "pt-products-row" : "pt-products-grid"} style={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 6 ? ({ "--pt-cols": String(p.columns) } as Record<string, string>) : undefined}>
             <CardDesignScope value={p.cardDesign}>{shown.map((id) => <div key={id} className={`pt-card pt-card-${["bordered", "shadow", "soft", "lift"].includes(p.card) ? p.card : "plain"}`}>{ctx.renderProductCard?.(id)}</div>)}</CardDesignScope>
           </div>
@@ -395,7 +395,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       if (!shown.length) return null;
       return (
         <div className={cls(node)} {...mark}>
-          {title ? <h2 className="pt-block-title">{title}</h2> : null}
+          {title ? <h2 data-pt-field="title" className="pt-block-title">{title}</h2> : null}
           <div className={`pt-tiles pt-tiles-${["square", "circle", "overlay", "pill", "banner"].includes(p.look) ? p.look : "tall"}`} style={typeof p.columns === "number" && p.columns >= 1 && p.columns <= 6 ? ({ "--pt-cols": String(p.columns) } as Record<string, string>) : undefined}>
             {shown.map((c) => {
               const img = safeSrc(c.iconUrl);

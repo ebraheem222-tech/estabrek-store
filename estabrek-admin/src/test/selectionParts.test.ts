@@ -40,6 +40,21 @@ test("a complex native owner cannot claim the root of a nested native object", (
   expect(parts.some(part => part.el === child || child.contains(part.el))).toBe(false);
   expect(parts.find(part => part.label === "Outer text")).toBeDefined();
 });
+test("a writable legacy text or button keeps ownership of its formatted descendants", () => {
+  document.body.innerHTML = '<section id="owner"><a id="button"><span><strong>Editable label</strong></span></a><h2 id="heading"><em>Editable title</em></h2><p>Other text</p></section>';
+  const owner = document.querySelector("#owner")!, button = document.querySelector("#button")!, heading = document.querySelector("#heading")!;
+  const seeds = new Map([[button, "f:primaryButton.label"], [heading, "f:title"]]);
+  const parts = collectSelectionParts([{ key: "s:old", el: owner }], seeds);
+  expect(parts.some(p => button.contains(p.el) || heading.contains(p.el))).toBe(false);
+  expect(parts.find(p => p.label === "Other text")).toBeDefined();
+});
+test("renderer source identities survive selection and keep formatted words as one editable object", () => {
+  document.body.innerHTML = '<div id="owner"><p data-pt-field="items.2.label"><strong>Same words</strong></p><p>Same words</p></div>';
+  const parts = collectSelectionParts([{ key: "n:widget", el: document.querySelector("#owner")! }]);
+  expect(parts.find(p => p.propPath === "items.2.label")).toMatchObject({ text: "Same words" });
+  expect(parts.some(p => p.el.localName === "strong")).toBe(false);
+  expect(parts.find(p => p.key === "~p.2")?.propPath).toBeUndefined();
+});
 test("hidden helpers, animation text fragments and hidden inputs are excluded", () => {
   document.body.innerHTML = '<div id="widget"><div hidden><button>Hidden</button></div><input type="hidden"/><style></style><span class="pt-fx">effect</span><p>Visible</p></div>';
   const parts = collectSelectionParts([{ key: "n:widget", el: document.querySelector("#widget")! }]);

@@ -43,6 +43,8 @@ import { PagePublicationStatus } from "./PagePublicationStatus";
 import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
 import { VisualControlsPanel } from "./VisualControlsPanel";
 import { candidateStack, cycleCandidate, PointSelection } from "./selectionPicking";
+import { partDragOffset } from "./partDrag";
+import { contentBinding, replaceContent, bindingLink } from "./partContent";
 import { PartSizeFields } from "./PartSizeFields";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
@@ -85,7 +87,7 @@ import { stateOps, stateView, type StateChoice } from "./states";
 import { SvgPanel } from "./SvgPanel";
 import { SectionObjectsPanel } from "./SectionObjectsPanel";
 import { Product360Panel } from "./Product360Panel";
-import { motionOp, placeFor, placedOn, shownLook, togglePreset, type Motion } from "./look";
+import { motionOp, placeFor, placedOn, previewOf, shownLook, togglePreset, type Motion } from "./look";
 import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./MultiPanel";
 import { Guides, SelectionHandles } from "./CanvasHandles";
 import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange } from "./handles";
@@ -153,7 +155,8 @@ const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
  */
 /** A press on the canvas: what it grabbed (and the others selected with it), where they started, a free drag's state. */
 type PlaneItem={id:string;frame:Plane;look:Record<string,unknown>;parentId:string;free:boolean};
-type Down = { pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
+type PartMove = { vars: Record<string, string | number>; inlineBox?: boolean; target: string; kind: PagesAPI.LookKind; parent: Plane; start: Pt; screen: PagesAPI.TreeScreen; style: Record<string, unknown> };
+type Down = { partMove?: PartMove; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
 /** What a freely placed element can be dragged into. */
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
@@ -166,6 +169,12 @@ const shopOrigin = () => {
 };
 
 export default function StudioPage() {
+  const { id = "" } = useParams();
+  return <StudioDocument key={id} />;
+}
+
+/** A document owns its preview ticket, history and pending editor gestures. */
+function StudioDocument() {
   const { id = "" } = useParams();
   // The page a saved block was opened from (its "edit the block").
   const fromPage = new URLSearchParams(window.location.search).get("from");
@@ -380,6 +389,11 @@ export default function StudioPage() {
         setEditing(null);
         canvasRef.current?.focus({ preventScroll: true });
         if (d.type === "nodeEdited") onNodeEdited.current(m.nodeId, String(m.value ?? ""));
+      } else if (d.type === "partEdited" || d.type === "partCancelled") {
+        const m = d as unknown as { nodeId: string; path: string; line?: number; lang: Lang; value?: string };
+        setEditing(null);
+        canvasRef.current?.focus({ preventScroll: true });
+        if (d.type === "partEdited") onPartEdited.current(m.nodeId, m.path, m.line, m.lang, String(m.value ?? ""));
       } else if (d.type === "key") {
         onFrameKey.current((d as unknown as { action?: string }).action);
       }
@@ -436,6 +450,7 @@ export default function StudioPage() {
     setMore([]);
     if (!reveal || !sid || !index) return;
     const x = extras.get(sid);
+    if (x?.kind === "region") { const shape = shapeOf(sid); if (shape && layout) send({ type: "scrollTo", y: Math.max(0, (shape.box.y - pan.y) / zoom + layout.scroll.y - dev.h / 3) }); return; }
     if (x?.kind === "slot") return send({ type: "reveal", owner: x.owner, sectionId: x.sectionId, path: x.path });
     if (x?.kind === "part") return send({ type: "reveal", owner: x.owner, part: x.name, n: x.n });
     if (x?.kind === "detail") { const shape = shapeOf(sid); if (shape && layout) send({ type: "scrollTo", y: Math.max(0, (shape.box.y - pan.y) / zoom + layout.scroll.y - dev.h / 3) }); return; }
@@ -555,6 +570,25 @@ export default function StudioPage() {
     const rich = Object.values(words).some((w) => RICH_TAG.test(w));
     void change(tr("الكلام", "The words"), [{ op: "setProps", nodeId, props: { ...n.props, [field]: words, rich: rich || undefined } }]);
   };
+  const partContentOf = (sid: string | null) => {
+    const part = sid ? extras.get(sid) : undefined;
+    if (part?.kind !== "detail" || !part.owner.startsWith("n:") || typeof part.text !== "string") return null;
+    const owner = index?.nodes.get(part.owner.slice(2))?.node;
+    const binding = owner ? contentBinding(owner.props, part.text, shopLang, main, part.propPath, part.propLine) : null;
+    return owner && binding ? { part, owner, binding } : null;
+  };
+  const savePartContent = (sid: string | null, value: string) => {
+    const bound = partContentOf(sid); if (!bound) return;
+    const props = replaceContent(bound.owner.props, bound.binding, shopLang, value, main);
+    if (props) void change(tr("الكلام", "The words"), [{ op: "setProps", nodeId: bound.owner.id, props }]);
+  };
+  const onPartEdited = useRef<(nodeId: string, path: string, line: number | undefined, lang: Lang, value: string) => void>(() => {});
+  onPartEdited.current = (nodeId, path, line, lang, value) => {
+    const owner = index?.nodes.get(nodeId)?.node;
+    if (!owner || !["ar", "en", "he"].includes(lang) || typeof path !== "string") return;
+    const props = replaceContent(owner.props, { path: parsePath(path), line, value: "" }, lang, value, main);
+    if (props) void change(tr("الكلام", "The words"), [{ op: "setProps", nodeId, props }]);
+  };
   /** Writing a heading's, text's or button's words on the page (with its formatting bar). */
   const startNodeText = (sid: string | null) => {
     const n = sid ? index?.nodes.get(sid)?.node : undefined;
@@ -564,6 +598,13 @@ export default function StudioPage() {
     return true;
   };
   const startText = (sid: string | null) => {
+    pointSelection.current.cancel();
+    const bound = partContentOf(sid);
+    if (bound) {
+      setEditing({ nodeId: bound.owner.id });
+      send({ type: "editPart", nodeId: bound.owner.id, target: bound.part.target, path: bound.binding.path.join("."), line: bound.binding.line, lang: shopLang, value: bound.binding.value });
+      return true;
+    }
     if (startNodeText(sid)) return true;
     const x = sid ? extras.get(sid) : undefined;
     if (!x || x.kind !== "slot" || x.edit === "media" || x.edit === "list") return false;
@@ -663,12 +704,20 @@ export default function StudioPage() {
 
   /* ---------------------------------------------------------- pointer */
 
+  const movePart = (d: Down, point: Pt) => {
+    if (!d.partMove || !layout) return null;
+    const documentPoint = (p: Pt) => ({ x: (p.x - pan.x) / zoom + layout.scroll.x, y: (p.y - pan.y) / zoom + layout.scroll.y });
+    const offset = partDragOffset(d.partMove.parent, documentPoint(d.p), documentPoint(point), d.partMove.start);
+    if (offset) send({ type: "previewLook", reset: true, inlineBox: d.partMove.inlineBox, target: d.partMove.target, vars: { ...d.partMove.vars, ...previewOf("moveX", offset.x), ...previewOf("moveY", offset.y) } });
+    return offset;
+  };
   const onPointerMove = (e: ReactPointerEvent) => {
     const p = local(e);
     const d = down.current;
     if (d && d.pointerId !== e.pointerId) return;
     if (d) {
       if (Math.hypot(p.x - d.p.x, p.y - d.p.y) > 4) d.moved = true;
+      if (d.partMove && d.moved) { movePart(d, p); return; }
       if (d.grab && d.moved) {
         // Placed freely: it moves over its holder, meets what's beside it, or goes into another place.
         if (d.free) return moveFree(d, p, e);
@@ -707,7 +756,8 @@ export default function StudioPage() {
     // Dragging a selected element (or from inside it) moves it, and the others selected with it; sections move in the layers. With Shift a box is drawn instead.
     const movable = (x: string | null) => Boolean(x && isFree(nodeOf(x)?.type) && !["section", "cell", "columns", "page"].includes(nodeOf(x)?.type ?? "") && !lockedIn.has(x) && (directGeometrySafe(x) || canvasMode === "flow" && !placedOn(nodeOf(x)!, screen)));
     const hit = !panning && !e.shiftKey && e.button === 0 ? pickAt(grid.near(p), p) : null;
-    const grab = movable(selected) && hit?.id === selected ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && hit?.id === c) ?? null : !touch && hit && movable(hit.id) ? hit.id : null;
+    const hitPath = hit && index ? pathTo(index, hit.id, up) : [];
+    const grab = movable(selected) && selected && hitPath.includes(selected) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && hitPath.includes(c)) ?? null : !touch && hit && movable(hit.id) ? hit.id : null;
     // What's inside another selected element goes with it.
     const group = grab && chosen.length > 1 && chosen.includes(grab) && index ? loose.filter((x) => movable(x) && !loose.some((y) => y !== x && pathTo(index, x, up).includes(y))) : grab ? [grab] : [];
     const starts = new Map(group.map((x) => [x, shapeOf(x)?.box] as const).filter((v): v is [string, Box] => Boolean(v[1])));
@@ -716,13 +766,31 @@ export default function StudioPage() {
     const free=grab?freeDragOf(grab,group):undefined;
     const analytic=grab&&free?analyticDragOf(grab,free.ids,p):undefined;
     if(free&&free.ids.some(needsPlaneMove)&&!analytic)return;
-    down.current = { pointerId: e.pointerId, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic };
+    let partMove: PartMove | undefined;
+    if (!grab && !panning && !e.shiftKey && selected && hitPath.includes(selected) && lookTarget && selExtra?.kind === "detail" && styleState === "normal") {
+      const measured = layout?.items.find(item => item.kind === "detail" && item.owner === selExtra.owner && item.key === selExtra.key);
+      const parent = measured?.kind === "detail" ? measured.geometry?.parentPlane : undefined;
+      if (parent && measured?.kind === "detail" && measured.geometry?.partMoveSafe && !shownLook(lookSel!, screen, "layer") && inverse3(parent.matrix)) {
+        const vars = Object.assign({}, ...["rotateX", "rotateY", "rotateZ", "scale", "perspective"].map(key => {
+          const value = shownLook(lookSel!, screen, key); return typeof value === "number" ? previewOf(key, value) : {};
+        }));
+        partMove = { vars, inlineBox: measured.geometry.inline, target: lookTarget.target, kind: lookTarget.kind, parent, start: { x: Number(shownLook(lookSel!, screen, "moveX") ?? 0), y: Number(shownLook(lookSel!, screen, "moveY") ?? 0) }, screen, style: { ...((lookSel?.style?.[screen] ?? {}) as Record<string, unknown>) } };
+        if (motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
+      }
+    }
+    down.current = { pointerId: e.pointerId, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic, partMove };
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
     const d = down.current;
     if (d && d.pointerId !== e.pointerId) return;
     down.current = null;
+    if (d?.partMove && d.moved) {
+      const offset = movePart(d, local(e));
+      if (offset) void run(tr("المكان", "Place"), [{ op: "setLookStyle", target: d.partMove.target, kind: d.partMove.kind, screen: d.partMove.screen, style: { ...d.partMove.style, ...(d.partMove.inlineBox ? { inlineBox: true } : {}), moveX: offset.x, moveY: offset.y } }]).finally(() => send({ type: "previewLook", target: d.partMove!.target, vars: null }));
+      else send({ type: "previewLook", target: d.partMove.target, vars: null });
+      return;
+    }
     if (marquee) {
       const picked = index ? inBox(boxOf(marquee.a, marquee.b), shapes, index, (x) => lockedIn.has(x)) : [];
       setMarquee(null);
@@ -875,7 +943,7 @@ export default function StudioPage() {
       }
       if (e.key === "Escape") {
         pointSelection.current.cancel();
-        if (down.current?.grab && down.current.moved) return cancelDrag();
+        if ((down.current?.grab || down.current?.partMove) && down.current.moved) return cancelDrag();
         if (themeOpen) return setThemeOpen(false);
         if (more.length) return setMore([]);
         setSelected((s) => parentOf(s));
@@ -937,6 +1005,7 @@ export default function StudioPage() {
 
   const label = (sid: string) => {
     const x = extras.get(sid);
+    if (x?.kind === "region") return x.region === "header" ? tr("الهيدر", "Header") : tr("الفوتر", "Footer");
     if (x?.kind === "block" || sid.startsWith("block:")) return `${tr("مشهد", "Scene")} · ${BLOCK_LABEL[x?.kind === "block" ? x.block : sid.slice(6)]?.() ?? sid}`;
     if (x?.kind === "part") return x.count > 1 ? `${partLabel(x.name)} ${x.n + 1}` : partLabel(x.name);
     if (x?.kind === "detail") return x.name ? partLabel(x.name) : x.label ? `${typeLabel(x.lookKind)} · ${x.label}` : typeLabel(x.lookKind === "box" ? "section" : x.lookKind);
@@ -996,6 +1065,9 @@ export default function StudioPage() {
   const selNode = selected ? index?.nodes.get(selected) : undefined;
   const selShape = shapeOf(selected);
   const selExtra = selected ? extras.get(selected) : undefined;
+  const selectedRegion = selExtra?.kind === "region" ? selExtra.region : selExtra?.kind === "detail" && /^r:(header|footer)$/.test(selExtra.owner) ? selExtra.owner.slice(2) as "header" | "footer" : null;
+  const partContent = partContentOf(selected);
+  const partHref = partContent ? bindingLink(partContent.owner.props, partContent.binding) : null;
   const selBlock = selExtra?.kind === "block" ? selExtra.block : selNode?.node.type === "roseBlock" ? String(selNode.node.props.block) : selected?.startsWith("block:") ? selected.slice(6) : null;
   const selSection = selNode?.node.type === "legacy" ? sectionOf(String(selNode.node.props.sectionId)) : undefined;
 
@@ -1004,7 +1076,7 @@ export default function StudioPage() {
   /** What's selected as a look's target (a field or marked piece of an old section or scene, or the whole of one). */
   const lookTarget: { target: string; kind: PagesAPI.LookKind } | null = (() => {
     const x = selExtra;
-    if (x?.kind === "detail") return { target: `${x.owner}/${x.target}`, kind: x.lookKind };
+    if (x?.kind === "detail" && !x.owner.startsWith("r:")) return { target: `${x.owner}/${x.target}`, kind: x.lookKind };
     if (x?.kind === "auto" && x.target) return { target: `${x.owner}/${x.target}`, kind: /^(img|picture)$/.test(x.tag) ? "image" : x.tag === "video" ? "video" : /^(button|a)$/.test(x.tag) ? "button" : /^(h[1-6]|p|blockquote|li)$/.test(x.tag) ? "text" : "box" };
     // A scene's words are one look for every language (…title, not …title.en).
     if (x?.kind === "slot") return { target: `${x.owner}/${x.path.replace(/\.(ar|en|he)$/, "")}`, kind: x.edit === "media" ? (x.media === "video" ? "video" : "image") : x.link ? "button" : "text" };
@@ -1734,6 +1806,7 @@ export default function StudioPage() {
   };
   /** A drag let go of or given up: the frame shows things where they are again. */
   const unpreview = (d: Down) => {
+    if (d.partMove) send({ type: "previewLook", target: d.partMove.target, vars: null });
     if(d.analytic)return;
     for (const x of [...(d.free?.ids ?? []), ...(d.free?.pushed.keys() ?? [])]) previewMove(x, { x: 0, y: 0 });
   };
@@ -1923,6 +1996,27 @@ export default function StudioPage() {
           <dd dir="ltr" className="text-end">{selShape ? `${Math.round(selShape.box.w / zoom)} × ${Math.round(selShape.box.h / zoom)}` : "—"}</dd>
         </dl>
 
+        {selectedRegion ? <div className="space-y-3 rounded-xl border border-accent-400/30 p-3" data-testid="studio-region" data-region={selectedRegion}>
+          <p className="text-xs text-white/70">{tr("الهيدر والفوتر مشتركان بين كل صفحات المتجر. التعديل يتم من محرر الجزء نفسه.", "Header and footer are shared across the store. Edit their own document to update every page.")}</p>
+          <Link data-testid="studio-region-edit" className="block rounded-lg bg-accent-500 px-3 py-2 text-center text-xs text-white" to={ownedDesign?.mode === "cms" && ownedDesign[`${selectedRegion}Id`] ? `/studio/${encodeURIComponent(ownedDesign[`${selectedRegion}Id`]!)}?from=${encodeURIComponent(id)}` : "/admin/settings"}>{tr("تعديل", "Edit")} · {selectedRegion === "header" ? tr("الهيدر", "Header") : tr("الفوتر", "Footer")}</Link>
+          <Link className="block text-xs text-accent-200" to="/admin/nav">{tr("قائمة روابط", "Menu of links")}</Link>
+        </div> : null}
+
+        {partContent ? <fieldset disabled={busy} className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-part-content">
+          <Field label={tr("النص", "Text")} value={partContent.binding.value} multiline={partContent.binding.line === undefined && partContent.part.lookKind === "text"} testId="studio-part-words" onSave={value => savePartContent(selected, value)} />
+          <button type="button" disabled={Boolean(editing)} className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs text-white" data-testid="studio-part-edit-text" onClick={() => startText(selected)}>{tr("كتابة النص مكانه", "Write the text in place")}</button>
+          {partHref ? <Field label={tr("الرابط", "Link")} value={partHref.value} testId="studio-part-href" onSave={value => {
+            const href = value.trim();
+            if (!/^(\/(?!\/)|#|https?:\/\/|mailto:|tel:)[^\s<>"'`\\]*$/i.test(href)) return;
+            const props = structuredClone(partContent.owner.props);
+            const parent = getPath(props, partHref.path.slice(0, -1));
+            if (parent && typeof parent === "object") {
+              (parent as Record<string, unknown>).href = href;
+              void change(tr("تعديل", "Edit"), [{ op: "setProps", nodeId: partContent.owner.id, props }]);
+            }
+          }} /> : null}
+        </fieldset> : null}
+
         {pageItemNode && ["section", "legacy", "roseBlock"].includes(pageItemNode.type) ? <SectionObjectsPanel
           node={pageItemNode} selected={selected} busy={busy}
           canAdd={kind => { const c = insertCtx((x) => `__${x}`); return Boolean(c && insertOps(c, pageItemNode.id, probe(kind), "inside")); }}
@@ -2004,6 +2098,7 @@ export default function StudioPage() {
         {/* A part of an old section or scene: its look and motion (all of its kind, for a marked piece). */}
         {lookSel && lookTarget ? (
           <div className="space-y-3" data-testid="studio-look-target" data-target={lookTarget.target}>
+            {selExtra?.kind === "detail" && layout?.items.some(item => item.kind === "detail" && item.owner === selExtra.owner && item.key === selExtra.key && item.geometry?.partMoveSafe === false) ? <p role="status" className="text-xs text-white/60">{tr("هذا التحويل غير قابل للتحرير المباشر حاليًا. استخدم إعدادات المكان والحجم من اللوحة.", "This transform currently needs the layout controls for position and size.")}</p> : null}
             {selExtra?.kind === "detail" || selExtra?.kind === "auto" ? <>
               <p className="text-[11px] text-white/60">{selExtra.kind === "detail" && selExtra.count > 1 ? tr(`هذا الجزء من تصميم متكرر. التعديل يطبّق على ${selExtra.count} عناصر مشابهة داخل هذا العنصر.`, "This template part changes all {0} matching objects inside this element.", [selExtra.count]) : tr("جزء داخلي من العنصر. تنسيقه محفوظ معه.", "An internal object. Its appearance is saved with its owner.")}</p>
               <button type="button" className="text-xs underline" data-testid="studio-part-owner" onClick={() => select(selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? index!.root, true)}>{tr("إعدادات العنصر الأصلي", "Owner settings")}</button>
@@ -2333,6 +2428,10 @@ export default function StudioPage() {
       <button type="button" onClick={() => pick(index!.root)} className={`flex w-full rounded-md px-2 py-1 text-start text-xs ${selected === index!.root ? "bg-accent-500/25 text-white" : "text-white/70 hover:bg-white/[0.04]"}`} data-testid="studio-layer" data-node={index!.root}>
         {typeLabel("page")}
       </button>
+      {[...extras].filter(([, extra]) => extra.kind === "region").filter(([sid]) => !layerMatch || layerMatch.has(sid)).map(([sid]) => <div key={sid}>
+        <button type="button" className={`w-full rounded-md px-3 py-2 text-start text-xs ${selected === sid ? "bg-accent-500/25" : "text-white/70"}`} data-testid="studio-layer" data-node={sid} onClick={() => pick(sid)}>{label(sid)}</button>
+        {selPath.includes(sid) || layerMatch ? pieceRows(sid, 1, pick) : null}
+      </div>)}
       {topItems.filter((sid) => !layerMatch || layerMatch.has(sid)).map((sid) => {
         const n = index!.nodes.get(sid)?.node;
         const sec = n?.type === "legacy" ? sectionOf(String(n.props.sectionId)) : undefined;
@@ -2601,7 +2700,7 @@ export default function StudioPage() {
           </div>
           <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
           <button type="button" disabled={!index} onClick={() => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); }} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
-          <button type="button" aria-pressed={deepSelection} className={`h-7 rounded-lg px-2 text-xs ${deepSelection ? "bg-accent-500/20" : ""}`} data-testid="studio-deep-selection" onClick={() => { pointSelection.current.cancel(); const next = !deepSelection; setDeepSelection(next); try { localStorage.setItem("studio.deepSelection", next ? "on" : "off"); } catch {} if (!next && selExtra?.kind === "detail") select(selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? null); }}>{tr("تحديد داخلي", "Deep selection")}</button>
+          <button type="button" aria-pressed={deepSelection} className={`h-7 rounded-lg px-2 text-xs ${deepSelection ? "bg-accent-500/20" : ""}`} data-testid="studio-deep-selection" onClick={() => { pointSelection.current.cancel(); const next = !deepSelection; setDeepSelection(next); try { localStorage.setItem("studio.deepSelection", next ? "on" : "off"); } catch {} if (!next && selExtra?.kind === "detail") select(selExtra.owner.startsWith("r:") ? `region:${selExtra.owner.slice(2)}` : selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? null); }}>{tr("تحديد داخلي", "Deep selection")}</button>
           <button type="button" disabled={!layout} className="h-7 rounded-lg px-2 text-xs" data-testid="studio-pick-objects" onClick={event => { const p = last.current?.p ?? (selShape ? { x: selShape.box.x + selShape.box.w / 2, y: selShape.box.y + selShape.box.h / 2 } : { x: frameBox.x + frameBox.w / 2, y: frameBox.y + 60 }); const r = event.currentTarget.getBoundingClientRect(); pickPoint(p, candidates => setMenu({ x: r.left, y: r.bottom + 4, candidates })); }}>{tr("اختيار عنصر", "Choose object")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
           {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
@@ -2661,7 +2760,7 @@ export default function StudioPage() {
             onDoubleClick={(e) => {
               const p = local(e);
               const at = inFrame(p) ? pickAt(grid.near(p), p) : null;
-              if (at && (extras.get(at.id)?.kind === "slot" || WRITABLE.has(index?.nodes.get(at.id)?.node.type ?? ""))) {
+              if (at) {
                 select(at.id);
                 startText(at.id);
               }

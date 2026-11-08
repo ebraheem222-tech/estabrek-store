@@ -133,7 +133,7 @@ function Header() {
           <Icon name="spark" width="11" height="11" />
         </span>
       </div>
-      <header className="atelier-header" dir={dirOf(lang)}>
+      <header data-studio-region="header" className="atelier-header" dir={dirOf(lang)}>
         <Brand />
         <nav
           className="atelier-desktop-nav"
@@ -318,7 +318,7 @@ function Footer() {
   const accountsOn = useOptionalAccount() !== null;
   if (store.footerEnabled === false) return null;
   return (
-    <footer className="atelier-footer" dir={dirOf(lang)}>
+    <footer data-studio-region="footer" className="atelier-footer" dir={dirOf(lang)}>
       <div className="footer-main">
         <div>
           <Brand />
@@ -399,6 +399,8 @@ export function StorefrontChrome({
   // The template gallery (app/[lang]/design-frame) shows a template on its own, with its own header and footer.
   const bare = /(^|\/)design-frame$/.test(pathname);
   const [studioHome, setStudioHome] = useState(false);
+  const [standalone, setStandalone] = useState(studio);
+  useEffect(() => setStandalone(studio && Boolean(document.querySelector('[data-studio-document-kind="block"]'))), [studio, pathname]);
   useEffect(() => setStudioHome(studio && Boolean(document.querySelector("[data-studio-home]"))), [studio, pathname]);
   const home = pathname === "/" || studioHome;
   useEffect(() => {
@@ -412,7 +414,7 @@ export function StorefrontChrome({
       delete document.documentElement.dataset.cinematicStorefront;
     };
   }, [enabled, home]);
-  if (bare || (!enabled && studio)) return <>{children}</>;
+  if (bare || studio && standalone) return <>{children}</>;
   if (!enabled)
     return (
       <>

@@ -31,3 +31,9 @@ test("each repeated published block keeps all of its validated part appearances"
   expect(looksOf(expanded as any)).toHaveLength(400);
   expect(treeCss(expanded as any)).toContain('data-tree-node="second_0"');
 });
+test("an explicitly moved inline part becomes a transformable box in published CSS", () => {
+  const draft = draftFromPage({ id: "p", sections: [], tree: tree(), format: 2 } as any);
+  const edited = applyOps(draft, [{ op: "setLookStyle", target: "n:shop/@card-name", kind: "text", screen: "base", style: { inlineBox: true, moveX: 35, moveY: 20 } }], { main: "en" });
+  expect(edited.tree.root.children![0].children![0].props.partLooks["@card-name"].style.base.inlineBox).toBe(true);
+  expect(treeCss(edited.tree as any)).toContain("display:inline-block");
+});

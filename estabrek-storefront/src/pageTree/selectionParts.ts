@@ -5,7 +5,7 @@ export const LOOK_TARGET_PATTERN = new RegExp(`^(?!n:[^/]+(?:$|/(?![@~])))(s|b|n
 const pathPattern = new RegExp(`^${DOM_PART_SOURCE}$`);
 export type PartKind = "text" | "button" | "image" | "video" | "box";
 export type PartOwner = { key: string; el: Element; atomic?: boolean; retained?: ReadonlySet<string>; semanticOnly?: boolean };
-export type SelectionPart = { el: Element; owner: string; key: string; target: string; kind: PartKind; label?: string; name?: string; within?: string; count: number };
+export type SelectionPart = { el: Element; owner: string; key: string; target: string; kind: PartKind; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; within?: string; count: number };
 export const partId = (owner: string, key: string) => `detail:${owner}:${key}`;
 export function domPartSelector(path: string): string | null {
   if (!pathPattern.test(path)) return null;
@@ -63,7 +63,10 @@ export function collectSelectionParts(owners: PartOwner[], seeds = new Map<Eleme
   const ownerByKey = new Map(owners.map(owner => [owner.key, owner]));
   const keys = new Map(seeds), out: SelectionPart[] = [];
   const belongs = (el: Element, owner: PartOwner) => {
-    for (let at: Element | null = el.parentElement; at; at = at.parentElement) if (ownerAt.has(at)) return at === owner.el;
+    for (let at: Element | null = el.parentElement; at; at = at.parentElement) {
+      if (ownerAt.has(at)) return at === owner.el;
+      if (seeds.get(at)?.startsWith("f:") || at.hasAttribute("data-pt-field")) return false;
+    }
     return false;
   };
   for (const owner of owners) {
@@ -78,8 +81,13 @@ export function collectSelectionParts(owners: PartOwner[], seeds = new Map<Eleme
       if (!owner.retained?.has(target) && (el.closest("[hidden],[inert]") || visible && !visible(el, owner.el))) continue;
       const text = el.getAttribute("aria-label") ?? el.getAttribute("alt") ?? el.getAttribute("title") ?? [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(" ");
       const label = text.replace(/\s+/g, " ").trim().slice(0, 60);
+      const kind = kindOf(el, name);
+      const source = el.getAttribute("data-pt-field") ?? "";
+      const propPath = source.length <= 120 && /^[A-Za-z][A-Za-z0-9_-]*(?:\.(?:[A-Za-z][A-Za-z0-9_-]*|0|[1-9][0-9]{0,2})){0,9}$/.test(source) ? source : undefined;
+      const sourceLine = el.getAttribute("data-pt-field-line"), propLine = sourceLine !== null && /^\d{1,3}$/.test(sourceLine) ? Number(sourceLine) : undefined;
+      const content = (kind === "text" || kind === "button") && !el.matches("input,select,textarea") && !el.querySelector("a,button,input,select,textarea,img,svg,canvas,video,iframe,[data-tree-node]") ? (el.textContent ?? "").slice(0, 6000) : undefined;
       keys.set(el, `d:${key}`);
-      out.push({ el, owner: owner.key, key, target, kind: kindOf(el, name), ...(label ? { label } : {}), ...(name ? { name } : {}), count: 1 });
+      out.push({ el, owner: owner.key, key, target, kind, ...(propPath ? { propPath, ...(propLine !== undefined ? { propLine } : {}) } : {}), ...(content !== undefined ? { text: content } : {}), ...(label ? { label } : {}), ...(name ? { name } : {}), count: 1 });
     }
   }
   const counts = new Map<string, number>();

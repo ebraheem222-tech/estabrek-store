@@ -219,6 +219,7 @@ export const ScreenStyle = z.object({
   pad: box(0).optional(), // top, end, bottom, start (follows the text direction)
   margin: box(-400).optional(),
   width: length.optional(),
+  inlineBox: z.boolean().optional(),
   maxWidth: length.optional(),
   height: length.optional(),
   minHeight: length.optional(),

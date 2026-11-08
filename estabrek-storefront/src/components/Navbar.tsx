@@ -1059,7 +1059,7 @@ export function Navbar({ site, primaryMenu, header, cmsNav }: { site: SitePublic
   ) : null;
 
   return (
-    <header className={headerClassName}>
+    <header data-studio-region="header" className={headerClassName}>
       <div className={"mx-auto max-w-6xl px-4 " + padCls}>
         {preset === "centered" ? (
           <div className="space-y-3">

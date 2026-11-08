@@ -865,7 +865,11 @@ http
       let body = "";
       req.on("data", (c) => (body += c));
       req.on("end", () => {
-        globalThis.previewDraft = body ? JSON.parse(body) : null;
+        const incoming = body ? JSON.parse(body) : null;
+        if (incoming?.previewToken && /^good-owned-(header|footer)$/.test(incoming.previewToken)) {
+          globalThis.sharedPreviewDrafts ??= {};
+          globalThis.sharedPreviewDrafts[incoming.previewToken] = incoming;
+        } else globalThis.previewDraft = incoming;
         res.end("{}");
       });
       return;
@@ -1361,8 +1365,9 @@ window.send=function(m){document.getElementById("f").contentWindow.postMessage(O
       if (token === "commerce-preview") return res.end(JSON.stringify(commercePage("cart")));
       if (token === "good") return res.end(JSON.stringify(treeDemo));
       // The admin's draft as the editor's end-to-end check posts it (/__test/preview-draft).
-      if (token === "good-draft" && globalThis.previewDraft) {
-        const d = globalThis.previewDraft;
+      const selectedDraft = token === "good-draft" ? globalThis.previewDraft : globalThis.sharedPreviewDrafts?.[token];
+      if (selectedDraft) {
+        const d = selectedDraft;
         const locale = new URL(req.url, "http://localhost").searchParams.get("locale") ?? "ar";
         const over = (base, tr) => {
           if (!tr || typeof tr !== "object" || Array.isArray(tr) || !base || typeof base !== "object" || Array.isArray(base)) return tr ?? base;

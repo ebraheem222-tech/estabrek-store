@@ -74,3 +74,16 @@ it("keeps native detail hierarchy and transforms its geometry into canvas coordi
   expect(shapes.find(s => s.id === id)?.box).toEqual({ x: 15, y: 25, w: 90, h: 15 });
   expect(extras.get(id)).toMatchObject({ kind: "detail", target: "@card-name", count: 3 });
 });
+it("global header/footer and their parts stay separate from the page document", () => {
+  const index = indexTree({ version: 1, root: { id: "page", type: "page", props: {}, children: [] } });
+  const rect = { x: 0, y: 0, w: 500, h: 100 };
+  const layout = { pageId: "p", lang: "en", dir: "ltr", viewport: { w: 1280, h: 800 }, scroll: { x: 0, y: 0 }, doc: { w: 1280, h: 2000 }, items: [
+    { kind: "region", region: "header", rect },
+    { kind: "detail", owner: "r:header", key: "~nav.1.a.1", target: "~nav.1.a.1", lookKind: "button", text: "Shop", count: 1, rect },
+    { kind: "region", region: "footer", rect: { ...rect, y: 1500 } },
+  ] } as any;
+  const { extras, up } = shapesOf(index, layout, { x: 0, y: 0 }, 1);
+  expect(extras.get("region:header")).toEqual({ kind: "region", region: "header" });
+  expect(pathTo(index, "detail:r:header:~nav.1.a.1", up)).toEqual(["page", "region:header", "detail:r:header:~nav.1.a.1"]);
+  expect(extras.get("region:footer")).toEqual({ kind: "region", region: "footer" });
+});

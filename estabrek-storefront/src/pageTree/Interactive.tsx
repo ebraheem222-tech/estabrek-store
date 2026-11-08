@@ -9,7 +9,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
 
 /* -------------------------------------------------------------------- tabs */
 
-export type TabItem = { label: string; text: string; image?: string | null };
+export type TabItem = { sourceIndex?: number; label: string; text: string; image?: string | null };
 export function TabsView({ items, look }: { items: TabItem[]; look: string }) {
   const [at, setAt] = useState(0);
   const base = useId().replace(/[^\w-]/g, "");
@@ -35,7 +35,7 @@ export function TabsView({ items, look }: { items: TabItem[]; look: string }) {
       <div className="pt-tabs-list" role="tablist" onKeyDown={keys}>
         {items.map((t, i) => (
           <button
-            key={i} ref={(el) => void (tabs.current[i] = el)} type="button" role="tab" id={`${base}-t${i}`} aria-selected={at === i} aria-controls={`${base}-p${i}`}
+            key={i} data-pt-field={t.sourceIndex !== undefined ? `items.${t.sourceIndex}.label` : undefined} ref={(el) => void (tabs.current[i] = el)} type="button" role="tab" id={`${base}-t${i}`} aria-selected={at === i} aria-controls={`${base}-p${i}`}
             tabIndex={at === i ? 0 : -1} className="pt-tab" onClick={() => setAt(i)}
           >
             {t.label}
@@ -45,7 +45,7 @@ export function TabsView({ items, look }: { items: TabItem[]; look: string }) {
       {items.map((t, i) => (
         <div key={i} role="tabpanel" id={`${base}-p${i}`} aria-labelledby={`${base}-t${i}`} hidden={at !== i} className="pt-tab-panel" tabIndex={0}>
           {t.image ? <img src={t.image} alt="" loading="lazy" /> : null}
-          <div className="pt-tab-text">{t.text}</div>
+          <div data-pt-field={t.sourceIndex !== undefined ? `items.${t.sourceIndex}.text` : undefined} className="pt-tab-text">{t.text}</div>
         </div>
       ))}
     </div>
@@ -63,7 +63,7 @@ export function CountdownView({ until, done, look, words }: { until: string; don
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, [end]);
-  if (left === 0) return done ? <div className="pt-count-done">{done}</div> : null;
+  if (left === 0) return done ? <div data-pt-field="done" className="pt-count-done">{done}</div> : null;
   const s = left === null ? null : Math.floor(left / 1000);
   const parts = s === null ? [null, null, null, null] : [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60];
   return (
@@ -86,8 +86,8 @@ export function BeforeAfterView({ before, after, beforeLabel, afterLabel, start,
     <div className="pt-ba" style={{ "--pt-ba": `${at}%` } as Record<string, string>}>
       <img className="pt-ba-after" src={after} alt={afterLabel} loading="lazy" />
       <img className="pt-ba-before" src={before} alt={beforeLabel} loading="lazy" />
-      {beforeLabel ? <span className="pt-ba-tag pt-ba-tag-before" aria-hidden="true">{beforeLabel}</span> : null}
-      {afterLabel ? <span className="pt-ba-tag pt-ba-tag-after" aria-hidden="true">{afterLabel}</span> : null}
+      {beforeLabel ? <span data-pt-field="beforeLabel" className="pt-ba-tag pt-ba-tag-before" aria-hidden="true">{beforeLabel}</span> : null}
+      {afterLabel ? <span data-pt-field="afterLabel" className="pt-ba-tag pt-ba-tag-after" aria-hidden="true">{afterLabel}</span> : null}
       <span className="pt-ba-line" aria-hidden="true" />
       <input className="pt-ba-range" type="range" min={0} max={100} value={at} onChange={(e) => setAt(Number(e.target.value))} aria-label={handle} />
     </div>

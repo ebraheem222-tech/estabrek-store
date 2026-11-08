@@ -9,7 +9,7 @@ import { tr } from "../lib/words";
 import { toScreen, type Box, type Pt, type Shape } from "./geometry";
 import type { Plane } from "../../../shared/geometry/plane";
 
-export type BridgeGeometry = { plane?:Plane&{quad:Pt[];kind?:string};holderPlane?:Plane;innerPlane?:Plane;holderScroll?:Pt;clips?:Pt[][];unsupported?:boolean };
+export type BridgeGeometry = { plane?:Plane&{quad:Pt[];kind?:string};parentPlane?:Plane;inline?:boolean;partMoveSafe?:boolean;holderPlane?:Plane;innerPlane?:Plane;holderScroll?:Pt;clips?:Pt[][];unsupported?:boolean };
 
 export type IndexedNode = { node: PageTreeNode; parentId: string | null; depth: number; children: string[] };
 export type TreeIndex = { root: string; nodes: Map<string, IndexedNode>; bySection: Map<string, string> };
@@ -204,12 +204,13 @@ export const isRelated = (index: TreeIndex, up?: ReadonlyMap<string, string | nu
 export type BridgeItem =
   /** `holder`: the box a freely placed element is placed in; `size`: its own before a turn or scale; `inner`: a section's inner box. */
   | { kind: "node"; id: string; rect: Box; holder?: Box; size?: { w: number; h: number }; inner?: Box; parentScale?: number | null; innerScale?: number | null; geometry?:BridgeGeometry }
+  | { kind: "region"; region: "header" | "footer"; rect: Box }
   | { kind: "legacy"; sectionId: string; rect: Box }
   /** `owner` is missing from a shop that hasn't learnt it yet (then it's the field's section). */
   | { kind: "slot"; owner?: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string; within?: string; rect: Box }
   | { kind: "part"; owner: string; name: string; n: number; count: number; within?: string; rect: Box }
   | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string; within?: string; rect: Box }
-  | { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; label?: string; name?: string; count: number; within?: string; rect: Box; geometry?: BridgeGeometry }
+  | { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number; within?: string; rect: Box; geometry?: BridgeGeometry }
   | { kind: "block"; block: string; rect: Box };
 
 /** How a field is written: words in place (one line, or several), a list of lines in the panel, a picture or clip. */
@@ -220,12 +221,13 @@ export type SlotEdit = "text" | "lines" | "list" | "media";
  * a marked piece (`n` of `count` alike in its owner) or anything else seen there.
  */
 export type Extra =
+  | { kind: "region"; region: "header" | "footer" }
   | { kind: "slot"; owner: string; sectionId: string; block?: string; path: string; edit: SlotEdit; media?: "image" | "video"; link?: string }
   | { kind: "block"; block: string }
   | { kind: "part"; owner: string; name: string; n: number; count: number }
   | { kind: "auto"; owner: string; n: number; tag: string; label?: string; target?: string }
   | DetailExtra;
-export type DetailExtra = { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; label?: string; name?: string; count: number };
+export type DetailExtra = { kind: "detail"; owner: string; key: string; target: string; lookKind: "text" | "button" | "image" | "video" | "box"; text?: string; propPath?: string; propLine?: number; label?: string; name?: string; count: number };
 export const slotId = (sectionId: string, path: string) => `slot:${sectionId}:${path}`;
 export const blockId = (index: TreeIndex, block: string) => (index.nodes.has(`rb-${block}`) ? `rb-${block}` : `block:${block}`);
 /** A field's id: its section's, or its scene's. */
@@ -242,11 +244,18 @@ export function shapesOf(index: TreeIndex, layout: BridgeLayout, pan: Pt, zoom: 
   const shapes: Shape[] = [{ id: index.root, depth: 0, parentId: null, box: { x: pan.x, y: pan.y, w: layout.viewport.w * zoom, h: layout.viewport.h * zoom } }];
   const extras = new Map<string, Extra>();
   const up = new Map<string, string | null>();
-  const ownerId = (owner: string) => (owner.startsWith("n:") ? (index.nodes.has(owner.slice(2)) ? owner.slice(2) : undefined) : owner.startsWith("b:") ? blockId(index, owner.slice(2)) : index.bySection.get(owner.slice(2)));
+  const ownerId = (owner: string) => (owner.startsWith("r:") ? `region:${owner.slice(2)}` : owner.startsWith("n:") ? (index.nodes.has(owner.slice(2)) ? owner.slice(2) : undefined) : owner.startsWith("b:") ? blockId(index, owner.slice(2)) : index.bySection.get(owner.slice(2)));
   const inner: Array<{ id: string; owner: string; within?: string; box: Box; geometry?: BridgeGeometry }> = [];
   const keyed = new Map<string, string>();
   for (const item of layout.items) {
     const box = toScreen(item.rect, layout.scroll, pan, zoom);
+    if (item.kind === "region") {
+      const id = `region:${item.region}`;
+      extras.set(id, { kind: "region", region: item.region });
+      up.set(id, index.root);
+      shapes.push({ id, depth: 1, parentId: index.root, box });
+      continue;
+    }
     if (item.kind === "detail") {
       if (!ownerId(item.owner)) continue;
       const id = `detail:${item.owner}:${item.key}`;

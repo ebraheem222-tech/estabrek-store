@@ -261,7 +261,7 @@ export default async function RootLayout({
                 }}
                 legacyHeader={regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
                   <>
-                    <div id="site-header" className="site-header">
+                    <div data-studio-region="header" id="site-header" className="site-header">
                       <AnnouncementBar site={settings.site} />
                       <Topbar header={header} />
                       <Navbar

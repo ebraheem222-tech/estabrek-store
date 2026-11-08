@@ -16,6 +16,7 @@ export type ScreenStyle = {
   pad?: [number, number, number, number];
   margin?: [number, number, number, number];
   width?: string;
+  inlineBox?: boolean;
   maxWidth?: string;
   height?: string;
   minHeight?: string;

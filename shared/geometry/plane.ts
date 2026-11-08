@@ -1,6 +1,8 @@
 /** Row-major matrices multiply column points; planes map local border-box CSS px. */
 export type Mat3 = readonly [number, number, number, number, number, number, number, number, number];
 export type Mat4 = readonly [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
+/** Whether local X/Y movement remains outside a self perspective projection. */
+export const isAffineXY = (m: Mat4) => m.every(Number.isFinite) && [2,6,8,9,11,12,13].every(i => Math.abs(m[i]) < 1e-10) && Math.abs(m[15] - 1) < 1e-10;
 export type Point = { x: number; y: number };
 export type Size = { w: number; h: number };
 export type Plane = Size & { matrix: Mat3 };

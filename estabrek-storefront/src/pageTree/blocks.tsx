@@ -65,6 +65,7 @@ export function BlockView({ decoration, ...props }: Helpers & { decoration?: Rea
 function renderBlock({ node, className, mark, say, link, lang }: Helpers): ReactNode {
   const p = node.props ?? {};
   const w = WORDS[lang] ?? WORDS.ar;
+  const field = (item: Item | null, key: string, line?: number) => ({ "data-pt-field": item ? `items.${Array.isArray(p.items) ? p.items.indexOf(item) : -1}.${key}` : key, ...(line !== undefined ? { "data-pt-field-line": line } : {}) });
   switch (node.type) {
     case "accordion": {
       const items = itemsOf(p.items, 30).filter((i) => say(i.q));
@@ -77,8 +78,8 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
           {p.controls === true && p.single !== true ? <AccordionControls expand={BILLING_WORDS[lang].expand} collapse={BILLING_WORDS[lang].collapse} /> : null}
           {items.map((i, n) => (
             <details key={n} className="pt-acc-item" open={i.open === true} {...(p.single === true ? { name: `acc-${node.id}` } : {})}>
-              <summary className="pt-acc-q">{say(i.q)}</summary>
-              <div className="pt-acc-a">{say(i.a)}</div>
+              <summary {...field(i, "q")} className="pt-acc-q">{say(i.q)}</summary>
+              <div {...field(i, "a")} className="pt-acc-a">{say(i.a)}</div>
             </details>
           ))}
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faq).replace(/</g, "\\u003c") }} />
@@ -97,12 +98,12 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
             return (
               <figure key={n} className="pt-tst-card">
                 {stars ? <span className="pt-stars" role="img" aria-label={w.stars.replace("{0}", String(stars))}>{"★".repeat(stars)}{"☆".repeat(5 - stars)}</span> : null}
-                <blockquote>{say(i.quote)}</blockquote>
+                <blockquote {...field(i, "quote")}>{say(i.quote)}</blockquote>
                 <figcaption className="pt-tst-who">
                   {photo ? <img src={photo} alt="" loading="lazy" width={44} height={44} /> : null}
                   <span>
-                    <strong>{say(i.name)}</strong>
-                    {say(i.role) ? <span className="pt-tst-role">{say(i.role)}</span> : null}
+                    <strong {...field(i, "name")}>{say(i.name)}</strong>
+                    {say(i.role) ? <span {...field(i, "role")} className="pt-tst-role">{say(i.role)}</span> : null}
                   </span>
                 </figcaption>
               </figure>
@@ -114,22 +115,22 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
     case "pricing": {
       const items = itemsOf(p.items, 6).filter((i) => say(i.name));
       if (!items.length) return null;
-      if (p.billing === true) return <PricingView className={className} mark={mark} initialBilling={p.initialBilling === "yearly" ? "yearly" : "monthly"} monthly={BILLING_WORDS[lang].monthly} yearly={BILLING_WORDS[lang].yearly} unavailable={BILLING_WORDS[lang].unavailable} items={items.map((item) => ({ name: say(item.name), price: say(item.price), period: say(item.period), yearlyPrice: say(item.yearlyPrice), yearlyPeriod: say(item.yearlyPeriod), badge: say(item.badge), featured: item.featured === true, features: say(item.features).split("\n").map((feature) => feature.trim()).filter(Boolean), cta: say(item.cta), href: link(item.href) }))} />;
+      if (p.billing === true) return <PricingView className={className} mark={mark} initialBilling={p.initialBilling === "yearly" ? "yearly" : "monthly"} monthly={BILLING_WORDS[lang].monthly} yearly={BILLING_WORDS[lang].yearly} unavailable={BILLING_WORDS[lang].unavailable} items={items.map((item) => ({ sourceIndex: p.items.indexOf(item), name: say(item.name), price: say(item.price), period: say(item.period), yearlyPrice: say(item.yearlyPrice), yearlyPeriod: say(item.yearlyPeriod), badge: say(item.badge), featured: item.featured === true, featureLines: say(item.features).split("\n").map((feature, line) => feature.trim() ? line : -1).filter(line => line >= 0), features: say(item.features).split("\n").map((feature) => feature.trim()).filter(Boolean), cta: say(item.cta), href: link(item.href) }))} />;
       return (
         <div className={`${className} pt-plans`} {...mark}>
           {items.map((i, n) => {
             const to = link(i.href);
-            const features = say(i.features).split("\n").map((f) => f.trim()).filter(Boolean);
+            const features = say(i.features).split("\n").map((f, line) => ({ text: f.trim(), line })).filter(f => f.text);
             return (
               <div key={n} className={`pt-plan${i.featured === true ? " pt-plan-featured" : ""}`}>
-                {say(i.badge) ? <span className="pt-plan-badge">{say(i.badge)}</span> : null}
-                <div className="pt-plan-name">{say(i.name)}</div>
+                {say(i.badge) ? <span {...field(i, "badge")} className="pt-plan-badge">{say(i.badge)}</span> : null}
+                <div {...field(i, "name")} className="pt-plan-name">{say(i.name)}</div>
                 <div>
-                  <span className="pt-plan-price">{say(i.price)}</span>
-                  {say(i.period) ? <span className="pt-plan-period"> {say(i.period)}</span> : null}
+                  <span {...field(i, "price")} className="pt-plan-price">{say(i.price)}</span>
+                  {say(i.period) ? <span {...field(i, "period")} className="pt-plan-period"> {say(i.period)}</span> : null}
                 </div>
-                {features.length ? <ul>{features.map((f, k) => <li key={k}>{f}</li>)}</ul> : null}
-                {say(i.cta) && to ? <a className={`pt-btn ${i.featured === true ? "pt-btn-solid" : "pt-btn-outline"}`} href={to}>{say(i.cta)}</a> : null}
+                {features.length ? <ul>{features.map((f, k) => <li key={k} {...field(i, "features", f.line)}>{f.text}</li>)}</ul> : null}
+                {say(i.cta) && to ? <a {...field(i, "cta")} className={`pt-btn ${i.featured === true ? "pt-btn-solid" : "pt-btn-outline"}`} href={to}>{say(i.cta)}</a> : null}
               </div>
             );
           })}
@@ -147,8 +148,8 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
             const body = (
               <>
                 {photo ? <img src={photo} alt="" loading="lazy" /> : null}
-                <div className="pt-member-name">{say(i.name)}</div>
-                {say(i.role) ? <div className="pt-member-role">{say(i.role)}</div> : null}
+                <div {...field(i, "name")} className="pt-member-name">{say(i.name)}</div>
+                {say(i.role) ? <div {...field(i, "role")} className="pt-member-role">{say(i.role)}</div> : null}
               </>
             );
             return to ? <a key={n} className="pt-member" href={to}>{body}</a> : <div key={n} className="pt-member">{body}</div>;
@@ -176,15 +177,15 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
         <div className={`${className} pt-alert pt-alert-${kind}`} role={kind === "danger" ? "alert" : "status"} {...mark}>
           <span className="pt-alert-icon" aria-hidden="true">{ALERT_ICON[kind]}</span>
           <div>
-            {say(p.title) ? <strong className="pt-alert-title">{say(p.title)}</strong> : null}
-            <div>{text}</div>
+            {say(p.title) ? <strong {...field(null, "title")} className="pt-alert-title">{say(p.title)}</strong> : null}
+            <div {...field(null, "text")}>{text}</div>
           </div>
           {p.close === true ? <BlockClose label={w.close} /> : null}
         </div>
       );
     }
     case "marquee": {
-      const items = (Array.isArray(p.items) ? p.items : []).slice(0, 20).map((t: unknown) => say(t)).filter(Boolean);
+      const items = (Array.isArray(p.items) ? p.items : []).slice(0, 20).map((t: unknown, index: number) => ({ text: say(t), index })).filter((item: { text: string }) => item.text).map((item: { text: string; index: number }) => <span key={item.index} data-pt-field={`items.${item.index}`}>{item.text}</span>);
       if (!items.length) return null;
       const speed = typeof p.speed === "number" && p.speed >= 4 && p.speed <= 120 ? p.speed : 30;
       const sep = typeof p.separator === "string" && p.separator.length <= 4 ? p.separator : "•";
@@ -201,7 +202,7 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
       const look = ["pills", "underline", "boxed"].includes(p.look) ? p.look : "underline";
       return (
         <div className={className} {...mark}>
-          <TabsView items={items.map((i) => ({ label: say(i.label), text: say(i.text), image: safeSrc(i.image) }))} look={look} />
+          <TabsView items={items.map((i) => ({ sourceIndex: p.items.indexOf(i), label: say(i.label), text: say(i.text), image: safeSrc(i.image) }))} look={look} />
         </div>
       );
     }
@@ -239,8 +240,8 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
               <details key={n} className={`pt-hot-spot${(i.x as number) > 60 ? " pt-hot-end" : ""}`} style={{ left: `${i.x}%`, top: `${i.y}%` }} name={`hot-${node.id}`}>
                 <summary aria-label={say(i.title)}><span aria-hidden="true" /></summary>
                 <div className="pt-hot-card">
-                  <strong>{say(i.title)}</strong>
-                  {say(i.text) ? <p>{say(i.text)}</p> : null}
+                  <strong {...field(i, "title")}>{say(i.title)}</strong>
+                  {say(i.text) ? <p {...field(i, "text")}>{say(i.text)}</p> : null}
                   {to ? <a href={to}>{w.see}</a> : null}
                 </div>
               </details>
@@ -266,19 +267,19 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
         <form className={`${className} pt-search pt-search-${look}`} action={link("/search") ?? "/search"} role="search" {...mark}>
           <svg className="pt-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           <input type="search" name="q" required placeholder={label} aria-label={label} />
-          {say(p.button) ? <button type="submit" className="pt-btn pt-btn-solid">{say(p.button)}</button> : <button type="submit" className="pt-search-go" aria-label={w.search}>→</button>}
+          {say(p.button) ? <button {...field(null, "button")} type="submit" className="pt-btn pt-btn-solid">{say(p.button)}</button> : <button type="submit" className="pt-search-go" aria-label={w.search}>→</button>}
         </form>
       );
     }
     case "menu": {
-      const items = itemsOf(p.items, 20).map((i) => ({ label: say(i.label), to: link(i.href) })).filter((i) => i.label && i.to);
+      const items = itemsOf(p.items, 20).map((i) => ({ sourceIndex: p.items.indexOf(i), label: say(i.label), to: link(i.href) })).filter((i) => i.label && i.to);
       if (!items.length) return null;
       const layout = p.layout === "column" ? "column" : "row";
       const look = ["plain", "pills", "underline", "buttons"].includes(p.look) ? p.look : "plain";
       const name = say(p.label) || w.menu;
       const list = (cls: string) => (
         <ul className={cls}>
-          {items.map((i, n) => <li key={n}><a href={i.to!}>{i.label}</a></li>)}
+          {items.map((i, n) => <li key={n}><a data-pt-field={`items.${i.sourceIndex}.label`} href={i.to!}>{i.label}</a></li>)}
         </ul>
       );
       return (

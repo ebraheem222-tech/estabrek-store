@@ -34,8 +34,9 @@ const text = (en: string, ar: string = en) => ({ en, ar, he: en });
 const savedTheme = new URLSearchParams(location.search).has("theme") ? { id: "circuit", mode: "dark", custom: { palette: { dark: { accent: "#22cc88" } } } } : undefined;
 const at = "2026-11-06T00:00:00.000Z";
 const publishingFixture = new URLSearchParams(location.search).has("publishing");
+const blockRegionFixture = new URLSearchParams(location.search).has("blockRegion");
 const commerceFixture = new URLSearchParams(location.search).get("commerce");
-const publicationSlug = commerceFixture === "cart" || commerceFixture === "shop" ? `/${commerceFixture}` : publishingFixture ? `/publication-fixture-${new URLSearchParams(location.search).get("lang") === "ar" ? "ar" : "en"}` : "/editor-controls";
+const publicationSlug = blockRegionFixture ? "/__block/fixture-header" : commerceFixture === "cart" || commerceFixture === "shop" ? `/${commerceFixture}` : publishingFixture ? `/publication-fixture-${new URLSearchParams(location.search).get("lang") === "ar" ? "ar" : "en"}` : "/editor-controls";
 let publicationStatus = publishingFixture ? "DRAFT" : "PUBLISHED";
 let hasDraft = true;
 let publicationDelivery: Record<string, unknown> | null = null;
@@ -55,6 +56,22 @@ if (commerceFixture === "cart" || commerceFixture === "shop") {
     ? [{ id: "commerce-shop", type: "shop", props: { columns: 3, mobileColumns: 2, showFilters: true, showSearch: true } }]
     : [{ id: "commerce-cartItems", type: "cartItems", props: {} }, { id: "commerce-cartSummary", type: "cartSummary", props: {} }, { id: "commerce-cartCheckout", type: "cartCheckout", props: {} }],
   }];
+}
+if (new URLSearchParams(location.search).has("editingRegression")) {
+  initial.tree.root.children = [{ id: "objects", type: "section", props: {}, style: { base: { minHeight: "850px", pad: [30, 30, 30, 30] } }, children: [
+    { id: "headline", type: "heading", props: { text: text("[b]Editable headline[/b]"), rich: true, level: 2 }, style: { base: { width: "400px" } } },
+    { id: "body-copy", type: "text", props: { text: text("[i]Editable body[/i]"), rich: true }, style: { base: { width: "400px" } } },
+    { id: "action", type: "button", props: { label: text("[b]Editable action[/b]"), href: "/shop", rich: true }, style: { base: { width: "240px" } } },
+    { id: "reviews", type: "testimonials", name: "Movable reviews", props: { items: [{ quote: text("A nested customer quote"), name: text("Customer name"), role: text("Customer role") }], columns: 1 }, style: { base: { width: "500px", layer: { x: 10, y: 45, anchor: "top-start" } } } },
+    { id: "links", type: "menu", props: { items: [{ label: text("First link"), href: "/shop" }, { label: text("Second link"), href: "/about" }] } },
+  ] }];
+}
+if (new URLSearchParams(location.search).has("catalogEquality")) {
+  initial.tree.root.children![0].children = [{ id: "category-equality", type: "categories", props: { title: text("فساتين"), ids: ["dresses"] } }];
+}
+if (new URLSearchParams(location.search).has("scaledPart")) {
+  const reviews = initial.tree.root.children![0].children!.find(node => node.id === "reviews")!;
+  reviews.style = { base: { width: "500px", scale: 1.4, layer: { x: 50, y: 55, anchor: "center" } } };
 }
 if (new URLSearchParams(location.search).has("legacyParts")) {
   initial.sections = [{ id: "old", type: "CUSTOM_HTML", order: 0, isVisible: true, data: { html: '<p>Legacy copy</p><div><span>Nested legacy text</span></div>' } }] as any;
@@ -143,7 +160,7 @@ function applyOps(ops: PageDraftOp[]) {
 async function syncPreview() {
   const response = await fetch(`${FIXTURE}/__test/preview-draft`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, pageId: PAGE_ID, ...(commerceFixture ? { slug: publicationSlug } : {}), siteStyles: [] }), credentials: "omit",
+      body: JSON.stringify({ ...draft, pageId: PAGE_ID, ...(commerceFixture || blockRegionFixture ? { slug: publicationSlug } : {}), siteStyles: [] }), credentials: "omit",
   });
   if (!response.ok) throw new Error(`Local fixture update failed: ${response.status}`);
 }
@@ -153,6 +170,23 @@ api.defaults.adapter = async (config) => {
   const path = new URL(config.url ?? "", `${FIXTURE}/v1/`).pathname.replace(/^\/v1/, "");
   requests.push({ method, path });
   const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
+  const shared = /^\/admin\/pages\/(owned-header|owned-footer)(?:\/(.*))?$/.exec(path);
+  if (shared) {
+    const docId = shared[1], route = shared[2] ?? "";
+    const region = docId === "owned-header" ? "header" : "footer";
+    const sharedDraft: PageDraft = { version: 1, rev: 0, baseHash: docId, sections: [], trash: [], startedAt: at, updatedAt: at,
+      tree: { version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: `shared-${region}`, type: "section", props: { tag: region }, children: [{ id: `shared-${region}-label`, type: "heading", props: { level: 2, text: text(`Shared ${region} document`) } }] }] } } };
+    if (!route && method === "GET") return response(config, { id: docId, name: `Shared ${region}`, kind: "block", slug: `/__block/${region}`, format: 2, status: "PUBLISHED", sections: [] });
+    if (route === "draft" && method === "GET") return response(config, { draft: sharedDraft, main: "ar" });
+    if (route === "tree" && method === "GET") return response(config, { format: 2, tree: sharedDraft.tree, saved: true });
+    if (route === "preview-token" && method === "POST") {
+      const token = `good-${docId}`;
+      const saved = await fetch(`${FIXTURE}/__test/preview-draft`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...sharedDraft, pageId: docId, slug: `/__block/${region}`, previewToken: token, siteStyles: [] }) });
+      if (!saved.ok) throw new Error("Shared local preview failed");
+      return response(config, { token, expiresAt: new Date(Date.now() + 1_800_000).toISOString() });
+    }
+    throw new Error(`Unexpected shared-document request: ${method} ${path}`);
+  }
   if (path === "/admin/visual-controls" && method === "GET") return response(config, globalVisualControls);
   if (path === "/admin/visual-controls" && method === "PUT") {
     if (body.revision !== globalVisualControls.revision) throw new AxiosError("Conflict", "409", config, undefined, { ...response(config, {}), status: 409 });
@@ -187,7 +221,7 @@ api.defaults.adapter = async (config) => {
   if (method === "GET" && path === `/admin/pages/${PAGE_ID}/draft`) return response(config, { draft: hasDraft ? draft : null, main: "ar" });
   if (method === "GET" && path === `/admin/pages/${PAGE_ID}/tree`) return response(config, { format: 2, tree: draft.tree, saved: true });
   if (method === "GET" && path === `/admin/pages/${PAGE_ID}`) return response(config, { id: PAGE_ID, name: "Direct canvas local fixture", slug: publicationSlug, format: 2, status: publicationStatus, sections: [] });
-  if (method === "GET" && path === "/admin/settings") return response(config, { id: "fixture", siteName: "Local canvas regression", header: { storeTheme: savedTheme, languages: { enabled: ["en", "ar"], default: "ar" }, identity: { name: text("Canvas fixture"), industry: "fashion", audience: "all" }, storefront: { mobileBottomNavEnabled: false, liveChatEnabled: false } } });
+  if (method === "GET" && path === "/admin/settings") return response(config, { id: "fixture", siteName: "Local canvas regression", header: { ...(new URLSearchParams(location.search).has("ownedRegions") ? { storeDesign: { mode: "cms", homeId: PAGE_ID, headerId: "owned-header", footerId: "owned-footer" } } : {}), storeTheme: savedTheme, languages: { enabled: ["en", "ar"], default: "ar" }, identity: { name: text("Canvas fixture"), industry: "fashion", audience: "all" }, storefront: { mobileBottomNavEnabled: false, liveChatEnabled: false } } });
   if (method === "GET" && path === "/admin/site-styles") return response(config, { styles: [], draft: null });
   if (method === "GET" && ["/admin/pages/blocks", "/admin/pages/templates", "/admin/catalog/products", "/admin/catalog/categories"].includes(path)) return response(config, []);
   throw new Error(`Unmocked admin request (blocked): ${method} ${path}`);

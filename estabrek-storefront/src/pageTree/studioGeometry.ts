@@ -1,8 +1,8 @@
 /** Studio-only plane measurements. Local CSS border boxes map to iframe document pixels. */
-import { boundsOfQuad, embedPlane, inverse3, multiply3, planeQuad, type Mat3, type Mat4, type Plane, type Point } from "../../../shared/geometry/plane";
+import { boundsOfQuad, embedPlane, isAffineXY, inverse3, multiply3, planeQuad, type Mat3, type Mat4, type Plane, type Point } from "../../../shared/geometry/plane";
 
 export type MeasuredPlane = Plane & { quad: Point[]; matrix4: Mat4; kind: "affine" | "projective" };
-export type NodeGeometry = { plane?: MeasuredPlane; holderPlane?: MeasuredPlane; innerPlane?: MeasuredPlane; holderScroll?:Point;clips?: Point[][]; unsupported?: boolean };
+export type NodeGeometry = { plane?: MeasuredPlane; parentPlane?: MeasuredPlane; inline?: boolean; partMoveSafe?: boolean; holderPlane?: MeasuredPlane; innerPlane?: MeasuredPlane; holderScroll?:Point;clips?: Point[][]; unsupported?: boolean };
 const ID: Mat3 = [1,0,0,0,1,0,0,0,1];
 const shift = (x:number,y:number):Mat3 => [1,0,x,0,1,y,0,0,1];
 const number = (value:string|null|undefined) => Number.parseFloat(value || "") || 0;
@@ -101,5 +101,7 @@ export function nodeGeometry(el:HTMLElement,cache:Map<Element,MeasuredPlane|null
       else{const frame=paddingPlane(at,cache);if(frame)clips.push(frame.quad);}
     }
   }
-  return {plane,...(holderFrame?{holderPlane:holderFrame}:{}),...(holder?{holderScroll:{x:holder.scrollLeft,y:holder.scrollTop}}:{}),...(innerFrame?{innerPlane:innerFrame}:{}),...(clips.length?{clips}:{}),...(!holderFrame?{unsupported:true}:{})};
+  const parentFrame = el.parentElement ? measurePlane(el.parentElement, cache) : null;
+  const own = transform(el);
+  return {plane, inline: getComputedStyle(el).display === "inline", partMoveSafe: Boolean(own && isAffineXY(own)),...(parentFrame ? {parentPlane: parentFrame} : {}),...(holderFrame?{holderPlane:holderFrame}:{}),...(holder?{holderScroll:{x:holder.scrollLeft,y:holder.scrollTop}}:{}),...(innerFrame?{innerPlane:innerFrame}:{}),...(clips.length?{clips}:{}),...(!holderFrame?{unsupported:true}:{})};
 }

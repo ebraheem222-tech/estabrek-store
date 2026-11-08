@@ -140,3 +140,194 @@ test("an inner appearance edit preserves the Shop search client state", async ({
   await expect(search).toHaveValue("1");
   await expect(frame(page).locator('[data-cms-part="card-name"]')).toHaveCount(1);
 });
+
+test("rich native headings and buttons can actually be typed, saved and undone from the preview", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  for (const [id, selector, value, field] of [["headline", "strong", "Changed heading", "text"], ["action", "strong", "Changed action", "label"]]) {
+    await clickPart(page, `[data-tree-node="${id}"] ${selector}`);
+    await expect(page.getByTestId("studio-edit-node")).toBeVisible();
+    await page.getByTestId("studio-edit-node").click();
+    const editable = frame(page).locator(`[data-tree-node="${id}"][contenteditable="true"]`);
+    await expect(editable).toBeVisible();
+    await editable.fill(value); await editable.press("Enter");
+    await expect.poll(() => page.evaluate(({ id, field }) => (window as any).__canvasHarness.getNode(id).node.props[field].en.replace(/\[\/?(?:b|i|u|mark)\]/g, ""), { id, field })).toBe(value);
+    await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+    await expect(frame(page).locator(`[data-tree-node="${id}"]`)).toHaveText(value);
+    await page.getByTestId("studio-undo").click();
+    await expect.poll(() => page.evaluate(({ id, field }) => (window as any).__canvasHarness.getNode(id).node.props[field].en, { id, field })).toContain("[b]");
+  }
+});
+test("an explicitly selected native widget can be dragged from its internal text", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await page.getByRole("tab", { name: "Layers", exact: true }).click();
+  await page.locator('[data-testid="studio-layer"][data-node="reviews"]').click();
+  const before = await page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.style.base.layer);
+  const point = await canvasPoint(page, frame(page).locator('[data-tree-node="reviews"] blockquote'));
+  await page.mouse.move(point.x, point.y); await page.mouse.down();
+  await page.mouse.move(point.x + 55, point.y + 30, { steps: 12 }); await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.style.base.layer)).not.toEqual(before);
+  await page.getByTestId("studio-undo").click();
+  await expect.poll(() => page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.style.base.layer)).toEqual(before);
+});
+
+test("selected nested text and menu labels expose working content fields and inline typing", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await clickPart(page, '[data-tree-node="reviews"] blockquote');
+  const words = page.getByTestId("studio-part-words");
+  await expect(words).toBeVisible();
+  await words.fill("Edited customer quote"); await words.blur();
+  await expect(frame(page).locator('[data-tree-node="reviews"] blockquote')).toHaveText("Edited customer quote");
+  await page.getByTestId("studio-undo").click();
+  await expect(frame(page).locator('[data-tree-node="reviews"] blockquote')).toHaveText("A nested customer quote");
+  await clickPart(page, '[data-tree-node="links"] li:nth-child(2) a');
+  await expect(words).toHaveValue("Second link");
+  await page.getByTestId("studio-part-edit-text").click();
+  const editable = frame(page).locator('[data-tree-node="links"] a[contenteditable]');
+  await editable.fill("Changed second link"); await editable.press("Enter");
+  await expect(frame(page).locator('[data-tree-node="links"] li:nth-child(2) a')).toHaveText("Changed second link");
+  await expect(frame(page).locator('[data-tree-node="links"] li:first-child a')).toHaveText("First link");
+  const href = page.getByTestId("studio-part-href");
+  await href.fill("/contact"); await href.blur();
+  await expect(frame(page).locator('[data-tree-node="links"] li:nth-child(2) a')).toHaveAttribute("href", "/en/contact");
+  const labels = await page.evaluate(() => (window as any).__canvasHarness.getNode("links").node.props.items);
+  expect(labels[1].label.ar).toBe("Second link");
+  expect(await frame(page).locator('[data-tree-node="links"] li:nth-child(2) a').evaluate(el => (el as HTMLElement).style.outline)).toBe("");
+});
+
+test("an individually selected text part can move by dragging, cancel with Escape and undo", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  const selector = '[data-tree-node="reviews"] blockquote';
+  await clickPart(page, selector);
+  const target = await page.getByTestId("studio-look-target").getAttribute("data-target");
+  const initial = await frame(page).locator(selector).boundingBox();
+  let point = await canvasPoint(page, frame(page).locator(selector));
+  await page.mouse.move(point.x, point.y); await page.mouse.down();
+  await page.mouse.move(point.x + 35, point.y + 20, { steps: 10 }); await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.props.partLooks)).toBeTruthy();
+  await expect(frame(page).locator(selector)).not.toHaveCSS("transform", "none");
+  const after = await frame(page).locator(selector).boundingBox();
+  expect(after!.x).toBeGreaterThan(initial!.x + 10);
+  expect(after!.y).toBeGreaterThan(initial!.y + 5);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+  const firstSaved = await page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.props.partLooks);
+  point = await canvasPoint(page, frame(page).locator(selector));
+  await page.mouse.move(point.x, point.y); await page.mouse.down();
+  await page.mouse.move(point.x + 20, point.y + 10, { steps: 6 }); await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.props.partLooks)).not.toEqual(firstSaved);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+  const saved = await page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.props.partLooks);
+  point = await canvasPoint(page, frame(page).locator(selector));
+  await page.mouse.move(point.x, point.y); await page.mouse.down();
+  await page.mouse.move(point.x + 30, point.y + 15, { steps: 6 });
+  await expect(frame(page).locator(selector)).not.toHaveCSS("transform", "none");
+  await page.keyboard.press("Escape"); await page.mouse.up();
+  expect(await page.evaluate(() => (window as any).__canvasHarness.getNode("reviews").node.props.partLooks)).toEqual(saved);
+  await page.getByTestId("studio-undo").click();
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+  await page.getByTestId("studio-undo").click();
+  await expect(frame(page).locator(selector)).toHaveCSS("transform", "none");
+});
+
+test("inline author text really follows the pointer during preview and after saving", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  const selector = '[data-tree-node="reviews"] strong';
+  await clickPart(page, selector);
+  const point = await canvasPoint(page, frame(page).locator(selector));
+  const before = await frame(page).locator(selector).boundingBox();
+  await page.mouse.move(point.x, point.y); await page.mouse.down();
+  await page.mouse.move(point.x + 35, point.y + 20, { steps: 10 });
+  const preview = await frame(page).locator(selector).boundingBox();
+  expect(preview!.x).toBeGreaterThan(before!.x + 10);
+  await page.mouse.up();
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+  await expect.poll(async () => (await frame(page).locator(selector).boundingBox())!.x).toBeCloseTo(preview!.x, 0);
+});
+
+test("first part movement previews match release inside a scaled and centered owner", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression&scaledPart`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  const selector = '[data-tree-node="reviews"] blockquote';
+  await clickPart(page, selector);
+  const point = await canvasPoint(page, frame(page).locator(selector));
+  const before = await frame(page).locator(selector).boundingBox();
+  await page.mouse.move(point.x, point.y); await page.mouse.down();
+  await page.mouse.move(point.x + 35, point.y + 20, { steps: 10 });
+  const preview = await frame(page).locator(selector).boundingBox();
+  expect(preview!.width).toBeCloseTo(before!.width, 0);
+  expect(preview!.x - before!.x).toBeCloseTo(35, 0);
+  expect(preview!.y - before!.y).toBeCloseTo(20, 0);
+  await page.mouse.up();
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+  await expect.poll(async () => (await frame(page).locator(selector).boundingBox())!.x).toBeCloseTo(preview!.x, 0);
+});
+
+test("header and footer can be selected in preview and open their own editing settings", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await clickPart(page, '.atelier-header .atelier-desktop-nav a');
+  await expect(page.getByTestId("studio-region")).toHaveAttribute("data-region", "header");
+  await expect(page.getByTestId("studio-region-edit")).toHaveAttribute("href", /\/admin\/settings/);
+  await frame(page).locator('.atelier-footer').evaluate(el => el.scrollIntoView({ block: "center" }));
+  await expect.poll(() => page.evaluate(() => (window as any).__canvasHarness.getLayout().scroll.y)).toBeGreaterThan(0);
+  await clickPart(page, '.atelier-footer p');
+  await expect(page.getByTestId("studio-region")).toHaveAttribute("data-region", "footer");
+  await page.getByRole("tab", { name: "Layers", exact: true }).click();
+  await expect(page.locator('[data-testid="studio-layer"][data-node="region:header"]')).toBeVisible();
+  await expect(page.locator('[data-testid="studio-layer"][data-node="region:footer"]')).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__canvasHarness.getWrites().length)).toBe(0);
+});
+
+test("a catalog label identical to the owned heading cannot edit that heading", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression&catalogEquality`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await clickPart(page, '[data-tree-node="category-equality"] .pt-tile > span:last-child');
+  await expect(page.getByTestId("studio-part-content")).toHaveCount(0);
+  await clickPart(page, '[data-tree-node="category-equality"] h2');
+  await expect(page.getByTestId("studio-part-words")).toHaveValue("فساتين");
+  await page.getByTestId("studio-part-words").fill("Owned heading changed"); await page.getByTestId("studio-part-words").blur();
+  await expect(frame(page).locator('[data-tree-node="category-equality"] h2')).toHaveText("Owned heading changed");
+  await expect(frame(page).locator('[data-tree-node="category-equality"] .pt-tile > span:last-child')).toHaveText("فساتين");
+});
+test("shared documents open their own editor and a block preview does not duplicate global chrome", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression&ownedRegions`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await clickPart(page, '.atelier-header .atelier-desktop-nav a');
+  await expect(page.getByTestId("studio-region-edit")).toHaveAttribute("href", /\/studio\/owned-header/);
+  await page.goto(`${url}?lang=en&editingRegression&blockRegion`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await expect(frame(page).locator('[data-studio-region]')).toHaveCount(0);
+  await expect(frame(page).locator('[data-tree-node="headline"]')).toBeVisible();
+});
+
+test("opening a shared header starts a distinct preview session with isolated undo history", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&editingRegression&ownedRegions`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await clickPart(page, '[data-tree-node="headline"]');
+  await page.getByTestId("studio-prop-text").fill("Changed original document"); await page.getByTestId("studio-prop-text").blur();
+  await expect(page.getByTestId("studio-undo")).toBeEnabled();
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled();
+  await clickPart(page, '.atelier-header .atelier-desktop-nav a');
+  await page.getByTestId("studio-region-edit").click();
+  await expect(page.getByTestId("studio-frame")).toHaveAttribute("src", /token=good-owned-header/);
+  await expect(frame(page).locator('[data-tree-node="shared-header-label"]')).toHaveText("Shared header document");
+  await expect(frame(page).locator('[data-tree-node="headline"]')).toHaveCount(0);
+  await expect(page.getByTestId("studio-undo")).toBeDisabled();
+  await page.getByTestId("studio-canvas").focus(); await page.keyboard.press("Control+z");
+  const requests = await page.evaluate(() => (window as any).__canvasHarness.getRequests());
+  expect(requests.some((request: any) => request.method === "POST" && request.path === "/admin/pages/owned-header/draft/ops")).toBe(false);
+});
