@@ -4,14 +4,20 @@
  * pages, and a page for each campaign. A page is a list of sections from the library
  * (sections.ts), each in its skin, so the page's colours take turns.
  */
-import { B, CARD, GRID, H, P, SEC, STACK, mo, say, withSkin, type Ctx, type N, type Skin } from "./build";
+import { B, CARD, COLS, GRID, H, P, SEC, STACK, eyebrow, mo, say, withSkin, type Ctx, type N, type Skin } from "./build";
 import { RECIPES, campaignHero, campaignOffer, campaignStrip } from "./sections";
 import { BUDGETS, C, CAMPAIGNS, FAMILIES, LINKS_HELP, LINKS_MAIN, LINKS_SOCIAL, MEASURE, PACKS, SIZE_TABS, w, type Campaign, type Family, type W } from "./words";
 
-export const PAGE_KINDS = ["home", "about", "contact", "faq", "policy", "gifts", "landing", "soon", "notfound", "campaign"] as const;
+export const PAGE_KINDS = ["home", "shop", "cart", "about", "contact", "faq", "policy", "gifts", "journal", "services", "thanks", "track", "landing", "soon", "notfound", "campaign"] as const;
 export type PageKind = (typeof PAGE_KINDS)[number];
 export const PAGE_KIND_NAMES: Record<PageKind, W> = {
   home: w("الرئيسية", "Home", "דף הבית"),
+  shop: w("صفحة المتجر", "Shop page", "דף החנות"),
+  cart: w("صفحة السلة", "Cart page", "דף הסל"),
+  journal: w("مدوّنة ومقالات", "Journal and articles", "בלוג ומאמרים"),
+  services: w("خدمات وباقات", "Services and plans", "שירותים וחבילות"),
+  thanks: w("شكراً لطلبك", "Thank-you page", "דף תודה"),
+  track: w("تتبّع الطلب", "Track an order", "מעקב הזמנה"),
   about: w("من نحن", "About", "אודות"),
   contact: w("تواصل", "Contact", "צור קשר"),
   faq: w("أسئلة", "Questions", "שאלות"),
@@ -119,6 +125,61 @@ PAGES.push(
   p("members", "landing", w("نادي الزباين", "Members' club", "מועדון לקוחות"), [pageHead(C.loyalty, C.loyaltySub, "bold"), S("steps-cards", "plain"), S("price-three", "soft"), S("faq-lines", "plain"), S("news-center", "dark")]),
   p("soon-simple", "soon", w("قريباً", "Coming soon", "בקרוב"), [S("soon", "dark")]),
   p("soon-stars", "soon", w("قريباً بنجوم ومميزات", "Coming soon with stars and perks", "בקרוב עם כוכבים ויתרונות"), [S("soon-stars", "dark"), S("feat-icons", "plain"), S("news-split", "surface")]),
+);
+
+/* ------------------------------------------------------------ the store's own pages */
+
+/** The shop's catalogue (search, filters, sorting, products), the one a shop page must hold. */
+const shopPart = (o: { columns?: number; filters?: boolean; search?: boolean; skin?: Skin; title?: W } = {}): Part => (c) => {
+  const k = withSkin(c, o.skin ?? "plain");
+  const shop: N = { id: k.ids("shop"), type: "shop", props: { columns: o.columns ?? 3, mobileColumns: 2, showFilters: o.filters ?? true, showSearch: o.search ?? true } };
+  return SEC(k, [...(o.title ? [H(k, o.title, 2, { style: { margin: [0, 0, 24, 0] } })] : []), shop], { name: w("المنتجات", "Products", "מוצרים"), pad: [48, 24, 80, 24] });
+};
+/** The cart's three parts, each once: its lines, the order's sums and the checkout. */
+const cartPart = (layout: "split" | "stacked" | "summary-first", skin: Skin = "plain"): Part => (c) => {
+  const k = withSkin(c, skin);
+  const part = (type: "cartItems" | "cartSummary" | "cartCheckout"): N => ({ id: k.ids(type.slice(0, 6)), type, props: {} });
+  const order = STACK(k, [part("cartSummary"), part("cartCheckout")], { gap: 24 });
+  const body = layout === "stacked"
+    ? STACK(k, [part("cartItems"), part("cartSummary"), part("cartCheckout")], { gap: 28, maxWidth: "760px", width: "100%" })
+    : layout === "summary-first" ? COLS(k, [1, 2], [[order], [part("cartItems")]], { gap: 32, phone: "reverse" })
+    : COLS(k, [2, 1], [[part("cartItems")], [order]], { gap: 32 });
+  return SEC(k, [body], { name: w("السلة", "The cart", "הסל"), pad: [40, 24, 80, 24], ...(layout === "stacked" ? { center: true } : {}) });
+};
+/** Thanks for an order: the words, and the way back to the shop or to the order. */
+const thanksHead = (skin: Skin): Part => (c) => {
+  const k = withSkin(c, skin);
+  return SEC(k, [STACK(k, [
+    eyebrow(k, w("تم استلام طلبك", "Your order is in", "ההזמנה התקבלה")),
+    H(k, w("شكراً إلك! 💛", "Thank you!", "תודה רבה!"), 1),
+    P(k, w("بعتنالك تفاصيل الطلب على الإيميل، ورح نخبرك أول ما يطلع للتوصيل.", "We've emailed your order details and will let you know as soon as it ships.", "שלחנו את פרטי ההזמנה במייל ונעדכן ברגע שתצא למשלוח."), { style: { size: 19, maxWidth: "620px" } }),
+    STACK(k, [B(k, w("كمّل التسوّق", "Keep shopping", "להמשיך לקנות"), "/shop"), B(k, w("سؤال عن طلبك؟", "A question about your order?", "שאלה על ההזמנה?"), "/contact", "outline")], { direction: "row", wrap: true, gap: 12, justify: "center" }),
+  ], { align: "center", textAlign: "center", gap: 16 })], { name: w("شكراً", "Thanks", "תודה"), pad: [120, 24, 96, 24] });
+};
+
+PAGES.push(
+  p("shop-classic", "shop", w("المتجر: كلاسيكي", "Shop: classic", "חנות: קלאסי"), [pageHead(w("المتجر", "Shop", "חנות"), w("كل منتجاتنا بمكان واحد، مع بحث وفلاتر.", "All our products in one place, with search and filters.", "כל המוצרים במקום אחד, עם חיפוש וסינון.")), shopPart()]),
+  p("shop-banner", "shop", w("المتجر: بغلاف كبير", "Shop: with a big cover", "חנות: עם כריכה גדולה"), [S("hero-cover", "plain"), shopPart({ columns: 4 })]),
+  p("shop-categories", "shop", w("المتجر: مع التصنيفات", "Shop: with categories", "חנות: עם קטגוריות"), [pageHead(w("تسوّق", "Shop", "קנייה"), w("اختار تصنيف أو تصفّح كل شي.", "Pick a category or browse everything.", "בחרו קטגוריה או עיינו בהכול."), "plain"), S("cats-circles", "plain"), shopPart()]),
+  p("shop-sale", "shop", w("المتجر: تخفيضات", "Shop: sale", "חנות: מבצע"), [S("offer-countdown", "bold"), shopPart({ columns: 4 }), S("faq-plus", "surface")]),
+  p("shop-minimal", "shop", w("المتجر: بسيط", "Shop: minimal", "חנות: מינימלי"), [shopPart({ columns: 4, filters: false, title: w("كل المنتجات", "All products", "כל המוצרים") })]),
+  p("shop-perks", "shop", w("المتجر: مع المزايا", "Shop: with perks", "חנות: עם יתרונות"), [S("bar-perks", "soft"), pageHead(w("المتجر", "Shop", "חנות"), w("شحن سريع، إرجاع سهل ودفع آمن.", "Fast shipping, easy returns and secure payment.", "משלוח מהיר, החזרה קלה ותשלום מאובטח."), "plain"), shopPart(), S("feat-four", "surface")]),
+  p("shop-editorial", "shop", w("المتجر: مجلّة", "Shop: editorial", "חנות: מגזין"), [S("hero-type", "plain"), S("bar-marquee", "dark"), shopPart(), S("news-center", "soft")]),
+  p("shop-lookbook", "shop", w("المتجر: إطلالات", "Shop: lookbook", "חנות: לוקבוק"), [S("look-points", "plain"), shopPart({ columns: 3, skin: "surface" }), S("tst-row", "soft")]),
+  p("cart-classic", "cart", w("السلة: كلاسيكية", "Cart: classic", "סל: קלאסי"), [pageHead(w("سلة المشتريات", "Shopping cart", "סל הקניות"), w("راجع طلبك قبل الدفع.", "Check your order before paying.", "בדקו את ההזמנה לפני התשלום.")), cartPart("split")]),
+  p("cart-stacked", "cart", w("السلة: عمود واحد", "Cart: one column", "סל: עמודה אחת"), [pageHead(w("سلتك", "Your cart", "הסל שלכם"), w("كل شي بعمود واحد واضح.", "Everything in one clear column.", "הכול בעמודה אחת ברורה."), "plain"), cartPart("stacked")]),
+  p("cart-trust", "cart", w("السلة: مع الضمانات", "Cart: with guarantees", "סל: עם התחייבויות"), [pageHead(w("سلة المشتريات", "Shopping cart", "סל הקניות"), w("دفع آمن وإرجاع سهل.", "Secure payment and easy returns.", "תשלום מאובטח והחזרה קלה.")), cartPart("split"), S("feat-four", "surface")]),
+  p("cart-upsell", "cart", w("السلة: مع اقتراحات", "Cart: with suggestions", "סל: עם הצעות"), [pageHead(w("سلة المشتريات", "Shopping cart", "סל הקניות"), w("وفي كمان إشي ممكن يعجبك.", "There's more you might like too.", "יש עוד דברים שעשויים לאהוב."), "plain"), cartPart("split"), S("prod-row", "soft")]),
+  p("cart-steps", "cart", w("السلة: بخطوات", "Cart: with steps", "סל: עם שלבים"), [S("steps-row", "soft"), cartPart("split")]),
+  p("cart-help", "cart", w("السلة: مع المساعدة", "Cart: with help", "סל: עם עזרה"), [pageHead(w("طلبك", "Your order", "ההזמנה שלכם"), w("محتاج مساعدة؟ إحنا هون.", "Need a hand? We're here.", "צריכים עזרה? אנחנו כאן."), "plain"), cartPart("summary-first"), S("faq-plus", "surface"), S("contact-cards", "plain")]),
+  p("journal-grid", "journal", w("المدوّنة: شبكة", "Journal: grid", "בלוג: רשת"), [pageHead(w("المدوّنة", "Journal", "בלוג"), w("أفكار، نصائح وقصص من عنّا.", "Ideas, tips and stories from us.", "רעיונות, טיפים וסיפורים מאיתנו.")), S("gal-grid", "plain"), S("news-center", "soft")]),
+  p("journal-story", "journal", w("المدوّنة: قصّة", "Journal: story", "בלוג: סיפור"), [S("hero-type", "plain"), S("story-photos", "plain"), S("tabs-details", "surface"), S("news-split", "plain")]),
+  p("services-cards", "services", w("خدمات: بطاقات وباقات", "Services: cards and plans", "שירותים: כרטיסים וחבילות"), [S("hero-split", "plain"), S("feat-cards", "plain"), S("price-three", "surface"), S("faq-plus", "plain")]),
+  p("services-steps", "services", w("خدمات: خطوات", "Services: steps", "שירותים: שלבים"), [pageHead(w("خدماتنا", "Our services", "השירותים שלנו"), w("كيف منشتغل، خطوة بخطوة.", "How we work, step by step.", "איך אנחנו עובדים, צעד אחר צעד.")), S("steps-split", "plain"), S("price-split", "surface"), S("tst-grid", "soft"), S("cta-center", "plain")]),
+  p("thanks-simple", "thanks", w("شكراً: بسيطة", "Thanks: simple", "תודה: פשוט"), [thanksHead("soft"), S("prod-row", "plain")]),
+  p("thanks-dark", "thanks", w("شكراً: غامقة", "Thanks: dark", "תודה: כהה"), [thanksHead("dark"), S("steps-row", "plain"), S("contact-cards", "surface")]),
+  p("track-order", "track", w("تتبّع الطلب", "Track an order", "מעקב הזמנה"), [pageHead(w("وين طلبي؟", "Where's my order?", "איפה ההזמנה שלי?"), w("ابعتلنا رقم الطلب ومنرد عليك بسرعة.", "Send us your order number and we'll reply quickly.", "שלחו לנו את מספר ההזמנה ונחזור מהר.")), S("steps-cards", "plain"), S("contact-form", "surface"), S("faq-lines", "plain")]),
+  p("lookbook", "landing", w("صفحة إطلالات", "Lookbook page", "דף לוקבוק"), [S("hero-slider", "plain"), S("look-points", "plain"), S("gal-mosaic", "plain"), S("look-tabs", "soft"), S("cta-big", "dark")]),
 );
 
 for (const cp of CAMPAIGNS) {

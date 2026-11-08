@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { drawScene } from "../../../estabrek-storefront/src/pageTree/sceneCanvas";
-import { MORE_SCENE_KINDS, SCENE_KINDS, sceneOf } from "../../../estabrek-storefront/src/pageTree/scene";
+import { EXTRA_SCENE_KINDS, MORE_SCENE_KINDS, SCENE_KINDS, sceneOf } from "../../../estabrek-storefront/src/pageTree/scene";
 
 function counter() {
   let calls = 0;
@@ -10,9 +10,10 @@ function counter() {
 }
 
 describe("drawn section backgrounds", () => {
-  it("has forty more distinct kinds after the first nine", () => {
+  it("has a hundred distinct kinds: nine, forty and fifty-one more", () => {
     expect(MORE_SCENE_KINDS).toHaveLength(40);
-    expect(new Set(SCENE_KINDS).size).toBe(49);
+    expect(new Set(SCENE_KINDS).size).toBe(100);
+    expect(EXTRA_SCENE_KINDS).toHaveLength(51);
   });
 
   it.each([...SCENE_KINDS])("%s keeps a bounded workload on phone, desktop and huge sections", (kind) => {

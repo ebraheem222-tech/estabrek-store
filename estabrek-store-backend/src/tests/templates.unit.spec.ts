@@ -2,6 +2,7 @@ import { describe, test, expect, beforeAll } from "vitest";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkTree } from "../lib/pageTree.js";
+import { commercePageIssues } from "../lib/commercePage.js";
 
 // The page editor's templates (estabrek-admin src/studio/templates): every section and
 // page, built for every kind of store, in each language and both motion levels, must
@@ -9,7 +10,7 @@ import { checkTree } from "../lib/pageTree.js";
 // the browser; this reads the same files.
 
 type N = { id: string; type: string; children?: N[] };
-type Template = { id: string; kind: "section" | "page"; popup?: boolean };
+type Template = { id: string; kind: "section" | "page"; group?: string; popup?: boolean };
 type Catalog = {
   SECTION_TEMPLATES: Template[];
   PAGE_TEMPLATES: Template[];
@@ -38,6 +39,18 @@ function problem(id: string, o: Record<string, unknown>): string | null {
 }
 
 describe("the editor's templates", () => {
+  test("shop and cart templates hold their store parts once each, ready for /shop and /cart", () => {
+    const shops = cat.PAGE_TEMPLATES.filter((t) => t.group === "shop"), carts = cat.PAGE_TEMPLATES.filter((t) => t.group === "cart");
+    expect(shops.length).toBeGreaterThanOrEqual(8);
+    expect(carts.length).toBeGreaterThanOrEqual(6);
+    for (const [list, slug] of [[shops, "/shop"], [carts, "/cart"]] as const) for (const t of list) for (const lang of LANGS) {
+      const built = cat.buildTemplate(t.id, { ids: idMaker(), fam: "fashion", lang })!;
+      const root = { id: "page", type: "page", props: {}, children: built };
+      expect(checkTree({ version: 1, root }).ok, t.id).toBe(true);
+      expect(commercePageIssues(slug, { root } as never), `${t.id} ${lang}`).toEqual([]);
+    }
+  });
+
   test("there are hundreds of sections and over a hundred pages", () => {
     expect(cat.SECTION_TEMPLATES.length).toBeGreaterThanOrEqual(300);
     expect(cat.PAGE_TEMPLATES.length).toBeGreaterThanOrEqual(100);

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { SCENE_KINDS, checkTree } from "../lib/pageTree.js";
+import { PARTICLES, SCENE_KINDS, checkTree } from "../lib/pageTree.js";
+import { PARTICLE_KINDS } from "../../../estabrek-storefront/src/pageTree/particles";
 import { SCENE_KINDS as SHOP_SCENE_KINDS } from "../../../estabrek-storefront/src/pageTree/scene";
 
 const page = (scene?: unknown) => ({ version: 1, root: { id: "page", type: "page", children: [{ id: "hero", type: "section", props: scene === undefined ? {} : { scene }, children: [{ id: "link", type: "button", props: { label: { en: "Continue" }, href: "/shop" } }] }] } });
@@ -17,10 +18,18 @@ describe("section scene contract", () => {
     if (old.ok) expect(old.tree.root.children![0].props).not.toHaveProperty("scene");
   });
 
-  test("accepts exactly the shop's 49 drawn backgrounds", () => {
+  test("accepts exactly the shop's 100 drawn backgrounds", () => {
     expect([...SCENE_KINDS]).toEqual([...SHOP_SCENE_KINDS]);
-    expect(new Set(SCENE_KINDS).size).toBe(49);
+    expect(new Set(SCENE_KINDS).size).toBe(100);
     for (const kind of SCENE_KINDS) expect(checkTree(page({ kind, interactive: true, amount: 100, speed: 3, intensity: 2 })).ok, kind).toBe(true);
+  });
+
+  test("accepts exactly the shop's 100 particle kinds", () => {
+    expect([...PARTICLES]).toEqual([...PARTICLE_KINDS]);
+    for (const kind of PARTICLES) {
+      const tree = { version: 1, root: { id: "page", type: "page", children: [{ id: "hero", type: "section", props: { particles: { kind, amount: 3, speed: 3 } }, children: [] }] } };
+      expect(checkTree(tree).ok, kind).toBe(true);
+    }
   });
 
   test("rejects unsafe colors, unknown kinds and invalid knobs before saving", () => {

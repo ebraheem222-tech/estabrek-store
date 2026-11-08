@@ -8,7 +8,16 @@ export const MORE_SCENE_KINDS = [
   "helix", "orbits", "radar", "smoke", "weave", "shapes", "memphis", "beams", "dunes", "gems",
 ] as const;
 export type MoreSceneKind = typeof MORE_SCENE_KINDS[number];
-export const SCENE_KINDS = [...BASE_SCENE_KINDS, ...MORE_SCENE_KINDS] as const;
+/** Fifty-one more (EXTRA_SCENES in sceneCanvas.ts): a hundred in all. */
+export const EXTRA_SCENE_KINDS = [
+  "lightning", "meteors", "nebula", "blossom", "balloons", "butterflies", "birds", "fish", "jellyfish", "seaweed",
+  "sunrays", "droplets", "sea", "grass", "forest", "skyline", "mosque", "garland", "stringlights", "ornaments",
+  "coins", "percent", "bags", "beans", "notes", "vinyl", "oscilloscope", "code", "globe", "spiral",
+  "kaleidoscope", "mandala", "moire", "checker", "stripes", "zigzag", "halftone", "grain", "scanlines", "glitch",
+  "pixels", "blocks", "planes", "dandelion", "feathers", "linewaves", "blobs", "embers", "gears", "wavefield", "terrain",
+] as const;
+export type ExtraSceneKind = typeof EXTRA_SCENE_KINDS[number];
+export const SCENE_KINDS = [...BASE_SCENE_KINDS, ...MORE_SCENE_KINDS, ...EXTRA_SCENE_KINDS] as const;
 export type SceneKind = typeof SCENE_KINDS[number];
 export type SceneSpec = { kind: SceneKind; color?: string; secondary?: string; amount: number; speed: number; intensity: number; interactive: boolean };
 const TOKENS = ["text", "muted", "accent", "accent-soft", "accent-contrast", "bg", "surface", "border", "white", "black", "transparent"];

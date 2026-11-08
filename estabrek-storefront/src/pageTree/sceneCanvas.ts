@@ -1,4 +1,4 @@
-import type { MoreSceneKind, SceneSpec } from "./scene";
+import type { ExtraSceneKind, MoreSceneKind, SceneSpec } from "./scene";
 type Pointer = { x: number; y: number } | null;
 const TAU = Math.PI * 2;
 const seed = (n: number) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
@@ -557,6 +557,613 @@ export const MORE_SCENES: Record<MoreSceneKind, Draw> = {
   },
 };
 
+/* ------------------------------------------------------------------------------------------
+ * Fifty-one more (lightning … terrain), bringing the drawn backgrounds to a hundred. Same
+ * rules as above: deterministic, pointer only when asked, finite, bounded on any size.
+ * ---------------------------------------------------------------------------------------- */
+const line2 = (ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number) => { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); };
+/** A five-petal flower. */
+const flower = (e: SceneEnv, x: number, y: number, r: number, a: number) => {
+  const { ctx } = e;
+  ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * a;
+  for (let k = 0; k < 5; k++) { const ang = k / 5 * TAU; circle(ctx, x + Math.cos(ang) * r * .55, y + Math.sin(ang) * r * .55, r * .5); ctx.fill(); }
+  ctx.fillStyle = e.secondary; circle(ctx, x, y, r * .3); ctx.fill();
+};
+/** A hanging curve between two points that sags by `sag`. */
+const sagAt = (ax: number, bx: number, y: number, sag: number, k: number): [number, number] => [ax + (bx - ax) * k, y + Math.sin(k * Math.PI) * sag];
+
+export const EXTRA_SCENES: Record<ExtraSceneKind, Draw> = {
+  lightning(e) {
+    const { ctx, width, height, t } = e, slant = .15 + e.dx / Math.max(1, width) * .3, drops = Math.min(140, e.n * 2);
+    ctx.lineWidth = .8;
+    for (let i = 0; i < drops; i++) {
+      const len = 14 + seed(i) * 20, sp = 380 + seed(i + 3) * 200;
+      const x = wrap(seed(i + 13) * width * 1.3 + t * sp * slant, width * 1.3) - width * .15, y = wrap(seed(i + 70) * height + t * sp + e.dy * .05, height + len) - len;
+      ctx.strokeStyle = e.primary; ctx.globalAlpha = e.alpha * .26; line2(ctx, x, y, x - slant * len, y - len);
+    }
+    const k = Math.floor(t * .35), ph = wrap(t * .35, 1);
+    if (ph < .12) {
+      const a = 1 - ph / .12;
+      ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * a * .1; ctx.fillRect(0, 0, width, height);
+      let x = width * (.15 + .7 * seed(k + 5)) + e.dx * .05, y = 0;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let s = 0; s < 10; s++) { x += (seed(k * 13 + s) - .5) * e.size * .18; y += height * .085; ctx.lineTo(x, y); }
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = 2.4; ctx.globalAlpha = e.alpha * a; ctx.stroke();
+      glow(e, x, y, e.size * .12, e.secondary, e.alpha * a * .6);
+    }
+  },
+  meteors(e) {
+    const { ctx, width, height, t } = e;
+    for (let i = 0; i < e.n; i++) { const tw = .4 + .6 * Math.abs(Math.sin(t * (.6 + seed(i + 5)) + i)); ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .5 * tw; circle(ctx, seed(i + 1) * width + e.dx * .02, seed(i + 2) * height + e.dy * .02, .5 + seed(i + 3)); ctx.fill(); }
+    const count = 3 + Math.round(e.n / 16);
+    for (let m = 0; m < count; m++) {
+      const age = wrap(t * .22 * (.6 + seed(m + 3)) + seed(m + 9), 1), dist = age * (width + height) * .8;
+      const x = width * (.3 + .8 * seed(m + 1)) - dist * .8 + e.dx * .04, y = -20 + height * .3 * seed(m + 2) + dist * .5 + e.dy * .04, tail = e.size * .32;
+      const g = ctx.createLinearGradient(x, y, x + tail * .8, y - tail * .5); g.addColorStop(0, e.secondary); g.addColorStop(1, "transparent");
+      ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.globalAlpha = e.alpha * (age < .85 ? 1 : (1 - age) / .15); line2(ctx, x, y, x + tail * .8, y - tail * .5);
+      glow(e, x, y, 6, e.primary, e.alpha * .9);
+    }
+  },
+  nebula(e) {
+    const { ctx, width, height, t } = e, clouds = 5 + Math.round(e.n / 12);
+    for (let i = 0; i < clouds; i++) {
+      const x = width * (.1 + .8 * seed(i + 1)) + Math.sin(t * .05 + i) * width * .05 + e.dx * .08, y = height * (.15 + .7 * seed(i + 2)) + Math.cos(t * .04 + i) * height * .05 + e.dy * .08;
+      glow(e, x, y, e.size * (.25 + .3 * seed(i + 3)), i % 2 ? e.primary : e.secondary, e.alpha * .22);
+    }
+    for (let i = 0; i < e.n * 2 && i < 200; i++) { ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * (.3 + .6 * seed(i + 40)); circle(ctx, seed(i + 7) * width, seed(i + 8) * height, .4 + seed(i + 9) * 1.2); ctx.fill(); }
+  },
+  blossom(e) {
+    const { ctx, width, height, t } = e;
+    ctx.save(); ctx.translate(e.dx * .02, e.dy * .01); ctx.rotate(Math.sin(t * .4) * .012);
+    ctx.strokeStyle = e.secondary; ctx.lineCap = "round"; ctx.globalAlpha = e.alpha * .55;
+    ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-10, height * .16); ctx.bezierCurveTo(width * .2, height * .05, width * .35, height * .26, width * .58, height * .12); ctx.stroke();
+    ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(width * .26, height * .13); ctx.quadraticCurveTo(width * .3, height * .3, width * .4, height * .34); ctx.stroke();
+    for (let k = 0; k < 12; k++) flower(e, width * (.03 + .52 * k / 11), height * (.13 + .07 * Math.sin(k * 1.3)) + (k % 3 === 1 ? height * .05 : 0), 5 + seed(k) * 6, .6);
+    ctx.restore();
+    for (let i = 0; i < Math.round(e.n / 1.5); i++) {
+      const x = wrap(width * .55 * seed(i + 3) + t * (10 + seed(i) * 14) + Math.sin(t + i) * 20, width), y = wrap(height * .15 + seed(i + 4) * height + t * (16 + seed(i + 2) * 18), height);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(t * .8 + i); ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * .5; ctx.beginPath(); ctx.ellipse(0, 0, 4, 2.2, 0, 0, TAU); ctx.fill(); ctx.restore();
+    }
+  },
+  balloons(e) {
+    const { ctx, width, height, t } = e, count = 6 + Math.round(e.n / 6);
+    for (let i = 0; i < count; i++) {
+      const r = 12 + seed(i + 1) * 16, x = wrap(seed(i + 2) * width + Math.sin(t * .5 + i) * 18 + e.dx * .05, width), y = wrap(seed(i + 3) * height - t * (14 + seed(i + 4) * 14) + e.dy * .03, height + r * 6) - r;
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .4;
+      ctx.beginPath(); ctx.moveTo(x, y + r * 1.2); ctx.quadraticCurveTo(x + Math.sin(t + i) * 8, y + r * 2.2, x, y + r * 3.2); ctx.stroke();
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .55; ctx.beginPath(); ctx.ellipse(x, y, r * .85, r, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.globalAlpha = e.alpha * .35; ctx.beginPath(); ctx.ellipse(x - r * .3, y - r * .35, r * .18, r * .28, -.4, 0, TAU); ctx.fill();
+    }
+  },
+  butterflies(e) {
+    const { ctx, width, height, t } = e, count = 6 + Math.round(e.n / 5);
+    for (let i = 0; i < count; i++) {
+      const s = 7 + seed(i + 1) * 9, x = wrap(seed(i + 2) * width + t * 18 * (seed(i + 3) - .3) + Math.sin(t * .9 + i) * 30 + e.dx * .06, width), y = wrap(seed(i + 4) * height + Math.sin(t * 1.3 + i * 2) * 26 + e.dy * .05, height);
+      const flap = .25 + .75 * Math.abs(Math.sin(t * 7 + i));
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * .7 + i) * .4);
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .6;
+      for (const side of [-1, 1]) { ctx.save(); ctx.scale(side * flap, 1); ctx.beginPath(); ctx.ellipse(s * .55, -s * .3, s * .6, s * .45, -.5, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(s * .4, s * .35, s * .38, s * .3, .5, 0, TAU); ctx.fill(); ctx.restore(); }
+      ctx.restore();
+    }
+  },
+  birds(e) {
+    const { ctx, width, height, t } = e, count = 8 + Math.round(e.n / 3);
+    ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    for (let i = 0; i < count; i++) {
+      const s = 6 + seed(i + 1) * 9, depth = .5 + seed(i + 9) * .8;
+      const x = wrap(seed(i + 2) * width + t * (26 + seed(i + 3) * 20) * depth + e.dx * .05, width + 60) - 30, y = height * (.12 + .55 * seed(i + 4)) + Math.sin(t * .8 + i) * 10 + e.dy * .04;
+      const flap = Math.sin(t * 6 * (.8 + seed(i + 5) * .4) + i) * .6;
+      ctx.strokeStyle = i % 4 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .55 * depth;
+      ctx.beginPath(); ctx.moveTo(x - s, y); ctx.quadraticCurveTo(x - s / 2, y - s * flap, x, y); ctx.quadraticCurveTo(x + s / 2, y - s * flap, x + s, y); ctx.stroke();
+    }
+  },
+  fish(e) {
+    const { ctx, width, height, t } = e, count = 5 + Math.round(e.n / 5);
+    for (let i = 0; i < count; i++) {
+      const s = 10 + seed(i + 1) * 16, dir = i % 2 ? 1 : -1;
+      const x = wrap(seed(i + 2) * width + dir * t * (20 + seed(i + 3) * 20) + e.dx * .05, width + s * 4) - s * 2, y = height * (.15 + .7 * seed(i + 4)) + Math.sin(t * .8 + i) * 12 + e.dy * .04;
+      const wag = Math.sin(t * 6 + i) * .35;
+      ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+      ctx.fillStyle = i % 3 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .55;
+      ctx.beginPath(); ctx.ellipse(0, 0, s, s * .45, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-s * .85, 0); ctx.lineTo(-s * 1.5, -s * (.45 + wag)); ctx.lineTo(-s * 1.5, s * (.45 - wag)); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    for (let i = 0; i < Math.round(e.n / 3); i++) { ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .35; circle(ctx, seed(i + 60) * width, wrap(seed(i + 61) * height - t * 24, height), 2 + seed(i + 62) * 3); ctx.stroke(); }
+  },
+  jellyfish(e) {
+    const { ctx, width, height, t } = e, count = 4 + Math.round(e.n / 10);
+    ctx.lineCap = "round";
+    for (let i = 0; i < count; i++) {
+      const r = 16 + seed(i + 1) * 20, pulse = 1 + .12 * Math.sin(t * 2 + i);
+      const x = width * (.1 + .8 * seed(i + 2)) + Math.sin(t * .3 + i) * 20 + e.dx * .06, y = wrap(seed(i + 3) * height - t * (8 + seed(i + 4) * 8), height + r * 5) - r + e.dy * .04;
+      const c = i % 2 ? e.primary : e.secondary;
+      ctx.fillStyle = c; ctx.globalAlpha = e.alpha * .4;
+      ctx.beginPath(); ctx.ellipse(x, y, r * pulse, r * .75 / pulse, 0, Math.PI, TAU); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = c; ctx.lineWidth = 1.2; ctx.globalAlpha = e.alpha * .35;
+      for (let k = 0; k < 5; k++) {
+        const bx = x + (k - 2) * r * .35; ctx.beginPath(); ctx.moveTo(bx, y);
+        for (let s = 1; s <= 6; s++) ctx.lineTo(bx + Math.sin(t * 2.5 + s * .8 + k) * 4, y + s * r * .32);
+        ctx.stroke();
+      }
+    }
+  },
+  seaweed(e) {
+    const { ctx, width, height, t } = e, strands = Math.min(36, 8 + Math.round(e.n / 3));
+    ctx.lineCap = "round";
+    for (let i = 0; i < strands; i++) {
+      const base = width * (i + .5) / strands + (seed(i) - .5) * 20, top = height * (.3 + .35 * seed(i + 1));
+      ctx.beginPath(); ctx.moveTo(base, height);
+      for (let s = 1; s <= 12; s++) { const y = height - (height - top) * s / 12, k = s / 12; ctx.lineTo(base + Math.sin(t * 1.1 + i + s * .5) * 18 * k + e.dx * .03 * k, y); }
+      ctx.strokeStyle = i % 2 ? e.primary : e.secondary; ctx.lineWidth = 3 + seed(i + 2) * 4; ctx.globalAlpha = e.alpha * .3; ctx.stroke();
+    }
+    for (let i = 0; i < Math.round(e.n / 2); i++) { ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .3; circle(ctx, seed(i + 30) * width, wrap(seed(i + 31) * height - t * 30 + e.dy * .03, height), 1.5 + seed(i + 32) * 2); ctx.fill(); }
+  },
+  sunrays(e) {
+    const { ctx, width, height, t } = e, rays = 7 + Math.round(e.n / 6), ox = -width * .1 + e.dx * .1, oy = -height * .25 + e.dy * .05, reach = Math.hypot(width, height) * 1.3;
+    for (let i = 0; i < rays; i++) {
+      const a = .25 + i / rays * .9 + Math.sin(t * .15 + i) * .02, half = .015 + seed(i + 1) * .03;
+      const g = ctx.createLinearGradient(ox, oy, ox + Math.cos(a) * reach, oy + Math.sin(a) * reach); g.addColorStop(0, e.primary); g.addColorStop(1, "transparent");
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(a - half) * reach, oy + Math.sin(a - half) * reach); ctx.lineTo(ox + Math.cos(a + half) * reach, oy + Math.sin(a + half) * reach); ctx.closePath();
+      ctx.fillStyle = g; ctx.globalAlpha = e.alpha * (.12 + .1 * Math.sin(t * .6 + i * 1.7)); ctx.fill();
+    }
+    for (let i = 0; i < e.n; i++) { ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .3 * (.5 + .5 * Math.sin(t + i)); circle(ctx, wrap(seed(i + 3) * width + t * 5, width), wrap(seed(i + 4) * height + Math.sin(t * .5 + i) * 10, height), 1); ctx.fill(); }
+  },
+  droplets(e) {
+    const { ctx, width, height, t } = e;
+    for (let i = 0; i < e.n; i++) {
+      const r = 2 + seed(i + 1) * 6, x = seed(i + 2) * width + e.dx * .02, speed = seed(i + 3) < .4 ? 30 + seed(i + 4) * 60 : 2, y = wrap(seed(i + 5) * height + t * speed + e.dy * .02, height + r * 2) - r;
+      if (speed > 5) { ctx.strokeStyle = e.secondary; ctx.lineWidth = r * .5; ctx.globalAlpha = e.alpha * .12; line2(ctx, x, y - r * 8, x, y); }
+      ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * .3; ctx.beginPath(); ctx.ellipse(x, y, r * .85, r, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.globalAlpha = e.alpha * .45; circle(ctx, x - r * .3, y - r * .35, r * .25); ctx.fill();
+    }
+  },
+  sea(e) {
+    const { ctx, width, height, t } = e, horizon = height * .45 + e.dy * .04, cx = width * .5 + e.dx * .1;
+    glow(e, cx, horizon - e.size * .1, e.size * .3, e.primary, e.alpha * .6);
+    ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * .7; circle(ctx, cx, horizon - e.size * .1, e.size * .07); ctx.fill();
+    for (let k = 0; k < 22; k++) {
+      const y = horizon + 6 + k * (height - horizon) / 24, w = (30 + k * 6) * (.6 + .4 * Math.sin(t * 2 + k * 1.3));
+      ctx.strokeStyle = e.primary; ctx.lineWidth = 2; ctx.globalAlpha = e.alpha * (.45 - k * .015); line2(ctx, cx - w / 2, y, cx + w / 2, y);
+    }
+    for (let j = 0; j < 8; j++) {
+      const y0 = horizon + (j + 1) * (height - horizon) / 9;
+      ctx.beginPath();
+      for (let s = 0; s <= 40; s++) { const x = s / 40 * width, y = y0 + Math.sin(x / Math.max(40, width * .08) + t * (.8 + j * .1) + j) * (2 + j * .8); if (s) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * (.1 + j * .03); ctx.stroke();
+    }
+    ctx.strokeStyle = e.secondary; ctx.globalAlpha = e.alpha * .3; line2(ctx, 0, horizon, width, horizon);
+  },
+  grass(e) {
+    const { ctx, width, height, t } = e, blades = Math.min(180, 40 + Math.round(e.n * 1.6));
+    ctx.lineCap = "round";
+    for (let i = 0; i < blades; i++) {
+      const x = (i + seed(i)) / blades * width, h = height * (.12 + .28 * seed(i + 1)), sway = Math.sin(t * 1.2 + x * .015) * h * .25 + e.dx * .04;
+      ctx.beginPath(); ctx.moveTo(x, height); ctx.quadraticCurveTo(x + sway * .3, height - h * .6, x + sway, height - h);
+      ctx.strokeStyle = i % 3 ? e.primary : e.secondary; ctx.lineWidth = 1.5 + seed(i + 2) * 1.5; ctx.globalAlpha = e.alpha * (.3 + .3 * seed(i + 3)); ctx.stroke();
+    }
+  },
+  forest(e) {
+    const { ctx, width, height, t } = e;
+    for (let layer = 0; layer < 3; layer++) {
+      const tw = 40 + layer * 26, count = Math.min(60, Math.ceil(width / (tw * .7)) + 2), base = height * (.7 + layer * .12), shift = wrap(t * (4 + layer * 6) + e.dx * .04 * (layer + 1), tw * .7);
+      ctx.fillStyle = layer % 2 ? e.secondary : e.primary; ctx.globalAlpha = e.alpha * (.12 + layer * .1);
+      for (let i = -1; i < count; i++) {
+        const x = i * tw * .7 - shift, h = tw * (1.6 + seed(i + layer * 50 + 100) * 1.2);
+        for (let k = 0; k < 3; k++) { const w = tw * (.55 - k * .12), y = base - h * (k * .28); ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x, y - h * .5); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill(); }
+      }
+      ctx.fillRect(0, base, width, height - base);
+    }
+  },
+  skyline(e) {
+    const { ctx, width, height, t } = e, count = Math.min(60, 12 + Math.round(e.n / 2)), bw = width / count;
+    let windows = 0;
+    for (let i = 0; i < count; i++) {
+      const h = height * (.2 + .5 * seed(i + 1)), x = i * bw + e.dx * .03, y = height - h;
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .22; ctx.fillRect(x, y, bw - 2, h);
+      const cols = Math.max(1, Math.floor((bw - 6) / 8)), rows = Math.floor(h / 12);
+      for (let r = 0; r < rows && windows < 1200; r++) for (let c = 0; c < cols && windows < 1200; c++) {
+        windows++;
+        const on = seed(i * 97 + r * 13 + c + Math.floor(t * .5 + seed(i + r) * 10)) > .55;
+        if (on) { ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .55; ctx.fillRect(x + 4 + c * 8, y + 6 + r * 12, 4, 5); }
+      }
+    }
+  },
+  mosque(e) {
+    const { ctx, width, height, t } = e;
+    for (let i = 0; i < e.n; i++) { const tw = .4 + .6 * Math.abs(Math.sin(t * (.5 + seed(i + 3)) + i)); ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .55 * tw; circle(ctx, seed(i + 1) * width, seed(i + 2) * height * .55, .6 + seed(i + 4)); ctx.fill(); }
+    const cx = width * .5 + e.dx * .03, base = height * .98, s = Math.min(width * .5, height * .55);
+    ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * .38;
+    const dome = (x: number, r: number) => { ctx.beginPath(); ctx.ellipse(x, base - r * 1.2, r, r * 1.05, 0, Math.PI, TAU); ctx.closePath(); ctx.fill(); ctx.fillRect(x - r, base - r * 1.2, r * 2, r * 1.2); };
+    dome(cx, s * .28); dome(cx - s * .42, s * .15); dome(cx + s * .42, s * .15);
+    for (const side of [-1, 1]) { const x = cx + side * s * .68; ctx.fillRect(x - s * .03, base - s * .9, s * .06, s * .9); ctx.beginPath(); ctx.ellipse(x, base - s * .9, s * .045, s * .07, 0, Math.PI, TAU); ctx.fill(); }
+    ctx.fillRect(cx - s * .02, base - s * .65, s * .04, s * .1);
+    ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .8; circle(ctx, cx, base - s * .74, s * .035); ctx.fill();
+    ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = 1; circle(ctx, cx + s * .014, base - s * .745, s * .03); ctx.fill(); ctx.globalCompositeOperation = "source-over";
+  },
+  garland(e) {
+    const { ctx, width, height, t } = e;
+    for (let g = 0; g < 3; g++) {
+      const y = height * (.05 + g * .12) + e.dy * .02, sag = height * (.06 + g * .02), flags = Math.min(30, 10 + Math.round(e.n / 4));
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .4; ctx.beginPath();
+      for (let s = 0; s <= 30; s++) { const [x, yy] = sagAt(-10, width + 10, y, sag, s / 30); if (s) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); }
+      ctx.stroke();
+      for (let f = 0; f < flags; f++) {
+        const k = (f + .5) / flags, [x, yy] = sagAt(-10, width + 10, y, sag, k), sw = Math.sin(t * 1.5 + f + g) * .12 + e.dx * .0004, w = width / flags * .38;
+        ctx.save(); ctx.translate(x, yy); ctx.rotate(sw); ctx.fillStyle = (f + g) % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .6;
+        ctx.beginPath(); ctx.moveTo(-w, 0); ctx.lineTo(w, 0); ctx.lineTo(0, w * 1.6); ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+    }
+  },
+  stringlights(e) {
+    const { ctx, width, height, t } = e;
+    for (let g = 0; g < 3; g++) {
+      const y = height * (.08 + g * .16) + e.dy * .02, sag = height * (.08 + g * .03), bulbs = Math.min(40, 12 + Math.round(e.n / 3));
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .3; ctx.beginPath();
+      for (let s = 0; s <= 30; s++) { const [x, yy] = sagAt(-10, width + 10, y, sag, s / 30); if (s) ctx.lineTo(x + e.dx * .01, yy); else ctx.moveTo(x + e.dx * .01, yy); }
+      ctx.stroke();
+      for (let b = 0; b < bulbs; b++) {
+        const [x, yy] = sagAt(-10, width + 10, y, sag, (b + .5) / bulbs), on = .45 + .55 * Math.abs(Math.sin(t * (1 + seed(b + g * 40)) + b * 1.7));
+        glow(e, x + e.dx * .01, yy + 6, 14, (b + g) % 2 ? e.primary : e.secondary, e.alpha * .5 * on);
+        ctx.fillStyle = (b + g) % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * (.5 + .5 * on); ctx.beginPath(); ctx.ellipse(x + e.dx * .01, yy + 6, 3, 4.5, 0, 0, TAU); ctx.fill();
+      }
+    }
+  },
+  ornaments(e) {
+    const { ctx, width, height, t } = e, count = 6 + Math.round(e.n / 6);
+    for (let i = 0; i < count; i++) {
+      const x0 = width * (i + .5) / count + e.dx * .02, len = height * (.12 + .3 * seed(i + 1)), sw = Math.sin(t * 1.2 * (.7 + seed(i + 2) * .5) + i) * .18;
+      const x = x0 + Math.sin(sw) * len, y = Math.cos(sw) * len + e.dy * .02, r = 9 + seed(i + 3) * 10;
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .4; line2(ctx, x0, 0, x, y);
+      ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .6; ctx.fillRect(x - r * .25, y - 2, r * .5, r * .3);
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .6; circle(ctx, x, y + r, r); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.globalAlpha = e.alpha * .4; circle(ctx, x - r * .35, y + r * .65, r * .22); ctx.fill();
+    }
+  },
+  coins(e) {
+    const { ctx, width, height, t } = e;
+    for (let i = 0; i < Math.max(8, Math.round(e.n * .7)); i++) {
+      const r = 6 + seed(i + 1) * 9, ph = wrap(t * (.12 + seed(i + 2) * .1) + seed(i + 3), 1), x = seed(i + 4) * width + Math.sin(t + i) * 10 + e.dx * .05, y = -r * 2 + ph * ph * (height + r * 4) + e.dy * .02;
+      const spin = Math.cos(t * 3 + i);
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .6; ctx.beginPath(); ctx.ellipse(x, y, Math.max(.6, r * Math.abs(spin)), r, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .4; ctx.beginPath(); ctx.ellipse(x, y, Math.max(.4, r * .7 * Math.abs(spin)), r * .7, 0, 0, TAU); ctx.stroke();
+    }
+  },
+  percent(e) {
+    const { ctx, width, height, t } = e;
+    ctx.lineCap = "round";
+    for (let i = 0; i < Math.max(8, Math.round(e.n * .6)); i++) {
+      const s = 8 + seed(i + 1) * 14, x = wrap(seed(i + 2) * width + Math.sin(t * .6 + i) * 16 + e.dx * .05, width), y = wrap(seed(i + 3) * height + t * (20 + seed(i + 4) * 22) + e.dy * .03, height + s * 3) - s;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * .8 + i) * .5);
+      ctx.strokeStyle = i % 2 ? e.primary : e.secondary; ctx.lineWidth = Math.max(1.5, s * .14); ctx.globalAlpha = e.alpha * .5;
+      line2(ctx, -s * .5, s * .6, s * .5, -s * .6); circle(ctx, -s * .38, -s * .38, s * .2); ctx.stroke(); circle(ctx, s * .38, s * .38, s * .2); ctx.stroke();
+      ctx.restore();
+    }
+  },
+  bags(e) {
+    const { ctx, width, height, t } = e;
+    for (let i = 0; i < Math.max(6, Math.round(e.n / 2.5)); i++) {
+      const s = 12 + seed(i + 1) * 16, x = wrap(seed(i + 2) * width + Math.sin(t * .5 + i) * 20 + e.dx * .05, width), y = wrap(seed(i + 3) * height - t * (12 + seed(i + 4) * 12) + e.dy * .03, height + s * 3) - s;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * .6 + i) * .25);
+      const c = i % 2 ? e.primary : e.secondary;
+      ctx.fillStyle = c; ctx.globalAlpha = e.alpha * .35; ctx.fillRect(-s * .5, -s * .3, s, s * .9);
+      ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.globalAlpha = e.alpha * .6; ctx.strokeRect(-s * .5, -s * .3, s, s * .9);
+      ctx.beginPath(); ctx.arc(0, -s * .3, s * .25, Math.PI, TAU); ctx.stroke();
+      ctx.restore();
+    }
+  },
+  beans(e) {
+    const { ctx, width, height, t } = e;
+    for (let i = 0; i < e.n; i++) {
+      const s = 5 + seed(i + 1) * 6, x = wrap(seed(i + 2) * width + Math.sin(t * .7 + i) * 14 + e.dx * .05, width), y = wrap(seed(i + 3) * height + t * (18 + seed(i + 4) * 20) + e.dy * .03, height + s * 3) - s;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(t * (.5 + seed(i + 5)) + i);
+      ctx.fillStyle = i % 3 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .6; ctx.beginPath(); ctx.ellipse(0, 0, s, s * .7, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-s * .8, 0); ctx.bezierCurveTo(-s * .3, -s * .35, s * .3, s * .35, s * .8, 0); ctx.stroke();
+      ctx.restore();
+    }
+  },
+  notes(e) {
+    const { ctx, width, height, t } = e;
+    ctx.lineCap = "round";
+    for (let i = 0; i < Math.max(8, Math.round(e.n * .7)); i++) {
+      const s = 7 + seed(i + 1) * 9, x = wrap(seed(i + 2) * width + Math.sin(t * .9 + i) * 22 + e.dx * .05, width), y = wrap(seed(i + 3) * height - t * (16 + seed(i + 4) * 16) + e.dy * .03, height + s * 4) - s;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t + i) * .3);
+      const c = i % 2 ? e.primary : e.secondary; ctx.fillStyle = c; ctx.strokeStyle = c; ctx.globalAlpha = e.alpha * .6; ctx.lineWidth = Math.max(1.2, s * .15);
+      ctx.beginPath(); ctx.ellipse(0, 0, s * .55, s * .4, -.4, 0, TAU); ctx.fill();
+      line2(ctx, s * .48, -s * .1, s * .48, -s * 2);
+      if (i % 3) { ctx.beginPath(); ctx.moveTo(s * .48, -s * 2); ctx.quadraticCurveTo(s * 1.2, -s * 1.6, s, -s * 1.1); ctx.stroke(); }
+      ctx.restore();
+    }
+  },
+  vinyl(e) {
+    const { ctx, width, height, t } = e, R = e.size * .42, cx = width * .72 + e.dx * .05, cy = height * .5 + e.dy * .05, turn = t * 1.4;
+    ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * .3; circle(ctx, cx, cy, R); ctx.fill();
+    ctx.strokeStyle = e.secondary; ctx.lineWidth = .8;
+    for (let k = 0; k < 18; k++) { ctx.globalAlpha = e.alpha * (.08 + .05 * (k % 3)); circle(ctx, cx, cy, R * (.38 + k * .034)); ctx.stroke(); }
+    for (const off of [0, Math.PI]) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, turn + off, turn + off + .35); ctx.closePath(); ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .1; ctx.fill(); }
+    ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .6; circle(ctx, cx, cy, R * .3); ctx.fill();
+    ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * .8; circle(ctx, cx + Math.cos(turn) * R * .15, cy + Math.sin(turn) * R * .15, R * .04); ctx.fill();
+    for (let i = 0; i < Math.round(e.n / 4); i++) { const a = wrap(t * .3 + seed(i), 1); ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * (1 - a) * .6; circle(ctx, cx - R - a * width * .4, cy - a * height * .3 + (seed(i + 3) - .5) * R, 2 + seed(i + 4) * 2); ctx.fill(); }
+  },
+  oscilloscope(e) {
+    const { ctx, width, height, t } = e, mid = height * .5 + e.dy * .1, steps = 220;
+    ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .08;
+    for (let k = 1; k < 10; k++) { line2(ctx, k / 10 * width, 0, k / 10 * width, height); }
+    for (let k = 1; k < 6; k++) { line2(ctx, 0, k / 6 * height, width, k / 6 * height); }
+    const f = (x: number) => Math.sin(x * .02 + t * 3) * .5 + Math.sin(x * .047 - t * 2.1) * .3 + Math.sin(x * .011 + t * .7 + e.dx * .01) * .4;
+    for (const [lw, a] of [[8, .08], [3, .25], [1.2, .8]] as const) {
+      ctx.beginPath();
+      for (let s = 0; s <= steps; s++) { const x = s / steps * width, y = mid + f(x) * height * .22; if (s) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.strokeStyle = e.primary; ctx.lineWidth = lw; ctx.globalAlpha = e.alpha * a; ctx.stroke();
+    }
+  },
+  code(e) {
+    const { ctx, width, height, t } = e, lh = Math.max(14, e.size * .045), lines = Math.min(60, Math.ceil(height / lh) + 2), scroll = wrap(t * 14 + e.dy * .05, lh * 8), x0 = width * .08 + e.dx * .03;
+    for (let l = 0; l < lines; l++) {
+      const idx = l + Math.floor((t * 14) / (lh * 8)) * 8, y = l * lh - scroll + lh, indent = Math.floor(seed(idx * 3 + 1) * 4) * lh * .9;
+      let x = x0 + indent;
+      const parts = 1 + Math.floor(seed(idx * 3 + 2) * 4);
+      for (let p = 0; p < parts; p++) {
+        const w = lh * (1.5 + seed(idx * 7 + p) * 6);
+        ctx.fillStyle = (idx + p) % 3 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * (.18 + .2 * seed(idx + p * 5));
+        ctx.fillRect(x, y - lh * .3, w, lh * .42); x += w + lh * .5;
+      }
+    }
+    if (Math.sin(t * 6) > 0) { ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .8; ctx.fillRect(x0, height * .6, 2, lh * .8); }
+  },
+  globe(e) {
+    const { ctx, width, height, t } = e, cx = width * .5 + e.dx * .1, cy = height * .5 + e.dy * .1, R = e.size * .38, spin = t * .3 + e.dx * .002;
+    glow(e, cx, cy, R * 1.4, e.primary, e.alpha * .2);
+    for (let la = 1; la < 16; la++) {
+      const phi = la / 16 * Math.PI, rr = Math.sin(phi) * R, y = cy - Math.cos(phi) * R, count = Math.max(6, Math.round(32 * Math.sin(phi)));
+      for (let lo = 0; lo < count; lo++) {
+        const th = lo / count * TAU + spin, z = Math.cos(th);
+        ctx.fillStyle = z > 0 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * (z > 0 ? .3 + .6 * z : .12);
+        circle(ctx, cx + Math.sin(th) * rr, y, z > 0 ? 1.6 : 1); ctx.fill();
+      }
+    }
+  },
+  spiral(e) {
+    const { ctx, width, height, t } = e, cx = width * .5 + e.dx * .15, cy = height * .5 + e.dy * .15, arms = 3 + Math.round(e.n / 40), R = Math.hypot(width, height) * .6;
+    for (let a = 0; a < arms; a++) for (let k = 0; k < 70; k++) {
+      const r = k / 70 * R, ang = a / arms * TAU + k * .14 + t * .4;
+      ctx.fillStyle = a % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * (.15 + .45 * k / 70);
+      circle(ctx, cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, 1 + k / 70 * 3); ctx.fill();
+    }
+  },
+  kaleidoscope(e) {
+    const { ctx, width, height, t } = e, cx = width * .5 + e.dx * .1, cy = height * .5 + e.dy * .1, R = Math.min(width, height) * .5;
+    for (let w = 0; w < 8; w++) {
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(w / 8 * TAU + t * .08); if (w % 2) ctx.scale(1, -1);
+      for (let k = 0; k < 6; k++) {
+        const r = R * (.15 + .14 * k) + Math.sin(t * .7 + k) * R * .05, a = .2 + .15 * Math.sin(t * .5 + k * 1.3), s = R * (.05 + .03 * Math.sin(t + k));
+        ctx.fillStyle = k % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .35;
+        if (k % 3 === 0) { circle(ctx, Math.cos(a) * r, Math.sin(a) * r, s); ctx.fill(); } else { polygon(ctx, Math.cos(a) * r, Math.sin(a) * r, s * 1.3, 3 + (k % 2), t * .3 + k); ctx.fill(); }
+      }
+      ctx.restore();
+    }
+  },
+  mandala(e) {
+    const { ctx, width, height, t } = e, cx = width * .5 + e.dx * .08, cy = height * .5 + e.dy * .08, R = Math.min(width, height) * .46;
+    for (let ring = 0; ring < 6; ring++) {
+      const petals = 8 + ring * 4, r = R * (.18 + ring * .15), turn = t * .12 * (ring % 2 ? 1 : -1);
+      for (let p = 0; p < petals; p++) {
+        const a = p / petals * TAU + turn;
+        ctx.save(); ctx.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.rotate(a);
+        ctx.strokeStyle = ring % 2 ? e.primary : e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .35;
+        ctx.beginPath(); ctx.ellipse(0, 0, R * .07, R * .025 + ring, 0, 0, TAU); ctx.stroke(); ctx.restore();
+      }
+    }
+    ctx.fillStyle = e.primary; ctx.globalAlpha = e.alpha * .4; starPath(ctx, cx, cy, R * .12, R * .05, 8, t * .2); ctx.fill();
+  },
+  moire(e) {
+    const { ctx, width, height, t } = e, rings = Math.min(40, 18 + Math.round(e.n / 4)), gap = Math.hypot(width, height) / rings / 1.4;
+    ctx.lineWidth = 1;
+    const centres: Array<[number, number, string]> = [[width * (.4 + .1 * Math.sin(t * .3)) + e.dx * .1, height * .5, e.primary], [width * (.6 + .1 * Math.cos(t * .25)), height * (.5 + .08 * Math.sin(t * .4)) + e.dy * .1, e.secondary]];
+    for (const [x, y, c] of centres) { ctx.strokeStyle = c; ctx.globalAlpha = e.alpha * .28; for (let k = 1; k <= rings; k++) { circle(ctx, x, y, k * gap); ctx.stroke(); } }
+  },
+  checker(e) {
+    const { ctx, width, height, t } = e, cell = cellFor(e, Math.min(600, 120 + e.n * 4), 18), cols = Math.ceil(width / cell), rows = Math.ceil(height / cell);
+    if (cols * rows > 900) return;
+    const cx = width * .5 + e.dx * .5, cy = height * .5 + e.dy * .5;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if ((r + c) % 2) continue;
+      const x = c * cell + cell / 2, y = r * cell + cell / 2, k = .5 + .5 * Math.sin(Math.hypot(x - cx, y - cy) / (cell * 2) - t * 1.6), s = cell * (.2 + .75 * k);
+      ctx.fillStyle = k > .5 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * (.08 + .2 * k); ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    }
+  },
+  stripes(e) {
+    const { ctx, width, height, t } = e, band = Math.max(18, Math.hypot(width, height) / Math.min(60, 14 + e.n / 3)), shift = wrap(t * 30 + e.dx * .1, band * 2), span = width + height;
+    for (let k = -2, i = 0; k * band < span && i < 80; k += 2, i++) {
+      const x = k * band + shift - height;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + band, 0); ctx.lineTo(x + band + height, height); ctx.lineTo(x + height, height); ctx.closePath();
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .1; ctx.fill();
+    }
+  },
+  zigzag(e) {
+    const { ctx, width, height, t } = e, rows = Math.min(30, 8 + Math.round(e.n / 5)), step = Math.max(14, width / 60), amp = height / rows * .3;
+    ctx.lineWidth = 1.6; ctx.lineJoin = "round";
+    for (let r = 0; r < rows; r++) {
+      const y = (r + .5) / rows * height + e.dy * .03, shift = wrap(t * 24 * (r % 2 ? 1 : -1) + e.dx * .05, step * 2);
+      ctx.beginPath();
+      for (let s = -2, i = 0; s * step < width + step * 2 && i < 200; s++, i++) { const x = s * step + shift, yy = y + (s % 2 ? -amp : amp); if (i) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); }
+      ctx.strokeStyle = r % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .25; ctx.stroke();
+    }
+  },
+  halftone(e) {
+    const { ctx, width, height, t } = e, gap = cellFor(e, Math.min(1400, 300 + e.n * 10), 10), cols = Math.floor(width / gap) + 1, rows = Math.floor(height / gap) + 1;
+    if (cols * rows > 1800) return;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const x = c * gap + (r % 2 ? gap / 2 : 0), y = r * gap, band = .5 + .5 * Math.sin((x + y) / Math.max(80, width * .25) - t * .8 + e.dx * .003);
+      ctx.fillStyle = band > .5 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .35; circle(ctx, x, y, gap * .48 * band); ctx.fill();
+    }
+  },
+  grain(e) {
+    const { ctx, width, height, t } = e, frame = Math.floor(t * 24), count = Math.min(1200, 300 + e.n * 9);
+    for (let i = 0; i < count; i++) {
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * (.08 + .2 * seed(frame * 7 + i * 3));
+      ctx.fillRect(seed(frame * 13 + i) * width + e.dx * .002, seed(frame * 17 + i + 5) * height + e.dy * .002, 1 + seed(i + frame), 1 + seed(i + frame + 2));
+    }
+    const g = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * .3, width / 2, height / 2, Math.hypot(width, height) * .6);
+    g.addColorStop(0, "transparent"); g.addColorStop(1, e.primary); ctx.fillStyle = g; ctx.globalAlpha = e.alpha * .25; ctx.fillRect(0, 0, width, height);
+  },
+  scanlines(e) {
+    const { ctx, width, height, t } = e, step = Math.max(3, height / 300), lines = Math.floor(height / step);
+    ctx.fillStyle = e.primary;
+    for (let i = 0; i < lines; i++) { ctx.globalAlpha = e.alpha * (i % 2 ? .06 : .12); ctx.fillRect(0, i * step, width, step * .5); }
+    const band = wrap(t * 80 + e.dy * .1, height + 120) - 60, g = ctx.createLinearGradient(0, band - 60, 0, band + 60);
+    g.addColorStop(0, "transparent"); g.addColorStop(.5, e.secondary); g.addColorStop(1, "transparent"); ctx.fillStyle = g; ctx.globalAlpha = e.alpha * .18; ctx.fillRect(0, band - 60, width, 120);
+    ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * .04 * (1 + Math.sin(t * 40)); ctx.fillRect(0, 0, width, height);
+  },
+  glitch(e) {
+    const { ctx, width, height, t } = e, burst = Math.floor(t * 6), on = seed(burst + 3) > .35, bars = Math.min(40, 8 + Math.round(e.n / 3));
+    for (let i = 0; i < bars; i++) {
+      const y = seed(burst * 31 + i) * height, h = 2 + seed(burst * 17 + i) * height * .05, x = (seed(burst * 7 + i) - .3) * width + e.dx * .05, w = width * (.1 + .5 * seed(burst * 11 + i));
+      ctx.fillStyle = i % 3 === 0 ? e.secondary : e.primary; ctx.globalAlpha = e.alpha * (on ? .3 : .08); ctx.fillRect(x, y, w, h);
+      if (on && i % 4 === 0) { ctx.fillStyle = "rgba(255,0,80,0.6)"; ctx.globalAlpha = e.alpha * .2; ctx.fillRect(x + 4, y, w, h); ctx.fillStyle = "rgba(0,229,255,0.6)"; ctx.fillRect(x - 4, y, w, h); }
+    }
+  },
+  pixels(e) {
+    const { ctx, width, height, t } = e, cell = Math.max(8, Math.round(e.size * .03)), cols = Math.min(120, Math.ceil(width / cell));
+    for (let c = 0; c < cols; c++) {
+      const speed = 3 + seed(c + 1) * 6, trail = 4 + Math.floor(seed(c + 2) * 8), head = Math.floor(wrap(seed(c + 3) * 60 + t * speed + e.dy * .02, Math.ceil(height / cell) + trail));
+      for (let k = 0; k < trail; k++) {
+        const r = head - k; if (r < 0 || r * cell > height) continue;
+        ctx.fillStyle = k === 0 ? e.secondary : e.primary; ctx.globalAlpha = e.alpha * (k === 0 ? .7 : .35 * (1 - k / trail));
+        ctx.fillRect(c * cell + 1 + e.dx * .01, r * cell + 1, cell - 2, cell - 2);
+      }
+    }
+  },
+  blocks(e) {
+    const { ctx, width, height, t } = e, unit = Math.max(10, e.size * .035), count = 6 + Math.round(e.n / 6);
+    const SHAPES: Array<Array<[number, number]>> = [[[0, 0], [1, 0], [2, 0], [3, 0]], [[0, 0], [1, 0], [0, 1], [1, 1]], [[0, 0], [1, 0], [2, 0], [1, 1]], [[0, 0], [0, 1], [1, 1], [2, 1]], [[1, 0], [2, 0], [0, 1], [1, 1]]];
+    for (let i = 0; i < count; i++) {
+      const shape = SHAPES[i % SHAPES.length], x = Math.round(seed(i + 1) * (width / unit - 4)) * unit + e.dx * .03, y = wrap(seed(i + 2) * height + Math.floor(t * (1 + seed(i + 3) * 2)) * unit, height + unit * 4) - unit * 2;
+      const turn = Math.floor(t * .5 + seed(i + 4) * 4) % 4;
+      ctx.save(); ctx.translate(x + unit * 1.5, y + unit); ctx.rotate(turn * Math.PI / 2);
+      const c = i % 2 ? e.primary : e.secondary;
+      for (const [a, b] of shape) { ctx.fillStyle = c; ctx.globalAlpha = e.alpha * .3; ctx.fillRect((a - 1.5) * unit + 1, (b - 1) * unit + 1, unit - 2, unit - 2); ctx.strokeStyle = c; ctx.globalAlpha = e.alpha * .6; ctx.strokeRect((a - 1.5) * unit + 1, (b - 1) * unit + 1, unit - 2, unit - 2); }
+      ctx.restore();
+    }
+  },
+  planes(e) {
+    const { ctx, width, height, t } = e, count = 4 + Math.round(e.n / 8);
+    for (let i = 0; i < count; i++) {
+      const s = 10 + seed(i + 1) * 12, ph = wrap(t * .07 * (.7 + seed(i + 2)) + seed(i + 3), 1), x = -40 + ph * (width + 80) + e.dx * .04, y = height * (.75 - .5 * ph) + Math.sin(ph * 9 + i) * height * .06 + (seed(i + 4) - .5) * height * .4 + e.dy * .03;
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = 1; ctx.globalAlpha = e.alpha * .25; ctx.setLineDash([4, 6]);
+      ctx.beginPath(); ctx.moveTo(x - s, y + s * .4); ctx.quadraticCurveTo(x - s * 4, y + s * 2.5, x - s * 7, y + s * 1.5); ctx.stroke(); ctx.setLineDash([]);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-.35 + Math.sin(t + i) * .1);
+      ctx.fillStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .6;
+      ctx.beginPath(); ctx.moveTo(s, 0); ctx.lineTo(-s, -s * .55); ctx.lineTo(-s * .5, 0); ctx.lineTo(-s, s * .55); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  },
+  dandelion(e) {
+    const { ctx, width, height, t } = e;
+    ctx.lineCap = "round";
+    for (let i = 0; i < e.n; i++) {
+      const s = 4 + seed(i + 1) * 5, x = wrap(seed(i + 2) * width + t * (10 + seed(i + 3) * 14) + Math.sin(t * .8 + i) * 18 + e.dx * .05, width), y = wrap(seed(i + 4) * height - t * (6 + seed(i + 5) * 8) + e.dy * .03, height);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * .6 + i) * .4);
+      ctx.strokeStyle = e.secondary; ctx.lineWidth = .7; ctx.globalAlpha = e.alpha * .45; line2(ctx, 0, 0, 0, s * 1.8);
+      ctx.strokeStyle = e.primary; for (let k = 0; k < 8; k++) { const a = Math.PI + k / 7 * Math.PI; line2(ctx, 0, 0, Math.cos(a) * s, Math.sin(a) * s); }
+      ctx.restore();
+    }
+  },
+  feathers(e) {
+    const { ctx, width, height, t } = e, count = 5 + Math.round(e.n / 5);
+    ctx.lineCap = "round";
+    for (let i = 0; i < count; i++) {
+      const s = 14 + seed(i + 1) * 16, y = wrap(seed(i + 2) * height + t * (10 + seed(i + 3) * 10) + e.dy * .03, height + s * 3) - s, x = seed(i + 4) * width + Math.sin(t * .9 + i) * 30 + e.dx * .05;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * .9 + i) * .6 + .3);
+      ctx.strokeStyle = i % 2 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * .5; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(0, -s); ctx.quadraticCurveTo(s * .15, 0, 0, s); ctx.stroke();
+      ctx.lineWidth = .7; ctx.globalAlpha = e.alpha * .35;
+      for (let k = -6; k <= 6; k++) { const yy = k / 7 * s, w = s * .35 * (1 - Math.abs(k) / 8); line2(ctx, 0, yy, -w, yy - w * .5); line2(ctx, 0, yy, w, yy - w * .5); }
+      ctx.restore();
+    }
+  },
+  linewaves(e) {
+    const { ctx, width, height, t } = e, lines = Math.min(40, 14 + Math.round(e.n / 4)), steps = 80;
+    ctx.lineWidth = 1.1;
+    for (let l = 0; l < lines; l++) {
+      const y0 = height * (.12 + .8 * l / lines);
+      ctx.beginPath();
+      for (let s = 0; s <= steps; s++) {
+        const k = s / steps, x = k * width, peak = Math.exp(-Math.pow((k - .5 - e.dx / Math.max(1, width) * .2) * 3.2, 2));
+        const y = y0 - peak * height * .12 * (.5 + .5 * Math.sin(l * 1.7 + s * .35 + t * 1.2)) - peak * height * .05 * seed(l * 91 + s);
+        if (s) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.strokeStyle = l % 5 === 0 ? e.secondary : e.primary; ctx.globalAlpha = e.alpha * .3; ctx.stroke();
+    }
+  },
+  blobs(e) {
+    const { ctx, width, height, t } = e, count = 3 + Math.round(e.n / 20), steps = 40;
+    for (let b = 0; b < count; b++) {
+      const cx = width * (.15 + .7 * seed(b + 1)) + Math.sin(t * .2 + b) * width * .06 + e.dx * .1, cy = height * (.2 + .6 * seed(b + 2)) + Math.cos(t * .17 + b) * height * .06 + e.dy * .1, R = e.size * (.18 + .14 * seed(b + 3));
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.3); g.addColorStop(0, b % 2 ? e.primary : e.secondary); g.addColorStop(1, "transparent");
+      ctx.beginPath();
+      for (let s = 0; s <= steps; s++) { const a = s / steps * TAU, r = R * (1 + .18 * Math.sin(a * 3 + t * .8 + b) + .1 * Math.sin(a * 5 - t * .6 + b * 2)); const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r; if (s) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.closePath(); ctx.fillStyle = g; ctx.globalAlpha = e.alpha * .45; ctx.fill();
+    }
+  },
+  embers(e) {
+    const { ctx, width, height, t } = e;
+    for (let i = 0; i < e.n; i++) {
+      const age = wrap(t * .15 * (.6 + seed(i + 1)) + seed(i + 2), 1), x = width * seed(i + 3) + Math.sin(age * 8 + i) * 24 + e.dx * .05 * age, y = height * (1.02 - age * 1.05) + e.dy * .02;
+      const flick = .5 + .5 * Math.sin(t * 12 + i * 3);
+      glow(e, x, y, 4 + 6 * flick, i % 3 ? e.primary : e.secondary, e.alpha * (1 - age) * .7);
+      ctx.fillStyle = e.secondary; ctx.globalAlpha = e.alpha * (1 - age) * .9; circle(ctx, x, y, 1 + seed(i + 4)); ctx.fill();
+    }
+  },
+  gears(e) {
+    const { ctx, width, height, t } = e, count = 4 + Math.round(e.n / 25);
+    const gear = (x: number, y: number, r: number, teeth: number, rot: number, c: string) => {
+      ctx.beginPath();
+      for (let k = 0; k < teeth * 2; k++) { const a0 = rot + k / (teeth * 2) * TAU, a1 = rot + (k + 1) / (teeth * 2) * TAU, rr = k % 2 ? r : r * 1.15; ctx.lineTo(x + Math.cos(a0) * rr, y + Math.sin(a0) * rr); ctx.lineTo(x + Math.cos(a1) * rr, y + Math.sin(a1) * rr); }
+      ctx.closePath(); ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.globalAlpha = e.alpha * .4; ctx.stroke();
+      circle(ctx, x, y, r * .3); ctx.stroke();
+    };
+    let x = width * .15 + e.dx * .05, y = height * .5 + e.dy * .05, r = e.size * .16, turn = t * .5;
+    for (let i = 0; i < count; i++) {
+      const teeth = Math.max(8, Math.round(r / 5));
+      gear(x, y, r, teeth, turn, i % 2 ? e.primary : e.secondary);
+      const nr = e.size * (.08 + .1 * seed(i + 1)), ang = -.6 + seed(i + 2) * 1.2;
+      const nx = x + Math.cos(ang) * (r + nr) * 1.05, ny = y + Math.sin(ang) * (r + nr) * 1.05;
+      turn = -turn * r / nr + Math.PI / teeth; x = nx; y = clamp(ny, nr, height - nr); r = nr;
+    }
+  },
+  wavefield(e) {
+    const { ctx, width, height, t } = e, rows = 24, cols = 40;
+    for (let r = 0; r < rows; r++) {
+      const z = r / rows, persp = .3 + z * .9, y0 = height * (.3 + z * .7);
+      for (let c = 0; c < cols; c++) {
+        const u = (c / (cols - 1) - .5) * persp * 1.6, x = width * .5 + u * width + e.dx * .1 * z;
+        const y = y0 + Math.sin(c * .4 + t * 1.5 + r * .5) * Math.cos(r * .3 - t) * 14 * persp + e.dy * .05 * z;
+        ctx.fillStyle = (r + c) % 7 ? e.primary : e.secondary; ctx.globalAlpha = e.alpha * (.15 + .6 * z); circle(ctx, x, y, .6 + z * 2); ctx.fill();
+      }
+    }
+  },
+  terrain(e) {
+    const { ctx, width, height, t } = e, rows = 20, cols = 30, horizon = height * .35 + e.dy * .05, scroll = wrap(t * .6, 1);
+    const pt = (c: number, r: number): [number, number] => {
+      const z = (r - scroll) / rows, depth = Math.max(.02, z), u = (c / (cols - 1) - .5) * 2;
+      const hgt = (Math.sin(c * .5 + Math.floor(r + t * .6) * .7) + Math.cos(c * .23 - Math.floor(r + t * .6) * .4)) * 10;
+      return [width * .5 + u * width * .9 * depth + e.dx * .1 * depth, horizon + depth * (height - horizon) - hgt * depth * 3];
+    };
+    ctx.lineWidth = 1;
+    for (let r = 1; r < rows; r++) {
+      ctx.beginPath();
+      for (let c = 0; c < cols; c++) { const [x, y] = pt(c, r); if (c) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.strokeStyle = e.primary; ctx.globalAlpha = e.alpha * (.08 + .4 * r / rows); ctx.stroke();
+    }
+    for (let c = 0; c < cols; c += 2) {
+      ctx.beginPath();
+      for (let r = 1; r < rows; r++) { const [x, y] = pt(c, r); if (r > 1) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.strokeStyle = e.secondary; ctx.globalAlpha = e.alpha * .15; ctx.stroke();
+    }
+  },
+};
+
 /** Distinct drawings, each deterministic at a given time (including the still frame). */
 export function drawScene(ctx: CanvasRenderingContext2D, spec: SceneSpec, width: number, height: number, time: number, pointer: Pointer, primary: string, secondary: string): void {
   ctx.clearRect(0, 0, width, height);
@@ -674,7 +1281,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, spec: SceneSpec, width:
       break;
     }
     default: {
-      const more = MORE_SCENES[spec.kind as MoreSceneKind];
+      const more = MORE_SCENES[spec.kind as MoreSceneKind] ?? EXTRA_SCENES[spec.kind as ExtraSceneKind];
       if (more) more({ ctx, width, height, t, n: Math.max(1, Math.min(100, n)), size, p, dx, dy, alpha, intensity: spec.intensity, primary, secondary });
     }
   }
