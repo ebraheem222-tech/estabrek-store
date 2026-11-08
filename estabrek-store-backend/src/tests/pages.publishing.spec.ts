@@ -57,7 +57,9 @@ test("native inner appearances publish and a later draft stays private", async (
   await request(app).post(`/v1/admin/pages/${page.id}/draft/publish`).send({}).expect(200);
   const readSize = async () => {
     const live = (await request(app).get("/v1/storefront/page?slug=/shop").expect(200)).body;
-    return live.tree.root.children[0].children[0].props.partLooks["@card-name"].style.base.size;
+    const shop = live.tree.root.children[0].children.find((node: { id: string }) => node.id === "commerce-shop");
+    expect(shop).toBeDefined();
+    return shop.props.partLooks["@card-name"].style.base.size;
   };
   expect(await readSize()).toBe(29);
   await edit(35).expect(200);
