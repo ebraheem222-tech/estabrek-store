@@ -5,6 +5,7 @@
  * pictures, stars and switches are changed. One change = one step back with undo.
  */
 import { useState } from "react";
+import { COUNTDOWN_WORD_FIELDS, defaultPartWords } from "../../../shared/partWords";
 import type { PageDraftOp, PageTreeNode } from "../api/pages.api";
 import { MediaLibraryModal } from "../components/media/MediaLibraryModal";
 import type { Lang } from "../lib/lang";
@@ -354,6 +355,7 @@ export function ContentBlocksPanel({ node, lang, busy, onOps }: { node: PageTree
           </label>
           <Choice label={tr("الشكل", "Look")} value={String(p.look ?? "boxes")} busy={busy} options={[["boxes", tr("مربعات", "Boxes")], ["plain", tr("أرقام بس", "Numbers only")]]} onPick={(v) => set(tr("الشكل", "Look"), { look: v })} testId="block-look" />
           {words("done", tr("الكلام لما يخلص (فاضي = بيختفي)", "The words when it ends (empty = it goes)"))}
+          {COUNTDOWN_WORD_FIELDS.map(key => <Field key={key} label={defaultPartWords("countdown", key)![lang]} value={wordsOf(p[key], lang) || defaultPartWords("countdown", key)![lang]} maxLength={40} onSave={value => set(tr("الكلام", "The words"), { [key]: withWords(p[key], lang, value.slice(0, 40)) })} testId={`block-${key}`} />)}
         </>
       ) : null}
       {kind === "beforeAfter" ? (

@@ -6,6 +6,7 @@
  * open, the countdown empty until it knows the time here, the popup closed).
  */
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { COUNTDOWN_WORD_FIELDS } from "../../../shared/partWords";
 
 /* -------------------------------------------------------------------- tabs */
 
@@ -71,7 +72,7 @@ export function CountdownView({ until, done, look, words }: { until: string; don
       {parts.map((v, i) => (
         <div key={i} className="pt-count-part">
           <span className="pt-count-n">{v === null ? "--" : String(v).padStart(2, "0")}</span>
-          <span className="pt-count-l">{words[i]}</span>
+          <span data-pt-field={COUNTDOWN_WORD_FIELDS[i]} className="pt-count-l">{words[i]}</span>
         </div>
       ))}
     </div>

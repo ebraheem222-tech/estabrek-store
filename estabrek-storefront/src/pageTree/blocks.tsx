@@ -5,6 +5,7 @@
  * (BlockClose). The words come in the page's language (`say`), links are the page's (`link`).
  */
 import type { ReactNode } from "react";
+import { COUNTDOWN_WORD_FIELDS, defaultPartWords } from "../../../shared/partWords";
 import { BlockClose } from "./BlockClose";
 import { AccordionControls } from "./AccordionControls";
 import { PricingView } from "./PricingView";
@@ -211,7 +212,7 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
       if (!until) return null;
       return (
         <div className={className} {...mark}>
-          <CountdownView until={until} done={say(p.done)} look={p.look === "plain" ? "plain" : "boxes"} words={w.units} />
+          <CountdownView until={until} done={say(p.done)} look={p.look === "plain" ? "plain" : "boxes"} words={COUNTDOWN_WORD_FIELDS.map(key => say(p[key]) || defaultPartWords("countdown", key)![lang]) as [string, string, string, string]} />
         </div>
       );
     }
@@ -221,7 +222,7 @@ function renderBlock({ node, className, mark, say, link, lang }: Helpers): React
       const start = typeof p.start === "number" && p.start >= 0 && p.start <= 100 ? p.start : 50;
       return (
         <div className={className} {...mark}>
-          <BeforeAfterView before={before} after={after} beforeLabel={say(p.beforeLabel) || w.before} afterLabel={say(p.afterLabel) || w.after} start={start} handle={w.handle} />
+          <BeforeAfterView before={before} after={after} beforeLabel={say(p.beforeLabel) || defaultPartWords("beforeAfter", "beforeLabel")![lang]} afterLabel={say(p.afterLabel) || defaultPartWords("beforeAfter", "afterLabel")![lang]} start={start} handle={w.handle} />
         </div>
       );
     }

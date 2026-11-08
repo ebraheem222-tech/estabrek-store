@@ -1,6 +1,74 @@
 import { expect, test, type Page, type Locator } from "@playwright/test";
 const url = "http://127.0.0.1:5178/tests/fixtures/editor-controls.html";
 const frame = (page: Page) => page.frameLocator('[data-testid="studio-frame"]');
+
+test("countdown minute labels expose real content controls for existing documents, save inline and undo", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=ar&partTypes`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  const minute = '[data-tree-node="timer"] .pt-count-part:nth-child(3) .pt-count-l';
+  await frame(page).locator("html").evaluate(() => { (window as any).__partTypeDocument = "same"; });
+  await clickPart(page, minute);
+  await expect(page.getByTestId("studio-part-kind")).toHaveAttribute("data-kind", "text");
+  await expect(page.getByTestId("studio-part-words")).toHaveValue("دقيقة");
+  await page.getByTestId("studio-part-words").fill("دقائق متبقية");
+  await page.getByTestId("studio-part-words").blur();
+  await expect(frame(page).locator(minute)).toHaveText("دقائق متبقية");
+  await expect.poll(() => page.evaluate(() => (window as any).__canvasHarness.getNode("timer").node.props.minuteLabel)).toEqual({ ar: "دقائق متبقية" });
+  await page.getByTestId("studio-part-edit-text").click();
+  // Chrome keeps contenteditable="plaintext-only"; any editable state counts.
+  const editable = frame(page).locator(`${minute}[contenteditable]`);
+  await editable.fill("دقائق"); await editable.press("Enter");
+  await expect(frame(page).locator(minute)).toHaveText("دقائق");
+  await page.getByTestId("studio-undo").click();
+  await expect(frame(page).locator(minute)).toHaveText("دقائق متبقية");
+  await page.getByTestId("studio-undo").click();
+  await expect(frame(page).locator(minute)).toHaveText("دقيقة");
+  expect(await frame(page).locator("html").evaluate(() => (window as any).__partTypeDocument)).toBe("same");
+  await clickPart(page, '[data-tree-node="timer"] .pt-count-part:nth-child(3) .pt-count-n');
+  await expect(page.getByTestId("studio-part-source")).toBeVisible();
+  await expect(page.getByTestId("studio-part-kind")).toContainText("قيمة حيّة");
+  // Its own type controls come before the size and box settings.
+  const order = await page.getByTestId("studio-look-target").evaluate(el => [...el.querySelectorAll("[data-testid]")].map(c => c.getAttribute("data-testid")));
+  expect(order.indexOf("studio-text-style")).toBeLessThan(order.indexOf("studio-part-size"));
+  await expect(page.getByTestId("studio-part-words")).toHaveCount(0);
+  await page.getByTestId("studio-part-owner").click();
+  await expect(page.getByTestId("block-until")).toBeVisible();
+});
+
+test("internal objects show type-appropriate ready looks and actually preview, save and undo on the selected part", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto(`${url}?lang=en&partTypes`);
+  await expect(page.getByTestId("studio-refresh-view")).toBeEnabled({ timeout: 90000 });
+  await clickPart(page, '[data-tree-node="timer"] .pt-count-part:nth-child(3) .pt-count-l');
+  await page.getByTestId("studio-tab-looks").click();
+  await expect(page.getByTestId("studio-looks")).toBeVisible();
+  await expect(page.locator('[data-testid="studio-looks-kind"][data-kind="type"]')).toBeVisible();
+  await page.getByTestId("studio-looks-find").fill("Light and airy");
+  const tile = page.locator('[data-testid="studio-look"][data-id="type-airy"]');
+  const minute = frame(page).locator('[data-tree-node="timer"] .pt-count-part:nth-child(3) .pt-count-l');
+  const before = await minute.evaluate(el => getComputedStyle(el).fontWeight);
+  await tile.hover(); await expect(minute).toHaveCSS("font-weight", "300");
+  await page.getByTestId("studio-looks-find").hover(); await expect(minute).toHaveCSS("font-weight", before);
+  await tile.click(); await page.getByTestId("studio-looks-find").hover();
+  await expect(minute).toHaveCSS("font-weight", "300");
+  await expect(frame(page).locator('[data-tree-node="timer"] .pt-count-part:nth-child(2) .pt-count-l')).toHaveCSS("font-weight", before);
+  await page.getByTestId("studio-undo").click(); await expect(minute).toHaveCSS("font-weight", before);
+  for (const [selector, kind] of [['[data-tree-node="links"] a', "button"], ['[data-tree-node="comparison"] img.pt-ba-after', "frame"], ['[data-tree-node="timer"] .pt-count-part', "card"]]) {
+    if (kind === "card") {
+      // Pick the exposed padding of the unit box rather than the number or label.
+      const target = frame(page).locator(selector).first();
+      const p = await canvasPoint(page, target);
+      const box = await target.boundingBox();
+      await page.mouse.click(p.x, p.y - box!.height / 2 + 3);
+    } else await clickPart(page, selector);
+    await expect(page.locator(`[data-testid="studio-looks-kind"][data-kind="${kind}"]`)).toBeVisible();
+    await expect(page.locator('[data-testid="studio-looks-kind"][data-kind="edge"]')).toHaveCount(0);
+    // The inspector names the object first: a link is a button, the slider's photo a picture (seen through its invisible range), the unit a box.
+    await expect(page.getByTestId("studio-part-kind")).toHaveAttribute("data-kind", ({ button: "button", frame: "image", card: "box" } as Record<string, string>)[kind]);
+    await expect(page.getByTestId("studio-section-objects")).toHaveCount(0);
+  }
+});
 async function canvasPoint(page: Page, element: Locator) {
   const rect = await element.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   const box = await page.getByTestId("studio-frame").boundingBox();

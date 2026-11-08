@@ -1,5 +1,14 @@
 /** Safe, bounded data for a section's original procedural Canvas2D decoration. */
-export const SCENE_KINDS = ["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix"] as const;
+export const BASE_SCENE_KINDS = ["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix"] as const;
+/** The forty more drawn in sceneCanvas.ts (MORE_SCENES). */
+export const MORE_SCENE_KINDS = [
+  "aurora", "bokeh", "fireflies", "petals", "bubbles", "rain", "confetti", "honeycomb", "dotwave", "topography",
+  "circuit", "lava", "galaxy", "tunnel", "sunburst", "ripples", "flow", "silk", "mountains", "clouds",
+  "sparkles", "hearts", "leaves", "lanterns", "crescent", "arabesque", "lowpoly", "synthwave", "equalizer", "heartbeat",
+  "helix", "orbits", "radar", "smoke", "weave", "shapes", "memphis", "beams", "dunes", "gems",
+] as const;
+export type MoreSceneKind = typeof MORE_SCENE_KINDS[number];
+export const SCENE_KINDS = [...BASE_SCENE_KINDS, ...MORE_SCENE_KINDS] as const;
 export type SceneKind = typeof SCENE_KINDS[number];
 export type SceneSpec = { kind: SceneKind; color?: string; secondary?: string; amount: number; speed: number; intensity: number; interactive: boolean };
 const TOKENS = ["text", "muted", "accent", "accent-soft", "accent-contrast", "bg", "surface", "border", "white", "black", "transparent"];

@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
 import { nodeGeometry,type NodeGeometry,type MeasuredPlane } from "./studioGeometry";
 import { studioLink } from "./studioLink";
 import { PREVIEW_VARS, SITE_STYLE_KINDS, TREE_TRANSFORM, TREE_TRANSFORM_REST, lookSelector, type SiteStyle, type TreeNode } from "./tree";
-import { nodeCss, siteTarget } from "./css";
+import { BASE_CSS, nodeCss, siteTarget, treeCss } from "./css";
 import { geometryPreviewCss, geometryPreviewNodes } from "./geometryPreview";
 import { htmlToRich } from "./rich";
 import { INTERACTION_EVENTS } from "@/lib/visualControls";
@@ -90,10 +90,13 @@ const ATOM_HOLDERS = "a, button, li, figure, picture, blockquote, h1, h2, h3, h4
 const MARKED = "[data-edit], [data-edit-media], [data-edit-box], [data-part]";
 const MAX_AUTOS = 400;
 let pickElements = new WeakMap<Element, string>();
+const invisibleOverlay = (el: Element) => { const cs = getComputedStyle(el); return Number(cs.opacity) < 0.05 || cs.visibility === "hidden"; };
 /** Actual paint order, followed by each visual object's measured ancestors. */
 export function studioPickAt(x: number, y: number): string[] {
   const ids = new Set<string>();
-  const painted = document.elementsFromPoint(x, y);
+  // An invisible control laid over a widget (a before/after slider's range, a see-through link) is
+  // seen through: what's drawn under it is picked first, its holder only after that.
+  const painted = document.elementsFromPoint(x, y).filter(el => pickElements.has(el) || !invisibleOverlay(el));
   for (const el of painted) for (let at: Element | null = el; at; at = at.parentElement) { const id = pickElements.get(at); if (id) { ids.add(id); break; } }
   for (const el of painted) for (let at = el.parentElement; at; at = at.parentElement) { const id = pickElements.get(at); if (id) ids.add(id); }
   return [...ids].slice(0, 100);
@@ -403,6 +406,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         el.classList.remove("pt-pv"); el.classList.add(`pt-${el.dataset.ptPreview}`); el.removeAttribute("data-pt-preview");
       });
       document.getElementById("pt-look-preview")?.remove();
+      document.querySelectorAll("[data-pt-part-preview]").forEach(el => el.removeAttribute("data-pt-part-preview"));
     };
     const viewCommitted = () => { restoreLookPreviews(); restoreStylePreview(); studioLink.emit({type:"motionLayout"}); now(); };
     const soon = () => {
@@ -652,6 +656,19 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         return now();
       }
       // A ready look shown on an element before it's picked: its own rules leave it while the look's are drawn (null: as it was).
+      if (d.type === "previewPartStyle") {
+        restoreStylePreview();
+        const look = (e.data as { look?: { kind?: unknown; style?: unknown } }).look;
+        const selector = typeof target === "string" ? lookSelector(target) : null;
+        if (selector && look && ["text", "button", "image", "video", "box"].includes(String(look.kind)) && look.style && typeof look.style === "object") {
+          for (const el of document.querySelectorAll(selector)) el.setAttribute("data-pt-part-preview", "");
+          const style = document.createElement("style");
+          style.id = "pt-look-preview";
+          style.textContent = treeCss({ version: 1, root: { id: "page", type: "page", props: { looks: { [target as string]: look } } } }, [], true).split(BASE_CSS).join("");
+          document.body.appendChild(style);
+        }
+        return now();
+      }
       if (d.type === "previewStyle") {
         restoreStylePreview();
         const node = (e.data as { node?: unknown }).node as TreeNode | null | undefined;

@@ -641,7 +641,7 @@ export function nodeCss(n: TreeNode, as: string): string {
  * The whole page's CSS ("" for a page that is only old sections). `site`: the store's shared
  * styles, drawn after the base CSS and before each element's own look, so its own look wins.
  */
-export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
+export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = false): string {
   const base: string[] = [];
   const tablet: string[] = [];
   const phone: string[] = [];
@@ -710,7 +710,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = []): string {
   walk(tree.root, null);
   // Parts of old sections and scenes (the editor's looks): their own look, per screen.
   for (const [target, look] of looksOf(tree)) {
-    const sel = lookSelector(target)!;
+    const sel = `:is(${lookSelector(target)!}):where(${previewPart ? "[data-pt-part-preview]" : ":not([data-pt-part-preview])"})`;
     const type = LOOK_TYPE[look.kind];
     drawn++;
     const node = lookNode(target, look);

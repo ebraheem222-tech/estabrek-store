@@ -66,6 +66,13 @@ if (new URLSearchParams(location.search).has("editingRegression")) {
     { id: "links", type: "menu", props: { items: [{ label: text("First link"), href: "/shop" }, { label: text("Second link"), href: "/about" }] } },
   ] }];
 }
+if (new URLSearchParams(location.search).has("partTypes")) {
+  initial.tree.root.children = [{ id: "objects", type: "section", props: {}, style: { base: { pad: [24, 24, 24, 24] } }, children: [
+    { id: "timer", type: "countdown", props: { until: "2099-12-31T23:59:00Z", look: "boxes" } },
+    { id: "links", type: "menu", props: { items: [{ label: text("First link", "الرابط الأول"), href: "/shop" }, { label: text("Second link", "الرابط الثاني"), href: "/about" }] } },
+    { id: "comparison", type: "beforeAfter", props: { before: "/templates/photo-1.svg", after: "/templates/photo-2.svg" }, style: { base: { width: "400px", height: "220px" } } },
+  ] }];
+}
 if (new URLSearchParams(location.search).has("catalogEquality")) {
   initial.tree.root.children![0].children = [{ id: "category-equality", type: "categories", props: { title: text("فساتين"), ids: ["dresses"] } }];
 }
