@@ -14,6 +14,7 @@ import type { Lang } from "../lib/lang";
 import { canHold, isFree, newColumns, newElement, OVER_TYPES, type NewKind } from "./columns";
 import { newFooter, newHeader } from "./blockDefaults";
 import { makeReferenceSection, type ReferenceKind } from "./referenceSections";
+import { makeLiveSection, type LiveKind } from "./liveSections";
 import type { Extra, TreeIndex } from "./treeIndex";
 
 export type Where = "before" | "after" | "inside";
@@ -128,13 +129,13 @@ export function insertOps(c: InsertCtx, selected: string | null, node: PageTreeN
 /** Ready-made blocks: a few elements already put together. */
 export const READY = ["ready-intro", "ready-split", "ready-video", "ready-model3d", "ready-lantern", "ready-gallery", "ready-header", "ready-footer"] as const;
 export type ReadyKind = (typeof READY)[number];
-export type AddKind = NewKind | ReadyKind | ReferenceKind | "section";
+export type AddKind = NewKind | ReadyKind | ReferenceKind | LiveKind | "section";
 /** What needs a picture or a clip chosen before it's added. */
 export const NEEDS: Partial<Record<AddKind, "image" | "video">> = { image: "image", slider: "image", "ready-split": "image", "ready-gallery": "image", video: "video", "ready-video": "video", beforeAfter: "image", hotspots: "image" };
 
 /** A new element, ready block or empty section, in the language being edited. */
 export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): PageTreeNode {
-  const reference = makeReferenceSection(kind, lang, ids, src);
+  const reference = makeReferenceSection(kind, lang, ids, src) ?? makeLiveSection(kind, lang, ids);
   if (reference) return reference;
   const el = (k: NewKind, s?: string) => newElement(k, lang, ids, s);
   const centred = { base: { textAlign: "center", align: "center" } };

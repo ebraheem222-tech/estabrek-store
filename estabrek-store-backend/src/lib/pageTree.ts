@@ -339,6 +339,15 @@ const PartLooks = z.record(z.string().regex(PART_TARGET), LookEntry).refine(r =>
 
 /* ------------------------------------------------------------- each type */
 
+/** A section's drawn background (the shop's pageTree/scene.ts SCENE_KINDS, same order). */
+export const SCENE_KINDS = [
+  "constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix",
+  "aurora", "bokeh", "fireflies", "petals", "bubbles", "rain", "confetti", "honeycomb", "dotwave", "topography",
+  "circuit", "lava", "galaxy", "tunnel", "sunburst", "ripples", "flow", "silk", "mountains", "clouds",
+  "sparkles", "hearts", "leaves", "lanterns", "crescent", "arabesque", "lowpoly", "synthwave", "equalizer", "heartbeat",
+  "helix", "orbits", "radar", "smoke", "weave", "shapes", "memphis", "beams", "dunes", "gems",
+] as const;
+
 const none = z.object({});
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
@@ -350,7 +359,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     edges: NodeEdges.optional(),
     particles: z.object({ kind: z.enum(PARTICLES), color: color.optional(), amount: z.number().min(0.2).max(3).optional(), speed: z.number().min(0.2).max(3).optional() }).optional(),
     scene: z.object({
-      kind: z.enum(["constellation", "orbs", "waves", "grid", "starfield", "ribbons", "snow", "fireworks", "matrix"]),
+      kind: z.enum(SCENE_KINDS),
       color: color.optional(), secondary: color.optional(),
       amount: z.number().int().min(8).max(100).default(32),
       speed: z.number().finite().min(0).max(3).default(1),
@@ -594,6 +603,7 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   countdown: z.object({
     until: z.string().trim().max(40).refine((v) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) && !Number.isNaN(Date.parse(v)), "A date and time like 2026-12-31T23:59"),
     done: local(200).optional(),
+    dayLabel: local(40).optional(), hourLabel: local(40).optional(), minuteLabel: local(40).optional(), secondLabel: local(40).optional(),
     look: z.enum(["boxes", "plain"]).optional(),
   }),
   // Two pictures, one over the other, a handle between them (`start` % across).

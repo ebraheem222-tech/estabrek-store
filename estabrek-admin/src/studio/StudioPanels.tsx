@@ -36,7 +36,7 @@ export function SectionActions({ canUp, canDown, hidden, busy, onUp, onDown, onT
 }
 
 /** Words that save when the field is left (or Enter), only if they changed. */
-export function Field({ label, value, multiline, onSave, testId }: { label: string; value: string; multiline?: boolean; onSave: (v: string) => void; testId?: string }) {
+export function Field({ label, value, multiline, onSave, testId, maxLength }: { label: string; value: string; multiline?: boolean; onSave: (v: string) => void; testId?: string; maxLength?: number }) {
   const [v, setV] = useState(value);
   const [was, setWas] = useState(value);
   if (was !== value) {
@@ -49,9 +49,9 @@ export function Field({ label, value, multiline, onSave, testId }: { label: stri
     <label className="block text-[11px] text-white/55">
       {label}
       {multiline ? (
-        <textarea className={`${cls} min-h-[84px]`} value={v} onChange={(e) => setV(e.target.value)} onBlur={save} data-testid={testId} />
+        <textarea className={`${cls} min-h-[84px]`} value={v} maxLength={maxLength} onChange={(e) => setV(e.target.value)} onBlur={save} data-testid={testId} />
       ) : (
-        <input className={cls} value={v} onChange={(e) => setV(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && save()} data-testid={testId} />
+        <input className={cls} value={v} maxLength={maxLength} onChange={(e) => setV(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && save()} data-testid={testId} />
       )}
     </label>
   );

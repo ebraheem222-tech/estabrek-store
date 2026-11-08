@@ -4,6 +4,7 @@
  * to the selection (before, after or inside it, as chosen at the top); dragging onto the
  * page puts it where it's dropped (between sections, inside a place, or over a section).
  */
+import { useState } from "react";
 import type { PageTreeNode } from "../api/pages.api";
 import { tr } from "../lib/words";
 import { hasPreset, presetsFor, type Motion, type MotionPreset } from "./look";
@@ -11,9 +12,13 @@ import { SplitPicker } from "./StudioTreePanels";
 import { typeLabel } from "./treeIndex";
 import type { AddKind, Where } from "./insert";
 import { REFERENCE_SECTIONS } from "./referenceSections";
+import { LIVE_GROUPS, LIVE_SECTIONS } from "./liveSections";
+import { adminLang } from "../lib/lang";
 
 const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, () => string, string]> }> = [
   { key: "commerce", title: () => tr("المتجر والسلة", "Shop and cart"), kinds: [["shop", () => typeLabel("shop"), "▦"], ["cartItems", () => typeLabel("cartItems"), "▤"], ["cartSummary", () => typeLabel("cartSummary"), "Σ"], ["cartCheckout", () => typeLabel("cartCheckout"), "✓"]] },
+  // Forty sections on the forty new drawn backgrounds (liveSections.ts), in three groups; their words carry their own Hebrew.
+  ...LIVE_GROUPS.map(([group, title]) => ({ key: `live-${group}`, title: () => title[adminLang()], kinds: LIVE_SECTIONS.filter(s => s.group === group).map(s => [s.kind, () => s.name[adminLang()], "✺"] as [AddKind, () => string, string]) })),
   { key: "references", title: () => tr("إلهام القوالب", "Template inspiration"), kinds: REFERENCE_SECTIONS.map(reference => [reference.kind, () => tr(reference.name.ar, reference.name.en), "✦"]) },
   {
     key: "ready",
@@ -135,6 +140,9 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
   motion: Motion | undefined;
   onMotion: (p: MotionPreset) => void;
 }) {
+  const [q, setQ] = useState("");
+  const find = q.trim().toLowerCase();
+  const groups = GROUPS.map(g => ({ ...g, kinds: find ? g.kinds.filter(([k, name]) => name().toLowerCase().includes(find) || k.toLowerCase().includes(find) || g.title().toLowerCase().includes(find)) : g.kinds })).filter(g => g.kinds.length);
   return (
     <div className="space-y-4" data-testid="studio-add-panel">
       <div className="space-y-1.5 rounded-xl border border-white/[0.08] p-2">
@@ -159,7 +167,10 @@ export function AddPanel({ where, canWhere, target, busy, can, onWhere, onAdd, o
         <p className="text-[10px] leading-4 text-white/35">{tr("كبسة بتضيف هون، أو اسحب لأي مكان بالصفحة: بين قسمين، لجوّا خلية، أو فوق قسم.", "Click to add here, or drag anywhere on the page: between two sections, into a cell, or over a section.")}</p>
       </div>
 
-      {GROUPS.map((g) => (
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("دوّر على قسم أو عنصر…", "Find a section or element…")} aria-label={tr("دوّر على قسم أو عنصر", "Find a section or element")} className="w-full rounded-lg border border-white/[0.1] bg-surface-925 px-2.5 py-1.5 text-xs text-white placeholder:text-white/35" data-testid="studio-add-search" />
+      {find && !groups.length ? <p className="text-[11px] text-white/45">{tr("ما في نتائج.", "No results.")}</p> : null}
+
+      {groups.map((g) => (
         <section key={g.key} className="space-y-1.5" aria-label={g.title()}>
           <h3 className="text-[11px] font-medium text-white/60">{g.title()}</h3>
           <div className="grid grid-cols-2 gap-1">

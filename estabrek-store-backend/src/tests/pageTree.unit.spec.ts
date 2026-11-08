@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { TREE_LIMITS, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../lib/pageTree.js";
+import { NODE_PROPS, TREE_LIMITS, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../lib/pageTree.js";
 import { PREVIEW_TTL_MS, previewPageId, previewToken } from "../lib/previewToken.js";
 
 // Pages as a tree of elements (src/lib/pageTree.ts); no database needed.
@@ -379,6 +379,10 @@ describe("checking a page tree", () => {
     expect(bad("tabs", { items: [] })).toBe(true);
     expect(ok("countdown", { until: "2026-12-31T23:59", done: w("بلّش العرض"), look: "boxes" })).toBe(true);
     expect(ok("countdown", { until: "2026-12-31T23:59:00+02:00" })).toBe(true);
+    const customTimer = NODE_PROPS.countdown.parse({ until: "2099-12-31T23:59", minuteLabel: w("دقائق"), secondLabel: w("ثواني") }) as Record<string, unknown>;
+    expect(customTimer.minuteLabel).toEqual(w("دقائق"));
+    expect(customTimer.secondLabel).toEqual(w("ثواني"));
+    expect(bad("countdown", { until: "2099-12-31T23:59", minuteLabel: w("x".repeat(41)) })).toBe(true);
     expect(bad("countdown", { until: "next friday" })).toBe(true);
     expect(ok("beforeAfter", { before: "https://res.cloudinary.com/x/a.jpg", after: "https://res.cloudinary.com/x/b.jpg", beforeLabel: w("قبل"), start: 40 })).toBe(true);
     expect(bad("beforeAfter", { before: "/a.jpg" })).toBe(true);

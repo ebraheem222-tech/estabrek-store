@@ -46,6 +46,7 @@ import { candidateStack, cycleCandidate, PointSelection } from "./selectionPicki
 import { partDragOffset } from "./partDrag";
 import { contentBinding, replaceContent, bindingLink } from "./partContent";
 import { PartSizeFields } from "./PartSizeFields";
+import { PartKindCard } from "./PartKindCard";
 import { toast } from "../lib/toast";
 import { History, fieldValue, getPath, looksOf, ownValue, parsePath, undoOf } from "./draft";
 import { PreviewRefresh, PreviewRefreshCancelled } from "./previewRefresh";
@@ -574,19 +575,19 @@ function StudioDocument() {
     const part = sid ? extras.get(sid) : undefined;
     if (part?.kind !== "detail" || !part.owner.startsWith("n:") || typeof part.text !== "string") return null;
     const owner = index?.nodes.get(part.owner.slice(2))?.node;
-    const binding = owner ? contentBinding(owner.props, part.text, shopLang, main, part.propPath, part.propLine) : null;
+    const binding = owner ? contentBinding(owner.props, part.text, shopLang, main, part.propPath, part.propLine, owner.type) : null;
     return owner && binding ? { part, owner, binding } : null;
   };
   const savePartContent = (sid: string | null, value: string) => {
     const bound = partContentOf(sid); if (!bound) return;
-    const props = replaceContent(bound.owner.props, bound.binding, shopLang, value, main);
+    const props = replaceContent(bound.owner.props, bound.binding, shopLang, value, main, bound.owner.type);
     if (props) void change(tr("الكلام", "The words"), [{ op: "setProps", nodeId: bound.owner.id, props }]);
   };
   const onPartEdited = useRef<(nodeId: string, path: string, line: number | undefined, lang: Lang, value: string) => void>(() => {});
   onPartEdited.current = (nodeId, path, line, lang, value) => {
     const owner = index?.nodes.get(nodeId)?.node;
     if (!owner || !["ar", "en", "he"].includes(lang) || typeof path !== "string") return;
-    const props = replaceContent(owner.props, { path: parsePath(path), line, value: "" }, lang, value, main);
+    const props = replaceContent(owner.props, { path: parsePath(path), line, value: "" }, lang, value, main, owner.type);
     if (props) void change(tr("الكلام", "The words"), [{ op: "setProps", nodeId, props }]);
   };
   /** Writing a heading's, text's or button's words on the page (with its formatting bar). */
@@ -1003,12 +1004,14 @@ function StudioDocument() {
 
   /* ----------------------------------------------------------- drawing */
 
+  /** An inner object's kind by name: a box inside a widget is a box, never a "section". */
+  const detailKind = (kind: PagesAPI.LookKind) => (kind === "box" ? tr("صندوق", "Box") : typeLabel(kind));
   const label = (sid: string) => {
     const x = extras.get(sid);
     if (x?.kind === "region") return x.region === "header" ? tr("الهيدر", "Header") : tr("الفوتر", "Footer");
     if (x?.kind === "block" || sid.startsWith("block:")) return `${tr("مشهد", "Scene")} · ${BLOCK_LABEL[x?.kind === "block" ? x.block : sid.slice(6)]?.() ?? sid}`;
     if (x?.kind === "part") return x.count > 1 ? `${partLabel(x.name)} ${x.n + 1}` : partLabel(x.name);
-    if (x?.kind === "detail") return x.name ? partLabel(x.name) : x.label ? `${typeLabel(x.lookKind)} · ${x.label}` : typeLabel(x.lookKind === "box" ? "section" : x.lookKind);
+    if (x?.kind === "detail") return x.name ? partLabel(x.name) : x.label ? `${detailKind(x.lookKind)} · ${x.label}` : detailKind(x.lookKind);
     if (x?.kind === "auto") return x.label ? `${tagLabel(x.tag)} · ${x.label.length > 30 ? `${x.label.slice(0, 30)}…` : x.label}` : tagLabel(x.tag);
     if (x?.kind === "slot" || sid.startsWith("slot:")) {
       const path = x?.kind === "slot" ? x.path : sid.split(":").slice(2).join(":");
@@ -1056,7 +1059,7 @@ function StudioDocument() {
     if (n) return n.type === "roseBlock" ? tr("مشهد", "Scene") : typeLabel(n.type);
     const x = extras.get(pid);
     if (x?.kind === "part") return partLabel(x.name);
-    if (x?.kind === "detail") return x.name ? partLabel(x.name) : typeLabel(x.lookKind === "box" ? "section" : x.lookKind);
+    if (x?.kind === "detail") return x.name ? partLabel(x.name) : detailKind(x.lookKind);
     if (x?.kind === "auto") return tagLabel(x.tag);
     if (x?.kind === "slot") return x.edit === "media" ? (x.media === "video" ? typeLabel("video") : typeLabel("image")) : x.link ? typeLabel("button") : typeLabel("text");
     return pid.startsWith("block:") ? tr("مشهد", "Scene") : typeLabel("text");
@@ -2002,6 +2005,19 @@ function StudioDocument() {
           <Link className="block text-xs text-accent-200" to="/admin/nav">{tr("قائمة روابط", "Menu of links")}</Link>
         </div> : null}
 
+        {lookTarget && (selExtra?.kind === "detail" || selExtra?.kind === "auto" || selExtra?.kind === "part" || selExtra?.kind === "slot") && !selectedRegion ? (() => {
+          const ownerId = selPath.filter(pid => index!.nodes.has(pid)).at(-1);
+          const ownerType = selExtra.kind === "detail" ? nodeOf(selExtra.owner.slice(2))?.type : undefined;
+          return <PartKindCard
+            kind={lookTarget.kind}
+            preview={partContent?.binding.value ?? (selExtra.kind === "detail" ? selExtra.text ?? selExtra.label : undefined)}
+            owner={ownerId && ownerId !== selected ? crumb(ownerId) : undefined}
+            live={selExtra.kind === "detail" && !partContent && lookTarget.kind === "text" && (ownerType === "countdown" || ownerType === "clock")}
+            count={selExtra.kind === "detail" || selExtra.kind === "part" ? selExtra.count : 1}
+            onOwner={selExtra.kind === "detail" || selExtra.kind === "auto" ? () => select(ownerId ?? index!.root, true) : undefined}
+          />;
+        })() : null}
+
         {partContent ? <fieldset disabled={busy} className="space-y-2 rounded-xl border border-white/10 p-3" data-testid="studio-part-content">
           <Field label={tr("النص", "Text")} value={partContent.binding.value} multiline={partContent.binding.line === undefined && partContent.part.lookKind === "text"} testId="studio-part-words" onSave={value => savePartContent(selected, value)} />
           <button type="button" disabled={Boolean(editing)} className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs text-white" data-testid="studio-part-edit-text" onClick={() => startText(selected)}>{tr("كتابة النص مكانه", "Write the text in place")}</button>
@@ -2016,8 +2032,9 @@ function StudioDocument() {
             }
           }} /> : null}
         </fieldset> : null}
+        {selExtra?.kind === "detail" && !selectedRegion && !partContent && selExtra.lookKind === "text" ? <p className="text-xs leading-5 text-white/60" data-testid="studio-part-source">{nodeOf(selExtra.owner.slice(2))?.type === "countdown" ? tr("هذا رقم حي يحسبه العدّاد. لتغيير قيمته، افتح إعدادات العنصر الأصلي وعدّل موعد العدّ. يمكنك تغيير خطه وشكله هنا.", "This is a live countdown value. Open Owner settings to change the end time. Its type and appearance can be changed here.") : tr("محتوى هذا الجزء مرتبط ببيانات العنصر. افتح إعدادات العنصر الأصلي لتعديله؛ الشكل والخط قابلان للتعديل هنا.", "This content comes from the object's data. Open Owner settings to edit its source; its appearance and typography can be edited here.")}</p> : null}
 
-        {pageItemNode && ["section", "legacy", "roseBlock"].includes(pageItemNode.type) ? <SectionObjectsPanel
+        {selNode && pageItemNode && ["section", "legacy", "roseBlock"].includes(pageItemNode.type) ? <SectionObjectsPanel
           node={pageItemNode} selected={selected} busy={busy}
           canAdd={kind => { const c = insertCtx((x) => `__${x}`); return Boolean(c && insertOps(c, pageItemNode.id, probe(kind), "inside")); }}
           onAdd={kind => addKind(kind, undefined, "inside", pageItemNode.id)}
@@ -2099,29 +2116,29 @@ function StudioDocument() {
         {lookSel && lookTarget ? (
           <div className="space-y-3" data-testid="studio-look-target" data-target={lookTarget.target}>
             {selExtra?.kind === "detail" && layout?.items.some(item => item.kind === "detail" && item.owner === selExtra.owner && item.key === selExtra.key && item.geometry?.partMoveSafe === false) ? <p role="status" className="text-xs text-white/60">{tr("هذا التحويل غير قابل للتحرير المباشر حاليًا. استخدم إعدادات المكان والحجم من اللوحة.", "This transform currently needs the layout controls for position and size.")}</p> : null}
-            {selExtra?.kind === "detail" || selExtra?.kind === "auto" ? <>
-              <p className="text-[11px] text-white/60">{selExtra.kind === "detail" && selExtra.count > 1 ? tr(`هذا الجزء من تصميم متكرر. التعديل يطبّق على ${selExtra.count} عناصر مشابهة داخل هذا العنصر.`, "This template part changes all {0} matching objects inside this element.", [selExtra.count]) : tr("جزء داخلي من العنصر. تنسيقه محفوظ معه.", "An internal object. Its appearance is saved with its owner.")}</p>
-              <button type="button" className="text-xs underline" data-testid="studio-part-owner" onClick={() => select(selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? index!.root, true)}>{tr("إعدادات العنصر الأصلي", "Owner settings")}</button>
-              <PartSizeFields node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
-              <BoxPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
-              <PadPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
-            </> : null}
             {selExtra?.kind === "part" && selExtra.count > 1 ? <p className="text-[11px] leading-5 text-accent-200/80">{tr(`الشكل والحركة بيتغيّروا للـ ${selExtra.count} كلهم.`, "The look and motion change for all {0} of them.", [selExtra.count])}</p> : null}
             {lookTarget.kind !== "box" ? <StatesBar node={lookSel} state={styleState} onState={setStyleState} /> : null}
             {styleState !== "normal" && lookTarget.kind !== "box" ? (
               stateLooks(lookSel, styleState, lookChange, lookTarget.kind === "text" || lookTarget.kind === "button")
             ) : (
               <>
+                {/* The object's own controls first (words for a text, the button for a button, the picture for a picture)… */}
                 {lookTarget.kind === "text" ? <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
                 {lookTarget.kind === "text" ? <TypeMorePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
                 {lookTarget.kind === "button" ? (
                   <>
                     <ButtonStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
-                    <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight"]} />
+                    <TextStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} only={["font", "size", "weight", "color"]} />
                   </>
                 ) : null}
                 {lookTarget.kind === "image" || lookTarget.kind === "video" ? <MediaStylePanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
                 {lookTarget.kind === "image" || lookTarget.kind === "video" ? <FiltersPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} /> : null}
+                {/* …then its place, size, box and spacing, the same for every kind. */}
+                {selExtra?.kind === "detail" || selExtra?.kind === "auto" ? <>
+                  <PartSizeFields node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+                  <BoxPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+                  <PadPanel node={lookSel} screen={screen} busy={busy} onOps={lookChange} />
+                </> : null}
                 <ShowOnPanel node={lookSel} busy={busy} onOps={lookChange} />
                 {lookTarget.kind !== "box" || selExtra?.kind === "detail" ? <LookPanel node={lookSel} screen={screen} busy={busy} limited onOps={lookChange} onPreview={(vars) => send({ type: "previewLook", target: lookTarget.target, vars })} /> : null}
               </>
@@ -2581,23 +2598,32 @@ function StudioDocument() {
   );
   /** The ready looks for the selected element: resting on one shows it in the frame, a click puts it on. */
   const looksPanel = () => {
-    if (!selFree || selFree.type === "page") return <p className="px-2 py-4 text-xs leading-5 text-white/45" data-testid="studio-looks-pick">{tr("اختار عنصر عالصفحة (زر، صورة، عنوان، قسم…) لتشوف الأشكال الجاهزة اللي بتناسبه.", "Pick an element on the page (a button, a picture, a heading, a section…) to see the ready looks that suit it.")}</p>;
-    const node = selFree;
+    const node = selFree ?? lookSel;
+    const part = !selFree && lookTarget;
+    if (!node || node.type === "page") return <p className="px-2 py-4 text-xs leading-5 text-white/45" data-testid="studio-looks-pick">{selectedRegion ? tr("الهيدر والفوتر مشتركان بين كل صفحات المتجر. التعديل يتم من محرر الجزء نفسه.", "Header and footer are shared across the store. Edit their own document to update every page.") : tr("اختار عنصر عالصفحة (زر، صورة، عنوان، قسم…) لتشوف الأشكال الجاهزة اللي بتناسبه.", "Pick an element on the page (a button, a picture, a heading, a section…) to see the ready looks that suit it.")}</p>;
+    const preview = (r: Ready | null) => {
+      const next = r && r.kind !== "edge" && r.kind !== "entrance" ? withLook(node, screen, r) : null;
+      if (part) send({ type: "previewPartStyle", target: part.target, look: next ? { kind: part.kind, style: next.style } : null });
+      else send({ type: "previewStyle", node: next });
+    };
     return (
       <LooksPanel
         key={node.id}
         node={node}
-        label={label(node.id)}
+        part={Boolean(part)}
+        label={label(selected!)}
         colours={templateColours}
         busy={busy}
         current={lastLook?.node === node.id ? lastLook.id : null}
-        onRest={(r) => send({ type: "previewStyle", node: r && r.kind !== "edge" && r.kind !== "entrance" ? withLook(node, screen, r) : null })}
+        onRest={preview}
         onPick={(r: Ready) => {
           const ops = lookOps(node, screen, r, (svg) => decorArt(svg, true));
-          send({ type: "previewStyle", node: null });
+          preview(null);
           if (!ops.length) return;
           setLastLook({ node: node.id, id: r.id });
-          void change(`${tr("شكل جاهز", "A ready look")}: ${r.name()}`, ops);
+          const name = `${tr("شكل جاهز", "A ready look")}: ${r.name()}`;
+          if (part) lookChange(name, ops.filter(op => op.op === "setStyle" || op.op === "setMotion"));
+          else void change(name, ops);
         }}
       />
     );

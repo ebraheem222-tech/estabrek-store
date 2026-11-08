@@ -1,4 +1,5 @@
 /** Use renderer-declared source paths for static words; visible equality alone never proves ownership. */
+import { defaultPartWords } from "../../../shared/partWords";
 export type ContentBinding = { path: Array<string | number>; value: string; line?: number };
 type Locale = "ar" | "en" | "he";
 const LOCALES = ["ar", "en", "he"] as const;
@@ -15,11 +16,12 @@ const read = (props: unknown, path: ContentBinding["path"]): unknown => {
 };
 const pick = (v: Partial<Record<Locale, string>>, lang: Locale, main: Locale) => v[lang] || v[main] || v.ar || v.en || v.he || "";
 const normal = (s: string) => s.replace(/\s+/g, " ").trim();
-export function contentBinding(props: Record<string, unknown>, text: string, lang: Locale, main: Locale, source?: string, sourceLine?: number): ContentBinding | null {
+export function contentBinding(props: Record<string, unknown>, text: string, lang: Locale, main: Locale, source?: string, sourceLine?: number, nodeType?: string): ContentBinding | null {
   if (!source || source.length > 120 || !/^[A-Za-z][A-Za-z0-9_-]*(?:\.(?:[A-Za-z][A-Za-z0-9_-]*|0|[1-9][0-9]{0,2})){0,9}$/.test(source) || text.length > 6000) return null;
   const path = source.split(".").map(key => /^\d+$/.test(key) ? Number(key) : key);
-  const raw = read(props, path); if (!local(raw)) return null;
-  const value = pick(raw, lang, main);
+  const raw = read(props, path), defaults = defaultPartWords(nodeType, source);
+  if (!local(raw) && !(defaults && (raw === undefined || object(raw) && !Object.keys(raw).length))) return null;
+  const value = (local(raw) ? pick(raw, lang, main) : "") || defaults?.[lang] || "";
   if (sourceLine !== undefined) {
     const lines = value.split("\n");
     if (!Number.isInteger(sourceLine) || sourceLine < 0 || sourceLine >= lines.length || normal(lines[sourceLine]) !== normal(text)) return null;
@@ -27,19 +29,22 @@ export function contentBinding(props: Record<string, unknown>, text: string, lan
   }
   return normal(value) === normal(text) ? { path, value } : null;
 }
-export function replaceContent<T extends Record<string, unknown>>(props: T, binding: ContentBinding, lang: Locale, value: string, main: Locale = "ar"): T | null {
+export function replaceContent<T extends Record<string, unknown>>(props: T, binding: ContentBinding, lang: Locale, value: string, main: Locale = "ar", nodeType?: string): T | null {
   if (!binding.path.length || binding.path.length > 10 || value.length > 6000) return null;
   const before = read(props, binding.path);
-  if (!local(before)) return null;
+  const defaults = defaultPartWords(nodeType, binding.path.join("."));
+  if (!local(before) && !(defaults && (before === undefined || object(before) && !Object.keys(before).length))) return null;
+  if (defaults && value.length > 40) return null;
   let text = value;
   if (binding.line !== undefined) {
+    if (!local(before)) return null;
     const lines = pick(before, lang, main).split("\n");
     if (!Number.isInteger(binding.line) || binding.line < 0 || binding.line >= lines.length || value.includes("\n")) return null;
     lines[binding.line] = value; text = lines.join("\n");
   }
   const next = structuredClone(props); let at: any = next;
   for (const key of binding.path.slice(0, -1)) at = at[key];
-  at[binding.path.at(-1)!] = { ...before, [lang]: text };
+  at[binding.path.at(-1)!] = { ...(local(before) ? before : {}), [lang]: text };
   return next;
 }
 export function bindingLink(props: Record<string, unknown>, binding: ContentBinding): { path: ContentBinding["path"]; value: string } | null {

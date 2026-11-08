@@ -29,3 +29,21 @@ test("explicit source identity distinguishes equal item labels", () => {
   expect(contentBinding(data, "Same", "en", "ar", "items.1.label")?.path).toEqual(["items", 1, "label"]);
   expect(contentBinding(data, "Other", "en", "ar", "items.1.label")).toBeNull();
 });
+
+test("old countdown defaults become editable localized words without freezing timer values", () => {
+  const timer = { until: "2099-12-31T23:59:00Z" };
+  const binding = contentBinding(timer, "دقيقة", "ar", "ar", "minuteLabel", undefined, "countdown")!;
+  expect(binding?.value).toBe("دقيقة");
+  const next = replaceContent(timer, binding, "ar", "دقائق", "ar", "countdown")!;
+  expect(next).toEqual({ until: timer.until, minuteLabel: { ar: "دقائق" } });
+  expect(contentBinding(timer, "19", "ar", "ar", "until", undefined, "countdown")).toBeNull();
+  expect(contentBinding(timer, "دقيقة", "ar", "ar", "minuteLabel", undefined, "shop")).toBeNull();
+  expect(replaceContent(timer, { path: ["missing", "label"], value: "" }, "ar", "bad", "ar", "countdown")).toBeNull();
+});
+
+test("empty or missing default fields can be edited while other locales survive", () => {
+  const props = { beforeLabel: { ar: "" }, afterLabel: { en: "Custom after" } };
+  const binding = contentBinding(props, "قبل", "ar", "ar", "beforeLabel", undefined, "beforeAfter")!;
+  expect(binding?.value).toBe("قبل");
+  expect(replaceContent(props, binding, "ar", "قديم", "ar", "beforeAfter")).toEqual({ beforeLabel: { ar: "قديم" }, afterLabel: { en: "Custom after" } });
+});

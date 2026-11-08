@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { checkTree } from "../lib/pageTree.js";
+import { SCENE_KINDS, checkTree } from "../lib/pageTree.js";
+import { SCENE_KINDS as SHOP_SCENE_KINDS } from "../../../estabrek-storefront/src/pageTree/scene";
 
 const page = (scene?: unknown) => ({ version: 1, root: { id: "page", type: "page", children: [{ id: "hero", type: "section", props: scene === undefined ? {} : { scene }, children: [{ id: "link", type: "button", props: { label: { en: "Continue" }, href: "/shop" } }] }] } });
 
@@ -14,6 +15,12 @@ describe("section scene contract", () => {
     const old = checkTree(page());
     expect(old.ok).toBe(true);
     if (old.ok) expect(old.tree.root.children![0].props).not.toHaveProperty("scene");
+  });
+
+  test("accepts exactly the shop's 49 drawn backgrounds", () => {
+    expect([...SCENE_KINDS]).toEqual([...SHOP_SCENE_KINDS]);
+    expect(new Set(SCENE_KINDS).size).toBe(49);
+    for (const kind of SCENE_KINDS) expect(checkTree(page({ kind, interactive: true, amount: 100, speed: 3, intensity: 2 })).ok, kind).toBe(true);
   });
 
   test("rejects unsafe colors, unknown kinds and invalid knobs before saving", () => {

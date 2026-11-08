@@ -89,8 +89,9 @@ function Tile({ look, colours, on, onPick, onRest }: { look: Ready; colours: Thu
   );
 }
 
-export function LooksPanel({ node, label, colours, busy, current, onPick, onRest }: {
+export function LooksPanel({ node, label, colours, busy, current, onPick, onRest, part = false }: {
   node: PageTreeNode;
+  part?: boolean;
   /** What's selected, as the editor names it. */
   label: string;
   colours: ThumbColours;
@@ -101,13 +102,13 @@ export function LooksPanel({ node, label, colours, busy, current, onPick, onRest
   /** The pointer rests on a look (null: it left). */
   onRest: (r: Ready | null) => void;
 }) {
-  const kinds = useMemo(() => kindsFor(node.type), [node.type]);
+  const kinds = useMemo(() => kindsFor(node.type).filter(kind => !part || kind !== "edge"), [node.type, part]);
   const [kind, setKind] = useState<ReadyKind | null>(null);
   const [group, setGroup] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const k = kind && kinds.includes(kind) ? kind : kinds[0] ?? null;
   const groups = useMemo(() => (k ? groupsOf(k) : []), [k]);
-  const looks = useMemo(() => (k ? looksFor(node.type, k, group, q) : []), [node.type, k, group, q]);
+  const looks = useMemo(() => (k ? looksFor(node.type, k, group, q).filter(look => !part || !look.motion?.fx) : []), [node.type, k, group, q, part]);
   // How many tiles show; another element, kind, group or search starts again at the first page.
   const view = `${node.id}|${k}|${group}|${q}`;
   const [more, setMore] = useState({ view, n: PAGE });
