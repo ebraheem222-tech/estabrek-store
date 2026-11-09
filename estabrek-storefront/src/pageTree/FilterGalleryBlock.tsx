@@ -13,6 +13,6 @@ export function FilterGalleryBlock({ props, className, mark, say, link, lang, de
   const spec = galleryOf(props);
   if (!spec) return null;
   const words = WORDS[lang] ?? WORDS.ar;
-  const items = spec.items.map((item) => ({ title: say(item.title), text: say(item.text), category: say(item.category), image: item.image, href: link(item.href) ?? undefined, cta: say(item.cta) || words.view }));
+  const items = spec.items.map((item) => ({ title: say(item.title), text: say(item.text), category: say(item.category), image: item.image, href: link(item.href) ?? undefined, cta: say(item.cta) || words.view, source: item.source, ownCta: Boolean(say(item.cta)) }));
   return <FilterGalleryView decoration={decoration} {...spec} items={items} label={say(spec.label) || words.gallery} lang={lang} words={words} className={className} mark={mark} />;
 }

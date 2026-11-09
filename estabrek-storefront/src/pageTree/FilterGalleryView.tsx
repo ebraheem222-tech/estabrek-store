@@ -4,7 +4,10 @@ import { filterGalleryItems, type GallerySpec } from "./gallery";
 import styles from "./FilterGalleryView.module.css";
 
 export type GalleryWords = { gallery: string; all: string; search: string; empty: string; open: string; preview: string; close: string; previous: string; next: string; view: string; results: string };
-export type GalleryPanel = { title: string; text: string; category: string; image: string; href?: string; cta: string };
+/** `source`: its place in the saved list; `ownCta`: its button's words are its own (not the default). */
+export type GalleryPanel = { title: string; text: string; category: string; image: string; href?: string; cta: string; source?: number; ownCta?: boolean };
+/** Where a word is saved, for writing it in place in the editor (selectionParts reads data-pt-field). */
+const field = (item: GalleryPanel, key: string) => (item.source !== undefined ? `items.${item.source}.${key}` : undefined);
 type Props = { decoration?: ReactNode } & Omit<GallerySpec, "items" | "label"> & { items: GalleryPanel[]; label: string; lang: string; words: GalleryWords; className: string; mark: Record<string, string> };
 
 export function FilterGalleryView({ items, label, lang, words, layout, columns, gap, hoverEffect, lightbox, searchable, activation, className, mark, decoration, presentation = "cards", initial = 0, filters = true, showCount = true }: Props) {
@@ -100,10 +103,10 @@ export function FilterGalleryView({ items, label, lang, words, layout, columns, 
         }}>
           {layout !== "split" ? media(item) : null}
           <div className="pt-fg-copy">
-            {item.category ? <span className="pt-fg-category">{item.category}</span> : null}
-            {layout === "split" ? <button type="button" ref={(element) => { buttons.current[position] = element; }} className="pt-fg-select" aria-label={`${words.preview} ${item.title}`} aria-pressed={item.index === active?.index} aria-controls={`${base}-preview`} onClick={() => setSelected(item.index)} onKeyDown={(event) => selectionKeys(event, position)}>{item.title}<span aria-hidden="true"> ↗</span></button> : <h3>{item.title}</h3>}
-            {item.text ? <p>{item.text}</p> : null}
-            {item.href ? <a className="pt-fg-link" href={item.href}>{item.cta}</a> : null}
+            {item.category ? <span className="pt-fg-category" data-pt-field={field(item, "category")}>{item.category}</span> : null}
+            {layout === "split" ? <button type="button" ref={(element) => { buttons.current[position] = element; }} className="pt-fg-select" aria-label={`${words.preview} ${item.title}`} aria-pressed={item.index === active?.index} aria-controls={`${base}-preview`} onClick={() => setSelected(item.index)} onKeyDown={(event) => selectionKeys(event, position)}>{item.title}<span aria-hidden="true"> ↗</span></button> : <h3 data-pt-field={field(item, "title")}>{item.title}</h3>}
+            {item.text ? <p data-pt-field={field(item, "text")}>{item.text}</p> : null}
+            {item.href ? <a className="pt-fg-link" href={item.href} data-pt-field={item.ownCta ? field(item, "cta") : undefined}>{item.cta}</a> : null}
           </div>
         </article>)}
       </div>

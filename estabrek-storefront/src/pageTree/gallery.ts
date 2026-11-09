@@ -1,7 +1,8 @@
 /** Defensive gallery reads also protect previews of older, unsaved drafts. */
 import { safeHref, safeSrc, type TreeText } from "./tree";
 
-export type GalleryItem = { title: TreeText; text: TreeText; category: TreeText; cta: TreeText; image: string; href?: string };
+/** `source`: its place in the saved list (the editor writes its words there). */
+export type GalleryItem = { title: TreeText; text: TreeText; category: TreeText; cta: TreeText; image: string; href?: string; source: number };
 export type GallerySpec = { items: GalleryItem[]; label: TreeText; layout: "grid" | "masonry" | "split" | "bento"; presentation?: "cards" | "index"; initial?: number; filters?: boolean; showCount?: boolean; columns: number; gap: number; hoverEffect: "none" | "zoom" | "tilt" | "reveal"; lightbox: boolean; searchable: boolean; activation: "click" | "hover" };
 const object = (value: unknown): Record<string, unknown> | null => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 const words = (value: unknown, max: number): TreeText => {
@@ -17,11 +18,11 @@ const number = (value: unknown, min: number, max: number, fallback: number, inte
 
 export function galleryOf(props: Record<string, unknown>): GallerySpec | null {
   const items: GalleryItem[] = [];
-  for (const raw of Array.isArray(props.items) ? props.items : []) {
+  for (const [source, raw] of (Array.isArray(props.items) ? props.items : []).entries()) {
     const item = object(raw);
     const image = typeof item?.image === "string" && item.image.length <= 1000 ? safeSrc(item.image.trim()) : null;
     if (!item || !image || items.length >= 40) continue;
-    items.push({ title: words(item.title, 160), text: words(item.text, 1200), category: words(item.category, 80), cta: words(item.cta, 60), image, href: typeof item.href === "string" && item.href.length <= 500 ? safeHref(item.href.trim()) ?? undefined : undefined });
+    items.push({ title: words(item.title, 160), text: words(item.text, 1200), category: words(item.category, 80), cta: words(item.cta, 60), image, href: typeof item.href === "string" && item.href.length <= 500 ? safeHref(item.href.trim()) ?? undefined : undefined, source });
   }
   if (!items.length) return null;
   return { items, label: words(props.label, 160), layout: props.layout === "split" || props.layout === "masonry" || props.layout === "bento" ? props.layout : "grid", presentation: props.presentation === "index" ? "index" : "cards", initial: number(props.initial, -1, 39, 0, true), filters: props.filters !== false, showCount: props.showCount !== false, columns: number(props.columns, 1, 6, 3, true), gap: number(props.gap, 0, 48, 20), hoverEffect: props.hoverEffect === "zoom" || props.hoverEffect === "tilt" || props.hoverEffect === "reveal" ? props.hoverEffect : "none", lightbox: props.lightbox === true, searchable: props.searchable === true, activation: props.activation === "hover" ? "hover" : "click" };
