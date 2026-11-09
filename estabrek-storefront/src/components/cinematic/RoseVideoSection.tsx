@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -13,6 +13,7 @@ import { Icon } from "./Icons";
 import { useStorefrontSettings } from "@/components/StorefrontFeaturesProvider";
 import { isNearWhite } from "@/lib/storefrontPalette";
 import { tr } from "@/lib/words";
+import { RingPiecesContext, RoseShopRing } from "./RoseShopRing";
 
 export const defaultCampaignVideo: VideoData = {
   url: "/editorial/rose-campaign.mp4", posterUrl: "/editorial/rose-campaign-poster.webp",
@@ -42,6 +43,8 @@ function deepen(hex: string) {
 export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: VideoData }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
+  // On the home: the newest pieces turn around the film on a 3D ring (rose-showcase.css).
+  const ring = useContext(RingPiecesContext);
   const { scrollAnimationsEnabled } = useStorefrontSettings();
   const root = useRef<HTMLElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -183,7 +186,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
   return (
     <section
       ref={root}
-      className="rose-video"
+      className={`rose-video${ring.length >= 3 ? " rose-video-orbiting" : ""}`}
       data-motion="false"
       data-playback={playback}
       data-rose-palette={data.rosePresentation?.palette || "berry"}
@@ -232,6 +235,7 @@ export function RoseVideoSection({ data = defaultCampaignVideo }: { data?: Video
             </button>
           )}
         </div>
+        {ring.length >= 3 ? <div className="rose-video-orbit"><RoseShopRing pieces={ring} label={tr(lang, "قطع من المتجر، اسحبي لتلفّيها", "Pieces from the shop: drag to turn them")} /></div> : null}
         <div className="rose-video-copy">
           <span className="atelier-eyebrow">{tr(lang, "القماش بالحركة", "FABRIC IN MOTION")}</span>
           <h2>{data.title || (ar ? <>أناقةٌ تتحرّك.<br /><em>وتبقى في الذاكرة.</em></> : lang === "he" ? <>אלגנטיות בתנועה.<br /><em>תחושה שנשארת.</em></> : <>Elegance in motion.<br /><em>A feeling that stays.</em></>)}</h2>

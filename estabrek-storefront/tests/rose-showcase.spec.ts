@@ -110,3 +110,62 @@ test("the shop's opening: the silk film in an arch and a 3D ring of the pieces t
   // A drag doesn't open the piece.
   await expect(page).toHaveURL(/\/shop$/);
 });
+
+test("a product page stands on its category's mood: a soft panel with drawings that pop in, and a wave", async ({ page }) => {
+  await page.goto("/p/rose-dress");
+  const backdrop = page.locator(".rose-pdp-backdrop");
+  await expect(backdrop).toHaveAttribute("data-mood", /^(dresses|winter|spring|hijab|default)$/);
+  await expect(backdrop.locator(".rose-motif")).toHaveCount(10);
+  await expect(backdrop.locator(".rose-wave")).toHaveCount(1);
+  // The price, the colours and the add-to-bag pop in.
+  expect(await page.locator(".rose-pdp-info .rose-pdp-add").evaluate((el) => getComputedStyle(el).animationName)).toContain("rose-pop-in");
+});
+
+test("the page flows into the footer on a wave, the home too", async ({ page }) => {
+  for (const path of ["/", "/shop"]) {
+    await page.goto(path);
+    const wave = page.locator(".atelier-footer > .rose-footer-wave");
+    await expect(wave).toHaveCount(1);
+    expect(await wave.evaluate((el) => getComputedStyle(el).position)).toBe("absolute");
+  }
+});
+
+test("automated browsers keep plain scrolling (the smooth scroll is for shoppers' mice and trackpads)", async ({ page }) => {
+  await page.goto("/shop");
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(false);
+});
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true });
+
+  test("a card shows a round bag on its photo and nothing over its name", async ({ page }) => {
+    await page.goto("/shop");
+    const card = page.locator(".rose-product-tile").first();
+    await card.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await expect(card.locator(".rose-product-preview")).toBeHidden();
+    const add = card.locator(".rose-product-add > button");
+    const box = (await add.boundingBox())!;
+    // A finger-sized round button (44px, the store's smallest tap size on phones).
+    expect(Math.round(box.width)).toBe(44);
+    expect(Math.round(box.height)).toBe(44);
+    // The bag sits on the photo, above the name.
+    const photo = (await card.locator(".rose-product-image").boundingBox())!;
+    const name = (await card.locator("h3").boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(photo.y + photo.height + 1);
+    expect(box.y + box.height).toBeLessThan(name.y);
+  });
+
+  test("a product's photo stays steady while the details slide up over it", async ({ page }) => {
+    await page.goto("/p/rose-dress");
+    const gallery = page.locator(".rose-pdp-gallery");
+    expect(await gallery.evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
+    const info = page.locator(".rose-pdp-info");
+    expect(await info.evaluate((el) => Number(getComputedStyle(el).zIndex))).toBeGreaterThan(0);
+    const top = (await gallery.boundingBox())!.y;
+    await page.evaluate(() => scrollBy(0, 300));
+    await page.waitForTimeout(300);
+    // The photo hasn't moved up with the page (it stays under the header).
+    expect(Math.abs((await gallery.boundingBox())!.y - Math.min(top, 64))).toBeLessThan(80);
+  });
+});

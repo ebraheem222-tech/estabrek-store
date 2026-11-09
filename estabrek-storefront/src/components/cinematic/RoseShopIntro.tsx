@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { Fragment, useEffect, useRef } from "react";
 import { RoseShopRing, type RingPiece } from "./RoseShopRing";
+import { RoseWave } from "./RoseWave";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { useRazan } from "@/store/razan";
@@ -69,5 +70,6 @@ export function RoseShopIntro({ showcase = [] }: { showcase?: RingPiece[] }) {
       <svg className="rose-stage-line" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true"><path pathLength={1} d="M2 138V50A48 48 0 0 1 98 50V138" /></svg>
       <RoseShopRing pieces={showcase} label={tr(lang, "قطع من المتجر، اسحبي لتلفّيها", "Pieces from the shop: drag to turn them")} />
     </div> : null}
+    {stage ? <RoseWave className="rose-stage-wave" /> : null}
   </section>;
 }

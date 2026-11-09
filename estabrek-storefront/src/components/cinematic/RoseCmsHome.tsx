@@ -6,6 +6,8 @@ import { OverlayLayer, type SectionOverlay } from "@/pageTree/OverlayLayer";
 import { RoseHomeFrame, RoseFabricStudy, RoseNativeSections } from "./RoseHome";
 import { sectionPalette } from "./roseDesign";
 import { RoseVideoSection } from "./RoseVideoSection";
+import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
+import { cldUrl } from "@/lib/cloudinary";
 import {
   RoseHero,
   RoseProductGrid,
@@ -260,5 +262,11 @@ export function RoseCmsHome({
   flush();
   if (showStories && !storiesShown) nodes.push(storiesScene());
   if (instagramOn && !instagramShown) nodes.push(instagramScene());
-  return <RoseHomeFrame>{nodes}</RoseHomeFrame>;
+  // The pieces the page shows, for the 3D ring around the silk film (rose-showcase.css).
+  const seen = new Set<string>();
+  const ring: RingPiece[] = Object.values(productLookup)
+    .filter((p): p is ProductMini & { slug: string; imageUrl: string } => Boolean(p.slug && p.imageUrl) && !seen.has(p.slug!) && Boolean(seen.add(p.slug!)))
+    .slice(0, 10)
+    .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 260, h: 325, c: "fill", g: "auto" }) }));
+  return <RingPiecesProvider pieces={ring}><RoseHomeFrame>{nodes}</RoseHomeFrame></RingPiecesProvider>;
 }

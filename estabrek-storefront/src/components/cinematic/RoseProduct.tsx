@@ -36,6 +36,9 @@ import { RoseImageViewer } from "./RoseImageViewer";
 import { SpinDialog } from "./ProductSpin";
 import { spinFor } from "./spinData";
 import { RoseBadge } from "./RoseBadge";
+import { RoseProductBackdrop } from "./RoseProductBackdrop";
+import { RoseWave } from "./RoseWave";
+import { moodOf } from "@/lib/categoryMood";
 import { roseOutfit, roseReact } from "@/lib/roseEvents";
 import { useSiteFeatures } from "@/store/siteFeatures";
 import { RoseStockAlert } from "./RoseStockAlert";
@@ -207,6 +210,8 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
         ))}
       </nav>
 
+      {/* Behind the product: its category's mood, drawn (snowflakes for winter, petals for spring…). */}
+      <RoseProductBackdrop mood={moodOf([...crumbs.slice(2).flatMap((c) => [c.label, c.href]), product.title])} />
       <div className="rose-pdp-grid">
         <section className="rose-pdp-gallery" aria-label={tr(lang, "صور المنتج", "Product photos")}>
           {images.length > 1 && (
@@ -475,6 +480,7 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
 
       {related.length > 0 && (
         <section className="rose-pdp-related" aria-labelledby="pdp-related">
+          <RoseWave className="rose-related-wave" />
           <div className="atelier-section-heading">
             <div>
               <span className="atelier-eyebrow">{tr(lang, "من نفس المجموعة", "FROM THE SAME COLLECTION")}</span>

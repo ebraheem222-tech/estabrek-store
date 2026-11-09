@@ -1,8 +1,15 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, type CSSProperties } from "react";
+import { createContext, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
 export type RingPiece = { slug: string; title: string; image: string };
+
+/** The home's pieces for the ring around its silk film (RoseHome provides them; RoseVideoSection reads them). */
+export const RingPiecesContext = createContext<RingPiece[]>([]);
+/** For server-drawn pages (the CMS home): hands the ring its pieces. */
+export function RingPiecesProvider({ pieces, children }: { pieces: RingPiece[]; children: ReactNode }) {
+  return <RingPiecesContext.Provider value={pieces}>{children}</RingPiecesContext.Provider>;
+}
 
 /*
  * The shop's own pieces on a 3D ring turning slowly around the opening's arch (rose-showcase.css): drag it to
