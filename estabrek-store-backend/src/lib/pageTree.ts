@@ -509,6 +509,9 @@ export const SLIDER_LOOKS = ["plain", "rounded", "card", "frame", "polaroid", "a
 export const SLIDER_ARROW_LOOKS = ["round", "square", "bare", "glass", "outline", "corner"] as const;
 export const SLIDER_DOT_LOOKS = ["dots", "lines", "bars", "numbers"] as const;
 
+/** What a held section does while the next one covers it: darkens, shrinks back, blurs, moves up slowly, fades. */
+export const COVER_UNDER = ["none", "dim", "shrink", "blur", "slow", "fade"] as const;
+
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
   page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional(), commerceVersion: z.literal(1).optional() }),
@@ -525,6 +528,14 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
       speed: z.number().finite().min(0).max(3).default(1),
       intensity: z.number().finite().min(0).max(2).default(1),
       interactive: z.boolean().default(false),
+    }).optional(),
+    // Held on the screen while the page scrolls, then the section after it slides up over it from below
+    // (a curtain): `hold` = screens it stays first; `under` = what it does while it's covered; `phone`
+    // false = not on phones.
+    cover: z.object({
+      hold: z.number().finite().min(0).max(6).default(0),
+      under: z.enum(COVER_UNDER).default("none"),
+      phone: z.boolean().default(true),
     }).optional(),
   }),
   grid: none,

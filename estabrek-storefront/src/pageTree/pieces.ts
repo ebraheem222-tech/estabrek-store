@@ -3,6 +3,7 @@
  * (the backend checks them first: lib/pageTree.ts):
  *
  * - a scroll scene's settings (a clip that plays with the scroll, or a picture held still);
+ * - a section held on the screen until the next one covers it;
  * - an element's two extra layers, `before` (behind its content) and `after` (in front when
  *   `front`), real pieces that its keyframes can move like CSS ::before/::after can't;
  * - its triggers: when something happens (a click, the mouse, coming into sight, a time…), what
@@ -72,6 +73,32 @@ export function scrollSceneOf(p: Record<string, unknown> | undefined): ScrollSce
     progress: inList(p?.progress, ["none", "bar", "dots", "line"] as const) ?? "none",
   };
 }
+
+/* ---------------------------------------------------------- held and covered */
+
+/** What a held section does while the next one covers it. */
+export const COVER_UNDER = ["none", "dim", "shrink", "blur", "slow", "fade"] as const;
+export type CoverSpec = { hold: number; under: (typeof COVER_UNDER)[number]; phone: boolean };
+
+/**
+ * A section held on the screen while the page scrolls (`hold` screens), then covered by the
+ * section after it, which slides up over it from below; null when it isn't.
+ */
+export function coverOf(v: unknown): CoverSpec | null {
+  const c = obj(v);
+  if (!c) return null;
+  return { hold: within(c.hold, 0, 6) ?? 0, under: inList(c.under, COVER_UNDER) ?? "none", phone: c.phone !== false };
+}
+
+/** Where it sticks (one taller than the screen once its end is in sight), the part of it on the screen, and how far the next one comes over it. */
+export function coverMeasure(height: number, screen: number, next: number) {
+  const top = Math.min(0, screen - height);
+  const seen = Math.min(height, screen);
+  return { top, seen, d: Math.max(0, Math.min(seen, next)) };
+}
+
+/** How much of it is covered (0–1): the next one's top going from its end on the screen up by `d`. */
+export const coverAmount = (nextTop: number, seen: number, d: number) => (d > 0 ? Math.max(0, Math.min(1, (seen - nextTop) / d)) : 0);
 
 /* ------------------------------------------------------------- the layers */
 

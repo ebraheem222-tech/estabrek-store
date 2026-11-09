@@ -148,6 +148,21 @@ html, body {
   overscroll-behavior-x: none;
 }
 
+/* A store with its own design: the window scrolls (not the body), and nothing it wraps becomes a scroll
+   box, so what sticks (held sections, scroll scenes, a sticky header) sticks and scroll motion runs.
+   clip cuts what sticks out sideways like hidden did, without making a scroll box. */
+html[data-store-design="cms"],
+html[data-store-design="cms"] body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+html[data-store-design="cms"] [data-gallery-theme-active] {
+  overflow-x: clip;
+}
+
 body {
   background: var(--bg, #05060a);
   color: var(--text, rgba(255,255,255,0.92));

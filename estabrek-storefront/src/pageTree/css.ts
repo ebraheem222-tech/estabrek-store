@@ -880,6 +880,23 @@ export const BASE_CSS = [
   ".pt-ss-progress-dots{inset-inline-end:18px;top:50%;translate:0 -50%;display:flex;flex-direction:column;gap:8px}.pt-ss-progress-dots>i{width:8px;height:8px;border-radius:50%;background:rgb(255 255 255/.35);transition:transform .3s,background .3s}.pt-ss-progress-dots>i[data-on]{background:var(--accent);transform:scale(1.4)}",
   // Still for whoever asked for less motion (TreeScenes adds pt-ss-still): everything shown, one after another.
   ".pt-ss-still{height:auto!important}.pt-ss-still .pt-ss-stage{position:relative;height:auto;min-height:100vh}.pt-ss-still .pt-ss-layer{position:relative;display:flex;flex-direction:column;align-items:center;gap:32px;padding:18vh 16px}.pt-ss-still [data-pt-cue-wait]{visibility:visible}.pt-ss-still .pt-ss-progress{display:none}",
+  // A section held on the screen, then covered by the next one sliding up over it (pieces.ts coverOf).
+  // It sticks in its own box (TreeCovers sets --pt-cv-top for one taller than the screen: it sticks once
+  // its end is in sight); the room under it is the scroll it's held for (hold screens) plus the way the
+  // next one comes over it (--pt-cv-d), which TreeCovers pulls the next one up by. Before the script
+  // it's only held, then moves on; where it shares its box with other things it stays put.
+  ".pt-section.pt-cover{--pt-cv-p:0}.pt-section.pt-cover:not([data-pt-cover-off]):has(+.pt-cover-room){position:sticky;top:var(--pt-cv-top,0px)}",
+  ".pt-cover-room{display:block;height:calc(var(--pt-cv-hold,0) * 100vh + var(--pt-cv-d,0px));pointer-events:none}.pt-cover[data-pt-cover-off]+.pt-cover-room{display:none}",
+  // What covers it goes over it, never see-through: the page's colour under its own background.
+  ".pt-cover-next{position:relative;z-index:1}:where(.pt-cover-next){background-color:var(--bg,#fff)}",
+  ".pt-cover-shade{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0}",
+  ".pt-cover-dim>.pt-cover-shade{background:#000;opacity:calc(var(--pt-cv-p) * .65)}",
+  ".pt-cover-fade>.pt-cover-shade{background:var(--bg,#fff);opacity:calc(var(--pt-cv-p) * .9)}",
+  ".pt-cover-blur>.pt-cover-shade{opacity:1;-webkit-backdrop-filter:blur(calc(var(--pt-cv-p) * 12px));backdrop-filter:blur(calc(var(--pt-cv-p) * 12px))}",
+  ".pt-cover-shrink{scale:calc(1 - var(--pt-cv-p) * .12);transform-origin:50% 35%}.pt-cover-shrink[data-pt-covering]{clip-path:inset(0 round calc(var(--pt-cv-p) * 36px))}",
+  ".pt-cover-slow{translate:0 calc(var(--pt-cv-p) * var(--pt-cv-d,100vh) * -.3)}",
+  `@media (max-width:${PHONE_MAX}px){.pt-section.pt-cover.pt-cover-desk:not([data-pt-cover-off]):has(+.pt-cover-room){position:relative;top:auto}.pt-cover-desk+.pt-cover-room{display:none}}`,
+  "@media (prefers-reduced-motion:reduce){.pt-cover-shade{display:none}.pt-cover-shrink,.pt-cover-slow{scale:none;translate:none;clip-path:none!important}}",
   // What slides sideways with the scroll (motion.scroll "sideways") keeps its row on one line.
   "[data-pt-sideways]{flex-wrap:nowrap!important;overflow:clip}[data-pt-sideways]>*{flex-shrink:0;translate:var(--pt-sw,0px) 0}",
   // A section's inner box fills it down to its padding (a taller section than its words), so what's placed
