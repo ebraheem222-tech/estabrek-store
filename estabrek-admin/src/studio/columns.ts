@@ -251,7 +251,7 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", ...BLOCK_KINDS]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", "component", ...BLOCK_KINDS]);
 const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup", "scrollScene"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);

@@ -7,6 +7,7 @@
  */
 import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type SizeConstraints, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
+import { tokenVar } from "./designTokens";
 import { SLIDER_EFFECT_CSS } from "./sliderEffectCss";
 import { SLIDER_LOOK_CSS } from "./sliderLookCss";
 import { layersOf, type PieceLayerSpec } from "./pieces";
@@ -193,7 +194,7 @@ const MEDIA = new Set(["image", "video", "slider"]);
 const num = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : undefined);
 /** A theme colour or a hex one, as CSS (anything else: undefined). */
 export const color = (v: unknown) =>
-  typeof v === "string" ? (TOKENS[v] ?? (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? v : undefined)) : undefined;
+  typeof v === "string" ? (TOKENS[v] ?? (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? v : tokenVar(v, "colors"))) : undefined;
 const length = (v: unknown) => (typeof v === "string" && /^(auto|\d{1,4}(\.\d{1,6})?(px|%|rem|vw|vh))$/.test(v) ? v : undefined);
 const place = (v: unknown) => (typeof v === "string" && /^(span \d{1,2}|-?\d{1,2} \/ (-?\d{1,2}|span \d{1,2}))$/.test(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, list: readonly T[]) => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : undefined);
@@ -268,6 +269,7 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   };
   const pad = four(s.pad, 0);
   if (pad) d.push(`padding-block:${pad[0]}px ${pad[2]}px`, `padding-inline:${pad[3]}px ${pad[1]}px`);
+  else { const space = tokenVar(s.space, "spaces"); if (space) d.push(`padding:${space}`); }
   const margin = four(s.margin, -400);
   if (margin) d.push(`margin-block:${margin[0]}px ${margin[2]}px`, `margin-inline:${margin[3]}px ${margin[1]}px`);
   push("width", length(s.width));
@@ -283,8 +285,8 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   if (cols !== undefined && Number.isInteger(cols)) d.push(`grid-template-columns:repeat(${cols},minmax(0,1fr))`);
   const widths = widthsTemplate(s.widths);
   if (widths) d.push(`grid-template-columns:${widths}`);
-  push("gap", num(s.gap, 0, 200), "px");
-  push("row-gap", num(s.rowGap, 0, 200), "px");
+  push("gap", tokenVar(s.gap, "spaces") ?? (num(s.gap, 0, 200) !== undefined ? `${s.gap}px` : undefined));
+  push("row-gap", tokenVar(s.rowGap, "spaces") ?? (num(s.rowGap, 0, 200) !== undefined ? `${s.rowGap}px` : undefined));
   const dir = pick(s.direction, ["row", "column"] as const);
   if (dir) d.push(`flex-direction:${dir}`);
   if (typeof s.wrap === "boolean") d.push(`flex-wrap:${s.wrap ? "wrap" : "nowrap"}`);
@@ -322,7 +324,7 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
     }
   }
   push("color", color(s.color));
-  push("border-radius", num(s.radius, 0, 999), "px");
+  push("border-radius", tokenVar(s.radius, "radii") ?? (num(s.radius, 0, 999) !== undefined ? `${s.radius}px` : undefined));
   if (s.border && typeof s.border === "object") {
     const w = num(s.border.width, 0, 20);
     const c = color(s.border.color);
@@ -331,7 +333,7 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   }
   push("opacity", num(s.opacity, 0, 1));
   const font = pick(s.font, Object.keys(FONTS));
-  const family = fontStack(s.family);
+  const family = fontStack(s.family) ?? tokenVar(s.family, "fonts");
   if (family) d.push(`font-family:${family}`);
   else if (font) d.push(`font-family:${FONTS[font]}`);
   if (typeof s.italic === "boolean") d.push(`font-style:${s.italic ? "italic" : "normal"}`);
@@ -408,6 +410,7 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   const glows: string[] = [];
   const sh = pick(s.shadow, ["none", "sm", "md", "lg"] as const);
   if (sh && sh !== "none") boxes.push(SHADOWS[sh]);
+  else if (!sh) { const own = tokenVar(s.shadow, "shadows"); if (own) boxes.push(own); }
   const sd = s.shade;
   if (sd && typeof sd === "object") {
     const [x, y, b, c] = [num(sd.x, -100, 100), num(sd.y, -100, 100), num(sd.blur, 0, 200), color(sd.color)];
@@ -625,7 +628,7 @@ export function siteTarget(s: SiteStyle): { sel: string; type: string } {
 export function treeFamilies(tree: PageTree, site: SiteStyle[] = []): Set<string> {
   const out = new Set<string>();
   const add = (style: Partial<Record<Screen, ScreenStyle>> | undefined) => {
-    for (const sc of [style?.base, style?.tablet, style?.mobile]) if (typeof sc?.family === "string") out.add(sc.family);
+    for (const sc of [style?.base, style?.tablet, style?.mobile]) if (typeof sc?.family === "string" && !sc.family.startsWith("$")) out.add(sc.family);
   };
   const walk = (n: TreeNode) => {
     if (SAFE_ID.test(n.id ?? "")) add(n.style);
@@ -782,7 +785,7 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
     const inner = `:is(${sel}) :is(img,video),:is(${sel}):is(img,video)`;
     const put = (list: string[], s: ScreenStyle | undefined, screen: Screen) => {
       const d = [...screenDeclarations(look.style, screen, type), ...transitionDecls(look.style, screen, keys)];
-      if (media && typeof s?.radius === "number") d.push("overflow:hidden");
+      if (media && (typeof s?.radius === "number" || typeof s?.radius === "string")) d.push("overflow:hidden");
       if (d.length) list.push(`${sel}{${d.join(";")}}`);
       const pic = media ? d.filter((x) => x.startsWith("object-")) : [];
       if (pic.length) list.push(`${inner}{${pic.join(";")}}`);

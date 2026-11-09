@@ -38,6 +38,7 @@ import type { CatalogCategory } from "@/lib/catalog";
 import { langConfigOf, type Lang } from "@/lib/i18n";
 import { localizeCategories } from "@/lib/localize";
 import { asTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
+import { designTokensOf, tokenFamilies, tokensCss } from "@/pageTree/designTokens";
 import { treeCss, treeFamilies } from "@/pageTree/css";
 import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
 import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
@@ -545,8 +546,11 @@ export async function renderCmsPageBySlug(
     // The editor's preview carries the shared styles being changed; a live page takes the published ones.
     const shared = (page as { siteStyles?: unknown }).siteStyles;
     const site = siteStylesOf(shared !== undefined ? shared : settingsHeader?.siteStyles);
-    treeStyle = treeCss(tree, site);
-    if (treeStyle) treeFonts = googleFontsHref(treeFamilies(tree, site));
+    // The design variables (pageTree/designTokens.ts): the editor's changes in its preview, else the published ones.
+    const ownTokens = (page as { designTokens?: unknown }).designTokens;
+    const tokens = designTokensOf(ownTokens !== undefined ? ownTokens : settingsHeader?.designTokens);
+    treeStyle = tokensCss(tokens) + treeCss(tree, site);
+    if (treeStyle) treeFonts = googleFontsHref([...treeFamilies(tree, site), ...tokenFamilies(tokens)]);
     treeMoves = needs.motion;
     treeScenes = needs.scenes;
     treeTriggers = needs.triggers;

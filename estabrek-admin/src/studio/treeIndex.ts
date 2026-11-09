@@ -3,6 +3,7 @@
  * the old sections by their section id, a label for every node, and the shapes
  * the geometry picks from (the bridge's boxes put on the screen).
  */
+import { say } from "./say";
 import type { PageTree, PageTreeNode } from "../api/pages.api";
 import { adminLang } from "../lib/lang";
 import { tr } from "../lib/words";
@@ -80,6 +81,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   form: () => tr("نموذج", "Form"),
   roseBlock: () => tr("بلوك ورد", "Rose block"),
   block: () => tr("بلوك محفوظ (مربوط)", "Saved block (linked)"),
+  component: () => say("نسخة من مكوّن رئيسي|Main component instance|מופע של רכיב ראשי"),
   legacy: () => tr("قسم", "Section"),
 };
 export const typeLabel = (type: string) => TYPE_LABEL[type]?.() ?? type;

@@ -21,7 +21,7 @@ export type Page = {
   slug: string; // "/", "/about"
   status: PageStatus;
   /** "block": a saved block of the new editor (edited like a page, never a page of the shop). */
-  kind?: "page" | "block";
+  kind?: "page" | "block" | "component" | "template";
   publishAt?: string | null;
   unpublishAt?: string | null;
   canonicalUrl?: string | null;
@@ -278,6 +278,15 @@ export async function listBlocks() {
   const data = (await api.get(ENDPOINTS.admin.pages.blocks)).data;
   // An older API without blocks answers something else: no blocks then.
   return (Array.isArray(data) ? data : []) as BlockInfo[];
+}
+/** A main component (backend lib/componentTree.ts): its published variants and how many pages use it. */
+export type ComponentInfo = { id: string; name: string; updatedAt: string; hasDraft: boolean; variants: Array<{ id: string; name: string | null; type: string; node: PageTreeNode }>; uses: number };
+export async function listComponents() {
+  const data = (await api.get(ENDPOINTS.admin.pages.components)).data;
+  return (Array.isArray(data) ? data : []) as ComponentInfo[];
+}
+export async function createComponent(name: string, node: PageTreeNode) {
+  return (await api.post(ENDPOINTS.admin.pages.components, { name, node })).data as ComponentInfo;
 }
 export async function createBlock(name: string, sections: PageTreeNode[]) {
   return (await api.post(ENDPOINTS.admin.pages.blocks, { name, sections })).data as BlockInfo;
