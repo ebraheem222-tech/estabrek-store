@@ -74,6 +74,11 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("estabrak_cart_v1") || "[]")))
       .toEqual([{ variantId: "berry-l", quantity: 2 }]);
     await expect(drawer(page)).not.toBeVisible();
+    // The small bag opens on the add (RoseMiniBag); closed, the page is free again.
+    const bag = page.locator(".rose-minibag");
+    await expect(bag).toHaveAttribute("data-open", "true");
+    await bag.getByRole("button", { name: /متابعة التسوق|Keep shopping/ }).click();
+    await expect(bag).not.toHaveAttribute("data-open", "true");
     await expect(page.locator(".rose-companion-wa")).toBeVisible();
     expect(await page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
   });

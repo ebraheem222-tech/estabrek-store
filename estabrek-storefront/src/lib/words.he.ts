@@ -803,4 +803,11 @@ export const HE: Record<string, string> = {
   "Folds that flow with you all day.": "קפלים שזורמים איתך כל היום.",
   "Modest cuts for every occasion.": "גזרות צנועות לכל אירוע.",
   "Pieces chosen for you, with love.": "פריטים שנבחרו בשבילך, באהבה.",
+  "Close the bag": "סגירת הסל",
+  "Your bag": "הסל שלך",
+  "Added to your bag": "נוסף לסל שלך",
+  "{0} pieces": "{0} פריטים",
+  "One less": "פריט אחד פחות",
+  "One more": "עוד פריט",
+  "Checkout": "להשלמת ההזמנה",
 };
