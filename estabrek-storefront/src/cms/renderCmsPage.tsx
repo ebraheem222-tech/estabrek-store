@@ -6,6 +6,7 @@ import {
   getNewArrivalsIds,
   getPageBySlug,
   getProductById,
+  getProductBySlug,
   getPublicSettings,
   listProducts,
   listProductsByIds,
@@ -39,6 +40,8 @@ import { langConfigOf, type Lang } from "@/lib/i18n";
 import { localizeCategories } from "@/lib/localize";
 import { asTree, siteStylesOf, treeNeeds } from "@/pageTree/tree";
 import { designTokensOf, tokenFamilies, tokensCss } from "@/pageTree/designTokens";
+import { bindStore, categoryValues, productValues } from "@/pageTree/storeBind";
+import type { CatalogProduct } from "@/lib/catalog";
 import { treeCss, treeFamilies } from "@/pageTree/css";
 import { GOOGLE_FONTS, googleFontsHref } from "@/pageTree/fonts";
 import { lookNode, looksOf, motionOf as treeMotionOf } from "@/pageTree/tree";
@@ -92,6 +95,8 @@ export async function renderCmsPageBySlug(
     liveTheme?: boolean;
     /** Studio only: synthetic commerce state, never the shopper's live cart/account. */
     preview?: boolean;
+    /** A product page drawn from the store's product page design (pageTree/storeBind.ts). */
+    product?: CatalogProduct;
   }
 ) {
   // The page's language: its CMS words and the store's content in it.
@@ -123,6 +128,19 @@ export async function renderCmsPageBySlug(
         .catch(() => ({ categories: [] as Awaited<ReturnType<typeof listCategories>>, seasons: [] as Awaited<ReturnType<typeof loadSeasonalEdits>>, stories: [] as Awaited<ReturnType<typeof loadCollectionStories>> }))
     : null;
   const page = await pagePromise;
+  // The editor's preview of the product or category page design: filled with a real one of the store's.
+  let storeProduct = options?.product;
+  if (page && options?.preview && ((page as any).kind === "productTemplate" || (page as any).kind === "categoryTemplate") && (page as any).tree) {
+    const kind = (page as any).kind as string;
+    if (kind === "productTemplate") {
+      const first = (await listProducts({ page: 1, pageSize: 1 }).catch(() => null) as any)?.items?.[0];
+      const full = first?.slug ? await getProductBySlug(first.slug, lang).catch(() => null) : null;
+      if (full) { storeProduct = full as CatalogProduct; (page as any).tree = bindStore((page as any).tree, productValues(full as CatalogProduct), lang ?? "ar"); }
+    } else {
+      const cat = (await listCategories(lang).catch(() => null))?.[0];
+      if (cat) (page as any).tree = bindStore((page as any).tree, categoryValues(cat), lang ?? "ar");
+    }
+  }
   // Grandfather existing native designs until their owner explicitly republishes
   // under the commerce contract. New drafts/publishes carry this marker.
   if (page?.format === 2 && !options?.preview && asTree(page.tree)?.root.props?.commerceVersion === 1 && !commercePageValid(slug, page.tree)) return null;
@@ -180,7 +198,7 @@ export async function renderCmsPageBySlug(
   if (tree && independentDesign(settingsHeader)) roseHome = false;
   const langCfg = langConfigOf((bootstrap.site as any)?.header);
   const commerce = tree ? commerceNeeds(tree) : null;
-  const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg, commerce: { preview: options?.preview === true } } : null;
+  const treeCtx: TreeCtx | null = tree ? { lang: lang ?? langCfg.default, main: langCfg.default, cfg: langCfg, commerce: { preview: options?.preview === true }, ...(storeProduct ? { product: storeProduct } : {}) } : null;
   if (commerce?.shop && treeCtx?.commerce && !options?.preview) {
     const [initial, categories] = await Promise.all([listProducts({ lang, page: f.page ?? 1, pageSize: 24, sort: f.sort as any, q: f.q, inStock: f.inStock, categoryId: f.categoryId, colors: f.colors.length ? f.colors.join(",") : undefined, sizeIds: f.sizeIds.length ? f.sizeIds.join(",") : undefined, minPrice: f.minPrice, maxPrice: f.maxPrice, attrs: f.attrs, includeFacets: true, lite: true }), listCategories(lang)]);
     const basePath = lang === langCfg.default ? slug : `/${lang}${slug === "/" ? "" : slug}`;

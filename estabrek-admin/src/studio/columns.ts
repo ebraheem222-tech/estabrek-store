@@ -251,7 +251,7 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", "component", ...BLOCK_KINDS]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", "component", "collectionList", "productDetail", ...BLOCK_KINDS]);
 const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup", "scrollScene"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);
@@ -265,6 +265,8 @@ export function accepts(parent: string, child: string): boolean {
   if (parent === "legacy" || parent === "roseBlock") return OVER_TYPES.has(child);
   if (parent === "columns") return child === "cell";
   if (parent === "deck") return child === "stack";
+  // A collection list holds its one card.
+  if (parent === "collectionList") return child === "stack";
   if (!HOLDERS.has(parent)) return false;
   return CONTENT.has(child) || child === "columns" || child === "grid" || child === "stack";
 }
@@ -284,6 +286,7 @@ export function canHold(index: TreeIndex, parentId: string, node: PageTreeNode):
   if (!parent || !accepts(parent.type, node.type)) return false;
   if (index.nodes.get(parentId)!.depth + 1 + subtreeDepth(node) > 12) return false;
   if (parent.type === "deck" && (parent.children?.length ?? 0) >= 12 && !parent.children?.some(child => child.id === node.id)) return false;
+  if (parent.type === "collectionList" && (parent.children?.length ?? 0) >= 1 && !parent.children?.some(child => child.id === node.id)) return false;
   for (let at: string | null = parentId; at; at = index.nodes.get(at)?.parentId ?? null) if (at === node.id) return false;
   return columnsAround(index, parentId) + columnsInside(node) <= MAX_COLUMNS_DEPTH;
 }

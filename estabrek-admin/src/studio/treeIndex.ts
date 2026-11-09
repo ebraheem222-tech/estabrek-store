@@ -82,6 +82,8 @@ export const TYPE_LABEL: Record<string, () => string> = {
   roseBlock: () => tr("بلوك ورد", "Rose block"),
   block: () => tr("بلوك محفوظ (مربوط)", "Saved block (linked)"),
   component: () => say("نسخة من مكوّن رئيسي|Main component instance|מופע של רכיב ראשי"),
+  collectionList: () => say("قائمة من مجموعة|Collection list|רשימה מאוסף"),
+  productDetail: () => say("تفاصيل المنتج (صور، ألوان، شراء)|Product details (pictures, colours, buying)|פרטי המוצר (תמונות, צבעים, קנייה)"),
   legacy: () => tr("قسم", "Section"),
 };
 export const typeLabel = (type: string) => TYPE_LABEL[type]?.() ?? type;

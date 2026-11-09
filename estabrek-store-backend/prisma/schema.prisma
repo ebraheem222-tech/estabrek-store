@@ -893,6 +893,39 @@ model Page {
   @@index([kind])
 }
 
+/// A content collection (W3): fields of its own (a blog, a lookbook, branches, questions…). Each
+/// published item shows on the collection's template page at /<slug>/<item slug>, and in lists.
+model Collection {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  /// { ar, en, he }
+  name       Json
+  /// [{ id, type, name: { ar, en, he }, required?, options? }] (src/lib/collections.ts)
+  fields     Json
+  /// The page (kind "collectionTemplate") each item is shown on.
+  templateId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  items      CollectionItem[]
+}
+
+/// One item of a collection: its values by field id (words in ar/en/he).
+model CollectionItem {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  slug         String
+  status       PageStatus @default(DRAFT)
+  data         Json
+  sort         Int        @default(0)
+  publishedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([collectionId, slug])
+  @@index([collectionId, status, sort])
+}
+
 model PageRevision {
   id        String @id @default(cuid())
   pageId    String

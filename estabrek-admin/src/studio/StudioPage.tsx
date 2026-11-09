@@ -81,6 +81,8 @@ import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPa
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
 import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
 import { ComponentDocPanel, ComponentInstancePanel, detached, MakeComponentPanel, newInstance, placeOnly, useComponents } from "./ComponentsPanel";
+import { BindPanel, bindContext, CollectionListPanel, useCollections } from "./CollectionsStudio";
+import { newCollectionList } from "../features/collections/collectionForms";
 import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
 import { ConvertAllPanel, ConvertPanel } from "./ConvertPanel";
 import { PageSettingsPanel } from "./PageSettingsPanel";
@@ -507,6 +509,8 @@ function StudioDocument() {
   const dt = useDesignTokens(reload);
   // Main components (ComponentsPanel.tsx): made here, used with variants and own changes.
   const componentsQ = useComponents();
+  // Collections (CollectionsStudio.tsx): lists of their items, and elements connected to their fields.
+  const collectionsQ = useCollections();
   const run = (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; travel?: HistoryDirection } = {}) => {
     const next = queue.current.then(() => runNow(label, ops, opts));
     queue.current = next.catch(() => {});
@@ -2328,6 +2332,8 @@ function StudioDocument() {
             {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "scrollScene" ? <ScrollScenePanel key={`scene:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selFree.id, at })} onSelect={(sid) => select(sid, true)} /> : null}
             {nodeOf(selNode?.parentId)?.type === "scrollScene" ? <CuePanel key={`cue:${selFree.id}`} node={selFree} scene={nodeOf(selNode?.parentId)!} busy={busy} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selNode!.parentId!, at })} /> : null}
+            {selFree.type === "collectionList" ? <CollectionListPanel node={selFree} collections={collectionsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("قائمة المجموعة|Collection list|רשימת אוסף"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null}
+            {(() => { const c = index ? bindContext(index, selFree.id, { id, kind: pageQ.data?.kind }, collectionsQ.data) : null; return c ? <BindPanel key={`bind:${selFree.id}`} node={selFree} collection={c} lang={shopLang} busy={busy} onProps={(props) => void change(say("ربط بحقل|Connect to a field|חיבור לשדה"), [{ op: "setProps", nodeId: selFree.id, props }])} /> : null; })()}
             {selFree.type === "component" ? <ComponentInstancePanel node={selFree} components={componentsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("نسخة المكوّن|Component instance|מופע רכיב"), [{ op: "setProps", nodeId: selFree.id, props }])} onEdit={(cid) => window.location.assign(`/studio/${encodeURIComponent(cid)}?from=${encodeURIComponent(id)}`)} onDetach={(variant) => detachInstance(selFree, variant)} /> : null}
             {!["section", "cell", "columns", "page", "component", "popup"].includes(selFree.type) && pageQ.data?.kind !== "component" ? <MakeComponentPanel key={`make:${selFree.id}`} node={selFree} busy={busy} onMake={(name) => makeComponent(selFree, name)} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
@@ -2685,6 +2691,23 @@ function StudioDocument() {
         }
       }}
     />
+    {pageQ.data?.kind === "productTemplate" ? (
+      <div className="mt-4 space-y-1" data-testid="add-product-detail">
+        <div className="px-1 text-xs font-medium text-white/70">🛍 {say("صفحة المنتج|The product page|דף המוצר")}</div>
+        <button type="button" className="w-full rounded-lg bg-white/[0.04] px-2 py-1.5 text-start text-xs hover:bg-white/[0.08] disabled:opacity-40" disabled={busy} onClick={() => addNode({ id: makeIds()("pd"), type: "productDetail", props: {} }, addWhereNow, selected, undefined, say("تفاصيل المنتج|Product details|פרטי המוצר"))} data-testid="add-product-detail-button">{say("صور المنتج وألوانه ومقاساته وزر السلة|The product's pictures, colours, sizes and cart button|תמונות, צבעים, מידות וכפתור הסל")}</button>
+        <p className="px-1 text-[11px] leading-5 text-white/40">{say("أي عنوان أو نص أو صورة بتقدر تربطها بإسم المنتج أو سعره أو وصفه (◆ من لوحة العنصر).|Any heading, text or picture can connect to the product's name, price or description (◆ in the element's panel).|כל כותרת, טקסט או תמונה יכולים להתחבר לשם, מחיר או תיאור המוצר.")}</p>
+      </div>
+    ) : null}
+    {collectionsQ.data?.length ? (
+      <div className="mt-4 space-y-1" data-testid="add-collection-lists">
+        <div className="px-1 text-xs font-medium text-white/70">▦ {say("قوائم من المجموعات|Collection lists|רשימות מאוספים")}</div>
+        {collectionsQ.data.map((c) => (
+          <button key={c.id} type="button" className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-start text-xs hover:bg-white/[0.08] disabled:opacity-40" disabled={busy} onClick={() => addNode(newCollectionList(c, shopLang, makeIds()), addWhereNow, selected, undefined, say("قائمة من مجموعة|Collection list|רשימה מאוסף"))} data-testid={`add-list-${c.slug}`}>
+            <span className="truncate">{c.name[shopLang] || c.name.ar || c.name.en || c.slug}</span><span className="shrink-0 text-[10px] text-white/40" dir="ltr">{c.published}</span>
+          </button>
+        ))}
+      </div>
+    ) : null}
     {componentsQ.data?.length ? (
       <div className="mt-4 space-y-1" data-testid="add-components">
         <div className="px-1 text-xs font-medium text-white/70">◇ {say("المكوّنات الرئيسية|Main components|רכיבים ראשיים")}</div>

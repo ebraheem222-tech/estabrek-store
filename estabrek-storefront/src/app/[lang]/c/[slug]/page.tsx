@@ -1,4 +1,6 @@
-import { getPublicSettings, listCategories, listProducts } from "@/lib/api";
+import { getPublicSettings, getStoreTemplate, listCategories, listProducts } from "@/lib/api";
+import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
+import { bindStore, categoryValues } from "@/pageTree/storeBind";
 import { ProductTile } from "@/components/ProductTile";
 import { ProductFiltersBar } from "@/components/ProductFiltersBar";
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
@@ -83,6 +85,16 @@ export default async function CategoryPage({
   )
     ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
     : undefined;
+  // The store's own category page design (made in the editor, W3): drawn for this category when published.
+  const design = await getStoreTemplate("category", lang);
+  if (design?.tree) {
+    const flat = (list: any[]): any[] => list.flatMap((c) => [c, ...flat(c.children ?? [])]);
+    const category = flat((await listCategories(lang).catch(() => [])) ?? []).find((c) => c.slug === params.slug);
+    if (category) {
+      const drawn = await renderCmsPageBySlug(`/c/${params.slug}`, searchParams, { page: Promise.resolve({ ...design, slug: `/c/${params.slug}`, tree: bindStore(design.tree as any, categoryValues(category), lang) } as any), lang, allowFallback: false, allowNotFound: false });
+      if (drawn) return <main id="main-content" tabIndex={-1}>{drawn}</main>;
+    }
+  }
   if (process.env.ESTABREK_HOME_MODE !== "cms") return <RoseCategoryPage slug={params.slug} searchParams={searchParams} lang={lang} />;
   const selectedCategoryId = f.categoryId ?? undefined;
   const categorySlug = selectedCategoryId ? undefined : params.slug;

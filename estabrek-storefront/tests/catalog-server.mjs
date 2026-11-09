@@ -845,6 +845,31 @@ http
       });
       return;
     }
+    // The store's product/category page design for the shop's tests (store-pages.spec.ts): set or cleared (page: null).
+    if (pathname === "/__test/store-template" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", async () => {
+        try {
+          const data = JSON.parse(body || "{}");
+          if (data.kind !== "product" && data.kind !== "category") throw new Error("kind is product or category");
+          globalThis.storeTemplates ??= Object.create(null);
+          globalThis.storeTemplates[data.kind] = data.page ?? null;
+          await fetch("http://127.0.0.1:3000/api/revalidate", { method: "POST", headers: { "content-type": "application/json", "x-revalidate-secret": "fixture-publishing-only" }, body: JSON.stringify({ tags: ["cms", "cms:pages"] }) }).catch(() => null);
+          res.end(JSON.stringify({ ok: true }));
+        } catch (error) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ error: String(error) }));
+        }
+      });
+      return;
+    }
+    if (pathname.endsWith("/storefront/store-template")) {
+      const kind = new URL(req.url, "http://localhost").searchParams.get("kind");
+      const page = globalThis.storeTemplates?.[kind];
+      if (!page) { res.statusCode = 404; return res.end(JSON.stringify({ error: "NOT_FOUND" })); }
+      return res.end(JSON.stringify(page));
+    }
     if (pathname === "/__test/published-page" && req.method === "POST") {
       let body = "";
       req.on("data", (c) => (body += c));
