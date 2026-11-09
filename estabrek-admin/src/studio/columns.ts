@@ -11,6 +11,7 @@ import { tr } from "../lib/words";
 import type { TreeIndex } from "./treeIndex";
 import { SHAPES, defaultsOf } from "./svgShapes";
 import { BLOCK_KINDS, newBlock, newPopup } from "./blockDefaults";
+import { newScrollScene } from "./scrollScene";
 
 export const MAX_CELLS = 4;
 /** Columns › cell › columns, and no deeper. */
@@ -77,7 +78,7 @@ export function idMaker(taken: (id: string) => boolean) {
 }
 export type Ids = (prefix: string) => string;
 
-export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "columns", "popup", ...BLOCK_KINDS] as const;
+export const ADDABLE = ["heading", "text", "button", "image", "video", "slider", "deck", "scrollScene", "stack", "svg", "product360", "model3d", "instrument", "chart", "clock", "icon", "lottie", "rive", "spacer", "divider", "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "columns", "popup", ...BLOCK_KINDS] as const;
 export type NewKind = (typeof ADDABLE)[number];
 
 /** A new element's first words (the shop's words, in the language being edited). */
@@ -106,6 +107,9 @@ export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): Pa
       const children = [1, 2, 3].map(i => ({ id: id("panel"), type: "stack", props: {}, style: { base: { pad: [40, 24, 40, 24], gap: 20 } }, children: [{ id: id("h"), type: "heading", props: { level: 2, text: { [lang]: `${FIRST_WORDS.heading[lang]} ${i}` } } }] }));
       return { id: id("deck"), type: "deck", props: { presentation: "deck", transition: "fade", duration: .5, initial: 0, arrows: true, dots: true, menu: true, labels: Object.fromEntries(children.map((panel, i) => [panel.id, { [lang]: `${i + 1}` }])) }, style: { base: { minHeight: "480px" } }, children };
     }
+    case "scrollScene":
+      // A clip that plays with the scroll, ten chapters, three things at their moments (scrollScene.ts).
+      return newScrollScene(lang, id, src, "video");
     case "instrument":
       return { id: id("music"), type: "instrument", props: { kind: "piano", sound: false, volume: .25, octave: 4, waveform: "triangle", label: { [lang]: { ar: "آلة موسيقية", en: "Instrument", he: "כלי נגינה" }[lang] } } };
     case "chart":
@@ -227,8 +231,8 @@ export function changeSlide(slides: Slide[], i: number, patch: Partial<Slide>): 
 
 /* -------------------------------------------------------------- what goes where */
 
-const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", ...BLOCK_KINDS]);
-const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup"]);
+const CONTENT = new Set(["heading", "text", "image", "button", "video", "slider", "deck", "scrollScene", "instrument", "chart", "clock", "svg", "product360", "spacer", "divider", "icon", "lottie", "rive", "model3d", "products", "categories", "form", ...BLOCK_KINDS]);
+const HOLDERS = new Set(["section", "grid", "stack", "cell", "popup", "scrollScene"]);
 /** The tree's elements the editor may move, change or delete (the page, old sections and rose scenes have their own ways). */
 export const isFree = (type: string | undefined) => Boolean(type) && !["page", "legacy", "roseBlock", "block"].includes(type!);
 

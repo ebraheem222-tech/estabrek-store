@@ -45,6 +45,8 @@ import type { TreeCtx } from "@/pageTree/TreeNodeView";
 import { PageVisualScope } from "@/components/VisualControlsProvider";
 import { TreeMotion } from "@/pageTree/TreeMotion";
 import { TreeMedia } from "@/pageTree/TreeMedia";
+import { TreeScenes } from "@/pageTree/TreeScenes";
+import { TreeTriggers } from "@/pageTree/TreeTriggers";
 import { treeThemeVars, liveTreeThemeVars } from "@/storeThemes/css";
 import { cinematicEnabled, independentDesign, readThemeSnapshot } from "@/storeThemes/snapshot";
 import { commerceNeeds, commercePageValid } from "@/pageTree/commerce";
@@ -512,6 +514,9 @@ export async function renderCmsPageBySlug(
   // The library fonts the page uses, from Google Fonts (one stylesheet).
   let treeFonts: string | null = null;
   let treeMoves = false;
+  // Scroll scenes and triggers (each runtime only on a page that has them).
+  let treeScenes = false;
+  let treeTriggers = false;
   // Animated media and smooth scrolling (TreeMedia loads each player only then).
   let treeMedia: { smooth: boolean } | null = null;
   // The editor's looks that move (parts of old sections and scenes), for the motion engine.
@@ -543,6 +548,8 @@ export async function renderCmsPageBySlug(
     treeStyle = treeCss(tree, site);
     if (treeStyle) treeFonts = googleFontsHref(treeFamilies(tree, site));
     treeMoves = needs.motion;
+    treeScenes = needs.scenes;
+    treeTriggers = needs.triggers;
     if (needs.media || needs.smooth) treeMedia = { smooth: needs.smooth };
     const moving = looksOf(tree).map(([t, l]) => [t, treeMotionOf(lookNode(t, l))] as const).filter(([, m]) => m);
     if (moving.length) lookMoves = JSON.stringify(moving).replace(/</g, "\\u003c");
@@ -564,6 +571,8 @@ export async function renderCmsPageBySlug(
       {treeMoves ? <script dangerouslySetInnerHTML={{ __html: TREE_PENDING }} /> : null}
       {lookMoves ? <script type="application/json" id="pt-looks" dangerouslySetInnerHTML={{ __html: lookMoves }} /> : null}
       {treeMoves && !independentDesign(settingsHeader) ? <TreeMotion /> : null}
+      {treeScenes && !independentDesign(settingsHeader) ? <TreeScenes /> : null}
+      {treeTriggers && !independentDesign(settingsHeader) ? <TreeTriggers /> : null}
       {treeMedia && !independentDesign(settingsHeader) ? <TreeMedia smooth={treeMedia.smooth} /> : null}
 
       {roseHome && storeTheme ? <ThemedHome

@@ -8,6 +8,7 @@
 import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type SizeConstraints, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
 import { SLIDER_EFFECT_CSS } from "./sliderEffectCss";
+import { layersOf, type PieceLayerSpec } from "./pieces";
 
 export const TABLET_MAX = 1023.98;
 export const PHONE_MAX = 639.98;
@@ -453,6 +454,14 @@ export function declarations(s: ScreenStyle | undefined, type: string): string[]
   }
   const zi = num(s.z, -10, 50);
   if (zi !== undefined && Number.isInteger(zi)) d.push(`z-index:${zi}`);
+  // What sticks out: shown, cut, cut without a scroll box (a sticky element inside still sticks), or scrolled.
+  const OVERFLOWS = ["visible", "hidden", "clip", "scroll", "auto"] as const;
+  const cut = pick(s.overflow, OVERFLOWS);
+  if (cut) d.push(`overflow:${cut}`);
+  const ovx = pick(s.overflowX, OVERFLOWS);
+  if (ovx) d.push(`overflow-x:${ovx}`);
+  const ovy = pick(s.overflowY, OVERFLOWS);
+  if (ovy) d.push(`overflow-y:${ovy}`);
   // Required dimension settings win only for their own properties; other size,
   // shape and appearance declarations retain their existing behavior.
   const constraints = checkedConstraints(s.constraints);
@@ -637,6 +646,43 @@ export function nodeCss(n: TreeNode, as: string): string {
   return all.split(BASE_CSS).join("");
 }
 
+/** Where keyframes turn and grow an element from (start and end follow the reading direction through --pt-flip). */
+const KEY_ORIGIN_CSS: Record<string, string> = {
+  center: "50% 50%", top: "50% 0%", bottom: "50% 100%",
+  start: "calc(50% - 50% * var(--pt-flip,1)) 50%", end: "calc(50% + 50% * var(--pt-flip,1)) 50%",
+  "top-start": "calc(50% - 50% * var(--pt-flip,1)) 0%", "top-end": "calc(50% + 50% * var(--pt-flip,1)) 0%",
+  "bottom-start": "calc(50% - 50% * var(--pt-flip,1)) 100%", "bottom-end": "calc(50% + 50% * var(--pt-flip,1)) 100%",
+};
+
+/** A layer piece's own look (inset follows the reading direction: top, end, bottom, start). */
+export function pieceDeclarations(l: PieceLayerSpec | undefined): string[] {
+  if (!l) return [];
+  const d: string[] = [];
+  const a = color(l.bg);
+  const b = color(l.to);
+  if (a && b) d.push(`background:${l.radial ? `radial-gradient(circle at 50% 50%,${a},${b})` : `linear-gradient(${l.angle ?? 90}deg,${a},${b})`}`);
+  else if (a) d.push(`background:${a}`);
+  const [it, ie, ib, is] = l.inset ?? [0, 0, 0, 0];
+  const w = l.w !== undefined ? `${l.w}px` : "auto";
+  const h = l.h !== undefined ? `${l.h}px` : "auto";
+  switch (l.at) {
+    // A band along one side: its own thickness, the other sides as set.
+    case "top": d.push(`inset-block:${it}px auto`, `inset-inline:${is}px ${ie}px`, `height:${l.h ?? 4}px`); break;
+    case "bottom": d.push(`inset-block:auto ${ib}px`, `inset-inline:${is}px ${ie}px`, `height:${l.h ?? 4}px`); break;
+    case "start": d.push(`inset-block:${it}px ${ib}px`, `inset-inline:${is}px auto`, `width:${l.w ?? 4}px`); break;
+    case "end": d.push(`inset-block:${it}px ${ib}px`, `inset-inline:auto ${ie}px`, `width:${l.w ?? 4}px`); break;
+    // A box in its middle (inset 0 and auto margins centre it without a transform the motion would undo).
+    case "center": d.push(`inset-block:${it}px ${ib}px`, `inset-inline:${is}px ${ie}px`, `margin:auto`, `width:${l.w !== undefined ? w : "100%"}`, `height:${l.h !== undefined ? h : "100%"}`); break;
+    default: if (l.inset) d.push(`inset-block:${it}px ${ib}px`, `inset-inline:${is}px ${ie}px`);
+  }
+  if (l.radius !== undefined) d.push(`border-radius:${l.radius}px`);
+  if (l.opacity !== undefined) d.push(`opacity:${l.opacity}`);
+  if (l.blend) d.push(`mix-blend-mode:${l.blend}`);
+  if (l.blur) d.push(`filter:blur(${l.blur}px)`);
+  if (l.border) d.push(`border:${l.border.width}px ${l.border.style ?? "solid"} ${color(l.border.color)}`);
+  return d;
+}
+
 /**
  * The whole page's CSS ("" for a page that is only old sections). `site`: the store's shared
  * styles, drawn after the base CSS and before each element's own look, so its own look wins.
@@ -680,6 +726,18 @@ export function treeCss(tree: PageTree, site: SiteStyle[] = [], previewPart = fa
         const [c, c2, sp] = [color(motion.fx.color), color(motion.fx.to), num(motion.fx.speed, 0.2, 5)];
         fx.push(`${sel}>.pt-fx{${[c && `--pt-fxc:${c}`, c2 && `--pt-fxc2:${c2}`, `--pt-fxs:${(3 / (sp ?? 1)).toFixed(2)}s`].filter(Boolean).join(";")}}`);
       }
+      // Its two extra layers (before/after), each with its own look; it holds them like a colour layer.
+      const layers = layersOf(n.props?.layers);
+      const keyed = motion?.keys?.parts;
+      if (layers || keyed?.before || keyed?.after) {
+        if (!holders.includes(sel)) holders.push(sel);
+        for (const part of ["before", "after"] as const) {
+          const d = pieceDeclarations(layers?.[part]);
+          if (d.length) fx.push(`${sel}>.pt-pc-${part},${sel}>.pt-inner>.pt-pc-${part},${sel}>.pt-ss-stage>.pt-ss-layer>.pt-pc-${part}{${d.join(";")}}`);
+        }
+      }
+      const origin = motion?.keys?.origin;
+      if (origin) fx.push(`${sel}{transform-origin:${KEY_ORIGIN_CSS[origin] ?? "50% 50%"}}`);
       const b = screenDeclarations(n.style, "base", n.type);
       // Columns always say how many tracks they have (their cells' count when no shares are set).
       if (n.type === "columns" && !widthsTemplate(n.style?.base?.widths)) b.unshift(`grid-template-columns:repeat(${Math.max(1, Math.min(4, n.children?.length ?? 1))},minmax(0,1fr))`);
@@ -795,6 +853,30 @@ export const BASE_CSS = [
   ".pt-over-in{position:sticky;top:0;height:min(100%,100vh);pointer-events:none}",
   ".pt-over-in>*{pointer-events:auto}",
   ".pt-inner{max-width:1200px;margin-inline:auto;padding-inline:16px}",
+  // An element's two extra layers (before behind its content, after too unless in front) and its words as a piece.
+  ".pt-pc{position:absolute;inset:0;z-index:-1;pointer-events:none;border-radius:inherit}.pt-pc-front{z-index:2}",
+  ".pt-pc-in{display:inline-block;position:relative;will-change:transform}:is(h1,h2,h3,h4,h5,h6,p)>.pt-pc-in{display:block}",
+  // A scroll scene: its stage holds on the screen while the page scrolls past it (pin: `length` screens;
+  // flow: what it holds scrolls over it). Its picture or clip fills the stage; blur, dim and zoom follow
+  // the scroll through variables TreeScenes writes. clip (not hidden) keeps sticky working inside.
+  ".pt-scrollScene{position:relative;width:100%;--pt-ss-blur:0px;--pt-ss-dim:0;--pt-ss-zoom:1;--pt-ss-p:0}",
+  ".pt-ss-pin{height:calc(var(--pt-ss-len,4) * 100vh)}",
+  ".pt-ss-stage{position:sticky;top:0;height:100vh;width:100%;overflow:clip;isolation:isolate}",
+  ".pt-ss-frame{position:absolute;inset:0;z-index:-2;overflow:clip}",
+  ".pt-ss-media{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--pt-ss-focus,50% 50%);transform:scale(var(--pt-ss-zoom));filter:blur(var(--pt-ss-blur));will-change:transform,filter}",
+  ".pt-ss-contain .pt-ss-media{object-fit:contain}",
+  ".pt-ss-dim{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--pt-ss-dimc,#000);opacity:var(--pt-ss-dim)}",
+  ".pt-ss-layer{position:absolute;inset:0;display:grid;place-items:center;padding:6vh 16px}.pt-ss-layer>*{grid-area:1/1;max-width:min(100%,1100px)}",
+  "[data-pt-cue-wait]{visibility:hidden}",
+  ".pt-ss-flow{position:relative;margin-top:-100vh;display:flex;flex-direction:column;align-items:center;gap:40vh;padding:60vh 16px 50vh}.pt-ss-flow>*{max-width:min(100%,1100px)}",
+  ".pt-ss-progress{position:absolute;z-index:3;pointer-events:none}",
+  ".pt-ss-progress-bar{inset-inline:0;top:0;height:3px;background:rgb(255 255 255/.2)}.pt-ss-progress-bar>i{display:block;height:100%;width:calc(var(--pt-ss-p) * 100%);background:var(--accent)}",
+  ".pt-ss-progress-line{inset-inline-end:18px;top:20vh;width:3px;height:60vh;border-radius:3px;background:rgb(255 255 255/.25)}.pt-ss-progress-line>i{display:block;width:100%;height:calc(var(--pt-ss-p) * 100%);border-radius:inherit;background:var(--accent)}",
+  ".pt-ss-progress-dots{inset-inline-end:18px;top:50%;translate:0 -50%;display:flex;flex-direction:column;gap:8px}.pt-ss-progress-dots>i{width:8px;height:8px;border-radius:50%;background:rgb(255 255 255/.35);transition:transform .3s,background .3s}.pt-ss-progress-dots>i[data-on]{background:var(--accent);transform:scale(1.4)}",
+  // Still for whoever asked for less motion (TreeScenes adds pt-ss-still): everything shown, one after another.
+  ".pt-ss-still{height:auto!important}.pt-ss-still .pt-ss-stage{position:relative;height:auto;min-height:100vh}.pt-ss-still .pt-ss-layer{position:relative;display:flex;flex-direction:column;align-items:center;gap:32px;padding:18vh 16px}.pt-ss-still [data-pt-cue-wait]{visibility:visible}.pt-ss-still .pt-ss-progress{display:none}",
+  // What slides sideways with the scroll (motion.scroll "sideways") keeps its row on one line.
+  "[data-pt-sideways]{flex-wrap:nowrap!important;overflow:clip}[data-pt-sideways]>*{flex-shrink:0;translate:var(--pt-sw,0px) 0}",
   // A section's inner box fills it down to its padding (a taller section than its words), so what's placed
   // freely in it is placed by the section that's seen. Weightless, so a section's own layout still wins.
   ":where(.pt-section:has(>.pt-inner)){display:flex;flex-direction:column}:where(.pt-section)>.pt-inner{flex:1 1 auto;width:100%}",

@@ -14,6 +14,7 @@ import type { AddKind, Where } from "./insert";
 import { REFERENCE_SECTIONS } from "./referenceSections";
 import { LIVE_GROUPS, LIVE_SECTIONS } from "./liveSections";
 import { adminLang } from "../lib/lang";
+import { say } from "./say";
 
 const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, () => string, string]> }> = [
   { key: "commerce", title: () => tr("المتجر والسلة", "Shop and cart"), kinds: [["shop", () => typeLabel("shop"), "▦"], ["cartItems", () => typeLabel("cartItems"), "▤"], ["cartSummary", () => typeLabel("cartSummary"), "Σ"], ["cartCheckout", () => typeLabel("cartCheckout"), "✓"]] },
@@ -33,6 +34,9 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["ready-gallery", () => tr("معرض صور", "Picture gallery"), "▦"],
       ["ready-header", () => tr("هيدر: الاسم والقائمة والبحث", "Header: name, menu, search"), "⎺"],
       ["ready-footer", () => tr("فوتر: عنّا وروابط", "Footer: about and links"), "⎽"],
+      ["ready-scroll-video", () => say("فيديو بيمشي مع السكرول وفصول|Video that plays with the scroll, in chapters|וידאו שזז עם הגלילה, בפרקים"), "⏯"],
+      ["ready-scroll-story", () => say("صورة ثابتة والبطاقات بتمر فوقها|Held picture with cards scrolling over|תמונה קבועה וכרטיסים שגוללים מעליה"), "▤"],
+      ["ready-scroll-zoom", () => say("صورة بتقرّب وتغمق مع السكرول|Picture that zooms and darkens with the scroll|תמונה שמתקרבת ומתכהה בגלילה"), "⊕"],
     ],
   },
   {
@@ -54,6 +58,7 @@ const GROUPS: Array<{ key: string; title: () => string; kinds: Array<[AddKind, (
       ["showcase", () => typeLabel("showcase"), "▥"],
       ["filterGallery", () => typeLabel("filterGallery"), "▦"],
       ["deck", () => typeLabel("deck"), "▣"],
+      ["scrollScene", () => typeLabel("scrollScene"), "⏯"],
       ["instrument", () => typeLabel("instrument"), "♫"],
       ["chart", () => typeLabel("chart"), "▤"],
       ["clock", () => typeLabel("clock"), "◷"],

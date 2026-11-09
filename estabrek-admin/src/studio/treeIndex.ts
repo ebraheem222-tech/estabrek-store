@@ -36,6 +36,7 @@ export const TYPE_LABEL: Record<string, () => string> = {
   grid: () => tr("شبكة", "Grid"),
   stack: () => tr("صف أو عمود", "Stack"),
   deck: () => tr("لوحات عرض قابلة للتحرير", "Editable presentation panels"),
+  scrollScene: () => tr("مشهد تمرير (فيديو أو صورة مع السكرول)", "Scroll scene (video or picture with the scroll)"),
   columns: () => tr("أعمدة", "Columns"),
   cell: () => tr("خلية", "Cell"),
   heading: () => tr("عنوان", "Heading"),

@@ -28,7 +28,7 @@ export const PAGE_FORMAT = { sections: 1, tree: 2 } as const;
 export const TREE_LIMITS = { depth: 12, nodes: 2000, children: 300, bytes: 512 * 1024 } as const;
 
 export const NODE_TYPES = [
-  "page", "section", "grid", "stack", "columns", "cell", "deck",
+  "page", "section", "grid", "stack", "columns", "cell", "deck", "scrollScene",
   "heading", "text", "image", "button", "video", "slider", "svg", "product360", "spacer", "divider", "icon",
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
@@ -38,7 +38,7 @@ export const NODE_TYPES = [
 export type NodeType = (typeof NODE_TYPES)[number];
 
 /** Nodes that hold other nodes. */
-export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell", "popup", "deck"]);
+export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell", "popup", "deck", "scrollScene"]);
 /** Columns hold this many cells, and columns sit inside a cell at most this deep (columns › cell › columns). */
 export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 /** A slider holds at most this many slides, and turns by itself every 2–30 seconds (or not at all). */
@@ -63,8 +63,10 @@ export const COLOR_TOKENS = ["text", "muted", "accent", "accent-soft", "accent-c
 const LANGS = ["ar", "en", "he"] as const;
 /** How a colour layer mixes with what's under it. */
 export const BLENDS = ["normal", "multiply", "screen", "overlay", "soft-light", "color", "luminosity"] as const;
+/** What happens to what sticks out of an element. */
+export const OVERFLOWS = ["visible", "hidden", "clip", "scroll", "auto"] as const;
 /** The point of a freely placed element that sits at its x/y. */
-export const ANCHORS = ["top-start", "top", "top-end", "start", "center", "end", "bottom-start", "bottom", "bottom-end"] as const;
+export const ANCHORS =["top-start", "top", "top-end", "start", "center", "end", "bottom-start", "bottom", "bottom-end"] as const;
 
 /* ------------------------------------------------------------------ values */
 
@@ -275,6 +277,10 @@ export const ScreenStyle = z.object({
   // Placed freely over its container, its anchor at x% from the line's start and y% from the top; false = back in the flow on this screen.
   layer: z.union([z.literal(false), z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100), anchor: z.enum(ANCHORS).optional() })]).optional(),
   z: z.number().int().min(-10).max(50).optional(), // which goes on top
+  // What happens to what sticks out of it: shown, cut, cut without a scroll box (sticky still works), or scrolled.
+  overflow: z.enum(OVERFLOWS).optional(),
+  overflowX: z.enum(OVERFLOWS).optional(),
+  overflowY: z.enum(OVERFLOWS).optional(),
   hidden: z.boolean().optional(),
   // Its look while the mouse is over it, it has the keyboard's focus, or it's pressed; and how fast it changes.
   hover: StateStyle.optional(),
@@ -295,8 +301,9 @@ export const ENTER_KINDS = [
 ] as const;
 // "type" types its words, waits and takes them back, again and again.
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
-// "words" lights its words up one by one with the scroll; "pin" holds it in place for `length` % of a screen.
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin"] as const;
+// "words" lights its words up one by one with the scroll; "pin" holds it in place for `length` % of a screen;
+// "sideways" holds it while what it holds slides along its row with the scroll (a horizontal gallery).
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways"] as const;
 // Then plays once as the mouse comes over it, a light following the mouse, a ripple where it's pressed, springy ones.
 export const HOVER_KINDS = [
   "lift", "grow", "tilt", "magnetic", "glow", "zoom",
@@ -314,13 +321,78 @@ const MotionKeys = z.object({
   scale: z.number().finite().min(0.1).max(4).optional(),
   opacity: z.number().min(0).max(1).optional(),
 });
+const pct = z.number().finite().min(0).max(100);
+/**
+ * One moment of a keyframe animation, at `at` % of it (0 = its start, 100 = its end), like CSS
+ * @keyframes: moved (px, or % of its own size), turned, sized, skewed, see-through, blurred,
+ * recoloured, rounded or cut (inset % from top, end, bottom, start). What a moment leaves out
+ * glides between the moments around it. `ease` = how it gets here from the moment before.
+ */
+export const KeyFrame = z.object({
+  at: pct,
+  x: px(-2000, 2000).optional(),
+  y: px(-2000, 2000).optional(),
+  xp: z.number().finite().min(-500).max(500).optional(),
+  yp: z.number().finite().min(-500).max(500).optional(),
+  rx: turnAngle(720).optional(),
+  ry: turnAngle(720).optional(),
+  rz: turnAngle(1440).optional(),
+  scale: z.number().finite().min(0).max(6).optional(),
+  sx: z.number().finite().min(-6).max(6).optional(),
+  sy: z.number().finite().min(-6).max(6).optional(),
+  skewX: turnAngle(80).optional(),
+  skewY: turnAngle(80).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  blur: px(0, 60).optional(),
+  bright: z.number().min(0).max(3).optional(),
+  hue: z.number().finite().min(-180).max(180).optional(),
+  color: color.optional(),
+  bg: color.optional(),
+  radius: px(0, 999).optional(),
+  clip: z.tuple([pct, pct, pct, pct]).optional(),
+  ease: z.enum(EASES).optional(),
+});
+/** When keyframes play: on arrival, once seen, with the scroll, with its scroll scene, while the mouse is over it, on a click (again = back), again and again, or only when a trigger asks. */
+export const KEY_TRIGGERS = ["load", "view", "scroll", "scene", "hover", "click", "loop", "trigger"] as const;
+/** The pieces of an element that move on their own: itself, its layer behind (before), its layer in front (after), and what's inside it (its words or picture). */
+export const KEY_PARTS = ["self", "before", "after", "inner"] as const;
+const Frames = z.array(KeyFrame).min(2).max(16);
+export const KEY_ORIGINS = ["center", "top", "bottom", "start", "end", "top-start", "top-end", "bottom-start", "bottom-end"] as const;
+export const NodeKeys = z.object({
+  on: z.enum(KEY_TRIGGERS),
+  duration: z.number().finite().min(0.05).max(60).optional(),
+  delay: seconds(20).optional(),
+  ease: z.enum(EASES).optional(),
+  repeat: z.number().int().min(-1).max(50).optional(), // -1 = for ever
+  yoyo: z.boolean().optional(),
+  start: pct.optional(), // with the scroll: from when its top is this % down the screen…
+  end: pct.optional(), // …to this %
+  scrub: z.number().min(0).max(3).optional(), // with the scroll: seconds to catch up (0 = at once)
+  origin: z.enum(KEY_ORIGINS).optional(),
+  parts: z.object({ self: Frames.optional(), before: Frames.optional(), after: Frames.optional(), inner: Frames.optional() }).refine((p) => Object.values(p).some(Boolean), "Keyframes for at least one piece"),
+});
+/** How something comes into and leaves a scroll scene. */
+export const CUE_KINDS = ["fade", "up", "down", "start", "end", "zoom", "shrink", "blur", "turn", "flip", "wipe", "none"] as const;
+/** Inside a scroll scene: shown from `from` % of the scene to `to` %; `in`/`out` = how it comes and goes ("stay" = it stays to the end); `soft` = % of its time the coming and going take. */
+export const NodeCue = z.object({
+  from: pct,
+  to: pct,
+  in: z.enum(CUE_KINDS).optional(),
+  out: z.enum([...CUE_KINDS, "stay"]).optional(),
+  soft: z.number().min(0).max(50).optional(),
+}).refine((c) => c.to > c.from, "It ends after it starts");
+
 /**
  * How an element moves: comes in once when it's first seen (`enter`, `stagger` =
  * what it holds one after another), follows the scroll (`parallax`, or from → to
  * between two points of the screen, 0–100 % from the top), loops, answers the
  * pointer, or carries an animated layer. `phone` "lite" keeps only the coming in.
+ * `keys` = its own keyframes (0–100 %), for itself and its pieces; `cue` = when it shows
+ * inside a scroll scene.
  */
 export const NodeMotion = z.object({
+  keys: NodeKeys.optional(),
+  cue: NodeCue.optional(),
   engine: z.enum(["gsap", "anime"]).optional(),
   enter: z.object({ kind: z.enum(ENTER_KINDS), duration: seconds(6).optional(), delay: seconds(6).optional(), ease: z.enum(EASES).optional(), distance: px(0, 400).optional(), stagger: seconds(1).optional() }).optional(),
   scroll: z.object({ kind: z.enum(SCROLL_KINDS), speed: z.number().min(-1).max(1).optional(), from: MotionKeys.optional(), to: MotionKeys.optional(), start: z.number().min(0).max(100).optional(), end: z.number().min(0).max(100).optional(), ease: z.enum(EASES).optional(), length: z.number().min(10).max(400).optional() }).optional(),
@@ -348,6 +420,65 @@ const Looks = z
   .record(z.string().regex(LOOK_TARGET, "Not a part of a section or scene"), LookEntry)
   .refine((r) => Object.keys(r).length <= LOOKS_LIMIT, `At most ${LOOKS_LIMIT} looks on a page`);
 const PartLooks = z.record(z.string().regex(PART_TARGET), LookEntry).refine(r => Object.keys(r).length <= LOOKS_LIMIT, `At most ${LOOKS_LIMIT} looks on a page`);
+
+/* ------------------------------------------------- pieces and triggers */
+
+/**
+ * An element's two extra layers (like CSS ::before and ::after, but real pieces the motion can move):
+ * a colour or gradient of their own, their own place over it (inset px from top, end, bottom, start;
+ * minus = beyond its edges), corners, see-through, mixing, blur and frame. Behind its content unless `front`.
+ */
+const PieceLayer = z.object({
+  bg: color.optional(),
+  to: color.optional(),
+  angle: z.number().int().min(0).max(360).optional(),
+  radial: z.boolean().optional(),
+  inset: box(-400).optional(),
+  // Where it sits: over all of it, a band along one side (`h` tall or `w` wide), or a `w`×`h` box in its middle.
+  at: z.enum(["fill", "top", "bottom", "start", "end", "center"]).optional(),
+  w: px(0, 2000).optional(),
+  h: px(0, 2000).optional(),
+  radius: px(0, 999).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  blend: z.enum(BLENDS).optional(),
+  blur: px(0, 60).optional(),
+  border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
+  front: z.boolean().optional(),
+});
+export const NodeLayers = z.object({ before: PieceLayer.optional(), after: PieceLayer.optional() });
+
+/** What starts a trigger: a click, a double click, the mouse coming or going, coming into or out of sight, the page opening, the page scrolled past `at` %, `at` seconds on the page. */
+export const TRIGGER_EVENTS = ["click", "dblclick", "hover", "leave", "view", "leaveView", "load", "scrolled", "timer"] as const;
+/** Short moves a trigger can play on any element. */
+export const PLAY_PRESETS = ["bounce", "shake", "pulse", "wiggle", "jello", "rubber", "heartbeat", "swing", "flip", "spin", "pop", "flash", "tada"] as const;
+export const BURSTS = ["confetti", "hearts", "stars", "sparkles", "snow", "bubbles"] as const;
+export const SOUNDS = ["click", "pop", "chime", "whoosh", "success"] as const;
+/** An element of the page by its id, or "self" (the element the trigger is on). */
+const triggerTarget = z.string().trim().regex(/^[A-Za-z0-9_-]{1,40}$/, "An element's id or self");
+/** What a trigger does, one after another (`wait` pauses between them). */
+export const TriggerAction = z.discriminatedUnion("act", [
+  // Plays the target's own keyframes (forward, back, back-and-forth, from the start) or a short move.
+  z.object({ act: z.literal("play"), target: triggerTarget, what: z.enum(["keys", ...PLAY_PRESETS]), mode: z.enum(["play", "reverse", "toggle", "restart"]).optional() }),
+  z.object({ act: z.literal("visible"), target: triggerTarget, value: z.enum(["show", "hide", "toggle"]) }),
+  z.object({ act: z.literal("scrollTo"), target: triggerTarget, offset: px(-400, 400).optional() }),
+  z.object({ act: z.literal("scene"), target: triggerTarget, at: pct }), // a scroll scene, scrolled to its moment
+  z.object({ act: z.literal("link"), href, newTab: z.boolean().optional() }),
+  z.object({ act: z.literal("popup"), target: triggerTarget, value: z.enum(["open", "close"]) }),
+  z.object({ act: z.literal("video"), target: triggerTarget, value: z.enum(["play", "pause", "toggle", "restart", "mute", "unmute"]) }),
+  z.object({ act: z.literal("burst"), kind: z.enum(BURSTS), color: color.optional(), amount: z.number().int().min(5).max(200).optional() }),
+  z.object({ act: z.literal("copy"), text: local(200), note: local(120).optional() }), // a coupon code to the clipboard, with a note
+  z.object({ act: z.literal("toast"), text: local(200) }),
+  z.object({ act: z.literal("sound"), kind: z.enum(SOUNDS), volume: z.number().min(0).max(1).optional() }),
+  z.object({ act: z.literal("vibrate") }),
+  z.object({ act: z.literal("wait"), seconds: seconds(30) }),
+]);
+export const NodeTrigger = z.object({
+  on: z.enum(TRIGGER_EVENTS),
+  at: z.number().finite().min(0).max(600).optional(),
+  once: z.boolean().optional(),
+  do: z.array(TriggerAction).min(1).max(8),
+});
+export const NodeTriggers = z.array(NodeTrigger).max(8);
 
 /* ------------------------------------------------------------- each type */
 
@@ -386,7 +517,33 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   }),
   grid: none,
   stack: none,
-  deck: z.object({ presentation: z.enum(["deck", "tabs", "vertical-tabs"]).optional(), transition: z.enum(["slide", "fade", "wipe"]).optional(), duration: z.number().finite().min(0).max(2).optional(), initial: z.number().int().min(0).max(11).optional(), arrows: z.boolean().optional(), dots: z.boolean().optional(), menu: z.boolean().optional(), labels: z.record(z.string().regex(/^[A-Za-z0-9_-]{1,40}$/), local(80)).refine(labels => Object.keys(labels).length <= 12, "At most 12 panel labels").optional() }),
+  // A scroll scene: a clip that plays as the page scrolls (or a picture held still), and what it holds
+  // comes and goes at its own moments (each one's motion.cue, 0–100 % of the scene). "pin": held on the
+  // screen for `length` screens of scrolling; "flow": what it holds scrolls over the held picture, which
+  // moves on once they've passed. `chapters` splits it for the editor (10 = every 10 %); `smooth` = how
+  // softly the picture follows the scroll (0 = at once); `fps` = the clip's frames a second; the picture
+  // can blur, darken and zoom between two moments.
+  scrollScene: z.object({
+    media: z.object({
+      kind: z.enum(["video", "image", "none"]),
+      src: src.optional(),
+      phone: src.optional(),
+      poster: src.optional(),
+      fit: z.enum(["cover", "contain"]).optional(),
+      focus: z.object({ x: pct, y: pct }).optional(),
+      label: local(120).optional(),
+    }).optional(),
+    mode: z.enum(["pin", "flow"]).default("pin"),
+    length: z.number().finite().min(1).max(12).default(4),
+    chapters: z.number().int().min(1).max(20).default(10),
+    smooth: z.number().finite().min(0).max(1).default(0.35),
+    fps: z.number().int().min(12).max(120).default(30),
+    blur: z.object({ from: pct, to: pct, amount: px(0, 40) }).optional(),
+    dim: z.object({ from: pct, to: pct, opacity: z.number().min(0).max(0.95), color: color.optional() }).optional(),
+    zoom: z.object({ from: pct, to: pct, scale: z.number().finite().min(0.5).max(3) }).optional(),
+    progress: z.enum(["none", "bar", "dots", "line"]).optional(),
+  }),
+  deck:z.object({ presentation: z.enum(["deck", "tabs", "vertical-tabs"]).optional(), transition: z.enum(["slide", "fade", "wipe"]).optional(), duration: z.number().finite().min(0).max(2).optional(), initial: z.number().int().min(0).max(11).optional(), arrows: z.boolean().optional(), dots: z.boolean().optional(), menu: z.boolean().optional(), labels: z.record(z.string().regex(/^[A-Za-z0-9_-]{1,40}$/), local(80)).refine(labels => Object.keys(labels).length <= 12, "At most 12 panel labels").optional() }),
   // On a phone the cells go one under the other (stack), the last first (reverse), or stay side by side (keep).
   columns: z.object({ phone: z.enum(["stack", "reverse", "keep"]).optional() }),
   cell: none,
@@ -673,7 +830,7 @@ NODE_PROPS.page = (NODE_PROPS.page as z.ZodObject).safeExtend({ interactions: In
 for (const t of NODE_TYPES) {
   if (t !== "page") NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ partLooks: PartLooks.optional() });
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
-  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
+  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
 
 /* ------------------------------------------------------------------ tree */

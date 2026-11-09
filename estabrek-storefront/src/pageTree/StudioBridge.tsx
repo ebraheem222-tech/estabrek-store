@@ -616,6 +616,8 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
         }
         return;
       }
+      // A scroll scene's moment scrolls the frame itself: an earlier held scroll lets go first.
+      if (d.type === "motionSceneSeek") letGo();
       if (typeof d.type === "string" && (d.type.startsWith("stage") || d.type.startsWith("motion"))) return studioLink.emit(d as Record<string, unknown>);
       // A drag/resize draws only safe geometry over the element's existing rules.
       if (d.type === "previewGeometry") {

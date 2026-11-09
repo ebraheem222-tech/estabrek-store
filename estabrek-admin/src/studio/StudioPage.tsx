@@ -58,6 +58,9 @@ import { ButtonStylePanel, MediaStylePanel, ShowOnPanel, TextStylePanel } from "
 import { EdgesPanel, ParticlesPanel, PatternPanel } from "./ShapePanels";
 import { ScenePanel } from "./ScenePanel";
 import { ScrollEffectsPanel } from "./ScrollEffectsPanel";
+import { CuePanel, ScrollScenePanel } from "./ScrollScenePanel";
+import { KeyframesPanel, OverflowPanel } from "./KeyframesPanel";
+import { TriggersPanel } from "./TriggersPanel";
 import { DeckPanel } from "./DeckPanel";
 import { Model3dPanel } from "./Model3dPanel";
 import { ContentBlocksPanel, PopupPanel } from "./ContentBlocksPanel";
@@ -2257,6 +2260,8 @@ function StudioDocument() {
             {selFree.type === "section" ? <ScenePanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type !== "page" ? <ScrollEffectsPanel key={`scroll:${selFree.id}`} node={selFree} sections={pageKids.filter((n) => n.type === "section")} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
+            {selFree.type === "scrollScene" ? <ScrollScenePanel key={`scene:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selFree.id, at })} onSelect={(sid) => select(sid, true)} /> : null}
+            {nodeOf(selNode?.parentId)?.type === "scrollScene" ? <CuePanel key={`cue:${selFree.id}`} node={selFree} scene={nodeOf(selNode?.parentId)!} busy={busy} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selNode!.parentId!, at })} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {WRITABLE.has(selFree.type) ? (
               <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(selected)} data-testid="studio-edit-node">
@@ -2265,6 +2270,7 @@ function StudioDocument() {
             ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
             {COMMERCE_TYPES.has(selFree.type) ? <CommercePanel node={selFree} busy={busy} onOps={(label, ops) => void change(label, ops)} /> : null}
+            <TriggersPanel key={`triggers:${selFree.id}`} node={selFree} lang={shopLang} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || typeLabel(x.node.type), type: x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={(i) => send({ type: "motionTriggerTest", nodeId: selFree.id, index: i })} />
             <VisualControlsPanel key={`visual:${selFree.id}`} node={selFree} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", nodeId: selFree.id, event })} />
             {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
             {selFree.type !== "cell" ? <ShowOnPanel node={selFree} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
@@ -2294,12 +2300,23 @@ function StudioDocument() {
                 {selFree.type === "image" || selFree.type === "video" || selFree.type === "slider" ? <MediaStylePanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 {selFree.type !== "spacer" ? <BoxPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} skip={selFree.type === "button" ? ["bg", "border", "radius"] : undefined} /> : null}
                 <StickyPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
+                <OverflowPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 {PATTERNED.has(selFree.type) ? <PatternPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
                 <FiltersPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} />
                 <LookPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} />
               </>
             )}
             <MotionPanel
+              node={selFree}
+              busy={busy}
+              onOps={(l, ops) => {
+                playNext.current = selected;
+                void change(l, ops);
+              }}
+              onPlay={() => send({ type: "motionPlay", nodeId: selected })}
+            />
+            <KeyframesPanel
+              key={`keys:${selFree.id}`}
               node={selFree}
               busy={busy}
               onOps={(l, ops) => {

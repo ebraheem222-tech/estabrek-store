@@ -22,6 +22,8 @@ import { studioLink } from "./studioLink";
 import { ARABIC, countUpText, scrambleChars } from "./textMotion";
 import { lookSelector, motionOf, type MotionKeys, type TreeMotionSpec } from "./tree";
 import { useStudioViewRevision } from "./useStudioViewRevision";
+import { EASE_MAP, keySteps, originCss, type KeysSpec } from "./keyframes";
+import { keyPlayers } from "./motionPlayers";
 
 type Gsap = typeof import("gsap").gsap;
 type ST = typeof import("gsap/ScrollTrigger").ScrollTrigger;
@@ -127,11 +129,11 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
   // the original host, outside word/line masks, and unwrap after plugin reversion.
   const textTarget = () => {
     if (textScope) return textScope;
-    if (!el.querySelector(":scope > .pt-edge")) return el;
+    if (!el.querySelector(":scope > .pt-edge, :scope > .pt-pc")) return el;
     const scope = document.createElement("span");
     scope.style.display = "block";
     scope.style.minWidth = "0";
-    const content = Array.from(el.childNodes).filter(node => !(node instanceof Element && node.matches(".pt-edge,.pt-fx,.pt-spot")));
+    const content = Array.from(el.childNodes).filter(node => !(node instanceof Element && node.matches(".pt-edge,.pt-fx,.pt-spot,.pt-pc")));
     scope.append(...content);
     el.prepend(scope);
     textScope = scope;
@@ -140,7 +142,8 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
   };
   let enterEnds = 0;
 
-  if (m.enter && plays) {
+  // What a scroll scene shows at its moment comes and goes with the scene (TreeScenes), not by itself.
+  if (m.enter && plays && !m.cue) {
     const e = m.enter;
     const duration = e.duration ?? 0.8;
     const delay = e.delay ?? 0;
@@ -210,7 +213,7 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     }
   }
 
-  if (m.scroll && !lite) {
+  if (m.scroll && !lite && !m.cue) {
     const s = m.scroll;
     if (s.kind === "words") {
       // Its words light up one by one as it comes up the screen.
@@ -219,6 +222,23 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
     } else if (s.kind === "pin") {
       // Held in place while the page scrolls on for `length` % of a screen.
       ScrollTrigger.create({ trigger: el, start: "top top", end: `+=${s.length ?? 100}%`, pin: true, pinSpacing: true });
+    } else if (s.kind === "sideways") {
+      // Held while what it holds slides along its row, as far as the row runs past it (toward the line's end).
+      el.setAttribute("data-pt-sideways", "");
+      off.push(() => el.removeAttribute("data-pt-sideways"));
+      const distance = () => {
+        const kids = Array.from(el.children).filter((k): k is HTMLElement => k instanceof HTMLElement && !k.matches(".pt-pc,.pt-fx,.pt-edge"));
+        if (!kids.length) return 0;
+        const lo = Math.min(...kids.map((k) => k.offsetLeft));
+        const hi = Math.max(...kids.map((k) => k.offsetLeft + k.offsetWidth));
+        const cs = getComputedStyle(el);
+        return Math.max(0, hi - lo - el.clientWidth + (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0));
+      };
+      gsap.fromTo(el, { "--pt-sw": "0px" }, {
+        "--pt-sw": () => `${-distance() * (env.rtl ? -1 : 1)}px`,
+        ease: "none",
+        scrollTrigger: { trigger: el, start: "top top", end: () => `+=${Math.max(1, distance())}`, pin: true, scrub: 0.6, invalidateOnRefresh: true },
+      });
     } else if (s.kind === "parallax") {
       const d = 120 * (s.speed ?? 0.4);
       gsap.fromTo(el, { "--pt-my": `${-d}px` }, { "--pt-my": `${d}px`, ease: "none", scrollTrigger: { trigger: el, start: "top bottom", end: "bottom top", scrub: true } });
@@ -360,6 +380,112 @@ function animate(gsap: Gsap, ScrollTrigger: ST, SplitText: Split, el: HTMLElemen
   }
 }
 
+const TOKEN_VAR: Record<string, string> = { text: "--text", muted: "--muted", accent: "--accent", "accent-soft": "--accent-soft", "accent-contrast": "--accent-contrast", bg: "--bg", surface: "--surface", border: "--border" };
+/** A theme colour as the browser's own colour (GSAP glides between real colours only). */
+function colourOf(el: Element, c: string): string {
+  if (c === "white") return "#ffffff";
+  if (c === "black") return "#000000";
+  if (c === "transparent") return "rgba(0,0,0,0)";
+  const name = TOKEN_VAR[c];
+  if (!name) return c;
+  return getComputedStyle(el).getPropertyValue(name).trim() || (c === "accent-contrast" ? "#ffffff" : "#888888");
+}
+
+/** The pieces keyframes move: itself, its layers behind and in front, its words or picture. */
+function piecesOf(el: HTMLElement): Record<"self" | "before" | "after" | "inner", HTMLElement | null> {
+  const own = (sel: string) => el.querySelector<HTMLElement>(`:scope > ${sel}, :scope > .pt-inner > ${sel}`);
+  return { self: el, before: own(".pt-pc-before"), after: own(".pt-pc-after"), inner: el.querySelector<HTMLElement>(":scope > .pt-pc-in, :scope > .pt-frame-media") };
+}
+
+/**
+ * Its keyframes as one timeline (each piece its own steps, all as long as `duration`), played by
+ * what they wait for: the page opening, coming into sight, the scroll, the mouse, a click, again and
+ * again; a scroll scene or a trigger plays them through keyPlayers.
+ */
+function playKeys(gsap: Gsap, ScrollTrigger: ST, el: HTMLElement, k: KeysSpec, env: Env, off: Array<() => void>) {
+  const id = el.dataset.treeNode ?? "";
+  const plays = env.live || env.only === id;
+  const pieces = piecesOf(el);
+  const total = k.duration ?? 1;
+  const resolve = (c: string) => colourOf(el, c);
+  const restOpacity = Number(getComputedStyle(el).opacity) || 1;
+  const tl = gsap.timeline({ paused: true, defaults: { ease: EASE_MAP[k.ease ?? "smooth"] ?? "power2.out" } });
+  for (const part of ["self", "before", "after", "inner"] as const) {
+    const frames = k.parts[part];
+    const target = pieces[part];
+    if (!frames || !target) continue;
+    const steps = keySteps(frames, { self: part === "self", rtl: env.rtl, resolve, restOpacity: part === "self" ? restOpacity : 1 });
+    if (steps.length < 2) continue;
+    if (part !== "self" && k.origin) gsap.set(target, { transformOrigin: originCss(k.origin, env.rtl) });
+    tl.set(target, steps[0].vars, 0);
+    for (let i = 1; i < steps.length; i++) {
+      const from = steps[i - 1].at;
+      tl.to(target, { ...steps[i].vars, duration: Math.max(0.0001, ((steps[i].at - from) / 100) * total), ...(steps[i].ease ? { ease: EASE_MAP[steps[i].ease!] ?? "power2.out" } : {}) }, (from / 100) * total);
+    }
+  }
+  tl.call(() => {}, [], total);
+  // Every step learns where it starts, and the first moment shows at once.
+  tl.progress(1).progress(0);
+  const scrolled = k.on === "scroll";
+  if (k.on === "loop") tl.repeat(k.repeat ?? -1).yoyo(k.yoyo ?? false);
+  else if (!scrolled && k.on !== "scene") tl.repeat(k.repeat ?? 0).yoyo(k.yoyo ?? false);
+  const delay = k.delay ?? 0;
+  let wait: ReturnType<Gsap["delayedCall"]> | null = null;
+  const later = (fn: () => void) => { wait?.kill(); wait = delay ? gsap.delayedCall(delay, fn) : null; if (!delay) fn(); };
+  const player = {
+    on: k.on,
+    duration: total,
+    play: () => void tl.play(),
+    reverse: () => void tl.reverse(),
+    restart: () => void tl.restart(),
+    toggle: () => void (tl.progress() > 0 && !tl.reversed() ? tl.reverse() : tl.play()),
+    seek: (p: number) => void tl.progress(Math.max(0, Math.min(1, p))),
+  };
+  keyPlayers.set(el, player);
+  off.push(() => { wait?.kill(); keyPlayers.delete(el); });
+  // The editor plays this one element's keyframes once, whatever they wait for.
+  if (env.only === id) {
+    if (scrolled || k.on === "scene") gsap.fromTo(tl, { progress: 0 }, { progress: 1, duration: total, ease: "none" });
+    else later(() => tl.restart());
+    if (k.on !== "hover" && k.on !== "click") return;
+  }
+  const on = (type: string, fn: (e: Event) => void) => {
+    el.addEventListener(type, fn);
+    off.push(() => el.removeEventListener(type, fn));
+  };
+  switch (k.on) {
+    case "load":
+      if (plays) later(() => tl.play());
+      break;
+    case "view":
+      if (plays) ScrollTrigger.create({ trigger: el, start: "top 88%", once: true, onEnter: () => later(() => tl.play()) });
+      break;
+    case "loop":
+      if (plays) {
+        later(() => tl.play());
+        // Rests while out of sight.
+        ScrollTrigger.create({ trigger: el, start: "top bottom", end: "bottom top", onToggle: (self) => (self.isActive ? tl.play() : tl.pause()) });
+      }
+      break;
+    case "scroll":
+      ScrollTrigger.create({ trigger: el, start: `top ${k.start ?? 90}%`, end: `top ${k.end ?? 30}%`, scrub: k.scrub ?? 0.6, animation: tl });
+      break;
+    case "hover":
+      // The mouse or the keyboard's focus: forward while it's there, back as it leaves.
+      on("pointerenter", () => tl.play());
+      on("pointerleave", () => tl.reverse());
+      on("focusin", () => tl.play());
+      on("focusout", () => tl.reverse());
+      break;
+    case "click":
+      on("click", () => player.toggle());
+      break;
+    default:
+      // "scene" and "trigger": moved from outside.
+      break;
+  }
+}
+
 export function TreeMotion({ revision = 0 }: { revision?: number }) {
   const pathname = usePathname();
   const viewRevision = useStudioViewRevision("[data-pt-motion],#pt-looks", ["data-pt-motion","data-pt-look-version"], `${pathname}:${revision}`);
@@ -460,6 +586,8 @@ export function TreeMotion({ revision = 0 }: { revision?: number }) {
               el.dataset.ptEngine = spec.engine === "anime" && adapter ? "anime" : "gsap";
               off.push(() => { if (previousEngine === undefined) delete el.dataset.ptEngine; else el.dataset.ptEngine = previousEngine; });
               animate(spec.engine === "anime" && adapter ? adapter.engine : gsap, ScrollTrigger, SplitText, el, spec, env, off, ctx);
+              // Keyframes always run on GSAP itself (its timelines are what scenes and triggers move).
+              if (spec.keys && !(env.phone && spec.phone === "off")) playKeys(gsap, ScrollTrigger, el, spec.keys, env, off);
             }
           }
         });

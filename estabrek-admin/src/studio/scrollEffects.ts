@@ -48,6 +48,7 @@ export const SCROLL_EFFECTS: ScrollEffect[] = [
   S("pin-half", "pin", "يثبت نص شاشة|Holds for half a screen|נעצר לחצי מסך", { kind: "pin", length: 50 }, SECTION),
   S("pin", "pin", "يثبت شاشة كاملة|Holds for a screen|נעצר למסך שלם", { kind: "pin", length: 100 }, SECTION),
   S("pin-long", "pin", "يثبت شاشتين|Holds for two screens|נעצר לשני מסכים", { kind: "pin", length: 200 }, SECTION),
+  S("sideways", "pin", "يمشي بالعرض مع التمرير (معرض أفقي)|Slides sideways as you scroll (horizontal gallery)|זז הצידה בגלילה (גלריה אופקית)", { kind: "sideways" }, new Set(["stack"])),
   S("words-light", "words", "الكلمات تضوي مع التمرير|Words light up as you scroll|המילים נדלקות בגלילה", { kind: "words" }, WORDY),
 ];
 
