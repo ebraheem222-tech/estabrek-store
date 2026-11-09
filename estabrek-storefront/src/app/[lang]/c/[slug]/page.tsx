@@ -10,6 +10,7 @@ import { buildCanonicalQuery, normalizeFiltersFromSearchParams } from "@/lib/fil
 import ShopBrowseClient from "@/components/ShopBrowseClient";
 import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
 import { RoseCategoryIntro } from "@/components/cinematic/RoseCategoryIntro";
+import { independentDesign } from "@/storeThemes/snapshot";
 import { getProductPrimaryImage } from "@/lib/catalog";
 import { routeLang, seoAlternates } from "@/lib/seoLang";
 import { tr } from "@/lib/words";
@@ -85,8 +86,11 @@ export default async function CategoryPage({
   )
     ? (f.sort as "latest" | "title_asc" | "title_desc" | "price_asc" | "price_desc")
     : undefined;
-  // The store's own category page design (made in the editor, W3): drawn for this category when published.
-  const design = await getStoreTemplate("category", lang);
+  // The store's own category page design (made in the editor, W3): drawn for this category when published,
+  // in a store that runs on its own design. A rose store keeps its rose category page (a design published
+  // there by mistake replaced every category page with the editor's plain starter page).
+  const ownDesign = independentDesign((await getPublicSettings().catch(() => null))?.site?.header);
+  const design = ownDesign ? await getStoreTemplate("category", lang) : null;
   if (design?.tree) {
     const flat = (list: any[]): any[] => list.flatMap((c) => [c, ...flat(c.children ?? [])]);
     const category = flat((await listCategories(lang).catch(() => [])) ?? []).find((c) => c.slug === params.slug);
