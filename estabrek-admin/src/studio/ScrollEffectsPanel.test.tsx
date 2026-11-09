@@ -9,9 +9,9 @@ afterEach(cleanup);
 const sec = (id: string, motion?: Record<string, unknown>): PageTreeNode => ({ id, type: "section", props: {}, ...(motion ? { motion } : {}) });
 
 describe("scroll effects", () => {
-  it("offers 31 effects; pins only on sections, words only on words", () => {
-    expect(SCROLL_EFFECTS).toHaveLength(31);
-    expect(new Set(SCROLL_EFFECTS.map((e) => e.key)).size).toBe(31);
+  it("offers 32 effects; pins only on sections, words only on words", () => {
+    expect(SCROLL_EFFECTS).toHaveLength(32);
+    expect(new Set(SCROLL_EFFECTS.map((e) => e.key)).size).toBe(32);
     expect(scrollEffectsFor("image").some((e) => e.group === "pin" || e.group === "words")).toBe(false);
     expect(scrollEffectsFor("section").some((e) => e.key === "pin")).toBe(true);
     expect(scrollEffectsFor("heading").some((e) => e.key === "words-light")).toBe(true);

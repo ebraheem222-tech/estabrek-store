@@ -70,6 +70,9 @@ export type ScreenStyle = {
   /** Placed freely over its container (its anchor at x% from the line's start, y% from the top); false = in the flow. */
   layer?: false | { x: number; y: number; anchor?: string };
   z?: number;
+  overflow?: "visible" | "hidden" | "clip" | "scroll" | "auto";
+  overflowX?: "visible" | "hidden" | "clip" | "scroll" | "auto";
+  overflowY?: "visible" | "hidden" | "clip" | "scroll" | "auto";
   hidden?: boolean;
   /** A family from the fonts library by name (pageTree/fonts.ts); it wins over `font`. */
   family?: string;
@@ -184,6 +187,8 @@ export const lookNode = (target: string, look: Look): TreeNode => ({ id: target,
 
 /* ------------------------------------------------------------------ motion */
 
+import { cueOf, keysSpecOf, type CueSpec, type KeysSpec } from "./keyframes";
+
 // A drawing's own: "draw" draws its lines, "morph" turns its shape into its second one and back, "dash" runs its lines.
 // Words' own: "letters" one by one (Arabic word by word, so its letters stay joined), "lines" from under a mask,
 // "scramble" from scrambled letters, "typewriter" typed, "count" a number counting up to itself.
@@ -194,8 +199,9 @@ export const ENTER_KINDS = [
 ] as const;
 // "type" types its words, waits, and takes them back, again and again.
 export const LOOP_KINDS = ["float", "pulse", "spin", "wobble", "swing", "breathe", "bounce", "morph", "dash", "type"] as const;
-// "words" lights its words up one by one with the scroll; "pin" holds a section in place for `length` % of a screen.
-export const SCROLL_KINDS = ["parallax", "keys", "words", "pin"] as const;
+// "words" lights its words up one by one with the scroll; "pin" holds a section in place for `length` % of a screen;
+// "sideways" holds it while what it holds slides along its row with the scroll.
+export const SCROLL_KINDS = ["parallax", "keys", "words", "pin", "sideways"] as const;
 // Then one-time plays as the mouse comes over it, a light that follows the mouse, a ripple where it's
 // pressed (a finger too), and springy ones (Motion's springs): it follows the mouse, or wobbles like jelly.
 export const HOVER_KINDS = [
@@ -208,6 +214,10 @@ export const EASES = ["smooth", "soft", "strong", "back", "elastic", "bounce", "
 export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?: number; scale?: number; opacity?: number };
 export type TreeMotionSpec = {
   engine?: "gsap" | "anime";
+  /** Its own keyframes (pageTree/keyframes.ts). */
+  keys?: KeysSpec;
+  /** When it shows inside a scroll scene (pageTree/scrollScene.ts). */
+  cue?: CueSpec;
   enter?: { kind: (typeof ENTER_KINDS)[number]; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
   scroll?: { kind: (typeof SCROLL_KINDS)[number]; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
   loop?: { kind: (typeof LOOP_KINDS)[number]; duration?: number; amount?: number };
@@ -245,6 +255,10 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
   if (fx) out.fx = { kind: fx, speed: within(m.fx.speed, 0.2, 5), color: typeof m.fx.color === "string" ? m.fx.color : undefined, to: typeof m.fx.to === "string" ? m.fx.to : undefined };
   const phone = inList(m.phone, ["same", "lite", "off"] as const);
   if (phone) out.phone = phone;
+  const keys = keysSpecOf(m.keys);
+  if (keys) out.keys = keys;
+  const cue = cueOf(m.cue);
+  if (cue) out.cue = cue;
   return Object.keys(out).length ? plain(out) : null;
 }
 
@@ -255,17 +269,20 @@ export function motionOf(n: TreeNode): TreeMotionSpec | null {
  */
 export const TREE_TRANSFORM =
   "translate(var(--pt-ax,0%),var(--pt-ay,0%)) perspective(var(--pt-p,1200px)) " +
-  "translate3d(calc(var(--pt-x,0px) + var(--pt-ex,0px) + var(--pt-mx,0px) + var(--pt-hx,0px)),calc(var(--pt-y,0px) + var(--pt-ey,0px) + var(--pt-my,0px) + var(--pt-ly,0px) + var(--pt-hy,0px)),0) " +
-  "rotateX(calc(var(--pt-rx,0deg) + var(--pt-erx,0deg) + var(--pt-mrx,0deg) + var(--pt-hrx,0deg))) " +
-  "rotateY(calc(var(--pt-ry,0deg) + var(--pt-ery,0deg) + var(--pt-mry,0deg) + var(--pt-hry,0deg))) " +
-  "rotate(calc(var(--pt-rz,0deg) + var(--pt-erz,0deg) + var(--pt-mrz,0deg) + var(--pt-lrz,0deg) + var(--pt-hrz,0deg))) " +
-  "scale(calc(var(--pt-s,1) * var(--pt-es,1) * var(--pt-ms,1) * var(--pt-ls,1) * var(--pt-hs,1)))";
+  "translate3d(calc(var(--pt-x,0px) + var(--pt-ex,0px) + var(--pt-mx,0px) + var(--pt-hx,0px) + var(--pt-kx,0px)),calc(var(--pt-y,0px) + var(--pt-ey,0px) + var(--pt-my,0px) + var(--pt-ly,0px) + var(--pt-hy,0px) + var(--pt-ky,0px)),0) " +
+  "translate(var(--pt-kxp,0%),var(--pt-kyp,0%)) " +
+  "rotateX(calc(var(--pt-rx,0deg) + var(--pt-erx,0deg) + var(--pt-mrx,0deg) + var(--pt-hrx,0deg) + var(--pt-krx,0deg))) " +
+  "rotateY(calc(var(--pt-ry,0deg) + var(--pt-ery,0deg) + var(--pt-mry,0deg) + var(--pt-hry,0deg) + var(--pt-kry,0deg))) " +
+  "rotate(calc(var(--pt-rz,0deg) + var(--pt-erz,0deg) + var(--pt-mrz,0deg) + var(--pt-lrz,0deg) + var(--pt-hrz,0deg) + var(--pt-krz,0deg))) " +
+  "scale(calc(var(--pt-s,1) * var(--pt-es,1) * var(--pt-ms,1) * var(--pt-ls,1) * var(--pt-hs,1) * var(--pt-ks,1))) " +
+  "scale(var(--pt-ksx,1),var(--pt-ksy,1)) skew(var(--pt-kkx,0deg),var(--pt-kky,0deg))";
 /** The variables at rest, written on each moving element so it never takes its parent's (custom properties inherit). */
 export const TREE_TRANSFORM_REST =
   "--pt-ax:0%;--pt-ay:0%;--pt-p:1200px;--pt-x:0px;--pt-y:0px;--pt-rx:0deg;--pt-ry:0deg;--pt-rz:0deg;--pt-s:1;" +
   "--pt-ex:0px;--pt-ey:0px;--pt-erx:0deg;--pt-ery:0deg;--pt-erz:0deg;--pt-es:1;" +
   "--pt-mx:0px;--pt-my:0px;--pt-mrx:0deg;--pt-mry:0deg;--pt-mrz:0deg;--pt-ms:1;" +
-  "--pt-ly:0px;--pt-lrz:0deg;--pt-ls:1;--pt-hx:0px;--pt-hy:0px;--pt-hrx:0deg;--pt-hry:0deg;--pt-hrz:0deg;--pt-hs:1";
+  "--pt-ly:0px;--pt-lrz:0deg;--pt-ls:1;--pt-hx:0px;--pt-hy:0px;--pt-hrx:0deg;--pt-hry:0deg;--pt-hrz:0deg;--pt-hs:1;" +
+  "--pt-kx:0px;--pt-ky:0px;--pt-kxp:0%;--pt-kyp:0%;--pt-krx:0deg;--pt-kry:0deg;--pt-krz:0deg;--pt-ks:1;--pt-ksx:1;--pt-ksy:1;--pt-kkx:0deg;--pt-kky:0deg";
 /** The look's own variables the editor may preview live in its frame (before saving). */
 export const PREVIEW_VARS = ["--pt-rx", "--pt-ry", "--pt-rz", "--pt-p", "--pt-s", "--pt-x", "--pt-y", "--pt-ovo"] as const;
 
@@ -273,7 +290,8 @@ export const PREVIEW_VARS = ["--pt-rx", "--pt-ry", "--pt-rz", "--pt-p", "--pt-s"
 export function framed(n: TreeNode, motion = motionOf(n)): boolean {
   if (n.type !== "image" && n.type !== "video") return false;
   const s = n.style ?? {};
-  return Boolean(n.props?.edges?.top || n.props?.edges?.bottom || s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom");
+  const pieces = Boolean(n.props?.layers?.before || n.props?.layers?.after || motion?.keys?.parts.before || motion?.keys?.parts.after || motion?.keys?.parts.inner);
+  return Boolean(n.props?.edges?.top || n.props?.edges?.bottom || s.base?.overlay || s.tablet?.overlay || s.mobile?.overlay || motion?.fx || motion?.hover?.kind === "zoom" || pieces);
 }
 
 const NO_ODD = /^[^\s<>"'`\\]+$/;
@@ -348,7 +366,14 @@ export function treeNeeds(tree: PageTree) {
     if (((n.type === "lottie" || n.type === "rive") && typeof n.props?.src === "string") || (n.type === "section" && n.props?.particles)) media = true;
   });
   const smooth = tree.root.props?.smooth === true;
-  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth };
+  // Scroll scenes (TreeScenes) and triggers (TreeTriggers), each runtime loaded only then.
+  let scenes = false;
+  let triggers = false;
+  eachNode(tree, (n) => {
+    if (n.type === "scrollScene") scenes = true;
+    if (Array.isArray(n.props?.triggers) && n.props.triggers.length) triggers = true;
+  });
+  return { products, categories, seasons: blocks.has("seasons"), stories: blocks.has("stories"), instagram: blocks.has("instagram"), motion, spinProducts: [...spinProducts].slice(0, 12), media, smooth, scenes, triggers };
 }
 
 /** True when the page is only old sections (a freshly converted page draws exactly as before). */

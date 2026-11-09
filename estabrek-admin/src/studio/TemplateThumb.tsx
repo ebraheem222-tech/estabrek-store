@@ -102,6 +102,7 @@ function Node({ n, c, lang }: { n: PageTreeNode; c: ThumbColours; lang: Lang }):
       return <div style={{ display: "grid", gridTemplateColumns: `repeat(${num(obj(obj(n.style).base).columns) ?? 1}, minmax(0, 1fr))`, gap: 24, ...s }}>{kids()}</div>;
     case "stack":
     case "deck":
+    case "scrollScene":
       return <div style={{ display: "flex", flexDirection: "column", gap: 16, position: s.position ?? "relative", ...s }}>{kids()}</div>;
     case "heading":
       return <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.2, ...s }}>{say(p.text, lang)}</div>;

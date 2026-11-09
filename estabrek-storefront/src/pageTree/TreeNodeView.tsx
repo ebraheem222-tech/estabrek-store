@@ -44,6 +44,7 @@ import { nodeEdges, withDecoration } from "./NodeDecorations";
 import { CommerceCartPart } from "./CommerceCart";
 import { CommerceShop, type CommerceShopData } from "./CommerceShop";
 import { CardDesignScope } from "@/components/VisualControlsProvider";
+import { layersOf, scrollSceneOf, triggersOf } from "./pieces";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -60,6 +61,8 @@ export type TreeCtx = {
   instagram?: string[];
   /** The products 360° elements show, with their views (null = not found). */
   spinProducts?: Record<string, { title: string; spins?: unknown } | null>;
+  /** Drawn inside a scroll scene (what waits for its moment stays unseen until the scene starts). */
+  inScene?: boolean;
 };
 
 const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
@@ -97,13 +100,24 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   const words = (t: unknown) => (p.rich === true ? richNodes(say(t), link) : say(t));
   // How it moves goes to the motion engine (TreeMotion) as data; an animated layer is drawn inside it.
   const motion = motionOf(node);
-  const mark = { "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter ? { "data-pt-enter": "" } : {}) };
+  // Triggers go as data too, their links and words already in this page's language (TreeTriggers runs them).
+  const triggers = triggersOf(p.triggers, link, say);
+  const mark = { "data-tree-node": node.id, ...(p.partLooks ? { "data-pt-part-targets": Object.keys(p.partLooks).join("|") } : {}), ...(p.interactions ? { "data-interactions": JSON.stringify(p.interactions) } : {}), ...(motion ? { "data-pt-motion": JSON.stringify(motion), "data-pt-look-version": JSON.stringify(node.style ?? {}) } : {}), ...(motion?.enter && !motion.cue ? { "data-pt-enter": "" } : {}), ...(triggers.length ? { "data-pt-triggers": JSON.stringify(triggers) } : {}), ...(ctx.inScene && motion?.cue && motion.cue.from > 0 ? { "data-pt-cue-wait": "" } : {}) };
+  // Its two extra layers (behind its content, or in front), drawn when it has a look or keyframes for them.
+  const layers = layersOf(p.layers);
+  const piece = (part: "before" | "after") => (layers?.[part] || motion?.keys?.parts[part] ? <span className={`pt-pc pt-pc-${part}${layers?.[part]?.front ? " pt-pc-front" : ""}`} aria-hidden="true" /> : null);
+  const before = piece("before");
+  const after = piece("after");
+  // Its words in a piece of their own when its keyframes move them apart from it.
+  const inner = (content: ReactNode) => (motion?.keys?.parts.inner ? <span className="pt-pc-in">{content}</span> : content);
   // An animated layer, or the light that follows the mouse (TreeMotion moves it).
   const fx = motion?.fx ? <span className={`pt-fx pt-fx-${motion.fx.kind}`} aria-hidden="true" /> : motion?.hover?.kind === "spotlight" ? <span className="pt-spot" aria-hidden="true" /> : null;
-  const kids = () => (
+  const kids = (inside: TreeCtx = ctx) => (
     <>
-      {(node.children ?? []).map((c) => <TreeNodeView key={c.id} node={c} ctx={ctx} />)}
+      {before}
+      {(node.children ?? []).map((c) => <TreeNodeView key={c.id} node={c} ctx={inside} />)}
       {fx}
+      {after}
     </>
   );
 
@@ -158,6 +172,36 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const initial = typeof p.initial === "number" && Number.isInteger(p.initial) ? Math.max(0, Math.min(panels.length - 1, p.initial)) : 0;
       return <div className={cls(node)} {...mark}><DeckView panels={panels} lang={ctx.lang} settings={{ presentation: p.presentation === "tabs" || p.presentation === "vertical-tabs" ? p.presentation : "deck", transition: p.transition === "fade" || p.transition === "wipe" ? p.transition : "slide", duration, initial, arrows: p.arrows !== false, dots: p.dots !== false, menu: p.menu !== false }} /></div>;
     }
+    case "scrollScene": {
+      // A clip that plays with the scroll (or a picture held still) and what comes and goes over it
+      // at its moments: TreeScenes plays it; without scripts the picture and what starts at 0 show.
+      const spec = scrollSceneOf(p);
+      const m = spec.media;
+      const media = m.kind === "video" && m.src ? (
+        <video className="pt-ss-media" src={m.src} poster={m.poster} muted playsInline preload="metadata" aria-label={say(m.label) || undefined} />
+      ) : m.kind === "image" && m.src ? (
+        <img className="pt-ss-media" src={m.src} alt={say(m.label)} decoding="async" />
+      ) : null;
+      const live = { mode: spec.mode, chapters: spec.chapters, smooth: spec.smooth, fps: spec.fps, kind: m.kind, ...(m.phone ? { phone: m.phone } : {}), ...(spec.blur ? { blur: spec.blur } : {}), ...(spec.dim ? { dim: spec.dim } : {}), ...(spec.zoom ? { zoom: spec.zoom } : {}) };
+      const styled = { "--pt-ss-len": String(spec.length), ...(spec.dim?.color ? { "--pt-ss-dimc": color(spec.dim.color) } : {}), ...(m.focus ? { "--pt-ss-focus": `${m.focus.x}% ${m.focus.y}%` } : {}) } as CSSProperties;
+      const progress = spec.progress === "none" ? null : (
+        <span className={`pt-ss-progress pt-ss-progress-${spec.progress}`} aria-hidden="true">
+          {spec.progress === "dots" ? Array.from({ length: spec.chapters }, (_, i) => <i key={i} data-at={i} />) : <i />}
+        </span>
+      );
+      const inside = { ...ctx, inScene: spec.mode === "pin" };
+      return (
+        <div className={cls(node, `pt-ss-${spec.mode}`, m.fit === "contain" ? "pt-ss-contain" : "")} {...mark} data-pt-scroll-scene={JSON.stringify(live)} style={styled}>
+          <div className="pt-ss-stage">
+            {media ? <div className="pt-ss-frame">{media}</div> : null}
+            <span className="pt-ss-dim" aria-hidden="true" />
+            {spec.mode === "pin" ? <div className="pt-ss-layer">{kids(inside)}</div> : null}
+            {progress}
+          </div>
+          {spec.mode === "flow" ? <div className="pt-ss-flow">{kids(inside)}</div> : null}
+        </div>
+      );
+    }
     case "grid":
     case "stack":
     case "columns":
@@ -166,17 +210,19 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
     case "heading": {
       const level = Math.min(6, Math.max(1, Number(p.level) || 2));
       const H = `h${level}` as "h2";
-      return <H className={cls(node)} {...mark}>{words(p.text)}{fx}</H>;
+      return <H className={cls(node)} {...mark}>{before}{inner(words(p.text))}{fx}{after}</H>;
     }
     case "text":
-      return <p className={cls(node)} {...mark}>{words(p.text)}{fx}</p>;
+      return <p className={cls(node)} {...mark}>{before}{inner(words(p.text))}{fx}{after}</p>;
     case "image": {
       const src = safeSrc(p.src);
       if (!src) return null;
       const img = framed(node, motion) ? (
         <span className={cls(node, "pt-frame")} {...mark}>
+          {before}
           <img className="pt-frame-media" src={src} alt={say(p.alt)} loading="lazy" decoding="async" />
           {fx}
+          {after}
         </span>
       ) : (
         <img className={cls(node)} {...mark} src={src} alt={say(p.alt)} loading="lazy" decoding="async" />
@@ -189,8 +235,10 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const variant = ["solid", "outline", "link"].includes(p.variant) ? p.variant : "solid";
       return (
         <a className={cls(node, `pt-btn pt-btn-${variant}`)} {...mark} href={to ?? "#"} {...(p.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-          {words(p.label)}
+          {before}
+          {inner(words(p.label))}
           {fx}
+          {after}
         </a>
       );
     }
@@ -216,8 +264,10 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       );
       return inFrame ? (
         <div className={cls(node, "pt-frame")} {...mark}>
+          {before}
           {clip}
           {fx}
+          {after}
         </div>
       ) : (
         clip
@@ -367,8 +417,10 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const name = String(p.name ?? "");
       return (
         <span className={cls(node)} {...mark} role={label ? undefined : "img"} aria-label={label ? undefined : name.replace(/^[a-z-]+:/, "").replace(/-/g, " ")}>
+          {before}
           {art ? <ArtView art={art} prefix={node.id} /> : <TreeIcon name={name} />}
           {label ? <span>{label}</span> : null}
+          {after}
         </span>
       );
     }

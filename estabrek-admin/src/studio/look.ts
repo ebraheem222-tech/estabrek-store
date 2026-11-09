@@ -13,7 +13,11 @@ export type MotionKeys = { rx?: number; ry?: number; rz?: number; x?: number; y?
 export type Motion = {
   engine?: "gsap" | "anime";
   enter?: { kind: string; duration?: number; delay?: number; ease?: string; distance?: number; stagger?: number };
-  scroll?: { kind: "parallax" | "keys" | "words" | "pin"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
+  scroll?: { kind: "parallax" | "keys" | "words" | "pin" | "sideways"; speed?: number; from?: MotionKeys; to?: MotionKeys; start?: number; end?: number; ease?: string; length?: number };
+  /** Its own keyframes, 0–100 %, for itself and its pieces (keyframes.ts). */
+  keys?: Record<string, unknown>;
+  /** When it shows inside a scroll scene (scrollScene.ts). */
+  cue?: { from: number; to: number; in?: string; out?: string; soft?: number };
   loop?: { kind: string; duration?: number; amount?: number };
   hover?: { kind: string; amount?: number; color?: string };
   fx?: { kind: string; speed?: number; color?: string; to?: string };

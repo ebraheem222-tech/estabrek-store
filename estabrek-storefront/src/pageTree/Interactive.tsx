@@ -167,6 +167,15 @@ export function PopupView({ id, spec, label, close, children, decoration }: { id
       document.addEventListener("click", click);
       offs.push(() => document.removeEventListener("click", click));
     }
+    // A trigger anywhere on the page opens or closes it (TreeTriggers), every time.
+    const asked = (e: Event) => {
+      const d = (e as CustomEvent<{ id?: string; open?: boolean }>).detail;
+      if (d?.id !== id) return;
+      if (d.open) open(true);
+      else dialog.close();
+    };
+    addEventListener("pt:popup", asked);
+    offs.push(() => removeEventListener("pt:popup", asked));
     return () => offs.forEach((f) => f());
   }, [id, spec.trigger, spec.delay, spec.scroll, spec.anchor, spec.often, spec.place]);
   if (studio) return <div className={`pt-popup-studio${decorated ? " pt-has-edges" : ""}`}>{children}{decoration}</div>;
