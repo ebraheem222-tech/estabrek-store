@@ -16,7 +16,7 @@ function SkeletonTile() {
 
 export default function LoadingCategory() {
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <main data-route-loading="" className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <div className="flex items-center justify-between gap-4">
         <div className="h-7 w-56 rounded-xl bg-[var(--surface-2)] animate-pulse" />
         <LoadingIndicator className="inline-grid place-items-center" />

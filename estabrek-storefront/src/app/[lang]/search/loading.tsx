@@ -8,7 +8,7 @@ import { LoadingText } from "@/components/LoadingText";
  */
 export default function LoadingSearch() {
   return (
-    <main id="main-content" tabIndex={-1} className="rose-route-loading" aria-busy="true">
+    <main data-route-loading="" id="main-content" tabIndex={-1} className="rose-route-loading" aria-busy="true">
       <span className="sr-only" role="status"><LoadingText ar="جارٍ البحث…" en="Searching…" /></span>
       <div className="rose-skeleton rose-search-skeleton" aria-hidden="true">
         <div className="rose-shop-intro">

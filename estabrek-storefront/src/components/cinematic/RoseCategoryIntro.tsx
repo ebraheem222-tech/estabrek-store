@@ -15,6 +15,7 @@ import { tr } from "@/lib/words";
 import { useStoreLook } from "@/store/storeLook";
 import { ThemeIntro } from "@/storeThemes/inner/ThemeIntro";
 import { modelFor } from "@/storeThemes/inner/modelFor";
+import { RoseShopRing, type RingPiece } from "./RoseShopRing";
 
 type Crumb = { label: string; href: string };
 
@@ -30,12 +31,15 @@ export function RoseCategoryIntro({
   total,
   imageUrl,
   crumbs,
+  showcase = [],
 }: {
   name: string;
   slug: string;
   total: number;
   imageUrl?: string | null;
   crumbs: Crumb[];
+  /** The category's pieces for the opening's 3D ring (three or more: the arch and the ring). */
+  showcase?: RingPiece[];
 }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
@@ -83,7 +87,7 @@ export function RoseCategoryIntro({
     );
   }
   return (
-    <section ref={intro} className="rose-shop-intro rose-category-intro" data-rose-palette="pearl">
+    <section ref={intro} className={`rose-shop-intro rose-category-intro${showcase.length >= 3 ? " rose-shop-stage" : ""}`} data-rose-palette="pearl">
       <div data-reveal>
         <nav className="rose-crumbs" aria-label={tr(lang, "مسار التصفح", "Breadcrumb")}>
           {crumbs.map((c, i) => (
@@ -106,7 +110,14 @@ export function RoseCategoryIntro({
           <Icon name="down" />
         </a>
       </div>
-      {imageUrl || look.modest ? <div className="rose-shop-intro-image" data-reveal>
+      {showcase.length >= 3 ? <div className="rose-stage-visual">
+        {/* The category's first photo in the arch, its pieces turning around it (as on the shop). */}
+        <div className="rose-stage-arch rose-stage-photo">
+          <Image src={imageUrl || "/editorial/scarves.webp"} alt={name} fill priority sizes="(max-width:760px) 60vw, 26vw" />
+        </div>
+        <svg className="rose-stage-line" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true"><path pathLength={1} d="M2 138V50A48 48 0 0 1 98 50V138" /></svg>
+        <RoseShopRing pieces={showcase} label={tr(lang, "قطع من المتجر، اسحبي لتلفّيها", "Pieces from the shop: drag to turn them")} />
+      </div> : imageUrl || look.modest ? <div className="rose-shop-intro-image" data-reveal>
         <Image
           src={imageUrl || "/editorial/scarves.webp"}
           alt={name}

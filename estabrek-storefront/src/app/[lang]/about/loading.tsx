@@ -4,7 +4,7 @@ import { LoadingText } from "@/components/LoadingText";
 /** Shown at once while the About page is prepared: the hero words on one side, the arched portrait on the other. */
 export default function LoadingAbout() {
   return (
-    <main id="main-content" tabIndex={-1} className="rose-route-loading" aria-busy="true">
+    <main data-route-loading="" id="main-content" tabIndex={-1} className="rose-route-loading" aria-busy="true">
       <span className="sr-only" role="status"><LoadingText ar="جارٍ تحميل قصتنا…" en="Loading our story…" /></span>
       <section className="rose-about-hero rose-skeleton" aria-hidden="true">
         <div className="rose-about-hero-copy">

@@ -8,6 +8,7 @@ import { useBodyScrollLock } from "@/lib/bodyScrollLock";
 import { useLanguage } from "./Language";
 import { Icon } from "./Icons";
 import { RoseThemeProvider } from "./RoseThemeProvider";
+import { RouteLoader } from "./RouteLoader";
 import { PerfOverlay } from "./PerfOverlay";
 import { useNames, useStoreIdentity } from "@/store/storeIdentity";
 import { markOf, modestShop, pick } from "@/lib/storeIdentity";
@@ -427,6 +428,8 @@ export function StorefrontChrome({
     );
   return (
       <StoreContext.Provider value={storeData}>
+        {/* Outside the page's shell (it is new on every page): the logo that fills while the next page loads. */}
+        {studio ? null : <RouteLoader logoUrl={storeData.logoUrl} />}
         <RoseThemeProvider key={pathname}
           restoreSelection={!pathname.startsWith("/about") && !studio}
           colorScope={storeData.colorFollow === "product" ? "product" : "everything"}

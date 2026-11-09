@@ -22,6 +22,7 @@ import { selectStorefrontColor } from "@/lib/storefrontColor";
 import { getProductBadge } from "@/lib/productBadges";
 import { RoseBadge } from "./cinematic/RoseBadge";
 import { StoreMark } from "@/store/storeIdentity";
+import { useOptionalWishlist } from "@/store/wishlist";
 import { tr } from "@/lib/words";
 
 function normalizeHex(v?: string | null): string | null {
@@ -144,6 +145,11 @@ export function ProductTile(props: { product: CatalogProduct; appearance?: "rose
   const design = useCardDesign();
   return design ? <ConfiguredProductCard product={props.product} design={design} /> : <DefaultProductTile {...props} />;
 }
+/** A scalloped seal (a discount on a card's photo). */
+const SEAL = "M32 5Q39.3-.2 43.7 7.7Q52.6 6.2 53.1 15.2Q61.7 17.7 58.3 26Q65 32 58.3 38Q61.7 46.3 53.1 48.8Q52.6 57.8 43.7 56.3Q39.3 64.2 32 59Q24.7 64.2 20.3 56.3Q11.4 57.8 10.9 48.8Q2.3 46.3 5.7 38Q-1 32 5.7 26Q2.3 17.7 10.9 15.2Q11.4 6.2 20.3 7.7Q24.7-.2 32 5Z";
+/** The line drawn inside a card's arched photo (a 4:5 box: the arch is a true half circle). */
+const ARCH = "M6 113V50A44 44 0 0 1 94 50V113Q94 119 88 119H12Q6 119 6 113Z";
+
 function DefaultProductTile({ product, appearance = "default" }: { product: CatalogProduct; appearance?: "rose" | "default" }) {
   const { language: lang } = useLanguage();
   const ar = lang === "ar";
@@ -163,6 +169,8 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
   const prefetchEnabled = settings.prefetchLinks;
   const [allowPrefetch, setAllowPrefetch] = useState(false);
   const quickViewEnabled = settings.productQuickView;
+  const wishlist = useOptionalWishlist();
+  const saved = wishlist?.isInWishlist(product.id) ?? false;
   const discountPercent = getProductDiscountPercent(product);
   const badge = useMemo(() => getProductBadge(product), [product]);
   const targetImg = useMemo(() => {
@@ -261,8 +269,19 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
 
   // 3D tilt effect
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (appearance === "rose" || !cardRef.current || prefersReducedMotion() || !tiltEnabled) return;
+    if (!cardRef.current || prefersReducedMotion() || !tiltEnabled) return;
     const rect = cardRef.current.getBoundingClientRect();
+    if (appearance === "rose") {
+      // A gentle 3D tilt towards the pointer and a light where it points (rose-showcase.css).
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      const card = cardRef.current;
+      card.style.setProperty("--tilt-x", `${((0.5 - py) * 6).toFixed(2)}deg`);
+      card.style.setProperty("--tilt-y", `${((px - 0.5) * 8).toFixed(2)}deg`);
+      card.style.setProperty("--glare-x", `${(px * 100).toFixed(1)}%`);
+      card.style.setProperty("--glare-y", `${(py * 100).toFixed(1)}%`);
+      return;
+    }
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const centerX = rect.width / 2;
@@ -282,6 +301,8 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
     if (!cardRef.current) return;
     cardRef.current.style.setProperty('--rotate-x', '0deg');
     cardRef.current.style.setProperty('--rotate-y', '0deg');
+    cardRef.current.style.setProperty('--tilt-x', '0deg');
+    cardRef.current.style.setProperty('--tilt-y', '0deg');
     setIsHovered(false);
     setHoverImg(null);
     if (appearance !== "rose") setActiveSwatch(null);
@@ -290,16 +311,22 @@ function DefaultProductTile({ product, appearance = "default" }: { product: Cata
 
   if (appearance === "rose") return <article data-cms-part="card" ref={cardRef} className="rose-product-tile" onMouseEnter={() => setIsHovered(true)} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
     <Link data-cms-part="card-image" className={`rose-product-image${secondary && shownImg === primary ? " has-alt" : ""}`} href={`/p/${product.slug}`} prefetch={prefetchEnabled}>
-      {discountPercent ? <span className="rose-product-discount">−{discountPercent}%</span> : <RoseBadge badge={badge} ar={ar} />}
       {shownImg ? <LqipImage src={cldUrl(shownImg, { w: 640, h: 800, c: "fill", g: "auto" })} alt={product.title} fill loading="lazy" blurDataUrl={shownBlur ?? undefined} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-main" /> : <span className="rose-image-placeholder"><StoreMark /></span>}
       {secondary && shownImg === primary ? <LqipImage src={cldUrl(secondary, { w: 640, h: 800, c: "fill", g: "auto" })} alt="" fill loading="lazy" showSkeleton={false} sizes="(max-width:760px) 50vw, 25vw" className="object-cover product-image-alt" /> : null}
+      <span className="rose-card-sheen" aria-hidden="true" />
+      <svg className="rose-card-arch" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true"><path pathLength={1} d={ARCH} /></svg>
     </Link>
+    {/* After the photo, not inside it: on the inner pages the photo is an arch and would cut a corner badge. */}
+    {discountPercent ? <span className="rose-product-discount"><svg className="rose-seal" viewBox="-2 -2 68 68" aria-hidden="true"><path d={SEAL} /></svg><span>−{discountPercent}%</span></span> : <RoseBadge badge={badge} ar={ar} />}
+    {wishlist ? <button type="button" className="rose-card-heart" aria-pressed={saved} aria-label={`${saved ? tr(lang, "شيليها من المفضلة", "Remove from wishlist") : tr(lang, "احفظيها بالمفضلة", "Save to wishlist")}: ${product.title}`} onClick={() => wishlist.toggleWishlist({ id: product.id, title: product.title, slug: product.slug, image: primary ?? undefined, price: product.minPrice ?? undefined })}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1Z" /></svg>
+    </button> : null}
     <div data-cms-part="card-body" className="rose-product-meta">
-      <span data-cms-part="card-category" className="rose-product-category">{product.category?.name}</span>
+      <span data-cms-part="card-category" className="rose-product-category">{product.category?.name ? <svg className="rose-card-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4" /></svg> : null}{product.category?.name}</span>
       <Link href={`/p/${product.slug}`}><h3 data-cms-part="card-name">{product.title}</h3></Link>
       <span data-cms-part="card-price" className="rose-product-price">{product.minPrice != null ? formatMoney(product.minPrice, (product as any).currencyCode ?? null) : "—"}</span>
       {!!swatches.length && <div data-cms-part="card-swatches" className="rose-product-swatches">{swatches.map(s => <button data-cms-part="card-swatch" key={s.key} aria-label={s.name} title={s.name} aria-pressed={selectedSwatch === s.key} style={{ "--swatch-color": s.hex } as React.CSSProperties} onClick={event => { setSelectedSwatch(s.key); selectStorefrontColor(s.hex, { source: event.currentTarget }); if (s.imageUrl) setHoverImg(s.imageUrl); }} />)}</div>}
-      <div data-cms-part="card-actions" className="rose-product-actions"><QuickAddButton product={product} selectedColorKey={selectedSwatch ?? undefined} className="rose-product-add" buttonLabel={tr(lang, "إضافة للحقيبة", "Add to bag")} />{quickViewEnabled && <button className="rose-product-preview" onClick={event => openQuickView(product, event.currentTarget)} aria-label={`${tr(lang, "معاينة", "Preview")} ${product.title}`}>{tr(lang, "معاينة", "Preview")}</button>}</div>
+      <div data-cms-part="card-actions" className="rose-product-actions"><QuickAddButton product={product} selectedColorKey={selectedSwatch ?? undefined} className="rose-product-add" buttonLabel={tr(lang, "إضافة للحقيبة", "Add to bag")} />{quickViewEnabled && <button className="rose-product-preview" onClick={event => openQuickView(product, event.currentTarget)} aria-label={`${tr(lang, "معاينة", "Preview")} ${product.title}`}><svg className="rose-card-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="3" /></svg>{tr(lang, "معاينة", "Preview")}</button>}</div>
     </div>
   </article>;
   return (
