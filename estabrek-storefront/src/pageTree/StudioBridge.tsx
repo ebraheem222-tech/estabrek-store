@@ -422,12 +422,76 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
     };
     // Writing a text in place: the editor sends the current words; Enter (Ctrl+Enter for a
     // text of several lines) or leaving the field keeps them, Esc puts the old ones back.
-    let editing: { el: HTMLElement; before: string; style: string | null; sectionId: string; path: string; part?: { nodeId: string; target: string; line?: number; lang: string }; done: boolean } | null = null;
+    // Words being written in place stay written when the page moves their element in the document: a
+    // held (pinned) section is taken out of its holder and put back each time the scroll effects measure
+    // again, which takes the focus away. Focus lost without a press anywhere or a Tab comes straight back,
+    // the caret where it was; a press elsewhere (or Tab) still ends the writing.
+    const stayFocused = (el: HTMLElement, live: () => boolean, leave: () => void) => {
+      let caret: { start: number; end: number } | null = null;
+      let pressed = 0;
+      const offsetIn = (node: Node, offset: number) => {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        r.setEnd(node, offset);
+        return r.toString().length;
+      };
+      const remember = () => {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount || !el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) return;
+        const r = sel.getRangeAt(0);
+        caret = { start: offsetIn(r.startContainer, r.startOffset), end: offsetIn(r.endContainer, r.endOffset) };
+      };
+      const restore = () => {
+        el.focus({ preventScroll: true });
+        if (!caret) return;
+        const at = (n: number) => {
+          const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          let left = n;
+          for (let t = walk.nextNode(); t; t = walk.nextNode()) {
+            const len = (t as Text).data.length;
+            if (left <= len) return { node: t, offset: left };
+            left -= len;
+          }
+          return { node: el, offset: el.childNodes.length };
+        };
+        const a = at(caret.start), b = at(caret.end);
+        const r = document.createRange();
+        r.setStart(a.node, a.offset);
+        r.setEnd(b.node, b.offset);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(r);
+      };
+      const press = () => void (pressed = performance.now());
+      const tab = (k: KeyboardEvent) => void (k.key === "Tab" && (pressed = performance.now()));
+      // Right after the event (before any next key arrives), once the page has put the element back.
+      const blur = () => queueMicrotask(() => {
+        if (!live() || el.contains(document.activeElement)) return;
+        // Moved by the page (nothing pressed): back to writing.
+        if (el.isConnected && performance.now() - pressed > 400 && (!document.activeElement || document.activeElement === document.body)) return restore();
+        stop();
+        leave();
+      });
+      const stop = () => {
+        document.removeEventListener("selectionchange", remember);
+        document.removeEventListener("pointerdown", press, true);
+        el.removeEventListener("keydown", tab);
+        el.removeEventListener("blur", blur);
+      };
+      document.addEventListener("selectionchange", remember);
+      document.addEventListener("pointerdown", press, true);
+      el.addEventListener("keydown", tab);
+      el.addEventListener("blur", blur);
+      remember();
+      return stop;
+    };
+    let editing: { el: HTMLElement; before: string; style: string | null; sectionId: string; path: string; part?: { nodeId: string; target: string; line?: number; lang: string }; done: boolean; stop?: () => void } | null = null;
     const finish = (keep: boolean) => {
       const e = editing;
       if (!e || e.done) return;
       e.done = true;
       editing = null;
+      e.stop?.();
       const value = e.el.innerText.replace(/\u00a0/g, " ").replace(/\s+$/, "");
       e.el.removeAttribute("contenteditable");
       if (!keep) e.el.innerHTML = e.before;
@@ -458,7 +522,8 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       const sel = window.getSelection();
       sel?.removeAllRanges();
       sel?.addRange(range);
-      el.addEventListener("blur", () => finish(true), { once: true });
+      const own = editing;
+      own.stop = stayFocused(el, () => editing === own && !own.done, () => finish(true));
       el.addEventListener("keydown", (k: KeyboardEvent) => {
         if (k.key === "Escape") {
           k.preventDefault();
@@ -473,12 +538,13 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
     // Writing a tree element's words in place (a heading, text or button), with a small bar for
     // bold, italic, underline, highlight, the theme's colour, a link, and plain again. What's
     // written goes back as formatted words (pageTree/rich.ts); Esc puts the old ones back.
-    let nodeEdit: { el: HTMLElement; before: string; nodeId: string; done: boolean; bar: HTMLElement; asking: boolean } | null = null;
+    let nodeEdit: { el: HTMLElement; before: string; nodeId: string; done: boolean; bar: HTMLElement; asking: boolean; stop?: () => void } | null = null;
     const finishNode = (keep: boolean) => {
       const e = nodeEdit;
       if (!e || e.done) return;
       e.done = true;
       nodeEdit = null;
+      e.stop?.();
       e.bar.remove();
       const value = htmlToRich(e.el);
       e.el.removeAttribute("contenteditable");
@@ -503,7 +569,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       bar.setAttribute("data-studio-bar", "");
       bar.setAttribute("role", "toolbar");
       bar.style.cssText = "position:fixed;z-index:2147483000;display:flex;gap:2px;padding:4px;border-radius:10px;background:#1f1a22;box-shadow:0 8px 24px rgba(0,0,0,.3);direction:ltr";
-      const e = { el, before: el.innerHTML, nodeId, done: false, bar, asking: false };
+      const e: NonNullable<typeof nodeEdit> = { el, before: el.innerHTML, nodeId, done: false, bar, asking: false };
       nodeEdit = e;
       const tool = (key: string, face: string, run: () => void, css = "") => {
         const b = document.createElement("button");
@@ -562,7 +628,7 @@ export function StudioBridge({ origins, pageId, lang, onRefresh }: { origins: st
       sel?.removeAllRanges();
       sel?.addRange(range);
       window.addEventListener("scroll", place, { passive: true });
-      el.addEventListener("blur", () => window.setTimeout(() => !e.asking && !el.contains(document.activeElement) && finishNode(true), 0));
+      e.stop = stayFocused(el, () => nodeEdit === e && !e.done && !e.asking, () => finishNode(true));
       el.addEventListener("keydown", (k: KeyboardEvent) => {
         if (k.key === "Escape") {
           k.preventDefault();

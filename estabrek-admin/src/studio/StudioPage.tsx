@@ -359,6 +359,8 @@ function StudioDocument() {
     liveView.current = false;
     setLayout(null);
     setSilent(false);
+    // A new page in the frame: words being written there are gone with the old one, so the canvas takes the mouse again.
+    setEditing(null);
     const quiet = window.setTimeout(() => setSilent(true), 20_000);
     let first = true;
     const onMessage = (e: MessageEvent) => {
@@ -367,6 +369,8 @@ function StudioDocument() {
       if (!d || d.source !== SOURCE) return;
       if (d.type === "ready") {
         liveView.current = (d as unknown as { liveView?: boolean }).liveView === true;
+        // The frame (re)loaded by itself: no words are being written in it any more.
+        setEditing(null);
       } else if (d.type === "pointPicked") {
         const value = d as unknown as { requestId?: unknown; candidates?: unknown };
         if (typeof value.requestId === "string" && Array.isArray(value.candidates)) pointSelection.current.resolve(value.requestId, value.candidates.filter((v): v is string => typeof v === "string").slice(0, 100));

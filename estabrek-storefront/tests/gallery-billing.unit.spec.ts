@@ -5,7 +5,7 @@ import { planBilling } from "../src/pageTree/billing";
 test("gallery drops unsafe media, retains safe content and bounds options", () => {
   const spec = galleryOf({ items: [null, { title: { en: "Unsafe" }, image: "//evil.test/a.svg" }, { title: { en: " First ", he: { bad: true } }, image: "/one.svg", href: "javascript:alert(1)", category: { en: " Art " } }, { title: { he: "שני" }, image: "https://example.test/two.jpg", href: "/shop" }], columns: 99, gap: Infinity, layout: "custom", hoverEffect: "script", activation: "auto", searchable: "true" });
   expect(spec).toMatchObject({ layout: "grid", columns: 3, gap: 20, hoverEffect: "none", activation: "click", lightbox: false, searchable: false });
-  expect(spec!.items).toEqual([{ title: { en: "First" }, text: {}, category: { en: "Art" }, cta: {}, image: "/one.svg", href: undefined }, { title: { he: "שני" }, text: {}, category: {}, cta: {}, image: "https://example.test/two.jpg", href: "/shop" }]);
+  expect(spec!.items).toEqual([{ title: { en: "First" }, text: {}, category: { en: "Art" }, cta: {}, image: "/one.svg", href: undefined, source: 2 }, { title: { he: "שני" }, text: {}, category: {}, cta: {}, image: "https://example.test/two.jpg", href: "/shop", source: 3 }]);
   expect(galleryOf({ items: [] })).toBeNull();
 });
 

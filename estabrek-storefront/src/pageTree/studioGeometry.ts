@@ -7,17 +7,72 @@ const ID: Mat3 = [1,0,0,0,1,0,0,0,1];
 const shift = (x:number,y:number):Mat3 => [1,0,x,0,1,y,0,0,1];
 const number = (value:string|null|undefined) => Number.parseFloat(value || "") || 0;
 
+/** A length the browser computed (px, %, or calc() of them) in px, its % of `size`; null when it's something else. */
+export function cssLength(text:string,size:number):number|null {
+  const v=text.trim();
+  const inner=/^calc\((.*)\)$/.exec(v)?.[1]??v;
+  const terms=inner.replace(/\s+/g,"").match(/[+-]?(\d+(\.\d+)?|\.\d+)(e[+-]?\d+)?(px|%)?/gi);
+  if(!terms||terms.join("")!==inner.replace(/\s+/g,""))return null;
+  return terms.reduce((sum,t)=>sum+(t.endsWith("%")?Number.parseFloat(t)*size/100:Number.parseFloat(t)),0);
+}
+
+/** Rows of 4×4 matrices multiplied (a then b applied to points: a·b). */
+function mul4(a:Mat4,b:Mat4):Mat4{
+  const out=new Array(16).fill(0) as unknown as Mat4;
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++){let v=0;for(let k=0;k<4;k++)v+=a[r*4+k]*b[k*4+c];(out as unknown as number[])[r*4+c]=v;}
+  return out;
+}
+
+/**
+ * Its own `translate`, `rotate` and `scale` (the separate properties: a ring's things, a sideways row, a
+ * held section shrinking back) as one matrix, applied before its `transform` as the browser does; null
+ * when one goes into depth (a 3D turn or a Z move), which needs another way of measuring.
+ */
+function separate(el:Element,cs:CSSStyleDeclaration):Mat4|null {
+  const I:Mat4=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+  let m=I;
+  const t=cs.getPropertyValue("translate").trim(),r=cs.getPropertyValue("rotate").trim(),sc=cs.getPropertyValue("scale").trim();
+  if(t&&t!=="none"){
+    const box=el as HTMLElement,w=box.offsetWidth||0,h=box.offsetHeight||0;
+    const parts=t.match(/calc\([^()]*(\([^()]*\)[^()]*)*\)|[^\s]+/g)??[];
+    const x=cssLength(parts[0]??"0",w),y=cssLength(parts[1]??"0",h),z=parts[2]?cssLength(parts[2],0):0;
+    if(x===null||y===null||z===null||Math.abs(z)>1e-6)return null;
+    m=mul4(m,[1,0,0,x,0,1,0,y,0,0,1,0,0,0,0,1]);
+  }
+  if(r&&r!=="none"){
+    const turn=/^(?:z\s+|0\s+0\s+1\s+)?(-?[\d.]+(?:e[+-]?\d+)?)(deg|rad|turn|grad)$/i.exec(r);
+    if(!turn)return null;
+    const n=Number.parseFloat(turn[1]),unit=turn[2].toLowerCase();
+    const a=unit==="rad"?n:unit==="turn"?n*2*Math.PI:unit==="grad"?n*Math.PI/200:n*Math.PI/180;
+    const c=Math.cos(a),s=Math.sin(a);
+    m=mul4(m,[c,-s,0,0,s,c,0,0,0,0,1,0,0,0,0,1]);
+  }
+  if(sc&&sc!=="none"){
+    const k=sc.split(/\s+/).map(v=>v.endsWith("%")?Number.parseFloat(v)/100:Number.parseFloat(v));
+    if(!k.length||k.some(v=>!Number.isFinite(v)))return null;
+    const sx=k[0],sy=k[1]??k[0];
+    if(k.length>2&&Math.abs(k[2]-1)>1e-6)return null;
+    m=mul4(m,[sx,0,0,0,0,sy,0,0,0,0,1,0,0,0,0,1]);
+  }
+  return m;
+}
+
 function transform(el:Element):Mat4|null {
   const cs=getComputedStyle(el), text=cs.transform;
-  // These independent properties and preserve-3d need a different composition contract.
+  // Zoom, preserve-3d and perspective need a different composition contract.
   const zoom=cs.getPropertyValue("zoom");
-  if (zoom && zoom!=="normal" && Number(zoom)!==1 || [cs.getPropertyValue("translate"),cs.getPropertyValue("rotate"),cs.getPropertyValue("scale")].some(value=>value && value!=="none") || cs.transformStyle==="preserve-3d" || cs.perspective && cs.perspective!=="none") return null;
-  if(!text || text==="none")return [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
-  const match=/^matrix(3d)?\(([^)]+)\)$/.exec(text), values=match?.[2].split(",").map(Number);
-  if(!values?.every(Number.isFinite))return null;
-  if(match?.[1] && values.length===16)return values.map((_,i)=>values[(i%4)*4+Math.floor(i/4)]) as unknown as Mat4;
-  if(!match?.[1] && values.length===6){const[a,b,c,d,e,f]=values;return [a,c,0,e,b,d,0,f,0,0,1,0,0,0,0,1];}
-  return null;
+  if (zoom && zoom!=="normal" && Number(zoom)!==1 || cs.transformStyle==="preserve-3d" || cs.perspective && cs.perspective!=="none") return null;
+  const before=separate(el,cs);if(!before)return null;
+  let own:Mat4;
+  if(!text || text==="none")own=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+  else{
+    const match=/^matrix(3d)?\(([^)]+)\)$/.exec(text), values=match?.[2].split(",").map(Number);
+    if(!values?.every(Number.isFinite))return null;
+    if(match?.[1] && values.length===16)own=values.map((_,i)=>values[(i%4)*4+Math.floor(i/4)]) as unknown as Mat4;
+    else if(!match?.[1] && values.length===6){const[a,b,c,d,e,f]=values;own=[a,c,0,e,b,d,0,f,0,0,1,0,0,0,0,1];}
+    else return null;
+  }
+  return mul4(before,own);
 }
 
 function sizeOf(el:HTMLElement) {
