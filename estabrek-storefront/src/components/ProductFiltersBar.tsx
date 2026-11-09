@@ -1,4 +1,5 @@
 "use client";
+import { useShopWords } from "@/components/shopWords";
 import { useLanguage } from "./cinematic/Language";
 
 import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -129,6 +130,8 @@ export function ProductFiltersBar({
   appearance?: "rose" | "default";
 }) {
   const { language: lang } = useLanguage();
+  // A shop element's own words (components/shopWords.tsx); the built-in ones otherwise.
+  const own = useShopWords();
   const ar = lang === "ar";
   const settings = useStorefrontSettings();
   const router = useRouter();
@@ -563,7 +566,7 @@ export function ProductFiltersBar({
         <div className="filter-section">
           <label className="filter-label">
             <SortIcon />
-            {tr(lang, "الترتيب", "Sort by")}
+            {own.sortLabel || tr(lang, "الترتيب", "Sort by")}
           </label>
           <select
             className="filter-select"
@@ -583,7 +586,7 @@ export function ProductFiltersBar({
       <div className="filter-section">
         <label className="filter-label">
           <PriceIcon />
-          {tr(lang, "نطاق السعر", "Price range")}
+          {own.priceLabel || tr(lang, "نطاق السعر", "Price range")}
         </label>
         <div className="price-range-container">
           <div className="relative flex-1">
@@ -630,7 +633,7 @@ export function ProductFiltersBar({
             }`}>
               {inStockParam && <CheckIcon />}
             </div>
-            <span className="font-medium">{tr(lang, "المتوفر فقط", "In stock only")}</span>
+            <span className="font-medium">{own.inStockLabel || tr(lang, "المتوفر فقط", "In stock only")}</span>
           </div>
           <span className="filter-toggle-indicator" />
         </button>
@@ -646,7 +649,7 @@ export function ProductFiltersBar({
           >
             <div className="flex items-center gap-2">
               <ColorIcon />
-              <span className="font-medium">{tr(lang, "الألوان", "Colours")}</span>
+              <span className="font-medium">{own.coloursLabel || tr(lang, "الألوان", "Colours")}</span>
               {selectedColors.length > 0 && (
                 <span className="active-filters-count">{selectedColors.length}</span>
               )}
@@ -696,7 +699,7 @@ export function ProductFiltersBar({
           >
             <div className="flex items-center gap-2">
               <SizeIcon />
-              <span className="font-medium">{tr(lang, "المقاسات", "Sizes")}</span>
+              <span className="font-medium">{own.sizesLabel || tr(lang, "المقاسات", "Sizes")}</span>
               {selectedSizes.length > 0 && (
                 <span className="active-filters-count">{selectedSizes.length}</span>
               )}
@@ -743,7 +746,7 @@ export function ProductFiltersBar({
         className={`mobile-filter-toggle filter-mobile-toggle-candy ${appearance === "rose" ? "lg:hidden" : "md:hidden"} ${mobileOpen ? "opacity-0 pointer-events-none" : ""}`}
       >
         <FilterIcon />
-        <span>{tr(lang, "الفلاتر", "Filters")}</span>
+        <span>{own.filtersLabel || tr(lang, "الفلاتر", "Filters")}</span>
         {activeFiltersCount > 0 && (
           <span className="active-filters-count">{activeFiltersCount}</span>
         )}
@@ -757,7 +760,7 @@ export function ProductFiltersBar({
               <FilterIcon />
             </div>
             <div>
-              <h3 className="font-bold text-[var(--text)]">{tr(lang, "الفلاتر", "Filters")}</h3>
+              <h3 className="font-bold text-[var(--text)]">{own.filtersLabel || tr(lang, "الفلاتر", "Filters")}</h3>
               {activeFiltersCount > 0 && (
                 <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
               )}
@@ -766,7 +769,7 @@ export function ProductFiltersBar({
           {hasAny && (
             <button type="button" onClick={clearAll} className="clear-filters-btn">
               <TrashIcon />
-              {tr(lang, "مسح الكل", "Clear all")}
+              {own.clearLabel || tr(lang, "مسح الكل", "Clear all")}
             </button>
           )}
         </div>
@@ -775,7 +778,7 @@ export function ProductFiltersBar({
 
       {/* Mobile Filters Modal */}
       {mobileOpen && (
-        <div ref={mobileDialog} className={`fixed inset-0 z-[1300] ${appearance === "rose" ? "lg:hidden" : "md:hidden"}`} role="dialog" aria-modal="true" aria-label={tr(lang, "الفلاتر", "Filters")}>
+        <div ref={mobileDialog} className={`fixed inset-0 z-[1300] ${appearance === "rose" ? "lg:hidden" : "md:hidden"}`} role="dialog" aria-modal="true" aria-label={own.filtersLabel || tr(lang, "الفلاتر", "Filters")}>
           <div 
             className={`absolute inset-0 filter-backdrop filter-backdrop-candy ${isClosing ? "closing" : "opening"}`} 
             onClick={closeMobile} 
@@ -790,7 +793,7 @@ export function ProductFiltersBar({
                   <FilterIcon />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[var(--text)]">{tr(lang, "الفلاتر", "Filters")}</h3>
+                  <h3 className="font-bold text-[var(--text)]">{own.filtersLabel || tr(lang, "الفلاتر", "Filters")}</h3>
                   {activeFiltersCount > 0 && (
                     <p className="text-xs text-[var(--muted)]">{activeFiltersCount} {tr(lang, "فلتر نشط", "active filters")}</p>
                   )}
@@ -829,7 +832,7 @@ export function ProductFiltersBar({
                   onClick={clearAll} 
                   className="flex-1 py-3 rounded-xl border border-white/45 text-[var(--text)] font-medium transition-all duration-300 filter-mobile-clear-btn"
                 >
-                  {tr(lang, "مسح الكل", "Clear all")}
+                  {own.clearLabel || tr(lang, "مسح الكل", "Clear all")}
                 </button>
               )}
               {!mobileAutoApply && (

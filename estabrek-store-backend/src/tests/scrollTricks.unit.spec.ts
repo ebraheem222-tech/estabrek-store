@@ -7,7 +7,7 @@ import { readyCounters, readyOrbit, readyPaint, readyPortal } from "../../../est
 // drawing with the scroll; the next section's edge; a picture through a growing window; a section
 // that colours the page; the page's cursor and an element's word for it.
 
-type Node = { id: string; type: string; props: Record<string, unknown>; style?: Record<string, unknown>; motion?: Record<string, unknown>; children?: Node[] };
+type Node = { id: string; type: string; name?: string; props: Record<string, unknown>; style?: Record<string, unknown>; motion?: Record<string, unknown>; children?: Node[] };
 const page = (children: Node[], props: Record<string, unknown> = {}) => ({ version: 1, root: { id: "page", type: "page", props, children } });
 const ids = () => {
   let n = 0;

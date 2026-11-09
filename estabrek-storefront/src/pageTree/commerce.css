@@ -26,6 +26,15 @@
 .cms-shop-preview-layout { display: grid; grid-template-columns: minmax(150px,200px) minmax(0,1fr); gap: 24px; }
 .cms-shop-preview-layout[data-filters="off"] { grid-template-columns: minmax(0,1fr); }
 .cms-shop-preview-layout aside { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+/* The editor's sample shop: its count and sorting over the cards, its filter words, and its "load more". */
+.cms-shop-preview-tools { display: flex; justify-content: space-between; gap: 12px; margin: 12px 0; font-size: 14px; color: var(--muted); }
+.cms-shop-preview-layout aside h3 { margin: 0 0 8px; }
+.cms-shop-preview-layout aside h4 { margin: 14px 0 6px; font-size: 14px; }
+.cms-shop-preview-layout aside p { margin: 4px 0; font-size: 14px; }
+.cms-shop-preview-layout aside label { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 14px; }
+.cms-shop[data-commerce-preview] .cms-shop-preview-layout aside label input { width: auto; padding: 0; flex: none; }
+.cms-shop-preview-more { margin: 20px 0 0; text-align: center; }
+.cms-shop-preview-more span { display: inline-block; padding: 10px 18px; border: 1px solid var(--border); border-radius: 999px; }
 .cms-product-placeholder { aspect-ratio: 4/5; border-radius: 8px; background: color-mix(in srgb,var(--accent) 12%,var(--surface)); }
 @media(min-width:768px) { .cms-product-grid { grid-template-columns: repeat(var(--cms-grid-columns,3),minmax(0,1fr)); } }
 @media(max-width:767px) { .cms-shop .cms-shop-browse,.cms-shop-preview-layout { display: block; } .cms-shop-preview-layout aside { margin-bottom: 16px; } }

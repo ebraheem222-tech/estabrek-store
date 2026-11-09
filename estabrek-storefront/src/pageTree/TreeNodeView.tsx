@@ -47,6 +47,7 @@ import { CommerceCartPart } from "./CommerceCart";
 import { CommerceShop, type CommerceShopData } from "./CommerceShop";
 import { CardDesignScope } from "@/components/VisualControlsProvider";
 import { coverOf, layersOf, scrollSceneOf, triggersOf } from "./pieces";
+import { SHOP_WORD_FIELDS } from "../../../shared/partWords";
 
 export type TreeCtx = {
   lang: TreeLang;
@@ -127,7 +128,7 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
 
   switch (node.type) {
     case "shop":
-      return <div className={cls(node)} {...mark}>{fx}<CardDesignScope value={p.cardDesign}><CommerceShop data={ctx.commerce?.shop} preview={ctx.commerce?.preview === true} options={p} lang={ctx.lang} /></CardDesignScope></div>;
+      return <div className={cls(node)} {...mark}>{fx}<CardDesignScope value={p.cardDesign}><CommerceShop data={ctx.commerce?.shop} preview={ctx.commerce?.preview === true} options={p} lang={ctx.lang} words={Object.fromEntries(SHOP_WORD_FIELDS.map((f) => [f, typeof p[f]?.[ctx.lang] === "string" ? p[f][ctx.lang].trim() : ""]).filter(([, w]) => w))} /></CardDesignScope></div>;
     case "productDetail":
       // The product's pictures, colours, sizes and add-to-cart; the editor's preview of the design without a product shows where it goes.
       return <div className={cls(node)} {...mark}>{ctx.product ? <ProductDetail product={ctx.product} /> : <div className="pt-product-detail-empty">{({ ar: "صور المنتج وألوانه ومقاساته وزر الإضافة للسلة", en: "The product's pictures, colours, sizes and add-to-cart", he: "תמונות המוצר, הצבעים, המידות וכפתור ההוספה לסל" } as Record<string, string>)[ctx.lang] ?? ""}</div>}</div>;

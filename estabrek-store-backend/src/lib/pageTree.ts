@@ -515,6 +515,8 @@ export const SLIDER_LOOKS = ["plain", "rounded", "card", "frame", "polaroid", "a
 export const SLIDER_ARROW_LOOKS = ["round", "square", "bare", "glass", "outline", "corner"] as const;
 export const SLIDER_DOT_LOOKS = ["dots", "lines", "bars", "numbers"] as const;
 
+/** The shop element's own words (the same list as shared/partWords.ts SHOP_WORD_FIELDS). */
+export const SHOP_WORD_FIELDS = ["searchLabel", "categoriesLabel", "allLabel", "inStockLabel", "sortLabel", "priceLabel", "coloursLabel", "sizesLabel", "filtersLabel", "clearLabel", "countLabel", "moreLabel"] as const;
 /** What a held section does while the next one covers it: darkens, shrinks back, blurs, moves up slowly, fades. */
 export const COVER_UNDER = ["none", "dim", "shrink", "blur", "slow", "fade"] as const;
 
@@ -715,6 +717,8 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     gap: z.number().int().min(0).max(64).optional(),
     filtersSide: z.enum(["start", "end"]).optional(),
     stickyFilters: z.boolean().optional(),
+    // Its own words for the search, filters, sorting, count and more (the shop's built-in ones otherwise).
+    ...Object.fromEntries(SHOP_WORD_FIELDS.map((f) => [f, local(40).optional()])),
   }).strict(),
   cartItems: z.object({}).strict(),
   cartSummary: z.object({}).strict(),

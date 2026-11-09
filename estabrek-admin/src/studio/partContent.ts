@@ -1,5 +1,5 @@
 /** Use renderer-declared source paths for static words; visible equality alone never proves ownership. */
-import { defaultPartWords } from "../../../shared/partWords";
+import { defaultPartWords, exactLanguageWords } from "../../../shared/partWords";
 export type ContentBinding = { path: Array<string | number>; value: string; line?: number };
 type Locale = "ar" | "en" | "he";
 const LOCALES = ["ar", "en", "he"] as const;
@@ -21,7 +21,9 @@ export function contentBinding(props: Record<string, unknown>, text: string, lan
   const path = source.split(".").map(key => /^\d+$/.test(key) ? Number(key) : key);
   const raw = read(props, path), defaults = defaultPartWords(nodeType, source);
   if (!local(raw) && !(defaults && (raw === undefined || object(raw) && !Object.keys(raw).length))) return null;
-  const value = (local(raw) ? pick(raw, lang, main) : "") || defaults?.[lang] || "";
+  // A shop's words: its own in this language, else its built-in one in this language (as the shop draws them).
+  const own = local(raw) ? (defaults && exactLanguageWords(nodeType) ? raw[lang] ?? "" : pick(raw, lang, main)) : "";
+  const value = own || defaults?.[lang] || "";
   if (sourceLine !== undefined) {
     const lines = value.split("\n");
     if (!Number.isInteger(sourceLine) || sourceLine < 0 || sourceLine >= lines.length || normal(lines[sourceLine]) !== normal(text)) return null;
