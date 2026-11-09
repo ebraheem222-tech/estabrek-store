@@ -112,7 +112,7 @@ function StorePages() {
   return (
     <section className={card} data-testid="store-pages">
       <div className="mb-1 text-sm font-medium">{say("صفحات المتجر|The store's pages|דפי החנות")}</div>
-      <p className="mb-3 text-sm text-white/55">{say("صمّم صفحة المنتج وصفحة القسم مرة وحدة: كل منتج وكل قسم بيظهر فيها ببياناته.|Design the product page and the category page once: every product and category shows in it with its own data.|עצב את דף המוצר ודף הקטגוריה פעם אחת: כל מוצר וכל קטגוריה מוצגים בו עם הנתונים שלהם.")}</p>
+      <p className="mb-3 text-sm text-white/55">{say("صمّم صفحة المنتج وصفحة القسم مرة وحدة: كل منتج وكل قسم بيظهر فيها ببياناته. المتجر بيضل على صفحاته الحالية لحد ما تنشر التصميم من المحرر.|Design the product page and the category page once: every product and category shows in it with its own data. The shop keeps its current pages until you publish the design from the editor.|עצב את דף המוצר ודף הקטגוריה פעם אחת: כל מוצר וכל קטגוריה מוצגים בו עם הנתונים שלהם. החנות נשארת עם הדפים הנוכחיים עד שתפרסם את העיצוב מהעורך.")}</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={primary} disabled={busy} onClick={() => void open("product")} data-testid="design-product-page">🛍 {say("صمّم صفحة المنتج|Design the product page|עצב את דף המוצר")}</button>
         <button type="button" className={btn} disabled={busy} onClick={() => void open("category")} data-testid="design-category-page">▦ {say("صمّم صفحة القسم|Design the category page|עצב את דף הקטגוריה")}</button>
