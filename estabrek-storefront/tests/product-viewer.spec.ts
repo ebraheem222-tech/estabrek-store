@@ -3,7 +3,9 @@ import { test, expect } from "@playwright/test";
 // Read where a preview shows: the header (previews colour the hovered section and the
 // header, never the page shell; at rest the header takes the shell's own colours).
 const accent = (page: import("@playwright/test").Page) =>
-  page.evaluate(() => getComputedStyle(document.querySelector(".atelier-header")!).getPropertyValue("--selection-accent").trim());
+  // The product area holds the picked colour and the hover previews (an inner page's header keeps the
+  // store's own: rose-inner.css); the home page has no product area, its header holds it.
+  page.evaluate(() => getComputedStyle(document.querySelector(".rose-pdp-info") ?? document.querySelector(".atelier-header")!).getPropertyValue("--selection-accent").trim());
 
 test("the product photo opens full screen, zooms on click and closes with Escape", async ({ page }) => {
   await page.goto("/p/rose-dress");
@@ -59,7 +61,8 @@ test("the chosen colour survives scrolling the homepage down and back to the top
   await page.waitForLoadState("networkidle");
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail: "#5f8f9b" })));
   await page.waitForTimeout(900);
-  const chosen = await accent(page);
+  // On the shop the picked colour is kept by the shell (its header keeps the store's colours).
+  const chosen = await page.evaluate(() => getComputedStyle(document.querySelector(".cinematic-shell")!).getPropertyValue("--selection-accent").trim());
   await page.goto("/");
   await page.waitForTimeout(1500);
   await page.mouse.move(700, 450);

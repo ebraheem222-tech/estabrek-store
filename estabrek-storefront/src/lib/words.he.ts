@@ -433,6 +433,7 @@ export const HE: Record<string, string> = {
   "Saved.": "נשמר.",
   "Scroll and watch the hijab come together": "לגלול ולראות איך החיג'אב נוצר",
   "Search": "חיפוש",
+  "Search products": "חיפוש מוצרים",
   "Search products…": "חיפוש מוצרים…",
   "Search the products": "חיפוש במוצרים",
   "Search the store": "חיפוש בחנות",

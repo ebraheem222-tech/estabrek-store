@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { selectStorefrontNav } from "@/lib/storefrontNav";
 import "../globals.css";
 import "../cinematic.css";
+// The inner pages' final look (the home keeps its own): app/rose-inner.css.
+import "../rose-inner.css";
 import "../store-themes.css";
 import "@/pageTree/commerce.css";
 import Providers from "../providers";

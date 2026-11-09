@@ -1,0 +1,216 @@
+/*
+ * The store's inner pages (shop, categories, product, bag…): their final look on top of cinematic.css.
+ * Everything here is scoped to .cinematic-interior-shell, so the home page stays exactly as it is.
+ *
+ * 1. The store keeps its own colours. A colour the shopper picks (RoseThemeProvider) used to repaint the
+ *    whole site (the bar, the header, the page and the footer in a brown or a blue). It now tints only
+ *    the product area of a product page; everything else is read again from the shell's own colours.
+ * 2. The shop: one clean filter panel, a calm count-and-sort bar, and cards with the picture first.
+ * 3. The product page: a clear title, price, choices and a strong add-to-bag.
+ */
+
+/* ---------------------------------------------------------------- 1. the store's own colours */
+
+/*
+ * Where the picked colour is taken away: the bar, the header, the footer and the menu, and every part of
+ * the page except a product page's product area (.rose-pdp-grid: its pictures, choices and add-to-bag),
+ * which keeps the picked colour and the colours tried while hovering add-to-bag. !important, because the
+ * hover preview writes its colours right on the header and the bar (lib/themePreview.ts).
+ */
+.cinematic-interior-shell[data-storefront-color] :is(.atelier-announcement, .atelier-header, .atelier-footer, .atelier-mobile-menu),
+.cinematic-interior-shell[data-storefront-color] main > :not(.rose-page-frame),
+.cinematic-interior-shell[data-storefront-color] .rose-page-frame > :not(.rose-pdp),
+.cinematic-interior-shell[data-storefront-color] .rose-pdp > :not(.rose-pdp-grid) {
+  --selection-page: initial !important; --selection-surface: initial !important; --selection-soft: initial !important; --selection-line: initial !important;
+  --selection-control-line: initial !important; --selection-ink: initial !important; --selection-muted: initial !important; --selection-accent: initial !important;
+  --selection-dark: initial !important; --selection-decorative: initial !important; --selection-seed: initial !important; --selection-dye: initial !important;
+  --navbar-bg: initial !important; --navbar-ink: initial !important;
+}
+/* What the shell starts from, read again there: the same declarations as .cinematic-shell in cinematic.css. */
+.cinematic-interior-shell[data-storefront-color] :is(.atelier-announcement, .atelier-header, .atelier-footer, .atelier-mobile-menu),
+.cinematic-interior-shell[data-storefront-color] main > :not(.rose-page-frame),
+.cinematic-interior-shell[data-storefront-color] .rose-page-frame > :not(.rose-pdp),
+.cinematic-interior-shell[data-storefront-color] .rose-pdp > :not(.rose-pdp-grid) {
+  --atelier-bg: var(--selection-surface, #fff8f4) !important;
+  --atelier-ink: var(--selection-ink, #4d2039) !important;
+  --atelier-muted: var(--selection-muted, #703c58) !important;
+  --atelier-line: var(--selection-line, #efdde5) !important;
+  --rose: var(--selection-accent, #a43b64) !important;
+  --rose-dark: var(--selection-accent, #7d2448) !important;
+  --rose-soft: var(--selection-soft, #f7dbe6) !important;
+  --rose-border: var(--selection-line, #eac9d7) !important;
+  --color-bg: var(--selection-surface, #fff9fb) !important;
+  --color-bg-alt: var(--selection-soft, #f9eaf0) !important;
+  --color-surface: #fff !important;
+  --color-surface-hover: var(--selection-soft, #f9eaf0) !important;
+  --color-text: var(--selection-ink, #462c3b) !important;
+  --color-text-muted: var(--selection-muted, #8b6d7b) !important;
+  --color-border: var(--selection-line, #efdde5) !important;
+  --color-accent: var(--selection-accent, #a43b64) !important;
+  --color-accent-hover: var(--selection-accent, #7d2448) !important;
+  --color-accent-soft: var(--selection-soft, #f7dbe6) !important;
+  --bg: var(--selection-surface, #fff9fb) !important;
+  --surface: #fff !important;
+  --surface-2: var(--selection-soft, #f9eaf0) !important;
+  --text: var(--selection-ink, #462c3b) !important;
+  --muted: var(--selection-muted, #8b6d7b) !important;
+  --border: var(--selection-line, #efdde5) !important;
+  --accent: var(--selection-accent, #a43b64) !important;
+  --accent-1: var(--selection-decorative, #e8b4ce) !important;
+  --accent-2: var(--selection-muted, #bd86b7) !important;
+  --accent-3: var(--selection-accent, #944065) !important;
+  --accent-soft: var(--selection-soft, #f7dbe6) !important;
+  --accent-hover: var(--selection-accent, #7d2448) !important;
+  --accent-contrast: #fff !important;
+  --glass-bg: color-mix(in srgb, var(--selection-surface, #fff9fb) 94%, transparent) !important;
+}
+/* The words keep the store's ink where nothing sets their own colour (no weight: a part's own colour wins). */
+:where(.cinematic-interior-shell[data-storefront-color]) :where(main > :not(.rose-page-frame), .rose-page-frame > :not(.rose-pdp), .rose-pdp > :not(.rose-pdp-grid)) { color: var(--atelier-ink); }
+/* The page and the header as before any pick (cinematic.css [data-rose-theme] .atelier-header). */
+.cinematic-shell.cinematic-interior-shell[data-storefront-color] { background: #fff8f4; color: #4d2039; }
+.cinematic-shell.cinematic-interior-shell[data-navbar-color] .atelier-header {
+  background: color-mix(in srgb, var(--atelier-bg) 88%, transparent) !important;
+  color: var(--atelier-ink) !important;
+  border-color: var(--atelier-line) !important;
+}
+.cinematic-shell.cinematic-interior-shell[data-storefront-color][data-navbar-color] .atelier-header :is(.brand-arabic, .brand-english, .language-button, .atelier-icon-button, .atelier-desktop-nav > .rose-nav-item > a) { color: var(--atelier-ink) !important; }
+.cinematic-shell.cinematic-interior-shell[data-navbar-color] .atelier-header .atelier-brand { color: #7d2448 !important; }
+
+/* ---------------------------------------------------------------- 2. the shop */
+
+.cinematic-interior-shell .rose-shop-browse { grid-template-columns: 272px minmax(0, 1fr); gap: 36px; }
+
+/* One filter panel: no box inside a box, the store's colours, calm labels. */
+.cinematic-interior-shell .rose-shop-browse .sidebar-filters-card {
+  background: #fff !important;
+  border: 1px solid #f0dde6 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 18px 40px -32px rgba(77, 32, 57, .45) !important;
+  padding: 0 !important;
+}
+.cinematic-interior-shell .rose-shop .filters-sidebar .filters-container { padding: 22px 20px !important; }
+.cinematic-interior-shell .rose-shop .filters-header { padding: 0 0 16px !important; margin-bottom: 18px !important; }
+.cinematic-interior-shell .rose-shop .filters-header .bg-gradient-to-br { width: 34px !important; height: 34px !important; border-radius: 10px !important; }
+.cinematic-interior-shell .rose-shop .filters-header h3 { font-family: var(--atelier-serif); font-size: 19px; font-weight: 600; color: #4d2039; }
+.cinematic-interior-shell .rose-shop .filter-label {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  font-size: 11px !important; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8b5c74 !important;
+}
+.cinematic-interior-shell .rose-shop .filter-label svg { width: 14px; height: 14px; opacity: .75; }
+.cinematic-interior-shell .rose-shop :is(.filter-input, .filter-select, .price-range-input) {
+  min-height: 44px !important; border-radius: 12px !important; background: #fffafc !important;
+  border: 1px solid #ecd6e1 !important; font-size: 13px !important;
+}
+.cinematic-interior-shell .rose-shop :is(.filter-input, .filter-select, .price-range-input):focus { border-color: #a43b64 !important; box-shadow: 0 0 0 3px rgba(164, 59, 100, .14) !important; outline: 0; }
+/* The sort lives in the bar over the cards; the panel doesn't repeat it. */
+.cinematic-interior-shell .rose-shop-browse > aside [data-filter="sort"] { display: none !important; }
+/* The category list: plain rows (its own title, not a second label). */
+.cinematic-interior-shell .rose-shop-browse > aside [data-filter="category"] > .filter-label { display: none; }
+.cinematic-interior-shell .rose-shop-browse > aside [data-filter="category"] > div { border: 0 !important; background: none !important; padding: 0 !important; }
+.cinematic-interior-shell .rose-shop-browse > aside [data-filter="category"] [data-cms-part="shop-categories-title"] {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8b5c74;
+}
+.cinematic-interior-shell .rose-shop .category-node {
+  display: flex; align-items: center; gap: 6px; border-radius: 12px !important; padding: 2px 4px !important; transition: background-color .2s ease;
+  border: 0 !important; background: transparent !important; box-shadow: none !important; margin: 0 !important; min-height: 0 !important;
+}
+.cinematic-interior-shell .rose-shop .category-node:hover { background: #fbeef4 !important; }
+.cinematic-interior-shell .rose-shop .category-node > button[data-cms-part="shop-category"] { padding: 9px 8px; font-size: 14px; font-weight: 500; color: #4d2039; }
+.cinematic-interior-shell .rose-shop .category-node.category-node-active { background: #f7dce8 !important; }
+.cinematic-interior-shell .rose-shop .category-node.category-node-active > button[data-cms-part="shop-category"] { color: #7d2448; font-weight: 700; }
+.cinematic-interior-shell .rose-shop .category-node > button[aria-label] { border: 0 !important; background: transparent !important; color: #a77f92 !important; }
+/* In stock: the switch alone (not a tick box beside it). */
+.cinematic-interior-shell .rose-shop [data-filter="stock"] .filter-toggle > div > div:first-child { display: none; }
+.cinematic-interior-shell .rose-shop [data-filter="stock"] .filter-toggle { border-radius: 14px !important; padding: 12px 14px !important; background: #fffafc !important; border: 1px solid #ecd6e1 !important; }
+.cinematic-interior-shell .rose-shop .filter-accordion { border-radius: 14px !important; }
+
+/* The bar over the cards: the count, and the sort as one rounded control. */
+.cinematic-interior-shell .rose-shop-toolbar { padding: 0 0 16px !important; margin-bottom: 4px !important; }
+.cinematic-interior-shell .rose-shop-toolbar .text-sm { font-size: 14px; color: #8b5c74; }
+.cinematic-interior-shell .rose-shop-toolbar .text-sm > span { font-family: var(--atelier-serif); font-size: 22px; color: #4d2039; margin-inline-end: 4px; }
+.cinematic-interior-shell .rose-shop-toolbar select { height: 42px !important; border-radius: 999px !important; padding-inline: 16px 34px !important; background-color: #fff !important; border: 1px solid #ecd6e1 !important; color: #4d2039 !important; font-size: 13px !important; }
+.cinematic-interior-shell .rose-attr-filters { margin-bottom: 6px; }
+.cinematic-interior-shell .rose-attr-options button { border-radius: 999px; }
+.cinematic-interior-shell .rose-attr-options button[aria-pressed="true"] { background: #7d2448; color: #fff; border-color: #7d2448; }
+
+/* The grid: three cards a row on a computer, two on a phone, room to breathe. */
+.cinematic-interior-shell .rose-shop-grid > .grid { gap: 40px 22px !important; }
+
+/* ---------------------------------------------------------------- the cards */
+
+.cinematic-interior-shell .rose-product-tile {
+  container-type: inline-size;
+  border-radius: 24px !important;
+  background: #fff !important;
+  box-shadow: 0 1px 0 rgba(239, 221, 229, .9), 0 18px 40px -30px rgba(77, 32, 57, .5) !important;
+}
+.cinematic-interior-shell .rose-product-tile .rose-product-image { aspect-ratio: 4 / 5; }
+.cinematic-interior-shell .rose-product-tile .rose-product-image img { transition: transform .9s cubic-bezier(.2, .7, .3, 1), opacity .45s ease; }
+@media (hover: hover) {
+  .cinematic-interior-shell .rose-product-tile:hover { transform: translateY(-6px); box-shadow: 0 30px 60px -34px rgba(125, 36, 72, .55) !important; }
+  .cinematic-interior-shell .rose-product-tile:hover .rose-product-image img { transform: scale(1.06); }
+}
+.cinematic-interior-shell .rose-product-tile .rose-product-meta { padding: 14px 16px 18px !important; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: start; }
+.cinematic-interior-shell .rose-product-tile .rose-product-category { grid-column: 1 / -1; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #a07c8e; margin-bottom: 4px; }
+.cinematic-interior-shell .rose-product-tile .rose-product-meta > a { min-width: 0; color: inherit; text-decoration: none; }
+.cinematic-interior-shell .rose-product-tile .rose-product-meta h3 { font-size: 15px; font-weight: 500; line-height: 1.6; min-height: 0; color: #4d2039; -webkit-line-clamp: 2; }
+.cinematic-interior-shell .rose-product-tile .rose-product-price { margin: 2px 0 0; font-size: 15px; font-weight: 700; color: #7d2448; white-space: nowrap; }
+/* Small colour dots in a row (the big circles made every card tall). */
+.cinematic-interior-shell .rose-product-tile .rose-product-swatches { grid-column: 1 / -1; gap: 4px !important; min-height: 0 !important; margin-top: 10px; flex-wrap: wrap; }
+.cinematic-interior-shell .rose-product-tile .rose-product-swatches button { width: 24px !important; height: 24px !important; min-width: 24px !important; min-height: 24px !important; border-width: 0 !important; box-shadow: none !important; background: transparent; }
+.cinematic-interior-shell .rose-product-tile .rose-product-swatches button::after { width: 16px !important; height: 16px !important; border-width: 2px !important; }
+/* The actions over the bottom of the picture: in sight on hover (always on a touch screen). */
+.cinematic-interior-shell .rose-product-tile .rose-product-actions {
+  position: absolute; inset-inline: 12px; top: calc(125cqw - 58px); z-index: 4; margin: 0;
+  display: flex; gap: 8px; align-items: center;
+  opacity: 0; transform: translateY(8px); transition: opacity .3s ease, transform .3s ease;
+}
+.cinematic-interior-shell .rose-product-tile:is(:hover, :focus-within) .rose-product-actions { opacity: 1; transform: none; }
+@media (hover: none) { .cinematic-interior-shell .rose-product-tile .rose-product-actions { opacity: 1; transform: none; } }
+.cinematic-interior-shell .rose-product-tile .rose-product-actions .rose-product-add { flex: 1; }
+.cinematic-interior-shell .rose-product-tile .rose-product-actions .rose-product-add > button {
+  min-height: 44px !important; margin: 0 !important; border: 0 !important;
+  background: rgba(125, 36, 72, .92) !important; color: #fff !important;
+  backdrop-filter: blur(8px); box-shadow: 0 10px 24px -12px rgba(77, 32, 57, .7) !important; font-size: 12px !important;
+}
+.cinematic-interior-shell .rose-product-tile .rose-product-actions .rose-product-add > button:is(:hover, :focus-visible) { background: #5e1a36 !important; }
+.cinematic-interior-shell .rose-product-tile .rose-product-preview {
+  flex: none; min-height: 44px; padding: 0 16px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: rgba(255, 255, 255, .92); color: #7d2448; backdrop-filter: blur(8px);
+}
+.cinematic-interior-shell .rose-product-discount,
+.cinematic-interior-shell .rose-product-tile .rose-badge { top: 12px; inset-inline-start: 12px; inset-inline-end: auto; right: auto; }
+@media (max-width: 760px) {
+  .cinematic-interior-shell .rose-shop-grid > .grid { gap: 26px 12px !important; }
+  .cinematic-interior-shell .rose-product-tile { border-radius: 18px !important; }
+  .cinematic-interior-shell .rose-product-tile .rose-product-meta { padding: 10px 10px 14px !important; grid-template-columns: 1fr; }
+  .cinematic-interior-shell .rose-product-tile .rose-product-meta h3 { font-size: 13px; }
+  .cinematic-interior-shell .rose-product-tile .rose-product-price { font-size: 13px; }
+  .cinematic-interior-shell .rose-product-tile .rose-product-actions { inset-inline: 8px; top: calc(125cqw - 48px); }
+  .cinematic-interior-shell .rose-product-tile .rose-product-actions .rose-product-add > button { min-height: 38px !important; font-size: 11px !important; padding: 6px 10px !important; }
+  .cinematic-interior-shell .rose-product-tile .rose-product-preview { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-interior-shell .rose-product-tile, .cinematic-interior-shell .rose-product-tile .rose-product-actions, .cinematic-interior-shell .rose-product-tile .rose-product-image img { transition: none !important; transform: none !important; }
+}
+
+/* ---------------------------------------------------------------- 3. the product page */
+
+.cinematic-interior-shell .rose-pdp-info h1 { font-size: clamp(30px, 3.2vw, 46px); line-height: 1.25; margin: 10px 0 12px; }
+.cinematic-interior-shell .rose-pdp-price strong { font-size: 28px; }
+.cinematic-interior-shell .rose-pdp-frame { border-radius: 28px; }
+.cinematic-interior-shell .rose-pdp-thumbs button { border-radius: 14px; }
+.cinematic-interior-shell .rose-pdp-option-head { font-size: 13px; }
+.cinematic-interior-shell .rose-pdp-sizes button { min-width: 52px; min-height: 46px; border-radius: 14px; font-weight: 600; }
+.cinematic-interior-shell .rose-pdp-buy { margin-top: 28px; }
+.cinematic-interior-shell .rose-pdp-add { min-height: 58px !important; border-radius: 999px !important; font-size: 15px !important; letter-spacing: .01em; box-shadow: 0 18px 34px -20px color-mix(in srgb, var(--selection-accent, #7d2448) 80%, transparent) !important; }
+.cinematic-interior-shell .rose-pdp-qty { min-height: 58px; }
+.cinematic-interior-shell .rose-pdp-trust { margin-top: 26px; border-radius: 18px; border: 1px solid var(--selection-line, #efdde5); background: color-mix(in srgb, #fff 70%, transparent); padding: 16px 12px; }
+.cinematic-interior-shell .rose-pdp-details details { padding: 20px 2px; }
+.cinematic-interior-shell .rose-pdp-related { margin-top: 70px; }
+.cinematic-interior-shell .rose-pdp-related-grid { gap: 24px 18px !important; }
+@media (max-width: 760px) {
+  .cinematic-interior-shell .rose-pdp-info h1 { font-size: 28px; }
+  .cinematic-interior-shell .rose-pdp-add { min-height: 54px !important; }
+  .cinematic-interior-shell .rose-pdp-trust { grid-template-columns: repeat(3, 1fr); padding: 12px 6px; }
+}

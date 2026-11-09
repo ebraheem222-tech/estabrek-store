@@ -505,7 +505,7 @@ export function ProductFiltersBar({
       )}
 
       {/* Search Input */}
-      {!hideSearch ? <div className="filter-section">
+      {!hideSearch ? <div className="filter-section" data-filter="search">
         <label className="filter-label">
           <SearchIcon />
           {tr(lang, "بحث", "Search")}
@@ -525,7 +525,7 @@ export function ProductFiltersBar({
 
       {/* Category Tree */}
       {categoryTree ? (
-        <div className="filter-section">
+        <div className="filter-section" data-filter="category">
           <label className="filter-label">
             <CategoryIcon />
             {tr(lang, "التصنيف", "Category")}
@@ -543,7 +543,7 @@ export function ProductFiltersBar({
       {/* Category & Sort Row */}
       <div className="grid gap-4 sm:grid-cols-2">
         {!hideCategory && !categoryTree ? (
-          <div className="filter-section">
+          <div className="filter-section" data-filter="category">
             <label className="filter-label">
               <CategoryIcon />
               {tr(lang, "التصنيف", "Category")}
@@ -563,7 +563,7 @@ export function ProductFiltersBar({
           </div>
         ) : null}
 
-        <div className="filter-section">
+        <div className="filter-section" data-filter="sort">
           <label className="filter-label">
             <SortIcon />
             {own.sortLabel || tr(lang, "الترتيب", "Sort by")}
@@ -583,7 +583,7 @@ export function ProductFiltersBar({
       </div>
 
       {/* Price Range */}
-      <div className="filter-section">
+      <div className="filter-section" data-filter="price">
         <label className="filter-label">
           <PriceIcon />
           {own.priceLabel || tr(lang, "نطاق السعر", "Price range")}
@@ -618,7 +618,7 @@ export function ProductFiltersBar({
       </div>
 
       {/* In Stock Toggle */}
-      <div className="filter-section">
+      <div className="filter-section" data-filter="stock">
         <button
           type="button"
           onClick={() => setSimple("inStock", inStockParam ? undefined : "1")}

@@ -14,6 +14,7 @@ import { say } from "../../studio/say";
 import { MediaLibraryModal } from "../../components/media/MediaLibraryModal";
 import { collectionPresets, collectionTemplate, storeTemplate, createCollection, createItem, deleteCollection, deleteItem, listCollections, listItems, updateCollection, updateItem, type Collection, type CollectionField, type CollectionItem, type FieldType, type ItemStatus, type Local } from "../../api/collections.api";
 import { itemDataOut, LANGS, newField, slugOf, titleOf, WORD_TYPES, type Lang } from "./collectionForms";
+import { listPages, updatePage } from "../../api/pages.api";
 
 const card = "rounded-2xl border border-white/10 bg-white/[0.03] p-4";
 const btn = "rounded-lg bg-white/[0.07] px-3 py-1.5 text-xs hover:bg-white/[0.12] disabled:opacity-40";
@@ -100,22 +101,57 @@ export default function CollectionsPage() {
 }
 
 /** The store's own product and category page designs: one each, filled for every product or category. */
+/** Where the store's product and category page designs live (lib/collections.ts STORE_TEMPLATES). */
+export const STORE_PAGE_SLUGS = { product: "/__product-page", category: "/__category-page" } as const;
+
 function StorePages() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  // Each design's state: none yet, a draft (the shop keeps its own page), or live (the shop draws it).
+  const pagesQ = useQuery({ queryKey: ["pages", "store-designs"], queryFn: listPages });
+  const pages = (Array.isArray(pagesQ.data) ? pagesQ.data : []) as Array<{ id: string; slug: string; status: string }>;
+  const designOf = (kind: keyof typeof STORE_PAGE_SLUGS) => pages.find((p) => p.slug === STORE_PAGE_SLUGS[kind]);
   const open = async (kind: "product" | "category") => {
     setBusy(true);
     try { const { id } = await storeTemplate(kind); navigate(`/studio/${encodeURIComponent(id)}`); }
     catch (e) { toast.error(say("ما انفتح التصميم|The design didn't open|העיצוב לא נפתח"), { description: getApiErrorMessage(e) }); }
     finally { setBusy(false); }
   };
+  const stop = useMutation({
+    mutationFn: (id: string) => updatePage(id, { status: "DRAFT" }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["pages"] });
+      toast.success(say("رجعت صفحة المتجر الأصلية. التصميم محفوظ كمسودة.|The store's own page is back. The design is kept as a draft.|הדף המקורי של החנות חזר. העיצוב נשמר כטיוטה."));
+    },
+    onError: (e) => toast.error(say("ما زبط|That didn't work|זה לא הצליח"), { description: getApiErrorMessage(e) }),
+  });
+  const row = (kind: "product" | "category", icon: string, label: string, primaryButton: boolean) => {
+    const design = designOf(kind);
+    const live = design?.status === "PUBLISHED";
+    return (
+      <div className="flex flex-wrap items-center gap-2" data-testid={`store-design-${kind}`} data-state={!design ? "none" : live ? "live" : "draft"}>
+        <button type="button" className={primaryButton ? primary : btn} disabled={busy} onClick={() => void open(kind)} data-testid={`design-${kind}-page`}>{icon} {say(label)}</button>
+        {design ? (
+          <span className={`rounded-full px-2 py-0.5 text-[11px] ${live ? "bg-emerald-500/15 text-emerald-200" : "bg-white/10 text-white/60"}`}>
+            {live ? say("منشور: المتجر بيعرض هالتصميم|Live: the shop shows this design|פורסם: החנות מציגה את העיצוב הזה") : say("مسودة: المتجر على صفحته الأصلية|Draft: the shop shows its own page|טיוטה: החנות בדף המקורי שלה")}
+          </span>
+        ) : null}
+        {live ? (
+          <button type="button" className={btn} disabled={stop.isPending} onClick={() => stop.mutate(design!.id)} data-testid={`stop-${kind}-design`}>
+            ↩ {say("رجّع صفحة المتجر الأصلية|Back to the store's own page|חזרה לדף המקורי של החנות")}
+          </button>
+        ) : null}
+      </div>
+    );
+  };
   return (
     <section className={card} data-testid="store-pages">
       <div className="mb-1 text-sm font-medium">{say("صفحات المتجر|The store's pages|דפי החנות")}</div>
       <p className="mb-3 text-sm text-white/55">{say("صمّم صفحة المنتج وصفحة القسم مرة وحدة: كل منتج وكل قسم بيظهر فيها ببياناته. المتجر بيضل على صفحاته الحالية لحد ما تنشر التصميم من المحرر.|Design the product page and the category page once: every product and category shows in it with its own data. The shop keeps its current pages until you publish the design from the editor.|עצב את דף המוצר ודף הקטגוריה פעם אחת: כל מוצר וכל קטגוריה מוצגים בו עם הנתונים שלהם. החנות נשארת עם הדפים הנוכחיים עד שתפרסם את העיצוב מהעורך.")}</p>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={primary} disabled={busy} onClick={() => void open("product")} data-testid="design-product-page">🛍 {say("صمّم صفحة المنتج|Design the product page|עצב את דף המוצר")}</button>
-        <button type="button" className={btn} disabled={busy} onClick={() => void open("category")} data-testid="design-category-page">▦ {say("صمّم صفحة القسم|Design the category page|עצב את דף הקטגוריה")}</button>
+      <div className="space-y-2">
+        {row("product", "🛍", "صمّم صفحة المنتج|Design the product page|עצב את דף המוצר", true)}
+        {row("category", "▦", "صمّم صفحة القسم|Design the category page|עצב את דף הקטגוריה", false)}
       </div>
     </section>
   );
