@@ -16,6 +16,7 @@ import { useStoreLook } from "@/store/storeLook";
 import { ThemeIntro } from "@/storeThemes/inner/ThemeIntro";
 import { modelFor } from "@/storeThemes/inner/modelFor";
 import { RoseShopRing, type RingPiece } from "./RoseShopRing";
+import { RoseWave } from "./RoseWave";
 
 type Crumb = { label: string; href: string };
 
@@ -127,6 +128,7 @@ export function RoseCategoryIntro({
         />
         <span dir="ltr">THE {markOf(id, "en").toUpperCase()} EDIT / {slug.replace(/^-+/, "").toUpperCase()}</span>
       </div> : null}
+      {showcase.length >= 3 ? <RoseWave className="rose-stage-wave" /> : null}
     </section>
   );
 }

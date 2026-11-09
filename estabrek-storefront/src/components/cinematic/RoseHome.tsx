@@ -15,6 +15,8 @@ import {
 } from "./RoseSections";
 import { RoseSeasons } from "./RoseSeasons";
 import { RoseCollectionStory } from "./RoseCollectionStory";
+import { RingPiecesProvider, type RingPiece } from "./RoseShopRing";
+import { cldUrl } from "@/lib/cloudinary";
 import type { StoryChapter } from "@/lib/collectionStories";
 import type { SeasonEdit } from "@/lib/seasonalEdits";
 import type { ProductBadge } from "@/lib/productBadges";
@@ -71,7 +73,13 @@ export function RoseHome({
             currency: currencyCode,
           }).format(p.price),
   }));
+  // The newest pieces with a photo, for the 3D ring around the silk film.
+  const ring: RingPiece[] = entries
+    .filter((p): p is typeof p & { imageUrl: string } => Boolean(p.imageUrl))
+    .slice(0, 10)
+    .map((p) => ({ slug: p.slug, title: p.title, image: cldUrl(p.imageUrl, { w: 260, h: 325, c: "fill", g: "auto" }) }));
   return (
+    <RingPiecesProvider pieces={ring}>
     <RoseHomeFrame>
       <div data-rose-palette="blush"><RoseHero data={{}} categories={categories} /></div>
       {seasons.length > 0 && <RoseSeasons seasons={seasons} />}
@@ -99,5 +107,6 @@ export function RoseHome({
       <RoseInstagram images={entries.map((p) => p.imageUrl).filter((u): u is string => Boolean(u))} />
       <RoseCta data={{}} />
     </RoseHomeFrame>
+    </RingPiecesProvider>
   );
 }
