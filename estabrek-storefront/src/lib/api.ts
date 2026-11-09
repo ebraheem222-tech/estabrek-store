@@ -122,6 +122,18 @@ const pageMissing = unstable_cache(
   { revalidate: 60, tags: ["cms", "cms:pages"] },
 );
 
+/** The store's product or category page design, as published (null: none, the shop's own page then). */
+export const getStoreTemplate = cache(async (kind: "product" | "category", lang?: Lang): Promise<StorefrontPage | null> => {
+  try {
+    const res = await fetch(`${baseUrl()}/storefront/store-template?kind=${kind}${lang ? `&locale=${lang}` : ""}`, { next: { revalidate: 60, tags: ["cms", "cms:pages"] } });
+    if (!res.ok) return null;
+    return (await res.json()) as StorefrontPage;
+  } catch (error) {
+    warnApiFallback("getStoreTemplate", error);
+    return null;
+  }
+});
+
 export const getPageBySlug = cache(async (slug: string, lang?: Lang): Promise<StorefrontPage | null> => {
   try {
     if (await pageMissing(slug)) return null;

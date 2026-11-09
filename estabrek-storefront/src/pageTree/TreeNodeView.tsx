@@ -4,6 +4,8 @@
  * file only builds the markup. Links to the shop's own pages get the language
  * prefix; links and file addresses are checked again before they're used.
  */
+import ProductDetail from "@/components/ProductDetail";
+import type { CatalogProduct } from "@/lib/catalog";
 import { cloneElement, isValidElement, type CSSProperties, type ReactNode } from "react";
 import type { ProductMini } from "@/cms/types";
 import type { CatalogCategory } from "@/lib/catalog";
@@ -63,6 +65,8 @@ export type TreeCtx = {
   spinProducts?: Record<string, { title: string; spins?: unknown } | null>;
   /** Drawn inside a scroll scene (what waits for its moment stays unseen until the scene starts). */
   inScene?: boolean;
+  /** The product a product page's design is drawn for (pageTree/storeBind.ts). */
+  product?: CatalogProduct;
 };
 
 const HOVER_CLASS: Record<string, string> = { glow: "pt-hv-glow", zoom: "pt-hv-zoom", spotlight: "pt-hv-spot", ripple: "pt-hv-ripple" };
@@ -124,6 +128,9 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
   switch (node.type) {
     case "shop":
       return <div className={cls(node)} {...mark}>{fx}<CardDesignScope value={p.cardDesign}><CommerceShop data={ctx.commerce?.shop} preview={ctx.commerce?.preview === true} options={p} lang={ctx.lang} /></CardDesignScope></div>;
+    case "productDetail":
+      // The product's pictures, colours, sizes and add-to-cart; the editor's preview of the design without a product shows where it goes.
+      return <div className={cls(node)} {...mark}>{ctx.product ? <ProductDetail product={ctx.product} /> : <div className="pt-product-detail-empty">{({ ar: "صور المنتج وألوانه ومقاساته وزر الإضافة للسلة", en: "The product's pictures, colours, sizes and add-to-cart", he: "תמונות המוצר, הצבעים, המידות וכפתור ההוספה לסל" } as Record<string, string>)[ctx.lang] ?? ""}</div>}</div>;
     case "cartItems":
     case "cartSummary":
     case "cartCheckout":

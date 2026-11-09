@@ -21,7 +21,7 @@ export type Page = {
   slug: string; // "/", "/about"
   status: PageStatus;
   /** "block": a saved block of the new editor (edited like a page, never a page of the shop). */
-  kind?: "page" | "block" | "component" | "template";
+  kind?: "page" | "block" | "component" | "template" | "collectionTemplate" | "productTemplate" | "categoryTemplate";
   publishAt?: string | null;
   unpublishAt?: string | null;
   canonicalUrl?: string | null;

@@ -4,6 +4,7 @@
 import React from "react";
 import type { AdminPermission } from "../lib/authz";
 import { tr } from "@/lib/words";
+import { say } from "../studio/say";
 
 // Icons as inline SVGs for modern look
 export const Icons = {
@@ -264,6 +265,7 @@ const NAV_SITE: NavItem[] = [
   { to: "/admin/chatbot", label: tr("مساعد المتجر (AI)", "Store assistant (AI)"), icon: Icons.chatbot, requirePermissions: ["chatbot:read"] },
   { to: "/admin/nav", label: tr("القوائم", "Menus"), icon: Icons.nav, requirePermissions: ["nav:write"] },
   { to: "/admin/pages", label: tr("الصفحات", "Pages"), icon: Icons.pages, requirePermissions: ["pages:read"] },
+  { to: "/admin/collections", label: say("المجموعات (مدونة، فروع…)|Collections (blog, branches…)|אוספים (בלוג, סניפים…)"), icon: Icons.pages, requirePermissions: ["pages:read"] },
   { to: "/admin/themes", label: tr("ثيمات المتجر", "Store themes"), icon: Icons.sun, requirePermissions: ["settings:read"] },
   { to: "/admin/ugc/reviews", label: tr("التقييمات", "Reviews"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },
   { to: "/admin/ugc/comments", label: tr("التعليقات", "Comments"), icon: Icons.reviews, requirePermissions: ["ugc:read"] },

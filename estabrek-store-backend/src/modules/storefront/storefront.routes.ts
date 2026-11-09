@@ -29,6 +29,8 @@ import { storedSiteStyles } from "../../lib/siteStyles.js";
 import { storedDesignTokens } from "../../lib/designTokens.js";
 import { withBlocks } from "../../lib/pageBlocks.js";
 import { withComponents } from "../../lib/pageComponents.js";
+import { collectionItemPage, STORE_TEMPLATES, templateContext, TEMPLATE_KIND as COLLECTION_TEMPLATE, withCollections, type StoreTemplateKind } from "../../lib/collections.js";
+import { bindTree } from "../../lib/collectionTree.js";
 import { previewPageId } from "../../lib/previewToken.js";
 import { storedDraft } from "../../lib/pageDraft.js";
 import { publishedDesignRegions } from "../../lib/storeDesign.js";
@@ -263,6 +265,16 @@ r.get("/pages", cacheResponse("pages"), asyncHandler(async (_req, res) => {
   res.json({ pages });
 }));
 
+/** The editor's preview of a tree: blocks, components and lists drawn (drafts in lists too); a collection's template shows one of its items. */
+async function previewTree(page: { id: string; kind?: string | null }, tree: PageTree) {
+  let out = await withComponents(await withBlocks(tree));
+  if (page.kind === COLLECTION_TEMPLATE) {
+    const ctx = await templateContext(page.id);
+    if (ctx) out = bindTree(out, ctx.item, ctx.collection);
+  }
+  return withCollections(out, { preview: true });
+}
+
 /** A page as the shop gets it: its language's SEO and sections over the main ones, and its tree. */
 function pageForShop(page: any, opts: { tree?: unknown } = {}) {
   // i18n (DB): apply per-locale overrides from PageTranslation / PageSectionTranslation
@@ -293,6 +305,8 @@ return {
     slug: outPage.slug,
     publicationRevision: typeof (outPage.publicationDelivery as any)?.id === "string" ? (outPage.publicationDelivery as any).id : null,
     status: outPage.status,
+    // "page", or a design the shop fills (productTemplate, categoryTemplate, collectionTemplate…).
+    kind: outPage.kind ?? "page",
     publishAt: outPage.publishAt,
     unpublishAt: outPage.unpublishAt,
     sections: outSections,
@@ -318,10 +332,28 @@ r.get("/page", cacheResponse("pages"), validate({ query: PageBySlugQuery }), asy
 
   const page = await getPageBySlugCached(slug, locale);
 
-  if (!page) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!page) {
+    // A collection item's page (/<collection>/<item>, lib/collections.ts): its template filled with it.
+    const item = await collectionItemPage(slug);
+    if (!item) return res.status(404).json({ error: "NOT_FOUND" });
+    const words = (v: Record<string, string> | undefined) => (v ? v[locale] ?? v.ar ?? v.en ?? v.he ?? null : null);
+    const out = pageForShop({ ...item.template, slug, sections: [], translations: [] }, { tree: await withCollections(await withComponents(await withBlocks(item.tree))) });
+    return res.json({ ...out, name: words(item.seo.title) ?? item.template.name, seoTitle: words(item.seo.title), seoDescription: words(item.seo.description)?.slice(0, 300) ?? null, ogImageUrl: item.seo.image ?? null, collectionItem: { collection: item.collection.slug, item: item.item.slug } });
+  }
 
   const out = pageForShop(page);
-  res.json({ ...out, tree: await withComponents(await withBlocks(out.tree as PageTree | null)) });
+  res.json({ ...out, tree: await withCollections(await withComponents(await withBlocks(out.tree as PageTree | null))) });
+}));
+
+/** GET /storefront/store-template?kind=product|category — the store's product or category page design, as published (404: none, the shop's own page then). */
+r.get("/store-template", cacheResponse("pages"), asyncHandler(async (req, res) => {
+  const spec = STORE_TEMPLATES[String((req.query as any).kind) as StoreTemplateKind];
+  if (!spec) return res.status(400).json({ error: "UNKNOWN_KIND" });
+  const page = await prisma.page.findFirst({ where: { slug: spec.slug, kind: spec.kind, status: "PUBLISHED" } });
+  const tree = storedTree(page?.tree);
+  if (!page || !tree) return res.status(404).json({ error: "NOT_FOUND" });
+  const out = pageForShop({ ...page, sections: [], translations: [] }, { tree: await withCollections(await withComponents(await withBlocks(tree))) });
+  res.json(out);
 }));
 
 /**
@@ -355,9 +387,9 @@ r.get("/page-preview", asyncHandler(async (req, res) => {
     const sections = draft.sections
       .filter((s) => s.isVisible)
       .map((s, order) => ({ id: s.id, type: s.type, data: s.data, isVisible: true, order, translations: s.tr[locale] ? [{ locale, data: s.tr[locale] }] : [] }));
-    return res.json({ ...pageForShop({ ...page, sections }, { tree: await withComponents(await withBlocks(draft.tree)) }), draft: { rev: draft.rev, updatedAt: draft.updatedAt }, siteStyles, designTokens });
+    return res.json({ ...pageForShop({ ...page, sections }, { tree: await previewTree(page, draft.tree) }), draft: { rev: draft.rev, updatedAt: draft.updatedAt }, siteStyles, designTokens });
   }
-  res.json({ ...pageForShop(page, { tree: await withComponents(await withBlocks(storedTree(page.tree) ?? treeFromSections(page.sections))) }), siteStyles, designTokens });
+  res.json({ ...pageForShop(page, { tree: await previewTree(page, storedTree(page.tree) ?? treeFromSections(page.sections)) }), siteStyles, designTokens });
 }));
 
 /**

@@ -1,7 +1,9 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProductBySlug, getPublicSettings, listCategories, listProducts } from "@/lib/api";
+import { getProductBySlug, getPublicSettings, getStoreTemplate, listCategories, listProducts } from "@/lib/api";
+import { renderCmsPageBySlug } from "@/cms/renderCmsPage";
+import { bindStore, productValues } from "@/pageTree/storeBind";
 import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
 import { RoseProduct } from "@/components/cinematic/RoseProduct";
 import { formatMoney, getProductMinPrice } from "@/lib/catalog";
@@ -161,6 +163,20 @@ const productLd: any = {
 
 
   // Note: selection (color/size) + add-to-cart is handled client-side in ProductBuyBox.
+
+  // The store's own product page design (made in the editor, W3): drawn for this product when published.
+  const design = await getStoreTemplate("product", lang);
+  if (design?.tree) {
+    const drawn = await renderCmsPageBySlug(`/p/${params.slug}`, undefined, { page: Promise.resolve({ ...design, slug: `/p/${params.slug}`, tree: bindStore(design.tree as any, productValues(product as any), lang) } as any), lang, product: product as any, allowFallback: false, allowNotFound: false });
+    if (drawn) return (
+      <main id="main-content" tabIndex={-1}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }} />
+        <ProductViewSignal productId={String((product as any).id)} />
+        {drawn}
+      </main>
+    );
+  }
 
   if (process.env.ESTABREK_HOME_MODE !== "cms") {
     const related = (await relatedPromise).filter((p) => p.id !== (product as any).id).slice(0, 4);

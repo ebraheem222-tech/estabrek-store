@@ -77,6 +77,7 @@ const ScanPage = lazy(() => import("../features/scan3d/ScanPage"));
 const PlainSpinPage = lazy(() => import("../features/scan3d/PlainSpinPage"));
 
 const PagesListPage = lazy(() => import("../features/pages/PagesListPage"));
+const CollectionsPage = lazy(() => import("../features/collections/CollectionsPage"));
 const StudioPage = lazy(() => import("../studio/StudioPage"));
 const SetupWizard = lazy(() => import("../features/setup/SetupWizard"));
 const ThemesPage = lazy(() => import("../features/themes/ThemesPage"));
@@ -292,6 +293,8 @@ export default function AppRouter() {
               ["pages:read"]
             )}
           />
+          {/* Content collections (W3): a blog, a lookbook, branches… with their items. */}
+          <Route path="collections" element={withPermissions(<ErrorBoundary title="Collections"><CollectionsPage /></ErrorBoundary>, ["pages:read"])} />
           {/* Pages are edited in the new editor; the old editor's addresses open the page there. */}
           <Route path="pages/:id" element={withPermissions(<OpenInStudio />, ["pages:read"])} />
           <Route path="pages/:id/classic" element={withPermissions(<OpenInStudio />, ["pages:read"])} />

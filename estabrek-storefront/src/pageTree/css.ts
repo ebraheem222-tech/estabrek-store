@@ -865,6 +865,7 @@ export const BASE_CSS = [
   // the scroll through variables TreeScenes writes. clip (not hidden) keeps sticky working inside.
   ".pt-scrollScene{position:relative;width:100%;--pt-ss-blur:0px;--pt-ss-dim:0;--pt-ss-zoom:1;--pt-ss-p:0}",
   ".pt-ss-pin{height:calc(var(--pt-ss-len,4) * 100vh)}",
+  ".pt-product-detail-empty{display:grid;place-items:center;min-height:360px;padding:24px;border:2px dashed var(--border);border-radius:16px;color:var(--muted);text-align:center}",
   ".pt-ss-stage{position:sticky;top:0;height:100vh;width:100%;overflow:clip;isolation:isolate}",
   ".pt-ss-frame{position:absolute;inset:0;z-index:-2;overflow:clip}",
   ".pt-ss-media{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--pt-ss-focus,50% 50%);transform:scale(var(--pt-ss-zoom));filter:blur(var(--pt-ss-blur));will-change:transform,filter}",

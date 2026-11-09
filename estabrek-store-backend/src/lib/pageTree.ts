@@ -20,6 +20,7 @@
  * again before it becomes CSS.
  */
 import { TOKEN_REF } from "./designTokens.js";
+import { BIND_REF } from "./collectionTree.js";
 import { z } from "zod";
 import { checkArt, type Art } from "./svgArt.js";
 import { InteractionPolicy, CardDesign } from "./visualControls.js";
@@ -34,12 +35,12 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component",
+  "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component", "collectionList", "productDetail",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
 /** Nodes that hold other nodes. */
-export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell", "popup", "deck", "scrollScene"]);
+export const CONTAINER_TYPES: ReadonlySet<NodeType> = new Set(["page", "section", "grid", "stack", "columns", "cell", "popup", "deck", "scrollScene", "collectionList"]);
 /** Columns hold this many cells, and columns sit inside a cell at most this deep (columns › cell › columns). */
 export const COLUMNS_LIMITS = { cells: 4, nested: 2 } as const;
 /** A slider holds at most this many slides, and turns by itself every 2–30 seconds (or not at all). */
@@ -844,6 +845,16 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   block: z.object({ blockId: id }),
   // An instance of a main component (lib/componentTree.ts): its variant, and its own changes to the
   // component's inner elements (props by inner element id), each kept only if the element stays valid.
+  // The product's own pictures, colours, sizes and add-to-cart, on the product page's design (lib/collections.ts STORE_TEMPLATES).
+  productDetail: z.object({}),
+  // A list of a collection's items (lib/collectionTree.ts): its one child is the card shown for each item.
+  collectionList: z.object({
+    collectionId: id,
+    limit: z.number().int().min(1).max(48).optional(),
+    sort: z.enum(["newest", "oldest", "order", "title"]).optional(),
+    columns: z.number().int().min(1).max(6).optional(),
+    empty: local(300).optional(),
+  }),
   component: z.object({
     componentId: id,
     variant: id.optional(),
@@ -852,11 +863,13 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
 };
 /** A shared style an element takes by name (lib/siteStyles.ts); its own look still wins. Not for the page or old sections. */
 export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);
+/** An element's props filled from a collection item's fields on its page and in lists (lib/collectionTree.ts). */
+export const NodeBind = z.partialRecord(z.enum(["text", "label", "href", "src", "alt"]), z.string().regex(BIND_REF, "A field id, $url or $slug"));
 NODE_PROPS.page = (NODE_PROPS.page as z.ZodObject).safeExtend({ interactions: InteractionPolicy.optional(), cardDesign: CardDesign.nullable().optional() });
 for (const t of NODE_TYPES) {
   if (t !== "page") NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ partLooks: PartLooks.optional() });
   if (t === "page" || t === "legacy" || t === "roseBlock" || t === "block") continue;
-  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
+  NODE_PROPS[t] = (NODE_PROPS[t] as z.ZodObject).safeExtend({ bind: NodeBind.optional(), styleId: STYLE_REF.optional(), edges: NodeEdges.optional(), interactions: InteractionPolicy.optional(), triggers: NodeTriggers.optional(), layers: NodeLayers.optional(), ...(["page", "shop", "products"].includes(t) ? { cardDesign: CardDesign.nullable().optional() } : {}) });
 }
 
 /* ------------------------------------------------------------------ tree */
