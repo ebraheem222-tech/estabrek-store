@@ -48,7 +48,8 @@ r.post("/store-template/:kind", asyncHandler(async (req, res) => {
   const checked = checkTree(defaultStoreTemplate(kind));
   if (!checked.ok) return res.status(500).json({ error: "TEMPLATE_INVALID", issues: checked.issues });
   try {
-    const page = await prisma.page.create({ data: { name: spec.name, slug: spec.slug, status: "PUBLISHED", kind: spec.kind, format: PAGE_FORMAT.tree, tree: checked.tree as any }, select: { id: true } });
+    // A draft: the shop keeps its own product and category pages until the design is published from the editor.
+    const page = await prisma.page.create({ data: { name: spec.name, slug: spec.slug, status: "DRAFT", kind: spec.kind, format: PAGE_FORMAT.tree, tree: checked.tree as any }, select: { id: true } });
     refresh();
     res.status(201).json({ id: page.id });
   } catch (e) {
