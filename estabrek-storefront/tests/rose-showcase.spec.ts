@@ -23,7 +23,7 @@ test("a tap on a piece fills the logo in the colour picked last while the page l
   expect(p2).toBeGreaterThan(p1);
   expect(p2).toBeLessThan(1);
   // …and it goes once the piece is there.
-  await expect(page).toHaveURL(/\/p\/rose-dress$/);
+  await expect(page).toHaveURL(/\/p\/rose-dress$/, { timeout: 60000 });
   await expect(page.locator(".rose-pdp")).toBeVisible();
   await expect(loader).toHaveCount(0, { timeout: 5000 });
 });
@@ -213,4 +213,34 @@ test.describe("the home's collections as a scroll story", () => {
     await expect(page.locator(".editorial-collection-grid")).toHaveCount(1);
     await expect(page.locator(".rose-collections-scroll")).toHaveCount(0);
   });
+});
+
+test("adding a piece opens the small bag on the page: the piece marked, its total, checkout leads to the bag", async ({ page }) => {
+  await page.goto("/p/rose-dress");
+  await page.getByRole("button", { name: /أضيفي للحقيبة|Add to bag/ }).first().click();
+  const bag = page.locator(".rose-minibag");
+  await expect(bag).toHaveAttribute("data-open", "true");
+  await expect(page).toHaveURL(/\/p\/rose-dress$/);
+  const dialog = page.getByRole("dialog", { name: /حقيبتكِ|Your bag/ });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".rose-minibag-added")).toContainText(/انضافت|Added/);
+  await expect(dialog.locator("li[data-fresh]")).toHaveCount(1);
+  await expect(dialog.locator("li[data-fresh] strong")).toContainText("فستان الورد");
+  await expect(dialog.locator(".rose-minibag-total strong")).not.toHaveText("—");
+  // No second note on the rose store.
+  await expect(page.getByText("تمت الإضافة للسلة")).toHaveCount(0);
+  // One more of it, from the bag.
+  await dialog.getByRole("button", { name: /قطعة كمان|One more/ }).click();
+  await expect(dialog.locator("li[data-fresh] output")).toHaveText("2");
+  // Escape closes it and the page is free again.
+  await page.keyboard.press("Escape");
+  await expect(bag).not.toHaveAttribute("data-open", "true");
+  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
+  // Again, then checkout: the bag page.
+  await page.getByRole("button", { name: /أضيفي للحقيبة|Add to bag/ }).first().click();
+  await expect(bag).toHaveAttribute("data-open", "true");
+  await dialog.getByRole("link", { name: /إتمام الطلب|Checkout/ }).click();
+  // (A first visit builds the page on the dev server: give it time.)
+  await expect(page).toHaveURL(/\/cart$/, { timeout: 60000 });
+  await expect(bag).not.toHaveAttribute("data-open", "true");
 });

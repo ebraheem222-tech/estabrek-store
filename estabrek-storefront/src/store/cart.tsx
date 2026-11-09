@@ -6,6 +6,8 @@ import { signal } from "@/lib/signals";
 import { abConvert } from "@/lib/ab";
 
 export type CartItem = { variantId: string; quantity: number };
+/** Sent on window when a piece is added to the bag ({ variantId, quantity }): the small bag (RoseMiniBag) opens on it. */
+export const BAG_ADDED = "estabrek:bag-added";
 
 type CartCtx = {
   items: CartItem[];
@@ -68,7 +70,10 @@ export function CartProvider({ children, isolated = false }: { children: React.R
       count: items.reduce((a, b) => a + (b.quantity || 0), 0),
       addItem: (variantId, qty = 1) => {
         const addQty = Math.max(1, Number(qty || 1));
-        if (!isolated) { roseReact("cart-add"); signal("bag", { variantId }); abConvert("bag"); }
+        if (!isolated) {
+          roseReact("cart-add"); signal("bag", { variantId }); abConvert("bag");
+          window.setTimeout(() => window.dispatchEvent(new CustomEvent(BAG_ADDED, { detail: { variantId, quantity: addQty } })), 0);
+        }
         setItems((prev) => {
           const i = prev.findIndex((x) => x.variantId === variantId);
           if (i >= 0) {

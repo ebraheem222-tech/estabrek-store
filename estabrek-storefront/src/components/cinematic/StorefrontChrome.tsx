@@ -10,6 +10,7 @@ import { Icon } from "./Icons";
 import { RoseThemeProvider } from "./RoseThemeProvider";
 import { RouteLoader } from "./RouteLoader";
 import { SmoothScroll } from "./SmoothScroll";
+import { RoseMiniBag } from "./RoseMiniBag";
 import { RoseWave } from "./RoseWave";
 import { PerfOverlay } from "./PerfOverlay";
 import { useNames, useStoreIdentity } from "@/store/storeIdentity";
@@ -435,6 +436,7 @@ export function StorefrontChrome({
         {/* Outside the page's shell (it is new on every page): the logo that fills while the next page loads. */}
         {studio ? null : <RouteLoader logoUrl={storeData.logoUrl} />}
         {studio ? null : <SmoothScroll />}
+        {studio ? null : <RoseMiniBag />}
         <RoseThemeProvider key={pathname}
           restoreSelection={!pathname.startsWith("/about") && !studio}
           colorScope={storeData.colorFollow === "product" ? "product" : "everything"}

@@ -232,7 +232,8 @@ export function useToastShortcuts() {
     error: (title: string, message?: string) => addToast({ type: "error", title, message }),
     warning: (title: string, message?: string) => addToast({ type: "warning", title, message }),
     info: (title: string, message?: string) => addToast({ type: "info", title, message }),
-    cartAdded: (productName: string) => addToast({ 
+    // On the rose store the small bag opens and says it (RoseMiniBag): no second note.
+    cartAdded: (productName: string) => document.documentElement.dataset.cinematicStorefront === "true" ? undefined : addToast({ 
       type: "success", 
       title: "تمت الإضافة للسلة", 
       message: productName 

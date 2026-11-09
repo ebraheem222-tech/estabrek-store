@@ -17,11 +17,12 @@
  * 11. The home's collections as a scroll story: one big collection at a time with its 3D model (RoseCollectionsScroll).
  * 12. The product's backdrop in the piece's own colour, as blurred light.
  * 13. Phones: the film's ring keeps off its words.
+ * 14. The small bag: adding a piece opens it at the side (a sheet on a phone) instead of the bag page.
  */
 
 /* ---------------------------------------------------------------- 1. the page loader */
 
-.rose-route-loader { position: fixed; inset: 0; z-index: 2600; pointer-events: none; }
+.rose-route-loader { position: fixed; inset: 0; z-index: 10100; pointer-events: none; }
 .rose-route-line {
   position: fixed; top: 0; inset-inline-start: 0; height: 3px;
   width: calc(var(--route-p) * 100%);
@@ -702,4 +703,78 @@ html.lenis, html.lenis body { height: auto; }
 @media (max-width: 760px) {
   .cinematic-shell .rose-video-orbiting .rose-video-stage > .rose-video-media { margin-bottom: 34px; }
   .cinematic-shell .rose-video-orbit .rose-ring { --ring-r: 150px; --ring-w: 54px; top: 74%; }
+}
+
+/* ---------------------------------------------------------------- 14. the small bag (RoseMiniBag) */
+
+/* Above the floating helpers (Rose, WhatsApp, accessibility: up to 10000). */
+.rose-minibag { position: fixed; inset: 0; z-index: 10050; pointer-events: none; }
+/* On a phone the floating helpers step aside while it is open (its sheet is where they float). On a computer
+   it keeps clear of them instead, and Rose cheers beside it. */
+@media (max-width: 760px) {
+  html[data-cinematic-storefront="true"]:has(.rose-minibag[data-open]) :is(.whatsapp-floating-btn, .a11y-fab, .recent-activity-popup, .chat-widget-root, .rose-companion) { visibility: hidden; }
+}
+.rose-minibag-scrim {
+  position: absolute; inset: 0; border: 0; padding: 0; cursor: pointer;
+  background: color-mix(in srgb, var(--selection-ink, #4d2039) 32%, transparent); backdrop-filter: blur(3px);
+  opacity: 0; transition: opacity .35s ease;
+}
+.rose-minibag-panel {
+  /* As tall as the bag needs; the screen's foot stays free for the floating helpers (Rose, WhatsApp). */
+  position: absolute; top: 12px; max-height: calc(100vh - 160px); inset-inline-end: 12px; width: min(420px, calc(100vw - 24px));
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; outline: 0;
+  border-radius: 28px; background: var(--selection-surface, #fff8f4); color: var(--selection-ink, #4d2039);
+  box-shadow: 0 40px 90px -30px color-mix(in srgb, var(--selection-ink, #4d2039) 60%, transparent);
+  translate: calc(var(--from, 1) * 110%) 0; transition: translate .5s cubic-bezier(.2, .9, .2, 1);
+}
+[dir="rtl"] .rose-minibag-panel, :root[dir="rtl"] .rose-minibag-panel { --from: -1; }
+.rose-minibag[data-open] { pointer-events: auto; }
+.rose-minibag[data-open] .rose-minibag-scrim { opacity: 1; }
+.rose-minibag[data-open] .rose-minibag-panel { translate: 0 0; }
+
+.rose-minibag-head { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; padding: 20px 20px 14px; border-bottom: 1px solid var(--selection-line, #efdde5); }
+.rose-minibag-added { display: inline-flex; align-items: center; gap: 10px; font-family: var(--atelier-serif); font-size: 20px; font-weight: 600; }
+.rose-minibag-added svg { width: 26px; height: 26px; fill: none; stroke: var(--selection-accent, #a43b64); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rose-minibag-added svg path { stroke-dasharray: 20; stroke-dashoffset: 20; }
+.rose-minibag[data-open] .rose-minibag-added svg path { animation: rose-minibag-tick .5s .35s ease-out forwards; }
+@keyframes rose-minibag-tick { to { stroke-dashoffset: 0; } }
+.rose-minibag-count { font-size: 12px; color: var(--selection-muted, #703c58); }
+.rose-minibag-close { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--selection-line, #efdde5); background: #fff; color: inherit; }
+.rose-minibag-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+.rose-minibag-lines { list-style: none; margin: 0; padding: 10px 14px; overflow: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 8px; }
+.rose-minibag-lines > li { display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center; padding: 10px; border-radius: 18px; background: #fff; }
+.rose-minibag-lines > li[data-fresh] { box-shadow: 0 0 0 2px var(--selection-accent, #a43b64); }
+.rose-minibag[data-open] .rose-minibag-lines > li[data-fresh] { animation: rose-pop-in .6s cubic-bezier(.3, 1.6, .5, 1) .2s both; }
+.rose-minibag-photo { position: relative; width: 72px; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 999px 999px 10px 10px; background: var(--selection-soft, #f7dce8); }
+.rose-minibag-words { display: grid; gap: 4px; min-width: 0; }
+.rose-minibag-words strong { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rose-minibag-words small { font-size: 12px; color: var(--selection-muted, #703c58); }
+.rose-minibag-qty { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; width: max-content; border: 1px solid var(--selection-line, #efdde5); border-radius: 999px; padding: 2px; }
+.rose-minibag-qty button { width: 28px; height: 28px; border-radius: 50%; border: 0; background: transparent; color: inherit; font-size: 16px; line-height: 1; }
+.rose-minibag-qty button:hover { background: var(--selection-soft, #f7dce8); }
+.rose-minibag-qty output { min-width: 18px; text-align: center; font-size: 13px; font-weight: 600; }
+.rose-minibag-price { font-weight: 700; font-size: 14px; color: var(--selection-accent, #7d2448); white-space: nowrap; }
+.rose-minibag-ghost { height: 112px; background: linear-gradient(90deg, var(--selection-soft, #f7dce8), #fff, var(--selection-soft, #f7dce8)) 0 0 / 200% 100% !important; animation: rose-minibag-shine 1.2s linear infinite; }
+@keyframes rose-minibag-shine { to { background-position: -200% 0; } }
+.rose-minibag-empty { display: block !important; text-align: center; padding: 30px 10px !important; color: var(--selection-muted, #703c58); background: none !important; }
+
+.rose-minibag-foot { display: grid; gap: 10px; padding: 16px 20px 20px; border-top: 1px solid var(--selection-line, #efdde5); background: color-mix(in srgb, var(--selection-soft, #f7dce8) 40%, #fff); }
+.rose-minibag-total { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+.rose-minibag-total strong { font-family: var(--atelier-serif); font-size: 22px; }
+.rose-minibag-checkout { justify-content: center !important; gap: 12px !important; min-height: 52px; border-radius: 999px !important; font-size: 15px !important; font-weight: 600; }
+.rose-minibag-continue { border: 0; background: none; color: var(--selection-ink, #4d2039); text-decoration: underline; text-underline-offset: 4px; font-size: 13px; padding: 6px; }
+
+/* On a phone: a sheet from the bottom. */
+@media (max-width: 760px) {
+  .rose-minibag-panel {
+    top: auto; bottom: 0; inset-inline: 0; width: auto; max-height: 82svh; border-radius: 26px 26px 0 0;
+    translate: 0 105%;
+  }
+  .rose-minibag-panel::before { content: ""; position: absolute; top: 8px; left: 50%; width: 42px; height: 4px; margin-left: -21px; border-radius: 4px; background: color-mix(in srgb, var(--selection-ink, #4d2039) 20%, transparent); }
+  .rose-minibag-head { padding-top: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rose-minibag-panel, .rose-minibag-scrim { transition: none; }
+  .rose-minibag[data-open] .rose-minibag-lines > li[data-fresh], .rose-minibag[data-open] .rose-minibag-added svg path { animation: none; stroke-dashoffset: 0; }
 }
