@@ -160,11 +160,16 @@ export const ENDPOINTS = {
         // The new editor's shared styles (h1–h6, body, buttons, named ones), kept in the settings.
         // Saved blocks: sections kept once and linked or copied onto pages.
         blocks: "/admin/pages/blocks",
+        // Main components (W2): an element kept once, used with variants and own changes on many pages.
+        components: "/admin/pages/components",
         // The store's own templates: sections or whole pages kept to be copied onto pages.
         templates: "/admin/pages/templates",
         siteStyles: "/admin/site-styles",
         siteStylesDraft: "/admin/site-styles/draft",
         siteStylesPublish: "/admin/site-styles/publish",
+        designTokens: "/admin/design-tokens",
+        designTokensDraft: "/admin/design-tokens/draft",
+        designTokensPublish: "/admin/design-tokens/publish",
         validateSection: "/admin/pages/sections/validate",
         aiSuggestSections: "/admin/pages/ai/suggest-sections",
         aiTranslate: "/admin/pages/ai/translate",

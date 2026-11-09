@@ -28,6 +28,8 @@ import { DraftError, applyOps, draftFromPage, needsTree, publishOrder, sectionsH
 import { mainLanguage } from "../../lib/translations.js";
 import { PAGE_FORMAT, TREE_VERSION, checkTree, legacySectionIds, storedTree, syncWithSections, treeFromSections } from "../../lib/pageTree.js";
 import { BLOCK_KIND, TEMPLATE_KIND, blockIdsOf, blockSlug, blockUses, templateSlug, withBlocks } from "../../lib/pageBlocks.js";
+import { COMPONENT_KIND, componentSlug, componentUses } from "../../lib/pageComponents.js";
+import { variantsOf } from "../../lib/componentTree.js";
 import { getDefaultOpenAIModel, openaiResponsesJson } from "../../lib/openai.js";
 import { PageSectionTypeZ, getPublishIssuesForSection, validateSectionData } from "./pageSectionData.schemas.js";
 import { revalidateStorefront } from "../../lib/storefrontRevalidate.js";
@@ -370,6 +372,43 @@ r.post("/blocks", asyncHandler(async (req, res) => {
     select: { id: true, name: true, updatedAt: true },
   });
   res.status(201).json({ ...block, hasDraft: false, sections: sections.length, uses: 0 });
+}));
+
+/* ------------------------------------------------ main components (W2) */
+
+/**
+ * GET /admin/pages/components — the main components, newest first: each one's published variants
+ * (id, name, type and the variant itself, so the editor lists what an instance can change) and
+ * how many pages use it.
+ */
+r.get("/components", asyncHandler(async (_req, res) => {
+  const [rows, uses] = await Promise.all([
+    prisma.page.findMany({ where: { kind: COMPONENT_KIND }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, updatedAt: true, draft: true, tree: true } }),
+    componentUses(),
+  ]);
+  res.json(rows.map(({ draft, tree, ...c }) => ({ ...c, hasDraft: Boolean(draft), variants: variantsOf(storedTree(tree) as never).map((v) => ({ id: v.id, name: v.name ?? null, type: v.type, node: v })), uses: uses.get(c.id) ?? 0 })));
+}));
+
+/**
+ * POST /admin/pages/components { name, node } — makes a main component of an element: its first
+ * variant is the element (checked like any page's), and it's published at once so the page that
+ * made it shows its instance. Edited afterwards like a page; publishing it changes every page.
+ */
+r.post("/components", asyncHandler(async (req, res) => {
+  const name = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 80) : "";
+  const node = req.body?.node;
+  if (!name) return res.status(400).json({ error: "VALIDATION_ERROR", field: "name", message: "A component needs a name" });
+  if (!node || typeof node !== "object" || ["section", "page", "popup", "block", "legacy", "roseBlock", "cell"].includes(String(node.type))) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", field: "node", message: "A component is made of one element" });
+  }
+  const variant = { ...node, name: typeof node.name === "string" && node.name.trim() ? node.name : name };
+  const checked = checkTree({ version: TREE_VERSION, root: { id: "page", type: "page", props: {}, children: [{ id: "variants", type: "section", props: { contained: true }, children: [variant] }] } });
+  if (!checked.ok) return res.status(400).json({ error: "TREE_INVALID", issues: checked.issues });
+  const made = await prisma.page.create({
+    data: { name, slug: componentSlug(), status: "PUBLISHED", kind: COMPONENT_KIND, format: PAGE_FORMAT.tree, tree: checked.tree as any },
+    select: { id: true, name: true, updatedAt: true, tree: true },
+  });
+  res.status(201).json({ id: made.id, name: made.name, updatedAt: made.updatedAt, hasDraft: false, variants: variantsOf(storedTree(made.tree) as never).map((v) => ({ id: v.id, name: v.name ?? null, type: v.type, node: v })), uses: 0 });
 }));
 
 /* ------------------------------------------- the store's own templates (new CMS) */

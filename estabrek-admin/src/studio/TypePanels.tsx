@@ -14,6 +14,8 @@ import { shownLook } from "./look";
 import { Range } from "./LookPanels";
 import { NEEDS_NORMAL, PRESET_GROUPS, STATES, STATE_LABEL, presetsOf, statesOf, type StateChoice, type StateName } from "./states";
 import { loadStoreThemes, shopOrigin, type TreeFontInfo } from "./storeThemes";
+import { TokenSelect, tokenName, useTokens } from "./designTokens";
+import { say } from "./say";
 import { SAMPLE, loadPreviews, previewFamily } from "./fontPreview";
 import { EFFECT_GROUPS, PAINT_KEYS, TEXT_EFFECTS, effectOf, effectPatch, effectPreview } from "./textEffects";
 import { Choice, ColourPick, NumberField, SCREEN_LABEL } from "./StudioTreePanels";
@@ -107,6 +109,7 @@ export function FontPicker({ node, screen, busy, onOps }: { node: PageTreeNode; 
   useEffect(() => {
     if (open) void loadPreviews(fonts);
   }, [open, fonts]);
+  const tokens = useTokens();
   const family = shownLook(node, screen, "family");
   const font = shownLook(node, screen, "font");
   const chosen = typeof family === "string" ? fonts.find((f) => f.slug === family) : undefined;
@@ -163,6 +166,12 @@ export function FontPicker({ node, screen, busy, onOps }: { node: PageTreeNode; 
             <button key={k} type="button" className={item(family === undefined && font === k)} onClick={() => save({ family: null, font: k })} data-font={k}>{name()}</button>
           ))}
           <div className="px-1 text-[10px] text-white/40" data-testid="studio-font-count">{tr(`${shown.length} خط`, "{0} fonts", [shown.length])}</div>
+          {tokens?.fonts.length ? (
+            <div data-testid="studio-font-variables">
+              <div className="px-1 pb-1 pt-2 text-[10px] uppercase tracking-wide text-white/40">{say("المتغيرات|Variables|משתנים")}</div>
+              {tokens.fonts.map((t) => <button key={t.id} type="button" className={item(family === `$${t.id}`)} onClick={() => save({ family: `$${t.id}`, font: null })} data-font={`$${t.id}`}>◆ {tokenName(t)}</button>)}
+            </div>
+          ) : null}
           {groups.map(([k, list]) => (
             <div key={k}>
               <div className="px-1 pb-1 pt-2 text-[10px] uppercase tracking-wide text-white/40">{KIND_LABEL[k]()}</div>
@@ -341,6 +350,7 @@ export function TypeMorePanel({ node, screen, busy, onOps, inState = false }: { 
 
 /** The box: colour, gradient, frosted glass, frame, corners, a ready shadow (`skip`: what a button's own panel already has). */
 export function BoxPanel({ node, screen, busy, onOps, skip = [] }: { node: PageTreeNode; screen: TreeScreen; busy: boolean; onOps: Ops; skip?: Array<"bg" | "border" | "radius"> }) {
+  const tokens = useTokens();
   const v = (k: string) => shownLook(node, screen, k);
   const save = (label: string, patch: Obj) => onOps(label, [styleOp(node, screen, patch)]);
   const grad = isObj(v("gradient")) ? (v("gradient") as Obj) : null;
@@ -379,9 +389,10 @@ export function BoxPanel({ node, screen, busy, onOps, skip = [] }: { node: PageT
         </>
       ) : null}
       {skip.includes("radius") ? null : <Range label={tr("استدارة الزوايا", "Corner rounding")} min={0} max={120} unit="px" busy={busy} value={typeof v("radius") === "number" ? (v("radius") as number) : 0} onSave={(n) => save(tr("الزوايا", "Corners"), { radius: n || null })} testId="studio-box-radius" />}
+      {skip.includes("radius") ? null : <TokenSelect group="radii" value={v("radius")} busy={busy} label={say("زوايا من المتغيرات|Corners from the variables|פינות מהמשתנים")} onPick={(t) => save(tr("الزوايا", "Corners"), { radius: t })} testId="studio-box-radius-variable" />}
       <Choice
         label={tr("ظل جاهز", "A ready shadow")} value={String(v("shadow") ?? "")} busy={busy} testId="studio-box-shadow"
-        options={[["", tr("متل التصميم", "As designed")], ["none", tr("بلا", "None")], ["sm", tr("خفيف", "Light")], ["md", tr("وسط", "Medium")], ["lg", tr("قوي", "Strong")]]}
+        options={[["", tr("متل التصميم", "As designed")], ["none", tr("بلا", "None")], ["sm", tr("خفيف", "Light")], ["md", tr("وسط", "Medium")], ["lg", tr("قوي", "Strong")], ...(tokens?.shadows ?? []).map((t) => [`$${t.id}`, `◆ ${tokenName(t)}`] as [string, string])]}
         onPick={(s) => save(tr("الظل", "Shadow"), { shadow: s || null })}
       />
     </div>
@@ -398,6 +409,7 @@ export function PadPanel({ node, screen, busy, onOps }: { node: PageTreeNode; sc
       <Head title={tr("المسافة جوّا", "Inner space")} screen={screen} />
       <Range label={tr("فوق وتحت", "Top and bottom")} min={0} max={160} unit="px" busy={busy} value={v} onSave={(n) => save(n, h)} testId="studio-pad-v" />
       <Range label={tr("عالجنبين", "The sides")} min={0} max={160} unit="px" busy={busy} value={h} onSave={(n) => save(v, n)} testId="studio-pad-h" />
+      <TokenSelect group="spaces" value={shownLook(node, screen, "space")} busy={busy} label={say("مسافة من المتغيرات (كل الجهات)|A space from the variables (every side)|מרווח מהמשתנים (כל הצדדים)")} onPick={(t) => onOps(tr("المسافة جوّا", "Inner space"), [styleOp(node, screen, { space: t, ...(t ? { pad: null } : {}) })])} testId="studio-pad-variable" />
     </div>
   );
 }

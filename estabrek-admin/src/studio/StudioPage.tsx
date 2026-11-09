@@ -44,6 +44,8 @@ import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
 import { VisualControlsPanel } from "./VisualControlsPanel";
 import { candidateStack, clickPick, PointSelection } from "./selectionPicking";
 import { ShortcutsDialog } from "./ShortcutsDialog";
+import { TokensContext, useDesignTokens } from "./designTokens";
+import { VariablesPanel } from "./VariablesPanel";
 import { say } from "./say";
 import { partDragOffset } from "./partDrag";
 import { contentBinding, replaceContent, bindingLink } from "./partContent";
@@ -78,6 +80,7 @@ import { LookPanel, MotionPanel, VideoOverlayPanel } from "./LookPanels";
 import { BoxPanel, FiltersPanel, PadPanel, StatePresets, StatesBar, TransitionPanel, TypeMorePanel } from "./TypePanels";
 import { SiteStyleHead, SiteStylesList, StylePickPanel, useSiteStyles } from "./SiteStylesPanel";
 import { BlockLinkPanel, MyBlocks, SaveBlockPanel } from "./BlocksPanel";
+import { ComponentDocPanel, ComponentInstancePanel, detached, MakeComponentPanel, newInstance, placeOnly, useComponents } from "./ComponentsPanel";
 import { TemplatesGallery, type UseWhere } from "./TemplatesGallery";
 import { ConvertAllPanel, ConvertPanel } from "./ConvertPanel";
 import { PageSettingsPanel } from "./PageSettingsPanel";
@@ -500,6 +503,10 @@ function StudioDocument() {
   /** Sends changes to the draft; records how to undo them unless it is an undo/redo itself. */
   // The shared-style draft also reconciles inside the existing preview document.
   const ss = useSiteStyles(reload);
+  // The design variables (designTokens.tsx): every picker offers them; the preview shows their draft.
+  const dt = useDesignTokens(reload);
+  // Main components (ComponentsPanel.tsx): made here, used with variants and own changes.
+  const componentsQ = useComponents();
   const run = (label: string, ops: PagesAPI.PageDraftOp[], opts: { reload?: boolean; travel?: HistoryDirection } = {}) => {
     const next = queue.current.then(() => runNow(label, ops, opts));
     queue.current = next.catch(() => {});
@@ -1270,6 +1277,43 @@ function StudioDocument() {
     } catch (e) {
       toast.error(tr("ما انحفظ البلوك", "The block wasn't saved"), { description: getApiErrorMessage(e) });
     }
+  };
+  /** The selected element becomes a main component; an instance of it takes its place here. */
+  const makeComponent = async (node: PagesAPI.PageTreeNode, name: string) => {
+    if (!index) return;
+    const parentId = index.nodes.get(node.id)?.parentId;
+    if (!parentId) return;
+    const at = index.nodes.get(parentId)!.children.indexOf(node.id);
+    // Its place on this page stays with the instance; its look goes to the component.
+    const style = Object.fromEntries(Object.entries((node.style ?? {}) as Record<string, Record<string, unknown> | undefined>).map(([screen, st]) => { const { layer: _layer, ...rest } = st ?? {}; return [screen, rest]; }).filter(([, st]) => Object.keys(st as object).length));
+    try {
+      const c = await PagesAPI.createComponent(name, { ...structuredClone(node), ...(Object.keys(style).length ? { style } : { style: undefined }) });
+      qc.setQueryData(["page-components"], (was: PagesAPI.ComponentInfo[] | undefined) => [c, ...(was ?? []).filter((x) => x.id !== c.id)]);
+      const place = placeOnly(node.style);
+      const inst: PagesAPI.PageTreeNode = { ...newInstance(c, makeIds()), ...(place ? { style: place } : {}) };
+      await change(say("مكوّن رئيسي|Main component|רכיב ראשי"), [{ op: "remove", nodeId: node.id }, { op: "insert", parentId, index: Math.max(0, at), node: inst }], inst.id);
+      toast.success(say("صار مكوّن رئيسي: غيّره مرة وبيتغيّر بكل مكان|It's a main component now: change it once, it changes everywhere|זה רכיב ראשי עכשיו: שנה פעם אחת וזה משתנה בכל מקום"));
+    } catch (e) {
+      toast.error(say("ما انعمل المكوّن|The component wasn't made|הרכיב לא נוצר"), { description: getApiErrorMessage(e) });
+    }
+  };
+  /** An instance becomes a plain copy of its variant (with its own changes), in its place. */
+  const detachInstance = (inst: PagesAPI.PageTreeNode, variant: PagesAPI.PageTreeNode) => {
+    if (!index) return;
+    const parentId = index.nodes.get(inst.id)?.parentId;
+    if (!parentId) return;
+    const at = index.nodes.get(parentId)!.children.indexOf(inst.id);
+    const copy = detached(inst, variant, makeIds());
+    void change(say("فصل المكوّن|Detach the component|ניתוק הרכיב"), [{ op: "remove", nodeId: inst.id }, { op: "insert", parentId, index: Math.max(0, at), node: copy }], copy.id);
+  };
+  /** A main component's next variant: a copy of its last one, named after its number. */
+  const addVariant = () => {
+    if (!index) return;
+    const sec = (index.nodes.get(index.root)?.children ?? []).map((x) => index.nodes.get(x)?.node).find((n) => n?.type === "section");
+    const last = sec?.children?.at(-1);
+    if (!sec || !last) return;
+    const copy = { ...copyOf(last, makeIds()), name: `${say("نسخة|Variant|גרסה")} ${(sec.children?.length ?? 0) + 1}` };
+    void change(say("نسخة جديدة|New variant|גרסה חדשה"), [{ op: "insert", parentId: sec.id, index: sec.children!.length, node: copy }], copy.id);
   };
   const addBlock = async (b: PagesAPI.BlockInfo, linked: boolean) => {
     if (!index) return;
@@ -2260,6 +2304,7 @@ function StudioDocument() {
           </div>
         ) : null}
 
+        {pageQ.data?.kind === "component" && index ? <ComponentDocPanel variants={(index.nodes.get(index.root)?.children ?? []).map((x) => index.nodes.get(x)?.node).find((n) => n?.type === "section")?.children ?? []} busy={busy} onAddVariant={addVariant} /> : null}
         {selFree ? (
           <div className="space-y-3">
             <NodeActions
@@ -2283,6 +2328,8 @@ function StudioDocument() {
             {selFree.type === "deck" ? <DeckPanel node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} /> : null}
             {selFree.type === "scrollScene" ? <ScrollScenePanel key={`scene:${selFree.id}`} node={selFree} lang={shopLang} busy={busy} ids={makeIds()} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selFree.id, at })} onSelect={(sid) => select(sid, true)} /> : null}
             {nodeOf(selNode?.parentId)?.type === "scrollScene" ? <CuePanel key={`cue:${selFree.id}`} node={selFree} scene={nodeOf(selNode?.parentId)!} busy={busy} onOps={(l, ops) => void change(l, ops)} onSeek={(at) => send({ type: "motionSceneSeek", nodeId: selNode!.parentId!, at })} /> : null}
+            {selFree.type === "component" ? <ComponentInstancePanel node={selFree} components={componentsQ.data} lang={shopLang} busy={busy} onProps={(props) => void change(say("نسخة المكوّن|Component instance|מופע רכיב"), [{ op: "setProps", nodeId: selFree.id, props }])} onEdit={(cid) => window.location.assign(`/studio/${encodeURIComponent(cid)}?from=${encodeURIComponent(id)}`)} onDetach={(variant) => detachInstance(selFree, variant)} /> : null}
+            {!["section", "cell", "columns", "page", "component", "popup"].includes(selFree.type) && pageQ.data?.kind !== "component" ? <MakeComponentPanel key={`make:${selFree.id}`} node={selFree} busy={busy} onMake={(name) => makeComponent(selFree, name)} /> : null}
             {selFree.type === "section" && selNode?.parentId === index.root && pageQ.data?.kind !== "block" ? <SaveBlockPanel node={selFree} busy={busy} onSave={(name, link) => saveBlock(selFree, name, link)} /> : null}
             {WRITABLE.has(selFree.type) ? (
               <button type="button" className="w-full rounded-lg bg-accent-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-40" disabled={Boolean(editing) || busy} onClick={() => startText(selected)} data-testid="studio-edit-node">
@@ -2638,6 +2685,16 @@ function StudioDocument() {
         }
       }}
     />
+    {componentsQ.data?.length ? (
+      <div className="mt-4 space-y-1" data-testid="add-components">
+        <div className="px-1 text-xs font-medium text-white/70">◇ {say("المكوّنات الرئيسية|Main components|רכיבים ראשיים")}</div>
+        {componentsQ.data.filter((c) => c.id !== id).map((c) => (
+          <button key={c.id} type="button" className="flex w-full items-center justify-between gap-2 rounded-lg bg-white/[0.04] px-2 py-1.5 text-start text-xs hover:bg-white/[0.08] disabled:opacity-40" disabled={busy} onClick={() => addNode(newInstance(c, makeIds()), addWhereNow, selected, undefined, say("نسخة من مكوّن|Component instance|מופע רכיב"))} data-testid={`add-component-${c.id}`}>
+            <span className="truncate">{c.name}</span><span className="shrink-0 text-[10px] text-white/40">{c.variants.length > 1 ? say(`${c.variants.length} نسخ|${c.variants.length} variants|${c.variants.length} גרסאות`) : ""}</span>
+          </button>
+        ))}
+      </div>
+    ) : null}
     {pageQ.data?.kind === "block" ? null : (
       <div className="mt-4">
         <MyBlocks busy={busy} onLink={(b) => void addBlock(b, true)} onCopy={(b) => void addBlock(b, false)} onDelete={(b) => setAsking({ kind: "deleteBlock", block: b })} />
@@ -2692,7 +2749,7 @@ function StudioDocument() {
   }
 
   return (
-    <StoreKitContext.Provider value={storeKit}>
+    <StoreKitContext.Provider value={storeKit}><TokensContext.Provider value={dt.tokens}>
     <Shell busy={busy}>
       <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-3 py-2">
         <Link to="/admin/pages" className="rounded-lg px-2 py-1 text-xs text-white/60 hover:bg-white/[0.06] hover:text-white">
@@ -2808,7 +2865,11 @@ function StudioDocument() {
           {leftTab === "add" ? (
             index ? addPanel() : null
           ) : leftTab === "styles" ? (
-            <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
+            <>
+              <VariablesPanel api={dt} canPublish={canPublish} />
+              <div className="my-3 border-t border-white/[0.08]" />
+              <SiteStylesList ss={ss} selected={siteSel} canPublish={canPublish} onPick={setSiteSel} />
+            </>
           ) : leftTab === "looks" ? (
             looksPanel()
           ) : (
@@ -3211,7 +3272,7 @@ function StudioDocument() {
         kit={templateKit}
       />
     </Shell>
-    </StoreKitContext.Provider>
+    </TokensContext.Provider></StoreKitContext.Provider>
   );
 }
 

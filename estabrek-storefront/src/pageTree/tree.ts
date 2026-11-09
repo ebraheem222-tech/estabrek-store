@@ -24,8 +24,10 @@ export type ScreenStyle = {
   columns?: number;
   /** Columns: each cell's share of the width ([1, 2] = a third and two thirds). */
   widths?: number[];
-  gap?: number;
-  rowGap?: number;
+  gap?: number | string;
+  /** Inner space from a space variable ("$md"); its own pad wins. */
+  space?: string;
+  rowGap?: number | string;
   direction?: "row" | "column";
   wrap?: boolean;
   justify?: "start" | "center" | "end" | "between" | "around";
@@ -37,9 +39,9 @@ export type ScreenStyle = {
   order?: number;
   bg?: string;
   color?: string;
-  radius?: number;
+  radius?: number | string;
   border?: { width: number; color: string; style?: "solid" | "dashed" | "dotted" };
-  shadow?: "none" | "sm" | "md" | "lg";
+  shadow?: "none" | "sm" | "md" | "lg" | string;
   opacity?: number;
   font?: "heading" | "body" | "serif" | "sans" | "mono";
   size?: number;

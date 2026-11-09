@@ -14,6 +14,7 @@ import { simulate } from "../../src/studio/draft";
 import VisualControlsPage from "../../src/features/settings/VisualControlsPage";
 import type { PageDraft, PageDraftOp, PageTreeNode } from "../../src/api/pages.api";
 import { api } from "../../src/api/http";
+import { expandComponents, variantsOf } from "../../../estabrek-store-backend/src/lib/componentTree";
 import { env } from "../../src/config/env";
 import { authStore } from "../../src/store/auth.store";
 import { applySkin, readSkin } from "../../src/theme/skin";
@@ -164,10 +165,14 @@ function applyOps(ops: PageDraftOp[]) {
   draft.rev++;
   draft.updatedAt = new Date().toISOString();
 }
+// Main components made in this page's editor: drawn in the preview like the API draws them.
+const components: Array<{ id: string; name: string; tree: any }> = [];
+const componentInfo = (c: { id: string; name: string; tree: any }) => ({ id: c.id, name: c.name, updatedAt: at, hasDraft: false, variants: variantsOf(c.tree).map((v: any) => ({ id: v.id, name: v.name ?? null, type: v.type, node: v })), uses: 1 });
+let tokenState: { tokens: Record<string, unknown>; draft: Record<string, unknown> | null } = { tokens: { version: 1, colors: [], fonts: [], spaces: [], radii: [], shadows: [] }, draft: null };
 async function syncPreview() {
   const response = await fetch(`${FIXTURE}/__test/preview-draft`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, pageId: PAGE_ID, ...(commerceFixture || blockRegionFixture ? { slug: publicationSlug } : {}), siteStyles: [] }), credentials: "omit",
+      body: JSON.stringify({ ...draft, tree: expandComponents(draft.tree as any, new Map(components.map((c) => [c.id, variantsOf(c.tree)]))), pageId: PAGE_ID, ...(commerceFixture || blockRegionFixture ? { slug: publicationSlug } : {}), siteStyles: [], designTokens: tokenState.draft ?? tokenState.tokens }), credentials: "omit",
   });
   if (!response.ok) throw new Error(`Local fixture update failed: ${response.status}`);
 }
@@ -194,6 +199,17 @@ api.defaults.adapter = async (config) => {
     }
     throw new Error(`Unexpected shared-document request: ${method} ${path}`);
   }
+  // The design variables: the draft lives here, and the preview gets it like the API sends it.
+  if (path === "/admin/pages/components" && method === "GET") return response(config, components.map(componentInfo));
+  if (path === "/admin/pages/components" && method === "POST") {
+    const made = { id: `comp-${components.length + 1}`, name: String(body.name), tree: { version: 1, root: { id: "page", type: "page", props: {}, children: [{ id: "variants", type: "section", props: { contained: true }, children: [{ ...clone(body.node), name: body.node.name || body.name }] }] } } };
+    components.unshift(made);
+    return response(config, componentInfo(made));
+  }
+  if (path === "/admin/design-tokens" && method === "GET") return response(config, tokenState);
+  if (path === "/admin/design-tokens/draft" && method === "PUT") { tokenState = { ...tokenState, draft: clone(body.tokens) }; await syncPreview(); return response(config, tokenState); }
+  if (path === "/admin/design-tokens/draft" && method === "DELETE") { tokenState = { ...tokenState, draft: null }; await syncPreview(); return response(config, tokenState); }
+  if (path === "/admin/design-tokens/publish" && method === "POST") { tokenState = { tokens: tokenState.draft ?? tokenState.tokens, draft: null }; await syncPreview(); return response(config, tokenState); }
   if (path === "/admin/visual-controls" && method === "GET") return response(config, globalVisualControls);
   if (path === "/admin/visual-controls" && method === "PUT") {
     if (body.revision !== globalVisualControls.revision) throw new AxiosError("Conflict", "409", config, undefined, { ...response(config, {}), status: 409 });

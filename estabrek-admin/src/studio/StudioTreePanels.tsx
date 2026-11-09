@@ -20,6 +20,7 @@ import { iconLineOf, iconShown, withIconLine } from "./iconLibrary";
 import type { Art } from "./svgArt";
 import { typeLabel } from "./treeIndex";
 import { say } from "./say";
+import { TokenSelect, tokenName, tokenOf, useTokens } from "./designTokens";
 import { SLIDER_ARROW_LOOK_NAMES, SLIDER_DOT_LOOK_NAMES, SLIDER_LOOK_NAMES } from "./sliderLooks";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
@@ -99,7 +100,9 @@ const six = (h: string) => (h.length === 4 ? `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3
 
 /** A theme colour, or a colour of one's own. */
 export function ColourPick({ label, value, busy, onPick, testId }: { label: string; value: unknown; busy: boolean; onPick: (v: string | null) => void; testId?: string }) {
-  const own = typeof value === "string" && HEX.test(value) ? value : null;
+  const tokens = useTokens();
+  const variable = tokenOf(tokens, "colors", value) as { value: string } | undefined;
+  const own = typeof value === "string" && HEX.test(value) ? value : variable?.value ?? null;
   const [hex, setHex] = useState(six(own ?? "#ffffff"));
   const [was, setWas] = useState(value);
   const [dirty, setDirty] = useState(false);
@@ -112,8 +115,9 @@ export function ColourPick({ label, value, busy, onPick, testId }: { label: stri
     <label className="block text-[11px] text-white/55">
       {label}
       <span className="flex items-center gap-1">
-        <select className={control} disabled={busy} value={own ? "own" : typeof value === "string" ? value : ""} onChange={(e) => (e.target.value === "own" ? onPick(hex) : onPick(e.target.value || null))} data-testid={testId}>
+        <select className={control} disabled={busy} value={variable ? String(value) : own ? "own" : typeof value === "string" ? value : ""} onChange={(e) => (e.target.value === "own" ? onPick(hex) : onPick(e.target.value || null))} data-testid={testId}>
           {COLOURS.map(([k, name]) => <option key={k} value={k}>{name()}</option>)}
+          {tokens?.colors.length ? <optgroup label={say("المتغيرات|Variables|משתנים")}>{tokens.colors.map((t) => <option key={t.id} value={`$${t.id}`}>◆ {tokenName(t)}</option>)}</optgroup> : null}
           <option value="own">{tr("لون خاص", "A colour of its own")}</option>
         </select>
         <input type="color" aria-label={tr("لون خاص", "A colour of its own")} className="mt-1 h-8 w-9 shrink-0 cursor-pointer rounded border border-white/[0.1] bg-transparent" disabled={busy} value={six(hex)} onChange={(e) => { setHex(e.target.value); setDirty(true); }} onBlur={() => {
@@ -182,6 +186,7 @@ export function ColumnsPanel({ node, screen, busy, ids, onOps }: { node: PageTre
         <p className="text-[11px] leading-5 text-white/40">{tr("بشيل عمود، محتواه بينقل للعمود اللي قبله.", "Removing a column moves what it holds into the one before it.")}</p>
       </div>
       <NumberField label={tr("المسافة بين الأعمدة", "Space between the columns")} suffix="px" value={typeof base.gap === "number" ? base.gap : undefined} min={0} max={120} onSave={(v) => onOps(tr("المسافة", "Spacing"), [styleOp(node, "base", { gap: v })])} />
+      <TokenSelect group="spaces" value={base.gap} busy={busy} onPick={(v) => onOps(tr("المسافة", "Spacing"), [styleOp(node, "base", { gap: v })])} testId="studio-columns-gap-variable" />
       <Choice
         label={tr("ارتفاع الخلايا", "The cells' height")}
         value={(typeof base.align === "string" ? base.align : "stretch") as string}

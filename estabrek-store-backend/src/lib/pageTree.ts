@@ -19,6 +19,7 @@
  * draws it on the server (estabrek-storefront src/pageTree) and checks every value
  * again before it becomes CSS.
  */
+import { TOKEN_REF } from "./designTokens.js";
 import { z } from "zod";
 import { checkArt, type Art } from "./svgArt.js";
 import { InteractionPolicy, CardDesign } from "./visualControls.js";
@@ -33,7 +34,7 @@ export const NODE_TYPES = [
   "lottie", "rive", "model3d", "instrument", "chart", "clock", "filterGallery",
   "accordion", "testimonials", "pricing", "schedule", "comparison", "team", "logos", "alert", "marquee",
   "tabs", "countdown", "beforeAfter", "hotspots", "map", "popup", "search", "menu", "showcase",
-  "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block",
+  "products", "categories", "form", "shop", "cartItems", "cartSummary", "cartCheckout", "roseBlock", "legacy", "block", "component",
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -97,10 +98,13 @@ const src = z
   .max(1000)
   .refine((v) => NO_ODD_CHARS.test(v) && /^(\/(?!\/)|https:\/\/)/i.test(v), "Not a safe file address");
 const id = z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/);
+// A theme colour, a #hex, or one of the store's colour variables by name ("$brand", lib/designTokens.ts).
 const color = z
   .string()
   .trim()
-  .refine((v) => (COLOR_TOKENS as readonly string[]).includes(v) || /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v), "Not a theme colour or #hex");
+  .refine((v) => (COLOR_TOKENS as readonly string[]).includes(v) || /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) || TOKEN_REF.test(v), "Not a theme colour, #hex or $variable");
+/** A design variable by name ("$md"): the shop draws it as var(--tk-…-md). */
+const tokenRef = z.string().trim().regex(TOKEN_REF, "A variable like $md");
 const px = (min: number, max: number) => z.number().finite().min(min).max(max);
 const box = (min: number) => z.tuple([px(min, 400), px(min, 400), px(min, 400), px(min, 400)]);
 const length = z.string().trim().regex(/^(auto|\d{1,4}(\.\d{1,6})?(px|%|rem|vw|vh))$/, "A length like 320px, 50% or auto");
@@ -124,9 +128,9 @@ const VISUAL = {
   // Frosted glass: what's behind it is blurred.
   backdrop: z.object({ blur: px(0, 40), saturate: z.number().min(0).max(3).optional() }).optional(),
   color: color.optional(),
-  radius: px(0, 999).optional(),
+  radius: z.union([px(0, 999), tokenRef]).optional(),
   border: z.object({ width: px(0, 20), color, style: z.enum(["solid", "dashed", "dotted"]).optional() }).optional(),
-  shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
+  shadow: z.union([z.enum(["none", "sm", "md", "lg"]), tokenRef]).optional(),
   opacity: z.number().min(0).max(1).optional(),
   weight: z.number().int().min(100).max(900).refine((w) => w % 100 === 0, "100, 200 … 900").optional(),
   letterSpacing: px(-5, 20).optional(),
@@ -240,8 +244,10 @@ export const ScreenStyle = z.object({
   sticky: z.union([z.literal(false), z.object({ top: z.number().finite().min(0).max(240) })]).optional(),
   columns: z.number().int().min(1).max(12).optional(), // grids
   widths: z.array(z.number().int().min(1).max(12)).min(1).max(COLUMNS_LIMITS.cells).optional(), // columns: each cell's share ([1, 2] = a third and two thirds)
-  gap: px(0, 200).optional(),
-  rowGap: px(0, 200).optional(),
+  gap: z.union([px(0, 200), tokenRef]).optional(),
+  rowGap: z.union([px(0, 200), tokenRef]).optional(),
+  // Inner space on every side from a space variable ("$md"); its own `pad` still wins.
+  space: tokenRef.optional(),
   direction: z.enum(["row", "column"]).optional(), // stacks
   wrap: z.boolean().optional(),
   justify: z.enum(["start", "center", "end", "between", "around"]).optional(),
@@ -252,7 +258,7 @@ export const ScreenStyle = z.object({
   order: z.number().int().min(-50).max(50).optional(),
   font: z.enum(["heading", "body", "serif", "sans", "mono"]).optional(),
   // A family from the shop's fonts library by its name ("cairo"); it wins over `font`. The shop skips one it doesn't have.
-  family: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/).optional(),
+  family: z.union([z.string().trim().regex(/^[a-z0-9][a-z0-9-]{0,40}$/), tokenRef]).optional(),
   italic: z.boolean().optional(),
   size: px(8, 200).optional(),
   iconSize: px(8, 400).optional(), // an icon's drawing (its words keep `size`)
@@ -836,6 +842,13 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   legacy: z.object({ sectionId: id }),
   // A saved block linked here (lib/pageBlocks.ts): the shop draws the block's sections in its place.
   block: z.object({ blockId: id }),
+  // An instance of a main component (lib/componentTree.ts): its variant, and its own changes to the
+  // component's inner elements (props by inner element id), each kept only if the element stays valid.
+  component: z.object({
+    componentId: id,
+    variant: id.optional(),
+    overrides: z.record(id, z.record(z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,30}$/), z.unknown())).refine((o) => Object.keys(o).length <= 60, "60 inner elements at most").optional(),
+  }),
 };
 /** A shared style an element takes by name (lib/siteStyles.ts); its own look still wins. Not for the page or old sections. */
 export const STYLE_REF = z.string().trim().regex(/^[a-z][a-z0-9-]{0,30}$/);

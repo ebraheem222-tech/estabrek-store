@@ -1,6 +1,7 @@
 import { prisma } from "./prisma.js";
 import { storedTree, type TreeNode, type PageTree } from "./pageTree.js";
 import { withBlocks } from "./pageBlocks.js";
+import { withComponents } from "./pageComponents.js";
 
 /** Give each global region its own IDs, separate from each other and the page's nodes. */
 export function regionTree(tree: PageTree, region: "header" | "footer"): PageTree {
@@ -20,7 +21,7 @@ export async function publishedDesignRegions(header: unknown) {
   for (const region of ["header", "footer"] as const) {
     const row = rows.find((r) => r.id === design[`${region}Id`]);
     const tree = row ? storedTree(row.tree) : null;
-    if (tree) result[region] = regionTree(await withBlocks(tree), region);
+    if (tree) result[region] = regionTree(await withComponents(await withBlocks(tree)), region);
   }
   return result;
 }
