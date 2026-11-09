@@ -42,7 +42,9 @@ import { PagePublishDialog } from "./PagePublishDialog";
 import { PagePublicationStatus } from "./PagePublicationStatus";
 import { CommercePanel, COMMERCE_TYPES } from "./CommercePanel";
 import { VisualControlsPanel } from "./VisualControlsPanel";
-import { candidateStack, cycleCandidate, PointSelection } from "./selectionPicking";
+import { candidateStack, clickPick, PointSelection } from "./selectionPicking";
+import { ShortcutsDialog } from "./ShortcutsDialog";
+import { say } from "./say";
 import { partDragOffset } from "./partDrag";
 import { contentBinding, replaceContent, bindingLink } from "./partContent";
 import { PartSizeFields } from "./PartSizeFields";
@@ -95,7 +97,7 @@ import { Product360Panel } from "./Product360Panel";
 import { motionOp, placeFor, placedOn, previewOf, shownLook, togglePreset, type Motion } from "./look";
 import { ContextMenu, MultiPanel, type MenuItem, type MultiActions } from "./MultiPanel";
 import { Guides, SelectionHandles } from "./CanvasHandles";
-import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange } from "./handles";
+import { gapsBetween, nudgeOf, type Gap, type Guide, type ResizeChange, distancesAround } from "./handles";
 import { pickCanvasContainer } from "./canvasContainers";
 import { effectiveLook, placementBox, placementPatch, readCanvasMode, readScaleContents, resizePatch, saveCanvasMode, saveScaleContents, scaleContentsLimits, scaleContentsPatch, transferPatch, type CanvasMode } from "./canvasManipulation";
 import { canvasPlane,effectiveConstraints,movementOf,validResponsiveConstraints,planeMoveLocalPatch,planeNudgePatch,planeResizePatch } from "./engineGeometry";
@@ -161,7 +163,7 @@ const wordLang = (path: string) => /\.(ar|en|he)$/.test(path);
 /** A press on the canvas: what it grabbed (and the others selected with it), where they started, a free drag's state. */
 type PlaneItem={id:string;frame:Plane;look:Record<string,unknown>;parentId:string;free:boolean};
 type PartMove = { vars: Record<string, string | number>; inlineBox?: boolean; target: string; kind: PagesAPI.LookKind; parent: Plane; start: Pt; screen: PagesAPI.TreeScreen; style: Record<string, unknown> };
-type Down = { partMove?: PartMove; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
+type Down = { partMove?: PartMove; before?: string | null; pointerId: number; p: Pt; pan: Pt; panning: boolean; touch: boolean; moved: boolean; y: number; grab: string | null; group: string[]; starts: Map<string, Box>; free?: FreeDrag; shown?: Pt; into?: { id: string; box: Box } | null; analytic?:{drag:PlaneDrag;holder:Plane;items:PlaneItem[];peers:PlaneItem[];movement:"horizontal"|"vertical"|"both"|"free";ops?:PagesAPI.PageDraftOp[]} };
 /** What a freely placed element can be dragged into. */
 type Drop = { parentId: string; index: number; line: Box; box: Box; page?: { anchor: string; where: Where }; over?: { anchor: string; spot: Spot } };
 
@@ -216,6 +218,8 @@ function StudioDocument() {
   // Lines a dragged element snaps to; Alt held shows the distances to what's under the pointer.
   const [guides, setGuides] = useState<Guide[]>([]);
   const [altHeld, setAltHeld] = useState(false);
+  /** The list of shortcuts ("?"). */
+  const [keysOpen, setKeysOpen] = useState(false);
   const [fixedGap,setFixedGap]=useState(24);
   // Alt+arrow nudges add up (shown in the frame at once) and are saved together a moment after the last one.
   const nudging = useRef<{dx:number;dy:number;timer:number;planes?:Array<PlaneItem&{holder:Plane;movement:"horizontal"|"vertical"|"both"|"free"}>}>({ dx: 0, dy: 0, timer: 0 });
@@ -762,7 +766,11 @@ function StudioDocument() {
     const movable = (x: string | null) => Boolean(x && isFree(nodeOf(x)?.type) && !["section", "cell", "columns", "page"].includes(nodeOf(x)?.type ?? "") && !lockedIn.has(x) && (directGeometrySafe(x) || canvasMode === "flow" && !placedOn(nodeOf(x)!, screen)));
     const hit = !panning && !e.shiftKey && e.button === 0 ? pickAt(grid.near(p), p) : null;
     const hitPath = hit && index ? pathTo(index, hit.id, up) : [];
-    const grab = movable(selected) && selected && hitPath.includes(selected) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && hitPath.includes(c)) ?? null : !touch && hit && movable(hit.id) ? hit.id : null;
+    // Pressed on an inner part (a label, a quote, a picture inside a widget): its object is what moves.
+    const hitNode = [...hitPath].reverse().find((x) => index?.nodes.has(x)) ?? null;
+    // A selected inner part pressed on moves itself (below), not its object.
+    const onOwnPart = selExtra?.kind === "detail" && Boolean(selected && hitPath.includes(selected));
+    const grab = onOwnPart ? null : movable(selected) && selected && hitPath.includes(selected) ? selected : chosen.length > 1 ? chosen.find((c) => movable(c) && hitPath.includes(c)) ?? null : !touch && hitNode && movable(hitNode) ? hitNode : null;
     // What's inside another selected element goes with it.
     const group = grab && chosen.length > 1 && chosen.includes(grab) && index ? loose.filter((x) => movable(x) && !loose.some((y) => y !== x && pathTo(index, x, up).includes(y))) : grab ? [grab] : [];
     const starts = new Map(group.map((x) => [x, shapeOf(x)?.box] as const).filter((v): v is [string, Box] => Boolean(v[1])));
@@ -783,7 +791,7 @@ function StudioDocument() {
         if (motionLive) { setMotionLive(false); send({ type: "motionLive", on: false }); }
       }
     }
-    down.current = { pointerId: e.pointerId, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic, partMove };
+    down.current = { pointerId: e.pointerId, before: selected, p, pan, panning, touch, moved: false, y: p.y, grab, group, starts, free,analytic, partMove };
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
@@ -825,14 +833,17 @@ function StudioDocument() {
       // Alt as it's let go leaves the original where it was and puts a copy there.
       if (d.free) dropFree(d, e.altKey);
       else if (t) dropFlow(d, t, e.altKey);
+      setGuides([]);
       return;
     }
     if (!d || d.moved || !index) return;
     const p = local(e);
     if (!inFrame(p)) return;
-    const alt = e.altKey, shift = e.shiftKey;
+    const alt = e.altKey, shift = e.shiftKey, deepest = e.ctrlKey || e.metaKey;
+    // The object first, inside it on a second click, the deepest with Ctrl/⌘ (clickPick).
+    const before = d.before ?? null;
     pickPoint(p, ids => {
-      const target = (alt ? cycleCandidate(ids, selected) : ids[0]) ?? index.root;
+      const target = clickPick(ids, alt ? selected : before, { deep: deepSelection, deepest, cycle: alt, isPart: (x) => x.startsWith("detail:"), pathOf: (x) => pathTo(index, x, up) }) ?? index.root;
       if (shift && target && isFree(index.nodes.get(target)?.node.type)) return toggleChosen(target);
       select(target);
     });
@@ -889,6 +900,15 @@ function StudioDocument() {
         e.preventDefault();
         if (e.key.toLowerCase() === "y" || e.shiftKey) void redoLast();
         else void undoLast();
+        return;
+      }
+      if (e.key === "?") {
+        e.preventDefault();
+        setKeysOpen((o) => !o);
+        return;
+      }
+      if (e.key === "Escape" && keysOpen) {
+        setKeysOpen(false);
         return;
       }
       if (e.key === " ") {
@@ -1788,7 +1808,8 @@ function StudioDocument() {
             return { id, box: { ...b, x: b.x + v.x, y: b.y + v.y } };
           }),
         touching: step.touching,
-        marks: step.marks,
+        // Equal gaps when it snapped to them, else how far it is from what's around it.
+        marks: step.marks.length ? step.marks : distancesAround(step.box, f.holder, f.beside.map((b) => { const v = step.pushed.get(b.id); return v ? { ...b.box, x: b.box.x + v.x, y: b.box.y + v.y } : b.box; })),
         into: null,
       });
       for (const [x, v] of step.pushed) previewMove(x, v);
@@ -2755,6 +2776,7 @@ function StudioDocument() {
           <button type="button" onClick={toggleLive} aria-pressed={motionLive} title={tr("تشغيل كل الحركة بالصفحة", "Play all the motion on the page")} className={`h-7 rounded-lg px-2 text-xs ${motionLive ? "bg-accent-500/25 text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-motion-live">{motionLive ? "❚❚" : "▶"} {tr("الحركة", "Motion")}</button>
           <button type="button" disabled={!index} onClick={() => { setThemeOpen(false); setLeftTab("layers"); if (index) select(index.root, true); }} className="h-7 rounded-lg px-2 text-xs text-white/75 hover:bg-white/[0.06]" data-testid="studio-page-motion-open">{tr("حركة الصفحة", "Page motion")}</button>
           <button type="button" aria-pressed={deepSelection} className={`h-7 rounded-lg px-2 text-xs ${deepSelection ? "bg-accent-500/20" : ""}`} data-testid="studio-deep-selection" onClick={() => { pointSelection.current.cancel(); const next = !deepSelection; setDeepSelection(next); try { localStorage.setItem("studio.deepSelection", next ? "on" : "off"); } catch {} if (!next && selExtra?.kind === "detail") select(selExtra.owner.startsWith("r:") ? `region:${selExtra.owner.slice(2)}` : selPath.filter(pid => index!.nodes.has(pid)).at(-1) ?? null); }}>{tr("تحديد داخلي", "Deep selection")}</button>
+          <button type="button" className="h-7 rounded-lg px-2 text-xs hover:bg-white/[0.08]" title={say("اختصارات المحرر (?)|Editor shortcuts (?)|קיצורי העורך (?)")} aria-label={say("اختصارات المحرر|Editor shortcuts|קיצורי העורך")} onClick={() => setKeysOpen(true)} data-testid="studio-shortcuts-open">⌨</button>
           <button type="button" disabled={!layout} className="h-7 rounded-lg px-2 text-xs" data-testid="studio-pick-objects" onClick={event => { const p = last.current?.p ?? (selShape ? { x: selShape.box.x + selShape.box.w / 2, y: selShape.box.y + selShape.box.h / 2 } : { x: frameBox.x + frameBox.w / 2, y: frameBox.y + 60 }); const r = event.currentTarget.getBoundingClientRect(); pickPoint(p, candidates => setMenu({ x: r.left, y: r.bottom + 4, candidates })); }}>{tr("اختيار عنصر", "Choose object")}</button>
           <button type="button" onClick={() => setThemeOpen((v) => !v)} aria-pressed={themeOpen} className={`h-7 rounded-lg px-2 text-xs ${themeOpen ? "bg-white/[0.12] text-white" : "text-white/75 hover:bg-white/[0.06]"}`} data-testid="studio-theme-toggle">{tr("الثيم", "Theme")}</button>
           {draft ? <button type="button" onClick={() => setAsking({ kind: "discard" })} disabled={busy} className="h-7 rounded-lg px-2 text-xs text-white/60 hover:bg-white/[0.06] disabled:opacity-30" data-testid="studio-discard">{tr("إلغاء المسودة", "Discard draft")}</button> : null}
@@ -3014,6 +3036,7 @@ function StudioDocument() {
               onTurn={(deg) => void change(tr("دوران", "Turn"), [styleOp(selFree, screen, { rotateZ: deg || null })])}
             />
           ) : null}
+          {keysOpen ? <ShortcutsDialog onClose={() => setKeysOpen(false)} /> : null}
           <Guides
             guides={guides}
             gaps={dragView?.marks.length ? dragView.marks : altHeld && selShape && hovered && hovered !== selected && shapeOf(hovered) ? gapsBetween(selShape.box, shapeOf(hovered)!.box) : []}

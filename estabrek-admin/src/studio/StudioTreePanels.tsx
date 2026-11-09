@@ -19,6 +19,8 @@ import { IconGlyph, IconPicker } from "./IconPicker";
 import { iconLineOf, iconShown, withIconLine } from "./iconLibrary";
 import type { Art } from "./svgArt";
 import { typeLabel } from "./treeIndex";
+import { say } from "./say";
+import { SLIDER_ARROW_LOOK_NAMES, SLIDER_DOT_LOOK_NAMES, SLIDER_LOOK_NAMES } from "./sliderLooks";
 
 type Ops = (label: string, ops: PageDraftOp[]) => void;
 type Ids = (prefix: string) => string;
@@ -453,6 +455,26 @@ function SliderFields({ node, lang, busy, setProps }: { node: PageTreeNode; lang
       {toggle("progress", tr("مؤشر التقدّم", "Progress indicator"), false)}
       <label className="block text-[11px] text-white/55">{tr("مكان كلام الشريحة", "Caption position")}
         <select className={control} disabled={busy} value={String(p.captionPosition ?? "bottom")} onChange={(e) => setProps({ captionPosition: e.target.value })} data-testid="studio-slider-captionPosition"><option value="bottom">{tr("تحت", "Bottom")}</option><option value="center">{tr("بالنص", "Center")}</option><option value="split">{tr("بجانب الصورة", "Split")}</option></select>
+      </label>
+      <div className="space-y-1" data-testid="studio-slider-looks">
+        <div className="text-[11px] text-white/55">{say("شكل السلايدر|The slider's shape|צורת הסליידר")}</div>
+        <div className="grid grid-cols-4 gap-1">
+          {SLIDER_LOOK_NAMES.map(([key, name, mark]) => {
+            const on = (p.look ?? "plain") === key;
+            return <button key={key} type="button" disabled={busy} aria-pressed={on} title={say(name)} onClick={() => setProps({ look: key === "plain" ? undefined : key })} data-testid={`studio-slider-look-${key}`} className={`flex flex-col items-center gap-0.5 rounded-md border px-1 py-1.5 text-[10px] leading-tight ${on ? "border-accent-400 bg-accent-500/15 text-white" : "border-white/[0.08] text-white/65 hover:border-white/25"}`}><span aria-hidden="true" className="text-base leading-none">{mark}</span>{say(name)}</button>;
+          })}
+        </div>
+        {(p.look === "peek" || p.look === "trio") && (p.effect ?? "slide") !== "slide" ? <p className="text-[11px] leading-5 text-amber-100/70">{say("هالشكل بيبيّن أكتر من شريحة مع حركة «سحب» بس.|This shape shows more than one slide with the \"Slide\" effect only.|הצורה הזו מציגה יותר משקופית אחת רק עם האפקט \"החלקה\".")}</p> : null}
+      </div>
+      <label className="block text-[11px] text-white/55">{say("شكل الأسهم|Arrows' look|מראה החצים")}
+        <select className={control} disabled={busy} value={String(p.arrowLook ?? "round")} onChange={(e) => setProps({ arrowLook: e.target.value === "round" ? undefined : e.target.value })} data-testid="studio-slider-arrowLook">
+          {SLIDER_ARROW_LOOK_NAMES.map(([key, name]) => <option key={key} value={key}>{say(name)}</option>)}
+        </select>
+      </label>
+      <label className="block text-[11px] text-white/55">{say("شكل النقاط|Dots' look|מראה הנקודות")}
+        <select className={control} disabled={busy} value={String(p.dotLook ?? "dots")} onChange={(e) => setProps({ dotLook: e.target.value === "dots" ? undefined : e.target.value })} data-testid="studio-slider-dotLook">
+          {SLIDER_DOT_LOOK_NAMES.map(([key, name]) => <option key={key} value={key}>{say(name)}</option>)}
+        </select>
       </label>
       <Choice label={tr("شكل الإطار", "The frame's shape")} value={typeof p.aspect === "string" ? p.aspect : "16 / 9"} busy={busy} testId="studio-slider-aspect" options={ASPECTS.map(([k, name]) => [k, name()] as [string, string])} onPick={(v) => setProps({ aspect: v === "16 / 9" ? undefined : v })} />
       <p className="text-[11px] leading-5 text-white/40">{tr("بالمتجر بتنسحب بالإصبع، وما بتقلب لحالها عند اللي طالب حركة أقل.", "In the store it swipes by finger, and it doesn't turn by itself for anyone who asked for less motion.")}</p>

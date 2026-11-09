@@ -177,3 +177,23 @@ export function nudgeOf(key: string, big: boolean): Pt | null {
   if (key === "ArrowDown") return { x: 0, y: n };
   return null;
 }
+
+/**
+ * How far a dragged box is from what's around it, as a design tool shows while dragging: to the
+ * nearest thing beside it (or its holder's edge) on each of its four sides, along its middle.
+ */
+export function distancesAround(box: Box, holder: Box, others: Box[]): Gap[] {
+  const out: Gap[] = [];
+  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+  const acrossY = (o: Box) => o.y < box.y + box.h && o.y + o.h > box.y;
+  const acrossX = (o: Box) => o.x < box.x + box.w && o.x + o.w > box.x;
+  const left = others.filter((o) => acrossY(o) && o.x + o.w <= box.x).reduce((m, o) => Math.max(m, o.x + o.w), holder.x);
+  const right = others.filter((o) => acrossY(o) && o.x >= box.x + box.w).reduce((m, o) => Math.min(m, o.x), holder.x + holder.w);
+  const top = others.filter((o) => acrossX(o) && o.y + o.h <= box.y).reduce((m, o) => Math.max(m, o.y + o.h), holder.y);
+  const bottom = others.filter((o) => acrossX(o) && o.y >= box.y + box.h).reduce((m, o) => Math.min(m, o.y), holder.y + holder.h);
+  if (box.x - left > 0.5) out.push({ x1: left, y1: cy, x2: box.x, y2: cy, length: box.x - left });
+  if (right - box.x - box.w > 0.5) out.push({ x1: box.x + box.w, y1: cy, x2: right, y2: cy, length: right - box.x - box.w });
+  if (box.y - top > 0.5) out.push({ x1: cx, y1: top, x2: cx, y2: box.y, length: box.y - top });
+  if (bottom - box.y - box.h > 0.5) out.push({ x1: cx, y1: box.y + box.h, x2: cx, y2: bottom, length: bottom - box.y - box.h });
+  return out;
+}

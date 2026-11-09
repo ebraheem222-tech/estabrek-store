@@ -60,7 +60,7 @@ test("internal objects show type-appropriate ready looks and actually preview, s
       const target = frame(page).locator(selector).first();
       const p = await canvasPoint(page, target);
       const box = await target.boundingBox();
-      await page.mouse.click(p.x, p.y - box!.height / 2 + 3);
+      await deepClick(page, { x: p.x, y: p.y - box!.height / 2 + 3 });
     } else await clickPart(page, selector);
     await expect(page.locator(`[data-testid="studio-looks-kind"][data-kind="${kind}"]`)).toBeVisible();
     await expect(page.locator('[data-testid="studio-looks-kind"][data-kind="edge"]')).toHaveCount(0);
@@ -76,12 +76,16 @@ async function canvasPoint(page: Page, element: Locator) {
   const scale = box!.width / width;
   return { x: box!.x + rect.x * scale, y: box!.y + rect.y * scale };
 }
-async function clickPart(page: Page, selector: string, modifiers?: ("Alt" | "Control")[]) {
+/** A click goes to the object first; Ctrl/⌘ + click picks the deepest part at once (as in a design tool). */
+async function clickPart(page: Page, selector: string, modifiers: ("Alt" | "Control")[] = ["Control"]) {
   const target = frame(page).locator(selector).first();
   const p = await canvasPoint(page, target);
-  if (modifiers) for (const mod of modifiers) await page.keyboard.down(mod);
+  await deepClick(page, p, modifiers);
+}
+async function deepClick(page: Page, p: { x: number; y: number }, modifiers: ("Alt" | "Control")[] = ["Control"]) {
+  for (const mod of modifiers) await page.keyboard.down(mod);
   await page.mouse.click(p.x, p.y);
-  if (modifiers) for (const mod of modifiers) await page.keyboard.up(mod);
+  for (const mod of modifiers) await page.keyboard.up(mod);
 }
 test("Shop card parts are individually picked; a title edit saves on the owner, updates all cards and undoes without a document reload", async ({ page }) => {
   test.setTimeout(120000);
@@ -130,14 +134,14 @@ test("generic widgets expose nested text, respect paint order and let locked wid
   await page.getByRole("tab", { name: "Layers", exact: true }).click();
   await page.locator('[data-testid="studio-layer"][data-node="over-front"]').click();
   const p = await canvasPoint(page, frame(page).locator('[data-tree-node="over-front"] > div > div'));
-  await page.mouse.click(p.x, p.y);
+  await deepClick(page, p);
   await expect(page.getByTestId("studio-look-target")).toHaveAttribute("data-target", /^n:over-front\//);
   await page.mouse.click(p.x, p.y, { button: "right" });
   await expect(page.getByRole("menu")).toContainText("Behind widget");
   await page.keyboard.press("Escape");
   const row = page.locator('[data-testid="studio-layer"][data-node="over-front"]');
   await row.locator("..").getByTestId("studio-layer-lock").click();
-  await page.mouse.click(p.x, p.y);
+  await deepClick(page, p);
   await expect(page.getByTestId("studio-look-target")).toHaveAttribute("data-target", /^n:over-back\//);
 });
 test("published part styles reach real catalog cards and preserve the live add-to-cart control", async ({ page }) => {
