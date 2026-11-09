@@ -2,6 +2,8 @@ type SeasonalThemeMode = "auto" | "none" | "winter" | "ramadan" | "eid" | "black
 type LiveChatPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ChatbotPosition = "bottom-left" | "bottom-right" | "bottom-center";
 type ToastPosition = "top-right" | "top-left" | "bottom-right" | "bottom-left";
+/** Where a colour the shopper picks shows: the whole store (bar, header, page, footer) or a product page's product area only. */
+export type ColorFollow = "everything" | "product";
 
 export type StorefrontSettings = {
   // Seasonal Effects
@@ -91,6 +93,7 @@ export type StorefrontSettings = {
 
   // Theme & Colors
   themeColorsEnabled: boolean;
+  colorFollow: ColorFollow;
   accentColor: string;
   accentColor2: string;
   glassEffectsEnabled: boolean;
@@ -192,6 +195,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
 
   // Theme & Colors
   themeColorsEnabled: true,
+  colorFollow: "everything",
   accentColor: "#8b5cf6",
   accentColor2: "#f59e0b",
   glassEffectsEnabled: true,
@@ -209,7 +213,8 @@ const seasonalThemes = ["auto", "none", "winter", "ramadan", "eid", "black-frida
 const liveChatPositions = ["bottom-left", "bottom-right", "bottom-center"] as const;
 const chatbotPositions = ["bottom-left", "bottom-right", "bottom-center"] as const;
 const toastPositions = ["top-right", "top-left", "bottom-right", "bottom-left"] as const;
-const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition"]);
+const colorFollows = ["everything", "product"] as const;
+const enumKeys = new Set(["seasonalTheme", "liveChatPosition", "chatbotPosition", "toastPosition", "colorFollow"]);
 
 const boolKeys = Object.entries(DEFAULT_STOREFRONT_SETTINGS)
   .filter(([, value]) => typeof value === "boolean")
@@ -275,6 +280,7 @@ export function normalizeStorefrontSettings(
   next.liveChatPosition = toEnum(raw.liveChatPosition, liveChatPositions, base.liveChatPosition);
   next.chatbotPosition = toEnum(raw.chatbotPosition, chatbotPositions, base.chatbotPosition);
   next.toastPosition = toEnum(raw.toastPosition, toastPositions, base.toastPosition);
+  next.colorFollow = toEnum(raw.colorFollow, colorFollows, base.colorFollow);
 
   return next;
 }

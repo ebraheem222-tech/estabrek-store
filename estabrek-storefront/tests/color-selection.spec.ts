@@ -62,17 +62,11 @@ test("fabric selection coordinates the full theme and survives later scroll chap
   expect(await page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(160, 140, 189)");
 });
 
-/** The colour a picked swatch gives the product area's buttons (its readable accent), as the browser shows it. */
-const accentOf = (seed: string) => {
-  const hex = storefrontPalette(seed)["--selection-accent"];
-  return `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
-};
-
-test("a colour picked on the shop's cards leaves the shop in its own colours, and is kept for the home", async ({ page }) => {
+// By default a picked colour dresses the whole store: the bar, the header, the page and the footer.
+test("shop selection coordinates backgrounds, buttons, filters and footer without recoloring swatches", async ({ page }) => {
   await page.goto("/shop");
   await page.waitForLoadState("networkidle");
-  // The inner pages keep the store's colours (rose-inner.css): the frame, the page, the filters and the cards' buttons.
-  const surfaces = [".cinematic-shell", ".atelier-header", ".rose-shop-intro", ".rose-product-add>button", ".filters-sidebar .filters-container", ".atelier-footer"];
+  const surfaces = [".cinematic-shell", ".rose-shop-intro", ".rose-product-add>button", ".filters-sidebar .filters-container", ".atelier-footer"];
   const styles = () => Promise.all(surfaces.map(selector => page.locator(selector).first().evaluate(el => {
     const style = getComputedStyle(el);
     return [style.backgroundColor, style.backgroundImage, style.color];
@@ -80,37 +74,34 @@ test("a colour picked on the shop's cards leaves the shop in its own colours, an
   const before = await styles();
   const productImage = await page.locator(".rose-product-tile").first().locator("img").getAttribute("src");
   await page.locator(".rose-product-tile").first().getByRole("button", { name: "Rose", exact: true }).click();
-  // The pick is kept (it follows the shopper to the home page)…
-  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
+  await expect.poll(() => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(201, 119, 148)");
+  // The header now moves with the page instead of trailing it: wait for the whole glide to end.
   await expect(page.locator("html")).not.toHaveAttribute("data-theme-gliding", /.*/);
-  // …but nothing on the shop changes colour.
-  expect(await styles()).toEqual(before);
+  const after = await styles();
+  surfaces.forEach((selector, index) => expect(after[index], selector).not.toEqual(before[index]));
+  await page.evaluate(() => scrollTo(0, 0));
+  expect(await styles()).toEqual(after);
   await expect(page.locator(".rose-product-tile").first().getByRole("button", { name: "Rose", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect(await page.locator(".rose-product-tile").first().locator("img").getAttribute("src")).toBe(productImage);
   const swatch = await page.locator(".rose-product-tile").first().getByRole("button", { name: "Rose", exact: true }).evaluate(el => getComputedStyle(el, "::after").backgroundColor);
   expect(swatch).toBe("rgb(201, 119, 148)");
 });
 
-test("a product page's colour stays in the product area; the quick view follows the colour", async ({ page }) => {
-  const header = () => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor);
-  const add = () => page.locator(".rose-pdp-grid .rose-pdp-add").first().evaluate(el => getComputedStyle(el).backgroundColor);
+test("product detail and quick view swatches both update the navbar", async ({ page }) => {
   await page.goto("/p/rose-dress");
   await page.waitForLoadState("networkidle");
   await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-selection-ready", "true");
-  const own = await header();
   await page.locator('button.color-swatch[title="Rose"]').first().click();
-  // The add-to-bag takes the colour; the header keeps the store's.
-  await expect.poll(add).toBe(accentOf("#c97794"));
-  expect(await header()).toBe(own);
+  await expect.poll(() => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(201, 119, 148)");
   await page.goto("/shop");
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "معاينة فستان الورد", exact: true }).click();
   await page.locator('.rose-sheet button.color-swatch[title="Berry"]').click();
-  await expect.poll(() => page.locator(".rose-sheet .rose-pdp-add").evaluate(el => getComputedStyle(el).backgroundColor)).toBe(accentOf("#6b2446"));
-  expect(await header()).toBe(own);
+  await expect.poll(() => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(107, 36, 70)");
+  expect(await page.locator(".atelier-header .atelier-brand").evaluate(el => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
   const palette = await page.locator(".rose-sheet").evaluate(el => {
     const style = getComputedStyle(el);
-    return [style.backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--selection-surface").trim()];
+    return [style.backgroundColor, getComputedStyle(document.querySelector(".cinematic-shell")!).getPropertyValue("--selection-surface").trim()];
   });
   expect(contrast(palette[0], palette[1])).toBeLessThan(1.01);
   const button = await page.locator(".rose-sheet .rose-pdp-add").evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
@@ -189,24 +180,20 @@ test("global accessibility controls keep readable selected-theme surfaces", asyn
   expect(contrast(colors[1], colors[2])).toBeGreaterThanOrEqual(4.5);
 });
 
-test("the chosen colour follows the shopper to the home page; the inner pages keep the store's colours", async ({ page }) => {
+test("the chosen colour theme follows the shopper to other pages, except About", async ({ page }) => {
   const header = () => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor);
   await page.goto("/shop");
   await page.waitForLoadState("networkidle");
-  const own = await header();
   await page.locator(".rose-product-tile").first().getByRole("button", { name: "Berry", exact: true }).click();
-  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
-  expect(await header()).toBe(own);
+  await expect.poll(header).toBe("rgb(107, 36, 70)");
   await page.goto("/contact");
-  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
-  expect(await header()).toBe(own);
-  // The home page (untouched) still takes it.
+  await expect.poll(header).toBe("rgb(107, 36, 70)");
   await page.goto("/");
   await expect.poll(header).toBe("rgb(107, 36, 70)");
   await page.goto("/about");
   await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
   await page.goto("/shop");
-  expect(await header()).toBe(own);
+  await expect.poll(header).toBe("rgb(107, 36, 70)");
 });
 
 test("the hero campaign photo takes the chosen colour and keeps its own by default", async ({ page }) => {
@@ -219,39 +206,43 @@ test("the hero campaign photo takes the chosen colour and keeps its own by defau
   expect(await tint.evaluate(el => getComputedStyle(el).mixBlendMode)).toBe("color");
 });
 
-test("a product page takes the piece's colour on its own, in its product area", async ({ page }) => {
-  const add = () => page.locator(".rose-pdp-grid .rose-pdp-add").first().evaluate(el => getComputedStyle(el).backgroundColor);
-  // No colour chosen yet: the product area opens in the piece's first colour, no tap needed.
+test("a product page takes the piece's colour on its own", async ({ page }) => {
+  const header = () => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor);
+  // No colour chosen yet: the page opens in the piece's first colour, no tap needed.
   await page.goto("/p/rose-dress");
   await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
-  await expect.poll(add).toBe(accentOf("#c97794"));
+  await expect.poll(header).toBe("rgb(201, 119, 148)");
   await expect(page.locator('button.color-swatch[title="Rose"]').first()).toHaveAttribute("aria-checked", "true");
   // The shopper's own colour wins when the piece comes in it.
   await page.locator('button.color-swatch[title="Berry"]').first().click();
-  await expect.poll(add).toBe(accentOf("#6b2446"));
+  await expect.poll(header).toBe("rgb(107, 36, 70)");
   await page.reload();
   await expect(page.locator('button.color-swatch[title="Berry"]').first()).toHaveAttribute("aria-checked", "true");
-  await expect.poll(add).toBe(accentOf("#6b2446"));
+  await expect.poll(header).toBe("rgb(107, 36, 70)");
 });
 
-test("on a product page a colour pick never moves the header or the page", async ({ page }) => {
+test("a colour pick moves the header and the page together", async ({ page }) => {
   await page.goto("/p/rose-dress");
   await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", /#/);
   await page.waitForTimeout(900);
-  // Sample the header and the page on every frame while the colour changes: they stay the store's.
-  const seen = await page.evaluate(() => new Promise<string[]>((resolve) => {
+  // Sample the header against the page colour on every frame of the glide.
+  const worst = await page.evaluate(() => new Promise<number>((resolve) => {
     const shell = document.querySelector<HTMLElement>(".cinematic-shell")!;
     const header = document.querySelector<HTMLElement>(".atelier-header")!;
-    const out = new Set<string>();
+    const rgb = (v: string) => (v.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    const hex = (v: string) => v.startsWith("#") ? [1, 3, 5].map((i) => parseInt(v.slice(i, i + 2), 16)) : rgb(v);
+    let max = 0;
     const t0 = performance.now();
     document.querySelector<HTMLButtonElement>('button.color-swatch[title="Berry"]')!.click();
     const loop = () => {
-      out.add(`${getComputedStyle(header).backgroundColor}|${getComputedStyle(shell).backgroundColor}`);
-      if (performance.now() - t0 < 1200) requestAnimationFrame(loop); else resolve([...out]);
+      const page = hex(getComputedStyle(shell).getPropertyValue("--navbar-bg").trim());
+      const shown = rgb(getComputedStyle(header).backgroundColor);
+      max = Math.max(max, ...page.map((c, i) => Math.abs(c - shown[i])));
+      if (performance.now() - t0 < 1200) requestAnimationFrame(loop); else resolve(max);
     };
     requestAnimationFrame(loop);
   }));
-  expect(seen).toHaveLength(1);
+  expect(worst).toBeLessThanOrEqual(2);
   await expect(page.locator("html")).not.toHaveAttribute("data-theme-gliding", /.*/);
 });
 
@@ -332,4 +323,146 @@ test("a colour picked in another tab reaches the home page left open", async ({ 
   await other.bringToFront();
   await other.waitForTimeout(500);
   await expect(other.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
+});
+
+/** The colour a picked swatch gives the product area's buttons (its readable accent), as the browser shows it. */
+const accentOf = (seed: string) => {
+  const hex = storefrontPalette(seed)["--selection-accent"];
+  return `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`;
+};
+
+// Admin → الإعدادات → الثيم والألوان → «بس منطقة المنتج» (header.storefront.colorFollow "product"): on the
+// inner pages a picked colour dresses a product page's product area only; the bar, the header and the page
+// keep the store's colours (app/rose-inner.css under data-color-scope="product").
+test.describe("a store that keeps a picked colour to the product area", () => {
+  const follow = async (request: import("@playwright/test").APIRequestContext, value?: string) => {
+    await request.post("http://127.0.0.1:4100/__test/color-follow", { data: value ? { follow: value } : {} });
+    await request.post("/api/revalidate", { data: { tags: ["settings", "cms", "cms:pages"], paths: ["/"] } });
+  };
+  test.beforeEach(async ({ request }) => follow(request, "product"));
+  test.afterEach(async ({ request }) => follow(request));
+
+  test("the shell says so", async ({ page }) => {
+    await page.goto("/shop");
+    await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-scope", "product");
+  });
+
+  test("a colour picked on the shop's cards leaves the shop in its own colours, and is kept for the home", async ({ page }) => {
+    await page.goto("/shop");
+    await page.waitForLoadState("networkidle");
+    // The inner pages keep the store's colours (rose-inner.css): the frame, the page, the filters and the cards' buttons.
+    const surfaces = [".cinematic-shell", ".atelier-header", ".rose-shop-intro", ".rose-product-add>button", ".filters-sidebar .filters-container", ".atelier-footer"];
+    const styles = () => Promise.all(surfaces.map(selector => page.locator(selector).first().evaluate(el => {
+      const style = getComputedStyle(el);
+      return [style.backgroundColor, style.backgroundImage, style.color];
+    })));
+    const before = await styles();
+    const productImage = await page.locator(".rose-product-tile").first().locator("img").getAttribute("src");
+    await page.locator(".rose-product-tile").first().getByRole("button", { name: "Rose", exact: true }).click();
+    // The pick is kept (it follows the shopper to the home page)…
+    await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
+    await expect(page.locator("html")).not.toHaveAttribute("data-theme-gliding", /.*/);
+    // …but nothing on the shop changes colour.
+    expect(await styles()).toEqual(before);
+    await expect(page.locator(".rose-product-tile").first().getByRole("button", { name: "Rose", exact: true })).toHaveAttribute("aria-pressed", "true");
+    expect(await page.locator(".rose-product-tile").first().locator("img").getAttribute("src")).toBe(productImage);
+    const swatch = await page.locator(".rose-product-tile").first().getByRole("button", { name: "Rose", exact: true }).evaluate(el => getComputedStyle(el, "::after").backgroundColor);
+    expect(swatch).toBe("rgb(201, 119, 148)");
+  });
+
+  test("a product page's colour stays in the product area; the quick view follows the colour", async ({ page }) => {
+    const header = () => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor);
+    const add = () => page.locator(".rose-pdp-grid .rose-pdp-add").first().evaluate(el => getComputedStyle(el).backgroundColor);
+    await page.goto("/p/rose-dress");
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-color-selection-ready", "true");
+    const own = await header();
+    await page.locator('button.color-swatch[title="Rose"]').first().click();
+    // The add-to-bag takes the colour; the header keeps the store's.
+    await expect.poll(add).toBe(accentOf("#c97794"));
+    expect(await header()).toBe(own);
+    await page.goto("/shop");
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "معاينة فستان الورد", exact: true }).click();
+    await page.locator('.rose-sheet button.color-swatch[title="Berry"]').click();
+    await expect.poll(() => page.locator(".rose-sheet .rose-pdp-add").evaluate(el => getComputedStyle(el).backgroundColor)).toBe(accentOf("#6b2446"));
+    expect(await header()).toBe(own);
+    const palette = await page.locator(".rose-sheet").evaluate(el => {
+      const style = getComputedStyle(el);
+      return [style.backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--selection-surface").trim()];
+    });
+    expect(contrast(palette[0], palette[1])).toBeLessThan(1.01);
+    const button = await page.locator(".rose-sheet .rose-pdp-add").evaluate(el => [getComputedStyle(el).color, getComputedStyle(el).backgroundColor]);
+    expect(contrast(button[0], button[1])).toBeGreaterThanOrEqual(4.5);
+    await expect(page.locator(".rose-sheet .rose-pdp-sizes button.active")).toBeVisible();
+    // Global panels must stay readable even with ThemeWrap's inline dark text alias.
+    await page.evaluate(() => document.documentElement.style.setProperty("--text", "#F7F4E9"));
+    for (const seed of ["#ffffff", "#eee0d5", "#a08cbd"]) {
+      await page.evaluate(color => window.dispatchEvent(new CustomEvent("storefront-color-selected", { detail:color })), seed);
+      const size = await page.locator(".rose-sheet .rose-pdp-sizes button.active").evaluate(el => {
+        const style = getComputedStyle(el);
+        return { text:style.color, background:style.backgroundColor, gradient:style.backgroundImage };
+      });
+      const stops = size.gradient.match(/(?:rgba?|color)\([^)]*\)/g) || [size.background];
+      stops.forEach(stop => expect(contrast(size.text, stop), `selected size ${seed}`).toBeGreaterThanOrEqual(4.5));
+      const swatch = await page.locator(".rose-sheet .rose-pdp-swatch.active").evaluate(el => [getComputedStyle(el).borderColor, getComputedStyle(document.querySelector(".rose-sheet")!).backgroundColor]);
+      expect(contrast(swatch[0], swatch[1]), `selected swatch ${seed}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test("the chosen colour follows the shopper to the home page; the inner pages keep the store's colours", async ({ page }) => {
+    const header = () => page.locator(".atelier-header").evaluate(el => getComputedStyle(el).backgroundColor);
+    await page.goto("/shop");
+    await page.waitForLoadState("networkidle");
+    const own = await header();
+    await page.locator(".rose-product-tile").first().getByRole("button", { name: "Berry", exact: true }).click();
+    await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
+    expect(await header()).toBe(own);
+    await page.goto("/contact");
+    await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#6b2446");
+    expect(await header()).toBe(own);
+    // The home page (untouched) still takes it.
+    await page.goto("/");
+    await expect.poll(header).toBe("rgb(107, 36, 70)");
+    await page.goto("/about");
+    await expect(page.locator(".cinematic-shell")).not.toHaveAttribute("data-storefront-color", /.+/);
+    await page.goto("/shop");
+    expect(await header()).toBe(own);
+  });
+
+  test("a product page takes the piece's colour on its own, in its product area", async ({ page }) => {
+    const add = () => page.locator(".rose-pdp-grid .rose-pdp-add").first().evaluate(el => getComputedStyle(el).backgroundColor);
+    // No colour chosen yet: the product area opens in the piece's first colour, no tap needed.
+    await page.goto("/p/rose-dress");
+    await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
+    await expect.poll(add).toBe(accentOf("#c97794"));
+    await expect(page.locator('button.color-swatch[title="Rose"]').first()).toHaveAttribute("aria-checked", "true");
+    // The shopper's own colour wins when the piece comes in it.
+    await page.locator('button.color-swatch[title="Berry"]').first().click();
+    await expect.poll(add).toBe(accentOf("#6b2446"));
+    await page.reload();
+    await expect(page.locator('button.color-swatch[title="Berry"]').first()).toHaveAttribute("aria-checked", "true");
+    await expect.poll(add).toBe(accentOf("#6b2446"));
+  });
+
+  test("on a product page a colour pick never moves the header or the page", async ({ page }) => {
+    await page.goto("/p/rose-dress");
+    await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", /#/);
+    await page.waitForTimeout(900);
+    // Sample the header and the page on every frame while the colour changes: they stay the store's.
+    const seen = await page.evaluate(() => new Promise<string[]>((resolve) => {
+      const shell = document.querySelector<HTMLElement>(".cinematic-shell")!;
+      const header = document.querySelector<HTMLElement>(".atelier-header")!;
+      const out = new Set<string>();
+      const t0 = performance.now();
+      document.querySelector<HTMLButtonElement>('button.color-swatch[title="Berry"]')!.click();
+      const loop = () => {
+        out.add(`${getComputedStyle(header).backgroundColor}|${getComputedStyle(shell).backgroundColor}`);
+        if (performance.now() - t0 < 1200) requestAnimationFrame(loop); else resolve([...out]);
+      };
+      requestAnimationFrame(loop);
+    }));
+    expect(seen).toHaveLength(1);
+    await expect(page.locator("html")).not.toHaveAttribute("data-theme-gliding", /.*/);
+  });
 });

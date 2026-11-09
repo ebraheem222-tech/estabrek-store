@@ -62,7 +62,12 @@ function savedBeforeThisVersion() {
   }
 }
 const ACTIVITY = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"] as const;
-export function RoseThemeProvider({ children, className, restoreSelection = true }: { children: ReactNode; className: string; restoreSelection?: boolean }) {
+/**
+ * colorScope: where a picked colour shows (Admin → الإعدادات → الثيم والألوان). "everything" (the default):
+ * the bar, the header, the page and the footer take it; "product": on the inner pages only a product page's
+ * product area does (app/rose-inner.css reads the shell's data-color-scope).
+ */
+export function RoseThemeProvider({ children, className, restoreSelection = true, colorScope = "everything" }: { children: ReactNode; className: string; restoreSelection?: boolean; colorScope?: "everything" | "product" }) {
   const root = useRef<HTMLDivElement>(null);
   useClientLayoutEffect(() => {
     let selected = false;
@@ -249,7 +254,7 @@ export function RoseThemeProvider({ children, className, restoreSelection = true
     if (root.current) delete root.current.dataset.roseTone;
   }, []);
   return <ThemeContext.Provider value={{ root, apply, reset }}>
-    <div ref={root} className={className} data-rose-theme="true" style={{ "--atelier-bg": roseVar(className.includes("cinematic-home-shell") ? rosePalettes.blush : rosePalettes.pearl) } as React.CSSProperties}>{children}</div>
+    <div ref={root} className={className} data-rose-theme="true" data-color-scope={colorScope} style={{ "--atelier-bg": roseVar(className.includes("cinematic-home-shell") ? rosePalettes.blush : rosePalettes.pearl) } as React.CSSProperties}>{children}</div>
   </ThemeContext.Provider>;
 }
 export function useRoseTheme() { return useContext(ThemeContext); }

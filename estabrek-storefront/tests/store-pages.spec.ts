@@ -83,9 +83,24 @@ test.describe("a product page from the store's design", () => {
     await page.goto("/c/dresses");
     await expect(page.locator(".rose-category-intro")).toBeVisible();
     await expect(page.locator('[data-tree-node="cat-banner"]')).toHaveCount(0);
-    // The category's own colour stays in its opening: the header keeps the store's.
+    // By default the category's own colour dresses the page and the header.
     const shell = page.locator(".cinematic-shell");
-    await expect(shell).not.toHaveAttribute("data-navbar-color", /.+/);
-    await expect.poll(() => page.locator(".rose-category-intro").evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-accent"))).not.toBe("");
+    await expect(shell).toHaveAttribute("data-navbar-color", /#/);
+    await expect.poll(() => shell.evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-accent"))).not.toBe("");
+  });
+
+  test("a store that keeps colours to the product area keeps a category's colour in its opening", async ({ page, request }) => {
+    await request.post(`${API}/__test/color-follow`, { data: { follow: "product" } });
+    await request.post("/api/revalidate", { data: { tags: ["settings", "cms", "cms:pages"], paths: ["/"] } });
+    try {
+      await page.goto("/c/dresses");
+      await expect(page.locator(".rose-category-intro")).toBeVisible();
+      const shell = page.locator(".cinematic-shell");
+      await expect(shell).toHaveAttribute("data-color-scope", "product");
+      await expect.poll(() => page.locator(".rose-category-intro").evaluate((el) => (el as HTMLElement).style.getPropertyValue("--selection-accent"))).not.toBe("");
+      await expect(shell).not.toHaveAttribute("data-navbar-color", /.+/);
+    } finally {
+      await request.post(`${API}/__test/color-follow`, { data: {} });
+    }
   });
 });

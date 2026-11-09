@@ -261,6 +261,8 @@ export default async function RootLayout({
                     ? bootstrap.site.announcement.text || ""
                     : "",
                   announcementHref: bootstrap.site.announcement?.linkUrl || "",
+                  // Admin → الإعدادات → الثيم والألوان: a picked colour dresses the whole store, or the product area only.
+                  colorFollow: initialStorefrontSettings?.colorFollow === "product" ? "product" : "everything",
                 }}
                 legacyHeader={regions?.header ? <StoreDesignRegion tree={regions.header} region="header" lang={lang} /> :
                   <>

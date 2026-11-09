@@ -423,6 +423,8 @@ type StorefrontConfig = {
   
   // Theme & Colors
   themeColorsEnabled: boolean;
+  /** Where a colour the shopper picks shows: the whole store (bar, header, page, footer) or the product area only. */
+  colorFollow: "everything" | "product";
   buttonThemeId: string;
   accentColor: string;
   accentColor2: string;
@@ -531,6 +533,7 @@ function normalizeStorefront(v: any): StorefrontConfig {
     
     // Theme
     themeColorsEnabled: o.themeColorsEnabled !== false,
+    colorFollow: o.colorFollow === "product" ? "product" : "everything",
     buttonThemeId: (() => {
       const raw = typeof o.buttonThemeId === "string" ? o.buttonThemeId : "default";
       if (raw === "default") return raw;
@@ -3005,6 +3008,16 @@ export default function SettingsPage() {
                         checked={storefrontCfg.darkModeDefault}
                         onChange={(v) => setStorefrontCfg((p) => ({ ...p, darkModeDefault: v }))}
                         disabled={!storefrontCfg.themeColorsEnabled || !storefrontCfg.darkModeEnabled}
+                      />
+                      <Select
+                        label="لما الزبون يختار لون"
+                        value={storefrontCfg.colorFollow}
+                        onValueChange={(v) => setStorefrontCfg((p) => ({ ...p, colorFollow: v === "product" ? "product" : "everything" }))}
+                        options={[
+                          { value: "everything", label: "المتجر كله بيتلوّن (الشريط والهيدر والصفحة)" },
+                          { value: "product", label: "بس منطقة المنتج (الهيدر والصفحة بألوان المتجر)" },
+                        ]}
+                        data-testid="settings-color-follow"
                       />
                       <Select
                         label="ثيم الأزرار"
