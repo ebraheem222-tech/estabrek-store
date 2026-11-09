@@ -8,9 +8,14 @@ import * as THREE from "three";
 import { useStagedParts, warmScene } from "./warmScene";
 import type { StoryKey } from "@/lib/collectionStories";
 import type { PalmRef } from "./mascot/RoseMascot";
+import { createDisplayHead, createHijabGeometry } from "./HijabGeometry";
+import { createFabricTexture } from "./fabricTexture";
+
+/** The models this scene can show: the stories' three, and a draped hijab (the home's collections). */
+export type ModelKey = StoryKey | "hijab";
 
 export type CollectionModelsProps = {
-  keys: StoryKey[];
+  keys: ModelKey[];
   /** Visibility of each chapter (0–1), written by the scroll timeline every frame. */
   weights: MutableRefObject<number[]>;
   active: boolean;
@@ -20,6 +25,8 @@ export type CollectionModelsProps = {
   onFailure: () => void;
   /** When Rose (the 2D guide) holds the models, each one sits on her open palm. */
   palm?: PalmRef;
+  /** The hijab's colour (it glides there): the collection in view. */
+  tint?: MutableRefObject<string>;
 };
 
 const rand = (seed: number) => {
@@ -294,6 +301,55 @@ function Kids({ weight, rtl, compact, palm }: ModelProps) {
   );
 }
 
+/* --------------------------------- Hijab --------------------------------- */
+/* A draped hijab on a display bust (the same sewn garment as the home's opening), in the colour of the
+   collection in view: it glides from one collection's colour to the next. */
+
+function Hijab({ weight, rtl, compact, palm, tint }: ModelProps & { tint?: MutableRefObject<string> }) {
+  const group = useStage(weight, rtl, compact, 0.92, 0.2, { palm, base: -1.6 });
+  const geometries = useMemo(() => createHijabGeometry(), []);
+  const head = useMemo(() => createDisplayHead(), []);
+  const weave = useMemo(() => {
+    const t = createFabricTexture({ threads: 48 });
+    t.repeat(12, 16);
+    return t;
+  }, []);
+  const fabric = useMemo(() => new THREE.MeshPhysicalMaterial({
+    color: tint?.current || "#d99fb6", side: THREE.DoubleSide, roughness: 0.85, metalness: 0,
+    sheen: 0.7, sheenColor: new THREE.Color("#f9dce7"), sheenRoughness: 0.7,
+    bumpMap: weave.bump, bumpScale: 0.022, roughnessMap: weave.rough,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [weave]);
+  const skin = useMemo(() => new THREE.MeshStandardMaterial({ color: "#f5eae0", roughness: 0.73 }), []);
+  const bust = useMemo(() => new THREE.MeshStandardMaterial({ color: "#efe1d7", roughness: 0.75 }), []);
+  const base = useMemo(() => new THREE.MeshStandardMaterial({ color: "#ddadbd", roughness: 0.6 }), []);
+  const target = useMemo(() => new THREE.Color(), []);
+  useEffect(() => () => {
+    Object.values(geometries).forEach((g) => g.dispose());
+    head.dispose();
+    weave.dispose();
+    [fabric, skin, bust, base].forEach((m) => m.dispose());
+  }, [geometries, head, weave, fabric, skin, bust, base]);
+  useFrame((_, delta) => {
+    if (!tint?.current) return;
+    target.set(tint.current);
+    fabric.color.lerp(target, Math.min(1, delta * 3));
+  });
+  return (
+    <group ref={group}>
+      <mesh geometry={head} material={skin} position={[0, 0.87, 0.055]} />
+      <mesh material={bust} scale={[0.78, 1, 0.45]}>
+        <latheGeometry args={[[
+          new THREE.Vector2(0, -1.62), new THREE.Vector2(0.65, -1.62), new THREE.Vector2(0.83, -1.2), new THREE.Vector2(1.04, -0.6),
+          new THREE.Vector2(1.01, -0.39), new THREE.Vector2(0.61, -0.1), new THREE.Vector2(0.24, 0.04), new THREE.Vector2(0.21, 0.44), new THREE.Vector2(0, 0.44),
+        ], 64]} />
+      </mesh>
+      {Object.entries(geometries).map(([name, geometry]) => <mesh key={name} geometry={geometry} material={fabric} />)}
+      <mesh material={base} position={[0, -1.77, 0]}><cylinderGeometry args={[0.32, 0.4, 0.3, 48]} /></mesh>
+    </group>
+  );
+}
+
 /* -------------------------------- Incense -------------------------------- */
 /* A turned-wood mabkhara with gold inlay, glowing bakhoor and rising smoke. */
 
@@ -459,8 +515,8 @@ function CollectionModelsScene(props: CollectionModelsProps) {
   // before this section, right while the shopper scrolled towards it.
   const [warm, setWarm] = useState(false);
   // Built one model at a time while the page rests (useStagedParts); the warm-up comes last.
-  const parts = useStagedParts(4, props.active);
-  const at = (key: StoryKey) => () => {
+  const parts = useStagedParts(5, props.active);
+  const at = (key: ModelKey) => () => {
     const i = props.keys.indexOf(key);
     return i < 0 ? 0 : props.weights.current[i] ?? 0;
   };
@@ -489,8 +545,9 @@ function CollectionModelsScene(props: CollectionModelsProps) {
       {parts > 0 && props.keys.includes("accessories") && <Accessories weight={at("accessories")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
       {parts > 1 && props.keys.includes("kids") && <Kids weight={at("kids")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
       {parts > 2 && props.keys.includes("incense") && <Incense weight={at("incense")} rtl={props.rtl} compact={props.compact} palm={props.palm} />}
+      {parts > 3 && props.keys.includes("hijab") && <Hijab weight={at("hijab")} rtl={props.rtl} compact={props.compact} palm={props.palm} tint={props.tint} />}
       <ScenePacer active={props.active} />
-      {parts > 3 && <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />}
+      {parts > 4 && <Lifecycle onReady={props.onReady} onFailure={props.onFailure} onWarm={() => setWarm(true)} />}
     </Canvas>
   );
 }
@@ -501,5 +558,5 @@ function CollectionModelsScene(props: CollectionModelsProps) {
  * settings change (`keys` is compared by content: it is a new array each time).
  */
 export default memo(CollectionModelsScene, (a, b) =>
-  a.keys.join() === b.keys.join() && a.weights === b.weights && a.active === b.active && a.compact === b.compact && a.rtl === b.rtl && a.palm === b.palm,
+  a.keys.join() === b.keys.join() && a.weights === b.weights && a.active === b.active && a.compact === b.compact && a.rtl === b.rtl && a.palm === b.palm && a.tint === b.tint,
 );

@@ -210,9 +210,10 @@ export function RoseProduct({ product, crumbs, related }: { product: CatalogProd
         ))}
       </nav>
 
-      {/* Behind the product: its category's mood, drawn (snowflakes for winter, petals for spring…). */}
-      <RoseProductBackdrop mood={moodOf([...crumbs.slice(2).flatMap((c) => [c.label, c.href]), product.title])} />
       <div className="rose-pdp-grid">
+        {/* Behind the product, in its area: the piece's colour as soft light, and its category drawn (snowflakes for
+            winter, petals for spring…). */}
+        <RoseProductBackdrop mood={moodOf([...crumbs.slice(2).flatMap((c) => [c.label, c.href]), product.title])} />
         <section className="rose-pdp-gallery" aria-label={tr(lang, "صور المنتج", "Product photos")}>
           {images.length > 1 && (
             <div className="rose-pdp-thumbs" role="tablist" aria-label={tr(lang, "اختاري صورة", "Choose a photo")}>

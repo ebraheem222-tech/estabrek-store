@@ -169,3 +169,48 @@ test.describe("on a phone", () => {
     expect(Math.abs((await gallery.boundingBox())!.y - Math.min(top, 64))).toBeLessThan(80);
   });
 });
+
+test("a product's backdrop is its piece's colour as soft light, and glides to a colour picked", async ({ page }) => {
+  await page.goto("/p/rose-dress");
+  // Inside the product area, so it keeps the piece's colour also where colours stay with the product.
+  const backdrop = page.locator(".rose-pdp-grid > .rose-pdp-backdrop");
+  await expect(backdrop).toHaveCount(1);
+  await expect(page.locator(".cinematic-shell")).toHaveAttribute("data-storefront-color", "#c97794");
+  const paint = () => backdrop.evaluate((el) => getComputedStyle(el).backgroundImage);
+  await page.waitForTimeout(900);
+  const rose = await paint();
+  await page.locator('button.color-swatch[title="Berry"]').first().click();
+  await expect.poll(paint).not.toBe(rose);
+});
+
+test.describe("the home's collections as a scroll story", () => {
+  const story = async (page: import("@playwright/test").Page, on: boolean) => {
+    await page.request.get(`http://127.0.0.1:4100/__test/collections-story?on=${on ? 1 : 0}`);
+    await page.request.post("/api/revalidate", { data: { tags: ["cms:pages"] } });
+  };
+  test.afterEach(async ({ page }) => story(page, false));
+
+  test("one collection at a time, big, with its model beside it; scrolling brings the next one", async ({ page }) => {
+    await story(page, true);
+    await page.goto("/");
+    const section = page.locator(".rose-collections-scroll");
+    await expect(section).toHaveCount(1);
+    await expect(page.locator(".editorial-collection-grid")).toHaveCount(0);
+    await expect(section.locator(".rose-cs-dots li")).toHaveCount(2);
+    await section.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + 40));
+    await expect(section.locator(".rose-cs-name")).toHaveText("فساتين");
+    await expect(section.locator(".rose-cs-dots li").first()).toHaveAttribute("aria-current", "step");
+    // Down through the section: the second collection takes its place.
+    await section.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + el.offsetHeight - window.innerHeight - 20));
+    await expect(section.locator(".rose-cs-name")).toHaveText("حجاب");
+    await expect(section.locator(".rose-cs-dots li").nth(1)).toHaveAttribute("aria-current", "step");
+    await expect(section.locator(".rose-cs-cta")).toHaveAttribute("href", "/c/hijabs");
+  });
+
+  test("switched off in the opening's settings, the collections stay a grid", async ({ page }) => {
+    await story(page, false);
+    await page.goto("/");
+    await expect(page.locator(".editorial-collection-grid")).toHaveCount(1);
+    await expect(page.locator(".rose-collections-scroll")).toHaveCount(0);
+  });
+});

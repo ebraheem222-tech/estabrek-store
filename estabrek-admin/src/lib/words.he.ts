@@ -602,6 +602,7 @@ export const HE: Record<string, string> = {
   "Codes:": "קודים:",
   "Collapse the menu": "כיווץ התפריט",
   "Collection stories": "סיפורי הקולקציה",
+  "Collections as a 3D story": "קולקציות כסיפור תלת־ממדי",
   "Collections": "קולקציות",
   "Colour": "צבע",
   "Colour / size": "צבע / מידה",
