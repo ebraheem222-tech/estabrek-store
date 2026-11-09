@@ -16,6 +16,17 @@ export function sliderSettings(p: Record<string, unknown> = {}): SliderSettings 
   };
 }
 
+/** A slider's shape, arrows and dots (kept equal to the API's lists); drawn by sliderLookCss.ts. */
+export const SLIDER_LOOKS = ["plain", "rounded", "card", "frame", "polaroid", "arch", "circle", "blob", "ticket", "film", "phone", "browser", "tilt", "stack", "peek", "trio"] as const;
+export const SLIDER_ARROW_LOOKS = ["round", "square", "bare", "glass", "outline", "corner"] as const;
+export const SLIDER_DOT_LOOKS = ["dots", "lines", "bars", "numbers"] as const;
+export type SliderLooks = { look?: typeof SLIDER_LOOKS[number]; arrows?: typeof SLIDER_ARROW_LOOKS[number]; dots?: typeof SLIDER_DOT_LOOKS[number] };
+/** Only what's on the lists, and nothing for the usual ones (plain, round arrows, dots). */
+export function sliderLooksOf(p: Record<string, unknown> = {}): SliderLooks {
+  const one = <T extends string>(v: unknown, list: readonly T[], usual: T): T | undefined => (typeof v === "string" && v !== usual && (list as readonly string[]).includes(v) ? (v as T) : undefined);
+  return { look: one(p.look, SLIDER_LOOKS, "plain"), arrows: one(p.arrowLook, SLIDER_ARROW_LOOKS, "round"), dots: one(p.dotLook, SLIDER_DOT_LOOKS, "dots") };
+}
+
 /** Signed distance in document order, with wrapping only for a looping slider. */
 export function slideDistance(i: number, at: number, count: number, loop: boolean): number {
   let d = i - at;

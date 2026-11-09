@@ -100,7 +100,27 @@ export const newColumns = (widths: number[], id: Ids): PageTreeNode => ({
 export const newSection = (widths: number[], id: Ids): PageTreeNode => ({ id: id("sec"), type: "section", props: { contained: true }, children: [newColumns(widths, id)] });
 
 /** `src` is the picture or clip for those two, and a slider's first picture. */
+/**
+ * How wide a new piece starts: about the size it has on a real page, never wider than its place
+ * (a narrow column or a phone still gets all of its width), in the middle of where it lands.
+ * Without this a picture, a clip or a slider took the whole width of the section.
+ */
+export const START_WIDTH: Partial<Record<NewKind, string>> = { image: "480px", video: "640px", slider: "720px", product360: "420px", lottie: "240px", rive: "240px", chart: "560px", map: "640px", beforeAfter: "640px", hotspots: "640px", model3d: "320px", svg: "200px", instrument: "640px", clock: "320px" };
+
+/** A node with its starting width, unless it already has one. */
+export function startSized(kind: NewKind, node: PageTreeNode): PageTreeNode {
+  const width = START_WIDTH[kind];
+  const style = (node.style ?? {}) as Record<string, Record<string, unknown> | undefined>;
+  const base = style.base ?? {};
+  if (!width) return node;
+  return { ...node, style: { ...style, base: { width, maxWidth: "100%", self: "center", ...base } } } as PageTreeNode;
+}
+
 export function newElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTreeNode {
+  return startSized(kind, makeElement(kind, lang, id, src));
+}
+
+function makeElement(kind: NewKind, lang: Lang, id: Ids, src?: string): PageTreeNode {
   switch (kind) {
     case "stack": return { id: id("box"), type: "stack", name: {ar:"حاوية",en:"Container",he:"מכל"}[lang], props: {}, style: { base: { minHeight: "240px", width: "100%", pad: [24, 24, 24, 24], bg: "surface", border: { width: 1, color: "border" }, radius: 12 } }, children: [] };
     case "deck": {

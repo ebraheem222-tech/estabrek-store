@@ -8,11 +8,21 @@ export type InteractionAction =
   | { type: "scroll"; target: string }
   | { type: "animate"; target: string; preset: "pulse" | "fade" | "shake" };
 export type InteractionPolicy = { version: 1; bindings: Partial<Record<InteractionEvent, InteractionAction[]>> };
+/** How a card's picture, the card itself and its button move and look (kept equal to the API's lists). */
+export const CARD_HOVERS = ["none", "swap", "slide", "zoom", "zoomSwap", "flip", "curtain", "circle", "cycle", "grayscale", "blur", "pan"] as const;
+export const CARD_LIFTS = ["none", "lift", "shadow", "glow", "border", "scale", "tilt"] as const;
+export const CARD_ENTERS = ["none", "fade", "up", "zoom", "blur", "flip", "side"] as const;
+export const CARD_BUTTONS = ["full", "pill", "outline", "text", "icon", "hover"] as const;
+export const CARD_BADGES = ["pill", "corner", "circle", "ribbon"] as const;
+export const CARD_RATIOS = ["portrait", "square", "landscape", "tall", "wide"] as const;
 export type CardDesign = {
   layout?: "vertical" | "horizontal"; background?: string; textColor?: string; borderColor?: string; buttonColor?: string; buttonTextColor?: string;
-  radius?: number; padding?: number; gap?: number; imageRatio?: "square" | "portrait" | "landscape"; imageFit?: "cover" | "contain";
+  radius?: number; padding?: number; gap?: number; imageRatio?: typeof CARD_RATIOS[number]; imageFit?: "cover" | "contain";
   titleSize?: number; priceSize?: number; showCategory?: boolean; showPrice?: boolean; showSwatches?: boolean; showButton?: boolean;
   swatchSize?: number; swatchShape?: "circle" | "rounded" | "square"; swatchGap?: number;
+  hover?: typeof CARD_HOVERS[number]; cardHover?: typeof CARD_LIFTS[number]; enter?: typeof CARD_ENTERS[number];
+  buttonStyle?: typeof CARD_BUTTONS[number]; align?: "start" | "center"; shadow?: "none" | "soft" | "deep";
+  showBadge?: boolean; badgeStyle?: typeof CARD_BADGES[number]; titleLines?: number;
 };
 export type VisualControls = { version: 1; revision: number; cardDesign?: CardDesign | null; interactions?: InteractionPolicy };
 const object = (v: unknown): v is Record<string, any> => !!v && typeof v === "object" && !Array.isArray(v);
@@ -46,8 +56,9 @@ export function readCardDesign(raw: unknown): CardDesign | null | undefined {
   const out: Record<string, any> = {};
   for (const k of ["background", "textColor", "borderColor", "buttonColor", "buttonTextColor"]) if (hex(raw[k])) out[k] = raw[k];
   for (const [k, min, max] of [["radius", 0, 80], ["padding", 0, 64], ["gap", 0, 48], ["titleSize", 10, 48], ["priceSize", 10, 40], ["swatchSize", 12, 64], ["swatchGap", 0, 24]] as const) if (typeof raw[k] === "number" && Number.isFinite(raw[k]) && raw[k] >= min && raw[k] <= max) out[k] = raw[k];
-  for (const [k, allowed] of [["layout", ["vertical", "horizontal"]], ["imageRatio", ["square", "portrait", "landscape"]], ["imageFit", ["cover", "contain"]], ["swatchShape", ["circle", "rounded", "square"]]] as const) if ((allowed as readonly unknown[]).includes(raw[k])) out[k] = raw[k];
-  for (const k of ["showCategory", "showPrice", "showSwatches", "showButton"]) if (typeof raw[k] === "boolean") out[k] = raw[k];
+  for (const [k, allowed] of [["layout", ["vertical", "horizontal"]], ["imageRatio", CARD_RATIOS], ["imageFit", ["cover", "contain"]], ["swatchShape", ["circle", "rounded", "square"]], ["hover", CARD_HOVERS], ["cardHover", CARD_LIFTS], ["enter", CARD_ENTERS], ["buttonStyle", CARD_BUTTONS], ["align", ["start", "center"]], ["shadow", ["none", "soft", "deep"]], ["badgeStyle", CARD_BADGES]] as const) if ((allowed as readonly unknown[]).includes(raw[k])) out[k] = raw[k];
+  for (const k of ["showCategory", "showPrice", "showSwatches", "showButton", "showBadge"]) if (typeof raw[k] === "boolean") out[k] = raw[k];
+  if (Number.isInteger(raw.titleLines) && raw.titleLines >= 1 && raw.titleLines <= 3) out.titleLines = raw.titleLines;
   return out;
 }
 export function readVisualControls(raw: unknown): VisualControls {

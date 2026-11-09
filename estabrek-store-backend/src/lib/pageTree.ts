@@ -497,6 +497,11 @@ export const SCENE_KINDS = [
 ] as const;
 
 const none = z.object({});
+/** A slider's shapes, arrows and dots (the shop draws them: pageTree/sliderLookCss.ts). */
+export const SLIDER_LOOKS = ["plain", "rounded", "card", "frame", "polaroid", "arch", "circle", "blob", "ticket", "film", "phone", "browser", "tilt", "stack", "peek", "trio"] as const;
+export const SLIDER_ARROW_LOOKS = ["round", "square", "bare", "glass", "outline", "corner"] as const;
+export const SLIDER_DOT_LOOKS = ["dots", "lines", "bars", "numbers"] as const;
+
 export const NODE_PROPS: Record<NodeType, z.ZodType> = {
   // `smooth`: the page scrolls smoothly (Lenis), for whoever hasn't asked their device for less motion.
   page: z.object({ looks: Looks.optional(), smooth: z.boolean().optional(), commerceVersion: z.literal(1).optional() }),
@@ -648,6 +653,10 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     progress: z.boolean().optional(),
     captionPosition: z.enum(["bottom", "center", "split"]).optional(),
     aspect: z.string().trim().regex(/^[1-9]\d?\s*\/\s*[1-9]\d?$/, "Like 16 / 9").optional(),
+    // Its shape (a frame, a phone, cards that peek…), its arrows and its dots.
+    look: z.enum(SLIDER_LOOKS).optional(),
+    arrowLook: z.enum(SLIDER_ARROW_LOOKS).optional(),
+    dotLook: z.enum(SLIDER_DOT_LOOKS).optional(),
   }),
   instrument: z.object({ kind: z.enum(["piano", "guitar"]).default("piano"), label: local(160).optional(), sound: z.boolean().optional(), volume: z.number().finite().min(0).max(1).optional(), octave: z.number().int().min(2).max(6).optional(), octaves: z.number().int().min(1).max(2).optional(), frets: z.number().int().min(4).max(12).optional(), sustain: z.number().finite().min(.1).max(3).optional(), waveform: z.enum(["sine", "triangle", "sawtooth"]).optional(), theme: z.enum(["dark", "light"]).optional(), showNotes: z.boolean().optional(), melody: z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"]).optional(), playlist: z.array(z.enum(["scale", "arpeggio", "chords", "jingle", "wish", "silent"])).min(1).max(6).optional(), showPlayer: z.boolean().optional(), tempo: z.number().int().min(40).max(200).optional(), repeat: z.boolean().optional() }),
   chart: z.object({ kind: z.enum(["bar", "line", "donut"]).default("bar"), label: local(160).optional(), items: z.array(z.object({ label: local(80), value: z.number().finite().min(0).max(1000000), color: color.optional() })).min(1).max(24), showValues: z.boolean().optional() }),
@@ -670,6 +679,10 @@ export const NODE_PROPS: Record<NodeType, z.ZodType> = {
     mobileColumns: z.number().int().min(1).max(2).optional(),
     showFilters: z.boolean().optional(),
     showSearch: z.boolean().optional(),
+    // The page around the cards: the space between them, which side the filters sit on, and whether they stay in view.
+    gap: z.number().int().min(0).max(64).optional(),
+    filtersSide: z.enum(["start", "end"]).optional(),
+    stickyFilters: z.boolean().optional(),
   }).strict(),
   cartItems: z.object({}).strict(),
   cartSummary: z.object({}).strict(),

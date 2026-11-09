@@ -8,6 +8,7 @@
 import { STATES, TREE_TRANSFORM, TREE_TRANSFORM_REST, framed, lookNode, lookSelector, looksOf, motionOf, type PageTree, type Screen, type ScreenStyle, type SiteStyle, type SizeConstraints, type TreeNode } from "./tree";
 import { fontFaceCss, fontStack } from "./fonts";
 import { SLIDER_EFFECT_CSS } from "./sliderEffectCss";
+import { SLIDER_LOOK_CSS } from "./sliderLookCss";
 import { layersOf, type PieceLayerSpec } from "./pieces";
 
 export const TABLET_MAX = 1023.98;
@@ -1062,6 +1063,7 @@ export const BASE_CSS = [
   ".pt-slider-dot[aria-current=true]::before{width:22px;background:#fff}",
   ".pt-slider-arrow:focus-visible,.pt-slider-pause:focus-visible,.pt-slider-dot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}",
   SLIDER_EFFECT_CSS,
+  SLIDER_LOOK_CSS,
   // Natural content-box ratio until the editor supplies a height; authored padding and borders stay outside it.
   ".pt-svg{display:block;width:100%;max-width:100%;color:var(--accent)}",
   ".pt-product360{display:block;width:100%;max-width:100%}",

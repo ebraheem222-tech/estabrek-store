@@ -28,7 +28,7 @@ import { PopupView } from "./Interactive";
 import { SpinView } from "@/components/cinematic/ProductSpin";
 import { spinFor } from "@/components/cinematic/spinData";
 import { SliderControls, type SliderWords } from "./SliderControls";
-import { sliderSettings } from "./sliderEffects";
+import { sliderSettings, sliderLooksOf } from "./sliderEffects";
 import { InstrumentView } from "./InstrumentView";
 import { instrumentOf } from "./instrument";
 import { ChartView } from "./ChartView";
@@ -278,10 +278,11 @@ function renderNode({ node, ctx }: { node: TreeNode; ctx: TreeCtx }): ReactNode 
       const slides = sliderSlides(p);
       if (!slides.length) return null;
       const settings = sliderSettings(p);
+      const looks = sliderLooksOf(p);
       const w = SLIDER_WORDS[ctx.lang] ?? SLIDER_WORDS.ar;
       const { carousel, ...words } = w;
       return (
-        <div className={cls(node)} {...mark} data-effect={settings.effect} data-axis={settings.axis} data-caption={settings.captionPosition} data-thumbnails={settings.thumbnails ? "true" : undefined} style={{ "--pt-slider-zoom": settings.zoom } as CSSProperties} role="region" aria-roledescription={carousel} aria-label={carousel}>
+        <div className={cls(node)} {...mark} data-effect={settings.effect} data-axis={settings.axis} data-caption={settings.captionPosition} data-thumbnails={settings.thumbnails ? "true" : undefined} data-look={looks.look} data-arrows={looks.arrows} data-dots={looks.dots} style={{ "--pt-slider-zoom": settings.zoom } as CSSProperties} role="region" aria-roledescription={carousel} aria-label={carousel}>
           <div className="pt-slides" tabIndex={0}>
             {slides.map((s, i) => {
               const caption = say(s.caption);

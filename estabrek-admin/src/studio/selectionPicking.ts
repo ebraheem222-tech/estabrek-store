@@ -21,3 +21,25 @@ export class PointSelection {
   }
   cancel() { if (this.pending) clearTimeout(this.pending.timer); this.pending = undefined; }
 }
+
+/**
+ * What a click selects, as in a design tool: the object under the pointer first (never one of its
+ * inner parts); a click on the selected object again goes inside it (its closest inner part), and
+ * inside an object its other parts are one click away; Ctrl/⌘ goes straight to the deepest; Alt
+ * goes round everything under the pointer. Without deep selection, inner parts are never picked.
+ * `ids` is the candidate stack, deepest first; `before` what was selected before the press.
+ */
+export function clickPick(ids: string[], before: string | null, o: { deep: boolean; deepest: boolean; cycle: boolean; isPart: (id: string) => boolean; pathOf: (id: string) => string[] }): string | null {
+  if (!ids.length) return null;
+  if (o.cycle) return cycleCandidate(ids, before);
+  const object = ids.find(id => !o.isPart(id)) ?? null;
+  if (!o.deep) return object;
+  if (o.deepest || !object) return ids[0];
+  if (!before) return object;
+  const within = before === object || (o.isPart(before) && o.pathOf(before).includes(object));
+  if (!within) return object;
+  const inside = ids.filter(id => id !== object && o.isPart(id) && o.pathOf(id).includes(object));
+  if (!inside.length) return object;
+  if (before === object) return [...inside].sort((a, b) => o.pathOf(a).length - o.pathOf(b).length)[0];
+  return inside[0];
+}

@@ -140,6 +140,8 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
   if (reference) return reference;
   const el = (k: NewKind, s?: string) => newElement(k, lang, ids, s);
   const centred = { base: { textAlign: "center", align: "center" } };
+  /** All the width of its place (a ready block's picture or gallery). */
+  const fill = (n: PageTreeNode): PageTreeNode => ({ ...n, style: { ...(n.style ?? {}), base: { ...((n.style as Record<string, Record<string, unknown>> | undefined)?.base ?? {}), width: "100%" } } } as PageTreeNode);
   switch (kind) {
     case "section":
       return { id: ids("sec"), type: "section", props: { contained: true }, children: [] };
@@ -147,7 +149,8 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
       return { id: ids("sec"), type: "section", props: { contained: true }, style: centred, children: [{ ...el("heading"), props: { ...el("heading").props, level: 2 } }, el("text"), el("button")] };
     case "ready-split": {
       const cols = newColumns([1, 1], ids);
-      cols.children![0].children = [el("image", src)];
+      // The picture fills its half.
+      cols.children![0].children = [fill(el("image", src))];
       cols.children![1].children = [{ ...el("heading"), props: { ...el("heading").props, level: 2 } }, el("text"), el("button")];
       cols.children![1].style = { base: { justify: "center" } };
       return { id: ids("sec"), type: "section", props: { contained: true }, children: [cols] };
@@ -180,7 +183,7 @@ export function makeNode(kind: AddKind, lang: Lang, ids: Ids, src?: string): Pag
       return section;
     }
     case "ready-gallery":
-      return { id: ids("sec"), type: "section", props: { contained: true }, children: [el("slider", src)] };
+      return { id: ids("sec"), type: "section", props: { contained: true }, children: [fill(el("slider", src))] };
     case "ready-scroll-video":
       return readyScrollVideo(lang, ids, src);
     case "ready-scroll-story":
