@@ -11,6 +11,8 @@ import { RoseShopIntro } from "@/components/cinematic/RoseShopIntro";
 import { RoseShopTools } from "@/components/cinematic/RoseShopTools";
 import { routeLang, seoAlternates } from "@/lib/seoLang";
 import { tr } from "@/lib/words";
+import { getProductPrimaryImage } from "@/lib/catalog";
+import { cldUrl } from "@/lib/cloudinary";
 
 const ImageSearchPanel = dynamic(
   () => import("@/components/ImageSearchPanel").then((m) => m.ImageSearchPanel),
@@ -118,11 +120,18 @@ export default async function ShopPage({ params, searchParams }: { params: { lan
 
   const [categories, out] = await catalog;
 
+  // The opening's 3D ring: the newest pieces with a photo (small, for the ring).
+  const showcase = (out.items ?? [])
+    .map((p) => ({ slug: p.slug, title: p.title, image: getProductPrimaryImage(p) }))
+    .filter((p): p is { slug: string; title: string; image: string } => Boolean(p.image))
+    .slice(0, 10)
+    .map((p) => ({ ...p, image: cldUrl(p.image, { w: 260, h: 325, c: "fill", g: "auto" }) }));
+
   if (process.env.ESTABREK_HOME_MODE !== "cms") return (
     <main id="main-content" tabIndex={-1}>
       <NormalizeFilters basePath="/shop" />
       <RosePageFrame className="rose-shop">
-        <RoseShopIntro />
+        <RoseShopIntro showcase={showcase} />
         <div className="rose-shop-content" id="shop-products" data-rose-palette="pearl">
           <ShopBrowseClient initial={out} initialFilters={f} categories={categories ?? []} basePath="/shop" appearance="rose" />
           <RoseShopTools imageSearch={imageSearchEnabled} recommendations={aiRecommendationsEnabled} />

@@ -4,7 +4,7 @@ import { LoadingText } from "@/components/LoadingText";
 
 export default function LoadingCmsPage() {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
+    <main data-route-loading="" className="mx-auto max-w-6xl px-4 py-10">
       <LoadingIndicator
         className="flex items-center justify-center py-16"
         fallback={<div className="text-sm text-[var(--muted)]"><LoadingText ar="جارٍ التحميل..." en="Loading…" /></div>}

@@ -792,4 +792,6 @@ export const HE: Record<string, string> = {
   "Checkout preview": "תצוגה מקדימה של התשלום",
   "Sample data; purchases are disabled in the editor.": "נתונים לדוגמה; אי אפשר לבצע רכישות בעורך.",
   "Place order": "שליחת הזמנה",
+  "Opening the page…": "הדף נפתח…",
+  "Pieces from the shop: drag to turn them": "פריטים מהחנות: גררי כדי לסובב",
 };

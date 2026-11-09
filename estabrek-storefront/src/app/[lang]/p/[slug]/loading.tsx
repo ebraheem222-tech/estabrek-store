@@ -5,7 +5,7 @@ import { ProductTileSkeleton } from "@/components/ProductTileSkeleton";
 
 export default function LoadingProduct() {
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <main data-route-loading="" className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <div className="flex items-center justify-between gap-4">
         <div className="h-4 w-64 rounded-lg bg-black/10" />
         <LoadingIndicator className="inline-grid place-items-center" />

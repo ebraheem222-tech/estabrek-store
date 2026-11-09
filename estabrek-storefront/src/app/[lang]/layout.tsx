@@ -4,6 +4,8 @@ import "../globals.css";
 import "../cinematic.css";
 // The inner pages' final look (the home keeps its own): app/rose-inner.css.
 import "../rose-inner.css";
+// Its showpieces: the page loader, the cards, the filters and the motion (app/rose-showcase.css).
+import "../rose-showcase.css";
 import "../store-themes.css";
 import "@/pageTree/commerce.css";
 import Providers from "../providers";

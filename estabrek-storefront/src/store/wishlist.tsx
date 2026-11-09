@@ -165,6 +165,11 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The wishlist where there is one (a card can be drawn outside the store, e.g. in the editor). */
+export function useOptionalWishlist() {
+  return useContext(WishlistContext);
+}
+
 export function useWishlist() {
   const context = useContext(WishlistContext);
   if (!context) {

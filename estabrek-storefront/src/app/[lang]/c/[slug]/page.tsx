@@ -12,6 +12,7 @@ import { RosePageFrame } from "@/components/cinematic/RosePageFrame";
 import { RoseCategoryIntro } from "@/components/cinematic/RoseCategoryIntro";
 import { independentDesign } from "@/storeThemes/snapshot";
 import { getProductPrimaryImage } from "@/lib/catalog";
+import { cldUrl } from "@/lib/cloudinary";
 import { routeLang, seoAlternates } from "@/lib/seoLang";
 import { tr } from "@/lib/words";
 import type { Lang } from "@/lib/i18n";
@@ -238,11 +239,17 @@ async function RoseCategoryPage({ slug, searchParams, lang }: { slug: string; se
   ];
   const children = current ? cats.filter((c) => c.parentId === current.id) : [];
   const firstImage = (out.items ?? []).map((p) => getProductPrimaryImage(p)).find(Boolean) ?? null;
+  // The opening's 3D ring: this category's pieces with a photo (small, for the ring).
+  const showcase = (out.items ?? [])
+    .map((p) => ({ slug: p.slug, title: p.title, image: getProductPrimaryImage(p) }))
+    .filter((p): p is { slug: string; title: string; image: string } => Boolean(p.image))
+    .slice(0, 10)
+    .map((p) => ({ ...p, image: cldUrl(p.image, { w: 260, h: 325, c: "fill", g: "auto" }) }));
   return (
     <main id="main-content" tabIndex={-1}>
       <NormalizeFilters basePath={`/c/${slug}`} />
       <RosePageFrame className="rose-shop rose-category">
-        <RoseCategoryIntro name={name} slug={current?.slug ?? slug} total={out.total ?? out.items?.length ?? 0} imageUrl={firstImage} crumbs={crumbs} />
+        <RoseCategoryIntro name={name} slug={current?.slug ?? slug} total={out.total ?? out.items?.length ?? 0} imageUrl={firstImage} crumbs={crumbs} showcase={showcase} />
         <div className="rose-shop-content" id="shop-products" data-rose-palette="pearl">
           <ShopBrowseClient
             initial={out}

@@ -5,7 +5,7 @@ import { SidebarFiltersSkeleton, Skeleton } from "@/components/Skeleton";
 
 export default function LoadingShop() {
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <main data-route-loading="" className="mx-auto max-w-6xl space-y-6 px-4 py-8">
       <div className="flex items-center justify-between gap-4">
         <Skeleton className="h-8 w-32 rounded-xl" />
         <LoadingIndicator className="inline-grid place-items-center" />

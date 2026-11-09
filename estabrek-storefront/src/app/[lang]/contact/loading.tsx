@@ -9,7 +9,7 @@ import { LoadingText } from "@/components/LoadingText";
  */
 export default function LoadingContact() {
   return (
-    <main id="main-content" tabIndex={-1} className="rose-route-loading" aria-busy="true">
+    <main data-route-loading="" id="main-content" tabIndex={-1} className="rose-route-loading" aria-busy="true">
       <span className="sr-only" role="status"><LoadingText ar="جارٍ تحميل صفحة التواصل…" en="Loading the contact page…" /></span>
       <section className="rose-contact rose-contact-skeleton" aria-hidden="true">
         <div className="rose-contact-intro">
