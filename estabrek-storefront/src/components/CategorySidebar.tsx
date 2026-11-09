@@ -1,4 +1,5 @@
 "use client";
+import { useShopWords } from "@/components/shopWords";
 import { useLanguage } from "./cinematic/Language";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -63,6 +64,8 @@ export function CategorySidebar({
   onSelect: (id?: string) => void;
 }) {
   const { language: lang } = useLanguage();
+  // A shop element's own words (components/shopWords.tsx); the built-in ones otherwise.
+  const own = useShopWords();
   const ar = lang === "ar";
   const { roots, byId } = useMemo(() => buildCategoryTree(categories), [categories]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -135,14 +138,14 @@ export function CategorySidebar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 data-cms-part="shop-categories-title" className="text-sm font-bold">{tr(lang, "التصنيفات", "Categories")}</h3>
+        <h3 data-cms-part="shop-categories-title" className="text-sm font-bold">{own.categoriesLabel || tr(lang, "التصنيفات", "Categories")}</h3>
         {selectedId ? (
           <button
             type="button"
             className="text-xs text-[var(--muted)] hover:text-[var(--text)]"
             onClick={() => onSelect(undefined)}
           >
-            {tr(lang, "الكل", "All")}
+            {own.allLabel || tr(lang, "الكل", "All")}
           </button>
         ) : null}
       </div>

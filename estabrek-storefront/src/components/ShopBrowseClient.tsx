@@ -1,4 +1,5 @@
 "use client";
+import { useShopWords } from "@/components/shopWords";
 import { useLanguage } from "./cinematic/Language";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -31,6 +32,8 @@ type Props = {
 
 export default function ShopBrowseClient({ initial, initialFilters, categories, basePath = "/shop", appearance = "default", defaultCategoryId, navCategories, commerce }: Props) {
   const { language: lang } = useLanguage();
+  // A shop element's own words (components/shopWords.tsx); the built-in ones otherwise.
+  const own = useShopWords();
   const ar = lang === "ar";
   const [filters, setFiltersState] = useState<CatalogFilters>(() => ({
     ...initialFilters,
@@ -149,7 +152,7 @@ export default function ShopBrowseClient({ initial, initialFilters, categories, 
 
       {/* Products Section */}
       <section className="space-y-6">
-        {commerce?.showSearch ? <label data-cms-part="shop-search-box" className="cms-shop-search">{tr(lang, "البحث عن منتجات", "Search products")}<input data-cms-part="shop-search" type="search" value={filters.q ?? ""} onChange={event => {
+        {commerce?.showSearch ? <label data-cms-part="shop-search-box" className="cms-shop-search">{own.searchLabel || tr(lang, "البحث عن منتجات", "Search products")}<input data-cms-part="shop-search" type="search" value={filters.q ?? ""} onChange={event => {
           const next = { ...filters, q: event.target.value || undefined, page: undefined };
           setFilters(next); const qs = buildCanonicalQuery(next); window.history.replaceState({}, "", qs ? `${basePath}?${qs}` : basePath);
         }} /></label> : null}

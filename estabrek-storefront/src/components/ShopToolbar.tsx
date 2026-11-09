@@ -1,4 +1,5 @@
 "use client";
+import { useShopWords } from "@/components/shopWords";
 import { useLanguage } from "./cinematic/Language";
 
 import React, { useMemo } from "react";
@@ -37,6 +38,8 @@ export function ShopToolbar({
   appearance?: "rose" | "default";
 }) {
   const { language: lang } = useLanguage();
+  // A shop element's own words (components/shopWords.tsx); the built-in ones otherwise.
+  const own = useShopWords();
   const ar = lang === "ar";
   const router = useRouter();
   const pathname = usePathname();
@@ -78,13 +81,13 @@ export function ShopToolbar({
     <div className={`${appearance === "rose" ? "rose-shop-toolbar " : ""}sticky top-[72px] z-20 -mx-4 border-y border-[var(--border)] bg-[var(--bg)]/90 px-4 py-3 backdrop-blur md:mx-0 md:border md:rounded-2xl md:bg-[var(--surface)]`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-[var(--muted)]">
-          <span className="font-semibold text-[var(--text)]">{total}</span> {tr(lang, "منتج", "pieces")}
+          <span className="font-semibold text-[var(--text)]">{total}</span> {own.countLabel || tr(lang, "منتج", "pieces")}
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-xs text-[var(--muted)]">{tr(lang, "الترتيب", "Sort by")}</label>
+          <label className="text-xs text-[var(--muted)]">{own.sortLabel || tr(lang, "الترتيب", "Sort by")}</label>
           <select
-            aria-label={tr(lang, "الترتيب", "Sort by")}
+            aria-label={own.sortLabel || tr(lang, "الترتيب", "Sort by")}
             value={sort}
             onChange={(e) => {
               const next: CatalogFilters = { ...currentFilters, colors: [...currentFilters.colors], sizeIds: [...currentFilters.sizeIds] };
@@ -138,7 +141,7 @@ export function ShopToolbar({
                 )}
                 aria-pressed={lm}
               >
-                {tr(lang, "تحميل المزيد", "Load more")}
+                {own.moreLabel || tr(lang, "تحميل المزيد", "Load more")}
               </button>
             </div>
           )}

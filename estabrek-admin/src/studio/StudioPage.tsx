@@ -2353,7 +2353,7 @@ function StudioDocument() {
               </button>
             ) : null}
             {EDITABLE.has(selFree.type) ? <ElementPanel node={selFree} lang={shopLang} busy={busy} onOps={(l, ops) => void change(l, ops)} /> : null}
-            {COMMERCE_TYPES.has(selFree.type) ? <CommercePanel node={selFree} busy={busy} onOps={(label, ops) => void change(label, ops)} /> : null}
+            {COMMERCE_TYPES.has(selFree.type) ? <CommercePanel node={selFree} busy={busy} lang={shopLang} onOps={(label, ops) => void change(label, ops)} /> : null}
             <TriggersPanel key={`triggers:${selFree.id}`} node={selFree} lang={shopLang} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || typeLabel(x.node.type), type: x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={(i) => send({ type: "motionTriggerTest", nodeId: selFree.id, index: i })} />
             <VisualControlsPanel key={`visual:${selFree.id}`} node={selFree} targets={[...index.nodes.values()].filter(x => x.node.type !== "page").map(x => ({ id: x.node.id, label: x.node.name || x.node.type }))} busy={busy} onOps={(label, ops) => void change(label, ops)} onTest={event => send({ type: "testInteraction", nodeId: selFree.id, event })} />
             {selFree.type === "video" ? <VideoOverlayPanel node={selFree} screen={screen} busy={busy} onOps={(l, ops) => void change(l, ops)} onPreview={(vars) => send({ type: "previewLook", nodeId: selected, vars })} /> : null}
